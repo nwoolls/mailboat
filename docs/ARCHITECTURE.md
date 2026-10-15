@@ -64,6 +64,11 @@ match by Gmail ID across accounts; a user label is one row of one account,
 so it never merges with another account's label of the same name. Paging
 uses a `(last_message_at, id)` cursor.
 
+Two views aren't Gmail labels: **All Mail** is every thread with at least
+one message outside Spam and Trash, and **Archive** is All Mail minus
+threads in the Inbox (Gmail has no archived label). Search also skips Spam
+and Trash.
+
 ## Sync
 
 Each account has its own background worker (`sync/worker.rs`) with its own

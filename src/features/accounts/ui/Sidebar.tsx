@@ -1,18 +1,14 @@
-import type {
-  Account,
-  AccountSyncState,
-  Label,
-  SystemLabel,
-} from "../../../platform/tauri/bindings";
+import type { Account, AccountSyncState, Label } from "../../../platform/tauri/bindings";
 import { useLabels } from "../../../shared/lib/queries";
 import {
   ACCOUNT_VIEWS,
   labelSelection,
   sameSelection,
   type Selection,
-  SYSTEM_VIEW_TITLES,
-  systemSelection,
+  selectionKey,
   UNIFIED_VIEWS,
+  viewSelection,
+  viewTitle,
 } from "../../mailbox/model/views";
 import { accountInitial, syncBadge } from "../model/accounts";
 import { useSignIn } from "./useSignIn";
@@ -35,15 +31,21 @@ export function Sidebar({ accounts, syncStates, selection, onSelect }: Props) {
       <div className="flex-1 overflow-y-auto px-2 pb-4">
         {accounts.length > 1 && (
           <Section title="All accounts">
-            {UNIFIED_VIEWS.map((label) => (
-              <ViewItem
-                key={label}
-                label={label}
-                selected={sameSelection(selection, systemSelection(label))}
-                onClick={() => onSelect(systemSelection(label))}
-                title={label === "inbox" ? "All Inboxes" : SYSTEM_VIEW_TITLES[label]}
-              />
-            ))}
+            {UNIFIED_VIEWS.map((view) => {
+              const s = viewSelection(view);
+              return (
+                <ViewItem
+                  key={selectionKey(s)}
+                  selected={sameSelection(selection, s)}
+                  onClick={() => onSelect(s)}
+                  title={
+                    view.kind === "system" && view.label === "inbox"
+                      ? "All Inboxes"
+                      : viewTitle(view)
+                  }
+                />
+              );
+            })}
           </Section>
         )}
         {accounts.map((account) => (
@@ -111,7 +113,6 @@ function ViewItem({
   onClick,
   color,
 }: {
-  label?: SystemLabel;
   title: string;
   selected: boolean;
   onClick: () => void;
@@ -178,13 +179,12 @@ function AccountSection({
           )}
         </div>
       )}
-      {ACCOUNT_VIEWS.map((label) => {
-        const s = systemSelection(label, account.id);
+      {ACCOUNT_VIEWS.map((view) => {
+        const s = viewSelection(view, account.id);
         return (
           <ViewItem
-            key={label}
-            label={label}
-            title={SYSTEM_VIEW_TITLES[label]}
+            key={selectionKey(s)}
+            title={viewTitle(view)}
             selected={sameSelection(selection, s)}
             onClick={() => onSelect(s)}
           />

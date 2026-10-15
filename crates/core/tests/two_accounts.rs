@@ -334,3 +334,107 @@ fn paging_walks_every_thread_once() {
     dedup.dedup();
     assert_eq!(dedup.len(), 25);
 }
+
+#[test]
+fn all_mail_and_archive_views_across_accounts() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "sub-a", "a@x.com");
+    let b = add_account(&db, "sub-b", "b@x.com");
+    // Same Gmail IDs in both accounts, different states.
+    store::upsert_thread(
+        &mut db.conn(),
+        a.id,
+        &thread("t1", "m1", "x@x.com", "A inbox", 5, &["INBOX"]),
+    )
+    .unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        a.id,
+        &thread("t2", "m2", "x@x.com", "A archived", 4, &["Label_1"]),
+    )
+    .unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        a.id,
+        &thread("t3", "m3", "x@x.com", "A spam", 3, &["SPAM"]),
+    )
+    .unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        b.id,
+        &thread("t1", "m1", "y@y.com", "B archived", 6, &[]),
+    )
+    .unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        b.id,
+        &thread("t2", "m2", "y@y.com", "B trash", 2, &["TRASH"]),
+    )
+    .unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        b.id,
+        &thread("t3", "m3", "y@y.com", "B sent", 1, &["SENT"]),
+    )
+    .unwrap();
+
+    let subjects = |filter, view| -> Vec<String> {
+        list(&db, filter, view)
+            .into_iter()
+            .map(|t| t.subject)
+            .collect()
+    };
+
+    // All Mail: everything but Spam and Trash, unified and newest first.
+    assert_eq!(
+        subjects(AccountFilter::All, MailView::AllMail),
+        vec!["B archived", "A inbox", "A archived", "B sent"]
+    );
+    // Archive: All Mail minus Inbox. Sent-only threads are archived too.
+    assert_eq!(
+        subjects(AccountFilter::All, MailView::Archive),
+        vec!["B archived", "A archived", "B sent"]
+    );
+    assert_eq!(
+        subjects(AccountFilter::Only(vec![a.id]), MailView::Archive),
+        vec!["A archived"]
+    );
+    // Spam and Trash still have their own (system label) views.
+    assert_eq!(
+        subjects(
+            AccountFilter::All,
+            MailView::System {
+                label: SystemLabel::Spam
+            }
+        ),
+        vec!["A spam"]
+    );
+    assert_eq!(
+        subjects(
+            AccountFilter::All,
+            MailView::System {
+                label: SystemLabel::Trash
+            }
+        ),
+        vec!["B trash"]
+    );
+    // Search skips Spam and Trash, like Gmail.
+    assert_eq!(
+        subjects(
+            AccountFilter::All,
+            MailView::Search {
+                text: "spam".into()
+            }
+        ),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        subjects(
+            AccountFilter::All,
+            MailView::Search {
+                text: "archived".into()
+            }
+        ),
+        vec!["B archived", "A archived"]
+    );
+}

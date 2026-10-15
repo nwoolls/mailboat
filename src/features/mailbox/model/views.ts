@@ -27,18 +27,60 @@ export const SYSTEM_VIEW_TITLES: Record<SystemLabel, string> = {
   trash: "Trash",
 };
 
+const system = (label: SystemLabel): MailView => ({ kind: "system", label });
+const ALL_MAIL: MailView = { kind: "allMail" };
+const ARCHIVE: MailView = { kind: "archive" };
+
 /** Views listed under "All accounts" (they unify across accounts). */
-export const UNIFIED_VIEWS: SystemLabel[] = ["inbox", "unread", "starred", "sent"];
+export const UNIFIED_VIEWS: MailView[] = [
+  system("inbox"),
+  system("unread"),
+  system("starred"),
+  system("sent"),
+  ARCHIVE,
+  ALL_MAIL,
+];
 /** Views listed under each account. */
-export const ACCOUNT_VIEWS: SystemLabel[] = ["inbox", "starred", "sent"];
+export const ACCOUNT_VIEWS: MailView[] = [
+  system("inbox"),
+  system("starred"),
+  system("important"),
+  system("sent"),
+  system("draft"),
+  ARCHIVE,
+  ALL_MAIL,
+  system("spam"),
+  system("trash"),
+];
+
+/** Sidebar/heading name of a view (search and labels are named elsewhere). */
+export function viewTitle(view: MailView): string {
+  switch (view.kind) {
+    case "system":
+      return SYSTEM_VIEW_TITLES[view.label];
+    case "allMail":
+      return "All Mail";
+    case "archive":
+      return "Archive";
+    case "userLabel":
+      return "Label";
+    case "search":
+      return `Search: ${view.text}`;
+  }
+}
+
+/** A view over all accounts (no `account`) or one account. */
+export function viewSelection(view: MailView, account?: AccountId): Selection {
+  return {
+    accounts: account === undefined ? { kind: "all" } : { kind: "only", ids: [account] },
+    view,
+  };
+}
 
 export const PAGE_SIZE = 100;
 
 export function systemSelection(label: SystemLabel, account?: AccountId): Selection {
-  return {
-    accounts: account === undefined ? { kind: "all" } : { kind: "only", ids: [account] },
-    view: { kind: "system", label },
-  };
+  return viewSelection(system(label), account);
 }
 
 /** A user label always belongs to one account, so its view is scoped to it. */
@@ -63,7 +105,9 @@ export function selectionKey(s: Selection): string {
       ? `system:${v.label}`
       : v.kind === "userLabel"
         ? `label:${v.labelId}`
-        : `search:${v.text}`;
+        : v.kind === "search"
+          ? `search:${v.text}`
+          : v.kind;
   return `${accounts}|${view}`;
 }
 
@@ -79,10 +123,11 @@ export function spansAccounts(s: Selection, accountCount: number): boolean {
 
 export function selectionTitle(s: Selection, accounts: Account[], labels: Label[]): string {
   const v = s.view;
-  if (v.kind === "search") return `Search: ${v.text}`;
+  if (v.kind === "search") return viewTitle(v);
   if (v.kind === "userLabel") return labels.find((l) => l.id === v.labelId)?.name ?? "Label";
-  const base = SYSTEM_VIEW_TITLES[v.label];
-  if (s.accounts.kind === "all") return v.label === "inbox" ? "All Inboxes" : base;
+  const base = viewTitle(v);
+  if (s.accounts.kind === "all")
+    return v.kind === "system" && v.label === "inbox" ? "All Inboxes" : base;
   const [only, ...others] = s.accounts.ids;
   if (only !== undefined && others.length === 0) {
     const account = accounts.find((a) => a.id === only);

@@ -146,7 +146,12 @@ pub enum MailView {
     /// A user label belongs to exactly one account.
     #[serde(rename_all = "camelCase")]
     UserLabel { label_id: LabelId },
-    /// Local full-text search.
+    /// Every thread except Spam and Trash (unifies across accounts).
+    AllMail,
+    /// All Mail minus the Inbox. Gmail has no "archived" label: archived
+    /// just means not in INBOX.
+    Archive,
+    /// Local full-text search (Spam and Trash excluded, as in Gmail).
     Search { text: String },
 }
 

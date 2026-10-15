@@ -41,10 +41,11 @@ most mail was missing from Mailboat.
       and small Drafts/Spam/Trash windows. Accounts synced under the old
       INBOX/STARRED/SENT scope get a one-time widening pass that only
       fetches what's missing.
-- [ ] All Mail view (every message except Spam and Trash)
-- [ ] Archive view: All Mail minus Inbox. Gmail has no "archived" label;
+- [x] All Mail view (every message except Spam and Trash)
+- [x] Archive view: All Mail minus Inbox. Gmail has no "archived" label;
       archived just means not in INBOX.
-- [ ] Spam, Trash, Drafts and Important in the sidebar
+- [x] Spam, Trash, Drafts and Important in the sidebar (search now skips
+      Spam and Trash, as Gmail's does)
 
 ### Not yet verified in the real app
 

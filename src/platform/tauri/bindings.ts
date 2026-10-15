@@ -123,7 +123,14 @@ export type MailView =
 { kind: "system"; label: SystemLabel } | 
 /**  A user label belongs to exactly one account. */
 { kind: "userLabel"; labelId: LabelId } | 
-/**  Local full-text search. */
+/**  Every thread except Spam and Trash (unifies across accounts). */
+{ kind: "allMail" } | 
+/**
+ *  All Mail minus the Inbox. Gmail has no "archived" label: archived
+ *  just means not in INBOX.
+ */
+{ kind: "archive" } | 
+/**  Local full-text search (Spam and Trash excluded, as in Gmail). */
 { kind: "search"; text: string };
 
 export type MessageId = number;

@@ -14,6 +14,16 @@ use crate::model::{
 
 const MAX_LIMIT: u32 = 500;
 
+/// The thread has at least one message that isn't in Spam or Trash, which is
+/// what puts a conversation in Gmail's All Mail.
+const IN_ALL_MAIL: &str =
+    "EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = t.id AND NOT EXISTS (
+    SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+    WHERE ml.message_id = m.id AND l.kind = 'system' AND l.gmail_label_id IN ('SPAM', 'TRASH')))";
+
+const IN_INBOX: &str = "EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
+    WHERE tl.thread_id = t.id AND l.kind = 'system' AND l.gmail_label_id = 'INBOX')";
+
 const THREAD_COLUMNS: &str =
     "t.id, t.account_id, t.subject, t.snippet, t.senders_json, t.last_message_at,
   t.message_count, t.unread_count > 0,
@@ -75,7 +85,13 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
             clauses.push("EXISTS (SELECT 1 FROM thread_labels tl WHERE tl.thread_id = t.id AND tl.label_id = ?)".into());
             values.push(Value::Integer(label_id.0));
         }
+        MailView::AllMail => clauses.push(IN_ALL_MAIL.into()),
+        MailView::Archive => {
+            clauses.push(IN_ALL_MAIL.into());
+            clauses.push(format!("NOT {IN_INBOX}"));
+        }
         MailView::Search { text } => {
+            clauses.push(IN_ALL_MAIL.into());
             let Some(fts) = fts_query(text) else {
                 return Ok(ThreadPage {
                     threads: vec![],

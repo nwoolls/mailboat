@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Account, Label } from "../../../platform/tauri/bindings";
 import {
+  ACCOUNT_VIEWS,
   ALL_INBOXES,
+  UNIFIED_VIEWS,
+  viewSelection,
+  viewTitle,
   labelSelection,
   sameSelection,
   selectionKey,
@@ -77,5 +81,24 @@ describe("selections", () => {
     expect(selectionTitle(ALL_INBOXES, accounts, [])).toBe("All Inboxes");
     expect(selectionTitle(systemSelection("sent", 2), accounts, [])).toBe("Sent — me@example.com");
     expect(selectionTitle(labelSelection(work(10, 1)), accounts, [work(10, 1)])).toBe("Work");
+  });
+
+  it("All Mail and Archive are views like any other, per account or unified", () => {
+    const archive = viewSelection({ kind: "archive" }, 2);
+    expect(toListQuery(archive)).toMatchObject({
+      accounts: { kind: "only", ids: [2] },
+      view: { kind: "archive" },
+    });
+    expect(selectionTitle(archive, accounts, [])).toBe("Archive — me@example.com");
+    expect(selectionTitle(viewSelection({ kind: "allMail" }), accounts, [])).toBe("All Mail");
+    expect(sameSelection(archive, viewSelection({ kind: "allMail" }, 2))).toBe(false);
+  });
+
+  it("every sidebar view has a distinct key and a real title", () => {
+    for (const views of [UNIFIED_VIEWS, ACCOUNT_VIEWS]) {
+      const keys = views.map((v) => selectionKey(viewSelection(v, 1)));
+      expect(new Set(keys).size).toBe(views.length);
+      expect(views.every((v) => viewTitle(v) !== "Label")).toBe(true);
+    }
   });
 });
