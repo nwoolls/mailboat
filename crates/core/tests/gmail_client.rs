@@ -50,7 +50,7 @@ async fn sends_paging_parameters() {
         .await;
     let (gmail, _) = client(&server.uri());
     let page = gmail
-        .list_threads("INBOX", Some("page2"), 100)
+        .list_threads(Some("INBOX"), Some("page2"), 100)
         .await
         .unwrap();
     assert_eq!(page.threads[0].id, "t2");

@@ -12,21 +12,41 @@ use crate::error::{CoreError, Result};
 use crate::gmail::{parse, GmailClient};
 use crate::model::{AccountId, LabelKind, MessageId};
 
+/// One part of what the initial sync downloads: the newest `max` threads
+/// of a label, or of All Mail when `label` is `None`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScopePart {
+    pub label: Option<&'static str>,
+    pub max: usize,
+}
+
+/// Bump when `SyncConfig::default().scope` widens, so accounts synced under
+/// the old scope get a one-time widening pass. 1 = INBOX/STARRED/SENT only.
+pub const SCOPE_VERSION: u32 = 2;
+
 #[derive(Debug, Clone)]
 pub struct SyncConfig {
-    /// Labels pulled in on the initial sync.
-    pub initial_labels: Vec<&'static str>,
-    /// Newest threads to fetch per initial label. Older mail loads later.
-    pub max_threads_per_label: usize,
+    /// What the initial sync downloads, in order (the Inbox fills first).
+    /// Older mail loads later.
+    pub scope: Vec<ScopePart>,
     /// Bodies of the newest messages to prefetch after each pass.
     pub body_prefetch: u32,
 }
 
 impl Default for SyncConfig {
     fn default() -> Self {
+        let part = |label, max| ScopePart { label, max };
         Self {
-            initial_labels: vec!["INBOX", "STARRED", "SENT"],
-            max_threads_per_label: 2000,
+            scope: vec![
+                part(Some("INBOX"), 2000),
+                // All Mail covers archived and sent mail. Most of the owner's
+                // mail is archived (Inbox Zero), so this is the big one.
+                part(None, 5000),
+                part(Some("STARRED"), 1000),
+                part(Some("DRAFT"), 200),
+                part(Some("SPAM"), 100),
+                part(Some("TRASH"), 100),
+            ],
             body_prefetch: 25,
         }
     }
@@ -53,6 +73,8 @@ pub struct SyncProgress {
 pub enum SyncKind {
     Full,
     Incremental,
+    /// Incremental, plus a one-time fetch of threads a wider scope added.
+    Widened,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,15 +97,25 @@ pub struct SyncEngine<'a> {
 
 impl SyncEngine<'_> {
     /// Incremental if we have a cursor, full otherwise or if it expired.
+    /// An account cached under an older, narrower scope is widened after
+    /// its incremental pass.
     pub async fn run(&self) -> Result<SyncOutcome> {
         let cursor = store::history_id(&self.db.conn(), self.account)?;
-        let outcome = match cursor {
+        let mut outcome = match cursor {
             Some(start) => match self.incremental(start).await {
                 Err(CoreError::HistoryExpired) => self.full().await,
                 other => other,
             },
             None => self.full().await,
         }?;
+        let scope = store::scope_version(&self.db.conn(), self.account)?;
+        if outcome.kind == SyncKind::Incremental && scope < SCOPE_VERSION {
+            let added = self.widen().await?;
+            outcome = SyncOutcome {
+                kind: SyncKind::Widened,
+                changed_threads: outcome.changed_threads + added,
+            };
+        }
         self.prefetch_bodies().await?;
         Ok(outcome)
     }
@@ -114,31 +146,7 @@ impl SyncEngine<'_> {
         };
         self.sync_labels().await?;
 
-        self.report(SyncPhase::Listing, 0, 0);
-        let mut ids: Vec<String> = Vec::new();
-        let mut seen = HashSet::new();
-        for label in &self.config.initial_labels {
-            let mut page_token: Option<String> = None;
-            let mut count = 0;
-            loop {
-                let remaining = self.config.max_threads_per_label - count;
-                let page = self
-                    .gmail
-                    .list_threads(label, page_token.as_deref(), remaining.min(500) as u32)
-                    .await?;
-                for t in page.threads {
-                    count += 1;
-                    if seen.insert(t.id.clone()) {
-                        ids.push(t.id);
-                    }
-                }
-                page_token = page.next_page_token;
-                if page_token.is_none() || count >= self.config.max_threads_per_label {
-                    break;
-                }
-            }
-            self.report(SyncPhase::Listing, ids.len(), 0);
-        }
+        let (ids, seen) = self.list_scope().await?;
 
         // Threads cached earlier that are no longer in the window are stale
         // after a resync (the history that would have updated them is gone).
@@ -161,10 +169,55 @@ impl SyncEngine<'_> {
             .collect();
         self.fetch_threads(&todo).await?;
         store::set_history_id(&self.db.conn(), self.account, Some(start_history_id), true)?;
+        store::set_scope_version(&self.db.conn(), self.account, SCOPE_VERSION)?;
         Ok(SyncOutcome {
             kind: SyncKind::Full,
             changed_threads: ids.len() + stale.len(),
         })
+    }
+
+    /// Thread IDs in the sync scope, in scope order, without duplicates.
+    async fn list_scope(&self) -> Result<(Vec<String>, HashSet<String>)> {
+        self.report(SyncPhase::Listing, 0, 0);
+        let mut ids: Vec<String> = Vec::new();
+        let mut seen = HashSet::new();
+        for part in &self.config.scope {
+            let mut page_token: Option<String> = None;
+            let mut count = 0;
+            loop {
+                let remaining = part.max - count;
+                let page = self
+                    .gmail
+                    .list_threads(part.label, page_token.as_deref(), remaining.min(500) as u32)
+                    .await?;
+                for t in page.threads {
+                    count += 1;
+                    if seen.insert(t.id.clone()) {
+                        ids.push(t.id);
+                    }
+                }
+                page_token = page.next_page_token;
+                if page_token.is_none() || count >= part.max {
+                    break;
+                }
+            }
+            self.report(SyncPhase::Listing, ids.len(), 0);
+        }
+        Ok((ids, seen))
+    }
+
+    /// Fetches threads the current scope covers but the cache lacks, for an
+    /// account that synced under an older scope. Threads already cached are
+    /// kept current by incremental sync, so they are skipped, and the
+    /// history cursor is left alone. Interrupted? The next pass simply
+    /// fetches whatever is still missing.
+    pub async fn widen(&self) -> Result<usize> {
+        let (ids, _) = self.list_scope().await?;
+        let cached = store::thread_ids_for_account(&self.db.conn(), self.account)?;
+        let missing: Vec<String> = ids.into_iter().filter(|id| !cached.contains(id)).collect();
+        self.fetch_threads(&missing).await?;
+        store::set_scope_version(&self.db.conn(), self.account, SCOPE_VERSION)?;
+        Ok(missing.len())
     }
 
     pub async fn incremental(&self, start: u64) -> Result<SyncOutcome> {

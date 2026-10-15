@@ -79,7 +79,12 @@ stateDiagram-v2
 ```
 
 - **Full sync:** read the mailbox's current historyId first, then list the
-  newest threads of the initial labels and fetch their metadata in batches.
+  threads in the sync scope (newest 2,000 Inbox, 5,000 All Mail, 1,000
+  Starred, and small Drafts/Spam/Trash windows) and fetch their metadata in
+  batches.
+- **Widening:** when the scope grows (`SCOPE_VERSION`), accounts synced
+  under the old scope fetch only the threads they're missing, after a normal
+  incremental pass; the history cursor is untouched.
   Progress is saved per thread; an interrupted full sync resumes from the
   same historyId and skips threads already fetched.
 - **Incremental sync:** `history.list` from the saved historyId, then
@@ -147,4 +152,5 @@ and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
 | 2026-10-15 | Sign dev builds with an Apple Development certificate | macOS ties keychain approval to the exact build; signing gives every build one identity. |
 | 2026-10-15 | Use the `oauth2` crate for the OAuth protocol | Security-sensitive code shouldn't be homemade; it supports PKCE. The loopback listener and keychain storage stay ours. |
 | 2026-10-15 | Email links go through a `mailboat-link:` scheme handler | Catching clicks from the sandboxed frame with JavaScript didn't work in the macOS web view; a scheme handler doesn't need scripts at all. |
+| 2026-10-15 | Sync scope: newest 5,000 All Mail threads, not just INBOX/STARRED/SENT | The owner keeps Inbox Zero; nearly all mail is archived and was missing. 5,000 threads is ~15 minutes at the 6,000/minute quota; older mail will load on demand (Milestone 2). |
 | 2026-10-15 | Track milestones in `docs/ROADMAP.md` | Items moved between milestones must not get lost. |

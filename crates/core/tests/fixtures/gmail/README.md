@@ -6,5 +6,6 @@ they were written. Replace them with scrubbed real recordings once OAuth works;
 keep the IDs (`t1`, `m1`, ...) so the tests still line up.
 
 Scenario: inbox has t1 (2 messages, one unread, user label "Work") and t2
-(starred, with a PDF attachment). `history.json` then adds t3, archives t1 and
+(starred, with a PDF attachment). t4 is archived (not in the inbox, label
+"Work") and only appears in the All Mail listing. `history.json` then adds t3, archives t1 and
 deletes t2's only message.

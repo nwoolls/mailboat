@@ -185,14 +185,22 @@ impl GmailClient {
             .await
     }
 
+    /// `threads.list`, newest first. `None` lists All Mail (everything but
+    /// Spam and Trash).
     pub async fn list_threads(
         &self,
-        label: &str,
+        label: Option<&str>,
         page_token: Option<&str>,
         max_results: u32,
     ) -> Result<ThreadList> {
         let max = max_results.to_string();
-        let mut query = vec![("labelIds", label), ("maxResults", max.as_str())];
+        let mut query = vec![("maxResults", max.as_str())];
+        if let Some(label) = label {
+            query.push(("labelIds", label));
+            if matches!(label, "SPAM" | "TRASH") {
+                query.push(("includeSpamTrash", "true"));
+            }
+        }
         if let Some(token) = page_token {
             query.push(("pageToken", token));
         }

@@ -162,3 +162,9 @@ ALTER TABLE threads ADD COLUMN synced_at INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE sync_state ADD COLUMN full_sync_history_id INTEGER;
 ALTER TABLE sync_state ADD COLUMN full_sync_started_at INTEGER;
 "#;
+
+/// Which sync scope an account's cache covers (see `sync::engine::SCOPE_VERSION`).
+/// Accounts synced under an older, narrower scope get a one-time widening pass.
+pub const MIGRATION_V3: &str = r#"
+ALTER TABLE sync_state ADD COLUMN scope_version INTEGER NOT NULL DEFAULT 0;
+"#;

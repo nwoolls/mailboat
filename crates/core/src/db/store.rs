@@ -635,3 +635,24 @@ pub fn restore_label_snapshot(conn: &mut Connection, snapshot: &LabelSnapshot) -
     tx.commit()?;
     Ok(())
 }
+
+// ---- Sync scope ----
+
+pub fn scope_version(conn: &Connection, account: AccountId) -> Result<u32> {
+    Ok(conn
+        .query_row(
+            "SELECT scope_version FROM sync_state WHERE account_id = ?1",
+            [account],
+            |r| r.get(0),
+        )
+        .optional()?
+        .unwrap_or(0))
+}
+
+pub fn set_scope_version(conn: &Connection, account: AccountId, version: u32) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET scope_version = ?2 WHERE account_id = ?1",
+        params![account, version],
+    )?;
+    Ok(())
+}

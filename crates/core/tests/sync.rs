@@ -71,6 +71,7 @@ fn initial_batch() -> BatchResponder {
     BatchResponder(HashMap::from([
         ("t1", "thread_t1.json"),
         ("t2", "thread_t2.json"),
+        ("t4", "thread_t4.json"),
     ]))
 }
 
@@ -416,4 +417,100 @@ async fn interrupted_full_sync_resumes_without_refetching() {
         .unwrap()
         .is_none());
     assert_eq!(inbox(&db, AccountFilter::All).len(), 2);
+}
+
+#[tokio::test]
+async fn full_sync_includes_archived_mail_and_records_scope() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch())
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let account = add_account(&db, "a");
+    run(&db, &server, account).await.unwrap();
+
+    // t4 is archived: not in the inbox, but cached and searchable.
+    assert_eq!(inbox(&db, AccountFilter::All).len(), 2);
+    let found = query::list_threads(
+        &db.conn(),
+        &ListQuery {
+            accounts: AccountFilter::All,
+            view: MailView::Search { text: "oil".into() },
+            cursor: None,
+            limit: 10,
+        },
+    )
+    .unwrap();
+    assert_eq!(found.threads.len(), 1);
+    assert_eq!(
+        store::scope_version(&db.conn(), account).unwrap(),
+        SCOPE_VERSION
+    );
+}
+
+#[tokio::test]
+async fn account_synced_under_old_scope_is_widened_without_refetching() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    Mock::given(path("/gmail/v1/users/me/history"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(r#"{"historyId":"9000"}"#, "application/json"),
+        )
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch())
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let account = add_account(&db, "a");
+    // As if synced by the old INBOX/STARRED/SENT scope: t1 cached, cursor set.
+    let t1: mailboat_core::gmail::types::Thread =
+        serde_json::from_str(&fixture("thread_t1.json")).unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        account,
+        &mailboat_core::gmail::parse::thread_to_incoming(&t1),
+    )
+    .unwrap();
+    store::set_history_id(&db.conn(), account, Some(9000), true).unwrap();
+    assert_eq!(store::scope_version(&db.conn(), account).unwrap(), 0);
+
+    let outcome = run(&db, &server, account).await.unwrap();
+    assert_eq!(outcome.kind, SyncKind::Widened);
+
+    // Only the missing threads were fetched; t1 was not.
+    let batches: Vec<String> = server
+        .received_requests()
+        .await
+        .unwrap()
+        .iter()
+        .filter(|r| r.url.path() == "/batch/gmail/v1")
+        .map(|r| String::from_utf8_lossy(&r.body).into_owned())
+        .collect();
+    let all = batches.join("");
+    assert!(all.contains("/threads/t2?") && all.contains("/threads/t4?"));
+    assert!(!all.contains("/threads/t1?"));
+    // No full resync: the cursor is untouched and getProfile wasn't called.
+    assert_eq!(store::history_id(&db.conn(), account).unwrap(), Some(9000));
+    assert!(!server
+        .received_requests()
+        .await
+        .unwrap()
+        .iter()
+        .any(|r| r.url.path().ends_with("/profile")));
+    assert_eq!(
+        store::scope_version(&db.conn(), account).unwrap(),
+        SCOPE_VERSION
+    );
+
+    // The next pass is a plain incremental one.
+    assert_eq!(
+        run(&db, &server, account).await.unwrap().kind,
+        SyncKind::Incremental
+    );
 }

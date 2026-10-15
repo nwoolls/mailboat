@@ -1,0 +1,17 @@
+{
+  "threads": [
+    {
+      "id": "t2",
+      "historyId": "8991"
+    },
+    {
+      "id": "t4",
+      "historyId": "8995"
+    },
+    {
+      "id": "t1",
+      "historyId": "8990"
+    }
+  ],
+  "resultSizeEstimate": 3
+}

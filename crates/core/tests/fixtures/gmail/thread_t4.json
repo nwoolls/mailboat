@@ -1,0 +1,48 @@
+{
+  "id": "t4",
+  "historyId": "8995",
+  "messages": [
+    {
+      "id": "m5",
+      "threadId": "t4",
+      "labelIds": [
+        "Label_1",
+        "CATEGORY_UPDATES"
+      ],
+      "snippet": "Your oil delivery is scheduled",
+      "historyId": "9010",
+      "internalDate": "1760150000000",
+      "sizeEstimate": 4321,
+      "payload": {
+        "partId": "",
+        "mimeType": "multipart/alternative",
+        "filename": "",
+        "headers": [
+          {
+            "name": "From",
+            "value": "Order Oil Online <orders@oil.example>"
+          },
+          {
+            "name": "To",
+            "value": "me@gmail.com"
+          },
+          {
+            "name": "Subject",
+            "value": "Your Order Has Been Received"
+          },
+          {
+            "name": "Date",
+            "value": "Fri, 10 Oct 2025 14:33:20 +0000"
+          },
+          {
+            "name": "Message-ID",
+            "value": "<d1@oil.example>"
+          }
+        ],
+        "body": {
+          "size": 0
+        }
+      }
+    }
+  ]
+}

@@ -124,4 +124,17 @@ pub async fn mount_mailbox(server: &wiremock::MockServer) {
         .respond_with(json("threads_sent.json"))
         .mount(server)
         .await;
+    // All Mail (no label) and the small Drafts/Spam/Trash windows.
+    Mock::given(path("/gmail/v1/users/me/threads"))
+        .and(query_param_is_missing("labelIds"))
+        .respond_with(json("threads_allmail.json"))
+        .mount(server)
+        .await;
+    for label in ["DRAFT", "SPAM", "TRASH"] {
+        Mock::given(path("/gmail/v1/users/me/threads"))
+            .and(query_param("labelIds", label))
+            .respond_with(json("threads_empty.json"))
+            .mount(server)
+            .await;
+    }
 }

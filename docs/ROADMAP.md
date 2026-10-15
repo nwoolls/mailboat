@@ -31,6 +31,21 @@ something moves between milestones, move it here and say why.
 - [x] Mark a message read when opened; `u` toggles read/unread
       *(pulled forward from M3: first action, routed to the owning account)*
 
+### Pulled forward from Milestone 2 (owner request, 2026-10-15)
+
+Nearly all of the owner's mail is archived (Inbox Zero), so without these
+most mail was missing from Mailboat.
+
+- [x] Sync scope: first sync covers the newest 5,000 All Mail threads (so
+      archived mail is cached and locally searchable), the Inbox, Starred,
+      and small Drafts/Spam/Trash windows. Accounts synced under the old
+      INBOX/STARRED/SENT scope get a one-time widening pass that only
+      fetches what's missing.
+- [ ] All Mail view (every message except Spam and Trash)
+- [ ] Archive view: All Mail minus Inbox. Gmail has no "archived" label;
+      archived just means not in INBOX.
+- [ ] Spam, Trash, Drafts and Important in the sidebar
+
 ### Not yet verified in the real app
 
 - [x] Read/unread round trip against real Gmail (change shows up in Gmail on the web)
@@ -47,14 +62,8 @@ something moves between milestones, move it here and say why.
       account to try for real)
 - [ ] Per-account colors on rows (exists; review with two accounts)
 - [ ] Independent sync workers (exist; verify with two real accounts)
-- [ ] All Mail view (every message except Spam and Trash) *(moved from M1 feedback)*
-- [ ] Archive view: All Mail minus Inbox. Gmail has no "archived" label;
-      archived just means not in INBOX. The owner keeps Inbox Zero, so this
-      is where nearly all their mail lives. *(owner feedback, 2026-10-15)*
-- [ ] Spam, Trash, Drafts and Important in the sidebar *(moved from M1 feedback)*
-- [ ] Sync scope: first sync covers the newest All Mail threads (so
-      archived mail is cached and locally searchable) plus small
-      Spam/Trash/Drafts windows, not only INBOX/STARRED/SENT *(moved from M1 feedback)*
+- All Mail, Archive, Spam/Trash/Drafts/Important views and the wider sync
+  scope: *pulled forward into Milestone 1 (see above)*
 - [ ] Load older mail on demand when scrolling past the cached window
       *(promised in the M1 plan, never built)*
 
