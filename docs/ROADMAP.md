@@ -45,8 +45,12 @@ something moves between milestones, move it here and say why.
 - [ ] Per-account colors on rows (exists; review with two accounts)
 - [ ] Independent sync workers (exist; verify with two real accounts)
 - [ ] All Mail view (every message except Spam and Trash) *(moved from M1 feedback)*
+- [ ] Archive view: All Mail minus Inbox. Gmail has no "archived" label;
+      archived just means not in INBOX. The owner keeps Inbox Zero, so this
+      is where nearly all their mail lives. *(owner feedback, 2026-10-15)*
 - [ ] Spam, Trash, Drafts and Important in the sidebar *(moved from M1 feedback)*
-- [ ] Sync scope: first sync covers the newest All Mail threads plus small
+- [ ] Sync scope: first sync covers the newest All Mail threads (so
+      archived mail is cached and locally searchable) plus small
       Spam/Trash/Drafts windows, not only INBOX/STARRED/SENT *(moved from M1 feedback)*
 - [ ] Load older mail on demand when scrolling past the cached window
       *(promised in the M1 plan, never built)*
