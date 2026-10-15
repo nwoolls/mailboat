@@ -93,7 +93,7 @@ export function Shell() {
   if (accountList.length === 0) return <Welcome setup={setup.data} />;
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full bg-glass-sidebar">
       <Sidebar
         accounts={accountList}
         syncStates={syncStates}
@@ -104,37 +104,42 @@ export function Shell() {
           setSelectedId(null);
         }}
       />
-      <section className="flex w-[380px] shrink-0 flex-col border-r border-stroke bg-glass-panel">
-        <div data-tauri-drag-region className="flex h-11 shrink-0 items-end px-4 pb-1">
-          <h2 className="truncate text-sm font-semibold">
-            {selectionTitle(selection, accountList, labels)}
-          </h2>
+      {/* The gutter around the panel shows the glass and drags the window. */}
+      <div data-tauri-drag-region className="flex min-w-0 flex-1 py-1.5 pr-1.5 pl-1.5">
+        <div className="panel flex min-w-0 flex-1 overflow-hidden">
+          <section className="flex w-[380px] shrink-0 flex-col border-r border-stroke">
+            <div data-tauri-drag-region className="flex h-10 shrink-0 items-center px-4">
+              <h2 className="truncate text-sm font-semibold">
+                {selectionTitle(selection, accountList, labels)}
+              </h2>
+            </div>
+            <div className="px-3 pt-1 pb-2">
+              <input
+                id="mailboat-search"
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search  /"
+                className="w-full rounded-md bg-selection-subtle px-3 py-1.5 outline-none placeholder:text-content/30 focus:bg-selection"
+              />
+            </div>
+            <ThreadList
+              threads={threads}
+              accounts={accounts}
+              showAccount={spansAccounts(selection, accountList.length)}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              hasMore={hasNextPage}
+              loadMore={loadMore}
+              loading={threadsQuery.isPending || isFetchingNextPage}
+            />
+          </section>
+          <main className="flex min-w-0 flex-1 flex-col">
+            <div data-tauri-drag-region className="h-3 shrink-0" />
+            <ThreadReader threadId={selectedId} accounts={accounts} />
+          </main>
         </div>
-        <div className="px-3 pt-1 pb-2">
-          <input
-            id="mailboat-search"
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search  /"
-            className="w-full rounded-md bg-selection-subtle px-3 py-1.5 outline-none placeholder:text-content/30 focus:bg-selection"
-          />
-        </div>
-        <ThreadList
-          threads={threads}
-          accounts={accounts}
-          showAccount={spansAccounts(selection, accountList.length)}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          hasMore={hasNextPage}
-          loadMore={loadMore}
-          loading={threadsQuery.isPending || isFetchingNextPage}
-        />
-      </section>
-      <main className="flex min-w-0 flex-1 flex-col bg-glass-panel">
-        <div data-tauri-drag-region className="h-3 shrink-0" />
-        <ThreadReader threadId={selectedId} accounts={accounts} />
-      </main>
+      </div>
     </div>
   );
 }

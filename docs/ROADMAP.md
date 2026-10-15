@@ -64,7 +64,7 @@ a darker glass body, rounded corners where they meet, resizable panes.
 
 - [x] Glass window: native macOS blur behind a transparent window; sidebar
       on thin glass, list and reader on a near-opaque tint for legibility
-- [ ] Rounded body panel inset from the window edge, sidebar on the glass
+- [x] Rounded body panel inset from the window edge, sidebar on the glass
 - [ ] Resizable splitters (sidebar | list | reader); reader can be dragged
       narrow to act as a right-hand side panel
 

@@ -41,6 +41,7 @@
   --content-lightness: 92%;
   --glass-sidebar-strength: 30%;
   --glass-panel-strength: 84%;
+  --panel-shadow: 0 2px 10px rgb(0 0 0 / 0.3);
   color-scheme: dark;
 }
 
@@ -51,6 +52,7 @@
     --content-lightness: 12%;
     --glass-sidebar-strength: 35%;
     --glass-panel-strength: 88%;
+    --panel-shadow: 0 1px 6px rgb(0 0 0 / 0.08);
     color-scheme: light;
   }
 }
@@ -72,6 +74,16 @@ body {
   -webkit-font-smoothing: antialiased;
   user-select: none;
   cursor: default;
+}
+
+/* The rounded body panel that sits on the glass: a hairline edge plus a
+   soft shadow so its corners read against the sidebar. */
+.panel {
+  border-radius: 10px;
+  background: var(--color-glass-panel);
+  box-shadow:
+    0 0 0 1px var(--color-stroke),
+    var(--panel-shadow);
 }
 
 /* Text the user may want to copy. */
