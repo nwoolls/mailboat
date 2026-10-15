@@ -225,10 +225,15 @@ pub fn csp(allow_images: bool) -> String {
     format!("default-src 'none'; style-src 'unsafe-inline'; img-src {img}; font-src data:; form-action 'none'; base-uri 'none'")
 }
 
+/// The frame is sized to its content, so it never scrolls vertically:
+/// `overflow-y:hidden` makes vertical swipes go to the reader instead of
+/// rubber-banding inside the frame (which made long emails bounce).
+/// Emails wider than the reader can still scroll sideways.
 fn wrap_document(body: &str, allow_images: bool) -> String {
     format!(
         r#"<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="{csp}"><meta name="referrer" content="no-referrer"><style>
 html,body{{margin:0;padding:0;background:#fff;color:#1f1f1f}}
+html{{overflow-y:hidden;overflow-x:auto}}
 body{{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:20px 24px;overflow-wrap:anywhere}}
 img{{max-width:100%;height:auto}}
 img[data-mailboat-blocked],img[data-mailboat-inline]{{display:inline-block;min-width:24px;min-height:24px;background:#f1f1f3;border-radius:4px}}
@@ -310,6 +315,15 @@ mod tests {
         assert!(out.document.contains("https://cdn.vendor.com/logo.png"));
         assert!(!out.document.contains("mailtrack.io"));
         assert!(out.document.contains("img-src data: https:"));
+    }
+
+    #[test]
+    fn the_frame_never_scrolls_vertically() {
+        let out = sanitize_html("<p>hi</p>", false);
+        assert!(out
+            .document
+            .contains("html{overflow-y:hidden;overflow-x:auto}"));
+        assert!(text_document("hi").document.contains("overflow-y:hidden"));
     }
 
     #[test]

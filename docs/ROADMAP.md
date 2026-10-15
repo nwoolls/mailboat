@@ -187,6 +187,11 @@ Options offered during the spike that the owner didn't pick (yet):
       Spam always blocked, Trash blocked unless the sender is allowed, a
       per-sender "Block images" / "Load images" choice wins otherwise.
       Known trackers are still removed. CLAUDE.md's security rule updated
+- [x] Long emails scroll on the first swipe: the email frame no longer
+      scrolls vertically itself, so it can't catch the gesture and
+      rubber-band (wide emails can still scroll sideways)
+- [x] The reader's account marker and address only show with more than
+      one account
 - [ ] A setting to switch the default back to "blocked"
 - [ ] Load by default only for people you've written to (option B, not
       built)
