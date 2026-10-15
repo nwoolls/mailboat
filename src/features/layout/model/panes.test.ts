@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { clampWidth, LIST_WIDTH, listMaxWidth, panelToggleFor, READER_MIN_WIDTH } from "./panes";
+import {
+  clampWidth,
+  LIST_WIDTH,
+  listMaxWidth,
+  panelToggleFor,
+  READER_MIN_WIDTH,
+  SPLITTER_WIDTH,
+} from "./panes";
 
 describe("clampWidth", () => {
   it("keeps a width inside its bounds", () => {
@@ -14,8 +21,8 @@ describe("clampWidth", () => {
 });
 
 describe("listMaxWidth", () => {
-  it("leaves the reader its minimum width", () => {
-    expect(listMaxWidth(1000)).toBe(1000 - READER_MIN_WIDTH);
+  it("leaves the splitter and the reader's minimum width", () => {
+    expect(listMaxWidth(1000)).toBe(1000 - SPLITTER_WIDTH - READER_MIN_WIDTH);
   });
 
   it("never goes below the list's own minimum", () => {

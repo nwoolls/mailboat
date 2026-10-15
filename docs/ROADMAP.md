@@ -87,11 +87,14 @@ a darker glass body, rounded corners where they meet, resizable panes.
       per view. An empty Inbox says "All caught up" with a different line
       each day and a thumbs-up that nods; a soft accent glow drifts slowly
       around the pane. Motion stops with macOS "Reduce motion"
+- [x] Panels slide open and closed (220ms ease-out, from MonoCode): the
+      sidebar and reader content fade and drift in from their own side, and
+      the list grows or gives way in step. The reader keeps showing the
+      last conversation while it slides away
 
 ### Ideas for later in this spike (not started)
 
 - Remember pane widths and which panels are hidden between launches
-- Animate panels sliding in and out (MonoCode's 160–200ms ease-out)
 - With the reader hidden, open a conversation some other way (Enter to
   show the reader, or open it in place of the list)
 - Reader as its own rounded card, if text on the glass proves hard to read

@@ -96,6 +96,32 @@ html.resizing iframe {
   pointer-events: none;
 }
 
+/* Side panels slide open and closed: the wrapper animates its size, the
+   content fades and drifts in from its own side. Off while a splitter
+   drags (the panel should track the pointer exactly) and for people who
+   ask for reduced motion. */
+.panel-slide {
+  transition:
+    width var(--motion-panel-duration) var(--motion-ease-out),
+    flex-grow var(--motion-panel-duration) var(--motion-ease-out),
+    min-width var(--motion-panel-duration) var(--motion-ease-out);
+}
+.panel-slide-content {
+  transition:
+    opacity 180ms ease-out,
+    transform var(--motion-panel-duration) var(--motion-ease-out);
+}
+.panel-slide-content[data-open="false"] {
+  opacity: 0;
+  transform: translateX(-16px);
+}
+.panel-slide-content.from-right[data-open="false"] {
+  transform: translateX(16px);
+}
+html.resizing .panel-slide {
+  transition: none;
+}
+
 /* Empty states: a soft accent glow drifting slowly around the pane, the
    message rising in once, and a little nod from the thumbs-up. All of it
    stops for people who ask for reduced motion. */
@@ -162,6 +188,10 @@ html.resizing iframe {
   .empty-rise,
   .empty-nod {
     animation: none;
+  }
+  .panel-slide,
+  .panel-slide-content {
+    transition: none;
   }
 }
 

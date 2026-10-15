@@ -9,6 +9,7 @@ import {
   panelToggleFor,
   READER_MIN_WIDTH,
   SIDEBAR_WIDTH,
+  SPLITTER_WIDTH,
 } from "../features/layout/model/panes";
 import { Splitter } from "../features/layout/ui/Splitter";
 import { Welcome } from "../features/accounts/ui/Welcome";
@@ -70,6 +71,10 @@ export function Shell() {
     [threadsQuery.data],
   );
   const [selectedId, setSelectedId] = useState<ThreadId | null>(null);
+  // The last conversation opened, kept while the reader slides closed so it
+  // doesn't empty out mid-animation. Updated during render, not in an effect.
+  const [shownId, setShownId] = useState<ThreadId | null>(null);
+  if (selectedId !== null && selectedId !== shownId) setShownId(selectedId);
   const { mutate: setRead } = useSetRead();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   const loadMore = useCallback(() => void fetchNextPage(), [fetchNextPage]);
@@ -152,9 +157,20 @@ export function Shell() {
         onToggleSidebar={toggleSidebar}
         onToggleReader={toggleReader}
       />
-      <div className={`flex min-h-0 flex-1 pr-2 pb-2 ${sidebarOpen ? "" : "pl-2"}`}>
-        {sidebarOpen && (
-          <>
+      <div className="flex min-h-0 flex-1 pr-2 pb-2">
+        {/* Panels stay mounted and slide: the wrapper animates its width and
+            clips, while the content keeps its own width (no reflow) and fades
+            in from the side. Closed, the sidebar leaves an 8px gutter. */}
+        <div
+          className="panel-slide flex shrink-0 overflow-hidden"
+          style={{ width: sidebarOpen ? sidebarWidth + SPLITTER_WIDTH : SPLITTER_WIDTH }}
+          inert={!sidebarOpen}
+        >
+          <div
+            className="panel-slide-content flex shrink-0"
+            data-open={sidebarOpen}
+            style={{ width: sidebarWidth + SPLITTER_WIDTH }}
+          >
             <Sidebar
               accounts={accountList}
               width={sidebarWidth}
@@ -172,16 +188,15 @@ export function Shell() {
               onResize={resizeSidebar}
               onReset={() => setSidebarWidth(SIDEBAR_WIDTH.initial)}
             />
-          </>
-        )}
+          </div>
+        </div>
         <div ref={panesRef} className="flex min-w-0 flex-1">
-          {/* The list is the body: a rounded card on the glass. It shrinks
-              with the window before the reader drops below its minimum. */}
+          {/* The list is the body: a rounded card on the glass. With the
+              reader hidden it grows to fill; growth animates with the reader. */}
           <section
-            className="panel flex min-w-0 flex-col overflow-hidden"
+            className="panel panel-slide flex min-w-0 flex-col overflow-hidden"
             style={{
-              // With the reader hidden, the list takes all the room.
-              flex: readerVisible ? `0 1 ${listWidth}px` : "1 1 0",
+              flex: `${readerVisible ? 0 : 1} 1 ${listWidth}px`,
               minWidth: LIST_WIDTH.min,
             }}
           >
@@ -218,20 +233,32 @@ export function Shell() {
               }
             />
           </section>
-          {readerVisible && selectedId !== null && (
-            <>
+          <div
+            className="panel-slide flex overflow-hidden"
+            style={{
+              flex: `${readerVisible ? 1 : 0} 1 0px`,
+              minWidth: readerVisible ? SPLITTER_WIDTH + READER_MIN_WIDTH : 0,
+            }}
+            inert={!readerVisible}
+          >
+            <div
+              className="panel-slide-content from-right flex flex-1"
+              data-open={readerVisible}
+              style={{ minWidth: SPLITTER_WIDTH + READER_MIN_WIDTH }}
+            >
               <Splitter
                 label="Resize conversation list"
                 width={listWidth}
                 onResize={resizeList}
                 onReset={() => setListWidth(LIST_WIDTH.initial)}
               />
-              {/* The reader sits on the glass like a right-hand sidebar. */}
-              <main className="flex flex-1 flex-col" style={{ minWidth: READER_MIN_WIDTH }}>
-                <ThreadReader threadId={selectedId} accounts={accounts} />
+              {/* The reader sits on the glass like a right-hand sidebar. While
+                  it slides closed it keeps showing the last conversation. */}
+              <main className="flex min-w-0 flex-1 flex-col">
+                {shownId !== null && <ThreadReader threadId={shownId} accounts={accounts} />}
               </main>
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

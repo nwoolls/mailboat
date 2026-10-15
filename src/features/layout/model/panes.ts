@@ -3,6 +3,8 @@ export const SIDEBAR_WIDTH = { initial: 224, min: 180, max: 360 };
 export const LIST_WIDTH = { initial: 380, min: 260 };
 /** The reader can shrink to a narrow right-hand panel, but no further. */
 export const READER_MIN_WIDTH = 300;
+/** The gap between panes, which is also the splitter's grab strip. */
+export const SPLITTER_WIDTH = 8;
 /** How far one arrow-key press moves a focused splitter. */
 export const KEYBOARD_STEP = 16;
 
@@ -10,9 +12,9 @@ export function clampWidth(width: number, min: number, max: number): number {
   return Math.round(Math.min(Math.max(width, min), Math.max(min, max)));
 }
 
-/** Widest the list may get inside a panel, leaving the reader its minimum. */
-export function listMaxWidth(panelWidth: number): number {
-  return Math.max(LIST_WIDTH.min, panelWidth - READER_MIN_WIDTH);
+/** Widest the list may get, leaving the splitter and reader their room. */
+export function listMaxWidth(panesWidth: number): number {
+  return Math.max(LIST_WIDTH.min, panesWidth - SPLITTER_WIDTH - READER_MIN_WIDTH);
 }
 
 /** The panels either side of the list that can be hidden. */
