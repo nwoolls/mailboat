@@ -1,0 +1,215 @@
+//! Commands the UI can call. Each is a thin wrapper over `mailboat_core`;
+//! logic and tests live there.
+
+use std::sync::Arc;
+
+use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
+use mailboat_core::db::{accounts, query, store};
+use mailboat_core::mail::{self, SafeMessage};
+use mailboat_core::model::{
+    Account, AccountFilter, AccountId, AccountSyncState, Label, ListQuery, MessageId, ThreadDetail,
+    ThreadId, ThreadPage,
+};
+use mailboat_core::sync::fetch_body;
+use mailboat_core::CoreError;
+use serde::Serialize;
+use specta::Type;
+use tauri::State;
+
+use crate::error::CmdResult;
+use crate::state::AppState;
+
+#[tauri::command]
+#[specta::specta]
+pub fn accounts_list(state: State<'_, AppState>) -> CmdResult<Vec<Account>> {
+    Ok(accounts::list(&state.db.conn())?)
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthSetup {
+    /// True if a Google OAuth client is available (file or env vars).
+    pub configured: bool,
+    /// Where to save the downloaded client JSON.
+    pub client_file_path: String,
+    /// Why loading failed, if it did.
+    pub problem: Option<String>,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn oauth_setup(state: State<'_, AppState>) -> OAuthSetup {
+    let result = state.oauth_config();
+    OAuthSetup {
+        configured: result.is_ok(),
+        client_file_path: config::client_file_path(&state.config_dir)
+            .display()
+            .to_string(),
+        problem: result.err().map(|e| e.to_string()),
+    }
+}
+
+/// Opens Google sign-in in the browser and adds (or re-authorizes) the
+/// account that signs in. Signing in again with a connected account
+/// refreshes it instead of creating a duplicate.
+#[tauri::command]
+#[specta::specta]
+pub async fn account_add(
+    state: State<'_, AppState>,
+    login_hint: Option<String>,
+) -> CmdResult<Account> {
+    let _guard = state
+        .sign_in
+        .try_lock()
+        .map_err(|_| CoreError::Invalid("a sign-in is already in progress".into()))?;
+    let config = state.oauth_config()?;
+    let signed_in = oauth::sign_in(&state.http, &config, login_hint.as_deref(), |url| {
+        open::that_detached(url)
+            .map_err(|e| CoreError::Other(format!("could not open the browser: {e}")))
+    })
+    .await?;
+
+    state.secrets.set(
+        &tokens::refresh_token_key(&signed_in.user.sub),
+        &signed_in.refresh_token,
+    )?;
+    let account = accounts::upsert(
+        &state.db.conn(),
+        &accounts::NewAccount {
+            google_sub: &signed_in.user.sub,
+            email: &signed_in.user.email,
+            display_name: signed_in.user.name.as_deref(),
+            avatar_url: signed_in.user.picture.as_deref(),
+            oauth_client: &config.name,
+        },
+    )?;
+    let account_tokens = Arc::new(AccountTokens::new(
+        state.http.clone(),
+        config,
+        state.secrets.clone(),
+        &signed_in.user.sub,
+    ));
+    account_tokens
+        .seed(signed_in.access_token, signed_in.expires_in)
+        .await;
+    state.set_tokens(account.id, account_tokens);
+    state.start_sync(account.id)?;
+    Ok(account)
+}
+
+/// Disconnects an account: stops its sync, deletes its cached mail and
+/// removes its token from the keychain.
+#[tauri::command]
+#[specta::specta]
+pub fn account_remove(state: State<'_, AppState>, account_id: AccountId) -> CmdResult<()> {
+    state.supervisor.stop(account_id);
+    let sub = accounts::google_sub(&state.db.conn(), account_id)?;
+    accounts::remove(&state.db.conn(), account_id)?;
+    state.secrets.delete(&tokens::refresh_token_key(&sub))?;
+    state.forget_tokens(account_id);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn threads_list(state: State<'_, AppState>, query: ListQuery) -> CmdResult<ThreadPage> {
+    Ok(query::list_threads(&state.db.conn(), &query)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn thread_get(state: State<'_, AppState>, thread_id: ThreadId) -> CmdResult<ThreadDetail> {
+    Ok(query::thread_detail(&state.db.conn(), thread_id)?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn labels_list(state: State<'_, AppState>, accounts: AccountFilter) -> CmdResult<Vec<Label>> {
+    Ok(query::user_labels(&state.db.conn(), &accounts)?)
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenedMessage {
+    pub message_id: MessageId,
+    pub sender_email: String,
+    pub images_allowed: bool,
+    #[serde(flatten)]
+    pub content: SafeMessage,
+}
+
+/// Returns a message ready for display, downloading its body with the
+/// owning account's credentials if it isn't cached yet.
+#[tauri::command]
+#[specta::specta]
+pub async fn message_open(
+    state: State<'_, AppState>,
+    message_id: MessageId,
+) -> CmdResult<OpenedMessage> {
+    let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
+    let cached = store::get_body(&state.db.conn(), message_id)?;
+    let body = match cached {
+        Some(body) => body,
+        None => fetch_body(&state.db, &state.gmail_for(account)?, message_id).await?,
+    };
+    let sender_email: String = state
+        .db
+        .conn()
+        .query_row(
+            "SELECT from_email FROM messages WHERE id = ?1",
+            [message_id],
+            |r| r.get(0),
+        )
+        .map_err(CoreError::from)?;
+    let images_allowed = store::sender_allows_images(&state.db.conn(), &sender_email)?;
+    Ok(OpenedMessage {
+        message_id,
+        sender_email,
+        images_allowed,
+        content: mail::safe_message(&body, images_allowed),
+    })
+}
+
+/// Remembers to load remote images from this sender (in every account).
+#[tauri::command]
+#[specta::specta]
+pub fn sender_allow_images(
+    state: State<'_, AppState>,
+    sender_email: String,
+    allow: bool,
+) -> CmdResult<()> {
+    Ok(store::set_sender_allows_images(
+        &state.db.conn(),
+        &sender_email,
+        allow,
+    )?)
+}
+
+/// Wakes sync workers now. `None` means every account.
+#[tauri::command]
+#[specta::specta]
+pub fn sync_now(state: State<'_, AppState>, account_ids: Option<Vec<AccountId>>) {
+    state.supervisor.sync_now(account_ids.as_deref());
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn sync_status_list(state: State<'_, AppState>) -> CmdResult<Vec<AccountSyncState>> {
+    Ok(store::sync_states(&state.db.conn())?)
+}
+
+/// Opens a link from an email in the default browser. Only web and mail
+/// links are allowed.
+#[tauri::command]
+#[specta::specta]
+pub fn open_external(url: String) -> CmdResult<()> {
+    let parsed = mailboat_core::reqwest::Url::parse(&url)
+        .map_err(|_| CoreError::Invalid("not a valid link".into()))?;
+    if !matches!(parsed.scheme(), "http" | "https" | "mailto") {
+        return Err(
+            CoreError::Invalid(format!("refusing to open {} links", parsed.scheme())).into(),
+        );
+    }
+    open::that_detached(parsed.as_str()).map_err(|e| CoreError::Other(e.to_string()))?;
+    Ok(())
+}

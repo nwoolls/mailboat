@@ -47,6 +47,7 @@ struct Worker {
 }
 
 pub struct Supervisor {
+    runtime: tokio::runtime::Handle,
     db: Arc<Db>,
     events: Arc<dyn SyncEvents>,
     config: SyncConfig,
@@ -55,13 +56,17 @@ pub struct Supervisor {
 }
 
 impl Supervisor {
+    /// `runtime` is where workers run; pass it explicitly because app setup
+    /// code may not be inside the async runtime.
     pub fn new(
+        runtime: tokio::runtime::Handle,
         db: Arc<Db>,
         events: Arc<dyn SyncEvents>,
         config: SyncConfig,
         timing: WorkerTiming,
     ) -> Self {
         Self {
+            runtime,
             db,
             events,
             config,
@@ -74,7 +79,7 @@ impl Supervisor {
     pub fn start(&self, account: AccountId, gmail: GmailClient) {
         self.stop(account);
         let wake = Arc::new(Notify::new());
-        let task = tokio::spawn(run_worker(
+        let task = self.runtime.spawn(run_worker(
             account,
             gmail,
             self.db.clone(),

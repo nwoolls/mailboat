@@ -317,6 +317,7 @@ async fn one_failing_account_does_not_block_another() {
     let b = add_account(&db, "b");
     let events = Arc::new(Recorder::default());
     let supervisor = Supervisor::new(
+        tokio::runtime::Handle::current(),
         db.clone(),
         events.clone(),
         config(),

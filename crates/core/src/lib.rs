@@ -12,3 +12,4 @@ pub mod model;
 pub mod sync;
 
 pub use error::{CoreError, Result};
+pub use reqwest;
