@@ -30,7 +30,7 @@ export function ThreadReader({
   const thread = useThread(threadId);
   if (threadId === null) {
     return (
-      <div className="flex flex-1 items-center justify-center text-content/30">
+      <div className="flex flex-1 items-center justify-center text-content/50">
         No conversation selected
       </div>
     );
