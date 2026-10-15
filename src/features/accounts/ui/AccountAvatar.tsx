@@ -21,7 +21,7 @@ export function AccountAvatar({
   const longSync = useTrueAfter(tone === "busy", SYNC_RING_DELAY_MS);
   return (
     <span
-      className="relative ml-auto flex h-4 w-4 shrink-0"
+      className="relative flex h-4 w-4 shrink-0"
       title={syncHint(state)}
       role="img"
       aria-label={`${account.email}: ${syncHint(state)}`}
