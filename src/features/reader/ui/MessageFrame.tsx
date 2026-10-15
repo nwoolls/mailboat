@@ -19,6 +19,9 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
   const message = useOpenedMessage(messageId);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(120);
+  // The frame stays invisible until its content has been measured, then
+  // fades in, so the white card never pops in short and jumps taller.
+  const [ready, setReady] = useState(false);
 
   const allowImages = useMutation({
     mutationFn: (email: string) => unwrap(commands.senderAllowImages(email, true)),
@@ -31,12 +34,21 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
     if (!doc) return;
     const measure = () => setHeight(Math.max(60, doc.documentElement.scrollHeight));
     measure();
+    setReady(true);
     for (const img of Array.from(doc.images)) img.addEventListener("load", measure);
     const observer = new ResizeObserver(measure);
     observer.observe(doc.documentElement);
   }, []);
 
-  if (message.isPending) return <div className="px-6 py-4 text-content/40">Loading…</div>;
+  // A soft placeholder holds the card's place while the message loads.
+  if (message.isPending)
+    return (
+      <div
+        role="status"
+        aria-label="Loading message"
+        className="mx-6 h-40 animate-pulse rounded-lg bg-selection-subtle motion-reduce:animate-none"
+      />
+    );
   if (message.error)
     return (
       <div className="selectable px-6 py-4 text-danger">
@@ -70,8 +82,8 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
         sandbox="allow-same-origin"
         srcDoc={m.document}
         onLoad={onLoad}
-        className="mx-6 block w-[calc(100%-3rem)] rounded-lg border border-stroke bg-white"
-        style={{ height }}
+        className="frame-reveal mx-6 block w-[calc(100%-3rem)] rounded-lg border border-stroke bg-white"
+        style={{ height, opacity: ready ? 1 : 0 }}
       />
     </div>
   );

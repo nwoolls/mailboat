@@ -1,4 +1,9 @@
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect } from "react";
 import { commands, events } from "../../platform/tauri/bindings";
 import type {
@@ -68,6 +73,9 @@ export function useThread(id: ThreadId | null) {
     queryKey: keys.thread(id ?? -1),
     queryFn: () => unwrap(commands.threadGet(id!)),
     enabled: IS_TAURI && id !== null,
+    // Keep showing the previous conversation (dimmed) until the next one
+    // arrives, rather than blanking the reader in between.
+    placeholderData: keepPreviousData,
   });
 }
 

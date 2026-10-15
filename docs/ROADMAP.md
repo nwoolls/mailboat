@@ -131,6 +131,12 @@ a darker glass body, rounded corners where they meet, resizable panes.
       attracted) instead of stopping short; it spans the whole list card,
       title row included (it was cut off below it), and follows the pointer
       anywhere on the card
+- [x] Smoother switching between conversations: the previous one stays
+      up (dimmed) until the next is ready instead of blanking; the new one
+      fades in with a small rise; each email card stays hidden until it has
+      its full height, then fades in (a soft placeholder holds its place
+      while loading); and the reader always reserves its scrollbar gutter,
+      so a long email no longer narrows the reader and reflows mid-view
 - [x] Account avatar ends flush with the selected row's right edge, and
       the account header is a 28px row with a little room before Inbox
       (briefly tried on the left; the owner preferred the right)

@@ -114,6 +114,21 @@ html.resizing iframe {
   --tw-shadow: 0 0 16px 3px color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
+/* Opening a conversation: it fades in and rises a few pixels, and each
+   email card fades in once it has its full height (MessageFrame). */
+.reader-enter {
+  animation: reader-enter 220ms var(--motion-ease-out) both;
+}
+@keyframes reader-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.frame-reveal {
+  transition: opacity 180ms ease-out;
+}
+
 /* The thin arc around an account avatar during a long sync. */
 .sync-ring {
   animation: sync-spin 1.1s linear infinite;
@@ -241,6 +256,12 @@ html.resizing .panel-slide {
   }
   .panel-slide,
   .panel-slide-content {
+    transition: none;
+  }
+  .reader-enter {
+    animation: none;
+  }
+  .frame-reveal {
     transition: none;
   }
   /* A still ring still says "syncing". */

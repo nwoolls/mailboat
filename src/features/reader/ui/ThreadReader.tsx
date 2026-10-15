@@ -30,11 +30,28 @@ export function ThreadReader({
   const thread = useThread(threadId);
   if (thread.error) return <div className="selectable p-8 text-danger">{thread.error.message}</div>;
   if (!thread.data) return <div className="flex-1" />;
-  // Keyed by thread so expansion state starts fresh for each conversation.
-  return <ThreadBody key={thread.data.thread.id} detail={thread.data} accounts={accounts} />;
+  // Keyed by thread so expansion state starts fresh for each conversation,
+  // and so each new conversation plays the entrance animation. While the
+  // next one loads, the previous stays up, dimmed.
+  return (
+    <ThreadBody
+      key={thread.data.thread.id}
+      detail={thread.data}
+      accounts={accounts}
+      leaving={thread.isPlaceholderData}
+    />
+  );
 }
 
-function ThreadBody({ detail: data, accounts }: { detail: ThreadDetail; accounts: AccountIndex }) {
+function ThreadBody({
+  detail: data,
+  accounts,
+  leaving,
+}: {
+  detail: ThreadDetail;
+  accounts: AccountIndex;
+  leaving: boolean;
+}) {
   const [expanded, setExpanded] = useState<Set<MessageId>>(() => initiallyExpanded(data.messages));
   // Opening a conversation marks it read, once (pressing `u` afterwards
   // leaves it unread). Remembered at open so later updates don't re-trigger.
@@ -48,7 +65,15 @@ function ThreadBody({ detail: data, accounts }: { detail: ThreadDetail; accounts
   const selfEmails = account ? [account.email] : [];
 
   return (
-    <article className="flex-1 overflow-y-auto pb-16">
+    <article
+      // overflow-y-scroll, not auto: the app's styled scrollbars take up
+      // width, so a scrollbar appearing for a long email used to narrow
+      // the reader and visibly reflow the email. The gutter is always
+      // reserved now (its track is transparent, so it doesn't show).
+      className={`reader-enter flex-1 overflow-y-scroll pb-16 transition-opacity duration-150 ${
+        leaving ? "opacity-50" : ""
+      }`}
+    >
       <header className="px-8 pt-6 pb-4">
         <h1 className="selectable text-xl font-semibold leading-snug">
           {data.thread.subject || "(no subject)"}
