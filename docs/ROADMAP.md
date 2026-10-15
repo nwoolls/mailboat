@@ -76,6 +76,8 @@ a darker glass body, rounded corners where they meet, resizable panes.
       right; traffic lights centered in it. Only read/unread works (same as
       `u`); archive, delete, star, label, more and compose are placeholders
       until Milestones 3 and 4
+- [x] Splitter gaps match the rest of the glass: the list card's soft
+      shadow darkened them; now only a hairline edge, as in Tern
 
 ### Ideas for later in this spike (not started)
 
