@@ -99,7 +99,7 @@ export function ThreadList({
                 </span>
               </div>
               <div
-                className={`flex items-center gap-1.5 truncate ${t.unread ? "text-content" : "text-content/70"}`}
+                className={`flex items-center gap-1.5 truncate ${t.unread ? "font-semibold text-content" : "font-medium text-content/70"}`}
               >
                 {t.starred && (
                   <StarIcon
@@ -118,7 +118,7 @@ export function ThreadList({
                   />
                 )}
               </div>
-              <div className="truncate text-xs text-content/40">{t.snippet}</div>
+              <div className="truncate text-xs font-medium text-content/40">{t.snippet}</div>
             </div>
           );
         })}
