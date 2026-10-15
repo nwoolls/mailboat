@@ -135,8 +135,11 @@ and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
 
 1. Rust sanitizes the HTML (`mail/sanitize.rs`, using `ammonia`): no
    scripts, event handlers, forms, frames or `javascript:` links.
-2. Tracking pixels are always removed; remote images are held back unless
-   the sender is trusted.
+2. Tracking pixels are always removed. Remote images then load by default,
+   except in Spam (always held back) and Trash (held back unless the sender
+   is allowed); a per-sender load/block choice wins outside Spam
+   (`mail/images.rs`). The reader says which applied and offers the
+   opposite choice.
 3. The result is a full document with its own Content-Security-Policy,
    shown in an `<iframe sandbox>` without `allow-scripts`.
 4. Links (http, https, mailto only) are rewritten to Mailboat's own
@@ -173,3 +176,4 @@ and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
 | 2026-10-15 | Sidebar labels grouped by `/` and by a `Prefix: ` name | Gmail nests with `/`; many apps (Acme) group with "Prefix: Name", so both fold. Groups need two or more entries, so a lone chain like `[Gmail]/Trash/Sent` stays one row. Logic in `features/accounts/model/labelTree.ts` with tests. |
 | 2026-10-15 | Pointer-following glow uses a per-frame glide, not CSS transitions | Restarting a transition on every pointer move reset its speed each time and stuttered; a `requestAnimationFrame` loop closing a fixed fraction of the gap per unit time (`model/glow.ts`, tested) glides and stops when settled. The glow is a multi-stop gradient: WebKit re-rendered a moving `filter: blur()` every frame. |
 | 2026-10-15 | Reader scroll area is `overflow-y: scroll`, not `auto` | The app styles scrollbars (`::-webkit-scrollbar`), which makes WebKit use classic scrollbars that take width. With `auto`, a long email's scrollbar appearing narrowed the reader and reflowed the email visibly. `scrollbar-gutter: stable` would be the modern fix but isn't reliable in WebKit. |
+| 2026-10-15 | Remote images load by default outside Spam (was: blocked unless the sender is allowed) | Owner's choice (option A of three): it's what other mail apps do, and per-sender allowlisting every email was tedious. The cost is privacy, not code execution (email is sanitized and sandboxed without scripts): a sender's server sees the open time and IP. Spam stays blocked because sender addresses there are often forged and an image load confirms the mailbox is live; known trackers are still stripped. No schema change: a missing `sender_image_prefs` row now means "default" instead of "block". Alternatives not built: default only for people you've written to; background prefetch like Apple Mail. |

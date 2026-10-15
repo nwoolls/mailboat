@@ -35,7 +35,10 @@ export const commands = {
 	 *  refuses is put back, and the error is returned.
 	 */
 	threadsSetRead: (threadIds: ThreadId[], read: boolean) => typedError<null, AppError>(__TAURI_INVOKE("threads_set_read", { threadIds, read })),
-	/**  Remembers to load remote images from this sender (in every account). */
+	/**
+	 *  Remembers to load (`allow`) or block remote images from this sender, in
+	 *  every account. Spam stays blocked regardless.
+	 */
 	senderAllowImages: (senderEmail: string, allow: boolean) => typedError<null, AppError>(__TAURI_INVOKE("sender_allow_images", { senderEmail, allow })),
 	/**  Wakes sync workers now. `None` means every account. */
 	syncNow: (accountIds: AccountId[] | null) => __TAURI_INVOKE<void>("sync_now", { accountIds }),
@@ -85,6 +88,19 @@ export type AppError = {
 	kind: string,
 	message: string,
 };
+
+/**  The decision, and why, so the reader can offer the right choice. */
+export type ImagePolicy = 
+/**  Nothing special about this sender: images load. */
+"loadedByDefault" | 
+/**  The user chose to load this sender's images. */
+"loadedForSender" | 
+/**  The user chose to block this sender's images. */
+"blockedForSender" | 
+/**  The message is in Spam. */
+"blockedInSpam" | 
+/**  The message is in Trash and the sender has no saved choice. */
+"blockedInTrash";
 
 export type Label = {
 	id: LabelId,
@@ -164,13 +180,17 @@ export type OpenedMessage = {
 	messageId: MessageId,
 	senderEmail: string,
 	imagesAllowed: boolean,
+	/**  Why images did or didn't load, so the reader can offer the opposite. */
+	imagePolicy: ImagePolicy,
 } & SafeMessage;
 
 export type SafeMessage = {
 	/**  A complete HTML document for the iframe's `srcdoc`. */
 	document: string,
-	/**  Remote images held back because the sender is not trusted. */
+	/**  Remote images held back (see `mail::images` for when). */
 	blockedImages: number,
+	/**  Remote images left in to load, so the reader can offer "Block". */
+	loadedImages: number,
 	/**  Tracking pixels removed (always removed, even for trusted senders). */
 	trackersRemoved: number,
 };

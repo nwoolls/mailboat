@@ -438,3 +438,47 @@ fn all_mail_and_archive_views_across_accounts() {
         vec!["B archived", "A archived"]
     );
 }
+
+#[test]
+fn spam_and_trash_for_images_are_decided_per_account() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "sub-a", "a@x.com");
+    let b = add_account(&db, "sub-b", "b@x.com");
+    // Same Gmail IDs: spam in account A, inbox in account B.
+    store::upsert_thread(
+        &mut db.conn(),
+        a.id,
+        &thread("t1", "m1", "x@x.com", "A spam", 1, &["SPAM"]),
+    )
+    .unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        b.id,
+        &thread("t1", "m1", "x@x.com", "B inbox", 1, &["INBOX"]),
+    )
+    .unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        b.id,
+        &thread("t2", "m2", "y@y.com", "B trash", 2, &["TRASH"]),
+    )
+    .unwrap();
+    let id = |account: AccountId, gmail: &str| -> MessageId {
+        MessageId(
+            db.conn()
+                .query_row(
+                    "SELECT id FROM messages WHERE account_id = ?1 AND gmail_message_id = ?2",
+                    (account.0, gmail),
+                    |r| r.get(0),
+                )
+                .unwrap(),
+        )
+    };
+
+    // Each lookup takes and releases the lock on its own. Holding one
+    // `db.conn()` while `id` asks for another deadlocked this test.
+    let spam_trash = |m| store::message_spam_trash(&db.conn(), m).unwrap();
+    assert_eq!(spam_trash(id(a.id, "m1")), (true, false));
+    assert_eq!(spam_trash(id(b.id, "m1")), (false, false));
+    assert_eq!(spam_trash(id(b.id, "m2")), (false, true));
+}

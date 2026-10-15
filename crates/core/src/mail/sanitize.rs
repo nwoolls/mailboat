@@ -19,8 +19,10 @@ use specta::Type;
 pub struct SafeMessage {
     /// A complete HTML document for the iframe's `srcdoc`.
     pub document: String,
-    /// Remote images held back because the sender is not trusted.
+    /// Remote images held back (see `mail::images` for when).
     pub blocked_images: u32,
+    /// Remote images left in to load, so the reader can offer "Block".
+    pub loaded_images: u32,
     /// Tracking pixels removed (always removed, even for trusted senders).
     pub trackers_removed: u32,
 }
@@ -126,6 +128,7 @@ fn ammonia_builder() -> ammonia::Builder<'static> {
 pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
     let cleaned = ammonia_builder().clean(html).to_string();
     let blocked = Cell::new(0u32);
+    let loaded = Cell::new(0u32);
     let trackers = Cell::new(0u32);
 
     let rewritten = rewrite_str(
@@ -148,6 +151,7 @@ pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
                     el.remove_attribute("src");
                     el.set_attribute("data-mailboat-blocked", "")?;
                 } else if is_remote(&src) {
+                    loaded.set(loaded.get() + 1);
                     // Images are only loaded over HTTPS (the CSP allows nothing else).
                     if let Some(rest) = src.trim().strip_prefix("http://") {
                         el.set_attribute("src", &format!("https://{rest}"))?;
@@ -174,14 +178,16 @@ pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
                 Ok(())
             }))
             .append_element_content_handler(element!("[background]", |el| {
+                let remote = el
+                    .get_attribute("background")
+                    .is_some_and(|b| is_remote(&b));
                 if !allow_images {
-                    if el
-                        .get_attribute("background")
-                        .is_some_and(|b| is_remote(&b))
-                    {
+                    if remote {
                         blocked.set(blocked.get() + 1);
                     }
                     el.remove_attribute("background");
+                } else if remote {
+                    loaded.set(loaded.get() + 1);
                 }
                 Ok(())
             })),
@@ -193,6 +199,7 @@ pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
     SafeMessage {
         document: wrap_document(&rewritten, allow_images),
         blocked_images: blocked.get(),
+        loaded_images: loaded.get(),
         trackers_removed: trackers.get(),
     }
 }
@@ -204,6 +211,7 @@ pub fn text_document(text: &str) -> SafeMessage {
     SafeMessage {
         document: wrap_document(&body, false),
         blocked_images: 0,
+        loaded_images: 0,
         trackers_removed: 0,
     }
 }
@@ -283,6 +291,7 @@ mod tests {
         let out = sanitize_html(EVIL, false);
         assert_eq!(out.trackers_removed, 2);
         assert_eq!(out.blocked_images, 2, "logo + table background");
+        assert_eq!(out.loaded_images, 0);
         assert!(!out.document.contains("cdn.vendor.com"));
         assert!(!out.document.contains("track.example.net"));
         assert!(out.document.contains("data-mailboat-blocked"));
@@ -296,6 +305,7 @@ mod tests {
     fn trusted_sender_loads_images_but_trackers_stay_removed() {
         let out = sanitize_html(EVIL, true);
         assert_eq!(out.blocked_images, 0);
+        assert_eq!(out.loaded_images, 2, "logo + table background, now loading");
         assert_eq!(out.trackers_removed, 2);
         assert!(out.document.contains("https://cdn.vendor.com/logo.png"));
         assert!(!out.document.contains("mailtrack.io"));

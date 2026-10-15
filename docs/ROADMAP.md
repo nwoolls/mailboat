@@ -181,6 +181,18 @@ Options offered during the spike that the owner didn't pick (yet):
 - The traffic lights once jumped during live resize in MonoCode; not seen
   here, but worth watching
 
+### After the spike (owner request, 2026-10-15)
+
+- [x] Remote images load by default outside Spam (option A of three):
+      Spam always blocked, Trash blocked unless the sender is allowed, a
+      per-sender "Block images" / "Load images" choice wins otherwise.
+      Known trackers are still removed. CLAUDE.md's security rule updated
+- [ ] A setting to switch the default back to "blocked"
+- [ ] Load by default only for people you've written to (option B, not
+      built)
+- [ ] Background image prefetch during sync, like Apple Mail, so senders
+      can't tell when you opened (option C, not built)
+
 ## Milestone 2: Multiple accounts and unified inbox
 
 - [ ] Add and remove accounts from the UI (add exists; remove needs UI)

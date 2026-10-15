@@ -152,8 +152,12 @@ these rules. Keep it passing.
 
 - Email HTML is sanitized in Rust (`mailboat_core::mail::sanitize`), then shown
   in an `<iframe sandbox>` without `allow-scripts`, with a per-message CSP.
-- Remote images are blocked by default; "load images" is remembered per sender
-  address (global, not per account). Known tracking pixels are removed.
+- Remote images load by default (owner's decision, 2026-10-15), except in
+  Spam (always blocked, even for allowed senders) and Trash (blocked unless
+  the sender is allowed). A per-sender "load" or "block" choice is
+  remembered by address (global, not per account) and wins outside Spam.
+  Known tracking pixels are always removed. The rule lives in
+  `mailboat_core::mail::images`.
 - Tauri capabilities stay as narrow as possible. Do not add plugins or
   permissions to the web side without a reason recorded in the commit.
 

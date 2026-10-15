@@ -525,15 +525,30 @@ pub fn sync_states(conn: &Connection) -> Result<Vec<AccountSyncState>> {
 
 // ---- Sender image preferences (global by design) ----
 
-pub fn sender_allows_images(conn: &Connection, sender_email: &str) -> Result<bool> {
+/// The saved choice for a sender's images: `Some(true)` load, `Some(false)`
+/// block, `None` if the user never chose (the default applies).
+pub fn sender_image_choice(conn: &Connection, sender_email: &str) -> Result<Option<bool>> {
     Ok(conn
         .query_row(
             "SELECT allow_images FROM sender_image_prefs WHERE sender_email = ?1",
             [sender_email],
             |r| r.get::<_, bool>(0),
         )
-        .optional()?
-        .unwrap_or(false))
+        .optional()?)
+}
+
+/// Whether a message is in Spam and whether it is in Trash. Labels are per
+/// account, so this joins through the message's own account.
+pub fn message_spam_trash(conn: &Connection, message: MessageId) -> Result<(bool, bool)> {
+    Ok(conn.query_row(
+        "SELECT
+           EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                   WHERE ml.message_id = ?1 AND l.kind = 'system' AND l.gmail_label_id = 'SPAM'),
+           EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                   WHERE ml.message_id = ?1 AND l.kind = 'system' AND l.gmail_label_id = 'TRASH')",
+        [message],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )?)
 }
 
 pub fn set_sender_allows_images(conn: &Connection, sender_email: &str, allow: bool) -> Result<()> {

@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
 use mailboat_core::db::{accounts, query, store};
+use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::{self, SafeMessage};
 use mailboat_core::model::{
     Account, AccountFilter, AccountId, AccountSyncState, Label, ListQuery, MessageId, ThreadDetail,
@@ -149,6 +150,8 @@ pub struct OpenedMessage {
     pub message_id: MessageId,
     pub sender_email: String,
     pub images_allowed: bool,
+    /// Why images did or didn't load, so the reader can offer the opposite.
+    pub image_policy: ImagePolicy,
     #[serde(flatten)]
     pub content: SafeMessage,
 }
@@ -184,11 +187,15 @@ pub async fn message_open(
             |r| r.get(0),
         )
         .map_err(CoreError::from)?;
-    let images_allowed = store::sender_allows_images(&state.db.conn(), &sender_email)?;
+    let choice = store::sender_image_choice(&state.db.conn(), &sender_email)?;
+    let (in_spam, in_trash) = store::message_spam_trash(&state.db.conn(), message_id)?;
+    let image_policy = images::image_policy(in_spam, in_trash, choice);
+    let images_allowed = image_policy.allows();
     Ok(OpenedMessage {
         message_id,
         sender_email,
         images_allowed,
+        image_policy,
         content: mail::safe_message(&body, images_allowed),
     })
 }
@@ -213,7 +220,8 @@ pub async fn threads_set_read(
     Ok(())
 }
 
-/// Remembers to load remote images from this sender (in every account).
+/// Remembers to load (`allow`) or block remote images from this sender, in
+/// every account. Spam stays blocked regardless.
 #[tauri::command]
 #[specta::specta]
 pub fn sender_allow_images(

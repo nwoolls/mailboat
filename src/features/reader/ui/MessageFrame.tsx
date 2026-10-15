@@ -4,6 +4,7 @@ import { commands } from "../../../platform/tauri/bindings";
 import type { MessageId } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { useOpenedMessage } from "../../../shared/lib/queries";
+import { imageNotice } from "../model/imageNotice";
 
 /**
  * Shows one message's sanitized HTML.
@@ -23,9 +24,10 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
   // fades in, so the white card never pops in short and jumps taller.
   const [ready, setReady] = useState(false);
 
-  const allowImages = useMutation({
-    mutationFn: (email: string) => unwrap(commands.senderAllowImages(email, true)),
-    // Other open messages from the same sender should load images too.
+  const senderImages = useMutation({
+    mutationFn: ({ email, allow }: { email: string; allow: boolean }) =>
+      unwrap(commands.senderAllowImages(email, allow)),
+    // Other open messages from the same sender should follow the choice too.
     onSuccess: () => qc.invalidateQueries({ queryKey: ["message"] }),
   });
 
@@ -56,24 +58,33 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
       </div>
     );
   const m = message.data;
+  const notice = imageNotice(m);
 
   return (
     <div>
-      {m.blockedImages > 0 && !m.imagesAllowed && (
-        <div className="mx-6 mb-2 flex items-center gap-3 rounded-md bg-selection-subtle px-3 py-2 text-xs text-content/60">
-          <span>
-            {m.blockedImages} remote image{m.blockedImages === 1 ? "" : "s"} hidden
-            {m.trackersRemoved > 0 &&
-              `, ${m.trackersRemoved} tracker${m.trackersRemoved === 1 ? "" : "s"} removed`}
-          </span>
-          <button
-            type="button"
-            className="ml-auto text-accent hover:underline disabled:opacity-50"
-            disabled={allowImages.isPending}
-            onClick={() => allowImages.mutate(m.senderEmail)}
-          >
-            Always load images from {m.senderEmail}
-          </button>
+      {notice && (
+        <div
+          className={
+            notice.quiet
+              ? "mx-6 mb-1.5 flex items-center gap-3 px-1 text-xs text-content/45"
+              : "mx-6 mb-2 flex items-center gap-3 rounded-md bg-selection-subtle px-3 py-2 text-xs text-content/60"
+          }
+        >
+          <span>{notice.text}</span>
+          {notice.action && (
+            <button
+              type="button"
+              className={`ml-auto disabled:opacity-50 ${
+                notice.quiet ? "hover:text-content hover:underline" : "text-accent hover:underline"
+              }`}
+              disabled={senderImages.isPending}
+              onClick={() =>
+                senderImages.mutate({ email: m.senderEmail, allow: notice.action!.allow })
+              }
+            >
+              {notice.action.label}
+            </button>
+          )}
         </div>
       )}
       <iframe
