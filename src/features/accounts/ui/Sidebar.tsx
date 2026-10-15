@@ -15,17 +15,18 @@ import { useSignIn } from "./useSignIn";
 
 type Props = {
   accounts: Account[];
+  width: number;
   syncStates: AccountSyncState[];
   selection: Selection;
   onSelect: (s: Selection) => void;
 };
 
-export function Sidebar({ accounts, syncStates, selection, onSelect }: Props) {
+export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Props) {
   const labels = useLabels({ kind: "all" }).data ?? [];
   const signIn = useSignIn();
 
   return (
-    <nav className="flex h-full w-56 shrink-0 flex-col">
+    <nav className="flex h-full shrink-0 flex-col" style={{ width }}>
       {/* Space for the macOS traffic lights; also the window drag handle. */}
       <div data-tauri-drag-region className="h-11 shrink-0" />
       <div className="flex-1 overflow-y-auto px-2 pb-4">

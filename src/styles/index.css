@@ -86,6 +86,16 @@ body {
     var(--panel-shadow);
 }
 
+/* While a splitter drags: keep its cursor everywhere, and stop the email
+   iframe from capturing the pointer as it passes over. */
+html.resizing,
+html.resizing * {
+  cursor: col-resize !important;
+}
+html.resizing iframe {
+  pointer-events: none;
+}
+
 /* Text the user may want to copy. */
 .selectable {
   user-select: text;

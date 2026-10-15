@@ -1,7 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ThreadId } from "../platform/tauri/bindings";
 import { indexAccounts } from "../features/accounts/model/accounts";
 import { Sidebar } from "../features/accounts/ui/Sidebar";
+import {
+  clampWidth,
+  LIST_WIDTH,
+  listMaxWidth,
+  READER_MIN_WIDTH,
+  SIDEBAR_WIDTH,
+} from "../features/layout/model/panes";
+import { Splitter } from "../features/layout/ui/Splitter";
 import { Welcome } from "../features/accounts/ui/Welcome";
 import { moveSelection, navKeyFor } from "../features/mailbox/model/listNavigation";
 import { readToggle } from "../features/mailbox/model/readState";
@@ -61,6 +69,16 @@ export function Shell() {
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   const loadMore = useCallback(() => void fetchNextPage(), [fetchNextPage]);
 
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH.initial);
+  const [listWidth, setListWidth] = useState(LIST_WIDTH.initial);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const resizeSidebar = (w: number) =>
+    setSidebarWidth(clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max));
+  const resizeList = (w: number) =>
+    setListWidth(
+      clampWidth(w, LIST_WIDTH.min, listMaxWidth(panelRef.current?.clientWidth ?? Infinity)),
+    );
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "/" && !isEditable(e.target)) {
@@ -96,6 +114,7 @@ export function Shell() {
     <div className="flex h-full bg-glass-sidebar">
       <Sidebar
         accounts={accountList}
+        width={sidebarWidth}
         syncStates={syncStates}
         selection={baseSelection}
         onSelect={(s) => {
@@ -104,10 +123,22 @@ export function Shell() {
           setSelectedId(null);
         }}
       />
+      {/* The gap between sidebar and panel doubles as the sidebar's splitter. */}
+      <Splitter
+        label="Resize sidebar"
+        width={sidebarWidth}
+        onResize={resizeSidebar}
+        onReset={() => setSidebarWidth(SIDEBAR_WIDTH.initial)}
+        className="w-1.5"
+      />
       {/* The gutter around the panel shows the glass and drags the window. */}
-      <div data-tauri-drag-region className="flex min-w-0 flex-1 py-1.5 pr-1.5 pl-1.5">
-        <div className="panel flex min-w-0 flex-1 overflow-hidden">
-          <section className="flex w-[380px] shrink-0 flex-col border-r border-stroke">
+      <div data-tauri-drag-region className="flex min-w-0 flex-1 py-1.5 pr-1.5">
+        <div ref={panelRef} className="panel flex min-w-0 flex-1 overflow-hidden">
+          {/* Shrinks with the window before the reader drops below its minimum. */}
+          <section
+            className="flex min-w-0 flex-col"
+            style={{ flex: `0 1 ${listWidth}px`, minWidth: LIST_WIDTH.min }}
+          >
             <div data-tauri-drag-region className="flex h-10 shrink-0 items-center px-4">
               <h2 className="truncate text-sm font-semibold">
                 {selectionTitle(selection, accountList, labels)}
@@ -134,7 +165,15 @@ export function Shell() {
               loading={threadsQuery.isPending || isFetchingNextPage}
             />
           </section>
-          <main className="flex min-w-0 flex-1 flex-col">
+          <Splitter
+            label="Resize conversation list"
+            width={listWidth}
+            onResize={resizeList}
+            onReset={() => setListWidth(LIST_WIDTH.initial)}
+            divider
+            className="-mx-1 w-2"
+          />
+          <main className="flex flex-1 flex-col" style={{ minWidth: READER_MIN_WIDTH }}>
             <div data-tauri-drag-region className="h-3 shrink-0" />
             <ThreadReader threadId={selectedId} accounts={accounts} />
           </main>
