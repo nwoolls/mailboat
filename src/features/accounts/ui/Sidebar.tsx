@@ -10,7 +10,9 @@ import {
   viewSelection,
   viewTitle,
 } from "../../mailbox/model/views";
-import { accountInitial, syncBadge } from "../model/accounts";
+import { AlertIcon } from "../../../shared/ui/icons";
+import { syncBadge } from "../model/accounts";
+import { AccountAvatar } from "./AccountAvatar";
 import { useSignIn } from "./useSignIn";
 
 type Props = {
@@ -152,24 +154,14 @@ function AccountSection({
   onReauth: () => void;
 }) {
   const badge = syncBadge(state);
-  const tone = { ok: "", busy: "text-content/40", warn: "text-warn", error: "text-danger" }[
-    badge.tone
-  ];
   return (
-    <Section
-      title={account.email}
-      aside={
-        <span
-          className="ml-auto flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold text-white"
-          style={{ background: account.color }}
-        >
-          {accountInitial(account)}
-        </span>
-      }
-    >
-      {badge.tone !== "ok" && (
-        <div className={`px-2 pb-1 text-xs ${tone}`}>
-          {badge.tone === "error" && state?.status === "authError" ? (
+    <Section title={account.email} aside={<AccountAvatar account={account} state={state} />}>
+      {/* Only problems you can act on get a line; syncing and retrying stay
+          on the avatar so the list below never jumps. */}
+      {badge.tone === "error" && (
+        <div className="flex items-start gap-1.5 px-2 pb-1 text-xs text-danger">
+          <AlertIcon size={13} className="mt-px shrink-0" />
+          {state?.status === "authError" ? (
             <button type="button" className="underline" onClick={onReauth}>
               {badge.label}
             </button>

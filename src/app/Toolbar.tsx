@@ -18,6 +18,8 @@ type Props = {
   /** Toggle read/unread on the selected conversation (same as `u`), if any. */
   onToggleRead: (() => void) | null;
   sidebarOpen: boolean;
+  /** A sync problem to flag on the sidebar toggle while the sidebar is hidden. */
+  syncAttention: "warn" | "error" | null;
   readerOpen: boolean;
   /** The reader only shows with a conversation selected. */
   readerAvailable: boolean;
@@ -33,6 +35,7 @@ type Props = {
 export function Toolbar({
   onToggleRead,
   sidebarOpen,
+  syncAttention,
   readerOpen,
   readerAvailable,
   onToggleSidebar,
@@ -50,6 +53,7 @@ export function Toolbar({
         shortcut="⌃⌘S"
         onClick={onToggleSidebar}
         pressed={sidebarOpen}
+        dot={sidebarOpen ? null : syncAttention}
       />
       <div data-tauri-drag-region className="flex-1 self-stretch" />
       <ToolButton icon={ArchiveIcon} label="Archive" shortcut="e" />
@@ -92,6 +96,7 @@ function ToolButton({
   onClick,
   disabled,
   pressed,
+  dot,
 }: {
   icon: (props: IconProps) => React.ReactNode;
   label: string;
@@ -100,6 +105,8 @@ function ToolButton({
   disabled?: boolean;
   /** For toggles: whether the thing it controls is showing. */
   pressed?: boolean;
+  /** Small status dot in the corner (e.g. a sync problem behind a hidden panel). */
+  dot?: "warn" | "error" | null;
 }) {
   const soon = !onClick && !disabled;
   const title = [label, shortcut && `(${shortcut})`, soon && "· coming soon"]
@@ -113,9 +120,16 @@ function ToolButton({
       aria-pressed={pressed}
       onClick={onClick}
       disabled={disabled}
-      className="flex h-7 w-7 items-center justify-center rounded-md text-content/70 transition-colors duration-[120ms] hover:bg-selection hover:text-content disabled:opacity-35 disabled:hover:bg-transparent"
+      className="relative flex h-7 w-7 items-center justify-center rounded-md text-content/70 transition-colors duration-[120ms] hover:bg-selection hover:text-content disabled:opacity-35 disabled:hover:bg-transparent"
     >
       <Icon />
+      {dot && (
+        <span
+          className={`absolute top-1 right-1 h-1.5 w-1.5 rounded-full ${
+            dot === "error" ? "bg-danger" : "bg-warn"
+          }`}
+        />
+      )}
     </button>
   );
 }

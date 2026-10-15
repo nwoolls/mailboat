@@ -1,4 +1,5 @@
 import { HugeiconsIcon, type HugeiconsIconProps, type IconSvgElement } from "@hugeicons/react";
+import AlertCircle from "@hugeicons/core-free-icons/AlertCircleIcon";
 import Archive02 from "@hugeicons/core-free-icons/Archive02Icon";
 import Delete02 from "@hugeicons/core-free-icons/Delete02Icon";
 import File01 from "@hugeicons/core-free-icons/File01Icon";
@@ -27,6 +28,7 @@ function wrap(icon: IconSvgElement) {
   };
 }
 
+export const AlertIcon = wrap(AlertCircle);
 export const ArchiveIcon = wrap(Archive02);
 export const ComposeIcon = wrap(PencilEdit02);
 export const DraftIcon = wrap(File01);

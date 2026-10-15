@@ -104,6 +104,16 @@ html.resizing iframe {
   font-weight: 500;
 }
 
+/* The thin arc around an account avatar during a long sync. */
+.sync-ring {
+  animation: sync-spin 1.1s linear infinite;
+}
+@keyframes sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Side panels slide open and closed: the wrapper animates its size, the
    content fades and drifts in from its own side. Off while a splitter
    drags (the panel should track the pointer exactly) and for people who
@@ -200,6 +210,10 @@ html.resizing .panel-slide {
   .panel-slide,
   .panel-slide-content {
     transition: none;
+  }
+  /* A still ring still says "syncing". */
+  .sync-ring {
+    animation: none;
   }
 }
 

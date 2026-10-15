@@ -36,6 +36,30 @@ export function syncBadge(state: AccountSyncState | undefined): SyncBadge {
   }
 }
 
+/** Hover text for the account avatar: the badge, plus when it last synced. */
+export function syncHint(state: AccountSyncState | undefined, locale?: string): string {
+  const badge = syncBadge(state);
+  if (badge.tone !== "ok" || !state?.lastSyncAt) return badge.label;
+  const when = new Date(state.lastSyncAt).toLocaleString(locale, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${badge.label} · last synced ${when}`;
+}
+
+/**
+ * The most serious problem across accounts, for the dot on the sidebar
+ * toggle when the sidebar is hidden. Routine syncing isn't a problem.
+ */
+export function syncAttention(states: AccountSyncState[]): "warn" | "error" | null {
+  const tones = new Set(states.map((s) => syncBadge(s).tone));
+  if (tones.has("error")) return "error";
+  if (tones.has("warn")) return "warn";
+  return null;
+}
+
 /** Merges a status event into the cached list (one entry per account). */
 export function upsertSyncState(
   list: AccountSyncState[],

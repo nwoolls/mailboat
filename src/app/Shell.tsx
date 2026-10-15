@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ThreadId } from "../platform/tauri/bindings";
-import { indexAccounts } from "../features/accounts/model/accounts";
+import { indexAccounts, syncAttention } from "../features/accounts/model/accounts";
 import { Sidebar } from "../features/accounts/ui/Sidebar";
 import {
   clampWidth,
@@ -155,6 +155,7 @@ export function Shell() {
       <Toolbar
         onToggleRead={toggleRead}
         sidebarOpen={sidebarOpen}
+        syncAttention={syncAttention(syncStates)}
         readerOpen={readerOpen}
         readerAvailable={selectedId !== null}
         onToggleSidebar={toggleSidebar}

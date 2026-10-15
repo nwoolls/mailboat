@@ -94,6 +94,12 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - [x] Selecting a conversation (click or j/k) brings a hidden reader back
 - [x] Text on the glass (sidebar, reader) one weight step up (500), so it
       holds up over the blurred backdrop; the list card stays regular
+- [x] Quiet sync status (owner picked option A of three): no more
+      "Syncing…" line pushing the sidebar down. A thin arc circles the
+      account avatar only when a sync runs past 1.5s; an amber dot while
+      retrying; a red dot plus one line only for errors you can act on.
+      Hover the avatar for the status and last sync time. With the sidebar
+      hidden, a problem shows as a dot on the sidebar toggle
 
 ### Ideas for later in this spike (not started)
 
@@ -104,7 +110,15 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - Sidebar grouping: demote Spam/Trash/Important/All Mail, labels as folders
 - Thread row density, icons, hover/selection states
 - Reader header, message stacking, how the white email card sits in dark mode
-- Sync progress, loading states, error cards
+- Sync activity icon in the toolbar with a per-account popover (option B,
+  not built); best once it can open the log console below
+- Log console: hidden by default, opens at the bottom with a
+  terminal-like, syntax-highlighted view of the sync log (far future;
+  needs Rust to stream log lines to the UI)
+- Hairline shimmer on the list card during long syncs (option C, not
+  built; can't show which account is syncing)
+- Real sync progress (e.g. "1,200 of 5,000") needs a new field from Rust
+- Loading states (skeleton rows)
 - Empty states: an illustration instead of an icon, and more personality
   per view (owner liked Google Chat's "All quiet here in message land")
 - Visible focus and shortcut hints

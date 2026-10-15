@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AccountSyncState } from "../../../platform/tauri/bindings";
-import { accountInitial, syncBadge, upsertSyncState } from "./accounts";
+import { accountInitial, syncAttention, syncBadge, syncHint, upsertSyncState } from "./accounts";
 
 const state = (accountId: number, status: AccountSyncState["status"]): AccountSyncState => ({
   accountId,
@@ -23,6 +23,19 @@ describe("accounts", () => {
       /slow down/,
     );
     expect(syncBadge(state(1, "backoff")).label).toBe("Retrying soon");
+  });
+
+  it("hover text adds the last sync time when up to date", () => {
+    const synced = { ...state(1, "idle"), lastSyncAt: new Date(2026, 9, 15, 15, 12).getTime() };
+    expect(syncHint(synced, "en-US")).toBe("Up to date · last synced Oct 15, 3:12 PM");
+    expect(syncHint(state(1, "idle"))).toBe("Up to date");
+    expect(syncHint(state(1, "authError"))).toBe("Sign in again");
+  });
+
+  it("only retries and errors call for attention, errors first", () => {
+    expect(syncAttention([state(1, "idle"), state(2, "syncing")])).toBeNull();
+    expect(syncAttention([state(1, "backoff"), state(2, "idle")])).toBe("warn");
+    expect(syncAttention([state(1, "backoff"), state(2, "error")])).toBe("error");
   });
 
   it("status events replace only their own account's entry", () => {
