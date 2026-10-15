@@ -99,8 +99,19 @@ impl SyncEngine<'_> {
 
     pub async fn full(&self) -> Result<SyncOutcome> {
         // Read the historyId first: anything that changes while we list and
-        // fetch is replayed by the next incremental pass.
-        let profile = self.gmail.profile().await?;
+        // fetch is replayed by the next incremental pass. If an earlier full
+        // sync was interrupted (rate limit, network, app quit), resume it:
+        // keep its historyId and skip threads it already fetched.
+        let pending = store::pending_full_sync(&self.db.conn(), self.account)?;
+        let (start_history_id, started_at) = match pending {
+            Some(p) => p,
+            None => {
+                let profile = self.gmail.profile().await?;
+                let started_at =
+                    store::begin_full_sync(&self.db.conn(), self.account, profile.history_id)?;
+                (profile.history_id, started_at)
+            }
+        };
         self.sync_labels().await?;
 
         self.report(SyncPhase::Listing, 0, 0);
@@ -142,13 +153,14 @@ impl SyncEngine<'_> {
             }
         }
 
-        self.fetch_threads(&ids).await?;
-        store::set_history_id(
-            &self.db.conn(),
-            self.account,
-            Some(profile.history_id),
-            true,
-        )?;
+        let done = store::threads_synced_since(&self.db.conn(), self.account, started_at)?;
+        let todo: Vec<String> = ids
+            .iter()
+            .filter(|id| !done.contains(*id))
+            .cloned()
+            .collect();
+        self.fetch_threads(&todo).await?;
+        store::set_history_id(&self.db.conn(), self.account, Some(start_history_id), true)?;
         Ok(SyncOutcome {
             kind: SyncKind::Full,
             changed_threads: ids.len() + stale.len(),

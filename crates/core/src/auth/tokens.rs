@@ -91,6 +91,9 @@ pub struct AccountTokens {
     secrets: Arc<dyn SecretStore>,
     key: String,
     cached: tokio::sync::Mutex<Option<CachedToken>>,
+    /// Read from the keychain once per launch, then kept in memory, so
+    /// macOS asks for keychain access at most once per run.
+    refresh_token: std::sync::Mutex<Option<String>>,
 }
 
 impl AccountTokens {
@@ -106,7 +109,21 @@ impl AccountTokens {
             secrets,
             key: refresh_token_key(google_sub),
             cached: tokio::sync::Mutex::new(None),
+            refresh_token: std::sync::Mutex::new(None),
         }
+    }
+
+    fn refresh_token(&self) -> Result<String> {
+        let mut slot = self.refresh_token.lock().unwrap();
+        if let Some(token) = slot.as_ref() {
+            return Ok(token.clone());
+        }
+        let token = self
+            .secrets
+            .get(&self.key)?
+            .ok_or_else(|| CoreError::Auth("no saved sign-in for this account".into()))?;
+        *slot = Some(token.clone());
+        Ok(token)
     }
 
     /// Seeds the cache with the access token from a fresh sign-in.
@@ -127,14 +144,21 @@ impl TokenSource for AccountTokens {
                 return Ok(token.value.clone());
             }
         }
-        let refresh_token = self
-            .secrets
-            .get(&self.key)?
-            .ok_or_else(|| CoreError::Auth("no saved sign-in for this account".into()))?;
-        let fresh = oauth::refresh(&self.http, &self.config, &refresh_token).await?;
+        let refresh_token = self.refresh_token()?;
+        let fresh = match oauth::refresh(&self.http, &self.config, &refresh_token).await {
+            Ok(fresh) => fresh,
+            Err(e) => {
+                // A revoked token must be re-read after the user signs in again.
+                if matches!(e, CoreError::Auth(_)) {
+                    *self.refresh_token.lock().unwrap() = None;
+                }
+                return Err(e);
+            }
+        };
         // Google may rotate the refresh token; keep the newest.
         if let Some(rotated) = &fresh.refresh_token {
             self.secrets.set(&self.key, rotated)?;
+            *self.refresh_token.lock().unwrap() = Some(rotated.clone());
         }
         *cached = Some(CachedToken {
             value: fresh.access_token.clone(),

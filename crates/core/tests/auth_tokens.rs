@@ -104,3 +104,57 @@ async fn code_exchange_sends_pkce_verifier_and_secret() {
     .unwrap();
     assert_eq!(t.refresh_token.as_deref(), Some("r"));
 }
+
+/// Counts keychain reads, to prove the refresh token is read once per run.
+#[derive(Default)]
+struct CountingStore {
+    inner: MemoryStore,
+    reads: std::sync::atomic::AtomicUsize,
+}
+
+impl SecretStore for CountingStore {
+    fn get(&self, key: &str) -> mailboat_core::Result<Option<String>> {
+        self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.inner.get(key)
+    }
+    fn set(&self, key: &str, value: &str) -> mailboat_core::Result<()> {
+        self.inner.set(key, value)
+    }
+    fn delete(&self, key: &str) -> mailboat_core::Result<()> {
+        self.inner.delete(key)
+    }
+}
+
+#[tokio::test]
+async fn keychain_is_read_once_per_run() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            // Already "expired" so every call refreshes.
+            "access_token": "a", "expires_in": 0
+        })))
+        .mount(&server)
+        .await;
+    let secrets = Arc::new(CountingStore::default());
+    secrets.set(&refresh_token_key("sub-1"), "r1").unwrap();
+    let tokens = AccountTokens::new(
+        reqwest::Client::new(),
+        config(&server),
+        secrets.clone(),
+        "sub-1",
+    );
+    for _ in 0..3 {
+        tokens.access_token().await.unwrap();
+    }
+    assert_eq!(
+        server.received_requests().await.unwrap().len(),
+        3,
+        "refreshed each time"
+    );
+    assert_eq!(
+        secrets.reads.load(std::sync::atomic::Ordering::SeqCst),
+        1,
+        "but read the keychain once"
+    );
+}

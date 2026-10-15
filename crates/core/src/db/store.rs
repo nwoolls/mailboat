@@ -120,9 +120,9 @@ pub fn upsert_thread(
 ) -> Result<ThreadId> {
     let tx = conn.transaction()?;
     tx.execute(
-        "INSERT INTO threads (account_id, gmail_thread_id) VALUES (?1, ?2)
-         ON CONFLICT (account_id, gmail_thread_id) DO NOTHING",
-        params![account, thread.gmail_thread_id],
+        "INSERT INTO threads (account_id, gmail_thread_id, synced_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT (account_id, gmail_thread_id) DO UPDATE SET synced_at = excluded.synced_at",
+        params![account, thread.gmail_thread_id, now_millis()],
     )?;
     let thread_id: ThreadId = tx.query_row(
         "SELECT id FROM threads WHERE account_id = ?1 AND gmail_thread_id = ?2",
@@ -424,6 +424,41 @@ pub fn history_id(conn: &Connection, account: AccountId) -> Result<Option<u64>> 
         .map(|h| h as u64))
 }
 
+/// A full sync in progress: (historyId it started from, start time ms).
+pub fn pending_full_sync(conn: &Connection, account: AccountId) -> Result<Option<(u64, i64)>> {
+    Ok(conn
+        .query_row(
+            "SELECT full_sync_history_id, full_sync_started_at FROM sync_state WHERE account_id = ?1",
+            [account],
+            |r| Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, Option<i64>>(1)?)),
+        )
+        .optional()?
+        .and_then(|(h, t)| Some((h? as u64, t?))))
+}
+
+pub fn begin_full_sync(conn: &Connection, account: AccountId, history_id: u64) -> Result<i64> {
+    let started_at = now_millis();
+    conn.execute(
+        "UPDATE sync_state SET full_sync_history_id = ?2, full_sync_started_at = ?3 WHERE account_id = ?1",
+        params![account, history_id as i64, started_at],
+    )?;
+    Ok(started_at)
+}
+
+/// Gmail thread IDs written at or after `since` (ms).
+pub fn threads_synced_since(
+    conn: &Connection,
+    account: AccountId,
+    since: i64,
+) -> Result<HashSet<String>> {
+    let mut stmt = conn
+        .prepare("SELECT gmail_thread_id FROM threads WHERE account_id = ?1 AND synced_at >= ?2")?;
+    let rows = stmt.query_map(params![account, since], |r| r.get::<_, String>(0))?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+/// Records the sync cursor. Finishing a full sync also clears its
+/// in-progress marker.
 pub fn set_history_id(
     conn: &Connection,
     account: AccountId,
@@ -433,7 +468,9 @@ pub fn set_history_id(
     let now = now_millis();
     conn.execute(
         "UPDATE sync_state SET history_id = ?2, last_sync_at = ?3,
-           last_full_sync_at = CASE WHEN ?4 THEN ?3 ELSE last_full_sync_at END
+           last_full_sync_at = CASE WHEN ?4 THEN ?3 ELSE last_full_sync_at END,
+           full_sync_history_id = CASE WHEN ?4 THEN NULL ELSE full_sync_history_id END,
+           full_sync_started_at = CASE WHEN ?4 THEN NULL ELSE full_sync_started_at END
          WHERE account_id = ?1",
         params![account, history_id.map(|h| h as i64), now, full_sync],
     )?;

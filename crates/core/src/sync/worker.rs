@@ -9,7 +9,7 @@ use std::time::Duration;
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
-use super::engine::{SyncConfig, SyncEngine, SyncProgress};
+use super::engine::{SyncConfig, SyncEngine, SyncPhase, SyncProgress};
 use crate::db::{store, Db};
 use crate::error::CoreError;
 use crate::gmail::GmailClient;
@@ -140,7 +140,14 @@ async fn run_worker(
     loop {
         set_status(&db, &*events, account, SyncStatus::Syncing, None);
         let progress_events = events.clone();
-        let progress = move |p: SyncProgress| progress_events.progress(p);
+        let progress = move |p: SyncProgress| {
+            // Each fetched chunk is already saved; let the UI show it now
+            // rather than after a long initial sync finishes.
+            if p.phase == SyncPhase::Fetching && p.done > 0 {
+                progress_events.mail_changed(p.account_id);
+            }
+            progress_events.progress(p);
+        };
         let engine = SyncEngine {
             db: &db,
             gmail: &gmail,

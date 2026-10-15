@@ -92,7 +92,7 @@ pub async fn account_add(
     account_tokens
         .seed(signed_in.access_token, signed_in.expires_in)
         .await;
-    state.set_tokens(account.id, account_tokens);
+    let _ = state.set_tokens(account.id, account_tokens);
     state.start_sync(account.id)?;
     Ok(account)
 }
@@ -106,7 +106,7 @@ pub fn account_remove(state: State<'_, AppState>, account_id: AccountId) -> CmdR
     let sub = accounts::google_sub(&state.db.conn(), account_id)?;
     accounts::remove(&state.db.conn(), account_id)?;
     state.secrets.delete(&tokens::refresh_token_key(&sub))?;
-    state.forget_tokens(account_id);
+    state.forget_account(account_id);
     Ok(())
 }
 

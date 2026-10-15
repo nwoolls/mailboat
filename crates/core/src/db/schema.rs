@@ -153,3 +153,12 @@ CREATE TRIGGER messages_fts_delete AFTER DELETE ON messages BEGIN
   DELETE FROM messages_fts WHERE rowid = old.id;
 END;
 "#;
+
+/// Resumable full sync: remember the full sync in progress (its starting
+/// historyId and start time) and when each thread was last written, so an
+/// interrupted sync skips threads it already fetched instead of starting over.
+pub const MIGRATION_V2: &str = r#"
+ALTER TABLE threads ADD COLUMN synced_at INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sync_state ADD COLUMN full_sync_history_id INTEGER;
+ALTER TABLE sync_state ADD COLUMN full_sync_started_at INTEGER;
+"#;

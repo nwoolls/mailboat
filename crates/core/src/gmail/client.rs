@@ -9,6 +9,7 @@ use reqwest::{Method, RequestBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
 
 use super::batch;
+use super::pacer::{cost, QuotaPacer};
 use super::types::{ErrorEnvelope, HistoryList, LabelList, Message, Profile, Thread, ThreadList};
 use crate::error::{CoreError, Result};
 
@@ -45,7 +46,7 @@ impl Default for RetryPolicy {
     fn default() -> Self {
         Self {
             max_retries: 6,
-            base_delay: Duration::from_millis(500),
+            base_delay: Duration::from_secs(1),
             max_delay: Duration::from_secs(32),
         }
     }
@@ -74,6 +75,9 @@ pub struct GmailClient {
     base_url: String,
     tokens: Arc<dyn TokenSource>,
     retry: RetryPolicy,
+    /// Shared by every clone of this client, so all calls for the account
+    /// draw from one quota budget.
+    pacer: QuotaPacer,
 }
 
 impl GmailClient {
@@ -91,7 +95,13 @@ impl GmailClient {
             base_url: base_url.trim_end_matches('/').to_string(),
             tokens,
             retry: RetryPolicy::default(),
+            pacer: QuotaPacer::default(),
         }
+    }
+
+    pub fn with_pacer(mut self, pacer: QuotaPacer) -> Self {
+        self.pacer = pacer;
+        self
     }
 
     pub fn with_retry(mut self, retry: RetryPolicy) -> Self {
@@ -104,11 +114,13 @@ impl GmailClient {
     }
 
     pub async fn profile(&self) -> Result<Profile> {
-        self.get_json(&self.url("profile"), &[]).await
+        self.get_json(&self.url("profile"), &[], cost::PROFILE)
+            .await
     }
 
     pub async fn labels(&self) -> Result<LabelList> {
-        self.get_json(&self.url("labels"), &[]).await
+        self.get_json(&self.url("labels"), &[], cost::LABELS_LIST)
+            .await
     }
 
     pub async fn list_threads(
@@ -122,7 +134,8 @@ impl GmailClient {
         if let Some(token) = page_token {
             query.push(("pageToken", token));
         }
-        self.get_json(&self.url("threads"), &query).await
+        self.get_json(&self.url("threads"), &query, cost::THREADS_LIST)
+            .await
     }
 
     /// `threads.get` with `format=metadata`. `Ok(None)` if the thread is gone.
@@ -130,7 +143,11 @@ impl GmailClient {
         let mut query = vec![("format", "metadata")];
         query.extend(METADATA_HEADERS.iter().map(|h| ("metadataHeaders", *h)));
         match self
-            .get_json(&self.url(&format!("threads/{id}")), &query)
+            .get_json(
+                &self.url(&format!("threads/{id}")),
+                &query,
+                cost::THREADS_GET,
+            )
             .await
         {
             Ok(t) => Ok(Some(t)),
@@ -140,8 +157,12 @@ impl GmailClient {
     }
 
     pub async fn message_full(&self, id: &str) -> Result<Message> {
-        self.get_json(&self.url(&format!("messages/{id}")), &[("format", "full")])
-            .await
+        self.get_json(
+            &self.url(&format!("messages/{id}")),
+            &[("format", "full")],
+            cost::MESSAGES_GET,
+        )
+        .await
     }
 
     /// `history.list`. A 404 means the start ID is too old.
@@ -155,7 +176,10 @@ impl GmailClient {
         if let Some(token) = page_token {
             query.push(("pageToken", token));
         }
-        match self.get_json(&self.url("history"), &query).await {
+        match self
+            .get_json(&self.url("history"), &query, cost::HISTORY_LIST)
+            .await
+        {
             Err(CoreError::NotFound(_)) => Err(CoreError::HistoryExpired),
             other => other,
         }
@@ -200,6 +224,7 @@ impl GmailClient {
                 }
                 pending = retry_later;
                 if !pending.is_empty() {
+                    self.pacer.drain().await;
                     if attempt >= self.retry.max_retries {
                         return Err(CoreError::RateLimited(format!(
                             "{} batch items still failing after retries",
@@ -215,6 +240,10 @@ impl GmailClient {
     }
 
     async fn send_batch(&self, paths: &[String]) -> Result<Vec<batch::BatchPart>> {
+        // Google charges each request inside a batch separately.
+        self.pacer
+            .acquire(cost::THREADS_GET * paths.len() as u32)
+            .await;
         let boundary = format!("mailboat_batch_{}", fastrand::u64(..));
         let body = batch::build_request(&boundary, paths);
         let url = format!("{}/batch/gmail/v1", self.base_url);
@@ -239,7 +268,13 @@ impl GmailClient {
         batch::parse_response(&content_type, &text, paths.len())
     }
 
-    async fn get_json<T: DeserializeOwned>(&self, url: &str, query: &[(&str, &str)]) -> Result<T> {
+    async fn get_json<T: DeserializeOwned>(
+        &self,
+        url: &str,
+        query: &[(&str, &str)],
+        units: u32,
+    ) -> Result<T> {
+        self.pacer.acquire(units).await;
         let response = self
             .send(|| self.http.request(Method::GET, url).query(query))
             .await?;
@@ -281,6 +316,9 @@ impl GmailClient {
                 .map(Duration::from_secs);
             let body = response.text().await.unwrap_or_default();
             if is_retryable(status.as_u16(), &body) {
+                if matches!(status.as_u16(), 403 | 429) {
+                    self.pacer.drain().await;
+                }
                 if attempt >= self.retry.max_retries {
                     return Err(if status.as_u16() == 429 || status.as_u16() == 403 {
                         CoreError::RateLimited(error_message(&body))

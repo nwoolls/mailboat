@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use mailboat_core::gmail::{GmailClient, RetryPolicy, TokenSource};
+use mailboat_core::gmail::{GmailClient, QuotaPacer, RetryPolicy, TokenSource};
 use mailboat_core::Result;
 
 pub fn fixture(name: &str) -> String {
@@ -48,7 +48,8 @@ pub fn fast_retry() -> RetryPolicy {
 pub fn client(base_url: &str) -> (GmailClient, Arc<FakeTokens>) {
     let tokens = Arc::new(FakeTokens::default());
     let client = GmailClient::with_base_url(reqwest::Client::new(), tokens.clone(), base_url)
-        .with_retry(fast_retry());
+        .with_retry(fast_retry())
+        .with_pacer(QuotaPacer::unlimited());
     (client, tokens)
 }
 

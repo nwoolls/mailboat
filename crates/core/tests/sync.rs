@@ -350,3 +350,70 @@ async fn one_failing_account_does_not_block_another() {
     // A stays parked until woken; B keeps its worker too.
     assert!(supervisor.is_running(a) && supervisor.is_running(b));
 }
+
+#[tokio::test]
+async fn interrupted_full_sync_resumes_without_refetching() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    // First attempt: the batch call fails hard (as when quota runs out and
+    // retries are exhausted), after t1 was already written.
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(ResponseTemplate::new(429))
+        .with_priority(1)
+        .up_to_n_times(4)
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let account = add_account(&db, "a");
+    // Simulate t1 having been fetched by the interrupted attempt.
+    store::begin_full_sync(&db.conn(), account, 9000).unwrap();
+    let t1: mailboat_core::gmail::types::Thread =
+        serde_json::from_str(&fixture("thread_t1.json")).unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        account,
+        &mailboat_core::gmail::parse::thread_to_incoming(&t1),
+    )
+    .unwrap();
+
+    assert!(matches!(
+        run(&db, &server, account).await,
+        Err(mailboat_core::CoreError::RateLimited(_))
+    ));
+    assert_eq!(
+        store::history_id(&db.conn(), account).unwrap(),
+        None,
+        "not finished yet"
+    );
+    assert!(store::pending_full_sync(&db.conn(), account)
+        .unwrap()
+        .is_some());
+
+    // Second attempt succeeds and only asks Google for t2.
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch())
+        .with_priority(2)
+        .mount(&server)
+        .await;
+    let before = server.received_requests().await.unwrap().len();
+    run(&db, &server, account).await.unwrap();
+    let requests = server.received_requests().await.unwrap();
+    let batch_bodies: Vec<String> = requests[before..]
+        .iter()
+        .filter(|r| r.url.path() == "/batch/gmail/v1")
+        .map(|r| String::from_utf8_lossy(&r.body).into_owned())
+        .collect();
+    assert_eq!(batch_bodies.len(), 1);
+    assert!(batch_bodies[0].contains("/threads/t2?") && !batch_bodies[0].contains("/threads/t1?"));
+    // Resumed from the original historyId, without calling getProfile again.
+    assert!(!requests[before..]
+        .iter()
+        .any(|r| r.url.path().ends_with("/profile")));
+    assert_eq!(store::history_id(&db.conn(), account).unwrap(), Some(9000));
+    assert!(store::pending_full_sync(&db.conn(), account)
+        .unwrap()
+        .is_none());
+    assert_eq!(inbox(&db, AccountFilter::All).len(), 2);
+}

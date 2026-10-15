@@ -1,5 +1,5 @@
 //! App-wide state shared by commands: the database, the HTTP client, the
-//! keychain, per-account token caches and the sync supervisor.
+//! keychain, per-account Gmail clients and the sync supervisor.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -19,8 +19,8 @@ pub struct AppState {
     pub secrets: Arc<dyn SecretStore>,
     pub supervisor: Supervisor,
     pub config_dir: PathBuf,
-    /// One token cache per account, so access tokens are reused.
-    tokens: Mutex<HashMap<AccountId, Arc<AccountTokens>>>,
+    /// One Gmail client per account (see `gmail_for`).
+    clients: Mutex<HashMap<AccountId, GmailClient>>,
     /// Only one browser sign-in at a time.
     pub sign_in: tokio::sync::Mutex<()>,
 }
@@ -39,7 +39,7 @@ impl AppState {
             secrets,
             supervisor,
             config_dir,
-            tokens: Mutex::new(HashMap::new()),
+            clients: Mutex::new(HashMap::new()),
             sign_in: tokio::sync::Mutex::new(()),
         }
     }
@@ -50,9 +50,13 @@ impl AppState {
         OAuthClientConfig::load(&self.config_dir)
     }
 
-    pub fn tokens_for(&self, account: AccountId) -> Result<Arc<AccountTokens>> {
-        if let Some(t) = self.tokens.lock().unwrap().get(&account) {
-            return Ok(t.clone());
+    /// The Gmail client acting as this account: its own token, never
+    /// another's. One client per account is shared by sync and commands so
+    /// they draw from the same quota budget and access-token cache.
+    pub fn gmail_for(&self, account: AccountId) -> Result<GmailClient> {
+        let cached = self.clients.lock().unwrap().get(&account).cloned();
+        if let Some(client) = cached {
+            return Ok(client);
         }
         let sub = accounts::google_sub(&self.db.conn(), account)?;
         let tokens = Arc::new(AccountTokens::new(
@@ -61,24 +65,18 @@ impl AppState {
             self.secrets.clone(),
             &sub,
         ));
-        self.tokens.lock().unwrap().insert(account, tokens.clone());
-        Ok(tokens)
+        Ok(self.set_tokens(account, tokens))
     }
 
-    pub fn set_tokens(&self, account: AccountId, tokens: Arc<AccountTokens>) {
-        self.tokens.lock().unwrap().insert(account, tokens);
+    /// Installs fresh credentials for an account (after signing in).
+    pub fn set_tokens(&self, account: AccountId, tokens: Arc<AccountTokens>) -> GmailClient {
+        let client = GmailClient::new(self.http.clone(), tokens);
+        self.clients.lock().unwrap().insert(account, client.clone());
+        client
     }
 
-    pub fn forget_tokens(&self, account: AccountId) {
-        self.tokens.lock().unwrap().remove(&account);
-    }
-
-    /// A Gmail client acting as this account (its own token, never another's).
-    pub fn gmail_for(&self, account: AccountId) -> Result<GmailClient> {
-        Ok(GmailClient::new(
-            self.http.clone(),
-            self.tokens_for(account)?,
-        ))
+    pub fn forget_account(&self, account: AccountId) {
+        self.clients.lock().unwrap().remove(&account);
     }
 
     /// Resumes syncing every connected account at startup. One that can't
