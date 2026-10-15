@@ -1,0 +1,16 @@
+[package]
+name = "mailboat-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Mailboat's sync, storage, auth and mail logic. No Tauri dependency, so it tests fast."
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+specta.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

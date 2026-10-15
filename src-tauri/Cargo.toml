@@ -1,0 +1,23 @@
+[package]
+name = "mailboat"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Mailboat — a fast, keyboard-first Gmail client"
+
+[lib]
+name = "mailboat_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+mailboat-core = { path = "../crates/core" }
+tauri = { version = "2", features = [] }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+specta.workspace = true
+tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
+specta-typescript = "0.0.12"
