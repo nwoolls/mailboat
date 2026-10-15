@@ -91,12 +91,11 @@ a darker glass body, rounded corners where they meet, resizable panes.
       sidebar and reader content fade and drift in from their own side, and
       the list grows or gives way in step. The reader keeps showing the
       last conversation while it slides away
+- [x] Selecting a conversation (click or j/k) brings a hidden reader back
 
 ### Ideas for later in this spike (not started)
 
 - Remember pane widths and which panels are hidden between launches
-- With the reader hidden, open a conversation some other way (Enter to
-  show the reader, or open it in place of the list)
 - Reader as its own rounded card, if text on the glass proves hard to read
 - Stronger, adjustable blur (private `CGSSetWindowBackgroundBlurRadius`,
   Rust) if the system material looks too faint

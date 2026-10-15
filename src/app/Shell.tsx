@@ -74,7 +74,6 @@ export function Shell() {
   // The last conversation opened, kept while the reader slides closed so it
   // doesn't empty out mid-animation. Updated during render, not in an effect.
   const [shownId, setShownId] = useState<ThreadId | null>(null);
-  if (selectedId !== null && selectedId !== shownId) setShownId(selectedId);
   const { mutate: setRead } = useSetRead();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   const loadMore = useCallback(() => void fetchNextPage(), [fetchNextPage]);
@@ -84,6 +83,12 @@ export function Shell() {
   // Either side panel can be hidden, down to just the list. Not persisted.
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [readerOpen, setReaderOpen] = useState(true);
+  // Opening a different conversation (click or j/k) brings a hidden reader
+  // back. Adjusted during render rather than in an effect.
+  if (selectedId !== null && selectedId !== shownId) {
+    setShownId(selectedId);
+    setReaderOpen(true);
+  }
   const toggleSidebar = useCallback(() => setSidebarOpen((open) => !open), []);
   const toggleReader = useCallback(() => setReaderOpen((open) => !open), []);
   const panesRef = useRef<HTMLDivElement>(null);
@@ -218,7 +223,11 @@ export function Shell() {
               accounts={accounts}
               showAccount={spansAccounts(selection, accountList.length)}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              onSelect={(id) => {
+                setSelectedId(id);
+                // Clicking the open conversation again also brings it back.
+                setReaderOpen(true);
+              }}
               hasMore={hasNextPage}
               loadMore={loadMore}
               loading={threadsQuery.isPending || isFetchingNextPage}
