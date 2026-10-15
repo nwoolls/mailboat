@@ -7,9 +7,6 @@ type Props = {
   width: number;
   onResize: (width: number) => void;
   onReset: () => void;
-  /** Draw a hairline between panes; otherwise only show one on hover. */
-  divider?: boolean;
-  className?: string;
 };
 
 /**
@@ -17,7 +14,7 @@ type Props = {
  * arrow keys nudge it. Like MonoCode's sidebar resizer, it captures the
  * pointer so the drag keeps tracking outside the handle.
  */
-export function Splitter({ label, width, onResize, onReset, divider, className = "" }: Props) {
+export function Splitter({ label, width, onResize, onReset }: Props) {
   const drag = useRef<{ x: number; width: number } | null>(null);
 
   const end = () => {
@@ -32,7 +29,7 @@ export function Splitter({ label, width, onResize, onReset, divider, className =
       aria-label={label}
       aria-valuenow={width}
       tabIndex={0}
-      className={`group relative z-10 shrink-0 cursor-col-resize outline-none ${className}`}
+      className="group relative z-10 w-2 shrink-0 cursor-col-resize outline-none"
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         e.preventDefault();
@@ -55,11 +52,9 @@ export function Splitter({ label, width, onResize, onReset, divider, className =
         }
       }}
     >
-      <span
-        className={`pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors duration-[120ms] group-hover:bg-accent/70 group-focus-visible:bg-accent/70 group-active:bg-accent ${
-          divider ? "bg-stroke" : ""
-        }`}
-      />
+      {/* Grab area reaches 4px past the gap on each side. */}
+      <span className="absolute inset-y-0 -right-1 -left-1" />
+      <span className="pointer-events-none absolute inset-y-2 left-1/2 w-0.5 -translate-x-1/2 rounded-full transition-colors duration-[120ms] group-hover:bg-accent/60 group-focus-visible:bg-accent/60 group-active:bg-accent" />
     </div>
   );
 }

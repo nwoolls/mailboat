@@ -23,6 +23,7 @@ import {
 } from "../features/mailbox/model/views";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
+import { Toolbar } from "./Toolbar";
 import {
   useAccounts,
   useLabels,
@@ -71,12 +72,12 @@ export function Shell() {
 
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH.initial);
   const [listWidth, setListWidth] = useState(LIST_WIDTH.initial);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panesRef = useRef<HTMLDivElement>(null);
   const resizeSidebar = (w: number) =>
     setSidebarWidth(clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max));
   const resizeList = (w: number) =>
     setListWidth(
-      clampWidth(w, LIST_WIDTH.min, listMaxWidth(panelRef.current?.clientWidth ?? Infinity)),
+      clampWidth(w, LIST_WIDTH.min, listMaxWidth(panesRef.current?.clientWidth ?? Infinity)),
     );
 
   useEffect(() => {
@@ -110,41 +111,45 @@ export function Shell() {
   if (accountsQuery.isPending) return null;
   if (accountList.length === 0) return <Welcome setup={setup.data} />;
 
+  const readToggleTarget = readToggle(threads, selectedId);
+  const toggleRead = readToggleTarget
+    ? () => setRead({ ids: [readToggleTarget.id], read: readToggleTarget.read })
+    : null;
+
   return (
-    <div className="flex h-full bg-glass-sidebar">
-      <Sidebar
-        accounts={accountList}
-        width={sidebarWidth}
-        syncStates={syncStates}
-        selection={baseSelection}
-        onSelect={(s) => {
-          setChosen(s);
-          setSearch("");
-          setSelectedId(null);
-        }}
-      />
-      {/* The gap between sidebar and panel doubles as the sidebar's splitter. */}
-      <Splitter
-        label="Resize sidebar"
-        width={sidebarWidth}
-        onResize={resizeSidebar}
-        onReset={() => setSidebarWidth(SIDEBAR_WIDTH.initial)}
-        className="w-1.5"
-      />
-      {/* The gutter around the panel shows the glass and drags the window. */}
-      <div data-tauri-drag-region className="flex min-w-0 flex-1 py-1.5 pr-1.5">
-        <div ref={panelRef} className="panel flex min-w-0 flex-1 overflow-hidden">
-          {/* Shrinks with the window before the reader drops below its minimum. */}
+    <div className="flex h-full flex-col bg-glass-sidebar">
+      <Toolbar onToggleRead={toggleRead} />
+      <div className="flex min-h-0 flex-1 pr-2 pb-2">
+        <Sidebar
+          accounts={accountList}
+          width={sidebarWidth}
+          syncStates={syncStates}
+          selection={baseSelection}
+          onSelect={(s) => {
+            setChosen(s);
+            setSearch("");
+            setSelectedId(null);
+          }}
+        />
+        <Splitter
+          label="Resize sidebar"
+          width={sidebarWidth}
+          onResize={resizeSidebar}
+          onReset={() => setSidebarWidth(SIDEBAR_WIDTH.initial)}
+        />
+        <div ref={panesRef} className="flex min-w-0 flex-1">
+          {/* The list is the body: a rounded card on the glass. It shrinks
+              with the window before the reader drops below its minimum. */}
           <section
-            className="flex min-w-0 flex-col"
+            className="panel flex min-w-0 flex-col overflow-hidden"
             style={{ flex: `0 1 ${listWidth}px`, minWidth: LIST_WIDTH.min }}
           >
-            <div data-tauri-drag-region className="flex h-10 shrink-0 items-center px-4">
+            <div className="flex h-10 shrink-0 items-center px-4">
               <h2 className="truncate text-sm font-semibold">
                 {selectionTitle(selection, accountList, labels)}
               </h2>
             </div>
-            <div className="px-3 pt-1 pb-2">
+            <div className="px-3 pb-2">
               <input
                 id="mailboat-search"
                 type="search"
@@ -170,11 +175,9 @@ export function Shell() {
             width={listWidth}
             onResize={resizeList}
             onReset={() => setListWidth(LIST_WIDTH.initial)}
-            divider
-            className="-mx-1 w-2"
           />
+          {/* The reader sits on the glass like a right-hand sidebar. */}
           <main className="flex flex-1 flex-col" style={{ minWidth: READER_MIN_WIDTH }}>
-            <div data-tauri-drag-region className="h-3 shrink-0" />
             <ThreadReader threadId={selectedId} accounts={accounts} />
           </main>
         </div>

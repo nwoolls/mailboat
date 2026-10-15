@@ -68,17 +68,24 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - [x] Resizable splitters (sidebar | list | reader); reader can be dragged
       narrow (300px) to act as a right-hand side panel. Double-click resets;
       arrow keys nudge a focused splitter. Widths reset on relaunch.
+- [x] Owner feedback round 1: wider splitters (8px gap, 16px grab area);
+      the list is now its own rounded card (the body) and the reader sits on
+      the glass like a right-hand sidebar; both glass tints more transparent,
+      closer to Tern
+- [x] Toolbar across the top (Tern-style) with mail action buttons on the
+      right; traffic lights centered in it. Only read/unread works (same as
+      `u`); archive, delete, star, label, more and compose are placeholders
+      until Milestones 3 and 4
 
 ### Ideas for later in this spike (not started)
 
-- Tool buttons in the title bar (compose, archive, …), as in Tern
 - Collapse/hide the sidebar so the list goes full width
 - Remember pane widths between launches
-- Reader as its own rounded card instead of sharing the body panel
+- Reader as its own rounded card, if text on the glass proves hard to read
 - Stronger, adjustable blur (private `CGSSetWindowBackgroundBlurRadius`,
   Rust) if the system material looks too faint
 - Sidebar grouping: demote Spam/Trash/Important/All Mail, labels as folders
-- Thread row density, icons (Hugeicons, as MonoCode), hover/selection states
+- Thread row density, icons, hover/selection states
 - Reader header, message stacking, how the white email card sits in dark mode
 - Sync progress, empty/loading states, error cards
 - Visible focus and shortcut hints

@@ -27,8 +27,6 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
 
   return (
     <nav className="flex h-full shrink-0 flex-col" style={{ width }}>
-      {/* Space for the macOS traffic lights; also the window drag handle. */}
-      <div data-tauri-drag-region className="h-11 shrink-0" />
       <div className="flex-1 overflow-y-auto px-2 pb-4">
         {accounts.length > 1 && (
           <Section title="All accounts">
