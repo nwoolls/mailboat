@@ -120,6 +120,11 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - [x] List titles drop the account when there's only one ("Inbox"), and
       searches read "Results for “newsy”"
 - [x] Archive, Delete, Star, Label and More dim with nothing selected
+- [x] Read rows use medium weight throughout; unread subjects step up to
+      semibold so unread still stands out
+- [x] The empty-state glow is drawn towards the pointer while it's over
+      the pane (still drifting), and eases back to its usual path when the
+      pointer leaves. Off under "Reduce motion"
 
 Wrapped up 2026-10-15. Everything below stays open and
 moves into later milestones as it's picked up.

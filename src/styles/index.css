@@ -166,6 +166,24 @@ html.resizing .panel-slide {
   pointer-events: none;
   animation: empty-drift 26s ease-in-out infinite alternate;
 }
+/* Carries the glow towards the pointer. Quick-ish to follow, slow to
+   drift home, so it feels drawn rather than dragged. */
+.empty-glow-pull {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translate(var(--pull-x, 0px), var(--pull-y, 0px));
+  transition:
+    transform 2.4s cubic-bezier(0.25, 0.1, 0.25, 1),
+    opacity 1.2s ease-out;
+  opacity: 0.85;
+}
+.empty-glow-pull[data-attracted="true"] {
+  transition:
+    transform 0.9s var(--motion-ease-out),
+    opacity 0.4s ease-out;
+  opacity: 1;
+}
 @keyframes empty-drift {
   0% {
     transform: translate(-30%, -25%) scale(1);
@@ -212,6 +230,9 @@ html.resizing .panel-slide {
   .empty-rise,
   .empty-nod {
     animation: none;
+  }
+  .empty-glow-pull {
+    transition: none;
   }
   .panel-slide,
   .panel-slide-content {
