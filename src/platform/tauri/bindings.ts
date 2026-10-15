@@ -14,6 +14,8 @@ export const commands = {
 	 *  refreshes it instead of creating a duplicate.
 	 */
 	accountAdd: (loginHint: string | null) => typedError<Account, AppError>(__TAURI_INVOKE("account_add", { loginHint })),
+	/**  Stops waiting for a browser sign-in started by `account_add`. */
+	accountAddCancel: () => __TAURI_INVOKE<void>("account_add_cancel"),
 	/**
 	 *  Disconnects an account: stops its sync, deletes its cached mail and
 	 *  removes its token from the keychain.

@@ -27,6 +27,9 @@ pub enum CoreError {
     Config(String),
     #[error("keychain error: {0}")]
     Keychain(String),
+    /// The user cancelled (e.g. closed sign-in). Not shown as an error.
+    #[error("cancelled")]
+    Cancelled,
     #[error("{0}")]
     Other(String),
 }
@@ -44,6 +47,7 @@ impl CoreError {
             CoreError::Api { .. } => "api",
             CoreError::Config(_) => "config",
             CoreError::Keychain(_) => "keychain",
+            CoreError::Cancelled => "cancelled",
             CoreError::Other(_) => "other",
         }
     }

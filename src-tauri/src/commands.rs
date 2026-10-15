@@ -63,10 +63,18 @@ pub async fn account_add(
         .try_lock()
         .map_err(|_| CoreError::Invalid("a sign-in is already in progress".into()))?;
     let config = state.oauth_config()?;
-    let signed_in = oauth::sign_in(&state.http, &config, login_hint.as_deref(), |url| {
-        open::that_detached(url)
-            .map_err(|e| CoreError::Other(format!("could not open the browser: {e}")))
-    })
+    // The app can't tell when the browser tab is closed, so the user can
+    // cancel (`account_add_cancel`).
+    let signed_in = oauth::sign_in(
+        &state.http,
+        &config,
+        login_hint.as_deref(),
+        |url| {
+            open::that_detached(url)
+                .map_err(|e| CoreError::Other(format!("could not open the browser: {e}")))
+        },
+        state.sign_in_cancel.notified(),
+    )
     .await?;
 
     state.secrets.set(
@@ -95,6 +103,13 @@ pub async fn account_add(
     let _ = state.set_tokens(account.id, account_tokens);
     state.start_sync(account.id)?;
     Ok(account)
+}
+
+/// Stops waiting for a browser sign-in started by `account_add`.
+#[tauri::command]
+#[specta::specta]
+pub fn account_add_cancel(state: State<'_, AppState>) {
+    state.sign_in_cancel.notify_waiters();
 }
 
 /// Disconnects an account: stops its sync, deletes its cached mail and

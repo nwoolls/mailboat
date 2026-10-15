@@ -26,7 +26,7 @@ something moves between milestones, move it here and say why.
 - [x] `README.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, conventions in `CLAUDE.md`
 - [x] Use the `oauth2` crate for PKCE, the consent URL and token exchange
 - [x] Opening a message skips ahead of background sync in the quota queue
-- [ ] Cancel button while waiting for browser sign-in (closing the tab left
+- [x] Cancel button while waiting for browser sign-in (closing the tab left
       the app waiting)
 - [ ] Mark a message read when opened; `u` toggles read/unread
       *(pulled forward from M3: first action, routed to the owning account)*

@@ -24,6 +24,8 @@ pub struct AppState {
     clients: Mutex<HashMap<AccountId, GmailClient>>,
     /// Only one browser sign-in at a time.
     pub sign_in: tokio::sync::Mutex<()>,
+    /// Signalled by `account_add_cancel` to stop waiting for the browser.
+    pub sign_in_cancel: tokio::sync::Notify,
 }
 
 impl AppState {
@@ -44,6 +46,7 @@ impl AppState {
             sync_log,
             clients: Mutex::new(HashMap::new()),
             sign_in: tokio::sync::Mutex::new(()),
+            sign_in_cancel: tokio::sync::Notify::new(),
         }
     }
 

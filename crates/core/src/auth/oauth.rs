@@ -319,7 +319,23 @@ pub struct SignedIn {
 }
 
 /// Runs the whole browser sign-in. `open_browser` is given the consent URL.
+/// If `cancel` completes first (the user gave up, e.g. closed the tab, which
+/// the app can't detect), returns `CoreError::Cancelled` and closes the
+/// loopback port.
 pub async fn sign_in(
+    http: &reqwest::Client,
+    config: &OAuthClientConfig,
+    login_hint: Option<&str>,
+    open_browser: impl FnOnce(&str) -> Result<()>,
+    cancel: impl Future<Output = ()>,
+) -> Result<SignedIn> {
+    tokio::select! {
+        result = sign_in_inner(http, config, login_hint, open_browser) => result,
+        _ = cancel => Err(CoreError::Cancelled),
+    }
+}
+
+async fn sign_in_inner(
     http: &reqwest::Client,
     config: &OAuthClientConfig,
     login_hint: Option<&str>,
@@ -416,6 +432,46 @@ mod tests {
                 .unwrap()
                 .is_err()
         );
+    }
+
+    #[tokio::test]
+    async fn cancelling_stops_waiting_and_closes_the_port() {
+        let config = OAuthClientConfig::google("cid".into(), "secret".into());
+        let (url_tx, url_rx) = tokio::sync::oneshot::channel::<String>();
+        let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
+        let http = reqwest::Client::new();
+        let task = tokio::spawn(async move {
+            sign_in(
+                &http,
+                &config,
+                None,
+                |url| {
+                    let _ = url_tx.send(url.to_string());
+                    Ok(())
+                },
+                async {
+                    let _ = cancel_rx.await;
+                },
+            )
+            .await
+        });
+        // The browser "opened"; find the loopback port from the redirect URI.
+        let url = url_rx.await.unwrap();
+        let parsed = url::Url::parse(&url).unwrap();
+        let redirect = parsed
+            .query_pairs()
+            .find(|(k, _)| k == "redirect_uri")
+            .unwrap()
+            .1
+            .into_owned();
+        cancel_tx.send(()).unwrap();
+        let result = tokio::time::timeout(Duration::from_secs(5), task)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(matches!(result, Err(CoreError::Cancelled)));
+        // Nothing is listening for Google's redirect any more.
+        assert!(reqwest::Client::new().get(&redirect).send().await.is_err());
     }
 
     #[tokio::test]

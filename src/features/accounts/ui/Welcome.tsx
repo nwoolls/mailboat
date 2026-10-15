@@ -1,19 +1,12 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { commands } from "../../../platform/tauri/bindings";
+import { useQueryClient } from "@tanstack/react-query";
 import type { OAuthSetup } from "../../../platform/tauri/bindings";
-import { unwrap } from "../../../platform/tauri/ipc";
 import { keys } from "../../../shared/lib/queries";
+import { useSignIn } from "./useSignIn";
 
 /** First-run screen: explains OAuth setup if needed, then offers sign-in. */
 export function Welcome({ setup }: { setup: OAuthSetup | undefined }) {
   const qc = useQueryClient();
-  const add = useMutation({
-    mutationFn: () => unwrap(commands.accountAdd(null)),
-    onSettled: () => {
-      void qc.invalidateQueries({ queryKey: keys.accounts });
-      void qc.invalidateQueries({ queryKey: keys.oauthSetup });
-    },
-  });
+  const signIn = useSignIn();
 
   return (
     <div className="flex h-full flex-col">
@@ -49,15 +42,27 @@ export function Welcome({ setup }: { setup: OAuthSetup | undefined }) {
                 Connect a Gmail or Google Workspace account. Sign-in happens in your browser; Mailboat
                 never sees your password.
               </p>
-              <button
-                type="button"
-                className="rounded-md bg-accent px-4 py-2 font-medium text-white disabled:opacity-60"
-                disabled={add.isPending}
-                onClick={() => add.mutate()}
-              >
-                {add.isPending ? "Waiting for browser…" : "Sign in with Google"}
-              </button>
-              {add.error && <p className="selectable text-sm text-danger">{add.error.message}</p>}
+              {signIn.pending ? (
+                <div className="flex items-center gap-4">
+                  <span>Waiting for you to finish signing in in your browser…</span>
+                  <button
+                    type="button"
+                    className="text-accent hover:underline"
+                    onClick={signIn.cancel}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="rounded-md bg-accent px-4 py-2 font-medium text-white"
+                  onClick={() => signIn.start()}
+                >
+                  Sign in with Google
+                </button>
+              )}
+              {signIn.error && <p className="selectable text-sm text-danger">{signIn.error}</p>}
             </div>
           )}
         </div>

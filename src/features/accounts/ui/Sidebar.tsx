@@ -1,13 +1,10 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { commands } from "../../../platform/tauri/bindings";
 import type {
   Account,
   AccountSyncState,
   Label,
   SystemLabel,
 } from "../../../platform/tauri/bindings";
-import { unwrap } from "../../../platform/tauri/ipc";
-import { keys, useLabels } from "../../../shared/lib/queries";
+import { useLabels } from "../../../shared/lib/queries";
 import {
   ACCOUNT_VIEWS,
   labelSelection,
@@ -18,6 +15,7 @@ import {
   UNIFIED_VIEWS,
 } from "../../mailbox/model/views";
 import { accountInitial, syncBadge } from "../model/accounts";
+import { useSignIn } from "./useSignIn";
 
 type Props = {
   accounts: Account[];
@@ -27,15 +25,8 @@ type Props = {
 };
 
 export function Sidebar({ accounts, syncStates, selection, onSelect }: Props) {
-  const qc = useQueryClient();
   const labels = useLabels({ kind: "all" }).data ?? [];
-  const addAccount = useMutation({
-    mutationFn: (loginHint: string | null) => unwrap(commands.accountAdd(loginHint)),
-    onSettled: () => {
-      void qc.invalidateQueries({ queryKey: keys.accounts });
-      void qc.invalidateQueries({ queryKey: keys.syncStates });
-    },
-  });
+  const signIn = useSignIn();
 
   return (
     <nav className="flex h-full w-56 shrink-0 flex-col border-r border-stroke bg-background-raised">
@@ -63,22 +54,32 @@ export function Sidebar({ accounts, syncStates, selection, onSelect }: Props) {
             state={syncStates.find((s) => s.accountId === account.id)}
             selection={selection}
             onSelect={onSelect}
-            onReauth={() => addAccount.mutate(account.email)}
+            onReauth={() => signIn.start(account.email)}
           />
         ))}
       </div>
       <div className="border-t border-stroke p-2">
-        <button
-          type="button"
-          className="w-full rounded-md px-2 py-1.5 text-left text-content/60 hover:bg-selection hover:text-content disabled:opacity-50"
-          disabled={addAccount.isPending}
-          onClick={() => addAccount.mutate(null)}
-        >
-          {addAccount.isPending ? "Waiting for browser sign-in…" : "+ Add account"}
-        </button>
-        {addAccount.error && (
-          <p className="selectable px-2 pt-1 text-xs text-danger">{addAccount.error.message}</p>
+        {signIn.pending ? (
+          <div className="flex items-center gap-2 px-2 py-1.5 text-content/60">
+            <span className="truncate">Waiting for browser sign-in…</span>
+            <button
+              type="button"
+              className="ml-auto shrink-0 text-accent hover:underline"
+              onClick={signIn.cancel}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="w-full rounded-md px-2 py-1.5 text-left text-content/60 hover:bg-selection hover:text-content"
+            onClick={() => signIn.start()}
+          >
+            + Add account
+          </button>
         )}
+        {signIn.error && <p className="selectable px-2 pt-1 text-xs text-danger">{signIn.error}</p>}
       </div>
     </nav>
   );
