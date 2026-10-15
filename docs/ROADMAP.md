@@ -24,7 +24,7 @@ something moves between milestones, move it here and say why.
 ### Milestone 1 follow-ups (owner feedback, 2026-10-15)
 
 - [x] `README.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`, conventions in `CLAUDE.md`
-- [ ] Use the `oauth2` crate for PKCE, the consent URL and token exchange
+- [x] Use the `oauth2` crate for PKCE, the consent URL and token exchange
 - [ ] Opening a message skips ahead of background sync in the quota queue
 - [ ] Cancel button while waiting for browser sign-in (closing the tab left
       the app waiting)

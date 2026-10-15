@@ -5,77 +5,40 @@
 //! 3. Google redirects to the loopback address with a one-time code.
 //! 4. Exchange the code (plus the PKCE verifier) for tokens.
 
+use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
 
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-use base64::Engine;
+use oauth2::basic::{BasicClient, BasicErrorResponseType};
+use oauth2::{
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge,
+    PkceCodeVerifier, RedirectUrl, RefreshToken, RequestTokenError, Scope, TokenResponse as _,
+    TokenUrl,
+};
 use serde::Deserialize;
-use sha2::{Digest, Sha256};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
 use super::config::OAuthClientConfig;
 use crate::error::{CoreError, Result};
 
-pub const SCOPES: &str = "openid email profile https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.compose";
+// The OAuth protocol itself (PKCE, consent URL, code exchange, refresh) comes
+// from the `oauth2` crate. This file adds the loopback listener, Google's
+// user-info call and the mapping of failures onto Mailboat's errors.
+
+pub const SCOPES: [&str; 5] = [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.compose",
+];
 
 /// How long to wait for the user to finish in the browser.
 pub const SIGN_IN_TIMEOUT: Duration = Duration::from_secs(300);
 
-fn random_token(bytes: usize) -> Result<String> {
-    let mut buf = vec![0u8; bytes];
-    getrandom::fill(&mut buf).map_err(|e| CoreError::Other(format!("random: {e}")))?;
-    Ok(URL_SAFE_NO_PAD.encode(buf))
-}
-
-pub struct Pkce {
-    pub verifier: String,
-    pub challenge: String,
-}
-
-impl Pkce {
-    pub fn new() -> Result<Self> {
-        // 32 random bytes → 43 base64url chars, the RFC minimum length.
-        Ok(Self::from_verifier(random_token(32)?))
-    }
-
-    pub fn from_verifier(verifier: String) -> Self {
-        let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
-        Self {
-            verifier,
-            challenge,
-        }
-    }
-}
-
-pub fn authorization_url(
-    config: &OAuthClientConfig,
-    redirect_uri: &str,
-    pkce: &Pkce,
-    state: &str,
-    login_hint: Option<&str>,
-) -> String {
-    let mut url = url::Url::parse(&config.auth_uri).expect("auth_uri is a valid URL");
-    {
-        let mut q = url.query_pairs_mut();
-        q.append_pair("client_id", &config.client_id)
-            .append_pair("redirect_uri", redirect_uri)
-            .append_pair("response_type", "code")
-            .append_pair("scope", SCOPES)
-            .append_pair("code_challenge", &pkce.challenge)
-            .append_pair("code_challenge_method", "S256")
-            .append_pair("state", state)
-            // offline + consent so Google always returns a refresh token.
-            .append_pair("access_type", "offline")
-            .append_pair("prompt", "consent");
-        if let Some(hint) = login_hint {
-            q.append_pair("login_hint", hint);
-        }
-    }
-    url.into()
-}
-
-#[derive(Debug, Clone, Deserialize)]
+/// Tokens returned by Google's token endpoint.
+#[derive(Debug, Clone)]
 pub struct TokenResponse {
     pub access_token: String,
     pub expires_in: u64,
@@ -90,30 +53,140 @@ pub struct UserInfo {
     pub picture: Option<String>,
 }
 
-#[derive(Deserialize)]
-struct TokenError {
-    error: String,
-    error_description: Option<String>,
+fn invalid_url(e: impl std::fmt::Display) -> CoreError {
+    CoreError::Config(format!("invalid OAuth URL: {e}"))
+}
+
+/// A configured `oauth2` client: auth and token endpoints set, others not.
+type GoogleClient = oauth2::Client<
+    oauth2::basic::BasicErrorResponse,
+    oauth2::basic::BasicTokenResponse,
+    oauth2::basic::BasicTokenIntrospectionResponse,
+    oauth2::StandardRevocableToken,
+    oauth2::basic::BasicRevocationErrorResponse,
+    oauth2::EndpointSet,
+    oauth2::EndpointNotSet,
+    oauth2::EndpointNotSet,
+    oauth2::EndpointNotSet,
+    oauth2::EndpointSet,
+>;
+
+fn client(config: &OAuthClientConfig, redirect_uri: Option<&str>) -> Result<GoogleClient> {
+    let mut client = BasicClient::new(ClientId::new(config.client_id.clone()))
+        .set_client_secret(ClientSecret::new(config.client_secret.clone()))
+        // Google's installed-app flow sends the client credentials in the
+        // request body, not an Authorization header.
+        .set_auth_type(oauth2::AuthType::RequestBody)
+        .set_auth_uri(AuthUrl::new(config.auth_uri.clone()).map_err(invalid_url)?)
+        .set_token_uri(TokenUrl::new(config.token_uri.clone()).map_err(invalid_url)?);
+    if let Some(uri) = redirect_uri {
+        client = client.set_redirect_uri(RedirectUrl::new(uri.to_string()).map_err(invalid_url)?);
+    }
+    Ok(client)
+}
+
+/// Google's consent page URL for this sign-in.
+pub fn authorization_url(
+    config: &OAuthClientConfig,
+    redirect_uri: &str,
+    challenge: PkceCodeChallenge,
+    state: &CsrfToken,
+    login_hint: Option<&str>,
+) -> Result<String> {
+    let state = state.clone();
+    let client = client(config, Some(redirect_uri))?;
+    let mut request = client
+        .authorize_url(move || state)
+        .add_scopes(SCOPES.iter().map(|s| Scope::new((*s).to_string())))
+        .set_pkce_challenge(challenge)
+        // offline + consent so Google always returns a refresh token.
+        .add_extra_param("access_type", "offline")
+        .add_extra_param("prompt", "consent");
+    if let Some(hint) = login_hint {
+        request = request.add_extra_param("login_hint", hint);
+    }
+    Ok(request.url().0.into())
+}
+
+/// Lets `oauth2` send its requests through our shared `reqwest` client.
+#[derive(Debug, thiserror::Error)]
+#[error("{0}")]
+pub struct HttpError(String);
+
+type HttpFuture =
+    Pin<Box<dyn Future<Output = std::result::Result<oauth2::HttpResponse, HttpError>> + Send>>;
+
+fn send_with(http: &reqwest::Client) -> impl Fn(oauth2::HttpRequest) -> HttpFuture + '_ {
+    move |request| {
+        let http = http.clone();
+        Box::pin(async move {
+            let request =
+                reqwest::Request::try_from(request).map_err(|e| HttpError(e.to_string()))?;
+            let response = http
+                .execute(request)
+                .await
+                .map_err(|e| HttpError(e.to_string()))?;
+            let mut builder = oauth2::http::Response::builder().status(response.status());
+            for (name, value) in response.headers() {
+                builder = builder.header(name, value);
+            }
+            let body = response
+                .bytes()
+                .await
+                .map_err(|e| HttpError(e.to_string()))?;
+            builder
+                .body(body.to_vec())
+                .map_err(|e| HttpError(e.to_string()))
+        })
+    }
+}
+
+fn convert(token: oauth2::basic::BasicTokenResponse) -> TokenResponse {
+    TokenResponse {
+        access_token: token.access_token().secret().clone(),
+        expires_in: token.expires_in().map_or(3600, |d| d.as_secs()),
+        refresh_token: token.refresh_token().map(|t| t.secret().clone()),
+    }
+}
+
+/// Maps token-endpoint failures onto Mailboat's error kinds.
+fn token_error(e: RequestTokenError<HttpError, oauth2::basic::BasicErrorResponse>) -> CoreError {
+    match e {
+        RequestTokenError::ServerResponse(resp) => {
+            let message = format!(
+                "{}: {}",
+                resp.error(),
+                resp.error_description().cloned().unwrap_or_default()
+            );
+            // invalid_grant = refresh token revoked/expired; sign in again.
+            if *resp.error() == BasicErrorResponseType::InvalidGrant {
+                CoreError::Auth(message)
+            } else {
+                CoreError::Config(format!("token request rejected: {message}"))
+            }
+        }
+        RequestTokenError::Request(e) => CoreError::Network(e.to_string()),
+        RequestTokenError::Parse(e, _) => {
+            CoreError::Other(format!("unexpected token response: {e}"))
+        }
+        RequestTokenError::Other(e) => CoreError::Other(e),
+    }
 }
 
 pub async fn exchange_code(
     http: &reqwest::Client,
     config: &OAuthClientConfig,
     code: &str,
-    verifier: &str,
+    verifier: PkceCodeVerifier,
     redirect_uri: &str,
 ) -> Result<TokenResponse> {
-    token_request(
-        http,
-        config,
-        &[
-            ("grant_type", "authorization_code"),
-            ("code", code),
-            ("code_verifier", verifier),
-            ("redirect_uri", redirect_uri),
-        ],
-    )
-    .await
+    client(config, Some(redirect_uri))?
+        .exchange_code(AuthorizationCode::new(code.to_string()))
+        .set_pkce_verifier(verifier)
+        .request_async(&send_with(http))
+        .await
+        .map(convert)
+        .map_err(token_error)
 }
 
 pub async fn refresh(
@@ -121,65 +194,12 @@ pub async fn refresh(
     config: &OAuthClientConfig,
     refresh_token: &str,
 ) -> Result<TokenResponse> {
-    token_request(
-        http,
-        config,
-        &[
-            ("grant_type", "refresh_token"),
-            ("refresh_token", refresh_token),
-        ],
-    )
-    .await
-}
-
-async fn token_request(
-    http: &reqwest::Client,
-    config: &OAuthClientConfig,
-    params: &[(&str, &str)],
-) -> Result<TokenResponse> {
-    let mut form: Vec<(&str, &str)> = vec![
-        ("client_id", config.client_id.as_str()),
-        ("client_secret", config.client_secret.as_str()),
-    ];
-    form.extend_from_slice(params);
-    let response = http
-        .post(&config.token_uri)
-        .form(&form)
-        .send()
+    client(config, None)?
+        .exchange_refresh_token(&RefreshToken::new(refresh_token.to_string()))
+        .request_async(&send_with(http))
         .await
-        .map_err(|e| CoreError::Network(e.to_string()))?;
-    let status = response.status();
-    let body = response
-        .text()
-        .await
-        .map_err(|e| CoreError::Network(e.to_string()))?;
-    if status.is_success() {
-        return Ok(serde_json::from_str(&body)?);
-    }
-    let err: Option<TokenError> = serde_json::from_str(&body).ok();
-    let message = err
-        .as_ref()
-        .map(|e| {
-            format!(
-                "{}: {}",
-                e.error,
-                e.error_description.clone().unwrap_or_default()
-            )
-        })
-        .unwrap_or_else(|| body.chars().take(200).collect());
-    // invalid_grant = refresh token revoked/expired; the user must sign in again.
-    if err.as_ref().is_some_and(|e| e.error == "invalid_grant") || status.as_u16() == 401 {
-        return Err(CoreError::Auth(message));
-    }
-    if status.is_server_error() {
-        return Err(CoreError::Api {
-            status: status.as_u16(),
-            message,
-        });
-    }
-    Err(CoreError::Config(format!(
-        "token request rejected ({status}): {message}"
-    )))
+        .map(convert)
+        .map_err(token_error)
 }
 
 pub async fn user_info(
@@ -290,10 +310,6 @@ fn parse_callback(request: &str, expected_state: &str) -> Option<Result<String>>
     Some(get("code").ok_or_else(|| CoreError::Auth("no authorization code".into())))
 }
 
-pub fn new_state() -> Result<String> {
-    random_token(24)
-}
-
 /// Result of a completed sign-in.
 pub struct SignedIn {
     pub user: UserInfo,
@@ -310,18 +326,20 @@ pub async fn sign_in(
     open_browser: impl FnOnce(&str) -> Result<()>,
 ) -> Result<SignedIn> {
     let loopback = Loopback::bind().await?;
-    let pkce = Pkce::new()?;
-    let state = new_state()?;
+    let (challenge, verifier) = PkceCodeChallenge::new_random_sha256();
+    let state = CsrfToken::new_random();
     let redirect_uri = loopback.redirect_uri.clone();
     open_browser(&authorization_url(
         config,
         &redirect_uri,
-        &pkce,
+        challenge,
         &state,
         login_hint,
-    ))?;
-    let code = loopback.wait_for_code(&state, SIGN_IN_TIMEOUT).await?;
-    let tokens = exchange_code(http, config, &code, &pkce.verifier, &redirect_uri).await?;
+    )?)?;
+    let code = loopback
+        .wait_for_code(state.secret(), SIGN_IN_TIMEOUT)
+        .await?;
+    let tokens = exchange_code(http, config, &code, verifier, &redirect_uri).await?;
     let refresh_token = tokens
         .refresh_token
         .clone()
@@ -341,31 +359,39 @@ mod tests {
 
     #[test]
     fn pkce_matches_rfc_7636_example() {
-        let pkce = Pkce::from_verifier("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk".into());
+        // Checks the library computes S256 challenges as the RFC specifies.
+        let verifier = PkceCodeVerifier::new("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk".into());
+        let challenge = PkceCodeChallenge::from_code_verifier_sha256(&verifier);
         assert_eq!(
-            pkce.challenge,
+            challenge.as_str(),
             "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
         );
-        assert_eq!(Pkce::new().unwrap().verifier.len(), 43);
+        assert_eq!(challenge.method().as_str(), "S256");
     }
 
     #[test]
     fn auth_url_carries_pkce_state_and_scopes() {
         let config = OAuthClientConfig::google("cid".into(), "secret".into());
-        let pkce = Pkce::from_verifier("v".into());
+        let (challenge, _) = PkceCodeChallenge::new_random_sha256();
+        let expected_challenge = challenge.as_str().to_string();
+        let state = CsrfToken::new("st".into());
         let url = authorization_url(
             &config,
             "http://127.0.0.1:5555",
-            &pkce,
-            "st",
+            challenge,
+            &state,
             Some("me@gmail.com"),
-        );
+        )
+        .unwrap();
         let parsed = url::Url::parse(&url).unwrap();
         let q: std::collections::HashMap<_, _> = parsed.query_pairs().into_owned().collect();
+        assert_eq!(q["code_challenge"], expected_challenge);
         assert_eq!(q["code_challenge_method"], "S256");
         assert_eq!(q["state"], "st");
         assert_eq!(q["redirect_uri"], "http://127.0.0.1:5555");
-        assert!(q["scope"].contains("gmail.modify"));
+        assert_eq!(q["response_type"], "code");
+        assert!(q["scope"].contains("gmail.modify") && q["scope"].contains("openid"));
+        assert_eq!(q["access_type"], "offline");
         assert_eq!(q["login_hint"], "me@gmail.com");
         assert!(
             !url.contains("secret"),

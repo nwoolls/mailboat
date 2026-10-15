@@ -89,7 +89,7 @@ async fn code_exchange_sends_pkce_verifier_and_secret() {
         .and(body_string_contains("code_verifier=ver"))
         .and(body_string_contains("client_secret=secret"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "access_token": "a", "expires_in": 3599, "refresh_token": "r"
+            "access_token": "a", "expires_in": 3599, "token_type": "Bearer", "refresh_token": "r"
         })))
         .mount(&server)
         .await;
@@ -97,7 +97,7 @@ async fn code_exchange_sends_pkce_verifier_and_secret() {
         &reqwest::Client::new(),
         &config(&server),
         "code",
-        "ver",
+        oauth2::PkceCodeVerifier::new("ver".into()),
         "http://127.0.0.1:1",
     )
     .await
@@ -132,7 +132,7 @@ async fn keychain_is_read_once_per_run() {
         .and(path("/token"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             // Already "expired" so every call refreshes.
-            "access_token": "a", "expires_in": 0
+            "access_token": "a", "expires_in": 0, "token_type": "Bearer"
         })))
         .mount(&server)
         .await;
