@@ -1,0 +1,505 @@
+//! Writes synced Gmail data into the cache. Everything here takes an
+//! `AccountId` and resolves Gmail IDs only within that account.
+
+use std::collections::HashSet;
+
+use rusqlite::{params, Connection, OptionalExtension};
+
+use super::{now_millis, placeholders};
+use crate::error::{CoreError, Result};
+use crate::model::{
+    AccountId, AccountSyncState, Address, LabelId, LabelKind, MessageId, SyncStatus, ThreadId,
+};
+
+/// A label as reported by Gmail's `labels.list`.
+#[derive(Debug, Clone)]
+pub struct IncomingLabel {
+    pub gmail_label_id: String,
+    pub name: String,
+    pub kind: LabelKind,
+    pub color_bg: Option<String>,
+    pub color_fg: Option<String>,
+}
+
+/// One message's metadata, already parsed out of Gmail's JSON.
+#[derive(Debug, Clone, Default)]
+pub struct IncomingMessage {
+    pub gmail_message_id: String,
+    pub label_ids: Vec<String>,
+    pub internal_date: i64,
+    pub snippet: String,
+    pub subject: String,
+    pub from: Option<Address>,
+    pub to: Vec<Address>,
+    pub cc: Vec<Address>,
+    pub rfc822_message_id: Option<String>,
+    pub in_reply_to: Option<String>,
+    pub references: Option<String>,
+    pub has_attachments: bool,
+}
+
+/// A complete thread: the messages listed are all the messages it has.
+#[derive(Debug, Clone, Default)]
+pub struct IncomingThread {
+    pub gmail_thread_id: String,
+    pub messages: Vec<IncomingMessage>,
+}
+
+/// Replaces the account's label list with what Gmail reported.
+pub fn sync_labels(
+    conn: &mut Connection,
+    account: AccountId,
+    labels: &[IncomingLabel],
+) -> Result<()> {
+    let tx = conn.transaction()?;
+    for label in labels {
+        tx.execute(
+            "INSERT INTO labels (account_id, gmail_label_id, name, kind, color_bg, color_fg)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT (account_id, gmail_label_id) DO UPDATE SET
+               name = excluded.name, kind = excluded.kind,
+               color_bg = excluded.color_bg, color_fg = excluded.color_fg",
+            params![
+                account,
+                label.gmail_label_id,
+                label.name,
+                label.kind.as_str(),
+                label.color_bg,
+                label.color_fg
+            ],
+        )?;
+    }
+    let keep: Vec<&str> = labels.iter().map(|l| l.gmail_label_id.as_str()).collect();
+    if !keep.is_empty() {
+        let sql = format!(
+            "DELETE FROM labels WHERE account_id = ? AND gmail_label_id NOT IN ({})",
+            placeholders(keep.len())
+        );
+        let mut values: Vec<&dyn rusqlite::ToSql> = vec![&account];
+        values.extend(keep.iter().map(|k| k as &dyn rusqlite::ToSql));
+        tx.execute(&sql, values.as_slice())?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// Finds the label row for a Gmail label ID in this account, creating a
+/// placeholder if the message references a label we have not listed yet.
+fn label_id(conn: &Connection, account: AccountId, gmail_label_id: &str) -> Result<LabelId> {
+    if let Some(id) = conn
+        .query_row(
+            "SELECT id FROM labels WHERE account_id = ?1 AND gmail_label_id = ?2",
+            params![account, gmail_label_id],
+            |r| r.get(0),
+        )
+        .optional()?
+    {
+        return Ok(id);
+    }
+    // Gmail user labels are always "Label_<n>"; everything else is a system
+    // or category label.
+    let kind = if gmail_label_id.starts_with("Label_") {
+        LabelKind::User
+    } else {
+        LabelKind::System
+    };
+    conn.execute(
+        "INSERT INTO labels (account_id, gmail_label_id, name, kind) VALUES (?1, ?2, ?2, ?3)",
+        params![account, gmail_label_id, kind.as_str()],
+    )?;
+    Ok(LabelId(conn.last_insert_rowid()))
+}
+
+/// Inserts or replaces a whole thread. Messages that disappeared from the
+/// thread are deleted, labels are replaced, and the thread's summary columns,
+/// derived labels and search index are rebuilt.
+pub fn upsert_thread(
+    conn: &mut Connection,
+    account: AccountId,
+    thread: &IncomingThread,
+) -> Result<ThreadId> {
+    let tx = conn.transaction()?;
+    tx.execute(
+        "INSERT INTO threads (account_id, gmail_thread_id) VALUES (?1, ?2)
+         ON CONFLICT (account_id, gmail_thread_id) DO NOTHING",
+        params![account, thread.gmail_thread_id],
+    )?;
+    let thread_id: ThreadId = tx.query_row(
+        "SELECT id FROM threads WHERE account_id = ?1 AND gmail_thread_id = ?2",
+        params![account, thread.gmail_thread_id],
+        |r| r.get(0),
+    )?;
+
+    let mut kept: Vec<MessageId> = Vec::with_capacity(thread.messages.len());
+    for msg in &thread.messages {
+        let from = msg.from.clone().unwrap_or(Address {
+            name: None,
+            email: String::new(),
+        });
+        tx.execute(
+            "INSERT INTO messages (account_id, thread_id, gmail_message_id, internal_date, subject, snippet,
+               from_name, from_email, to_json, cc_json, rfc822_message_id, in_reply_to, references_header, has_attachments)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+             ON CONFLICT (account_id, gmail_message_id) DO UPDATE SET
+               thread_id = excluded.thread_id, internal_date = excluded.internal_date,
+               subject = excluded.subject, snippet = excluded.snippet,
+               from_name = excluded.from_name, from_email = excluded.from_email,
+               to_json = excluded.to_json, cc_json = excluded.cc_json,
+               rfc822_message_id = excluded.rfc822_message_id, in_reply_to = excluded.in_reply_to,
+               references_header = excluded.references_header, has_attachments = excluded.has_attachments",
+            params![
+                account,
+                thread_id,
+                msg.gmail_message_id,
+                msg.internal_date,
+                msg.subject,
+                msg.snippet,
+                from.name,
+                from.email,
+                serde_json::to_string(&msg.to)?,
+                serde_json::to_string(&msg.cc)?,
+                msg.rfc822_message_id,
+                msg.in_reply_to,
+                msg.references,
+                msg.has_attachments,
+            ],
+        )?;
+        let message_id: MessageId = tx.query_row(
+            "SELECT id FROM messages WHERE account_id = ?1 AND gmail_message_id = ?2",
+            params![account, msg.gmail_message_id],
+            |r| r.get(0),
+        )?;
+        kept.push(message_id);
+
+        tx.execute(
+            "DELETE FROM message_labels WHERE message_id = ?1",
+            [message_id],
+        )?;
+        for gmail_label in &msg.label_ids {
+            let label = label_id(&tx, account, gmail_label)?;
+            tx.execute(
+                "INSERT OR IGNORE INTO message_labels (account_id, message_id, label_id) VALUES (?1, ?2, ?3)",
+                params![account, message_id, label],
+            )?;
+        }
+        index_message(&tx, message_id, msg, &from)?;
+    }
+
+    // Drop messages that are no longer part of this thread.
+    let sql = format!(
+        "DELETE FROM messages WHERE thread_id = ? AND id NOT IN ({})",
+        placeholders(kept.len().max(1))
+    );
+    let none = MessageId(-1);
+    let mut values: Vec<&dyn rusqlite::ToSql> = vec![&thread_id];
+    if kept.is_empty() {
+        values.push(&none);
+    } else {
+        values.extend(kept.iter().map(|k| k as &dyn rusqlite::ToSql));
+    }
+    tx.execute(&sql, values.as_slice())?;
+
+    if kept.is_empty() {
+        tx.execute("DELETE FROM threads WHERE id = ?1", [thread_id])?;
+    } else {
+        refresh_thread(&tx, account, thread_id)?;
+    }
+    tx.commit()?;
+    Ok(thread_id)
+}
+
+fn index_message(
+    conn: &Connection,
+    id: MessageId,
+    msg: &IncomingMessage,
+    from: &Address,
+) -> Result<()> {
+    let sender = format!("{} {}", from.name.as_deref().unwrap_or(""), from.email);
+    let recipients = msg
+        .to
+        .iter()
+        .chain(msg.cc.iter())
+        .map(|a| format!("{} {}", a.name.as_deref().unwrap_or(""), a.email))
+        .collect::<Vec<_>>()
+        .join(" ");
+    // Keep the body column if we already fetched it.
+    let body: Option<String> = conn
+        .query_row(
+            "SELECT text FROM message_bodies WHERE message_id = ?1",
+            [id],
+            |r| r.get(0),
+        )
+        .optional()?
+        .flatten();
+    conn.execute("DELETE FROM messages_fts WHERE rowid = ?1", [id])?;
+    conn.execute(
+        "INSERT INTO messages_fts (rowid, subject, sender, recipients, snippet, body) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, msg.subject, sender, recipients, msg.snippet, body.unwrap_or_default()],
+    )?;
+    Ok(())
+}
+
+/// Rebuilds a thread's summary columns and derived labels from its messages.
+fn refresh_thread(conn: &Connection, account: AccountId, thread: ThreadId) -> Result<()> {
+    conn.execute("DELETE FROM thread_labels WHERE thread_id = ?1", [thread])?;
+    conn.execute(
+        "INSERT INTO thread_labels (account_id, thread_id, label_id)
+         SELECT DISTINCT ?1, m.thread_id, ml.label_id
+         FROM messages m JOIN message_labels ml ON ml.message_id = m.id
+         WHERE m.thread_id = ?2",
+        params![account, thread],
+    )?;
+
+    let mut stmt = conn.prepare(
+        "SELECT from_name, from_email FROM messages WHERE thread_id = ?1 ORDER BY internal_date, id",
+    )?;
+    let mut senders: Vec<Address> = Vec::new();
+    let mut seen = HashSet::new();
+    for row in stmt.query_map([thread], |r| {
+        Ok(Address {
+            name: r.get(0)?,
+            email: r.get(1)?,
+        })
+    })? {
+        let addr = row?;
+        if !addr.email.is_empty() && seen.insert(addr.email.to_lowercase()) {
+            senders.push(addr);
+        }
+    }
+
+    conn.execute(
+        "UPDATE threads SET
+           subject = COALESCE((SELECT subject FROM messages WHERE thread_id = ?1 ORDER BY internal_date, id LIMIT 1), ''),
+           snippet = COALESCE((SELECT snippet FROM messages WHERE thread_id = ?1 ORDER BY internal_date DESC, id DESC LIMIT 1), ''),
+           last_message_at = COALESCE((SELECT MAX(internal_date) FROM messages WHERE thread_id = ?1), 0),
+           message_count = (SELECT COUNT(*) FROM messages WHERE thread_id = ?1),
+           unread_count = (SELECT COUNT(*) FROM messages m
+                           JOIN message_labels ml ON ml.message_id = m.id
+                           JOIN labels l ON l.id = ml.label_id
+                           WHERE m.thread_id = ?1 AND l.gmail_label_id = 'UNREAD'),
+           has_attachments = EXISTS (SELECT 1 FROM messages WHERE thread_id = ?1 AND has_attachments),
+           senders_json = ?2
+         WHERE id = ?1",
+        params![thread, serde_json::to_string(&senders)?],
+    )?;
+    Ok(())
+}
+
+/// Deletes messages by Gmail ID (from `history.list` messageDeleted events).
+/// Threads left empty are removed too.
+pub fn delete_messages(
+    conn: &mut Connection,
+    account: AccountId,
+    gmail_message_ids: &[String],
+) -> Result<()> {
+    let tx = conn.transaction()?;
+    let mut touched: HashSet<ThreadId> = HashSet::new();
+    for gid in gmail_message_ids {
+        let thread: Option<ThreadId> = tx
+            .query_row(
+                "SELECT thread_id FROM messages WHERE account_id = ?1 AND gmail_message_id = ?2",
+                params![account, gid],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if let Some(thread) = thread {
+            tx.execute(
+                "DELETE FROM messages WHERE account_id = ?1 AND gmail_message_id = ?2",
+                params![account, gid],
+            )?;
+            touched.insert(thread);
+        }
+    }
+    for thread in touched {
+        let remaining: i64 = tx.query_row(
+            "SELECT COUNT(*) FROM messages WHERE thread_id = ?1",
+            [thread],
+            |r| r.get(0),
+        )?;
+        if remaining == 0 {
+            tx.execute("DELETE FROM threads WHERE id = ?1", [thread])?;
+        } else {
+            refresh_thread(&tx, account, thread)?;
+        }
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// Removes a thread Gmail says no longer exists.
+pub fn delete_thread(conn: &Connection, account: AccountId, gmail_thread_id: &str) -> Result<()> {
+    conn.execute(
+        "DELETE FROM threads WHERE account_id = ?1 AND gmail_thread_id = ?2",
+        params![account, gmail_thread_id],
+    )?;
+    Ok(())
+}
+
+/// Removes every cached thread of an account (before a full resync).
+pub fn clear_account_mail(conn: &Connection, account: AccountId) -> Result<()> {
+    conn.execute("DELETE FROM threads WHERE account_id = ?1", [account])?;
+    Ok(())
+}
+
+pub fn thread_ids_for_account(conn: &Connection, account: AccountId) -> Result<HashSet<String>> {
+    let mut stmt = conn.prepare("SELECT gmail_thread_id FROM threads WHERE account_id = ?1")?;
+    let rows = stmt.query_map([account], |r| r.get::<_, String>(0))?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+/// The Gmail ID pair for a local message, used when talking to the API.
+pub fn message_gmail_ref(conn: &Connection, message: MessageId) -> Result<(AccountId, String)> {
+    conn.query_row(
+        "SELECT account_id, gmail_message_id FROM messages WHERE id = ?1",
+        [message],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )
+    .optional()?
+    .ok_or_else(|| CoreError::NotFound(format!("message {}", message.0)))
+}
+
+// ---- Bodies ----
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredBody {
+    pub html: Option<String>,
+    pub text: Option<String>,
+}
+
+pub fn get_body(conn: &Connection, message: MessageId) -> Result<Option<StoredBody>> {
+    Ok(conn
+        .query_row(
+            "SELECT html, text FROM message_bodies WHERE message_id = ?1",
+            [message],
+            |r| {
+                Ok(StoredBody {
+                    html: r.get(0)?,
+                    text: r.get(1)?,
+                })
+            },
+        )
+        .optional()?)
+}
+
+pub fn set_body(conn: &Connection, message: MessageId, body: &StoredBody) -> Result<()> {
+    let (account, _) = message_gmail_ref(conn, message)?;
+    conn.execute(
+        "INSERT INTO message_bodies (message_id, account_id, html, text, fetched_at) VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT (message_id) DO UPDATE SET html = excluded.html, text = excluded.text, fetched_at = excluded.fetched_at",
+        params![message, account, body.html, body.text, now_millis()],
+    )?;
+    conn.execute(
+        "UPDATE messages_fts SET body = ?2 WHERE rowid = ?1",
+        params![message, body.text.as_deref().unwrap_or("")],
+    )?;
+    Ok(())
+}
+
+/// Messages without a cached body, newest first (for prefetching).
+pub fn messages_missing_body(
+    conn: &Connection,
+    account: AccountId,
+    limit: u32,
+) -> Result<Vec<MessageId>> {
+    let mut stmt = conn.prepare(
+        "SELECT m.id FROM messages m LEFT JOIN message_bodies b ON b.message_id = m.id
+         WHERE m.account_id = ?1 AND b.message_id IS NULL
+         ORDER BY m.internal_date DESC LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(params![account, limit], |r| r.get(0))?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+// ---- Sync state ----
+
+pub fn history_id(conn: &Connection, account: AccountId) -> Result<Option<u64>> {
+    Ok(conn
+        .query_row(
+            "SELECT history_id FROM sync_state WHERE account_id = ?1",
+            [account],
+            |r| r.get::<_, Option<i64>>(0),
+        )
+        .optional()?
+        .flatten()
+        .map(|h| h as u64))
+}
+
+pub fn set_history_id(
+    conn: &Connection,
+    account: AccountId,
+    history_id: Option<u64>,
+    full_sync: bool,
+) -> Result<()> {
+    let now = now_millis();
+    conn.execute(
+        "UPDATE sync_state SET history_id = ?2, last_sync_at = ?3,
+           last_full_sync_at = CASE WHEN ?4 THEN ?3 ELSE last_full_sync_at END
+         WHERE account_id = ?1",
+        params![account, history_id.map(|h| h as i64), now, full_sync],
+    )?;
+    Ok(())
+}
+
+pub fn set_sync_status(
+    conn: &Connection,
+    account: AccountId,
+    status: SyncStatus,
+    error: Option<(&str, &str)>,
+) -> Result<()> {
+    let failed = matches!(
+        status,
+        SyncStatus::Backoff | SyncStatus::Error | SyncStatus::AuthError
+    );
+    conn.execute(
+        "UPDATE sync_state SET status = ?2, error_kind = ?3, error_message = ?4,
+           consecutive_failures = CASE WHEN ?5 THEN consecutive_failures + 1
+                                       WHEN ?2 = 'idle' THEN 0 ELSE consecutive_failures END
+         WHERE account_id = ?1",
+        params![
+            account,
+            status.as_str(),
+            error.map(|e| e.0),
+            error.map(|e| e.1),
+            failed
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn sync_states(conn: &Connection) -> Result<Vec<AccountSyncState>> {
+    let mut stmt = conn.prepare(
+        "SELECT account_id, status, error_kind, error_message, last_sync_at FROM sync_state ORDER BY account_id",
+    )?;
+    let rows = stmt.query_map([], |r| {
+        Ok(AccountSyncState {
+            account_id: r.get(0)?,
+            status: SyncStatus::parse(&r.get::<_, String>(1)?),
+            error_kind: r.get(2)?,
+            error_message: r.get(3)?,
+            last_sync_at: r.get(4)?,
+        })
+    })?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+// ---- Sender image preferences (global by design) ----
+
+pub fn sender_allows_images(conn: &Connection, sender_email: &str) -> Result<bool> {
+    Ok(conn
+        .query_row(
+            "SELECT allow_images FROM sender_image_prefs WHERE sender_email = ?1",
+            [sender_email],
+            |r| r.get::<_, bool>(0),
+        )
+        .optional()?
+        .unwrap_or(false))
+}
+
+pub fn set_sender_allows_images(conn: &Connection, sender_email: &str, allow: bool) -> Result<()> {
+    conn.execute(
+        "INSERT INTO sender_image_prefs (sender_email, allow_images, updated_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT (sender_email) DO UPDATE SET allow_images = excluded.allow_images, updated_at = excluded.updated_at",
+        params![sender_email, allow, now_millis()],
+    )?;
+    Ok(())
+}

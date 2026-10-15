@@ -1,0 +1,159 @@
+use rusqlite::{params, Connection, OptionalExtension, Row};
+
+use super::now_millis;
+use crate::error::{CoreError, Result};
+use crate::model::{Account, AccountId};
+
+/// Calm, distinguishable account colors, assigned in order.
+pub const ACCOUNT_COLORS: [&str; 8] = [
+    "#5b8def", "#e0795b", "#4fb38a", "#b07ad9", "#d9a83f", "#4fb0c6", "#d9668f", "#8a9a5b",
+];
+
+pub struct NewAccount<'a> {
+    pub google_sub: &'a str,
+    pub email: &'a str,
+    pub display_name: Option<&'a str>,
+    pub avatar_url: Option<&'a str>,
+    pub oauth_client: &'a str,
+}
+
+const COLUMNS: &str = "id, email, display_name, avatar_url, color, oauth_client";
+
+fn from_row(row: &Row<'_>) -> rusqlite::Result<Account> {
+    Ok(Account {
+        id: row.get(0)?,
+        email: row.get(1)?,
+        display_name: row.get(2)?,
+        avatar_url: row.get(3)?,
+        color: row.get(4)?,
+        oauth_client: row.get(5)?,
+    })
+}
+
+/// Adds an account, or refreshes its profile if this Google identity is
+/// already connected (signing in again must not create a duplicate).
+pub fn upsert(conn: &Connection, new: &NewAccount<'_>) -> Result<Account> {
+    let existing: Option<AccountId> = conn
+        .query_row(
+            "SELECT id FROM accounts WHERE google_sub = ?1",
+            [new.google_sub],
+            |r| r.get(0),
+        )
+        .optional()?;
+    let id = match existing {
+        Some(id) => {
+            conn.execute(
+                "UPDATE accounts SET email = ?2, display_name = ?3, avatar_url = ?4, oauth_client = ?5 WHERE id = ?1",
+                params![id, new.email, new.display_name, new.avatar_url, new.oauth_client],
+            )?;
+            id
+        }
+        None => {
+            let color = next_color(conn)?;
+            let sort_order: i64 = conn.query_row(
+                "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM accounts",
+                [],
+                |r| r.get(0),
+            )?;
+            conn.execute(
+                "INSERT INTO accounts (google_sub, email, display_name, avatar_url, color, oauth_client, sort_order, created_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![
+                    new.google_sub,
+                    new.email,
+                    new.display_name,
+                    new.avatar_url,
+                    color,
+                    new.oauth_client,
+                    sort_order,
+                    now_millis()
+                ],
+            )?;
+            let id = AccountId(conn.last_insert_rowid());
+            conn.execute("INSERT INTO sync_state (account_id) VALUES (?1)", [id])?;
+            id
+        }
+    };
+    get(conn, id)
+}
+
+fn next_color(conn: &Connection) -> Result<String> {
+    let mut stmt = conn.prepare("SELECT color FROM accounts")?;
+    let used: Vec<String> = stmt
+        .query_map([], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    let color = ACCOUNT_COLORS
+        .iter()
+        .find(|c| !used.iter().any(|u| u == *c))
+        .unwrap_or(&ACCOUNT_COLORS[used.len() % ACCOUNT_COLORS.len()]);
+    Ok((*color).to_string())
+}
+
+pub fn get(conn: &Connection, id: AccountId) -> Result<Account> {
+    conn.query_row(
+        &format!("SELECT {COLUMNS} FROM accounts WHERE id = ?1"),
+        [id],
+        from_row,
+    )
+    .optional()?
+    .ok_or_else(|| CoreError::NotFound(format!("account {}", id.0)))
+}
+
+pub fn list(conn: &Connection) -> Result<Vec<Account>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {COLUMNS} FROM accounts ORDER BY sort_order, id"
+    ))?;
+    let rows = stmt.query_map([], from_row)?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+pub fn google_sub(conn: &Connection, id: AccountId) -> Result<String> {
+    conn.query_row("SELECT google_sub FROM accounts WHERE id = ?1", [id], |r| {
+        r.get(0)
+    })
+    .optional()?
+    .ok_or_else(|| CoreError::NotFound(format!("account {}", id.0)))
+}
+
+/// Removes an account and, through cascading foreign keys, all of its cached
+/// mail. The caller is responsible for deleting its keychain entry.
+pub fn remove(conn: &Connection, id: AccountId) -> Result<()> {
+    conn.execute("DELETE FROM accounts WHERE id = ?1", [id])?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::Db;
+
+    fn new<'a>(sub: &'a str, email: &'a str) -> NewAccount<'a> {
+        NewAccount {
+            google_sub: sub,
+            email,
+            display_name: None,
+            avatar_url: None,
+            oauth_client: "default",
+        }
+    }
+
+    #[test]
+    fn signing_in_twice_updates_instead_of_duplicating() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        let a = upsert(&conn, &new("sub-1", "old@example.com")).unwrap();
+        let b = upsert(&conn, &new("sub-1", "new@example.com")).unwrap();
+        assert_eq!(a.id, b.id);
+        assert_eq!(b.email, "new@example.com");
+        assert_eq!(list(&conn).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn accounts_get_distinct_colors() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        let a = upsert(&conn, &new("sub-1", "a@example.com")).unwrap();
+        let b = upsert(&conn, &new("sub-2", "b@example.com")).unwrap();
+        assert_ne!(a.color, b.color);
+    }
+}

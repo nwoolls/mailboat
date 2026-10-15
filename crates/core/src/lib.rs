@@ -2,3 +2,9 @@
 //!
 //! The Tauri crate (`src-tauri`) is a thin layer over this one: it registers
 //! commands, forwards events to the window and owns OS integration.
+
+pub mod db;
+pub mod error;
+pub mod model;
+
+pub use error::{CoreError, Result};

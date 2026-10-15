@@ -1,0 +1,155 @@
+//! SQLite schema. Every Gmail-derived table carries `account_id` and a
+//! `UNIQUE(account_id, gmail_*_id)` pair, because Gmail IDs are only unique
+//! within one mailbox. Child tables reference parents through composite
+//! `(account_id, id)` foreign keys, so a row can never point at another
+//! account's thread or label.
+
+pub const MIGRATION_V1: &str = r#"
+CREATE TABLE accounts (
+  id INTEGER PRIMARY KEY,
+  google_sub TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL,
+  display_name TEXT,
+  avatar_url TEXT,
+  color TEXT NOT NULL,
+  oauth_client TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE labels (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  gmail_label_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('system', 'user')),
+  color_bg TEXT,
+  color_fg TEXT,
+  UNIQUE (account_id, gmail_label_id),
+  UNIQUE (account_id, id)
+);
+
+CREATE TABLE threads (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  gmail_thread_id TEXT NOT NULL,
+  subject TEXT NOT NULL DEFAULT '',
+  snippet TEXT NOT NULL DEFAULT '',
+  senders_json TEXT NOT NULL DEFAULT '[]',
+  last_message_at INTEGER NOT NULL DEFAULT 0,
+  message_count INTEGER NOT NULL DEFAULT 0,
+  unread_count INTEGER NOT NULL DEFAULT 0,
+  has_attachments INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (account_id, gmail_thread_id),
+  UNIQUE (account_id, id)
+);
+CREATE INDEX threads_by_date ON threads (last_message_at DESC, id DESC);
+CREATE INDEX threads_by_account_date ON threads (account_id, last_message_at DESC, id DESC);
+
+CREATE TABLE messages (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  thread_id INTEGER NOT NULL,
+  gmail_message_id TEXT NOT NULL,
+  internal_date INTEGER NOT NULL,
+  subject TEXT NOT NULL DEFAULT '',
+  snippet TEXT NOT NULL DEFAULT '',
+  from_name TEXT,
+  from_email TEXT NOT NULL DEFAULT '',
+  to_json TEXT NOT NULL DEFAULT '[]',
+  cc_json TEXT NOT NULL DEFAULT '[]',
+  rfc822_message_id TEXT,
+  in_reply_to TEXT,
+  references_header TEXT,
+  has_attachments INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (account_id, gmail_message_id),
+  UNIQUE (account_id, id),
+  FOREIGN KEY (account_id, thread_id) REFERENCES threads (account_id, id) ON DELETE CASCADE
+);
+CREATE INDEX messages_by_thread ON messages (thread_id, internal_date);
+
+CREATE TABLE message_labels (
+  account_id INTEGER NOT NULL,
+  message_id INTEGER NOT NULL,
+  label_id INTEGER NOT NULL,
+  PRIMARY KEY (message_id, label_id),
+  FOREIGN KEY (account_id, message_id) REFERENCES messages (account_id, id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id, label_id) REFERENCES labels (account_id, id) ON DELETE CASCADE
+);
+CREATE INDEX message_labels_by_label ON message_labels (label_id);
+
+-- Derived: the union of a thread's message labels. Rebuilt whenever a thread
+-- changes, so list views never have to scan messages.
+CREATE TABLE thread_labels (
+  account_id INTEGER NOT NULL,
+  thread_id INTEGER NOT NULL,
+  label_id INTEGER NOT NULL,
+  PRIMARY KEY (thread_id, label_id),
+  FOREIGN KEY (account_id, thread_id) REFERENCES threads (account_id, id) ON DELETE CASCADE,
+  FOREIGN KEY (account_id, label_id) REFERENCES labels (account_id, id) ON DELETE CASCADE
+);
+CREATE INDEX thread_labels_by_label ON thread_labels (label_id, thread_id);
+
+CREATE TABLE message_bodies (
+  message_id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL,
+  html TEXT,
+  text TEXT,
+  fetched_at INTEGER NOT NULL,
+  FOREIGN KEY (account_id, message_id) REFERENCES messages (account_id, id) ON DELETE CASCADE
+);
+
+-- Gmail attachment IDs are not stable between fetches, so attachments are
+-- keyed by their MIME part ID within the message.
+CREATE TABLE attachments (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL,
+  message_id INTEGER NOT NULL,
+  part_id TEXT NOT NULL,
+  gmail_attachment_id TEXT,
+  filename TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size INTEGER NOT NULL DEFAULT 0,
+  content_id TEXT,
+  cached_path TEXT,
+  UNIQUE (account_id, message_id, part_id),
+  FOREIGN KEY (account_id, message_id) REFERENCES messages (account_id, id) ON DELETE CASCADE
+);
+
+CREATE TABLE drafts (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  gmail_draft_id TEXT NOT NULL,
+  message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
+  updated_at INTEGER NOT NULL,
+  UNIQUE (account_id, gmail_draft_id)
+);
+
+CREATE TABLE sync_state (
+  account_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  history_id INTEGER,
+  status TEXT NOT NULL DEFAULT 'idle',
+  error_kind TEXT,
+  error_message TEXT,
+  consecutive_failures INTEGER NOT NULL DEFAULT 0,
+  backoff_until INTEGER,
+  last_full_sync_at INTEGER,
+  last_sync_at INTEGER
+);
+
+-- Describes a sender, not mailbox data, so it is deliberately global.
+CREATE TABLE sender_image_prefs (
+  sender_email TEXT PRIMARY KEY COLLATE NOCASE,
+  allow_images INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+-- Full-text index over all accounts. rowid = messages.id.
+CREATE VIRTUAL TABLE messages_fts USING fts5 (
+  subject, sender, recipients, snippet, body,
+  tokenize = 'unicode61 remove_diacritics 2'
+);
+CREATE TRIGGER messages_fts_delete AFTER DELETE ON messages BEGIN
+  DELETE FROM messages_fts WHERE rowid = old.id;
+END;
+"#;
