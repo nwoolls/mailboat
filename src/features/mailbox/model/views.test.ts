@@ -79,8 +79,20 @@ describe("selections", () => {
 
   it("titles", () => {
     expect(selectionTitle(ALL_INBOXES, accounts, [])).toBe("All Inboxes");
-    expect(selectionTitle(systemSelection("sent", 2), accounts, [])).toBe("Sent — me@example.com");
+    expect(selectionTitle(systemSelection("sent", 2), accounts, [])).toBe("Sent · me@example.com");
     expect(selectionTitle(labelSelection(work(10, 1)), accounts, [work(10, 1)])).toBe("Work");
+  });
+
+  it("names the account only when there's more than one", () => {
+    expect(selectionTitle(systemSelection("inbox", 1), accounts.slice(0, 1), [])).toBe("Inbox");
+  });
+
+  it("titles a search by what was searched", () => {
+    const search = {
+      accounts: { kind: "all" as const },
+      view: { kind: "search" as const, text: "newsy" },
+    };
+    expect(selectionTitle(search, accounts, [])).toBe("Results for “newsy”");
   });
 
   it("All Mail and Archive are views like any other, per account or unified", () => {
@@ -89,7 +101,7 @@ describe("selections", () => {
       accounts: { kind: "only", ids: [2] },
       view: { kind: "archive" },
     });
-    expect(selectionTitle(archive, accounts, [])).toBe("Archive — me@example.com");
+    expect(selectionTitle(archive, accounts, [])).toBe("Archive · me@example.com");
     expect(selectionTitle(viewSelection({ kind: "allMail" }), accounts, [])).toBe("All Mail");
     expect(sameSelection(archive, viewSelection({ kind: "allMail" }, 2))).toBe(false);
   });

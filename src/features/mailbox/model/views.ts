@@ -126,17 +126,21 @@ export function spansAccounts(s: Selection, accountCount: number): boolean {
   return s.accounts.ids.length > 1;
 }
 
+/**
+ * The list's heading. The account is only named when there's more than one
+ * to tell apart; with a single account the sidebar already says whose it is.
+ */
 export function selectionTitle(s: Selection, accounts: Account[], labels: Label[]): string {
   const v = s.view;
-  if (v.kind === "search") return viewTitle(v);
+  if (v.kind === "search") return `Results for “${v.text}”`;
   if (v.kind === "userLabel") return labels.find((l) => l.id === v.labelId)?.name ?? "Label";
   const base = viewTitle(v);
   if (s.accounts.kind === "all")
     return v.kind === "system" && v.label === "inbox" ? "All Inboxes" : base;
   const [only, ...others] = s.accounts.ids;
-  if (only !== undefined && others.length === 0) {
+  if (only !== undefined && others.length === 0 && accounts.length > 1) {
     const account = accounts.find((a) => a.id === only);
-    return account ? `${base} — ${account.email}` : base;
+    return account ? `${base} · ${account.email}` : base;
   }
   return base;
 }
