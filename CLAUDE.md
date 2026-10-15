@@ -9,6 +9,40 @@ Agents write all the code, so:
 - Make work checkable: tests, type checks and the linter must pass, and you
   report their real output. Never claim something works without running it.
 - Explain decisions in plain language. Never leave the owner to debug by hand.
+
+## Docs to keep current
+
+- `docs/ROADMAP.md`: every milestone item, ticked when done. Update it in the
+  same commit as the work. If something moves between milestones, move it
+  there with a note; nothing may silently drop off.
+- `docs/ARCHITECTURE.md`: how the app works, plus a dated decisions table.
+  Add a row when you make a choice a future agent might second-guess
+  (a library, a limit, a security trade-off).
+- `README.md`: setup and run instructions for people.
+
+## Conventions
+
+Rust:
+- Errors are `mailboat_core::CoreError`; commands convert them to `AppError`
+  (`kind` + `message`). No `unwrap()` outside tests except on mutex locks.
+- Never hold the database lock (`db.conn()`) across an `.await`, and never
+  take it inside a `for`, `match` or `if let` header: bind the result to a
+  variable first. A temporary in a `for` header deadlocked app startup.
+- Logic and its tests live in `crates/core`. Unit tests in `#[cfg(test)]`
+  modules; Gmail behavior tests in `crates/core/tests/` against fixtures.
+- Diagnostics go to the sync log. Never log email content or tokens.
+- Prefer a maintained crate for security-sensitive or standard protocols;
+  record the choice (or why not) in the ARCHITECTURE decisions table.
+
+TypeScript:
+- Feature code in `src/features/<name>/model` (pure logic, Vitest tests next
+  to it) and `src/features/<name>/ui` (thin components).
+- Data comes through TanStack Query hooks in `src/shared/lib/queries.ts`;
+  call commands as `unwrap(commands.x(...))`.
+- Derive state during render instead of setting state in effects (the
+  linter enforces this).
+
+Commits: one topic each, imperative subject, a body that explains why.
 - Make small, focused commits with clear messages.
 
 ## Commands
