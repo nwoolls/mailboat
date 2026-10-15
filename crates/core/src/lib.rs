@@ -7,6 +7,7 @@ pub mod auth;
 pub mod db;
 pub mod error;
 pub mod gmail;
+pub mod mail;
 pub mod model;
 pub mod sync;
 
