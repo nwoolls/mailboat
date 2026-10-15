@@ -112,6 +112,15 @@ Refresh tokens live only in the OS keychain, keyed by Google's stable account
 ID. Access tokens live only in memory. Dev builds are signed with the owner's
 Apple Development certificate so keychain approval survives rebuilds.
 
+## Actions
+
+`mailboat_core::actions` (read/unread so far; Milestone 3 adds the rest). Each
+action groups the chosen threads by owning account, applies the change to
+the local cache first, then calls Gmail with that account's client on the
+interactive quota lane. Threads Gmail refuses are restored from a snapshot,
+and the error is returned. The UI also updates its cached lists immediately
+and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
+
 ## Showing email safely
 
 1. Rust sanitizes the HTML (`mail/sanitize.rs`, using `ammonia`): no

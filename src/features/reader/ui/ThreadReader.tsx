@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   MessageId,
   MessageMeta,
@@ -9,6 +9,7 @@ import { useThread } from "../../../shared/lib/queries";
 import { AccountDot } from "../../../shared/ui/AccountDot";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { displayName, formatFullDate } from "../../mailbox/model/format";
+import { useSetRead } from "../../mailbox/ui/useSetRead";
 import { MessageFrame } from "./MessageFrame";
 
 /** Messages expanded when a thread opens: unread ones plus the newest. */
@@ -42,6 +43,14 @@ export function ThreadReader({
 
 function ThreadBody({ detail: data, accounts }: { detail: ThreadDetail; accounts: AccountIndex }) {
   const [expanded, setExpanded] = useState<Set<MessageId>>(() => initiallyExpanded(data.messages));
+  // Opening a conversation marks it read, once (pressing `u` afterwards
+  // leaves it unread). Remembered at open so later updates don't re-trigger.
+  const [unreadWhenOpened] = useState(data.thread.unread);
+  const threadId = data.thread.id;
+  const { mutate: setRead } = useSetRead();
+  useEffect(() => {
+    if (unreadWhenOpened) setRead({ ids: [threadId], read: true });
+  }, [threadId, unreadWhenOpened, setRead]);
   const account = accounts.get(data.thread.accountId);
   const selfEmails = account ? [account.email] : [];
 

@@ -28,11 +28,12 @@ something moves between milestones, move it here and say why.
 - [x] Opening a message skips ahead of background sync in the quota queue
 - [x] Cancel button while waiting for browser sign-in (closing the tab left
       the app waiting)
-- [ ] Mark a message read when opened; `u` toggles read/unread
+- [x] Mark a message read when opened; `u` toggles read/unread
       *(pulled forward from M3: first action, routed to the owning account)*
 
 ### Not yet verified in the real app
 
+- [ ] Read/unread round trip against real Gmail (change shows up in Gmail on the web)
 - [ ] Clicking a link in an email opens the default browser
 - [ ] Keychain prompt no longer returns after rebuilds (signed dev builds)
 

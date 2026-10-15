@@ -4,6 +4,8 @@ import { indexAccounts } from "../features/accounts/model/accounts";
 import { Sidebar } from "../features/accounts/ui/Sidebar";
 import { Welcome } from "../features/accounts/ui/Welcome";
 import { moveSelection, navKeyFor } from "../features/mailbox/model/listNavigation";
+import { readToggle } from "../features/mailbox/model/readState";
+import { useSetRead } from "../features/mailbox/ui/useSetRead";
 import {
   ALL_INBOXES,
   type Selection,
@@ -55,6 +57,7 @@ export function Shell() {
     [threadsQuery.data],
   );
   const [selectedId, setSelectedId] = useState<ThreadId | null>(null);
+  const { mutate: setRead } = useSetRead();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   const loadMore = useCallback(() => void fetchNextPage(), [fetchNextPage]);
 
@@ -69,6 +72,14 @@ export function Shell() {
         (e.target as HTMLElement).blur();
         return;
       }
+      if (e.key === "u" && !isEditable(e.target) && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const toggle = readToggle(threads, selectedId);
+        if (toggle) {
+          e.preventDefault();
+          setRead({ ids: [toggle.id], read: toggle.read });
+        }
+        return;
+      }
       const nav = navKeyFor(e, isEditable(e.target));
       if (!nav) return;
       e.preventDefault();
@@ -76,7 +87,7 @@ export function Shell() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [threads]);
+  }, [threads, selectedId, setRead]);
 
   if (accountsQuery.isPending) return null;
   if (accountList.length === 0) return <Welcome setup={setup.data} />;

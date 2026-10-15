@@ -544,3 +544,94 @@ pub fn set_sender_allows_images(conn: &Connection, sender_email: &str, allow: bo
     )?;
     Ok(())
 }
+
+// ---- Local label changes for actions (applied optimistically) ----
+
+/// The owning account and Gmail ID of a local thread.
+pub fn thread_gmail_ref(conn: &Connection, thread: ThreadId) -> Result<(AccountId, String)> {
+    conn.query_row(
+        "SELECT account_id, gmail_thread_id FROM threads WHERE id = ?1",
+        [thread],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )
+    .optional()?
+    .ok_or_else(|| CoreError::NotFound(format!("thread {}", thread.0)))
+}
+
+/// Which of a thread's messages currently carry a Gmail label.
+#[derive(Debug, Clone, PartialEq)]
+pub struct LabelSnapshot {
+    pub thread: ThreadId,
+    pub gmail_label_id: String,
+    pub messages_with_label: Vec<MessageId>,
+}
+
+pub fn label_snapshot(
+    conn: &Connection,
+    thread: ThreadId,
+    gmail_label_id: &str,
+) -> Result<LabelSnapshot> {
+    let mut stmt = conn.prepare(
+        "SELECT m.id FROM messages m
+         JOIN message_labels ml ON ml.message_id = m.id
+         JOIN labels l ON l.id = ml.label_id
+         WHERE m.thread_id = ?1 AND l.gmail_label_id = ?2",
+    )?;
+    let messages_with_label = stmt
+        .query_map(params![thread, gmail_label_id], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    Ok(LabelSnapshot {
+        thread,
+        gmail_label_id: gmail_label_id.to_string(),
+        messages_with_label,
+    })
+}
+
+/// Adds or removes a Gmail label on every message of a thread, locally.
+pub fn set_thread_label(
+    conn: &mut Connection,
+    thread: ThreadId,
+    gmail_label_id: &str,
+    present: bool,
+) -> Result<()> {
+    let (account, _) = thread_gmail_ref(conn, thread)?;
+    let tx = conn.transaction()?;
+    let label = label_id(&tx, account, gmail_label_id)?;
+    if present {
+        tx.execute(
+            "INSERT OR IGNORE INTO message_labels (account_id, message_id, label_id)
+             SELECT ?1, id, ?2 FROM messages WHERE thread_id = ?3",
+            params![account, label, thread],
+        )?;
+    } else {
+        tx.execute(
+            "DELETE FROM message_labels WHERE label_id = ?1
+             AND message_id IN (SELECT id FROM messages WHERE thread_id = ?2)",
+            params![label, thread],
+        )?;
+    }
+    refresh_thread(&tx, account, thread)?;
+    tx.commit()?;
+    Ok(())
+}
+
+/// Puts a label back exactly as a snapshot recorded it (undo after a failed action).
+pub fn restore_label_snapshot(conn: &mut Connection, snapshot: &LabelSnapshot) -> Result<()> {
+    let (account, _) = thread_gmail_ref(conn, snapshot.thread)?;
+    let tx = conn.transaction()?;
+    let label = label_id(&tx, account, &snapshot.gmail_label_id)?;
+    tx.execute(
+        "DELETE FROM message_labels WHERE label_id = ?1
+         AND message_id IN (SELECT id FROM messages WHERE thread_id = ?2)",
+        params![label, snapshot.thread],
+    )?;
+    for message in &snapshot.messages_with_label {
+        tx.execute(
+            "INSERT OR IGNORE INTO message_labels (account_id, message_id, label_id) VALUES (?1, ?2, ?3)",
+            params![account, message, label],
+        )?;
+    }
+    refresh_thread(&tx, account, snapshot.thread)?;
+    tx.commit()?;
+    Ok(())
+}

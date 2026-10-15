@@ -29,6 +29,12 @@ export const commands = {
 	 *  owning account's credentials if it isn't cached yet.
 	 */
 	messageOpen: (messageId: MessageId) => typedError<OpenedMessage, AppError>(__TAURI_INVOKE("message_open", { messageId })),
+	/**
+	 *  Marks threads read or unread. Threads may span accounts; each is sent to
+	 *  its own account. The local cache changes immediately; anything Gmail
+	 *  refuses is put back, and the error is returned.
+	 */
+	threadsSetRead: (threadIds: ThreadId[], read: boolean) => typedError<null, AppError>(__TAURI_INVOKE("threads_set_read", { threadIds, read })),
 	/**  Remembers to load remote images from this sender (in every account). */
 	senderAllowImages: (senderEmail: string, allow: boolean) => typedError<null, AppError>(__TAURI_INVOKE("sender_allow_images", { senderEmail, allow })),
 	/**  Wakes sync workers now. `None` means every account. */

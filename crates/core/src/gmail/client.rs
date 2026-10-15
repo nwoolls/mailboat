@@ -227,6 +227,15 @@ impl GmailClient {
         .await
     }
 
+    /// `threads.modify`: add/remove labels on every message of a thread.
+    pub async fn modify_thread(&self, id: &str, add: &[&str], remove: &[&str]) -> Result<()> {
+        self.spend(cost::THREADS_MODIFY).await;
+        let url = self.url(&format!("threads/{id}/modify"));
+        let body = serde_json::json!({ "addLabelIds": add, "removeLabelIds": remove });
+        self.send(|| self.http.post(&url).json(&body)).await?;
+        Ok(())
+    }
+
     /// `history.list`. A 404 means the start ID is too old.
     pub async fn history(
         &self,

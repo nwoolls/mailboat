@@ -193,6 +193,26 @@ pub async fn message_open(
     })
 }
 
+/// Marks threads read or unread. Threads may span accounts; each is sent to
+/// its own account. The local cache changes immediately; anything Gmail
+/// refuses is put back, and the error is returned.
+#[tauri::command]
+#[specta::specta]
+pub async fn threads_set_read(
+    state: State<'_, AppState>,
+    thread_ids: Vec<ThreadId>,
+    read: bool,
+) -> CmdResult<()> {
+    mailboat_core::actions::set_read(
+        &state.db,
+        |account| state.gmail_for(account),
+        &thread_ids,
+        read,
+    )
+    .await?;
+    Ok(())
+}
+
 /// Remembers to load remote images from this sender (in every account).
 #[tauri::command]
 #[specta::specta]
