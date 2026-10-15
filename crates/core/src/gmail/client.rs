@@ -83,6 +83,8 @@ pub struct GmailClient {
     /// draw from one quota budget.
     pacer: QuotaPacer,
     log: Option<Logger>,
+    /// Requests the user is waiting on skip ahead of background sync.
+    interactive: bool,
 }
 
 impl GmailClient {
@@ -102,12 +104,22 @@ impl GmailClient {
             retry: RetryPolicy::default(),
             pacer: QuotaPacer::default(),
             log: None,
+            interactive: false,
         }
     }
 
     pub fn with_pacer(mut self, pacer: QuotaPacer) -> Self {
         self.pacer = pacer;
         self
+    }
+
+    /// The same account and quota budget, but for things the user is
+    /// waiting on (opening a message): requests go ahead of background sync.
+    pub fn interactive(&self) -> Self {
+        Self {
+            interactive: true,
+            ..self.clone()
+        }
     }
 
     pub fn with_logger(mut self, log: Logger) -> Self {
@@ -141,7 +153,12 @@ impl GmailClient {
 
     /// Spends quota before a call, logging usage once a minute.
     async fn spend(&self, units: u32) {
-        if let Some(report) = self.pacer.acquire(units).await {
+        let report = if self.interactive {
+            self.pacer.acquire_now(units).await
+        } else {
+            self.pacer.acquire(units).await
+        };
+        if let Some(report) = report {
             self.log(&format!(
                 "quota: {} units used in the last minute (rate now {:.0} units/s)",
                 report.units, report.rate

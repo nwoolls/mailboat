@@ -85,7 +85,40 @@ impl QuotaPacer {
         Self::new(f64::INFINITY, f64::INFINITY)
     }
 
-    /// Waits until `units` of quota are available, then spends them.
+    /// Adds the tokens earned since the last call (nothing while paused).
+    fn refill(&self, b: &mut Bucket, now: Instant) {
+        if let Some(until) = b.paused_until {
+            if now < until {
+                return;
+            }
+            // Time spent paused doesn't earn tokens or speed; time after it does.
+            b.paused_until = None;
+            b.last = b.last.max(until);
+        }
+        let elapsed = now.saturating_duration_since(b.last).as_secs_f64();
+        b.rate = (b.rate + elapsed * RECOVERY_PER_SEC).min(self.max_rate);
+        b.tokens = (b.tokens + elapsed * b.rate).min(self.capacity);
+        b.last = now;
+    }
+
+    fn spend(b: &mut Bucket, units: f64, now: Instant) -> Option<MinuteReport> {
+        b.tokens -= units;
+        b.minute_spent += units;
+        if now.duration_since(b.minute_start) < Duration::from_secs(60) {
+            return None;
+        }
+        let report = MinuteReport {
+            units: b.minute_spent as u32,
+            rate: b.rate,
+        };
+        b.minute_start = now;
+        b.minute_spent = 0.0;
+        Some(report)
+    }
+
+    /// Background work: waits until `units` of quota are available, then
+    /// spends them. The lock is not held while waiting, so `acquire_now`
+    /// callers are never stuck behind a waiting sync.
     /// Returns a usage report once per minute.
     pub async fn acquire(&self, units: u32) -> Option<MinuteReport> {
         if self.max_rate.is_infinite() {
@@ -93,40 +126,38 @@ impl QuotaPacer {
         }
         // A single request bigger than the bucket still goes through once full.
         let units = (units as f64).min(self.capacity);
-        let mut bucket = self.bucket.lock().await;
-        if let Some(until) = bucket.paused_until.take() {
-            if until > Instant::now() {
-                tokio::time::sleep_until(until).await;
-            }
-            // Time spent paused doesn't earn tokens or speed; time after it does.
-            bucket.last = bucket.last.max(until);
-        }
         loop {
-            let now = Instant::now();
-            let elapsed = now.duration_since(bucket.last).as_secs_f64();
-            bucket.rate = (bucket.rate + elapsed * RECOVERY_PER_SEC).min(self.max_rate);
-            bucket.tokens = (bucket.tokens + elapsed * bucket.rate).min(self.capacity);
-            bucket.last = now;
-            // Small tolerance so float rounding can't leave us a hair short.
-            if bucket.tokens + 1e-6 >= units {
-                bucket.tokens -= units;
-                bucket.minute_spent += units;
-                if now.duration_since(bucket.minute_start) >= Duration::from_secs(60) {
-                    let report = MinuteReport {
-                        units: bucket.minute_spent as u32,
-                        rate: bucket.rate,
-                    };
-                    bucket.minute_start = now;
-                    bucket.minute_spent = 0.0;
-                    return Some(report);
+            let wait = {
+                let mut b = self.bucket.lock().await;
+                let now = Instant::now();
+                match b.paused_until.filter(|until| *until > now) {
+                    Some(until) => until - now,
+                    None => {
+                        self.refill(&mut b, now);
+                        // Small tolerance so float rounding can't leave us a hair short.
+                        if b.tokens + 1e-6 >= units {
+                            return Self::spend(&mut b, units, now);
+                        }
+                        // Timers have 1ms resolution; never ask for less, or we'd spin.
+                        Duration::from_secs_f64(((units - b.tokens) / b.rate).max(0.001))
+                    }
                 }
-                return None;
-            }
-            // Timers have 1ms resolution; never ask for less, or we'd spin.
-            let wait = ((units - bucket.tokens) / bucket.rate).max(0.001);
-            // Holding the lock while sleeping keeps callers in FIFO order.
-            tokio::time::sleep(Duration::from_secs_f64(wait)).await;
+            };
+            tokio::time::sleep(wait).await;
         }
+    }
+
+    /// Something the user is waiting for (opening a message): go now, even
+    /// during a pause. The cost is still recorded (the balance may go
+    /// negative), so background work slows down to make up for it.
+    pub async fn acquire_now(&self, units: u32) -> Option<MinuteReport> {
+        if self.max_rate.is_infinite() {
+            return None;
+        }
+        let mut b = self.bucket.lock().await;
+        let now = Instant::now();
+        self.refill(&mut b, now);
+        Self::spend(&mut b, units as f64, now)
     }
 
     /// Google reported a rate limit: send nothing for `pause`, then resume
@@ -233,5 +264,28 @@ mod tests {
             reports.iter().all(|u| (6_000..=6_200).contains(u)),
             "{reports:?}"
         );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn interactive_requests_skip_the_queue_and_pauses() {
+        let pacer = QuotaPacer::new(10.0, 10.0);
+        pacer.throttle(Duration::from_secs(60)).await;
+        // A background request is waiting out the pause...
+        let background = {
+            let pacer = pacer.clone();
+            tokio::spawn(async move {
+                let start = Instant::now();
+                pacer.acquire(10).await;
+                start.elapsed()
+            })
+        };
+        tokio::task::yield_now().await;
+        // ...but opening a message goes immediately.
+        let start = Instant::now();
+        pacer.acquire_now(5).await;
+        assert_eq!(start.elapsed(), Duration::ZERO);
+        // Background pays for it: the 60s pause, then 15 units (its 10 plus
+        // the 5 owed) at the 10 units/s floor = 61.5s instead of 61s.
+        assert_eq!(background.await.unwrap().as_millis(), 61_500);
     }
 }

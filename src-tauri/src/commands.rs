@@ -150,7 +150,15 @@ pub async fn message_open(
     let cached = store::get_body(&state.db.conn(), message_id)?;
     let body = match cached {
         Some(body) => body,
-        None => fetch_body(&state.db, &state.gmail_for(account)?, message_id).await?,
+        // The user is waiting: skip ahead of any background sync.
+        None => {
+            fetch_body(
+                &state.db,
+                &state.gmail_for(account)?.interactive(),
+                message_id,
+            )
+            .await?
+        }
     };
     let sender_email: String = state
         .db
