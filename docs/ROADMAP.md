@@ -100,6 +100,8 @@ a darker glass body, rounded corners where they meet, resizable panes.
       retrying; a red dot plus one line only for errors you can act on.
       Hover the avatar for the status and last sync time. With the sidebar
       hidden, a problem shows as a dot on the sidebar toggle
+- [x] The account's Google profile picture replaces the initial (saved at
+      sign-in already; falls back to the initial if it can't load)
 
 ### Ideas for later in this spike (not started)
 

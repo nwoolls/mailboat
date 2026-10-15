@@ -26,12 +26,8 @@ export function AccountAvatar({
       role="img"
       aria-label={`${account.email}: ${syncHint(state)}`}
     >
-      <span
-        className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white"
-        style={{ background: account.color }}
-      >
-        {accountInitial(account)}
-      </span>
+      {/* Keyed by URL so a new picture gets a fresh try after a failure. */}
+      <Picture key={account.avatarUrl ?? ""} account={account} />
       {longSync && (
         <span className="sync-ring pointer-events-none absolute -inset-[3px] rounded-full border-[1.5px] border-content/10 border-t-accent" />
       )}
@@ -42,6 +38,35 @@ export function AccountAvatar({
           }`}
         />
       )}
+    </span>
+  );
+}
+
+/**
+ * The Google profile picture saved at sign-in, falling back to the
+ * account's initial on its color if there's none or it fails to load.
+ * No referrer is sent, which Google's image host can otherwise refuse.
+ */
+function Picture({ account }: { account: Account }) {
+  const [failed, setFailed] = useState(false);
+  if (account.avatarUrl && !failed) {
+    return (
+      <img
+        src={account.avatarUrl}
+        alt=""
+        referrerPolicy="no-referrer"
+        draggable={false}
+        onError={() => setFailed(true)}
+        className="h-4 w-4 rounded-full object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white"
+      style={{ background: account.color }}
+    >
+      {accountInitial(account)}
     </span>
   );
 }
