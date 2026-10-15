@@ -19,6 +19,8 @@ type Props = {
   onToggleRead: (() => void) | null;
   sidebarOpen: boolean;
   readerOpen: boolean;
+  /** The reader only shows with a conversation selected. */
+  readerAvailable: boolean;
   onToggleSidebar: () => void;
   onToggleReader: () => void;
 };
@@ -32,6 +34,7 @@ export function Toolbar({
   onToggleRead,
   sidebarOpen,
   readerOpen,
+  readerAvailable,
   onToggleSidebar,
   onToggleReader,
 }: Props) {
@@ -66,9 +69,16 @@ export function Toolbar({
       <span className="mx-1.5 h-4 w-px bg-stroke" />
       <ToolButton
         icon={ReaderToggleIcon}
-        label={readerOpen ? "Hide reader" : "Show reader"}
+        label={
+          !readerAvailable
+            ? "Reader opens with a conversation"
+            : readerOpen
+              ? "Hide reader"
+              : "Show reader"
+        }
         shortcut="⌃⌘R"
         onClick={onToggleReader}
+        disabled={!readerAvailable}
         pressed={readerOpen}
       />
     </header>

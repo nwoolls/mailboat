@@ -81,6 +81,8 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - [x] Show/hide toggles for the sidebar (toolbar, left; ⌃⌘S) and the
       reader (toolbar, right; ⌃⌘R). With both hidden only the list shows,
       full width. Not remembered between launches yet
+- [x] The reader only appears when a conversation is selected (no more
+      "No conversation selected" panel); Escape closes it
 
 ### Ideas for later in this spike (not started)
 

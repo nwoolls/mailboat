@@ -24,17 +24,10 @@ export function ThreadReader({
   threadId,
   accounts,
 }: {
-  threadId: ThreadId | null;
+  threadId: ThreadId;
   accounts: AccountIndex;
 }) {
   const thread = useThread(threadId);
-  if (threadId === null) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-content/50">
-        No conversation selected
-      </div>
-    );
-  }
   if (thread.error) return <div className="selectable p-8 text-danger">{thread.error.message}</div>;
   if (!thread.data) return <div className="flex-1" />;
   // Keyed by thread so expansion state starts fresh for each conversation.

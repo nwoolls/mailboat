@@ -104,6 +104,12 @@ export function Shell() {
         (e.target as HTMLElement).blur();
         return;
       }
+      // Escape closes the open conversation (and with it the reader).
+      if (e.key === "Escape" && selectedId !== null) {
+        e.preventDefault();
+        setSelectedId(null);
+        return;
+      }
       if (e.key === "u" && !isEditable(e.target) && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const toggle = readToggle(threads, selectedId);
         if (toggle) {
@@ -124,6 +130,8 @@ export function Shell() {
   if (accountsQuery.isPending) return null;
   if (accountList.length === 0) return <Welcome setup={setup.data} />;
 
+  // The reader only appears with a conversation to show.
+  const readerVisible = readerOpen && selectedId !== null;
   const readToggleTarget = readToggle(threads, selectedId);
   const toggleRead = readToggleTarget
     ? () => setRead({ ids: [readToggleTarget.id], read: readToggleTarget.read })
@@ -135,6 +143,7 @@ export function Shell() {
         onToggleRead={toggleRead}
         sidebarOpen={sidebarOpen}
         readerOpen={readerOpen}
+        readerAvailable={selectedId !== null}
         onToggleSidebar={toggleSidebar}
         onToggleReader={toggleReader}
       />
@@ -167,7 +176,7 @@ export function Shell() {
             className="panel flex min-w-0 flex-col overflow-hidden"
             style={{
               // With the reader hidden, the list takes all the room.
-              flex: readerOpen ? `0 1 ${listWidth}px` : "1 1 0",
+              flex: readerVisible ? `0 1 ${listWidth}px` : "1 1 0",
               minWidth: LIST_WIDTH.min,
             }}
           >
@@ -197,7 +206,7 @@ export function Shell() {
               loading={threadsQuery.isPending || isFetchingNextPage}
             />
           </section>
-          {readerOpen && (
+          {readerVisible && selectedId !== null && (
             <>
               <Splitter
                 label="Resize conversation list"
