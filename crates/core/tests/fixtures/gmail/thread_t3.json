@@ -1,0 +1,48 @@
+{
+  "id": "t3",
+  "historyId": "9005",
+  "messages": [
+    {
+      "id": "m4",
+      "threadId": "t3",
+      "labelIds": [
+        "INBOX",
+        "UNREAD"
+      ],
+      "snippet": "Brand new message",
+      "historyId": "9010",
+      "internalDate": "1760200000000",
+      "sizeEstimate": 4321,
+      "payload": {
+        "partId": "",
+        "mimeType": "multipart/alternative",
+        "filename": "",
+        "headers": [
+          {
+            "name": "From",
+            "value": "New Person <new@example.com>"
+          },
+          {
+            "name": "To",
+            "value": "me@gmail.com"
+          },
+          {
+            "name": "Subject",
+            "value": "Hello there"
+          },
+          {
+            "name": "Date",
+            "value": "Sat, 11 Oct 2025 16:26:40 +0000"
+          },
+          {
+            "name": "Message-ID",
+            "value": "<c1@example.com>"
+          }
+        ],
+        "body": {
+          "size": 0
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "id": "m3",
+  "threadId": "t2",
+  "labelIds": [
+    "INBOX",
+    "STARRED",
+    "IMPORTANT"
+  ],
+  "snippet": "Your invoice is attached",
+  "internalDate": "1760100000000",
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/mixed",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Billing <billing@vendor.com>"
+      },
+      {
+        "name": "To",
+        "value": "me@gmail.com"
+      },
+      {
+        "name": "Subject",
+        "value": "Invoice #42"
+      },
+      {
+        "name": "Date",
+        "value": "Fri, 10 Oct 2025 12:40:00 +0000"
+      },
+      {
+        "name": "Message-ID",
+        "value": "<b1@vendor.com>"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "multipart/alternative",
+        "filename": "",
+        "headers": [],
+        "body": {
+          "size": 0
+        },
+        "parts": [
+          {
+            "partId": "0.0",
+            "mimeType": "text/plain",
+            "filename": "",
+            "headers": [
+              {
+                "name": "Content-Type",
+                "value": "text/plain; charset=\"UTF-8\""
+              }
+            ],
+            "body": {
+              "size": 30,
+              "data": "SGkgdGhlcmUsClBheSBub3c6IGh0dHBzOi8vdmVuZG9yLmNvbS9wYXkK"
+            }
+          },
+          {
+            "partId": "0.1",
+            "mimeType": "text/html",
+            "filename": "",
+            "headers": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=\"UTF-8\""
+              }
+            ],
+            "body": {
+              "size": 281,
+              "data": "PGh0bWw-PGhlYWQ-PHN0eWxlPnB7Y29sb3I6IzMzM308L3N0eWxlPjwvaGVhZD48Ym9keT48cD5IaSA8Yj50aGVyZTwvYj4sPC9wPjxpbWcgc3JjPSJodHRwczovL2Nkbi52ZW5kb3IuY29tL2xvZ28ucG5nIiB3aWR0aD0iMTIwIj48aW1nIHNyYz0iaHR0cHM6Ly90cmFjay5leGFtcGxlLm5ldC9vcGVuLmdpZiIgd2lkdGg9IjEiIGhlaWdodD0iMSI-PGEgaHJlZj0iaHR0cHM6Ly92ZW5kb3IuY29tL3BheSI-UGF5IG5vdzwvYT48c2NyaXB0PmFsZXJ0KDEpPC9zY3JpcHQ-PC9ib2R5PjwvaHRtbD4"
+            }
+          }
+        ]
+      },
+      {
+        "partId": "1",
+        "mimeType": "application/pdf",
+        "filename": "invoice-42.pdf",
+        "headers": [
+          {
+            "name": "Content-Disposition",
+            "value": "attachment; filename=\"invoice-42.pdf\""
+          }
+        ],
+        "body": {
+          "attachmentId": "ANGjdJ8x",
+          "size": 20480
+        }
+      }
+    ]
+  }
+}

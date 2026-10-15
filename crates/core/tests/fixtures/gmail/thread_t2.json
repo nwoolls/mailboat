@@ -1,0 +1,49 @@
+{
+  "id": "t2",
+  "historyId": "8991",
+  "messages": [
+    {
+      "id": "m3",
+      "threadId": "t2",
+      "labelIds": [
+        "INBOX",
+        "STARRED",
+        "IMPORTANT"
+      ],
+      "snippet": "Your invoice is attached",
+      "historyId": "9010",
+      "internalDate": "1760100000000",
+      "sizeEstimate": 4321,
+      "payload": {
+        "partId": "",
+        "mimeType": "multipart/alternative",
+        "filename": "",
+        "headers": [
+          {
+            "name": "From",
+            "value": "Billing <billing@vendor.com>"
+          },
+          {
+            "name": "To",
+            "value": "me@gmail.com"
+          },
+          {
+            "name": "Subject",
+            "value": "Invoice #42"
+          },
+          {
+            "name": "Date",
+            "value": "Fri, 10 Oct 2025 12:40:00 +0000"
+          },
+          {
+            "name": "Message-ID",
+            "value": "<b1@vendor.com>"
+          }
+        ],
+        "body": {
+          "size": 0
+        }
+      }
+    }
+  ]
+}

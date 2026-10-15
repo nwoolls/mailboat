@@ -1,0 +1,275 @@
+//! Turns Gmail API messages into the store's input types.
+
+use base64::alphabet;
+use base64::engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig};
+use base64::Engine;
+
+use super::types::{Message, MessagePart, Thread};
+use crate::db::store::{IncomingMessage, IncomingThread, StoredBody};
+use crate::model::Address;
+
+/// Gmail encodes bodies as base64url, sometimes with and sometimes without padding.
+const B64URL: GeneralPurpose = GeneralPurpose::new(
+    &alphabet::URL_SAFE,
+    GeneralPurposeConfig::new().with_decode_padding_mode(DecodePaddingMode::Indifferent),
+);
+
+pub fn decode_base64url(data: &str) -> Option<Vec<u8>> {
+    B64URL.decode(data.trim()).ok()
+}
+
+pub fn header<'a>(part: &'a MessagePart, name: &str) -> Option<&'a str> {
+    part.headers
+        .iter()
+        .find(|h| h.name.eq_ignore_ascii_case(name))
+        .map(|h| h.value.as_str())
+}
+
+pub fn thread_to_incoming(thread: &Thread) -> IncomingThread {
+    IncomingThread {
+        gmail_thread_id: thread.id.clone(),
+        messages: thread.messages.iter().map(message_to_incoming).collect(),
+    }
+}
+
+pub fn message_to_incoming(msg: &Message) -> IncomingMessage {
+    let part = msg.payload.as_ref();
+    let h = |name: &str| part.and_then(|p| header(p, name)).map(str::to_string);
+    IncomingMessage {
+        gmail_message_id: msg.id.clone(),
+        label_ids: msg.label_ids.clone(),
+        internal_date: msg.internal_date.unwrap_or(0) as i64,
+        snippet: decode_entities(&msg.snippet),
+        subject: h("Subject").unwrap_or_default(),
+        from: h("From").and_then(|v| parse_address_list(&v).into_iter().next()),
+        to: h("To").map(|v| parse_address_list(&v)).unwrap_or_default(),
+        cc: h("Cc").map(|v| parse_address_list(&v)).unwrap_or_default(),
+        rfc822_message_id: h("Message-ID"),
+        in_reply_to: h("In-Reply-To"),
+        references: h("References"),
+        has_attachments: part.is_some_and(has_attachments),
+    }
+}
+
+fn has_attachments(part: &MessagePart) -> bool {
+    let inline = header(part, "Content-Disposition")
+        .is_some_and(|d| d.trim_start().to_ascii_lowercase().starts_with("inline"));
+    (!part.filename.is_empty() && !inline) || part.parts.iter().any(has_attachments)
+}
+
+/// Gmail snippets arrive HTML-escaped ("&#39;", "&amp;").
+fn decode_entities(s: &str) -> String {
+    s.replace("&#39;", "'")
+        .replace("&quot;", "\"")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+}
+
+/// Parses an address header such as
+/// `"Doe, Jane" <jane@x.com>, bob@y.com, Ann <ann@z.com>`.
+/// Headers from the Gmail API are already decoded to UTF-8.
+pub fn parse_address_list(value: &str) -> Vec<Address> {
+    let mut items = Vec::new();
+    let mut current = String::new();
+    let (mut in_quotes, mut in_angle) = (false, false);
+    for c in value.chars() {
+        match c {
+            '"' if !in_angle => in_quotes = !in_quotes,
+            '<' if !in_quotes => in_angle = true,
+            '>' if !in_quotes => in_angle = false,
+            ',' | ';' if !in_quotes && !in_angle => {
+                items.push(std::mem::take(&mut current));
+                continue;
+            }
+            _ => {}
+        }
+        current.push(c);
+    }
+    items.push(current);
+    items
+        .iter()
+        .filter_map(|item| parse_address(item))
+        .collect()
+}
+
+fn parse_address(item: &str) -> Option<Address> {
+    let item = item.trim();
+    // Drop RFC 5322 group names such as "undisclosed-recipients:".
+    let item = match item.split_once(':') {
+        Some((group, rest)) if !group.contains('@') && !group.contains('<') => rest.trim(),
+        _ => item,
+    };
+    if let (Some(start), Some(end)) = (item.rfind('<'), item.rfind('>')) {
+        if start < end {
+            let email = item[start + 1..end].trim().to_string();
+            let name = item[..start]
+                .trim()
+                .trim_matches('"')
+                .trim()
+                .replace("\\\"", "\"");
+            return email.contains('@').then(|| Address {
+                name: (!name.is_empty()).then_some(name),
+                email,
+            });
+        }
+    }
+    let email = item.trim_matches('"').trim();
+    email.contains('@').then(|| Address {
+        name: None,
+        email: email.to_string(),
+    })
+}
+
+/// Pulls the HTML and plain-text bodies out of a `format=full` payload.
+pub fn extract_body(payload: &MessagePart) -> StoredBody {
+    let mut html = None;
+    let mut text = None;
+    walk_bodies(payload, &mut html, &mut text);
+    let text = text.or_else(|| html.as_deref().map(html_to_text));
+    StoredBody { html, text }
+}
+
+fn walk_bodies(part: &MessagePart, html: &mut Option<String>, text: &mut Option<String>) {
+    let mime = part.mime_type.to_ascii_lowercase();
+    let is_attachment = !part.filename.is_empty();
+    if !is_attachment && (mime == "text/html" || mime == "text/plain") {
+        let slot = if mime == "text/html" {
+            &mut *html
+        } else {
+            &mut *text
+        };
+        if slot.is_none() {
+            if let Some(bytes) = part
+                .body
+                .as_ref()
+                .and_then(|b| b.data.as_deref())
+                .and_then(decode_base64url)
+            {
+                let charset = header(part, "Content-Type").and_then(charset_of);
+                *slot = Some(decode_charset(&bytes, charset.as_deref()));
+            }
+        }
+    }
+    for child in &part.parts {
+        walk_bodies(child, html, text);
+    }
+}
+
+fn charset_of(content_type: &str) -> Option<String> {
+    content_type.split(';').skip(1).find_map(|p| {
+        let (k, v) = p.split_once('=')?;
+        k.trim()
+            .eq_ignore_ascii_case("charset")
+            .then(|| v.trim().trim_matches('"').to_string())
+    })
+}
+
+fn decode_charset(bytes: &[u8], charset: Option<&str>) -> String {
+    let encoding = charset
+        .and_then(|c| encoding_rs::Encoding::for_label(c.as_bytes()))
+        .unwrap_or(encoding_rs::UTF_8);
+    encoding.decode(bytes).0.into_owned()
+}
+
+/// Crude HTML → text for the search index only (never displayed).
+pub fn html_to_text(html: &str) -> String {
+    let mut out = String::with_capacity(html.len() / 2);
+    let mut in_tag = false;
+    let lower = html.to_ascii_lowercase();
+    let mut skip_until: Option<&str> = None;
+    let mut i = 0;
+    let bytes = html.as_bytes();
+    while i < bytes.len() {
+        if let Some(end) = skip_until {
+            match lower[i..].find(end) {
+                Some(pos) => {
+                    i += pos + end.len();
+                    skip_until = None;
+                    in_tag = false;
+                    continue;
+                }
+                None => break,
+            }
+        }
+        let c = bytes[i];
+        if c == b'<' {
+            if lower[i..].starts_with("<style") {
+                skip_until = Some("</style>");
+            } else if lower[i..].starts_with("<script") {
+                skip_until = Some("</script>");
+            }
+            in_tag = true;
+            out.push(' ');
+        } else if c == b'>' && in_tag {
+            in_tag = false;
+        } else if !in_tag {
+            // Push the whole UTF-8 character starting here.
+            let ch_len = html[i..].chars().next().map_or(1, char::len_utf8);
+            out.push_str(&html[i..i + ch_len]);
+            i += ch_len;
+            continue;
+        }
+        i += 1;
+    }
+    decode_entities(&out.replace("&nbsp;", " "))
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_tricky_address_lists() {
+        let list =
+            parse_address_list(r#""Doe, Jane" <jane@x.com>, bob@y.com, Ann Lee <ann@z.com>"#);
+        assert_eq!(
+            list,
+            vec![
+                Address {
+                    name: Some("Doe, Jane".into()),
+                    email: "jane@x.com".into()
+                },
+                Address {
+                    name: None,
+                    email: "bob@y.com".into()
+                },
+                Address {
+                    name: Some("Ann Lee".into()),
+                    email: "ann@z.com".into()
+                },
+            ]
+        );
+        assert!(parse_address_list("undisclosed-recipients:;").is_empty());
+        assert_eq!(parse_address_list("<solo@x.com>")[0].email, "solo@x.com");
+    }
+
+    #[test]
+    fn decodes_base64url_with_or_without_padding() {
+        assert_eq!(decode_base64url("aGk").unwrap(), b"hi");
+        assert_eq!(decode_base64url("aGk=").unwrap(), b"hi");
+        assert_eq!(decode_base64url("Pz8-").unwrap(), b"??>");
+    }
+
+    #[test]
+    fn html_to_text_drops_tags_styles_and_scripts() {
+        let t =
+            html_to_text("<style>p{}</style><p>Hello&nbsp;<b>wörld</b></p><script>x()</script>!");
+        assert_eq!(t, "Hello wörld !");
+    }
+
+    #[test]
+    fn decodes_latin1_bodies() {
+        assert_eq!(
+            decode_charset(&[0x63, 0x61, 0x66, 0xe9], Some("iso-8859-1")),
+            "café"
+        );
+        assert_eq!(
+            charset_of("text/plain; charset=\"ISO-8859-1\"").unwrap(),
+            "ISO-8859-1"
+        );
+    }
+}

@@ -5,6 +5,7 @@
 
 pub mod db;
 pub mod error;
+pub mod gmail;
 pub mod model;
 
 pub use error::{CoreError, Result};

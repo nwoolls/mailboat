@@ -1,0 +1,45 @@
+{
+  "labels": [
+    {
+      "id": "INBOX",
+      "name": "INBOX",
+      "messageListVisibility": "hide",
+      "labelListVisibility": "labelShow",
+      "type": "system"
+    },
+    {
+      "id": "SENT",
+      "name": "SENT",
+      "type": "system"
+    },
+    {
+      "id": "STARRED",
+      "name": "STARRED",
+      "type": "system"
+    },
+    {
+      "id": "UNREAD",
+      "name": "UNREAD",
+      "type": "system"
+    },
+    {
+      "id": "IMPORTANT",
+      "name": "IMPORTANT",
+      "type": "system"
+    },
+    {
+      "id": "CATEGORY_PERSONAL",
+      "name": "CATEGORY_PERSONAL",
+      "type": "system"
+    },
+    {
+      "id": "Label_1",
+      "name": "Work",
+      "type": "user",
+      "color": {
+        "textColor": "#ffffff",
+        "backgroundColor": "#4986e7"
+      }
+    }
+  ]
+}

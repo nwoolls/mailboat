@@ -1,0 +1,103 @@
+{
+  "id": "t1",
+  "historyId": "8990",
+  "messages": [
+    {
+      "id": "m1",
+      "threadId": "t1",
+      "labelIds": [
+        "INBOX",
+        "CATEGORY_PERSONAL"
+      ],
+      "snippet": "Are we still on for Friday?",
+      "historyId": "9010",
+      "internalDate": "1760000000000",
+      "sizeEstimate": 4321,
+      "payload": {
+        "partId": "",
+        "mimeType": "multipart/alternative",
+        "filename": "",
+        "headers": [
+          {
+            "name": "From",
+            "value": "\"Doe, Jane\" <jane@example.com>"
+          },
+          {
+            "name": "To",
+            "value": "me@gmail.com"
+          },
+          {
+            "name": "Subject",
+            "value": "Lunch Friday"
+          },
+          {
+            "name": "Date",
+            "value": "Thu, 9 Oct 2025 08:53:20 +0000"
+          },
+          {
+            "name": "Message-ID",
+            "value": "<a1@example.com>"
+          }
+        ],
+        "body": {
+          "size": 0
+        }
+      }
+    },
+    {
+      "id": "m2",
+      "threadId": "t1",
+      "labelIds": [
+        "INBOX",
+        "UNREAD",
+        "Label_1"
+      ],
+      "snippet": "Yes! See you at noon &amp; bring the plan.",
+      "historyId": "9010",
+      "internalDate": "1760003600000",
+      "sizeEstimate": 4321,
+      "payload": {
+        "partId": "",
+        "mimeType": "multipart/alternative",
+        "filename": "",
+        "headers": [
+          {
+            "name": "From",
+            "value": "Bob Smith <bob@example.com>"
+          },
+          {
+            "name": "To",
+            "value": "me@gmail.com"
+          },
+          {
+            "name": "Subject",
+            "value": "Re: Lunch Friday"
+          },
+          {
+            "name": "Date",
+            "value": "Thu, 9 Oct 2025 09:53:20 +0000"
+          },
+          {
+            "name": "Message-ID",
+            "value": "<a2@example.com>"
+          },
+          {
+            "name": "Cc",
+            "value": "\"Doe, Jane\" <jane@example.com>"
+          },
+          {
+            "name": "In-Reply-To",
+            "value": "<a1@example.com>"
+          },
+          {
+            "name": "References",
+            "value": "<a1@example.com>"
+          }
+        ],
+        "body": {
+          "size": 0
+        }
+      }
+    }
+  ]
+}
