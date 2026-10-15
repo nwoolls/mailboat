@@ -126,9 +126,12 @@ a darker glass body, rounded corners where they meet, resizable panes.
       the pane (still drifting), and eases back to its usual path when the
       pointer leaves. Off under "Reduce motion". Reworked after it stuttered: it
       now glides per frame instead of restarting a CSS transition on every
-      pointer move, and the glow is a soft gradient instead of a blur filter
-- [x] Account avatar moved into the sidebar's icon column, above the view
-      icons, so it lines up with the rows below
+      pointer move, and the glow is a soft gradient instead of a blur filter;
+      it then centres on the cursor (its drift is cancelled out while
+      attracted) instead of stopping short
+- [x] Account avatar ends flush with the selected row's right edge, and
+      the account header is a 28px row with a little room before Inbox
+      (briefly tried on the left; the owner preferred the right)
 
 Wrapped up 2026-10-15. Everything below stays open and
 moves into later milestones as it's picked up.
