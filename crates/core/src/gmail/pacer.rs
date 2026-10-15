@@ -1,10 +1,13 @@
 //! Keeps one account's Gmail usage under Google's per-user quota.
 //!
 //! Gmail charges "quota units" per call (threads.get = 10, messages.get = 5,
-//! ...) and allows about 15,000 units per minute per user (250/s). The pacer
-//! is a token bucket: calls wait until enough units have accumulated. The
-//! default rate stays well under the limit so the user's phone and other
-//! Gmail apps, which share the same quota, keep working.
+//! ...) per user. The owner's project allows 6,000 "units per minute per
+//! user" (Google's docs say 15,000), and Google enforces it as a moving
+//! average of about 100 units per second with almost no burst: a batch of
+//! 200 units was refused after a nearly idle minute. The pacer is a token
+//! bucket: calls wait until enough units have accumulated. The default stays
+//! under that per-second budget, leaving room for the user's phone and other
+//! Gmail apps on the same quota, and slows further if Google still refuses.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -55,9 +58,9 @@ pub struct QuotaPacer {
 }
 
 impl Default for QuotaPacer {
-    /// Up to 150 units/s (60% of Google's limit), small bursts of 200.
+    /// Up to 60 units/s (3,600/minute), bursts of at most 60 units.
     fn default() -> Self {
-        Self::new(150.0, 200.0)
+        Self::new(60.0, 60.0)
     }
 }
 
@@ -104,7 +107,8 @@ impl QuotaPacer {
             bucket.rate = (bucket.rate + elapsed * RECOVERY_PER_SEC).min(self.max_rate);
             bucket.tokens = (bucket.tokens + elapsed * bucket.rate).min(self.capacity);
             bucket.last = now;
-            if bucket.tokens >= units {
+            // Small tolerance so float rounding can't leave us a hair short.
+            if bucket.tokens + 1e-6 >= units {
                 bucket.tokens -= units;
                 bucket.minute_spent += units;
                 if now.duration_since(bucket.minute_start) >= Duration::from_secs(60) {
@@ -118,7 +122,8 @@ impl QuotaPacer {
                 }
                 return None;
             }
-            let wait = (units - bucket.tokens) / bucket.rate;
+            // Timers have 1ms resolution; never ask for less, or we'd spin.
+            let wait = ((units - bucket.tokens) / bucket.rate).max(0.001);
             // Holding the lock while sleeping keeps callers in FIFO order.
             tokio::time::sleep(Duration::from_secs_f64(wait)).await;
         }
@@ -169,7 +174,7 @@ mod tests {
         }
         // (6000 - 600 burst) / 150 per second = 36s.
         assert_eq!(start.elapsed().as_secs(), 36);
-        // Default settings keep any one minute under Google's 15,000 limit.
+        // Default settings keep any one minute well under the 6,000 limit.
         let default = QuotaPacer::default();
         let start = Instant::now();
         let mut spent = 0;
@@ -177,7 +182,7 @@ mod tests {
             default.acquire(cost::THREADS_GET).await;
             spent += cost::THREADS_GET;
         }
-        assert!(spent < 15_000 * 2 / 3, "{spent} units in a minute");
+        assert!(spent <= 6_000 * 3 / 4, "{spent} units in a minute");
     }
 
     #[tokio::test(start_paused = true)]

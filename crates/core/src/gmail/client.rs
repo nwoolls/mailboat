@@ -65,10 +65,10 @@ impl RetryPolicy {
     }
 }
 
-/// How many requests go into one batch call. Google allows 100, but the
-/// requests in a batch run concurrently and count against the per-user
-/// concurrency limit, so keep batches small.
-pub const BATCH_SIZE: usize = 20;
+/// How many requests go into one batch call. Google allows 100, but a
+/// batch's requests hit the quota all at once, and the per-user limit allows
+/// only about 100 units per second. 5 threads.get = 50 units fits.
+pub const BATCH_SIZE: usize = 5;
 
 /// Receives diagnostic lines (rate limits, retries) for the sync log.
 pub type Logger = Arc<dyn Fn(&str) + Send + Sync>;

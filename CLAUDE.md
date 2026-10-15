@@ -108,7 +108,11 @@ these rules. Keep it passing.
   JSON from `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`
   (Windows: `%APPDATA%\com.nwoolls.mailboat\`), or from env vars
   `MAILBOAT_GOOGLE_CLIENT_ID` / `MAILBOAT_GOOGLE_CLIENT_SECRET`.
-- Respect quotas: batch requests, exponential backoff on 429/5xx.
+- Respect quotas: batch requests, exponential backoff on 429/5xx. The
+  owner's Cloud project allows 6,000 Gmail units per minute per user (not
+  the documented 15,000); Google enforces it as ~100 units/second with
+  almost no burst, so `QuotaPacer` defaults to 60 units/s with 60-unit
+  bursts, batches hold 5 requests, and the rate halves on rate-limit errors. Diagnostics: `~/Library/Logs/com.nwoolls.mailboat/sync.log`.
 
 ## Security
 
