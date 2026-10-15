@@ -160,7 +160,7 @@ export function Shell() {
         sidebarOpen={sidebarOpen}
         syncAttention={syncAttention(syncStates)}
         readerOpen={readerOpen}
-        readerAvailable={selectedId !== null}
+        hasSelection={selectedId !== null}
         onToggleSidebar={toggleSidebar}
         onToggleReader={toggleReader}
       />

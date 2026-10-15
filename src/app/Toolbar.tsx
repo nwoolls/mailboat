@@ -24,8 +24,8 @@ type Props = {
   /** A sync problem to flag on the sidebar toggle while the sidebar is hidden. */
   syncAttention: "warn" | "error" | null;
   readerOpen: boolean;
-  /** The reader only shows with a conversation selected. */
-  readerAvailable: boolean;
+  /** A conversation is selected: the reader can show, and actions apply. */
+  hasSelection: boolean;
   onToggleSidebar: () => void;
   onToggleReader: () => void;
 };
@@ -42,7 +42,7 @@ export function Toolbar({
   sidebarOpen,
   syncAttention,
   readerOpen,
-  readerAvailable,
+  hasSelection,
   onToggleSidebar,
   onToggleReader,
 }: Props) {
@@ -62,8 +62,9 @@ export function Toolbar({
       />
       <div data-tauri-drag-region className="flex-1 self-stretch" />
       <TitleSearch value={search} onChange={onSearch} />
-      <ToolButton icon={ArchiveIcon} label="Archive" shortcut="e" />
-      <ToolButton icon={TrashIcon} label="Delete" shortcut="#" />
+      {/* Conversation actions dim with nothing selected. */}
+      <ToolButton icon={ArchiveIcon} label="Archive" shortcut="e" disabled={!hasSelection} />
+      <ToolButton icon={TrashIcon} label="Delete" shortcut="#" disabled={!hasSelection} />
       <ToolButton
         icon={MarkUnreadIcon}
         label="Mark read / unread"
@@ -71,16 +72,16 @@ export function Toolbar({
         onClick={onToggleRead ?? undefined}
         disabled={!onToggleRead}
       />
-      <ToolButton icon={StarIcon} label="Star" shortcut="s" />
-      <ToolButton icon={LabelIcon} label="Label" shortcut="l" />
-      <ToolButton icon={MoreIcon} label="More" />
+      <ToolButton icon={StarIcon} label="Star" shortcut="s" disabled={!hasSelection} />
+      <ToolButton icon={LabelIcon} label="Label" shortcut="l" disabled={!hasSelection} />
+      <ToolButton icon={MoreIcon} label="More" disabled={!hasSelection} />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
       <ToolButton icon={ComposeIcon} label="Compose" shortcut="c" />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
       <ToolButton
         icon={ReaderToggleIcon}
         label={
-          !readerAvailable
+          !hasSelection
             ? "Reader opens with a conversation"
             : readerOpen
               ? "Hide reader"
@@ -88,7 +89,7 @@ export function Toolbar({
         }
         shortcut="⌃⌘R"
         onClick={onToggleReader}
-        disabled={!readerAvailable}
+        disabled={!hasSelection}
         pressed={readerOpen}
       />
     </header>
