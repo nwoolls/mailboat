@@ -92,6 +92,8 @@ a darker glass body, rounded corners where they meet, resizable panes.
       the list grows or gives way in step. The reader keeps showing the
       last conversation while it slides away
 - [x] Selecting a conversation (click or j/k) brings a hidden reader back
+- [x] Text on the glass (sidebar, reader) one weight step up (500), so it
+      holds up over the blurred backdrop; the list card stays regular
 
 ### Ideas for later in this spike (not started)
 

@@ -96,6 +96,14 @@ html.resizing iframe {
   pointer-events: none;
 }
 
+/* Text sitting on the glass (sidebar, reader) gets one step more weight
+   than the list card's regular text, so it holds up over a blurred,
+   moving backdrop. Elements that set their own weight keep it. Email
+   bodies render in their own frame and are unaffected. */
+.on-glass {
+  font-weight: 500;
+}
+
 /* Side panels slide open and closed: the wrapper animates its size, the
    content fades and drifts in from its own side. Off while a splitter
    drags (the panel should track the pointer exactly) and for people who

@@ -165,7 +165,7 @@ export function Shell() {
             clips, while the content keeps its own width (no reflow) and fades
             in from the side. Closed, the sidebar leaves an 8px gutter. */}
         <div
-          className="panel-slide flex shrink-0 overflow-hidden"
+          className="panel-slide on-glass flex shrink-0 overflow-hidden"
           style={{ width: sidebarOpen ? sidebarWidth + SPLITTER_WIDTH : SPLITTER_WIDTH }}
           inert={!sidebarOpen}
         >
@@ -241,7 +241,7 @@ export function Shell() {
             />
           </section>
           <div
-            className="panel-slide flex overflow-hidden"
+            className="panel-slide on-glass flex overflow-hidden"
             style={{
               flex: `${readerVisible ? 1 : 0} 1 0px`,
               minWidth: readerVisible ? SPLITTER_WIDTH + READER_MIN_WIDTH : 0,
