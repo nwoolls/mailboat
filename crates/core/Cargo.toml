@@ -18,7 +18,19 @@ fastrand = "2.5.0"
 base64 = "0.23.1"
 url = "2.5.8"
 encoding_rs = "0.8.42"
+sha2 = "0.11.1"
+getrandom = "0.4.3"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
 wiremock = "0.6"
+
+# OS keychain for refresh tokens (same per-platform setup as MonoCode).
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["apple-native"] }
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3.6", default-features = false, features = ["linux-native-sync-persistent", "crypto-rust"] }
