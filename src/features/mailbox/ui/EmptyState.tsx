@@ -39,7 +39,7 @@ export function EmptyState({ state }: { state: EmptyStateModel }) {
           </span>
         </div>
         <p className="text-[15px] font-semibold">{state.title}</p>
-        <p className="mt-1 text-content/60">{state.detail}</p>
+        {state.detail && <p className="mt-1 text-content/60">{state.detail}</p>}
       </div>
     </div>
   );

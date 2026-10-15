@@ -24,7 +24,7 @@ import {
   spansAccounts,
   systemSelection,
 } from "../features/mailbox/model/views";
-import { dayNumber, emptyStateFor } from "../features/mailbox/model/emptyState";
+import { emptyStateFor } from "../features/mailbox/model/emptyState";
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
@@ -79,8 +79,6 @@ export function Shell() {
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   const loadMore = useCallback(() => void fetchNextPage(), [fetchNextPage]);
 
-  // Picks the day's empty-inbox line; read once so renders stay pure.
-  const [today] = useState(() => dayNumber(new Date()));
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH.initial);
   const [listWidth, setListWidth] = useState(LIST_WIDTH.initial);
   // Either side panel can be hidden, down to just the list. Not persisted.
@@ -228,7 +226,7 @@ export function Shell() {
                 <EmptyState
                   // Replays the entrance per view, but not per search keystroke.
                   key={selection.view.kind === "search" ? "search" : selectionKey(selection)}
-                  state={emptyStateFor(selection.view, today)}
+                  state={emptyStateFor(selection.view)}
                 />
               }
             />

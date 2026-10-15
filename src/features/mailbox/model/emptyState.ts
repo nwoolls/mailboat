@@ -4,7 +4,8 @@ import type { MailView } from "../../../platform/tauri/bindings";
 export type EmptyState = {
   icon: EmptyIcon;
   title: string;
-  detail: string;
+  /** Optional second line; the empty Inbox goes without. */
+  detail?: string;
 };
 
 export type EmptyIcon =
@@ -19,23 +20,7 @@ export type EmptyIcon =
   | "archive"
   | "label";
 
-/** Inbox zero gets a different line each day, so it stays a small treat. */
-export const CAUGHT_UP_LINES = [
-  "Inbox zero. Go do something nice.",
-  "Not a single thing. Enjoy the quiet.",
-  "Clear skies, all the way down.",
-  "Nothing new. Put the kettle on.",
-  "That's everything. Nicely done.",
-  "All quiet. The mail can wait for you.",
-];
-
-/** Days since the Unix epoch in local time; picks the day's line. */
-export function dayNumber(now: Date): number {
-  const local = now.getTime() - now.getTimezoneOffset() * 60_000;
-  return Math.floor(local / 86_400_000);
-}
-
-export function emptyStateFor(view: MailView, day: number): EmptyState {
+export function emptyStateFor(view: MailView): EmptyState {
   switch (view.kind) {
     case "search":
       return {
@@ -59,11 +44,7 @@ export function emptyStateFor(view: MailView, day: number): EmptyState {
     case "system":
       switch (view.label) {
         case "inbox":
-          return {
-            icon: "caughtUp",
-            title: "All caught up",
-            detail: CAUGHT_UP_LINES[day % CAUGHT_UP_LINES.length]!,
-          };
+          return { icon: "caughtUp", title: "All caught up" };
         case "unread":
           return { icon: "caughtUp", title: "No unread mail", detail: "You've read it all." };
         case "starred":

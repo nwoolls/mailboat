@@ -84,8 +84,8 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - [x] The reader only appears when a conversation is selected (no more
       "No conversation selected" panel); Escape closes it
 - [x] Empty states instead of "Nothing here": an icon, a title and a line
-      per view. An empty Inbox says "All caught up" with a different line
-      each day and a thumbs-up that nods; a soft accent glow drifts slowly
+      per view. An empty Inbox is just a thumbs-up that nods and "All caught
+      up" (owner dropped the rotating second line); a soft accent glow drifts slowly
       around the pane. Motion stops with macOS "Reduce motion"
 - [x] Panels slide open and closed (220ms ease-out, from MonoCode): the
       sidebar and reader content fade and drift in from their own side, and
