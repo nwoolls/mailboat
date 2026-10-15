@@ -63,6 +63,8 @@ function ThreadBody({
   }, [threadId, unreadWhenOpened, setRead]);
   const account = accounts.get(data.thread.accountId);
   const selfEmails = account ? [account.email] : [];
+  // Which account it's in matters only when there's more than one.
+  const showAccount = accounts.size > 1;
 
   return (
     <article
@@ -78,22 +80,28 @@ function ThreadBody({
         <h1 className="selectable text-xl font-semibold leading-snug">
           {data.thread.subject || "(no subject)"}
         </h1>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-content/50">
-          <AccountDot account={account} />
-          <span>{account?.email}</span>
-          {data.labels.map((l) => (
-            <span
-              key={l.id}
-              className="rounded px-1.5 py-0.5"
-              style={{
-                background: l.colorBg ?? "var(--color-selection)",
-                color: l.colorFg ?? undefined,
-              }}
-            >
-              {l.name}
-            </span>
-          ))}
-        </div>
+        {(showAccount || data.labels.length > 0) && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-content/50">
+            {showAccount && (
+              <>
+                <AccountDot account={account} />
+                <span>{account?.email}</span>
+              </>
+            )}
+            {data.labels.map((l) => (
+              <span
+                key={l.id}
+                className="rounded px-1.5 py-0.5"
+                style={{
+                  background: l.colorBg ?? "var(--color-selection)",
+                  color: l.colorFg ?? undefined,
+                }}
+              >
+                {l.name}
+              </span>
+            ))}
+          </div>
+        )}
       </header>
       <div className="flex flex-col gap-3">
         {data.messages.map((m) => {
