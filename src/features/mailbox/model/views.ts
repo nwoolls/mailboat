@@ -40,18 +40,23 @@ export const UNIFIED_VIEWS: MailView[] = [
   ARCHIVE,
   ALL_MAIL,
 ];
-/** Views listed under each account. */
-export const ACCOUNT_VIEWS: MailView[] = [
+/** The everyday views under each account, always shown. */
+export const PRIMARY_ACCOUNT_VIEWS: MailView[] = [
   system("inbox"),
   system("starred"),
-  system("important"),
   system("sent"),
   system("draft"),
   ARCHIVE,
+];
+/** Less-used views, folded under "More" in the sidebar. */
+export const MORE_ACCOUNT_VIEWS: MailView[] = [
   ALL_MAIL,
+  system("important"),
   system("spam"),
   system("trash"),
 ];
+/** Every view listed under each account. */
+export const ACCOUNT_VIEWS: MailView[] = [...PRIMARY_ACCOUNT_VIEWS, ...MORE_ACCOUNT_VIEWS];
 
 /** Sidebar/heading name of a view (search and labels are named elsewhere). */
 export function viewTitle(view: MailView): string {

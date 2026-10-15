@@ -106,6 +106,15 @@ a darker glass body, rounded corners where they meet, resizable panes.
       in VS Code: magnifier, `/` hint, clear button. Searches the view picked
       in the sidebar. Focus shows as the blue border plus a soft glow; the
       inner focus box is gone
+- [x] Sidebar tidy: icons on every view; Inbox, Starred, Sent, Drafts,
+      Archive up top and All Mail, Important, Spam, Trash folded under
+      "More"; labels under a "Labels" heading, grouped by "/" and
+      "Prefix: " ("Acme" holds Review, Scam, …) with folds that animate
+      open; IMAP brackets dropped ("[Orbit]" → "Orbit"); every label dot
+      has a faint outline so dark Gmail colors still show. Folds reset on
+      relaunch
+- [x] "Add account" is a small "+" in an icon bar at the sidebar's foot
+      (owner picked option A), with room for settings and the log console
 
 ### Ideas for later in this spike (not started)
 
@@ -113,7 +122,9 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - Reader as its own rounded card, if text on the glass proves hard to read
 - Stronger, adjustable blur (private `CGSSetWindowBackgroundBlurRadius`,
   Rust) if the system material looks too faint
-- Sidebar grouping: demote Spam/Trash/Important/All Mail, labels as folders
+- Account menu on the avatar (accounts, add, remove, settings); option C
+  for the add-account area, not built
+- Remember which sidebar folds are open
 - Thread row density, icons, hover/selection states
 - Reader header, message stacking, how the white email card sits in dark mode
 - Sync activity icon in the toolbar with a per-account popover (option B,
