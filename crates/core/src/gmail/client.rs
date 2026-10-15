@@ -123,11 +123,30 @@ impl GmailClient {
 
     /// Slows this account down after Google reported a rate limit.
     async fn throttle(&self, what: &str, status: u16, body: &str) {
-        let rate = self.pacer.throttle().await;
+        // A per-minute quota only resets as its one-minute window rolls
+        // forward; requests sent meanwhile are refused (and may count), so
+        // stop entirely for a minute. Other limits get a short pause.
+        let pause = if body.contains("per minute") {
+            Duration::from_secs(60)
+        } else {
+            Duration::from_secs(5)
+        };
+        let rate = self.pacer.throttle(pause).await;
         self.log(&format!(
-            "rate limited ({what}, HTTP {status}): {}; slowing to {rate:.0} units/s",
-            error_detail(body)
+            "rate limited ({what}, HTTP {status}): {}; pausing {}s, then {rate:.0} units/s",
+            error_detail(body),
+            pause.as_secs()
         ));
+    }
+
+    /// Spends quota before a call, logging usage once a minute.
+    async fn spend(&self, units: u32) {
+        if let Some(report) = self.pacer.acquire(units).await {
+            self.log(&format!(
+                "quota: {} units used in the last minute (rate now {:.0} units/s)",
+                report.units, report.rate
+            ));
+        }
     }
 
     pub fn with_retry(mut self, retry: RetryPolicy) -> Self {
@@ -278,9 +297,7 @@ impl GmailClient {
 
     async fn send_batch(&self, paths: &[String]) -> Result<Vec<batch::BatchPart>> {
         // Google charges each request inside a batch separately.
-        self.pacer
-            .acquire(cost::THREADS_GET * paths.len() as u32)
-            .await;
+        self.spend(cost::THREADS_GET * paths.len() as u32).await;
         let boundary = format!("mailboat_batch_{}", fastrand::u64(..));
         let body = batch::build_request(&boundary, paths);
         let url = format!("{}/batch/gmail/v1", self.base_url);
@@ -311,7 +328,7 @@ impl GmailClient {
         query: &[(&str, &str)],
         units: u32,
     ) -> Result<T> {
-        self.pacer.acquire(units).await;
+        self.spend(units).await;
         let response = self
             .send(|| self.http.request(Method::GET, url).query(query))
             .await?;

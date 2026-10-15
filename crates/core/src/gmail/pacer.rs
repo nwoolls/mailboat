@@ -28,10 +28,22 @@ struct Bucket {
     last: Instant,
     /// Current rate; drops when Google says "slow down", then recovers.
     rate: f64,
+    /// No requests at all until then (lets Google's quota window clear).
+    paused_until: Option<Instant>,
+    /// Units spent in the current one-minute reporting window.
+    minute_start: Instant,
+    minute_spent: f64,
+}
+
+/// Usage over the last minute, for the sync log.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MinuteReport {
+    pub units: u32,
+    pub rate: f64,
 }
 
 /// How fast the rate climbs back after a throttle (units/s gained per second).
-const RECOVERY_PER_SEC: f64 = 2.0;
+const RECOVERY_PER_SEC: f64 = 1.0;
 /// Never slow below this, so sync always makes progress.
 const MIN_RATE: f64 = 10.0;
 
@@ -58,6 +70,9 @@ impl QuotaPacer {
                 tokens: capacity,
                 last: Instant::now(),
                 rate: units_per_sec,
+                paused_until: None,
+                minute_start: Instant::now(),
+                minute_spent: 0.0,
             })),
         }
     }
@@ -68,13 +83,21 @@ impl QuotaPacer {
     }
 
     /// Waits until `units` of quota are available, then spends them.
-    pub async fn acquire(&self, units: u32) {
+    /// Returns a usage report once per minute.
+    pub async fn acquire(&self, units: u32) -> Option<MinuteReport> {
         if self.max_rate.is_infinite() {
-            return;
+            return None;
         }
         // A single request bigger than the bucket still goes through once full.
         let units = (units as f64).min(self.capacity);
         let mut bucket = self.bucket.lock().await;
+        if let Some(until) = bucket.paused_until.take() {
+            if until > Instant::now() {
+                tokio::time::sleep_until(until).await;
+            }
+            // Time spent paused doesn't earn tokens or speed; time after it does.
+            bucket.last = bucket.last.max(until);
+        }
         loop {
             let now = Instant::now();
             let elapsed = now.duration_since(bucket.last).as_secs_f64();
@@ -83,7 +106,17 @@ impl QuotaPacer {
             bucket.last = now;
             if bucket.tokens >= units {
                 bucket.tokens -= units;
-                return;
+                bucket.minute_spent += units;
+                if now.duration_since(bucket.minute_start) >= Duration::from_secs(60) {
+                    let report = MinuteReport {
+                        units: bucket.minute_spent as u32,
+                        rate: bucket.rate,
+                    };
+                    bucket.minute_start = now;
+                    bucket.minute_spent = 0.0;
+                    return Some(report);
+                }
+                return None;
             }
             let wait = (units - bucket.tokens) / bucket.rate;
             // Holding the lock while sleeping keeps callers in FIFO order.
@@ -91,12 +124,14 @@ impl QuotaPacer {
         }
     }
 
-    /// Google reported a rate limit: empty the bucket and halve the rate.
-    /// Returns the new rate (units/s), for logging.
-    pub async fn throttle(&self) -> f64 {
+    /// Google reported a rate limit: send nothing for `pause`, then resume
+    /// at half the rate. Returns the new rate (units/s), for logging.
+    pub async fn throttle(&self, pause: Duration) -> f64 {
         let mut bucket = self.bucket.lock().await;
         bucket.tokens = 0.0;
         bucket.last = Instant::now();
+        let until = Instant::now() + pause;
+        bucket.paused_until = Some(bucket.paused_until.map_or(until, |p| p.max(until)));
         if bucket.rate.is_finite() {
             bucket.rate = (bucket.rate / 2.0).max(MIN_RATE);
         }
@@ -148,23 +183,50 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn throttle_pauses_halves_the_rate_then_recovers() {
         let pacer = QuotaPacer::new(100.0, 100.0);
-        assert_eq!(pacer.throttle().await, 50.0);
+        assert_eq!(pacer.throttle(Duration::ZERO).await, 50.0);
         let start = Instant::now();
         pacer.acquire(50).await;
         // ~1s at 50/s, a little less because the rate recovers meanwhile.
         let ms = start.elapsed().as_millis();
         assert!((900..=1000).contains(&ms), "{ms}");
-        assert_eq!(pacer.throttle().await.round(), 26.0);
+        assert_eq!(pacer.throttle(Duration::ZERO).await.round(), 26.0);
         for _ in 0..8 {
-            pacer.throttle().await;
+            pacer.throttle(Duration::ZERO).await;
         }
         assert_eq!(pacer.current_rate().await, 10.0, "never below the floor");
-        tokio::time::sleep(Duration::from_secs(60)).await;
+        tokio::time::sleep(Duration::from_secs(100)).await;
         pacer.acquire(1).await;
         assert_eq!(
             pacer.current_rate().await,
             100.0,
-            "back to full speed after a minute"
+            "back to full speed after ~90s"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn per_minute_limit_pauses_everything() {
+        let pacer = QuotaPacer::new(100.0, 100.0);
+        pacer.throttle(Duration::from_secs(60)).await;
+        let start = Instant::now();
+        pacer.acquire(10).await;
+        // 60s pause, then 10 units at 50/s.
+        assert_eq!(start.elapsed().as_millis(), 60_200);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn reports_usage_once_a_minute() {
+        let pacer = QuotaPacer::new(100.0, 100.0);
+        let mut reports = Vec::new();
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_secs(125) {
+            if let Some(r) = pacer.acquire(10).await {
+                reports.push(r.units);
+            }
+        }
+        assert_eq!(reports.len(), 2);
+        assert!(
+            reports.iter().all(|u| (6_000..=6_200).contains(u)),
+            "{reports:?}"
         );
     }
 }
