@@ -78,11 +78,16 @@ split per account for selections that span accounts.
 - Read / unread: *moved to M1 follow-ups*
 - [ ] Apply and remove labels
 - [ ] Delete / move to trash
+- [ ] Received attachments: list them in the reader, open, save, Quick Look
+      preview *(split from M4 Compose, 2026-10-15: reading attachments doesn't
+      depend on composing)*
+- [ ] Inline (`cid:`) images inside emails, shown as placeholders today
+      *(moved from Later: uses the same attachment download as above)*
 
 ## Milestone 4: Compose
 
 - [ ] New message, reply, reply-all, forward with quoted HTML
-- [ ] Attachments (send, and download/open received ones)
+- [ ] Sending attachments *(receiving moved to M3)*
 - [ ] Drafts synced back to Gmail
 - [ ] Choice of From account, defaulting to the conversation's account
 
@@ -96,7 +101,6 @@ split per account for selections that span accounts.
 
 ## Later / unscheduled
 
-- [ ] Inline (`cid:`) images in emails (shown as placeholders today)
 - [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
 - [ ] Windows build and testing; Linux nice-to-have
 - [ ] Release signing and packaging
