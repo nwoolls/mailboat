@@ -148,24 +148,24 @@ function viewIcon(view: MailView): Icon {
 }
 
 /**
- * A sidebar section. Its header is a row like the others (28px), and a
- * `lead` (the account avatar) sits in the same 16px icon column, so the
- * avatar lines up over the view icons and the title over their names.
+ * A sidebar section. Its header is a row like the others (28px). The title
+ * lines up with the view icons on the left; an `aside` (the account avatar)
+ * ends flush with the right edge of a selected row's highlight.
  */
 function Section({
   title,
   children,
-  lead,
+  aside,
 }: {
   title: string;
   children: React.ReactNode;
-  lead?: React.ReactNode;
+  aside?: React.ReactNode;
 }) {
   return (
     <div className="mt-2">
-      <div className="mb-1 flex h-7 items-center gap-2 px-2 text-[11px] font-medium tracking-wide text-content/45">
-        {lead}
+      <div className="mb-1 flex h-7 items-center gap-2 pl-2 text-[11px] font-medium tracking-wide text-content/45">
         <span className="truncate">{title}</span>
+        {aside && <span className="ml-auto flex shrink-0">{aside}</span>}
       </div>
       {children}
     </div>
@@ -322,7 +322,7 @@ function AccountSection({
   };
 
   return (
-    <Section title={account.email} lead={<AccountAvatar account={account} state={state} />}>
+    <Section title={account.email} aside={<AccountAvatar account={account} state={state} />}>
       {/* Only problems you can act on get a line; syncing and retrying stay
           on the avatar so the list below never jumps. */}
       {badge.tone === "error" && (
