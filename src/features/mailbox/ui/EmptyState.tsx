@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   ArchiveIcon,
   DraftIcon,
@@ -13,6 +13,7 @@ import {
   TrashIcon,
 } from "../../../shared/ui/icons";
 import type { EmptyIcon, EmptyState as EmptyStateModel } from "../model/emptyState";
+import { approach, GLOW_FOLLOW_SECONDS, GLOW_RETURN_SECONDS } from "../model/glow";
 
 const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
   caughtUp: ThumbsUpIcon,
@@ -37,33 +38,14 @@ const PULL = 0.85;
  */
 export function EmptyState({ state }: { state: EmptyStateModel }) {
   const Icon = ICONS[state.icon];
-  const pull = useRef<HTMLDivElement>(null);
-
-  // Writes the offset straight to CSS variables, so pointer moves don't
-  // re-render; the CSS transition supplies the easing.
-  const attract = (e: React.PointerEvent<HTMLDivElement>) => {
-    const el = pull.current;
-    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const box = e.currentTarget.getBoundingClientRect();
-    el.style.setProperty("--pull-x", `${(e.clientX - box.left - box.width / 2) * PULL}px`);
-    el.style.setProperty("--pull-y", `${(e.clientY - box.top - box.height / 2) * PULL}px`);
-    el.dataset.attracted = "true";
-  };
-  const release = () => {
-    const el = pull.current;
-    if (!el) return;
-    el.style.setProperty("--pull-x", "0px");
-    el.style.setProperty("--pull-y", "0px");
-    el.dataset.attracted = "false";
-  };
-
+  const { ref, attract, release } = useGlowPull();
   return (
     <div
       className="relative flex flex-1 items-center justify-center overflow-hidden px-8"
       onPointerMove={attract}
       onPointerLeave={release}
     >
-      <div ref={pull} aria-hidden className="empty-glow-pull">
+      <div ref={ref} aria-hidden className="empty-glow-pull">
         <div className="empty-glow" />
       </div>
       <div className="empty-rise relative flex max-w-xs flex-col items-center text-center">
@@ -77,4 +59,58 @@ export function EmptyState({ state }: { state: EmptyStateModel }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Moves the glow's wrapper towards a target once per animation frame and
+ * stops when it arrives. Pointer moves only update the target, so there's
+ * no React re-render and no restarted transition (which stuttered).
+ */
+function useGlowPull() {
+  const ref = useRef<HTMLDivElement>(null);
+  const motion = useRef({ x: 0, y: 0, tx: 0, ty: 0, attracted: false, frame: 0, last: 0 });
+
+  useEffect(() => {
+    const m = motion.current;
+    return () => cancelAnimationFrame(m.frame);
+  }, []);
+
+  const tick = (now: number) => {
+    const m = motion.current;
+    const el = ref.current;
+    if (!el) return;
+    const dt = Math.min((now - m.last) / 1000, 0.1);
+    m.last = now;
+    const tau = m.attracted ? GLOW_FOLLOW_SECONDS : GLOW_RETURN_SECONDS;
+    m.x = approach(m.x, m.tx, dt, tau);
+    m.y = approach(m.y, m.ty, dt, tau);
+    el.style.transform = `translate3d(${m.x}px, ${m.y}px, 0)`;
+    const settled = Math.abs(m.tx - m.x) < 0.5 && Math.abs(m.ty - m.y) < 0.5;
+    m.frame = settled ? 0 : requestAnimationFrame(tick);
+  };
+
+  const steer = (tx: number, ty: number, attracted: boolean) => {
+    const m = motion.current;
+    m.tx = tx;
+    m.ty = ty;
+    m.attracted = attracted;
+    if (ref.current) ref.current.dataset.attracted = String(attracted);
+    if (!m.frame) {
+      m.last = performance.now();
+      m.frame = requestAnimationFrame(tick);
+    }
+  };
+
+  const attract = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const box = e.currentTarget.getBoundingClientRect();
+    steer(
+      (e.clientX - box.left - box.width / 2) * PULL,
+      (e.clientY - box.top - box.height / 2) * PULL,
+      true,
+    );
+  };
+  const release = () => steer(0, 0, false);
+
+  return { ref, attract, release };
 }

@@ -124,7 +124,11 @@ a darker glass body, rounded corners where they meet, resizable panes.
       semibold so unread still stands out
 - [x] The empty-state glow is drawn towards the pointer while it's over
       the pane (still drifting), and eases back to its usual path when the
-      pointer leaves. Off under "Reduce motion"
+      pointer leaves. Off under "Reduce motion". Reworked after it stuttered: it
+      now glides per frame instead of restarting a CSS transition on every
+      pointer move, and the glow is a soft gradient instead of a blur filter
+- [x] Account avatar moved into the sidebar's icon column, above the view
+      icons, so it lines up with the rows below
 
 Wrapped up 2026-10-15. Everything below stays open and
 moves into later milestones as it's picked up.

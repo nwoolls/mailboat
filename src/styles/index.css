@@ -157,32 +157,32 @@ html.resizing .panel-slide {
   height: 380px;
   margin: -190px 0 0 -190px;
   border-radius: 9999px;
+  /* A soft multi-stop falloff instead of a blur filter, which WebKit
+     re-rendered every frame while the glow moved. */
   background: radial-gradient(
     closest-side,
-    color-mix(in srgb, var(--color-accent) 24%, transparent),
+    color-mix(in srgb, var(--color-accent) 22%, transparent),
+    color-mix(in srgb, var(--color-accent) 12%, transparent) 45%,
+    color-mix(in srgb, var(--color-accent) 4%, transparent) 75%,
     transparent
   );
-  filter: blur(28px);
   pointer-events: none;
+  will-change: transform;
   animation: empty-drift 26s ease-in-out infinite alternate;
 }
-/* Carries the glow towards the pointer. Quick-ish to follow, slow to
-   drift home, so it feels drawn rather than dragged. */
+/* Carries the glow towards the pointer; its position is set per frame
+   from JavaScript (EmptyState), only the brightness eases here. */
 .empty-glow-pull {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  transform: translate(var(--pull-x, 0px), var(--pull-y, 0px));
-  transition:
-    transform 2.4s cubic-bezier(0.25, 0.1, 0.25, 1),
-    opacity 1.2s ease-out;
+  will-change: transform;
   opacity: 0.85;
+  transition: opacity 1.2s ease-out;
 }
 .empty-glow-pull[data-attracted="true"] {
-  transition:
-    transform 0.9s var(--motion-ease-out),
-    opacity 0.4s ease-out;
   opacity: 1;
+  transition-duration: 0.4s;
 }
 @keyframes empty-drift {
   0% {
