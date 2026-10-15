@@ -63,3 +63,64 @@ pub fn batch_response(parts: &[(u16, String)]) -> wiremock::ResponseTemplate {
     body.push_str("--batch_test--\r\n");
     wiremock::ResponseTemplate::new(200).set_body_raw(body, "multipart/mixed; boundary=batch_test")
 }
+
+/// Answers Gmail batch calls by looking up each requested thread ID in a
+/// map of fixture files. Unknown IDs get a 404 part (thread deleted).
+pub struct BatchResponder(pub std::collections::HashMap<&'static str, &'static str>);
+
+impl wiremock::Respond for BatchResponder {
+    fn respond(&self, request: &wiremock::Request) -> ResponseTemplate {
+        let body = String::from_utf8_lossy(&request.body);
+        let parts: Vec<(u16, String)> = body
+            .split("/threads/")
+            .skip(1)
+            .map(|rest| {
+                let id = rest.split('?').next().unwrap_or_default();
+                match self.0.get(id) {
+                    Some(file) => (200, fixture(file)),
+                    None => (404, fixture("error_404.json")),
+                }
+            })
+            .collect();
+        batch_response(&parts)
+    }
+}
+
+use wiremock::ResponseTemplate;
+
+/// Mounts profile, labels and thread listings for the standard scenario.
+pub async fn mount_mailbox(server: &wiremock::MockServer) {
+    use wiremock::matchers::{path, query_param, query_param_is_missing};
+    use wiremock::Mock;
+    let json = |f: &str| ResponseTemplate::new(200).set_body_raw(fixture(f), "application/json");
+    Mock::given(path("/gmail/v1/users/me/profile"))
+        .respond_with(json("profile.json"))
+        .mount(server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/labels"))
+        .respond_with(json("labels.json"))
+        .mount(server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/threads"))
+        .and(query_param("labelIds", "INBOX"))
+        .and(query_param_is_missing("pageToken"))
+        .respond_with(json("threads_inbox_page1.json"))
+        .mount(server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/threads"))
+        .and(query_param("labelIds", "INBOX"))
+        .and(query_param("pageToken", "page2"))
+        .respond_with(json("threads_inbox_page2.json"))
+        .mount(server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/threads"))
+        .and(query_param("labelIds", "STARRED"))
+        .respond_with(json("threads_starred.json"))
+        .mount(server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/threads"))
+        .and(query_param("labelIds", "SENT"))
+        .respond_with(json("threads_sent.json"))
+        .mount(server)
+        .await;
+}
