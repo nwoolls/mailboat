@@ -28,6 +28,7 @@ import { emptyStateFor } from "../features/mailbox/model/emptyState";
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
+import { SEARCH_INPUT_ID } from "./TitleSearch";
 import { Toolbar } from "./Toolbar";
 import {
   useAccounts,
@@ -110,7 +111,7 @@ export function Shell() {
       }
       if (e.key === "/" && !isEditable(e.target)) {
         e.preventDefault();
-        document.getElementById("mailboat-search")?.focus();
+        document.getElementById(SEARCH_INPUT_ID)?.focus();
         return;
       }
       if (e.key === "Escape" && isEditable(e.target)) {
@@ -153,6 +154,8 @@ export function Shell() {
   return (
     <div className="flex h-full flex-col bg-glass-sidebar">
       <Toolbar
+        search={search}
+        onSearch={setSearch}
         onToggleRead={toggleRead}
         sidebarOpen={sidebarOpen}
         syncAttention={syncAttention(syncStates)}
@@ -208,16 +211,6 @@ export function Shell() {
               <h2 className="truncate text-sm font-semibold">
                 {selectionTitle(selection, accountList, labels)}
               </h2>
-            </div>
-            <div className="px-3 pb-2">
-              <input
-                id="mailboat-search"
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search  /"
-                className="w-full rounded-md bg-selection-subtle px-3 py-1.5 outline-none placeholder:text-content/30 focus:bg-selection"
-              />
             </div>
             <ThreadList
               threads={threads}

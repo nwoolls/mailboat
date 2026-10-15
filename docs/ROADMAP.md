@@ -102,6 +102,9 @@ a darker glass body, rounded corners where they meet, resizable panes.
       hidden, a problem shows as a dot on the sidebar toggle
 - [x] The account's Google profile picture replaces the initial (saved at
       sign-in already; falls back to the initial if it can't load)
+- [x] Search moved from the list card to the center of the title bar, as
+      in VS Code: magnifier, `/` hint, clear button. Searches the view picked
+      in the sidebar
 
 ### Ideas for later in this spike (not started)
 

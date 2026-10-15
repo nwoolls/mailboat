@@ -10,11 +10,14 @@ import {
   StarIcon,
   TrashIcon,
 } from "../shared/ui/icons";
+import { TitleSearch } from "./TitleSearch";
 
 /** Room for the macOS traffic lights at the left of the toolbar. */
 const TRAFFIC_LIGHTS_WIDTH = 80;
 
 type Props = {
+  search: string;
+  onSearch: (text: string) => void;
   /** Toggle read/unread on the selected conversation (same as `u`), if any. */
   onToggleRead: (() => void) | null;
   sidebarOpen: boolean;
@@ -33,6 +36,8 @@ type Props = {
  * where they'll live.
  */
 export function Toolbar({
+  search,
+  onSearch,
   onToggleRead,
   sidebarOpen,
   syncAttention,
@@ -44,7 +49,7 @@ export function Toolbar({
   return (
     <header
       data-tauri-drag-region
-      className="flex h-10 shrink-0 items-center gap-0.5 pr-2"
+      className="relative flex h-10 shrink-0 items-center gap-0.5 pr-2"
       style={{ paddingLeft: TRAFFIC_LIGHTS_WIDTH }}
     >
       <ToolButton
@@ -56,6 +61,7 @@ export function Toolbar({
         dot={sidebarOpen ? null : syncAttention}
       />
       <div data-tauri-drag-region className="flex-1 self-stretch" />
+      <TitleSearch value={search} onChange={onSearch} />
       <ToolButton icon={ArchiveIcon} label="Archive" shortcut="e" />
       <ToolButton icon={TrashIcon} label="Delete" shortcut="#" />
       <ToolButton
