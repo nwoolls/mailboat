@@ -114,15 +114,15 @@ html.resizing iframe {
   --tw-shadow: 0 0 16px 3px color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
-/* Opening a conversation: it fades in and rises a few pixels, and each
-   email card fades in once it has its full height (MessageFrame). */
+/* Opening a conversation: a quick fade only. A small rise was tried and
+   read as a bounce when paging through emails. Each email card also
+   fades in once it has its full height (MessageFrame). */
 .reader-enter {
-  animation: reader-enter 220ms var(--motion-ease-out) both;
+  animation: reader-enter 160ms ease-out both;
 }
 @keyframes reader-enter {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
 }
 .frame-reveal {

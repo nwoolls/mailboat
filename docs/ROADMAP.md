@@ -133,7 +133,7 @@ a darker glass body, rounded corners where they meet, resizable panes.
       anywhere on the card
 - [x] Smoother switching between conversations: the previous one stays
       up (dimmed) until the next is ready instead of blanking; the new one
-      fades in with a small rise; each email card stays hidden until it has
+      fades in (a small rise was dropped: it bounced when paging); each email card stays hidden until it has
       its full height, then fades in (a soft placeholder holds its place
       while loading); and the reader always reserves its scrollbar gutter,
       so a long email no longer narrows the reader and reflows mid-view
