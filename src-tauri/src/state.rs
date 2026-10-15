@@ -19,6 +19,7 @@ pub struct AppState {
     pub secrets: Arc<dyn SecretStore>,
     pub supervisor: Supervisor,
     pub config_dir: PathBuf,
+    pub sync_log: Arc<crate::sync_log::SyncLog>,
     /// One Gmail client per account (see `gmail_for`).
     clients: Mutex<HashMap<AccountId, GmailClient>>,
     /// Only one browser sign-in at a time.
@@ -32,6 +33,7 @@ impl AppState {
         secrets: Arc<dyn SecretStore>,
         supervisor: Supervisor,
         config_dir: PathBuf,
+        sync_log: Arc<crate::sync_log::SyncLog>,
     ) -> Self {
         Self {
             db,
@@ -39,6 +41,7 @@ impl AppState {
             secrets,
             supervisor,
             config_dir,
+            sync_log,
             clients: Mutex::new(HashMap::new()),
             sign_in: tokio::sync::Mutex::new(()),
         }
@@ -70,7 +73,9 @@ impl AppState {
 
     /// Installs fresh credentials for an account (after signing in).
     pub fn set_tokens(&self, account: AccountId, tokens: Arc<AccountTokens>) -> GmailClient {
-        let client = GmailClient::new(self.http.clone(), tokens);
+        let log = self.sync_log.clone();
+        let client = GmailClient::new(self.http.clone(), tokens)
+            .with_logger(Arc::new(move |line: &str| log.write(account, line)));
         self.clients.lock().unwrap().insert(account, client.clone());
         client
     }
@@ -142,12 +147,16 @@ mod tests {
             WorkerTiming::default(),
         );
         let config_dir = std::env::temp_dir().join("mailboat-test-no-oauth-client");
+        let log = Arc::new(crate::sync_log::SyncLog::open(
+            &std::env::temp_dir().join("mailboat-test-logs"),
+        ));
         let state = AppState::new(
             db,
             reqwest::Client::new(),
             Arc::new(MemoryStore::default()),
             supervisor,
             config_dir,
+            log,
         );
 
         let (done_tx, done_rx) = std::sync::mpsc::channel();

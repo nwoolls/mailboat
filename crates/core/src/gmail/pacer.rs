@@ -26,30 +26,38 @@ pub mod cost {
 struct Bucket {
     tokens: f64,
     last: Instant,
+    /// Current rate; drops when Google says "slow down", then recovers.
+    rate: f64,
 }
+
+/// How fast the rate climbs back after a throttle (units/s gained per second).
+const RECOVERY_PER_SEC: f64 = 2.0;
+/// Never slow below this, so sync always makes progress.
+const MIN_RATE: f64 = 10.0;
 
 #[derive(Debug, Clone)]
 pub struct QuotaPacer {
-    units_per_sec: f64,
+    max_rate: f64,
     capacity: f64,
     bucket: Arc<Mutex<Bucket>>,
 }
 
 impl Default for QuotaPacer {
-    /// 150 units/s sustained (60% of Google's limit), bursts up to 600.
+    /// Up to 150 units/s (60% of Google's limit), small bursts of 200.
     fn default() -> Self {
-        Self::new(150.0, 600.0)
+        Self::new(150.0, 200.0)
     }
 }
 
 impl QuotaPacer {
     pub fn new(units_per_sec: f64, capacity: f64) -> Self {
         Self {
-            units_per_sec,
+            max_rate: units_per_sec,
             capacity,
             bucket: Arc::new(Mutex::new(Bucket {
                 tokens: capacity,
                 last: Instant::now(),
+                rate: units_per_sec,
             })),
         }
     }
@@ -61,7 +69,7 @@ impl QuotaPacer {
 
     /// Waits until `units` of quota are available, then spends them.
     pub async fn acquire(&self, units: u32) {
-        if self.units_per_sec.is_infinite() {
+        if self.max_rate.is_infinite() {
             return;
         }
         // A single request bigger than the bucket still goes through once full.
@@ -70,23 +78,33 @@ impl QuotaPacer {
         loop {
             let now = Instant::now();
             let elapsed = now.duration_since(bucket.last).as_secs_f64();
-            bucket.tokens = (bucket.tokens + elapsed * self.units_per_sec).min(self.capacity);
+            bucket.rate = (bucket.rate + elapsed * RECOVERY_PER_SEC).min(self.max_rate);
+            bucket.tokens = (bucket.tokens + elapsed * bucket.rate).min(self.capacity);
             bucket.last = now;
             if bucket.tokens >= units {
                 bucket.tokens -= units;
                 return;
             }
-            let wait = (units - bucket.tokens) / self.units_per_sec;
+            let wait = (units - bucket.tokens) / bucket.rate;
             // Holding the lock while sleeping keeps callers in FIFO order.
             tokio::time::sleep(Duration::from_secs_f64(wait)).await;
         }
     }
 
-    /// After Google reports a rate limit, assume the budget is used up.
-    pub async fn drain(&self) {
+    /// Google reported a rate limit: empty the bucket and halve the rate.
+    /// Returns the new rate (units/s), for logging.
+    pub async fn throttle(&self) -> f64 {
         let mut bucket = self.bucket.lock().await;
         bucket.tokens = 0.0;
         bucket.last = Instant::now();
+        if bucket.rate.is_finite() {
+            bucket.rate = (bucket.rate / 2.0).max(MIN_RATE);
+        }
+        bucket.rate
+    }
+
+    pub async fn current_rate(&self) -> f64 {
+        self.bucket.lock().await.rate
     }
 }
 
@@ -116,14 +134,37 @@ mod tests {
         }
         // (6000 - 600 burst) / 150 per second = 36s.
         assert_eq!(start.elapsed().as_secs(), 36);
+        // Default settings keep any one minute under Google's 15,000 limit.
+        let default = QuotaPacer::default();
+        let start = Instant::now();
+        let mut spent = 0;
+        while start.elapsed() < Duration::from_secs(60) {
+            default.acquire(cost::THREADS_GET).await;
+            spent += cost::THREADS_GET;
+        }
+        assert!(spent < 15_000 * 2 / 3, "{spent} units in a minute");
     }
 
     #[tokio::test(start_paused = true)]
-    async fn drain_forces_a_pause() {
+    async fn throttle_pauses_halves_the_rate_then_recovers() {
         let pacer = QuotaPacer::new(100.0, 100.0);
-        pacer.drain().await;
+        assert_eq!(pacer.throttle().await, 50.0);
         let start = Instant::now();
         pacer.acquire(50).await;
-        assert_eq!(start.elapsed().as_millis(), 500);
+        // ~1s at 50/s, a little less because the rate recovers meanwhile.
+        let ms = start.elapsed().as_millis();
+        assert!((900..=1000).contains(&ms), "{ms}");
+        assert_eq!(pacer.throttle().await.round(), 26.0);
+        for _ in 0..8 {
+            pacer.throttle().await;
+        }
+        assert_eq!(pacer.current_rate().await, 10.0, "never below the floor");
+        tokio::time::sleep(Duration::from_secs(60)).await;
+        pacer.acquire(1).await;
+        assert_eq!(
+            pacer.current_rate().await,
+            100.0,
+            "back to full speed after a minute"
+        );
     }
 }

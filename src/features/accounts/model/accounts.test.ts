@@ -19,6 +19,10 @@ describe("accounts", () => {
   it("an auth error asks the user to sign in again", () => {
     expect(syncBadge(state(1, "authError"))).toEqual({ tone: "error", label: "Sign in again" });
     expect(syncBadge(undefined).tone).toBe("ok");
+    expect(syncBadge({ ...state(1, "backoff"), errorKind: "rate_limited" }).label).toMatch(
+      /slow down/,
+    );
+    expect(syncBadge(state(1, "backoff")).label).toBe("Retrying soon");
   });
 
   it("status events replace only their own account's entry", () => {

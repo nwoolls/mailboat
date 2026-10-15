@@ -2635,6 +2635,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-specta",
+ "time",
  "tokio",
 ]
 

@@ -22,7 +22,13 @@ export function syncBadge(state: AccountSyncState | undefined): SyncBadge {
     case "syncing":
       return { tone: "busy", label: "Syncing…" };
     case "backoff":
-      return { tone: "warn", label: "Retrying soon" };
+      return {
+        tone: "warn",
+        label:
+          state.errorKind === "rate_limited"
+            ? "Google asked to slow down — continuing shortly"
+            : "Retrying soon",
+      };
     case "authError":
       return { tone: "error", label: "Sign in again" };
     case "error":

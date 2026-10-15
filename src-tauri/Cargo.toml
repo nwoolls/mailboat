@@ -22,3 +22,4 @@ specta.workspace = true
 tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 specta-typescript = "0.0.12"
 open = "5"
+time = { version = "0.3.55", features = ["formatting"] }

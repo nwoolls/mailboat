@@ -65,9 +65,13 @@ impl RetryPolicy {
     }
 }
 
-/// How many requests go into one batch call. Google allows 100, but advises
-/// smaller batches to stay under per-user rate limits.
-pub const BATCH_SIZE: usize = 40;
+/// How many requests go into one batch call. Google allows 100, but the
+/// requests in a batch run concurrently and count against the per-user
+/// concurrency limit, so keep batches small.
+pub const BATCH_SIZE: usize = 20;
+
+/// Receives diagnostic lines (rate limits, retries) for the sync log.
+pub type Logger = Arc<dyn Fn(&str) + Send + Sync>;
 
 #[derive(Clone)]
 pub struct GmailClient {
@@ -78,6 +82,7 @@ pub struct GmailClient {
     /// Shared by every clone of this client, so all calls for the account
     /// draw from one quota budget.
     pacer: QuotaPacer,
+    log: Option<Logger>,
 }
 
 impl GmailClient {
@@ -96,12 +101,33 @@ impl GmailClient {
             tokens,
             retry: RetryPolicy::default(),
             pacer: QuotaPacer::default(),
+            log: None,
         }
     }
 
     pub fn with_pacer(mut self, pacer: QuotaPacer) -> Self {
         self.pacer = pacer;
         self
+    }
+
+    pub fn with_logger(mut self, log: Logger) -> Self {
+        self.log = Some(log);
+        self
+    }
+
+    fn log(&self, line: &str) {
+        if let Some(log) = &self.log {
+            log(line);
+        }
+    }
+
+    /// Slows this account down after Google reported a rate limit.
+    async fn throttle(&self, what: &str, status: u16, body: &str) {
+        let rate = self.pacer.throttle().await;
+        self.log(&format!(
+            "rate limited ({what}, HTTP {status}): {}; slowing to {rate:.0} units/s",
+            error_detail(body)
+        ));
     }
 
     pub fn with_retry(mut self, retry: RetryPolicy) -> Self {
@@ -209,6 +235,7 @@ impl GmailClient {
                     .collect();
                 let parts = self.send_batch(&paths).await?;
                 let mut retry_later = Vec::new();
+                let mut limited: Option<(u16, String)> = None;
                 for (slot, &index) in pending.iter().enumerate() {
                     match parts.get(slot) {
                         Some(part) if part.status == 200 => {
@@ -216,6 +243,9 @@ impl GmailClient {
                         }
                         Some(part) if part.status == 404 => results[index] = Some(None),
                         Some(part) if part.status == 0 || is_retryable(part.status, &part.body) => {
+                            if limited.is_none() {
+                                limited = Some((part.status, part.body.clone()));
+                            }
                             retry_later.push(index)
                         }
                         Some(part) => return Err(api_error(part.status, &part.body)),
@@ -224,11 +254,18 @@ impl GmailClient {
                 }
                 pending = retry_later;
                 if !pending.is_empty() {
-                    self.pacer.drain().await;
+                    let (status, body) = limited.unwrap_or_default();
+                    self.throttle(
+                        &format!("{} of {} batch items", pending.len(), paths.len()),
+                        status,
+                        &body,
+                    )
+                    .await;
                     if attempt >= self.retry.max_retries {
                         return Err(CoreError::RateLimited(format!(
-                            "{} batch items still failing after retries",
-                            pending.len()
+                            "{} batch items still failing after retries: {}",
+                            pending.len(),
+                            error_detail(&body)
                         )));
                     }
                     tokio::time::sleep(self.retry.delay(attempt, None)).await;
@@ -317,7 +354,9 @@ impl GmailClient {
             let body = response.text().await.unwrap_or_default();
             if is_retryable(status.as_u16(), &body) {
                 if matches!(status.as_u16(), 403 | 429) {
-                    self.pacer.drain().await;
+                    self.throttle("request", status.as_u16(), &body).await;
+                } else {
+                    self.log(&format!("HTTP {status}, retrying: {}", error_detail(&body)));
                 }
                 if attempt >= self.retry.max_retries {
                     return Err(if status.as_u16() == 429 || status.as_u16() == 403 {
@@ -351,6 +390,18 @@ fn is_retryable(status: u16, body: &str) -> bool {
                 .any(|i| i.reason == "rateLimitExceeded" || i.reason == "userRateLimitExceeded")
         }),
         _ => false,
+    }
+}
+
+/// Google's message plus the machine-readable reasons, for the log.
+fn error_detail(body: &str) -> String {
+    match serde_json::from_str::<ErrorEnvelope>(body) {
+        Ok(e) => {
+            let reasons: Vec<&str> = e.error.errors.iter().map(|i| i.reason.as_str()).collect();
+            format!("{} [{}]", e.error.message, reasons.join(", "))
+        }
+        Err(_) if body.is_empty() => "(no body)".into(),
+        Err(_) => body.chars().take(300).collect(),
     }
 }
 

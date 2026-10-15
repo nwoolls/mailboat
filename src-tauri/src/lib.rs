@@ -2,6 +2,7 @@ mod commands;
 mod error;
 mod events;
 mod state;
+mod sync_log;
 
 use std::sync::Arc;
 
@@ -68,10 +69,14 @@ pub fn run() {
                 .user_agent(concat!("Mailboat/", env!("CARGO_PKG_VERSION")))
                 .timeout(std::time::Duration::from_secs(60))
                 .build()?;
+            let sync_log = Arc::new(sync_log::SyncLog::open(&app.path().app_log_dir()?));
             let supervisor = Supervisor::new(
                 tauri::async_runtime::handle().inner().clone(),
                 db.clone(),
-                Arc::new(TauriSyncEvents(app.handle().clone())),
+                Arc::new(TauriSyncEvents {
+                    app: app.handle().clone(),
+                    log: sync_log.clone(),
+                }),
                 SyncConfig::default(),
                 WorkerTiming::default(),
             );
@@ -81,6 +86,7 @@ pub fn run() {
                 Arc::new(mailboat_core::auth::KeyringStore),
                 supervisor,
                 config_dir,
+                sync_log,
             );
             state.resume_all_accounts()?;
             app.manage(state);

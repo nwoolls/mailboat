@@ -488,7 +488,11 @@ pub fn set_sync_status(
         SyncStatus::Backoff | SyncStatus::Error | SyncStatus::AuthError
     );
     conn.execute(
-        "UPDATE sync_state SET status = ?2, error_kind = ?3, error_message = ?4,
+        // While a retry is running, keep showing the error that caused it;
+        // it is cleared once a pass succeeds ('idle').
+        "UPDATE sync_state SET status = ?2,
+           error_kind = CASE WHEN ?2 = 'syncing' THEN error_kind ELSE ?3 END,
+           error_message = CASE WHEN ?2 = 'syncing' THEN error_message ELSE ?4 END,
            consecutive_failures = CASE WHEN ?5 THEN consecutive_failures + 1
                                        WHEN ?2 = 'idle' THEN 0 ELSE consecutive_failures END
          WHERE account_id = ?1",

@@ -20,6 +20,8 @@ pub trait SyncEvents: Send + Sync {
     fn status(&self, state: AccountSyncState);
     fn progress(&self, progress: SyncProgress);
     fn mail_changed(&self, account: AccountId);
+    /// A diagnostic line for the sync log.
+    fn log(&self, _account: AccountId, _line: &str) {}
 }
 
 #[derive(Debug, Clone)]
@@ -161,6 +163,13 @@ async fn run_worker(
         let wait: Option<Duration> = match result {
             Ok(outcome) => {
                 failures = 0;
+                events.log(
+                    account,
+                    &format!(
+                        "sync ok ({:?}): {} threads changed",
+                        outcome.kind, outcome.changed_threads
+                    ),
+                );
                 set_status(&db, &*events, account, SyncStatus::Idle, None);
                 if outcome.changed_threads > 0 {
                     events.mail_changed(account);
@@ -168,12 +177,20 @@ async fn run_worker(
                 Some(timing.poll_interval)
             }
             Err(e) => {
+                events.log(account, &format!("sync failed ({}): {e}", e.kind()));
                 // Partial progress may already be written; let the UI refresh.
                 events.mail_changed(account);
                 match &e {
                     CoreError::Auth(_) => {
                         set_status(&db, &*events, account, SyncStatus::AuthError, Some(&e));
                         None
+                    }
+                    // The Gmail client has already slowed itself down, so
+                    // retry soon rather than backing off for minutes.
+                    CoreError::RateLimited(_) => {
+                        failures += 1;
+                        set_status(&db, &*events, account, SyncStatus::Backoff, Some(&e));
+                        Some(timing.backoff_base.min(timing.backoff_max))
                     }
                     e if e.is_transient() => {
                         failures += 1;
@@ -215,16 +232,15 @@ fn set_status(
     let conn = db.conn();
     // If the account was removed meanwhile there is nothing to update.
     let _ = store::set_sync_status(&conn, account, status, error_pair);
-    let last_sync_at = store::sync_states(&conn)
+    let stored = store::sync_states(&conn)
         .ok()
-        .and_then(|all| all.into_iter().find(|s| s.account_id == account))
-        .and_then(|s| s.last_sync_at);
+        .and_then(|all| all.into_iter().find(|s| s.account_id == account));
     drop(conn);
-    events.status(AccountSyncState {
+    events.status(stored.unwrap_or(AccountSyncState {
         account_id: account,
         status,
         error_kind: error.map(|e| e.kind().to_string()),
         error_message: message,
-        last_sync_at,
-    });
+        last_sync_at: None,
+    }));
 }

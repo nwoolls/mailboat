@@ -22,16 +22,22 @@ pub struct MailChangedEvent {
     pub account_id: AccountId,
 }
 
-pub struct TauriSyncEvents(pub AppHandle);
+pub struct TauriSyncEvents {
+    pub app: AppHandle,
+    pub log: std::sync::Arc<crate::sync_log::SyncLog>,
+}
 
 impl SyncEvents for TauriSyncEvents {
     fn status(&self, state: AccountSyncState) {
-        let _ = SyncStatusEvent(state).emit(&self.0);
+        let _ = SyncStatusEvent(state).emit(&self.app);
     }
     fn progress(&self, progress: SyncProgress) {
-        let _ = SyncProgressEvent(progress).emit(&self.0);
+        let _ = SyncProgressEvent(progress).emit(&self.app);
     }
     fn mail_changed(&self, account_id: AccountId) {
-        let _ = MailChangedEvent { account_id }.emit(&self.0);
+        let _ = MailChangedEvent { account_id }.emit(&self.app);
+    }
+    fn log(&self, account: AccountId, line: &str) {
+        self.log.write(account, line);
     }
 }
