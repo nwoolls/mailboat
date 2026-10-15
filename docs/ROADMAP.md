@@ -56,6 +56,32 @@ most mail was missing from Mailboat.
       handler, verified 2026-10-15)*
 - [x] Keychain prompt no longer returns after rebuilds (signed dev builds)
 
+## UX Spike 1 (before Milestone 2)
+
+Polish pass so the app feels good to use. Direction: the owner's
+screenshots of Tern (terminal), Arc (browser) and MonoCode: glass sidebars,
+a darker glass body, rounded corners where they meet, resizable panes.
+
+- [x] Glass window: native macOS blur behind a transparent window; sidebar
+      on thin glass, list and reader on a near-opaque tint for legibility
+- [ ] Rounded body panel inset from the window edge, sidebar on the glass
+- [ ] Resizable splitters (sidebar | list | reader); reader can be dragged
+      narrow to act as a right-hand side panel
+
+### Ideas for later in this spike (not started)
+
+- Tool buttons in the title bar (compose, archive, …), as in Tern
+- Collapse/hide the sidebar so the list goes full width
+- Remember pane widths between launches
+- Reader as its own rounded card instead of sharing the body panel
+- Stronger, adjustable blur (private `CGSSetWindowBackgroundBlurRadius`,
+  Rust) if the system material looks too faint
+- Sidebar grouping: demote Spam/Trash/Important/All Mail, labels as folders
+- Thread row density, icons (Hugeicons, as MonoCode), hover/selection states
+- Reader header, message stacking, how the white email card sits in dark mode
+- Sync progress, empty/loading states, error cards
+- Visible focus and shortcut hints
+
 ## Milestone 2: Multiple accounts and unified inbox
 
 - [ ] Add and remove accounts from the UI (add exists; remove needs UI)

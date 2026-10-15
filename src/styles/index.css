@@ -14,6 +14,19 @@
   --color-selection: color-mix(in srgb, var(--color-content) 8%, transparent);
   --color-selection-strong: color-mix(in srgb, var(--color-content) 12%, transparent);
   --color-accent: hsl(217 85% 62%);
+  /* Glass tints over the native window blur (see tauri.conf.json
+     windowEffects). The sidebar stays thin so the blur shows; panels that
+     hold reading text are nearly opaque so text keeps full contrast. */
+  --color-glass-sidebar: color-mix(
+    in srgb,
+    var(--color-background-base) var(--glass-sidebar-strength),
+    transparent
+  );
+  --color-glass-panel: color-mix(
+    in srgb,
+    var(--color-background-base) var(--glass-panel-strength),
+    transparent
+  );
   --color-danger: hsl(4 75% 60%);
   --color-warn: hsl(38 85% 55%);
   --font-sans:
@@ -26,6 +39,8 @@
   --background-lightness: 9%;
   --raised-lightness: 12%;
   --content-lightness: 92%;
+  --glass-sidebar-strength: 30%;
+  --glass-panel-strength: 84%;
   color-scheme: dark;
 }
 
@@ -34,6 +49,8 @@
     --background-lightness: 99%;
     --raised-lightness: 97%;
     --content-lightness: 12%;
+    --glass-sidebar-strength: 35%;
+    --glass-panel-strength: 88%;
     color-scheme: light;
   }
 }
@@ -44,9 +61,11 @@ body,
   height: 100%;
 }
 
+/* The window is transparent over a native blur; surfaces paint their own
+   glass tint. */
 body {
   margin: 0;
-  background: var(--color-background-base);
+  background: transparent;
   color: var(--color-content);
   font-family: var(--font-sans);
   font-size: 13px;

@@ -9,7 +9,7 @@ export function Welcome({ setup }: { setup: OAuthSetup | undefined }) {
   const signIn = useSignIn();
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-glass-panel">
       <div data-tauri-drag-region className="h-11 shrink-0" />
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="max-w-md">

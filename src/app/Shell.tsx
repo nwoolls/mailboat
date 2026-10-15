@@ -104,7 +104,7 @@ export function Shell() {
           setSelectedId(null);
         }}
       />
-      <section className="flex w-[380px] shrink-0 flex-col border-r border-stroke">
+      <section className="flex w-[380px] shrink-0 flex-col border-r border-stroke bg-glass-panel">
         <div data-tauri-drag-region className="flex h-11 shrink-0 items-end px-4 pb-1">
           <h2 className="truncate text-sm font-semibold">
             {selectionTitle(selection, accountList, labels)}
@@ -131,7 +131,7 @@ export function Shell() {
           loading={threadsQuery.isPending || isFetchingNextPage}
         />
       </section>
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col bg-glass-panel">
         <div data-tauri-drag-region className="h-3 shrink-0" />
         <ThreadReader threadId={selectedId} accounts={accounts} />
       </main>
