@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod events;
+mod links;
 mod state;
 mod sync_log;
 
@@ -34,7 +35,6 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::sender_allow_images,
             commands::sync_now,
             commands::sync_status_list,
-            commands::open_external,
         ])
         .events(collect_events![
             SyncStatusEvent,
@@ -61,6 +61,9 @@ pub fn run() {
     export_bindings(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(BINDINGS_PATH));
 
     tauri::Builder::default()
+        .register_uri_scheme_protocol(mailboat_core::mail::links::SCHEME, |_ctx, request| {
+            links::handle(&request)
+        })
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);

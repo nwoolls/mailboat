@@ -128,9 +128,11 @@ and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
 2. Tracking pixels are always removed; remote images are held back unless
    the sender is trusted.
 3. The result is a full document with its own Content-Security-Policy,
-   shown in an `<iframe sandbox>` without `allow-scripts`. Link clicks are
-   caught by the app and opened in the default browser (http, https and
-   mailto only).
+   shown in an `<iframe sandbox>` without `allow-scripts`.
+4. Links (http, https, mailto only) are rewritten to Mailboat's own
+   `mailboat-link:` scheme. A click makes the frame request that URL; the app
+   opens the real link in the default browser and answers 204 No Content,
+   so the email stays put. Other links are made inert.
 
 ## Decisions
 
@@ -144,4 +146,5 @@ and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
 | 2026-10-15 | Pace Gmail at 60 units/s, batches of 5 | The project's per-user limit is 6,000/minute (documented default is 15,000), enforced per second. |
 | 2026-10-15 | Sign dev builds with an Apple Development certificate | macOS ties keychain approval to the exact build; signing gives every build one identity. |
 | 2026-10-15 | Use the `oauth2` crate for the OAuth protocol | Security-sensitive code shouldn't be homemade; it supports PKCE. The loopback listener and keychain storage stay ours. |
+| 2026-10-15 | Email links go through a `mailboat-link:` scheme handler | Catching clicks from the sandboxed frame with JavaScript didn't work in the macOS web view; a scheme handler doesn't need scripts at all. |
 | 2026-10-15 | Track milestones in `docs/ROADMAP.md` | Items moved between milestones must not get lost. |

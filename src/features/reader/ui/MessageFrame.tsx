@@ -4,7 +4,6 @@ import { commands } from "../../../platform/tauri/bindings";
 import type { MessageId } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { useOpenedMessage } from "../../../shared/lib/queries";
-import { externalLink } from "../model/links";
 
 /**
  * Shows one message's sanitized HTML.
@@ -12,7 +11,8 @@ import { externalLink } from "../model/links";
  * Security: the document was sanitized in Rust and carries its own CSP. The
  * iframe is sandboxed WITHOUT `allow-scripts`, so nothing in the email can
  * run. `allow-same-origin` only lets this component (not the email) measure
- * the content height and catch link clicks, which open in the browser.
+ * the content height. Links were rewritten in Rust to `mailboat-link:` URLs,
+ * which the app opens in the default browser (see `mail/links.rs`).
  */
 export function MessageFrame({ messageId }: { messageId: MessageId }) {
   const qc = useQueryClient();
@@ -31,13 +31,6 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
     if (!doc) return;
     const measure = () => setHeight(Math.max(60, doc.documentElement.scrollHeight));
     measure();
-    doc.addEventListener("click", (e) => {
-      const anchor = (e.target as Element | null)?.closest?.("a");
-      if (!anchor) return;
-      e.preventDefault();
-      const url = externalLink(anchor.getAttribute("href"));
-      if (url) void commands.openExternal(url);
-    });
     for (const img of Array.from(doc.images)) img.addEventListener("load", measure);
     const observer = new ResizeObserver(measure);
     observer.observe(doc.documentElement);

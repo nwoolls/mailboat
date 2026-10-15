@@ -240,19 +240,3 @@ pub fn sync_now(state: State<'_, AppState>, account_ids: Option<Vec<AccountId>>)
 pub fn sync_status_list(state: State<'_, AppState>) -> CmdResult<Vec<AccountSyncState>> {
     Ok(store::sync_states(&state.db.conn())?)
 }
-
-/// Opens a link from an email in the default browser. Only web and mail
-/// links are allowed.
-#[tauri::command]
-#[specta::specta]
-pub fn open_external(url: String) -> CmdResult<()> {
-    let parsed = mailboat_core::reqwest::Url::parse(&url)
-        .map_err(|_| CoreError::Invalid("not a valid link".into()))?;
-    if !matches!(parsed.scheme(), "http" | "https" | "mailto") {
-        return Err(
-            CoreError::Invalid(format!("refusing to open {} links", parsed.scheme())).into(),
-        );
-    }
-    open::that_detached(parsed.as_str()).map_err(|e| CoreError::Other(e.to_string()))?;
-    Ok(())
-}

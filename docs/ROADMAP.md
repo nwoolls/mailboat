@@ -33,9 +33,11 @@ something moves between milestones, move it here and say why.
 
 ### Not yet verified in the real app
 
-- [ ] Read/unread round trip against real Gmail (change shows up in Gmail on the web)
-- [ ] Clicking a link in an email opens the default browser
-- [ ] Keychain prompt no longer returns after rebuilds (signed dev builds)
+- [x] Read/unread round trip against real Gmail (change shows up in Gmail on the web)
+- [ ] Clicking a link in an email opens the default browser *(first attempt
+      failed: the web view doesn't deliver clicks inside the sandboxed frame;
+      reworked to a `mailboat-link:` scheme handler, needs re-checking)*
+- [x] Keychain prompt no longer returns after rebuilds (signed dev builds)
 
 ## Milestone 2: Multiple accounts and unified inbox
 

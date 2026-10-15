@@ -159,6 +159,20 @@ pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
                 }
                 Ok(())
             }))
+            .append_element_content_handler(element!("a[href]", |el| {
+                // Route clicks through the app (see `mail::links`); links that
+                // must not open (javascript:, file:, relative...) go inert.
+                let href = el.get_attribute("href").unwrap_or_default();
+                match super::links::wrap(&href) {
+                    Some(wrapped) => {
+                        el.set_attribute("href", &wrapped)?;
+                        // Hovering shows where the link really goes.
+                        el.set_attribute("title", href.trim())?;
+                    }
+                    None => el.remove_attribute("href"),
+                }
+                Ok(())
+            }))
             .append_element_content_handler(element!("[background]", |el| {
                 if !allow_images {
                     if el
@@ -256,6 +270,12 @@ mod tests {
         );
         assert!(out.contains("p{color:#333}"), "<style> blocks are kept");
         assert!(out.contains("https://ok.com/pay"));
+        // Clicks go through the app's link handler, not straight to the web.
+        assert!(out.contains(&format!(
+            "href=\"{}?u=https%3A%2F%2Fok.com%2Fpay\"",
+            super::super::links::link_base()
+        )));
+        assert!(!out.contains("href=\"https://"));
     }
 
     #[test]

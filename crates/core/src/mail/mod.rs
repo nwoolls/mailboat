@@ -1,5 +1,6 @@
 //! Preparing message content for display.
 
+pub mod links;
 pub mod sanitize;
 
 use crate::db::store::StoredBody;

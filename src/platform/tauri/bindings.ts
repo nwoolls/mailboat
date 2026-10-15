@@ -40,11 +40,6 @@ export const commands = {
 	/**  Wakes sync workers now. `None` means every account. */
 	syncNow: (accountIds: AccountId[] | null) => __TAURI_INVOKE<void>("sync_now", { accountIds }),
 	syncStatusList: () => typedError<AccountSyncState[], AppError>(__TAURI_INVOKE("sync_status_list")),
-	/**
-	 *  Opens a link from an email in the default browser. Only web and mail
-	 *  links are allowed.
-	 */
-	openExternal: (url: string) => typedError<null, AppError>(__TAURI_INVOKE("open_external", { url })),
 };
 
 /** Events */
