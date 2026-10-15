@@ -83,6 +83,10 @@ a darker glass body, rounded corners where they meet, resizable panes.
       full width. Not remembered between launches yet
 - [x] The reader only appears when a conversation is selected (no more
       "No conversation selected" panel); Escape closes it
+- [x] Empty states instead of "Nothing here": an icon, a title and a line
+      per view. An empty Inbox says "All caught up" with a different line
+      each day and a thumbs-up that nods; a soft accent glow drifts slowly
+      around the pane. Motion stops with macOS "Reduce motion"
 
 ### Ideas for later in this spike (not started)
 
@@ -96,7 +100,9 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - Sidebar grouping: demote Spam/Trash/Important/All Mail, labels as folders
 - Thread row density, icons, hover/selection states
 - Reader header, message stacking, how the white email card sits in dark mode
-- Sync progress, empty/loading states, error cards
+- Sync progress, loading states, error cards
+- Empty states: an illustration instead of an icon, and more personality
+  per view (owner liked Google Chat's "All quiet here in message land")
 - Visible focus and shortcut hints
 
 ## Milestone 2: Multiple accounts and unified inbox

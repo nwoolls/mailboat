@@ -17,6 +17,8 @@ type Props = {
   hasMore: boolean;
   loadMore: () => void;
   loading: boolean;
+  /** Shown when the view has no conversations. */
+  empty: React.ReactNode;
 };
 
 export function ThreadList({
@@ -28,6 +30,7 @@ export function ThreadList({
   hasMore,
   loadMore,
   loading,
+  empty,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -51,11 +54,7 @@ export function ThreadList({
     if (index >= 0) virtualizer.scrollToIndex(index, { align: "auto" });
   }, [selectedId, threads, virtualizer]);
 
-  if (!loading && threads.length === 0) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-content/40">Nothing here</div>
-    );
-  }
+  if (!loading && threads.length === 0) return empty;
 
   return (
     <div

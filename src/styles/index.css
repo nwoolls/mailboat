@@ -34,6 +34,10 @@
 }
 
 :root {
+  /* Motion, borrowed from MonoCode. */
+  --motion-feedback-duration: 120ms;
+  --motion-panel-duration: 220ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --theme-hue: 240;
   --theme-saturation: 4%;
   --background-lightness: 9%;
@@ -90,6 +94,75 @@ html.resizing * {
 }
 html.resizing iframe {
   pointer-events: none;
+}
+
+/* Empty states: a soft accent glow drifting slowly around the pane, the
+   message rising in once, and a little nod from the thumbs-up. All of it
+   stops for people who ask for reduced motion. */
+.empty-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 380px;
+  height: 380px;
+  margin: -190px 0 0 -190px;
+  border-radius: 9999px;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--color-accent) 24%, transparent),
+    transparent
+  );
+  filter: blur(28px);
+  pointer-events: none;
+  animation: empty-drift 26s ease-in-out infinite alternate;
+}
+@keyframes empty-drift {
+  0% {
+    transform: translate(-30%, -25%) scale(1);
+  }
+  33% {
+    transform: translate(28%, -12%) scale(1.12);
+  }
+  66% {
+    transform: translate(12%, 30%) scale(0.94);
+  }
+  100% {
+    transform: translate(-26%, 18%) scale(1.06);
+  }
+}
+.empty-rise {
+  animation: empty-rise 420ms var(--motion-ease-out) both;
+}
+@keyframes empty-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.empty-nod {
+  transform-origin: 50% 80%;
+  animation: empty-nod 700ms var(--motion-ease-out) 300ms both;
+}
+@keyframes empty-nod {
+  0% {
+    transform: rotate(0) scale(0.9);
+  }
+  35% {
+    transform: rotate(-14deg) scale(1.08);
+  }
+  70% {
+    transform: rotate(5deg);
+  }
+  100% {
+    transform: rotate(0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .empty-glow,
+  .empty-rise,
+  .empty-nod {
+    animation: none;
+  }
 }
 
 /* Text the user may want to copy. */
