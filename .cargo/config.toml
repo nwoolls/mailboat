@@ -1,0 +1,6 @@
+# Sign macOS dev builds so keychain access survives rebuilds (scripts/dev-run.sh).
+[target.aarch64-apple-darwin]
+runner = "scripts/dev-run.sh"
+
+[target.x86_64-apple-darwin]
+runner = "scripts/dev-run.sh"
