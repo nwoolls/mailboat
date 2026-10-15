@@ -115,30 +115,51 @@ a darker glass body, rounded corners where they meet, resizable panes.
       relaunch
 - [x] "Add account" is a small "+" in an icon bar at the sidebar's foot
       (owner picked option A), with room for settings and the log console
+- [x] Thread rows line up: a fixed gutter for the unread dot; senders
+      medium weight; star and attachment as icons instead of emoji
+- [x] List titles drop the account when there's only one ("Inbox"), and
+      searches read "Results for “newsy”"
+- [x] Archive, Delete, Star, Label and More dim with nothing selected
 
-### Ideas for later in this spike (not started)
+Wrapped up 2026-10-15. Everything below stays open and
+moves into later milestones as it's picked up.
 
-- Remember pane widths and which panels are hidden between launches
+### Proposed but not built
+
+Options offered during the spike that the owner didn't pick (yet):
+
+- Sync status as a toolbar activity icon with a per-account popover
+  (option B); best once it can open the log console
+- Sync status as a hairline shimmer on the list card (option C); can't
+  show which account is syncing
+- Add-account area as an account menu on the avatar (option C): accounts,
+  add, remove (Milestone 2), settings
 - Reader as its own rounded card, if text on the glass proves hard to read
 - Stronger, adjustable blur (private `CGSSetWindowBackgroundBlurRadius`,
-  Rust) if the system material looks too faint
-- Account menu on the avatar (accounts, add, remove, settings); option C
-  for the add-account area, not built
+  Rust, as in Synara and MonoCode) if the system material looks too faint
+- `j`/`k` leaving a hidden reader hidden (today they bring it back)
+
+### Deferred ideas
+
+- Remember pane widths and which panels are hidden between launches
 - Remember which sidebar folds are open
-- Thread row density, icons, hover/selection states
+- Thread row density (rows are still 72px, three lines)
+- Unread counts next to views and in the list title (needs a count query)
 - Reader header, message stacking, how the white email card sits in dark mode
-- Sync activity icon in the toolbar with a per-account popover (option B,
-  not built); best once it can open the log console below
 - Log console: hidden by default, opens at the bottom with a
   terminal-like, syntax-highlighted view of the sync log (far future;
   needs Rust to stream log lines to the UI)
-- Hairline shimmer on the list card during long syncs (option C, not
-  built; can't show which account is syncing)
 - Real sync progress (e.g. "1,200 of 5,000") needs a new field from Rust
 - Loading states (skeleton rows)
 - Empty states: an illustration instead of an icon, and more personality
   per view (owner liked Google Chat's "All quiet here in message land")
-- Visible focus and shortcut hints
+- Visible focus and shortcut hints (toolbar tooltips show some today)
+- Light mode: built alongside dark but never reviewed by the owner
+- Broken "?" boxes where remote images are blocked inside emails; a tidy
+  placeholder needs the Rust sanitizer, so it belongs with inline images
+  in Milestone 3
+- The traffic lights once jumped during live resize in MonoCode; not seen
+  here, but worth watching
 
 ## Milestone 2: Multiple accounts and unified inbox
 
