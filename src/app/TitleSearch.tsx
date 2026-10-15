@@ -16,7 +16,7 @@ export function TitleSearch({
   onChange: (text: string) => void;
 }) {
   return (
-    <div className="group/search absolute top-1/2 left-1/2 flex h-7 -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-md bg-selection-subtle px-2.5 ring-1 ring-stroke transition-colors duration-[120ms] focus-within:bg-selection focus-within:ring-accent/50 hover:bg-selection [width:clamp(200px,calc(100vw-600px),440px)]">
+    <div className="group/search absolute top-1/2 left-1/2 flex h-7 -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-md bg-selection-subtle px-2.5 ring-1 ring-stroke transition-[background-color,box-shadow] duration-[120ms] focus-within:bg-selection focus-within:ring-accent/45 focus-within:shadow-[0_0_14px_2px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] hover:bg-selection [width:clamp(200px,calc(100vw-600px),440px)]">
       <SearchIcon size={14} className="shrink-0 text-content/50" />
       <input
         id={SEARCH_INPUT_ID}
@@ -28,7 +28,9 @@ export function TitleSearch({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search mail"
-        className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-content/40"
+        // The box shows focus with its border and glow; the field's own
+        // focus outline would draw a second, inner box.
+        className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-content/40 focus-visible:outline-none"
       />
       {value ? (
         <button

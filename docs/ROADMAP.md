@@ -104,7 +104,8 @@ a darker glass body, rounded corners where they meet, resizable panes.
       sign-in already; falls back to the initial if it can't load)
 - [x] Search moved from the list card to the center of the title bar, as
       in VS Code: magnifier, `/` hint, clear button. Searches the view picked
-      in the sidebar
+      in the sidebar. Focus shows as the blue border plus a soft glow; the
+      inner focus box is gone
 
 ### Ideas for later in this spike (not started)
 
