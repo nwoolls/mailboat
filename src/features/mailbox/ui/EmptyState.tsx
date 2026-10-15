@@ -30,19 +30,18 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
 
 /**
  * What an empty list shows: an icon, a line of copy and a drifting glow.
- * With the pointer over the pane the glow is drawn towards it (still
- * drifting); when the pointer leaves it eases back to its usual path.
+ * The glow spans the whole list card (title row included, behind its text)
+ * and rests behind the icon. With the pointer anywhere over the card it
+ * centres on the cursor; when the pointer leaves it eases back to its path.
  */
 export function EmptyState({ state }: { state: EmptyStateModel }) {
   const Icon = ICONS[state.icon];
-  const { ref, glowRef, attract, release } = useGlowPull();
+  const { anchorRef, pullRef, glowRef } = useGlowPull();
   return (
-    <div
-      className="relative flex flex-1 items-center justify-center overflow-hidden px-8"
-      onPointerMove={attract}
-      onPointerLeave={release}
-    >
-      <div ref={ref} aria-hidden className="empty-glow-pull">
+    <div ref={anchorRef} className="flex flex-1 items-center justify-center px-8">
+      {/* Positioned against the card (.panel), not this box, so it can
+          reach under the title row; z-index -1 keeps it behind text. */}
+      <div ref={pullRef} aria-hidden className="empty-glow-pull">
         <div ref={glowRef} className="empty-glow" />
       </div>
       <div className="empty-rise relative flex max-w-xs flex-col items-center text-center">
@@ -59,70 +58,88 @@ export function EmptyState({ state }: { state: EmptyStateModel }) {
 }
 
 /**
- * Moves the glow's wrapper once per animation frame. While the pointer is
- * over the pane the target is the pointer minus the glow's current drift,
- * so the glow centres on the cursor (its gentle size change carries on);
- * once the pointer leaves the target is zero and it glides back onto its
- * usual drifting path, then the loop stops. Pointer moves only update the
- * target, so there's no React re-render and no restarted transition.
+ * Drives the glow from pointer events on the enclosing card. Once per
+ * animation frame it moves the glow's wrapper towards its target: while
+ * the pointer is over the card, the pointer minus the drift animation's
+ * current offset (so the glow centres on the cursor and only its gentle
+ * size change carries on); otherwise zero, gliding back onto its usual
+ * path, after which the loop stops. Pointer moves only update the target,
+ * so nothing re-renders and no transition restarts.
  */
 function useGlowPull() {
-  const ref = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const pullRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
-  const motion = useRef({ x: 0, y: 0, cx: 0, cy: 0, attracted: false, frame: 0, last: 0 });
 
   useEffect(() => {
-    const m = motion.current;
-    return () => cancelAnimationFrame(m.frame);
-  }, []);
+    const anchor = anchorRef.current;
+    const pull = pullRef.current;
+    const card = anchor?.closest<HTMLElement>(".panel");
+    if (!anchor || !pull || !card) return;
+    const m = { x: 0, y: 0, cx: 0, cy: 0, attracted: false, frame: 0, last: 0 };
 
-  const tick = (now: number) => {
-    const m = motion.current;
-    const el = ref.current;
-    if (!el) return;
-    const dt = Math.min((now - m.last) / 1000, 0.1);
-    m.last = now;
-    let tx = 0;
-    let ty = 0;
-    if (m.attracted) {
-      const drift = driftOffset(glowRef.current);
-      tx = m.cx - drift.x;
-      ty = m.cy - drift.y;
-    }
-    const tau = m.attracted ? GLOW_FOLLOW_SECONDS : GLOW_RETURN_SECONDS;
-    m.x = approach(m.x, tx, dt, tau);
-    m.y = approach(m.y, ty, dt, tau);
-    el.style.transform = `translate3d(${m.x}px, ${m.y}px, 0)`;
-    // While attracted the drift keeps moving, so keep following.
-    const settled = !m.attracted && Math.abs(m.x) < 0.5 && Math.abs(m.y) < 0.5;
-    m.frame = settled ? 0 : requestAnimationFrame(tick);
-  };
+    // Rest the glow behind the icon, which sits below the card's centre
+    // by half the title row's height.
+    const placeAtRest = () => {
+      const a = anchor.getBoundingClientRect();
+      const c = card.getBoundingClientRect();
+      pull.style.setProperty("--glow-rest-x", `${a.left + a.width / 2 - (c.left + c.width / 2)}px`);
+      pull.style.setProperty("--glow-rest-y", `${a.top + a.height / 2 - (c.top + c.height / 2)}px`);
+    };
+    placeAtRest();
+    const resize = new ResizeObserver(placeAtRest);
+    resize.observe(card);
 
-  const run = () => {
-    const m = motion.current;
-    if (!m.frame) {
+    const tick = (now: number) => {
+      const dt = Math.min((now - m.last) / 1000, 0.1);
+      m.last = now;
+      let tx = 0;
+      let ty = 0;
+      if (m.attracted) {
+        const drift = driftOffset(glowRef.current);
+        tx = m.cx - drift.x;
+        ty = m.cy - drift.y;
+      }
+      const tau = m.attracted ? GLOW_FOLLOW_SECONDS : GLOW_RETURN_SECONDS;
+      m.x = approach(m.x, tx, dt, tau);
+      m.y = approach(m.y, ty, dt, tau);
+      pull.style.transform = `translate3d(${m.x}px, ${m.y}px, 0)`;
+      // While attracted the drift keeps moving, so keep following.
+      const settled = !m.attracted && Math.abs(m.x) < 0.5 && Math.abs(m.y) < 0.5;
+      m.frame = settled ? 0 : requestAnimationFrame(tick);
+    };
+    const run = () => {
+      if (m.frame) return;
       m.last = performance.now();
       m.frame = requestAnimationFrame(tick);
-    }
-  };
+    };
 
-  const attract = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const m = motion.current;
-    const box = e.currentTarget.getBoundingClientRect();
-    m.cx = e.clientX - box.left - box.width / 2;
-    m.cy = e.clientY - box.top - box.height / 2;
-    m.attracted = true;
-    if (ref.current) ref.current.dataset.attracted = "true";
-    run();
-  };
-  const release = () => {
-    motion.current.attracted = false;
-    if (ref.current) ref.current.dataset.attracted = "false";
-    run();
-  };
+    const onMove = (e: PointerEvent) => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      // Relative to where the glow rests (behind the icon).
+      const a = anchor.getBoundingClientRect();
+      m.cx = e.clientX - (a.left + a.width / 2);
+      m.cy = e.clientY - (a.top + a.height / 2);
+      m.attracted = true;
+      pull.dataset.attracted = "true";
+      run();
+    };
+    const onLeave = () => {
+      m.attracted = false;
+      pull.dataset.attracted = "false";
+      run();
+    };
+    card.addEventListener("pointermove", onMove);
+    card.addEventListener("pointerleave", onLeave);
+    return () => {
+      card.removeEventListener("pointermove", onMove);
+      card.removeEventListener("pointerleave", onLeave);
+      resize.disconnect();
+      cancelAnimationFrame(m.frame);
+    };
+  }, []);
 
-  return { ref, glowRef, attract, release };
+  return { anchorRef, pullRef, glowRef };
 }
 
 /** Where the drift animation has the glow right now, from its centre. */

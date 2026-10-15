@@ -81,6 +81,10 @@ body {
 /* The rounded body panel that sits on the glass. Only a hairline edge, as
    in Tern: a soft shadow darkened the splitter gaps beside it. */
 .panel {
+  /* Positioned and isolated so the empty-state glow can sit behind the
+     card's content (z-index -1) yet above its background. */
+  position: relative;
+  isolation: isolate;
   border-radius: 10px;
   background: var(--color-glass-panel);
   box-shadow: 0 0 0 1px var(--color-stroke);
@@ -151,8 +155,8 @@ html.resizing .panel-slide {
    stops for people who ask for reduced motion. */
 .empty-glow {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: calc(50% + var(--glow-rest-y, 0px));
+  left: calc(50% + var(--glow-rest-x, 0px));
   width: 380px;
   height: 380px;
   margin: -190px 0 0 -190px;
@@ -175,6 +179,7 @@ html.resizing .panel-slide {
 .empty-glow-pull {
   position: absolute;
   inset: 0;
+  z-index: -1;
   pointer-events: none;
   will-change: transform;
   opacity: 0.85;

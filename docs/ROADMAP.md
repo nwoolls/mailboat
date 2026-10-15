@@ -128,7 +128,9 @@ a darker glass body, rounded corners where they meet, resizable panes.
       now glides per frame instead of restarting a CSS transition on every
       pointer move, and the glow is a soft gradient instead of a blur filter;
       it then centres on the cursor (its drift is cancelled out while
-      attracted) instead of stopping short
+      attracted) instead of stopping short; it spans the whole list card,
+      title row included (it was cut off below it), and follows the pointer
+      anywhere on the card
 - [x] Account avatar ends flush with the selected row's right edge, and
       the account header is a 28px row with a little room before Inbox
       (briefly tried on the left; the owner preferred the right)
