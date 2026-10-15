@@ -15,6 +15,7 @@
     "perf": "warn"
   },
   "rules": {
-    "react-in-jsx-scope": "off"
+    "react-in-jsx-scope": "off",
+    "react/incompatible-library": "off"
   }
 }

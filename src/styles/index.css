@@ -1,1 +1,78 @@
 @import "tailwindcss";
+
+/* Theme tokens follow MonoCode's approach (src/styles/index.css there):
+   a hue/saturation base, a content color, and translucent mixes of content
+   for strokes and selection, so one palette works in light and dark. */
+@theme {
+  --color-background-base: hsl(
+    var(--theme-hue) var(--theme-saturation) var(--background-lightness)
+  );
+  --color-background-raised: hsl(var(--theme-hue) var(--theme-saturation) var(--raised-lightness));
+  --color-content: hsl(var(--theme-hue) var(--theme-saturation) var(--content-lightness));
+  --color-stroke: color-mix(in srgb, var(--color-content) 8%, transparent);
+  --color-selection-subtle: color-mix(in srgb, var(--color-content) 4%, transparent);
+  --color-selection: color-mix(in srgb, var(--color-content) 8%, transparent);
+  --color-selection-strong: color-mix(in srgb, var(--color-content) 12%, transparent);
+  --color-accent: hsl(217 85% 62%);
+  --color-danger: hsl(4 75% 60%);
+  --color-warn: hsl(38 85% 55%);
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, "Helvetica Neue", sans-serif;
+}
+
+:root {
+  --theme-hue: 240;
+  --theme-saturation: 4%;
+  --background-lightness: 9%;
+  --raised-lightness: 12%;
+  --content-lightness: 92%;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background-lightness: 99%;
+    --raised-lightness: 97%;
+    --content-lightness: 12%;
+    color-scheme: light;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-background-base);
+  color: var(--color-content);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+/* Text the user may want to copy. */
+.selectable {
+  user-select: text;
+  cursor: auto;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+  outline-offset: -2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-content) 14%, transparent);
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
