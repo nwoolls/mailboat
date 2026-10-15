@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ClearIcon, SearchIcon } from "../shared/ui/icons";
 
 /** The search box's DOM id; `/` focuses it from anywhere. */
@@ -15,8 +16,17 @@ export function TitleSearch({
   value: string;
   onChange: (text: string) => void;
 }) {
+  // Tracked in state rather than with :focus-within, which WebKit doesn't
+  // always restyle when the window goes to the background and back.
+  const [focused, setFocused] = useState(false);
   return (
-    <div className="group/search absolute top-1/2 left-1/2 flex h-7 -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-md bg-selection-subtle px-2.5 ring-1 ring-stroke transition-[background-color,box-shadow] duration-[120ms] focus-within:bg-selection focus-within:ring-accent/45 focus-within:shadow-[0_0_14px_2px_color-mix(in_srgb,var(--color-accent)_22%,transparent)] hover:bg-selection [width:clamp(200px,calc(100vw-600px),440px)]">
+    <div
+      className={`absolute top-1/2 left-1/2 flex h-7 -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-md px-2.5 ring-1 transition-[background-color,box-shadow] duration-[120ms] [width:clamp(200px,calc(100vw-600px),440px)] ${
+        focused
+          ? "search-glow bg-selection ring-accent/50"
+          : "bg-selection-subtle ring-stroke hover:bg-selection"
+      }`}
+    >
       <SearchIcon size={14} className="shrink-0 text-content/50" />
       <input
         id={SEARCH_INPUT_ID}
@@ -27,6 +37,8 @@ export function TitleSearch({
         autoComplete="off"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         placeholder="Search mail"
         // The box shows focus with its border and glow; the field's own
         // focus outline would draw a second, inner box.
@@ -46,9 +58,11 @@ export function TitleSearch({
           <ClearIcon size={12} />
         </button>
       ) : (
-        <kbd className="shrink-0 rounded border border-stroke px-1.5 font-sans text-[11px] leading-4 text-content/45 group-focus-within/search:hidden">
-          /
-        </kbd>
+        !focused && (
+          <kbd className="shrink-0 rounded border border-stroke px-1.5 font-sans text-[11px] leading-4 text-content/45">
+            /
+          </kbd>
+        )
       )}
     </div>
   );
