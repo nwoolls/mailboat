@@ -276,7 +276,8 @@ impl SyncEngine<'_> {
 
 /// Returns a message body, fetching and caching it if needed.
 pub async fn fetch_body(db: &Db, gmail: &GmailClient, message: MessageId) -> Result<StoredBody> {
-    if let Some(body) = store::get_body(&db.conn(), message)? {
+    let cached = store::get_body(&db.conn(), message)?;
+    if let Some(body) = cached {
         return Ok(body);
     }
     let (_, gmail_id) = store::message_gmail_ref(&db.conn(), message)?;

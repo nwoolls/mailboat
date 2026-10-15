@@ -81,8 +81,83 @@ impl AppState {
         ))
     }
 
+    /// Resumes syncing every connected account at startup. One that can't
+    /// start (e.g. missing OAuth client file) doesn't stop the others.
+    pub fn resume_all_accounts(&self) -> Result<()> {
+        // Read the list into a variable first: a DB lock taken inside a
+        // `for` header would be held for the whole loop, and starting sync
+        // needs the same lock (that deadlock froze the app at launch).
+        let all = accounts::list(&self.db.conn())?;
+        for account in all {
+            if let Err(e) = self.start_sync(account.id) {
+                eprintln!("could not start sync for account {}: {e}", account.id.0);
+            }
+        }
+        Ok(())
+    }
+
     pub fn start_sync(&self, account: AccountId) -> Result<()> {
         self.supervisor.start(account, self.gmail_for(account)?);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mailboat_core::auth::MemoryStore;
+    use mailboat_core::model::{AccountId, AccountSyncState};
+    use mailboat_core::sync::{SyncConfig, SyncEvents, SyncProgress, WorkerTiming};
+    use std::time::Duration;
+
+    struct NoEvents;
+    impl SyncEvents for NoEvents {
+        fn status(&self, _: AccountSyncState) {}
+        fn progress(&self, _: SyncProgress) {}
+        fn mail_changed(&self, _: AccountId) {}
+    }
+
+    /// Regression: startup froze (self-deadlock on the DB lock) as soon as
+    /// one account was connected.
+    #[test]
+    fn resuming_accounts_at_startup_does_not_deadlock() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let db = Arc::new(Db::open_in_memory().unwrap());
+        for sub in ["a", "b"] {
+            accounts::upsert(
+                &db.conn(),
+                &accounts::NewAccount {
+                    google_sub: sub,
+                    email: &format!("{sub}@x.com"),
+                    display_name: None,
+                    avatar_url: None,
+                    oauth_client: "default",
+                },
+            )
+            .unwrap();
+        }
+        let supervisor = Supervisor::new(
+            runtime.handle().clone(),
+            db.clone(),
+            Arc::new(NoEvents),
+            SyncConfig::default(),
+            WorkerTiming::default(),
+        );
+        let config_dir = std::env::temp_dir().join("mailboat-test-no-oauth-client");
+        let state = AppState::new(
+            db,
+            reqwest::Client::new(),
+            Arc::new(MemoryStore::default()),
+            supervisor,
+            config_dir,
+        );
+
+        let (done_tx, done_rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let result = state.resume_all_accounts();
+            let _ = done_tx.send(result.is_ok());
+        });
+        let finished = done_rx.recv_timeout(Duration::from_secs(5));
+        assert_eq!(finished, Ok(true), "resume_all_accounts hung or failed");
     }
 }

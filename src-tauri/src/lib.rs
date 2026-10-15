@@ -5,7 +5,7 @@ mod state;
 
 use std::sync::Arc;
 
-use mailboat_core::db::{accounts, Db};
+use mailboat_core::db::Db;
 use mailboat_core::sync::{Supervisor, SyncConfig, WorkerTiming};
 use tauri::Manager;
 use tauri_specta::{collect_commands, collect_events, Builder};
@@ -82,13 +82,7 @@ pub fn run() {
                 supervisor,
                 config_dir,
             );
-            // Resume syncing every connected account. One that can't start
-            // (e.g. missing OAuth client file) doesn't stop the others.
-            for account in accounts::list(&db.conn())? {
-                if let Err(e) = state.start_sync(account.id) {
-                    eprintln!("could not start sync for account {}: {e}", account.id.0);
-                }
-            }
+            state.resume_all_accounts()?;
             app.manage(state);
             Ok(())
         })
