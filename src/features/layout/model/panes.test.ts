@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampWidth, LIST_WIDTH, listMaxWidth, READER_MIN_WIDTH } from "./panes";
+import { clampWidth, LIST_WIDTH, listMaxWidth, panelToggleFor, READER_MIN_WIDTH } from "./panes";
 
 describe("clampWidth", () => {
   it("keeps a width inside its bounds", () => {
@@ -20,5 +20,24 @@ describe("listMaxWidth", () => {
 
   it("never goes below the list's own minimum", () => {
     expect(listMaxWidth(400)).toBe(LIST_WIDTH.min);
+  });
+});
+
+/** A ⌃⌘ key press, with modifiers overridable. */
+function key(code: string, mods: Partial<KeyboardEvent> = {}) {
+  return { code, metaKey: true, ctrlKey: true, altKey: false, shiftKey: false, ...mods };
+}
+
+describe("panelToggleFor", () => {
+  it("maps ⌃⌘S to the sidebar and ⌃⌘R to the reader", () => {
+    expect(panelToggleFor(key("KeyS"))).toBe("sidebar");
+    expect(panelToggleFor(key("KeyR"))).toBe("reader");
+  });
+
+  it("ignores other keys and modifier combinations", () => {
+    expect(panelToggleFor(key("KeyB"))).toBeNull();
+    expect(panelToggleFor(key("KeyS", { ctrlKey: false }))).toBeNull();
+    expect(panelToggleFor(key("KeyR", { metaKey: false }))).toBeNull();
+    expect(panelToggleFor(key("KeyS", { shiftKey: true }))).toBeNull();
   });
 });

@@ -4,6 +4,8 @@ import Delete02 from "@hugeicons/core-free-icons/Delete02Icon";
 import MailOpen01 from "@hugeicons/core-free-icons/MailOpen01Icon";
 import MoreHorizontal from "@hugeicons/core-free-icons/MoreHorizontalIcon";
 import PencilEdit02 from "@hugeicons/core-free-icons/PencilEdit02Icon";
+import SidebarLeft from "@hugeicons/core-free-icons/SidebarLeftIcon";
+import SidebarRight from "@hugeicons/core-free-icons/SidebarRightIcon";
 import Star from "@hugeicons/core-free-icons/StarIcon";
 import Tag01 from "@hugeicons/core-free-icons/Tag01Icon";
 
@@ -24,5 +26,7 @@ export const ComposeIcon = wrap(PencilEdit02);
 export const LabelIcon = wrap(Tag01);
 export const MarkUnreadIcon = wrap(MailOpen01);
 export const MoreIcon = wrap(MoreHorizontal);
+export const ReaderToggleIcon = wrap(SidebarRight);
+export const SidebarToggleIcon = wrap(SidebarLeft);
 export const StarIcon = wrap(Star);
 export const TrashIcon = wrap(Delete02);

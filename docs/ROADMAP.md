@@ -78,11 +78,16 @@ a darker glass body, rounded corners where they meet, resizable panes.
       until Milestones 3 and 4
 - [x] Splitter gaps match the rest of the glass: the list card's soft
       shadow darkened them; now only a hairline edge, as in Tern
+- [x] Show/hide toggles for the sidebar (toolbar, left; ⌃⌘S) and the
+      reader (toolbar, right; ⌃⌘R). With both hidden only the list shows,
+      full width. Not remembered between launches yet
 
 ### Ideas for later in this spike (not started)
 
-- Collapse/hide the sidebar so the list goes full width
-- Remember pane widths between launches
+- Remember pane widths and which panels are hidden between launches
+- Animate panels sliding in and out (MonoCode's 160–200ms ease-out)
+- With the reader hidden, open a conversation some other way (Enter to
+  show the reader, or open it in place of the list)
 - Reader as its own rounded card, if text on the glass proves hard to read
 - Stronger, adjustable blur (private `CGSSetWindowBackgroundBlurRadius`,
   Rust) if the system material looks too faint

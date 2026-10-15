@@ -6,6 +6,7 @@ import {
   clampWidth,
   LIST_WIDTH,
   listMaxWidth,
+  panelToggleFor,
   READER_MIN_WIDTH,
   SIDEBAR_WIDTH,
 } from "../features/layout/model/panes";
@@ -72,6 +73,11 @@ export function Shell() {
 
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH.initial);
   const [listWidth, setListWidth] = useState(LIST_WIDTH.initial);
+  // Either side panel can be hidden, down to just the list. Not persisted.
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [readerOpen, setReaderOpen] = useState(true);
+  const toggleSidebar = useCallback(() => setSidebarOpen((open) => !open), []);
+  const toggleReader = useCallback(() => setReaderOpen((open) => !open), []);
   const panesRef = useRef<HTMLDivElement>(null);
   const resizeSidebar = (w: number) =>
     setSidebarWidth(clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max));
@@ -82,6 +88,13 @@ export function Shell() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const panel = panelToggleFor(e);
+      if (panel) {
+        e.preventDefault();
+        if (panel === "sidebar") toggleSidebar();
+        else toggleReader();
+        return;
+      }
       if (e.key === "/" && !isEditable(e.target)) {
         e.preventDefault();
         document.getElementById("mailboat-search")?.focus();
@@ -106,7 +119,7 @@ export function Shell() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [threads, selectedId, setRead]);
+  }, [threads, selectedId, setRead, toggleSidebar, toggleReader]);
 
   if (accountsQuery.isPending) return null;
   if (accountList.length === 0) return <Welcome setup={setup.data} />;
@@ -118,31 +131,45 @@ export function Shell() {
 
   return (
     <div className="flex h-full flex-col bg-glass-sidebar">
-      <Toolbar onToggleRead={toggleRead} />
-      <div className="flex min-h-0 flex-1 pr-2 pb-2">
-        <Sidebar
-          accounts={accountList}
-          width={sidebarWidth}
-          syncStates={syncStates}
-          selection={baseSelection}
-          onSelect={(s) => {
-            setChosen(s);
-            setSearch("");
-            setSelectedId(null);
-          }}
-        />
-        <Splitter
-          label="Resize sidebar"
-          width={sidebarWidth}
-          onResize={resizeSidebar}
-          onReset={() => setSidebarWidth(SIDEBAR_WIDTH.initial)}
-        />
+      <Toolbar
+        onToggleRead={toggleRead}
+        sidebarOpen={sidebarOpen}
+        readerOpen={readerOpen}
+        onToggleSidebar={toggleSidebar}
+        onToggleReader={toggleReader}
+      />
+      <div className={`flex min-h-0 flex-1 pr-2 pb-2 ${sidebarOpen ? "" : "pl-2"}`}>
+        {sidebarOpen && (
+          <>
+            <Sidebar
+              accounts={accountList}
+              width={sidebarWidth}
+              syncStates={syncStates}
+              selection={baseSelection}
+              onSelect={(s) => {
+                setChosen(s);
+                setSearch("");
+                setSelectedId(null);
+              }}
+            />
+            <Splitter
+              label="Resize sidebar"
+              width={sidebarWidth}
+              onResize={resizeSidebar}
+              onReset={() => setSidebarWidth(SIDEBAR_WIDTH.initial)}
+            />
+          </>
+        )}
         <div ref={panesRef} className="flex min-w-0 flex-1">
           {/* The list is the body: a rounded card on the glass. It shrinks
               with the window before the reader drops below its minimum. */}
           <section
             className="panel flex min-w-0 flex-col overflow-hidden"
-            style={{ flex: `0 1 ${listWidth}px`, minWidth: LIST_WIDTH.min }}
+            style={{
+              // With the reader hidden, the list takes all the room.
+              flex: readerOpen ? `0 1 ${listWidth}px` : "1 1 0",
+              minWidth: LIST_WIDTH.min,
+            }}
           >
             <div className="flex h-10 shrink-0 items-center px-4">
               <h2 className="truncate text-sm font-semibold">
@@ -170,16 +197,20 @@ export function Shell() {
               loading={threadsQuery.isPending || isFetchingNextPage}
             />
           </section>
-          <Splitter
-            label="Resize conversation list"
-            width={listWidth}
-            onResize={resizeList}
-            onReset={() => setListWidth(LIST_WIDTH.initial)}
-          />
-          {/* The reader sits on the glass like a right-hand sidebar. */}
-          <main className="flex flex-1 flex-col" style={{ minWidth: READER_MIN_WIDTH }}>
-            <ThreadReader threadId={selectedId} accounts={accounts} />
-          </main>
+          {readerOpen && (
+            <>
+              <Splitter
+                label="Resize conversation list"
+                width={listWidth}
+                onResize={resizeList}
+                onReset={() => setListWidth(LIST_WIDTH.initial)}
+              />
+              {/* The reader sits on the glass like a right-hand sidebar. */}
+              <main className="flex flex-1 flex-col" style={{ minWidth: READER_MIN_WIDTH }}>
+                <ThreadReader threadId={selectedId} accounts={accounts} />
+              </main>
+            </>
+          )}
         </div>
       </div>
     </div>

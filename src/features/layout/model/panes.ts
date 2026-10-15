@@ -14,3 +14,20 @@ export function clampWidth(width: number, min: number, max: number): number {
 export function listMaxWidth(panelWidth: number): number {
   return Math.max(LIST_WIDTH.min, panelWidth - READER_MIN_WIDTH);
 }
+
+/** The panels either side of the list that can be hidden. */
+export type SidePanel = "sidebar" | "reader";
+
+/**
+ * ⌃⌘S toggles the sidebar (the macOS "Show Sidebar" key in Finder, Mail and
+ * Notes); ⌃⌘R toggles the reader. Matched on the physical key so other
+ * keyboard layouts still work.
+ */
+export function panelToggleFor(
+  e: Pick<KeyboardEvent, "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">,
+): SidePanel | null {
+  if (!e.metaKey || !e.ctrlKey || e.altKey || e.shiftKey) return null;
+  if (e.code === "KeyS") return "sidebar";
+  if (e.code === "KeyR") return "reader";
+  return null;
+}
