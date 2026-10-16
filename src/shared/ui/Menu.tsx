@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { nextMenuIndex } from "../lib/menuNavigation";
 import type { IconProps } from "./icons";
 
 /**
@@ -14,9 +15,15 @@ export function anchorBelow(el: Element): MenuAnchor {
 }
 
 /**
- * A small pop-up menu. It uses the browser's popover, so clicking outside
- * or pressing Escape closes it, and it floats above panels that clip their
- * content. Arrow keys move between items.
+ * A small pop-up menu. It sits in the browser's top layer (a manual
+ * popover), so it floats above panels that clip their content. It closes
+ * on Escape, on a press that starts outside it, or when the window loses
+ * focus. As in macOS menus, nothing is highlighted until the pointer or
+ * an arrow key picks an item.
+ *
+ * The browser's own "auto" popover closing wasn't used: it judges the
+ * whole click, so a right-click that opened the menu closed it again
+ * when the button came up.
  */
 export function Menu({
   anchor,
@@ -30,6 +37,12 @@ export function Menu({
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // The latest onClose, so the listeners below don't re-subscribe each render.
+  const close = useRef(onClose);
+  useEffect(() => {
+    close.current = onClose;
+  });
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -42,34 +55,57 @@ export function Menu({
     if (left + width > window.innerWidth - 8) left = anchor.x - width;
     el.style.left = `${Math.max(8, left)}px`;
     if (anchor.y + height > window.innerHeight - 8) el.style.top = `${anchor.y - height}px`;
-    el.querySelector<HTMLElement>("[role=menuitem]:not(:disabled)")?.focus();
+    // The menu itself takes focus, so keys reach it without highlighting
+    // an item.
+    el.focus();
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (!(e.target instanceof Node && el.contains(e.target))) close.current();
+    };
+    const onBlur = () => close.current();
+    // Listeners start after this press, so the press that opened the menu
+    // can't close it.
+    document.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("blur", onBlur);
     return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("blur", onBlur);
       if (el.matches(":popover-open")) el.hidePopover();
     };
   }, [anchor]);
 
+  const items = () => [
+    ...(ref.current?.querySelectorAll<HTMLElement>("[role=menuitem]:not(:disabled)") ?? []),
+  ];
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onClose();
+      return;
+    }
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     e.preventDefault();
-    const items = [
-      ...(ref.current?.querySelectorAll<HTMLElement>("[role=menuitem]:not(:disabled)") ?? []),
-    ];
-    const at = items.indexOf(document.activeElement as HTMLElement);
-    const next = e.key === "ArrowDown" ? at + 1 : at - 1;
-    items[(next + items.length) % items.length]?.focus();
+    const list = items();
+    const at = list.indexOf(document.activeElement as HTMLElement);
+    list[nextMenuIndex(at, list.length, e.key)]?.focus();
   };
 
   return (
     <div
       ref={ref}
-      popover="auto"
+      popover="manual"
       role="menu"
+      tabIndex={-1}
       aria-label={label}
-      onToggle={(e) => {
-        if (e.newState === "closed") onClose();
-      }}
       onKeyDown={onKeyDown}
-      className="menu fixed m-0 min-w-52 rounded-lg p-1 text-[13px] font-normal text-content"
+      // The pointer moves the highlight, so it and the keyboard never
+      // highlight two different items.
+      onPointerMove={(e) => {
+        const item = (e.target as Element).closest<HTMLElement>("[role=menuitem]:not(:disabled)");
+        if (item && item !== document.activeElement) item.focus();
+      }}
+      onPointerLeave={() => ref.current?.focus()}
+      className="menu fixed m-0 min-w-52 rounded-lg p-1 text-[13px] font-normal text-content outline-none"
       style={{ inset: "auto", left: anchor.x, top: anchor.y }}
     >
       {children}
@@ -96,7 +132,7 @@ export function MenuItem({
       role="menuitem"
       disabled={disabled}
       onClick={onSelect}
-      className={`flex h-7 w-full items-center gap-2 rounded-md px-2 text-left outline-none focus-visible:bg-selection-strong enabled:hover:bg-selection-strong disabled:opacity-40 ${
+      className={`flex h-7 w-full items-center gap-2 rounded-md px-2 text-left outline-none focus:bg-selection-strong disabled:opacity-40 ${
         danger ? "text-danger" : ""
       }`}
     >

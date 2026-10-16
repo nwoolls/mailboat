@@ -317,7 +317,10 @@ Options offered during the spike that the owner didn't pick (yet):
       that account's sync and waits for it to end, then deletes its cached
       mail and its keychain sign-in; Gmail itself is untouched. A view that
       only showed that account falls back to the default. *(Verified in the
-      real app, 2026-10-16.)*
+      real app, 2026-10-16.)* Fixed after testing: a right-click menu
+      closed as soon as the mouse button came up; and the menu now works
+      like macOS's, with nothing highlighted until ↓/↑ or the pointer picks
+      an item (↓ used to skip to the second one)
 - [x] "All Inboxes" view across accounts *(verified with two real
       accounts, 2026-10-16)*
 - [x] Per-account colors on rows *(verified with two real accounts,
