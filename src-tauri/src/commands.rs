@@ -586,6 +586,16 @@ pub async fn message_send(
     Ok(thread)
 }
 
+/// Mail HTML (a signature, a quote) prepared for showing in the app the
+/// way the reader shows email: sanitized, and "adaptive" where possible,
+/// so it sits on the glass with colours adjusted for dark mode instead of
+/// on a white card.
+#[tauri::command]
+#[specta::specta]
+pub fn html_preview(html: String) -> SafeMessage {
+    mail::sanitize::sanitize_html(&html, true)
+}
+
 /// Opens a link from the message being written in the default browser
 /// (or mail app). Only web and mail links; anything else is refused.
 #[tauri::command]

@@ -1,4 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { commands } from "../../../platform/tauri/bindings";
+import { IS_TAURI } from "../../../platform/tauri/ipc";
 import type { Account, Identity } from "../../../platform/tauri/bindings";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { AccountDot } from "../../../shared/ui/AccountDot";
@@ -282,21 +285,36 @@ function QuoteFold({ html, startOpen }: { html: string; startOpen: boolean }) {
 }
 
 /**
- * Mail HTML shown as it will be sent, on white as mail apps show it, in a
- * sandboxed frame: same-origin only so its height can be read, never
- * scripts. Its height follows the content once images have loaded.
+ * Mail HTML shown as the reader shows email: sanitized in Rust and, where
+ * possible, "adaptive", sitting on the glass with colours adjusted for
+ * dark mode (mail with its own style sheet keeps a white card). Sandboxed
+ * without scripts; same-origin only so its height can be read.
  */
 function HtmlPreview({ title, html }: { title: string; html: string }) {
+  const preview = useQuery({
+    queryKey: ["htmlPreview", html],
+    queryFn: () => commands.htmlPreview(html),
+    enabled: IS_TAURI,
+    staleTime: Infinity,
+  });
+  const [height, setHeight] = useState(0);
+  if (!preview.data) return null;
   return (
     <iframe
       title={title}
       sandbox="allow-same-origin"
-      srcDoc={`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:8px 10px;font:13px Arial,Helvetica,sans-serif;color:#222">${html}</body>`}
+      srcDoc={preview.data.document}
       onLoad={(e) => {
         const doc = e.currentTarget.contentDocument;
-        if (doc) e.currentTarget.style.height = `${doc.documentElement.scrollHeight}px`;
+        if (!doc) return;
+        const measure = () => setHeight(doc.documentElement.scrollHeight);
+        measure();
+        for (const img of Array.from(doc.images)) img.addEventListener("load", measure);
       }}
-      className="block w-full rounded-md bg-white"
+      style={{ height }}
+      className={`block w-full ${
+        preview.data.adaptive ? "bg-transparent" : "rounded-md bg-white ring-1 ring-stroke"
+      }`}
     />
   );
 }

@@ -103,6 +103,13 @@ export const commands = {
 	 *  (or mail app). Only web and mail links; anything else is refused.
 	 */
 	linkOpen: (url: string) => typedError<null, AppError>(__TAURI_INVOKE("link_open", { url })),
+	/**
+	 *  Mail HTML (a signature, a quote) prepared for showing in the app the
+	 *  way the reader shows email: sanitized, and "adaptive" where possible,
+	 *  so it sits on the glass with colours adjusted for dark mode instead of
+	 *  on a white card.
+	 */
+	htmlPreview: (html: string) => __TAURI_INVOKE<SafeMessage>("html_preview", { html }),
 	/**  Wakes sync workers now. `None` means every account. */
 	syncNow: (accountIds: AccountId[] | null) => __TAURI_INVOKE<void>("sync_now", { accountIds }),
 	syncStatusList: () => typedError<AccountSyncState[], AppError>(__TAURI_INVOKE("sync_status_list")),
