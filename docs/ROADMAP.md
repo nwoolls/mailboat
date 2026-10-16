@@ -231,6 +231,11 @@ Options offered during the spike that the owner didn't pick (yet):
       account colour, unread stays a solid dot. Owner picked it after two
       rounds in the app (round 1: bar, no unread dot, avatar, all too busy;
       round 2: glass bar, ring, glass dot)
+- [x] Emails on the glass: grey borders (hairlines meant for a white card)
+      become a faint line in dark mode instead of stark white; colored
+      borders stay. Seen on Gmail's confidential-mode notice, which also
+      has no top border by design. (Its content can't be shown in any
+      client: it only opens on Gmail's site, via "View the email".)
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong
@@ -288,5 +293,8 @@ split per account for selections that span accounts.
 
 - [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
 - [ ] Windows build and testing; Linux nice-to-have
+- [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
+      ones that hide when not scrolling); check they look right on
+      Windows, and style them there only if needed
 - [ ] Release signing and packaging
 - [ ] AI-drafted replies with user-supplied OpenAI/Anthropic keys (see `CLAUDE.md`)

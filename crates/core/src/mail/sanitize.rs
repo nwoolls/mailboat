@@ -249,11 +249,13 @@ fn can_adapt(raw: &str) -> bool {
 
 /// Dark-mode overrides for an adaptive email: each distinct remapped color
 /// gets a number, elements are tagged `data-mc` (text) / `data-mb`
-/// (background), and one `prefers-color-scheme: dark` sheet applies them.
+/// (background) / `data-mr` (border), and one `prefers-color-scheme: dark`
+/// sheet applies them.
 #[derive(Default)]
 struct DarkRules {
     text: HashMap<String, usize>,
     background: HashMap<String, usize>,
+    border: HashMap<String, usize>,
 }
 
 impl DarkRules {
@@ -267,6 +269,7 @@ impl DarkRules {
         let mut background = el
             .get_attribute("bgcolor")
             .and_then(|c| colors::parse_color(&c));
+        let mut border = None;
         if let Some(style) = el.get_attribute("style") {
             for decl in style.split(';') {
                 let Some((prop, value)) = decl.split_once(':') else {
@@ -281,6 +284,20 @@ impl DarkRules {
                             .split_whitespace()
                             .find_map(colors::parse_color)
                             .or(background);
+                    }
+                    // `border`, `border-left`, `border-color`, … : the color
+                    // inside the shorthand or on its own.
+                    p if p.starts_with("border")
+                        && !p.contains("radius")
+                        && !p.contains("width")
+                        && !p.contains("style")
+                        && !p.contains("collapse")
+                        && !p.contains("spacing") =>
+                    {
+                        border = value
+                            .split_whitespace()
+                            .find_map(colors::parse_color)
+                            .or(border);
                     }
                     _ => {}
                 }
@@ -304,6 +321,10 @@ impl DarkRules {
             let n = Self::number(&mut self.background, css);
             el.set_attribute("data-mb", &n.to_string())?;
         }
+        if let Some(color) = border.and_then(colors::dark_border) {
+            let n = Self::number(&mut self.border, format!("border-color:{color}!important"));
+            el.set_attribute("data-mr", &n.to_string())?;
+        }
         Ok(())
     }
 
@@ -321,6 +342,11 @@ impl DarkRules {
                 self.background
                     .into_iter()
                     .map(|(css, n)| ("mb".to_string(), n, css)),
+            )
+            .chain(
+                self.border
+                    .into_iter()
+                    .map(|(css, n)| ("mr".to_string(), n, css)),
             )
             .collect();
         rules.sort();
@@ -481,6 +507,22 @@ mod tests {
         assert!(doc.contains(r##"style="background-color:#b8aef2;color:#fff">"##));
         // Light mode keeps the email's own colors inline.
         assert!(doc.contains("color:#24292f"));
+    }
+
+    #[test]
+    fn grey_borders_go_faint_in_dark_mode_and_colored_ones_stay() {
+        // Gmail's confidential-mode notice: a white card whose hairline
+        // sides showed as stark white lines on the dark glass.
+        let out = sanitize_html(
+            r##"<div style="background:#fff;border-left:1px solid #eaeaea;border-bottom:1px solid #eaeaea">Hi</div>
+               <a href="https://x.test" style="background-color:#4d90fe;border:1px solid #3079ed">View</a>"##,
+            false,
+        );
+        let doc = &out.document;
+        assert!(doc.contains("data-mr="));
+        assert!(doc.contains("border-color:rgba(255,255,255,0.12)!important"));
+        // The blue button keeps its blue outline.
+        assert_eq!(doc.matches(" data-mr=").count(), 1);
     }
 
     #[test]

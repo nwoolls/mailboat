@@ -181,6 +181,14 @@ pub fn dark_background(color: Rgb) -> DarkBackground {
     }
 }
 
+/// Borders in dark mode: grey ones, from near-white hairlines meant to be
+/// barely visible on white to near-black rules, become one faint light
+/// line like the app's own dividers; colored borders (a brand button's
+/// outline) stay.
+pub fn dark_border(color: Rgb) -> Option<&'static str> {
+    (chroma(color) < 0.1).then_some("rgba(255,255,255,0.12)")
+}
+
 /// Max minus min channel, 0–1: near zero for greys, whatever their tint.
 fn chroma(Rgb(r, g, b): Rgb) -> f32 {
     (r.max(g).max(b) - r.min(g).min(b)) as f32 / 255.0
@@ -219,6 +227,13 @@ mod tests {
         let (h1, _, l1) = to_hsl(lighter);
         assert!((h0 - h1).abs() < 2.0);
         assert!(l1 >= 0.6);
+    }
+
+    #[test]
+    fn grey_borders_go_faint_and_colored_ones_stay() {
+        assert!(dark_border(Rgb(0xea, 0xea, 0xea)).is_some());
+        assert!(dark_border(Rgb(0x33, 0x33, 0x33)).is_some());
+        assert_eq!(dark_border(Rgb(0x30, 0x79, 0xed)), None);
     }
 
     #[test]
