@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ThreadId } from "../platform/tauri/bindings";
 import { indexAccounts, syncAttention } from "../features/accounts/model/accounts";
 import { Sidebar } from "../features/accounts/ui/Sidebar";
@@ -105,8 +105,7 @@ export function Shell() {
   }
   const toggleSidebar = useCallback(() => setSidebarOpen((open) => !open), []);
   const toggleReader = useCallback(() => setReaderOpen((open) => !open), []);
-  const panesRef = useRef<HTMLDivElement>(null);
-  const panesWidth = useElementWidth(panesRef);
+  const [panesRef, panesWidth] = useElementWidth<HTMLDivElement>();
   const resizeSidebar = (w: number) =>
     saveLayout({ ...layout, sidebarWidth: clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max) });
   const resizeList = (w: number) =>
