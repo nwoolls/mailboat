@@ -474,6 +474,10 @@ Stage 2: the card and inline replies
 
 - [ ] Floating compose card: the snapping behaviour above, minimise and
       several drafts at once
+- [ ] Compose card transparency *(owner request, 2026-10-16)*: stage 1
+      gave the card the menus' solid surface; give it the app's glass
+      look instead, tuned so text being written stays easy to read (as
+      the list panel's tint is)
 - [ ] Inline replies and forwards: polish after the owner has used the
       stage 1 version
 
