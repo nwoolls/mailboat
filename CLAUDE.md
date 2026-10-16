@@ -174,3 +174,6 @@ these rules. Keep it passing.
 AI-drafted replies via user-supplied OpenAI/Anthropic API keys. Keys would go
 in the OS keychain like Google tokens; sending an email to a model is always
 an explicit user action. Plain-text bodies are already stored for this.
+
+An MCP server exposing Mailboat's mail to AI apps (see `docs/ROADMAP.md`,
+Later): off by default, read-only first, never sends.

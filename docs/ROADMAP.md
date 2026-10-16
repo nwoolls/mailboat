@@ -494,3 +494,22 @@ approve it, and an ARCHITECTURE decision row.
       Windows, and style them there only if needed
 - [ ] Release signing and packaging
 - [ ] AI-drafted replies with user-supplied OpenAI/Anthropic keys (see `CLAUDE.md`)
+- [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
+      Mailboat's mail *(owner request, 2026-10-16)*. Worth it because Mailboat
+      already has every account's mail in one local, searchable cache
+      and their sign-ins: one connection covers all accounts, with no
+      extra Google setup. Design to agree before building:
+      - **Off by default;** turned on in Settings, per account. Turning it
+        on is the explicit choice `CLAUDE.md` requires before any email
+        reaches a model
+      - **Read-only first:** search (local, all accounts), list a view,
+        read a conversation, list labels. Then, each opt-in: label,
+        archive, create drafts. **Never send:** drafts only, the owner
+        sends from Mailboat
+      - **How it connects:** the running app serves MCP on localhost
+        (with an access token), or a small `mailboat-mcp` command that
+        Claude starts and that talks to the app. Either way sync, quota
+        and tokens stay in the app. Likely the official Rust MCP SDK
+        (`rmcp`), recorded in ARCHITECTURE when chosen
+      - Every request logged (what was read, never the content), so the
+        owner can see what an AI looked at
