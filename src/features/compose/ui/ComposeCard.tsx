@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import type { Account, Identity } from "../../../platform/tauri/bindings";
-import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ClearIcon, MinimizeIcon } from "../../../shared/ui/icons";
 import { editorKey, hasChanges } from "../model/draft";
 import type { ComposeEntry } from "../model/composeState";
@@ -8,6 +7,7 @@ import { ComposeForm } from "./ComposeForm";
 import { cardSize, nearestSpot, type Point, spotPosition } from "../model/snap";
 import {
   closeDraft,
+  closeKeepingDraft,
   minimizeCard,
   setCardSpot,
   updateDraft,
@@ -34,7 +34,6 @@ export function ComposeCard({
   onSend: () => void;
 }) {
   const { draft } = entry;
-  const [confirming, setConfirming] = useState(false);
   const account = accounts.find((a) => a.id === draft.accountId);
   const viewport = useViewport();
   const size = cardSize(viewport);
@@ -92,7 +91,8 @@ export function ComposeCard({
       onKeyDown={(e) => {
         // Esc minimises, never discards. Fields that use Esc first (the
         // suggestion list) stop it before it gets here.
-        if (e.key === "Escape" && !confirming) {
+        // (A dialog inside, like Discard's, handles its own Escape.)
+        if (e.key === "Escape" && !(e.target as Element).closest("dialog")) {
           e.preventDefault();
           e.stopPropagation();
           minimizeCard(draft.id);
@@ -122,10 +122,10 @@ export function ComposeCard({
         <button
           type="button"
           aria-label="Close"
-          title={hasChanges(draft) ? "Close (asks first: drafts aren’t saved yet)" : "Close"}
+          title={hasChanges(draft) ? "Close (kept in Drafts)" : "Close"}
           disabled={entry.sending}
           className="flex h-7 w-7 items-center justify-center rounded-md text-content/60 hover:bg-selection hover:text-content"
-          onClick={() => (hasChanges(draft) ? setConfirming(true) : closeDraft(draft.id))}
+          onClick={() => closeKeepingDraft(draft.id)}
         >
           <ClearIcon />
         </button>
@@ -139,17 +139,6 @@ export function ComposeCard({
         onSend={onSend}
         onDiscard={() => closeDraft(draft.id)}
       />
-      {confirming && (
-        <ConfirmDialog
-          title="Discard this message?"
-          confirmLabel="Discard"
-          danger
-          onConfirm={() => closeDraft(draft.id)}
-          onCancel={() => setConfirming(false)}
-        >
-          <p>What you’ve written will be lost. Drafts aren’t saved to Gmail yet.</p>
-        </ConfirmDialog>
-      )}
     </section>
   );
 }

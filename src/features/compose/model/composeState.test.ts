@@ -10,6 +10,7 @@ import {
   openReply,
   reopen,
   replyIn,
+  setSaved,
   setSending,
   updateDraft,
 } from "./composeState";
@@ -103,5 +104,16 @@ describe("compose state", () => {
     const answer = r.replies[0]!;
     r = reopen(close(r, answer.draft.id), answer, "Network error");
     expect(replyIn(r, 3)?.error).toBe("Network error");
+  });
+
+  it("records a save without counting it as an edit", () => {
+    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.com"));
+    const id = s.cards[0]!.draft.id;
+    s = setSending(s, id, false, "Network error");
+    s = setSaved(s, id, "saved", 42);
+    expect(s.cards[0]?.draft.savedId).toBe(42);
+    expect(s.cards[0]?.save).toBe("saved");
+    expect(s.cards[0]?.error).toBe("Network error");
+    expect(s.cards[0]?.draft.edited).toBe(false);
   });
 });

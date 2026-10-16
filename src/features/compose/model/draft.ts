@@ -2,6 +2,7 @@ import type {
   AccountFilter,
   AccountId,
   Address,
+  DraftId,
   Identity,
   MessageId,
   OutgoingAttachment,
@@ -44,6 +45,8 @@ export type Draft = {
    * lines), shown read-only under the text, and added when sending.
    */
   signature: string;
+  /** The Gmail draft it's saved as (local ID), once saved. */
+  savedId: DraftId | null;
   /** Files to send with it. */
   attachments: OutgoingAttachment[];
   /** The message replied to or forwarded. */
@@ -156,6 +159,7 @@ export function newDraft(
     quoteText: "",
     signature: signatureOf(identities, accountId, from),
     attachments: [],
+    savedId: null,
     replyingTo: null,
     threadId: null,
     showCc: false,
@@ -313,6 +317,7 @@ export function replyDraft(
     html: "",
     signature: signatureOf(identities, source.accountId, from),
     attachments: [],
+    savedId: null,
     quote,
     quoteText: quoteCopy,
     // Filled in by the editor as soon as it loads the HTML.
@@ -408,6 +413,7 @@ export function toOutgoing(draft: Draft): OutgoingMessage {
     text,
     html,
     attachments: draft.attachments,
+    draft: draft.savedId,
     replyingTo: draft.replyingTo,
   };
 }

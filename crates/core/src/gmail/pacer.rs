@@ -29,6 +29,9 @@ pub mod cost {
     pub const ATTACHMENTS_GET: u32 = 5;
     pub const MESSAGES_SEND: u32 = 100;
     pub const SETTINGS_GET: u32 = 1;
+    pub const DRAFTS_CREATE: u32 = 10;
+    pub const DRAFTS_UPDATE: u32 = 15;
+    pub const DRAFTS_DELETE: u32 = 10;
 }
 
 #[derive(Debug)]

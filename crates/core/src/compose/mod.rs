@@ -13,10 +13,11 @@ use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use crate::db::now_millis;
 use crate::db::{store, Db};
 use crate::error::{CoreError, Result};
 use crate::gmail::{parse, GmailClient};
-use crate::model::{AccountId, Address, MessageId, ThreadId};
+use crate::model::{AccountId, Address, DraftId, MessageId, ThreadId};
 use crate::sync::fetch_body;
 
 /// A message the user wants sent.
@@ -36,6 +37,8 @@ pub struct OutgoingMessage {
     pub html: Option<String>,
     /// Files to attach.
     pub attachments: Vec<OutgoingAttachment>,
+    /// The saved draft this is (deleted once sent).
+    pub draft: Option<DraftId>,
     /// The message this replies to or forwards, for threading.
     pub replying_to: Option<MessageId>,
 }
@@ -220,6 +223,30 @@ pub fn validate(db: &Db, msg: &OutgoingMessage) -> Result<()> {
 /// couldn't be asked for it straight after; sync brings it in later).
 pub async fn send(db: &Db, gmail: &GmailClient, msg: &OutgoingMessage) -> Result<Option<ThreadId>> {
     validate(db, msg)?;
+    let (raw, thread) = prepare(db, msg, &msg.to, &msg.cc, &msg.bcc)?;
+    let sent = gmail.send_message(&raw, thread.as_deref()).await?;
+    // The mail is gone; failing to cache it now only delays it until sync.
+    let fetched = gmail.thread_metadata(&sent.thread_id).await;
+    Ok(match fetched {
+        Ok(Some(t)) => Some(store::upsert_thread(
+            &mut db.conn(),
+            msg.account_id,
+            &parse::thread_to_incoming(&t),
+        )?),
+        _ => None,
+    })
+}
+
+/// The RFC 5322 message, and the Gmail thread it joins: a reply joins the
+/// original's thread only when sent from the same account (threads never
+/// merge across accounts).
+fn prepare(
+    db: &Db,
+    msg: &OutgoingMessage,
+    to: &[Address],
+    cc: &[Address],
+    bcc: &[Address],
+) -> Result<(Vec<u8>, Option<String>)> {
     let original = msg.replying_to.map(|m| original(db, m)).transpose()?;
     let (in_reply_to, references) = match &original {
         Some(o) => {
@@ -237,16 +264,15 @@ pub async fn send(db: &Db, gmail: &GmailClient, msg: &OutgoingMessage) -> Result
         }
         None => (None, Vec::new()),
     };
-    // A reply sent from another account starts its own thread there.
     let thread = original
         .as_ref()
         .filter(|o| o.account == msg.account_id)
         .map(|o| o.gmail_thread_id.clone());
     let raw = mime::build(&mime::MimeMessage {
         from: msg.from.clone(),
-        to: msg.to.clone(),
-        cc: msg.cc.clone(),
-        bcc: msg.bcc.clone(),
+        to: to.to_vec(),
+        cc: cc.to_vec(),
+        bcc: bcc.to_vec(),
         subject: msg.subject.clone(),
         text: msg.text.clone(),
         html: msg.html.clone(),
@@ -254,17 +280,89 @@ pub async fn send(db: &Db, gmail: &GmailClient, msg: &OutgoingMessage) -> Result
         in_reply_to,
         references,
     })?;
-    let sent = gmail.send_message(&raw, thread.as_deref()).await?;
-    // The mail is gone; failing to cache it now only delays it until sync.
-    let fetched = gmail.thread_metadata(&sent.thread_id).await;
-    Ok(match fetched {
-        Ok(Some(t)) => Some(store::upsert_thread(
-            &mut db.conn(),
-            msg.account_id,
-            &parse::thread_to_incoming(&t),
-        )?),
-        _ => None,
-    })
+    Ok((raw, thread))
+}
+
+/// Saves a message being written as a Gmail draft, so it survives quitting
+/// and shows in Gmail's Drafts. The first save creates it; later saves
+/// replace it. If From moved to another account, the draft moves too: the
+/// old account's copy is deleted and the new account gets its own.
+/// Returns the local draft ID (Gmail's draft IDs stay in Rust).
+pub async fn save_draft(
+    db: &Db,
+    gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
+    existing: Option<DraftId>,
+    msg: &OutgoingMessage,
+) -> Result<DraftId> {
+    if !identities::owns(&db.conn(), msg.account_id, &msg.from.email)? {
+        return Err(CoreError::Invalid(format!(
+            "{} isn't an address this account can send from.",
+            msg.from.email
+        )));
+    }
+    // Half-typed recipients are left out of the saved copy (they can't go
+    // into a header safely); the draft on screen keeps them.
+    let keep = |list: &[Address]| -> Vec<Address> {
+        list.iter()
+            .filter(|a| mime::valid_email(&a.email))
+            .cloned()
+            .collect()
+    };
+    let (raw, thread) = prepare(db, msg, &keep(&msg.to), &keep(&msg.cc), &keep(&msg.bcc))?;
+    let saved = match existing {
+        Some(id) => draft_row(db, id)?.map(|row| (id, row)),
+        None => None,
+    };
+    if let Some((id, (account, gmail_id))) = saved {
+        if account == msg.account_id {
+            gmail_for(account)?
+                .update_draft(&gmail_id, &raw, thread.as_deref())
+                .await?;
+            db.conn().execute(
+                "UPDATE drafts SET updated_at = ?2 WHERE id = ?1",
+                params![id, now_millis()],
+            )?;
+            return Ok(id);
+        }
+        // From changed account: the draft moves with it.
+        delete_draft(db, &gmail_for, id).await?;
+    }
+    let created = gmail_for(msg.account_id)?
+        .create_draft(&raw, thread.as_deref())
+        .await?;
+    let conn = db.conn();
+    conn.execute(
+        "INSERT INTO drafts (account_id, gmail_draft_id, updated_at) VALUES (?1, ?2, ?3)",
+        params![msg.account_id, created.id, now_millis()],
+    )?;
+    Ok(DraftId(conn.last_insert_rowid()))
+}
+
+fn draft_row(db: &Db, id: DraftId) -> Result<Option<(AccountId, String)>> {
+    Ok(db
+        .conn()
+        .query_row(
+            "SELECT account_id, gmail_draft_id FROM drafts WHERE id = ?1",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?)
+}
+
+/// Deletes a draft from Gmail (with its own account's client) and here.
+/// Already gone is fine.
+pub async fn delete_draft(
+    db: &Db,
+    gmail_for: &impl Fn(AccountId) -> Result<GmailClient>,
+    id: DraftId,
+) -> Result<()> {
+    let Some((account, gmail_id)) = draft_row(db, id)? else {
+        return Ok(());
+    };
+    gmail_for(account)?.delete_draft(&gmail_id).await?;
+    db.conn()
+        .execute("DELETE FROM drafts WHERE id = ?1", [id])?;
+    Ok(())
 }
 
 /// Cleans an original for quoting in mail we send: scripts, forms,

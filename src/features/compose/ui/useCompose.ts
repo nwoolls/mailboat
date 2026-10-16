@@ -1,13 +1,20 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { commands } from "../../../platform/tauri/bindings";
-import type { Account, AccountId, ThreadId } from "../../../platform/tauri/bindings";
+import type { Account, AccountId, DraftId, ThreadId } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { keys } from "../../../shared/lib/queries";
 import { showToast } from "../../../shared/lib/toast";
 import * as S from "../model/composeState";
 import type { Size, Spot } from "../model/snap";
-import { type ComposeKind, type Draft, newDraft, replyDraft, toOutgoing } from "../model/draft";
+import {
+  type ComposeKind,
+  type Draft,
+  hasChanges,
+  newDraft,
+  replyDraft,
+  toOutgoing,
+} from "../model/draft";
 
 /**
  * Drafts on screen, shared app-wide (the toolbar, keys and the reader all
@@ -57,6 +64,83 @@ export function useViewport(): Size {
 
 export function updateDraft(id: number, change: (d: Draft) => Draft) {
   set(S.updateDraft(state, id, change));
+  const entry = S.entryById(state, id);
+  if (entry && hasChanges(entry.draft)) scheduleSave(id);
+}
+
+/**
+ * Saving to Gmail's Drafts as you write: once typing pauses for a moment,
+ * the draft is created (first time) or replaced. Saves of one draft never
+ * overlap, so it can't be created twice; a save that finishes after the
+ * draft was discarded deletes what it made.
+ */
+const SAVE_DELAY_MS = 2500;
+type SaveSlot = {
+  timer?: number;
+  running?: Promise<void>;
+  again?: boolean;
+  discarded?: boolean;
+  /** The latest saved draft ID, kept here too in case the entry closed meanwhile. */
+  savedId?: DraftId;
+};
+const saves = new Map<number, SaveSlot>();
+
+function slot(id: number): SaveSlot {
+  let s = saves.get(id);
+  if (!s) saves.set(id, (s = {}));
+  return s;
+}
+
+function scheduleSave(id: number) {
+  const s = slot(id);
+  window.clearTimeout(s.timer);
+  s.timer = window.setTimeout(() => void saveNow(id), SAVE_DELAY_MS);
+}
+
+/** Saves now (waiting for any save already running), and settles when done. */
+export async function saveNow(id: number): Promise<void> {
+  const s = slot(id);
+  window.clearTimeout(s.timer);
+  if (s.running) {
+    s.again = true;
+    return s.running;
+  }
+  const entry = S.entryById(state, id);
+  if (!entry || !hasChanges(entry.draft)) return;
+  set(S.setSaved(state, id, "saving"));
+  s.running = unwrap(commands.draftSave(entry.draft.savedId, toOutgoing(entry.draft)))
+    .then((savedId) => {
+      s.savedId = savedId;
+      if (s.discarded) {
+        void unwrap(commands.draftDelete(savedId));
+        return;
+      }
+      set(S.setSaved(state, id, "saved", savedId));
+    })
+    .catch(() => set(S.setSaved(state, id, "failed")))
+    .finally(() => {
+      s.running = undefined;
+      if (s.again && !s.discarded) {
+        s.again = false;
+        void saveNow(id);
+      }
+    });
+  return s.running;
+}
+
+/** Closes a new message, keeping it in Gmail's Drafts (saved first). */
+export function closeKeepingDraft(id: number) {
+  const entry = S.entryById(state, id);
+  if (entry && hasChanges(entry.draft)) {
+    void saveNow(id).then(() => {
+      const saved = S.entryById(state, id)?.draft.savedId;
+      set(S.close(state, id));
+      saves.delete(id);
+      if (saved !== null && saved !== undefined) showToast({ message: "Saved to Drafts" });
+    });
+    return;
+  }
+  closeDraft(id);
 }
 
 export function minimizeCard(id: number) {
@@ -67,8 +151,22 @@ export function expandCard(id: number) {
   set(S.expand(state, id));
 }
 
+/** Discards a draft: closes it and deletes its saved copy from Gmail. */
 export function closeDraft(id: number) {
+  const entry = S.entryById(state, id);
+  const s = slot(id);
+  window.clearTimeout(s.timer);
+  s.discarded = true;
   set(S.close(state, id));
+  const savedId = entry?.draft.savedId;
+  if (savedId !== null && savedId !== undefined)
+    unwrap(commands.draftDelete(savedId)).catch((e: unknown) =>
+      showToast({
+        tone: "error",
+        message: `Couldn’t delete the draft from Gmail: ${e instanceof Error ? e.message : String(e)}`,
+      }),
+    );
+  if (!s.running) saves.delete(id);
 }
 
 /** How long Undo send waits before sending (Gmail's default). */
@@ -106,7 +204,8 @@ export function useComposeActions(accounts: Account[]) {
           queryKey: keys.thread(threadId),
           queryFn: () => unwrap(commands.threadGet(threadId)),
         });
-        const last = detail.messages.at(-1);
+        // The newest real message: drafts sit in conversations too.
+        const last = detail.messages.findLast((m) => !m.draft);
         if (!last) return;
         const [source, list] = await Promise.all([
           unwrap(commands.replySource(last.id)),
@@ -134,13 +233,24 @@ export function useComposeActions(accounts: Account[]) {
   const send = useCallback((draft: Draft) => {
     const entry = S.entryById(state, draft.id);
     if (!entry) return;
+    // No more saving: the pending save is dropped, and one in flight is
+    // waited for so the right draft is deleted once sent.
+    const pending = slot(draft.id);
+    window.clearTimeout(pending.timer);
+    const inFlight = pending.running ?? Promise.resolve();
     set(S.close(state, draft.id));
     let undone = false;
     let started = false;
     const timer = window.setTimeout(() => {
       if (undone) return;
       started = true;
-      unwrap(commands.messageSend(toOutgoing(draft)))
+      saves.delete(draft.id);
+      inFlight
+        .then(() => {
+          // The latest saved ID, if a save finished meanwhile.
+          const savedId = pending.savedId ?? entry.draft.savedId;
+          return unwrap(commands.messageSend(toOutgoing({ ...draft, savedId })));
+        })
         .then(() => showToast({ message: "Message sent" }))
         .catch((e: unknown) => {
           const message = e instanceof Error ? e.message : String(e);
@@ -161,7 +271,8 @@ export function useComposeActions(accounts: Account[]) {
           }
           undone = true;
           window.clearTimeout(timer);
-          set(S.reopen(state, entry));
+          const savedId = pending.savedId ?? entry.draft.savedId;
+          set(S.reopen(state, { ...entry, draft: { ...entry.draft, savedId } }));
         },
       },
     });

@@ -1,4 +1,4 @@
-import type { ThreadId } from "../../../platform/tauri/bindings";
+import type { DraftId, ThreadId } from "../../../platform/tauri/bindings";
 import { type Draft, hasChanges } from "./draft";
 
 /** A draft on screen, and how sending it is going. */
@@ -10,6 +10,8 @@ export type ComposeEntry = {
   focusKey: number;
   /** A new message folded down to a tab along the bottom. */
   minimized: boolean;
+  /** Saving to Gmail's Drafts, for the "Saving…" / "Saved" note. */
+  save: "saving" | "saved" | "failed" | null;
 };
 
 /**
@@ -25,7 +27,7 @@ export type ComposeState = {
 export const EMPTY: ComposeState = { cards: [], replies: [] };
 
 function entry(draft: Draft, focusKey = 0): ComposeEntry {
-  return { draft, sending: false, error: null, focusKey, minimized: false };
+  return { draft, sending: false, error: null, focusKey, minimized: false, save: null };
 }
 
 /** The new message showing as the floating card, if any. */
@@ -139,4 +141,18 @@ export function reopen(state: ComposeState, e: ComposeEntry, error: string | nul
   if (e.draft.kind === "new") return { ...state, cards: [...stepAside(state.cards), back] };
   const others = state.replies.filter((r) => r.draft.threadId !== e.draft.threadId);
   return { ...state, replies: [...others, back] };
+}
+
+/** Records a save to Gmail's Drafts; not an edit (the send error stays). */
+export function setSaved(
+  state: ComposeState,
+  id: number,
+  save: ComposeEntry["save"],
+  savedId?: DraftId,
+): ComposeState {
+  return mapEntry(state, id, (e) => ({
+    ...e,
+    save,
+    draft: savedId === undefined ? e.draft : { ...e.draft, savedId },
+  }));
 }

@@ -170,6 +170,13 @@ pub struct MessageRef {
     pub thread_id: String,
 }
 
+/// A saved draft (`drafts.create` / `drafts.update`).
+#[derive(Debug, Clone, Deserialize)]
+pub struct DraftRef {
+    pub id: String,
+    pub message: MessageRef,
+}
+
 /// `settings.sendAs.list`: the addresses an account can send as.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

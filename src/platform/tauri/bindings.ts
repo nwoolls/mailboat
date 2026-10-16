@@ -99,6 +99,13 @@ export const commands = {
 	 */
 	messageSend: (message: OutgoingMessage) => typedError<number | null, AppError>(__TAURI_INVOKE("message_send", { message })),
 	/**
+	 *  Saves a message being written as a Gmail draft (creating it the first
+	 *  time, replacing it after) and returns its local draft ID.
+	 */
+	draftSave: (draft: number | null, message: OutgoingMessage) => typedError<DraftId, AppError>(__TAURI_INVOKE("draft_save", { draft, message })),
+	/**  Deletes a saved draft (discarded), from Gmail too. */
+	draftDelete: (draft: DraftId) => typedError<null, AppError>(__TAURI_INVOKE("draft_delete", { draft })),
+	/**
 	 *  Opens a link from the message being written in the default browser
 	 *  (or mail app). Only web and mail links; anything else is refused.
 	 */
@@ -182,6 +189,8 @@ export type Contact = {
 	/**  You've sent them mail (they rank above people who only wrote to you). */
 	wrote: boolean,
 };
+
+export type DraftId = number;
 
 /**  An account's From addresses (Gmail "Send mail as") changed. */
 export type IdentitiesChangedEvent = {
@@ -289,6 +298,8 @@ export type MessageMeta = {
 	unread: boolean,
 	starred: boolean,
 	hasAttachments: boolean,
+	/**  An unsent draft (Gmail lists drafts inside their conversation). */
+	draft: boolean,
 };
 
 export type OAuthSetup = {
@@ -340,6 +351,8 @@ export type OutgoingMessage = {
 	html: string | null,
 	/**  Files to attach. */
 	attachments: OutgoingAttachment[],
+	/**  The saved draft this is (deleted once sent). */
+	draft: DraftId | null,
 	/**  The message this replies to or forwards, for threading. */
 	replyingTo: MessageId | null,
 };

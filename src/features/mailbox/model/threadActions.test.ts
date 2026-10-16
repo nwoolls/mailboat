@@ -121,6 +121,7 @@ describe("withDetailAction", () => {
     cc: [],
     internalDate: id,
     unread,
+    draft: false,
   });
   const detail: ThreadDetail = {
     thread: thread(1, { unread: true }),

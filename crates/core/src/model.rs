@@ -33,6 +33,7 @@ id_type!(ThreadId);
 id_type!(MessageId);
 id_type!(LabelId);
 id_type!(AttachmentId);
+id_type!(DraftId);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -230,6 +231,8 @@ pub struct MessageMeta {
     pub unread: bool,
     pub starred: bool,
     pub has_attachments: bool,
+    /// An unsent draft (Gmail lists drafts inside their conversation).
+    pub draft: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]

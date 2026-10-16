@@ -61,6 +61,7 @@ fn outgoing(account: AccountId, from: &str, replying_to: Option<MessageId>) -> O
         text: "See you there".into(),
         html: None,
         attachments: vec![],
+        draft: None,
         replying_to,
     }
 }
@@ -374,4 +375,101 @@ async fn sync_records_reply_to() {
     .unwrap();
     let incoming = parse::thread_to_incoming(&t);
     assert_eq!(incoming.messages[0].reply_to[0].email, "b@y.com");
+}
+
+async fn mount_drafts(server: &MockServer, id: &str) {
+    let draft = serde_json::json!({ "id": id, "message": { "id": "dm", "threadId": "dt" } });
+    Mock::given(method("POST"))
+        .and(path("/upload/gmail/v1/users/me/drafts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(draft.clone()))
+        .mount(server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path(format!("/upload/gmail/v1/users/me/drafts/{id}")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(draft))
+        .mount(server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path(format!("/gmail/v1/users/me/drafts/{id}")))
+        .respond_with(ResponseTemplate::new(204))
+        .mount(server)
+        .await;
+}
+
+fn calls(requests: &[Request], verb: &str) -> usize {
+    requests
+        .iter()
+        .filter(|r| r.method.as_str() == verb)
+        .count()
+}
+
+#[tokio::test]
+async fn drafts_are_created_once_then_updated_and_deleted() {
+    let server = MockServer::start().await;
+    mount_drafts(&server, "d1").await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let uri = server.uri();
+    let gmail_for = |_| Ok(client(&uri).0);
+
+    let mut msg = outgoing(a, "a@x.com", None);
+    // Half-typed recipients don't go into the saved copy.
+    msg.cc = vec![addr("bob")];
+    let id = compose::save_draft(&db, gmail_for, None, &msg)
+        .await
+        .unwrap();
+    let again = compose::save_draft(&db, gmail_for, Some(id), &msg)
+        .await
+        .unwrap();
+    assert_eq!(id, again, "the same draft is updated, not a new one made");
+
+    let requests = server.received_requests().await.unwrap();
+    assert_eq!((calls(&requests, "POST"), calls(&requests, "PUT")), (1, 1));
+    let (raw, _) = sent_raw(&requests[0]);
+    assert!(!raw.contains("Cc:"), "{raw}");
+
+    compose::delete_draft(&db, &gmail_for, id).await.unwrap();
+    let left: i64 = db
+        .conn()
+        .query_row("SELECT COUNT(*) FROM drafts", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(left, 0);
+    // Deleting again (already gone) is fine.
+    compose::delete_draft(&db, &gmail_for, id).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_draft_moves_when_from_changes_account() {
+    let server_a = MockServer::start().await;
+    let server_b = MockServer::start().await;
+    mount_drafts(&server_a, "da").await;
+    mount_drafts(&server_b, "db").await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    let (ua, ub) = (server_a.uri(), server_b.uri());
+    let gmail_for = |acct: AccountId| Ok(client(if acct == a { &ua } else { &ub }).0);
+
+    let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.com", None))
+        .await
+        .unwrap();
+    let moved = compose::save_draft(&db, gmail_for, Some(id), &outgoing(b, "b@x.com", None))
+        .await
+        .unwrap();
+    // (SQLite may reuse the freed row number; the UI always keeps the ID
+    // returned by the latest save.)
+    let _ = id;
+    let on_a = server_a.received_requests().await.unwrap();
+    let on_b = server_b.received_requests().await.unwrap();
+    assert_eq!(calls(&on_a, "DELETE"), 1, "A's copy is deleted");
+    assert_eq!(calls(&on_b, "POST"), 1, "B gets its own");
+    let owner: AccountId = db
+        .conn()
+        .query_row(
+            "SELECT account_id FROM drafts WHERE id = ?1",
+            [moved],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(owner, b);
 }

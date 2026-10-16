@@ -159,6 +159,10 @@ function ThreadBody({
                     >
                       {name}
                     </span>
+                    {m.draft && (
+                      // As in Gmail: an unsent draft in the conversation.
+                      <span className="shrink-0 text-xs font-medium text-danger">Draft</span>
+                    )}
                     <span
                       aria-hidden={isOpen}
                       className={`min-w-0 flex-1 truncate text-content/50 transition-opacity duration-150 ${

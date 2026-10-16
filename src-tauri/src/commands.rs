@@ -13,8 +13,8 @@ use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::{self, SafeMessage};
 use mailboat_core::model::{
-    Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, Label, LabelId,
-    LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
+    Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, DraftId, Label,
+    LabelId, LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
 };
 use mailboat_core::sync::{fetch_body, load_older, OLDER_BATCH};
 use mailboat_core::CoreError;
@@ -579,11 +579,48 @@ pub async fn message_send(
 ) -> CmdResult<Option<ThreadId>> {
     let gmail = state.gmail_for(message.account_id)?.interactive();
     let thread = compose::send(&state.db, &gmail, &message).await?;
+    // Sent: its saved draft goes. If that fails the mail is still sent;
+    // the leftover draft is logged and shows in Drafts to delete by hand.
+    if let Some(draft) = message.draft {
+        if let Err(e) =
+            compose::delete_draft(&state.db, &|account| state.gmail_for(account), draft).await
+        {
+            state.sync_log.write(
+                message.account_id,
+                &format!("sent, but its draft wasn't deleted ({}): {e}", e.kind()),
+            );
+        }
+    }
     let _ = MailChangedEvent {
         account_id: message.account_id,
     }
     .emit(&app);
     Ok(thread)
+}
+
+/// Saves a message being written as a Gmail draft (creating it the first
+/// time, replacing it after) and returns its local draft ID.
+#[tauri::command]
+#[specta::specta]
+pub async fn draft_save(
+    state: State<'_, AppState>,
+    draft: Option<DraftId>,
+    message: OutgoingMessage,
+) -> CmdResult<DraftId> {
+    Ok(compose::save_draft(
+        &state.db,
+        |account| state.gmail_for(account),
+        draft,
+        &message,
+    )
+    .await?)
+}
+
+/// Deletes a saved draft (discarded), from Gmail too.
+#[tauri::command]
+#[specta::specta]
+pub async fn draft_delete(state: State<'_, AppState>, draft: DraftId) -> CmdResult<()> {
+    Ok(compose::delete_draft(&state.db, &|account| state.gmail_for(account), draft).await?)
 }
 
 /// Mail HTML (a signature, a quote) prepared for showing in the app the

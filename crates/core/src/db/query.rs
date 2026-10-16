@@ -201,7 +201,9 @@ pub fn thread_detail(conn: &Connection, id: ThreadId) -> Result<ThreadDetail> {
            EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
                    WHERE ml.message_id = m.id AND l.gmail_label_id = 'UNREAD'),
            EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
-                   WHERE ml.message_id = m.id AND l.gmail_label_id = 'STARRED')
+                   WHERE ml.message_id = m.id AND l.gmail_label_id = 'STARRED'),
+           EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                   WHERE ml.message_id = m.id AND l.gmail_label_id = 'DRAFT')
          FROM messages m WHERE m.thread_id = ?1 ORDER BY m.internal_date, m.id",
     )?;
     let messages = stmt
@@ -224,6 +226,7 @@ pub fn thread_detail(conn: &Connection, id: ThreadId) -> Result<ThreadDetail> {
                 has_attachments: r.get(10)?,
                 unread: r.get(11)?,
                 starred: r.get(12)?,
+                draft: r.get(13)?,
             })
         })?
         .collect::<rusqlite::Result<_>>()?;

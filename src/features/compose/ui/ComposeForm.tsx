@@ -161,6 +161,15 @@ export function ComposeForm({
         >
           {sending ? "Sending…" : "Send"}
         </button>
+        {!message && entry.save && (
+          <span className="text-xs text-content/45" role="status">
+            {entry.save === "saving"
+              ? "Saving…"
+              : entry.save === "saved"
+                ? "Saved to Drafts"
+                : "Couldn’t save the draft"}
+          </span>
+        )}
         {message && (
           <span
             role="alert"
@@ -198,7 +207,7 @@ export function ComposeForm({
           }}
           onCancel={() => setConfirming(false)}
         >
-          <p>What you’ve written will be lost. Drafts aren’t saved to Gmail yet.</p>
+          <p>What you’ve written will be lost, and its saved draft deleted from Gmail.</p>
         </ConfirmDialog>
       )}
     </form>

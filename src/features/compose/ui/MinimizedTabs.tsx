@@ -2,7 +2,7 @@ import type { Account } from "../../../platform/tauri/bindings";
 import { ClearIcon } from "../../../shared/ui/icons";
 import type { ComposeEntry } from "../model/composeState";
 import { hasChanges } from "../model/draft";
-import { closeDraft, expandCard } from "./useCompose";
+import { closeKeepingDraft, expandCard } from "./useCompose";
 
 /**
  * Minimised new messages, side by side along the bottom right (left of
@@ -44,9 +44,8 @@ export function MinimizedTabs({
             <button
               type="button"
               aria-label="Close"
-              // With writing in it, open it so the card asks before discarding.
-              title={hasChanges(draft) ? "Open to discard" : "Close"}
-              onClick={() => (hasChanges(draft) ? expandCard(draft.id) : closeDraft(draft.id))}
+              title={hasChanges(draft) ? "Close (kept in Drafts)" : "Close"}
+              onClick={() => closeKeepingDraft(draft.id)}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-content/60 hover:bg-selection hover:text-content"
             >
               <ClearIcon size={14} />

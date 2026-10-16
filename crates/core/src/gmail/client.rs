@@ -11,8 +11,8 @@ use serde::de::DeserializeOwned;
 use super::batch;
 use super::pacer::{cost, QuotaPacer};
 use super::types::{
-    AttachmentBody, ErrorEnvelope, HistoryList, LabelList, Message, MessageList, MessageRef,
-    Profile, SendAsList, Thread, ThreadList,
+    AttachmentBody, DraftRef, ErrorEnvelope, HistoryList, LabelList, Message, MessageList,
+    MessageRef, Profile, SendAsList, Thread, ThreadList,
 };
 use crate::error::{CoreError, Result};
 
@@ -297,17 +297,74 @@ impl GmailClient {
     /// accepts anything, so those still retry.
     pub async fn send_message(&self, raw: &[u8], thread_id: Option<&str>) -> Result<MessageRef> {
         self.spend(cost::MESSAGES_SEND).await;
-        // The upload endpoint takes messages up to 35 MB (attachments);
-        // the metadata part carries the thread.
-        let url = format!(
-            "{}/upload/gmail/v1/users/me/messages/send?uploadType=multipart",
-            self.base_url
-        );
         let metadata = match thread_id {
             Some(thread) => serde_json::json!({ "threadId": thread }),
             None => serde_json::json!({}),
         };
-        let boundary = format!("mailboat_send_{:016x}", fastrand::u64(..));
+        self.upload(
+            Method::POST,
+            "messages/send",
+            &metadata,
+            raw,
+            Retry::OnlyUnsent,
+        )
+        .await
+    }
+
+    /// `drafts.create`: saves a new draft (in `thread_id`'s conversation).
+    /// A retried create could leave a second draft, so like sending it
+    /// only retries when Google certainly didn't act.
+    pub async fn create_draft(&self, raw: &[u8], thread_id: Option<&str>) -> Result<DraftRef> {
+        self.spend(cost::DRAFTS_CREATE).await;
+        let metadata = serde_json::json!({ "message": thread_message(thread_id) });
+        self.upload(Method::POST, "drafts", &metadata, raw, Retry::OnlyUnsent)
+            .await
+    }
+
+    /// `drafts.update`: replaces a draft's content (safe to retry).
+    pub async fn update_draft(
+        &self,
+        id: &str,
+        raw: &[u8],
+        thread_id: Option<&str>,
+    ) -> Result<DraftRef> {
+        self.spend(cost::DRAFTS_UPDATE).await;
+        let metadata = serde_json::json!({ "id": id, "message": thread_message(thread_id) });
+        self.upload(
+            Method::PUT,
+            &format!("drafts/{id}"),
+            &metadata,
+            raw,
+            Retry::Transient,
+        )
+        .await
+    }
+
+    /// `drafts.delete`. A draft that's already gone counts as deleted.
+    pub async fn delete_draft(&self, id: &str) -> Result<()> {
+        self.spend(cost::DRAFTS_DELETE).await;
+        let url = self.url(&format!("drafts/{id}"));
+        match self.send(|| self.http.delete(&url)).await {
+            Ok(_) | Err(CoreError::NotFound(_)) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// A message upload (`uploadType=multipart`: JSON metadata, then the
+    /// RFC 5322 message), which takes messages up to 35 MB.
+    async fn upload<T: DeserializeOwned>(
+        &self,
+        method: Method,
+        path: &str,
+        metadata: &serde_json::Value,
+        raw: &[u8],
+        retry: Retry,
+    ) -> Result<T> {
+        let url = format!(
+            "{}/upload/gmail/v1/users/me/{path}?uploadType=multipart",
+            self.base_url
+        );
+        let boundary = format!("mailboat_upload_{:016x}", fastrand::u64(..));
         let mut body = format!(
             "--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{metadata}\r\n--{boundary}\r\nContent-Type: message/rfc822\r\n\r\n"
         )
@@ -319,11 +376,11 @@ impl GmailClient {
             .send_with(
                 || {
                     self.http
-                        .post(&url)
+                        .request(method.clone(), &url)
                         .header("Content-Type", &content_type)
                         .body(body.clone())
                 },
-                Retry::OnlyUnsent,
+                retry,
             )
             .await?;
         response.json().await.map_err(net_error)
@@ -562,6 +619,13 @@ impl GmailClient {
                 _ => api_error(status.as_u16(), &body),
             });
         }
+    }
+}
+
+fn thread_message(thread_id: Option<&str>) -> serde_json::Value {
+    match thread_id {
+        Some(thread) => serde_json::json!({ "threadId": thread }),
+        None => serde_json::json!({}),
     }
 }
 

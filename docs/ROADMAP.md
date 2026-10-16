@@ -526,14 +526,19 @@ Stage 3: formatting, signatures, attachments
 
 Stage 4: drafts and undo send
 
-- [ ] Drafts synced back to Gmail as you type
+- [x] Drafts synced back to Gmail as you type: saved about 2.5s after
+      you stop typing ("Saving…" / "Saved to Drafts" beside Send), created
+      once then replaced, and moved if From changes account. ✕ closes and
+      keeps the draft; Discard deletes it from Gmail too; sending deletes
+      it once the mail has gone. Quitting during Undo send no longer
+      loses the message. Drafts show as "Draft" in their conversation,
+      and replies skip them
 - [ ] Drafts view (all accounts); drafts started elsewhere resume here
 - [x] Undo send (5 seconds): Send closes the message at once and
       "Sending…" offers Undo (or `z` / ⌘Z) for 5 seconds before anything
       goes to Google; Undo puts it back exactly as it was. If sending then
-      fails, the message reopens with the error. Not yet: quitting Mailboat
-      within those 5 seconds loses the message (drafts saved to Gmail,
-      next, will cover it)
+      fails, the message reopens with the error. Quitting within those 5
+      seconds leaves the message in Drafts (saved as you typed)
 
 Stage 5: Google Contacts
 

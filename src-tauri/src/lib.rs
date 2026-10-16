@@ -51,6 +51,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::contacts_list,
             commands::reply_source,
             commands::message_send,
+            commands::draft_save,
+            commands::draft_delete,
             commands::link_open,
             commands::html_preview,
             commands::sync_now,

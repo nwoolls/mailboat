@@ -49,7 +49,7 @@ export function ReplyArea({
     );
   }
   // Reply all only when there's someone else to include.
-  const last = detail.messages.at(-1);
+  const last = detail.messages.findLast((m) => !m.draft);
   const several = last ? last.to.length + last.cc.length > 1 : false;
   return (
     <div className="flex gap-2 px-1 pt-3 pb-4">
