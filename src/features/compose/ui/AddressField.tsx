@@ -187,6 +187,12 @@ export function AddressField({
         aria-controls={listId}
         aria-autocomplete="list"
         autoFocus={autoFocus}
+        // Addresses aren't words: macOS autocorrect and capitalisation
+        // rewrote what was typed ("sam" became "Sam").
+        autoCorrect="off"
+        autoCapitalize="off"
+        autoComplete="off"
+        spellCheck={false}
         value={text}
         onChange={(e) => {
           setText(e.target.value);
