@@ -5,7 +5,7 @@ use base64::engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig};
 use base64::Engine;
 
 use super::types::{Message, MessagePart, Thread};
-use crate::db::store::{IncomingMessage, IncomingThread, StoredBody};
+use crate::db::store::{IncomingAttachment, IncomingMessage, IncomingThread, StoredBody};
 use crate::model::Address;
 
 /// Gmail encodes bodies as base64url, sometimes with and sometimes without padding.
@@ -154,6 +154,85 @@ fn walk_bodies(part: &MessagePart, html: &mut Option<String>, text: &mut Option<
     for child in &part.parts {
         walk_bodies(child, html, text);
     }
+}
+
+/// The attachment parts of a `format=full` payload: every part with a file
+/// name, plus unnamed parts with a Content-ID (inline images). A part is
+/// `inline` when the HTML body refers to it as `cid:…`; those are shown in
+/// the email rather than listed as files.
+pub fn extract_attachments(payload: &MessagePart, html: Option<&str>) -> Vec<IncomingAttachment> {
+    let html = html.map(str::to_ascii_lowercase).unwrap_or_default();
+    let mut out = Vec::new();
+    walk_attachments(payload, &html, &mut out);
+    out
+}
+
+fn walk_attachments(part: &MessagePart, html_lower: &str, out: &mut Vec<IncomingAttachment>) {
+    let content_id = header(part, "Content-ID")
+        .or_else(|| header(part, "X-Attachment-Id"))
+        .map(|v| {
+            v.trim()
+                .trim_start_matches('<')
+                .trim_end_matches('>')
+                .trim()
+                .to_string()
+        })
+        .filter(|v| !v.is_empty());
+    let mime = part.mime_type.to_ascii_lowercase();
+    let is_container = mime.starts_with("multipart/");
+    let has_data = part
+        .body
+        .as_ref()
+        .is_some_and(|b| b.attachment_id.is_some() || b.data.is_some());
+    let named = !part.filename.is_empty();
+    if !is_container && has_data && (named || content_id.is_some()) {
+        let referenced = content_id
+            .as_deref()
+            .is_some_and(|cid| html_lower.contains(&format!("cid:{}", cid.to_ascii_lowercase())));
+        if let Some(part_id) = part.part_id.clone() {
+            out.push(IncomingAttachment {
+                part_id,
+                gmail_attachment_id: part.body.as_ref().and_then(|b| b.attachment_id.clone()),
+                filename: if named {
+                    part.filename.clone()
+                } else {
+                    content_id.clone().unwrap_or_default()
+                },
+                mime_type: part.mime_type.clone(),
+                size: part.body.as_ref().map_or(0, |b| b.size),
+                content_id,
+                inline: referenced,
+            });
+        }
+    }
+    for child in &part.parts {
+        walk_attachments(child, html_lower, out);
+    }
+}
+
+/// The decoded data of one part, if it came inline in the payload (small
+/// parts do; larger ones need `messages.attachments.get`).
+pub fn part_data(payload: &MessagePart, part_id: &str) -> Option<Vec<u8>> {
+    if payload.part_id.as_deref() == Some(part_id) {
+        return payload
+            .body
+            .as_ref()
+            .and_then(|b| b.data.as_deref())
+            .and_then(decode_base64url);
+    }
+    payload.parts.iter().find_map(|p| part_data(p, part_id))
+}
+
+/// The Gmail attachment ID a part has in this fetch (they change between
+/// fetches).
+pub fn part_attachment_id(payload: &MessagePart, part_id: &str) -> Option<String> {
+    if payload.part_id.as_deref() == Some(part_id) {
+        return payload.body.as_ref().and_then(|b| b.attachment_id.clone());
+    }
+    payload
+        .parts
+        .iter()
+        .find_map(|p| part_attachment_id(p, part_id))
 }
 
 fn charset_of(content_type: &str) -> Option<String> {

@@ -8,11 +8,20 @@ use std::sync::{Arc, Mutex};
 use mailboat_core::auth::{AccountTokens, OAuthClientConfig, SecretStore};
 use mailboat_core::db::{accounts, Db};
 use mailboat_core::gmail::GmailClient;
-use mailboat_core::model::AccountId;
 use mailboat_core::model::MailView;
+use mailboat_core::model::{AccountId, AttachmentId};
 use mailboat_core::reqwest;
 use mailboat_core::sync::{OlderCursor, Supervisor};
 use mailboat_core::Result;
+
+/// Folders the app uses, from Tauri's path resolver.
+pub struct AppDirs {
+    /// Holds the Google OAuth client file.
+    pub config: PathBuf,
+    /// Downloaded attachments live under `attachments/` here.
+    pub cache: PathBuf,
+    pub downloads: Option<PathBuf>,
+}
 
 pub struct AppState {
     pub db: Arc<Db>,
@@ -20,6 +29,12 @@ pub struct AppState {
     pub secrets: Arc<dyn SecretStore>,
     pub supervisor: Supervisor,
     pub config_dir: PathBuf,
+    /// Downloaded attachments, one folder per account.
+    pub attachments_dir: PathBuf,
+    /// Where "Save" puts attachments (the user's Downloads folder).
+    pub downloads_dir: Option<PathBuf>,
+    /// Where each attachment was last saved, for "Show in Finder".
+    pub saved: Mutex<HashMap<AttachmentId, PathBuf>>,
     pub sync_log: Arc<crate::sync_log::SyncLog>,
     /// One Gmail client per account (see `gmail_for`).
     clients: Mutex<HashMap<AccountId, GmailClient>>,
@@ -37,7 +52,7 @@ impl AppState {
         http: reqwest::Client,
         secrets: Arc<dyn SecretStore>,
         supervisor: Supervisor,
-        config_dir: PathBuf,
+        dirs: AppDirs,
         sync_log: Arc<crate::sync_log::SyncLog>,
     ) -> Self {
         Self {
@@ -45,7 +60,10 @@ impl AppState {
             http,
             secrets,
             supervisor,
-            config_dir,
+            config_dir: dirs.config,
+            attachments_dir: dirs.cache.join("attachments"),
+            downloads_dir: dirs.downloads,
+            saved: Mutex::new(HashMap::new()),
             sync_log,
             clients: Mutex::new(HashMap::new()),
             sign_in: tokio::sync::Mutex::new(()),
@@ -90,6 +108,9 @@ impl AppState {
     pub fn forget_account(&self, account: AccountId) {
         self.clients.lock().unwrap().remove(&account);
         self.older.lock().unwrap().retain(|(a, _), _| *a != account);
+        // Its downloaded attachments go too (saved copies in Downloads stay).
+        let dir = mailboat_core::attachments::account_dir(&self.attachments_dir, account);
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     /// Takes an account's "load older" cursor for a view (a fresh one if
@@ -180,7 +201,11 @@ mod tests {
             reqwest::Client::new(),
             Arc::new(MemoryStore::default()),
             supervisor,
-            config_dir,
+            AppDirs {
+                config: config_dir,
+                cache: std::env::temp_dir().join("mailboat-test-cache"),
+                downloads: None,
+            },
             log,
         );
 

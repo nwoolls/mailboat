@@ -67,6 +67,17 @@ export const commands = {
 	 *  every account. Spam stays blocked regardless.
 	 */
 	senderAllowImages: (senderEmail: string, allow: boolean) => typedError<null, AppError>(__TAURI_INVOKE("sender_allow_images", { senderEmail, allow })),
+	/**  Opens an attachment with its default app. */
+	attachmentOpen: (attachmentId: AttachmentId) => typedError<null, AppError>(__TAURI_INVOKE("attachment_open", { attachmentId })),
+	/**  Shows an attachment in Quick Look (macOS). */
+	attachmentPreview: (attachmentId: AttachmentId) => typedError<null, AppError>(__TAURI_INVOKE("attachment_preview", { attachmentId })),
+	/**
+	 *  Saves a copy of an attachment to Downloads ("name (1).pdf" if the name
+	 *  is taken) and returns the file name it got.
+	 */
+	attachmentSave: (attachmentId: AttachmentId) => typedError<string, AppError>(__TAURI_INVOKE("attachment_save", { attachmentId })),
+	/**  Shows a saved attachment in Finder. */
+	attachmentReveal: (attachmentId: AttachmentId) => typedError<null, AppError>(__TAURI_INVOKE("attachment_reveal", { attachmentId })),
 	/**  Wakes sync workers now. `None` means every account. */
 	syncNow: (accountIds: AccountId[] | null) => __TAURI_INVOKE<void>("sync_now", { accountIds }),
 	syncStatusList: () => typedError<AccountSyncState[], AppError>(__TAURI_INVOKE("sync_status_list")),
@@ -115,6 +126,21 @@ export type AppError = {
 	kind: string,
 	message: string,
 };
+
+/**
+ *  A file attached to a received message. Inline images the email shows
+ *  itself (`cid:`) aren't listed as attachments.
+ */
+export type Attachment = {
+	id: AttachmentId,
+	messageId: MessageId,
+	filename: string,
+	mimeType: string,
+	/**  Bytes, as Gmail reports it. */
+	size: number,
+};
+
+export type AttachmentId = number;
 
 /**  The decision, and why, so the reader can offer the right choice. */
 export type ImagePolicy = 
@@ -228,6 +254,8 @@ export type OpenedMessage = {
 	imagesAllowed: boolean,
 	/**  Why images did or didn't load, so the reader can offer the opposite. */
 	imagePolicy: ImagePolicy,
+	/**  Files attached to the message (inline images left out). */
+	attachments: Attachment[],
 } & SafeMessage;
 
 export type SafeMessage = {

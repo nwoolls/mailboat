@@ -8,7 +8,8 @@ use rusqlite::{params, Connection, OptionalExtension};
 use super::{now_millis, placeholders};
 use crate::error::{CoreError, Result};
 use crate::model::{
-    AccountId, AccountSyncState, Address, LabelId, LabelKind, MessageId, SyncStatus, ThreadId,
+    AccountId, AccountSyncState, Address, Attachment, AttachmentId, LabelId, LabelKind, MessageId,
+    SyncStatus, ThreadId,
 };
 
 /// A label as reported by Gmail's `labels.list`.
@@ -366,11 +367,34 @@ pub struct StoredBody {
     pub text: Option<String>,
 }
 
+/// Which attachment rules cached bodies were read with. Bodies stored
+/// with an older version count as missing, so they're fetched again (once)
+/// to record their attachments. Bump when attachment parsing changes.
+pub const PARTS_VERSION: i64 = 1;
+
+/// One attachment part of a fetched message, parsed from its MIME tree.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct IncomingAttachment {
+    /// MIME part ID within the message (stable, unlike Gmail's attachment ID).
+    pub part_id: String,
+    /// Absent for small parts whose data came inline with the message.
+    pub gmail_attachment_id: Option<String>,
+    pub filename: String,
+    pub mime_type: String,
+    pub size: u64,
+    /// Without angle brackets.
+    pub content_id: Option<String>,
+    /// The HTML body shows it itself (`cid:`), so it isn't listed as a file.
+    pub inline: bool,
+}
+
+/// A cached body, or `None` if it was never fetched (or was fetched before
+/// attachments were recorded).
 pub fn get_body(conn: &Connection, message: MessageId) -> Result<Option<StoredBody>> {
     Ok(conn
         .query_row(
-            "SELECT html, text FROM message_bodies WHERE message_id = ?1",
-            [message],
+            "SELECT html, text FROM message_bodies WHERE message_id = ?1 AND parts_version >= ?2",
+            params![message, PARTS_VERSION],
             |r| {
                 Ok(StoredBody {
                     html: r.get(0)?,
@@ -381,16 +405,144 @@ pub fn get_body(conn: &Connection, message: MessageId) -> Result<Option<StoredBo
         .optional()?)
 }
 
-pub fn set_body(conn: &Connection, message: MessageId, body: &StoredBody) -> Result<()> {
+/// Stores a fetched body and its attachment parts. Attachments already
+/// downloaded keep their cached file (matched by part ID).
+pub fn set_body(
+    conn: &mut Connection,
+    message: MessageId,
+    body: &StoredBody,
+    attachments: &[IncomingAttachment],
+) -> Result<()> {
     let (account, _) = message_gmail_ref(conn, message)?;
-    conn.execute(
-        "INSERT INTO message_bodies (message_id, account_id, html, text, fetched_at) VALUES (?1, ?2, ?3, ?4, ?5)
-         ON CONFLICT (message_id) DO UPDATE SET html = excluded.html, text = excluded.text, fetched_at = excluded.fetched_at",
-        params![message, account, body.html, body.text, now_millis()],
+    let tx = conn.transaction()?;
+    tx.execute(
+        "INSERT INTO message_bodies (message_id, account_id, html, text, fetched_at, parts_version) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT (message_id) DO UPDATE SET html = excluded.html, text = excluded.text,
+           fetched_at = excluded.fetched_at, parts_version = excluded.parts_version",
+        params![message, account, body.html, body.text, now_millis(), PARTS_VERSION],
     )?;
-    conn.execute(
+    tx.execute(
         "UPDATE messages_fts SET body = ?2 WHERE rowid = ?1",
         params![message, body.text.as_deref().unwrap_or("")],
+    )?;
+    let mut kept: Vec<String> = Vec::new();
+    for a in attachments {
+        tx.execute(
+            "INSERT INTO attachments (account_id, message_id, part_id, gmail_attachment_id, filename, mime_type, size, content_id, inline)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+             ON CONFLICT (account_id, message_id, part_id) DO UPDATE SET
+               gmail_attachment_id = excluded.gmail_attachment_id, filename = excluded.filename,
+               mime_type = excluded.mime_type, size = excluded.size,
+               content_id = excluded.content_id, inline = excluded.inline",
+            params![
+                account,
+                message,
+                a.part_id,
+                a.gmail_attachment_id,
+                a.filename,
+                a.mime_type,
+                a.size as i64,
+                a.content_id,
+                a.inline
+            ],
+        )?;
+        kept.push(a.part_id.clone());
+    }
+    let sql = format!(
+        "DELETE FROM attachments WHERE message_id = ? AND part_id NOT IN ({})",
+        placeholders(kept.len().max(1))
+    );
+    let none = String::new();
+    let mut values: Vec<&dyn rusqlite::ToSql> = vec![&message];
+    if kept.is_empty() {
+        values.push(&none);
+    } else {
+        values.extend(kept.iter().map(|k| k as &dyn rusqlite::ToSql));
+    }
+    tx.execute(&sql, values.as_slice())?;
+    tx.commit()?;
+    Ok(())
+}
+
+/// A message's attachments that are files (inline images left out), in
+/// the order they appear in the message.
+pub fn attachments_for(conn: &Connection, message: MessageId) -> Result<Vec<Attachment>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, message_id, filename, mime_type, size FROM attachments
+         WHERE message_id = ?1 AND NOT inline ORDER BY id",
+    )?;
+    let rows = stmt.query_map([message], |r| {
+        Ok(Attachment {
+            id: r.get(0)?,
+            message_id: r.get(1)?,
+            filename: r.get(2)?,
+            mime_type: r.get(3)?,
+            size: r.get::<_, i64>(4)?.max(0) as u64,
+        })
+    })?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+/// Everything needed to download one attachment.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AttachmentRef {
+    pub id: AttachmentId,
+    pub account: AccountId,
+    pub message: MessageId,
+    pub gmail_message_id: String,
+    pub part_id: String,
+    pub gmail_attachment_id: Option<String>,
+    pub filename: String,
+    pub mime_type: String,
+    pub size: u64,
+    pub content_id: Option<String>,
+    pub cached_path: Option<String>,
+}
+
+const ATTACHMENT_REF_SQL: &str =
+    "SELECT a.id, a.account_id, a.message_id, m.gmail_message_id, a.part_id,
+       a.gmail_attachment_id, a.filename, a.mime_type, a.size, a.content_id, a.cached_path
+     FROM attachments a JOIN messages m ON m.id = a.message_id AND m.account_id = a.account_id";
+
+fn attachment_ref_from_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<AttachmentRef> {
+    Ok(AttachmentRef {
+        id: r.get(0)?,
+        account: r.get(1)?,
+        message: r.get(2)?,
+        gmail_message_id: r.get(3)?,
+        part_id: r.get(4)?,
+        gmail_attachment_id: r.get(5)?,
+        filename: r.get(6)?,
+        mime_type: r.get(7)?,
+        size: r.get::<_, i64>(8)?.max(0) as u64,
+        content_id: r.get(9)?,
+        cached_path: r.get(10)?,
+    })
+}
+
+pub fn attachment_ref(conn: &Connection, id: AttachmentId) -> Result<AttachmentRef> {
+    conn.query_row(
+        &format!("{ATTACHMENT_REF_SQL} WHERE a.id = ?1"),
+        [id],
+        attachment_ref_from_row,
+    )
+    .optional()?
+    .ok_or_else(|| CoreError::NotFound(format!("attachment {}", id.0)))
+}
+
+/// A message's inline parts (`cid:` images the body shows).
+pub fn inline_parts(conn: &Connection, message: MessageId) -> Result<Vec<AttachmentRef>> {
+    let mut stmt = conn.prepare(&format!(
+        "{ATTACHMENT_REF_SQL} WHERE a.message_id = ?1 AND a.inline ORDER BY a.id"
+    ))?;
+    let rows = stmt.query_map([message], attachment_ref_from_row)?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+pub fn set_attachment_cached_path(conn: &Connection, id: AttachmentId, path: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE attachments SET cached_path = ?2 WHERE id = ?1",
+        params![id, path],
     )?;
     Ok(())
 }
@@ -403,10 +555,10 @@ pub fn messages_missing_body(
 ) -> Result<Vec<MessageId>> {
     let mut stmt = conn.prepare(
         "SELECT m.id FROM messages m LEFT JOIN message_bodies b ON b.message_id = m.id
-         WHERE m.account_id = ?1 AND b.message_id IS NULL
+         WHERE m.account_id = ?1 AND (b.message_id IS NULL OR b.parts_version < ?3)
          ORDER BY m.internal_date DESC LIMIT ?2",
     )?;
-    let rows = stmt.query_map(params![account, limit], |r| r.get(0))?;
+    let rows = stmt.query_map(params![account, limit, PARTS_VERSION], |r| r.get(0))?;
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 

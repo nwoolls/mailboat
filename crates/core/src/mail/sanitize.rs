@@ -142,6 +142,68 @@ fn ammonia_builder() -> ammonia::Builder<'static> {
 
 /// Sanitizes `html`. If `allow_images` is false, remote images are held back.
 pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
+    sanitize_html_with(html, allow_images, &HashMap::new())
+}
+
+/// Decodes `%XX` escapes (a `cid:` URL may escape its Content-ID).
+fn percent_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = |b: u8| (b as char).to_digit(16);
+        match (bytes[i], bytes.get(i + 1), bytes.get(i + 2)) {
+            (b'%', Some(&h), Some(&l)) if hex(h).is_some() && hex(l).is_some() => {
+                out.push((hex(h).unwrap_or(0) * 16 + hex(l).unwrap_or(0)) as u8);
+                i += 3;
+            }
+            (b, _, _) => {
+                out.push(b);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// A transparent 1×1 GIF: the source for images that aren't shown, so the
+/// web view draws a quiet placeholder box instead of its broken-image icon.
+const PLACEHOLDER_SRC: &str =
+    "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+/// Turns an image that won't load into a placeholder box the size the
+/// email asked for (its width and height, when it gave both).
+fn make_placeholder(el: &mut lol_html::html_content::Element) -> lol_html::HandlerResult {
+    el.set_attribute("src", PLACEHOLDER_SRC)?;
+    let size = |name: &str| {
+        el.get_attribute(name)
+            .and_then(|v| v.trim().trim_end_matches("px").parse::<u32>().ok())
+            .filter(|n| *n > 0)
+    };
+    // The 1×1 image would otherwise make the box square; a plain ratio (no
+    // `auto`) overrides an image's own.
+    let shape = match (size("width"), size("height")) {
+        (Some(w), Some(h)) => format!("aspect-ratio:{w}/{h}"),
+        _ => "height:24px".to_string(),
+    };
+    let style = el.get_attribute("style").unwrap_or_default();
+    let sep = if style.trim().is_empty() || style.trim_end().ends_with(';') {
+        ""
+    } else {
+        ";"
+    };
+    el.set_attribute("style", &format!("{style}{sep}{shape}"))?;
+    Ok(())
+}
+
+/// Like `sanitize_html`, with the message's inline images (`cid:` links)
+/// as `data:` URLs keyed by lowercased Content-ID. Inline images are part
+/// of the email itself, so they show even when remote images are held back.
+pub fn sanitize_html_with(
+    html: &str,
+    allow_images: bool,
+    inline_images: &HashMap<String, String>,
+) -> SafeMessage {
     let adaptive = can_adapt(html);
     let cleaned = ammonia_builder().clean(html).to_string();
     let blocked = Cell::new(0u32);
@@ -166,18 +228,32 @@ pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
                     el.remove();
                 } else if is_remote(&src) && !allow_images {
                     blocked.set(blocked.get() + 1);
-                    el.remove_attribute("src");
                     el.set_attribute("data-mailboat-blocked", "")?;
+                    make_placeholder(el)?;
                 } else if is_remote(&src) {
                     loaded.set(loaded.get() + 1);
                     // Images are only loaded over HTTPS (the CSP allows nothing else).
                     if let Some(rest) = src.trim().strip_prefix("http://") {
                         el.set_attribute("src", &format!("https://{rest}"))?;
                     }
-                } else if src.trim().to_ascii_lowercase().starts_with("cid:") {
-                    // Inline (cid:) images are not resolved yet.
-                    el.remove_attribute("src");
+                } else if let Some(cid) = src.trim().get(4..).filter(|_| {
+                    src.trim()
+                        .get(..4)
+                        .is_some_and(|p| p.eq_ignore_ascii_case("cid:"))
+                }) {
+                    // Inline images were fetched by the caller; ones that
+                    // weren't (too big, unsafe type, failed) stay placeholders.
+                    match inline_images.get(&percent_decode(cid).trim().to_ascii_lowercase()) {
+                        Some(data_url) => el.set_attribute("src", data_url)?,
+                        None => {
+                            el.set_attribute("data-mailboat-inline", "")?;
+                            make_placeholder(el)?;
+                        }
+                    }
+                } else if !src.trim().to_ascii_lowercase().starts_with("data:") {
+                    // Anything else (relative paths, file:) can't load.
                     el.set_attribute("data-mailboat-inline", "")?;
+                    make_placeholder(el)?;
                 }
                 Ok(())
             }))
@@ -549,6 +625,42 @@ mod tests {
             out.document.contains("img-src data:;"),
             "CSP forbids remote images"
         );
+    }
+
+    #[test]
+    fn inline_images_show_even_with_remote_images_blocked() {
+        let images = HashMap::from([(
+            "logo@x".to_string(),
+            "data:image/png;base64,AAAA".to_string(),
+        )]);
+        let out = sanitize_html_with(
+            r#"<img src="cid:Logo@X"><img src="cid:logo%40x" width="10" height="5"><img src="cid:missing@x" width="300" height="100"><img src="images/rel.png">"#,
+            false,
+            &images,
+        );
+        assert_eq!(
+            out.document.matches("data:image/png;base64,AAAA").count(),
+            2,
+            "matched case-insensitively and percent-decoded"
+        );
+        assert!(!out.document.contains("cid:"));
+        assert!(!out.document.contains("images/rel.png"));
+        // Unresolved images become a quiet box the size the email asked for.
+        assert!(out.document.contains("aspect-ratio:300/100"));
+        assert_eq!(out.document.matches(PLACEHOLDER_SRC).count(), 2);
+        assert_eq!(out.blocked_images, 0, "inline images aren't remote");
+    }
+
+    #[test]
+    fn blocked_images_get_a_placeholder_instead_of_a_broken_icon() {
+        let out = sanitize_html(
+            r#"<img src="https://cdn.x.com/a.png" width="600" height="200" style="border:0"><img src="https://cdn.x.com/b.png">"#,
+            false,
+        );
+        assert_eq!(out.document.matches(PLACEHOLDER_SRC).count(), 2);
+        assert!(out.document.contains("border:0;aspect-ratio:600/200"));
+        assert!(out.document.contains("height:24px"));
+        assert!(!out.document.contains("cdn.x.com"));
     }
 
     #[test]

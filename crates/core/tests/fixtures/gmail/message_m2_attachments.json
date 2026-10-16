@@ -1,0 +1,130 @@
+{
+  "id": "m2",
+  "threadId": "t1",
+  "labelIds": [
+    "INBOX"
+  ],
+  "snippet": "Hi there",
+  "internalDate": "1760000500000",
+  "payload": {
+    "partId": "",
+    "mimeType": "multipart/mixed",
+    "filename": "",
+    "headers": [
+      {
+        "name": "From",
+        "value": "Ann <ann@example.com>"
+      },
+      {
+        "name": "Subject",
+        "value": "Report"
+      }
+    ],
+    "body": {
+      "size": 0
+    },
+    "parts": [
+      {
+        "partId": "0",
+        "mimeType": "multipart/related",
+        "filename": "",
+        "headers": [],
+        "body": {
+          "size": 0
+        },
+        "parts": [
+          {
+            "partId": "0.0",
+            "mimeType": "multipart/alternative",
+            "filename": "",
+            "headers": [],
+            "body": {
+              "size": 0
+            },
+            "parts": [
+              {
+                "partId": "0.0.0",
+                "mimeType": "text/plain",
+                "filename": "",
+                "headers": [
+                  {
+                    "name": "Content-Type",
+                    "value": "text/plain; charset=UTF-8"
+                  }
+                ],
+                "body": {
+                  "size": 8,
+                  "data": "SGkgdGhlcmU"
+                }
+              },
+              {
+                "partId": "0.0.1",
+                "mimeType": "text/html",
+                "filename": "",
+                "headers": [
+                  {
+                    "name": "Content-Type",
+                    "value": "text/html; charset=UTF-8"
+                  }
+                ],
+                "body": {
+                  "size": 82,
+                  "data": "PHA-SGkgdGhlcmU8L3A-PGltZyBzcmM9ImNpZDpsb2dvQHgiIHdpZHRoPSIxMjAiIGhlaWdodD0iNDAiPjxpbWcgc3JjPSJjaWQ6ZG90QHgiPg"
+                }
+              }
+            ]
+          },
+          {
+            "partId": "0.1",
+            "mimeType": "image/png",
+            "filename": "logo.png",
+            "headers": [
+              {
+                "name": "Content-ID",
+                "value": "<logo@x>"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "inline; filename=\"logo.png\""
+              }
+            ],
+            "body": {
+              "attachmentId": "ATT_LOGO_OLD",
+              "size": 4
+            }
+          },
+          {
+            "partId": "0.2",
+            "mimeType": "image/gif",
+            "filename": "",
+            "headers": [
+              {
+                "name": "Content-ID",
+                "value": "<dot@x>"
+              }
+            ],
+            "body": {
+              "size": 42,
+              "data": "R0lGODlhAQABAIAAAAAAAP___yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+            }
+          }
+        ]
+      },
+      {
+        "partId": "1",
+        "mimeType": "application/pdf",
+        "filename": "../../Quarterly report.pdf",
+        "headers": [
+          {
+            "name": "Content-Disposition",
+            "value": "attachment; filename=\"Quarterly report.pdf\""
+          }
+        ],
+        "body": {
+          "attachmentId": "ATT_PDF",
+          "size": 9
+        }
+      }
+    ]
+  }
+}

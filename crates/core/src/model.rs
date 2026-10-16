@@ -32,6 +32,7 @@ id_type!(AccountId);
 id_type!(ThreadId);
 id_type!(MessageId);
 id_type!(LabelId);
+id_type!(AttachmentId);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -281,4 +282,17 @@ pub struct AccountSyncState {
     pub error_kind: Option<String>,
     pub error_message: Option<String>,
     pub last_sync_at: Option<i64>,
+}
+
+/// A file attached to a received message. Inline images the email shows
+/// itself (`cid:`) aren't listed as attachments.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Attachment {
+    pub id: AttachmentId,
+    pub message_id: MessageId,
+    pub filename: String,
+    pub mime_type: String,
+    /// Bytes, as Gmail reports it.
+    pub size: u64,
 }

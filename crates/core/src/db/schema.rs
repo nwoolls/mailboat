@@ -168,3 +168,13 @@ ALTER TABLE sync_state ADD COLUMN full_sync_started_at INTEGER;
 pub const MIGRATION_V3: &str = r#"
 ALTER TABLE sync_state ADD COLUMN scope_version INTEGER NOT NULL DEFAULT 0;
 "#;
+
+/// Received attachments (Milestone 3). `inline` marks parts the HTML body
+/// shows itself (`cid:` images), which the reader doesn't list as files.
+/// `parts_version` says which attachment rules a cached body was read
+/// with; bodies cached before attachments were recorded are re-fetched
+/// once when next opened (see `store::PARTS_VERSION`).
+pub const MIGRATION_V4: &str = r#"
+ALTER TABLE attachments ADD COLUMN inline INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE message_bodies ADD COLUMN parts_version INTEGER NOT NULL DEFAULT 0;
+"#;

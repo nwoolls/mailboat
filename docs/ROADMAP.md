@@ -208,9 +208,8 @@ Options offered during the spike that the owner didn't pick (yet):
   per view (owner liked Google Chat's "All quiet here in message land")
 - Visible focus and shortcut hints (toolbar tooltips show some today)
 - Light mode: built alongside dark but never reviewed by the owner
-- Broken "?" boxes where remote images are blocked inside emails; a tidy
-  placeholder needs the Rust sanitizer, so it belongs with inline images
-  in Milestone 3
+- Broken "?" boxes where remote images are blocked inside emails *(done
+  in Milestone 3)*
 - The traffic lights once jumped during live resize in MonoCode; not seen
   here, but worth watching
 
@@ -364,11 +363,21 @@ split per account for selections that span accounts.
 - [x] Several conversations at once: ⌘-click picks one, ⇧-click a
       range, `x` the open one; Esc clears. Every action applies to all
       picked, split per account in Rust
-- [ ] Received attachments: list them in the reader, open, save, Quick Look
+- [x] Received attachments: list them in the reader, open, save, Quick Look
       preview *(split from M4 Compose, 2026-10-15: reading attachments doesn't
-      depend on composing)*
-- [ ] Inline (`cid:`) images inside emails, shown as placeholders today
-      *(moved from Later: uses the same attachment download as above)*
+      depend on composing)*. Chips under each message: click opens with the
+      default app, the eye is Quick Look, the arrow saves to Downloads
+      ("Show in Finder" in the toast). Files download once and are tagged
+      as downloaded from the internet, so macOS checks them first. Mail
+      opened before this update fetches its body again once to find its
+      attachments
+- [x] Inline (`cid:`) images inside emails, shown as placeholders today
+      *(moved from Later: uses the same attachment download as above)*.
+      They show even where remote images are blocked (they're part of the
+      email)
+- [x] Tidy placeholders instead of broken "?" boxes where images don't
+      load (blocked remote images, missing inline ones), sized as the
+      email asked *(moved from the UX Spike's deferred ideas)*
 
 ## Milestone 4: Compose
 

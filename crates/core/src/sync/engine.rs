@@ -355,6 +355,11 @@ pub async fn fetch_body(db: &Db, gmail: &GmailClient, message: MessageId) -> Res
             html: None,
             text: None,
         });
-    store::set_body(&db.conn(), message, &body)?;
+    let attachments = full
+        .payload
+        .as_ref()
+        .map(|p| parse::extract_attachments(p, body.html.as_deref()))
+        .unwrap_or_default();
+    store::set_body(&mut db.conn(), message, &body, &attachments)?;
     Ok(body)
 }

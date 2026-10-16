@@ -5,6 +5,7 @@ import type { MessageId } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { useOpenedMessage } from "../../../shared/lib/queries";
 import { imageNotice } from "../model/imageNotice";
+import { AttachmentList } from "./AttachmentList";
 
 /**
  * Shows one message's sanitized HTML.
@@ -103,6 +104,7 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
         }`}
         style={{ height, opacity: ready ? 1 : 0 }}
       />
+      <AttachmentList attachments={m.attachments} />
     </div>
   );
 }

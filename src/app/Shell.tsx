@@ -41,7 +41,8 @@ import { LabelPicker } from "../features/mailbox/ui/LabelPicker";
 import { useOlderMail } from "../features/mailbox/ui/useOlderMail";
 import { useThreadAction } from "../features/mailbox/ui/useThreadAction";
 import { anchorBelow, type MenuAnchor } from "../shared/ui/Menu";
-import { Toast, type ToastData } from "../shared/ui/Toast";
+import { dismissToast, showToast, useToast } from "../shared/lib/toast";
+import { Toast } from "../shared/ui/Toast";
 import {
   ALL_INBOXES,
   type Selection,
@@ -109,8 +110,7 @@ export function Shell() {
   const [checkedState, setChecked] = useState<Checked>(NONE);
   const checked = prune(checkedState, threads);
   const targets = actionTargets(threads, checked, selectedId);
-  const [toast, setToast] = useState<ToastData | null>(null);
-  const dismissToast = useCallback(() => setToast(null), []);
+  const toast = useToast();
   const [labelAnchor, setLabelAnchor] = useState<MenuAnchor | null>(null);
   const { mutate: mutateThreads } = useThreadAction();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
@@ -160,10 +160,8 @@ export function Shell() {
         setChecked(NONE);
       }
       const message = actionMessage(action, ids.length);
-      const id = Date.now();
       if (message)
-        setToast({
-          id,
+        showToast({
           message,
           action: undoable
             ? {
@@ -181,8 +179,7 @@ export function Shell() {
         { ids, action },
         {
           onError: (error) =>
-            setToast({
-              id: id + 1,
+            showToast({
               tone: "error",
               message: `Couldn’t ${actionVerb(action)}: ${error.message}`,
             }),
@@ -240,7 +237,7 @@ export function Shell() {
       ) {
         e.preventDefault();
         lastUndo.run();
-        setToast(null);
+        dismissToast();
         return;
       }
       const plain = !isEditable(e.target) && !e.metaKey && !e.ctrlKey && !e.altKey;

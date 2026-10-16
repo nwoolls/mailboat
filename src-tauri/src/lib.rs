@@ -2,6 +2,7 @@ mod commands;
 mod dock;
 mod error;
 mod events;
+mod files;
 mod links;
 mod state;
 mod sync_log;
@@ -14,7 +15,7 @@ use tauri::Manager;
 use tauri_specta::{collect_commands, collect_events, Builder};
 
 use crate::events::{MailChangedEvent, SyncProgressEvent, SyncStatusEvent, TauriSyncEvents};
-use crate::state::AppState;
+use crate::state::{AppDirs, AppState};
 
 pub const BINDINGS_PATH: &str = "../src/platform/tauri/bindings.ts";
 
@@ -40,6 +41,10 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::threads_set_trashed,
             commands::threads_change_labels,
             commands::sender_allow_images,
+            commands::attachment_open,
+            commands::attachment_preview,
+            commands::attachment_save,
+            commands::attachment_reveal,
             commands::sync_now,
             commands::sync_status_list,
         ])
@@ -97,7 +102,11 @@ pub fn run() {
                 http,
                 Arc::new(mailboat_core::auth::KeyringStore),
                 supervisor,
-                config_dir,
+                AppDirs {
+                    config: config_dir,
+                    cache: app.path().app_cache_dir()?,
+                    downloads: app.path().download_dir().ok(),
+                },
                 sync_log,
             );
             state.resume_all_accounts()?;

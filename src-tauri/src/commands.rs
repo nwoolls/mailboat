@@ -4,13 +4,14 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use mailboat_core::attachments;
 use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
 use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::{self, SafeMessage};
 use mailboat_core::model::{
-    Account, AccountFilter, AccountId, AccountSyncState, Label, LabelId, LabelUnread, ListQuery,
-    MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
+    Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, Label, LabelId,
+    LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
 };
 use mailboat_core::sync::{fetch_body, load_older, OLDER_BATCH};
 use mailboat_core::CoreError;
@@ -21,6 +22,7 @@ use tauri_specta::Event;
 
 use crate::error::CmdResult;
 use crate::events::MailChangedEvent;
+use crate::files;
 use crate::state::AppState;
 
 #[tauri::command]
@@ -284,6 +286,8 @@ pub struct OpenedMessage {
     pub images_allowed: bool,
     /// Why images did or didn't load, so the reader can offer the opposite.
     pub image_policy: ImagePolicy,
+    /// Files attached to the message (inline images left out).
+    pub attachments: Vec<Attachment>,
     #[serde(flatten)]
     pub content: SafeMessage,
 }
@@ -323,12 +327,28 @@ pub async fn message_open(
     let (in_spam, in_trash) = store::message_spam_trash(&state.db.conn(), message_id)?;
     let image_policy = images::image_policy(in_spam, in_trash, choice);
     let images_allowed = image_policy.allows();
+    // Inline images are part of the email, not remote content, so they're
+    // fetched (once, then cached) whatever the remote-image choice.
+    let inline = match state.gmail_for(account) {
+        Ok(gmail) => {
+            attachments::inline_images(
+                &state.db,
+                &gmail.interactive(),
+                message_id,
+                &state.attachments_dir,
+            )
+            .await
+        }
+        Err(_) => Default::default(),
+    };
+    let attachments = store::attachments_for(&state.db.conn(), message_id)?;
     Ok(OpenedMessage {
         message_id,
         sender_email,
         images_allowed,
         image_policy,
-        content: mail::safe_message(&body, images_allowed),
+        attachments,
+        content: mail::safe_message(&body, images_allowed, &inline),
     })
 }
 
@@ -427,6 +447,77 @@ pub async fn threads_change_labels(
     )
     .await?;
     Ok(())
+}
+
+/// Downloads an attachment (once) with its account's credentials, marked
+/// as downloaded from the internet, and returns where it is.
+async fn downloaded(
+    state: &AppState,
+    attachment_id: AttachmentId,
+) -> CmdResult<std::path::PathBuf> {
+    let account = store::attachment_ref(&state.db.conn(), attachment_id)?.account;
+    let gmail = state.gmail_for(account)?.interactive();
+    let path =
+        attachments::download(&state.db, &gmail, attachment_id, &state.attachments_dir).await?;
+    files::quarantine(&path);
+    Ok(path)
+}
+
+/// Opens an attachment with its default app.
+#[tauri::command]
+#[specta::specta]
+pub async fn attachment_open(
+    state: State<'_, AppState>,
+    attachment_id: AttachmentId,
+) -> CmdResult<()> {
+    let path = downloaded(&state, attachment_id).await?;
+    Ok(files::open(&path)?)
+}
+
+/// Shows an attachment in Quick Look (macOS).
+#[tauri::command]
+#[specta::specta]
+pub async fn attachment_preview(
+    state: State<'_, AppState>,
+    attachment_id: AttachmentId,
+) -> CmdResult<()> {
+    let path = downloaded(&state, attachment_id).await?;
+    Ok(files::quick_look(&path)?)
+}
+
+/// Saves a copy of an attachment to Downloads ("name (1).pdf" if the name
+/// is taken) and returns the file name it got.
+#[tauri::command]
+#[specta::specta]
+pub async fn attachment_save(
+    state: State<'_, AppState>,
+    attachment_id: AttachmentId,
+) -> CmdResult<String> {
+    let downloads = state
+        .downloads_dir
+        .clone()
+        .ok_or_else(|| CoreError::Config("couldn't find the Downloads folder".into()))?;
+    let cached = downloaded(&state, attachment_id).await?;
+    let filename = store::attachment_ref(&state.db.conn(), attachment_id)?.filename;
+    let target = attachments::unique_path(&downloads, &filename);
+    std::fs::copy(&cached, &target)
+        .map_err(|e| CoreError::Other(format!("could not save to Downloads: {e}")))?;
+    files::quarantine(&target);
+    let name = target
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or(filename);
+    state.saved.lock().unwrap().insert(attachment_id, target);
+    Ok(name)
+}
+
+/// Shows a saved attachment in Finder.
+#[tauri::command]
+#[specta::specta]
+pub fn attachment_reveal(state: State<'_, AppState>, attachment_id: AttachmentId) -> CmdResult<()> {
+    let saved = state.saved.lock().unwrap().get(&attachment_id).cloned();
+    let path = saved.ok_or_else(|| CoreError::NotFound("that attachment wasn't saved".into()))?;
+    Ok(files::reveal(&path)?)
 }
 
 /// Remembers to load (`allow`) or block remote images from this sender, in

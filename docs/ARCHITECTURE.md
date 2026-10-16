@@ -98,7 +98,10 @@ stateDiagram-v2
 - **Incremental sync:** `history.list` from the saved historyId, then
   re-fetch every thread it mentions.
 - **Bodies** are fetched when a message is opened, and the newest few are
-  prefetched after each pass.
+  prefetched after each pass. The same fetch records the message's
+  attachment parts (`attachments` table). Bodies cached before attachments
+  were recorded (`message_bodies.parts_version` below
+  `store::PARTS_VERSION`) count as missing and are fetched again once.
 - **Older mail on demand** (`sync/older.rs`): when a list reaches the
   end of the cache, the app walks Gmail's own list for that view (500
   IDs per cheap call), skips threads already cached, and fetches the next
@@ -152,6 +155,33 @@ selected thread is refused. Deleting forever isn't offered: it needs the
 full `https://mail.google.com/` scope, and Gmail empties the Trash after
 30 days anyway. The UI also updates its cached lists immediately
 and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
+
+## Attachments
+
+`mailboat_core::attachments`. Parts with a file name, or a Content-ID, are
+attachments; ones the HTML shows as `cid:` are `inline` and aren't listed.
+Files download on first use (open, Quick Look, save) with the owning
+account's client into `<app cache>/attachments/<account id>/<attachment
+id>/<safe name>`, and are reused after. Gmail's attachment IDs change
+between fetches, so a refused ID triggers a re-fetch of the message for a
+fresh one; small parts come with the message and have no ID at all.
+
+- **Names** from emails are untrusted: `safe_filename` keeps only the last
+  path part and drops control and reserved characters and leading dots,
+  so `../../.zshrc` becomes `zshrc`.
+- **Quarantine:** every file Mailboat writes gets macOS's
+  `com.apple.quarantine` tag (as browsers do), so Gatekeeper checks it
+  before anything in it runs.
+- **Save** copies to Downloads with a free name ("a (1).pdf"); "Show in
+  Finder" reveals the copy. **Quick Look** uses `qlmanage -p`.
+- **Inline images** (png, jpeg, gif, webp, bmp; up to 5 MB each) are
+  downloaded when the message opens and embedded as `data:` URLs in place
+  of `cid:` links. They're part of the email, not remote content, so they
+  show even where remote images are held back. Anything not shown
+  (blocked remote images, unresolved `cid:`, relative paths) becomes a
+  transparent placeholder box sized from the email's own width and height,
+  instead of the web view's broken-image icon.
+- Removing an account deletes its attachment folder.
 
 ## Showing email safely
 
@@ -215,4 +245,9 @@ and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
 | 2026-10-15 | Dev builds run from a signed `target/debug/Mailboat.app` built by `scripts/dev-run.sh`; `src-tauri/src/dock.rs` clears Tauri's dev Dock image | macOS only applies the icon treatment to bundles, and Tauri paints a flat image on the Dock in dev. MonoCode builds its dev bundle in Rust and signs it ad hoc; Mailboat does it in the existing runner script so the bundle is signed with the Apple Development certificate and keychain access still survives rebuilds. Needs `objc2`/`objc2-app-kit`, already in the build through Tauri. |
 | 2026-10-15 | Splitter positions saved in local storage: sidebar in pixels, list as a share of the panes | The owner wanted the sidebar to keep its width when the window resizes and the list and reader to scale together. The list is laid out with a percentage flex-basis, so the browser does the proportional resize with no code running; dragging converts the pixel position to a share, kept between 10% and 90% and within the list's and reader's minimum widths. Local storage, like other view state; move to Settings storage if one arrives. |
 | 2026-10-16 | Menus and confirmations use the web view's own popover and `<dialog>`, not a library or Tauri native menus | They give click-outside, Escape and focus handling for free and float above panels that clip; native menus would need the menu permission on the web side. |
+| 2026-10-16 | Actions take effect at once, with an Undo toast, and the next conversation opens | Gmail and Mail both do this; waiting on Gmail (~0.3s) for every `e` felt slow. Undo is just the inverse action (archive ↔ move to Inbox, trash ↔ restore, label add ↔ remove). Advancing marks the next conversation read, as opening any conversation does. |
+| 2026-10-16 | Thread summaries carry `inInbox`, `inTrash` and user `labelIds` | So buttons toggle correctly per conversation (archived mail offers "Move to Inbox") and the label picker can tick labels for a multi-selection, without a query per row. |
+| 2026-10-16 | No "Delete forever" | Gmail's delete call needs the full `https://mail.google.com/` scope; Mailboat asks only for `gmail.modify`, and Gmail empties the Trash after 30 days. |
+| 2026-10-16 | Attachments open through Rust (`open`, `qlmanage -p`, `open -R`), not a Tauri plugin | No new plugin or web permission: the web side only asks Rust to open an attachment by its local ID, never a path. Save goes straight to Downloads (as browsers do) instead of a save dialog, which would need the dialog plugin. `qlmanage` is Apple's command-line Quick Look; a native panel would need much more Objective-C glue. Downloads are tagged with macOS quarantine. |
+| 2026-10-16 | Inline images embedded as `data:` URLs, not served by a custom scheme | The email's CSP already allows `data:` images, and the frame stays fully self-contained; a scheme handler would need another frame-src exception. Capped at 5 MB per image to keep the document small. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |
