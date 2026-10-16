@@ -320,7 +320,7 @@ Options offered during the spike that the owner didn't pick (yet):
       real app, 2026-10-16.)* Fixed after testing: a right-click menu
       closed as soon as the mouse button came up; and the menu now works
       like macOS's, with nothing highlighted until ↓/↑ or the pointer picks
-      an item (↓ used to skip to the second one)
+      an item (↓ used to skip to the second one). Fixes verified 2026-10-16
 - [x] "All Inboxes" view across accounts *(verified with two real
       accounts, 2026-10-16)*
 - [x] Per-account colors on rows *(verified with two real accounts,
