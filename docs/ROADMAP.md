@@ -128,7 +128,8 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - [x] Transparency slider in the sidebar footer: from the default look to
       100% clearer (just the native blur), scaling every glass tint by the same factor so areas
       keep their differences; remembered across launches. (Could move to
-      Settings when there is one)
+      Settings when there is one). Default is now clearer (the owner's pick,
+      45% on the first slider); the slider starts from there
 - [x] Sidebar counts only where unread is actionable: Inbox, Starred and
       labels (owner picked this over "Everything", which added Unread,
       Archive and All Mail, and over no counts)
@@ -316,6 +317,10 @@ split per account for selections that span accounts.
 - [ ] Full keyboard shortcuts
 - [ ] Remote Gmail search (`q=`) fanned out per account, merged by date
 - [ ] Notifications
+- [ ] Settings screen, with a transparency slider per area (sidebar and
+      reader, list panel), replacing the single slider in the sidebar
+      footer. One shared slider changes the list far more than the
+      sidebar, since it scales each tint by the same share
 - [ ] Offline mode
 
 ## Later / unscheduled

@@ -7,7 +7,8 @@
  */
 export const GLASS_BOOST_MAX = 100;
 export const GLASS_BOOST_STEP = 5;
-export const GLASS_BOOST_STORAGE_KEY = "mailboat.glassBoost";
+/** v2: the default look changed, so a value saved against the old one is dropped. */
+export const GLASS_BOOST_STORAGE_KEY = "mailboat.glassBoost.v2";
 
 /** A saved boost, kept to 0–100 in steps of 5; anything unreadable is 0. */
 export function parseGlassBoost(saved: string | null): number {

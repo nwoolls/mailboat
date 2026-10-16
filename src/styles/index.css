@@ -15,8 +15,8 @@
   --color-selection-strong: color-mix(in srgb, var(--color-content) 12%, transparent);
   --color-accent: hsl(217 85% 62%);
   /* Glass tints over the native window blur (see tauri.conf.json
-     windowEffects). The sidebar stays thin so the blur shows; panels that
-     hold reading text are nearly opaque so text keeps full contrast. */
+     windowEffects). The sidebar stays thin so the blur shows; the list
+     panel is thicker so it reads as its own surface. */
   --color-glass-sidebar: color-mix(
     in srgb,
     var(--color-background-base) var(--glass-sidebar-strength),
@@ -44,9 +44,11 @@
   --raised-lightness: 12%;
   --content-lightness: 92%;
   /* Each tint's strength times --glass-scale (1 by default; the
-     transparency slider lowers it, see features/layout/model/glass.ts). */
-  --glass-sidebar-strength: calc(12% * var(--glass-scale, 1));
-  --glass-panel-strength: calc(62% * var(--glass-scale, 1));
+     transparency slider lowers it, see features/layout/model/glass.ts).
+     The defaults are the owner's pick: what was 45% on the slider when
+     these were 12% and 62%. */
+  --glass-sidebar-strength: calc(6.5% * var(--glass-scale, 1));
+  --glass-panel-strength: calc(34% * var(--glass-scale, 1));
   color-scheme: dark;
 }
 
@@ -55,8 +57,8 @@
     --background-lightness: 99%;
     --raised-lightness: 97%;
     --content-lightness: 12%;
-    --glass-sidebar-strength: calc(18% * var(--glass-scale, 1));
-    --glass-panel-strength: calc(68% * var(--glass-scale, 1));
+    --glass-sidebar-strength: calc(10% * var(--glass-scale, 1));
+    --glass-panel-strength: calc(37% * var(--glass-scale, 1));
     color-scheme: light;
   }
 }
