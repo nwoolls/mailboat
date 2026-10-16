@@ -145,6 +145,33 @@ pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
     sanitize_html_with(html, allow_images, &HashMap::new())
 }
 
+/// An attribute's value as the browser would read it. `lol_html` hands
+/// back attributes exactly as written in the HTML, so `&` arrives as
+/// `&amp;`; ammonia's output only uses these few entities. Without this,
+/// every link with more than one query parameter (`?a=1&amp;b=2`) was
+/// opened with `amp;b=2` instead of `b=2`, so Google Calendar's RSVP
+/// buttons failed with "400 Bad Request".
+fn attr(el: &lol_html::html_content::Element, name: &str) -> Option<String> {
+    el.get_attribute(name).map(|v| {
+        v.replace("&quot;", "\"")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&nbsp;", "\u{a0}")
+            .replace("&amp;", "&")
+    })
+}
+
+/// Sets an attribute to a plain value. `lol_html` escapes `"` but not
+/// `&`, so `&` is escaped here (else `?a=1&copy=2` would read as `©`).
+fn set_attr(
+    el: &mut lol_html::html_content::Element,
+    name: &str,
+    value: &str,
+) -> lol_html::HandlerResult {
+    el.set_attribute(name, &value.replace('&', "&amp;"))?;
+    Ok(())
+}
+
 /// Decodes `%XX` escapes (a `cid:` URL may escape its Content-ID).
 fn percent_decode(s: &str) -> String {
     let bytes = s.as_bytes();
@@ -215,7 +242,7 @@ pub fn sanitize_html_with(
         &cleaned,
         RewriteStrSettings::new()
             .append_element_content_handler(element!("img", |el| {
-                let src = el.get_attribute("src").unwrap_or_default();
+                let src = attr(el, "src").unwrap_or_default();
                 if is_remote(&src)
                     && looks_like_tracker(
                         &src,
@@ -234,7 +261,7 @@ pub fn sanitize_html_with(
                     loaded.set(loaded.get() + 1);
                     // Images are only loaded over HTTPS (the CSP allows nothing else).
                     if let Some(rest) = src.trim().strip_prefix("http://") {
-                        el.set_attribute("src", &format!("https://{rest}"))?;
+                        set_attr(el, "src", &format!("https://{rest}"))?;
                     }
                 } else if let Some(cid) = src.trim().get(4..).filter(|_| {
                     src.trim()
@@ -260,12 +287,12 @@ pub fn sanitize_html_with(
             .append_element_content_handler(element!("a[href]", |el| {
                 // Route clicks through the app (see `mail::links`); links that
                 // must not open (javascript:, file:, relative...) go inert.
-                let href = el.get_attribute("href").unwrap_or_default();
+                let href = attr(el, "href").unwrap_or_default();
                 match super::links::wrap(&href) {
                     Some(wrapped) => {
-                        el.set_attribute("href", &wrapped)?;
+                        set_attr(el, "href", &wrapped)?;
                         // Hovering shows where the link really goes.
-                        el.set_attribute("title", href.trim())?;
+                        set_attr(el, "title", href.trim())?;
                     }
                     None => el.remove_attribute("href"),
                 }
@@ -649,6 +676,40 @@ mod tests {
         assert!(out.document.contains("aspect-ratio:300/100"));
         assert_eq!(out.document.matches(PLACEHOLDER_SRC).count(), 2);
         assert_eq!(out.blocked_images, 0, "inline images aren't remote");
+    }
+
+    #[test]
+    fn links_with_several_query_parameters_open_intact() {
+        // Google Calendar's RSVP buttons: these failed with 400 Bad Request.
+        let rsvp = "https://calendar.google.com/calendar/event?action=RESPOND&eid=E1&rst=1&tok=T1&ctz=America%2FNew_York";
+        let html = format!(r#"<a href="{}">Yes</a>"#, rsvp.replace('&', "&amp;"));
+        let out = sanitize_html(&html, false).document;
+        let wrapped = out
+            .split("href=\"")
+            .nth(1)
+            .and_then(|rest| rest.split('"').next())
+            .unwrap()
+            .replace("&amp;", "&");
+        assert_eq!(super::super::links::unwrap(&wrapped).unwrap(), rsvp);
+        // The hover title keeps `&` escaped, so `&copy=` can't turn into ©.
+        let out = sanitize_html(r#"<a href="https://x.com/?a=1&amp;copy=2">x</a>"#, false);
+        assert!(out
+            .document
+            .contains(r#"title="https://x.com/?a=1&amp;copy=2""#));
+    }
+
+    #[test]
+    fn remote_images_with_several_query_parameters_load_intact() {
+        let out = sanitize_html(
+            r#"<img src="http://cdn.x.com/a.png?w=600&amp;h=200">"#,
+            true,
+        );
+        assert!(
+            out.document
+                .contains(r#"src="https://cdn.x.com/a.png?w=600&amp;h=200""#),
+            "{}",
+            out.document
+        );
     }
 
     #[test]

@@ -386,6 +386,10 @@ split per account for selections that span accounts.
 - [x] Rows keep an icon column: the account ring on the sender line, the
       star under it on the subject line, so sender, subject and snippet
       always start at the same place *(owner request, 2026-10-16)*
+- [x] Links with more than one query parameter opened broken: the
+      sanitizer passed `&amp;` through instead of `&`, so Google Calendar's
+      Yes/No/Maybe buttons failed with "400 Bad Request" (owner report,
+      2026-10-16). They now open intact, as do images with such URLs
 - [x] Fixes after testing (2026-10-16): removing the current label view's
       label from the picker closes the picker (the next conversation had
       opened under it, still ticked); conversations opened in the first
@@ -441,6 +445,16 @@ Design agreed with the owner, 2026-10-16:
 
 ## Milestone 5: Polish
 
+- [ ] Answer meeting invitations in the reader *(owner request,
+      2026-10-16; first in this milestone)*: a card with the event (time,
+      place, organizer, your current answer) and Yes / No / Maybe, instead
+      of the email's own buttons, which open the browser. **Discuss
+      first** how to answer: through Google Calendar's API (your own
+      calendar updates too, but Mailboat needs calendar permission, so each
+      account signs in again once) or by email as Apple Mail does (an
+      invitation reply sent with Gmail, no new permission, but your own
+      Google Calendar may not show your answer until it syncs). Needs
+      Milestone 4's sending either way for the email route
 - [ ] Report spam (and "Not spam" in the Spam view) as an action, routed
       per account like the others *(owner request, 2026-10-16)*
 - [ ] Right-click menus on conversations (archive, trash, read, star,
