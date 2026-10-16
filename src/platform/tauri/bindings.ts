@@ -193,6 +193,12 @@ export type SafeMessage = {
 	loadedImages: number,
 	/**  Tracking pixels removed (always removed, even for trusted senders). */
 	trackersRemoved: number,
+	/**
+	 *  The email sits on the reader's glass with colors adapted for dark
+	 *  mode. False for emails with their own style sheet or that ask for
+	 *  light only: those keep a white card.
+	 */
+	adaptive: boolean,
 };
 
 export type SyncPhase = "listing" | "fetching" | "bodies";

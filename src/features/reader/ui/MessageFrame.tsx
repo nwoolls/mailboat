@@ -93,7 +93,12 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
         sandbox="allow-same-origin"
         srcDoc={m.document}
         onLoad={onLoad}
-        className="frame-reveal mx-6 block w-[calc(100%-3rem)] rounded-lg border border-stroke bg-white"
+        // Adaptive emails (plain text, inline colors) sit straight on the
+        // glass with colors remapped for dark mode in Rust; emails with
+        // their own style sheet keep a white card.
+        className={`frame-reveal mx-6 block w-[calc(100%-3rem)] ${
+          m.adaptive ? "bg-transparent" : "rounded-lg border border-stroke bg-white"
+        }`}
         style={{ height, opacity: ready ? 1 : 0 }}
       />
     </div>

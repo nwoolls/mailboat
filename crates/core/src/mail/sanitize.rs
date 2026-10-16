@@ -7,10 +7,18 @@
 //!    trusted, strips remote image URLs.
 //! 3. The returned document carries its own Content-Security-Policy, and the
 //!    UI shows it in an `<iframe sandbox>` without `allow-scripts`.
+//!
+//! Emails whose colors are all inline (or plain text) are also made
+//! "adaptive": their page background becomes transparent so they sit on
+//! the reader's glass, and a dark-mode style sheet remaps their colors
+//! (`mail::colors`). Only attributes and colors computed here are added.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 
 use lol_html::{element, rewrite_str, RewriteStrSettings};
+
+use super::colors::{self, DarkBackground};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -25,6 +33,10 @@ pub struct SafeMessage {
     pub loaded_images: u32,
     /// Tracking pixels removed (always removed, even for trusted senders).
     pub trackers_removed: u32,
+    /// The email sits on the reader's glass with colors adapted for dark
+    /// mode. False for emails with their own style sheet or that ask for
+    /// light only: those keep a white card.
+    pub adaptive: bool,
 }
 
 /// Hosts (or host suffixes) that only serve open-tracking pixels.
@@ -126,10 +138,12 @@ fn ammonia_builder() -> ammonia::Builder<'static> {
 
 /// Sanitizes `html`. If `allow_images` is false, remote images are held back.
 pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
+    let adaptive = can_adapt(html);
     let cleaned = ammonia_builder().clean(html).to_string();
     let blocked = Cell::new(0u32);
     let loaded = Cell::new(0u32);
     let trackers = Cell::new(0u32);
+    let dark = RefCell::new(DarkRules::default());
 
     let rewritten = rewrite_str(
         &cleaned,
@@ -177,6 +191,12 @@ pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
                 }
                 Ok(())
             }))
+            .append_element_content_handler(element!("[style], [bgcolor], font[color]", |el| {
+                if adaptive {
+                    dark.borrow_mut().mark(el)?;
+                }
+                Ok(())
+            }))
             .append_element_content_handler(element!("[background]", |el| {
                 let remote = el
                     .get_attribute("background")
@@ -197,10 +217,117 @@ pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
     .unwrap_or_else(|_| cleaned.clone());
 
     SafeMessage {
-        document: wrap_document(&rewritten, allow_images),
+        document: wrap_document(&rewritten, allow_images, adaptive, &dark.into_inner().css()),
         blocked_images: blocked.get(),
         loaded_images: loaded.get(),
         trackers_removed: trackers.get(),
+        adaptive,
+    }
+}
+
+/// Whether an email can be adapted: not if it asks for light only, and not
+/// if it styles colors in a `<style>` sheet (those rules aren't rewritten,
+/// so dark text could land on the dark glass). Checked on the raw HTML,
+/// since ammonia drops `<meta>`.
+fn can_adapt(raw: &str) -> bool {
+    let lower = raw.to_ascii_lowercase();
+    if lower.contains("color-scheme") && !lower.contains("dark") {
+        return false;
+    }
+    let mut rest = lower.as_str();
+    while let Some(start) = rest.find("<style") {
+        let after = &rest[start..];
+        let end = after.find("</style").unwrap_or(after.len());
+        let sheet = &after[..end];
+        if sheet.contains("background") || sheet.contains("color:") || sheet.contains("color :") {
+            return false;
+        }
+        rest = &after[end..];
+    }
+    true
+}
+
+/// Dark-mode overrides for an adaptive email: each distinct remapped color
+/// gets a number, elements are tagged `data-mc` (text) / `data-mb`
+/// (background), and one `prefers-color-scheme: dark` sheet applies them.
+#[derive(Default)]
+struct DarkRules {
+    text: HashMap<String, usize>,
+    background: HashMap<String, usize>,
+}
+
+impl DarkRules {
+    fn mark(
+        &mut self,
+        el: &mut lol_html::html_content::Element<'_, '_>,
+    ) -> Result<(), lol_html::errors::AttributeNameError> {
+        let mut text = el
+            .get_attribute("color")
+            .and_then(|c| colors::parse_color(&c));
+        let mut background = el
+            .get_attribute("bgcolor")
+            .and_then(|c| colors::parse_color(&c));
+        if let Some(style) = el.get_attribute("style") {
+            for decl in style.split(';') {
+                let Some((prop, value)) = decl.split_once(':') else {
+                    continue;
+                };
+                match prop.trim().to_ascii_lowercase().as_str() {
+                    "color" => text = colors::parse_color(value).or(text),
+                    "background-color" => background = colors::parse_color(value).or(background),
+                    // The shorthand: use its color, unless it's an image.
+                    "background" if !value.contains("url(") => {
+                        background = value
+                            .split_whitespace()
+                            .find_map(colors::parse_color)
+                            .or(background);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        if let Some(css) = text.and_then(colors::dark_text) {
+            let n = Self::number(&mut self.text, format!("color:{}!important", css.hex()));
+            el.set_attribute("data-mc", &n.to_string())?;
+        }
+        let bg = background.map(colors::dark_background);
+        let bg_css = match bg {
+            Some(DarkBackground::Transparent) => {
+                Some("background-color:transparent!important".to_string())
+            }
+            Some(DarkBackground::Color(c)) => {
+                Some(format!("background-color:{}!important", c.hex()))
+            }
+            _ => None,
+        };
+        if let Some(css) = bg_css {
+            let n = Self::number(&mut self.background, css);
+            el.set_attribute("data-mb", &n.to_string())?;
+        }
+        Ok(())
+    }
+
+    fn number(map: &mut HashMap<String, usize>, css: String) -> usize {
+        let next = map.len();
+        *map.entry(css).or_insert(next)
+    }
+
+    fn css(self) -> String {
+        let mut rules: Vec<(String, usize, String)> = self
+            .text
+            .into_iter()
+            .map(|(css, n)| ("mc".to_string(), n, css))
+            .chain(
+                self.background
+                    .into_iter()
+                    .map(|(css, n)| ("mb".to_string(), n, css)),
+            )
+            .collect();
+        rules.sort();
+        rules
+            .into_iter()
+            .map(|(attr, n, css)| format!("[data-{attr}=\"{n}\"]{{{css}}}"))
+            .collect()
     }
 }
 
@@ -209,10 +336,11 @@ pub fn text_document(text: &str) -> SafeMessage {
     let escaped = ammonia::clean_text(text);
     let body = format!("<div class=\"mailboat-plain\">{escaped}</div>");
     SafeMessage {
-        document: wrap_document(&body, false),
+        document: wrap_document(&body, false, true, ""),
         blocked_images: 0,
         loaded_images: 0,
         trackers_removed: 0,
+        adaptive: true,
     }
 }
 
@@ -229,16 +357,29 @@ pub fn csp(allow_images: bool) -> String {
 /// `overflow-y:hidden` makes vertical swipes go to the reader instead of
 /// rubber-banding inside the frame (which made long emails bounce).
 /// Emails wider than the reader can still scroll sideways.
-fn wrap_document(body: &str, allow_images: bool) -> String {
+///
+/// Adaptive documents have a transparent page (the glass shows through),
+/// little padding so text lines up with the reader's header, and a dark
+/// sheet: default text and links for dark mode plus `dark_rules`.
+fn wrap_document(body: &str, allow_images: bool, adaptive: bool, dark_rules: &str) -> String {
+    let page = if adaptive {
+        "html,body{margin:0;padding:0;background:transparent;color:#1f1f1f}\nbody{padding:2px 8px 8px}\n@media (prefers-color-scheme:dark){body{color:#e4e4e7}a{color:#8ab4f8}img[data-mailboat-blocked],img[data-mailboat-inline]{background:rgba(255,255,255,.08)!important}"
+            .to_string()
+            + dark_rules
+            + "}"
+    } else {
+        "html,body{margin:0;padding:0;background:#fff;color:#1f1f1f}\nbody{padding:20px 24px}"
+            .to_string()
+    };
     format!(
         r#"<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="{csp}"><meta name="referrer" content="no-referrer"><style>
-html,body{{margin:0;padding:0;background:#fff;color:#1f1f1f}}
 html{{overflow-y:hidden;overflow-x:auto}}
-body{{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:20px 24px;overflow-wrap:anywhere}}
+body{{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;overflow-wrap:anywhere}}
 img{{max-width:100%;height:auto}}
 img[data-mailboat-blocked],img[data-mailboat-inline]{{display:inline-block;min-width:24px;min-height:24px;background:#f1f1f3;border-radius:4px}}
 .mailboat-plain{{white-space:pre-wrap;font-family:inherit}}
 a{{color:#2f6fde}}
+{page}
 </style></head><body>{body}</body></html>"#,
         csp = csp(allow_images)
     )
@@ -315,6 +456,45 @@ mod tests {
         assert!(out.document.contains("https://cdn.vendor.com/logo.png"));
         assert!(!out.document.contains("mailtrack.io"));
         assert!(out.document.contains("img-src data: https:"));
+    }
+
+    #[test]
+    fn inline_colored_email_adapts_for_dark_mode() {
+        let out = sanitize_html(
+            r##"<table bgcolor="#ffffff"><tr><td style="color:#24292f;background:#f6f8fa">Hi</td>
+               <td style="background-color:#b8aef2;color:#fff">Brand</td></tr></table>"##,
+            false,
+        );
+        assert!(out.adaptive);
+        let doc = &out.document;
+        assert!(
+            doc.contains("background:transparent"),
+            "the glass shows through"
+        );
+        assert!(doc.contains("prefers-color-scheme:dark"));
+        // White table and light grey cell: see-through in dark mode.
+        assert!(doc.contains(r##"bgcolor="#ffffff" data-mb="##));
+        assert!(doc.contains("background-color:transparent!important"));
+        // Near-black text: a light color in dark mode.
+        assert!(doc.contains("data-mc="));
+        // The purple banner and its white text are left alone.
+        assert!(doc.contains(r##"style="background-color:#b8aef2;color:#fff">"##));
+        // Light mode keeps the email's own colors inline.
+        assert!(doc.contains("color:#24292f"));
+    }
+
+    #[test]
+    fn emails_with_their_own_style_sheet_or_light_only_keep_the_white_card() {
+        let styled = sanitize_html("<style>.x{background:#eee}</style><p class=x>Hi</p>", false);
+        assert!(!styled.adaptive);
+        assert!(styled.document.contains("background:#fff"));
+        let light_only = sanitize_html(
+            r#"<meta name="color-scheme" content="light only"><p>Hi</p>"#,
+            false,
+        );
+        assert!(!light_only.adaptive);
+        assert!(sanitize_html("<style>p{margin:0}</style><p>Hi</p>", false).adaptive);
+        assert!(text_document("hi").adaptive);
     }
 
     #[test]

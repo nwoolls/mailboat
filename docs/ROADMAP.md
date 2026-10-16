@@ -192,6 +192,18 @@ Options offered during the spike that the owner didn't pick (yet):
       rubber-band (wide emails can still scroll sideways)
 - [x] The reader's account marker and address only show with more than
       one account
+- [x] Emails on the glass, step 1: plain-text emails and HTML emails whose
+      colors are inline sit straight on the reader's glass, text aligned
+      with the subject. In dark mode their colors are remapped (Rust,
+      `mail/colors.rs`): near-white backgrounds turn see-through, light
+      greys and pale tints turn dark, dark text and links get lighter,
+      strong brand colors and images stay. Light mode keeps the email's own
+      colors. Emails with their own style sheet or that ask for light only
+      keep the white card
+- [ ] Emails on the glass, step 2: remap colors set in an email's own style
+      sheet (needs a CSS parser), so more newsletters can adapt
+- [ ] "Original colors" toggle per message, for emails the remap gets wrong
+- [ ] Softer look for the remaining white cards on the glass
 - [ ] A setting to switch the default back to "blocked"
 - [ ] Load by default only for people you've written to (option B, not
       built)

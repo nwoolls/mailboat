@@ -1,5 +1,6 @@
 //! Preparing message content for display.
 
+pub mod colors;
 pub mod images;
 pub mod links;
 pub mod sanitize;
