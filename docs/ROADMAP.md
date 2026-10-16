@@ -226,13 +226,11 @@ Options offered during the spike that the owner didn't pick (yet):
       Then (owner picked T2 + B3): a brighter, glowing M on a midnight
       background (navy to near-black) instead of navy-to-violet, which made
       the M hard to read. Tweaks and backgrounds offered are kept too
-- [ ] Tell unread apart from the account in mixed-account lists (both
-      were blue dots). Round 1 (bar, no unread dot, avatar) was too busy;
-      avatar is out. Round 2, behind a temporary switch in the list
-      header: Glass bar (faint glowing edge bar), Ring (hollow account
-      ring, solid unread dot) and Glass dot (soft account dot, unread by
-      bold text only). Keep the owner's pick, delete the others and the
-      switch
+- [x] Tell unread apart from the account in mixed-account lists (both
+      were blue dots): the account is now a hollow ring in a softened
+      account colour, unread stays a solid dot. Owner picked it after two
+      rounds in the app (round 1: bar, no unread dot, avatar, all too busy;
+      round 2: glass bar, ring, glass dot)
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong
