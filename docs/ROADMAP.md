@@ -120,6 +120,10 @@ a darker glass body, rounded corners where they meet, resizable panes.
       relaunch
 - [x] Unread counts in the sidebar (Inbox, Starred and labels), per account
       and summed for unified views
+- [x] Transparency slider in the sidebar footer: from the default look to
+      40% clearer, scaling every glass tint by the same factor so areas
+      keep their differences; remembered across launches. (Could move to
+      Settings when there is one)
 - [x] Sidebar counts only where unread is actionable: Inbox, Starred and
       labels (owner picked this over "Everything", which added Unread,
       Archive and All Mail, and over no counts)

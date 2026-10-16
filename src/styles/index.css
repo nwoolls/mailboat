@@ -43,8 +43,10 @@
   --background-lightness: 9%;
   --raised-lightness: 12%;
   --content-lightness: 92%;
-  --glass-sidebar-strength: 12%;
-  --glass-panel-strength: 62%;
+  /* Each tint's strength times --glass-scale (1 by default; the
+     transparency slider lowers it, see features/layout/model/glass.ts). */
+  --glass-sidebar-strength: calc(12% * var(--glass-scale, 1));
+  --glass-panel-strength: calc(62% * var(--glass-scale, 1));
   color-scheme: dark;
 }
 
@@ -53,8 +55,8 @@
     --background-lightness: 99%;
     --raised-lightness: 97%;
     --content-lightness: 12%;
-    --glass-sidebar-strength: 18%;
-    --glass-panel-strength: 68%;
+    --glass-sidebar-strength: calc(18% * var(--glass-scale, 1));
+    --glass-panel-strength: calc(68% * var(--glass-scale, 1));
     color-scheme: light;
   }
 }
