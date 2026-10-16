@@ -375,3 +375,18 @@ html.resizing .panel-slide {
     animation: none;
   }
 }
+
+/* The floating compose card: the menu's solid surface (text is written
+   on it, so no glass), with a deeper shadow since it stays up. */
+.compose-card {
+  background: var(--color-background-raised);
+  box-shadow:
+    inset 0 0 0 1px var(--color-stroke),
+    0 24px 56px -12px rgb(0 0 0 / 0.5);
+  animation: toast-in 180ms var(--motion-ease-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .compose-card {
+    animation: none;
+  }
+}

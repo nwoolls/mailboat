@@ -48,6 +48,7 @@ type Props = {
   count: number;
   onToggleSidebar: () => void;
   onToggleReader: () => void;
+  onCompose: () => void;
 };
 
 /**
@@ -66,6 +67,7 @@ export function Toolbar({
   count,
   onToggleSidebar,
   onToggleReader,
+  onCompose,
 }: Props) {
   const many = count > 1 ? ` ${count} conversations` : "";
   const archive = actions.archive?.action;
@@ -133,7 +135,7 @@ export function Toolbar({
       />
       <ToolButton icon={MoreIcon} label="More" disabled={!hasSelection} />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
-      <ToolButton icon={ComposeIcon} label="Compose" shortcut="c" />
+      <ToolButton icon={ComposeIcon} label="New message" shortcut="c" onClick={onCompose} />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
       <ToolButton
         icon={ReaderToggleIcon}

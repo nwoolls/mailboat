@@ -55,10 +55,15 @@ import { emptyStateFor, emptyStateKey } from "../features/mailbox/model/emptySta
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
+import { accountForNew } from "../features/compose/model/draft";
+import { ComposeCard } from "../features/compose/ui/ComposeCard";
+import { ReplyArea } from "../features/compose/ui/ReplyArea";
+import { useComposeActions, useComposeState } from "../features/compose/ui/useCompose";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
 import { LABEL_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
 import {
   useAccounts,
+  useIdentities,
   useLabels,
   useMailEvents,
   useOAuthSetup,
@@ -81,6 +86,9 @@ export function Shell() {
   const labels = useLabels({ kind: "all" }).data ?? [];
   const accountList = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
   const accounts = useMemo(() => indexAccounts(accountList), [accountList]);
+  const identities = useIdentities().data ?? [];
+  const compose = useComposeActions(accountList);
+  const composeState = useComposeState();
 
   // Until the user picks a view: All Inboxes, or the inbox itself when
   // there is only one account.
@@ -189,6 +197,14 @@ export function Shell() {
     [mutateThreads, selection.view, threads],
   );
   const lastUndo = toast?.action;
+  const { startNew: openNew } = compose;
+  const startNew = useCallback(() => {
+    const account = accountForNew(
+      baseSelection.accounts,
+      accountList.map((a) => a.id),
+    );
+    if (account !== undefined) void openNew(account);
+  }, [openNew, baseSelection.accounts, accountList]);
   const [panesRef, panesWidth] = useElementWidth<HTMLDivElement>();
   const resizeSidebar = (w: number) =>
     saveLayout({ ...layout, sidebarWidth: clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max) });
@@ -265,6 +281,19 @@ export function Shell() {
         if (button) setLabelAnchor(anchorBelow(button));
         return;
       }
+      if (plain && e.key === "c") {
+        e.preventDefault();
+        startNew();
+        return;
+      }
+      const replyKinds = { r: "reply", a: "replyAll", f: "forward" } as const;
+      const replyKind = plain ? replyKinds[e.key as keyof typeof replyKinds] : undefined;
+      if (replyKind && selectedId !== null) {
+        e.preventDefault();
+        setReaderOpen(true);
+        void compose.startReply(replyKind, selectedId);
+        return;
+      }
       if (plain && e.key === "x" && selectedId !== null) {
         e.preventDefault();
         setChecked(toggleChecked(checked, selectedId, selectedId));
@@ -277,7 +306,18 @@ export function Shell() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [threads, selectedId, checked, targets, act, lastUndo, toggleSidebar, toggleReader]);
+  }, [
+    threads,
+    selectedId,
+    checked,
+    targets,
+    act,
+    lastUndo,
+    toggleSidebar,
+    toggleReader,
+    startNew,
+    compose,
+  ]);
 
   if (accountsQuery.isPending) return null;
   if (accountList.length === 0) return <Welcome setup={setup.data} />;
@@ -315,6 +355,7 @@ export function Shell() {
         count={targets.length}
         onToggleSidebar={toggleSidebar}
         onToggleReader={toggleReader}
+        onCompose={startNew}
       />
       <div className="flex min-h-0 flex-1 pr-2 pb-2">
         {/* Panels stay mounted and slide: the wrapper animates its width and
@@ -448,7 +489,21 @@ export function Shell() {
               {/* The reader sits on the glass like a right-hand sidebar. While
                   it slides closed it keeps showing the last conversation. */}
               <main className="flex min-w-0 flex-1 flex-col">
-                {shownId !== null && <ThreadReader threadId={shownId} accounts={accounts} />}
+                {shownId !== null && (
+                  <ThreadReader
+                    threadId={shownId}
+                    accounts={accounts}
+                    renderFooter={(detail) => (
+                      <ReplyArea
+                        detail={detail}
+                        identities={identities}
+                        accounts={accountList}
+                        onStart={(kind) => void compose.startReply(kind, detail.thread.id)}
+                        onSend={(entry) => void compose.send(entry.draft)}
+                      />
+                    )}
+                  />
+                )}
               </main>
             </div>
           </div>
@@ -468,6 +523,15 @@ export function Shell() {
             if (leavesView(action, selection.view)) setLabelAnchor(null);
           }}
           onClose={() => setLabelAnchor(null)}
+        />
+      )}
+      {composeState.card && (
+        <ComposeCard
+          key={composeState.card.draft.id}
+          entry={composeState.card}
+          identities={identities}
+          accounts={accountList}
+          onSend={() => void compose.send(composeState.card!.draft)}
         />
       )}
       <Toast toast={toast} onDismiss={dismissToast} />

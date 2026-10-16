@@ -444,20 +444,38 @@ Owner's answers before starting, 2026-10-16:
   started in Gmail elsewhere show there and resume in Mailboat.
 - **Built in stages, each tried by the owner in the app before the next.**
 
-Stage 1: sending, plain text
+Stage 1: sending, plain text *(built 2026-10-16; waiting for the
+owner to try it in the app)*
 
-- [ ] New message, reply, reply-all and forward, sent through Gmail and
-      shown in the conversation straight away (plain text for now)
-- [ ] Choice of From: accounts and their aliases, defaulting to the
-      conversation's account (the address the mail was sent to)
-- [ ] To / Cc / Bcc with suggestions from mail already in Mailboat
-- [ ] Keys: `c` new, `r` reply, `a` reply all, `f` forward, ⌘↩ send
+- [x] New message, reply, reply-all and forward, sent through Gmail and
+      shown in the conversation straight away (plain text for now). The
+      reply quotes the original under "On …, … wrote:"; the forward
+      carries Gmail's "Forwarded message" block. Replies follow Reply-To,
+      and replying to your own sent mail goes to its recipients again
+- [x] Choice of From: accounts and their aliases, defaulting to the
+      conversation's account (the address the mail was sent to). The
+      menu only shows when there's more than one address. Replying from
+      another account starts a new conversation in that account
+- [x] To / Cc / Bcc with suggestions from mail already in Mailboat. People
+      you've written to come first. Comma, Return or Tab makes a chip;
+      Backspace takes the last one back; double-click a chip to edit it
+- [x] Keys: `c` new, `r` reply, `a` reply all, `f` forward, ⌘↩ send.
+      Buttons under the conversation (Reply all only when there's
+      someone else to include) and the toolbar's pencil do the same
+- [x] Basic floating card (lower right, the From account's colour on
+      its top edge) and basic inline replies *(pulled forward from stage
+      2 so there was somewhere to write; their polish stays there)*
+- Not yet: closing a card or reply with writing in it asks first, since
+  drafts aren't saved until stage 4. Sending isn't retried after a
+  timeout or server error (it might already have gone); the message
+  stays open with the error so you can decide
 
 Stage 2: the card and inline replies
 
-- [ ] Floating compose card for new messages, with the snapping
-      behaviour above, minimise and several drafts at once
-- [ ] Inline replies and forwards in the reader
+- [ ] Floating compose card: the snapping behaviour above, minimise and
+      several drafts at once
+- [ ] Inline replies and forwards: polish after the owner has used the
+      stage 1 version
 
 Stage 3: formatting, signatures, attachments
 

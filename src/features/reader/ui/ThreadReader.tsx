@@ -24,9 +24,12 @@ export function initiallyExpanded(messages: Pick<MessageMeta, "id" | "unread">[]
 export function ThreadReader({
   threadId,
   accounts,
+  renderFooter,
 }: {
   threadId: ThreadId;
   accounts: AccountIndex;
+  /** Under the last message: the reply buttons, or a reply being written. */
+  renderFooter?: (detail: ThreadDetail) => React.ReactNode;
 }) {
   const thread = useThread(threadId);
   if (thread.error) return <div className="selectable p-8 text-danger">{thread.error.message}</div>;
@@ -40,6 +43,7 @@ export function ThreadReader({
       detail={thread.data}
       accounts={accounts}
       leaving={thread.isPlaceholderData}
+      renderFooter={renderFooter}
     />
   );
 }
@@ -48,10 +52,12 @@ function ThreadBody({
   detail: data,
   accounts,
   leaving,
+  renderFooter,
 }: {
   detail: ThreadDetail;
   accounts: AccountIndex;
   leaving: boolean;
+  renderFooter?: (detail: ThreadDetail) => React.ReactNode;
 }) {
   const contentRef = useWholePixelHeight();
   const [expanded, setExpanded] = useState<Set<MessageId>>(() => initiallyExpanded(data.messages));
@@ -188,6 +194,7 @@ function ThreadBody({
             );
           })}
         </div>
+        {renderFooter?.(data)}
       </div>
     </article>
   );

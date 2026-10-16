@@ -27,6 +27,8 @@ export const keys = {
   threads: (s: Selection) => ["threads", selectionKey(s), s.view] as const,
   thread: (id: ThreadId) => ["thread", id] as const,
   message: (id: MessageId) => ["message", id] as const,
+  identities: ["identities"] as const,
+  contacts: (text: string) => ["contacts", text] as const,
 };
 
 export function useAccounts() {
@@ -105,6 +107,30 @@ export function useOpenedMessage(id: MessageId) {
   });
 }
 
+/** Every address mail can be sent from (accounts and their Gmail aliases). */
+export function useIdentities() {
+  return useQuery({
+    queryKey: keys.identities,
+    queryFn: () => unwrap(commands.identitiesList()),
+    enabled: IS_TAURI,
+    staleTime: Infinity,
+  });
+}
+
+/** People matching what's typed in an address field, from cached mail. */
+export function useContactSuggestions(text: string) {
+  const trimmed = text.trim();
+  return useQuery({
+    queryKey: keys.contacts(trimmed.toLowerCase()),
+    queryFn: () => unwrap(commands.contactsSuggest(trimmed)),
+    enabled: IS_TAURI && trimmed.length > 0,
+    staleTime: 30_000,
+    // Keep the previous matches up while the next ones arrive (a local
+    // query), so the list doesn't flicker on every key.
+    placeholderData: keepPreviousData,
+  });
+}
+
 /** Keeps the cache in step with Rust: sync status updates and mail changes. */
 export function useMailEvents() {
   const qc = useQueryClient();
@@ -122,6 +148,10 @@ export function useMailEvents() {
         void qc.invalidateQueries({ queryKey: ["thread"] });
         void qc.invalidateQueries({ queryKey: ["labels"] });
         void qc.invalidateQueries({ queryKey: keys.unreadCounts });
+        void qc.invalidateQueries({ queryKey: ["contacts"] });
+      }),
+      events.identitiesChangedEvent.listen(() => {
+        void qc.invalidateQueries({ queryKey: keys.identities });
       }),
     ];
     return () => {
