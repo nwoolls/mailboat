@@ -9,6 +9,7 @@ import {
 } from "../../mailbox/model/views";
 import { labelTree } from "../model/labelTree";
 import { countText } from "../model/sidebar";
+import { anchorBelow } from "../../../shared/ui/Menu";
 import { AccountAvatar } from "./AccountAvatar";
 import {
   AccountProblem,
@@ -30,8 +31,18 @@ import {
  * while folded); its labels sit in their own fold, closed by default.
  */
 export function SidebarSections(props: SidebarBodyProps) {
-  const { accounts, labels, countFor, syncStates, selection, onSelect, onReauth, isOpen, toggle } =
-    props;
+  const {
+    accounts,
+    labels,
+    countFor,
+    syncStates,
+    selection,
+    onSelect,
+    onReauth,
+    onAccountMenu,
+    isOpen,
+    toggle,
+  } = props;
   return (
     <>
       {accounts.length > 1 && (
@@ -66,6 +77,10 @@ export function SidebarSections(props: SidebarBodyProps) {
         return (
           <Section
             key={account.id}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              onAccountMenu(account, { x: e.clientX, y: e.clientY });
+            }}
             title={
               <button
                 type="button"
@@ -85,7 +100,16 @@ export function SidebarSections(props: SidebarBodyProps) {
                     {countText(inboxCount)}
                   </span>
                 )}
-                <AccountAvatar account={account} state={state} />
+                {/* The avatar opens the account's menu (sync now, remove). */}
+                <button
+                  type="button"
+                  aria-label={`${account.email} menu`}
+                  aria-haspopup="menu"
+                  className="-m-1 rounded-full p-1 hover:bg-selection"
+                  onClick={(e) => onAccountMenu(account, anchorBelow(e.currentTarget))}
+                >
+                  <AccountAvatar account={account} state={state} />
+                </button>
               </span>
             }
           >

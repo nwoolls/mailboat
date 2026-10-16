@@ -352,6 +352,69 @@ async fn one_failing_account_does_not_block_another() {
     assert!(supervisor.is_running(a) && supervisor.is_running(b));
 }
 
+/// Removing an account first stops its worker, even mid-request, and waits
+/// for it, so a sync in flight can't write into the account being deleted.
+/// The other account keeps syncing.
+#[tokio::test]
+async fn removing_an_account_stops_its_worker_mid_sync() {
+    // A's Gmail never answers in time: its worker is stuck mid-request.
+    let stalled = MockServer::start().await;
+    Mock::given(wiremock::matchers::any())
+        .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(60)))
+        .mount(&stalled)
+        .await;
+    let healthy = MockServer::start().await;
+    mount_mailbox(&healthy).await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch())
+        .mount(&healthy)
+        .await;
+
+    let db = Arc::new(Db::open_in_memory().unwrap());
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    let events = Arc::new(Recorder::default());
+    let supervisor = Supervisor::new(
+        tokio::runtime::Handle::current(),
+        db.clone(),
+        events.clone(),
+        config(),
+        WorkerTiming {
+            poll_interval: Duration::from_secs(3600),
+            ..WorkerTiming::default()
+        },
+    );
+    supervisor.start(a, client(&stalled.uri()).0);
+    supervisor.start(b, client(&healthy.uri()).0);
+    // Wait until A's request is actually in flight.
+    while stalled
+        .received_requests()
+        .await
+        .unwrap_or_default()
+        .is_empty()
+    {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
+    tokio::time::timeout(Duration::from_secs(5), supervisor.stop_and_wait(a))
+        .await
+        .expect("stopping a worker mid-request should not wait for Gmail");
+    assert!(!supervisor.is_running(a));
+    accounts::remove(&db.conn(), a).unwrap();
+
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    while events.last_status(b) != Some(SyncStatus::Idle) {
+        assert!(tokio::time::Instant::now() < deadline, "B did not finish");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(inbox(&db, AccountFilter::Only(vec![b])).len(), 2);
+    assert!(supervisor.is_running(b));
+    let remaining = accounts::list(&db.conn()).unwrap();
+    assert_eq!(remaining.len(), 1);
+    assert_eq!(remaining[0].id, b);
+}
+
 #[tokio::test]
 async fn interrupted_full_sync_resumes_without_refetching() {
     let server = MockServer::start().await;

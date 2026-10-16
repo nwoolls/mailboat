@@ -250,6 +250,35 @@ fn two_accounts_with_overlapping_gmail_ids() {
             .len(),
         1
     );
+    // Nothing of B's is left behind in any table, the search index included.
+    let conn = db.conn();
+    for table in [
+        "labels",
+        "threads",
+        "messages",
+        "message_labels",
+        "thread_labels",
+        "message_bodies",
+        "attachments",
+        "drafts",
+        "sync_state",
+    ] {
+        let left: i64 = conn
+            .query_row(
+                &format!("SELECT COUNT(*) FROM {table} WHERE account_id = ?1"),
+                [b.id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(left, 0, "{table} still has rows for the removed account");
+    }
+    let fts: i64 = conn
+        .query_row("SELECT COUNT(*) FROM messages_fts", [], |r| r.get(0))
+        .unwrap();
+    let messages: i64 = conn
+        .query_row("SELECT COUNT(*) FROM messages", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(fts, messages, "search index has rows for deleted messages");
 }
 
 #[test]

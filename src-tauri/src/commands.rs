@@ -123,15 +123,17 @@ pub fn account_add_cancel(state: State<'_, AppState>) {
 }
 
 /// Disconnects an account: stops its sync, deletes its cached mail and
-/// removes its token from the keychain.
+/// removes its token from the keychain. Nothing changes in Gmail itself.
 #[tauri::command]
 #[specta::specta]
-pub fn account_remove(state: State<'_, AppState>, account_id: AccountId) -> CmdResult<()> {
-    state.supervisor.stop(account_id);
+pub async fn account_remove(state: State<'_, AppState>, account_id: AccountId) -> CmdResult<()> {
+    // Wait for the worker to end first, so a sync in flight can't write
+    // into the account while its rows are being deleted.
+    state.supervisor.stop_and_wait(account_id).await;
+    state.forget_account(account_id);
     let sub = accounts::google_sub(&state.db.conn(), account_id)?;
     accounts::remove(&state.db.conn(), account_id)?;
     state.secrets.delete(&tokens::refresh_token_key(&sub))?;
-    state.forget_account(account_id);
     Ok(())
 }
 

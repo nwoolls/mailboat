@@ -1,9 +1,10 @@
-import { useState } from "react";
-import type { Account, AccountSyncState } from "../../../platform/tauri/bindings";
+import { useRef, useState } from "react";
+import type { Account, AccountId, AccountSyncState } from "../../../platform/tauri/bindings";
 import { useLabels, useUnreadCounts } from "../../../shared/lib/queries";
 import { AddIcon, ClearIcon } from "../../../shared/ui/icons";
 import type { Selection } from "../../mailbox/model/views";
 import { viewUnread } from "../model/sidebar";
+import { AccountMenu, type AccountMenuTarget } from "./AccountMenu";
 import { SidebarSections } from "./SidebarSections";
 import { useSignIn } from "./useSignIn";
 
@@ -13,9 +14,17 @@ type Props = {
   syncStates: AccountSyncState[];
   selection: Selection;
   onSelect: (s: Selection) => void;
+  onAccountRemoved: (id: AccountId) => void;
 };
 
-export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Props) {
+export function Sidebar({
+  accounts,
+  width,
+  syncStates,
+  selection,
+  onSelect,
+  onAccountRemoved,
+}: Props) {
   const labels = useLabels({ kind: "all" }).data ?? [];
   const counts = useUnreadCounts().data ?? [];
   const signIn = useSignIn();
@@ -30,6 +39,20 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
       return next;
     });
 
+  const [menu, setMenu] = useState<AccountMenuTarget | null>(null);
+  // Clicking the avatar of an open menu closes it (the click outside),
+  // then would reopen it straight away; remember the close to skip that.
+  const lastClose = useRef({ account: -1, at: 0 });
+  const openMenu: Parameters<typeof SidebarSections>[0]["onAccountMenu"] = (account, anchor) => {
+    const recent = performance.now() - lastClose.current.at < 300;
+    if (recent && lastClose.current.account === account.id) return;
+    setMenu({ account, anchor });
+  };
+  const closeMenu = () => {
+    if (menu) lastClose.current = { account: menu.account.id, at: performance.now() };
+    setMenu(null);
+  };
+
   return (
     <nav className="flex h-full shrink-0 flex-col" style={{ width }}>
       {/* No right padding: the 8px splitter gap is the space before the list,
@@ -43,6 +66,7 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
           selection={selection}
           onSelect={onSelect}
           onReauth={(account) => signIn.start(account.email)}
+          onAccountMenu={openMenu}
           isOpen={(key) => open.has(key)}
           toggle={toggle}
         />
@@ -66,6 +90,12 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
         )}
       </div>
       {signIn.error && <p className="selectable px-4 pb-2 text-xs text-danger">{signIn.error}</p>}
+      <AccountMenu
+        target={menu}
+        state={syncStates.find((s) => s.accountId === menu?.account.id)}
+        onClose={closeMenu}
+        onRemoved={onAccountRemoved}
+      />
     </nav>
   );
 }

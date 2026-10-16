@@ -19,7 +19,7 @@ export const commands = {
 	accountAddCancel: () => __TAURI_INVOKE<void>("account_add_cancel"),
 	/**
 	 *  Disconnects an account: stops its sync, deletes its cached mail and
-	 *  removes its token from the keychain.
+	 *  removes its token from the keychain. Nothing changes in Gmail itself.
 	 */
 	accountRemove: (accountId: AccountId) => typedError<null, AppError>(__TAURI_INVOKE("account_remove", { accountId })),
 	threadsList: (query: ListQuery) => typedError<ThreadPage, AppError>(__TAURI_INVOKE("threads_list", { query })),

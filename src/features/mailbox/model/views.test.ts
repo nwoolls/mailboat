@@ -9,6 +9,7 @@ import {
   labelSelection,
   sameSelection,
   selectionKey,
+  selectionNeedsAccount,
   selectionTitle,
   spansAccounts,
   systemSelection,
@@ -112,5 +113,34 @@ describe("selections", () => {
       expect(new Set(keys).size).toBe(views.length);
       expect(views.every((v) => viewTitle(v) !== "Label")).toBe(true);
     }
+  });
+});
+
+describe("selectionNeedsAccount", () => {
+  const workLabel: Label = {
+    id: 7,
+    accountId: 2,
+    gmailLabelId: "Label_1",
+    name: "Work",
+    kind: "user",
+    colorBg: null,
+    colorFg: null,
+  };
+
+  it("is true for the removed account's own views and labels", () => {
+    expect(selectionNeedsAccount(systemSelection("inbox", 2), 2, [workLabel])).toBe(true);
+    expect(selectionNeedsAccount(labelSelection(workLabel), 2, [workLabel])).toBe(true);
+  });
+
+  it("is false for unified views and other accounts", () => {
+    expect(selectionNeedsAccount(ALL_INBOXES, 2, [workLabel])).toBe(false);
+    expect(selectionNeedsAccount(systemSelection("inbox", 1), 2, [workLabel])).toBe(false);
+    expect(
+      selectionNeedsAccount(
+        { accounts: { kind: "only", ids: [1, 2] }, view: { kind: "allMail" } },
+        2,
+        [workLabel],
+      ),
+    ).toBe(false);
   });
 });

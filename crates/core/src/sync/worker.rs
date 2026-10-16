@@ -102,6 +102,18 @@ impl Supervisor {
         }
     }
 
+    /// Stops an account's worker and waits until it has really ended, so
+    /// nothing it was doing can write to the database afterwards (needed
+    /// before removing the account's data).
+    pub async fn stop_and_wait(&self, account: AccountId) {
+        let worker = self.workers.lock().unwrap().remove(&account);
+        if let Some(w) = worker {
+            w.task.abort();
+            // A cancelled task reports a JoinError; that is the expected end.
+            let _ = w.task.await;
+        }
+    }
+
     /// Wakes the given accounts' workers (all if `None`) to sync right away.
     pub fn sync_now(&self, accounts: Option<&[AccountId]>) {
         let workers = self.workers.lock().unwrap();

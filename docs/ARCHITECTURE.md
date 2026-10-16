@@ -96,6 +96,10 @@ stateDiagram-v2
   re-fetch every thread it mentions.
 - **Bodies** are fetched when a message is opened, and the newest few are
   prefetched after each pass.
+- **Removing an account** stops its worker and waits for it to end
+  (`Supervisor::stop_and_wait`) before deleting its rows, so a sync in
+  flight can't write into the account being deleted. Cascading foreign
+  keys remove all its mail; a trigger clears its search index rows.
 - **Failures:** an auth failure parks only that account until it signs in
   again; rate limits and network errors retry; nothing blocks other
   accounts or the UI.
@@ -192,3 +196,4 @@ and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
 | 2026-10-15 | macOS icon also ships as an Icon Composer icon (`src-tauri/macos/AppIcon.icon` compiled to `Assets.car`, `CFBundleIconName`), after MonoCode | Only icons in this format get macOS 26's glass rim and depth in the Dock; a classic `.icns` is drawn flat. `scripts/build-app-icon.sh` renders the artwork layer to PNG (Icon Composer ignores SVG shadows) and runs Xcode's `actool`; the result is committed so builds don't need Xcode. The `.icns` stays as the fallback. |
 | 2026-10-15 | Dev builds run from a signed `target/debug/Mailboat.app` built by `scripts/dev-run.sh`; `src-tauri/src/dock.rs` clears Tauri's dev Dock image | macOS only applies the icon treatment to bundles, and Tauri paints a flat image on the Dock in dev. MonoCode builds its dev bundle in Rust and signs it ad hoc; Mailboat does it in the existing runner script so the bundle is signed with the Apple Development certificate and keychain access still survives rebuilds. Needs `objc2`/`objc2-app-kit`, already in the build through Tauri. |
 | 2026-10-15 | Splitter positions saved in local storage: sidebar in pixels, list as a share of the panes | The owner wanted the sidebar to keep its width when the window resizes and the list and reader to scale together. The list is laid out with a percentage flex-basis, so the browser does the proportional resize with no code running; dragging converts the pixel position to a share, kept between 10% and 90% and within the list's and reader's minimum widths. Local storage, like other view state; move to Settings storage if one arrives. |
+| 2026-10-16 | Menus and confirmations use the web view's own popover and `<dialog>`, not a library or Tauri native menus | They give click-outside, Escape and focus handling for free and float above panels that clip; native menus would need the menu permission on the web side. |

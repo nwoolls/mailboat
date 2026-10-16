@@ -20,6 +20,7 @@ import {
   TrashIcon,
   UnreadIcon,
 } from "../../../shared/ui/icons";
+import type { MenuAnchor } from "../../../shared/ui/Menu";
 import { labelSelection, sameSelection, type Selection } from "../../mailbox/model/views";
 import { syncBadge } from "../model/accounts";
 import { containsLabel, type LabelNode } from "../model/labelTree";
@@ -37,6 +38,8 @@ export type SidebarBodyProps = {
   selection: Selection;
   onSelect: (s: Selection) => void;
   onReauth: (account: Account) => void;
+  /** Opens an account's menu: below its avatar, or at the pointer. */
+  onAccountMenu: (account: Account, anchor: MenuAnchor) => void;
   /** Folds, by key; they reset on relaunch. */
   isOpen: (key: string) => boolean;
   toggle: (key: string) => void;
@@ -75,14 +78,20 @@ export function Section({
   title,
   children,
   aside,
+  onContextMenu,
 }: {
   title: React.ReactNode;
   children: React.ReactNode;
   aside?: React.ReactNode;
+  /** Right-click on the header row. */
+  onContextMenu?: (e: React.MouseEvent) => void;
 }) {
   return (
     <div className="mt-2">
-      <div className="mb-1 flex h-7 items-center gap-2 pl-2 text-[11px] font-medium tracking-wide text-content/45">
+      <div
+        onContextMenu={onContextMenu}
+        className="mb-1 flex h-7 items-center gap-2 pl-2 text-[11px] font-medium tracking-wide text-content/45"
+      >
         <span className="flex min-w-0 items-center gap-2 truncate">{title}</span>
         {aside && <span className="ml-auto flex shrink-0">{aside}</span>}
       </div>

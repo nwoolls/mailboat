@@ -24,6 +24,7 @@ import { useSetRead } from "../features/mailbox/ui/useSetRead";
 import {
   ALL_INBOXES,
   type Selection,
+  selectionNeedsAccount,
   selectionTitle,
   spansAccounts,
   systemSelection,
@@ -113,6 +114,8 @@ export function Shell() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // A menu or dialog handles its own keys.
+      if (e.target instanceof Element && e.target.closest("[role=menu], dialog")) return;
       const panel = panelToggleFor(e);
       if (panel) {
         e.preventDefault();
@@ -198,6 +201,15 @@ export function Shell() {
                 setChosen(s);
                 setSearch("");
                 setSelectedId(null);
+              }}
+              onAccountRemoved={(id) => {
+                // Leave views that only showed that account's mail, and
+                // close its conversation if one was open.
+                if (chosen && selectionNeedsAccount(chosen, id, labels)) {
+                  setChosen(null);
+                  setSearch("");
+                }
+                if (threads.find((t) => t.id === selectedId)?.accountId === id) setSelectedId(null);
               }}
             />
             <Splitter

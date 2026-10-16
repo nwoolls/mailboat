@@ -144,3 +144,16 @@ export function selectionTitle(s: Selection, accounts: Account[], labels: Label[
   }
   return base;
 }
+
+/**
+ * True if a selection shows any of this account's mail only through that
+ * account (its own views and labels), so it has nowhere to go once the
+ * account is removed. Unified views just lose that account's rows.
+ */
+export function selectionNeedsAccount(s: Selection, account: AccountId, labels: Label[]): boolean {
+  if (s.view.kind === "userLabel") {
+    const labelId = s.view.labelId;
+    if (labels.some((l) => l.id === labelId && l.accountId === account)) return true;
+  }
+  return s.accounts.kind === "only" && s.accounts.ids.every((id) => id === account);
+}

@@ -183,7 +183,9 @@ Options offered during the spike that the owner didn't pick (yet):
 - Sync status as a hairline shimmer on the list card (option C); can't
   show which account is syncing
 - Add-account area as an account menu on the avatar (option C): accounts,
-  add, remove (Milestone 2), settings
+  add, remove, settings. *(Partly built in Milestone 2: the avatar now
+  opens a per-account menu with "Sync now" and "Remove account…"; adding
+  stays on the "+".)*
 - Reader as its own rounded card, if text on the glass proves hard to read
 - Stronger, adjustable blur (private `CGSSetWindowBackgroundBlurRadius`,
   Rust, as in Synara and MonoCode) if the system material looks too faint
@@ -309,7 +311,13 @@ Options offered during the spike that the owner didn't pick (yet):
 
 ## Milestone 2: Multiple accounts and unified inbox
 
-- [ ] Add and remove accounts from the UI (add exists; remove needs UI)
+- [x] Add and remove accounts from the UI. Clicking an account's avatar
+      (or right-clicking its header) opens a menu with its sync status,
+      "Sync now" and "Remove account…", which asks first. Removing stops
+      that account's sync and waits for it to end, then deletes its cached
+      mail and its keychain sign-in; Gmail itself is untouched. A view that
+      only showed that account falls back to the default. *(Not yet tried
+      in the real app.)*
 - [ ] "All Inboxes" view across accounts (query exists; needs a second
       account to try for real)
 - [ ] Per-account colors on rows (exists; review with two accounts)
