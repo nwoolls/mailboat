@@ -13,7 +13,12 @@ import {
   TrashIcon,
 } from "../../../shared/ui/icons";
 import type { EmptyIcon, EmptyState as EmptyStateModel } from "../model/emptyState";
-import { approach, GLOW_FOLLOW_SECONDS, GLOW_RETURN_SECONDS } from "../model/glow";
+import {
+  approach,
+  GLOW_FOLLOW_SECONDS,
+  GLOW_LINGER_SECONDS,
+  GLOW_RETURN_SECONDS,
+} from "../model/glow";
 
 const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
   caughtUp: ThumbsUpIcon,
@@ -32,7 +37,8 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
  * What an empty list shows: an icon, a line of copy and a drifting glow.
  * The glow spans the whole list card (title row included, behind its text)
  * and rests behind the icon. With the pointer anywhere over the card it
- * centres on the cursor; when the pointer leaves it eases back to its path.
+ * centres on the cursor; when the pointer leaves it lingers there a moment,
+ * then eases back to its path.
  */
 export function EmptyState({ state }: { state: EmptyStateModel }) {
   const Icon = ICONS[state.icon];
@@ -62,7 +68,8 @@ export function EmptyState({ state }: { state: EmptyStateModel }) {
  * animation frame it moves the glow's wrapper towards its target: while
  * the pointer is over the card, the pointer minus the drift animation's
  * current offset (so the glow centres on the cursor and only its gentle
- * size change carries on); otherwise zero, gliding back onto its usual
+ * size change carries on). After the pointer leaves it keeps that target
+ * for GLOW_LINGER_SECONDS, then aims for zero, gliding back onto its usual
  * path, after which the loop stops. Pointer moves only update the target,
  * so nothing re-renders and no transition restarts.
  */
@@ -76,7 +83,7 @@ function useGlowPull() {
     const pull = pullRef.current;
     const card = anchor?.closest<HTMLElement>(".panel");
     if (!anchor || !pull || !card) return;
-    const m = { x: 0, y: 0, cx: 0, cy: 0, attracted: false, frame: 0, last: 0 };
+    const m = { x: 0, y: 0, cx: 0, cy: 0, attracted: false, leftAt: 0, frame: 0, last: 0 };
 
     // Rest the glow behind the icon, which sits below the card's centre
     // by half the title row's height.
@@ -93,19 +100,21 @@ function useGlowPull() {
     const tick = (now: number) => {
       const dt = Math.min((now - m.last) / 1000, 0.1);
       m.last = now;
+      const lingering = !m.attracted && now - m.leftAt < GLOW_LINGER_SECONDS * 1000;
+      if (!m.attracted && !lingering) pull.dataset.attracted = "false";
       let tx = 0;
       let ty = 0;
-      if (m.attracted) {
+      if (m.attracted || lingering) {
         const drift = driftOffset(glowRef.current);
         tx = m.cx - drift.x;
         ty = m.cy - drift.y;
       }
-      const tau = m.attracted ? GLOW_FOLLOW_SECONDS : GLOW_RETURN_SECONDS;
+      const tau = m.attracted || lingering ? GLOW_FOLLOW_SECONDS : GLOW_RETURN_SECONDS;
       m.x = approach(m.x, tx, dt, tau);
       m.y = approach(m.y, ty, dt, tau);
       pull.style.transform = `translate3d(${m.x}px, ${m.y}px, 0)`;
       // While attracted the drift keeps moving, so keep following.
-      const settled = !m.attracted && Math.abs(m.x) < 0.5 && Math.abs(m.y) < 0.5;
+      const settled = !m.attracted && !lingering && Math.abs(m.x) < 0.5 && Math.abs(m.y) < 0.5;
       m.frame = settled ? 0 : requestAnimationFrame(tick);
     };
     const run = () => {
@@ -126,7 +135,7 @@ function useGlowPull() {
     };
     const onLeave = () => {
       m.attracted = false;
-      pull.dataset.attracted = "false";
+      m.leftAt = performance.now();
       run();
     };
     card.addEventListener("pointermove", onMove);

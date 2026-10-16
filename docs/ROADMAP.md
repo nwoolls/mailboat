@@ -130,7 +130,9 @@ a darker glass body, rounded corners where they meet, resizable panes.
       it then centres on the cursor (its drift is cancelled out while
       attracted) instead of stopping short; it spans the whole list card,
       title row included (it was cut off below it), and follows the pointer
-      anywhere on the card
+      anywhere on the card. It lingers 2s where the pointer left before
+      drifting home, and drifts back about half as fast, so a trip to the
+      sidebar doesn't send it rebounding to the middle
 - [x] Smoother switching between conversations: the previous one stays
       up (dimmed) until the next is ready instead of blanking; the new one
       fades in (a small rise was dropped: it bounced when paging); each email card stays hidden until it has

@@ -1,6 +1,11 @@
 /** How quickly the glow closes in on the pointer, and drifts home after. */
 export const GLOW_FOLLOW_SECONDS = 0.35;
-export const GLOW_RETURN_SECONDS = 1.1;
+export const GLOW_RETURN_SECONDS = 2.2;
+/**
+ * How long the glow lingers where the pointer left before heading home,
+ * so a quick trip to the sidebar doesn't send it rebounding to the middle.
+ */
+export const GLOW_LINGER_SECONDS = 2;
 
 /**
  * One frame of smooth following: move `current` part of the way to
