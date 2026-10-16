@@ -15,6 +15,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use lol_html::{element, rewrite_str, RewriteStrSettings};
 
@@ -256,6 +257,11 @@ struct DarkRules {
     text: HashMap<String, usize>,
     background: HashMap<String, usize>,
     border: HashMap<String, usize>,
+    /// How many open elements around the current one have a light grey
+    /// (`Veil`) background. A white box inside one becomes a slightly
+    /// darker card instead of see-through, so its edges still show (Gmail's
+    /// notices draw no top border and rely on white against grey).
+    veils: Rc<Cell<u32>>,
 }
 
 impl DarkRules {
@@ -308,9 +314,26 @@ impl DarkRules {
             el.set_attribute("data-mc", &n.to_string())?;
         }
         let bg = background.map(colors::dark_background);
+        if bg == Some(DarkBackground::Veil) {
+            // Count it until its end tag (void elements have none to wait for).
+            if let Some(handlers) = el.end_tag_handlers() {
+                let veils = self.veils.clone();
+                veils.set(veils.get() + 1);
+                handlers.push(Box::new(move |_| {
+                    veils.set(veils.get().saturating_sub(1));
+                    Ok(())
+                }));
+            }
+        }
         let bg_css = match bg {
+            Some(DarkBackground::Transparent) if self.veils.get() > 0 => {
+                Some("background-color:rgba(0,0,0,0.22)!important".to_string())
+            }
             Some(DarkBackground::Transparent) => {
                 Some("background-color:transparent!important".to_string())
+            }
+            Some(DarkBackground::Veil) => {
+                Some("background-color:rgba(255,255,255,0.05)!important".to_string())
             }
             Some(DarkBackground::Color(c)) => {
                 Some(format!("background-color:{}!important", c.hex()))
@@ -507,6 +530,30 @@ mod tests {
         assert!(doc.contains(r##"style="background-color:#b8aef2;color:#fff">"##));
         // Light mode keeps the email's own colors inline.
         assert!(doc.contains("color:#24292f"));
+    }
+
+    #[test]
+    fn a_white_card_on_a_grey_page_stays_distinct_in_dark_mode() {
+        // Gmail's confidential-mode notice: a grey page, a 2px white strip
+        // as the card's top edge, then the white card with no top border.
+        let out = sanitize_html(
+            r##"<div style="background-color:#f5f5f5"><div style="background:#fff;height:2px"></div>
+               <div style="background:#fff">Card</div></div>
+               <div style="background:#fff">Plain white email</div>"##,
+            false,
+        );
+        let doc = &out.document;
+        // The page gets a faint lift; the strip and card inside it a darker
+        // tint, so every edge shows.
+        assert!(doc.contains("background-color:rgba(255,255,255,0.05)!important"));
+        assert!(doc.contains("background-color:rgba(0,0,0,0.22)!important"));
+        let card_rule = doc.matches(r#"data-mb="#).count();
+        assert!(
+            card_rule >= 4,
+            "page, strip, card and plain white are all tagged"
+        );
+        // White outside any grey page stays see-through, as before.
+        assert!(doc.contains("background-color:transparent!important"));
     }
 
     #[test]

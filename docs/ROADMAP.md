@@ -252,6 +252,10 @@ Options offered during the spike that the owner didn't pick (yet):
       borders stay. Seen on Gmail's confidential-mode notice, which also
       has no top border by design. (Its content can't be shown in any
       client: it only opens on Gmail's site, via "View the email".)
+- [x] Emails on the glass: a white card on a light grey page stays
+      distinct (the page gets a faint lift, the card a slightly darker
+      tint, as Mimestream shows them), so cards without a top border keep
+      their top edge; plain white emails still show the glass
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong

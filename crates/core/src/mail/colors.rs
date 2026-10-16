@@ -14,8 +14,13 @@ pub struct Rgb(pub u8, pub u8, pub u8);
 /// What a background becomes in dark mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DarkBackground {
-    /// Near-white page and panel backgrounds: show the glass through.
+    /// White and near-white page and panel backgrounds: show the glass
+    /// through (or, inside a `Veil`, a slightly darker card; see the
+    /// sanitizer).
     Transparent,
+    /// Light greys (a page behind a white card): a faint light lift, so the
+    /// card inside still stands apart from it, as Mimestream shows them.
+    Veil,
     Color(Rgb),
     /// Already fine on a dark backdrop (dark, or a strong color).
     Keep,
@@ -161,16 +166,18 @@ pub fn dark_text(color: Rgb) -> Option<Rgb> {
     Some(from_hsl(h, s.min(0.85), light))
 }
 
-/// Backgrounds in dark mode: near-white neutrals become see-through (the
-/// glass), light greys and pale tints become dark ones, and strong or
-/// already dark colors stay.
+/// Backgrounds in dark mode: white becomes see-through (the glass), the
+/// lightest greys a faint lift, light greys and pale tints dark ones, and
+/// strong or already dark colors stay.
 pub fn dark_background(color: Rgb) -> DarkBackground {
     let (h, s, l) = to_hsl(color);
     // "Neutral" by chroma (how far apart the channels are), not HSL
     // saturation, which exaggerates tiny tints near white (#f6f8fa).
     let neutral = chroma(color) < 0.1;
-    if l > 0.88 && neutral {
+    if l >= 0.97 && neutral {
         DarkBackground::Transparent
+    } else if l > 0.88 && neutral {
+        DarkBackground::Veil
     } else if l > 0.88 {
         // A pale tint (callout boxes): keep the hue, make it a dark tint.
         DarkBackground::Color(from_hsl(h, s.min(0.4), 0.2))
@@ -246,6 +253,8 @@ mod tests {
             dark_background(Rgb(0xf6, 0xf8, 0xfa)),
             DarkBackground::Transparent
         );
+        // Gmail's light grey page behind a white card: a faint lift.
+        assert_eq!(dark_background(Rgb(0xf5, 0xf5, 0xf5)), DarkBackground::Veil);
         // Pale yellow callout: a dark yellow tint, not glass.
         assert!(matches!(
             dark_background(Rgb(0xff, 0xf8, 0xc5)),
