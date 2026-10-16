@@ -21,6 +21,7 @@ export const keys = {
   oauthSetup: ["oauthSetup"] as const,
   syncStates: ["syncStates"] as const,
   labels: (filter: AccountFilter) => ["labels", filter] as const,
+  unreadCounts: ["unreadCounts"] as const,
   threads: (s: Selection) => ["threads", selectionKey(s)] as const,
   thread: (id: ThreadId) => ["thread", id] as const,
   message: (id: MessageId) => ["message", id] as const,
@@ -54,6 +55,15 @@ export function useLabels(filter: AccountFilter) {
   return useQuery({
     queryKey: keys.labels(filter),
     queryFn: () => unwrap(commands.labelsList(filter)),
+    enabled: IS_TAURI,
+  });
+}
+
+/** Unread conversations per label, every account, for the sidebar's counts. */
+export function useUnreadCounts() {
+  return useQuery({
+    queryKey: keys.unreadCounts,
+    queryFn: () => unwrap(commands.unreadCounts({ kind: "all" })),
     enabled: IS_TAURI,
   });
 }
@@ -109,6 +119,7 @@ export function useMailEvents() {
         void qc.invalidateQueries({ queryKey: ["threads"] });
         void qc.invalidateQueries({ queryKey: ["thread"] });
         void qc.invalidateQueries({ queryKey: ["labels"] });
+        void qc.invalidateQueries({ queryKey: keys.unreadCounts });
       }),
     ];
     return () => {

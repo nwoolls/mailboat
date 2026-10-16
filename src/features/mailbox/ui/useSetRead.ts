@@ -46,6 +46,7 @@ export function useSetRead() {
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ["threads"] });
       void qc.invalidateQueries({ queryKey: ["thread"] });
+      void qc.invalidateQueries({ queryKey: keys.unreadCounts });
     },
   });
 }

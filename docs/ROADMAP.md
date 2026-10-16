@@ -118,6 +118,14 @@ a darker glass body, rounded corners where they meet, resizable panes.
       open; IMAP brackets dropped ("[Orbit]" → "Orbit"); every label dot
       has a faint outline so dark Gmail colors still show. Folds reset on
       relaunch
+- [x] Unread counts in the sidebar (Inbox, Unread and labels), per account
+      and summed for unified views
+- [ ] A more glanceable sidebar. Three layouts on trial behind a temporary
+      switch in the sidebar footer: Switcher (account chips filter one set
+      of views), Nested (one set of views, each unfolds a row per account,
+      as in Mimestream; account sections hold folded labels) and Tidy
+      (today's layout with counts, folding accounts and labels, no grey
+      label dots). Keep the owner's pick, delete the others and the switch
 - [x] "Add account" is a small "+" in an icon bar at the sidebar's foot
       (owner picked option A), with room for settings and the log console
 - [x] While a browser sign-in waits, the "+" becomes a cancel button; and
