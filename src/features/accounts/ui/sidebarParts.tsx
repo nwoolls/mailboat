@@ -88,20 +88,7 @@ export function Section({
   );
 }
 
-/** A small heading inside a section ("Labels"). */
-export function SubHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-2 px-2 pt-3 pb-1 text-[11px] font-medium tracking-wide text-content/45">
-      {children}
-    </div>
-  );
-}
-
-/**
- * Every sidebar row: a 16px icon slot, the name, then an unread count on
- * the right. `trailing` (a fold's chevron) sits outside the main button so
- * it can toggle without selecting.
- */
+/** Every sidebar row: a 16px icon slot, the name, then an unread count on the right. */
 export function Row({
   title,
   selected,
@@ -111,8 +98,6 @@ export function Row({
   expanded,
   hint,
   count = 0,
-  trailing,
-  strong,
 }: {
   title: React.ReactNode;
   selected: boolean;
@@ -124,9 +109,6 @@ export function Row({
   /** A collapsed fold that holds the current view gets a faint fill. */
   hint?: boolean;
   count?: number;
-  trailing?: React.ReactNode;
-  /** Slightly brighter, for account headers that act as rows. */
-  strong?: boolean;
 }) {
   const shown = countText(count);
   return (
@@ -136,7 +118,7 @@ export function Row({
           ? "bg-selection-strong text-content"
           : hint
             ? "bg-selection-subtle text-content/80"
-            : `${strong ? "text-content/90" : "text-content/75"} hover:bg-selection hover:text-content`
+            : "text-content/75 hover:bg-selection hover:text-content"
       }`}
     >
       <button
@@ -161,7 +143,6 @@ export function Row({
           </span>
         )}
       </button>
-      {trailing}
     </div>
   );
 }
@@ -178,29 +159,6 @@ export function Chevron({ open }: { open: boolean }) {
       size={13}
       className={`transition-transform duration-[160ms] ease-out ${open ? "rotate-90" : ""}`}
     />
-  );
-}
-
-/** A small chevron button at a row's right end that only opens or closes a fold. */
-export function FoldToggle({
-  open,
-  onToggle,
-  label,
-}: {
-  open: boolean;
-  onToggle: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={open ? `Hide ${label}` : `Show ${label}`}
-      aria-expanded={open}
-      onClick={onToggle}
-      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-content/40 hover:bg-selection hover:text-content"
-    >
-      <Chevron open={open} />
-    </button>
   );
 }
 

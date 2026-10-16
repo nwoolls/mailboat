@@ -3,16 +3,7 @@ import type { Account, AccountSyncState } from "../../../platform/tauri/bindings
 import { useLabels, useUnreadCounts } from "../../../shared/lib/queries";
 import { AddIcon, ClearIcon } from "../../../shared/ui/icons";
 import type { Selection } from "../../mailbox/model/views";
-import {
-  parseSidebarStyle,
-  SIDEBAR_STYLE_OPTIONS,
-  SIDEBAR_STYLE_STORAGE_KEY,
-  type SidebarStyle,
-} from "../model/sidebar";
-import { SidebarNested } from "./SidebarNested";
-import { SidebarSwitcher } from "./SidebarSwitcher";
-import { SidebarTidy } from "./SidebarTidy";
-import type { SidebarBodyProps } from "./sidebarParts";
+import { SidebarSections } from "./SidebarSections";
 import { useSignIn } from "./useSignIn";
 
 type Props = {
@@ -21,12 +12,6 @@ type Props = {
   syncStates: AccountSyncState[];
   selection: Selection;
   onSelect: (s: Selection) => void;
-};
-
-const LAYOUTS: Record<SidebarStyle, (props: SidebarBodyProps) => React.ReactNode> = {
-  switcher: SidebarSwitcher,
-  nested: SidebarNested,
-  tidy: SidebarTidy,
 };
 
 export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Props) {
@@ -43,20 +28,11 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
       else next.add(key);
       return next;
     });
-  // Temporary: which layout is being tried (see model/sidebar.ts).
-  const [style, setStyle] = useState<SidebarStyle>(() =>
-    parseSidebarStyle(localStorage.getItem(SIDEBAR_STYLE_STORAGE_KEY)),
-  );
-  const chooseStyle = (value: SidebarStyle) => {
-    setStyle(value);
-    localStorage.setItem(SIDEBAR_STYLE_STORAGE_KEY, value);
-  };
-  const Layout = LAYOUTS[style];
 
   return (
     <nav className="flex h-full shrink-0 flex-col" style={{ width }}>
       <div className="flex-1 overflow-y-auto px-2 pb-4">
-        <Layout
+        <SidebarSections
           accounts={accounts}
           labels={labels}
           counts={counts}
@@ -82,26 +58,8 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
         >
           {signIn.pending ? <ClearIcon size={16} /> : <AddIcon size={16} />}
         </button>
-        {signIn.pending ? (
+        {signIn.pending && (
           <span className="truncate text-xs text-content/60">Waiting for browser sign-in…</span>
-        ) : (
-          // Temporary: try the sidebar layouts, then remove.
-          <div className="ml-auto flex shrink-0 gap-0.5 rounded-md bg-selection-subtle p-0.5 text-[11px]">
-            {SIDEBAR_STYLE_OPTIONS.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                className={`rounded px-1.5 py-0.5 ${
-                  style === o.value
-                    ? "bg-selection-strong text-content"
-                    : "text-content/50 hover:text-content"
-                }`}
-                onClick={() => chooseStyle(o.value)}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
         )}
       </div>
       {signIn.error && <p className="selectable px-4 pb-2 text-xs text-danger">{signIn.error}</p>}

@@ -24,12 +24,12 @@ import {
 } from "./sidebarParts";
 
 /**
- * Today's layout, calmer: unread counts on the right; each account's
- * header shows its ring, address and Inbox count and folds the whole
- * account away (open by default); its labels sit in their own fold,
- * closed by default.
+ * "All accounts" views, then a section per account. Unread counts sit on
+ * the right; each account's header shows its ring and address and folds
+ * the whole account away (open by default, with its Inbox count shown
+ * while folded); its labels sit in their own fold, closed by default.
  */
-export function SidebarTidy(props: SidebarBodyProps) {
+export function SidebarSections(props: SidebarBodyProps) {
   const { accounts, labels, counts, syncStates, selection, onSelect, onReauth, isOpen, toggle } =
     props;
   return (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LabelUnread } from "../../../platform/tauri/bindings";
-import { accountShortName, countText, parseSidebarStyle, unreadIn, viewUnread } from "./sidebar";
+import { countText, unreadIn, viewUnread } from "./sidebar";
 
 const counts: LabelUnread[] = [
   { labelId: 1, accountId: 1, gmailLabelId: "INBOX", unread: 2 },
@@ -30,28 +30,5 @@ describe("unread counts", () => {
     expect(countText(0)).toBeNull();
     expect(countText(12)).toBe("12");
     expect(countText(1200)).toBe("999+");
-  });
-});
-
-describe("accountShortName", () => {
-  const gmail = { email: "me@gmail.com" };
-  const work = { email: "jordan.lee@example.com" };
-
-  it("uses the domain when it tells accounts apart", () => {
-    expect(accountShortName(gmail, [gmail, work])).toBe("gmail.com");
-    expect(accountShortName(work, [gmail, work])).toBe("example.com");
-  });
-
-  it("falls back to the name before the @ when domains repeat", () => {
-    const other = { email: "someone@gmail.com" };
-    expect(accountShortName(gmail, [gmail, other])).toBe("me");
-  });
-});
-
-describe("parseSidebarStyle", () => {
-  it("keeps a known choice and falls back to the switcher", () => {
-    expect(parseSidebarStyle("nested")).toBe("nested");
-    expect(parseSidebarStyle(null)).toBe("switcher");
-    expect(parseSidebarStyle("junk")).toBe("switcher");
   });
 });

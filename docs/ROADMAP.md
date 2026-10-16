@@ -120,12 +120,12 @@ a darker glass body, rounded corners where they meet, resizable panes.
       relaunch
 - [x] Unread counts in the sidebar (Inbox, Unread and labels), per account
       and summed for unified views
-- [ ] A more glanceable sidebar. Three layouts on trial behind a temporary
-      switch in the sidebar footer: Switcher (account chips filter one set
-      of views), Nested (one set of views, each unfolds a row per account,
-      as in Mimestream; account sections hold folded labels) and Tidy
-      (today's layout with counts, folding accounts and labels, no grey
-      label dots). Keep the owner's pick, delete the others and the switch
+- [x] A calmer, more glanceable sidebar (owner picked "Tidy" of three
+      layouts tried in the app; Switcher and Mimestream-style Nested were
+      the others): unread counts, the account ring in each header,
+      accounts fold away (open by default, Inbox count shown while
+      folded), labels in their own fold (closed by default), no grey dots
+      on labels without a Gmail colour
 - [x] "Add account" is a small "+" in an icon bar at the sidebar's foot
       (owner picked option A), with room for settings and the log console
 - [x] While a browser sign-in waits, the "+" becomes a cancel button; and
