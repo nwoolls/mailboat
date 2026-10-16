@@ -3,14 +3,7 @@ import type { Account, AccountSyncState } from "../../../platform/tauri/bindings
 import { useLabels, useUnreadCounts } from "../../../shared/lib/queries";
 import { AddIcon, ClearIcon } from "../../../shared/ui/icons";
 import type { Selection } from "../../mailbox/model/views";
-import {
-  COUNT_MODE_OPTIONS,
-  COUNT_MODE_STORAGE_KEY,
-  type CountMode,
-  NO_COUNTS,
-  parseCountMode,
-  viewUnread,
-} from "../model/sidebar";
+import { viewUnread } from "../model/sidebar";
 import { SidebarSections } from "./SidebarSections";
 import { useSignIn } from "./useSignIn";
 
@@ -24,15 +17,7 @@ type Props = {
 
 export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Props) {
   const labels = useLabels({ kind: "all" }).data ?? [];
-  const counts = useUnreadCounts().data ?? NO_COUNTS;
-  // Temporary: which rows show counts while the owner compares (see model/sidebar.ts).
-  const [countMode, setCountMode] = useState<CountMode>(() =>
-    parseCountMode(localStorage.getItem(COUNT_MODE_STORAGE_KEY)),
-  );
-  const chooseCountMode = (value: CountMode) => {
-    setCountMode(value);
-    localStorage.setItem(COUNT_MODE_STORAGE_KEY, value);
-  };
+  const counts = useUnreadCounts().data ?? [];
   const signIn = useSignIn();
   // Which folds are open (or, for ones that start open, closed). They
   // reset on relaunch.
@@ -51,7 +36,7 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
         <SidebarSections
           accounts={accounts}
           labels={labels}
-          countFor={(view, filter) => viewUnread(counts, view, filter, countMode)}
+          countFor={(view, filter) => viewUnread(counts, view, filter)}
           syncStates={syncStates}
           selection={selection}
           onSelect={onSelect}
@@ -74,29 +59,8 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
         >
           {signIn.pending ? <ClearIcon size={16} /> : <AddIcon size={16} />}
         </button>
-        {signIn.pending ? (
+        {signIn.pending && (
           <span className="truncate text-xs text-content/60">Waiting for browser sign-in…</span>
-        ) : (
-          // Temporary: compare which rows show counts, then remove.
-          <div
-            className="ml-auto flex shrink-0 gap-0.5 rounded-md bg-selection-subtle p-0.5 text-[11px]"
-            title="Which rows show unread counts"
-          >
-            {COUNT_MODE_OPTIONS.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                className={`rounded px-1.5 py-0.5 ${
-                  countMode === o.value
-                    ? "bg-selection-strong text-content"
-                    : "text-content/50 hover:text-content"
-                }`}
-                onClick={() => chooseCountMode(o.value)}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
         )}
       </div>
       {signIn.error && <p className="selectable px-4 pb-2 text-xs text-danger">{signIn.error}</p>}

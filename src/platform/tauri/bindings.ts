@@ -26,7 +26,7 @@ export const commands = {
 	threadGet: (threadId: ThreadId) => typedError<ThreadDetail, AppError>(__TAURI_INVOKE("thread_get", { threadId })),
 	labelsList: (accounts: AccountFilter) => typedError<Label[], AppError>(__TAURI_INVOKE("labels_list", { accounts })),
 	/**  Unread conversations per label, for the sidebar's counts. */
-	unreadCounts: (accounts: AccountFilter) => typedError<UnreadCounts, AppError>(__TAURI_INVOKE("unread_counts", { accounts })),
+	unreadCounts: (accounts: AccountFilter) => typedError<LabelUnread[], AppError>(__TAURI_INVOKE("unread_counts", { accounts })),
 	/**
 	 *  Returns a message ready for display, downloading its body with the
 	 *  owning account's credentials if it isn't cached yet.
@@ -78,16 +78,6 @@ export type AccountSyncState = {
 	errorKind: string | null,
 	errorMessage: string | null,
 	lastSyncAt: number | null,
-};
-
-/**
- *  Unread conversations in an account's views that aren't labels: All Mail
- *  (everything but Spam and Trash) and Archive (All Mail minus the Inbox).
- */
-export type AccountUnread = {
-	accountId: AccountId,
-	allMail: number,
-	archive: number,
 };
 
 export type Address = {
@@ -274,12 +264,6 @@ export type ThreadSummary = {
 	unread: boolean,
 	starred: boolean,
 	hasAttachments: boolean,
-};
-
-/**  Everything the sidebar's counts need. */
-export type UnreadCounts = {
-	labels: LabelUnread[],
-	accounts: AccountUnread[],
 };
 
 /* Tauri Specta runtime */

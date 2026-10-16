@@ -505,9 +505,7 @@ fn unread_counts_stay_per_account() {
         .unwrap();
     }
 
-    let all = query::unread_counts(&db.conn(), &AccountFilter::All)
-        .unwrap()
-        .labels;
+    let all = query::unread_counts(&db.conn(), &AccountFilter::All).unwrap();
     let count = |account: AccountId, gmail: &str| {
         all.iter()
             .find(|c| c.account_id == account && c.gmail_label_id == gmail)
@@ -527,16 +525,7 @@ fn unread_counts_stay_per_account() {
     );
 
     let only_b = query::unread_counts(&db.conn(), &AccountFilter::Only(vec![b.id])).unwrap();
-    assert!(only_b.labels.iter().all(|c| c.account_id == b.id));
-
-    // All Mail and Archive (not labels): A has one unread, in the Inbox, so
-    // nothing unread in its Archive.
-    let views = query::unread_counts(&db.conn(), &AccountFilter::All)
-        .unwrap()
-        .accounts;
-    let a_views = views.iter().find(|v| v.account_id == a.id).unwrap();
-    assert_eq!((a_views.all_mail, a_views.archive), (1, 0));
-    assert_eq!(only_b.accounts.len(), 1);
+    assert!(only_b.iter().all(|c| c.account_id == b.id));
 }
 
 #[test]
@@ -577,9 +566,7 @@ fn unread_leaves_out_spam_and_trash() {
         label: SystemLabel::Unread,
     };
     assert_eq!(list(&db, AccountFilter::All, unread).len(), 1);
-    let counts = query::unread_counts(&db.conn(), &AccountFilter::All)
-        .unwrap()
-        .labels;
+    let counts = query::unread_counts(&db.conn(), &AccountFilter::All).unwrap();
     let unread_count = counts
         .iter()
         .find(|c| c.gmail_label_id == "UNREAD")
@@ -589,26 +576,4 @@ fn unread_leaves_out_spam_and_trash() {
     assert!(counts
         .iter()
         .any(|c| c.gmail_label_id == "SPAM" && c.unread == 1));
-}
-
-#[test]
-fn archive_unread_counts_mail_outside_the_inbox() {
-    let db = Db::open_in_memory().unwrap();
-    let a = add_account(&db, "sub-a", "me@gmail.com");
-    store::sync_labels(&mut db.conn(), a.id, &work_label()).unwrap();
-    for (t, m, labels) in [
-        ("t1", "m1", vec!["INBOX", "UNREAD"]),
-        ("t2", "m2", vec!["UNREAD"]),
-        ("t3", "m3", vec![]),
-    ] {
-        store::upsert_thread(
-            &mut db.conn(),
-            a.id,
-            &thread(t, m, "x@y.com", "Hi", 1_000, &labels),
-        )
-        .unwrap();
-    }
-    let counts = query::unread_counts(&db.conn(), &AccountFilter::All).unwrap();
-    let a_views = &counts.accounts[0];
-    assert_eq!((a_views.all_mail, a_views.archive), (2, 1));
 }

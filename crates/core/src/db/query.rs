@@ -8,9 +8,8 @@ use rusqlite::{params_from_iter, Connection, OptionalExtension, Row};
 use super::placeholders;
 use crate::error::{CoreError, Result};
 use crate::model::{
-    AccountFilter, AccountUnread, Address, Label, LabelKind, LabelUnread, ListCursor, ListQuery,
-    MailView, MessageMeta, SystemLabel, ThreadDetail, ThreadId, ThreadPage, ThreadSummary,
-    UnreadCounts,
+    AccountFilter, Address, Label, LabelKind, LabelUnread, ListCursor, ListQuery, MailView,
+    MessageMeta, SystemLabel, ThreadDetail, ThreadId, ThreadPage, ThreadSummary,
 };
 
 const MAX_LIMIT: u32 = 500;
@@ -261,34 +260,21 @@ pub fn user_labels(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<La
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
-/// Unread conversations for the sidebar's counts, per account; unified
-/// counts (All Inboxes) are sums of these. Per label (system and user),
-/// plus All Mail and Archive, which aren't labels.
-pub fn unread_counts(conn: &Connection, accounts: &AccountFilter) -> Result<UnreadCounts> {
-    Ok(UnreadCounts {
-        labels: label_unread(conn, accounts)?,
-        accounts: account_unread(conn, accounts)?,
-    })
-}
-
-/// `(AND <column> IN (?, …), values)` for an account filter.
-fn account_filter(column: &str, accounts: &AccountFilter) -> (String, Vec<Value>) {
-    match accounts {
+/// Unread conversations per label, for sidebar counts. A label's count is
+/// per account; unified counts (All Inboxes) are sums of these. `UNREAD`
+/// itself leaves out Spam and Trash, matching the Unread view.
+pub fn unread_counts(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<LabelUnread>> {
+    let (filter, values): (String, Vec<Value>) = match accounts {
         AccountFilter::All => (String::new(), vec![]),
         AccountFilter::Only(ids) => (
-            format!("AND {column} IN ({})", placeholders(ids.len().max(1))),
+            format!("AND l.account_id IN ({})", placeholders(ids.len().max(1))),
             if ids.is_empty() {
                 vec![Value::Integer(-1)]
             } else {
                 ids.iter().map(|i| Value::Integer(i.0)).collect()
             },
         ),
-    }
-}
-
-/// `UNREAD` itself leaves out Spam and Trash, matching the Unread view.
-fn label_unread(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<LabelUnread>> {
-    let (filter, values) = account_filter("l.account_id", accounts);
+    };
     let sql = format!(
         "SELECT l.id, l.account_id, l.gmail_label_id, COUNT(*)
          FROM labels l
@@ -306,26 +292,6 @@ fn label_unread(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<Label
             account_id: r.get(1)?,
             gmail_label_id: r.get(2)?,
             unread: r.get(3)?,
-        })
-    })?;
-    Ok(rows.collect::<rusqlite::Result<_>>()?)
-}
-
-fn account_unread(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<AccountUnread>> {
-    let (filter, values) = account_filter("t.account_id", accounts);
-    let sql = format!(
-        "SELECT t.account_id, COUNT(*), SUM(NOT {IN_INBOX})
-         FROM threads t
-         WHERE t.unread_count > 0 AND {IN_ALL_MAIL} {filter}
-         GROUP BY t.account_id
-         ORDER BY t.account_id"
-    );
-    let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt.query_map(params_from_iter(values), |r| {
-        Ok(AccountUnread {
-            account_id: r.get(0)?,
-            all_mail: r.get(1)?,
-            archive: r.get(2)?,
         })
     })?;
     Ok(rows.collect::<rusqlite::Result<_>>()?)

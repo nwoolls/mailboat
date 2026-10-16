@@ -118,13 +118,11 @@ a darker glass body, rounded corners where they meet, resizable panes.
       open; IMAP brackets dropped ("[Orbit]" → "Orbit"); every label dot
       has a faint outline so dark Gmail colors still show. Folds reset on
       relaunch
-- [x] Unread counts in the sidebar (Inbox, Unread and labels), per account
+- [x] Unread counts in the sidebar (Inbox, Starred and labels), per account
       and summed for unified views
-- [ ] Which sidebar rows show unread counts. Three settings on trial
-      behind a temporary switch in the sidebar footer: Actionable (Inbox,
-      Starred and labels), Everything (also Unread, Important, Archive and
-      All Mail) and Off. Keep the owner's pick, delete the others and the
-      switch
+- [x] Sidebar counts only where unread is actionable: Inbox, Starred and
+      labels (owner picked this over "Everything", which added Unread,
+      Archive and All Mail, and over no counts)
 - [x] A calmer, more glanceable sidebar (owner picked "Tidy" of three
       layouts tried in the app; Switcher and Mimestream-style Nested were
       the others): unread counts, the account ring in each header,

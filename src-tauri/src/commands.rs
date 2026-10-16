@@ -9,8 +9,8 @@ use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::{self, SafeMessage};
 use mailboat_core::model::{
-    Account, AccountFilter, AccountId, AccountSyncState, Label, ListQuery, MessageId, ThreadDetail,
-    ThreadId, ThreadPage, UnreadCounts,
+    Account, AccountFilter, AccountId, AccountSyncState, Label, LabelUnread, ListQuery, MessageId,
+    ThreadDetail, ThreadId, ThreadPage,
 };
 use mailboat_core::sync::fetch_body;
 use mailboat_core::CoreError;
@@ -159,7 +159,7 @@ pub fn labels_list(state: State<'_, AppState>, accounts: AccountFilter) -> CmdRe
 pub fn unread_counts(
     state: State<'_, AppState>,
     accounts: AccountFilter,
-) -> CmdResult<UnreadCounts> {
+) -> CmdResult<Vec<LabelUnread>> {
     Ok(query::unread_counts(&state.db.conn(), &accounts)?)
 }
 
