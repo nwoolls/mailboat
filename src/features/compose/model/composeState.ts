@@ -125,3 +125,18 @@ export function close(state: ComposeState, id: number): ComposeState {
     replies: state.replies.filter((r) => r.draft.id !== id),
   };
 }
+
+export function entryById(state: ComposeState, id: number): ComposeEntry | undefined {
+  return [...state.cards, ...state.replies].find((e) => e.draft.id === id);
+}
+
+/**
+ * Puts a draft back on screen as it was (after Undo send, or when sending
+ * failed): a new message as the open card, a reply in its conversation.
+ */
+export function reopen(state: ComposeState, e: ComposeEntry, error: string | null = null) {
+  const back = { ...e, sending: false, error, minimized: false, focusKey: e.focusKey + 1 };
+  if (e.draft.kind === "new") return { ...state, cards: [...stepAside(state.cards), back] };
+  const others = state.replies.filter((r) => r.draft.threadId !== e.draft.threadId);
+  return { ...state, replies: [...others, back] };
+}

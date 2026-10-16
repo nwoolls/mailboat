@@ -71,6 +71,9 @@ export function closeDraft(id: number) {
   set(S.close(state, id));
 }
 
+/** How long Undo send waits before sending (Gmail's default). */
+export const UNDO_SEND_MS = 5000;
+
 /** Opens, replies and sends. Needs the accounts to know each one's address. */
 export function useComposeActions(accounts: Account[]) {
   const qc = useQueryClient();
@@ -122,15 +125,46 @@ export function useComposeActions(accounts: Account[]) {
     [qc, identities, emailOf],
   );
 
-  const send = useCallback(async (draft: Draft) => {
-    set(S.setSending(state, draft.id, true, null));
-    try {
-      await unwrap(commands.messageSend(toOutgoing(draft)));
-      set(S.close(state, draft.id));
-      showToast({ message: "Message sent" });
-    } catch (e) {
-      set(S.setSending(state, draft.id, false, e instanceof Error ? e.message : String(e)));
-    }
+  /**
+   * Undo send, as Gmail: the message closes at once and "Sending…" offers
+   * Undo (or z / ⌘Z) for 5 seconds before anything goes to Google.
+   * Undo puts it back as it was; if sending then fails, it reopens with
+   * the error.
+   */
+  const send = useCallback((draft: Draft) => {
+    const entry = S.entryById(state, draft.id);
+    if (!entry) return;
+    set(S.close(state, draft.id));
+    let undone = false;
+    let started = false;
+    const timer = window.setTimeout(() => {
+      if (undone) return;
+      started = true;
+      unwrap(commands.messageSend(toOutgoing(draft)))
+        .then(() => showToast({ message: "Message sent" }))
+        .catch((e: unknown) => {
+          const message = e instanceof Error ? e.message : String(e);
+          set(S.reopen(state, entry, message));
+          showToast({ tone: "error", message: `Couldn’t send: ${message}` });
+        });
+    }, UNDO_SEND_MS);
+    showToast({
+      message: "Sending…",
+      action: {
+        label: "Undo",
+        run: () => {
+          // Past the 5 seconds it's on its way; say so rather than
+          // reopening a message that was sent.
+          if (started) {
+            showToast({ message: "Too late to undo: the message was sent" });
+            return;
+          }
+          undone = true;
+          window.clearTimeout(timer);
+          set(S.reopen(state, entry));
+        },
+      },
+    });
   }, []);
 
   return useMemo(() => ({ startNew, startReply, send }), [startNew, startReply, send]);

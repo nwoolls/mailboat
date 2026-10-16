@@ -8,6 +8,7 @@ import {
   openCard,
   openCardEntry,
   openReply,
+  reopen,
   replyIn,
   setSending,
   updateDraft,
@@ -89,5 +90,18 @@ describe("compose state", () => {
     s = updateDraft(s, id, (d) => ({ ...d, subject: "x" }));
     expect(s.cards[0]?.error).toBeNull();
     expect(close(s, id).cards).toEqual([]);
+  });
+
+  it("undo send puts the draft back as it was, focused", () => {
+    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.com"));
+    const sent = s.cards[0]!;
+    s = close(s, sent.draft.id);
+    s = reopen(s, sent);
+    expect(openCardEntry(s)?.draft).toBe(sent.draft);
+    expect(openCardEntry(s)?.focusKey).toBe(1);
+    let r = openReply(EMPTY, reply(3));
+    const answer = r.replies[0]!;
+    r = reopen(close(r, answer.draft.id), answer, "Network error");
+    expect(replyIn(r, 3)?.error).toBe("Network error");
   });
 });
