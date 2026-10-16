@@ -48,7 +48,7 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
       <div
         role="status"
         aria-label="Loading message"
-        className="mx-6 h-40 animate-pulse rounded-lg bg-selection-subtle motion-reduce:animate-none"
+        className="h-32 animate-pulse rounded-lg bg-selection-subtle motion-reduce:animate-none"
       />
     );
   if (message.error)
@@ -64,17 +64,18 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
     <div>
       {notice && (
         <div
-          className={
+          // A lighter layer inside the message card, always one line.
+          className={`mb-3 flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs ${
             notice.quiet
-              ? "mx-6 mb-1.5 flex items-center gap-3 px-1 text-xs text-content/45"
-              : "mx-6 mb-2 flex items-center gap-3 rounded-md bg-selection-subtle px-3 py-2 text-xs text-content/60"
-          }
+              ? "message-notice text-content/50"
+              : "message-notice-strong text-content/70"
+          }`}
         >
-          <span>{notice.text}</span>
+          <span className="min-w-0 truncate">{notice.text}</span>
           {notice.action && (
             <button
               type="button"
-              className={`ml-auto disabled:opacity-50 ${
+              className={`ml-auto max-w-[60%] shrink-0 truncate disabled:opacity-50 ${
                 notice.quiet ? "hover:text-content hover:underline" : "text-accent hover:underline"
               }`}
               disabled={senderImages.isPending}
@@ -96,8 +97,8 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
         // Adaptive emails (plain text, inline colors) sit straight on the
         // glass with colors remapped for dark mode in Rust; emails with
         // their own style sheet keep a white card.
-        className={`frame-reveal mx-6 block w-[calc(100%-3rem)] ${
-          m.adaptive ? "bg-transparent" : "rounded-lg border border-stroke bg-white"
+        className={`frame-reveal block w-full ${
+          m.adaptive ? "bg-transparent" : "rounded-lg bg-white ring-1 ring-stroke"
         }`}
         style={{ height, opacity: ready ? 1 : 0 }}
       />

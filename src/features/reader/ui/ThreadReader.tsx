@@ -8,7 +8,7 @@ import type {
 import { useThread } from "../../../shared/lib/queries";
 import { AccountDot } from "../../../shared/ui/AccountDot";
 import type { AccountIndex } from "../../accounts/model/accounts";
-import { displayName, formatFullDate } from "../../mailbox/model/format";
+import { displayName, formatFullDate, formatListDate } from "../../mailbox/model/format";
 import { useSetRead } from "../../mailbox/ui/useSetRead";
 import { MessageFrame } from "./MessageFrame";
 
@@ -76,8 +76,8 @@ function ThreadBody({
         leaving ? "opacity-50" : ""
       }`}
     >
-      <header className="px-8 pt-6 pb-4">
-        <h1 className="selectable text-xl font-semibold leading-snug">
+      <header className="px-8 pt-5 pb-3">
+        <h1 className="selectable text-lg leading-snug font-semibold">
           {data.thread.subject || "(no subject)"}
         </h1>
         {(showAccount || data.labels.length > 0) && (
@@ -103,44 +103,82 @@ function ThreadBody({
           </div>
         )}
       </header>
-      <div className="flex flex-col gap-3">
+      {/* Each message is a card on the glass; collapsed ones are a shade
+          lighter. Avatar, notice and body share one left edge (16px). */}
+      <div className="flex flex-col gap-2 px-4">
         {data.messages.map((m) => {
           const isOpen = expanded.has(m.id);
+          const name = displayName(m.from, selfEmails);
+          const toggle = () =>
+            setExpanded((prev) => {
+              const next = new Set(prev);
+              if (next.has(m.id)) next.delete(m.id);
+              else next.add(m.id);
+              return next;
+            });
           return (
-            <section key={m.id} className="border-t border-stroke pt-3">
+            <section
+              key={m.id}
+              className={`rounded-xl ring-1 ring-stroke transition-colors duration-[120ms] ${
+                isOpen ? "message-card" : "message-card-collapsed"
+              }`}
+            >
               <button
                 type="button"
-                className="flex w-full items-baseline gap-3 px-8 pb-2 text-left"
-                onClick={() =>
-                  setExpanded((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(m.id)) next.delete(m.id);
-                    else next.add(m.id);
-                    return next;
-                  })
-                }
+                className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                onClick={toggle}
+                aria-expanded={isOpen}
               >
-                <span className={m.unread ? "font-semibold" : "font-medium"}>
-                  {displayName(m.from, selfEmails)}
-                </span>
-                {isOpen ? (
-                  <span className="truncate text-xs text-content/40">
-                    {m.from.email} → {m.to.map((a) => displayName(a, selfEmails)).join(", ")}
-                    {m.cc.length > 0 &&
-                      `, cc ${m.cc.map((a) => displayName(a, selfEmails)).join(", ")}`}
-                  </span>
-                ) : (
-                  <span className="truncate text-content/50">{m.snippet}</span>
-                )}
-                <span className="ml-auto shrink-0 text-xs text-content/40">
-                  {formatFullDate(m.internalDate)}
-                </span>
+                <SenderInitial name={name} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span
+                      className={`min-w-0 shrink-0 truncate ${m.unread ? "font-semibold" : "font-medium"} ${
+                        isOpen ? "max-w-full" : "max-w-[45%]"
+                      }`}
+                    >
+                      {name}
+                    </span>
+                    {!isOpen && (
+                      <span className="min-w-0 flex-1 truncate text-content/50">{m.snippet}</span>
+                    )}
+                    <span
+                      className="ml-auto shrink-0 pl-2 text-xs text-content/45"
+                      title={formatFullDate(m.internalDate)}
+                    >
+                      {formatListDate(m.internalDate)}
+                    </span>
+                  </div>
+                  {isOpen && (
+                    <div className="truncate text-xs text-content/45">
+                      {m.from.email} → {m.to.map((a) => displayName(a, selfEmails)).join(", ")}
+                      {m.cc.length > 0 &&
+                        `, cc ${m.cc.map((a) => displayName(a, selfEmails)).join(", ")}`}
+                    </div>
+                  )}
+                </div>
               </button>
-              {isOpen && <MessageFrame messageId={m.id} />}
+              {isOpen && (
+                <div className="px-4 pb-4">
+                  <MessageFrame messageId={m.id} />
+                </div>
+              )}
             </section>
           );
         })}
       </div>
     </article>
+  );
+}
+
+/** A sender's initial in a soft circle, as in Gmail's message headers. */
+function SenderInitial({ name }: { name: string }) {
+  return (
+    <span
+      aria-hidden
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-selection-strong text-xs font-semibold text-content/80"
+    >
+      {name.trim().charAt(0).toUpperCase() || "?"}
+    </span>
   );
 }

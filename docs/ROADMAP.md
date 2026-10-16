@@ -200,6 +200,12 @@ Options offered during the spike that the owner didn't pick (yet):
       strong brand colors and images stay. Light mode keeps the email's own
       colors. Emails with their own style sheet or that ask for light only
       keep the white card
+- [x] Reader refinement (owner feedback): each message is a rounded card in
+      layers of glass (open messages a little firmer than collapsed ones,
+      the image notice a lighter strip inside); headers are one tidy row
+      with a sender initial, the name and a short date (full date on
+      hover), and the addresses on a single truncated line; avatar, notice,
+      white card and adapted email text share one left edge
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong

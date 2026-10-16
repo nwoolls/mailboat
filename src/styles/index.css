@@ -129,6 +129,24 @@ html.resizing iframe {
   transition: opacity 180ms ease-out;
 }
 
+/* Reader cards, in layers of glass: an open message, a collapsed one (a
+   shade lighter, firmer on hover), and the notice inside a message. */
+.message-card {
+  background: color-mix(in srgb, var(--color-content) 5%, transparent);
+}
+.message-card-collapsed {
+  background: color-mix(in srgb, var(--color-content) 2.5%, transparent);
+}
+.message-card-collapsed:hover {
+  background: color-mix(in srgb, var(--color-content) 5%, transparent);
+}
+.message-notice {
+  background: color-mix(in srgb, var(--color-content) 4%, transparent);
+}
+.message-notice-strong {
+  background: color-mix(in srgb, var(--color-content) 8%, transparent);
+}
+
 /* The thin arc around an account avatar during a long sync. */
 .sync-ring {
   animation: sync-spin 1.1s linear infinite;

@@ -358,12 +358,12 @@ pub fn csp(allow_images: bool) -> String {
 /// rubber-banding inside the frame (which made long emails bounce).
 /// Emails wider than the reader can still scroll sideways.
 ///
-/// Adaptive documents have a transparent page (the glass shows through),
-/// little padding so text lines up with the reader's header, and a dark
+/// Adaptive documents have a transparent page (the message card shows
+/// through), no side padding so text lines up with the card's edge, and a dark
 /// sheet: default text and links for dark mode plus `dark_rules`.
 fn wrap_document(body: &str, allow_images: bool, adaptive: bool, dark_rules: &str) -> String {
     let page = if adaptive {
-        "html,body{margin:0;padding:0;background:transparent;color:#1f1f1f}\nbody{padding:2px 8px 8px}\n@media (prefers-color-scheme:dark){body{color:#e4e4e7}a{color:#8ab4f8}img[data-mailboat-blocked],img[data-mailboat-inline]{background:rgba(255,255,255,.08)!important}"
+        "html,body{margin:0;padding:0;background:transparent;color:#1f1f1f}\nbody{padding:0 0 4px}\n@media (prefers-color-scheme:dark){body{color:#e4e4e7}a{color:#8ab4f8}img[data-mailboat-blocked],img[data-mailboat-inline]{background:rgba(255,255,255,.08)!important}"
             .to_string()
             + dark_rules
             + "}"
