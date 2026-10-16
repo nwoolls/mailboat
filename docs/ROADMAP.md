@@ -316,12 +316,14 @@ Options offered during the spike that the owner didn't pick (yet):
       "Sync now" and "Remove account…", which asks first. Removing stops
       that account's sync and waits for it to end, then deletes its cached
       mail and its keychain sign-in; Gmail itself is untouched. A view that
-      only showed that account falls back to the default. *(Not yet tried
-      in the real app.)*
-- [ ] "All Inboxes" view across accounts (query exists; needs a second
-      account to try for real)
-- [ ] Per-account colors on rows (exists; review with two accounts)
-- [ ] Independent sync workers (exist; verify with two real accounts)
+      only showed that account falls back to the default. *(Verified in the
+      real app, 2026-10-16.)*
+- [x] "All Inboxes" view across accounts *(verified with two real
+      accounts, 2026-10-16)*
+- [x] Per-account colors on rows *(verified with two real accounts,
+      2026-10-16)*
+- [x] Independent sync workers *(verified with two real accounts,
+      2026-10-16)*
 - All Mail, Archive, Spam/Trash/Drafts/Important views and the wider sync
   scope: *pulled forward into Milestone 1 (see above)*
 - [x] Load older mail on demand when scrolling past the cached window
