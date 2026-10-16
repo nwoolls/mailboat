@@ -304,6 +304,9 @@ Options offered during the spike that the owner didn't pick (yet):
 - [ ] Background image prefetch during sync, like Apple Mail, so senders
       can't tell when you opened (option C, not built)
 
+- [x] Sidebar spacing matches the panes: its rows end 8px before the list
+      (was 16px, an extra right padding), the same gap as list to reader
+
 ## Milestone 2: Multiple accounts and unified inbox
 
 - [ ] Add and remove accounts from the UI (add exists; remove needs UI)

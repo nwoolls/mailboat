@@ -32,7 +32,9 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
 
   return (
     <nav className="flex h-full shrink-0 flex-col" style={{ width }}>
-      <div className="flex-1 overflow-y-auto px-2 pb-4">
+      {/* No right padding: the 8px splitter gap is the space before the list,
+          the same as between the list and the reader. */}
+      <div className="flex-1 overflow-y-auto pb-4 pl-2">
         <SidebarSections
           accounts={accounts}
           labels={labels}
@@ -47,7 +49,7 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
       </div>
       {/* A small icon bar, as in Arc's sidebar footer. Settings and the log
           console can join "Add account" here later. */}
-      <div className="flex h-9 shrink-0 items-center gap-1 px-2 pb-1">
+      <div className="flex h-9 shrink-0 items-center gap-1 pb-1 pl-2">
         {/* While a browser sign-in is waiting, "+" turns into a cancel
             button (closing the browser tab can't be detected). */}
         <button
