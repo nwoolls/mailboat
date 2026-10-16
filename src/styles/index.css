@@ -46,6 +46,9 @@
   /* The owner's pick, found with a temporary transparency slider. */
   --glass-sidebar-strength: 6.5%;
   --glass-panel-strength: 34%;
+  /* The compose card floats over the app's own content (often a white
+     email), so it needs more tint than the panels to keep writing legible. */
+  --glass-compose-strength: 72%;
   color-scheme: dark;
 }
 
@@ -56,6 +59,7 @@
     --content-lightness: 12%;
     --glass-sidebar-strength: 10%;
     --glass-panel-strength: 37%;
+    --glass-compose-strength: 78%;
     color-scheme: light;
   }
 }
@@ -376,10 +380,19 @@ html.resizing .panel-slide {
   }
 }
 
-/* The floating compose card: the menu's solid surface (text is written
-   on it, so no glass), with a deeper shadow since it stays up. */
+/* The floating compose card: glass like the rest of the window. It sits
+   over the app's own content, which the window's native blur can't reach,
+   so it blurs what's behind it itself. Suggestions and the discard dialog
+   open in the top layer, so the blur (which makes the card a containing
+   block) can't clip or move them. */
 .compose-card {
-  background: var(--color-background-raised);
+  background: color-mix(
+    in srgb,
+    var(--color-background-base) var(--glass-compose-strength),
+    transparent
+  );
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  backdrop-filter: blur(28px) saturate(1.6);
   box-shadow:
     inset 0 0 0 1px var(--color-stroke),
     0 24px 56px -12px rgb(0 0 0 / 0.5);
