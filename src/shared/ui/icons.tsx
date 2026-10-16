@@ -22,7 +22,6 @@ import SidebarRight from "@hugeicons/core-free-icons/SidebarRightIcon";
 import Star from "@hugeicons/core-free-icons/StarIcon";
 import Tag01 from "@hugeicons/core-free-icons/Tag01Icon";
 import ThumbsUp from "@hugeicons/core-free-icons/ThumbsUpIcon";
-import Transparency from "@hugeicons/core-free-icons/TransparencyIcon";
 
 /**
  * The app's icons: Hugeicons outline set, as MonoCode uses. Each icon is
@@ -59,4 +58,3 @@ export const SpamIcon = wrap(Shield01);
 export const StarIcon = wrap(Star);
 export const ThumbsUpIcon = wrap(ThumbsUp);
 export const TrashIcon = wrap(Delete02);
-export const TransparencyIcon = wrap(Transparency);

@@ -1,9 +1,7 @@
 import { useState } from "react";
 import type { Account, AccountSyncState } from "../../../platform/tauri/bindings";
 import { useLabels, useUnreadCounts } from "../../../shared/lib/queries";
-import { AddIcon, ClearIcon, TransparencyIcon } from "../../../shared/ui/icons";
-import { GLASS_BOOST_MAX, GLASS_BOOST_STEP } from "../../layout/model/glass";
-import { useGlassBoost } from "../../layout/ui/glass";
+import { AddIcon, ClearIcon } from "../../../shared/ui/icons";
 import type { Selection } from "../../mailbox/model/views";
 import { viewUnread } from "../model/sidebar";
 import { SidebarSections } from "./SidebarSections";
@@ -21,7 +19,6 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
   const labels = useLabels({ kind: "all" }).data ?? [];
   const counts = useUnreadCounts().data ?? [];
   const signIn = useSignIn();
-  const [glassBoost, setGlassBoost] = useGlassBoost();
   // Which folds are open (or, for ones that start open, closed). They
   // reset on relaunch.
   const [open, setOpen] = useState<Set<string>>(() => new Set());
@@ -62,25 +59,8 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
         >
           {signIn.pending ? <ClearIcon size={16} /> : <AddIcon size={16} />}
         </button>
-        {signIn.pending ? (
+        {signIn.pending && (
           <span className="truncate text-xs text-content/60">Waiting for browser sign-in…</span>
-        ) : (
-          <label
-            className="ml-auto flex items-center gap-1.5 pr-1 text-content/50"
-            title="Transparency"
-          >
-            <TransparencyIcon size={14} />
-            <input
-              type="range"
-              aria-label="Transparency"
-              min={0}
-              max={GLASS_BOOST_MAX}
-              step={GLASS_BOOST_STEP}
-              value={glassBoost}
-              onChange={(e) => setGlassBoost(Number(e.target.value))}
-              className="w-20 accent-accent"
-            />
-          </label>
         )}
       </div>
       {signIn.error && <p className="selectable px-4 pb-2 text-xs text-danger">{signIn.error}</p>}

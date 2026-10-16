@@ -125,11 +125,9 @@ a darker glass body, rounded corners where they meet, resizable panes.
       of a conversation the bottoms match (to the pixel: the reader's content
       height is kept whole so the last card's edge isn't cropped); the
       reader's bottom corners stay rounded while scrolling
-- [x] Transparency slider in the sidebar footer: from the default look to
-      100% clearer (just the native blur), scaling every glass tint by the same factor so areas
-      keep their differences; remembered across launches. (Could move to
-      Settings when there is one). Default is now clearer (the owner's pick,
-      45% on the first slider); the slider starts from there
+- [x] Clearer glass: tints found with a temporary transparency slider
+      (owner's pick, 45% clearer than before: dark 6.5% sidebar/reader and
+      34% list panel), then the slider was removed
 - [x] Sidebar counts only where unread is actionable: Inbox, Starred and
       labels (owner picked this over "Everything", which added Unread,
       Archive and All Mail, and over no counts)
@@ -318,9 +316,9 @@ split per account for selections that span accounts.
 - [ ] Remote Gmail search (`q=`) fanned out per account, merged by date
 - [ ] Notifications
 - [ ] Settings screen, with a transparency slider per area (sidebar and
-      reader, list panel), replacing the single slider in the sidebar
-      footer. One shared slider changes the list far more than the
-      sidebar, since it scales each tint by the same share
+      reader, list panel). Per area, because one shared slider scaling
+      each tint by the same share changed the list far more than the
+      sidebar
 - [ ] Offline mode
 
 ## Later / unscheduled
