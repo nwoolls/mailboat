@@ -41,6 +41,16 @@ fn setup() -> (Db, AccountId, MessageId) {
     (db, account, m2)
 }
 
+fn thread_of(db: &Db, message: MessageId) -> ThreadId {
+    db.conn()
+        .query_row(
+            "SELECT thread_id FROM messages WHERE id = ?1",
+            [message],
+            |r| r.get(0),
+        )
+        .unwrap()
+}
+
 fn temp_cache() -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("mailboat-attachments-{}", fastrand::u64(..)));
     std::fs::create_dir_all(&dir).unwrap();
@@ -78,7 +88,16 @@ async fn fetching_a_body_records_its_attachments_but_lists_only_files() {
     let (db, _, m2) = setup();
     let gmail = client(&server.uri()).0;
 
+    let thread = thread_of(&db, m2);
+    let summary = |db: &Db| mailboat_core::db::query::thread_summary(&db.conn(), thread);
+    assert!(!summary(&db).unwrap().has_attachments);
     fetch_body(&db, &gmail, m2).await.unwrap();
+    // The fetched body is the real answer for the paperclip.
+    assert!(summary(&db).unwrap().has_attachments);
+    // A later header-only sync of the thread doesn't undo it.
+    let t: Thread = serde_json::from_str(&fixture("thread_t1.json")).unwrap();
+    store::upsert_thread(&mut db.conn(), AccountId(1), &parse::thread_to_incoming(&t)).unwrap();
+    assert!(summary(&db).unwrap().has_attachments);
     let listed = store::attachments_for(&db.conn(), m2).unwrap();
     assert_eq!(listed.len(), 1, "inline images aren't listed: {listed:?}");
     assert_eq!(listed[0].filename, "../../Quarterly report.pdf");

@@ -11,7 +11,8 @@ use serde::de::DeserializeOwned;
 use super::batch;
 use super::pacer::{cost, QuotaPacer};
 use super::types::{
-    AttachmentBody, ErrorEnvelope, HistoryList, LabelList, Message, Profile, Thread, ThreadList,
+    AttachmentBody, ErrorEnvelope, HistoryList, LabelList, Message, MessageList, Profile, Thread,
+    ThreadList,
 };
 use crate::error::{CoreError, Result};
 
@@ -222,6 +223,22 @@ impl GmailClient {
             query.push(("pageToken", token));
         }
         self.get_json(&self.url("threads"), &query, cost::THREADS_LIST)
+            .await
+    }
+
+    /// `messages.list` for a Gmail search, newest first (IDs only).
+    pub async fn search_message_ids(
+        &self,
+        q: &str,
+        page_token: Option<&str>,
+        max_results: u32,
+    ) -> Result<MessageList> {
+        let max = max_results.to_string();
+        let mut query = vec![("q", q), ("maxResults", max.as_str())];
+        if let Some(token) = page_token {
+            query.push(("pageToken", token));
+        }
+        self.get_json(&self.url("messages"), &query, cost::MESSAGES_LIST)
             .await
     }
 

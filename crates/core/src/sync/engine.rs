@@ -24,6 +24,13 @@ pub struct ScopePart {
 /// the old scope get a one-time widening pass. 1 = INBOX/STARRED/SENT only.
 pub const SCOPE_VERSION: u32 = 2;
 
+/// Bump to rerun the one-time attachment catch-up (`mark_attachments`).
+pub const ATTACHMENTS_VERSION: u32 = 1;
+
+/// The catch-up asks Gmail for at most this many messages with attachments
+/// (5 quota units per 500), newest first; older ones are marked when opened.
+const ATTACHMENT_CATCH_UP_MAX: usize = 20_000;
+
 #[derive(Debug, Clone)]
 pub struct SyncConfig {
     /// What the initial sync downloads, in order (the Inbox fills first).
@@ -116,8 +123,35 @@ impl SyncEngine<'_> {
                 changed_threads: outcome.changed_threads + added,
             };
         }
+        let attachments = store::attachments_version(&self.db.conn(), self.account)?;
+        if attachments < ATTACHMENTS_VERSION {
+            self.mark_attachments().await?;
+        }
         self.prefetch_bodies().await?;
         Ok(outcome)
+    }
+
+    /// One-time catch-up for caches built before sync could tell which
+    /// messages have attachments: asks Gmail (`has:attachment`, IDs only)
+    /// and marks the cached ones. Interrupted? It runs again next pass.
+    pub async fn mark_attachments(&self) -> Result<usize> {
+        let mut ids: Vec<String> = Vec::new();
+        let mut page_token: Option<String> = None;
+        loop {
+            let page = self
+                .gmail
+                .search_message_ids("has:attachment", page_token.as_deref(), 500)
+                .await?;
+            ids.extend(page.messages.into_iter().map(|m| m.id));
+            page_token = page.next_page_token;
+            if page_token.is_none() || ids.len() >= ATTACHMENT_CATCH_UP_MAX {
+                break;
+            }
+        }
+        let changed =
+            store::mark_messages_with_attachments(&mut self.db.conn(), self.account, &ids)?;
+        store::set_attachments_version(&self.db.conn(), self.account, ATTACHMENTS_VERSION)?;
+        Ok(changed)
     }
 
     fn report(&self, phase: SyncPhase, done: usize, total: usize) {
@@ -170,6 +204,8 @@ impl SyncEngine<'_> {
         self.fetch_threads(&todo).await?;
         store::set_history_id(&self.db.conn(), self.account, Some(start_history_id), true)?;
         store::set_scope_version(&self.db.conn(), self.account, SCOPE_VERSION)?;
+        // Threads fetched now carry sync's own attachment guess.
+        store::set_attachments_version(&self.db.conn(), self.account, ATTACHMENTS_VERSION)?;
         Ok(SyncOutcome {
             kind: SyncKind::Full,
             changed_threads: ids.len() + stale.len(),

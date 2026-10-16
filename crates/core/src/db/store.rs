@@ -147,7 +147,13 @@ pub fn upsert_thread(
                from_name = excluded.from_name, from_email = excluded.from_email,
                to_json = excluded.to_json, cc_json = excluded.cc_json,
                rfc822_message_id = excluded.rfc822_message_id, in_reply_to = excluded.in_reply_to,
-               references_header = excluded.references_header, has_attachments = excluded.has_attachments",
+               references_header = excluded.references_header,
+               -- Once the body is fetched, its attachment list is the
+               -- real answer; the header-only guess mustn't overwrite it.
+               has_attachments = CASE WHEN EXISTS (
+                   SELECT 1 FROM message_bodies b
+                   WHERE b.message_id = messages.id AND b.parts_version >= 1)
+                 THEN messages.has_attachments ELSE excluded.has_attachments END",
             params![
                 account,
                 thread_id,
@@ -460,8 +466,52 @@ pub fn set_body(
         values.extend(kept.iter().map(|k| k as &dyn rusqlite::ToSql));
     }
     tx.execute(&sql, values.as_slice())?;
+    // The real answer for the paperclip, replacing sync's header-only guess.
+    tx.execute(
+        "UPDATE messages SET has_attachments =
+           EXISTS (SELECT 1 FROM attachments WHERE message_id = ?1 AND NOT inline)
+         WHERE id = ?1",
+        [message],
+    )?;
+    let thread: ThreadId = tx.query_row(
+        "SELECT thread_id FROM messages WHERE id = ?1",
+        [message],
+        |r| r.get(0),
+    )?;
+    refresh_thread(&tx, account, thread)?;
     tx.commit()?;
     Ok(())
+}
+
+/// Marks cached messages (by Gmail ID) as having attachments, unless their
+/// body was fetched (then its attachment list already decided), and
+/// updates their threads. Returns how many messages changed.
+pub fn mark_messages_with_attachments(
+    conn: &mut Connection,
+    account: AccountId,
+    gmail_message_ids: &[String],
+) -> Result<usize> {
+    let tx = conn.transaction()?;
+    let mut changed = 0;
+    {
+        let mut stmt = tx.prepare(
+            "UPDATE messages SET has_attachments = 1
+             WHERE account_id = ?1 AND gmail_message_id = ?2 AND NOT has_attachments
+               AND NOT EXISTS (SELECT 1 FROM message_bodies b
+                               WHERE b.message_id = messages.id AND b.parts_version >= ?3)",
+        )?;
+        for id in gmail_message_ids {
+            changed += stmt.execute(params![account, id, PARTS_VERSION])?;
+        }
+    }
+    tx.execute(
+        "UPDATE threads SET has_attachments =
+           EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = threads.id AND m.has_attachments)
+         WHERE account_id = ?1",
+        [account],
+    )?;
+    tx.commit()?;
+    Ok(changed)
 }
 
 /// A message's attachments that are files (inline images left out), in
@@ -821,6 +871,27 @@ pub fn restore_label_snapshot(conn: &mut Connection, snapshot: &LabelSnapshot) -
 }
 
 // ---- Sync scope ----
+
+/// Whether an account's cache has had its one-time attachment catch-up
+/// (`sync::engine::ATTACHMENTS_VERSION`).
+pub fn attachments_version(conn: &Connection, account: AccountId) -> Result<u32> {
+    Ok(conn
+        .query_row(
+            "SELECT attachments_version FROM sync_state WHERE account_id = ?1",
+            [account],
+            |r| r.get(0),
+        )
+        .optional()?
+        .unwrap_or(0))
+}
+
+pub fn set_attachments_version(conn: &Connection, account: AccountId, version: u32) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET attachments_version = ?2 WHERE account_id = ?1",
+        params![account, version],
+    )?;
+    Ok(())
+}
 
 pub fn scope_version(conn: &Connection, account: AccountId) -> Result<u32> {
     Ok(conn

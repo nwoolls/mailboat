@@ -182,6 +182,14 @@ fresh one; small parts come with the message and have no ID at all.
   transparent placeholder box sized from the email's own width and height,
   instead of the web view's broken-image icon.
 - Removing an account deletes its attachment folder.
+- **The paperclip** (`has_attachments`): sync's header-only fetch
+  (`format=metadata`) doesn't include a message's parts, so sync counts
+  `multipart/mixed` mail as having attachments. Once a body is fetched, its
+  real list (non-inline parts) decides, and later syncs keep that answer.
+  Caches built before this had no paperclips at all; a one-time catch-up
+  per account (`sync_state.attachments_version`) lists Gmail's
+  `has:attachment` message IDs (newest 20,000, 5 units per 500) and marks
+  the cached ones.
 
 ## Showing email safely
 

@@ -51,10 +51,19 @@ pub fn message_to_incoming(msg: &Message) -> IncomingMessage {
     }
 }
 
+/// Sync only fetches headers (`format=metadata`), which leave out the
+/// message's parts, so a `multipart/mixed` message counts as having
+/// attachments (that's how mail clients send files). Once the body is
+/// fetched, the real attachment list replaces this guess
+/// (`store::set_body`). Full payloads are checked part by part.
 fn has_attachments(part: &MessagePart) -> bool {
+    part.mime_type.eq_ignore_ascii_case("multipart/mixed") || has_attachment_parts(part)
+}
+
+fn has_attachment_parts(part: &MessagePart) -> bool {
     let inline = header(part, "Content-Disposition")
         .is_some_and(|d| d.trim_start().to_ascii_lowercase().starts_with("inline"));
-    (!part.filename.is_empty() && !inline) || part.parts.iter().any(has_attachments)
+    (!part.filename.is_empty() && !inline) || part.parts.iter().any(has_attachment_parts)
 }
 
 /// Gmail snippets arrive HTML-escaped ("&#39;", "&amp;").
@@ -324,6 +333,19 @@ mod tests {
         );
         assert!(parse_address_list("undisclosed-recipients:;").is_empty());
         assert_eq!(parse_address_list("<solo@x.com>")[0].email, "solo@x.com");
+    }
+
+    #[test]
+    fn multipart_mixed_headers_count_as_attachments() {
+        let msg = |mime: &str| -> Message {
+            serde_json::from_value(serde_json::json!({
+                "id": "m", "threadId": "t", "payload": { "mimeType": mime, "headers": [] }
+            }))
+            .unwrap()
+        };
+        assert!(message_to_incoming(&msg("multipart/mixed")).has_attachments);
+        assert!(!message_to_incoming(&msg("multipart/alternative")).has_attachments);
+        assert!(!message_to_incoming(&msg("multipart/related")).has_attachments);
     }
 
     #[test]

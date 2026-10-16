@@ -7,6 +7,8 @@ import { formatListDate, sendersLabel } from "../model/format";
 import type { OlderStatus } from "./useOlderMail";
 
 const ROW_HEIGHT = 72;
+/** Room before the row's text for the account ring and star (12px + gap). */
+const ICON_COLUMN = 18;
 /** The line under the last row while older mail loads (or failed to). */
 const FOOTER_HEIGHT = 40;
 
@@ -119,7 +121,14 @@ export function ThreadList({
               }`}
               style={{ top: item.start, height: ROW_HEIGHT - 4 }}
             >
-              <div className="relative flex items-center gap-2">
+              {/* Sender, subject and snippet all start after a fixed icon
+                  column (ICON_COLUMN): the account ring sits in it on the
+                  first line and the star under it on the second, so icons
+                  line up with icons and text with text on every row. */}
+              <div
+                className="relative flex items-center gap-2"
+                style={{ paddingLeft: ICON_COLUMN }}
+              >
                 {t.unread && (
                   <span
                     className="absolute top-1/2 -left-3.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent"
@@ -131,7 +140,7 @@ export function ThreadList({
                   // colour: hollow, so it can't be mistaken for the solid
                   // unread dot beside it, whatever the account's colour.
                   <span
-                    className="h-2 w-2 shrink-0 rounded-full"
+                    className="absolute top-1/2 left-0.5 h-2 w-2 -translate-y-1/2 rounded-full"
                     style={{
                       border: `1.5px solid color-mix(in srgb, ${account.color} 75%, transparent)`,
                     }}
@@ -151,7 +160,8 @@ export function ThreadList({
               <div
                 // Not `truncate` here: its clipping would hide the paperclip
                 // in the gutter; the subject truncates itself.
-                className={`relative flex min-w-0 items-center gap-1.5 ${t.unread ? "font-semibold text-content" : "font-medium text-content/70"}`}
+                className={`relative flex min-w-0 items-center ${t.unread ? "font-semibold text-content" : "font-medium text-content/70"}`}
+                style={{ paddingLeft: ICON_COLUMN }}
               >
                 {t.hasAttachments && (
                   // In the gutter under the unread dot, centred on the same
@@ -167,13 +177,18 @@ export function ThreadList({
                   <StarIcon
                     size={12}
                     strokeWidth={2}
-                    className="shrink-0 text-warn"
+                    className="absolute top-1/2 left-0 -translate-y-1/2 text-warn"
                     aria-label="Starred"
                   />
                 )}
                 <span className="truncate">{t.subject || "(no subject)"}</span>
               </div>
-              <div className="truncate text-xs font-medium text-content/40">{t.snippet}</div>
+              <div
+                className="truncate text-xs font-medium text-content/40"
+                style={{ paddingLeft: ICON_COLUMN }}
+              >
+                {t.snippet}
+              </div>
             </div>
           );
         })}

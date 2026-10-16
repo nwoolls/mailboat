@@ -377,7 +377,14 @@ split per account for selections that span accounts.
       email)
 - [x] The paperclip for mail with attachments sits in the row's left
       gutter, under the unread dot on the subject line, instead of after
-      the subject *(owner request, 2026-10-16)*
+      the subject *(owner request, 2026-10-16)*. It never showed at all
+      before: sync only fetches headers, which don't list attachments. Now
+      sync treats `multipart/mixed` mail as having attachments, an opened
+      message's real attachment list corrects that, and a one-time
+      catch-up asks Gmail which cached messages have attachments
+- [x] Rows keep an icon column: the account ring on the sender line, the
+      star under it on the subject line, so sender, subject and snippet
+      always start at the same place *(owner request, 2026-10-16)*
 - [x] Tidy placeholders instead of broken "?" boxes where images don't
       load (blocked remote images, missing inline ones), sized as the
       email asked *(moved from the UX Spike's deferred ideas)*

@@ -178,3 +178,10 @@ pub const MIGRATION_V4: &str = r#"
 ALTER TABLE attachments ADD COLUMN inline INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE message_bodies ADD COLUMN parts_version INTEGER NOT NULL DEFAULT 0;
 "#;
+
+/// Sync's header-only fetch never saw attachments, so no cached thread had
+/// a paperclip. `attachments_version` records the one-time catch-up that
+/// asks Gmail which messages have attachments (`has:attachment`).
+pub const MIGRATION_V5: &str = r#"
+ALTER TABLE sync_state ADD COLUMN attachments_version INTEGER NOT NULL DEFAULT 0;
+"#;

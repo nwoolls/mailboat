@@ -571,6 +571,18 @@ async fn account_synced_under_old_scope_is_widened_without_refetching() {
         SCOPE_VERSION
     );
 
+    // The one-time attachment catch-up marked t2 (its PDF), not t1.
+    let has = |gmail_id: &str| -> bool {
+        db.conn()
+            .query_row(
+                "SELECT has_attachments FROM threads WHERE gmail_thread_id = ?1",
+                [gmail_id],
+                |r| r.get(0),
+            )
+            .unwrap()
+    };
+    assert!(has("t2") && !has("t1"));
+
     // The next pass is a plain incremental one.
     assert_eq!(
         run(&db, &server, account).await.unwrap().kind,

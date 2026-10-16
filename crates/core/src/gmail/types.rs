@@ -116,6 +116,15 @@ pub struct PartBody {
     pub data: Option<String>,
 }
 
+/// `messages.list` response (IDs only).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageList {
+    #[serde(default)]
+    pub messages: Vec<MessageRef>,
+    pub next_page_token: Option<String>,
+}
+
 /// `messages.attachments.get` response.
 #[derive(Debug, Clone, Deserialize)]
 pub struct AttachmentBody {

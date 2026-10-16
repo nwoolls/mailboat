@@ -130,6 +130,15 @@ pub async fn mount_mailbox(server: &wiremock::MockServer) {
         .respond_with(json("threads_allmail.json"))
         .mount(server)
         .await;
+    // Messages with attachments (the one-time catch-up): t2's PDF.
+    Mock::given(path("/gmail/v1/users/me/messages"))
+        .and(query_param("q", "has:attachment"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(
+            r#"{"messages":[{"id":"m3","threadId":"t2"}]}"#,
+            "application/json",
+        ))
+        .mount(server)
+        .await;
     for label in ["DRAFT", "SPAM", "TRASH"] {
         Mock::given(path("/gmail/v1/users/me/threads"))
             .and(query_param("labelIds", label))
