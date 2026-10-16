@@ -536,8 +536,17 @@ Stage 5: Google Contacts
       well as from mail. Last because it needs the owner to turn on the
       People API and each account to sign in again
 
-Found while testing stage 3 (owner, 2026-10-16), not yet fixed:
+Found while testing stage 3 (owner, 2026-10-16):
 
+- [x] Signatures don't look as in Gmail *(owner report with screenshots,
+      2026-10-16)*: extra blank lines before the image, and colours and
+      fonts lost in sent mail. The editor (TipTap) was rewriting Gmail's
+      signature HTML. The signature now stays out of the editor, like the
+      quote: shown read-only under the text, and sent as Gmail's own HTML
+      in Gmail's `gmail_signature` wrapper. Switching From swaps it even
+      after typing. Its preview first sat on a white box (owner:
+      unconventional); it now goes through the reader's sanitizer and
+      sits on the glass with colours adjusted for dark mode
 - [x] Reader: a CI service's pipeline email rendered squeezed ("Failed"
       one letter per line, icons missing) while Gmail showed it correctly.
       The reader's page style used `overflow-wrap:anywhere`, which lets a
