@@ -229,9 +229,8 @@ export function Shell() {
               loading={threadsQuery.isPending || isFetchingNextPage}
               empty={
                 <EmptyState
-                  // Replays the entrance only when what it shows changes.
-                  key={emptyStateKey(selection.view)}
                   state={emptyStateFor(selection.view)}
+                  swapKey={emptyStateKey(selection.view)}
                 />
               }
             />

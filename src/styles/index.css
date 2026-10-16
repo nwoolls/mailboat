@@ -245,6 +245,15 @@ html.resizing .panel-slide {
     transform: translateY(8px);
   }
 }
+/* Switching between empty views: the new glyph and words fade in place. */
+.empty-swap {
+  animation: empty-swap 180ms ease-out both;
+}
+@keyframes empty-swap {
+  from {
+    opacity: 0;
+  }
+}
 .empty-nod {
   transform-origin: 50% 80%;
   animation: empty-nod 700ms var(--motion-ease-out) 300ms both;
@@ -266,6 +275,7 @@ html.resizing .panel-slide {
 @media (prefers-reduced-motion: reduce) {
   .empty-glow,
   .empty-rise,
+  .empty-swap,
   .empty-nod {
     animation: none;
   }

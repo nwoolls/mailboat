@@ -39,8 +39,14 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
  * and rests behind the icon. With the pointer anywhere over the card it
  * centres on the cursor; when the pointer leaves it lingers there a moment,
  * then eases back to its path.
+ *
+ * The icon sits exactly at the centre and the words hang below it, so a
+ * longer or shorter message never moves the icon. The rise plays once,
+ * when the list turns empty; switching to another empty view (Drafts to a
+ * label) only cross-fades the glyph and words in place. `swapKey` names
+ * what's shown, so typing a search doesn't count as a change.
  */
-export function EmptyState({ state }: { state: EmptyStateModel }) {
+export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey: string }) {
   const Icon = ICONS[state.icon];
   const { anchorRef, pullRef, glowRef } = useGlowPull();
   return (
@@ -50,14 +56,19 @@ export function EmptyState({ state }: { state: EmptyStateModel }) {
       <div ref={pullRef} aria-hidden className="empty-glow-pull">
         <div ref={glowRef} className="empty-glow" />
       </div>
-      <div className="empty-rise relative flex max-w-xs flex-col items-center text-center">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-selection-subtle text-content/80 ring-1 ring-stroke">
-          <span className={state.icon === "caughtUp" ? "empty-nod" : undefined}>
+      <div className="empty-rise relative flex flex-col items-center text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-selection-subtle text-content/80 ring-1 ring-stroke">
+          <span key={swapKey} className={state.icon === "caughtUp" ? "empty-nod" : "empty-swap"}>
             <Icon size={26} strokeWidth={1.5} />
           </span>
         </div>
-        <p className="text-[15px] font-semibold">{state.title}</p>
-        {state.detail && <p className="mt-1 text-content/60">{state.detail}</p>}
+        <div
+          key={swapKey}
+          className="empty-swap absolute top-full left-1/2 mt-4 w-80 max-w-[80vw] -translate-x-1/2"
+        >
+          <p className="text-[15px] font-semibold">{state.title}</p>
+          {state.detail && <p className="mt-1 text-content/60">{state.detail}</p>}
+        </div>
       </div>
     </div>
   );
