@@ -58,13 +58,15 @@ Commits: one topic each, imperative subject, a body that explains why.
 | Frontend tests only | `bun run test` |
 | Format TS | `bun run fmt` |
 | Regenerate TS bindings | `cargo test -p mailboat bindings` |
+| Regenerate app icons (needs Xcode) | `scripts/build-app-icon.sh` |
 
 ### macOS keychain prompts in dev
 
 macOS grants keychain access per exact build, so unsigned dev builds trigger
 "mailboat wants to use your confidential information" after every Rust rebuild.
-`.cargo/config.toml` runs `scripts/dev-run.sh`, which signs the dev binary
-with the owner's Apple Development certificate (free Apple ID: Xcode →
+`.cargo/config.toml` runs `scripts/dev-run.sh`, which wraps the dev binary
+in `target/debug/Mailboat.app` (so the Dock shows the real macOS icon) and signs
+it with the owner's Apple Development certificate (free Apple ID: Xcode →
 Settings → Accounts → Manage Certificates → + Apple Development). With it,
 "Always Allow" persists across rebuilds. Without it, the script prints a
 note and runs unsigned. Override the identity with `MAILBOAT_DEV_SIGNING_IDENTITY`.

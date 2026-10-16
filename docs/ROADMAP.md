@@ -256,6 +256,9 @@ Options offered during the spike that the owner didn't pick (yet):
       icons). Picked fold style S4 and colour C13 from the sheets in
       `design/icon/sheets/`; the other colours are kept in
       `design/icon/choices/`
+- [x] The icon gets macOS's Liquid Glass rim and depth, like other apps:
+      it also ships as an Icon Composer icon (`Assets.car`), and dev builds
+      run from a signed `Mailboat.app` so the Dock shows it there too
 - [x] Tell unread apart from the account in mixed-account lists (both
       were blue dots): the account is now a hollow ring in a softened
       account colour, unread stays a solid dot. Owner picked it after two

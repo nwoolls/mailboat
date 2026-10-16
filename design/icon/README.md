@@ -1,8 +1,13 @@
 # App icon
 
-- `mailboat-icon.svg` is the current icon. Every size in `src-tauri/icons/`
-  is generated from it with `bun tauri icon design/icon/mailboat-icon.svg`;
-  delete the `android/` and `ios/` folders it creates (desktop only).
+- `mailboat-icon.svg` is the current icon, tile included. The classic icons in
+  `src-tauri/icons/` (Windows, older macOS, the fallback) come from it.
+- `mailboat-icon-layer.svg` is the same M without the tile, on Icon Composer's
+  1024px canvas. It is the artwork layer of `src-tauri/macos/AppIcon.icon`
+  (whose fill is the tile colour), compiled to `src-tauri/macos/Assets.car`.
+  On macOS 26+ the system draws that with its glass rim and depth.
+- Change either, then run `scripts/build-app-icon.sh` (needs Xcode) to
+  regenerate everything.
 - `choices/` holds the icons the owner wants to offer in a future Settings
   icon picker: the folded-ribbon M (fold style S4) in 16 colours on a flat
   near-black tile, and the earlier glass icon (`glass-midnight.svg`). The

@@ -23,3 +23,9 @@ tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 specta-typescript = "0.0.12"
 open = "5"
 time = { version = "0.3.55", features = ["formatting"] }
+
+# Already part of the build through Tauri; declared to clear Tauri's dev
+# Dock picture (src/dock.rs). Same versions as Tauri and MonoCode.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "NSImage", "NSResponder"] }

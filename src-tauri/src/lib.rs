@@ -1,4 +1,5 @@
 mod commands;
+mod dock;
 mod error;
 mod events;
 mod links;
@@ -98,8 +99,13 @@ pub fn run() {
             app.manage(state);
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Mailboat");
+        .build(tauri::generate_context!())
+        .expect("error while building Mailboat")
+        .run(|_app, event| {
+            if let tauri::RunEvent::Ready = event {
+                dock::prefer_bundle_icon();
+            }
+        });
 }
 
 #[cfg(test)]
