@@ -395,6 +395,10 @@ split per account for selections that span accounts.
       load (blocked remote images, missing inline ones), sized as the
       email asked *(moved from the UX Spike's deferred ideas)*
 
+Wrapped up 2026-10-16: verified by the owner in the real app with two
+accounts (actions round-trip to Gmail, undo, multi-account selection,
+attachments, inline images, paperclips).
+
 ## Milestone 4: Compose
 
 - [ ] New message, reply, reply-all, forward with quoted HTML
