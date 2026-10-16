@@ -31,8 +31,7 @@ function reply(threadId: number, kind: Draft["kind"] = "reply"): Draft {
     kind,
     threadId,
     replyingTo: 100 + threadId,
-    text: "\n\n> quote",
-    initialText: "\n\n> quote",
+    html: "<p></p><blockquote><p>quote</p></blockquote>",
   };
 }
 
@@ -48,7 +47,7 @@ describe("compose state", () => {
   it("never throws away a reply with writing in it", () => {
     let s = openReply(EMPTY, reply(1));
     const id = s.replies[0]!.draft.id;
-    s = updateDraft(s, id, (d) => ({ ...d, text: `Hi${d.text}` }));
+    s = updateDraft(s, id, (d) => ({ ...d, edited: true }));
     s = openReply(s, reply(1, "forward"));
     expect(replyIn(s, 1)?.draft.kind).toBe("reply");
     expect(replyIn(s, 1)?.focusKey).toBe(1);

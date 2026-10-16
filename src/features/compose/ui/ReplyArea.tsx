@@ -36,6 +36,7 @@ export function ReplyArea({
           {draft.kind === "forward" ? "Forward" : draft.kind === "replyAll" ? "Reply all" : "Reply"}
         </div>
         <ComposeForm
+          key={draft.id}
           entry={reply}
           identities={identities}
           accounts={accounts}

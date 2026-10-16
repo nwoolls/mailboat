@@ -23,9 +23,12 @@ export type Draft = {
   cc: Address[];
   bcc: Address[];
   subject: string;
+  /** The editor's content (what's sent as the formatted version). */
+  html: string;
+  /** The same as plain text, sent alongside for text-only readers. */
   text: string;
-  /** The text it opened with (the quote); still equal means nothing was written. */
-  initialText: string;
+  /** The user has typed in the editor (the opening quote doesn't count). */
+  edited: boolean;
   /** The message replied to or forwarded. */
   replyingTo: MessageId | null;
   /** The conversation a reply or forward was started from. */
@@ -96,8 +99,9 @@ export function newDraft(
     cc: [],
     bcc: [],
     subject: "",
+    html: "",
     text: "",
-    initialText: "",
+    edited: false,
     replyingTo: null,
     threadId: null,
     showCc: false,
@@ -147,22 +151,36 @@ function defaultFormatDate(ms: number): string {
   });
 }
 
-/** "On <date>, <sender> wrote:" and the original, each line behind "> ". */
-export function quoteText(
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Plain text as paragraphs: blank lines split them, single breaks stay. */
+export function textToHtml(text: string): string {
+  return text
+    .replace(/\r\n/g, "\n")
+    .trim()
+    .split(/\n{2,}/)
+    .filter(Boolean)
+    .map((p) => `<p>${p.split("\n").map(escapeHtml).join("<br>")}</p>`)
+    .join("");
+}
+
+/** "On <date>, <sender> wrote:" and the original in a quote block. */
+export function quoteHtml(
   source: Pick<ReplySource, "from" | "date" | "text">,
   formatDate = defaultFormatDate,
 ): string {
-  const quoted = source.text
-    .replace(/\r\n/g, "\n")
-    .trimEnd()
-    .split("\n")
-    .map((line) => (line ? `> ${line}` : ">"))
-    .join("\n");
-  return `On ${formatDate(source.date)}, ${formatAddress(source.from)} wrote:\n${quoted}`;
+  const by = escapeHtml(`On ${formatDate(source.date)}, ${formatAddress(source.from)} wrote:`);
+  return `<p>${by}</p><blockquote>${textToHtml(source.text)}</blockquote>`;
 }
 
 /** Gmail's "Forwarded message" block: the original's headers, then its text. */
-export function forwardText(
+export function forwardHtml(
   source: Pick<ReplySource, "from" | "to" | "cc" | "date" | "subject" | "text">,
   formatDate = defaultFormatDate,
 ): string {
@@ -174,7 +192,7 @@ export function forwardText(
     `To: ${source.to.map(formatAddress).join(", ")}`,
   ];
   if (source.cc.length > 0) lines.push(`Cc: ${source.cc.map(formatAddress).join(", ")}`);
-  return `${lines.join("\n")}\n\n${source.text.replace(/\r\n/g, "\n").trimEnd()}`;
+  return `<p>${lines.map(escapeHtml).join("<br>")}</p>${textToHtml(source.text)}`;
 }
 
 /** A reply, reply-all or forward of `source`, from the account it's in. */
@@ -193,9 +211,9 @@ export function replyDraft(
     kind === "forward"
       ? { to: [], cc: [] }
       : replyRecipients(source, kind === "replyAll", myEmails);
-  const body = kind === "forward" ? forwardText(source, formatDate) : quoteText(source, formatDate);
-  // Room to write above the quote.
-  const text = `\n\n${body}`;
+  const body = kind === "forward" ? forwardHtml(source, formatDate) : quoteHtml(source, formatDate);
+  // An empty line to write in, above the quote.
+  const html = `<p></p>${body}`;
   return {
     id: nextId++,
     kind,
@@ -205,8 +223,10 @@ export function replyDraft(
     cc,
     bcc: [],
     subject: kind === "forward" ? forwardSubject(source.subject) : replySubject(source.subject),
-    text,
-    initialText: text,
+    html,
+    // Filled in by the editor as soon as it loads the HTML.
+    text: "",
+    edited: false,
     replyingTo: source.messageId,
     threadId: source.threadId,
     showCc: cc.length > 0,
@@ -230,9 +250,21 @@ export function sendProblem(draft: Draft): string | null {
 
 /** Something was written that closing would lose. */
 export function hasChanges(draft: Draft): boolean {
-  if (draft.text.trim() !== draft.initialText.trim()) return true;
+  if (draft.edited) return true;
   if (draft.kind !== "new") return false;
   return draft.to.length + draft.cc.length + draft.bcc.length > 0 || draft.subject.trim() !== "";
+}
+
+/**
+ * The editor's HTML as mail apps should show it: paragraphs without the
+ * gaps browsers add between them (the editor shows none), and empty
+ * lines kept as lines (an empty paragraph would collapse to nothing).
+ */
+export function emailHtml(html: string): string {
+  return html
+    .replace(/<p><\/p>/g, "<p><br></p>")
+    .replace(/<p style="/g, '<p style="margin:0;')
+    .replace(/<p>/g, '<p style="margin:0">');
 }
 
 export function toOutgoing(draft: Draft): OutgoingMessage {
@@ -244,7 +276,7 @@ export function toOutgoing(draft: Draft): OutgoingMessage {
     bcc: draft.bcc,
     subject: draft.subject,
     text: draft.text,
-    html: null,
+    html: draft.html.trim() ? emailHtml(draft.html) : null,
     replyingTo: draft.replyingTo,
   };
 }

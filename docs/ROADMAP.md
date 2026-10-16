@@ -490,8 +490,13 @@ Stage 2: the card and inline replies
 
 Stage 3: formatting, signatures, attachments
 
-- [ ] Full formatting toolbar (TipTap)
-- [ ] Reply and forward with quoted HTML (folded behind "…")
+- [x] Full formatting toolbar (TipTap), as Gmail's: font (Gmail's 11),
+      size (small/normal/large/huge), bold, italic, underline, text
+      colour (the macOS colour picker), alignment, numbered and bulleted
+      lists, quote, link, remove formatting. Sent as HTML with a plain-text
+      copy; spacing in the email matches the editor
+- [ ] Reply and forward with quoted HTML (folded behind "…"). For now
+      the quote is the original's text in a quote block
 - [ ] Signatures: use each address's Gmail signature when composing
       (read with the current `gmail.modify` scope) *(owner request,
       2026-10-16)*. Managing them is in Milestone 6

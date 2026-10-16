@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { Address, Identity, ReplySource } from "../../../platform/tauri/bindings";
 import {
   accountForNew,
+  emailHtml,
   defaultIdentity,
   forwardSubject,
-  forwardText,
+  forwardHtml,
   hasChanges,
   newDraft,
-  quoteText,
+  quoteHtml,
   replyDraft,
   replyRecipients,
   replySubject,
@@ -111,26 +112,18 @@ describe("subjects", () => {
 });
 
 describe("quoting", () => {
-  it("quotes every line under an attribution", () => {
-    expect(quoteText(source(), date)).toBe(
-      "On Thu, Oct 9, Jane <jane@z.com> wrote:\n> Noon?\n>\n> J",
+  it("quotes the original under an attribution, escaped", () => {
+    expect(quoteHtml(source({ text: "Noon?\n<b>sure</b>\n\nJ" }), date)).toBe(
+      "<p>On Thu, Oct 9, Jane &lt;jane@z.com&gt; wrote:</p>" +
+        "<blockquote><p>Noon?<br>&lt;b&gt;sure&lt;/b&gt;</p><p>J</p></blockquote>",
     );
   });
 
   it("forwards with the original's headers", () => {
-    expect(forwardText(source(), date)).toBe(
-      [
-        "---------- Forwarded message ---------",
-        "From: Jane <jane@z.com>",
-        "Date: Thu, Oct 9",
-        "Subject: Lunch",
-        "To: me@x.com, Bob <bob@z.com>",
-        "Cc: carol@z.com",
-        "",
-        "Noon?",
-        "",
-        "J",
-      ].join("\n"),
+    expect(forwardHtml(source(), date)).toBe(
+      "<p>---------- Forwarded message ---------<br>From: Jane &lt;jane@z.com&gt;<br>" +
+        "Date: Thu, Oct 9<br>Subject: Lunch<br>To: me@x.com, Bob &lt;bob@z.com&gt;<br>" +
+        "Cc: carol@z.com</p><p>Noon?</p><p>J</p>",
     );
   });
 });
@@ -150,7 +143,7 @@ describe("drafts", () => {
   it("a reply starts with the quote below room to write, and a fresh subject", () => {
     const d = replyDraft("replyAll", source(), identities, "me@x.com", date);
     expect(d.subject).toBe("Re: Lunch");
-    expect(d.text.startsWith("\n\nOn Thu, Oct 9")).toBe(true);
+    expect(d.html.startsWith("<p></p><p>On Thu, Oct 9")).toBe(true);
     expect(d.replyingTo).toBe(10);
     expect(d.threadId).toBe(5);
     expect(d.showCc).toBe(true);
@@ -176,7 +169,7 @@ describe("drafts", () => {
     expect(hasChanges({ ...fresh, subject: "Hi" })).toBe(true);
     const reply = replyDraft("reply", source(), identities, "me@x.com", date);
     expect(hasChanges(reply)).toBe(false);
-    expect(hasChanges({ ...reply, text: `Sure!${reply.text}` })).toBe(true);
+    expect(hasChanges({ ...reply, edited: true })).toBe(true);
   });
 
   it("choosing another account's address moves the draft to that account", () => {
@@ -191,4 +184,10 @@ it("new mail starts from the account being viewed, else the first", () => {
   expect(accountForNew({ kind: "all" }, [1, 2])).toBe(1);
   expect(accountForNew({ kind: "only", ids: [1, 2] }, [1, 2])).toBe(1);
   expect(accountForNew({ kind: "all" }, [])).toBeUndefined();
+});
+
+it("sent HTML keeps the editor's spacing and blank lines", () => {
+  expect(emailHtml('<p>Hi</p><p></p><p style="text-align: center">x</p>')).toBe(
+    '<p style="margin:0">Hi</p><p style="margin:0"><br></p><p style="margin:0;text-align: center">x</p>',
+  );
 });

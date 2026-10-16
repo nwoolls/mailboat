@@ -6,6 +6,7 @@ import { TrashIcon } from "../../../shared/ui/icons";
 import type { ComposeEntry } from "../model/composeState";
 import { type Draft, hasChanges, sendProblem, withIdentity } from "../model/draft";
 import { AddressField } from "./AddressField";
+import { EditorBody, FormatBar, useRichEditor } from "./RichEditor";
 
 /**
  * The fields of a message being written: From (when there's a choice),
@@ -33,20 +34,26 @@ export function ComposeForm({
   const { draft, sending, error } = entry;
   const [problem, setProblem] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  // Loaded once with the draft's opening HTML (the quote, for replies);
+  // a different draft gets a fresh form (keyed by draft ID).
+  const editor = useRichEditor(draft.html, ({ html, text, edited }) =>
+    onChange((d) => ({ ...d, html, text, edited: d.edited || edited })),
+  );
 
   // Replies start in the text, above the quote (new messages and
   // forwards start in To). Asked again (focusKey) when `r` is pressed on
   // a conversation already being answered.
   useEffect(() => {
     if ((draft.kind === "new" || draft.kind === "forward") && entry.focusKey === 0) return;
-    const body = bodyRef.current;
-    if (!body) return;
-    body.focus();
-    if (entry.focusKey === 0) body.setSelectionRange(0, 0);
+    if (!editor) return;
+    editor.commands.focus(entry.focusKey === 0 ? "start" : undefined);
     formRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [draft.kind, entry.focusKey]);
+  }, [editor, draft.kind, entry.focusKey]);
+
+  useEffect(() => {
+    editor?.setEditable(!sending);
+  }, [editor, sending]);
 
   const trySend = () => {
     const why = sendProblem(draft);
@@ -113,16 +120,12 @@ export function ComposeForm({
             className="h-9 border-b border-stroke bg-transparent outline-none placeholder:text-content/45 focus-visible:outline-none"
           />
         )}
-        <textarea
-          ref={bodyRef}
-          aria-label="Message"
-          value={draft.text}
-          onChange={(e) => onChange((d) => ({ ...d, text: e.target.value }))}
-          className={`selectable w-full resize-none bg-transparent py-3 leading-relaxed outline-none focus-visible:outline-none ${
-            inline ? "field-sizing-content min-h-40" : "min-h-0 flex-1"
-          }`}
+        <EditorBody
+          editor={editor}
+          className={inline ? "min-h-40" : "min-h-0 flex-1 overflow-y-auto"}
         />
       </fieldset>
+      <FormatBar editor={editor} />
       <div className="flex shrink-0 items-center gap-3 px-4 pt-1 pb-3">
         <button
           type="submit"
