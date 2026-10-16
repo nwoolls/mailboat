@@ -244,6 +244,7 @@ export function toOutgoing(draft: Draft): OutgoingMessage {
     bcc: draft.bcc,
     subject: draft.subject,
     text: draft.text,
+    html: null,
     replyingTo: draft.replyingTo,
   };
 }

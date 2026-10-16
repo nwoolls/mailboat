@@ -17,6 +17,9 @@ pub struct MimeMessage {
     pub bcc: Vec<Address>,
     pub subject: String,
     pub text: String,
+    /// The formatted version; sent alongside the text as
+    /// `multipart/alternative`, so plain-text readers still get the text.
+    pub html: Option<String>,
     /// Message-IDs (with angle brackets) of the message being answered.
     pub in_reply_to: Option<String>,
     /// The whole chain, oldest first, ending with `in_reply_to`.
@@ -31,6 +34,9 @@ pub fn build(msg: &MimeMessage) -> Result<Vec<u8>> {
         .subject(one_line(&msg.subject))
         .message_id(new_message_id(&msg.from.email))
         .text_body(normalize_newlines(&msg.text));
+    if let Some(html) = msg.html.as_deref().filter(|h| !h.trim().is_empty()) {
+        builder = builder.html_body(html.to_string());
+    }
     if !msg.to.is_empty() {
         builder = builder.to(mime_list(&msg.to));
     }
@@ -199,6 +205,22 @@ mod tests {
         assert!(raw.contains("Subject: =?utf-8?"), "{raw}");
         assert!(raw.contains("From: =?utf-8?"), "{raw}");
         assert!(raw.is_ascii(), "the whole message is 7-bit after encoding");
+    }
+
+    #[test]
+    fn formatted_mail_carries_both_versions() {
+        let raw = built(&MimeMessage {
+            from: addr(None, "me@x.com"),
+            to: vec![addr(None, "a@y.com")],
+            subject: "Hi".into(),
+            text: "Hello there".into(),
+            html: Some("<p>Hello <b>there</b></p>".into()),
+            ..Default::default()
+        });
+        assert!(raw.contains("multipart/alternative"), "{raw}");
+        assert!(raw.contains("text/plain"), "{raw}");
+        assert!(raw.contains("text/html"), "{raw}");
+        assert!(raw.contains("<b>there</b>"), "{raw}");
     }
 
     #[test]

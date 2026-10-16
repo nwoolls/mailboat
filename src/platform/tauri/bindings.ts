@@ -308,6 +308,8 @@ export type OutgoingMessage = {
 	subject: string,
 	/**  Plain-text body. */
 	text: string,
+	/**  Formatted body, if written with formatting. */
+	html: string | null,
 	/**  The message this replies to or forwards, for threading. */
 	replyingTo: MessageId | null,
 };

@@ -59,6 +59,7 @@ fn outgoing(account: AccountId, from: &str, replying_to: Option<MessageId>) -> O
         bcc: vec![],
         subject: "Re: Lunch Friday".into(),
         text: "See you there".into(),
+        html: None,
         replying_to,
     }
 }

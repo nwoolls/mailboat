@@ -32,6 +32,8 @@ pub struct OutgoingMessage {
     pub subject: String,
     /// Plain-text body.
     pub text: String,
+    /// Formatted body, if written with formatting.
+    pub html: Option<String>,
     /// The message this replies to or forwards, for threading.
     pub replying_to: Option<MessageId>,
 }
@@ -202,6 +204,7 @@ pub async fn send(db: &Db, gmail: &GmailClient, msg: &OutgoingMessage) -> Result
         bcc: msg.bcc.clone(),
         subject: msg.subject.clone(),
         text: msg.text.clone(),
+        html: msg.html.clone(),
         in_reply_to,
         references,
     })?;
