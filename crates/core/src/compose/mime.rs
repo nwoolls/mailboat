@@ -20,6 +20,8 @@ pub struct MimeMessage {
     /// The formatted version; sent alongside the text as
     /// `multipart/alternative`, so plain-text readers still get the text.
     pub html: Option<String>,
+    /// Files: (name, MIME type, bytes).
+    pub attachments: Vec<(String, String, Vec<u8>)>,
     /// Message-IDs (with angle brackets) of the message being answered.
     pub in_reply_to: Option<String>,
     /// The whole chain, oldest first, ending with `in_reply_to`.
@@ -36,6 +38,9 @@ pub fn build(msg: &MimeMessage) -> Result<Vec<u8>> {
         .text_body(normalize_newlines(&msg.text));
     if let Some(html) = msg.html.as_deref().filter(|h| !h.trim().is_empty()) {
         builder = builder.html_body(html.to_string());
+    }
+    for (name, mime_type, bytes) in &msg.attachments {
+        builder = builder.attachment(mime_type.clone(), one_line(name), bytes.clone());
     }
     if !msg.to.is_empty() {
         builder = builder.to(mime_list(&msg.to));
@@ -205,6 +210,25 @@ mod tests {
         assert!(raw.contains("Subject: =?utf-8?"), "{raw}");
         assert!(raw.contains("From: =?utf-8?"), "{raw}");
         assert!(raw.is_ascii(), "the whole message is 7-bit after encoding");
+    }
+
+    #[test]
+    fn attachments_are_attached() {
+        let raw = built(&MimeMessage {
+            from: addr(None, "me@x.com"),
+            to: vec![addr(None, "a@y.com")],
+            subject: "Files".into(),
+            text: "see attached".into(),
+            attachments: vec![(
+                "report.pdf".into(),
+                "application/pdf".into(),
+                b"%PDF-1".to_vec(),
+            )],
+            ..Default::default()
+        });
+        assert!(raw.contains("multipart/mixed"), "{raw}");
+        assert!(raw.contains("application/pdf"), "{raw}");
+        assert!(raw.contains("report.pdf"), "{raw}");
     }
 
     #[test]

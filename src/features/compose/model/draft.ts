@@ -4,6 +4,7 @@ import type {
   Address,
   Identity,
   MessageId,
+  OutgoingAttachment,
   OutgoingMessage,
   ReplySource,
   ThreadId,
@@ -43,6 +44,8 @@ export type Draft = {
    * lines), shown read-only under the text, and added when sending.
    */
   signature: string;
+  /** Files to send with it. */
+  attachments: OutgoingAttachment[];
   /** The message replied to or forwarded. */
   replyingTo: MessageId | null;
   /** The conversation a reply or forward was started from. */
@@ -152,6 +155,7 @@ export function newDraft(
     quote: "",
     quoteText: "",
     signature: signatureOf(identities, accountId, from),
+    attachments: [],
     replyingTo: null,
     threadId: null,
     showCc: false,
@@ -308,6 +312,7 @@ export function replyDraft(
     // quote, as in Gmail and other mail apps.
     html: "",
     signature: signatureOf(identities, source.accountId, from),
+    attachments: [],
     quote,
     quoteText: quoteCopy,
     // Filled in by the editor as soon as it loads the HTML.
@@ -340,8 +345,19 @@ export function editorKey(draft: Draft): string {
   return `${draft.id}`;
 }
 
+/** Gmail's limit for attachments on one message (Rust checks it too). */
+export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
+/** A file's size from its base64 data. */
+export function attachmentSize(a: Pick<OutgoingAttachment, "data">): number {
+  const padding = a.data.endsWith("==") ? 2 : a.data.endsWith("=") ? 1 : 0;
+  return Math.floor((a.data.length * 3) / 4) - padding;
+}
+
 /** Why it can't be sent yet, or null. */
 export function sendProblem(draft: Draft): string | null {
+  const total = draft.attachments.reduce((sum, a) => sum + attachmentSize(a), 0);
+  if (total > MAX_ATTACHMENT_BYTES) return "Attachments are over Gmail’s 25 MB limit.";
   const everyone = [...draft.to, ...draft.cc, ...draft.bcc];
   if (everyone.length === 0) return "Add at least one recipient.";
   const bad = everyone.find((a) => !isValidEmail(a.email));
@@ -351,7 +367,7 @@ export function sendProblem(draft: Draft): string | null {
 
 /** Something was written that closing would lose. */
 export function hasChanges(draft: Draft): boolean {
-  if (draft.edited) return true;
+  if (draft.edited || draft.attachments.length > 0) return true;
   if (draft.kind !== "new") return false;
   return draft.to.length + draft.cc.length + draft.bcc.length > 0 || draft.subject.trim() !== "";
 }
@@ -391,6 +407,7 @@ export function toOutgoing(draft: Draft): OutgoingMessage {
     subject: draft.subject,
     text,
     html,
+    attachments: draft.attachments,
     replyingTo: draft.replyingTo,
   };
 }

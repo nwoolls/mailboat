@@ -34,8 +34,47 @@ pub struct OutgoingMessage {
     pub text: String,
     /// Formatted body, if written with formatting.
     pub html: Option<String>,
+    /// Files to attach.
+    pub attachments: Vec<OutgoingAttachment>,
     /// The message this replies to or forwards, for threading.
     pub replying_to: Option<MessageId>,
+}
+
+/// A file attached to a message being sent.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct OutgoingAttachment {
+    pub filename: String,
+    pub mime_type: String,
+    /// The file's bytes, base64 (standard alphabet).
+    pub data: String,
+}
+
+/// Gmail's limit for attachments on one message.
+pub const MAX_ATTACHMENTS_BYTES: usize = 25 * 1024 * 1024;
+
+fn decode_attachments(list: &[OutgoingAttachment]) -> Result<Vec<(String, String, Vec<u8>)>> {
+    use base64::Engine;
+    let mut out = Vec::with_capacity(list.len());
+    let mut total = 0usize;
+    for a in list {
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(a.data.trim())
+            .map_err(|_| CoreError::Invalid(format!("“{}” couldn't be read.", a.filename)))?;
+        total += bytes.len();
+        let mime_type = if a.mime_type.contains('/') {
+            a.mime_type.clone()
+        } else {
+            "application/octet-stream".into()
+        };
+        out.push((a.filename.clone(), mime_type, bytes));
+    }
+    if total > MAX_ATTACHMENTS_BYTES {
+        return Err(CoreError::Invalid(
+            "Attachments are over Gmail's 25 MB limit.".into(),
+        ));
+    }
+    Ok(out)
 }
 
 /// What compose needs from a message to reply to or forward it.
@@ -211,6 +250,7 @@ pub async fn send(db: &Db, gmail: &GmailClient, msg: &OutgoingMessage) -> Result
         subject: msg.subject.clone(),
         text: msg.text.clone(),
         html: msg.html.clone(),
+        attachments: decode_attachments(&msg.attachments)?,
         in_reply_to,
         references,
     })?;
@@ -257,6 +297,33 @@ pub fn quote_clean(html: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn attachments_over_gmails_limit_or_unreadable_are_refused() {
+        use base64::Engine;
+        let file = |bytes: usize| OutgoingAttachment {
+            filename: "a.bin".into(),
+            mime_type: "".into(),
+            data: base64::engine::general_purpose::STANDARD.encode(vec![0u8; bytes]),
+        };
+        let ok = decode_attachments(&[file(10)]).unwrap();
+        assert_eq!(ok[0].1, "application/octet-stream");
+        let big = decode_attachments(&[
+            file(MAX_ATTACHMENTS_BYTES / 2 + 1),
+            file(MAX_ATTACHMENTS_BYTES / 2),
+        ]);
+        assert!(matches!(big, Err(CoreError::Invalid(_))));
+        let bad = OutgoingAttachment {
+            data: "%%%".into(),
+            ..file(1)
+        };
+        assert!(matches!(
+            decode_attachments(&[bad]),
+            Err(CoreError::Invalid(_))
+        ));
+    }
+
     #[test]
     fn quoted_html_keeps_its_look_but_not_scripts() {
         let clean = super::quote_clean(

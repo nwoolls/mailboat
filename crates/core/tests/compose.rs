@@ -60,23 +60,30 @@ fn outgoing(account: AccountId, from: &str, replying_to: Option<MessageId>) -> O
         subject: "Re: Lunch Friday".into(),
         text: "See you there".into(),
         html: None,
+        attachments: vec![],
         replying_to,
     }
 }
 
 /// The decoded raw message of a `messages.send` request.
+/// The raw message and thread of a `messages.send` upload (multipart/related:
+/// JSON metadata, then the message).
 fn sent_raw(request: &Request) -> (String, Option<String>) {
-    let body: serde_json::Value = serde_json::from_slice(&request.body).unwrap();
-    let raw = parse::decode_base64url(body["raw"].as_str().unwrap()).unwrap();
+    let body = String::from_utf8(request.body.clone()).unwrap();
+    let json_start = body.find("\r\n\r\n").unwrap() + 4;
+    let json_end = json_start + body[json_start..].find("\r\n--").unwrap();
+    let meta: serde_json::Value = serde_json::from_str(&body[json_start..json_end]).unwrap();
+    let raw_start = body.find("message/rfc822\r\n\r\n").unwrap() + 18;
+    let raw_end = body.rfind("\r\n--").unwrap();
     (
-        String::from_utf8(raw).unwrap(),
-        body["threadId"].as_str().map(str::to_string),
+        body[raw_start..raw_end].to_string(),
+        meta["threadId"].as_str().map(str::to_string),
     )
 }
 
 async fn mount_send(server: &MockServer, thread: &str) {
     Mock::given(method("POST"))
-        .and(path("/gmail/v1/users/me/messages/send"))
+        .and(path("/upload/gmail/v1/users/me/messages/send"))
         .respond_with(ResponseTemplate::new(200).set_body_json(
             serde_json::json!({ "id": "sent1", "threadId": thread, "labelIds": ["SENT"] }),
         ))
@@ -164,7 +171,7 @@ async fn a_server_error_while_sending_is_not_retried() {
     // The mail may already have gone: sending again could deliver it twice.
     let server = MockServer::start().await;
     Mock::given(method("POST"))
-        .and(path("/gmail/v1/users/me/messages/send"))
+        .and(path("/upload/gmail/v1/users/me/messages/send"))
         .respond_with(ResponseTemplate::new(503))
         .expect(1)
         .mount(&server)
@@ -183,7 +190,7 @@ async fn a_rate_limit_while_sending_is_retried() {
     // Google refuses before accepting anything, so trying again is safe.
     let server = MockServer::start().await;
     Mock::given(method("POST"))
-        .and(path("/gmail/v1/users/me/messages/send"))
+        .and(path("/upload/gmail/v1/users/me/messages/send"))
         .respond_with(ResponseTemplate::new(429))
         .up_to_n_times(1)
         .mount(&server)

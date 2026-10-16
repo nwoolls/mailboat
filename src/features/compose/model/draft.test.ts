@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Address, Identity, ReplySource } from "../../../platform/tauri/bindings";
 import {
   accountForNew,
+  attachmentSize,
+  MAX_ATTACHMENT_BYTES,
   emailHtml,
   defaultIdentity,
   forwardSubject,
@@ -254,4 +256,16 @@ describe("signatures", () => {
     );
     expect(out.text).toBe(`Hi\n\nJordan\nArchitect\n\n${d.quoteText}`);
   });
+});
+
+it("attachments count as changes, report their size, and respect Gmail's limit", () => {
+  const d = { ...newDraft(identities, ME, "me@x.com"), to: [a("b@z.com")] };
+  const file = { filename: "a.txt", mimeType: "text/plain", data: "aGVsbG8=" };
+  expect(attachmentSize(file)).toBe(5);
+  expect(hasChanges({ ...d, to: [], attachments: [file] })).toBe(true);
+  expect(toOutgoing({ ...d, attachments: [file] }).attachments).toEqual([file]);
+  const huge = { ...file, data: "A".repeat(Math.ceil((MAX_ATTACHMENT_BYTES * 4) / 3) + 8) };
+  expect(sendProblem({ ...d, attachments: [huge] })).toBe(
+    "Attachments are over Gmail’s 25 MB limit.",
+  );
 });

@@ -297,13 +297,34 @@ impl GmailClient {
     /// accepts anything, so those still retry.
     pub async fn send_message(&self, raw: &[u8], thread_id: Option<&str>) -> Result<MessageRef> {
         self.spend(cost::MESSAGES_SEND).await;
-        let url = self.url("messages/send");
-        let mut body = serde_json::json!({ "raw": super::parse::encode_base64url(raw) });
-        if let Some(thread) = thread_id {
-            body["threadId"] = thread.into();
-        }
+        // The upload endpoint takes messages up to 35 MB (attachments);
+        // the metadata part carries the thread.
+        let url = format!(
+            "{}/upload/gmail/v1/users/me/messages/send?uploadType=multipart",
+            self.base_url
+        );
+        let metadata = match thread_id {
+            Some(thread) => serde_json::json!({ "threadId": thread }),
+            None => serde_json::json!({}),
+        };
+        let boundary = format!("mailboat_send_{:016x}", fastrand::u64(..));
+        let mut body = format!(
+            "--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{metadata}\r\n--{boundary}\r\nContent-Type: message/rfc822\r\n\r\n"
+        )
+        .into_bytes();
+        body.extend_from_slice(raw);
+        body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+        let content_type = format!("multipart/related; boundary={boundary}");
         let response = self
-            .send_with(|| self.http.post(&url).json(&body), Retry::OnlyUnsent)
+            .send_with(
+                || {
+                    self.http
+                        .post(&url)
+                        .header("Content-Type", &content_type)
+                        .body(body.clone())
+                },
+                Retry::OnlyUnsent,
+            )
             .await?;
         response.json().await.map_err(net_error)
     }

@@ -516,7 +516,13 @@ Stage 3: formatting, signatures, attachments
       blank line); changing From swaps it until you've typed something.
       Images in signatures hosted on the web (as Gmail's are) show and
       are sent; images embedded in the email itself need attachments
-- [ ] Sending attachments *(receiving moved to M3)*
+- [x] Sending attachments *(receiving moved to M3)*: the paperclip next
+      to Send opens the system file picker (several files at once; no new
+      plugin or permission); files show as chips with their size and ✕.
+      Up to Gmail's 25 MB, checked before sending and again in Rust. Mail
+      now goes through Gmail's upload endpoint (up to 35 MB per message).
+      Not yet: dragging files onto the composer, and forwarding the
+      original's attachments
 
 Stage 4: drafts and undo send
 
@@ -539,7 +545,7 @@ Found while testing stage 3 (owner, 2026-10-16), not yet fixed:
       as mail apps use. Small fixed-size images (64px or less) are also
       exempt from `max-width:100%`, which shrank the cell's icons to
       nothing
-- [ ] Sending attachments (rest of stage 3), then stage 4
+- [x] Sending attachments (rest of stage 3)
 
 ## Milestone 5: Polish
 

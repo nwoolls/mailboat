@@ -302,6 +302,14 @@ export type OpenedMessage = {
 	attachments: Attachment[],
 } & SafeMessage;
 
+/**  A file attached to a message being sent. */
+export type OutgoingAttachment = {
+	filename: string,
+	mimeType: string,
+	/**  The file's bytes, base64 (standard alphabet). */
+	data: string,
+};
+
 /**  A message the user wants sent. */
 export type OutgoingMessage = {
 	/**  The account it's sent with; `from` must be one of its identities. */
@@ -315,6 +323,8 @@ export type OutgoingMessage = {
 	text: string,
 	/**  Formatted body, if written with formatting. */
 	html: string | null,
+	/**  Files to attach. */
+	attachments: OutgoingAttachment[],
 	/**  The message this replies to or forwards, for threading. */
 	replyingTo: MessageId | null,
 };
