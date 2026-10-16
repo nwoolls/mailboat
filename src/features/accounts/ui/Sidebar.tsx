@@ -7,6 +7,7 @@ import {
   AllMailIcon,
   ArchiveIcon,
   ChevronIcon,
+  ClearIcon,
   DraftIcon,
   type IconProps,
   ImportantIcon,
@@ -97,27 +98,19 @@ export function Sidebar({ accounts, width, syncStates, selection, onSelect }: Pr
       {/* A small icon bar, as in Arc's sidebar footer. Settings and the log
           console can join "Add account" here later. */}
       <div className="flex h-9 shrink-0 items-center gap-1 px-2 pb-1">
-        {signIn.pending ? (
-          <div className="flex min-w-0 flex-1 items-center gap-2 px-2 text-xs text-content/60">
-            <span className="truncate">Waiting for browser sign-in…</span>
-            <button
-              type="button"
-              className="ml-auto shrink-0 text-accent hover:underline"
-              onClick={signIn.cancel}
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            title="Add account"
-            aria-label="Add account"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-content/60 transition-colors duration-[120ms] hover:bg-selection hover:text-content"
-            onClick={() => signIn.start()}
-          >
-            <AddIcon size={16} />
-          </button>
+        {/* While a browser sign-in is waiting, "+" turns into a cancel
+            button (closing the browser tab can't be detected). */}
+        <button
+          type="button"
+          title={signIn.pending ? "Cancel sign-in" : "Add account"}
+          aria-label={signIn.pending ? "Cancel sign-in" : "Add account"}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-content/60 transition-colors duration-[120ms] hover:bg-selection hover:text-content"
+          onClick={() => (signIn.pending ? signIn.cancel() : signIn.start())}
+        >
+          {signIn.pending ? <ClearIcon size={16} /> : <AddIcon size={16} />}
+        </button>
+        {signIn.pending && (
+          <span className="truncate text-xs text-content/60">Waiting for browser sign-in…</span>
         )}
       </div>
       {signIn.error && <p className="selectable px-4 pb-2 text-xs text-danger">{signIn.error}</p>}

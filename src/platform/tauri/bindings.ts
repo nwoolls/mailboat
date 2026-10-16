@@ -11,7 +11,8 @@ export const commands = {
 	/**
 	 *  Opens Google sign-in in the browser and adds (or re-authorizes) the
 	 *  account that signs in. Signing in again with a connected account
-	 *  refreshes it instead of creating a duplicate.
+	 *  refreshes it instead of creating a duplicate. A second call cancels a
+	 *  first one that is still waiting for the browser.
 	 */
 	accountAdd: (loginHint: string | null) => typedError<Account, AppError>(__TAURI_INVOKE("account_add", { loginHint })),
 	/**  Stops waiting for a browser sign-in started by `account_add`. */

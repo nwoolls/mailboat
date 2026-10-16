@@ -115,6 +115,9 @@ a darker glass body, rounded corners where they meet, resizable panes.
       relaunch
 - [x] "Add account" is a small "+" in an icon bar at the sidebar's foot
       (owner picked option A), with room for settings and the log console
+- [x] While a browser sign-in waits, the "+" becomes a cancel button; and
+      clicking "+" again (e.g. after closing the browser tab) starts over
+      instead of failing with "a sign-in is already in progress"
 - [x] Thread rows line up: a fixed gutter for the unread dot; senders
       medium weight; star and attachment as icons instead of emoji
 - [x] List titles drop the account when there's only one ("Inbox"), and

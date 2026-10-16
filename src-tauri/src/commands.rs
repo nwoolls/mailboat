@@ -2,6 +2,7 @@
 //! logic and tests live there.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
 use mailboat_core::db::{accounts, query, store};
@@ -52,20 +53,28 @@ pub fn oauth_setup(state: State<'_, AppState>) -> OAuthSetup {
 
 /// Opens Google sign-in in the browser and adds (or re-authorizes) the
 /// account that signs in. Signing in again with a connected account
-/// refreshes it instead of creating a duplicate.
+/// refreshes it instead of creating a duplicate. A second call cancels a
+/// first one that is still waiting for the browser.
 #[tauri::command]
 #[specta::specta]
 pub async fn account_add(
     state: State<'_, AppState>,
     login_hint: Option<String>,
 ) -> CmdResult<Account> {
-    let _guard = state
-        .sign_in
-        .try_lock()
-        .map_err(|_| CoreError::Invalid("a sign-in is already in progress".into()))?;
-    let config = state.oauth_config()?;
     // The app can't tell when the browser tab is closed, so the user can
-    // cancel (`account_add_cancel`).
+    // cancel (`account_add_cancel`), and starting again replaces a sign-in
+    // that is still waiting instead of failing. The cancel is repeated
+    // until the lock is free, in case the old sign-in hadn't started
+    // listening for it yet.
+    let _guard = loop {
+        state.sign_in_cancel.notify_waiters();
+        if let Ok(guard) =
+            tokio::time::timeout(Duration::from_millis(100), state.sign_in.lock()).await
+        {
+            break guard;
+        }
+    };
+    let config = state.oauth_config()?;
     let signed_in = oauth::sign_in(
         &state.http,
         &config,
