@@ -122,7 +122,9 @@ a darker glass body, rounded corners where they meet, resizable panes.
       and summed for unified views
 - [x] Reader cards line up with the list panel: same 8px gaps (window
       edge and splitter), same 10px corners and hairline edge, so at the end
-      of a conversation the bottoms match
+      of a conversation the bottoms match (to the pixel: the reader's content
+      height is kept whole so the last card's edge isn't cropped); the
+      reader's bottom corners stay rounded while scrolling
 - [x] Transparency slider in the sidebar footer: from the default look to
       100% clearer (just the native blur), scaling every glass tint by the same factor so areas
       keep their differences; remembered across launches. (Could move to

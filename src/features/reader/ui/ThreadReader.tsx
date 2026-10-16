@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   MessageId,
   MessageMeta,
@@ -10,6 +10,7 @@ import { AccountDot } from "../../../shared/ui/AccountDot";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { displayName, formatFullDate, formatListDate } from "../../mailbox/model/format";
 import { useSetRead } from "../../mailbox/ui/useSetRead";
+import { wholePixelSlack } from "../model/pixelSnap";
 import { MessageFrame } from "./MessageFrame";
 
 /** Messages expanded when a thread opens: unread ones plus the newest. */
@@ -52,6 +53,7 @@ function ThreadBody({
   accounts: AccountIndex;
   leaving: boolean;
 }) {
+  const contentRef = useWholePixelHeight();
   const [expanded, setExpanded] = useState<Set<MessageId>>(() => initiallyExpanded(data.messages));
   // Every message opened so far; its body stays mounted when closed.
   const [opened, setOpened] = useState<Set<MessageId>>(expanded);
@@ -75,116 +77,143 @@ function ThreadBody({
       // doesn't narrow the reader or reflow it. No padding of its own: the
       // window's 8px edge and the splitter frame the cards, so the last
       // card's bottom lines up with the list panel's at the end.
-      className={`reader-enter flex-1 overflow-y-auto transition-opacity duration-150 ${
+      // Bottom corners round like the list panel's, so whatever reaches
+      // the bottom edge is clipped to the same curve, scrolled or not.
+      className={`reader-enter flex-1 overflow-y-auto rounded-b-[10px] transition-opacity duration-150 ${
         leaving ? "opacity-50" : ""
       }`}
     >
-      <header className="px-4 pt-5 pb-3">
-        <h1 className="selectable text-lg leading-snug font-semibold">
-          {data.thread.subject || "(no subject)"}
-        </h1>
-        {(showAccount || data.labels.length > 0) && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-content/50">
-            {showAccount && (
-              <>
-                <AccountDot account={account} />
-                <span>{account?.email}</span>
-              </>
-            )}
-            {data.labels.map((l) => (
-              <span
-                key={l.id}
-                className="rounded px-1.5 py-0.5"
-                style={{
-                  background: l.colorBg ?? "var(--color-selection)",
-                  color: l.colorFg ?? undefined,
-                }}
-              >
-                {l.name}
-              </span>
-            ))}
-          </div>
-        )}
-      </header>
-      {/* Each message is a card on the glass, edged and rounded like the
+      <div ref={contentRef}>
+        <header className="px-4 pt-5 pb-3">
+          <h1 className="selectable text-lg leading-snug font-semibold">
+            {data.thread.subject || "(no subject)"}
+          </h1>
+          {(showAccount || data.labels.length > 0) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-content/50">
+              {showAccount && (
+                <>
+                  <AccountDot account={account} />
+                  <span>{account?.email}</span>
+                </>
+              )}
+              {data.labels.map((l) => (
+                <span
+                  key={l.id}
+                  className="rounded px-1.5 py-0.5"
+                  style={{
+                    background: l.colorBg ?? "var(--color-selection)",
+                    color: l.colorFg ?? undefined,
+                  }}
+                >
+                  {l.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </header>
+        {/* Each message is a card on the glass, edged and rounded like the
           list panel; collapsed ones are a shade lighter. Avatar, notice and
           body share one left edge (16px), as does the subject above. */}
-      <div className="flex flex-col gap-2">
-        {data.messages.map((m) => {
-          const isOpen = expanded.has(m.id);
-          const name = displayName(m.from, selfEmails);
-          const toggle = () =>
-            setExpanded((prev) => {
-              const next = new Set(prev);
-              if (next.has(m.id)) next.delete(m.id);
-              else next.add(m.id);
-              return next;
-            });
-          return (
-            <section
-              key={m.id}
-              className={`rounded-[10px] ring-1 ring-stroke ring-inset transition-colors duration-[120ms] ${
-                isOpen ? "message-card" : "message-card-collapsed"
-              }`}
-            >
-              {/* The first line (avatar, name, date) is identical open or
+        <div className="flex flex-col gap-2">
+          {data.messages.map((m) => {
+            const isOpen = expanded.has(m.id);
+            const name = displayName(m.from, selfEmails);
+            const toggle = () =>
+              setExpanded((prev) => {
+                const next = new Set(prev);
+                if (next.has(m.id)) next.delete(m.id);
+                else next.add(m.id);
+                return next;
+              });
+            return (
+              <section
+                key={m.id}
+                className={`rounded-[10px] ring-1 ring-stroke ring-inset transition-colors duration-[120ms] ${
+                  isOpen ? "message-card" : "message-card-collapsed"
+                }`}
+              >
+                {/* The first line (avatar, name, date) is identical open or
                   closed, so nothing jumps; the snippet fades, and the
                   addresses and body slide in below. */}
-              <button
-                type="button"
-                // Block, not the button default (inline), which left a
-                // descender gap under collapsed cards. Collapsed cards are
-                // tighter; the padding eases open with the message.
-                className={`block w-full px-4 text-left transition-[padding] duration-200 ease-out motion-reduce:transition-none ${
-                  isOpen ? "py-3" : "py-2"
-                }`}
-                onClick={toggle}
-                aria-expanded={isOpen}
-              >
-                <div className="flex h-7 items-center gap-3">
-                  <SenderInitial name={name} />
-                  <span
-                    className={`max-w-[60%] min-w-0 shrink-0 truncate ${m.unread ? "font-semibold" : "font-medium"}`}
-                  >
-                    {name}
-                  </span>
-                  <span
-                    aria-hidden={isOpen}
-                    className={`min-w-0 flex-1 truncate text-content/50 transition-opacity duration-150 ${
-                      isOpen ? "opacity-0" : "opacity-100"
-                    }`}
-                  >
-                    {m.snippet}
-                  </span>
-                  <span
-                    className="shrink-0 pl-2 text-xs text-content/45"
-                    title={formatFullDate(m.internalDate)}
-                  >
-                    {formatListDate(m.internalDate)}
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  // Block, not the button default (inline), which left a
+                  // descender gap under collapsed cards. Collapsed cards are
+                  // tighter; the padding eases open with the message.
+                  className={`block w-full px-4 text-left transition-[padding] duration-200 ease-out motion-reduce:transition-none ${
+                    isOpen ? "py-3" : "py-2"
+                  }`}
+                  onClick={toggle}
+                  aria-expanded={isOpen}
+                >
+                  <div className="flex h-7 items-center gap-3">
+                    <SenderInitial name={name} />
+                    <span
+                      className={`max-w-[60%] min-w-0 shrink-0 truncate ${m.unread ? "font-semibold" : "font-medium"}`}
+                    >
+                      {name}
+                    </span>
+                    <span
+                      aria-hidden={isOpen}
+                      className={`min-w-0 flex-1 truncate text-content/50 transition-opacity duration-150 ${
+                        isOpen ? "opacity-0" : "opacity-100"
+                      }`}
+                    >
+                      {m.snippet}
+                    </span>
+                    <span
+                      className="shrink-0 pl-2 text-xs text-content/45"
+                      title={formatFullDate(m.internalDate)}
+                    >
+                      {formatListDate(m.internalDate)}
+                    </span>
+                  </div>
+                  <Fold open={isOpen}>
+                    <div className="truncate pl-10 text-xs text-content/45">
+                      {m.from.email} → {m.to.map((a) => displayName(a, selfEmails)).join(", ")}
+                      {m.cc.length > 0 &&
+                        `, cc ${m.cc.map((a) => displayName(a, selfEmails)).join(", ")}`}
+                    </div>
+                  </Fold>
+                </button>
+                {/* Stays loaded after the first open, so closing animates too. */}
                 <Fold open={isOpen}>
-                  <div className="truncate pl-10 text-xs text-content/45">
-                    {m.from.email} → {m.to.map((a) => displayName(a, selfEmails)).join(", ")}
-                    {m.cc.length > 0 &&
-                      `, cc ${m.cc.map((a) => displayName(a, selfEmails)).join(", ")}`}
-                  </div>
+                  {opened.has(m.id) && (
+                    <div className="px-4 pb-4">
+                      <MessageFrame messageId={m.id} />
+                    </div>
+                  )}
                 </Fold>
-              </button>
-              {/* Stays loaded after the first open, so closing animates too. */}
-              <Fold open={isOpen}>
-                {opened.has(m.id) && (
-                  <div className="px-4 pb-4">
-                    <MessageFrame messageId={m.id} />
-                  </div>
-                )}
-              </Fold>
-            </section>
-          );
-        })}
+              </section>
+            );
+          })}
+        </div>
       </div>
     </article>
   );
+}
+
+/**
+ * Keeps the element's height a whole number of pixels by adding the
+ * missing fraction as padding at its top (where it can't be seen). Text
+ * line heights make the reader's content end part-way through a pixel;
+ * scrolled to the end, that sliver of the last card (its bottom edge) was
+ * cut off, leaving it half a point off the list panel's bottom.
+ */
+function useWholePixelHeight() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // The content box excludes the padding set here, so this never loops.
+    const observer = new ResizeObserver(([entry]) => {
+      const height = entry?.contentRect.height ?? 0;
+      el.style.paddingTop = `${wholePixelSlack(height)}px`;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return ref;
 }
 
 /** A sender's initial in a soft circle, as in Gmail's message headers. */
