@@ -5,7 +5,8 @@ describe("glass transparency", () => {
   it("reads a saved boost, kept to the slider's range and steps", () => {
     expect(parseGlassBoost("20")).toBe(20);
     expect(parseGlassBoost("22")).toBe(20);
-    expect(parseGlassBoost("90")).toBe(40);
+    expect(parseGlassBoost("90")).toBe(90);
+    expect(parseGlassBoost("150")).toBe(100);
     expect(parseGlassBoost("-5")).toBe(0);
   });
 
