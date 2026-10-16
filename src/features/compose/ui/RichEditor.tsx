@@ -81,7 +81,8 @@ export function useRichEditor(initialHtml: string, onChange: (c: EditorChange) =
       handleKeyDown: (_view, event) => event.key === "Enter" && event.metaKey,
     },
     onCreate: ({ editor }) => report(editor, false),
-    onUpdate: ({ editor }) => report(editor, true),
+    // Only real changes to the text count as editing.
+    onUpdate: ({ editor, transaction }) => report(editor, transaction.docChanged),
   });
 }
 

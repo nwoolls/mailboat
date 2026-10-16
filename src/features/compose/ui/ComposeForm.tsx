@@ -52,7 +52,9 @@ export function ComposeForm({
   }, [editor, draft.kind, entry.focusKey]);
 
   useEffect(() => {
-    editor?.setEditable(!sending);
+    // false: don't report this as an edit (TipTap emits "update" by default,
+    // which marked untouched drafts as typed in and froze the signature).
+    editor?.setEditable(!sending, false);
   }, [editor, sending]);
 
   const trySend = () => {
