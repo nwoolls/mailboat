@@ -19,9 +19,29 @@ import { Splitter } from "../features/layout/ui/Splitter";
 import { useElementWidth } from "../features/layout/ui/useElementWidth";
 import { Welcome } from "../features/accounts/ui/Welcome";
 import { moveSelection, navKeyFor } from "../features/mailbox/model/listNavigation";
-import { readToggle } from "../features/mailbox/model/readState";
+import {
+  actionTargets,
+  type Checked,
+  NONE,
+  prune,
+  rangeChecked,
+  toggleChecked,
+} from "../features/mailbox/model/multiSelect";
+import {
+  actionMessage,
+  actionVerb,
+  inverse,
+  labelToggle,
+  leavesView,
+  nextAfterRemoval,
+  type ThreadAction,
+  toggleFor,
+} from "../features/mailbox/model/threadActions";
+import { LabelPicker } from "../features/mailbox/ui/LabelPicker";
 import { useOlderMail } from "../features/mailbox/ui/useOlderMail";
-import { useSetRead } from "../features/mailbox/ui/useSetRead";
+import { useThreadAction } from "../features/mailbox/ui/useThreadAction";
+import { anchorBelow, type MenuAnchor } from "../shared/ui/Menu";
+import { Toast, type ToastData } from "../shared/ui/Toast";
 import {
   ALL_INBOXES,
   type Selection,
@@ -35,7 +55,7 @@ import { EmptyState } from "../features/mailbox/ui/EmptyState";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
-import { Toolbar } from "./Toolbar";
+import { LABEL_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
 import {
   useAccounts,
   useLabels,
@@ -83,7 +103,16 @@ export function Shell() {
   // The last conversation opened, kept while the reader slides closed so it
   // doesn't empty out mid-animation. Updated during render, not in an effect.
   const [shownId, setShownId] = useState<ThreadId | null>(null);
-  const { mutate: setRead } = useSetRead();
+  // Conversations picked with ⌘/⇧-click or `x`, on top of the open one.
+  // Picks that left the list (archived, trashed, …) are dropped here,
+  // during render, rather than in an effect.
+  const [checkedState, setChecked] = useState<Checked>(NONE);
+  const checked = prune(checkedState, threads);
+  const targets = actionTargets(threads, checked, selectedId);
+  const [toast, setToast] = useState<ToastData | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
+  const [labelAnchor, setLabelAnchor] = useState<MenuAnchor | null>(null);
+  const { mutate: mutateThreads } = useThreadAction();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   // Past the last cached page, ask Gmail for older mail. Not while the
   // list is refreshing or standing in for the previous view.
@@ -116,6 +145,53 @@ export function Shell() {
   }
   const toggleSidebar = useCallback(() => setSidebarOpen((open) => !open), []);
   const toggleReader = useCallback(() => setReaderOpen((open) => !open), []);
+  /**
+   * Runs an action on the chosen conversations (or `ids`). If they leave
+   * the current view, the next conversation opens, as in Mail. Archive,
+   * trash and labels say what happened, with Undo; errors always show.
+   */
+  const act = useCallback(
+    // Named, so Undo can call it again.
+    function run(action: ThreadAction, ids: ThreadId[], undoable = true) {
+      if (ids.length === 0) return;
+      if (leavesView(action, selection.view)) {
+        const removed = new Set(ids);
+        setSelectedId((current) => nextAfterRemoval(threads, removed, current));
+        setChecked(NONE);
+      }
+      const message = actionMessage(action, ids.length);
+      const id = Date.now();
+      if (message)
+        setToast({
+          id,
+          message,
+          action: undoable
+            ? {
+                label: "Undo",
+                run: () => {
+                  run(inverse(action), ids, false);
+                  // Back to where you were, if it had moved on.
+                  if (leavesView(action, selection.view) && ids.length === 1)
+                    setSelectedId(ids[0]!);
+                },
+              }
+            : undefined,
+        });
+      mutateThreads(
+        { ids, action },
+        {
+          onError: (error) =>
+            setToast({
+              id: id + 1,
+              tone: "error",
+              message: `Couldn’t ${actionVerb(action)}: ${error.message}`,
+            }),
+        },
+      );
+    },
+    [mutateThreads, selection.view, threads],
+  );
+  const lastUndo = toast?.action;
   const [panesRef, panesWidth] = useElementWidth<HTMLDivElement>();
   const resizeSidebar = (w: number) =>
     saveLayout({ ...layout, sidebarWidth: clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max) });
@@ -125,7 +201,8 @@ export function Shell() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // A menu or dialog handles its own keys.
-      if (e.target instanceof Element && e.target.closest("[role=menu], dialog")) return;
+      if (e.target instanceof Element && e.target.closest("[role=menu], [role=dialog], dialog"))
+        return;
       const panel = panelToggleFor(e);
       if (panel) {
         e.preventDefault();
@@ -142,18 +219,58 @@ export function Shell() {
         (e.target as HTMLElement).blur();
         return;
       }
-      // Escape closes the open conversation (and with it the reader).
+      // Escape first drops picked conversations, then closes the open one
+      // (and with it the reader).
+      if (e.key === "Escape" && checked.size > 0) {
+        e.preventDefault();
+        setChecked(NONE);
+        return;
+      }
       if (e.key === "Escape" && selectedId !== null) {
         e.preventDefault();
         setSelectedId(null);
         return;
       }
-      if (e.key === "u" && !isEditable(e.target) && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        const toggle = readToggle(threads, selectedId);
-        if (toggle) {
+      // Undo the last archive, trash or label change: z (as in Gmail) or ⌘Z.
+      if (
+        !isEditable(e.target) &&
+        lastUndo &&
+        ((e.key === "z" && !e.metaKey && !e.ctrlKey && !e.altKey) ||
+          (e.key === "z" && e.metaKey && !e.shiftKey))
+      ) {
+        e.preventDefault();
+        lastUndo.run();
+        setToast(null);
+        return;
+      }
+      const plain = !isEditable(e.target) && !e.metaKey && !e.ctrlKey && !e.altKey;
+      const toggles: Record<string, "read" | "archive" | "star" | "trash"> = {
+        u: "read",
+        e: "archive",
+        s: "star",
+        "#": "trash",
+      };
+      const kind = plain ? toggles[e.key] : undefined;
+      if (kind) {
+        const action = toggleFor(kind, targets);
+        if (action) {
           e.preventDefault();
-          setRead({ ids: [toggle.id], read: toggle.read });
+          act(
+            action,
+            targets.map((t) => t.id),
+          );
         }
+        return;
+      }
+      if (plain && e.key === "l" && targets.length > 0) {
+        e.preventDefault();
+        const button = document.getElementById(LABEL_BUTTON_ID);
+        if (button) setLabelAnchor(anchorBelow(button));
+        return;
+      }
+      if (plain && e.key === "x" && selectedId !== null) {
+        e.preventDefault();
+        setChecked(toggleChecked(checked, selectedId, selectedId));
         return;
       }
       const nav = navKeyFor(e, isEditable(e.target));
@@ -163,28 +280,42 @@ export function Shell() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [threads, selectedId, setRead, toggleSidebar, toggleReader]);
+  }, [threads, selectedId, checked, targets, act, lastUndo, toggleSidebar, toggleReader]);
 
   if (accountsQuery.isPending) return null;
   if (accountList.length === 0) return <Welcome setup={setup.data} />;
 
   // The reader only appears with a conversation to show.
   const readerVisible = readerOpen && selectedId !== null;
-  const readToggleTarget = readToggle(threads, selectedId);
-  const toggleRead = readToggleTarget
-    ? () => setRead({ ids: [readToggleTarget.id], read: readToggleTarget.read })
-    : null;
+  const targetIds = targets.map((t) => t.id);
+  const toggle = (kind: "read" | "archive" | "star" | "trash") => {
+    const action = toggleFor(kind, targets);
+    return action ? { action, run: () => act(action, targetIds) } : null;
+  };
+  const toolbarActions: ToolbarActions = {
+    archive: toggle("archive"),
+    trash: toggle("trash"),
+    read: toggle("read"),
+    star: toggle("star"),
+    label:
+      targets.length > 0
+        ? (button: HTMLElement) => setLabelAnchor((open) => (open ? null : anchorBelow(button)))
+        : null,
+  };
+  const pickerAccount = targets[0]?.accountId;
+  const pickerLabels = labels.filter((l) => l.accountId === pickerAccount);
 
   return (
     <div className="flex h-full flex-col bg-glass-sidebar">
       <Toolbar
         search={search}
         onSearch={setSearch}
-        onToggleRead={toggleRead}
+        actions={toolbarActions}
         sidebarOpen={sidebarOpen}
         syncAttention={syncAttention(syncStates)}
         readerOpen={readerOpen}
         hasSelection={selectedId !== null}
+        count={targets.length}
         onToggleSidebar={toggleSidebar}
         onToggleReader={toggleReader}
       />
@@ -240,23 +371,51 @@ export function Shell() {
               minWidth: LIST_WIDTH.min,
             }}
           >
-            <div className="flex h-10 shrink-0 items-center px-4">
+            <div className="flex h-10 shrink-0 items-center gap-2 px-4">
               <h2 className="truncate text-sm font-semibold">
                 {selectionTitle(selection, accountList, labels)}
               </h2>
+              {checked.size > 0 && (
+                <span className="ml-auto flex shrink-0 items-center gap-2 text-xs text-content/55">
+                  {checked.size} selected
+                  <button
+                    type="button"
+                    className="rounded px-1.5 py-0.5 hover:bg-selection hover:text-content"
+                    onClick={() => setChecked(NONE)}
+                    title="Clear selection (Esc)"
+                  >
+                    Clear
+                  </button>
+                </span>
+              )}
             </div>
             <ThreadList
               threads={threads}
               accounts={accounts}
               showAccount={showAccount}
               selectedId={selectedId}
-              onSelect={(id) => {
+              checked={checked}
+              onSelect={(id, how) => {
+                // ⌘-click picks or unpicks one; ⇧-click picks a range.
+                // Either way the open conversation stays as it is.
+                if (how === "toggle") {
+                  setChecked(toggleChecked(checked, selectedId, id));
+                  return;
+                }
+                if (how === "range") {
+                  setChecked(rangeChecked(threads, checked, selectedId, id));
+                  return;
+                }
+                setChecked(NONE);
                 setSelectedId(id);
                 // Clicking the open conversation again also brings it back.
                 setReaderOpen(true);
               }}
               // Nothing selected also slides the reader closed.
-              onClearSelection={() => setSelectedId(null)}
+              onClearSelection={() => {
+                setChecked(NONE);
+                setSelectedId(null);
+              }}
               // Not while the previous view's list stands in for this one.
               hasMore={(hasNextPage && !threadsQuery.isPlaceholderData) || fromGmail}
               loadMore={loadMore}
@@ -298,6 +457,16 @@ export function Shell() {
           </div>
         </div>
       </div>
+      {labelAnchor && targets.length > 0 && (
+        <LabelPicker
+          anchor={labelAnchor}
+          labels={pickerLabels}
+          targets={targets}
+          onToggle={(label) => act(labelToggle(targets, label), targetIds)}
+          onClose={() => setLabelAnchor(null)}
+        />
+      )}
+      <Toast toast={toast} onDismiss={dismissToast} />
     </div>
   );
 }

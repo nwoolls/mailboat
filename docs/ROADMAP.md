@@ -345,11 +345,25 @@ real accounts.
 All routed to the owning account, applied optimistically in the UI, and
 split per account for selections that span accounts.
 
-- [ ] Archive
-- [ ] Star / unstar
-- Read / unread: *moved to M1 follow-ups*
-- [ ] Apply and remove labels
-- [ ] Delete / move to trash
+- [x] Archive (`e`, toolbar). On archived mail the same button and key
+      move it back to the Inbox. The next conversation opens, as in Mail
+- [x] Star / unstar (`s`, toolbar; the star lights up when starred)
+- Read / unread: *moved to M1 follow-ups* (now also works on several
+  conversations at once)
+- [x] Apply and remove labels: `l` or the toolbar opens a picker with the
+      account's labels; type to filter, ↑/↓ and Enter or click to toggle.
+      A tick means every chosen conversation has it, a dash only some.
+      Labels can't be picked across accounts (they belong to one).
+      Creating new labels isn't built yet (see Milestone 5)
+- [x] Move to Trash (`#`, toolbar); in the Trash the same button restores.
+      Trashed mail now leaves Inbox, Starred, labels and their counts, as
+      in Gmail. "Delete forever" isn't offered: it needs Google's full-mail
+      scope, and Gmail empties the Trash after 30 days itself
+- [x] Undo: archive, trash and label changes show a toast with Undo
+      (also `z` or ⌘Z while it's up); errors show there too
+- [x] Several conversations at once: ⌘-click picks one, ⇧-click a
+      range, `x` the open one; Esc clears. Every action applies to all
+      picked, split per account in Rust
 - [ ] Received attachments: list them in the reader, open, save, Quick Look
       preview *(split from M4 Compose, 2026-10-15: reading attachments doesn't
       depend on composing)*
@@ -365,6 +379,8 @@ split per account for selections that span accounts.
 
 ## Milestone 5: Polish
 
+- [ ] Create, rename and delete labels (the label picker only applies
+      existing ones) *(not in the M3 list; noted while building it)*
 - [ ] Command palette (cmdk)
 - [ ] Full keyboard shortcuts
 - [ ] Remote Gmail search (`q=`) fanned out per account, merged by date

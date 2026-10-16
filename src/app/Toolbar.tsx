@@ -1,3 +1,4 @@
+import type { ThreadAction } from "../features/mailbox/model/threadActions";
 import {
   ArchiveIcon,
   ComposeIcon,
@@ -5,7 +6,9 @@ import {
   LabelIcon,
   MarkUnreadIcon,
   MoreIcon,
+  MoveToInboxIcon,
   ReaderToggleIcon,
+  RestoreIcon,
   SidebarToggleIcon,
   StarIcon,
   TrashIcon,
@@ -15,37 +18,63 @@ import { TitleSearch } from "./TitleSearch";
 /** Room for the macOS traffic lights at the left of the toolbar. */
 const TRAFFIC_LIGHTS_WIDTH = 80;
 
+/** The Label button, which `l` also opens the picker under. */
+export const LABEL_BUTTON_ID = "toolbar-label";
+
+/** What a toggling button would do now, for the chosen conversations. */
+type Toggle = { action: ThreadAction; run: () => void } | null;
+
+export type ToolbarActions = {
+  archive: Toggle;
+  trash: Toggle;
+  read: Toggle;
+  star: Toggle;
+  /** Opens (or closes) the label picker under the button. */
+  label: ((button: HTMLElement) => void) | null;
+};
+
 type Props = {
   search: string;
   onSearch: (text: string) => void;
-  /** Toggle read/unread on the selected conversation (same as `u`), if any. */
-  onToggleRead: (() => void) | null;
+  /** Mail actions for the chosen conversations; null when nothing is chosen. */
+  actions: ToolbarActions;
   sidebarOpen: boolean;
   /** A sync problem to flag on the sidebar toggle while the sidebar is hidden. */
   syncAttention: "warn" | "error" | null;
   readerOpen: boolean;
-  /** A conversation is selected: the reader can show, and actions apply. */
+  /** A conversation is open: the reader can show. */
   hasSelection: boolean;
+  /** How many conversations the actions apply to (named in tooltips if several). */
+  count: number;
   onToggleSidebar: () => void;
   onToggleReader: () => void;
 };
 
 /**
  * Window title bar, Tern-style: drags the window and holds mail actions on
- * the right. Most actions arrive in Milestone 3; until then they only show
- * where they'll live.
+ * the right. Buttons that toggle (archive, trash, read, star) show what
+ * they'd do now: archived mail offers "Move to Inbox", Trash "Restore".
  */
 export function Toolbar({
   search,
   onSearch,
-  onToggleRead,
+  actions,
   sidebarOpen,
   syncAttention,
   readerOpen,
   hasSelection,
+  count,
   onToggleSidebar,
   onToggleReader,
 }: Props) {
+  const many = count > 1 ? ` ${count} conversations` : "";
+  const archive = actions.archive?.action;
+  const trash = actions.trash?.action;
+  const read = actions.read?.action;
+  const star = actions.star?.action;
+  const moveToInbox = archive?.kind === "archive" && !archive.archived;
+  const restore = trash?.kind === "trash" && !trash.trashed;
+  const unstar = star?.kind === "star" && !star.starred;
   return (
     <header
       data-tauri-drag-region
@@ -62,18 +91,46 @@ export function Toolbar({
       />
       <div data-tauri-drag-region className="flex-1 self-stretch" />
       <TitleSearch value={search} onChange={onSearch} />
-      {/* Conversation actions dim with nothing selected. */}
-      <ToolButton icon={ArchiveIcon} label="Archive" shortcut="e" disabled={!hasSelection} />
-      <ToolButton icon={TrashIcon} label="Delete" shortcut="#" disabled={!hasSelection} />
+      {/* Conversation actions dim with nothing chosen. */}
+      <ToolButton
+        icon={moveToInbox ? MoveToInboxIcon : ArchiveIcon}
+        label={(moveToInbox ? "Move to Inbox" : "Archive") + many}
+        shortcut="e"
+        onClick={actions.archive?.run}
+        disabled={!actions.archive}
+      />
+      <ToolButton
+        icon={restore ? RestoreIcon : TrashIcon}
+        label={(restore ? "Restore from Trash" : "Move to Trash") + many}
+        shortcut="#"
+        onClick={actions.trash?.run}
+        disabled={!actions.trash}
+      />
       <ToolButton
         icon={MarkUnreadIcon}
-        label="Mark read / unread"
+        label={(read?.kind === "read" && !read.read ? "Mark as unread" : "Mark as read") + many}
         shortcut="u"
-        onClick={onToggleRead ?? undefined}
-        disabled={!onToggleRead}
+        onClick={actions.read?.run}
+        disabled={!actions.read}
       />
-      <ToolButton icon={StarIcon} label="Star" shortcut="s" disabled={!hasSelection} />
-      <ToolButton icon={LabelIcon} label="Label" shortcut="l" disabled={!hasSelection} />
+      <ToolButton
+        icon={StarIcon}
+        label={(unstar ? "Unstar" : "Star") + many}
+        shortcut="s"
+        onClick={actions.star?.run}
+        disabled={!actions.star}
+        // Every chosen conversation is starred: the star lights up.
+        pressed={unstar}
+        tone={unstar ? "text-warn" : undefined}
+      />
+      <ToolButton
+        id={LABEL_BUTTON_ID}
+        icon={LabelIcon}
+        label={"Labels" + many}
+        shortcut="l"
+        onClick={actions.label ?? undefined}
+        disabled={!actions.label}
+      />
       <ToolButton icon={MoreIcon} label="More" disabled={!hasSelection} />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
       <ToolButton icon={ComposeIcon} label="Compose" shortcut="c" />
@@ -97,21 +154,26 @@ export function Toolbar({
 }
 
 function ToolButton({
+  id,
   icon: Icon,
   label,
   shortcut,
   onClick,
   disabled,
   pressed,
+  tone,
   dot,
 }: {
+  id?: string;
   icon: (props: IconProps) => React.ReactNode;
   label: string;
   shortcut?: string;
-  onClick?: () => void;
+  onClick?: (button: HTMLElement) => void;
   disabled?: boolean;
   /** For toggles: whether the thing it controls is showing. */
   pressed?: boolean;
+  /** Text colour class for the icon (e.g. a lit star). */
+  tone?: string;
   /** Small status dot in the corner (e.g. a sync problem behind a hidden panel). */
   dot?: "warn" | "error" | null;
 }) {
@@ -121,13 +183,16 @@ function ToolButton({
     .join(" ");
   return (
     <button
+      id={id}
       type="button"
       title={title}
       aria-label={label}
       aria-pressed={pressed}
-      onClick={onClick}
+      onClick={(e) => onClick?.(e.currentTarget)}
       disabled={disabled}
-      className="relative flex h-7 w-7 items-center justify-center rounded-md text-content/70 transition-colors duration-[120ms] hover:bg-selection hover:text-content disabled:opacity-35 disabled:hover:bg-transparent"
+      className={`relative flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-[120ms] hover:bg-selection hover:text-content disabled:opacity-35 disabled:hover:bg-transparent ${
+        tone ?? "text-content/70"
+      }`}
     >
       <Icon />
       {dot && (

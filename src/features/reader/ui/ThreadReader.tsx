@@ -9,7 +9,7 @@ import { useThread } from "../../../shared/lib/queries";
 import { AccountDot } from "../../../shared/ui/AccountDot";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { displayName, formatFullDate, formatListDate } from "../../mailbox/model/format";
-import { useSetRead } from "../../mailbox/ui/useSetRead";
+import { useThreadAction } from "../../mailbox/ui/useThreadAction";
 import { wholePixelSlack } from "../model/pixelSnap";
 import { MessageFrame } from "./MessageFrame";
 
@@ -62,10 +62,10 @@ function ThreadBody({
   // leaves it unread). Remembered at open so later updates don't re-trigger.
   const [unreadWhenOpened] = useState(data.thread.unread);
   const threadId = data.thread.id;
-  const { mutate: setRead } = useSetRead();
+  const { mutate: act } = useThreadAction();
   useEffect(() => {
-    if (unreadWhenOpened) setRead({ ids: [threadId], read: true });
-  }, [threadId, unreadWhenOpened, setRead]);
+    if (unreadWhenOpened) act({ ids: [threadId], action: { kind: "read", read: true } });
+  }, [threadId, unreadWhenOpened, act]);
   const account = accounts.get(data.thread.accountId);
   const selfEmails = account ? [account.email] : [];
   // Which account it's in matters only when there's more than one.

@@ -354,3 +354,24 @@ html.resizing .panel-slide {
     animation: none;
   }
 }
+
+/* The toast after an action ("Conversation archived · Undo"): the menu's
+   surface, rising in from below. */
+.toast {
+  background: var(--color-background-raised);
+  box-shadow:
+    inset 0 0 0 1px var(--color-stroke),
+    0 12px 32px -8px rgb(0 0 0 / 0.45);
+  animation: toast-in 180ms var(--motion-ease-out) both;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

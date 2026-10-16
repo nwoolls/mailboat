@@ -22,7 +22,9 @@ export const keys = {
   syncStates: ["syncStates"] as const,
   labels: (filter: AccountFilter) => ["labels", filter] as const,
   unreadCounts: ["unreadCounts"] as const,
-  threads: (s: Selection) => ["threads", selectionKey(s)] as const,
+  // The view rides along so optimistic updates know which lists a
+  // conversation leaves (see `useThreadAction`).
+  threads: (s: Selection) => ["threads", selectionKey(s), s.view] as const,
   thread: (id: ThreadId) => ["thread", id] as const,
   message: (id: MessageId) => ["message", id] as const,
 };

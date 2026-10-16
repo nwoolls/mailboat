@@ -198,6 +198,12 @@ pub struct ThreadSummary {
     pub unread: bool,
     pub starred: bool,
     pub has_attachments: bool,
+    /// Has the INBOX label (so "archive" applies; otherwise "move to Inbox").
+    pub in_inbox: bool,
+    /// Wholly in the Trash (so "restore" applies; otherwise "trash").
+    pub in_trash: bool,
+    /// User labels on the thread (all of the thread's own account).
+    pub label_ids: Vec<LabelId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]

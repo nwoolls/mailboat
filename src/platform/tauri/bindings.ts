@@ -295,6 +295,12 @@ export type ThreadSummary = {
 	unread: boolean,
 	starred: boolean,
 	hasAttachments: boolean,
+	/**  Has the INBOX label (so "archive" applies; otherwise "move to Inbox"). */
+	inInbox: boolean,
+	/**  Wholly in the Trash (so "restore" applies; otherwise "trash"). */
+	inTrash: boolean,
+	/**  User labels on the thread (all of the thread's own account). */
+	labelIds: LabelId[],
 };
 
 /* Tauri Specta runtime */

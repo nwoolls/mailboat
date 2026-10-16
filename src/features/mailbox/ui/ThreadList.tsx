@@ -16,7 +16,10 @@ type Props = {
   /** Show each row's account marker (views that mix accounts). */
   showAccount: boolean;
   selectedId: ThreadId | null;
-  onSelect: (id: ThreadId) => void;
+  /** Conversations picked with ⌘/⇧-click or `x`. */
+  checked: ReadonlySet<ThreadId>;
+  /** A click: open it, or with ⌘ toggle it, or with ⇧ pick a range. */
+  onSelect: (id: ThreadId, how: "open" | "toggle" | "range") => void;
   /** A click on the empty area below the rows, as in Mail and Mimestream. */
   onClearSelection: () => void;
   hasMore: boolean;
@@ -34,6 +37,7 @@ export function ThreadList({
   accounts,
   showAccount,
   selectedId,
+  checked,
   onSelect,
   onClearSelection,
   hasMore,
@@ -90,17 +94,28 @@ export function ThreadList({
         {items.map((item) => {
           const t = threads[item.index]!;
           const selected = t.id === selectedId;
+          const picked = checked.has(t.id);
           const account = showAccount ? accounts.get(t.accountId) : undefined;
           return (
             <div
               key={t.id}
               role="option"
-              aria-selected={selected}
-              onClick={() => onSelect(t.id)}
+              aria-selected={selected || picked}
+              onClick={(e) =>
+                onSelect(t.id, e.metaKey || e.ctrlKey ? "toggle" : e.shiftKey ? "range" : "open")
+              }
+              // ⇧-click shouldn't also select the rows' text.
+              onMouseDown={(e) => {
+                if (e.shiftKey) e.preventDefault();
+              }}
               // pl-6 leaves a fixed gutter for the unread dot, so senders,
               // subjects and snippets line up whether a row is read or not.
               className={`absolute inset-x-0 mx-2 flex flex-col justify-center gap-0.5 rounded-lg pr-3 pl-6 ${
-                selected ? "bg-selection-strong" : "hover:bg-selection-subtle"
+                picked
+                  ? "bg-accent/18 ring-1 ring-accent/35 ring-inset"
+                  : selected
+                    ? "bg-selection-strong"
+                    : "hover:bg-selection-subtle"
               }`}
               style={{ top: item.start, height: ROW_HEIGHT - 4 }}
             >

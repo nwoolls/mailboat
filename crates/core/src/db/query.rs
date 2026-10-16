@@ -8,8 +8,8 @@ use rusqlite::{params_from_iter, Connection, OptionalExtension, Row};
 use super::placeholders;
 use crate::error::{CoreError, Result};
 use crate::model::{
-    AccountFilter, Address, Label, LabelKind, LabelUnread, ListCursor, ListQuery, MailView,
-    MessageMeta, SystemLabel, ThreadDetail, ThreadId, ThreadPage, ThreadSummary,
+    AccountFilter, Address, Label, LabelId, LabelKind, LabelUnread, ListCursor, ListQuery,
+    MailView, MessageMeta, SystemLabel, ThreadDetail, ThreadId, ThreadPage, ThreadSummary,
 };
 
 const MAX_LIMIT: u32 = 500;
@@ -29,7 +29,14 @@ const THREAD_COLUMNS: &str =
   t.message_count, t.unread_count > 0,
   EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
           WHERE tl.thread_id = t.id AND l.gmail_label_id = 'STARRED'),
-  t.has_attachments";
+  t.has_attachments,
+  EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
+          WHERE tl.thread_id = t.id AND l.gmail_label_id = 'INBOX'),
+  NOT EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = t.id AND NOT EXISTS (
+    SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+    WHERE ml.message_id = m.id AND l.gmail_label_id = 'TRASH')),
+  (SELECT group_concat(tl.label_id) FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
+   WHERE tl.thread_id = t.id AND l.kind = 'user')";
 
 fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
     let senders: String = row.get(4)?;
@@ -44,6 +51,14 @@ fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
         unread: row.get(7)?,
         starred: row.get(8)?,
         has_attachments: row.get(9)?,
+        in_inbox: row.get(10)?,
+        in_trash: row.get(11)?,
+        label_ids: row
+            .get::<_, Option<String>>(12)?
+            .unwrap_or_default()
+            .split(',')
+            .filter_map(|id| id.parse().ok().map(LabelId))
+            .collect(),
     })
 }
 

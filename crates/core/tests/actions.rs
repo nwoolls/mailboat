@@ -198,6 +198,7 @@ async fn archive_leaves_the_inbox_and_moving_back_returns() {
         .unwrap();
     assert!(in_view(&db, a, INBOX).is_empty());
     assert_eq!(in_view(&db, a, MailView::Archive), vec![t1]);
+    assert!(!query::thread_summary(&db.conn(), t1).unwrap().in_inbox);
 
     let back = expect_post(
         "/gmail/v1/users/me/threads/t1/modify",
@@ -260,6 +261,8 @@ async fn trash_uses_gmails_trash_call_and_hides_the_thread_from_other_views() {
         label: SystemLabel::Trash,
     };
     assert_eq!(in_view(&db, a, trash.clone()), vec![t1]);
+    let summary = query::thread_summary(&db.conn(), t1).unwrap();
+    assert!(summary.in_trash && summary.in_inbox);
     // It keeps its INBOX label (as in Gmail) but no longer shows there, nor
     // in its user label, nor in the Inbox unread count.
     assert!(in_view(&db, a, INBOX).is_empty());
@@ -342,6 +345,10 @@ async fn labels_go_to_the_owning_account_by_gmail_id() {
             .collect::<Vec<_>>()
     };
     assert_eq!(names(a_t1), vec!["Label_7"]);
+    assert_eq!(
+        query::thread_summary(&db.conn(), a_t1).unwrap().label_ids,
+        vec![travel]
+    );
     assert_eq!(names(b_t1), vec!["Label_1"]);
 }
 
