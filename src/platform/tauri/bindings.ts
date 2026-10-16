@@ -334,6 +334,12 @@ export type ReplySource = {
 	date: number,
 	/**  The body as plain text, for quoting. */
 	text: string,
+	/**
+	 *  The body's HTML, cleaned for quoting in mail sent from here: no
+	 *  scripts, styles sheets, forms or event handlers (`ammonia`'s
+	 *  defaults). `None` for plain-text mail.
+	 */
+	html: string | null,
 };
 
 export type SafeMessage = {

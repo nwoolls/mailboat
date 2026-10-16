@@ -55,6 +55,10 @@ pub struct ReplySource {
     pub date: i64,
     /// The body as plain text, for quoting.
     pub text: String,
+    /// The body's HTML, cleaned for quoting in mail sent from here: no
+    /// scripts, styles sheets, forms or event handlers (`ammonia`'s
+    /// defaults). `None` for plain-text mail.
+    pub html: Option<String>,
 }
 
 struct Original {
@@ -128,6 +132,7 @@ pub async fn reply_source(db: &Db, gmail: &GmailClient, message: MessageId) -> R
         }
     };
     let body = fetch_body(db, gmail, message).await?;
+    let html = body.html.as_deref().map(ammonia::clean);
     let text = body
         .text
         .or_else(|| body.html.as_deref().map(parse::html_to_text))
@@ -143,6 +148,7 @@ pub async fn reply_source(db: &Db, gmail: &GmailClient, message: MessageId) -> R
         subject: o.subject,
         date: o.date,
         text,
+        html,
     })
 }
 
@@ -219,4 +225,22 @@ pub async fn send(db: &Db, gmail: &GmailClient, msg: &OutgoingMessage) -> Result
         )?),
         _ => None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn quoted_html_keeps_formatting_but_not_scripts() {
+        let clean = ammonia::clean(
+            r#"<table><tr><td><b>Hi</b></td></tr></table><script>x()</script><a href="https://x.com" onclick="y()">l</a>"#,
+        );
+        assert!(
+            clean.contains("<table>") && clean.contains("<b>Hi</b>"),
+            "{clean}"
+        );
+        assert!(
+            !clean.contains("script") && !clean.contains("onclick"),
+            "{clean}"
+        );
+    }
 }

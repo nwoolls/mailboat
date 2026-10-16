@@ -122,10 +122,12 @@ export function ComposeForm({
             className="h-9 border-b border-stroke bg-transparent outline-none placeholder:text-content/45 focus-visible:outline-none"
           />
         )}
-        <EditorBody
-          editor={editor}
-          className={inline ? "min-h-40" : "min-h-0 flex-1 overflow-y-auto"}
-        />
+        <div className={inline ? "" : "min-h-0 flex-1 overflow-y-auto"}>
+          <EditorBody editor={editor} className="min-h-40" />
+          {draft.quoteText && (
+            <QuoteFold text={draft.quoteText} startOpen={draft.kind === "forward"} />
+          )}
+        </div>
       </fieldset>
       <FormatBar editor={editor} />
       <div className="flex shrink-0 items-center gap-3 px-4 pt-1 pb-3">
@@ -224,5 +226,31 @@ function AddressFieldRow({
         />
       )}
     </>
+  );
+}
+
+/**
+ * The quoted original under the text, folded behind "…" as in Gmail
+ * (forwards start open). It's sent as it is, so it isn't editable here.
+ */
+function QuoteFold({ text, startOpen }: { text: string; startOpen: boolean }) {
+  const [open, setOpen] = useState(startOpen);
+  return (
+    <div className="pb-3">
+      <button
+        type="button"
+        title={open ? "Hide quoted text" : "Show quoted text"}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className="h-4 rounded-full bg-selection px-2 text-xs leading-none text-content/60 hover:bg-selection-strong"
+      >
+        •••
+      </button>
+      {open && (
+        <div className="selectable mt-2 whitespace-pre-wrap text-xs leading-relaxed text-content/55">
+          {text}
+        </div>
+      )}
+    </div>
   );
 }

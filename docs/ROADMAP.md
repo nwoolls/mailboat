@@ -499,11 +499,14 @@ Stage 3: formatting, signatures, attachments
       With the cursor in a link, the popup shows its address with Edit,
       Open and Remove. Sent as HTML with a plain-text
       copy; spacing in the email matches the editor
-- [ ] Reply and forward with quoted HTML (folded behind "…"). For now
-      the quote is the original's text in a quote block. Replies start
-      with one blank line between your text and the quote *(owner
-      request, 2026-10-16)*; Gmail collapses that gap visually, which
-      can be looked at later
+- [x] Reply and forward with quoted HTML (folded behind "…"). The
+      original is quoted with its own formatting (tables, colours,
+      links), cleaned of scripts and forms in Rust (`ammonia`), in
+      Gmail's quote style. It stays out of the editor, as in Gmail: a
+      "•••" under your text shows it (forwards start open), read-only,
+      and it's added when sending. Replies start with one blank line
+      above it *(owner request, 2026-10-16)*; Gmail collapses that gap
+      visually, which can be looked at later
 - [x] Signatures: use each address's Gmail signature when composing
       (read with the current `gmail.modify` scope) *(owner request,
       2026-10-16)*. Managing them is in Milestone 6. New mail and replies

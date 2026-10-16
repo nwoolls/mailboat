@@ -345,6 +345,7 @@ async fn reply_source_fetches_reply_to_once_when_unknown() {
         }]
     );
     assert_eq!(source.text, "Yes! See you at noon.");
+    assert_eq!(source.html, None, "plain-text mail has no HTML to quote");
     assert_eq!(source.from.email, "bob@example.com");
     assert_eq!(source.cc[0].email, "jane@example.com");
     // Remembered: the second time asks Gmail nothing (expect(1) above).

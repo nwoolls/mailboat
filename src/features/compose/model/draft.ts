@@ -29,8 +29,14 @@ export type Draft = {
   text: string;
   /** The user has typed in the editor (the opening quote doesn't count). */
   edited: boolean;
-  /** The quote or forwarded message the body opened with ("" for new mail). */
+  /**
+   * The original, quoted (replies) or forwarded, as HTML with its own
+   * formatting. Kept out of the editor (its tables and styles wouldn't
+   * survive it), shown folded behind "…", and added when sending.
+   */
   quote: string;
+  /** The same as plain text, for the text copy. */
+  quoteText: string;
   /** The message replied to or forwarded. */
   replyingTo: MessageId | null;
   /** The conversation a reply or forward was started from. */
@@ -88,12 +94,11 @@ export function accountForNew(
 }
 
 /**
- * What the editor opens with: a line to write on, a blank line, the From
- * address's Gmail signature, and the quote (replies and forwards).
+ * What the editor opens with: a line to write on, a blank line, and the
+ * From address's Gmail signature. The quote follows when sending.
  */
-export function bodyHtml(signature: string | null, quote: string): string {
-  const sig = signature?.trim() ? `${signature}<p></p>` : "";
-  return `<p></p><p></p>${sig}${quote}`;
+export function bodyHtml(signature: string | null): string {
+  return `<p></p><p></p>${signature?.trim() ? signature : ""}`;
 }
 
 function signatureOf(identities: Identity[], accountId: AccountId, from: Address): string | null {
@@ -119,10 +124,11 @@ export function newDraft(
     cc: [],
     bcc: [],
     subject: "",
-    html: signature?.trim() ? bodyHtml(signature, "") : "",
+    html: signature?.trim() ? bodyHtml(signature) : "",
     text: "",
     edited: false,
     quote: "",
+    quoteText: "",
     replyingTo: null,
     threadId: null,
     showCc: false,
@@ -191,20 +197,39 @@ export function textToHtml(text: string): string {
     .join("");
 }
 
-/** "On <date>, <sender> wrote:" and the original in a quote block. */
-export function quoteHtml(
-  source: Pick<ReplySource, "from" | "date" | "text">,
-  formatDate = defaultFormatDate,
-): string {
-  const by = escapeHtml(`On ${formatDate(source.date)}, ${formatAddress(source.from)} wrote:`);
-  return `<p>${by}</p><blockquote>${textToHtml(source.text)}</blockquote>`;
+/** Gmail's quote style, so the quote looks the same as Gmail's own. */
+const QUOTE_STYLE = "margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex";
+
+type Original = Pick<ReplySource, "from" | "to" | "cc" | "date" | "subject" | "text" | "html">;
+
+function originalHtml(source: Original): string {
+  return source.html?.trim() ? source.html : textToHtml(source.text);
 }
 
-/** Gmail's "Forwarded message" block: the original's headers, then its text. */
-export function forwardHtml(
-  source: Pick<ReplySource, "from" | "to" | "cc" | "date" | "subject" | "text">,
-  formatDate = defaultFormatDate,
-): string {
+function attribution(source: Original, formatDate: (ms: number) => string): string {
+  return `On ${formatDate(source.date)}, ${formatAddress(source.from)} wrote:`;
+}
+
+/** "On <date>, <sender> wrote:" and the original, with its formatting, in a quote block. */
+export function quoteHtml(source: Original, formatDate = defaultFormatDate): string {
+  return (
+    `<div class="gmail_quote"><p>${escapeHtml(attribution(source, formatDate))}</p>` +
+    `<blockquote style="${QUOTE_STYLE}">${originalHtml(source)}</blockquote></div>`
+  );
+}
+
+/** The plain-text copy of the quote: each line behind "> ". */
+export function quoteText(source: Original, formatDate = defaultFormatDate): string {
+  const quoted = source.text
+    .replace(/\r\n/g, "\n")
+    .trimEnd()
+    .split("\n")
+    .map((line) => (line ? `> ${line}` : ">"))
+    .join("\n");
+  return `${attribution(source, formatDate)}\n${quoted}`;
+}
+
+function forwardHeader(source: Original, formatDate: (ms: number) => string): string[] {
   const lines = [
     "---------- Forwarded message ---------",
     `From: ${formatAddress(source.from)}`,
@@ -213,7 +238,18 @@ export function forwardHtml(
     `To: ${source.to.map(formatAddress).join(", ")}`,
   ];
   if (source.cc.length > 0) lines.push(`Cc: ${source.cc.map(formatAddress).join(", ")}`);
-  return `<p>${lines.map(escapeHtml).join("<br>")}</p>${textToHtml(source.text)}`;
+  return lines;
+}
+
+/** Gmail's "Forwarded message" block: the original's headers, then the original. */
+export function forwardHtml(source: Original, formatDate = defaultFormatDate): string {
+  const header = forwardHeader(source, formatDate).map(escapeHtml).join("<br>");
+  return `<div class="gmail_quote"><p>${header}</p>${originalHtml(source)}</div>`;
+}
+
+export function forwardText(source: Original, formatDate = defaultFormatDate): string {
+  const header = forwardHeader(source, formatDate).join("\n");
+  return `${header}\n\n${source.text.replace(/\r\n/g, "\n").trimEnd()}`;
 }
 
 /** A reply, reply-all or forward of `source`, from the account it's in. */
@@ -232,7 +268,9 @@ export function replyDraft(
     kind === "forward"
       ? { to: [], cc: [] }
       : replyRecipients(source, kind === "replyAll", myEmails);
-  const body = kind === "forward" ? forwardHtml(source, formatDate) : quoteHtml(source, formatDate);
+  const forward = kind === "forward";
+  const quote = forward ? forwardHtml(source, formatDate) : quoteHtml(source, formatDate);
+  const quoteCopy = forward ? forwardText(source, formatDate) : quoteText(source, formatDate);
   const from = fromFor(identities, source.accountId, accountEmail, source);
   return {
     id: nextId++,
@@ -245,8 +283,9 @@ export function replyDraft(
     subject: kind === "forward" ? forwardSubject(source.subject) : replySubject(source.subject),
     // A line to write on, then one blank line above the signature and
     // quote, as in Gmail and other mail apps.
-    html: bodyHtml(signatureOf(identities, source.accountId, from), body),
-    quote: body,
+    html: bodyHtml(signatureOf(identities, source.accountId, from)),
+    quote,
+    quoteText: quoteCopy,
     // Filled in by the editor as soon as it loads the HTML.
     text: "",
     edited: false,
@@ -265,7 +304,7 @@ export function replyDraft(
  */
 export function withIdentity(draft: Draft, identity: Identity): Draft {
   const next = { ...draft, accountId: identity.accountId, from: identityAddress(identity) };
-  return draft.edited ? next : { ...next, html: bodyHtml(identity.signature, draft.quote) };
+  return draft.edited ? next : { ...next, html: bodyHtml(identity.signature) };
 }
 
 /**
@@ -313,8 +352,9 @@ export function toOutgoing(draft: Draft): OutgoingMessage {
     cc: draft.cc,
     bcc: draft.bcc,
     subject: draft.subject,
-    text: draft.text,
-    html: draft.html.trim() ? emailHtml(draft.html) : null,
+    // The quote follows what was written, in both copies.
+    text: draft.quoteText ? `${draft.text}\n\n${draft.quoteText}` : draft.text,
+    html: draft.html.trim() || draft.quote ? emailHtml(draft.html) + draft.quote : null,
     replyingTo: draft.replyingTo,
   };
 }

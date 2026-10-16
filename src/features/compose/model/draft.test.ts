@@ -7,13 +7,16 @@ import {
   defaultIdentity,
   forwardSubject,
   forwardHtml,
+  forwardText,
   hasChanges,
   newDraft,
   quoteHtml,
+  quoteText,
   replyDraft,
   replyRecipients,
   replySubject,
   sendProblem,
+  toOutgoing,
   withIdentity,
 } from "./draft";
 
@@ -60,6 +63,7 @@ function source(over: Partial<ReplySource> = {}): ReplySource {
     subject: "Lunch",
     date: 0,
     text: "Noon?\n\nJ",
+    html: null,
     ...over,
   };
 }
@@ -113,19 +117,41 @@ describe("subjects", () => {
 });
 
 describe("quoting", () => {
-  it("quotes the original under an attribution, escaped", () => {
-    expect(quoteHtml(source({ text: "Noon?\n<b>sure</b>\n\nJ" }), date)).toBe(
-      "<p>On Thu, Oct 9, Jane &lt;jane@z.com&gt; wrote:</p>" +
-        "<blockquote><p>Noon?<br>&lt;b&gt;sure&lt;/b&gt;</p><p>J</p></blockquote>",
+  it("quotes the original's own HTML in Gmail's quote block", () => {
+    expect(quoteHtml(source({ html: "<table><tr><td><b>Noon?</b></td></tr></table>" }), date)).toBe(
+      '<div class="gmail_quote"><p>On Thu, Oct 9, Jane &lt;jane@z.com&gt; wrote:</p>' +
+        '<blockquote style="margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex">' +
+        "<table><tr><td><b>Noon?</b></td></tr></table></blockquote></div>",
     );
   });
 
-  it("forwards with the original's headers", () => {
-    expect(forwardHtml(source(), date)).toBe(
-      "<p>---------- Forwarded message ---------<br>From: Jane &lt;jane@z.com&gt;<br>" +
-        "Date: Thu, Oct 9<br>Subject: Lunch<br>To: me@x.com, Bob &lt;bob@z.com&gt;<br>" +
-        "Cc: carol@z.com</p><p>Noon?</p><p>J</p>",
+  it("plain-text originals are quoted as escaped paragraphs", () => {
+    expect(quoteHtml(source({ text: "a <b>\n\nJ" }), date)).toContain(
+      "<p>a &lt;b&gt;</p><p>J</p></blockquote>",
     );
+  });
+
+  it("the text copy quotes each line behind >", () => {
+    expect(quoteText(source(), date)).toBe(
+      "On Thu, Oct 9, Jane <jane@z.com> wrote:\n> Noon?\n>\n> J",
+    );
+  });
+
+  it("forwards carry the original's headers", () => {
+    expect(forwardText(source(), date)).toBe(
+      "---------- Forwarded message ---------\nFrom: Jane <jane@z.com>\nDate: Thu, Oct 9\n" +
+        "Subject: Lunch\nTo: me@x.com, Bob <bob@z.com>\nCc: carol@z.com\n\nNoon?\n\nJ",
+    );
+    expect(forwardHtml(source({ html: "<i>x</i>" }), date)).toContain(
+      "Cc: carol@z.com</p><i>x</i>",
+    );
+  });
+
+  it("sending puts the quote after what was written, in both copies", () => {
+    const d = replyDraft("reply", source(), identities, "me@x.com", date);
+    const out = toOutgoing({ ...d, html: "<p>Sure</p>", text: "Sure" });
+    expect(out.text).toBe(`Sure\n\n${d.quoteText}`);
+    expect(out.html).toBe(`<p style="margin:0">Sure</p>${d.quote}`);
   });
 });
 
@@ -144,7 +170,8 @@ describe("drafts", () => {
   it("a reply starts with the quote below room to write, and a fresh subject", () => {
     const d = replyDraft("replyAll", source(), identities, "me@x.com", date);
     expect(d.subject).toBe("Re: Lunch");
-    expect(d.html.startsWith("<p></p><p></p><p>On Thu, Oct 9")).toBe(true);
+    expect(d.html).toBe("<p></p><p></p>");
+    expect(d.quote).toContain("On Thu, Oct 9");
     expect(d.replyingTo).toBe(10);
     expect(d.threadId).toBe(5);
     expect(d.showCc).toBe(true);
@@ -200,17 +227,17 @@ describe("signatures", () => {
     identities[2]!,
   ];
 
-  it("new mail and replies open with the From address's signature above the quote", () => {
-    expect(newDraft(signed, ME, "me@x.com").html).toBe("<p></p><p></p><p>— Me</p><p></p>");
+  it("new mail and replies open with the From address's signature", () => {
+    expect(newDraft(signed, ME, "me@x.com").html).toBe("<p></p><p></p><p>— Me</p>");
     const d = replyDraft("reply", source({ to: [a("alias@x.com")] }), signed, "me@x.com", date);
-    expect(d.html.startsWith("<p></p><p></p><p>— Alias</p><p></p><p>On Thu")).toBe(true);
+    expect(d.html).toBe("<p></p><p></p><p>— Alias</p>");
     expect(newDraft(signed, OTHER, "work@y.com").html).toBe("");
   });
 
   it("switching From swaps the signature until something is typed", () => {
     const d = replyDraft("reply", source(), signed, "me@x.com", date);
     const swapped = withIdentity(d, signed[1]!);
-    expect(swapped.html).toBe(bodyHtml("<p>— Alias</p>", d.quote));
+    expect(swapped.html).toBe(bodyHtml("<p>— Alias</p>"));
     const typed = withIdentity({ ...d, edited: true, html: "<p>Hi</p>" }, signed[1]!);
     expect(typed.html).toBe("<p>Hi</p>");
   });
