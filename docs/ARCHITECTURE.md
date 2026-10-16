@@ -191,6 +191,37 @@ fresh one; small parts come with the message and have no ID at all.
   `has:attachment` message IDs (newest 20,000, 5 units per 500) and marks
   the cached ones.
 
+## Compose
+
+`mailboat_core::compose` (Milestone 4).
+
+- **Sending** builds an RFC 5322 message with `mail-builder` and sends it
+  with `messages.send`, using the From account's own client. A reply or
+  forward carries `In-Reply-To` and `References` from the original and
+  joins its Gmail thread only when sent from the same account; from
+  another account it starts a thread there (threads never merge across
+  accounts). The new thread is fetched straight after and cached, so it
+  shows at once.
+- **Never sent twice:** `messages.send` isn't retried after timeouts or
+  server errors, since Gmail may already have sent it. Rate limits (403,
+  429) and connection failures happen before Gmail accepts anything, so
+  those still retry.
+- **From** (`compose::identities`): each account's Gmail "Send mail as"
+  addresses (`settings.sendAs`, 1 unit), stored in `send_as`. Each sync
+  worker fetches them once after its first good pass and emits
+  `IdentitiesChangedEvent`; compose only reads the table, so it never
+  waits on Google. Aliases awaiting verification are left out; an account
+  never fetched still offers its own address. Sending checks that From
+  belongs to the account.
+- **Reply-To:** sync now asks for the header (`messages.reply_to_json`).
+  Mail cached before that has NULL there; replying fetches that one
+  message's headers (5 units) and remembers them.
+- **Address suggestions** (`compose::contacts`): one query over cached
+  mail of every account. People you've sent to (To/Cc of SENT mail)
+  rank above people who only wrote to you; within each, every message
+  counts less the older it is (a month old counts half). Spam, Trash and
+  no-reply senders you never wrote to are left out.
+
 ## Showing email safely
 
 1. Rust sanitizes the HTML (`mail/sanitize.rs`, using `ammonia`): no
@@ -259,4 +290,7 @@ fresh one; small parts come with the message and have no ID at all.
 | 2026-10-16 | Attachments open through Rust (`open`, `qlmanage -p`, `open -R`), not a Tauri plugin | No new plugin or web permission: the web side only asks Rust to open an attachment by its local ID, never a path. Save goes straight to Downloads (as browsers do) instead of a save dialog, which would need the dialog plugin. `qlmanage` is Apple's command-line Quick Look; a native panel would need much more Objective-C glue. Downloads are tagged with macOS quarantine. |
 | 2026-10-16 | Inline images embedded as `data:` URLs, not served by a custom scheme | The email's CSP already allows `data:` images, and the frame stays fully self-contained; a scheme handler would need another frame-src exception. Capped at 5 MB per image to keep the document small. |
 | 2026-10-16 | Compose: new mail in a floating card that snaps to corners and side midpoints (like iOS picture-in-picture); replies and forwards inline in the reader; full formatting; 5-second undo send; no pop-out window | Owner's design (Milestone 4). The card must never block the reader, so text can be copied between an open message and a draft, which Notion Mail can't do. Snapping instead of free dragging keeps it tidy; Gmail's defaults for replies and undo send. |
+| 2026-10-16 | Outgoing mail built with `mail-builder` (Stalwart), not by hand or with `lettre` | MIME encoding (RFC 2047 names and subjects, quoted-printable, folding) is a standard protocol best left to a maintained crate. `lettre` is an SMTP client; `mail-builder` only builds messages, which is all Gmail's API needs. Default features off (no hostname lookup: Mailboat sets its own Message-ID). |
+| 2026-10-16 | `messages.send` is never retried after a timeout or server error | Gmail may have sent the mail before failing; retrying could deliver it twice. The error is shown and the message stays in compose, so the user decides. |
+| 2026-10-16 | Gmail aliases are fetched by the sync worker, not when compose opens | Compose shouldn't wait on the network (an offline fetch retries for up to a minute). The list is small and rarely changes; once per launch is enough. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |

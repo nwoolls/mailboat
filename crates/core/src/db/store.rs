@@ -33,6 +33,8 @@ pub struct IncomingMessage {
     pub from: Option<Address>,
     pub to: Vec<Address>,
     pub cc: Vec<Address>,
+    /// Where replies should go, if not to From.
+    pub reply_to: Vec<Address>,
     pub rfc822_message_id: Option<String>,
     pub in_reply_to: Option<String>,
     pub references: Option<String>,
@@ -139,13 +141,15 @@ pub fn upsert_thread(
         });
         tx.execute(
             "INSERT INTO messages (account_id, thread_id, gmail_message_id, internal_date, subject, snippet,
-               from_name, from_email, to_json, cc_json, rfc822_message_id, in_reply_to, references_header, has_attachments)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+               from_name, from_email, to_json, cc_json, rfc822_message_id, in_reply_to, references_header, has_attachments,
+               reply_to_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
              ON CONFLICT (account_id, gmail_message_id) DO UPDATE SET
                thread_id = excluded.thread_id, internal_date = excluded.internal_date,
                subject = excluded.subject, snippet = excluded.snippet,
                from_name = excluded.from_name, from_email = excluded.from_email,
                to_json = excluded.to_json, cc_json = excluded.cc_json,
+               reply_to_json = excluded.reply_to_json,
                rfc822_message_id = excluded.rfc822_message_id, in_reply_to = excluded.in_reply_to,
                references_header = excluded.references_header,
                -- Once the body is fetched, its attachment list is the
@@ -169,6 +173,7 @@ pub fn upsert_thread(
                 msg.in_reply_to,
                 msg.references,
                 msg.has_attachments,
+                serde_json::to_string(&msg.reply_to)?,
             ],
         )?;
         let message_id: MessageId = tx.query_row(

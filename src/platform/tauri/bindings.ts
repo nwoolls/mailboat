@@ -78,6 +78,26 @@ export const commands = {
 	attachmentSave: (attachmentId: AttachmentId) => typedError<string, AppError>(__TAURI_INVOKE("attachment_save", { attachmentId })),
 	/**  Shows a saved attachment in Finder. */
 	attachmentReveal: (attachmentId: AttachmentId) => typedError<null, AppError>(__TAURI_INVOKE("attachment_reveal", { attachmentId })),
+	/**
+	 *  Every address mail can be sent from: each account and its Gmail "Send
+	 *  mail as" aliases (read by sync; `IdentitiesChangedEvent` says when).
+	 */
+	identitiesList: () => typedError<Identity[], AppError>(__TAURI_INVOKE("identities_list")),
+	/**
+	 *  People matching what's been typed in To/Cc/Bcc, from cached mail of
+	 *  every account.
+	 */
+	contactsSuggest: (text: string) => typedError<Address[], AppError>(__TAURI_INVOKE("contacts_suggest", { text })),
+	/**
+	 *  What a reply or forward needs from a message (people, subject, text),
+	 *  fetched with its own account's credentials if not cached.
+	 */
+	replySource: (messageId: MessageId) => typedError<ReplySource, AppError>(__TAURI_INVOKE("reply_source", { messageId })),
+	/**
+	 *  Sends a message with the From account's Gmail and returns the
+	 *  conversation it's in (already cached, so it shows at once).
+	 */
+	messageSend: (message: OutgoingMessage) => typedError<number | null, AppError>(__TAURI_INVOKE("message_send", { message })),
 	/**  Wakes sync workers now. `None` means every account. */
 	syncNow: (accountIds: AccountId[] | null) => __TAURI_INVOKE<void>("sync_now", { accountIds }),
 	syncStatusList: () => typedError<AccountSyncState[], AppError>(__TAURI_INVOKE("sync_status_list")),
@@ -85,6 +105,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	identitiesChangedEvent: makeEvent<IdentitiesChangedEvent>("identities-changed-event"),
 	mailChangedEvent: makeEvent<MailChangedEvent>("mail-changed-event"),
 	syncProgressEvent: makeEvent<SyncProgressEvent>("sync-progress-event"),
 	syncStatusEvent: makeEvent<SyncStatusEvent>("sync-status-event"),
@@ -141,6 +162,24 @@ export type Attachment = {
 };
 
 export type AttachmentId = number;
+
+/**  An account's From addresses (Gmail "Send mail as") changed. */
+export type IdentitiesChangedEvent = {
+	accountId: AccountId,
+};
+
+/**  One address compose can use as From. */
+export type Identity = {
+	accountId: AccountId,
+	email: string,
+	name: string | null,
+	/**  The account's own address (not an alias). */
+	isPrimary: boolean,
+	/**  Gmail's default From for new mail in this account. */
+	isDefault: boolean,
+	/**  HTML signature from Gmail's settings, if any. */
+	signature: string | null,
+};
 
 /**  The decision, and why, so the reader can offer the right choice. */
 export type ImagePolicy = 
@@ -257,6 +296,38 @@ export type OpenedMessage = {
 	/**  Files attached to the message (inline images left out). */
 	attachments: Attachment[],
 } & SafeMessage;
+
+/**  A message the user wants sent. */
+export type OutgoingMessage = {
+	/**  The account it's sent with; `from` must be one of its identities. */
+	accountId: AccountId,
+	from: Address,
+	to: Address[],
+	cc: Address[],
+	bcc: Address[],
+	subject: string,
+	/**  Plain-text body. */
+	text: string,
+	/**  The message this replies to or forwards, for threading. */
+	replyingTo: MessageId | null,
+};
+
+/**  What compose needs from a message to reply to or forward it. */
+export type ReplySource = {
+	messageId: MessageId,
+	accountId: AccountId,
+	threadId: ThreadId,
+	from: Address,
+	to: Address[],
+	cc: Address[],
+	/**  Where the sender asked replies to go (empty: to From). */
+	replyTo: Address[],
+	subject: string,
+	/**  Unix milliseconds. */
+	date: number,
+	/**  The body as plain text, for quoting. */
+	text: string,
+};
 
 export type SafeMessage = {
 	/**  A complete HTML document for the iframe's `srcdoc`. */

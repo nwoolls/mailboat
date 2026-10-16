@@ -170,6 +170,34 @@ pub struct MessageRef {
     pub thread_id: String,
 }
 
+/// `settings.sendAs.list`: the addresses an account can send as.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendAsList {
+    #[serde(default)]
+    pub send_as: Vec<SendAs>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SendAs {
+    pub send_as_email: String,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub reply_to_address: Option<String>,
+    /// HTML, as set in Gmail's settings.
+    #[serde(default)]
+    pub signature: Option<String>,
+    #[serde(default)]
+    pub is_primary: bool,
+    #[serde(default)]
+    pub is_default: bool,
+    /// "accepted" once Gmail has verified an alias; the primary has none.
+    #[serde(default)]
+    pub verification_status: Option<String>,
+}
+
 /// Google's error envelope: `{"error": {"code", "message", "errors": [{"reason"}]}}`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ErrorEnvelope {

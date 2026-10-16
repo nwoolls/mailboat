@@ -14,7 +14,9 @@ use mailboat_core::sync::{Supervisor, SyncConfig, WorkerTiming};
 use tauri::Manager;
 use tauri_specta::{collect_commands, collect_events, Builder};
 
-use crate::events::{MailChangedEvent, SyncProgressEvent, SyncStatusEvent, TauriSyncEvents};
+use crate::events::{
+    IdentitiesChangedEvent, MailChangedEvent, SyncProgressEvent, SyncStatusEvent, TauriSyncEvents,
+};
 use crate::state::{AppDirs, AppState};
 
 pub const BINDINGS_PATH: &str = "../src/platform/tauri/bindings.ts";
@@ -45,13 +47,18 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::attachment_preview,
             commands::attachment_save,
             commands::attachment_reveal,
+            commands::identities_list,
+            commands::contacts_suggest,
+            commands::reply_source,
+            commands::message_send,
             commands::sync_now,
             commands::sync_status_list,
         ])
         .events(collect_events![
             SyncStatusEvent,
             SyncProgressEvent,
-            MailChangedEvent
+            MailChangedEvent,
+            IdentitiesChangedEvent
         ])
         // IDs and millisecond timestamps stay far below 2^53, so plain JS
         // numbers are exact.

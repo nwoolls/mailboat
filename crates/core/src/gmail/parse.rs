@@ -18,6 +18,11 @@ pub fn decode_base64url(data: &str) -> Option<Vec<u8>> {
     B64URL.decode(data.trim()).ok()
 }
 
+/// base64url with padding, as Gmail's `raw` fields take it.
+pub fn encode_base64url(data: &[u8]) -> String {
+    base64::engine::general_purpose::URL_SAFE.encode(data)
+}
+
 pub fn header<'a>(part: &'a MessagePart, name: &str) -> Option<&'a str> {
     part.headers
         .iter()
@@ -44,6 +49,9 @@ pub fn message_to_incoming(msg: &Message) -> IncomingMessage {
         from: h("From").and_then(|v| parse_address_list(&v).into_iter().next()),
         to: h("To").map(|v| parse_address_list(&v)).unwrap_or_default(),
         cc: h("Cc").map(|v| parse_address_list(&v)).unwrap_or_default(),
+        reply_to: h("Reply-To")
+            .map(|v| parse_address_list(&v))
+            .unwrap_or_default(),
         rfc822_message_id: h("Message-ID"),
         in_reply_to: h("In-Reply-To"),
         references: h("References"),

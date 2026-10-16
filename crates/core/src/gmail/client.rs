@@ -11,16 +11,17 @@ use serde::de::DeserializeOwned;
 use super::batch;
 use super::pacer::{cost, QuotaPacer};
 use super::types::{
-    AttachmentBody, ErrorEnvelope, HistoryList, LabelList, Message, MessageList, Profile, Thread,
-    ThreadList,
+    AttachmentBody, ErrorEnvelope, HistoryList, LabelList, Message, MessageList, MessageRef,
+    Profile, SendAsList, Thread, ThreadList,
 };
 use crate::error::{CoreError, Result};
 
 pub const GMAIL_BASE_URL: &str = "https://gmail.googleapis.com";
 
 /// Headers requested with `format=metadata`.
-pub const METADATA_HEADERS: [&str; 8] = [
+pub const METADATA_HEADERS: [&str; 9] = [
     "From",
+    "Reply-To",
     "To",
     "Cc",
     "Subject",
@@ -269,6 +270,44 @@ impl GmailClient {
         .await
     }
 
+    /// `messages.get` with `format=metadata`: one message's headers.
+    pub async fn message_metadata(&self, id: &str) -> Result<Message> {
+        let mut query = vec![("format", "metadata")];
+        query.extend(METADATA_HEADERS.iter().map(|h| ("metadataHeaders", *h)));
+        self.get_json(
+            &self.url(&format!("messages/{id}")),
+            &query,
+            cost::MESSAGES_GET,
+        )
+        .await
+    }
+
+    /// `settings.sendAs.list`: the main address and any aliases.
+    pub async fn send_as(&self) -> Result<SendAsList> {
+        self.get_json(&self.url("settings/sendAs"), &[], cost::SETTINGS_GET)
+            .await
+    }
+
+    /// `messages.send` with a complete RFC 5322 message. `thread_id` puts it
+    /// in that Gmail thread (the subject and References must match too).
+    ///
+    /// Never retried after the request may have reached Google (timeouts,
+    /// server errors): the mail might have gone, and a retry would send it
+    /// twice. Rate limits and connection failures happen before Gmail
+    /// accepts anything, so those still retry.
+    pub async fn send_message(&self, raw: &[u8], thread_id: Option<&str>) -> Result<MessageRef> {
+        self.spend(cost::MESSAGES_SEND).await;
+        let url = self.url("messages/send");
+        let mut body = serde_json::json!({ "raw": super::parse::encode_base64url(raw) });
+        if let Some(thread) = thread_id {
+            body["threadId"] = thread.into();
+        }
+        let response = self
+            .send_with(|| self.http.post(&url).json(&body), Retry::OnlyUnsent)
+            .await?;
+        response.json().await.map_err(net_error)
+    }
+
     /// `threads.modify`: add/remove labels on every message of a thread.
     pub async fn modify_thread(&self, id: &str, add: &[&str], remove: &[&str]) -> Result<()> {
         self.spend(cost::THREADS_MODIFY).await;
@@ -437,6 +476,14 @@ impl GmailClient {
 
     /// Sends a request, adding auth and retrying transient failures.
     async fn send(&self, build: impl Fn() -> RequestBuilder) -> Result<Response> {
+        self.send_with(build, Retry::Transient).await
+    }
+
+    async fn send_with(
+        &self,
+        build: impl Fn() -> RequestBuilder,
+        retry: Retry,
+    ) -> Result<Response> {
         let mut attempt = 0;
         let mut refreshed = false;
         loop {
@@ -445,7 +492,8 @@ impl GmailClient {
             let response = match result {
                 Ok(r) => r,
                 Err(e)
-                    if attempt < self.retry.max_retries && (e.is_timeout() || e.is_connect()) =>
+                    if attempt < self.retry.max_retries
+                        && (e.is_connect() || (e.is_timeout() && retry == Retry::Transient)) =>
                 {
                     tokio::time::sleep(self.retry.delay(attempt, None)).await;
                     attempt += 1;
@@ -469,7 +517,8 @@ impl GmailClient {
                 .and_then(|v| v.trim().parse::<u64>().ok())
                 .map(Duration::from_secs);
             let body = response.text().await.unwrap_or_default();
-            if is_retryable(status.as_u16(), &body) {
+            let unsent = matches!(status.as_u16(), 403 | 429);
+            if is_retryable(status.as_u16(), &body) && (retry == Retry::Transient || unsent) {
                 if matches!(status.as_u16(), 403 | 429) {
                     self.throttle("request", status.as_u16(), &body).await;
                 } else {
@@ -493,6 +542,15 @@ impl GmailClient {
             });
         }
     }
+}
+
+/// Which failures a request may be sent again after.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Retry {
+    /// Reads and idempotent changes: any transient failure.
+    Transient,
+    /// Sending mail: only failures where Google certainly didn't act.
+    OnlyUnsent,
 }
 
 /// 429 and 5xx are retryable, and so are 403s whose reason is a rate limit

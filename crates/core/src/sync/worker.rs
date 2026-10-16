@@ -22,6 +22,8 @@ pub trait SyncEvents: Send + Sync {
     fn mail_changed(&self, account: AccountId);
     /// A diagnostic line for the sync log.
     fn log(&self, _account: AccountId, _line: &str) {}
+    /// The account's From addresses (Gmail "Send mail as") were refreshed.
+    fn identities_changed(&self, _account: AccountId) {}
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +153,9 @@ async fn run_worker(
     wake: Arc<Notify>,
 ) {
     let mut failures: u32 = 0;
+    // From addresses are fetched once per worker (each launch, or after
+    // signing in again), after a pass shows Gmail is reachable.
+    let mut identities_fresh = false;
     loop {
         set_status(&db, &*events, account, SyncStatus::Syncing, None);
         let progress_events = events.clone();
@@ -185,6 +190,18 @@ async fn run_worker(
                 set_status(&db, &*events, account, SyncStatus::Idle, None);
                 if outcome.changed_threads > 0 {
                     events.mail_changed(account);
+                }
+                if !identities_fresh {
+                    match crate::compose::identities::refresh(&db, &gmail, account).await {
+                        Ok(()) => {
+                            identities_fresh = true;
+                            events.identities_changed(account);
+                        }
+                        Err(e) => events.log(
+                            account,
+                            &format!("could not read Send mail as addresses ({}): {e}", e.kind()),
+                        ),
+                    }
                 }
                 Some(timing.poll_interval)
             }

@@ -21,6 +21,7 @@ encoding_rs = "0.8.42"
 ammonia = "4.2.3"
 lol_html = "3.0.1"
 oauth2 = { version = "5", default-features = false }
+mail-builder = { version = "1", default-features = false }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

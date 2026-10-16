@@ -196,3 +196,25 @@ WHERE EXISTS (SELECT 1 FROM message_bodies b WHERE b.message_id = messages.id AN
 UPDATE threads SET has_attachments =
   EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = threads.id AND m.has_attachments);
 "#;
+
+/// Compose (Milestone 4). `reply_to_json` is the Reply-To header, which
+/// replies go to instead of From; NULL means "not known yet" (synced before
+/// sync asked for it), and is filled in on demand when replying.
+/// `send_as` holds each account's Gmail "Send mail as" addresses (the
+/// main address included), which compose offers as From.
+pub const MIGRATION_V7: &str = r#"
+ALTER TABLE messages ADD COLUMN reply_to_json TEXT;
+
+CREATE TABLE send_as (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  email TEXT NOT NULL COLLATE NOCASE,
+  display_name TEXT,
+  reply_to TEXT,
+  signature TEXT,
+  is_primary INTEGER NOT NULL DEFAULT 0,
+  is_default INTEGER NOT NULL DEFAULT 0,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (account_id, email)
+);
+"#;

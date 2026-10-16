@@ -27,6 +27,8 @@ pub mod cost {
     pub const THREADS_MODIFY: u32 = 10;
     pub const THREADS_TRASH: u32 = 10;
     pub const ATTACHMENTS_GET: u32 = 5;
+    pub const MESSAGES_SEND: u32 = 100;
+    pub const SETTINGS_GET: u32 = 1;
 }
 
 #[derive(Debug)]

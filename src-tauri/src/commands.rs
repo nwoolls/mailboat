@@ -6,12 +6,14 @@ use std::time::Duration;
 
 use mailboat_core::attachments;
 use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
+use mailboat_core::compose::identities::{self, Identity};
+use mailboat_core::compose::{self, OutgoingMessage, ReplySource};
 use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::{self, SafeMessage};
 use mailboat_core::model::{
-    Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, Label, LabelId,
-    LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
+    Account, AccountFilter, AccountId, AccountSyncState, Address, Attachment, AttachmentId, Label,
+    LabelId, LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
 };
 use mailboat_core::sync::{fetch_body, load_older, OLDER_BATCH};
 use mailboat_core::CoreError;
@@ -534,6 +536,53 @@ pub fn sender_allow_images(
         &sender_email,
         allow,
     )?)
+}
+
+/// Every address mail can be sent from: each account and its Gmail "Send
+/// mail as" aliases (read by sync; `IdentitiesChangedEvent` says when).
+#[tauri::command]
+#[specta::specta]
+pub fn identities_list(state: State<'_, AppState>) -> CmdResult<Vec<Identity>> {
+    Ok(identities::list(&state.db.conn())?)
+}
+
+/// People matching what's been typed in To/Cc/Bcc, from cached mail of
+/// every account.
+#[tauri::command]
+#[specta::specta]
+pub fn contacts_suggest(state: State<'_, AppState>, text: String) -> CmdResult<Vec<Address>> {
+    Ok(compose::contacts::suggest(&state.db.conn(), &text, 8)?)
+}
+
+/// What a reply or forward needs from a message (people, subject, text),
+/// fetched with its own account's credentials if not cached.
+#[tauri::command]
+#[specta::specta]
+pub async fn reply_source(
+    state: State<'_, AppState>,
+    message_id: MessageId,
+) -> CmdResult<ReplySource> {
+    let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
+    let gmail = state.gmail_for(account)?.interactive();
+    Ok(compose::reply_source(&state.db, &gmail, message_id).await?)
+}
+
+/// Sends a message with the From account's Gmail and returns the
+/// conversation it's in (already cached, so it shows at once).
+#[tauri::command]
+#[specta::specta]
+pub async fn message_send(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    message: OutgoingMessage,
+) -> CmdResult<Option<ThreadId>> {
+    let gmail = state.gmail_for(message.account_id)?.interactive();
+    let thread = compose::send(&state.db, &gmail, &message).await?;
+    let _ = MailChangedEvent {
+        account_id: message.account_id,
+    }
+    .emit(&app);
+    Ok(thread)
 }
 
 /// Wakes sync workers now. `None` means every account.

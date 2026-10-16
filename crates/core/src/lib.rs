@@ -6,6 +6,7 @@
 pub mod actions;
 pub mod attachments;
 pub mod auth;
+pub mod compose;
 pub mod db;
 pub mod error;
 pub mod gmail;
