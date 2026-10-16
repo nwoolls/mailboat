@@ -585,6 +585,23 @@ pub async fn message_send(
     Ok(thread)
 }
 
+/// Opens a link from the message being written in the default browser
+/// (or mail app). Only web and mail links; anything else is refused.
+#[tauri::command]
+#[specta::specta]
+pub fn link_open(url: String) -> CmdResult<()> {
+    let lower = url.to_ascii_lowercase();
+    if !["http://", "https://", "mailto:"]
+        .iter()
+        .any(|p| lower.starts_with(p))
+    {
+        return Err(CoreError::Invalid(format!("not a web or mail link: {url}")).into());
+    }
+    open::that_detached(&url)
+        .map_err(|e| CoreError::Other(format!("could not open the link: {e}")))?;
+    Ok(())
+}
+
 /// Wakes sync workers now. `None` means every account.
 #[tauri::command]
 #[specta::specta]

@@ -98,6 +98,11 @@ export const commands = {
 	 *  conversation it's in (already cached, so it shows at once).
 	 */
 	messageSend: (message: OutgoingMessage) => typedError<number | null, AppError>(__TAURI_INVOKE("message_send", { message })),
+	/**
+	 *  Opens a link from the message being written in the default browser
+	 *  (or mail app). Only web and mail links; anything else is refused.
+	 */
+	linkOpen: (url: string) => typedError<null, AppError>(__TAURI_INVOKE("link_open", { url })),
 	/**  Wakes sync workers now. `None` means every account. */
 	syncNow: (accountIds: AccountId[] | null) => __TAURI_INVOKE<void>("sync_now", { accountIds }),
 	syncStatusList: () => typedError<AccountSyncState[], AppError>(__TAURI_INVOKE("sync_status_list")),

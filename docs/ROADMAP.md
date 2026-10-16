@@ -493,7 +493,11 @@ Stage 3: formatting, signatures, attachments
 - [x] Full formatting toolbar (TipTap), as Gmail's: font (Gmail's 11),
       size (small/normal/large/huge), bold, italic, underline, text
       colour (the macOS colour picker), alignment, numbered and bulleted
-      lists, quote, link, remove formatting. Sent as HTML with a plain-text
+      lists, quote, link, remove formatting. Links (owner's pick of three
+      designs, 2026-10-16): ⌘K or the button opens a popup under the text,
+      as in Google Docs; Return applies, Esc or a click elsewhere cancels.
+      With the cursor in a link, the popup shows its address with Edit,
+      Open and Remove. Sent as HTML with a plain-text
       copy; spacing in the email matches the editor
 - [ ] Reply and forward with quoted HTML (folded behind "…"). For now
       the quote is the original's text in a quote block

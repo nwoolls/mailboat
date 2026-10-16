@@ -2,7 +2,11 @@ import { TextAlign } from "@tiptap/extension-text-align";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import { type Editor, EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { commands } from "../../../platform/tauri/bindings";
+import { unwrap } from "../../../platform/tauri/ipc";
+import { showToast } from "../../../shared/lib/toast";
+import { linkHref } from "../model/links";
 import {
   AlignCenterIcon,
   AlignLeftIcon,
@@ -100,6 +104,8 @@ export function FormatBar({ editor }: { editor: Editor | null }) {
             ordered: e.isActive("orderedList"),
             quote: e.isActive("blockquote"),
             link: e.isActive("link"),
+            href: (e.getAttributes("link").href as string | undefined) ?? "",
+            focused: e.isFocused,
             center: e.isActive({ textAlign: "center" }),
             right: e.isActive({ textAlign: "right" }),
             font: (e.getAttributes("textStyle").fontFamily as string | undefined) ?? "",
@@ -108,8 +114,22 @@ export function FormatBar({ editor }: { editor: Editor | null }) {
           }
         : null,
   });
+  // ⌘K starts a link, as in most editors.
+  useEffect(() => {
+    const dom = editor?.view.dom;
+    if (!dom) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "k" && e.metaKey) {
+        e.preventDefault();
+        setLinking((editor.getAttributes("link").href as string | undefined) ?? "");
+      }
+    };
+    dom.addEventListener("keydown", onKey);
+    return () => dom.removeEventListener("keydown", onKey);
+  }, [editor]);
   if (!editor || !state) return null;
   const chain = () => editor.chain().focus();
+  const startLink = () => setLinking(state.href);
   const align = state.center ? "center" : state.right ? "right" : "left";
   const nextAlign = { left: "center", center: "right", right: "left" } as const;
 
@@ -217,57 +237,19 @@ export function FormatBar({ editor }: { editor: Editor | null }) {
           on={state.quote}
           run={() => chain().toggleBlockquote().run()}
         />
-        <Btn
-          icon={LinkIcon}
-          label={state.link ? "Remove link" : "Link"}
-          on={state.link}
-          run={() =>
-            state.link ? chain().unsetLink().run() : setLinking(linking === null ? "" : null)
-          }
-        />
+        <Btn icon={LinkIcon} label="Link (⌘K)" on={state.link} run={startLink} />
         <Btn
           icon={ClearFormattingIcon}
           label="Remove formatting"
           run={() => chain().unsetAllMarks().clearNodes().run()}
         />
       </div>
-      {linking !== null && (
-        <input
-          autoFocus
-          aria-label="Link address"
-          placeholder="Paste or type a link, then Return"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          value={linking}
-          onChange={(e) => setLinking(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              const href = linking.trim();
-              if (href) {
-                const url = /^[a-z][a-z0-9+.-]*:/i.test(href) ? href : `https://${href}`;
-                if (editor.state.selection.empty)
-                  chain()
-                    .insertContent({
-                      type: "text",
-                      text: href,
-                      marks: [{ type: "link", attrs: { href: url } }],
-                    })
-                    .run();
-                else chain().setLink({ href: url }).run();
-              }
-              setLinking(null);
-            } else if (e.key === "Escape") {
-              e.preventDefault();
-              e.stopPropagation();
-              setLinking(null);
-              editor.commands.focus();
-            }
-          }}
-          className="h-7 rounded-md bg-selection px-2 text-[13px] outline-none"
-        />
-      )}
+      <LinkBubble
+        editor={editor}
+        editing={linking}
+        inLink={state.link && state.focused}
+        onEdit={setLinking}
+      />
     </div>
   );
 }
@@ -301,6 +283,147 @@ function Btn({
       }`}
     >
       <Icon size={15} />
+    </button>
+  );
+}
+
+/**
+ * The link popup, right under the text, as in Google Docs: an address
+ * field while adding or editing a link (Return applies, Esc or a click
+ * elsewhere cancels), and with the cursor in a link, its address with
+ * Edit, Open and Remove. It sits in the top layer, so nothing clips it.
+ */
+function LinkBubble({
+  editor,
+  editing,
+  inLink,
+  onEdit,
+}: {
+  editor: Editor;
+  /** The address being typed, or null when not editing. */
+  editing: string | null;
+  inLink: boolean;
+  onEdit: (value: string | null) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isEditing = editing !== null;
+  const open = isEditing || inLink;
+  const { from, to } = editor.state.selection;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!open || !el) return;
+    el.showPopover();
+    // Under the selection (its last line), kept inside the window.
+    const start = editor.view.coordsAtPos(from);
+    const end = editor.view.coordsAtPos(to);
+    const left = Math.min(start.left, window.innerWidth - el.offsetWidth - 8);
+    el.style.left = `${Math.max(8, left)}px`;
+    el.style.top = `${end.bottom + 6}px`;
+    return () => {
+      if (el.matches(":popover-open")) el.hidePopover();
+    };
+  }, [open, editor, from, to]);
+
+  // While editing, a press anywhere else cancels.
+  useEffect(() => {
+    if (!isEditing) return;
+    const onDown = (e: PointerEvent) => {
+      if (!(e.target instanceof Node && ref.current?.contains(e.target))) onEdit(null);
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [isEditing, onEdit]);
+
+  if (!open) return null;
+  const href = (editor.getAttributes("link").href as string | undefined) ?? "";
+  const apply = () => {
+    const typed = editing?.trim() ?? "";
+    const chain = editor.chain().focus().extendMarkRange("link");
+    if (!typed) chain.unsetLink().run();
+    else if (editor.state.selection.empty && !inLink)
+      chain
+        .insertContent({
+          type: "text",
+          text: typed,
+          marks: [{ type: "link", attrs: { href: linkHref(typed) } }],
+        })
+        .run();
+    else chain.setLink({ href: linkHref(typed) }).run();
+    onEdit(null);
+  };
+
+  return (
+    <div
+      ref={ref}
+      // Viewing and editing differ in width: remount to measure again.
+      key={isEditing ? "edit" : "view"}
+      popover="manual"
+      className="menu fixed m-0 flex items-center gap-1 rounded-lg p-1 text-[13px] text-content"
+      // Keep the editor's selection when clicking the buttons.
+      onMouseDown={(e) => {
+        if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
+      }}
+    >
+      {editing !== null ? (
+        <>
+          <input
+            autoFocus
+            aria-label="Link address"
+            placeholder="Paste or type a link"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            value={editing}
+            onChange={(e) => onEdit(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                apply();
+              } else if (e.key === "Escape") {
+                // Cancel the link only, not minimise the card.
+                e.preventDefault();
+                e.stopPropagation();
+                onEdit(null);
+                editor.commands.focus();
+              }
+            }}
+            className="h-7 w-64 rounded-md bg-selection px-2 outline-none"
+          />
+          <BubbleButton label="Apply" onClick={apply} />
+        </>
+      ) : (
+        <>
+          <span className="max-w-64 truncate px-2 text-accent" title={href}>
+            {href}
+          </span>
+          <BubbleButton label="Edit" onClick={() => onEdit(href)} />
+          <BubbleButton
+            label="Open"
+            onClick={() =>
+              void unwrap(commands.linkOpen(href)).catch((e: Error) =>
+                showToast({ tone: "error", message: `Couldn’t open the link: ${e.message}` }),
+              )
+            }
+          />
+          <BubbleButton
+            label="Remove"
+            onClick={() => editor.chain().focus().extendMarkRange("link").unsetLink().run()}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function BubbleButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="h-7 shrink-0 rounded-md px-2 text-content/75 hover:bg-selection hover:text-content"
+    >
+      {label}
     </button>
   );
 }
