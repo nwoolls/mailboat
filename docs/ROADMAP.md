@@ -206,6 +206,10 @@ Options offered during the spike that the owner didn't pick (yet):
       with a sender initial, the name and a short date (full date on
       hover), and the addresses on a single truncated line; avatar, notice,
       white card and adapted email text share one left edge
+- [x] Opening or closing a message no longer jumps: the first header line
+      is the same in both states, the snippet fades, and the addresses and
+      body fold in with a short animation; the image notice is shorter
+      ("Block images", sender in the tooltip) so it never truncates
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong

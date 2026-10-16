@@ -132,7 +132,7 @@ html.resizing iframe {
 /* Reader cards, in layers of glass: an open message, a collapsed one (a
    shade lighter, firmer on hover), and the notice inside a message. */
 .message-card {
-  background: color-mix(in srgb, var(--color-content) 5%, transparent);
+  background: color-mix(in srgb, var(--color-content) 7%, transparent);
 }
 .message-card-collapsed {
   background: color-mix(in srgb, var(--color-content) 2.5%, transparent);

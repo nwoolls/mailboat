@@ -53,6 +53,9 @@ function ThreadBody({
   leaving: boolean;
 }) {
   const [expanded, setExpanded] = useState<Set<MessageId>>(() => initiallyExpanded(data.messages));
+  // Every message opened so far; its body stays mounted when closed.
+  const [opened, setOpened] = useState<Set<MessageId>>(expanded);
+  if ([...expanded].some((id) => !opened.has(id))) setOpened(new Set([...opened, ...expanded]));
   // Opening a conversation marks it read, once (pressing `u` afterwards
   // leaves it unread). Remembered at open so later updates don't re-trigger.
   const [unreadWhenOpened] = useState(data.thread.unread);
@@ -123,46 +126,53 @@ function ThreadBody({
                 isOpen ? "message-card" : "message-card-collapsed"
               }`}
             >
+              {/* The first line (avatar, name, date) is identical open or
+                  closed, so nothing jumps; the snippet fades, and the
+                  addresses and body slide in below. */}
               <button
                 type="button"
-                className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                className="w-full px-4 py-3 text-left"
                 onClick={toggle}
                 aria-expanded={isOpen}
               >
-                <SenderInitial name={name} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <span
-                      className={`min-w-0 shrink-0 truncate ${m.unread ? "font-semibold" : "font-medium"} ${
-                        isOpen ? "max-w-full" : "max-w-[45%]"
-                      }`}
-                    >
-                      {name}
-                    </span>
-                    {!isOpen && (
-                      <span className="min-w-0 flex-1 truncate text-content/50">{m.snippet}</span>
-                    )}
-                    <span
-                      className="ml-auto shrink-0 pl-2 text-xs text-content/45"
-                      title={formatFullDate(m.internalDate)}
-                    >
-                      {formatListDate(m.internalDate)}
-                    </span>
+                <div className="flex h-7 items-center gap-3">
+                  <SenderInitial name={name} />
+                  <span
+                    className={`max-w-[60%] min-w-0 shrink-0 truncate ${m.unread ? "font-semibold" : "font-medium"}`}
+                  >
+                    {name}
+                  </span>
+                  <span
+                    aria-hidden={isOpen}
+                    className={`min-w-0 flex-1 truncate text-content/50 transition-opacity duration-150 ${
+                      isOpen ? "opacity-0" : "opacity-100"
+                    }`}
+                  >
+                    {m.snippet}
+                  </span>
+                  <span
+                    className="shrink-0 pl-2 text-xs text-content/45"
+                    title={formatFullDate(m.internalDate)}
+                  >
+                    {formatListDate(m.internalDate)}
+                  </span>
+                </div>
+                <Fold open={isOpen}>
+                  <div className="truncate pl-10 text-xs text-content/45">
+                    {m.from.email} → {m.to.map((a) => displayName(a, selfEmails)).join(", ")}
+                    {m.cc.length > 0 &&
+                      `, cc ${m.cc.map((a) => displayName(a, selfEmails)).join(", ")}`}
                   </div>
-                  {isOpen && (
-                    <div className="truncate text-xs text-content/45">
-                      {m.from.email} → {m.to.map((a) => displayName(a, selfEmails)).join(", ")}
-                      {m.cc.length > 0 &&
-                        `, cc ${m.cc.map((a) => displayName(a, selfEmails)).join(", ")}`}
-                    </div>
-                  )}
-                </div>
+                </Fold>
               </button>
-              {isOpen && (
-                <div className="px-4 pb-4">
-                  <MessageFrame messageId={m.id} />
-                </div>
-              )}
+              {/* Stays loaded after the first open, so closing animates too. */}
+              <Fold open={isOpen}>
+                {opened.has(m.id) && (
+                  <div className="px-4 pb-4">
+                    <MessageFrame messageId={m.id} />
+                  </div>
+                )}
+              </Fold>
             </section>
           );
         })}
@@ -180,5 +190,19 @@ function SenderInitial({ name }: { name: string }) {
     >
       {name.trim().charAt(0).toUpperCase() || "?"}
     </span>
+  );
+}
+
+/** Animates its content's height open and closed. */
+function Fold({ open, children }: { open: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
+        open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+      }`}
+      inert={!open}
+    >
+      <div className="min-h-0 overflow-hidden">{children}</div>
+    </div>
   );
 }

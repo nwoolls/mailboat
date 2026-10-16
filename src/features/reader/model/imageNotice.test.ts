@@ -12,7 +12,11 @@ describe("imageNotice", () => {
   it("offers to block when images loaded by default", () => {
     const n = imageNotice({ ...base, imagePolicy: "loadedByDefault", loadedImages: 3 });
     expect(n?.quiet).toBe(true);
-    expect(n?.action).toEqual({ label: "Block images from news@shop.com", allow: false });
+    expect(n?.action).toEqual({
+      label: "Block images",
+      hint: "Block images from news@shop.com",
+      allow: false,
+    });
   });
 
   it("says nothing when there were no images or trackers", () => {
@@ -27,7 +31,7 @@ describe("imageNotice", () => {
       loadedImages: 1,
       trackersRemoved: 2,
     });
-    expect(n?.text).toBe("Images shown, 2 trackers removed");
+    expect(n?.text).toBe("Images shown · 2 trackers removed");
   });
 
   it("offers to load images for a blocked sender and in Trash", () => {

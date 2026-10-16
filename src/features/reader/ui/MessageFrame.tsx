@@ -75,7 +75,8 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
           {notice.action && (
             <button
               type="button"
-              className={`ml-auto max-w-[60%] shrink-0 truncate disabled:opacity-50 ${
+              title={notice.action.hint}
+              className={`ml-auto shrink-0 disabled:opacity-50 ${
                 notice.quiet ? "hover:text-content hover:underline" : "text-accent hover:underline"
               }`}
               disabled={senderImages.isPending}
