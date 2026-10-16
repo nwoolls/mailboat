@@ -401,13 +401,33 @@ attachments, inline images, paperclips).
 
 ## Milestone 4: Compose
 
+**Design discussion first** (owner request, 2026-10-16). Starting point:
+a compose card floating over the window in the lower right, as in Gmail
+on the web. It must not block the rest of the app: a conversation stays
+open and readable beside it, so text can be copied between them (Notion
+Mail can't do this; the owner relies on it in Gmail).
+
+- [ ] Compose window design agreed with the owner (placement, sizes,
+      minimise, several drafts, replies inline or in the card)
 - [ ] New message, reply, reply-all, forward with quoted HTML
 - [ ] Sending attachments *(receiving moved to M3)*
 - [ ] Drafts synced back to Gmail
 - [ ] Choice of From account, defaulting to the conversation's account
+- [ ] Signatures: use each address's Gmail signature when composing
+      (read with the current `gmail.modify` scope) *(owner request,
+      2026-10-16)*. Managing them is in Milestone 6
 
 ## Milestone 5: Polish
 
+- [ ] Report spam (and "Not spam" in the Spam view) as an action, routed
+      per account like the others *(owner request, 2026-10-16)*
+- [ ] Right-click menus on conversations (archive, trash, read, star,
+      labels, spam, …) and other places where macOS apps have them
+      *(owner request, 2026-10-16)*
+- [ ] Swipe on a conversation (trackpad, two fingers): one way archives,
+      the other toggles read/unread *(owner request, 2026-10-16)*.
+      **Discuss the animation with the owner first** (what shows behind
+      the row, how far to swipe, what commits or springs back)
 - [ ] Create, rename and delete labels (the label picker only applies
       existing ones) *(not in the M3 list; noted while building it)*
 - [ ] Command palette (cmdk)
@@ -416,8 +436,10 @@ attachments, inline images, paperclips).
 - [ ] Notifications
 - [ ] Settings: choose the app icon from `design/icon/choices/` (the
       folded M in 16 colours, or the earlier glass icon)
-- [ ] Settings screen, with a transparency slider per area (sidebar and
-      reader, list panel). Per area, because one shared slider scaling
+- [ ] Settings screen *(owner request, 2026-10-16: **discuss first** how
+      it opens (⌘, menu, the sidebar's icon bar), and whether it's its own
+      window, a sheet, or a page in the main window)*, with a transparency
+      slider per area (sidebar and reader, list panel). Per area, because one shared slider scaling
       each tint by the same share changed the list far more than the
       sidebar
 - [ ] Remember the window between launches: position, size, and
@@ -428,6 +450,18 @@ attachments, inline images, paperclips).
       instead of opening out of sight. Likely Tauri's `window-state`
       plugin, which would need a reason recorded for the new plugin
 - [ ] Offline mode
+
+## Milestone 6: Rules and signatures
+
+Both need Gmail's settings scope (`gmail.settings.basic`), which Mailboat
+doesn't ask for yet: adding it means each account signs in again once to
+approve it, and an ARCHITECTURE decision row.
+
+- [ ] Rules (Gmail filters): list, create, edit, delete *(owner request,
+      2026-10-16)*
+- [ ] Create a rule from a message, as Gmail's "Filter messages like
+      these": sender, subject and so on filled in from it
+- [ ] Manage signatures per address (using them is in Milestone 4)
 
 ## Later / unscheduled
 
