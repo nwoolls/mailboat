@@ -430,18 +430,55 @@ Design agreed with the owner, 2026-10-16:
   ⌘↩ send; the card shows the From account's colour; quoted text folds
   behind "…".
 
+Owner's answers before starting, 2026-10-16:
+
+- **Address suggestions** come from mail Mailboat already has (every
+  account) **and from Google Contacts**. Contacts needs a new permission
+  (`contacts.readonly` and `contacts.other.readonly`, through Google's
+  People API), so each account signs in again once, and the People API
+  has to be turned on in the owner's Cloud project.
+- **From** lists every account and its Gmail "Send mail as" aliases, each
+  with its own signature. Replies default to the address the mail was
+  sent to.
+- **A Drafts view** in the sidebar, unified across accounts: drafts
+  started in Gmail elsewhere show there and resume in Mailboat.
+- **Built in stages, each tried by the owner in the app before the next.**
+
+Stage 1: sending, plain text
+
+- [ ] New message, reply, reply-all and forward, sent through Gmail and
+      shown in the conversation straight away (plain text for now)
+- [ ] Choice of From: accounts and their aliases, defaulting to the
+      conversation's account (the address the mail was sent to)
+- [ ] To / Cc / Bcc with suggestions from mail already in Mailboat
+- [ ] Keys: `c` new, `r` reply, `a` reply all, `f` forward, ⌘↩ send
+
+Stage 2: the card and inline replies
+
 - [ ] Floating compose card for new messages, with the snapping
       behaviour above, minimise and several drafts at once
 - [ ] Inline replies and forwards in the reader
+
+Stage 3: formatting, signatures, attachments
+
 - [ ] Full formatting toolbar (TipTap)
-- [ ] Undo send (5 seconds)
-- [ ] New message, reply, reply-all, forward with quoted HTML
-- [ ] Sending attachments *(receiving moved to M3)*
-- [ ] Drafts synced back to Gmail
-- [ ] Choice of From account, defaulting to the conversation's account
+- [ ] Reply and forward with quoted HTML (folded behind "…")
 - [ ] Signatures: use each address's Gmail signature when composing
       (read with the current `gmail.modify` scope) *(owner request,
       2026-10-16)*. Managing them is in Milestone 6
+- [ ] Sending attachments *(receiving moved to M3)*
+
+Stage 4: drafts and undo send
+
+- [ ] Drafts synced back to Gmail as you type
+- [ ] Drafts view (all accounts); drafts started elsewhere resume here
+- [ ] Undo send (5 seconds)
+
+Stage 5: Google Contacts
+
+- [ ] Suggestions from Google Contacts (saved and "other" contacts) as
+      well as from mail. Last because it needs the owner to turn on the
+      People API and each account to sign in again
 
 ## Milestone 5: Polish
 
