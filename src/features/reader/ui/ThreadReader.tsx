@@ -72,12 +72,14 @@ function ThreadBody({
   return (
     <article
       // macOS overlay scrollbars take no width, so a long email appearing
-      // doesn't narrow the reader or reflow it.
-      className={`reader-enter flex-1 overflow-y-auto pb-4 transition-opacity duration-150 ${
+      // doesn't narrow the reader or reflow it. No padding of its own: the
+      // window's 8px edge and the splitter frame the cards, so the last
+      // card's bottom lines up with the list panel's at the end.
+      className={`reader-enter flex-1 overflow-y-auto transition-opacity duration-150 ${
         leaving ? "opacity-50" : ""
       }`}
     >
-      <header className="px-8 pt-5 pb-3">
+      <header className="px-4 pt-5 pb-3">
         <h1 className="selectable text-lg leading-snug font-semibold">
           {data.thread.subject || "(no subject)"}
         </h1>
@@ -104,9 +106,10 @@ function ThreadBody({
           </div>
         )}
       </header>
-      {/* Each message is a card on the glass; collapsed ones are a shade
-          lighter. Avatar, notice and body share one left edge (16px). */}
-      <div className="flex flex-col gap-2 px-4">
+      {/* Each message is a card on the glass, edged and rounded like the
+          list panel; collapsed ones are a shade lighter. Avatar, notice and
+          body share one left edge (16px), as does the subject above. */}
+      <div className="flex flex-col gap-2">
         {data.messages.map((m) => {
           const isOpen = expanded.has(m.id);
           const name = displayName(m.from, selfEmails);
@@ -120,7 +123,7 @@ function ThreadBody({
           return (
             <section
               key={m.id}
-              className={`rounded-xl ring-1 ring-stroke transition-colors duration-[120ms] ${
+              className={`rounded-[10px] ring-1 ring-stroke ring-inset transition-colors duration-[120ms] ${
                 isOpen ? "message-card" : "message-card-collapsed"
               }`}
             >

@@ -89,7 +89,9 @@ body {
   isolation: isolate;
   border-radius: 10px;
   background: var(--color-glass-panel);
-  box-shadow: 0 0 0 1px var(--color-stroke);
+  /* Inset, like the reader's message cards (which can't draw outside the
+     reader's scroll area), so the two edges line up exactly. */
+  box-shadow: inset 0 0 0 1px var(--color-stroke);
 }
 
 /* While a splitter drags: keep its cursor everywhere, and stop the email

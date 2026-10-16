@@ -120,8 +120,11 @@ a darker glass body, rounded corners where they meet, resizable panes.
       relaunch
 - [x] Unread counts in the sidebar (Inbox, Starred and labels), per account
       and summed for unified views
+- [x] Reader cards line up with the list panel: same 8px gaps (window
+      edge and splitter), same 10px corners and hairline edge, so at the end
+      of a conversation the bottoms match
 - [x] Transparency slider in the sidebar footer: from the default look to
-      40% clearer, scaling every glass tint by the same factor so areas
+      100% clearer (just the native blur), scaling every glass tint by the same factor so areas
       keep their differences; remembered across launches. (Could move to
       Settings when there is one)
 - [x] Sidebar counts only where unread is actionable: Inbox, Starred and
