@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyStateFor } from "./emptyState";
+import { emptyStateFor, emptyStateKey } from "./emptyState";
 
 describe("emptyStateFor", () => {
   it("keeps an empty inbox to an icon and a title", () => {
@@ -29,5 +29,25 @@ describe("emptyStateFor", () => {
     for (const label of labels) {
       expect(emptyStateFor({ kind: "system", label }).title).not.toBe("");
     }
+  });
+});
+
+describe("emptyStateKey", () => {
+  it("is the same for two empty labels, so the entrance doesn't replay", () => {
+    const a = emptyStateKey({ kind: "userLabel", labelId: 1 });
+    const b = emptyStateKey({ kind: "userLabel", labelId: 2 });
+    expect(a).toBe(b);
+  });
+
+  it("changes when the empty state shows something different", () => {
+    const label = emptyStateKey({ kind: "userLabel", labelId: 1 });
+    const archive = emptyStateKey({ kind: "archive" });
+    expect(label).not.toBe(archive);
+  });
+
+  it("stays put while a search is typed", () => {
+    expect(emptyStateKey({ kind: "search", text: "a" })).toBe(
+      emptyStateKey({ kind: "search", text: "ab" }),
+    );
   });
 });

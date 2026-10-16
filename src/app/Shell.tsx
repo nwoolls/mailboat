@@ -19,12 +19,11 @@ import { useSetRead } from "../features/mailbox/ui/useSetRead";
 import {
   ALL_INBOXES,
   type Selection,
-  selectionKey,
   selectionTitle,
   spansAccounts,
   systemSelection,
 } from "../features/mailbox/model/views";
-import { emptyStateFor } from "../features/mailbox/model/emptyState";
+import { emptyStateFor, emptyStateKey } from "../features/mailbox/model/emptyState";
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
@@ -229,8 +228,8 @@ export function Shell() {
               loading={threadsQuery.isPending || isFetchingNextPage}
               empty={
                 <EmptyState
-                  // Replays the entrance per view, but not per search keystroke.
-                  key={selection.view.kind === "search" ? "search" : selectionKey(selection)}
+                  // Replays the entrance only when what it shows changes.
+                  key={emptyStateKey(selection.view)}
                   state={emptyStateFor(selection.view)}
                 />
               }

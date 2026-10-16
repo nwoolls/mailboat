@@ -78,3 +78,15 @@ export function emptyStateFor(view: MailView): EmptyState {
       }
   }
 }
+
+/**
+ * Identifies what an empty list shows, so its entrance animation replays
+ * only when that changes. Moving between empty labels (same icon and
+ * words) keeps it still instead of re-rising each click; searches keep one
+ * key so typing doesn't replay it on every keystroke.
+ */
+export function emptyStateKey(view: MailView): string {
+  if (view.kind === "search") return "search";
+  const { icon, title, detail } = emptyStateFor(view);
+  return `${icon}|${title}|${detail ?? ""}`;
+}

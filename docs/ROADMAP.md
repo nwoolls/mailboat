@@ -86,7 +86,9 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - [x] Empty states instead of "Nothing here": an icon, a title and a line
       per view. An empty Inbox is just a thumbs-up that nods and "All caught
       up" (owner dropped the rotating second line); a soft accent glow drifts slowly
-      around the pane. Motion stops with macOS "Reduce motion"
+      around the pane. Motion stops with macOS "Reduce motion". The
+      entrance plays only when what's shown changes, so clicking between
+      empty labels no longer makes the icon and text bob each time
 - [x] Panels slide open and closed (220ms ease-out, from MonoCode): the
       sidebar and reader content fade and drift in from their own side, and
       the list grows or gives way in step. The reader keeps showing the
