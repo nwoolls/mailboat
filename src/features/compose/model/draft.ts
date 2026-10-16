@@ -37,6 +37,12 @@ export type Draft = {
   quote: string;
   /** The same as plain text, for the text copy. */
   quoteText: string;
+  /**
+   * The From address's Gmail signature, exactly as Gmail has it. Kept out
+   * of the editor (which dropped its fonts and colours and split its
+   * lines), shown read-only under the text, and added when sending.
+   */
+  signature: string;
   /** The message replied to or forwarded. */
   replyingTo: MessageId | null;
   /** The conversation a reply or forward was started from. */
@@ -94,27 +100,35 @@ export function accountForNew(
 }
 
 /**
- * What the editor opens with: a line to write on, a blank line, and the
- * From address's Gmail signature. The quote follows when sending.
- */
-export function bodyHtml(signature: string | null): string {
-  return `<p></p><p></p>${trimSignature(signature ?? "")}`;
-}
-
-/**
  * Drops empty lines from the end of a signature: Gmail signatures often
- * end with several, which showed as a large gap above the quote.
+ * end with several.
  */
 export function trimSignature(html: string): string {
   const emptyTail = /(\s|<br\s*\/?>|<(p|div)[^>]*>(\s|<br\s*\/?>|&nbsp;)*<\/\2>)+$/i;
   return html.trim().replace(emptyTail, "");
 }
 
-function signatureOf(identities: Identity[], accountId: AccountId, from: Address): string | null {
-  return (
-    identities.find((i) => i.accountId === accountId && sameEmail(i.email, from.email))
-      ?.signature ?? null
-  );
+/** Rough plain text of an HTML fragment, for the text copy: one line per block or break. */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<(style|script)[\s\S]*?<\/\1>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h[1-6]|table)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function signatureOf(identities: Identity[], accountId: AccountId, from: Address): string {
+  const found = identities.find((i) => i.accountId === accountId && sameEmail(i.email, from.email));
+  return trimSignature(found?.signature ?? "");
 }
 
 export function newDraft(
@@ -123,7 +137,6 @@ export function newDraft(
   accountEmail: string,
 ): Draft {
   const from = fromFor(identities, accountId, accountEmail);
-  const signature = signatureOf(identities, accountId, from);
   return {
     id: nextId++,
     kind: "new",
@@ -133,11 +146,12 @@ export function newDraft(
     cc: [],
     bcc: [],
     subject: "",
-    html: signature?.trim() ? bodyHtml(signature) : "",
+    html: "",
     text: "",
     edited: false,
     quote: "",
     quoteText: "",
+    signature: signatureOf(identities, accountId, from),
     replyingTo: null,
     threadId: null,
     showCc: false,
@@ -290,9 +304,10 @@ export function replyDraft(
     cc,
     bcc: [],
     subject: kind === "forward" ? forwardSubject(source.subject) : replySubject(source.subject),
-    // A line to write on, then one blank line above the signature and
+    // Starts empty; one blank line separates it from the signature and
     // quote, as in Gmail and other mail apps.
-    html: bodyHtml(signatureOf(identities, source.accountId, from)),
+    html: "",
+    signature: signatureOf(identities, source.accountId, from),
     quote,
     quoteText: quoteCopy,
     // Filled in by the editor as soon as it loads the HTML.
@@ -305,24 +320,24 @@ export function replyDraft(
   };
 }
 
-/** Changing From can change account; the new account owns the message. */
 /**
- * Changing From can change account; the new account owns the message.
- * Until something's been typed, the body switches to the new address's
- * signature (afterwards it's left alone, so nothing typed is lost).
+ * Changing From can change account; the new account owns the message,
+ * and the new address's signature replaces the old one (it's not part of
+ * the text, so this works after typing too).
  */
 export function withIdentity(draft: Draft, identity: Identity): Draft {
-  const next = { ...draft, accountId: identity.accountId, from: identityAddress(identity) };
-  return draft.edited ? next : { ...next, html: bodyHtml(identity.signature) };
+  const from = identityAddress(identity);
+  return {
+    ...draft,
+    accountId: identity.accountId,
+    from,
+    signature: trimSignature(identity.signature ?? ""),
+  };
 }
 
-/**
- * Changes when the editor must reload its content: a different draft, or
- * a new From (whose signature `withIdentity` swapped in if nothing was
- * typed; otherwise it reloads the current text unchanged).
- */
+/** The editor reloads only for a different draft. */
 export function editorKey(draft: Draft): string {
-  return `${draft.id}:${draft.from.email.toLowerCase()}`;
+  return `${draft.id}`;
 }
 
 /** Why it can't be sent yet, or null. */
@@ -353,7 +368,20 @@ export function emailHtml(html: string): string {
     .replace(/<p>/g, '<p style="margin:0">');
 }
 
+/**
+ * The message as sent: what was written, a blank line, the signature (in
+ * Gmail's wrapper), then the quote, in both copies.
+ */
 export function toOutgoing(draft: Draft): OutgoingMessage {
+  const signature = draft.signature ? `<div class="gmail_signature">${draft.signature}</div>` : "";
+  const after = [signature, draft.quote].filter(Boolean);
+  const html =
+    draft.html.trim() || after.length > 0
+      ? emailHtml(draft.html) + after.map((part) => `<div><br></div>${part}`).join("")
+      : null;
+  const text = [draft.text.trimEnd(), htmlToText(draft.signature), draft.quoteText]
+    .filter(Boolean)
+    .join("\n\n");
   return {
     accountId: draft.accountId,
     from: draft.from,
@@ -361,9 +389,8 @@ export function toOutgoing(draft: Draft): OutgoingMessage {
     cc: draft.cc,
     bcc: draft.bcc,
     subject: draft.subject,
-    // The quote follows what was written, in both copies.
-    text: draft.quoteText ? `${draft.text}\n\n${draft.quoteText}` : draft.text,
-    html: draft.html.trim() || draft.quote ? emailHtml(draft.html) + draft.quote : null,
+    text,
+    html,
     replyingTo: draft.replyingTo,
   };
 }

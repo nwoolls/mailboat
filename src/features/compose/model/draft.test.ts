@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { Address, Identity, ReplySource } from "../../../platform/tauri/bindings";
 import {
   accountForNew,
-  bodyHtml,
   emailHtml,
   defaultIdentity,
   forwardSubject,
@@ -17,6 +16,7 @@ import {
   replySubject,
   sendProblem,
   toOutgoing,
+  trimSignature,
   withIdentity,
 } from "./draft";
 
@@ -151,7 +151,7 @@ describe("quoting", () => {
     const d = replyDraft("reply", source(), identities, "me@x.com", date);
     const out = toOutgoing({ ...d, html: "<p>Sure</p>", text: "Sure" });
     expect(out.text).toBe(`Sure\n\n${d.quoteText}`);
-    expect(out.html).toBe(`<p style="margin:0">Sure</p>${d.quote}`);
+    expect(out.html).toBe(`<p style="margin:0">Sure</p><div><br></div>${d.quote}`);
   });
 });
 
@@ -170,7 +170,7 @@ describe("drafts", () => {
   it("a reply starts with the quote below room to write, and a fresh subject", () => {
     const d = replyDraft("replyAll", source(), identities, "me@x.com", date);
     expect(d.subject).toBe("Re: Lunch");
-    expect(d.html).toBe("<p></p><p></p>");
+    expect(d.html).toBe("");
     expect(d.quote).toContain("On Thu, Oct 9");
     expect(d.replyingTo).toBe(10);
     expect(d.threadId).toBe(5);
@@ -221,28 +221,37 @@ it("sent HTML keeps the editor's spacing and blank lines", () => {
 });
 
 describe("signatures", () => {
+  const sig = '<div><font color="#1c3a6b" size="4"><b>Jordan</b></font><br>Architect</div>';
   const signed: Identity[] = [
-    { ...identities[0]!, signature: "<p>— Me</p>" },
-    { ...identities[1]!, signature: "<p>— Alias</p>" },
+    { ...identities[0]!, signature: sig },
+    { ...identities[1]!, signature: "<p>— Alias</p><p><br></p>" },
     identities[2]!,
   ];
 
-  it("new mail and replies open with the From address's signature", () => {
-    expect(newDraft(signed, ME, "me@x.com").html).toBe("<p></p><p></p><p>— Me</p>");
-    const d = replyDraft("reply", source({ to: [a("alias@x.com")] }), signed, "me@x.com", date);
-    expect(d.html).toBe("<p></p><p></p><p>— Alias</p>");
-    expect(newDraft(signed, OTHER, "work@y.com").html).toBe("");
+  it("keep Gmail's HTML as is (outside the editor), minus trailing empty lines", () => {
+    const d = newDraft(signed, ME, "me@x.com");
+    expect(d.html).toBe("");
+    expect(d.signature).toBe(sig);
+    const r = replyDraft("reply", source({ to: [a("alias@x.com")] }), signed, "me@x.com", date);
+    expect(r.signature).toBe("<p>— Alias</p>");
+    expect(newDraft(signed, OTHER, "work@y.com").signature).toBe("");
+    expect(trimSignature("<p>Jordan</p><p><br></p><div>&nbsp;</div><br>")).toBe("<p>Jordan</p>");
   });
 
-  it("switching From swaps the signature until something is typed", () => {
-    const d = replyDraft("reply", source(), signed, "me@x.com", date);
+  it("switching From swaps the signature, even after typing", () => {
+    const d = { ...replyDraft("reply", source(), signed, "me@x.com", date), edited: true };
     const swapped = withIdentity(d, signed[1]!);
-    expect(swapped.html).toBe(bodyHtml("<p>— Alias</p>"));
-    const typed = withIdentity({ ...d, edited: true, html: "<p>Hi</p>" }, signed[1]!);
-    expect(typed.html).toBe("<p>Hi</p>");
+    expect(swapped.signature).toBe("<p>— Alias</p>");
+    expect(swapped.edited).toBe(true);
   });
-});
 
-it("signatures lose trailing empty lines", () => {
-  expect(bodyHtml("<p>Jordan</p><p><br></p><div>&nbsp;</div><br>")).toBe("<p></p><p></p><p>Jordan</p>");
+  it("is sent after a blank line, in Gmail's wrapper, before the quote", () => {
+    const d = replyDraft("reply", source(), signed, "me@x.com", date);
+    const out = toOutgoing({ ...d, html: "<p>Hi</p>", text: "Hi" });
+    expect(out.html).toBe(
+      `<p style="margin:0">Hi</p><div><br></div><div class="gmail_signature">${sig}</div>` +
+        `<div><br></div>${d.quote}`,
+    );
+    expect(out.text).toBe(`Hi\n\nJordan\nArchitect\n\n${d.quoteText}`);
+  });
 });

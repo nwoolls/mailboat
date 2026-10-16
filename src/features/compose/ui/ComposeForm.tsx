@@ -123,7 +123,17 @@ export function ComposeForm({
           />
         )}
         <div className={inline ? "" : "min-h-0 flex-1 overflow-y-auto"}>
-          <EditorBody editor={editor} className={draft.quote ? "" : "min-h-40"} />
+          <EditorBody
+            editor={editor}
+            className={draft.quote || draft.signature ? "" : "min-h-40"}
+          />
+          {draft.signature && (
+            // Read-only, as it will be sent (Gmail's own HTML). It follows
+            // the From address; edit signatures in Gmail's settings.
+            <div className="pt-4 pb-3" title="Signature (changes with From)">
+              <HtmlPreview title="Signature" html={draft.signature} />
+            </div>
+          )}
           {draft.quoteText && <QuoteFold html={draft.quote} startOpen={draft.kind === "forward"} />}
         </div>
       </fieldset>
@@ -246,18 +256,30 @@ function QuoteFold({ html, startOpen }: { html: string; startOpen: boolean }) {
         •••
       </button>
       {open && (
-        <iframe
-          title="Quoted message"
-          // Same-origin only so its height can be read; never scripts.
-          sandbox="allow-same-origin"
-          srcDoc={`<!doctype html><meta charset="utf-8"><body style="margin:0;font:13px -apple-system,sans-serif">${html}</body>`}
-          onLoad={(e) => {
-            const doc = e.currentTarget.contentDocument;
-            if (doc) e.currentTarget.style.height = `${doc.documentElement.scrollHeight}px`;
-          }}
-          className="mt-2 w-full rounded-md bg-white"
-        />
+        <div className="mt-2">
+          <HtmlPreview title="Quoted message" html={html} />
+        </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Mail HTML shown as it will be sent, on white as mail apps show it, in a
+ * sandboxed frame: same-origin only so its height can be read, never
+ * scripts. Its height follows the content once images have loaded.
+ */
+function HtmlPreview({ title, html }: { title: string; html: string }) {
+  return (
+    <iframe
+      title={title}
+      sandbox="allow-same-origin"
+      srcDoc={`<!doctype html><meta charset="utf-8"><body style="margin:0;padding:8px 10px;font:13px Arial,Helvetica,sans-serif;color:#222">${html}</body>`}
+      onLoad={(e) => {
+        const doc = e.currentTarget.contentDocument;
+        if (doc) e.currentTarget.style.height = `${doc.documentElement.scrollHeight}px`;
+      }}
+      className="block w-full rounded-md bg-white"
+    />
   );
 }
