@@ -447,3 +447,8 @@ html.resizing .panel-slide {
   color: var(--color-accent);
   text-decoration: underline;
 }
+
+.compose-editor img {
+  display: inline-block;
+  max-width: 100%;
+}

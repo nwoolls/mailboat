@@ -514,8 +514,8 @@ Stage 3: formatting, signatures, attachments
       2026-10-16)*. Managing them is in Milestone 6. New mail and replies
       open with the From address's signature (above the quote, after a
       blank line); changing From swaps it until you've typed something.
-      Not yet: images in signatures (the editor drops them; they come
-      with sending inline images)
+      Images in signatures hosted on the web (as Gmail's are) show and
+      are sent; images embedded in the email itself need attachments
 - [ ] Sending attachments *(receiving moved to M3)*
 
 Stage 4: drafts and undo send

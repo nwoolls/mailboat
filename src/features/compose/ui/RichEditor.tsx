@@ -1,3 +1,4 @@
+import { Image } from "@tiptap/extension-image";
 import { TextAlign } from "@tiptap/extension-text-align";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import { type Editor, EditorContent, useEditor, useEditorState } from "@tiptap/react";
@@ -66,6 +67,9 @@ export function useRichEditor(initialHtml: string, onChange: (c: EditorChange) =
         link: { openOnClick: false, autolink: true, defaultProtocol: "https" },
       }),
       TextStyleKit,
+      // Signature images (hosted on the web, as Gmail's are). Without
+      // this the editor dropped them and left their empty lines.
+      Image.configure({ inline: true, allowBase64: false }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content: initialHtml,
