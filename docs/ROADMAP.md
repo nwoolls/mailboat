@@ -500,8 +500,9 @@ Stage 3: formatting, signatures, attachments
       Open and Remove. Sent as HTML with a plain-text
       copy; spacing in the email matches the editor
 - [x] Reply and forward with quoted HTML (folded behind "…"). The
-      original is quoted with its own formatting (tables, colours,
-      links), cleaned of scripts and forms in Rust (`ammonia`), in
+      original is quoted with its own formatting (tables, bold, lists,
+      links; not yet colours and fonts, which live in inline styles that
+      `ammonia`'s defaults remove), cleaned of scripts and forms in Rust, in
       Gmail's quote style. It stays out of the editor, as in Gmail: a
       "•••" under your text shows it (forwards start open), read-only,
       and it's added when sending. Replies start with one blank line
