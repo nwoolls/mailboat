@@ -250,6 +250,12 @@ Options offered during the spike that the owner didn't pick (yet):
       Then (owner picked T2 + B3): a brighter, glowing M on a midnight
       background (navy to near-black) instead of navy-to-violet, which made
       the M hard to read. Tweaks and backgrounds offered are kept too
+- [x] New app icon, round two: a green M drawn as a ribbon folding over
+      itself at each corner (after VS Code's logo) on a flat near-black
+      tile, replacing the glass icon (owner wanted flat, high-contrast
+      icons). Picked fold style S4 and colour C13 from the sheets in
+      `design/icon/sheets/`; the other colours are kept in
+      `design/icon/choices/`
 - [x] Tell unread apart from the account in mixed-account lists (both
       were blue dots): the account is now a hollow ring in a softened
       account colour, unread stays a solid dot. Owner picked it after two
@@ -315,6 +321,8 @@ split per account for selections that span accounts.
 - [ ] Full keyboard shortcuts
 - [ ] Remote Gmail search (`q=`) fanned out per account, merged by date
 - [ ] Notifications
+- [ ] Settings: choose the app icon from `design/icon/choices/` (the
+      folded M in 16 colours, or the earlier glass icon)
 - [ ] Settings screen, with a transparency slider per area (sidebar and
       reader, list panel). Per area, because one shared slider scaling
       each tint by the same share changed the list far more than the
