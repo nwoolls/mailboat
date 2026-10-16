@@ -330,7 +330,7 @@ Options offered during the spike that the owner didn't pick (yet):
       ahead of background sync; rows appear in fives, with "Loading older
       mail…" under the list. Works for every view except search (remote
       search is Milestone 5). A failure shows "Try again" instead of
-      retrying on every scroll. *(Not yet tried in the real app.)*
+      retrying on every scroll. *(Verified in the real app, 2026-10-16.)*
 
 ## Milestone 3: Actions
 
