@@ -242,3 +242,7 @@ describe("signatures", () => {
     expect(typed.html).toBe("<p>Hi</p>");
   });
 });
+
+it("signatures lose trailing empty lines", () => {
+  expect(bodyHtml("<p>Jordan</p><p><br></p><div>&nbsp;</div><br>")).toBe("<p></p><p></p><p>Jordan</p>");
+});

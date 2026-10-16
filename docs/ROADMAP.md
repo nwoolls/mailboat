@@ -530,6 +530,14 @@ Stage 5: Google Contacts
       well as from mail. Last because it needs the owner to turn on the
       People API and each account to sign in again
 
+Found while testing stage 3 (owner, 2026-10-16), not yet fixed:
+
+- [ ] Reader: a CI service's pipeline email renders squeezed ("Failed"
+      stacked one letter per line, columns too narrow), while Gmail shows
+      it correctly. Likely the sanitizer or the adaptive layout mishandles
+      its table widths. A reader bug, not compose
+- [ ] Sending attachments (rest of stage 3), then stage 4
+
 ## Milestone 5: Polish
 
 - [ ] Answer meeting invitations in the reader *(owner request,

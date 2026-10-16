@@ -98,7 +98,16 @@ export function accountForNew(
  * From address's Gmail signature. The quote follows when sending.
  */
 export function bodyHtml(signature: string | null): string {
-  return `<p></p><p></p>${signature?.trim() ? signature : ""}`;
+  return `<p></p><p></p>${trimSignature(signature ?? "")}`;
+}
+
+/**
+ * Drops empty lines from the end of a signature: Gmail signatures often
+ * end with several, which showed as a large gap above the quote.
+ */
+export function trimSignature(html: string): string {
+  const emptyTail = /(\s|<br\s*\/?>|<(p|div)[^>]*>(\s|<br\s*\/?>|&nbsp;)*<\/\2>)+$/i;
+  return html.trim().replace(emptyTail, "");
 }
 
 function signatureOf(identities: Identity[], accountId: AccountId, from: Address): string | null {
