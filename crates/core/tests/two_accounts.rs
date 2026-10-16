@@ -527,3 +527,53 @@ fn unread_counts_stay_per_account() {
     let only_b = query::unread_counts(&db.conn(), &AccountFilter::Only(vec![b.id])).unwrap();
     assert!(only_b.iter().all(|c| c.account_id == b.id));
 }
+
+#[test]
+fn unread_leaves_out_spam_and_trash() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "sub-a", "me@gmail.com");
+    let system = |id: &str| IncomingLabel {
+        gmail_label_id: id.into(),
+        name: id.into(),
+        kind: LabelKind::System,
+        color_bg: None,
+        color_fg: None,
+    };
+    store::sync_labels(
+        &mut db.conn(),
+        a.id,
+        &[
+            system("INBOX"),
+            system("UNREAD"),
+            system("SPAM"),
+            system("TRASH"),
+        ],
+    )
+    .unwrap();
+    for (t, m, labels) in [
+        ("t1", "m1", vec!["INBOX", "UNREAD"]),
+        ("t2", "m2", vec!["SPAM", "UNREAD"]),
+        ("t3", "m3", vec!["TRASH", "UNREAD"]),
+    ] {
+        store::upsert_thread(
+            &mut db.conn(),
+            a.id,
+            &thread(t, m, "x@y.com", "Hi", 1_000, &labels),
+        )
+        .unwrap();
+    }
+    let unread = MailView::System {
+        label: SystemLabel::Unread,
+    };
+    assert_eq!(list(&db, AccountFilter::All, unread).len(), 1);
+    let counts = query::unread_counts(&db.conn(), &AccountFilter::All).unwrap();
+    let unread_count = counts
+        .iter()
+        .find(|c| c.gmail_label_id == "UNREAD")
+        .unwrap();
+    assert_eq!(unread_count.unread, 1);
+    // Spam itself still counts its own unread mail.
+    assert!(counts
+        .iter()
+        .any(|c| c.gmail_label_id == "SPAM" && c.unread == 1));
+}

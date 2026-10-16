@@ -9,7 +9,7 @@ use super::placeholders;
 use crate::error::{CoreError, Result};
 use crate::model::{
     AccountFilter, Address, Label, LabelKind, LabelUnread, ListCursor, ListQuery, MailView,
-    MessageMeta, ThreadDetail, ThreadId, ThreadPage, ThreadSummary,
+    MessageMeta, SystemLabel, ThreadDetail, ThreadId, ThreadPage, ThreadSummary,
 };
 
 const MAX_LIMIT: u32 = 500;
@@ -78,6 +78,10 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
                     .into(),
             );
             values.push(Value::Text(label.gmail_id().into()));
+            // As in Gmail, Unread leaves out Spam and Trash.
+            if *label == SystemLabel::Unread {
+                clauses.push(IN_ALL_MAIL.into());
+            }
         }
         MailView::UserLabel { label_id } => {
             // A user label row belongs to one account, so this can never
@@ -257,7 +261,8 @@ pub fn user_labels(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<La
 }
 
 /// Unread conversations per label, for sidebar counts. A label's count is
-/// per account; unified counts (All Inboxes) are sums of these.
+/// per account; unified counts (All Inboxes) are sums of these. `UNREAD`
+/// itself leaves out Spam and Trash, matching the Unread view.
 pub fn unread_counts(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<LabelUnread>> {
     let (filter, values): (String, Vec<Value>) = match accounts {
         AccountFilter::All => (String::new(), vec![]),
@@ -276,6 +281,7 @@ pub fn unread_counts(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<
          JOIN thread_labels tl ON tl.label_id = l.id AND tl.account_id = l.account_id
          JOIN threads t ON t.id = tl.thread_id AND t.account_id = l.account_id
          WHERE t.unread_count > 0 {filter}
+           AND (l.gmail_label_id <> 'UNREAD' OR {IN_ALL_MAIL})
          GROUP BY l.id
          ORDER BY l.account_id, l.id"
     );
