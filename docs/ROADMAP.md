@@ -372,6 +372,13 @@ split per account for selections that span accounts.
       reader, list panel). Per area, because one shared slider scaling
       each tint by the same share changed the list far more than the
       sidebar
+- [ ] Remember the window between launches: position, size, and
+      maximized/full-screen state *(owner request, 2026-10-16)*. Works with
+      several monitors: reopens on the display it was last on, and if that
+      display is gone (unplugged, or the arrangement changed) or the saved
+      spot would be off-screen, it moves fully onto a connected display
+      instead of opening out of sight. Likely Tauri's `window-state`
+      plugin, which would need a reason recorded for the new plugin
 - [ ] Offline mode
 
 ## Later / unscheduled
