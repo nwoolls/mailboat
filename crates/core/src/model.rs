@@ -129,6 +129,18 @@ pub struct Label {
     pub color_fg: Option<String>,
 }
 
+/// How many conversations under one label (system or user, in one account)
+/// have unread mail. Labels with none are left out.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LabelUnread {
+    pub label_id: LabelId,
+    pub account_id: AccountId,
+    /// `INBOX`, `UNREAD`, `DRAFT`, … or a user label's ID.
+    pub gmail_label_id: String,
+    pub unread: u32,
+}
+
 /// Which accounts a query covers. A single-account view is `Only` with one ID.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", content = "ids", rename_all = "camelCase")]

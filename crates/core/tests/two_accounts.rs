@@ -482,3 +482,48 @@ fn spam_and_trash_for_images_are_decided_per_account() {
     assert_eq!(spam_trash(id(b.id, "m1")), (false, false));
     assert_eq!(spam_trash(id(b.id, "m2")), (false, true));
 }
+
+#[test]
+fn unread_counts_stay_per_account() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "sub-a", "me@gmail.com");
+    let b = add_account(&db, "sub-b", "me@example.com");
+    store::sync_labels(&mut db.conn(), a.id, &work_label()).unwrap();
+    store::sync_labels(&mut db.conn(), b.id, &work_label()).unwrap();
+    // Same Gmail IDs in both accounts. A: one unread in Inbox + Work, one
+    // read in Inbox. B: one unread in Inbox only.
+    for (account, t, m, labels) in [
+        (a.id, "t1", "m1", vec!["INBOX", "Label_1", "UNREAD"]),
+        (a.id, "t2", "m2", vec!["INBOX"]),
+        (b.id, "t1", "m1", vec!["INBOX", "UNREAD"]),
+    ] {
+        store::upsert_thread(
+            &mut db.conn(),
+            account,
+            &thread(t, m, "x@y.com", "Hi", 1_000, &labels),
+        )
+        .unwrap();
+    }
+
+    let all = query::unread_counts(&db.conn(), &AccountFilter::All).unwrap();
+    let count = |account: AccountId, gmail: &str| {
+        all.iter()
+            .find(|c| c.account_id == account && c.gmail_label_id == gmail)
+            .map(|c| c.unread)
+    };
+    assert_eq!(
+        count(a.id, "INBOX"),
+        Some(1),
+        "the read thread doesn't count"
+    );
+    assert_eq!(count(b.id, "INBOX"), Some(1));
+    assert_eq!(count(a.id, "Label_1"), Some(1));
+    assert_eq!(
+        count(b.id, "Label_1"),
+        None,
+        "B's Work label has nothing unread"
+    );
+
+    let only_b = query::unread_counts(&db.conn(), &AccountFilter::Only(vec![b.id])).unwrap();
+    assert!(only_b.iter().all(|c| c.account_id == b.id));
+}

@@ -25,6 +25,8 @@ export const commands = {
 	threadsList: (query: ListQuery) => typedError<ThreadPage, AppError>(__TAURI_INVOKE("threads_list", { query })),
 	threadGet: (threadId: ThreadId) => typedError<ThreadDetail, AppError>(__TAURI_INVOKE("thread_get", { threadId })),
 	labelsList: (accounts: AccountFilter) => typedError<Label[], AppError>(__TAURI_INVOKE("labels_list", { accounts })),
+	/**  Unread conversations per label, for the sidebar's counts. */
+	unreadCounts: (accounts: AccountFilter) => typedError<LabelUnread[], AppError>(__TAURI_INVOKE("unread_counts", { accounts })),
 	/**
 	 *  Returns a message ready for display, downloading its body with the
 	 *  owning account's credentials if it isn't cached yet.
@@ -116,6 +118,18 @@ export type Label = {
 export type LabelId = number;
 
 export type LabelKind = "system" | "user";
+
+/**
+ *  How many conversations under one label (system or user, in one account)
+ *  have unread mail. Labels with none are left out.
+ */
+export type LabelUnread = {
+	labelId: LabelId,
+	accountId: AccountId,
+	/**  `INBOX`, `UNREAD`, `DRAFT`, … or a user label's ID. */
+	gmailLabelId: string,
+	unread: number,
+};
 
 export type ListCursor = {
 	lastMessageAt: number,

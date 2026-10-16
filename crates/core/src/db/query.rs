@@ -8,8 +8,8 @@ use rusqlite::{params_from_iter, Connection, OptionalExtension, Row};
 use super::placeholders;
 use crate::error::{CoreError, Result};
 use crate::model::{
-    AccountFilter, Address, Label, LabelKind, ListCursor, ListQuery, MailView, MessageMeta,
-    ThreadDetail, ThreadId, ThreadPage, ThreadSummary,
+    AccountFilter, Address, Label, LabelKind, LabelUnread, ListCursor, ListQuery, MailView,
+    MessageMeta, ThreadDetail, ThreadId, ThreadPage, ThreadSummary,
 };
 
 const MAX_LIMIT: u32 = 500;
@@ -253,6 +253,41 @@ pub fn user_labels(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<La
     );
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map(params_from_iter(values), label_from_row)?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+/// Unread conversations per label, for sidebar counts. A label's count is
+/// per account; unified counts (All Inboxes) are sums of these.
+pub fn unread_counts(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<LabelUnread>> {
+    let (filter, values): (String, Vec<Value>) = match accounts {
+        AccountFilter::All => (String::new(), vec![]),
+        AccountFilter::Only(ids) => (
+            format!("AND l.account_id IN ({})", placeholders(ids.len().max(1))),
+            if ids.is_empty() {
+                vec![Value::Integer(-1)]
+            } else {
+                ids.iter().map(|i| Value::Integer(i.0)).collect()
+            },
+        ),
+    };
+    let sql = format!(
+        "SELECT l.id, l.account_id, l.gmail_label_id, COUNT(*)
+         FROM labels l
+         JOIN thread_labels tl ON tl.label_id = l.id AND tl.account_id = l.account_id
+         JOIN threads t ON t.id = tl.thread_id AND t.account_id = l.account_id
+         WHERE t.unread_count > 0 {filter}
+         GROUP BY l.id
+         ORDER BY l.account_id, l.id"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(params_from_iter(values), |r| {
+        Ok(LabelUnread {
+            label_id: r.get(0)?,
+            account_id: r.get(1)?,
+            gmail_label_id: r.get(2)?,
+            unread: r.get(3)?,
+        })
+    })?;
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 

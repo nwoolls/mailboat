@@ -30,6 +30,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::threads_list,
             commands::thread_get,
             commands::labels_list,
+            commands::unread_counts,
             commands::message_open,
             commands::threads_set_read,
             commands::sender_allow_images,
