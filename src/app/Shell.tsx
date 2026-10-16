@@ -459,7 +459,14 @@ export function Shell() {
           anchor={labelAnchor}
           labels={pickerLabels}
           targets={targets}
-          onToggle={(label) => act(labelToggle(targets, label), targetIds)}
+          onToggle={(label) => {
+            const action = labelToggle(targets, label);
+            act(action, targetIds);
+            // Removing the label of the view you're in sends the
+            // conversation away (and opens the next): the picker would now
+            // be about a different conversation, so it closes.
+            if (leavesView(action, selection.view)) setLabelAnchor(null);
+          }}
           onClose={() => setLabelAnchor(null)}
         />
       )}

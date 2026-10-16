@@ -204,17 +204,12 @@ export function AccountRing({ account }: { account: Pick<Account, "color" | "ema
 
 /**
  * A label's colour dot, only for labels given a colour in Gmail (the grey
- * dots on every other label were noise). Gmail allows very dark colours
- * that vanish on the glass, so each gets a faint outline.
+ * dots on every other label were noise). No outline: the owner found it
+ * unattractive, even though very dark Gmail colours fade on the glass.
  */
 function LabelDot({ color }: { color: string | null }) {
   if (!color) return null;
-  return (
-    <span
-      className="h-2 w-2 rounded-full shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-content)_25%,transparent)]"
-      style={{ background: color }}
-    />
-  );
+  return <span className="h-2 w-2 rounded-full" style={{ background: color }} />;
 }
 
 /** An account's labels as rows, groups folding open. */

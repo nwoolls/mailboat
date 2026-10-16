@@ -117,7 +117,8 @@ a darker glass body, rounded corners where they meet, resizable panes.
       "More"; labels under a "Labels" heading, grouped by "/" and
       "Prefix: " ("Acme" holds Review, Scam, …) with folds that animate
       open; IMAP brackets dropped ("[Orbit]" → "Orbit"); every label dot
-      has a faint outline so dark Gmail colors still show. Folds reset on
+      had a faint outline so dark Gmail colors still show (removed in M3,
+      owner's call). Folds reset on
       relaunch
 - [x] Unread counts in the sidebar (Inbox, Starred and labels), per account
       and summed for unified views
@@ -385,6 +386,11 @@ split per account for selections that span accounts.
 - [x] Rows keep an icon column: the account ring on the sender line, the
       star under it on the subject line, so sender, subject and snippet
       always start at the same place *(owner request, 2026-10-16)*
+- [x] Fixes after testing (2026-10-16): removing the current label view's
+      label from the picker closes the picker (the next conversation had
+      opened under it, still ticked); conversations opened in the first
+      M3 build get their paperclips (a one-time recount); sidebar label
+      dots lose their grey outline (owner's call)
 - [x] Tidy placeholders instead of broken "?" boxes where images don't
       load (blocked remote images, missing inline ones), sized as the
       email asked *(moved from the UX Spike's deferred ideas)*

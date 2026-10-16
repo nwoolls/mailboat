@@ -185,3 +185,14 @@ ALTER TABLE message_bodies ADD COLUMN parts_version INTEGER NOT NULL DEFAULT 0;
 pub const MIGRATION_V5: &str = r#"
 ALTER TABLE sync_state ADD COLUMN attachments_version INTEGER NOT NULL DEFAULT 0;
 "#;
+
+/// Bodies fetched by the first Milestone 3 build recorded attachments but
+/// didn't update the paperclip flag, and the catch-up skips messages whose
+/// body is known. Recompute the flag from their attachment lists.
+pub const MIGRATION_V6: &str = r#"
+UPDATE messages SET has_attachments =
+  EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = messages.id AND NOT a.inline)
+WHERE EXISTS (SELECT 1 FROM message_bodies b WHERE b.message_id = messages.id AND b.parts_version >= 1);
+UPDATE threads SET has_attachments =
+  EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = threads.id AND m.has_attachments);
+"#;
