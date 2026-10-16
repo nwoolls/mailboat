@@ -259,6 +259,16 @@ pub fn sanitize_html_with(
                     make_placeholder(el)?;
                 } else if is_remote(&src) {
                     loaded.set(loaded.get() + 1);
+                    // Small fixed-size images (status icons) keep their size:
+                    // the page's `max-width:100%` let a narrow table cell
+                    // shrink them to nothing.
+                    if el
+                        .get_attribute("width")
+                        .and_then(|w| w.trim().trim_end_matches("px").parse::<u32>().ok())
+                        .is_some_and(|w| w <= 64)
+                    {
+                        el.set_attribute("data-mailboat-fixed", "")?;
+                    }
                     // Images are only loaded over HTTPS (the CSP allows nothing else).
                     if let Some(rest) = src.trim().strip_prefix("http://") {
                         set_attr(el, "src", &format!("https://{rest}"))?;
@@ -581,8 +591,9 @@ fn wrap_document(body: &str, allow_images: bool, adaptive: bool, dark_rules: &st
     format!(
         r#"<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="{csp}"><meta name="referrer" content="no-referrer"><style>
 html{{overflow-y:hidden;overflow-x:auto}}
-body{{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;overflow-wrap:anywhere}}
+body{{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;overflow-wrap:break-word}}
 img{{max-width:100%;height:auto}}
+img[data-mailboat-fixed]{{max-width:none}}
 img[data-mailboat-blocked],img[data-mailboat-inline]{{display:inline-block;min-width:24px;min-height:24px;background:#f1f1f3;border-radius:4px}}
 .mailboat-plain{{white-space:pre-wrap;font-family:inherit}}
 a{{color:#2f6fde}}
@@ -637,6 +648,31 @@ mod tests {
             super::super::links::link_base()
         )));
         assert!(!out.contains("href=\"https://"));
+    }
+
+    /// Regression: a CI service email's 1%-wide status cell showed "Failed"
+    /// one letter per line (`overflow-wrap:anywhere` lets words break
+    /// anywhere, so cells shrink to one letter) and its 16px icons vanished
+    /// (`max-width:100%` in a shrinking cell).
+    #[test]
+    fn narrow_cells_keep_words_and_small_icons() {
+        let out = sanitize_html(
+            r#"<table><tr><td width="1%"><img src="https://x.com/fail.png" width="16" height="16"></td><td width="1%">Failed</td></tr></table>"#,
+            true,
+        );
+        assert!(
+            !out.document.contains("overflow-wrap:anywhere"),
+            "{}",
+            out.document
+        );
+        assert!(
+            out.document.contains("data-mailboat-fixed"),
+            "{}",
+            out.document
+        );
+        assert!(out
+            .document
+            .contains("img[data-mailboat-fixed]{max-width:none}"));
     }
 
     #[test]

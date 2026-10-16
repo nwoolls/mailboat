@@ -532,17 +532,13 @@ Stage 5: Google Contacts
 
 Found while testing stage 3 (owner, 2026-10-16), not yet fixed:
 
-- [ ] Reader: a CI service's pipeline email renders squeezed ("Failed"
-      stacked one letter per line, columns too narrow), while Gmail shows
-      it correctly. Likely the sanitizer or the adaptive layout mishandles
-      its table widths. A reader bug, not compose
-- [x] Signatures don't look as in Gmail *(owner report with screenshots,
-      2026-10-16)*: extra blank lines before the image, and colours and
-      fonts lost in sent mail. The editor (TipTap) was rewriting Gmail's
-      signature HTML. The signature now stays out of the editor, like the
-      quote: shown read-only under the text, as it will be sent, and sent
-      as Gmail's own HTML in Gmail's `gmail_signature` wrapper. Switching
-      From swaps it even after typing
+- [x] Reader: a CI service's pipeline email rendered squeezed ("Failed"
+      one letter per line, icons missing) while Gmail showed it correctly.
+      The reader's page style used `overflow-wrap:anywhere`, which lets a
+      narrow (1%) table cell shrink to one letter; it's now `break-word`,
+      as mail apps use. Small fixed-size images (64px or less) are also
+      exempt from `max-width:100%`, which shrank the cell's icons to
+      nothing
 - [ ] Sending attachments (rest of stage 3), then stage 4
 
 ## Milestone 5: Polish
