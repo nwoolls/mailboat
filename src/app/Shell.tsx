@@ -60,7 +60,7 @@ import { openCardEntry } from "../features/compose/model/composeState";
 import { ComposeCard } from "../features/compose/ui/ComposeCard";
 import { MinimizedTabs } from "../features/compose/ui/MinimizedTabs";
 import { ReplyArea } from "../features/compose/ui/ReplyArea";
-import { useComposeActions, useComposeState } from "../features/compose/ui/useCompose";
+import { useCardSpot, useComposeActions, useComposeState } from "../features/compose/ui/useCompose";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
 import { LABEL_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
 import {
@@ -92,6 +92,7 @@ export function Shell() {
   const compose = useComposeActions(accountList);
   const composeState = useComposeState();
   const openCard = openCardEntry(composeState);
+  const cardSpot = useCardSpot();
 
   // Until the user picks a view: All Inboxes, or the inbox itself when
   // there is only one account.
@@ -540,7 +541,7 @@ export function Shell() {
       <MinimizedTabs
         entries={composeState.cards.filter((c) => c.minimized)}
         accounts={accountList}
-        besideCard={openCard !== undefined}
+        besideCard={openCard !== undefined && cardSpot === "bottom-right"}
       />
       <Toast toast={toast} onDismiss={dismissToast} />
     </div>

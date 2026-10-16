@@ -405,3 +405,20 @@ html.resizing .panel-slide {
     animation: none;
   }
 }
+
+/* Released, the compose card springs to its spot, overshooting a little
+   and settling (the rubber band). No transition while it follows the
+   pointer, or when motion is reduced. */
+.compose-snap {
+  transition:
+    left 420ms cubic-bezier(0.34, 1.45, 0.64, 1),
+    top 420ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+.compose-snap.dragging {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .compose-snap {
+    transition: none;
+  }
+}

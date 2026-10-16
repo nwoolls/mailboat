@@ -1,11 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { commands } from "../../../platform/tauri/bindings";
 import type { Account, AccountId, ThreadId } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { keys } from "../../../shared/lib/queries";
 import { showToast } from "../../../shared/lib/toast";
 import * as S from "../model/composeState";
+import type { Size, Spot } from "../model/snap";
 import { type ComposeKind, type Draft, newDraft, replyDraft, toOutgoing } from "../model/draft";
 
 /**
@@ -25,6 +26,33 @@ function subscribe(listener: () => void) {
 
 export function useComposeState(): S.ComposeState {
   return useSyncExternalStore(subscribe, () => state);
+}
+
+/**
+ * Where the card rests (lower right at first). Shared, so the next new
+ * message opens where the last one was left, and the tabs keep clear.
+ */
+let spot: Spot = "bottom-right";
+export function useCardSpot(): Spot {
+  return useSyncExternalStore(subscribe, () => spot);
+}
+export function setCardSpot(next: Spot) {
+  spot = next;
+  for (const l of listeners) l();
+}
+
+/** The window's size, kept current on resize. */
+export function useViewport(): Size {
+  const [size, setSize] = useState(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }));
+  useEffect(() => {
+    const onResize = () => setSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return size;
 }
 
 export function updateDraft(id: number, change: (d: Draft) => Draft) {
