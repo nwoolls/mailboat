@@ -287,6 +287,12 @@ Options offered during the spike that the owner didn't pick (yet):
       email's page title no longer shows at the top of the body
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
+- [ ] Dark mode for emails that declare it (`color-scheme: light dark`, as
+      a vendor's do): apply their own dark rules plus our remap of their
+      inline colours, as Mail.app does, instead of the white card. Their
+      dark rules alone aren't enough (a vendor's turn text white but never
+      darken its inline white backgrounds). Fall back to the white card if
+      their style sheet sets text colours outside its dark-mode block
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong
 - [ ] Softer look for the remaining white cards on the glass
 - [ ] A setting to switch the default back to "blocked"
