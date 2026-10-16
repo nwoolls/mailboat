@@ -14,6 +14,8 @@ type Props = {
   showAccount: boolean;
   selectedId: ThreadId | null;
   onSelect: (id: ThreadId) => void;
+  /** A click on the empty area below the rows, as in Mail and Mimestream. */
+  onClearSelection: () => void;
   hasMore: boolean;
   loadMore: () => void;
   loading: boolean;
@@ -27,6 +29,7 @@ export function ThreadList({
   showAccount,
   selectedId,
   onSelect,
+  onClearSelection,
   hasMore,
   loadMore,
   loading,
@@ -60,6 +63,12 @@ export function ThreadList({
     <div
       ref={scrollRef}
       role="listbox"
+      // Only a click on the list's own background (below the last row)
+      // clears the selection; the gaps between rows belong to the rows'
+      // container, so a slightly-off click there doesn't close the reader.
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClearSelection();
+      }}
       aria-label="Conversations"
       className="flex-1 overflow-y-auto"
     >

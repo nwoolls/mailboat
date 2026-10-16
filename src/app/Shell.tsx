@@ -233,6 +233,8 @@ export function Shell() {
                 // Clicking the open conversation again also brings it back.
                 setReaderOpen(true);
               }}
+              // Nothing selected also slides the reader closed.
+              onClearSelection={() => setSelectedId(null)}
               // Not while the previous view's list stands in for this one.
               hasMore={hasNextPage && !threadsQuery.isPlaceholderData}
               loadMore={loadMore}

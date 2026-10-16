@@ -258,6 +258,9 @@ Options offered during the spike that the owner didn't pick (yet):
       icons). Picked fold style S4 and colour C13 from the sheets in
       `design/icon/sheets/`; the other colours are kept in
       `design/icon/choices/`
+- [x] Clicking the empty area below the list's rows clears the selection
+      and slides the reader closed (as Escape does), like Mail and
+      Mimestream
 - [x] Splitter positions are remembered between launches. The sidebar
       keeps its width when the window resizes; the list and reader resize
       together, since the list is stored as a share of the space beside the
