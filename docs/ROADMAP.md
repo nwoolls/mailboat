@@ -256,7 +256,8 @@ Options offered during the spike that the owner didn't pick (yet):
       icons). Picked fold style S4 and colour C13 from the sheets in
       `design/icon/sheets/`; the other colours are kept in
       `design/icon/choices/`
-- [x] Icon colour changed to cobalt (C04) after living with green (C13)
+- [x] Icon colour changed after living with it: green (C13), then cobalt
+      (C04), now sky blue (C03)
 - [x] The icon gets macOS's Liquid Glass rim and depth, like other apps:
       it also ships as an Icon Composer icon (`Assets.car`), and dev builds
       run from a signed `Mailboat.app` so the Dock shows it there too
