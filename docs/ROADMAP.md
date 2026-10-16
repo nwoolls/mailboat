@@ -536,6 +536,19 @@ Found while testing stage 3 (owner, 2026-10-16), not yet fixed:
       stacked one letter per line, columns too narrow), while Gmail shows
       it correctly. Likely the sanitizer or the adaptive layout mishandles
       its table widths. A reader bug, not compose
+- [ ] Signatures don't look as in Gmail *(owner report with screenshots,
+      2026-10-16)*: (1) extra blank lines between the text and the image
+      while composing (the signature has one); (2) colours and fonts are
+      lost in sent mail (the name should be dark blue and larger, the
+      labels grey). Likely cause: the signature goes through the editor
+      (TipTap), whose rules drop `<font>` tags, most inline styles and
+      Gmail's `<div>`/`<br>` structure, turning lines into extra
+      paragraphs. Probable fix: keep the signature out of the editor, as
+      the quote now is: show it read-only under the text (with its own
+      formatting, in the sandboxed preview) and append Gmail's original
+      signature HTML when sending, wrapped as Gmail does
+      (`<div class="gmail_signature">`). Compare against Gmail's own
+      sent copy
 - [ ] Sending attachments (rest of stage 3), then stage 4
 
 ## Milestone 5: Polish
