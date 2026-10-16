@@ -193,8 +193,23 @@ impl GmailClient {
         page_token: Option<&str>,
         max_results: u32,
     ) -> Result<ThreadList> {
+        self.search_threads(label, None, page_token, max_results)
+            .await
+    }
+
+    /// `threads.list` with an optional Gmail search (`q`), newest first.
+    pub async fn search_threads(
+        &self,
+        label: Option<&str>,
+        q: Option<&str>,
+        page_token: Option<&str>,
+        max_results: u32,
+    ) -> Result<ThreadList> {
         let max = max_results.to_string();
         let mut query = vec![("maxResults", max.as_str())];
+        if let Some(q) = q {
+            query.push(("q", q));
+        }
         if let Some(label) = label {
             query.push(("labelIds", label));
             if matches!(label, "SPAM" | "TRASH") {

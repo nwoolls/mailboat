@@ -4,8 +4,11 @@ import type { ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
 import { AttachmentIcon, StarIcon } from "../../../shared/ui/icons";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { formatListDate, sendersLabel } from "../model/format";
+import type { OlderStatus } from "./useOlderMail";
 
 const ROW_HEIGHT = 72;
+/** The line under the last row while older mail loads (or failed to). */
+const FOOTER_HEIGHT = 40;
 
 type Props = {
   threads: ThreadSummary[];
@@ -18,7 +21,10 @@ type Props = {
   onClearSelection: () => void;
   hasMore: boolean;
   loadMore: () => void;
+  /** The first page, or the next cached page, is loading. */
   loading: boolean;
+  /** Fetching older mail from Gmail past the end of the cache. */
+  older: { status: OlderStatus; busy: boolean; retry: () => void };
   /** Shown when the view has no conversations. */
   empty: React.ReactNode;
 };
@@ -33,6 +39,7 @@ export function ThreadList({
   hasMore,
   loadMore,
   loading,
+  older,
   empty,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -47,9 +54,11 @@ export function ThreadList({
 
   // Fetch the next page when the user nears the end.
   const lastIndex = items.at(-1)?.index ?? 0;
+  const busy = loading || older.busy;
   useEffect(() => {
-    if (hasMore && !loading && lastIndex >= threads.length - 20) loadMore();
-  }, [hasMore, loading, lastIndex, threads.length, loadMore]);
+    if (hasMore && !busy && lastIndex >= threads.length - 20) loadMore();
+  }, [hasMore, busy, lastIndex, threads.length, loadMore]);
+  const footer = older.status !== "idle";
 
   // Keep the keyboard selection visible.
   useEffect(() => {
@@ -72,7 +81,12 @@ export function ThreadList({
       aria-label="Conversations"
       className="flex-1 overflow-y-auto"
     >
-      <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+      <div
+        style={{
+          height: virtualizer.getTotalSize() + (footer ? FOOTER_HEIGHT : 0),
+          position: "relative",
+        }}
+      >
         {items.map((item) => {
           const t = threads[item.index]!;
           const selected = t.id === selectedId;
@@ -143,6 +157,27 @@ export function ThreadList({
             </div>
           );
         })}
+        {footer && (
+          <div
+            className="absolute inset-x-0 flex items-center justify-center gap-1.5 text-xs text-content/45"
+            style={{ top: virtualizer.getTotalSize(), height: FOOTER_HEIGHT }}
+          >
+            {older.status === "loading" ? (
+              "Loading older mail…"
+            ) : (
+              <>
+                Couldn’t load older mail.
+                <button
+                  type="button"
+                  className="underline hover:text-content"
+                  onClick={older.retry}
+                >
+                  Try again
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

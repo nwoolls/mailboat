@@ -29,6 +29,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::account_add_cancel,
             commands::account_remove,
             commands::threads_list,
+            commands::threads_load_older,
             commands::thread_get,
             commands::labels_list,
             commands::unread_counts,

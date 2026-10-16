@@ -20,6 +20,7 @@ import { useElementWidth } from "../features/layout/ui/useElementWidth";
 import { Welcome } from "../features/accounts/ui/Welcome";
 import { moveSelection, navKeyFor } from "../features/mailbox/model/listNavigation";
 import { readToggle } from "../features/mailbox/model/readState";
+import { useOlderMail } from "../features/mailbox/ui/useOlderMail";
 import { useSetRead } from "../features/mailbox/ui/useSetRead";
 import {
   ALL_INBOXES,
@@ -84,7 +85,16 @@ export function Shell() {
   const [shownId, setShownId] = useState<ThreadId | null>(null);
   const { mutate: setRead } = useSetRead();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
-  const loadMore = useCallback(() => void fetchNextPage(), [fetchNextPage]);
+  // Past the last cached page, ask Gmail for older mail. Not while the
+  // list is refreshing or standing in for the previous view.
+  const older = useOlderMail(selection);
+  const settled = !threadsQuery.isPlaceholderData && !threadsQuery.isFetching;
+  const fromGmail = !hasNextPage && settled && older.available;
+  const { load: loadOlder } = older;
+  const loadMore = useCallback(
+    () => void (hasNextPage ? fetchNextPage() : loadOlder()),
+    [hasNextPage, fetchNextPage, loadOlder],
+  );
 
   // Splitter positions, remembered between launches. The sidebar keeps its
   // pixel width; the list is a share of the space beside it, so the list
@@ -248,9 +258,10 @@ export function Shell() {
               // Nothing selected also slides the reader closed.
               onClearSelection={() => setSelectedId(null)}
               // Not while the previous view's list stands in for this one.
-              hasMore={hasNextPage && !threadsQuery.isPlaceholderData}
+              hasMore={(hasNextPage && !threadsQuery.isPlaceholderData) || fromGmail}
               loadMore={loadMore}
               loading={threadsQuery.isPending || isFetchingNextPage}
+              older={older}
               empty={
                 <EmptyState
                   state={emptyStateFor(selection.view)}

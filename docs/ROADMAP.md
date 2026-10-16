@@ -324,8 +324,13 @@ Options offered during the spike that the owner didn't pick (yet):
 - [ ] Independent sync workers (exist; verify with two real accounts)
 - All Mail, Archive, Spam/Trash/Drafts/Important views and the wider sync
   scope: *pulled forward into Milestone 1 (see above)*
-- [ ] Load older mail on demand when scrolling past the cached window
-      *(promised in the M1 plan, never built)*
+- [x] Load older mail on demand when scrolling past the cached window
+      *(promised in the M1 plan)*. Reaching the end of a list fetches the
+      next 25 conversations Gmail has for that view, per account at once,
+      ahead of background sync; rows appear in fives, with "Loading older
+      mail…" under the list. Works for every view except search (remote
+      search is Milestone 5). A failure shows "Try again" instead of
+      retrying on every scroll. *(Not yet tried in the real app.)*
 
 ## Milestone 3: Actions
 

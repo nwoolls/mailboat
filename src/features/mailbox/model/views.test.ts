@@ -7,6 +7,7 @@ import {
   viewSelection,
   viewTitle,
   labelSelection,
+  loadsOlderMail,
   sameSelection,
   selectionKey,
   selectionNeedsAccount,
@@ -142,5 +143,14 @@ describe("selectionNeedsAccount", () => {
         [workLabel],
       ),
     ).toBe(false);
+  });
+});
+
+describe("loadsOlderMail", () => {
+  it("is true for mailbox views and false for local search", () => {
+    expect(loadsOlderMail({ kind: "system", label: "inbox" })).toBe(true);
+    expect(loadsOlderMail({ kind: "archive" })).toBe(true);
+    expect(loadsOlderMail({ kind: "userLabel", labelId: 3 })).toBe(true);
+    expect(loadsOlderMail({ kind: "search", text: "invoice" })).toBe(false);
   });
 });

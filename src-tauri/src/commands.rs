@@ -9,16 +9,18 @@ use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::{self, SafeMessage};
 use mailboat_core::model::{
-    Account, AccountFilter, AccountId, AccountSyncState, Label, LabelUnread, ListQuery, MessageId,
-    ThreadDetail, ThreadId, ThreadPage,
+    Account, AccountFilter, AccountId, AccountSyncState, Label, LabelUnread, ListQuery, MailView,
+    MessageId, ThreadDetail, ThreadId, ThreadPage,
 };
-use mailboat_core::sync::fetch_body;
+use mailboat_core::sync::{fetch_body, load_older, OLDER_BATCH};
 use mailboat_core::CoreError;
 use serde::Serialize;
 use specta::Type;
-use tauri::State;
+use tauri::{AppHandle, State};
+use tauri_specta::Event;
 
 use crate::error::CmdResult;
+use crate::events::MailChangedEvent;
 use crate::state::AppState;
 
 #[tauri::command]
@@ -141,6 +143,115 @@ pub async fn account_remove(state: State<'_, AppState>, account_id: AccountId) -
 #[specta::specta]
 pub fn threads_list(state: State<'_, AppState>, query: ListQuery) -> CmdResult<ThreadPage> {
     Ok(query::list_threads(&state.db.conn(), &query)?)
+}
+
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct OlderLoaded {
+    /// Conversations added to the cache.
+    pub added: u32,
+    /// Gmail has nothing older in this view for any of the accounts.
+    pub exhausted: bool,
+}
+
+/// Fetches conversations older than the cache for a view, from each
+/// account in the filter at once (each has its own quota). Rows appear as
+/// they arrive (`MailChangedEvent`). One account failing doesn't stop the
+/// others; the error is only returned if every account failed.
+#[tauri::command]
+#[specta::specta]
+pub async fn threads_load_older(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    accounts: AccountFilter,
+    view: MailView,
+) -> CmdResult<OlderLoaded> {
+    let ids: Vec<AccountId> = match accounts {
+        AccountFilter::All => accounts::list(&state.db.conn())?
+            .into_iter()
+            .map(|a| a.id)
+            .collect(),
+        AccountFilter::Only(ids) => ids,
+    };
+    let mut tasks = tokio::task::JoinSet::new();
+    for account in ids {
+        let mut cursor = state.take_older_cursor(account, &view);
+        if cursor.exhausted {
+            state.put_older_cursor(account, &view, cursor);
+            continue;
+        }
+        // Someone is waiting at the end of the list: skip ahead of sync.
+        let gmail = match state.gmail_for(account) {
+            Ok(g) => g.interactive(),
+            Err(e) => {
+                state.put_older_cursor(account, &view, cursor);
+                tasks.spawn(async move { (account, OlderCursorResult::Failed(e)) });
+                continue;
+            }
+        };
+        let (db, view, app) = (state.db.clone(), view.clone(), app.clone());
+        tasks.spawn(async move {
+            let on_chunk = || {
+                let _ = MailChangedEvent {
+                    account_id: account,
+                }
+                .emit(&app);
+            };
+            let result = load_older(
+                &db,
+                &gmail,
+                account,
+                &view,
+                OLDER_BATCH,
+                &mut cursor,
+                &on_chunk,
+            )
+            .await;
+            (account, OlderCursorResult::Done(cursor, result))
+        });
+    }
+
+    let (mut added, mut exhausted, mut failures, mut tried) = (0, true, Vec::new(), 0);
+    while let Some(joined) = tasks.join_next().await {
+        let Ok((account, outcome)) = joined else {
+            exhausted = false;
+            continue;
+        };
+        tried += 1;
+        match outcome {
+            OlderCursorResult::Done(cursor, result) => {
+                exhausted &= cursor.exhausted;
+                state.put_older_cursor(account, &view, cursor);
+                match result {
+                    Ok(n) => {
+                        added += n as u32;
+                        state
+                            .sync_log
+                            .write(account, &format!("loaded {n} older threads"));
+                    }
+                    Err(e) => {
+                        state
+                            .sync_log
+                            .write(account, &format!("loading older mail failed: {e}"));
+                        failures.push(e);
+                    }
+                }
+            }
+            OlderCursorResult::Failed(e) => {
+                exhausted = false;
+                failures.push(e);
+            }
+        }
+    }
+    if tried > 0 && failures.len() == tried {
+        return Err(failures.swap_remove(0).into());
+    }
+    Ok(OlderLoaded { added, exhausted })
+}
+
+enum OlderCursorResult {
+    Done(mailboat_core::sync::OlderCursor, mailboat_core::Result<usize>),
+    Failed(CoreError),
 }
 
 #[tauri::command]

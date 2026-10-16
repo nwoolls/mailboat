@@ -9,8 +9,9 @@ use mailboat_core::auth::{AccountTokens, OAuthClientConfig, SecretStore};
 use mailboat_core::db::{accounts, Db};
 use mailboat_core::gmail::GmailClient;
 use mailboat_core::model::AccountId;
+use mailboat_core::model::MailView;
 use mailboat_core::reqwest;
-use mailboat_core::sync::Supervisor;
+use mailboat_core::sync::{OlderCursor, Supervisor};
 use mailboat_core::Result;
 
 pub struct AppState {
@@ -26,6 +27,8 @@ pub struct AppState {
     pub sign_in: tokio::sync::Mutex<()>,
     /// Signalled by `account_add_cancel` to stop waiting for the browser.
     pub sign_in_cancel: tokio::sync::Notify,
+    /// How far "load older mail" has walked each account's views.
+    older: Mutex<HashMap<(AccountId, String), OlderCursor>>,
 }
 
 impl AppState {
@@ -47,6 +50,7 @@ impl AppState {
             clients: Mutex::new(HashMap::new()),
             sign_in: tokio::sync::Mutex::new(()),
             sign_in_cancel: tokio::sync::Notify::new(),
+            older: Mutex::new(HashMap::new()),
         }
     }
 
@@ -85,6 +89,24 @@ impl AppState {
 
     pub fn forget_account(&self, account: AccountId) {
         self.clients.lock().unwrap().remove(&account);
+        self.older.lock().unwrap().retain(|(a, _), _| *a != account);
+    }
+
+    /// Takes an account's "load older" cursor for a view (a fresh one if
+    /// none yet); hand it back with `put_older_cursor` when done.
+    pub fn take_older_cursor(&self, account: AccountId, view: &MailView) -> OlderCursor {
+        self.older
+            .lock()
+            .unwrap()
+            .remove(&(account, format!("{view:?}")))
+            .unwrap_or_default()
+    }
+
+    pub fn put_older_cursor(&self, account: AccountId, view: &MailView, cursor: OlderCursor) {
+        self.older
+            .lock()
+            .unwrap()
+            .insert((account, format!("{view:?}")), cursor);
     }
 
     /// Resumes syncing every connected account at startup. One that can't

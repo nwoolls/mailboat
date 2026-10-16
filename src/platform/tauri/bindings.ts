@@ -23,6 +23,13 @@ export const commands = {
 	 */
 	accountRemove: (accountId: AccountId) => typedError<null, AppError>(__TAURI_INVOKE("account_remove", { accountId })),
 	threadsList: (query: ListQuery) => typedError<ThreadPage, AppError>(__TAURI_INVOKE("threads_list", { query })),
+	/**
+	 *  Fetches conversations older than the cache for a view, from each
+	 *  account in the filter at once (each has its own quota). Rows appear as
+	 *  they arrive (`MailChangedEvent`). One account failing doesn't stop the
+	 *  others; the error is only returned if every account failed.
+	 */
+	threadsLoadOlder: (accounts: AccountFilter, view: MailView) => typedError<OlderLoaded, AppError>(__TAURI_INVOKE("threads_load_older", { accounts, view })),
 	threadGet: (threadId: ThreadId) => typedError<ThreadDetail, AppError>(__TAURI_INVOKE("thread_get", { threadId })),
 	labelsList: (accounts: AccountFilter) => typedError<Label[], AppError>(__TAURI_INVOKE("labels_list", { accounts })),
 	/**  Unread conversations per label, for the sidebar's counts. */
@@ -189,6 +196,13 @@ export type OAuthSetup = {
 	clientFilePath: string,
 	/**  Why loading failed, if it did. */
 	problem: string | null,
+};
+
+export type OlderLoaded = {
+	/**  Conversations added to the cache. */
+	added: number,
+	/**  Gmail has nothing older in this view for any of the accounts. */
+	exhausted: boolean,
 };
 
 export type OpenedMessage = {

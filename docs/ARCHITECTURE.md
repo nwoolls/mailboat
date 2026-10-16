@@ -96,6 +96,14 @@ stateDiagram-v2
   re-fetch every thread it mentions.
 - **Bodies** are fetched when a message is opened, and the newest few are
   prefetched after each pass.
+- **Older mail on demand** (`sync/older.rs`): when a list reaches the
+  end of the cache, the app walks Gmail's own list for that view (500
+  IDs per cheap call), skips threads already cached, and fetches the next
+  25 missing ones on the interactive lane, each account at once. A cursor
+  per account and view (in memory) resumes the walk next time. Older
+  threads are then kept current by incremental sync like any other; a
+  full resync (expired historyId) drops them again, and they reload on
+  the next scroll after a relaunch.
 - **Removing an account** stops its worker and waits for it to end
   (`Supervisor::stop_and_wait`) before deleting its rows, so a sync in
   flight can't write into the account being deleted. Cascading foreign
@@ -197,3 +205,4 @@ and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
 | 2026-10-15 | Dev builds run from a signed `target/debug/Mailboat.app` built by `scripts/dev-run.sh`; `src-tauri/src/dock.rs` clears Tauri's dev Dock image | macOS only applies the icon treatment to bundles, and Tauri paints a flat image on the Dock in dev. MonoCode builds its dev bundle in Rust and signs it ad hoc; Mailboat does it in the existing runner script so the bundle is signed with the Apple Development certificate and keychain access still survives rebuilds. Needs `objc2`/`objc2-app-kit`, already in the build through Tauri. |
 | 2026-10-15 | Splitter positions saved in local storage: sidebar in pixels, list as a share of the panes | The owner wanted the sidebar to keep its width when the window resizes and the list and reader to scale together. The list is laid out with a percentage flex-basis, so the browser does the proportional resize with no code running; dragging converts the pixel position to a share, kept between 10% and 90% and within the list's and reader's minimum widths. Local storage, like other view state; move to Settings storage if one arrives. |
 | 2026-10-16 | Menus and confirmations use the web view's own popover and `<dialog>`, not a library or Tauri native menus | They give click-outside, Escape and focus handling for free and float above panels that clip; native menus would need the menu permission on the web side. |
+| 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |
