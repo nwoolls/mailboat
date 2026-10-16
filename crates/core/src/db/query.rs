@@ -78,8 +78,10 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
                     .into(),
             );
             values.push(Value::Text(label.gmail_id().into()));
-            // As in Gmail, Unread leaves out Spam and Trash.
-            if *label == SystemLabel::Unread {
+            // As in Gmail, every view but Spam and Trash leaves out
+            // conversations that are wholly in Spam or Trash (a trashed
+            // thread can keep its INBOX label).
+            if !matches!(label, SystemLabel::Spam | SystemLabel::Trash) {
                 clauses.push(IN_ALL_MAIL.into());
             }
         }
@@ -88,6 +90,7 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
             // match another account's same-named label.
             clauses.push("EXISTS (SELECT 1 FROM thread_labels tl WHERE tl.thread_id = t.id AND tl.label_id = ?)".into());
             values.push(Value::Integer(label_id.0));
+            clauses.push(IN_ALL_MAIL.into());
         }
         MailView::AllMail => clauses.push(IN_ALL_MAIL.into()),
         MailView::Archive => {
@@ -261,8 +264,9 @@ pub fn user_labels(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<La
 }
 
 /// Unread conversations per label, for sidebar counts. A label's count is
-/// per account; unified counts (All Inboxes) are sums of these. `UNREAD`
-/// itself leaves out Spam and Trash, matching the Unread view.
+/// per account; unified counts (All Inboxes) are sums of these. Like the
+/// views, every label but Spam and Trash leaves out trashed and spam
+/// conversations.
 pub fn unread_counts(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<LabelUnread>> {
     let (filter, values): (String, Vec<Value>) = match accounts {
         AccountFilter::All => (String::new(), vec![]),
@@ -281,7 +285,7 @@ pub fn unread_counts(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<
          JOIN thread_labels tl ON tl.label_id = l.id AND tl.account_id = l.account_id
          JOIN threads t ON t.id = tl.thread_id AND t.account_id = l.account_id
          WHERE t.unread_count > 0 {filter}
-           AND (l.gmail_label_id <> 'UNREAD' OR {IN_ALL_MAIL})
+           AND (l.gmail_label_id IN ('SPAM', 'TRASH') OR {IN_ALL_MAIL})
          GROUP BY l.id
          ORDER BY l.account_id, l.id"
     );

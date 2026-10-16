@@ -46,6 +46,23 @@ export const commands = {
 	 */
 	threadsSetRead: (threadIds: ThreadId[], read: boolean) => typedError<null, AppError>(__TAURI_INVOKE("threads_set_read", { threadIds, read })),
 	/**
+	 *  Archives threads (out of the Inbox) or moves them back to the Inbox.
+	 *  Routed per account like `threads_set_read`.
+	 */
+	threadsSetArchived: (threadIds: ThreadId[], archived: boolean) => typedError<null, AppError>(__TAURI_INVOKE("threads_set_archived", { threadIds, archived })),
+	/**  Stars or unstars threads. Routed per account like `threads_set_read`. */
+	threadsSetStarred: (threadIds: ThreadId[], starred: boolean) => typedError<null, AppError>(__TAURI_INVOKE("threads_set_starred", { threadIds, starred })),
+	/**
+	 *  Moves threads to the Trash, or restores them. Routed per account like
+	 *  `threads_set_read`.
+	 */
+	threadsSetTrashed: (threadIds: ThreadId[], trashed: boolean) => typedError<null, AppError>(__TAURI_INVOKE("threads_set_trashed", { threadIds, trashed })),
+	/**
+	 *  Adds and removes user labels. Each label applies only to threads of
+	 *  the account it belongs to.
+	 */
+	threadsChangeLabels: (threadIds: ThreadId[], add: LabelId[], remove: LabelId[]) => typedError<null, AppError>(__TAURI_INVOKE("threads_change_labels", { threadIds, add, remove })),
+	/**
 	 *  Remembers to load (`allow`) or block remote images from this sender, in
 	 *  every account. Spam stays blocked regardless.
 	 */

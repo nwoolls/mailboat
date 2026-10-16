@@ -9,8 +9,8 @@ use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::{self, SafeMessage};
 use mailboat_core::model::{
-    Account, AccountFilter, AccountId, AccountSyncState, Label, LabelUnread, ListQuery, MailView,
-    MessageId, ThreadDetail, ThreadId, ThreadPage,
+    Account, AccountFilter, AccountId, AccountSyncState, Label, LabelId, LabelUnread, ListQuery,
+    MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
 };
 use mailboat_core::sync::{fetch_body, load_older, OLDER_BATCH};
 use mailboat_core::CoreError;
@@ -347,6 +347,83 @@ pub async fn threads_set_read(
         |account| state.gmail_for(account),
         &thread_ids,
         read,
+    )
+    .await?;
+    Ok(())
+}
+
+/// Archives threads (out of the Inbox) or moves them back to the Inbox.
+/// Routed per account like `threads_set_read`.
+#[tauri::command]
+#[specta::specta]
+pub async fn threads_set_archived(
+    state: State<'_, AppState>,
+    thread_ids: Vec<ThreadId>,
+    archived: bool,
+) -> CmdResult<()> {
+    mailboat_core::actions::set_archived(
+        &state.db,
+        |account| state.gmail_for(account),
+        &thread_ids,
+        archived,
+    )
+    .await?;
+    Ok(())
+}
+
+/// Stars or unstars threads. Routed per account like `threads_set_read`.
+#[tauri::command]
+#[specta::specta]
+pub async fn threads_set_starred(
+    state: State<'_, AppState>,
+    thread_ids: Vec<ThreadId>,
+    starred: bool,
+) -> CmdResult<()> {
+    mailboat_core::actions::set_starred(
+        &state.db,
+        |account| state.gmail_for(account),
+        &thread_ids,
+        starred,
+    )
+    .await?;
+    Ok(())
+}
+
+/// Moves threads to the Trash, or restores them. Routed per account like
+/// `threads_set_read`.
+#[tauri::command]
+#[specta::specta]
+pub async fn threads_set_trashed(
+    state: State<'_, AppState>,
+    thread_ids: Vec<ThreadId>,
+    trashed: bool,
+) -> CmdResult<()> {
+    mailboat_core::actions::set_trashed(
+        &state.db,
+        |account| state.gmail_for(account),
+        &thread_ids,
+        trashed,
+    )
+    .await?;
+    Ok(())
+}
+
+/// Adds and removes user labels. Each label applies only to threads of
+/// the account it belongs to.
+#[tauri::command]
+#[specta::specta]
+pub async fn threads_change_labels(
+    state: State<'_, AppState>,
+    thread_ids: Vec<ThreadId>,
+    add: Vec<LabelId>,
+    remove: Vec<LabelId>,
+) -> CmdResult<()> {
+    mailboat_core::actions::change_labels(
+        &state.db,
+        |account| state.gmail_for(account),
+        &thread_ids,
+        &add,
+        &remove,
     )
     .await?;
     Ok(())

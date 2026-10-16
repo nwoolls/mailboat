@@ -145,3 +145,239 @@ async fn refused_change_is_undone_locally() {
     );
     assert_eq!(after.thread, before.thread);
 }
+
+fn in_view(db: &Db, account: AccountId, view: MailView) -> Vec<ThreadId> {
+    query::list_threads(
+        &db.conn(),
+        &ListQuery {
+            accounts: AccountFilter::Only(vec![account]),
+            view,
+            cursor: None,
+            limit: 50,
+        },
+    )
+    .unwrap()
+    .threads
+    .into_iter()
+    .map(|t| t.id)
+    .collect()
+}
+
+const INBOX: MailView = MailView::System {
+    label: SystemLabel::Inbox,
+};
+
+/// A server that accepts one POST to `path` (with `body`, if given).
+async fn expect_post(path_str: &str, body: Option<serde_json::Value>) -> MockServer {
+    let server = MockServer::start().await;
+    let mut mock = Mock::given(method("POST")).and(path(path_str.to_string()));
+    if let Some(body) = body {
+        mock = mock.and(body_json(body));
+    }
+    mock.respond_with(ResponseTemplate::new(200).set_body_string("{}"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    server
+}
+
+#[tokio::test]
+async fn archive_leaves_the_inbox_and_moving_back_returns() {
+    let server = expect_post(
+        "/gmail/v1/users/me/threads/t1/modify",
+        Some(serde_json::json!({ "addLabelIds": [], "removeLabelIds": ["INBOX"] })),
+    )
+    .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1(&db, a);
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+
+    actions::set_archived(&db, gmail_for, &[t1], true)
+        .await
+        .unwrap();
+    assert!(in_view(&db, a, INBOX).is_empty());
+    assert_eq!(in_view(&db, a, MailView::Archive), vec![t1]);
+
+    let back = expect_post(
+        "/gmail/v1/users/me/threads/t1/modify",
+        Some(serde_json::json!({ "addLabelIds": ["INBOX"], "removeLabelIds": [] })),
+    )
+    .await;
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&back.uri()).0);
+    actions::set_archived(&db, gmail_for, &[t1], false)
+        .await
+        .unwrap();
+    assert_eq!(in_view(&db, a, INBOX), vec![t1]);
+}
+
+#[tokio::test]
+async fn star_and_unstar() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1(&db, a);
+    let starred = MailView::System {
+        label: SystemLabel::Starred,
+    };
+
+    let server = expect_post(
+        "/gmail/v1/users/me/threads/t1/modify",
+        Some(serde_json::json!({ "addLabelIds": ["STARRED"], "removeLabelIds": [] })),
+    )
+    .await;
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+    actions::set_starred(&db, gmail_for, &[t1], true)
+        .await
+        .unwrap();
+    assert!(query::thread_summary(&db.conn(), t1).unwrap().starred);
+    assert_eq!(in_view(&db, a, starred.clone()), vec![t1]);
+
+    let server = expect_post(
+        "/gmail/v1/users/me/threads/t1/modify",
+        Some(serde_json::json!({ "addLabelIds": [], "removeLabelIds": ["STARRED"] })),
+    )
+    .await;
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+    actions::set_starred(&db, gmail_for, &[t1], false)
+        .await
+        .unwrap();
+    assert!(!query::thread_summary(&db.conn(), t1).unwrap().starred);
+    assert!(in_view(&db, a, starred).is_empty());
+}
+
+#[tokio::test]
+async fn trash_uses_gmails_trash_call_and_hides_the_thread_from_other_views() {
+    let server = expect_post("/gmail/v1/users/me/threads/t1/trash", None).await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1(&db, a);
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+
+    actions::set_trashed(&db, gmail_for, &[t1], true)
+        .await
+        .unwrap();
+    let trash = MailView::System {
+        label: SystemLabel::Trash,
+    };
+    assert_eq!(in_view(&db, a, trash.clone()), vec![t1]);
+    // It keeps its INBOX label (as in Gmail) but no longer shows there, nor
+    // in its user label, nor in the Inbox unread count.
+    assert!(in_view(&db, a, INBOX).is_empty());
+    assert!(in_view(
+        &db,
+        a,
+        MailView::UserLabel {
+            label_id: label_id_of(&db, a, "Label_1")
+        }
+    )
+    .is_empty());
+    let counts = query::unread_counts(&db.conn(), &AccountFilter::All).unwrap();
+    assert!(!counts.iter().any(|c| c.gmail_label_id == "INBOX"));
+
+    let back = expect_post("/gmail/v1/users/me/threads/t1/untrash", None).await;
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&back.uri()).0);
+    actions::set_trashed(&db, gmail_for, &[t1], false)
+        .await
+        .unwrap();
+    assert!(in_view(&db, a, trash).is_empty());
+    assert_eq!(in_view(&db, a, INBOX), vec![t1]);
+}
+
+fn label_id_of(db: &Db, account: AccountId, gmail_label_id: &str) -> LabelId {
+    db.conn()
+        .query_row(
+            "SELECT id FROM labels WHERE account_id = ?1 AND gmail_label_id = ?2",
+            rusqlite::params![account, gmail_label_id],
+            |r| r.get(0),
+        )
+        .unwrap()
+}
+
+fn create_label(db: &Db, account: AccountId, gmail_label_id: &str, name: &str) -> LabelId {
+    // Inserted directly: `sync_labels` replaces the whole list.
+    db.conn()
+        .execute(
+            "INSERT INTO labels (account_id, gmail_label_id, name, kind) VALUES (?1, ?2, ?3, 'user')",
+            rusqlite::params![account, gmail_label_id, name],
+        )
+        .unwrap();
+    label_id_of(db, account, gmail_label_id)
+}
+
+#[tokio::test]
+async fn labels_go_to_the_owning_account_by_gmail_id() {
+    let server_a = expect_post(
+        "/gmail/v1/users/me/threads/t1/modify",
+        Some(serde_json::json!({ "addLabelIds": ["Label_7"], "removeLabelIds": ["Label_1"] })),
+    )
+    .await;
+    let server_b = MockServer::start().await;
+    Mock::given(wiremock::matchers::any())
+        .respond_with(ResponseTemplate::new(500))
+        .expect(0)
+        .mount(&server_b)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    let a_t1 = load_t1(&db, a);
+    let b_t1 = load_t1(&db, b);
+    let travel = create_label(&db, a, "Label_7", "Travel");
+    let work_a = label_id_of(&db, a, "Label_1");
+    // B has a label with the same Gmail ID and name; it must stay untouched.
+    create_label(&db, b, "Label_7", "Travel");
+
+    let servers = HashMap::from([(a, server_a.uri()), (b, server_b.uri())]);
+    let gmail_for = |acct: AccountId| Ok::<GmailClient, CoreError>(client(&servers[&acct]).0);
+    actions::change_labels(&db, gmail_for, &[a_t1], &[travel], &[work_a])
+        .await
+        .unwrap();
+
+    let names = |t| {
+        query::thread_detail(&db.conn(), t)
+            .unwrap()
+            .labels
+            .into_iter()
+            .map(|l| l.gmail_label_id)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(names(a_t1), vec!["Label_7"]);
+    assert_eq!(names(b_t1), vec!["Label_1"]);
+}
+
+#[tokio::test]
+async fn a_label_from_another_account_is_refused() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    let a_t1 = load_t1(&db, a);
+    let b_label = create_label(&db, b, "Label_9", "B only");
+    let gmail_for = |_: AccountId| -> Result<GmailClient, CoreError> { unreachable!() };
+    let err = actions::change_labels(&db, gmail_for, &[a_t1], &[b_label], &[])
+        .await
+        .unwrap_err();
+    assert!(matches!(err, CoreError::Invalid(_)), "{err}");
+}
+
+#[tokio::test]
+async fn a_refused_label_change_restores_every_label_it_touched() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(400).set_body_string("{}"))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1(&db, a);
+    let travel = create_label(&db, a, "Label_7", "Travel");
+    let work = label_id_of(&db, a, "Label_1");
+    let before = query::thread_detail(&db.conn(), t1).unwrap();
+
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+    assert!(
+        actions::change_labels(&db, gmail_for, &[t1], &[travel], &[work])
+            .await
+            .is_err()
+    );
+    assert_eq!(query::thread_detail(&db.conn(), t1).unwrap(), before);
+}

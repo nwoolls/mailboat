@@ -10,7 +10,9 @@ use serde::de::DeserializeOwned;
 
 use super::batch;
 use super::pacer::{cost, QuotaPacer};
-use super::types::{ErrorEnvelope, HistoryList, LabelList, Message, Profile, Thread, ThreadList};
+use super::types::{
+    AttachmentBody, ErrorEnvelope, HistoryList, LabelList, Message, Profile, Thread, ThreadList,
+};
 use crate::error::{CoreError, Result};
 
 pub const GMAIL_BASE_URL: &str = "https://gmail.googleapis.com";
@@ -257,6 +259,38 @@ impl GmailClient {
         let body = serde_json::json!({ "addLabelIds": add, "removeLabelIds": remove });
         self.send(|| self.http.post(&url).json(&body)).await?;
         Ok(())
+    }
+
+    /// `threads.trash`: moves every message of a thread to the Trash.
+    pub async fn trash_thread(&self, id: &str) -> Result<()> {
+        self.post_empty(&format!("threads/{id}/trash")).await
+    }
+
+    /// `threads.untrash`: takes every message of a thread out of the Trash.
+    pub async fn untrash_thread(&self, id: &str) -> Result<()> {
+        self.post_empty(&format!("threads/{id}/untrash")).await
+    }
+
+    async fn post_empty(&self, path: &str) -> Result<()> {
+        self.spend(cost::THREADS_TRASH).await;
+        let url = self.url(path);
+        self.send(|| self.http.post(&url)).await?;
+        Ok(())
+    }
+
+    /// `messages.attachments.get`: an attachment's bytes.
+    pub async fn attachment(&self, message_id: &str, attachment_id: &str) -> Result<Vec<u8>> {
+        let body: AttachmentBody = self
+            .get_json(
+                &self.url(&format!(
+                    "messages/{message_id}/attachments/{attachment_id}"
+                )),
+                &[],
+                cost::ATTACHMENTS_GET,
+            )
+            .await?;
+        super::parse::decode_base64url(&body.data)
+            .ok_or_else(|| CoreError::Other("attachment data was not valid base64".into()))
     }
 
     /// `history.list`. A 404 means the start ID is too old.

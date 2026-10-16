@@ -573,6 +573,23 @@ pub fn thread_gmail_ref(conn: &Connection, thread: ThreadId) -> Result<(AccountI
     .ok_or_else(|| CoreError::NotFound(format!("thread {}", thread.0)))
 }
 
+/// The owning account, Gmail ID and kind of a local label.
+pub fn label_ref(conn: &Connection, label: LabelId) -> Result<(AccountId, String, LabelKind)> {
+    conn.query_row(
+        "SELECT account_id, gmail_label_id, kind FROM labels WHERE id = ?1",
+        [label],
+        |r| {
+            Ok((
+                r.get(0)?,
+                r.get(1)?,
+                LabelKind::parse(&r.get::<_, String>(2)?),
+            ))
+        },
+    )
+    .optional()?
+    .ok_or_else(|| CoreError::NotFound(format!("label {}", label.0)))
+}
+
 /// Which of a thread's messages currently carry a Gmail label.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LabelSnapshot {

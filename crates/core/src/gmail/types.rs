@@ -116,6 +116,14 @@ pub struct PartBody {
     pub data: Option<String>,
 }
 
+/// `messages.attachments.get` response.
+#[derive(Debug, Clone, Deserialize)]
+pub struct AttachmentBody {
+    /// base64url-encoded content.
+    #[serde(default)]
+    pub data: String,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryList {

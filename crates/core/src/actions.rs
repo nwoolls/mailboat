@@ -1,4 +1,4 @@
-//! User actions on mail (Milestone 3 grows this; read/unread is first).
+//! User actions on mail: read/unread, archive, star, labels and trash.
 //!
 //! Every action follows the same pattern:
 //! 1. Resolve each thread's owning account. A selection spanning accounts
@@ -11,9 +11,31 @@ use std::collections::BTreeMap;
 use crate::db::{store, Db};
 use crate::error::{CoreError, Result};
 use crate::gmail::GmailClient;
-use crate::model::{AccountId, ThreadId};
+use crate::model::{AccountId, LabelId, LabelKind, ThreadId};
 
 const UNREAD: &str = "UNREAD";
+const INBOX: &str = "INBOX";
+const STARRED: &str = "STARRED";
+const TRASH: &str = "TRASH";
+
+/// Which Gmail call carries the change.
+#[derive(Debug, Clone, Copy)]
+enum Remote {
+    /// `threads.modify` with the plan's labels.
+    Modify,
+    /// `threads.trash` (Gmail adds TRASH itself).
+    Trash,
+    /// `threads.untrash` (Gmail removes TRASH itself).
+    Untrash,
+}
+
+/// The label change for one account's threads, as Gmail label IDs.
+#[derive(Debug, Default)]
+struct AccountPlan {
+    threads: Vec<(ThreadId, String)>,
+    add: Vec<String>,
+    remove: Vec<String>,
+}
 
 /// Groups local threads by owning account, with their Gmail IDs.
 fn by_account(
@@ -24,57 +46,203 @@ fn by_account(
     let mut groups: BTreeMap<AccountId, Vec<(ThreadId, String)>> = BTreeMap::new();
     for &thread in threads {
         let (account, gmail_id) = store::thread_gmail_ref(&conn, thread)?;
-        groups.entry(account).or_default().push((thread, gmail_id));
+        let group = groups.entry(account).or_default();
+        if !group.iter().any(|(t, _)| *t == thread) {
+            group.push((thread, gmail_id));
+        }
     }
     Ok(groups)
 }
 
-/// Marks threads read or unread. Returns the accounts touched. If Gmail
-/// refuses some threads, those are restored locally and the first error is
-/// returned; the others keep their new state.
-pub async fn set_read(
+/// The same system-label change for every account.
+fn system_plan(
+    db: &Db,
+    threads: &[ThreadId],
+    add: &[&str],
+    remove: &[&str],
+) -> Result<BTreeMap<AccountId, AccountPlan>> {
+    Ok(by_account(db, threads)?
+        .into_iter()
+        .map(|(account, threads)| {
+            let plan = AccountPlan {
+                threads,
+                add: add.iter().map(|s| s.to_string()).collect(),
+                remove: remove.iter().map(|s| s.to_string()).collect(),
+            };
+            (account, plan)
+        })
+        .collect())
+}
+
+/// Applies a plan: locally first, then per account to Gmail. Threads Gmail
+/// refuses are restored locally and the first error is returned; the
+/// others keep their new state. Returns the accounts touched.
+async fn apply(
     db: &Db,
     gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
-    threads: &[ThreadId],
-    read: bool,
+    plans: BTreeMap<AccountId, AccountPlan>,
+    remote: Remote,
 ) -> Result<Vec<AccountId>> {
-    let groups = by_account(db, threads)?;
-
-    // Optimistic local change, remembering how to undo it.
-    let mut snapshots = BTreeMap::new();
-    for (thread, _) in groups.values().flatten() {
-        let snapshot = store::label_snapshot(&db.conn(), *thread, UNREAD)?;
-        store::set_thread_label(&mut db.conn(), *thread, UNREAD, !read)?;
-        snapshots.insert(*thread, snapshot);
+    // Optimistic local change, remembering how to undo it. The lock is
+    // taken per statement, never across the Gmail calls below.
+    let mut snapshots: BTreeMap<ThreadId, Vec<store::LabelSnapshot>> = BTreeMap::new();
+    for plan in plans.values() {
+        for (thread, _) in &plan.threads {
+            let mut saved = Vec::new();
+            for label in plan.add.iter().chain(&plan.remove) {
+                saved.push(store::label_snapshot(&db.conn(), *thread, label)?);
+            }
+            for label in &plan.add {
+                store::set_thread_label(&mut db.conn(), *thread, label, true)?;
+            }
+            for label in &plan.remove {
+                store::set_thread_label(&mut db.conn(), *thread, label, false)?;
+            }
+            snapshots.insert(*thread, saved);
+        }
     }
-
-    let (add, remove): (&[&str], &[&str]) = if read {
-        (&[], &[UNREAD])
-    } else {
-        (&[UNREAD], &[])
+    let restore = |thread: &ThreadId| -> Result<()> {
+        for snapshot in &snapshots[thread] {
+            store::restore_label_snapshot(&mut db.conn(), snapshot)?;
+        }
+        Ok(())
     };
+
     let mut first_error: Option<CoreError> = None;
-    for (&account, threads) in &groups {
+    for (&account, plan) in &plans {
         // The user is waiting on this, so it skips ahead of background sync.
         let gmail = match gmail_for(account) {
             Ok(g) => g.interactive(),
             Err(e) => {
-                for (thread, _) in threads {
-                    store::restore_label_snapshot(&mut db.conn(), &snapshots[thread])?;
+                for (thread, _) in &plan.threads {
+                    restore(thread)?;
                 }
                 first_error.get_or_insert(e);
                 continue;
             }
         };
-        for (thread, gmail_id) in threads {
-            if let Err(e) = gmail.modify_thread(gmail_id, add, remove).await {
-                store::restore_label_snapshot(&mut db.conn(), &snapshots[thread])?;
+        let add: Vec<&str> = plan.add.iter().map(String::as_str).collect();
+        let remove: Vec<&str> = plan.remove.iter().map(String::as_str).collect();
+        for (thread, gmail_id) in &plan.threads {
+            let result = match remote {
+                Remote::Modify => gmail.modify_thread(gmail_id, &add, &remove).await,
+                Remote::Trash => gmail.trash_thread(gmail_id).await,
+                Remote::Untrash => gmail.untrash_thread(gmail_id).await,
+            };
+            if let Err(e) = result {
+                restore(thread)?;
                 first_error.get_or_insert(e);
             }
         }
     }
     match first_error {
         Some(e) => Err(e),
-        None => Ok(groups.into_keys().collect()),
+        None => Ok(plans.into_keys().collect()),
     }
+}
+
+/// Marks threads read or unread.
+pub async fn set_read(
+    db: &Db,
+    gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
+    threads: &[ThreadId],
+    read: bool,
+) -> Result<Vec<AccountId>> {
+    let plans = if read {
+        system_plan(db, threads, &[], &[UNREAD])?
+    } else {
+        system_plan(db, threads, &[UNREAD], &[])?
+    };
+    apply(db, gmail_for, plans, Remote::Modify).await
+}
+
+/// Archives threads (takes them out of the Inbox), or moves them back.
+/// Gmail has no archived label: archived just means not in INBOX.
+pub async fn set_archived(
+    db: &Db,
+    gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
+    threads: &[ThreadId],
+    archived: bool,
+) -> Result<Vec<AccountId>> {
+    let plans = if archived {
+        system_plan(db, threads, &[], &[INBOX])?
+    } else {
+        system_plan(db, threads, &[INBOX], &[])?
+    };
+    apply(db, gmail_for, plans, Remote::Modify).await
+}
+
+/// Stars or unstars threads (every message, as `threads.modify` does).
+pub async fn set_starred(
+    db: &Db,
+    gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
+    threads: &[ThreadId],
+    starred: bool,
+) -> Result<Vec<AccountId>> {
+    let plans = if starred {
+        system_plan(db, threads, &[STARRED], &[])?
+    } else {
+        system_plan(db, threads, &[], &[STARRED])?
+    };
+    apply(db, gmail_for, plans, Remote::Modify).await
+}
+
+/// Moves threads to the Trash, or takes them out. Gmail empties the Trash
+/// itself after 30 days; deleting forever needs a broader scope than
+/// Mailboat asks for.
+pub async fn set_trashed(
+    db: &Db,
+    gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
+    threads: &[ThreadId],
+    trashed: bool,
+) -> Result<Vec<AccountId>> {
+    if trashed {
+        let plans = system_plan(db, threads, &[TRASH], &[])?;
+        apply(db, gmail_for, plans, Remote::Trash).await
+    } else {
+        let plans = system_plan(db, threads, &[], &[TRASH])?;
+        apply(db, gmail_for, plans, Remote::Untrash).await
+    }
+}
+
+/// Adds and removes user labels. A user label belongs to one account, so
+/// each label only applies to that account's threads in the selection; a
+/// label whose account has no thread in the selection is an error (it
+/// would otherwise silently do nothing).
+pub async fn change_labels(
+    db: &Db,
+    gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
+    threads: &[ThreadId],
+    add: &[LabelId],
+    remove: &[LabelId],
+) -> Result<Vec<AccountId>> {
+    let groups = by_account(db, threads)?;
+    let mut plans: BTreeMap<AccountId, AccountPlan> = BTreeMap::new();
+    for (labels, adding) in [(add, true), (remove, false)] {
+        for &label in labels {
+            let (account, gmail_label_id, kind) = store::label_ref(&db.conn(), label)?;
+            if kind != LabelKind::User {
+                return Err(CoreError::Invalid(format!(
+                    "label {} is a system label",
+                    label.0
+                )));
+            }
+            let Some(account_threads) = groups.get(&account) else {
+                return Err(CoreError::Invalid(format!(
+                    "label {} belongs to an account with no selected conversation",
+                    label.0
+                )));
+            };
+            let plan = plans.entry(account).or_insert_with(|| AccountPlan {
+                threads: account_threads.clone(),
+                ..AccountPlan::default()
+            });
+            if adding {
+                plan.add.push(gmail_label_id);
+            } else {
+                plan.remove.push(gmail_label_id);
+            }
+        }
+    }
+    apply(db, gmail_for, plans, Remote::Modify).await
 }

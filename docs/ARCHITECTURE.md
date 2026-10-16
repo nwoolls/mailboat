@@ -66,8 +66,11 @@ uses a `(last_message_at, id)` cursor.
 
 Two views aren't Gmail labels: **All Mail** is every thread with at least
 one message outside Spam and Trash, and **Archive** is All Mail minus
-threads in the Inbox (Gmail has no archived label). Search also skips Spam
-and Trash.
+threads in the Inbox (Gmail has no archived label). Every other view
+except Spam and Trash (Inbox, Starred, user labels, search, and their
+unread counts) is also limited to All Mail: Gmail's trash call can leave
+a thread's INBOX label in place, and Gmail itself hides trashed mail
+everywhere but the Trash.
 
 ## Sync
 
@@ -136,11 +139,18 @@ Apple Development certificate so keychain approval survives rebuilds.
 
 ## Actions
 
-`mailboat_core::actions` (read/unread so far; Milestone 3 adds the rest). Each
-action groups the chosen threads by owning account, applies the change to
-the local cache first, then calls Gmail with that account's client on the
-interactive quota lane. Threads Gmail refuses are restored from a snapshot,
-and the error is returned. The UI also updates its cached lists immediately
+`mailboat_core::actions`: read/unread, archive (remove INBOX) and move to
+Inbox, star/unstar, user labels, trash and restore. Each is a label plan
+(labels to add and remove, per account) run by one routine: it groups the
+chosen threads by owning account, applies the change to the local cache
+first, then calls Gmail with that account's client on the interactive
+quota lane (`threads.modify`, or `threads.trash` / `threads.untrash`).
+Threads Gmail refuses get every touched label restored from a snapshot,
+and the error is returned. A user label belongs to one account, so it only
+applies to that account's threads; a label from an account with no
+selected thread is refused. Deleting forever isn't offered: it needs the
+full `https://mail.google.com/` scope, and Gmail empties the Trash after
+30 days anyway. The UI also updates its cached lists immediately
 and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
 
 ## Showing email safely

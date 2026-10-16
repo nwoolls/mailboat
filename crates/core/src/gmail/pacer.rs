@@ -24,6 +24,8 @@ pub mod cost {
     pub const THREADS_LIST: u32 = 10;
     pub const THREADS_GET: u32 = 10;
     pub const THREADS_MODIFY: u32 = 10;
+    pub const THREADS_TRASH: u32 = 10;
+    pub const ATTACHMENTS_GET: u32 = 5;
 }
 
 #[derive(Debug)]
