@@ -216,7 +216,8 @@ Options offered during the spike that the owner didn't pick (yet):
 - [x] New app icon (owner picked variant A3 of six): a sky-blue M drawn
       as an envelope's sides and flap on a frosted glass card, over the
       app's glow, in a macOS rounded square. Source and the variants
-      offered are in `design/icon/`
+      offered are in `design/icon/`. Enlarged after a look in the Dock: the
+      card and M fill about two thirds of the tile, like other apps
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong

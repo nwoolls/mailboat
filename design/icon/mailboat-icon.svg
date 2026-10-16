@@ -29,7 +29,7 @@
 <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)" filter="url(#shadow)"/>
 <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#sheen)"/>
 <rect x="101.5" y="101.5" width="821" height="821" rx="185" fill="none" stroke="#fff" stroke-opacity="0.14" stroke-width="3"/>
-<circle cx="512" cy="520" r="320" fill="url(#glow)" opacity="0.7"/>
-<rect x="232" y="322" width="560" height="400" rx="72" fill="url(#glass)" stroke="#fff" stroke-opacity="0.45" stroke-width="5"/>
-<path d="M 300 650 L 300 400 L 512 560 L 724 400 L 724 650" fill="none" stroke="url(#sky)" stroke-width="50" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="512" cy="520" r="390" fill="url(#glow)" opacity="0.75"/>
+<rect x="178" y="270" width="668" height="484" rx="86" fill="url(#glass)" stroke="#fff" stroke-opacity="0.45" stroke-width="5"/>
+<path d="M 262 670 L 262 362 L 512 556 L 762 362 L 762 670" fill="none" stroke="url(#sky)" stroke-width="62" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
