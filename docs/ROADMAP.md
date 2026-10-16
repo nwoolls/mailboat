@@ -401,14 +401,36 @@ attachments, inline images, paperclips).
 
 ## Milestone 4: Compose
 
-**Design discussion first** (owner request, 2026-10-16). Starting point:
-a compose card floating over the window in the lower right, as in Gmail
-on the web. It must not block the rest of the app: a conversation stays
-open and readable beside it, so text can be copied between them (Notion
-Mail can't do this; the owner relies on it in Gmail).
+Design agreed with the owner, 2026-10-16:
 
-- [ ] Compose window design agreed with the owner (placement, sizes,
-      minimise, several drafts, replies inline or in the card)
+- **New messages** open in a card floating over the window, starting in
+  the lower right, as in Gmail on the web. It never blocks the app: a
+  conversation stays open, readable and selectable beside it, so text
+  can be copied between them (Notion Mail can't do this; the owner relies
+  on it in Gmail).
+- **Moving the card works like iOS picture-in-picture:** it can't be left
+  just anywhere; dragged towards a corner or the middle of a side, it
+  springs (rubber-bands) into that spot when released. No pop-out window.
+- **Replies, reply-all and forwards are inline,** at the bottom of the
+  conversation in the reader, as Gmail does by default.
+- **Full formatting from the start:** fonts, sizes, colours, bold,
+  italic, underline, lists, links, quotes, alignment (as Gmail's
+  toolbar), not a basic set first.
+- **Undo send as Gmail:** 5 seconds (Gmail's default) to take a message
+  back.
+- **Card size:** start around Gmail's (about 500×560) and adjust once
+  it's in use.
+- Proposed and not objected to: Esc minimises (never discards); drafts
+  save to Gmail as you type; several minimised drafts sit side by side
+  along the bottom; keys `c` new, `r` reply, `a` reply all, `f` forward,
+  ⌘↩ send; the card shows the From account's colour; quoted text folds
+  behind "…".
+
+- [ ] Floating compose card for new messages, with the snapping
+      behaviour above, minimise and several drafts at once
+- [ ] Inline replies and forwards in the reader
+- [ ] Full formatting toolbar (TipTap)
+- [ ] Undo send (5 seconds)
 - [ ] New message, reply, reply-all, forward with quoted HTML
 - [ ] Sending attachments *(receiving moved to M3)*
 - [ ] Drafts synced back to Gmail
