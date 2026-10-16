@@ -3,9 +3,9 @@
 <!-- The folded M from design/icon/mailboat-icon.svg, scaled from its 824px
      tile to Icon Composer's full 1024px canvas. -->
 <g transform="scale(1.24272) translate(-100 -100)">
-<path d="M 227.8 398.2 L 477.8 616.2 L 546.2 537.8 L 296.2 319.8 Z" fill="#32a756"/>
-<path d="M 507.0 650.4 L 796.2 398.2 L 727.8 319.8 L 438.6 572.0 Z" fill="#3fd16b" filter="url(#fold)"/>
-<path d="M 314.0 717.0 L 314.0 307.0 L 210.0 307.0 L 210.0 717.0 Z" fill="#3fd16b" filter="url(#fold)"/>
-<path d="M 710.0 307.0 L 710.0 717.0 L 814.0 717.0 L 814.0 307.0 Z" fill="#3fd16b" filter="url(#fold)"/>
+<path d="M 227.8 398.2 L 477.8 616.2 L 546.2 537.8 L 296.2 319.8 Z" fill="#3162cc"/>
+<path d="M 507.0 650.4 L 796.2 398.2 L 727.8 319.8 L 438.6 572.0 Z" fill="#3d7bff" filter="url(#fold)"/>
+<path d="M 314.0 717.0 L 314.0 307.0 L 210.0 307.0 L 210.0 717.0 Z" fill="#3d7bff" filter="url(#fold)"/>
+<path d="M 710.0 307.0 L 710.0 717.0 L 814.0 717.0 L 814.0 307.0 Z" fill="#3d7bff" filter="url(#fold)"/>
 </g>
 </svg>

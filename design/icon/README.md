@@ -11,7 +11,7 @@
 - `choices/` holds the icons the owner wants to offer in a future Settings
   icon picker: the folded-ribbon M (fold style S4) in 16 colours on a flat
   near-black tile, and the earlier glass icon (`glass-midnight.svg`). The
-  current icon is `C13-green`.
+  current icon is `C04-cobalt` (was `C13-green`).
 - `sheets/` keeps each design round's comparison sheet (large) and Dock
   strip (real size, dark and light), in order:
   1. Glass variants (M-envelopes and rounded m's); A3 was picked
@@ -20,4 +20,4 @@
   4. Flat, high-contrast tiles; F2 (black, sky M) was picked
   5. F2's M as a folded ribbon, in eight colours
   6. Six ways to shade the fold; S4 (even shading) was picked
-  7. S4 in 16 colours; C13 (green) is the current icon
+  7. S4 in 16 colours; C13 (green) was picked, then C04 (cobalt)
