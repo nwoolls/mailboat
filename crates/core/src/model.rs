@@ -141,6 +141,24 @@ pub struct LabelUnread {
     pub unread: u32,
 }
 
+/// Unread conversations in an account's views that aren't labels: All Mail
+/// (everything but Spam and Trash) and Archive (All Mail minus the Inbox).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountUnread {
+    pub account_id: AccountId,
+    pub all_mail: u32,
+    pub archive: u32,
+}
+
+/// Everything the sidebar's counts need.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct UnreadCounts {
+    pub labels: Vec<LabelUnread>,
+    pub accounts: Vec<AccountUnread>,
+}
+
 /// Which accounts a query covers. A single-account view is `Only` with one ID.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(tag = "kind", content = "ids", rename_all = "camelCase")]

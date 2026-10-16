@@ -120,6 +120,11 @@ a darker glass body, rounded corners where they meet, resizable panes.
       relaunch
 - [x] Unread counts in the sidebar (Inbox, Unread and labels), per account
       and summed for unified views
+- [ ] Which sidebar rows show unread counts. Three settings on trial
+      behind a temporary switch in the sidebar footer: Actionable (Inbox,
+      Starred and labels), Everything (also Unread, Important, Archive and
+      All Mail) and Off. Keep the owner's pick, delete the others and the
+      switch
 - [x] A calmer, more glanceable sidebar (owner picked "Tidy" of three
       layouts tried in the app; Switcher and Mimestream-style Nested were
       the others): unread counts, the account ring in each header,

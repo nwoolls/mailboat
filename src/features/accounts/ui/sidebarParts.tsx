@@ -1,8 +1,8 @@
 import type {
   Account,
+  AccountFilter,
   AccountSyncState,
   Label,
-  LabelUnread,
   MailView,
 } from "../../../platform/tauri/bindings";
 import {
@@ -25,11 +25,14 @@ import { syncBadge } from "../model/accounts";
 import { containsLabel, type LabelNode } from "../model/labelTree";
 import { countText } from "../model/sidebar";
 
+export type CountFor = (view: MailView, accounts: AccountFilter) => number;
+
 /** What every sidebar layout gets. */
 export type SidebarBodyProps = {
   accounts: Account[];
   labels: Label[];
-  counts: LabelUnread[];
+  /** The unread count a row shows for a view (zero shows nothing). */
+  countFor: CountFor;
   syncStates: AccountSyncState[];
   selection: Selection;
   onSelect: (s: Selection) => void;
@@ -210,7 +213,7 @@ export function LabelRows({
   tree,
   depth = 0,
   foldPrefix,
-  counts,
+  countFor,
   selection,
   onSelect,
   isOpen,
@@ -220,7 +223,7 @@ export function LabelRows({
   depth?: number;
   /** Keeps fold keys apart between accounts. */
   foldPrefix: string;
-  counts: LabelUnread[];
+  countFor: CountFor;
   selection: Selection;
   onSelect: (s: Selection) => void;
   isOpen: (key: string) => boolean;
@@ -228,7 +231,7 @@ export function LabelRows({
 }) {
   const selectedLabel = selection.view.kind === "userLabel" ? selection.view.labelId : null;
   const countOf = (label: Label | null) =>
-    label ? (counts.find((c) => c.labelId === label.id)?.unread ?? 0) : 0;
+    label ? countFor({ kind: "userLabel", labelId: label.id }, { kind: "all" }) : 0;
   const render = (node: LabelNode, d: number): React.ReactNode => {
     if (node.children.length === 0 && node.label) {
       const s = labelSelection(node.label);

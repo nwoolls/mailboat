@@ -8,7 +8,7 @@ import {
   viewTitle,
 } from "../../mailbox/model/views";
 import { labelTree } from "../model/labelTree";
-import { unreadIn, viewUnread } from "../model/sidebar";
+import { countText } from "../model/sidebar";
 import { AccountAvatar } from "./AccountAvatar";
 import {
   AccountProblem,
@@ -30,7 +30,7 @@ import {
  * while folded); its labels sit in their own fold, closed by default.
  */
 export function SidebarSections(props: SidebarBodyProps) {
-  const { accounts, labels, counts, syncStates, selection, onSelect, onReauth, isOpen, toggle } =
+  const { accounts, labels, countFor, syncStates, selection, onSelect, onReauth, isOpen, toggle } =
     props;
   return (
     <>
@@ -42,7 +42,7 @@ export function SidebarSections(props: SidebarBodyProps) {
               <ViewItem
                 key={selectionKey(s)}
                 icon={viewIcon(view)}
-                count={viewUnread(counts, view, s.accounts)}
+                count={countFor(view, s.accounts)}
                 selected={sameSelection(selection, s)}
                 onClick={() => onSelect(s)}
                 title={
@@ -62,7 +62,7 @@ export function SidebarSections(props: SidebarBodyProps) {
         const tree = labelTree(labels.filter((l) => l.accountId === account.id));
         const moreSelections = MORE_ACCOUNT_VIEWS.map((v) => viewSelection(v, account.id));
         const state = syncStates.find((s) => s.accountId === account.id);
-        const inboxCount = unreadIn(counts, "INBOX", filter);
+        const inboxCount = countFor({ kind: "system", label: "inbox" }, filter);
         return (
           <Section
             key={account.id}
@@ -80,8 +80,10 @@ export function SidebarSections(props: SidebarBodyProps) {
             }
             aside={
               <span className="flex items-center gap-2">
-                {!accountOpen && inboxCount > 0 && (
-                  <span className="text-xs text-content/45 tabular-nums">{inboxCount}</span>
+                {!accountOpen && countText(inboxCount) && (
+                  <span className="text-xs text-content/45 tabular-nums">
+                    {countText(inboxCount)}
+                  </span>
                 )}
                 <AccountAvatar account={account} state={state} />
               </span>
@@ -96,7 +98,7 @@ export function SidebarSections(props: SidebarBodyProps) {
                     key={selectionKey(s)}
                     icon={viewIcon(view)}
                     title={viewTitle(view)}
-                    count={viewUnread(counts, view, filter)}
+                    count={countFor(view, filter)}
                     selected={sameSelection(selection, s)}
                     onClick={() => onSelect(s)}
                   />
@@ -145,7 +147,7 @@ export function SidebarSections(props: SidebarBodyProps) {
                       tree={tree}
                       depth={1}
                       foldPrefix={String(account.id)}
-                      counts={counts}
+                      countFor={countFor}
                       selection={selection}
                       onSelect={onSelect}
                       isOpen={isOpen}
