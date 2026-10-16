@@ -213,6 +213,10 @@ Options offered during the spike that the owner didn't pick (yet):
 - [x] Collapsed message cards are 44px with the header centred (a stray
       5px descender gap under the header button is gone); the padding
       eases open with the message
+- [x] New app icon (owner picked variant A3 of six): a sky-blue M drawn
+      as an envelope's sides and flap on a frosted glass card, over the
+      app's glow, in a macOS rounded square. Source and the variants
+      offered are in `design/icon/`
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong
