@@ -31,6 +31,14 @@ export function updateDraft(id: number, change: (d: Draft) => Draft) {
   set(S.updateDraft(state, id, change));
 }
 
+export function minimizeCard(id: number) {
+  set(S.minimize(state, id));
+}
+
+export function expandCard(id: number) {
+  set(S.expand(state, id));
+}
+
 export function closeDraft(id: number) {
   set(S.close(state, id));
 }

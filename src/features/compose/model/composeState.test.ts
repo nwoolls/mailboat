@@ -3,7 +3,10 @@ import type { Identity } from "../../../platform/tauri/bindings";
 import {
   close,
   EMPTY,
+  expand,
+  minimize,
   openCard,
+  openCardEntry,
   openReply,
   replyIn,
   setSending,
@@ -51,21 +54,41 @@ describe("compose state", () => {
     expect(replyIn(s, 1)?.focusKey).toBe(1);
   });
 
-  it("a card with writing in it stays open", () => {
+  it("a new message minimises the card with writing in it, and drops an untouched one", () => {
     let s = openCard(EMPTY, newDraft(identities, 1, "me@x.com"));
-    const id = s.card!.draft.id;
-    s = updateDraft(s, id, (d) => ({ ...d, subject: "Hello" }));
     s = openCard(s, newDraft(identities, 1, "me@x.com"));
-    expect(s.card?.draft.id).toBe(id);
+    expect(s.cards).toHaveLength(1);
+    const first = s.cards[0]!.draft.id;
+    s = updateDraft(s, first, (d) => ({ ...d, subject: "Hello" }));
+    s = openCard(s, newDraft(identities, 1, "me@x.com"));
+    expect(s.cards.map((c) => c.minimized)).toEqual([true, false]);
+    expect(openCardEntry(s)?.draft.id).not.toBe(first);
+  });
+
+  it("expanding a tab swaps it with the open card, keeping tab order", () => {
+    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.com"));
+    const a = s.cards[0]!.draft.id;
+    s = updateDraft(s, a, (d) => ({ ...d, subject: "A" }));
+    s = openCard(s, newDraft(identities, 1, "me@x.com"));
+    const b = s.cards[1]!.draft.id;
+    s = updateDraft(s, b, (d) => ({ ...d, subject: "B" }));
+    s = expand(s, a);
+    expect(s.cards.map((c) => [c.draft.id, c.minimized])).toEqual([
+      [a, false],
+      [b, true],
+    ]);
+    expect(openCardEntry(s)?.focusKey).toBe(1);
+    s = minimize(s, a);
+    expect(openCardEntry(s)).toBeUndefined();
   });
 
   it("editing clears a send error; closing removes the draft", () => {
     let s = openCard(EMPTY, newDraft(identities, 1, "me@x.com"));
-    const id = s.card!.draft.id;
+    const id = s.cards[0]!.draft.id;
     s = setSending(s, id, false, "Network error");
-    expect(s.card?.error).toBe("Network error");
+    expect(s.cards[0]?.error).toBe("Network error");
     s = updateDraft(s, id, (d) => ({ ...d, subject: "x" }));
-    expect(s.card?.error).toBeNull();
-    expect(close(s, id).card).toBeNull();
+    expect(s.cards[0]?.error).toBeNull();
+    expect(close(s, id).cards).toEqual([]);
   });
 });

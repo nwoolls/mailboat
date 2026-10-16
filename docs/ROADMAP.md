@@ -472,8 +472,11 @@ owner to try it in the app)*
 
 Stage 2: the card and inline replies
 
-- [ ] Floating compose card: the snapping behaviour above, minimise and
-      several drafts at once
+- [x] Several new messages at once, and minimise: Esc or the – button
+      folds the card into a tab along the bottom (nothing is lost).
+      Opening another message minimises the one open (an untouched one
+      just closes); clicking a tab swaps it back in
+- [ ] Floating compose card: the snapping behaviour above
 - [x] Compose card transparency *(owner request, 2026-10-16; done early
       at the owner's request)*: glass instead of the menus' solid
       surface, with its own blur since it floats over the app's content.

@@ -8,27 +8,66 @@ export type ComposeEntry = {
   error: string | null;
   /** Bumped to ask the composer to take focus again. */
   focusKey: number;
+  /** A new message folded down to a tab along the bottom. */
+  minimized: boolean;
 };
 
 /**
- * Everything being written: the floating card (new messages) and inline
- * replies, at most one per conversation.
+ * Everything being written: new messages (at most one open as the
+ * floating card, the rest minimised along the bottom) and inline replies,
+ * at most one per conversation.
  */
 export type ComposeState = {
-  card: ComposeEntry | null;
+  cards: ComposeEntry[];
   replies: ComposeEntry[];
 };
 
-export const EMPTY: ComposeState = { card: null, replies: [] };
+export const EMPTY: ComposeState = { cards: [], replies: [] };
 
 function entry(draft: Draft, focusKey = 0): ComposeEntry {
-  return { draft, sending: false, error: null, focusKey };
+  return { draft, sending: false, error: null, focusKey, minimized: false };
 }
 
-/** Opens the card, unless one with writing in it is already open (that one gets focus). */
+/** The new message showing as the floating card, if any. */
+export function openCardEntry(state: ComposeState): ComposeEntry | undefined {
+  return state.cards.find((c) => !c.minimized);
+}
+
+/**
+ * Folds the open card away so another can open: kept (minimised) if it
+ * has writing in it, dropped if it's untouched.
+ */
+function stepAside(cards: ComposeEntry[]): ComposeEntry[] {
+  return cards
+    .filter((c) => c.minimized || hasChanges(c.draft))
+    .map((c) => (c.minimized ? c : minimized(c)));
+}
+
+function minimized(c: ComposeEntry): ComposeEntry {
+  return { ...c, minimized: true };
+}
+
+/** Opens a new message as the card; the one open before is minimised. */
 export function openCard(state: ComposeState, draft: Draft): ComposeState {
-  if (state.card && hasChanges(state.card.draft)) return focus(state, state.card.draft.id);
-  return { ...state, card: entry(draft) };
+  return { ...state, cards: [...stepAside(state.cards), entry(draft)] };
+}
+
+/** Brings a minimised message back as the card (and focuses it). */
+export function expand(state: ComposeState, id: number): ComposeState {
+  const target = state.cards.find((c) => c.draft.id === id);
+  if (!target) return state;
+  const others = stepAside(state.cards.filter((c) => c.draft.id !== id));
+  const shown = { ...target, minimized: false, focusKey: target.focusKey + 1 };
+  // Keep each tab where it was along the bottom.
+  const order = state.cards.map((c) => c.draft.id);
+  const cards = [...others, shown].toSorted(
+    (a, b) => order.indexOf(a.draft.id) - order.indexOf(b.draft.id),
+  );
+  return { ...state, cards };
+}
+
+export function minimize(state: ComposeState, id: number): ComposeState {
+  return mapEntry(state, id, minimized);
 }
 
 /**
@@ -53,7 +92,7 @@ function mapEntry(
   change: (e: ComposeEntry) => ComposeEntry,
 ): ComposeState {
   return {
-    card: state.card?.draft.id === id ? change(state.card) : state.card,
+    cards: state.cards.map((c) => (c.draft.id === id ? change(c) : c)),
     replies: state.replies.map((r) => (r.draft.id === id ? change(r) : r)),
   };
 }
@@ -82,7 +121,7 @@ export function focus(state: ComposeState, id: number): ComposeState {
 
 export function close(state: ComposeState, id: number): ComposeState {
   return {
-    card: state.card?.draft.id === id ? null : state.card,
+    cards: state.cards.filter((c) => c.draft.id !== id),
     replies: state.replies.filter((r) => r.draft.id !== id),
   };
 }

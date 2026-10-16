@@ -56,7 +56,9 @@ import { EmptyState } from "../features/mailbox/ui/EmptyState";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
 import { accountForNew } from "../features/compose/model/draft";
+import { openCardEntry } from "../features/compose/model/composeState";
 import { ComposeCard } from "../features/compose/ui/ComposeCard";
+import { MinimizedTabs } from "../features/compose/ui/MinimizedTabs";
 import { ReplyArea } from "../features/compose/ui/ReplyArea";
 import { useComposeActions, useComposeState } from "../features/compose/ui/useCompose";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
@@ -89,6 +91,7 @@ export function Shell() {
   const identities = useIdentities().data ?? [];
   const compose = useComposeActions(accountList);
   const composeState = useComposeState();
+  const openCard = openCardEntry(composeState);
 
   // Until the user picks a view: All Inboxes, or the inbox itself when
   // there is only one account.
@@ -525,15 +528,20 @@ export function Shell() {
           onClose={() => setLabelAnchor(null)}
         />
       )}
-      {composeState.card && (
+      {openCard && (
         <ComposeCard
-          key={composeState.card.draft.id}
-          entry={composeState.card}
+          key={openCard.draft.id}
+          entry={openCard}
           identities={identities}
           accounts={accountList}
-          onSend={() => void compose.send(composeState.card!.draft)}
+          onSend={() => void compose.send(openCard.draft)}
         />
       )}
+      <MinimizedTabs
+        entries={composeState.cards.filter((c) => c.minimized)}
+        accounts={accountList}
+        besideCard={openCard !== undefined}
+      />
       <Toast toast={toast} onDismiss={dismissToast} />
     </div>
   );
