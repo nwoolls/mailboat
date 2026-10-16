@@ -4,14 +4,19 @@ import { indexAccounts, syncAttention } from "../features/accounts/model/account
 import { Sidebar } from "../features/accounts/ui/Sidebar";
 import {
   clampWidth,
+  LAYOUT_STORAGE_KEY,
+  LIST_SHARE,
   LIST_WIDTH,
-  listMaxWidth,
+  listShareFor,
   panelToggleFor,
+  parseLayout,
   READER_MIN_WIDTH,
+  type SavedLayout,
   SIDEBAR_WIDTH,
   SPLITTER_WIDTH,
 } from "../features/layout/model/panes";
 import { Splitter } from "../features/layout/ui/Splitter";
+import { useElementWidth } from "../features/layout/ui/useElementWidth";
 import { Welcome } from "../features/accounts/ui/Welcome";
 import { moveSelection, navKeyFor } from "../features/mailbox/model/listNavigation";
 import { readToggle } from "../features/mailbox/model/readState";
@@ -80,8 +85,15 @@ export function Shell() {
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   const loadMore = useCallback(() => void fetchNextPage(), [fetchNextPage]);
 
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH.initial);
-  const [listWidth, setListWidth] = useState(LIST_WIDTH.initial);
+  // Splitter positions, remembered between launches. The sidebar keeps its
+  // pixel width; the list is a share of the space beside it, so the list
+  // and reader resize together with the window.
+  const [layout, setLayout] = useState(() => parseLayout(localStorage.getItem(LAYOUT_STORAGE_KEY)));
+  const saveLayout = (next: SavedLayout) => {
+    setLayout(next);
+    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(next));
+  };
+  const sidebarWidth = layout.sidebarWidth;
   // Either side panel can be hidden, down to just the list. Not persisted.
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [readerOpen, setReaderOpen] = useState(true);
@@ -94,12 +106,11 @@ export function Shell() {
   const toggleSidebar = useCallback(() => setSidebarOpen((open) => !open), []);
   const toggleReader = useCallback(() => setReaderOpen((open) => !open), []);
   const panesRef = useRef<HTMLDivElement>(null);
+  const panesWidth = useElementWidth(panesRef);
   const resizeSidebar = (w: number) =>
-    setSidebarWidth(clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max));
+    saveLayout({ ...layout, sidebarWidth: clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max) });
   const resizeList = (w: number) =>
-    setListWidth(
-      clampWidth(w, LIST_WIDTH.min, listMaxWidth(panesRef.current?.clientWidth ?? Infinity)),
-    );
+    saveLayout({ ...layout, listShare: listShareFor(w, panesWidth) });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -194,7 +205,7 @@ export function Shell() {
               label="Resize sidebar"
               width={sidebarWidth}
               onResize={resizeSidebar}
-              onReset={() => setSidebarWidth(SIDEBAR_WIDTH.initial)}
+              onReset={() => saveLayout({ ...layout, sidebarWidth: SIDEBAR_WIDTH.initial })}
             />
           </div>
         </div>
@@ -204,7 +215,7 @@ export function Shell() {
           <section
             className="panel panel-slide flex min-w-0 flex-col overflow-hidden"
             style={{
-              flex: `${readerVisible ? 0 : 1} 1 ${listWidth}px`,
+              flex: `${readerVisible ? 0 : 1} 1 ${layout.listShare * 100}%`,
               minWidth: LIST_WIDTH.min,
             }}
           >
@@ -250,9 +261,9 @@ export function Shell() {
             >
               <Splitter
                 label="Resize conversation list"
-                width={listWidth}
+                width={Math.round(layout.listShare * panesWidth)}
                 onResize={resizeList}
-                onReset={() => setListWidth(LIST_WIDTH.initial)}
+                onReset={() => saveLayout({ ...layout, listShare: LIST_SHARE.initial })}
               />
               {/* The reader sits on the glass like a right-hand sidebar. While
                   it slides closed it keeps showing the last conversation. */}

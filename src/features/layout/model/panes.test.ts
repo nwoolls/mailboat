@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   clampWidth,
+  DEFAULT_LAYOUT,
+  LIST_SHARE,
   LIST_WIDTH,
   listMaxWidth,
+  listShareFor,
   panelToggleFor,
+  parseLayout,
   READER_MIN_WIDTH,
+  SIDEBAR_WIDTH,
   SPLITTER_WIDTH,
 } from "./panes";
 
@@ -27,6 +32,43 @@ describe("listMaxWidth", () => {
 
   it("never goes below the list's own minimum", () => {
     expect(listMaxWidth(400)).toBe(LIST_WIDTH.min);
+  });
+});
+
+describe("listShareFor", () => {
+  it("turns a dragged list width into its share of the panes", () => {
+    expect(listShareFor(400, 1000)).toBeCloseTo(0.4);
+  });
+
+  it("keeps room for the reader and the list's minimum", () => {
+    expect(listShareFor(990, 1000)).toBeCloseTo((1000 - SPLITTER_WIDTH - READER_MIN_WIDTH) / 1000);
+    expect(listShareFor(100, 1000)).toBeCloseTo(LIST_WIDTH.min / 1000);
+  });
+
+  it("falls back to the default before the panes have a size", () => {
+    expect(listShareFor(400, 0)).toBe(LIST_SHARE.initial);
+  });
+});
+
+describe("parseLayout", () => {
+  it("reads a saved layout", () => {
+    expect(parseLayout('{"sidebarWidth":260,"listShare":0.45}')).toEqual({
+      sidebarWidth: 260,
+      listShare: 0.45,
+    });
+  });
+
+  it("keeps saved values in bounds", () => {
+    expect(parseLayout('{"sidebarWidth":5000,"listShare":3}')).toEqual({
+      sidebarWidth: SIDEBAR_WIDTH.max,
+      listShare: LIST_SHARE.max,
+    });
+  });
+
+  it("falls back to the default for nothing, junk or missing values", () => {
+    expect(parseLayout(null)).toEqual(DEFAULT_LAYOUT);
+    expect(parseLayout("not json")).toEqual(DEFAULT_LAYOUT);
+    expect(parseLayout('{"sidebarWidth":"wide"}')).toEqual(DEFAULT_LAYOUT);
   });
 });
 

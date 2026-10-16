@@ -67,7 +67,8 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - [x] Rounded body panel inset from the window edge, sidebar on the glass
 - [x] Resizable splitters (sidebar | list | reader); reader can be dragged
       narrow (300px) to act as a right-hand side panel. Double-click resets;
-      arrow keys nudge a focused splitter. Widths reset on relaunch.
+      arrow keys nudge a focused splitter. (Widths are now remembered; see
+      below.)
 - [x] Owner feedback round 1: wider splitters (8px gap, 16px grab area);
       the list is now its own rounded card (the body) and the reader sits on
       the glass like a right-hand sidebar; both glass tints more transparent,
@@ -190,10 +191,11 @@ Options offered during the spike that the owner didn't pick (yet):
 
 ### Deferred ideas
 
-- Remember pane widths and which panels are hidden between launches
+- Remember which panels are hidden between launches (pane widths are
+  remembered now)
 - Remember which sidebar folds are open
 - Thread row density (rows are still 72px, three lines)
-- Unread counts next to views and in the list title (needs a count query)
+- Unread count in the list title (sidebar counts are done)
 - Reader header, message stacking, how the white email card sits in dark mode
 - Log console: hidden by default, opens at the bottom with a
   terminal-like, syntax-highlighted view of the sync log (far future;
@@ -256,6 +258,10 @@ Options offered during the spike that the owner didn't pick (yet):
       icons). Picked fold style S4 and colour C13 from the sheets in
       `design/icon/sheets/`; the other colours are kept in
       `design/icon/choices/`
+- [x] Splitter positions are remembered between launches. The sidebar
+      keeps its width when the window resizes; the list and reader resize
+      together, since the list is stored as a share of the space beside the
+      sidebar
 - [x] Icon colour changed after living with it: green (C13), then cobalt
       (C04) and sky (C03), now Apple's system blue (C17), matched to Mail's
       icon as macOS renders it
