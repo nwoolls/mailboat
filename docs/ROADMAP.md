@@ -226,6 +226,11 @@ Options offered during the spike that the owner didn't pick (yet):
       Then (owner picked T2 + B3): a brighter, glowing M on a midnight
       background (navy to near-black) instead of navy-to-violet, which made
       the M hard to read. Tweaks and backgrounds offered are kept too
+- [ ] Tell unread apart from the account in mixed-account lists (both
+      were blue dots). Three styles are on trial behind a temporary switch
+      in the list header: Bar (account as a coloured edge bar), No dot
+      (unread shown by bold text only) and Avatar (account picture). Keep
+      the owner's pick, delete the others and the switch
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong

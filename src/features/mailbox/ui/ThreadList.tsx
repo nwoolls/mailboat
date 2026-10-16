@@ -4,7 +4,9 @@ import type { ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
 import { AccountDot } from "../../../shared/ui/AccountDot";
 import { AttachmentIcon, StarIcon } from "../../../shared/ui/icons";
 import type { AccountIndex } from "../../accounts/model/accounts";
+import { AccountPicture } from "../../accounts/ui/AccountAvatar";
 import { formatListDate, sendersLabel } from "../model/format";
+import type { RowMarkers } from "../model/rowMarkers";
 
 const ROW_HEIGHT = 72;
 
@@ -13,6 +15,8 @@ type Props = {
   accounts: AccountIndex;
   /** Show each row's account marker (views that mix accounts). */
   showAccount: boolean;
+  /** How the account and unread state are drawn when `showAccount`. */
+  markers: RowMarkers;
   selectedId: ThreadId | null;
   onSelect: (id: ThreadId) => void;
   hasMore: boolean;
@@ -26,6 +30,7 @@ export function ThreadList({
   threads,
   accounts,
   showAccount,
+  markers,
   selectedId,
   onSelect,
   hasMore,
@@ -68,6 +73,9 @@ export function ThreadList({
         {items.map((item) => {
           const t = threads[item.index]!;
           const selected = t.id === selectedId;
+          const account = showAccount ? accounts.get(t.accountId) : undefined;
+          // Single-account views always use the dot; there's no account mark.
+          const style = account ? markers : "bar";
           return (
             <div
               key={t.id}
@@ -81,14 +89,27 @@ export function ThreadList({
               }`}
               style={{ top: item.start, height: ROW_HEIGHT - 4 }}
             >
+              {account && style === "bar" && (
+                <span
+                  className="absolute top-2.5 bottom-2.5 left-1 w-[3px] rounded-full"
+                  style={{ background: account.color }}
+                  title={account.email}
+                  aria-label={account.email}
+                />
+              )}
               <div className="relative flex items-center gap-2">
-                {t.unread && (
+                {t.unread && style !== "noDot" && (
                   <span
                     className="absolute top-1/2 -left-3.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent"
                     aria-label="Unread"
                   />
                 )}
-                {showAccount && <AccountDot account={accounts.get(t.accountId)} size={7} />}
+                {account && style === "noDot" && <AccountDot account={account} size={7} />}
+                {account && style === "avatar" && (
+                  <span title={account.email} className="flex">
+                    <AccountPicture key={account.avatarUrl ?? ""} account={account} size={14} />
+                  </span>
+                )}
                 <span
                   className={`truncate ${t.unread ? "font-semibold text-content" : "font-medium text-content/85"}`}
                 >

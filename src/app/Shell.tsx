@@ -15,6 +15,12 @@ import { Splitter } from "../features/layout/ui/Splitter";
 import { Welcome } from "../features/accounts/ui/Welcome";
 import { moveSelection, navKeyFor } from "../features/mailbox/model/listNavigation";
 import { readToggle } from "../features/mailbox/model/readState";
+import {
+  parseRowMarkers,
+  ROW_MARKER_OPTIONS,
+  ROW_MARKERS_STORAGE_KEY,
+  type RowMarkers,
+} from "../features/mailbox/model/rowMarkers";
 import { useSetRead } from "../features/mailbox/ui/useSetRead";
 import {
   ALL_INBOXES,
@@ -65,6 +71,16 @@ export function Shell() {
   const selection: Selection = search.trim()
     ? { accounts: baseSelection.accounts, view: { kind: "search", text: search.trim() } }
     : baseSelection;
+
+  const showAccount = spansAccounts(selection, accountList.length);
+  // Temporary: which row marker style is being tried (see rowMarkers.ts).
+  const [rowMarkers, setRowMarkers] = useState<RowMarkers>(() =>
+    parseRowMarkers(localStorage.getItem(ROW_MARKERS_STORAGE_KEY)),
+  );
+  const chooseRowMarkers = (value: RowMarkers) => {
+    setRowMarkers(value);
+    localStorage.setItem(ROW_MARKERS_STORAGE_KEY, value);
+  };
 
   const threadsQuery = useThreads(selection);
   const threads = useMemo(
@@ -211,11 +227,31 @@ export function Shell() {
               <h2 className="truncate text-sm font-semibold">
                 {selectionTitle(selection, accountList, labels)}
               </h2>
+              {/* Temporary: try the row marker styles, then remove. */}
+              {showAccount && (
+                <div className="ml-auto flex shrink-0 gap-0.5 rounded-md bg-selection-subtle p-0.5 text-xs">
+                  {ROW_MARKER_OPTIONS.map((o) => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      className={`rounded px-2 py-0.5 ${
+                        rowMarkers === o.value
+                          ? "bg-selection-strong text-content"
+                          : "text-content/50 hover:text-content"
+                      }`}
+                      onClick={() => chooseRowMarkers(o.value)}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <ThreadList
               threads={threads}
               accounts={accounts}
-              showAccount={spansAccounts(selection, accountList.length)}
+              showAccount={showAccount}
+              markers={rowMarkers}
               selectedId={selectedId}
               onSelect={(id) => {
                 setSelectedId(id);
