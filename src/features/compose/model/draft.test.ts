@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Address, Identity, ReplySource } from "../../../platform/tauri/bindings";
 import {
   accountForNew,
+  bodyHtml,
   emailHtml,
   defaultIdentity,
   forwardSubject,
@@ -190,4 +191,27 @@ it("sent HTML keeps the editor's spacing and blank lines", () => {
   expect(emailHtml('<p>Hi</p><p></p><p style="text-align: center">x</p>')).toBe(
     '<p style="margin:0">Hi</p><p style="margin:0"><br></p><p style="margin:0;text-align: center">x</p>',
   );
+});
+
+describe("signatures", () => {
+  const signed: Identity[] = [
+    { ...identities[0]!, signature: "<p>— Me</p>" },
+    { ...identities[1]!, signature: "<p>— Alias</p>" },
+    identities[2]!,
+  ];
+
+  it("new mail and replies open with the From address's signature above the quote", () => {
+    expect(newDraft(signed, ME, "me@x.com").html).toBe("<p></p><p></p><p>— Me</p><p></p>");
+    const d = replyDraft("reply", source({ to: [a("alias@x.com")] }), signed, "me@x.com", date);
+    expect(d.html.startsWith("<p></p><p></p><p>— Alias</p><p></p><p>On Thu")).toBe(true);
+    expect(newDraft(signed, OTHER, "work@y.com").html).toBe("");
+  });
+
+  it("switching From swaps the signature until something is typed", () => {
+    const d = replyDraft("reply", source(), signed, "me@x.com", date);
+    const swapped = withIdentity(d, signed[1]!);
+    expect(swapped.html).toBe(bodyHtml("<p>— Alias</p>", d.quote));
+    const typed = withIdentity({ ...d, edited: true, html: "<p>Hi</p>" }, signed[1]!);
+    expect(typed.html).toBe("<p>Hi</p>");
+  });
 });

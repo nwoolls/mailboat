@@ -29,6 +29,8 @@ export type Draft = {
   text: string;
   /** The user has typed in the editor (the opening quote doesn't count). */
   edited: boolean;
+  /** The quote or forwarded message the body opened with ("" for new mail). */
+  quote: string;
   /** The message replied to or forwarded. */
   replyingTo: MessageId | null;
   /** The conversation a reply or forward was started from. */
@@ -85,23 +87,42 @@ export function accountForNew(
   return accountIds[0];
 }
 
+/**
+ * What the editor opens with: a line to write on, a blank line, the From
+ * address's Gmail signature, and the quote (replies and forwards).
+ */
+export function bodyHtml(signature: string | null, quote: string): string {
+  const sig = signature?.trim() ? `${signature}<p></p>` : "";
+  return `<p></p><p></p>${sig}${quote}`;
+}
+
+function signatureOf(identities: Identity[], accountId: AccountId, from: Address): string | null {
+  return (
+    identities.find((i) => i.accountId === accountId && sameEmail(i.email, from.email))
+      ?.signature ?? null
+  );
+}
+
 export function newDraft(
   identities: Identity[],
   accountId: AccountId,
   accountEmail: string,
 ): Draft {
+  const from = fromFor(identities, accountId, accountEmail);
+  const signature = signatureOf(identities, accountId, from);
   return {
     id: nextId++,
     kind: "new",
     accountId,
-    from: fromFor(identities, accountId, accountEmail),
+    from,
     to: [],
     cc: [],
     bcc: [],
     subject: "",
-    html: "",
+    html: signature?.trim() ? bodyHtml(signature, "") : "",
     text: "",
     edited: false,
+    quote: "",
     replyingTo: null,
     threadId: null,
     showCc: false,
@@ -212,19 +233,20 @@ export function replyDraft(
       ? { to: [], cc: [] }
       : replyRecipients(source, kind === "replyAll", myEmails);
   const body = kind === "forward" ? forwardHtml(source, formatDate) : quoteHtml(source, formatDate);
-  // A line to write on, then one blank line above the quote, as in Gmail
-  // and other mail apps.
-  const html = `<p></p><p></p>${body}`;
+  const from = fromFor(identities, source.accountId, accountEmail, source);
   return {
     id: nextId++,
     kind,
     accountId: source.accountId,
-    from: fromFor(identities, source.accountId, accountEmail, source),
+    from,
     to,
     cc,
     bcc: [],
     subject: kind === "forward" ? forwardSubject(source.subject) : replySubject(source.subject),
-    html,
+    // A line to write on, then one blank line above the signature and
+    // quote, as in Gmail and other mail apps.
+    html: bodyHtml(signatureOf(identities, source.accountId, from), body),
+    quote: body,
     // Filled in by the editor as soon as it loads the HTML.
     text: "",
     edited: false,
@@ -236,8 +258,23 @@ export function replyDraft(
 }
 
 /** Changing From can change account; the new account owns the message. */
+/**
+ * Changing From can change account; the new account owns the message.
+ * Until something's been typed, the body switches to the new address's
+ * signature (afterwards it's left alone, so nothing typed is lost).
+ */
 export function withIdentity(draft: Draft, identity: Identity): Draft {
-  return { ...draft, accountId: identity.accountId, from: identityAddress(identity) };
+  const next = { ...draft, accountId: identity.accountId, from: identityAddress(identity) };
+  return draft.edited ? next : { ...next, html: bodyHtml(identity.signature, draft.quote) };
+}
+
+/**
+ * Changes when the editor must reload its content: a different draft, or
+ * a new From (whose signature `withIdentity` swapped in if nothing was
+ * typed; otherwise it reloads the current text unchanged).
+ */
+export function editorKey(draft: Draft): string {
+  return `${draft.id}:${draft.from.email.toLowerCase()}`;
 }
 
 /** Why it can't be sent yet, or null. */

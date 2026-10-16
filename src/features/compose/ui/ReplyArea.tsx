@@ -1,7 +1,7 @@
 import type { Account, Identity, ThreadDetail } from "../../../platform/tauri/bindings";
 import { ForwardIcon, type IconProps, ReplyAllIcon, ReplyIcon } from "../../../shared/ui/icons";
 import { type ComposeEntry, replyIn } from "../model/composeState";
-import type { ComposeKind } from "../model/draft";
+import { type ComposeKind, editorKey } from "../model/draft";
 import { ComposeForm } from "./ComposeForm";
 import { closeDraft, updateDraft, useComposeState } from "./useCompose";
 
@@ -36,7 +36,7 @@ export function ReplyArea({
           {draft.kind === "forward" ? "Forward" : draft.kind === "replyAll" ? "Reply all" : "Reply"}
         </div>
         <ComposeForm
-          key={draft.id}
+          key={editorKey(draft)}
           entry={reply}
           identities={identities}
           accounts={accounts}

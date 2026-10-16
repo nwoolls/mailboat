@@ -504,9 +504,13 @@ Stage 3: formatting, signatures, attachments
       with one blank line between your text and the quote *(owner
       request, 2026-10-16)*; Gmail collapses that gap visually, which
       can be looked at later
-- [ ] Signatures: use each address's Gmail signature when composing
+- [x] Signatures: use each address's Gmail signature when composing
       (read with the current `gmail.modify` scope) *(owner request,
-      2026-10-16)*. Managing them is in Milestone 6
+      2026-10-16)*. Managing them is in Milestone 6. New mail and replies
+      open with the From address's signature (above the quote, after a
+      blank line); changing From swaps it until you've typed something.
+      Not yet: images in signatures (the editor drops them; they come
+      with sending inline images)
 - [ ] Sending attachments *(receiving moved to M3)*
 
 Stage 4: drafts and undo send

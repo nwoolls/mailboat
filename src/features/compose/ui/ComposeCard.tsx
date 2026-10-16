@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import type { Account, Identity } from "../../../platform/tauri/bindings";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { ClearIcon, MinimizeIcon } from "../../../shared/ui/icons";
-import { hasChanges } from "../model/draft";
+import { editorKey, hasChanges } from "../model/draft";
 import type { ComposeEntry } from "../model/composeState";
 import { ComposeForm } from "./ComposeForm";
 import { cardSize, nearestSpot, type Point, spotPosition } from "../model/snap";
@@ -131,6 +131,7 @@ export function ComposeCard({
         </button>
       </header>
       <ComposeForm
+        key={editorKey(draft)}
         entry={entry}
         identities={identities}
         accounts={accounts}
