@@ -73,7 +73,7 @@ function ThreadBody({
     <article
       // macOS overlay scrollbars take no width, so a long email appearing
       // doesn't narrow the reader or reflow it.
-      className={`reader-enter flex-1 overflow-y-auto pb-16 transition-opacity duration-150 ${
+      className={`reader-enter flex-1 overflow-y-auto pb-4 transition-opacity duration-150 ${
         leaving ? "opacity-50" : ""
       }`}
     >
