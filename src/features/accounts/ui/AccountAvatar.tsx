@@ -27,7 +27,7 @@ export function AccountAvatar({
       aria-label={`${account.email}: ${syncHint(state)}`}
     >
       {/* Keyed by URL so a new picture gets a fresh try after a failure. */}
-      <AccountPicture key={account.avatarUrl ?? ""} account={account} />
+      <Picture key={account.avatarUrl ?? ""} account={account} />
       {longSync && (
         <span className="sync-ring pointer-events-none absolute -inset-[3px] rounded-full border-[1.5px] border-content/10 border-t-accent" />
       )}
@@ -46,15 +46,8 @@ export function AccountAvatar({
  * The Google profile picture saved at sign-in, falling back to the
  * account's initial on its color if there's none or it fails to load.
  * No referrer is sent, which Google's image host can otherwise refuse.
- * Key it by `avatarUrl` so a new picture gets a fresh try after a failure.
  */
-export function AccountPicture({
-  account,
-  size = 16,
-}: {
-  account: Pick<Account, "avatarUrl" | "color" | "email" | "displayName">;
-  size?: number;
-}) {
+function Picture({ account }: { account: Account }) {
   const [failed, setFailed] = useState(false);
   if (account.avatarUrl && !failed) {
     return (
@@ -64,20 +57,14 @@ export function AccountPicture({
         referrerPolicy="no-referrer"
         draggable={false}
         onError={() => setFailed(true)}
-        className="shrink-0 rounded-full object-cover"
-        style={{ width: size, height: size }}
+        className="h-4 w-4 rounded-full object-cover"
       />
     );
   }
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
-      style={{
-        width: size,
-        height: size,
-        fontSize: Math.round(size * 0.56),
-        background: account.color,
-      }}
+      className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white"
+      style={{ background: account.color }}
     >
       {accountInitial(account)}
     </span>

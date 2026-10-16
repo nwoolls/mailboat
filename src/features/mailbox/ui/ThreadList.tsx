@@ -1,12 +1,10 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef } from "react";
 import type { ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
-import { AccountDot } from "../../../shared/ui/AccountDot";
 import { AttachmentIcon, StarIcon } from "../../../shared/ui/icons";
 import type { AccountIndex } from "../../accounts/model/accounts";
-import { AccountPicture } from "../../accounts/ui/AccountAvatar";
 import { formatListDate, sendersLabel } from "../model/format";
-import type { RowMarkers } from "../model/rowMarkers";
+import { type RowMarkers, tint } from "../model/rowMarkers";
 
 const ROW_HEIGHT = 72;
 
@@ -74,8 +72,8 @@ export function ThreadList({
           const t = threads[item.index]!;
           const selected = t.id === selectedId;
           const account = showAccount ? accounts.get(t.accountId) : undefined;
-          // Single-account views always use the dot; there's no account mark.
-          const style = account ? markers : "bar";
+          // Single-account views have no account mark, just the unread dot.
+          const style = account ? markers : null;
           return (
             <div
               key={t.id}
@@ -89,26 +87,48 @@ export function ThreadList({
               }`}
               style={{ top: item.start, height: ROW_HEIGHT - 4 }}
             >
-              {account && style === "bar" && (
+              {account && style === "glassBar" && (
+                // At the row's very edge, well clear of the unread dot;
+                // faded at both ends with a faint glow, so it reads as a
+                // tint rather than a stripe.
                 <span
-                  className="absolute top-2.5 bottom-2.5 left-1 w-[3px] rounded-full"
-                  style={{ background: account.color }}
+                  className="absolute top-3 bottom-3 left-0 w-[2px] rounded-full"
+                  style={{
+                    background: `linear-gradient(to bottom, transparent, ${tint(account.color, 70)} 30%, ${tint(account.color, 70)} 70%, transparent)`,
+                    boxShadow: `0 0 6px ${tint(account.color, 35)}`,
+                  }}
                   title={account.email}
                   aria-label={account.email}
                 />
               )}
               <div className="relative flex items-center gap-2">
-                {t.unread && style !== "noDot" && (
+                {t.unread && style !== "glassDot" && (
                   <span
                     className="absolute top-1/2 -left-3.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent"
                     aria-label="Unread"
                   />
                 )}
-                {account && style === "noDot" && <AccountDot account={account} size={7} />}
-                {account && style === "avatar" && (
-                  <span title={account.email} className="flex">
-                    <AccountPicture key={account.avatarUrl ?? ""} account={account} size={14} />
-                  </span>
+                {account && style === "ring" && (
+                  // Hollow, so it can't be mistaken for the solid unread dot.
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ border: `1.5px solid ${tint(account.color, 75)}` }}
+                    title={account.email}
+                    aria-label={account.email}
+                  />
+                )}
+                {account && style === "glassDot" && (
+                  // A soft bead: the colour at half strength with a light
+                  // highlight and a thin edge, like the glass panels.
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{
+                      background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.45), ${tint(account.color, 55)} 65%)`,
+                      boxShadow: `inset 0 0 0 0.5px rgba(255,255,255,0.2)`,
+                    }}
+                    title={account.email}
+                    aria-label={account.email}
+                  />
                 )}
                 <span
                   className={`truncate ${t.unread ? "font-semibold text-content" : "font-medium text-content/85"}`}
