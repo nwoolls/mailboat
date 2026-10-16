@@ -71,11 +71,9 @@ function ThreadBody({
 
   return (
     <article
-      // overflow-y-scroll, not auto: the app's styled scrollbars take up
-      // width, so a scrollbar appearing for a long email used to narrow
-      // the reader and visibly reflow the email. The gutter is always
-      // reserved now (its track is transparent, so it doesn't show).
-      className={`reader-enter flex-1 overflow-y-scroll pb-16 transition-opacity duration-150 ${
+      // macOS overlay scrollbars take no width, so a long email appearing
+      // doesn't narrow the reader or reflow it.
+      className={`reader-enter flex-1 overflow-y-auto pb-16 transition-opacity duration-150 ${
         leaving ? "opacity-50" : ""
       }`}
     >

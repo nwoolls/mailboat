@@ -304,13 +304,7 @@ html.resizing .panel-slide {
   }
 }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--color-content) 14%, transparent);
-  border-radius: 10px;
-  border: 3px solid transparent;
-  background-clip: content-box;
-}
+/* No custom scrollbar styling: macOS's own overlay scrollbars appear while
+   scrolling and fade after, take no width, follow the light/dark
+   color-scheme, and honour System Settings > Appearance > Show scroll
+   bars. Any ::-webkit-scrollbar rule would make them always visible. */
