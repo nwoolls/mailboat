@@ -218,6 +218,9 @@ Options offered during the spike that the owner didn't pick (yet):
       app's glow, in a macOS rounded square. Source and the variants
       offered are in `design/icon/`. Enlarged after a look in the Dock: the
       card and M fill about two thirds of the tile, like other apps
+      Then (owner picked T2 + B3): a brighter, glowing M on a midnight
+      background (navy to near-black) instead of navy-to-violet, which made
+      the M hard to read. Tweaks and backgrounds offered are kept too
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong
