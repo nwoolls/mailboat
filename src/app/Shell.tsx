@@ -60,7 +60,13 @@ import { openCardEntry } from "../features/compose/model/composeState";
 import { ComposeCard } from "../features/compose/ui/ComposeCard";
 import { MinimizedTabs } from "../features/compose/ui/MinimizedTabs";
 import { ReplyArea } from "../features/compose/ui/ReplyArea";
-import { useCardSpot, useComposeActions, useComposeState } from "../features/compose/ui/useCompose";
+import {
+  discardDraftMessage,
+  resumeDraft,
+  useCardSpot,
+  useComposeActions,
+  useComposeState,
+} from "../features/compose/ui/useCompose";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
 import { LABEL_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
 import {
@@ -497,6 +503,7 @@ export function Shell() {
                   <ThreadReader
                     threadId={shownId}
                     accounts={accounts}
+                    draftActions={{ edit: resumeDraft, discard: discardDraftMessage }}
                     renderFooter={(detail) => (
                       <ReplyArea
                         detail={detail}

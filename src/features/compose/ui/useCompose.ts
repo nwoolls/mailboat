@@ -1,7 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { commands } from "../../../platform/tauri/bindings";
-import type { Account, AccountId, DraftId, ThreadId } from "../../../platform/tauri/bindings";
+import type {
+  Account,
+  AccountId,
+  DraftId,
+  MessageId,
+  ThreadId,
+} from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { keys } from "../../../shared/lib/queries";
 import { showToast } from "../../../shared/lib/toast";
@@ -13,6 +19,7 @@ import {
   hasChanges,
   newDraft,
   replyDraft,
+  resumedDraft,
   toOutgoing,
 } from "../model/draft";
 
@@ -77,8 +84,9 @@ export function updateDraft(id: number, change: (d: Draft) => Draft) {
 const SAVE_DELAY_MS = 2500;
 type SaveSlot = {
   timer?: number;
-  running?: Promise<void>;
-  again?: boolean;
+  running?: Promise<boolean>;
+  /** The draft as it was closed: saving carries on after the card is gone. */
+  closed?: S.ComposeEntry;
   discarded?: boolean;
   /** The latest saved draft ID, kept here too in case the entry closed meanwhile. */
   savedId?: DraftId;
@@ -97,50 +105,108 @@ function scheduleSave(id: number) {
   s.timer = window.setTimeout(() => void saveNow(id), SAVE_DELAY_MS);
 }
 
-/** Saves now (waiting for any save already running), and settles when done. */
-export async function saveNow(id: number): Promise<void> {
+/**
+ * Saves now (after any save already running), resolving to whether it
+ * worked. Works for a draft whose card has closed, from `closed`.
+ */
+export async function saveNow(id: number): Promise<boolean> {
   const s = slot(id);
   window.clearTimeout(s.timer);
   if (s.running) {
-    s.again = true;
-    return s.running;
+    // One save at a time: wait, then save the latest content.
+    await s.running;
+    return saveNow(id);
   }
-  const entry = S.entryById(state, id);
-  if (!entry || !hasChanges(entry.draft)) return;
+  const entry = S.entryById(state, id) ?? s.closed;
+  if (!entry || !hasChanges(entry.draft)) return true;
   set(S.setSaved(state, id, "saving"));
-  s.running = unwrap(commands.draftSave(entry.draft.savedId, toOutgoing(entry.draft)))
-    .then((savedId) => {
-      s.savedId = savedId;
+  const savedId = s.savedId ?? entry.draft.savedId;
+  s.running = unwrap(commands.draftSave(savedId, toOutgoing(entry.draft)))
+    .then((saved) => {
+      s.savedId = saved;
       if (s.discarded) {
-        void unwrap(commands.draftDelete(savedId));
-        return;
+        void unwrap(commands.draftDelete(saved));
+        return true;
       }
-      set(S.setSaved(state, id, "saved", savedId));
+      set(S.setSaved(state, id, "saved", saved));
+      return true;
     })
-    .catch(() => set(S.setSaved(state, id, "failed")))
+    .catch(() => {
+      set(S.setSaved(state, id, "failed"));
+      return false;
+    })
     .finally(() => {
       s.running = undefined;
-      if (s.again && !s.discarded) {
-        s.again = false;
-        void saveNow(id);
-      }
     });
   return s.running;
 }
 
-/** Closes a new message, keeping it in Gmail's Drafts (saved first). */
+/**
+ * Closes a new message at once, keeping it in Gmail's Drafts: it saves in
+ * the background. If that fails the card comes back with the error, so
+ * nothing written is lost.
+ */
 export function closeKeepingDraft(id: number) {
   const entry = S.entryById(state, id);
-  if (entry && hasChanges(entry.draft)) {
-    void saveNow(id).then(() => {
-      const saved = S.entryById(state, id)?.draft.savedId;
-      set(S.close(state, id));
-      saves.delete(id);
-      if (saved !== null && saved !== undefined) showToast({ message: "Saved to Drafts" });
-    });
+  if (!entry || !hasChanges(entry.draft)) {
+    closeDraft(id);
     return;
   }
-  closeDraft(id);
+  const s = slot(id);
+  s.closed = entry;
+  set(S.close(state, id));
+  void saveNow(id).then((ok) => {
+    saves.delete(id);
+    if (ok) showToast({ message: "Saved to Drafts" });
+    else {
+      const savedId = s.savedId ?? entry.draft.savedId;
+      set(
+        S.reopen(
+          state,
+          { ...entry, draft: { ...entry.draft, savedId } },
+          "Couldn’t save the draft. Try again, or send it.",
+        ),
+      );
+    }
+  });
+}
+
+/** Opens a saved draft (from its conversation) for editing. */
+export async function resumeDraft(messageId: MessageId) {
+  try {
+    const opened = await unwrap(commands.draftOpen(messageId));
+    const already = [...state.cards, ...state.replies].find(
+      (e) => e.draft.savedId === opened.draft,
+    );
+    if (already) {
+      set(
+        already.draft.kind === "new"
+          ? S.expand(state, already.draft.id)
+          : S.focus(state, already.draft.id),
+      );
+      return;
+    }
+    const draft = resumedDraft(opened);
+    set(draft.kind === "new" ? S.openCard(state, draft) : S.openReply(state, draft));
+  } catch (e) {
+    showToast({
+      tone: "error",
+      message: `Couldn’t open the draft: ${e instanceof Error ? e.message : String(e)}`,
+    });
+  }
+}
+
+/** Discards a draft shown in a conversation, from Gmail too. */
+export async function discardDraftMessage(messageId: MessageId) {
+  try {
+    await unwrap(commands.draftDiscard(messageId));
+    showToast({ message: "Draft discarded" });
+  } catch (e) {
+    showToast({
+      tone: "error",
+      message: `Couldn’t discard the draft: ${e instanceof Error ? e.message : String(e)}`,
+    });
+  }
 }
 
 export function minimizeCard(id: number) {

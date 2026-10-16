@@ -177,6 +177,12 @@ pub struct DraftRef {
     pub message: MessageRef,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct DraftList {
+    #[serde(default)]
+    pub drafts: Vec<DraftRef>,
+}
+
 /// `settings.sendAs.list`: the addresses an account can send as.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

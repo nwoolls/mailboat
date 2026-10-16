@@ -14,6 +14,7 @@ import {
   quoteHtml,
   quoteText,
   replyDraft,
+  resumedDraft,
   replyRecipients,
   replySubject,
   sendProblem,
@@ -268,4 +269,25 @@ it("attachments count as changes, report their size, and respect Gmail's limit",
   expect(sendProblem({ ...d, attachments: [huge] })).toBe(
     "Attachments are over Gmail’s 25 MB limit.",
   );
+});
+
+it("a resumed draft goes inline when it's a reply, in the card otherwise", () => {
+  const opened = {
+    draft: 9,
+    accountId: ME,
+    threadId: 5,
+    from: a("me@x.com"),
+    to: [a("bob@z.com")],
+    cc: [],
+    bcc: [a("boss@x.com")],
+    subject: "Re: Lunch",
+    html: "<p>Sure</p>",
+    text: "Sure",
+    replyingTo: 10,
+  };
+  const reply = resumedDraft(opened);
+  expect([reply.kind, reply.threadId, reply.savedId, reply.showBcc]).toEqual(["reply", 5, 9, true]);
+  expect(reply.signature).toBe("");
+  const fresh = resumedDraft({ ...opened, replyingTo: null, html: "", text: "a\n\nb" });
+  expect([fresh.kind, fresh.threadId, fresh.html]).toEqual(["new", null, "<p>a</p><p>b</p>"]);
 });

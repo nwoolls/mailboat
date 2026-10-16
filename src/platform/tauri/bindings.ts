@@ -106,6 +106,16 @@ export const commands = {
 	/**  Deletes a saved draft (discarded), from Gmail too. */
 	draftDelete: (draft: DraftId) => typedError<null, AppError>(__TAURI_INVOKE("draft_delete", { draft })),
 	/**
+	 *  Opens a draft shown in a conversation for editing (made here or in
+	 *  Gmail elsewhere), with its own account's credentials.
+	 */
+	draftOpen: (messageId: MessageId) => typedError<OpenedDraft, AppError>(__TAURI_INVOKE("draft_open", { messageId })),
+	/**
+	 *  Discards a draft shown in a conversation: deleted from Gmail and the
+	 *  cache, and lists refresh.
+	 */
+	draftDiscard: (messageId: MessageId) => typedError<null, AppError>(__TAURI_INVOKE("draft_discard", { messageId })),
+	/**
 	 *  Opens a link from the message being written in the default browser
 	 *  (or mail app). Only web and mail links; anything else is refused.
 	 */
@@ -316,6 +326,23 @@ export type OlderLoaded = {
 	added: number,
 	/**  Gmail has nothing older in this view for any of the accounts. */
 	exhausted: boolean,
+};
+
+/**  A saved draft opened for editing: what compose needs to resume it. */
+export type OpenedDraft = {
+	draft: DraftId,
+	accountId: AccountId,
+	threadId: ThreadId,
+	from: Address,
+	to: Address[],
+	cc: Address[],
+	bcc: Address[],
+	subject: string,
+	/**  The whole body as saved (signature and quote included). */
+	html: string,
+	text: string,
+	/**  The message it answers, when it's a reply in its conversation. */
+	replyingTo: MessageId | null,
 };
 
 export type OpenedMessage = {

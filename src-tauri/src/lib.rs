@@ -53,6 +53,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::message_send,
             commands::draft_save,
             commands::draft_delete,
+            commands::draft_open,
+            commands::draft_discard,
             commands::link_open,
             commands::html_preview,
             commands::sync_now,

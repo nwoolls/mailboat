@@ -8,7 +8,7 @@ use mailboat_core::attachments;
 use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
 use mailboat_core::compose::contacts::Contact;
 use mailboat_core::compose::identities::{self, Identity};
-use mailboat_core::compose::{self, OutgoingMessage, ReplySource};
+use mailboat_core::compose::{self, OpenedDraft, OutgoingMessage, ReplySource};
 use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::{self, SafeMessage};
@@ -621,6 +621,38 @@ pub async fn draft_save(
 #[specta::specta]
 pub async fn draft_delete(state: State<'_, AppState>, draft: DraftId) -> CmdResult<()> {
     Ok(compose::delete_draft(&state.db, &|account| state.gmail_for(account), draft).await?)
+}
+
+/// Opens a draft shown in a conversation for editing (made here or in
+/// Gmail elsewhere), with its own account's credentials.
+#[tauri::command]
+#[specta::specta]
+pub async fn draft_open(
+    state: State<'_, AppState>,
+    message_id: MessageId,
+) -> CmdResult<OpenedDraft> {
+    let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
+    let gmail = state.gmail_for(account)?.interactive();
+    Ok(compose::open_draft(&state.db, &gmail, message_id).await?)
+}
+
+/// Discards a draft shown in a conversation: deleted from Gmail and the
+/// cache, and lists refresh.
+#[tauri::command]
+#[specta::specta]
+pub async fn draft_discard(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    message_id: MessageId,
+) -> CmdResult<()> {
+    let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
+    let gmail = state.gmail_for(account)?.interactive();
+    compose::discard_draft_message(&state.db, &gmail, message_id).await?;
+    let _ = MailChangedEvent {
+        account_id: account,
+    }
+    .emit(&app);
+    Ok(())
 }
 
 /// Mail HTML (a signature, a quote) prepared for showing in the app the

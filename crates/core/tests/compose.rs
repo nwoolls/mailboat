@@ -473,3 +473,48 @@ async fn a_draft_moves_when_from_changes_account() {
         .unwrap();
     assert_eq!(owner, b);
 }
+
+#[tokio::test]
+async fn a_draft_made_elsewhere_is_found_and_discarded() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/drafts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "drafts": [
+                { "id": "dOther", "message": { "id": "zz", "threadId": "t9" } },
+                { "id": "dWeb", "message": { "id": "m2", "threadId": "t1" } }
+            ]
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("DELETE"))
+        .and(path("/gmail/v1/users/me/drafts/dWeb"))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    load_t1(&db, a);
+    let m2 = message_id(&db, a, "m2");
+    let (gmail, _) = client(&server.uri());
+
+    let first = compose::draft_for_message(&db, &gmail, m2).await.unwrap();
+    // Remembered: asking again doesn't list Gmail's drafts again.
+    assert_eq!(
+        compose::draft_for_message(&db, &gmail, m2).await.unwrap(),
+        first
+    );
+
+    compose::discard_draft_message(&db, &gmail, m2)
+        .await
+        .unwrap();
+    let left: i64 = db
+        .conn()
+        .query_row("SELECT COUNT(*) FROM messages WHERE id = ?1", [m2], |r| {
+            r.get(0)
+        })
+        .unwrap();
+    assert_eq!(left, 0, "gone from the cache at once");
+}

@@ -448,3 +448,118 @@ mod tests {
         );
     }
 }
+
+/// A saved draft opened for editing: what compose needs to resume it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenedDraft {
+    pub draft: DraftId,
+    pub account_id: AccountId,
+    pub thread_id: ThreadId,
+    pub from: Address,
+    pub to: Vec<Address>,
+    pub cc: Vec<Address>,
+    pub bcc: Vec<Address>,
+    pub subject: String,
+    /// The whole body as saved (signature and quote included).
+    pub html: String,
+    pub text: String,
+    /// The message it answers, when it's a reply in its conversation.
+    pub replying_to: Option<MessageId>,
+}
+
+/// The local draft ID for a draft message, recording it if it was made
+/// elsewhere (Gmail on the web, a phone): Gmail's draft list is asked
+/// which draft holds the message.
+pub async fn draft_for_message(
+    db: &Db,
+    gmail: &GmailClient,
+    message: MessageId,
+) -> Result<DraftId> {
+    let (account, gmail_message_id) = store::message_gmail_ref(&db.conn(), message)?;
+    let known: Option<DraftId> = db
+        .conn()
+        .query_row(
+            "SELECT id FROM drafts WHERE account_id = ?1 AND message_id = ?2",
+            params![account, message],
+            |r| r.get(0),
+        )
+        .optional()?;
+    if let Some(id) = known {
+        return Ok(id);
+    }
+    let list = gmail.list_drafts().await?;
+    let found = list
+        .drafts
+        .into_iter()
+        .find(|d| d.message.id == gmail_message_id)
+        .ok_or_else(|| CoreError::NotFound("that draft is no longer in Gmail".into()))?;
+    let conn = db.conn();
+    conn.execute(
+        "INSERT INTO drafts (account_id, gmail_draft_id, message_id, updated_at) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT (account_id, gmail_draft_id) DO UPDATE SET message_id = excluded.message_id",
+        params![account, found.id, message, now_millis()],
+    )?;
+    Ok(conn.query_row(
+        "SELECT id FROM drafts WHERE account_id = ?1 AND gmail_draft_id = ?2",
+        params![account, found.id],
+        |r| r.get(0),
+    )?)
+}
+
+/// Opens a draft message for editing: its people, subject and body from
+/// Gmail, and the message it replies to (by In-Reply-To) if that's cached.
+pub async fn open_draft(db: &Db, gmail: &GmailClient, message: MessageId) -> Result<OpenedDraft> {
+    let draft = draft_for_message(db, gmail, message).await?;
+    let (account, gmail_message_id) = store::message_gmail_ref(&db.conn(), message)?;
+    let thread: ThreadId = db.conn().query_row(
+        "SELECT thread_id FROM messages WHERE id = ?1",
+        [message],
+        |r| r.get(0),
+    )?;
+    let full = gmail.message_full(&gmail_message_id).await?;
+    let payload = full
+        .payload
+        .ok_or_else(|| CoreError::Other("the draft came back empty".into()))?;
+    let h = |name: &str| {
+        parse::header(&payload, name)
+            .unwrap_or_default()
+            .to_string()
+    };
+    let list = |name: &str| parse::parse_address_list(&h(name));
+    let body = parse::extract_body(&payload);
+    let in_reply_to = h("In-Reply-To");
+    let replying_to: Option<MessageId> = if in_reply_to.trim().is_empty() {
+        None
+    } else {
+        db.conn()
+            .query_row(
+                "SELECT id FROM messages WHERE account_id = ?1 AND rfc822_message_id = ?2",
+                params![account, in_reply_to.trim()],
+                |r| r.get(0),
+            )
+            .optional()?
+    };
+    Ok(OpenedDraft {
+        draft,
+        account_id: account,
+        thread_id: thread,
+        from: list("From").into_iter().next().unwrap_or_default(),
+        to: list("To"),
+        cc: list("Cc"),
+        bcc: list("Bcc"),
+        subject: h("Subject"),
+        html: body.html.clone().unwrap_or_default(),
+        text: body.text.unwrap_or_default(),
+        replying_to,
+    })
+}
+
+/// Discards a draft shown in a conversation (wherever it was made): deleted
+/// from Gmail and from the cache at once.
+pub async fn discard_draft_message(db: &Db, gmail: &GmailClient, message: MessageId) -> Result<()> {
+    let draft = draft_for_message(db, gmail, message).await?;
+    let (account, gmail_message_id) = store::message_gmail_ref(&db.conn(), message)?;
+    delete_draft(db, &|_| Ok(gmail.clone()), draft).await?;
+    store::delete_messages(&mut db.conn(), account, &[gmail_message_id])
+}

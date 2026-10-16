@@ -5,6 +5,7 @@ import type {
   DraftId,
   Identity,
   MessageId,
+  OpenedDraft,
   OutgoingAttachment,
   OutgoingMessage,
   ReplySource,
@@ -327,6 +328,38 @@ export function replyDraft(
     threadId: source.threadId,
     showCc: cc.length > 0,
     showBcc: false,
+  };
+}
+
+/**
+ * A saved draft (made here or in Gmail elsewhere) back on screen: a reply
+ * goes inline in its conversation, anything else in the card. Its whole
+ * saved body goes into the editor (signature and quote included, as
+ * saved), so nothing is added again when it's sent.
+ */
+export function resumedDraft(opened: OpenedDraft): Draft {
+  const reply = opened.replyingTo !== null;
+  return {
+    id: nextId++,
+    kind: reply ? "reply" : "new",
+    accountId: opened.accountId,
+    from: opened.from,
+    to: opened.to,
+    cc: opened.cc,
+    bcc: opened.bcc,
+    subject: opened.subject,
+    html: opened.html || textToHtml(opened.text),
+    text: opened.text,
+    edited: false,
+    quote: "",
+    quoteText: "",
+    signature: "",
+    savedId: opened.draft,
+    attachments: [],
+    replyingTo: opened.replyingTo,
+    threadId: reply ? opened.threadId : null,
+    showCc: opened.cc.length > 0,
+    showBcc: opened.bcc.length > 0,
   };
 }
 

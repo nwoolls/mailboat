@@ -11,8 +11,8 @@ use serde::de::DeserializeOwned;
 use super::batch;
 use super::pacer::{cost, QuotaPacer};
 use super::types::{
-    AttachmentBody, DraftRef, ErrorEnvelope, HistoryList, LabelList, Message, MessageList,
-    MessageRef, Profile, SendAsList, Thread, ThreadList,
+    AttachmentBody, DraftList, DraftRef, ErrorEnvelope, HistoryList, LabelList, Message,
+    MessageList, MessageRef, Profile, SendAsList, Thread, ThreadList,
 };
 use crate::error::{CoreError, Result};
 
@@ -336,6 +336,17 @@ impl GmailClient {
             &metadata,
             raw,
             Retry::Transient,
+        )
+        .await
+    }
+
+    /// `drafts.list`: every draft's ID with its message (one page of up to
+    /// 500; more drafts than that are rare).
+    pub async fn list_drafts(&self) -> Result<DraftList> {
+        self.get_json(
+            &self.url("drafts"),
+            &[("maxResults", "500")],
+            cost::DRAFTS_LIST,
         )
         .await
     }

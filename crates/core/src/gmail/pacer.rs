@@ -32,6 +32,7 @@ pub mod cost {
     pub const DRAFTS_CREATE: u32 = 10;
     pub const DRAFTS_UPDATE: u32 = 15;
     pub const DRAFTS_DELETE: u32 = 10;
+    pub const DRAFTS_LIST: u32 = 5;
 }
 
 #[derive(Debug)]
