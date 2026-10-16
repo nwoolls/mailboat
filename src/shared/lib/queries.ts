@@ -65,6 +65,11 @@ export function useThreads(selection: Selection) {
     initialPageParam: null as Parameters<typeof toListQuery>[1],
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled: IS_TAURI,
+    // Keep showing the previous view's list until the next one arrives (a
+    // local query, so a few milliseconds). Without this the list blanked
+    // in between, and an empty state was removed and re-added on every
+    // first visit to an empty label, replaying its entrance.
+    placeholderData: keepPreviousData,
   });
 }
 

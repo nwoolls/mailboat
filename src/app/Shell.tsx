@@ -223,7 +223,8 @@ export function Shell() {
                 // Clicking the open conversation again also brings it back.
                 setReaderOpen(true);
               }}
-              hasMore={hasNextPage}
+              // Not while the previous view's list stands in for this one.
+              hasMore={hasNextPage && !threadsQuery.isPlaceholderData}
               loadMore={loadMore}
               loading={threadsQuery.isPending || isFetchingNextPage}
               empty={
