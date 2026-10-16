@@ -112,6 +112,9 @@ fn ammonia_builder() -> ammonia::Builder<'static> {
         "style", "center", "font", "u", "s", "strike", "big", "small", "wbr",
     ])
     .rm_clean_content_tags(["style"])
+    // A page title is never shown in an email; without this its text was
+    // left at the top of the body.
+    .add_clean_content_tags(["title"])
     .add_generic_attributes([
         "style",
         "class",
@@ -216,6 +219,14 @@ pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
     // The input is ammonia's well-formed output, so this cannot fail in
     // practice; fall back to the ammonia output (still safe) if it does.
     .unwrap_or_else(|_| cleaned.clone());
+    // On the white card, the email is shown in light mode, so its own
+    // dark-mode rules must not fire either (they turned a vendor's text
+    // white on the white card).
+    let rewritten = if adaptive {
+        rewritten
+    } else {
+        light_only_style_sheets(&rewritten)
+    };
 
     SafeMessage {
         document: wrap_document(&rewritten, allow_images, adaptive, &dark.into_inner().css()),
@@ -224,6 +235,48 @@ pub fn sanitize_html(html: &str, allow_images: bool) -> SafeMessage {
         trackers_removed: trackers.get(),
         adaptive,
     }
+}
+
+/// Turns off an email's own dark-mode rules: inside its `<style>` blocks,
+/// `prefers-color-scheme: dark` becomes a value no browser matches, so
+/// those `@media` blocks never apply. Used for emails shown on the white
+/// card, which are always shown in light mode. Text outside style blocks
+/// is left alone.
+fn light_only_style_sheets(html: &str) -> String {
+    const FEATURE: &str = "prefers-color-scheme";
+    // ASCII lowercasing keeps byte offsets identical to `html`.
+    let lower = html.to_ascii_lowercase();
+    let mut out = String::with_capacity(html.len());
+    let mut copied = 0;
+    let mut pos = 0;
+    while let Some(start) = lower[pos..].find("<style").map(|i| pos + i) {
+        let end = lower[start..]
+            .find("</style")
+            .map_or(lower.len(), |i| start + i);
+        let mut at = start;
+        while let Some(found) = lower[at..end].find(FEATURE).map(|i| at + i) {
+            let mut i = found + FEATURE.len();
+            let skip_space = |mut i: usize| {
+                while lower.as_bytes().get(i).is_some_and(u8::is_ascii_whitespace) {
+                    i += 1;
+                }
+                i
+            };
+            i = skip_space(i);
+            if lower.as_bytes().get(i) == Some(&b':') {
+                let value = skip_space(i + 1);
+                if lower[value..end].starts_with("dark") {
+                    out.push_str(&html[copied..value]);
+                    out.push_str("mailboat-light-only");
+                    copied = value + "dark".len();
+                }
+            }
+            at = found + FEATURE.len();
+        }
+        pos = end;
+    }
+    out.push_str(&html[copied..]);
+    out
 }
 
 /// Whether an email can be adapted: not if it asks for light only, and not
@@ -417,7 +470,9 @@ fn wrap_document(body: &str, allow_images: bool, adaptive: bool, dark_rules: &st
             + dark_rules
             + "}"
     } else {
-        "html,body{margin:0;padding:0;background:#fff;color:#1f1f1f}\nbody{padding:20px 24px}"
+        // `color-scheme:light` keeps the browser's own defaults (plain text,
+        // links, controls) light too, even if the email asks for dark.
+        "html{color-scheme:light!important}\nhtml,body{margin:0;padding:0;background:#fff;color:#1f1f1f}\nbody{padding:20px 24px}"
             .to_string()
     };
     format!(
@@ -530,6 +585,49 @@ mod tests {
         assert!(doc.contains(r##"style="background-color:#b8aef2;color:#fff">"##));
         // Light mode keeps the email's own colors inline.
         assert!(doc.contains("color:#24292f"));
+    }
+
+    #[test]
+    fn emails_on_the_white_card_ignore_their_own_dark_mode_rules() {
+        // a vendor's billing email: a style sheet (so it's shown on the
+        // white card) whose dark-mode rules turn its text white.
+        let out = sanitize_html(
+            r#"<style>:root{color-scheme:light dark}
+               @media (prefers-color-scheme: dark) { .white-color { color: #FFFFFF !important; } }
+               @media (PREFERS-COLOR-SCHEME:dark){a{color:#4C9AFF}}
+               @media (prefers-color-scheme: light){p{margin:0}}</style>
+               <p class="white-color" style="background:#fff">Talk about prefers-color-scheme: dark here</p>"#,
+            false,
+        );
+        assert!(!out.adaptive);
+        let doc = &out.document;
+        assert!(!doc.contains("prefers-color-scheme: dark)"));
+        assert!(!doc.contains("PREFERS-COLOR-SCHEME:dark)"));
+        assert_eq!(doc.matches("mailboat-light-only").count(), 2);
+        // Light rules and the email's text are untouched.
+        assert!(doc.contains("(prefers-color-scheme: light)"));
+        assert!(doc.contains("Talk about prefers-color-scheme: dark here"));
+        assert!(doc.contains("html{color-scheme:light!important}"));
+    }
+
+    #[test]
+    fn the_page_title_is_not_shown() {
+        let out = sanitize_html(
+            "<html><head><title>a software vendor</title></head><body><p>Hi</p></body></html>",
+            false,
+        );
+        assert!(!out.document.contains("a software vendor"));
+        assert!(out.document.contains("<p>Hi</p>"));
+    }
+
+    #[test]
+    fn adaptive_emails_keep_their_dark_mode_rules() {
+        let out = sanitize_html(
+            r#"<style>@media (prefers-color-scheme: dark){p{font-weight:bold}}</style><p>Hi</p>"#,
+            false,
+        );
+        assert!(out.adaptive);
+        assert!(out.document.contains("(prefers-color-scheme: dark)"));
     }
 
     #[test]

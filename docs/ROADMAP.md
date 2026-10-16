@@ -282,6 +282,9 @@ Options offered during the spike that the owner didn't pick (yet):
       distinct (the page gets a faint lift, the card a slightly darker
       tint, as Mimestream shows them), so cards without a top border keep
       their top edge; plain white emails still show the glass
+- [x] Emails shown on the white card ignore their own dark-mode rules (an
+      a software vendor email's text went white on white, in Mimestream too), and an
+      email's page title no longer shows at the top of the body
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong
