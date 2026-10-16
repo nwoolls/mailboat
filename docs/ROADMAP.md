@@ -337,6 +337,9 @@ Options offered during the spike that the owner didn't pick (yet):
       search is Milestone 5). A failure shows "Try again" instead of
       retrying on every scroll. *(Verified in the real app, 2026-10-16.)*
 
+Wrapped up 2026-10-16: everything above verified by the owner with two
+real accounts.
+
 ## Milestone 3: Actions
 
 All routed to the owning account, applied optimistically in the UI, and
