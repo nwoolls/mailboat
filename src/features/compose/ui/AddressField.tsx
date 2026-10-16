@@ -97,6 +97,9 @@ export function AddressField({
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const lineRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Set when Escape cancels typing, so the blur that follows (the app
+  // blurs text boxes on Escape) doesn't turn the half-typed text into a chip.
+  const cancelled = useRef(false);
   const listId = useId();
 
   const query = useContactSuggestions(anchor ? text : "");
@@ -157,6 +160,12 @@ export function AddressField({
       e.preventDefault();
       e.stopPropagation();
       setAnchor(null);
+      return;
+    }
+    if (e.key === "Escape") {
+      // Escape again: drop what was being typed (chips stay), then leave.
+      cancelled.current = true;
+      setText("");
     }
   };
 
@@ -195,6 +204,7 @@ export function AddressField({
         spellCheck={false}
         value={text}
         onChange={(e) => {
+          cancelled.current = false;
           setText(e.target.value);
           setActive(0);
           measure();
@@ -209,7 +219,8 @@ export function AddressField({
           }
         }}
         onBlur={() => {
-          commitText();
+          if (!cancelled.current) commitText();
+          cancelled.current = false;
           setAnchor(null);
         }}
         className="h-7 min-w-[8rem] flex-1 bg-transparent outline-none focus-visible:outline-none"
