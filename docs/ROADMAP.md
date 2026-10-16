@@ -210,6 +210,9 @@ Options offered during the spike that the owner didn't pick (yet):
       is the same in both states, the snippet fades, and the addresses and
       body fold in with a short animation; the image notice is shorter
       ("Block images", sender in the tooltip) so it never truncates
+- [x] Collapsed message cards are 44px with the header centred (a stray
+      5px descender gap under the header button is gone); the padding
+      eases open with the message
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong

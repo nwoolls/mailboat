@@ -131,7 +131,12 @@ function ThreadBody({
                   addresses and body slide in below. */}
               <button
                 type="button"
-                className="w-full px-4 py-3 text-left"
+                // Block, not the button default (inline), which left a
+                // descender gap under collapsed cards. Collapsed cards are
+                // tighter; the padding eases open with the message.
+                className={`block w-full px-4 text-left transition-[padding] duration-200 ease-out motion-reduce:transition-none ${
+                  isOpen ? "py-3" : "py-2"
+                }`}
                 onClick={toggle}
                 aria-expanded={isOpen}
               >
