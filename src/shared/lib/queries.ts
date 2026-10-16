@@ -28,7 +28,7 @@ export const keys = {
   thread: (id: ThreadId) => ["thread", id] as const,
   message: (id: MessageId) => ["message", id] as const,
   identities: ["identities"] as const,
-  contacts: (text: string) => ["contacts", text] as const,
+  contacts: ["contacts"] as const,
 };
 
 export function useAccounts() {
@@ -117,17 +117,16 @@ export function useIdentities() {
   });
 }
 
-/** People matching what's typed in an address field, from cached mail. */
-export function useContactSuggestions(text: string) {
-  const trimmed = text.trim();
+/**
+ * Everyone compose can suggest, best first, loaded once and filtered as
+ * you type (a query per keystroke lagged). Refreshed when mail changes.
+ */
+export function useContacts() {
   return useQuery({
-    queryKey: keys.contacts(trimmed.toLowerCase()),
-    queryFn: () => unwrap(commands.contactsSuggest(trimmed)),
-    enabled: IS_TAURI && trimmed.length > 0,
-    staleTime: 30_000,
-    // Keep the previous matches up while the next ones arrive (a local
-    // query), so the list doesn't flicker on every key.
-    placeholderData: keepPreviousData,
+    queryKey: keys.contacts,
+    queryFn: () => unwrap(commands.contactsList()),
+    enabled: IS_TAURI,
+    staleTime: Infinity,
   });
 }
 

@@ -6,14 +6,15 @@ use std::time::Duration;
 
 use mailboat_core::attachments;
 use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
+use mailboat_core::compose::contacts::Contact;
 use mailboat_core::compose::identities::{self, Identity};
 use mailboat_core::compose::{self, OutgoingMessage, ReplySource};
 use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::{self, SafeMessage};
 use mailboat_core::model::{
-    Account, AccountFilter, AccountId, AccountSyncState, Address, Attachment, AttachmentId, Label,
-    LabelId, LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
+    Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, Label, LabelId,
+    LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
 };
 use mailboat_core::sync::{fetch_body, load_older, OLDER_BATCH};
 use mailboat_core::CoreError;
@@ -546,12 +547,12 @@ pub fn identities_list(state: State<'_, AppState>) -> CmdResult<Vec<Identity>> {
     Ok(identities::list(&state.db.conn())?)
 }
 
-/// People matching what's been typed in To/Cc/Bcc, from cached mail of
-/// every account.
+/// Everyone compose can suggest in To/Cc/Bcc, best first, from cached
+/// mail of every account. The UI filters it as you type.
 #[tauri::command]
 #[specta::specta]
-pub fn contacts_suggest(state: State<'_, AppState>, text: String) -> CmdResult<Vec<Address>> {
-    Ok(compose::contacts::suggest(&state.db.conn(), &text, 8)?)
+pub fn contacts_list(state: State<'_, AppState>) -> CmdResult<Vec<Contact>> {
+    Ok(compose::contacts::all(&state.db.conn())?)
 }
 
 /// What a reply or forward needs from a message (people, subject, text),

@@ -84,10 +84,10 @@ export const commands = {
 	 */
 	identitiesList: () => typedError<Identity[], AppError>(__TAURI_INVOKE("identities_list")),
 	/**
-	 *  People matching what's been typed in To/Cc/Bcc, from cached mail of
-	 *  every account.
+	 *  Everyone compose can suggest in To/Cc/Bcc, best first, from cached
+	 *  mail of every account. The UI filters it as you type.
 	 */
-	contactsSuggest: (text: string) => typedError<Address[], AppError>(__TAURI_INVOKE("contacts_suggest", { text })),
+	contactsList: () => typedError<Contact[], AppError>(__TAURI_INVOKE("contacts_list")),
 	/**
 	 *  What a reply or forward needs from a message (people, subject, text),
 	 *  fetched with its own account's credentials if not cached.
@@ -167,6 +167,14 @@ export type Attachment = {
 };
 
 export type AttachmentId = number;
+
+/**  Someone compose can suggest, best first in [`all`]. */
+export type Contact = {
+	name: string | null,
+	email: string,
+	/**  You've sent them mail (they rank above people who only wrote to you). */
+	wrote: boolean,
+};
 
 /**  An account's From addresses (Gmail "Send mail as") changed. */
 export type IdentitiesChangedEvent = {

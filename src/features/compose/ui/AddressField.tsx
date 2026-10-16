@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { Address } from "../../../platform/tauri/bindings";
-import { useContactSuggestions } from "../../../shared/lib/queries";
+import { useContacts } from "../../../shared/lib/queries";
+import { matchContacts } from "../model/contacts";
 import {
   formatAddress,
   isValidEmail,
@@ -102,10 +103,14 @@ export function AddressField({
   const cancelled = useRef(false);
   const listId = useId();
 
-  const query = useContactSuggestions(anchor ? text : "");
-  const suggestions = (query.data ?? []).filter(
-    (s) => !value.some((v) => sameEmail(v.email, s.email)),
-  );
+  const contacts = useContacts().data ?? [];
+  // Filtered here, as you type: instant, no trip to Rust per key.
+  const suggestions = anchor
+    ? matchContacts(
+        contacts.filter((c) => !value.some((v) => sameEmail(v.email, c.email))),
+        text,
+      )
+    : [];
   const open = anchor !== null && text.trim() !== "" && suggestions.length > 0;
   const current = Math.min(active, suggestions.length - 1);
 
@@ -122,7 +127,8 @@ export function AddressField({
     if (text.trim()) add(parseAddresses(text));
   };
   const pick = (a: Address) => {
-    add([a]);
+    // Just the address (suggestions carry ranking fields too).
+    add([{ name: a.name, email: a.email }]);
     inputRef.current?.focus();
   };
 

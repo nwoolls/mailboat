@@ -1,27 +1,37 @@
-//! Address suggestions while typing To/Cc/Bcc, from mail already cached
+//! The people compose suggests in To/Cc/Bcc, from mail already cached
 //! (every account, as local search does). People you've written to rank
 //! first; within that, how often and how recently you exchanged mail.
+//!
+//! The whole ranked list goes to the UI once and is filtered there as you
+//! type: a query per keystroke (plus the trip over IPC) made suggestions
+//! lag behind typing.
 
 use rusqlite::{params, Connection};
+use serde::{Deserialize, Serialize};
+use specta::Type;
 
 use crate::db::now_millis;
 use crate::error::Result;
-use crate::model::Address;
 
 /// A month: a message this old counts half as much as one from today.
 const HALF_WEIGHT_AGE_MS: f64 = 30.0 * 24.0 * 3600.0 * 1000.0;
 
-/// Up to `limit` people matching what was typed: the start of their
-/// address, of any word of their name, or of their domain.
-pub fn suggest(conn: &Connection, text: &str, limit: u32) -> Result<Vec<Address>> {
-    let text = text.trim().to_lowercase();
-    if text.is_empty() {
-        return Ok(Vec::new());
-    }
-    let like = escape_like(&text);
+/// Someone compose can suggest, best first in [`all`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Contact {
+    pub name: Option<String>,
+    pub email: String,
+    /// You've sent them mail (they rank above people who only wrote to you).
+    pub wrote: bool,
+}
+
+/// Everyone worth suggesting, best first: one entry per address.
+pub fn all(conn: &Connection) -> Result<Vec<Contact>> {
     // Candidates: everyone on To/Cc of mail you sent (weight 3), and the
     // senders of mail you received (weight 1), leaving out Spam and Trash.
-    // Automated senders only count if you've written to them.
+    // Automated senders only count if you've written to them. The name
+    // shown is the newest non-empty one seen for the address.
     let mut stmt = conn.prepare(
         "WITH sent AS (
            SELECT m.* FROM messages m
@@ -32,7 +42,7 @@ pub fn suggest(conn: &Connection, text: &str, limit: u32) -> Result<Vec<Address>
            SELECT ml.message_id FROM message_labels ml
            JOIN labels l ON l.id = ml.label_id AND l.gmail_label_id IN ('SPAM', 'TRASH')
          ),
-         cand (email, name, at, w) AS (
+         cand (email, name, at, w) AS MATERIALIZED (
            SELECT json_extract(j.value, '$.email'), json_extract(j.value, '$.name'), s.internal_date, 3
              FROM sent s, json_each(s.to_json) j
            UNION ALL
@@ -42,56 +52,37 @@ pub fn suggest(conn: &Connection, text: &str, limit: u32) -> Result<Vec<Address>
            SELECT from_email, from_name, internal_date, 1 FROM messages
              WHERE from_email != '' AND id NOT IN (SELECT message_id FROM junk)
          ),
-         matched AS (
-           SELECT lower(email) AS key, email, name, at, w FROM cand
-           WHERE lower(email) LIKE ?1 || '%' ESCAPE '\\'
-              OR lower(email) LIKE '%@' || ?1 || '%' ESCAPE '\\'
-              OR lower(name) LIKE ?1 || '%' ESCAPE '\\'
-              OR lower(name) LIKE '% ' || ?1 || '%' ESCAPE '\\'
+         -- Newest non-empty name per address (SQLite takes the bare
+         -- column from the row holding MAX).
+         names AS (
+           SELECT lower(email) AS key, name, MAX(at) FROM cand
+           WHERE name IS NOT NULL AND name != '' GROUP BY key
+         ),
+         ranked AS (
+           SELECT lower(email) AS key, email,
+                  MAX(w) AS wrote,
+                  SUM(w / (1.0 + MAX(0, ?1 - at) / ?2)) AS score,
+                  MAX(at) AS last_at
+           FROM cand
+           WHERE email IS NOT NULL AND email LIKE '%@%'
+           GROUP BY key
          )
-         SELECT email, name, MAX(at) AS last_at, MAX(w) AS wrote,
-                SUM(w / (1.0 + MAX(0, ?2 - at) / ?3)) AS score
-         FROM matched
-         GROUP BY key
-         HAVING wrote = 3 OR NOT (
-           key LIKE '%noreply%' OR key LIKE '%no-reply%' OR key LIKE '%donotreply%'
-           OR key LIKE '%do-not-reply%' OR key LIKE 'notifications@%' OR key LIKE 'mailer-daemon@%')
-         ORDER BY wrote DESC, score DESC, last_at DESC
-         LIMIT ?4",
+         SELECT r.email, n.name, r.wrote, r.score, r.last_at, r.key
+         FROM ranked r LEFT JOIN names n ON n.key = r.key
+         WHERE r.wrote = 3 OR NOT (
+           r.key LIKE '%noreply%' OR r.key LIKE '%no-reply%' OR r.key LIKE '%donotreply%'
+           OR r.key LIKE '%do-not-reply%' OR r.key LIKE 'notifications@%'
+           OR r.key LIKE 'mailer-daemon@%' OR r.key LIKE '%bounce%')
+         ORDER BY r.wrote DESC, r.score DESC, r.last_at DESC",
     )?;
-    let rows = stmt.query_map(
-        params![like, now_millis(), HALF_WEIGHT_AGE_MS, limit],
-        |r| {
-            Ok(Address {
-                email: r.get(0)?,
-                name: r.get(1)?,
-            })
-        },
-    )?;
-    let mut out: Vec<Address> = rows.collect::<rusqlite::Result<_>>()?;
-    // The name shown is from the newest matching message; fall back to any
-    // name seen for that address.
-    for a in out
-        .iter_mut()
-        .filter(|a| a.name.as_deref().is_none_or(str::is_empty))
-    {
-        a.name = conn
-            .query_row(
-                "SELECT from_name FROM messages WHERE from_email = ?1 COLLATE NOCASE
-                   AND from_name IS NOT NULL AND from_name != ''
-                 ORDER BY internal_date DESC LIMIT 1",
-                [&a.email],
-                |r| r.get(0),
-            )
-            .ok();
-    }
-    Ok(out)
-}
-
-fn escape_like(s: &str) -> String {
-    s.replace('\\', "\\\\")
-        .replace('%', "\\%")
-        .replace('_', "\\_")
+    let rows = stmt.query_map(params![now_millis(), HALF_WEIGHT_AGE_MS], |r| {
+        Ok(Contact {
+            email: r.get(0)?,
+            name: r.get(1)?,
+            wrote: r.get::<_, i64>(2)? == 3,
+        })
+    })?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
 #[cfg(test)]
@@ -99,7 +90,7 @@ mod tests {
     use super::*;
     use crate::db::store::{upsert_thread, IncomingMessage, IncomingThread};
     use crate::db::{accounts, Db};
-    use crate::model::AccountId;
+    use crate::model::{AccountId, Address};
 
     fn addr(name: &str, email: &str) -> Address {
         Address {
@@ -143,10 +134,6 @@ mod tests {
         }
     }
 
-    fn emails(list: &[Address]) -> Vec<&str> {
-        list.iter().map(|a| a.email.as_str()).collect()
-    }
-
     #[test]
     fn people_you_wrote_to_rank_first_across_accounts() {
         let db = Db::open_in_memory().unwrap();
@@ -182,80 +169,29 @@ mod tests {
             ),
         )
         .unwrap();
-        let found = suggest(&conn, "s", 10).unwrap();
-        assert_eq!(emails(&found), vec!["sally@y.com", "sam@x.com"]);
+        let found = all(&conn).unwrap();
+        let emails: Vec<&str> = found.iter().map(|c| c.email.as_str()).collect();
+        assert_eq!(&emails[..2], &["sally@y.com", "sam@x.com"]);
+        assert!(found[0].wrote && !found[1].wrote);
         assert_eq!(found[1].name.as_deref(), Some("Sam Smith"));
     }
 
     #[test]
-    fn matches_name_words_and_domains_but_not_the_middle_of_words() {
+    fn automated_senders_and_spam_are_left_out_and_case_is_merged() {
         let db = Db::open_in_memory().unwrap();
         let a = account(&db, "a");
         let mut conn = db.conn();
-        upsert_thread(
-            &mut conn,
-            a,
-            &message("m1", &["INBOX"], addr("Jane Doe", "jd@acme.com"), vec![], 1),
-        )
-        .unwrap();
-        assert_eq!(
-            emails(&suggest(&conn, "doe", 5).unwrap()),
-            vec!["jd@acme.com"]
-        );
-        assert_eq!(
-            emails(&suggest(&conn, "acme", 5).unwrap()),
-            vec!["jd@acme.com"]
-        );
-        assert_eq!(
-            emails(&suggest(&conn, "JD", 5).unwrap()),
-            vec!["jd@acme.com"]
-        );
-        assert!(suggest(&conn, "oe", 5).unwrap().is_empty());
-        assert!(
-            suggest(&conn, "%", 5).unwrap().is_empty(),
-            "wildcards are literal"
-        );
-        assert!(suggest(&conn, "  ", 5).unwrap().is_empty());
-    }
-
-    #[test]
-    fn automated_senders_and_spam_are_left_out() {
-        let db = Db::open_in_memory().unwrap();
-        let a = account(&db, "a");
-        let mut conn = db.conn();
-        upsert_thread(
-            &mut conn,
-            a,
-            &message("m1", &["INBOX"], addr("", "noreply@shop.com"), vec![], 1),
-        )
-        .unwrap();
-        upsert_thread(
-            &mut conn,
-            a,
-            &message("m2", &["SPAM"], addr("", "nigel@spam.com"), vec![], 1),
-        )
-        .unwrap();
-        assert!(suggest(&conn, "no", 5).unwrap().is_empty());
-        assert!(suggest(&conn, "nigel", 5).unwrap().is_empty());
-    }
-
-    #[test]
-    fn one_entry_per_address_whatever_its_case() {
-        let db = Db::open_in_memory().unwrap();
-        let a = account(&db, "a");
-        let mut conn = db.conn();
-        upsert_thread(
-            &mut conn,
-            a,
-            &message("m1", &["INBOX"], addr("Kim", "Kim@x.com"), vec![], 1),
-        )
-        .unwrap();
-        upsert_thread(
-            &mut conn,
-            a,
-            &message("m2", &["INBOX"], addr("Kim", "kim@x.com"), vec![], 2),
-        )
-        .unwrap();
-        assert_eq!(suggest(&conn, "kim", 5).unwrap().len(), 1);
+        for (id, labels, from) in [
+            ("m1", ["INBOX"], addr("", "noreply@shop.com")),
+            ("m2", ["SPAM"], addr("", "nigel@spam.com")),
+            ("m3", ["INBOX"], addr("Kim", "Kim@x.com")),
+            ("m4", ["INBOX"], addr("", "kim@x.com")),
+            ("m5", ["INBOX"], addr("", "bounce+123@lists.x.com")),
+        ] {
+            upsert_thread(&mut conn, a, &message(id, &labels, from, vec![], 1)).unwrap();
+        }
+        let found = all(&conn).unwrap();
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].name.as_deref(), Some("Kim"));
     }
 }

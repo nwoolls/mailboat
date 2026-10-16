@@ -217,10 +217,12 @@ fresh one; small parts come with the message and have no ID at all.
   Mail cached before that has NULL there; replying fetches that one
   message's headers (5 units) and remembers them.
 - **Address suggestions** (`compose::contacts`): one query over cached
-  mail of every account. People you've sent to (To/Cc of SENT mail)
-  rank above people who only wrote to you; within each, every message
-  counts less the older it is (a month old counts half). Spam, Trash and
-  no-reply senders you never wrote to are left out.
+  mail of every account builds the whole ranked list (thousands of people, fast), which the UI loads once and filters as you type
+  (`features/compose/model/contacts.ts`); it refreshes when mail changes.
+  People you've sent to (To/Cc of SENT mail) rank above people who only
+  wrote to you; within each, every message counts less the older it is
+  (a month old counts half). Spam, Trash and no-reply or bounce senders
+  you never wrote to are left out.
 
 ## Showing email safely
 
@@ -298,4 +300,5 @@ fresh one; small parts come with the message and have no ID at all.
 | 2026-10-16 | Composer is TipTap 3 (StarterKit, TextStyleKit, TextAlign); sent HTML gets `margin:0` paragraphs and `<br>` in empty ones | TipTap was the stack's planned editor. Browsers and mail apps give `<p>` a 1em gap and collapse empty ones, while the editor shows neither, so `emailHtml` makes the email look as written. The plain-text copy comes from the editor (`getText`), since Rust's `html_to_text` flattens everything to one line (fine for search, not for mail). |
 | 2026-10-16 | Outgoing mail uses Gmail's upload endpoint (`/upload/.../messages/send?uploadType=multipart`); files are picked with an HTML file input and passed to Rust as base64 | The JSON `raw` form is meant for small messages; the upload endpoint takes up to 35 MB, so attachments up to Gmail's 25 MB fit. A file input needs no Tauri dialog plugin or new web permission. Base64 over IPC costs a third more bytes, fine at these sizes. |
 | 2026-10-16 | Signatures and quotes stay outside the editor and are appended when sending | TipTap's schema rewrote them (dropped `<font>`, inline styles, tables, Gmail's line structure). Shown read-only in a sandboxed preview, sent as Gmail's own HTML in its `gmail_signature` / `gmail_quote` wrappers, as Gmail sends them. |
+| 2026-10-16 | Address suggestions filtered in the UI from a list loaded once, not queried per keystroke | Owner noticed a lag: each key cost a database query plus an IPC trip. The ranked list is small (a small list for thousands of people), so filtering in memory is instant. A per-address name lookup written as a correlated subquery took many seconds on a large cache; a grouped join is instant. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |
