@@ -143,7 +143,7 @@ describe("drafts", () => {
   it("a reply starts with the quote below room to write, and a fresh subject", () => {
     const d = replyDraft("replyAll", source(), identities, "me@x.com", date);
     expect(d.subject).toBe("Re: Lunch");
-    expect(d.html.startsWith("<p></p><p>On Thu, Oct 9")).toBe(true);
+    expect(d.html.startsWith("<p></p><p></p><p>On Thu, Oct 9")).toBe(true);
     expect(d.replyingTo).toBe(10);
     expect(d.threadId).toBe(5);
     expect(d.showCc).toBe(true);

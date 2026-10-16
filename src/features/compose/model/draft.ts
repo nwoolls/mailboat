@@ -212,8 +212,9 @@ export function replyDraft(
       ? { to: [], cc: [] }
       : replyRecipients(source, kind === "replyAll", myEmails);
   const body = kind === "forward" ? forwardHtml(source, formatDate) : quoteHtml(source, formatDate);
-  // An empty line to write in, above the quote.
-  const html = `<p></p>${body}`;
+  // A line to write on, then one blank line above the quote, as in Gmail
+  // and other mail apps.
+  const html = `<p></p><p></p>${body}`;
   return {
     id: nextId++,
     kind,

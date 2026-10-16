@@ -500,7 +500,10 @@ Stage 3: formatting, signatures, attachments
       Open and Remove. Sent as HTML with a plain-text
       copy; spacing in the email matches the editor
 - [ ] Reply and forward with quoted HTML (folded behind "…"). For now
-      the quote is the original's text in a quote block
+      the quote is the original's text in a quote block. Replies start
+      with one blank line between your text and the quote *(owner
+      request, 2026-10-16)*; Gmail collapses that gap visually, which
+      can be looked at later
 - [ ] Signatures: use each address's Gmail signature when composing
       (read with the current `gmail.modify` scope) *(owner request,
       2026-10-16)*. Managing them is in Milestone 6
