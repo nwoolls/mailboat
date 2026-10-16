@@ -132,7 +132,7 @@ pub async fn reply_source(db: &Db, gmail: &GmailClient, message: MessageId) -> R
         }
     };
     let body = fetch_body(db, gmail, message).await?;
-    let html = body.html.as_deref().map(ammonia::clean);
+    let html = body.html.as_deref().map(quote_clean);
     let text = body
         .text
         .or_else(|| body.html.as_deref().map(parse::html_to_text))
@@ -227,11 +227,50 @@ pub async fn send(db: &Db, gmail: &GmailClient, msg: &OutgoingMessage) -> Result
     })
 }
 
+/// Cleans an original for quoting in mail we send: scripts, forms,
+/// frames and event handlers go, but its look stays: `<style>` blocks,
+/// inline styles and table layout attributes, as Gmail keeps when it
+/// quotes. (Plain `ammonia::clean` dropped all styling, so quotes looked
+/// nothing like the original.)
+pub fn quote_clean(html: &str) -> String {
+    ammonia::Builder::default()
+        .rm_clean_content_tags(&["style"])
+        .add_tags(&["style", "center", "font"])
+        .add_generic_attributes(&[
+            "style",
+            "class",
+            "align",
+            "valign",
+            "width",
+            "height",
+            "bgcolor",
+            "color",
+            "border",
+            "cellpadding",
+            "cellspacing",
+            "face",
+            "size",
+        ])
+        .clean(html)
+        .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
+    fn quoted_html_keeps_its_look_but_not_scripts() {
+        let clean = super::quote_clean(
+            r#"<style>.x{color:red}</style><table><tr><td style="color:blue" align="center">k</td></tr></table>"#,
+        );
+        assert!(
+            clean.contains(".x{color:red}") && clean.contains(r#"style="color:blue""#),
+            "{clean}"
+        );
+    }
+
+    #[test]
     fn quoted_html_keeps_formatting_but_not_scripts() {
-        let clean = ammonia::clean(
+        let clean = super::quote_clean(
             r#"<table><tr><td><b>Hi</b></td></tr></table><script>x()</script><a href="https://x.com" onclick="y()">l</a>"#,
         );
         assert!(

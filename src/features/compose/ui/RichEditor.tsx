@@ -71,7 +71,7 @@ export function useRichEditor(initialHtml: string, onChange: (c: EditorChange) =
     content: initialHtml,
     editorProps: {
       attributes: {
-        class: "compose-editor selectable min-h-40 py-3 leading-relaxed outline-none",
+        class: "compose-editor selectable py-3 leading-relaxed outline-none",
         "aria-label": "Message",
         role: "textbox",
         "aria-multiline": "true",

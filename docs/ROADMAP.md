@@ -501,10 +501,11 @@ Stage 3: formatting, signatures, attachments
       copy; spacing in the email matches the editor
 - [x] Reply and forward with quoted HTML (folded behind "…"). The
       original is quoted with its own formatting (tables, bold, lists,
-      links; not yet colours and fonts, which live in inline styles that
-      `ammonia`'s defaults remove), cleaned of scripts and forms in Rust, in
+      links, colours and fonts: style blocks and inline styles are kept;
+      scripts, forms and event handlers are removed in Rust), in
       Gmail's quote style. It stays out of the editor, as in Gmail: a
-      "•••" under your text shows it (forwards start open), read-only,
+      "•••" under your text shows it as it will be sent, in a sandboxed
+      frame (forwards start open), read-only,
       and it's added when sending. Replies start with one blank line
       above it *(owner request, 2026-10-16)*; Gmail collapses that gap
       visually, which can be looked at later

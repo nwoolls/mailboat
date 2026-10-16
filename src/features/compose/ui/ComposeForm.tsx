@@ -123,10 +123,8 @@ export function ComposeForm({
           />
         )}
         <div className={inline ? "" : "min-h-0 flex-1 overflow-y-auto"}>
-          <EditorBody editor={editor} className="min-h-40" />
-          {draft.quoteText && (
-            <QuoteFold text={draft.quoteText} startOpen={draft.kind === "forward"} />
-          )}
+          <EditorBody editor={editor} className={draft.quote ? "" : "min-h-40"} />
+          {draft.quoteText && <QuoteFold html={draft.quote} startOpen={draft.kind === "forward"} />}
         </div>
       </fieldset>
       <FormatBar editor={editor} />
@@ -231,9 +229,10 @@ function AddressFieldRow({
 
 /**
  * The quoted original under the text, folded behind "…" as in Gmail
- * (forwards start open). It's sent as it is, so it isn't editable here.
+ * (forwards start open), shown as it will be sent: its own formatting,
+ * in a sandboxed frame (cleaned in Rust; no scripts can run). Read-only.
  */
-function QuoteFold({ text, startOpen }: { text: string; startOpen: boolean }) {
+function QuoteFold({ html, startOpen }: { html: string; startOpen: boolean }) {
   const [open, setOpen] = useState(startOpen);
   return (
     <div className="pb-3">
@@ -247,9 +246,17 @@ function QuoteFold({ text, startOpen }: { text: string; startOpen: boolean }) {
         •••
       </button>
       {open && (
-        <div className="selectable mt-2 whitespace-pre-wrap text-xs leading-relaxed text-content/55">
-          {text}
-        </div>
+        <iframe
+          title="Quoted message"
+          // Same-origin only so its height can be read; never scripts.
+          sandbox="allow-same-origin"
+          srcDoc={`<!doctype html><meta charset="utf-8"><body style="margin:0;font:13px -apple-system,sans-serif">${html}</body>`}
+          onLoad={(e) => {
+            const doc = e.currentTarget.contentDocument;
+            if (doc) e.currentTarget.style.height = `${doc.documentElement.scrollHeight}px`;
+          }}
+          className="mt-2 w-full rounded-md bg-white"
+        />
       )}
     </div>
   );
