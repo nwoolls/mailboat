@@ -149,8 +149,20 @@ export function ThreadList({
                 </span>
               </div>
               <div
-                className={`flex items-center gap-1.5 truncate ${t.unread ? "font-semibold text-content" : "font-medium text-content/70"}`}
+                // Not `truncate` here: its clipping would hide the paperclip
+                // in the gutter; the subject truncates itself.
+                className={`relative flex min-w-0 items-center gap-1.5 ${t.unread ? "font-semibold text-content" : "font-medium text-content/70"}`}
               >
+                {t.hasAttachments && (
+                  // In the gutter under the unread dot, centred on the same
+                  // line, so it never pushes the subject around.
+                  <AttachmentIcon
+                    size={11}
+                    strokeWidth={2}
+                    className="absolute top-1/2 -left-4 -translate-y-1/2 text-content/35"
+                    aria-label="Has attachments"
+                  />
+                )}
                 {t.starred && (
                   <StarIcon
                     size={12}
@@ -160,13 +172,6 @@ export function ThreadList({
                   />
                 )}
                 <span className="truncate">{t.subject || "(no subject)"}</span>
-                {t.hasAttachments && (
-                  <AttachmentIcon
-                    size={12}
-                    className="shrink-0 text-content/45"
-                    aria-label="Has attachments"
-                  />
-                )}
               </div>
               <div className="truncate text-xs font-medium text-content/40">{t.snippet}</div>
             </div>

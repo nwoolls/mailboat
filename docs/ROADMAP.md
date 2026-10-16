@@ -375,6 +375,9 @@ split per account for selections that span accounts.
       *(moved from Later: uses the same attachment download as above)*.
       They show even where remote images are blocked (they're part of the
       email)
+- [x] The paperclip for mail with attachments sits in the row's left
+      gutter, under the unread dot on the subject line, instead of after
+      the subject *(owner request, 2026-10-16)*
 - [x] Tidy placeholders instead of broken "?" boxes where images don't
       load (blocked remote images, missing inline ones), sized as the
       email asked *(moved from the UX Spike's deferred ideas)*
