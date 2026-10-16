@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { Address } from "../../../platform/tauri/bindings";
 import { useContactSuggestions } from "../../../shared/lib/queries";
 import {
@@ -10,6 +10,65 @@ import {
 } from "../model/addresses";
 
 type Anchor = { left: number; top: number; width: number };
+
+/**
+ * The matches under an address line. It sits in the browser's top layer
+ * (a manual popover, like `Menu`), so no panel can clip it and no
+ * transformed ancestor (the card's entrance animation) can move it: a
+ * plain `position: fixed` list ended up off to the side, out of sight.
+ */
+function SuggestionList({
+  id,
+  anchor,
+  suggestions,
+  current,
+  onHover,
+  onPick,
+}: {
+  id: string;
+  anchor: Anchor;
+  suggestions: Address[];
+  current: number;
+  onHover: (index: number) => void;
+  onPick: (a: Address) => void;
+}) {
+  const ref = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    el?.showPopover();
+    return () => {
+      if (el?.matches(":popover-open")) el.hidePopover();
+    };
+  }, []);
+  return (
+    <ul
+      ref={ref}
+      id={id}
+      popover="manual"
+      role="listbox"
+      className="menu fixed m-0 max-h-72 overflow-y-auto rounded-lg p-1 text-[13px] text-content"
+      style={{ left: anchor.left, top: anchor.top, width: Math.min(anchor.width, 420) }}
+      // Keep focus in the box while clicking a suggestion.
+      onMouseDown={(e) => e.preventDefault()}
+    >
+      {suggestions.map((s, i) => (
+        <li
+          key={s.email}
+          role="option"
+          aria-selected={i === current}
+          onMouseEnter={() => onHover(i)}
+          onClick={() => onPick(s)}
+          className={`flex cursor-default flex-col rounded-md px-2.5 py-1.5 ${
+            i === current ? "bg-selection-strong" : ""
+          }`}
+        >
+          <span className="truncate">{s.name ?? s.email}</span>
+          {s.name && <span className="truncate text-xs text-content/50">{s.email}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /**
  * A To/Cc/Bcc line: chosen people as chips, then a text box. Typing
@@ -151,30 +210,14 @@ export function AddressField({
       />
       {trailing}
       {open && (
-        <ul
+        <SuggestionList
           id={listId}
-          role="listbox"
-          className="menu fixed z-50 max-h-72 overflow-y-auto rounded-lg p-1"
-          style={{ left: anchor.left, top: anchor.top, width: Math.min(anchor.width, 420) }}
-          // Keep focus in the box while clicking a suggestion.
-          onMouseDown={(e) => e.preventDefault()}
-        >
-          {suggestions.map((s, i) => (
-            <li
-              key={s.email}
-              role="option"
-              aria-selected={i === current}
-              onMouseEnter={() => setActive(i)}
-              onClick={() => pick(s)}
-              className={`flex cursor-default flex-col rounded-md px-2.5 py-1.5 ${
-                i === current ? "bg-selection-strong" : ""
-              }`}
-            >
-              <span className="truncate">{s.name ?? s.email}</span>
-              {s.name && <span className="truncate text-xs text-content/50">{s.email}</span>}
-            </li>
-          ))}
-        </ul>
+          anchor={anchor}
+          suggestions={suggestions}
+          current={current}
+          onHover={setActive}
+          onPick={pick}
+        />
       )}
     </div>
   );

@@ -383,7 +383,9 @@ html.resizing .panel-slide {
   box-shadow:
     inset 0 0 0 1px var(--color-stroke),
     0 24px 56px -12px rgb(0 0 0 / 0.5);
-  animation: toast-in 180ms var(--motion-ease-out) both;
+  /* "backwards", not "both": a transform kept after the animation would
+     make the card the frame for anything fixed-positioned inside it. */
+  animation: toast-in 180ms var(--motion-ease-out) backwards;
 }
 @media (prefers-reduced-motion: reduce) {
   .compose-card {
