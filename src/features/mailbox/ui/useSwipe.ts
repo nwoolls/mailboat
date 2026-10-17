@@ -9,6 +9,7 @@ import {
   openRest,
   releaseTo,
   springStep,
+  SWIPE,
   type SwipeSide,
   swipeActions,
   type WheelGesture,
@@ -26,6 +27,8 @@ export type SwipeState = {
    * sliding out after an archive.
    */
   mode: "drag" | "open" | "settle" | "out";
+  /** Where this swipe started, if on a row that was already open. */
+  from?: number | null;
 };
 
 function actionOf(threads: ThreadSummary[], s: SwipeState): ThreadAction | null {
@@ -62,7 +65,13 @@ export function useSwipe(
       const tick = (now: number) => {
         const dt = Math.min(0.032, (now - last) / 1000);
         last = now;
-        const step = springStep(x, v, target, dt);
+        const step = springStep(
+          x,
+          v,
+          target,
+          dt,
+          target === 0 ? { stiffness: SWIPE.closeStiffness, damping: SWIPE.closeDamping } : SWIPE,
+        );
         x = step.x;
         v = step.v;
         if (step.done) {
@@ -80,7 +89,7 @@ export function useSwipe(
   /** Lets go: does the action, rests open, or springs back. */
   const release = useCallback(
     (s: SwipeState) => {
-      const to = releaseTo(s.d);
+      const to = releaseTo(s.d, undefined, s.from ?? null);
       const action = actionOf(live.current.threads, s);
       if (to === "commit" && action) {
         if (s.side === "left") {
@@ -123,6 +132,7 @@ export function useSwipe(
     // side). Swiping back past closed stops there, as in Mimestream: the
     // other side needs a new swipe.
     let side: SwipeSide | null = null;
+    let resumedFrom: number | null = null;
     let idle = 0;
     let ended = false;
     // macOS says when fingers touch and lift (src-tauri/src/trackpad.rs).
@@ -160,6 +170,7 @@ export function useSwipe(
         const open = live.current.swipe;
         const resuming = open && open.id === row && open.mode !== "drag";
         start = resuming ? (open.side === "left" ? 1 : -1) * open.d : 0;
+        resumedFrom = resuming ? open.d : null;
         side = resuming ? open.side : null;
       }
       gesture = feedWheel(gesture, e.deltaX, e.deltaY);
@@ -188,7 +199,7 @@ export function useSwipe(
       cancelAnimationFrame(frame.current);
       // A side with nothing to do barely gives.
       const d = can ? travel : Math.min(12, travel * 0.15);
-      setSwipe({ id: row, side, d, mode: "drag" });
+      setSwipe({ id: row, side, d, mode: "drag", from: resumedFrom });
     };
     // A click anywhere but the open row's button closes it.
     const onPointerDown = (e: PointerEvent) => {

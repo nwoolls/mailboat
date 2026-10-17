@@ -34,9 +34,17 @@ export const SWIPE = {
   maxPull: 200,
   /** Row travel under which a release springs back instead of opening. */
   openAt: 48,
+  /**
+   * Pushing an open row back by this much (finger travel) is enough to
+   * put it away on release: putting back is eager, opening is deliberate.
+   */
+  closeBack: 16,
   /** Spring for settling (stiffness, damping): slightly bouncy. */
   stiffness: 420,
   damping: 26,
+  /** Going home: quicker, barely bouncing. */
+  closeStiffness: 560,
+  closeDamping: 40,
 } as const;
 
 export type SwipeSide = "left" | "right";
@@ -94,10 +102,19 @@ export function swipePose(d: number, s = SWIPE): SwipePose {
   };
 }
 
-/** Where a released swipe goes: the action, open with its button, or back. */
-export function releaseTo(d: number, s = SWIPE): "commit" | "open" | "close" {
+/**
+ * Where a released swipe goes: the action, open with its button, or back.
+ * `from` is where a swipe on an already open row started: pushed back a
+ * little from there, it closes.
+ */
+export function releaseTo(
+  d: number,
+  s = SWIPE,
+  from: number | null = null,
+): "commit" | "open" | "close" {
   const shift = rowShift(d, s);
   if (shift >= armShift(s)) return "commit";
+  if (from !== null && d <= from - s.closeBack) return "close";
   return shift >= s.openAt ? "open" : "close";
 }
 

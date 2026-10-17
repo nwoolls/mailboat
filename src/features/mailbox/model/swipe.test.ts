@@ -58,6 +58,14 @@ describe("release", () => {
     expect(releaseTo(20)).toBe("close");
   });
 
+  it("puts an open row away with a small push back", () => {
+    const rest = openRest();
+    expect(releaseTo(rest - SWIPE.closeBack, SWIPE, rest)).toBe("close");
+    expect(releaseTo(rest - 4, SWIPE, rest)).toBe("open");
+    // Opening from closed still needs the same travel as before.
+    expect(releaseTo(rest - SWIPE.closeBack)).toBe("open");
+  });
+
   it("settles on its target", () => {
     let s = { x: 100, v: 0, done: false };
     for (let i = 0; i < 200 && !s.done; i++) s = springStep(s.x, s.v, 0, 1 / 60);
