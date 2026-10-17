@@ -479,20 +479,35 @@ fn draft_row(db: &Db, id: DraftId) -> Result<Option<(AccountId, String)>> {
         .optional()?)
 }
 
-/// Deletes a draft from Gmail (with its own account's client) and here.
-/// Already gone is fine.
+/// Deletes a draft from Gmail (with its own account's client) and here,
+/// including its cached message, so it leaves its conversation and the
+/// Drafts list at once (not at the next sync, which let it be reopened
+/// and deleted a second time). Already gone is fine. Returns the account
+/// it was in, if it was still known here.
 pub async fn delete_draft(
     db: &Db,
     gmail_for: &impl Fn(AccountId) -> Result<GmailClient>,
     id: DraftId,
-) -> Result<()> {
+) -> Result<Option<AccountId>> {
     let Some((account, gmail_id)) = draft_row(db, id)? else {
-        return Ok(());
+        return Ok(None);
     };
     gmail_for(account)?.delete_draft(&gmail_id).await?;
-    db.conn()
-        .execute("DELETE FROM drafts WHERE id = ?1", [id])?;
-    Ok(())
+    let cached: Option<String> = db
+        .conn()
+        .query_row(
+            "SELECT m.gmail_message_id FROM drafts d JOIN messages m ON m.id = d.message_id
+             WHERE d.id = ?1",
+            [id],
+            |r| r.get(0),
+        )
+        .optional()?;
+    let mut conn = db.conn();
+    if let Some(message) = cached {
+        store::delete_messages(&mut conn, account, &[message])?;
+    }
+    conn.execute("DELETE FROM drafts WHERE id = ?1", [id])?;
+    Ok(Some(account))
 }
 
 /// Cleans an original for quoting in mail we send: scripts, forms,
@@ -721,9 +736,17 @@ pub async fn open_draft(db: &Db, gmail: &GmailClient, message: MessageId) -> Res
 /// Discards a draft shown in a conversation (wherever it was made): deleted
 /// from Gmail and from the cache at once.
 pub async fn discard_draft_message(db: &Db, gmail: &GmailClient, message: MessageId) -> Result<()> {
-    let (account, gmail_message_id) = store::message_gmail_ref(&db.conn(), message)?;
+    let found = store::message_gmail_ref(&db.conn(), message);
+    let (account, gmail_message_id) = match found {
+        Ok(found) => found,
+        // Already removed here (deleting its draft takes the message too).
+        Err(CoreError::NotFound(_)) => return Ok(()),
+        Err(e) => return Err(e),
+    };
     match draft_for_message(db, gmail, message).await {
-        Ok(draft) => delete_draft(db, &|_| Ok(gmail.clone()), draft).await?,
+        Ok(draft) => {
+            delete_draft(db, &|_| Ok(gmail.clone()), draft).await?;
+        }
         // Already gone from Gmail (deleted, or replaced by a later save):
         // only the cached copy is left to remove.
         Err(CoreError::NotFound(_)) => {}

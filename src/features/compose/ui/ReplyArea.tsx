@@ -53,12 +53,18 @@ export function ReplyArea({
   const compose = useComposeState();
   const reply = replyIn(compose, detail.thread.id);
   const popped = poppedReplyIn(compose, detail.thread.id);
+  // Once a reply was open on this visit, its draft isn't reopened by
+  // itself: it was just sent, closed or deleted (the cached copy can
+  // linger until the conversation refreshes).
+  const [hadReply, setHadReply] = useState(false);
+  if ((reply || popped) && !hadReply) setHadReply(true);
   // A draft reply saved in this conversation (here or in Gmail elsewhere)
   // opens as the reply being written, as in Gmail, once per visit.
   const pendingDraft = detail.messages.findLast((m) => m.draft);
   const resumeId =
     !reply &&
     !popped &&
+    !hadReply &&
     pendingDraft &&
     detail.messages.some((m) => !m.draft) &&
     !draftFinished(pendingDraft.id)

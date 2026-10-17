@@ -718,11 +718,21 @@ pub async fn draft_save(
     Ok(id)
 }
 
-/// Deletes a saved draft (discarded), from Gmail too.
+/// Deletes a saved draft (discarded), from Gmail too, and lists refresh
+/// (it leaves its conversation and Drafts at once).
 #[tauri::command]
 #[specta::specta]
-pub async fn draft_delete(state: State<'_, AppState>, draft: DraftId) -> CmdResult<()> {
-    Ok(compose::delete_draft(&state.db, &|account| state.gmail_for(account), draft).await?)
+pub async fn draft_delete(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    draft: DraftId,
+) -> CmdResult<()> {
+    let account =
+        compose::delete_draft(&state.db, &|account| state.gmail_for(account), draft).await?;
+    if let Some(account_id) = account {
+        let _ = MailChangedEvent { account_id }.emit(&app);
+    }
+    Ok(())
 }
 
 /// Opens a draft shown in a conversation for editing (made here or in

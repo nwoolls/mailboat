@@ -522,6 +522,41 @@ async fn a_draft_made_elsewhere_is_found_and_discarded() {
 }
 
 #[tokio::test]
+async fn deleting_a_draft_takes_it_out_of_its_conversation_at_once() {
+    let server = MockServer::start().await;
+    mount_drafts(&server, "d1").await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    load_t1(&db, a);
+    // A saved draft reply, cached as m2 in its conversation.
+    let m2 = message_id(&db, a, "m2");
+    let id: mailboat_core::model::DraftId = db
+        .conn()
+        .query_row(
+            "INSERT INTO drafts (account_id, gmail_draft_id, message_id, updated_at)
+             VALUES (?1, 'd1', ?2, 0) RETURNING id",
+            rusqlite::params![a, m2],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let uri = server.uri();
+    let gmail_for = |_| Ok(client(&uri).0);
+
+    compose::delete_draft(&db, &gmail_for, id).await.unwrap();
+    let left: i64 = db
+        .conn()
+        .query_row("SELECT COUNT(*) FROM messages WHERE id = ?1", [m2], |r| {
+            r.get(0)
+        })
+        .unwrap();
+    assert_eq!(left, 0, "not left to be reopened before the next sync");
+    // Discarding it by its message afterwards is fine: already gone.
+    compose::discard_draft_message(&db, &client(&uri).0, m2)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
 async fn conversations_that_are_only_a_draft_say_so() {
     use mailboat_core::db::query;
     use mailboat_core::db::store::{IncomingMessage, IncomingThread};
