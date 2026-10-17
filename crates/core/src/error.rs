@@ -21,7 +21,7 @@ pub enum CoreError {
     HistoryExpired,
     #[error("network error: {0}")]
     Network(String),
-    #[error("Gmail API error {status}: {message}")]
+    #[error("Google API error {status}: {message}")]
     Api { status: u16, message: String },
     #[error("configuration error: {0}")]
     Config(String),
