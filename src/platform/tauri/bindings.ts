@@ -478,6 +478,8 @@ export type ThreadSummary = {
 	inTrash: boolean,
 	/**  User labels on the thread (all of the thread's own account). */
 	labelIds: LabelId[],
+	/**  Nothing but an unsent draft: opening it goes to the composer. */
+	onlyDraft: boolean,
 };
 
 /* Tauri Specta runtime */

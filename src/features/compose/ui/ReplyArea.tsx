@@ -3,7 +3,9 @@ import { ForwardIcon, type IconProps, ReplyAllIcon, ReplyIcon } from "../../../s
 import { type ComposeEntry, replyIn } from "../model/composeState";
 import { type ComposeKind, editorKey } from "../model/draft";
 import { ComposeForm } from "./ComposeForm";
-import { closeDraft, updateDraft, useComposeState } from "./useCompose";
+import { useEffect, useRef, useState } from "react";
+import type { MessageId } from "../../../platform/tauri/bindings";
+import { closeDraft, draftFinished, resumeDraft, updateDraft, useComposeState } from "./useCompose";
 
 /**
  * The foot of a conversation: Reply / Reply all / Forward, or the reply
@@ -23,6 +25,25 @@ export function ReplyArea({
   onSend: (entry: ComposeEntry) => void;
 }) {
   const reply = replyIn(useComposeState(), detail.thread.id);
+  // A draft reply saved in this conversation (here or in Gmail elsewhere)
+  // opens as the reply being written, as in Gmail, once per visit.
+  const pendingDraft = detail.messages.findLast((m) => m.draft);
+  const resumeId =
+    !reply &&
+    pendingDraft &&
+    detail.messages.some((m) => !m.draft) &&
+    !draftFinished(pendingDraft.id)
+      ? pendingDraft.id
+      : null;
+  const asked = useRef<MessageId | null>(null);
+  const [failed, setFailed] = useState<MessageId | null>(null);
+  useEffect(() => {
+    if (resumeId === null || asked.current === resumeId) return;
+    asked.current = resumeId;
+    void resumeDraft(resumeId).then((ok) => {
+      if (!ok) setFailed(resumeId);
+    });
+  }, [resumeId]);
   if (reply) {
     const { draft } = reply;
     const account = accounts.find((a) => a.id === draft.accountId);
@@ -48,6 +69,8 @@ export function ReplyArea({
       </section>
     );
   }
+  if (resumeId !== null && failed !== resumeId)
+    return <div className="px-4 pt-3 pb-4 text-xs text-content/45">Opening your draft…</div>;
   // Reply all only when there's someone else to include.
   const last = detail.messages.findLast((m) => !m.draft);
   const several = last ? last.to.length + last.cc.length > 1 : false;

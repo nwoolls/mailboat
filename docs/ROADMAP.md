@@ -533,16 +533,16 @@ Stage 4: drafts and undo send
       it once the mail has gone. Quitting during Undo send no longer
       loses the message. Drafts show as "Draft" in their conversation,
       and replies skip them
-- [x] Drafts can be resumed and discarded *(owner: blocked testing
-      without it, 2026-10-16)*: a draft shown in a conversation (open it
-      from the sidebar's Drafts, which already lists every account's)
-      has Edit and Discard. Edit reopens it, a reply inline in its
-      conversation, anything else in the card, wherever it was started
-      (Gmail on the web, a phone); Discard asks, then deletes it from
-      Gmail. ✕ now closes at once and saves in the background; if that
-      fails, the card comes back with the error. Not yet: a resumed
-      draft's saved attachments; opening a draft straight into the editor
-      from the Drafts list, as Gmail does
+- [x] Drafts open as Gmail opens them *(owner feedback, 2026-10-16: the
+      first try previewed a draft with Edit/Discard buttons)*: clicking a
+      conversation that's only a draft (a new message) opens it straight
+      in the compose card; opening a conversation with a draft reply
+      shows the real messages, with the draft already open as the reply
+      at the foot. Works for drafts made in Gmail elsewhere too. Discard
+      is the composer's own trash button (deleted from Gmail, and gone
+      from the list at once). ✕ closes at once and saves in the
+      background; if that fails, the card comes back with the error. Not
+      yet: a resumed draft's saved attachments
 - [x] Undo send (5 seconds): Send closes the message at once and
       "Sending…" offers Undo (or `z` / ⌘Z) for 5 seconds before anything
       goes to Google; Undo puts it back exactly as it was. If sending then

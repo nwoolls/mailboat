@@ -82,6 +82,21 @@ export function updateDraft(id: number, change: (d: Draft) => Draft) {
  * draft was discarded deletes what it made.
  */
 const SAVE_DELAY_MS = 2500;
+
+/**
+ * Draft messages that were reopened and then closed, sent or discarded
+ * this session. A conversation opens its draft reply automatically, but
+ * not one of these: the cached copy lingers until the next sync.
+ */
+const finishedDrafts = new Set<MessageId>();
+
+export function draftFinished(message: MessageId): boolean {
+  return finishedDrafts.has(message);
+}
+
+function finish(entry: S.ComposeEntry | undefined) {
+  if (entry?.draft.resumedFrom != null) finishedDrafts.add(entry.draft.resumedFrom);
+}
 type SaveSlot = {
   timer?: number;
   running?: Promise<boolean>;
@@ -154,6 +169,7 @@ export function closeKeepingDraft(id: number) {
   }
   const s = slot(id);
   s.closed = entry;
+  finish(entry);
   set(S.close(state, id));
   void saveNow(id).then((ok) => {
     saves.delete(id);
@@ -172,7 +188,7 @@ export function closeKeepingDraft(id: number) {
 }
 
 /** Opens a saved draft (from its conversation) for editing. */
-export async function resumeDraft(messageId: MessageId) {
+export async function resumeDraft(messageId: MessageId): Promise<boolean> {
   try {
     const opened = await unwrap(commands.draftOpen(messageId));
     const already = [...state.cards, ...state.replies].find(
@@ -184,27 +200,32 @@ export async function resumeDraft(messageId: MessageId) {
           ? S.expand(state, already.draft.id)
           : S.focus(state, already.draft.id),
       );
-      return;
+      return true;
     }
-    const draft = resumedDraft(opened);
+    const draft = resumedDraft(opened, messageId);
     set(draft.kind === "new" ? S.openCard(state, draft) : S.openReply(state, draft));
+    return true;
   } catch (e) {
+    // Not offered again this session (it may be gone from Gmail).
+    finishedDrafts.add(messageId);
     showToast({
       tone: "error",
       message: `Couldn’t open the draft: ${e instanceof Error ? e.message : String(e)}`,
     });
+    return false;
   }
 }
 
-/** Discards a draft shown in a conversation, from Gmail too. */
-export async function discardDraftMessage(messageId: MessageId) {
+/** Opens a conversation that's only a draft straight into the composer. */
+export async function resumeThreadDraft(threadId: ThreadId) {
   try {
-    await unwrap(commands.draftDiscard(messageId));
-    showToast({ message: "Draft discarded" });
+    const detail = await unwrap(commands.threadGet(threadId));
+    const draft = detail.messages.findLast((m) => m.draft);
+    if (draft) await resumeDraft(draft.id);
   } catch (e) {
     showToast({
       tone: "error",
-      message: `Couldn’t discard the draft: ${e instanceof Error ? e.message : String(e)}`,
+      message: `Couldn’t open the draft: ${e instanceof Error ? e.message : String(e)}`,
     });
   }
 }
@@ -224,14 +245,23 @@ export function closeDraft(id: number) {
   window.clearTimeout(s.timer);
   s.discarded = true;
   set(S.close(state, id));
+  finish(entry);
   const savedId = entry?.draft.savedId;
-  if (savedId !== null && savedId !== undefined)
-    unwrap(commands.draftDelete(savedId)).catch((e: unknown) =>
-      showToast({
-        tone: "error",
-        message: `Couldn’t delete the draft from Gmail: ${e instanceof Error ? e.message : String(e)}`,
-      }),
-    );
+  const from = entry?.draft.resumedFrom;
+  // A reopened draft is discarded by its message, which also takes it out
+  // of the conversation and the Drafts list at once.
+  const deleting =
+    savedId !== null && savedId !== undefined ? unwrap(commands.draftDelete(savedId)) : null;
+  const discarding =
+    from != null
+      ? (deleting ?? Promise.resolve()).then(() => unwrap(commands.draftDiscard(from)))
+      : deleting;
+  discarding?.catch((e: unknown) =>
+    showToast({
+      tone: "error",
+      message: `Couldn’t delete the draft from Gmail: ${e instanceof Error ? e.message : String(e)}`,
+    }),
+  );
   if (!s.running) saves.delete(id);
 }
 
@@ -303,7 +333,8 @@ export function useComposeActions(accounts: Account[]) {
     // waited for so the right draft is deleted once sent.
     const pending = slot(draft.id);
     window.clearTimeout(pending.timer);
-    const inFlight = pending.running ?? Promise.resolve();
+    const inFlight = pending.running ?? Promise.resolve(true);
+    finish(entry);
     set(S.close(state, draft.id));
     let undone = false;
     let started = false;

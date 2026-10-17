@@ -518,3 +518,29 @@ async fn a_draft_made_elsewhere_is_found_and_discarded() {
         .unwrap();
     assert_eq!(left, 0, "gone from the cache at once");
 }
+
+#[tokio::test]
+async fn conversations_that_are_only_a_draft_say_so() {
+    use mailboat_core::db::query;
+    use mailboat_core::db::store::{IncomingMessage, IncomingThread};
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1(&db, a);
+    let draft_only = store::upsert_thread(
+        &mut db.conn(),
+        a,
+        &IncomingThread {
+            gmail_thread_id: "td".into(),
+            messages: vec![IncomingMessage {
+                gmail_message_id: "md".into(),
+                label_ids: vec!["DRAFT".into()],
+                internal_date: 5,
+                ..Default::default()
+            }],
+        },
+    )
+    .unwrap();
+    let conn = db.conn();
+    assert!(query::thread_summary(&conn, draft_only).unwrap().only_draft);
+    assert!(!query::thread_summary(&conn, t1).unwrap().only_draft);
+}

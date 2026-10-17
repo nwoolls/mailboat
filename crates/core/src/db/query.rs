@@ -36,7 +36,12 @@ const THREAD_COLUMNS: &str =
     SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
     WHERE ml.message_id = m.id AND l.gmail_label_id = 'TRASH')),
   (SELECT group_concat(tl.label_id) FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
-   WHERE tl.thread_id = t.id AND l.kind = 'user')";
+   WHERE tl.thread_id = t.id AND l.kind = 'user'),
+  EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
+          WHERE tl.thread_id = t.id AND l.gmail_label_id = 'DRAFT')
+  AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = t.id AND NOT EXISTS (
+    SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+    WHERE ml.message_id = m.id AND l.gmail_label_id = 'DRAFT'))";
 
 fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
     let senders: String = row.get(4)?;
@@ -59,6 +64,7 @@ fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
             .split(',')
             .filter_map(|id| id.parse().ok().map(LabelId))
             .collect(),
+        only_draft: row.get(13)?,
     })
 }
 

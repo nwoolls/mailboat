@@ -206,6 +206,8 @@ pub struct ThreadSummary {
     pub in_trash: bool,
     /// User labels on the thread (all of the thread's own account).
     pub label_ids: Vec<LabelId>,
+    /// Nothing but an unsent draft: opening it goes to the composer.
+    pub only_draft: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]

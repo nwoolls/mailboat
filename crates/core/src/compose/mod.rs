@@ -558,8 +558,13 @@ pub async fn open_draft(db: &Db, gmail: &GmailClient, message: MessageId) -> Res
 /// Discards a draft shown in a conversation (wherever it was made): deleted
 /// from Gmail and from the cache at once.
 pub async fn discard_draft_message(db: &Db, gmail: &GmailClient, message: MessageId) -> Result<()> {
-    let draft = draft_for_message(db, gmail, message).await?;
     let (account, gmail_message_id) = store::message_gmail_ref(&db.conn(), message)?;
-    delete_draft(db, &|_| Ok(gmail.clone()), draft).await?;
+    match draft_for_message(db, gmail, message).await {
+        Ok(draft) => delete_draft(db, &|_| Ok(gmail.clone()), draft).await?,
+        // Already gone from Gmail (deleted, or replaced by a later save):
+        // only the cached copy is left to remove.
+        Err(CoreError::NotFound(_)) => {}
+        Err(e) => return Err(e),
+    }
     store::delete_messages(&mut db.conn(), account, &[gmail_message_id])
 }

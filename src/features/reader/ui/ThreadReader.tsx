@@ -11,7 +11,6 @@ import type { AccountIndex } from "../../accounts/model/accounts";
 import { displayName, formatFullDate, formatListDate } from "../../mailbox/model/format";
 import { useThreadAction } from "../../mailbox/ui/useThreadAction";
 import { wholePixelSlack } from "../model/pixelSnap";
-import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { MessageFrame } from "./MessageFrame";
 
 /** Messages expanded when a thread opens: unread ones plus the newest. */
@@ -22,23 +21,15 @@ export function initiallyExpanded(messages: Pick<MessageMeta, "id" | "unread">[]
   return open;
 }
 
-export type DraftActions = {
-  edit: (message: MessageId) => void;
-  discard: (message: MessageId) => void;
-};
-
 export function ThreadReader({
   threadId,
   accounts,
   renderFooter,
-  draftActions,
 }: {
   threadId: ThreadId;
   accounts: AccountIndex;
   /** Under the last message: the reply buttons, or a reply being written. */
   renderFooter?: (detail: ThreadDetail) => React.ReactNode;
-  /** Resume or discard a draft shown in the conversation. */
-  draftActions?: DraftActions;
 }) {
   const thread = useThread(threadId);
   if (thread.error) return <div className="selectable p-8 text-danger">{thread.error.message}</div>;
@@ -53,7 +44,6 @@ export function ThreadReader({
       accounts={accounts}
       leaving={thread.isPlaceholderData}
       renderFooter={renderFooter}
-      draftActions={draftActions}
     />
   );
 }
@@ -63,16 +53,12 @@ function ThreadBody({
   accounts,
   leaving,
   renderFooter,
-  draftActions,
 }: {
   detail: ThreadDetail;
   accounts: AccountIndex;
   leaving: boolean;
   renderFooter?: (detail: ThreadDetail) => React.ReactNode;
-  draftActions?: DraftActions;
 }) {
-  // The draft waiting on "Discard this draft?".
-  const [discarding, setDiscarding] = useState<MessageId | null>(null);
   const contentRef = useWholePixelHeight();
   const [expanded, setExpanded] = useState<Set<MessageId>>(() => initiallyExpanded(data.messages));
   // Every message opened so far; its body stays mounted when closed.
@@ -86,6 +72,11 @@ function ThreadBody({
   useEffect(() => {
     if (unreadWhenOpened) act({ ids: [threadId], action: { kind: "read", read: true } });
   }, [threadId, unreadWhenOpened, act]);
+  // A draft reply opens as the reply being written at the foot (as in
+  // Gmail), so it isn't listed as a message too. A conversation that's
+  // only a draft still shows it.
+  const real = data.messages.filter((m) => !m.draft);
+  const shown = real.length > 0 ? real : data.messages;
   const account = accounts.get(data.thread.accountId);
   const selfEmails = account ? [account.email] : [];
   // Which account it's in matters only when there's more than one.
@@ -135,7 +126,7 @@ function ThreadBody({
           list panel; collapsed ones are a shade lighter. Avatar, notice and
           body share one left edge (16px), as does the subject above. */}
         <div className="flex flex-col gap-2">
-          {data.messages.map((m) => {
+          {shown.map((m) => {
             const isOpen = expanded.has(m.id);
             const name = displayName(m.from, selfEmails);
             const toggle = () =>
@@ -200,24 +191,6 @@ function ThreadBody({
                     </div>
                   </Fold>
                 </button>
-                {m.draft && draftActions && (
-                  <div className="flex items-center gap-1 px-4 pb-2 pl-14 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => draftActions.edit(m.id)}
-                      className="rounded-md px-2 py-1 font-medium text-accent hover:bg-selection"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDiscarding(m.id)}
-                      className="rounded-md px-2 py-1 text-content/60 hover:bg-selection hover:text-content"
-                    >
-                      Discard
-                    </button>
-                  </div>
-                )}
                 {/* Stays loaded after the first open, so closing animates too. */}
                 <Fold open={isOpen}>
                   {opened.has(m.id) && (
@@ -231,20 +204,6 @@ function ThreadBody({
           })}
         </div>
         {renderFooter?.(data)}
-        {discarding !== null && draftActions && (
-          <ConfirmDialog
-            title="Discard this draft?"
-            confirmLabel="Discard"
-            danger
-            onConfirm={() => {
-              draftActions.discard(discarding);
-              setDiscarding(null);
-            }}
-            onCancel={() => setDiscarding(null)}
-          >
-            <p>It’s deleted from Gmail’s Drafts too.</p>
-          </ConfirmDialog>
-        )}
       </div>
     </article>
   );

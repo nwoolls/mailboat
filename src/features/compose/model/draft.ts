@@ -48,6 +48,8 @@ export type Draft = {
   signature: string;
   /** The Gmail draft it's saved as (local ID), once saved. */
   savedId: DraftId | null;
+  /** The draft message it was reopened from (shown in a conversation). */
+  resumedFrom: MessageId | null;
   /** Files to send with it. */
   attachments: OutgoingAttachment[];
   /** The message replied to or forwarded. */
@@ -161,6 +163,7 @@ export function newDraft(
     signature: signatureOf(identities, accountId, from),
     attachments: [],
     savedId: null,
+    resumedFrom: null,
     replyingTo: null,
     threadId: null,
     showCc: false,
@@ -319,6 +322,7 @@ export function replyDraft(
     signature: signatureOf(identities, source.accountId, from),
     attachments: [],
     savedId: null,
+    resumedFrom: null,
     quote,
     quoteText: quoteCopy,
     // Filled in by the editor as soon as it loads the HTML.
@@ -337,7 +341,7 @@ export function replyDraft(
  * saved body goes into the editor (signature and quote included, as
  * saved), so nothing is added again when it's sent.
  */
-export function resumedDraft(opened: OpenedDraft): Draft {
+export function resumedDraft(opened: OpenedDraft, from: MessageId): Draft {
   const reply = opened.replyingTo !== null;
   return {
     id: nextId++,
@@ -355,6 +359,7 @@ export function resumedDraft(opened: OpenedDraft): Draft {
     quoteText: "",
     signature: "",
     savedId: opened.draft,
+    resumedFrom: from,
     attachments: [],
     replyingTo: opened.replyingTo,
     threadId: reply ? opened.threadId : null,

@@ -285,9 +285,10 @@ it("a resumed draft goes inline when it's a reply, in the card otherwise", () =>
     text: "Sure",
     replyingTo: 10,
   };
-  const reply = resumedDraft(opened);
+  const reply = resumedDraft(opened, 77);
+  expect(reply.resumedFrom).toBe(77);
   expect([reply.kind, reply.threadId, reply.savedId, reply.showBcc]).toEqual(["reply", 5, 9, true]);
   expect(reply.signature).toBe("");
-  const fresh = resumedDraft({ ...opened, replyingTo: null, html: "", text: "a\n\nb" });
+  const fresh = resumedDraft({ ...opened, replyingTo: null, html: "", text: "a\n\nb" }, 78);
   expect([fresh.kind, fresh.threadId, fresh.html]).toEqual(["new", null, "<p>a</p><p>b</p>"]);
 });

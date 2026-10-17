@@ -61,8 +61,7 @@ import { ComposeCard } from "../features/compose/ui/ComposeCard";
 import { MinimizedTabs } from "../features/compose/ui/MinimizedTabs";
 import { ReplyArea } from "../features/compose/ui/ReplyArea";
 import {
-  discardDraftMessage,
-  resumeDraft,
+  resumeThreadDraft,
   useCardSpot,
   useComposeActions,
   useComposeState,
@@ -455,6 +454,12 @@ export function Shell() {
                   return;
                 }
                 setChecked(NONE);
+                // A conversation that's only a draft opens in the composer,
+                // as in Gmail, rather than as a preview.
+                if (threads.find((t) => t.id === id)?.onlyDraft) {
+                  void resumeThreadDraft(id);
+                  return;
+                }
                 setSelectedId(id);
                 // Clicking the open conversation again also brings it back.
                 setReaderOpen(true);
@@ -503,7 +508,6 @@ export function Shell() {
                   <ThreadReader
                     threadId={shownId}
                     accounts={accounts}
-                    draftActions={{ edit: resumeDraft, discard: discardDraftMessage }}
                     renderFooter={(detail) => (
                       <ReplyArea
                         detail={detail}
