@@ -465,10 +465,9 @@ owner to try it in the app)*
 - [x] Basic floating card (lower right, the From account's colour on
       its top edge) and basic inline replies *(pulled forward from stage
       2 so there was somewhere to write; their polish stays there)*
-- Not yet: closing a card or reply with writing in it asks first, since
-  drafts aren't saved until stage 4. Sending isn't retried after a
-  timeout or server error (it might already have gone); the message
-  stays open with the error so you can decide
+- Sending isn't retried after a timeout or server error (it might
+  already have gone); the message stays open with the error so you can
+  decide. *(Closing no longer asks: drafts are saved since stage 4.)*
 
 Stage 2: the card and inline replies
 
@@ -580,6 +579,17 @@ Found while testing stage 3 (owner, 2026-10-16):
       exempt from `max-width:100%`, which shrank the cell's icons to
       nothing
 - [x] Sending attachments (rest of stage 3)
+
+Left over from Milestone 4 *(listed 2026-10-16 so they don't get lost;
+each was a "not yet" note above)*:
+
+- [ ] Drag files onto the composer to attach them
+- [ ] Forwarding includes the original's attachments, as Gmail does
+- [ ] Reopening a draft brings back its saved attachments
+- [ ] Images embedded in an email itself (`cid:`), in quotes, forwards and
+      signatures (web-hosted images already work)
+- [ ] Gmail visually collapses the blank line between a reply and its
+      quote; decide whether Mailboat should too
 
 ## Milestone 5: Polish
 
