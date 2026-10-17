@@ -771,15 +771,31 @@ each was a "not yet" note above)*:
 
 ## Milestone 6: Rules and signatures
 
+**Goal (owner, 2026-10-17): stop needing Gmail on the web.** Wanted soon
+rather than later.
+
 Both need Gmail's settings scope (`gmail.settings.basic`), which Mailboat
-doesn't ask for yet: adding it means each account signs in again once to
-approve it, and an ARCHITECTURE decision row.
+doesn't ask for yet. It's added together with `calendar.events` (meeting
+invitations, Milestone 5) so each account signs in again only once for
+both; plus an ARCHITECTURE decision row. The editors live in Settings
+(Signatures, Rules), so the Settings page comes first.
 
 - [ ] Rules (Gmail filters): list, create, edit, delete *(owner request,
       2026-10-16)*
 - [ ] Create a rule from a message, as Gmail's "Filter messages like
       these": sender, subject and so on filled in from it
 - [ ] Manage signatures per address (using them is in Milestone 4)
+- [ ] Vacation responder (same permission)
+- [ ] What else still sends the owner to Gmail on the web, to settle:
+      - Snooze and Schedule send have **no Gmail API**: Mailboat would have
+        to do them itself (hold the message or conversation and act at
+        the time, only while Mailboat is running, or with a label so it
+        shows in Gmail), so they'd differ from Gmail's own
+      - "Send mail as" aliases and forwarding need a second, more
+        sensitive permission (`gmail.settings.sharing`); probably
+        leave those in Gmail, as they're set once
+      - Inbox categories (Promotions, Social…) and blocked senders
+        (blocking is a filter, so Rules covers it)
 
 ## Later / unscheduled
 
