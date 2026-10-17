@@ -10,7 +10,7 @@ import type { ThreadAction } from "./threadActions";
  *    leaves fills with the button, same height and corners as the row,
  *    joined to it, so it looks like the row growing. Icon and word fade in.
  * 2. Break away: the button stops growing at its width; as the row keeps
- *    going the join necks and snaps (the goo blur lets go at ~12px), and
+ *    going the join necks and snaps (the goo blur lets go at ~7px), and
  *    the button stands apart. Letting go here leaves it showing, to click.
  * 3. Armed: a little further, a ring round the icon fills; when it closes
  *    the button takes an accent wash. Letting go then does the action.
@@ -25,8 +25,8 @@ export const SWIPE = {
   deadGive: 0.25,
   /** The button's width once it stops growing. */
   capsule: 84,
-  /** The gap at which button and row have clearly separated. */
-  apart: 18,
+  /** The gap once button and row have separated (the blur lets go ~7px). */
+  apart: 10,
   /** Row travel past separation at which letting go does the action. */
   armAfter: 44,
   /** Past this row travel, each pixel counts for less (rubber band). */

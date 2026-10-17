@@ -117,6 +117,10 @@ export function useSwipe(
     let gesture: WheelGesture = NEW_GESTURE;
     let row: ThreadId | null = null;
     let start = 0;
+    // One side per gesture: set by its first movement (or the open row's
+    // side). Swiping back past closed stops there, as in Mimestream: the
+    // other side needs a new swipe.
+    let side: SwipeSide | null = null;
     let idle = 0;
     let ended = false;
 
@@ -137,10 +141,9 @@ export function useSwipe(
         row = el ? Number(el.dataset.threadId) : null;
         // Swiping an open row again carries on from where it rests.
         const open = live.current.swipe;
-        start =
-          open && open.id === row && open.mode !== "drag"
-            ? (open.side === "left" ? 1 : -1) * open.d
-            : 0;
+        const resuming = open && open.id === row && open.mode !== "drag";
+        start = resuming ? (open.side === "left" ? 1 : -1) * open.d : 0;
+        side = resuming ? open.side : null;
       }
       gesture = feedWheel(gesture, e.deltaX, e.deltaY);
       if (gesture.axis === "y") {
@@ -158,12 +161,16 @@ export function useSwipe(
         return;
       }
       const total = start + gesture.dx;
-      const side: SwipeSide = total >= 0 ? "left" : "right";
+      if (side === null) {
+        if (total === 0) return;
+        side = total > 0 ? "left" : "right";
+      }
+      const travel = Math.max(0, (side === "left" ? 1 : -1) * total);
       const t = live.current.threads.find((x) => x.id === row);
       const can = t ? swipeActions(t)[side] !== null : false;
       cancelAnimationFrame(frame.current);
       // A side with nothing to do barely gives.
-      const d = can ? Math.abs(total) : Math.min(12, Math.abs(total) * 0.15);
+      const d = can ? travel : Math.min(12, travel * 0.15);
       setSwipe({ id: row, side, d, mode: "drag" });
     };
     // A click anywhere but the open row's button closes it.
