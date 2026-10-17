@@ -43,9 +43,21 @@
   --background-lightness: 9%;
   --raised-lightness: 12%;
   --content-lightness: 92%;
-  /* The owner's pick, found with a temporary transparency slider. */
-  --glass-sidebar-strength: 6.5%;
-  --glass-panel-strength: 34%;
+  /* The owner's pick, found with a temporary transparency slider.
+     Settings → Appearance adds `--glass-*-adjust` (set on this element
+     by `features/settings`) to make them clearer or more solid. */
+  --glass-sidebar-base: 6.5%;
+  --glass-panel-base: 34%;
+  --glass-sidebar-strength: clamp(
+    0%,
+    calc(var(--glass-sidebar-base) + var(--glass-sidebar-adjust, 0%)),
+    100%
+  );
+  --glass-panel-strength: clamp(
+    0%,
+    calc(var(--glass-panel-base) + var(--glass-panel-adjust, 0%)),
+    100%
+  );
   /* The compose card floats over the app's own content (often a white
      email), so it needs more tint than the panels to keep writing legible. */
   --glass-compose-strength: 72%;
@@ -57,8 +69,8 @@
     --background-lightness: 99%;
     --raised-lightness: 97%;
     --content-lightness: 12%;
-    --glass-sidebar-strength: 10%;
-    --glass-panel-strength: 37%;
+    --glass-sidebar-base: 10%;
+    --glass-panel-base: 37%;
     --glass-compose-strength: 78%;
     color-scheme: light;
   }
@@ -474,4 +486,25 @@ html.resizing .panel-slide {
   .swipe-snap {
     animation: none;
   }
+}
+
+/* Settings sliders, as MonoCode's: a thin track and a small round thumb. */
+.settings-slider {
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-content) 15%, transparent);
+  outline: none;
+}
+.settings-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--color-content);
+  cursor: pointer;
+}
+.settings-slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+  outline-offset: 2px;
 }

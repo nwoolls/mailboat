@@ -623,8 +623,8 @@ each was a "not yet" note above)*:
 ## Milestone 5: Polish
 
 *Open at the end of the 2026-10-17 session, in the order agreed: the
-Settings page (and the app icon chooser in it), then meeting invitations
-(after the new permissions, shared with Milestone 6).*
+Settings page (built), the app icon chooser in it (next), then meeting
+invitations (after the new permissions, shared with Milestone 6).*
 
 - [ ] Answer meeting invitations in the reader *(owner request,
       2026-10-16; first in this milestone)*: a card with the event (time,
@@ -728,7 +728,7 @@ Settings page (and the app icon chooser in it), then meeting invitations
       conversation (it brings Mailboat forward)
 - [ ] Settings: choose the app icon from `design/icon/choices/` (the
       folded M in 16 colours, or the earlier glass icon)
-- [ ] Settings screen *(owner request, 2026-10-16)*. Decided (owner,
+- [x] Settings screen *(owner request, 2026-10-16)*. Decided (owner,
       2026-10-17):
       - **A page in the main window** (as MonoCode): the sidebar becomes
         the list of sections with Back at its foot; Esc or Back returns to
@@ -765,6 +765,21 @@ Settings page (and the app icon chooser in it), then meeting invitations
             MCP server and AI keys (see Later)
       - First build: the page itself, openers, and the ✱ sections with
         what exists today; the others appear as their features arrive
+      - **Built (2026-10-17):** the page, its three openers (⌘, from the
+        menu bar, the gear, and "Settings" in ⌘K), Esc/Back back to the mail
+        as it was. General: About and version. Accounts: colour (from the
+        eight account colours), sync status and Sync now, Sign in again,
+        Remove…, Add account, and each account's "Send mail as" addresses
+        with which has a signature ("Open in Gmail" to change them).
+        Notifications: an on/off switch for new-mail notifications, and a
+        button to macOS's settings for style and sound. Appearance: two
+        transparency sliders (sidebar and reader, list) with Restore
+        defaults. Keyboard: every shortcut. Still to come in the ✱
+        sections, with their features: default email reader, text size,
+        delete key, sounds, Dock unread count, search scope (General);
+        renaming an account; which mail notifies, VIP (Notifications);
+        app icon (its own item below), light/dark/system, accent
+        (Appearance); rebinding keys (Keyboard)
 - [x] Remember the window between launches: position, size, and
       maximized/full-screen state *(owner request, 2026-10-16)*. Works with
       several monitors: reopens on the display it was last on, and if that

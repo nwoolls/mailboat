@@ -263,6 +263,28 @@ fresh one; small parts come with the message and have no ID at all.
    opens the real link in the default browser and answers 204 No Content,
    so the email stays put. Other links are made inert.
 
+## Settings
+
+A page in the main window, not a separate window (owner's choice, as in
+MonoCode). `Shell` keeps the open section in state; while it's set, the
+sidebar is covered by the section list (`settings/ui/SettingsNav`) and the
+list and reader by the page (`SettingsPage`). The mail underneath stays
+mounted but invisible and inert, so Esc or Back returns to it exactly as it
+was, scroll and folds included. It opens from the gear in the sidebar's
+foot bar, the ⌘K palette, and Mailboat → Settings… (⌘,), a macOS menu item
+(`src-tauri/src/menu.rs`) that emits `OpenSettingsEvent`.
+
+Settings are stored in one of two places:
+
+- **Rust acts on it** (new-mail notifications on/off): `mailboat_core::settings`,
+  one JSON value in the `app_settings` table. A setting missing from it
+  takes its default, so adding one needs no migration.
+- **Only the window uses it** (transparency): `localStorage`, applied in
+  `main.tsx` before the first render so it never flashes the default.
+
+Account colours change through `accounts::set_color`, limited to the
+palette in `ACCOUNT_COLORS`.
+
 ## Decisions
 
 | Date | Decision | Why |
@@ -327,4 +349,7 @@ fresh one; small parts come with the message and have no ID at all.
 | 2026-10-17 | Trackpad swipes on rows: distance from `wheel` events, touch and lift from macOS | Browsers don't report fingers lifting, and guessing (events stop for 110 ms) acted on a swipe the owner was still holding. `src-tauri/src/trackpad.rs` adds an AppKit local monitor (`NSEvent` scroll phases, this app's events only, passed on unchanged) that emits touch/lift; only a lift lets go. No web permission; uses `objc2-app-kit` and `block2`, already in the build through Tauri. A mouse wheel has no phases and keeps the guess (stop, or coasting: four steadily shrinking deltas). The join between row and button is an SVG "goo" filter (blur plus alpha cut) drawn in the text colour at selection strength, so it suits light, dark and the glass without a colour of its own. Numbers live in `mailbox/model/swipe.ts`. |
 | 2026-10-17 | Command palette uses `cmdk` inside our own modal `<dialog>` | cmdk was the stack's planned palette: filtering, ranking and keyboard handling done well. It brings in a few Radix packages it uses internally (26 small packages); the dialog is ours, like ConfirmDialog, so it matches the app and needs no Radix styling. |
 | 2026-10-17 | New-mail notifications from Rust with `tauri-plugin-notification` | Incremental sync already knows which messages history added; the worker reports the unread Inbox ones and Rust shows the notices, so no web permission is granted. Sender and subject appear in Notification Center (that's their purpose); nothing is logged. Full syncs never notify, so adding an account doesn't flood. |
+| 2026-10-17 | Settings Rust needs live in SQLite (`app_settings`, one JSON value); window-only settings live in `localStorage` | Rust can't read the web view's storage, and the notification switch must work with no window listening. Transparency, though, must apply before the first paint; an IPC round trip on launch would flash the default tint. JSON with serde defaults means a new setting needs no migration. |
+| 2026-10-17 | Transparency is an adjustment (percentage points) to the owner's tints, not an absolute value | Light and dark use different base tints; one adjustment keeps both in step. The sidebar slider stops at −6 because its default is already nearly clear. |
+| 2026-10-17 | Account colours only from the fixed palette | The eight colours were picked to stay distinct and readable on the glass in light and dark; a free colour picker could make an account's mark vanish. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |

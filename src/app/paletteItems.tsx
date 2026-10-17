@@ -15,6 +15,7 @@ import {
   ReplyAllIcon,
   ReplyIcon,
   SearchIcon,
+  SettingsIcon,
   SidebarToggleIcon,
   SpamIcon,
   StarIcon,
@@ -43,6 +44,7 @@ export function paletteItems(p: {
   toggleSidebar: () => void;
   toggleReader: () => void;
   showShortcuts: () => void;
+  openSettings: () => void;
   destinations: Destination[];
   goTo: (s: Selection) => void;
 }): PaletteItem[] {
@@ -146,6 +148,14 @@ export function paletteItems(p: {
     title: "Keyboard shortcuts",
     shortcut: "?",
     run: p.showShortcuts,
+  });
+  items.push({
+    id: "settings",
+    group: "View",
+    title: "Settings",
+    shortcut: "⌘,",
+    icon: SettingsIcon,
+    run: p.openSettings,
   });
   for (const d of p.destinations)
     items.push({

@@ -68,6 +68,7 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
       ["⌃⌘S", "Show / hide the sidebar"],
       ["⌃⌘R", "Show / hide the reader"],
       ["?", "These shortcuts"],
+      ["⌘,", "Settings"],
     ],
   },
 ];

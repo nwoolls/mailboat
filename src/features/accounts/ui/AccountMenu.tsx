@@ -5,7 +5,6 @@ import {
   type AccountId,
   type AccountSyncState,
 } from "../../../platform/tauri/bindings";
-import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { RemoveAccountIcon, SyncIcon } from "../../../shared/ui/icons";
 import {
   Menu,
@@ -15,7 +14,7 @@ import {
   MenuSeparator,
 } from "../../../shared/ui/Menu";
 import { syncHint } from "../model/accounts";
-import { useRemoveAccount } from "./useRemoveAccount";
+import { RemoveAccountDialog } from "./RemoveAccountDialog";
 
 /** Which account's menu is open, and where. */
 export type AccountMenuTarget = { account: Account; anchor: MenuAnchor };
@@ -37,10 +36,6 @@ export function AccountMenu({
 }) {
   // The account whose removal is being confirmed (the menu closes first).
   const [confirming, setConfirming] = useState<Account | null>(null);
-  const remove = useRemoveAccount((id) => {
-    setConfirming(null);
-    onRemoved(id);
-  });
 
   return (
     <>
@@ -64,7 +59,6 @@ export function AccountMenu({
             icon={RemoveAccountIcon}
             danger
             onSelect={() => {
-              remove.reset();
               setConfirming(target.account);
               onClose();
             }}
@@ -74,18 +68,14 @@ export function AccountMenu({
         </Menu>
       )}
       {confirming && (
-        <ConfirmDialog
-          title={`Remove ${confirming.email}?`}
-          confirmLabel="Remove"
-          danger
-          busy={remove.isPending}
-          error={remove.error ? `Couldn't remove the account: ${remove.error.message}` : null}
-          onConfirm={() => remove.mutate(confirming.id)}
+        <RemoveAccountDialog
+          account={confirming}
           onCancel={() => setConfirming(null)}
-        >
-          <p>Mailboat stops syncing it, deletes its mail saved on this Mac and forgets its sign-in.</p>
-          <p>Nothing changes in Gmail. You can add the account again at any time.</p>
-        </ConfirmDialog>
+          onRemoved={(id) => {
+            setConfirming(null);
+            onRemoved(id);
+          }}
+        />
       )}
     </>
   );

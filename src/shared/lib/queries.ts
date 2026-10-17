@@ -1,6 +1,7 @@
 import {
   keepPreviousData,
   useInfiniteQuery,
+  useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -8,7 +9,9 @@ import { useEffect } from "react";
 import { commands, events } from "../../platform/tauri/bindings";
 import type {
   AccountFilter,
+  AccountId,
   AccountSyncState,
+  AppSettings,
   MessageId,
   ThreadId,
 } from "../../platform/tauri/bindings";
@@ -29,6 +32,8 @@ export const keys = {
   message: (id: MessageId) => ["message", id] as const,
   identities: ["identities"] as const,
   contacts: ["contacts"] as const,
+  appInfo: ["appInfo"] as const,
+  appSettings: ["appSettings"] as const,
 };
 
 export function useAccounts() {
@@ -127,6 +132,52 @@ export function useContacts() {
     queryFn: () => unwrap(commands.contactsList()),
     enabled: IS_TAURI,
     staleTime: Infinity,
+  });
+}
+
+/** The app's version and the colours an account can have. */
+export function useAppInfo() {
+  return useQuery({
+    queryKey: keys.appInfo,
+    queryFn: () => commands.appInfo(),
+    enabled: IS_TAURI,
+    staleTime: Infinity,
+  });
+}
+
+/** Settings Rust acts on (Settings page). */
+export function useAppSettings() {
+  return useQuery({
+    queryKey: keys.appSettings,
+    queryFn: () => unwrap(commands.settingsGet()),
+    enabled: IS_TAURI,
+    staleTime: Infinity,
+  });
+}
+
+/** Saves settings, showing the change at once and undoing it if saving fails. */
+export function useSaveAppSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (next: AppSettings) => unwrap(commands.settingsSet(next)),
+    onMutate: (next) => {
+      const previous = qc.getQueryData<AppSettings>(keys.appSettings);
+      qc.setQueryData(keys.appSettings, next);
+      return { previous };
+    },
+    onError: (_error, _next, context) => {
+      if (context?.previous) qc.setQueryData(keys.appSettings, context.previous);
+    },
+  });
+}
+
+/** Marks an account with another colour; every view showing it refreshes. */
+export function useSetAccountColor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ account, color }: { account: AccountId; color: string }) =>
+      unwrap(commands.accountSetColor(account, color)),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.accounts }),
   });
 }
 

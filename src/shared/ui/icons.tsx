@@ -48,6 +48,14 @@ import Tag01 from "@hugeicons/core-free-icons/Tag01Icon";
 import Undo02 from "@hugeicons/core-free-icons/Undo02Icon";
 import View from "@hugeicons/core-free-icons/ViewIcon";
 import ThumbsUp from "@hugeicons/core-free-icons/ThumbsUpIcon";
+import ArrowLeft01 from "@hugeicons/core-free-icons/ArrowLeft01Icon";
+import Keyboard from "@hugeicons/core-free-icons/KeyboardIcon";
+import Notification01 from "@hugeicons/core-free-icons/Notification01Icon";
+import Palette from "@hugeicons/core-free-icons/PaletteIcon";
+import Settings02 from "@hugeicons/core-free-icons/Settings02Icon";
+import SlidersHorizontal from "@hugeicons/core-free-icons/SlidersHorizontalIcon";
+import Tick02 from "@hugeicons/core-free-icons/Tick02Icon";
+import UserMultiple from "@hugeicons/core-free-icons/UserMultipleIcon";
 
 /**
  * The app's icons: Hugeicons outline set, as MonoCode uses. Each icon is
@@ -110,3 +118,11 @@ export const LinkIcon = wrap(Link01);
 export const QuoteIcon = wrap(QuoteDown);
 export const ClearFormattingIcon = wrap(TextClear);
 export const TextColorIcon = wrap(TextColor);
+export const SettingsIcon = wrap(Settings02);
+export const BackIcon = wrap(ArrowLeft01);
+export const GeneralIcon = wrap(SlidersHorizontal);
+export const AccountsIcon = wrap(UserMultiple);
+export const NotificationIcon = wrap(Notification01);
+export const AppearanceIcon = wrap(Palette);
+export const KeyboardIcon = wrap(Keyboard);
+export const CheckIcon = wrap(Tick02);

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { commands } from "../platform/tauri/bindings";
-import type { ThreadId } from "../platform/tauri/bindings";
-import { unwrap } from "../platform/tauri/ipc";
+import { commands, events } from "../platform/tauri/bindings";
+import type { AccountId, ThreadId } from "../platform/tauri/bindings";
+import { IS_TAURI, unwrap } from "../platform/tauri/ipc";
 import { indexAccounts, syncAttention } from "../features/accounts/model/accounts";
 import { Sidebar } from "../features/accounts/ui/Sidebar";
 import {
@@ -75,6 +75,10 @@ import { ThreadReader } from "../features/reader/ui/ThreadReader";
 import { destinations } from "../features/palette/model/destinations";
 import { CommandPalette } from "../features/palette/ui/CommandPalette";
 import { paletteItems } from "./paletteItems";
+import type { SettingsSectionId } from "../features/settings/model/sections";
+import { SettingsNav } from "../features/settings/ui/SettingsNav";
+import { SettingsPage } from "../features/settings/ui/SettingsPage";
+import { SettingsTitleBar } from "../features/settings/ui/SettingsTitleBar";
 import { accountForNew } from "../features/compose/model/draft";
 import { openCardEntry } from "../features/compose/model/composeState";
 import { ComposeCard } from "../features/compose/ui/ComposeCard";
@@ -190,6 +194,16 @@ export function Shell() {
   const [labelFor, setLabelFor] = useState<ThreadId[] | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // The Settings page's section while it's open. The mail stays mounted
+  // underneath (hidden), so closing returns to it exactly as it was.
+  const [settings, setSettings] = useState<SettingsSectionId | null>(null);
+  const openSettings = useCallback(() => setSettings((open) => open ?? "general"), []);
+  // Mailboat → Settings… (⌘,) in the menu bar.
+  useEffect(() => {
+    if (!IS_TAURI) return;
+    const unlisten = events.openSettingsEvent.listen(openSettings);
+    return () => void unlisten.then((fn) => fn());
+  }, [openSettings]);
   // When `g` was pressed, for Gmail's "go to" keys (0: not waiting).
   const goPending = useRef(0);
   const goTo = useCallback((s: Selection) => {
@@ -294,6 +308,8 @@ export function Shell() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Settings handles its own keys (Esc closes it).
+      if (settings) return;
       // A menu or dialog handles its own keys.
       if (e.target instanceof Element && e.target.closest("[role=menu], [role=dialog], dialog"))
         return;
@@ -432,11 +448,23 @@ export function Shell() {
     compose,
     goTo,
     baseSelection.accounts,
+    settings,
   ]);
 
   if (accountsQuery.isPending) return null;
   if (accountList.length === 0) return <Welcome setup={setup.data} />;
 
+  // Settings shows its sections in the sidebar, so the sidebar shows too.
+  const sidebarShown = sidebarOpen || settings !== null;
+  const onAccountRemoved = (id: AccountId) => {
+    // Leave views that only showed that account's mail, and close its
+    // conversation if one was open.
+    if (chosen && selectionNeedsAccount(chosen, id, labels)) {
+      setChosen(null);
+      setSearch("");
+    }
+    if (threads.find((t) => t.id === selectedId)?.accountId === id) setSelectedId(null);
+  };
   // The reader only appears with a conversation to show.
   const readerVisible = readerOpen && selectedId !== null;
   const targetIds = targets.map((t) => t.id);
@@ -490,49 +518,62 @@ export function Shell() {
 
   return (
     <div className="flex h-full flex-col bg-glass-sidebar">
-      <Toolbar
-        search={search}
-        onSearch={setSearch}
-        actions={toolbarActions}
-        sidebarOpen={sidebarOpen}
-        syncAttention={syncAttention(syncStates)}
-        readerOpen={readerOpen}
-        hasSelection={selectedId !== null}
-        count={targets.length}
-        onToggleSidebar={toggleSidebar}
-        onToggleReader={toggleReader}
-        onCompose={startNew}
-      />
+      {settings ? (
+        <SettingsTitleBar section={settings} />
+      ) : (
+        <Toolbar
+          search={search}
+          onSearch={setSearch}
+          actions={toolbarActions}
+          sidebarOpen={sidebarOpen}
+          syncAttention={syncAttention(syncStates)}
+          readerOpen={readerOpen}
+          hasSelection={selectedId !== null}
+          count={targets.length}
+          onToggleSidebar={toggleSidebar}
+          onToggleReader={toggleReader}
+          onCompose={startNew}
+        />
+      )}
       <div className="flex min-h-0 flex-1 pr-2 pb-2">
         {/* Panels stay mounted and slide: the wrapper animates its width and
             clips, while the content keeps its own width (no reflow) and fades
             in from the side. Closed, the sidebar leaves an 8px gutter. */}
         <div
           className="panel-slide on-glass flex shrink-0 overflow-hidden"
-          style={{ width: sidebarOpen ? sidebarWidth + SPLITTER_WIDTH : SPLITTER_WIDTH }}
-          inert={!sidebarOpen}
+          style={{ width: sidebarShown ? sidebarWidth + SPLITTER_WIDTH : SPLITTER_WIDTH }}
+          inert={!sidebarShown}
         >
           <div
             className="panel-slide-content flex shrink-0"
-            data-open={sidebarOpen}
+            data-open={sidebarShown}
             style={{ width: sidebarWidth + SPLITTER_WIDTH }}
           >
-            <Sidebar
-              accounts={accountList}
-              width={sidebarWidth}
-              syncStates={syncStates}
-              selection={baseSelection}
-              onSelect={goTo}
-              onAccountRemoved={(id) => {
-                // Leave views that only showed that account's mail, and
-                // close its conversation if one was open.
-                if (chosen && selectionNeedsAccount(chosen, id, labels)) {
-                  setChosen(null);
-                  setSearch("");
-                }
-                if (threads.find((t) => t.id === selectedId)?.accountId === id) setSelectedId(null);
-              }}
-            />
+            {/* Settings' sections cover the mail sidebar, which stays as it
+                was (folds, scroll) underneath. */}
+            <div className="relative flex shrink-0">
+              <div className={`flex ${settings ? "invisible" : ""}`} inert={settings !== null}>
+                <Sidebar
+                  accounts={accountList}
+                  width={sidebarWidth}
+                  syncStates={syncStates}
+                  selection={baseSelection}
+                  onSelect={goTo}
+                  onAccountRemoved={onAccountRemoved}
+                  onOpenSettings={openSettings}
+                />
+              </div>
+              {settings && (
+                <div className="absolute inset-0 flex">
+                  <SettingsNav
+                    section={settings}
+                    width={sidebarWidth}
+                    onSelect={setSettings}
+                    onClose={() => setSettings(null)}
+                  />
+                </div>
+              )}
+            </div>
             <Splitter
               label="Resize sidebar"
               width={sidebarWidth}
@@ -541,126 +582,143 @@ export function Shell() {
             />
           </div>
         </div>
-        <div ref={panesRef} className="flex min-w-0 flex-1">
-          {/* The list is the body: a rounded card on the glass. With the
-              reader hidden it grows to fill; growth animates with the reader. */}
-          <section
-            className="panel panel-slide flex min-w-0 flex-col overflow-hidden"
-            style={{
-              flex: `${readerVisible ? 0 : 1} 1 ${layout.listShare * 100}%`,
-              minWidth: LIST_WIDTH.min,
-            }}
-          >
-            <div className="flex h-10 shrink-0 items-center gap-2 px-4">
-              <h2 className="truncate text-sm font-semibold">
-                {selectionTitle(selection, accountList, labels)}
-              </h2>
-              {checked.size > 0 && (
-                <span className="ml-auto flex shrink-0 items-center gap-2 text-xs text-content/55">
-                  {checked.size} selected
-                  <button
-                    type="button"
-                    className="rounded px-1.5 py-0.5 hover:bg-selection hover:text-content"
-                    onClick={() => setChecked(NONE)}
-                    title="Clear selection (Esc)"
-                  >
-                    Clear
-                  </button>
-                </span>
-              )}
-            </div>
-            <ThreadList
-              threads={threads}
-              onSwipe={(id, action) => act(action, [id])}
-              accounts={accounts}
-              showAccount={showAccount}
-              selectedId={selectedId}
-              checked={checked}
-              onSelect={(id, how) => {
-                // ⌘-click picks or unpicks one; ⇧-click picks a range.
-                // Either way the open conversation stays as it is.
-                if (how === "toggle") {
-                  setChecked(toggleChecked(checked, selectedId, id));
-                  return;
-                }
-                if (how === "range") {
-                  setChecked(rangeChecked(threads, checked, selectedId, id));
-                  return;
-                }
-                setChecked(NONE);
-                // A conversation that's only a draft opens in the composer,
-                // as in Gmail, rather than as a preview.
-                if (threads.find((t) => t.id === id)?.onlyDraft) {
-                  void resumeThreadDraft(id);
-                  return;
-                }
-                setSelectedId(id);
-                // Clicking the open conversation again also brings it back.
-                setReaderOpen(true);
-              }}
-              // Nothing selected also slides the reader closed.
-              onClearSelection={() => {
-                setChecked(NONE);
-                setSelectedId(null);
-              }}
-              // The menu is about the clicked row (or all picks, if it's
-              // one); nothing opens, and the reader stays as it is.
-              onRowMenu={(id, at) => setRowMenu({ at, clicked: id })}
-              menuRowId={rowMenu?.clicked ?? null}
-              // Not while the previous view's list stands in for this one.
-              hasMore={(hasNextPage && !threadsQuery.isPlaceholderData) || fromGmail}
-              loadMore={loadMore}
-              loading={threadsQuery.isPending || isFetchingNextPage}
-              older={older}
-              empty={
-                <EmptyState
-                  state={emptyStateFor(selection.view)}
-                  swapKey={emptyStateKey(selection.view)}
-                />
-              }
-            />
-          </section>
+        <div className="relative flex min-w-0 flex-1">
           <div
-            className="panel-slide on-glass flex overflow-hidden"
-            style={{
-              flex: `${readerVisible ? 1 : 0} 1 0px`,
-              minWidth: readerVisible ? SPLITTER_WIDTH + READER_MIN_WIDTH : 0,
-            }}
-            inert={!readerVisible}
+            ref={panesRef}
+            className={`flex min-w-0 flex-1 ${settings ? "invisible" : ""}`}
+            inert={settings !== null}
           >
-            <div
-              className="panel-slide-content from-right flex flex-1"
-              data-open={readerVisible}
-              style={{ minWidth: SPLITTER_WIDTH + READER_MIN_WIDTH }}
+            {/* The list is the body: a rounded card on the glass. With the
+              reader hidden it grows to fill; growth animates with the reader. */}
+            <section
+              className="panel panel-slide flex min-w-0 flex-col overflow-hidden"
+              style={{
+                flex: `${readerVisible ? 0 : 1} 1 ${layout.listShare * 100}%`,
+                minWidth: LIST_WIDTH.min,
+              }}
             >
-              <Splitter
-                label="Resize conversation list"
-                width={Math.round(layout.listShare * panesWidth)}
-                onResize={resizeList}
-                onReset={() => saveLayout({ ...layout, listShare: LIST_SHARE.initial })}
-              />
-              {/* The reader sits on the glass like a right-hand sidebar. While
-                  it slides closed it keeps showing the last conversation. */}
-              <main className="flex min-w-0 flex-1 flex-col">
-                {shownId !== null && (
-                  <ThreadReader
-                    threadId={shownId}
-                    accounts={accounts}
-                    renderFooter={(detail) => (
-                      <ReplyArea
-                        detail={detail}
-                        identities={identities}
-                        accounts={accountList}
-                        onStart={(kind) => void compose.startReply(kind, detail.thread.id)}
-                        onSwitch={(id, kind) => void compose.switchKind(id, kind)}
-                        onSend={(entry) => void compose.send(entry.draft)}
-                      />
-                    )}
-                  />
+              <div className="flex h-10 shrink-0 items-center gap-2 px-4">
+                <h2 className="truncate text-sm font-semibold">
+                  {selectionTitle(selection, accountList, labels)}
+                </h2>
+                {checked.size > 0 && (
+                  <span className="ml-auto flex shrink-0 items-center gap-2 text-xs text-content/55">
+                    {checked.size} selected
+                    <button
+                      type="button"
+                      className="rounded px-1.5 py-0.5 hover:bg-selection hover:text-content"
+                      onClick={() => setChecked(NONE)}
+                      title="Clear selection (Esc)"
+                    >
+                      Clear
+                    </button>
+                  </span>
                 )}
-              </main>
+              </div>
+              <ThreadList
+                threads={threads}
+                onSwipe={(id, action) => act(action, [id])}
+                accounts={accounts}
+                showAccount={showAccount}
+                selectedId={selectedId}
+                checked={checked}
+                onSelect={(id, how) => {
+                  // ⌘-click picks or unpicks one; ⇧-click picks a range.
+                  // Either way the open conversation stays as it is.
+                  if (how === "toggle") {
+                    setChecked(toggleChecked(checked, selectedId, id));
+                    return;
+                  }
+                  if (how === "range") {
+                    setChecked(rangeChecked(threads, checked, selectedId, id));
+                    return;
+                  }
+                  setChecked(NONE);
+                  // A conversation that's only a draft opens in the composer,
+                  // as in Gmail, rather than as a preview.
+                  if (threads.find((t) => t.id === id)?.onlyDraft) {
+                    void resumeThreadDraft(id);
+                    return;
+                  }
+                  setSelectedId(id);
+                  // Clicking the open conversation again also brings it back.
+                  setReaderOpen(true);
+                }}
+                // Nothing selected also slides the reader closed.
+                onClearSelection={() => {
+                  setChecked(NONE);
+                  setSelectedId(null);
+                }}
+                // The menu is about the clicked row (or all picks, if it's
+                // one); nothing opens, and the reader stays as it is.
+                onRowMenu={(id, at) => setRowMenu({ at, clicked: id })}
+                menuRowId={rowMenu?.clicked ?? null}
+                // Not while the previous view's list stands in for this one.
+                hasMore={(hasNextPage && !threadsQuery.isPlaceholderData) || fromGmail}
+                loadMore={loadMore}
+                loading={threadsQuery.isPending || isFetchingNextPage}
+                older={older}
+                empty={
+                  <EmptyState
+                    state={emptyStateFor(selection.view)}
+                    swapKey={emptyStateKey(selection.view)}
+                  />
+                }
+              />
+            </section>
+            <div
+              className="panel-slide on-glass flex overflow-hidden"
+              style={{
+                flex: `${readerVisible ? 1 : 0} 1 0px`,
+                minWidth: readerVisible ? SPLITTER_WIDTH + READER_MIN_WIDTH : 0,
+              }}
+              inert={!readerVisible}
+            >
+              <div
+                className="panel-slide-content from-right flex flex-1"
+                data-open={readerVisible}
+                style={{ minWidth: SPLITTER_WIDTH + READER_MIN_WIDTH }}
+              >
+                <Splitter
+                  label="Resize conversation list"
+                  width={Math.round(layout.listShare * panesWidth)}
+                  onResize={resizeList}
+                  onReset={() => saveLayout({ ...layout, listShare: LIST_SHARE.initial })}
+                />
+                {/* The reader sits on the glass like a right-hand sidebar. While
+                  it slides closed it keeps showing the last conversation. */}
+                <main className="flex min-w-0 flex-1 flex-col">
+                  {shownId !== null && (
+                    <ThreadReader
+                      threadId={shownId}
+                      accounts={accounts}
+                      renderFooter={(detail) => (
+                        <ReplyArea
+                          detail={detail}
+                          identities={identities}
+                          accounts={accountList}
+                          onStart={(kind) => void compose.startReply(kind, detail.thread.id)}
+                          onSwitch={(id, kind) => void compose.switchKind(id, kind)}
+                          onSend={(entry) => void compose.send(entry.draft)}
+                        />
+                      )}
+                    />
+                  )}
+                </main>
+              </div>
             </div>
           </div>
+          {settings && (
+            <div className="absolute inset-0 flex">
+              <SettingsPage
+                section={settings}
+                accounts={accountList}
+                syncStates={syncStates}
+                onAccountRemoved={onAccountRemoved}
+                onClose={() => setSettings(null)}
+              />
+            </div>
+          )}
         </div>
       </div>
       {labelAnchor && pickerRows.length > 0 && (
@@ -796,6 +854,7 @@ export function Shell() {
             toggleSidebar,
             toggleReader,
             showShortcuts: () => setShortcutsOpen(true),
+            openSettings,
             destinations: destinations(accountList, labels),
             goTo,
           })}

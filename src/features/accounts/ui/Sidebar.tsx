@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { Account, AccountId, AccountSyncState } from "../../../platform/tauri/bindings";
 import { useLabels, useUnreadCounts } from "../../../shared/lib/queries";
-import { AddIcon, ClearIcon } from "../../../shared/ui/icons";
+import { AddIcon, ClearIcon, SettingsIcon } from "../../../shared/ui/icons";
 import { type Selection, systemSelection } from "../../mailbox/model/views";
 import { viewUnread } from "../model/sidebar";
 import { AccountMenu, type AccountMenuTarget } from "./AccountMenu";
@@ -16,6 +16,7 @@ type Props = {
   selection: Selection;
   onSelect: (s: Selection) => void;
   onAccountRemoved: (id: AccountId) => void;
+  onOpenSettings: () => void;
 };
 
 export function Sidebar({
@@ -25,6 +26,7 @@ export function Sidebar({
   selection,
   onSelect,
   onAccountRemoved,
+  onOpenSettings,
 }: Props) {
   const labels = useLabels({ kind: "all" }).data ?? [];
   const counts = useUnreadCounts().data ?? [];
@@ -74,8 +76,8 @@ export function Sidebar({
           toggle={toggle}
         />
       </div>
-      {/* A small icon bar, as in Arc's sidebar footer. Settings and the log
-          console can join "Add account" here later. */}
+      {/* A small icon bar, as in Arc's sidebar footer: "Add account" on the
+          left, Settings on the right. The log console can join later. */}
       <div className="flex h-9 shrink-0 items-center gap-1 pb-1 pl-2">
         {/* While a browser sign-in is waiting, "+" turns into a cancel
             button (closing the browser tab can't be detected). */}
@@ -91,6 +93,15 @@ export function Sidebar({
         {signIn.pending && (
           <span className="truncate text-xs text-content/60">Waiting for browser sign-in…</span>
         )}
+        <button
+          type="button"
+          title="Settings (⌘,)"
+          aria-label="Settings"
+          className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-content/60 transition-colors duration-[120ms] hover:bg-selection hover:text-content"
+          onClick={onOpenSettings}
+        >
+          <SettingsIcon size={16} />
+        </button>
       </div>
       {signIn.error && <p className="selectable px-4 pb-2 text-xs text-danger">{signIn.error}</p>}
       <LabelMenu
