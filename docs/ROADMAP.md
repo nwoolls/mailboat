@@ -583,7 +583,9 @@ Found while testing stage 3 (owner, 2026-10-16):
 Left over from Milestone 4 *(listed 2026-10-16 so they don't get lost;
 each was a "not yet" note above)*:
 
-- [ ] Drag files onto the composer to attach them
+- [x] Drag files onto the composer to attach them ("Drop to attach"
+      shows while dragging over a message being written; files dropped
+      elsewhere do nothing)
 - [ ] Forwarding includes the original's attachments, as Gmail does
 - [ ] Reopening a draft brings back its saved attachments
 - [ ] Images embedded in an email itself (`cid:`), in quotes, forwards and

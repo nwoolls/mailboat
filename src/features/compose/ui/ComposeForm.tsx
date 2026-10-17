@@ -40,6 +40,7 @@ export function ComposeForm({
   const { draft, sending, error } = entry;
   const [problem, setProblem] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [dropping, setDropping] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   // Loaded once with the draft's opening HTML (the quote, for replies);
   // a different draft gets a fresh form (keyed by draft ID).
@@ -75,8 +76,30 @@ export function ComposeForm({
   return (
     <form
       ref={formRef}
+      // Files dropped anywhere on the message attach to it (checked before
+      // the editor sees the drop, which would otherwise ignore them).
+      onDragOverCapture={(e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        if (!dropping) setDropping(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
+      }}
+      onDropCapture={(e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setDropping(false);
+        if (sending) return;
+        const files = [...e.dataTransfer.files];
+        void Promise.all(files.map(readFile)).then((read) =>
+          onChange((d) => ({ ...d, attachments: [...d.attachments, ...read] })),
+        );
+      }}
       aria-label={draft.kind === "new" ? "New message" : "Reply"}
-      className={`flex min-h-0 flex-col text-[13px] ${inline ? "" : "flex-1"}`}
+      className={`relative flex min-h-0 flex-col text-[13px] ${inline ? "" : "flex-1"}`}
       onSubmit={(e) => {
         e.preventDefault();
         trySend();
@@ -196,6 +219,11 @@ export function ComposeForm({
           <TrashIcon />
         </button>
       </div>
+      {dropping && (
+        <div className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-accent bg-accent/10 text-[13px] font-medium text-accent">
+          Drop to attach
+        </div>
+      )}
       {confirming && (
         <ConfirmDialog
           title="Discard this message?"
@@ -404,4 +432,8 @@ function AttachmentChips({
       ))}
     </ul>
   );
+}
+
+function hasFiles(e: React.DragEvent): boolean {
+  return [...e.dataTransfer.types].includes("Files");
 }

@@ -78,6 +78,25 @@ import {
   useThreads,
 } from "../shared/lib/queries";
 
+/**
+ * A file dropped outside a composer does nothing. (With Tauri's own file
+ * drop turned off so composers can take files, the web view would
+ * otherwise open the file in place of the app.)
+ */
+function useIgnoreStrayDrops() {
+  useEffect(() => {
+    const stop = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes("Files")) e.preventDefault();
+    };
+    window.addEventListener("dragover", stop);
+    window.addEventListener("drop", stop);
+    return () => {
+      window.removeEventListener("dragover", stop);
+      window.removeEventListener("drop", stop);
+    };
+  }, []);
+}
+
 function isEditable(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
@@ -87,6 +106,7 @@ function isEditable(target: EventTarget | null): boolean {
 
 export function Shell() {
   useMailEvents();
+  useIgnoreStrayDrops();
   const accountsQuery = useAccounts();
   const setup = useOAuthSetup();
   const syncStates = useSyncStates().data ?? [];
