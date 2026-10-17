@@ -638,7 +638,13 @@ each was a "not yet" note above)*:
       Gmail) and Delete… (asks first; its conversations stay)
 - [ ] Command palette (cmdk)
 - [ ] Full keyboard shortcuts
-- [ ] Remote Gmail search (`q=`) fanned out per account, merged by date
+- [x] Remote Gmail search (`q=`) fanned out per account, merged by date.
+      Search shows local matches at once; once the text has stayed the
+      same for 0.7s and you reach the end of the local results, each
+      account asks Gmail's own search ("Searching Gmail…"), fetches the
+      matches it doesn't have, and every Gmail match joins the results
+      (even ones matched on a body Mailboat hasn't downloaded). Gmail's
+      operators (`from:`, `has:attachment`, …) work there
 - [ ] Notifications
 - [ ] Settings: choose the app icon from `design/icon/choices/` (the
       folded M in 16 colours, or the earlier glass icon)

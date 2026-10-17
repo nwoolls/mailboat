@@ -128,6 +128,16 @@ second with almost no burst. `gmail/pacer.rs` is a token bucket per account
 pauses (a full minute for per-minute errors) and halves its rate, then
 recovers gradually. Usage per minute and every refusal go to the sync log.
 
+### Search
+
+Local search (FTS5 over every account) answers as you type. Reaching the
+end of its results, once the text has settled, runs the same "older mail"
+walk with Gmail's own search (`threads.list?q=`), per account at once.
+Each conversation Gmail matched is recorded in `search_hits` (account,
+lowercased text, thread), cached or not, and the Search view is the local
+matches plus those hits, so a match on a body Mailboat hasn't downloaded
+still shows. Results merge by date like every list.
+
 ## Sign-in and tokens
 
 Desktop OAuth with a loopback redirect and PKCE: Mailboat listens on
@@ -313,4 +323,5 @@ fresh one; small parts come with the message and have no ID at all.
 | 2026-10-16 | Ask for `contacts.readonly` and `contacts.other.readonly` | Owner's choice (Milestone 4): suggestions from Google Contacts as well as mail. Read-only; both are "sensitive" scopes, so the unverified-app warning stays as it is. Existing accounts aren't forced to sign in again: without the scopes, suggestions come from mail only. |
 | 2026-10-17 | Window `dragDropEnabled: false`; composers take dropped files as web `File`s | Tauri's own file drop hands Rust paths and hides the drop from the page. Turning it off lets a composer read dropped files exactly as the paperclip does, with no new command that reads arbitrary paths. The page ignores drops anywhere else, so the web view can't navigate to a dropped file. |
 | 2026-10-17 | `tauri-plugin-window-state` for window position/size/maximized/full screen, registered in Rust only | Owner request (Milestone 5); the plugin handles saving on quit and skips positions on no connected display. No web permission is granted (the page never calls it). Our `window_place::keep_on_screen` adds the rest of the request: a window only partly on screen moves fully onto a display. |
+| 2026-10-17 | Remote search records Gmail's matches in `search_hits` rather than relying on local FTS to find fetched threads | Gmail matches bodies; fetched threads only have metadata cached, so FTS wouldn't find them again. Recording hits per account and text keeps the one query layer and rule 7 (per account, merged by date). Hits accumulate per search text; they're small and cascade away with their threads. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |

@@ -111,6 +111,19 @@ function useIgnoreStrayDrops() {
   }, []);
 }
 
+/** How long the search text must stay the same before Gmail is asked. */
+const SEARCH_SETTLE_MS = 700;
+
+/** `value` once it has stayed the same for `ms` (until then, the previous one). */
+function useSettled<T>(value: T, ms: number): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettled(value), ms);
+    return () => window.clearTimeout(timer);
+  }, [value, ms]);
+  return settled;
+}
+
 function isEditable(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
@@ -171,7 +184,11 @@ export function Shell() {
   // list is refreshing or standing in for the previous view.
   const older = useOlderMail(selection);
   const settled = !threadsQuery.isPlaceholderData && !threadsQuery.isFetching;
-  const fromGmail = !hasNextPage && settled && older.available;
+  // A search asks Gmail only once its text has stopped changing, not for
+  // every half-typed word (local results still show as you type).
+  const settledSearch = useSettled(search.trim(), SEARCH_SETTLE_MS);
+  const searchReady = selection.view.kind !== "search" || settledSearch === search.trim();
+  const fromGmail = !hasNextPage && settled && older.available && searchReady;
   const { load: loadOlder } = older;
   const loadMore = useCallback(
     () => void (hasNextPage ? fetchNextPage() : loadOlder()),

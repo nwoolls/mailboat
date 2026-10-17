@@ -231,3 +231,17 @@ CREATE TABLE google_contacts (
   UNIQUE (account_id, email, kind)
 );
 "#;
+
+/// Conversations Gmail's own search matched (`q=`), per account and search
+/// text, so the Search view shows them even when the match was in a part
+/// Mailboat hasn't downloaded (like the body).
+pub const MIGRATION_V9: &str = r#"
+CREATE TABLE search_hits (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL,
+  query TEXT NOT NULL,
+  thread_id INTEGER NOT NULL,
+  UNIQUE (account_id, query, thread_id),
+  FOREIGN KEY (account_id, thread_id) REFERENCES threads (account_id, id) ON DELETE CASCADE
+);
+"#;

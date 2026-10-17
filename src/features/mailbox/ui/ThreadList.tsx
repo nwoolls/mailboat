@@ -31,7 +31,7 @@ type Props = {
   /** The first page, or the next cached page, is loading. */
   loading: boolean;
   /** Fetching older mail from Gmail past the end of the cache. */
-  older: { status: OlderStatus; busy: boolean; retry: () => void };
+  older: { status: OlderStatus; busy: boolean; retry: () => void; searching?: boolean };
   /** Shown when the view has no conversations. */
   empty: React.ReactNode;
 };
@@ -75,7 +75,9 @@ export function ThreadList({
     if (index >= 0) virtualizer.scrollToIndex(index, { align: "auto" });
   }, [selectedId, threads, virtualizer]);
 
-  if (!loading && threads.length === 0) return empty;
+  // Nothing yet, but Gmail is being asked (or failed): show that line
+  // rather than "nothing here".
+  if (!loading && threads.length === 0 && !footer) return empty;
 
   return (
     <div
@@ -205,10 +207,14 @@ export function ThreadList({
             style={{ top: virtualizer.getTotalSize(), height: FOOTER_HEIGHT }}
           >
             {older.status === "loading" ? (
-              "Loading older mail…"
+              older.searching ? (
+                "Searching Gmail…"
+              ) : (
+                "Loading older mail…"
+              )
             ) : (
               <>
-                Couldn’t load older mail.
+                {older.searching ? "Couldn’t search Gmail." : "Couldn’t load older mail."}
                 <button
                   type="button"
                   className="underline hover:text-content"

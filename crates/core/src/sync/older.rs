@@ -45,7 +45,7 @@ pub fn gmail_filter(
     conn: &Connection,
     account: AccountId,
     view: &MailView,
-) -> Result<Option<(Option<String>, Option<&'static str>)>> {
+) -> Result<Option<(Option<String>, Option<String>)>> {
     Ok(match view {
         MailView::System { label } => Some((Some(label.gmail_id().to_string()), None)),
         // A user label belongs to one account; look up its Gmail ID there.
@@ -59,9 +59,10 @@ pub fn gmail_filter(
             .map(|gmail_id| (Some(gmail_id), None)),
         // Without a label, Gmail lists All Mail (no Spam or Trash).
         MailView::AllMail => Some((None, None)),
-        MailView::Archive => Some((None, Some("-in:inbox"))),
-        // Searching Gmail itself (`q=`) is Milestone 5.
-        MailView::Search { .. } => None,
+        MailView::Archive => Some((None, Some("-in:inbox".into()))),
+        // Gmail's own search, with the text as typed (its operators, like
+        // `from:` or `has:attachment`, work too).
+        MailView::Search { text } => Some((None, Some(text.clone()))),
     })
 }
 
@@ -83,12 +84,20 @@ pub async fn load_older(
         return Ok(0);
     };
     let cached = store::thread_ids_for_account(&db.conn(), account)?;
+    let hit_key = match view {
+        MailView::Search { text } => Some(crate::db::query::search_key(text)),
+        _ => None,
+    };
 
     let mut wanted: Vec<String> = Vec::new();
     while wanted.len() < want {
         if let Some(id) = cursor.pending.pop_front() {
             if !cached.contains(&id) {
                 wanted.push(id);
+            } else if let Some(key) = &hit_key {
+                // Already cached, but maybe matched on what the cache
+                // can't search (the body): remember Gmail found it.
+                record_hit(&db.conn(), account, key, &id)?;
             }
             continue;
         }
@@ -97,7 +106,12 @@ pub async fn load_older(
             break;
         }
         let page = match gmail
-            .search_threads(label.as_deref(), q, cursor.page_token.as_deref(), LIST_PAGE)
+            .search_threads(
+                label.as_deref(),
+                q.as_deref(),
+                cursor.page_token.as_deref(),
+                LIST_PAGE,
+            )
             .await
         {
             Ok(page) => page,
@@ -134,6 +148,9 @@ pub async fn load_older(
             // Gone since it was listed: nothing to add.
             for thread in threads.iter().flatten() {
                 store::upsert_thread(&mut conn, account, &parse::thread_to_incoming(thread))?;
+                if let Some(key) = &hit_key {
+                    record_hit(&conn, account, key, &thread.id)?;
+                }
                 added += 1;
             }
         }
@@ -144,4 +161,19 @@ pub async fn load_older(
         cursor.exhausted = true;
     }
     Ok(added)
+}
+
+/// Notes that Gmail's search for `key` matched this thread (by Gmail ID).
+fn record_hit(
+    conn: &Connection,
+    account: AccountId,
+    key: &str,
+    gmail_thread_id: &str,
+) -> Result<()> {
+    conn.execute(
+        "INSERT OR IGNORE INTO search_hits (account_id, query, thread_id)
+         SELECT ?1, ?2, id FROM threads WHERE account_id = ?1 AND gmail_thread_id = ?3",
+        rusqlite::params![account, key, gmail_thread_id],
+    )?;
+    Ok(())
 }

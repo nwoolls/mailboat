@@ -175,7 +175,7 @@ async fn archive_asks_gmail_for_mail_outside_the_inbox() {
 /// Local search and other accounts' labels have nothing to load (rule 1:
 /// a label ID from account B never becomes a Gmail query in account A).
 #[tokio::test]
-async fn search_and_other_accounts_labels_load_nothing() {
+async fn other_accounts_labels_load_nothing() {
     let server = MockServer::start().await;
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "a");
@@ -196,12 +196,8 @@ async fn search_and_other_accounts_labels_load_nothing() {
         mailboat_core::db::query::user_labels(&db.conn(), &AccountFilter::All).unwrap()[0].id;
     let (gmail, _) = client(&server.uri());
 
-    for view in [
-        MailView::Search {
-            text: "invoice".into(),
-        },
-        MailView::UserLabel { label_id: b_label },
-    ] {
+    // (Search asks Gmail since Milestone 5: see the search test below.)
+    for view in [MailView::UserLabel { label_id: b_label }] {
         let mut cursor = OlderCursor::default();
         let added = load_older(&db, &gmail, a, &view, 25, &mut cursor, &|| {})
             .await
@@ -249,5 +245,59 @@ async fn a_failed_fetch_is_retried_next_time() {
         .unwrap();
     assert_eq!(added, 3);
     assert_eq!(cached_ids(&db, a), ["t1", "t2", "t4"]);
+    assert!(cursor.exhausted);
+}
+
+#[tokio::test]
+async fn searching_gmail_shows_what_it_matched_in_the_search_view() {
+    use mailboat_core::db::query;
+    let server = MockServer::start().await;
+    // Gmail's search for "zebra" matches t1 (cached, but on a word only in
+    // its body) and t2 (not cached yet).
+    Mock::given(path("/gmail/v1/users/me/threads"))
+        .and(query_param("q", "Zebra"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "threads": [{ "id": "t2" }, { "id": "t1" }]
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(batch())
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    cache(&db, a, "thread_t1.json");
+    let view = MailView::Search {
+        text: "Zebra".into(),
+    };
+    let list = |db: &Db| {
+        query::list_threads(
+            &db.conn(),
+            &ListQuery {
+                accounts: AccountFilter::All,
+                view: view.clone(),
+                cursor: None,
+                limit: 50,
+            },
+        )
+        .unwrap()
+        .threads
+        .len()
+    };
+    assert_eq!(list(&db), 0, "nothing local mentions zebra");
+
+    let (gmail, _) = client(&server.uri());
+    let mut cursor = OlderCursor::default();
+    let added = load_older(&db, &gmail, a, &view, 25, &mut cursor, &|| {})
+        .await
+        .unwrap();
+    assert_eq!(added, 1, "t2 fetched");
+    assert_eq!(
+        list(&db),
+        2,
+        "both Gmail matches show, whatever the case typed"
+    );
     assert!(cursor.exhausted);
 }

@@ -157,11 +157,3 @@ export function selectionNeedsAccount(s: Selection, account: AccountId, labels: 
   }
   return s.accounts.kind === "only" && s.accounts.ids.every((id) => id === account);
 }
-
-/**
- * Views whose older mail can be fetched from Gmail when the list reaches
- * the end of the cache. Search is local only until remote search arrives.
- */
-export function loadsOlderMail(view: MailView): boolean {
-  return view.kind !== "search";
-}

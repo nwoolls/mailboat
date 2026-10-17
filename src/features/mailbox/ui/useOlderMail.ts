@@ -3,13 +3,14 @@ import { useState } from "react";
 import { commands } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { keys } from "../../../shared/lib/queries";
-import { loadsOlderMail, type Selection, selectionKey } from "../model/views";
+import { type Selection, selectionKey } from "../model/views";
 
 export type OlderStatus = "idle" | "loading" | "error";
 
 /**
  * Fetches conversations older than the cache from Gmail when a list
- * reaches its end. Remembers (until relaunch) which views Gmail has
+ * reaches its end. For a search, it asks Gmail's own search (`q=`), each
+ * account at once; what Gmail matched joins the local results. Remembers (until relaunch) which views Gmail has
  * nothing older for, so they stop asking. After an error it waits for
  * `retry` instead of asking again on every scroll.
  */
@@ -31,7 +32,9 @@ export function useOlderMail(selection: Selection) {
     forThis && mutation.isPending ? "loading" : forThis && mutation.isError ? "error" : "idle";
   return {
     /** More may be waiting in Gmail, and it's fine to ask now. */
-    available: loadsOlderMail(selection.view) && !exhausted.has(key) && status === "idle",
+    available: !exhausted.has(key) && status === "idle",
+    /** A search: the footer says "Searching Gmail…". */
+    searching: selection.view.kind === "search",
     /** Any view's load is running (one at a time). */
     busy: mutation.isPending,
     status,

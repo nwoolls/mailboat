@@ -14,6 +14,14 @@ use crate::model::{
 
 const MAX_LIMIT: u32 = 500;
 
+/// How a search's text is stored with Gmail's hits for it.
+pub fn search_key(text: &str) -> String {
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
 /// The thread has at least one message that isn't in Spam or Trash, which is
 /// what puts a conversation in Gmail's All Mail.
 const IN_ALL_MAIL: &str =
@@ -123,18 +131,20 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
         }
         MailView::Search { text } => {
             clauses.push(IN_ALL_MAIL.into());
-            let Some(fts) = fts_query(text) else {
-                return Ok(ThreadPage {
-                    threads: vec![],
-                    next_cursor: None,
-                });
-            };
-            clauses.push(
-                "t.id IN (SELECT m.thread_id FROM messages_fts f JOIN messages m ON m.id = f.rowid
-                          WHERE messages_fts MATCH ?)"
-                    .into(),
-            );
-            values.push(Value::Text(fts));
+            // Matches in the cache, plus what Gmail's own search found for
+            // the same text (`search_hits`, filled when Gmail is asked).
+            let hits = "t.id IN (SELECT h.thread_id FROM search_hits h WHERE h.query = ?)";
+            match fts_query(text) {
+                Some(fts) => {
+                    clauses.push(format!(
+                        "(t.id IN (SELECT m.thread_id FROM messages_fts f JOIN messages m ON m.id = f.rowid
+                                   WHERE messages_fts MATCH ?) OR {hits})"
+                    ));
+                    values.push(Value::Text(fts));
+                }
+                None => clauses.push(hits.into()),
+            }
+            values.push(Value::Text(search_key(text)));
         }
     }
 
