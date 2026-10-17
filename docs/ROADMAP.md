@@ -644,6 +644,13 @@ invitations (after the new permissions, shared with Milestone 6).*
         emailed reply (the standard calendar reply, as Apple Mail sends)
       - Updates and cancellations show as such; a cancelled event offers
         "Remove from calendar"
+      - Groundwork done (2026-10-17, needs no new permission):
+        `mail::invite` reads an email's calendar part (title, time with
+        its time zone resolved, place, organizer, your current answer,
+        update/cancel, and the event's id the Calendar API looks it up
+        by), and `gmail::parse::extract_calendar` finds that part. Still
+        to do, with the owner: the new permission and Calendar API setup,
+        storing the part when a message is fetched, the card and answering
 - [x] Report spam (and "Not spam" in the Spam view) as an action, routed
       per account like the others *(owner request, 2026-10-16)*. Toolbar
       button and `!` (Gmail's key); Report spam moves conversations out

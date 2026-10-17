@@ -2,6 +2,7 @@
 
 pub mod colors;
 pub mod images;
+pub mod invite;
 pub mod links;
 pub mod notify;
 pub mod sanitize;

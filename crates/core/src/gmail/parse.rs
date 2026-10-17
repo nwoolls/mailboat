@@ -173,6 +173,23 @@ fn walk_bodies(part: &MessagePart, html: &mut Option<String>, text: &mut Option<
     }
 }
 
+/// The calendar part of a message (a meeting invitation, update,
+/// cancellation or answer), if it came inline. Read by `mail::invite`.
+pub fn extract_calendar(payload: &MessagePart) -> Option<String> {
+    if payload.mime_type.eq_ignore_ascii_case("text/calendar") {
+        if let Some(bytes) = payload
+            .body
+            .as_ref()
+            .and_then(|b| b.data.as_deref())
+            .and_then(decode_base64url)
+        {
+            let charset = header(payload, "Content-Type").and_then(charset_of);
+            return Some(decode_charset(&bytes, charset.as_deref()));
+        }
+    }
+    payload.parts.iter().find_map(extract_calendar)
+}
+
 /// The attachment parts of a `format=full` payload: every part with a file
 /// name, plus unnamed parts with a Content-ID (inline images). A part is
 /// `inline` when the HTML body refers to it as `cid:…`; those are shown in
@@ -354,6 +371,32 @@ mod tests {
         assert!(message_to_incoming(&msg("multipart/mixed")).has_attachments);
         assert!(!message_to_incoming(&msg("multipart/alternative")).has_attachments);
         assert!(!message_to_incoming(&msg("multipart/related")).has_attachments);
+    }
+
+    #[test]
+    fn finds_an_inline_calendar_part() {
+        let ics = encode_base64url(b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n");
+        let payload: MessagePart = serde_json::from_value(serde_json::json!({
+            "mimeType": "multipart/mixed",
+            "parts": [
+                { "mimeType": "multipart/alternative", "parts": [
+                    { "mimeType": "text/plain", "body": { "data": encode_base64url(b"hi") } },
+                    { "mimeType": "text/calendar",
+                      "headers": [{ "name": "Content-Type", "value": "text/calendar; charset=\"UTF-8\"; method=REQUEST" }],
+                      "body": { "data": ics } }
+                ]},
+                { "mimeType": "application/ics", "filename": "invite.ics",
+                  "body": { "attachmentId": "A1", "size": 900 } }
+            ]
+        }))
+        .unwrap();
+        assert_eq!(
+            extract_calendar(&payload).as_deref(),
+            Some("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n")
+        );
+        let plain: MessagePart =
+            serde_json::from_value(serde_json::json!({ "mimeType": "text/plain" })).unwrap();
+        assert_eq!(extract_calendar(&plain), None);
     }
 
     #[test]
