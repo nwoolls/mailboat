@@ -29,6 +29,10 @@ pub struct IdentitiesChangedEvent {
     pub account_id: AccountId,
 }
 
+/// Mailboat → Settings… (⌘,) in the menu bar: open the Settings page.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct OpenSettingsEvent;
+
 pub struct TauriSyncEvents {
     pub app: AppHandle,
     pub log: std::sync::Arc<crate::sync_log::SyncLog>,
@@ -51,6 +55,14 @@ impl SyncEvents for TauriSyncEvents {
     }
     fn new_mail(&self, account: AccountId, messages: &[mailboat_core::model::MessageId]) {
         use tauri_plugin_notification::NotificationExt;
+        // Turned off in Settings → Notifications.
+        let enabled = {
+            let conn = self.db.conn();
+            mailboat_core::settings::load(&conn).map_or(true, |s| s.new_mail_notifications)
+        };
+        if !enabled {
+            return;
+        }
         // The account's address, when there's more than one to tell apart.
         let label = {
             let conn = self.db.conn();

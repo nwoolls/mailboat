@@ -4,6 +4,7 @@ mod error;
 mod events;
 mod files;
 mod links;
+mod menu;
 mod state;
 mod sync_log;
 mod trackpad;
@@ -17,7 +18,8 @@ use tauri::Manager;
 use tauri_specta::{collect_commands, collect_events, Builder};
 
 use crate::events::{
-    IdentitiesChangedEvent, MailChangedEvent, SyncProgressEvent, SyncStatusEvent, TauriSyncEvents,
+    IdentitiesChangedEvent, MailChangedEvent, OpenSettingsEvent, SyncProgressEvent,
+    SyncStatusEvent, TauriSyncEvents,
 };
 use crate::state::{AppDirs, AppState};
 
@@ -65,12 +67,18 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::html_preview,
             commands::sync_now,
             commands::sync_status_list,
+            commands::app_info,
+            commands::settings_get,
+            commands::settings_set,
+            commands::account_set_color,
+            commands::notification_settings_open,
         ])
         .events(collect_events![
             SyncStatusEvent,
             SyncProgressEvent,
             MailChangedEvent,
             IdentitiesChangedEvent,
+            OpenSettingsEvent,
             trackpad::TrackpadEvent
         ])
         // IDs and millisecond timestamps stay far below 2^53, so plain JS
@@ -113,6 +121,7 @@ pub fn run() {
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
+            menu::install(app.handle())?;
             trackpad::watch(app.handle());
             let data_dir = app.path().app_data_dir()?;
             let config_dir = app.path().app_config_dir()?;

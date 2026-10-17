@@ -13,6 +13,7 @@ pub mod gmail;
 pub mod labels;
 pub mod mail;
 pub mod model;
+pub mod settings;
 pub mod sync;
 
 pub use error::{CoreError, Result};

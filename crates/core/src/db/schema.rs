@@ -264,3 +264,13 @@ UPDATE threads SET senders_json = COALESCE((
   )
 ), '[]');
 "#;
+
+/// App-wide settings from the Settings page that Rust acts on (see
+/// `crate::settings`), stored as JSON under a key so new settings need no
+/// migration.
+pub const MIGRATION_V11: &str = r#"
+CREATE TABLE app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+"#;

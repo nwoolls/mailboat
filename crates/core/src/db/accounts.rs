@@ -115,6 +115,28 @@ pub fn google_sub(conn: &Connection, id: AccountId) -> Result<String> {
     .ok_or_else(|| CoreError::NotFound(format!("account {}", id.0)))
 }
 
+/// Changes the colour that marks an account's rows. Only colours from
+/// `ACCOUNT_COLORS` are accepted (they are picked to read well on glass in
+/// light and dark).
+pub fn set_color(conn: &Connection, id: AccountId, color: &str) -> Result<Account> {
+    let Some(color) = ACCOUNT_COLORS
+        .iter()
+        .find(|c| c.eq_ignore_ascii_case(color))
+    else {
+        return Err(CoreError::Invalid(format!(
+            "not an account colour: {color}"
+        )));
+    };
+    let changed = conn.execute(
+        "UPDATE accounts SET color = ?2 WHERE id = ?1",
+        params![id, color],
+    )?;
+    if changed == 0 {
+        return Err(CoreError::NotFound(format!("account {}", id.0)));
+    }
+    get(conn, id)
+}
+
 /// Removes an account and, through cascading foreign keys, all of its cached
 /// mail. The caller is responsible for deleting its keychain entry.
 pub fn remove(conn: &Connection, id: AccountId) -> Result<()> {
@@ -155,5 +177,23 @@ mod tests {
         let a = upsert(&conn, &new("sub-1", "a@example.com")).unwrap();
         let b = upsert(&conn, &new("sub-2", "b@example.com")).unwrap();
         assert_ne!(a.color, b.color);
+    }
+
+    #[test]
+    fn color_changes_only_to_a_palette_colour() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        let a = upsert(&conn, &new("sub-1", "a@example.com")).unwrap();
+        let changed = set_color(&conn, a.id, &ACCOUNT_COLORS[3].to_uppercase()).unwrap();
+        assert_eq!(changed.color, ACCOUNT_COLORS[3]);
+        assert!(matches!(
+            set_color(&conn, a.id, "#123456"),
+            Err(CoreError::Invalid(_))
+        ));
+        assert!(matches!(
+            set_color(&conn, AccountId(999), ACCOUNT_COLORS[0]),
+            Err(CoreError::NotFound(_))
+        ));
+        assert_eq!(get(&conn, a.id).unwrap().color, ACCOUNT_COLORS[3]);
     }
 }

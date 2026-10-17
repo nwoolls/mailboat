@@ -16,6 +16,7 @@ use mailboat_core::model::{
     Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, DraftId, Label,
     LabelId, LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
 };
+use mailboat_core::settings::{self, AppSettings};
 use mailboat_core::sync::{fetch_body, load_older, OLDER_BATCH};
 use mailboat_core::CoreError;
 use serde::Serialize;
@@ -805,4 +806,61 @@ pub fn sync_now(state: State<'_, AppState>, account_ids: Option<Vec<AccountId>>)
 #[specta::specta]
 pub fn sync_status_list(state: State<'_, AppState>) -> CmdResult<Vec<AccountSyncState>> {
     Ok(store::sync_states(&state.db.conn())?)
+}
+
+/// About the app, for Settings: its version and the colours an account can
+/// be marked with.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AppInfo {
+    pub version: String,
+    pub account_colors: Vec<String>,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn app_info() -> AppInfo {
+    AppInfo {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        account_colors: accounts::ACCOUNT_COLORS
+            .iter()
+            .map(|c| (*c).to_string())
+            .collect(),
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn settings_get(state: State<'_, AppState>) -> CmdResult<AppSettings> {
+    Ok(settings::load(&state.db.conn())?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn settings_set(state: State<'_, AppState>, settings: AppSettings) -> CmdResult<()> {
+    Ok(settings::save(&state.db.conn(), &settings)?)
+}
+
+/// Marks an account's rows with another colour from `AppInfo::account_colors`.
+#[tauri::command]
+#[specta::specta]
+pub fn account_set_color(
+    state: State<'_, AppState>,
+    account_id: AccountId,
+    color: String,
+) -> CmdResult<Account> {
+    Ok(accounts::set_color(&state.db.conn(), account_id, &color)?)
+}
+
+/// Opens Mailboat's page in System Settings → Notifications, where macOS
+/// keeps whether notifications may show and in what style.
+#[tauri::command]
+#[specta::specta]
+pub fn notification_settings_open(app: AppHandle) -> CmdResult<()> {
+    let id = &app.config().identifier;
+    open::that_detached(format!(
+        "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id={id}"
+    ))
+    .map_err(|e| CoreError::Other(format!("could not open System Settings: {e}")))?;
+    Ok(())
 }

@@ -144,12 +144,23 @@ export const commands = {
 	/**  Wakes sync workers now. `None` means every account. */
 	syncNow: (accountIds: AccountId[] | null) => __TAURI_INVOKE<void>("sync_now", { accountIds }),
 	syncStatusList: () => typedError<AccountSyncState[], AppError>(__TAURI_INVOKE("sync_status_list")),
+	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	settingsGet: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("settings_get")),
+	settingsSet: (settings: AppSettings) => typedError<null, AppError>(__TAURI_INVOKE("settings_set", { settings })),
+	/**  Marks an account's rows with another colour from `AppInfo::account_colors`. */
+	accountSetColor: (accountId: AccountId, color: string) => typedError<Account, AppError>(__TAURI_INVOKE("account_set_color", { accountId, color })),
+	/**
+	 *  Opens Mailboat's page in System Settings → Notifications, where macOS
+	 *  keeps whether notifications may show and in what style.
+	 */
+	notificationSettingsOpen: () => typedError<null, AppError>(__TAURI_INVOKE("notification_settings_open")),
 };
 
 /** Events */
 export const events = {
 	identitiesChangedEvent: makeEvent<IdentitiesChangedEvent>("identities-changed-event"),
 	mailChangedEvent: makeEvent<MailChangedEvent>("mail-changed-event"),
+	openSettingsEvent: makeEvent<OpenSettingsEvent>("open-settings-event"),
 	syncProgressEvent: makeEvent<SyncProgressEvent>("sync-progress-event"),
 	syncStatusEvent: makeEvent<SyncStatusEvent>("sync-status-event"),
 	trackpadEvent: makeEvent<TrackpadEvent>("trackpad-event"),
@@ -190,6 +201,20 @@ export type AppError = {
 	/**  Stable category, e.g. "auth", "config", "network". */
 	kind: string,
 	message: string,
+};
+
+/**
+ *  About the app, for Settings: its version and the colours an account can
+ *  be marked with.
+ */
+export type AppInfo = {
+	version: string,
+	accountColors: string[],
+};
+
+export type AppSettings = {
+	/**  Show a macOS notification when new mail arrives in an Inbox. */
+	newMailNotifications?: boolean,
 };
 
 /**
@@ -345,6 +370,9 @@ export type OlderLoaded = {
 	/**  Gmail has nothing older in this view for any of the accounts. */
 	exhausted: boolean,
 };
+
+/**  Mailboat → Settings… (⌘,) in the menu bar: open the Settings page. */
+export type OpenSettingsEvent = null;
 
 /**  A saved draft opened for editing: what compose needs to resume it. */
 export type OpenedDraft = {
