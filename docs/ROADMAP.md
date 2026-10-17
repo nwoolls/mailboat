@@ -641,7 +641,11 @@ each was a "not yet" note above)*:
       (Reply, Archive, Report spam, Labels…), New message, Search, Sync
       now, the panels, and every view to go to (unified and per account,
       labels included). Each shows its key
-- [ ] Full keyboard shortcuts
+- [x] Full keyboard shortcuts: Gmail's "go to" keys (`g` then `i`
+      Inbox, `s` Starred, `t` Sent, `d` Drafts, `a` All Mail, `e`
+      Archive; they keep the accounts being viewed), and `?` for a sheet
+      of every shortcut (also in the ⌘K palette). The rest were already
+      there: j/k, e, #, u, s, !, l, x, z, c, r, a, f, /, ⌘K, ⌃⌘S, ⌃⌘R
 - [x] Remote Gmail search (`q=`) fanned out per account, merged by date.
       Search shows local matches at once; once the text has stayed the
       same for 0.7s and you reach the end of the local results, each

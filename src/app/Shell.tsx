@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { commands } from "../platform/tauri/bindings";
 import type { ThreadId } from "../platform/tauri/bindings";
 import { unwrap } from "../platform/tauri/ipc";
@@ -41,6 +41,8 @@ import {
   toggleFor,
 } from "../features/mailbox/model/threadActions";
 import { LabelPicker } from "../features/mailbox/ui/LabelPicker";
+import { ShortcutsHelp } from "../features/mailbox/ui/ShortcutsHelp";
+import { GO_TO_MS, goToView } from "../features/mailbox/model/shortcuts";
 import { useOlderMail } from "../features/mailbox/ui/useOlderMail";
 import { useThreadAction } from "../features/mailbox/ui/useThreadAction";
 import { anchorBelow, Menu, type MenuAnchor, MenuItem, MenuSeparator } from "../shared/ui/Menu";
@@ -182,6 +184,9 @@ export function Shell() {
   // A conversation's right-click menu, at the pointer.
   const [rowMenu, setRowMenu] = useState<MenuAnchor | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // When `g` was pressed, for Gmail's "go to" keys (0: not waiting).
+  const goPending = useRef(0);
   const goTo = useCallback((s: Selection) => {
     setChosen(s);
     setSearch("");
@@ -342,6 +347,27 @@ export function Shell() {
         // Gmail's key for Report spam.
         "!": "spam",
       };
+      // `g` then a letter: go to a view (Gmail's keys), keeping the
+      // accounts being viewed. The letter after `g` isn't its usual key.
+      if (plain && e.key === "g") {
+        e.preventDefault();
+        goPending.current = performance.now();
+        return;
+      }
+      if (plain && goPending.current && performance.now() - goPending.current < GO_TO_MS) {
+        goPending.current = 0;
+        const view = goToView(e.key);
+        if (view) {
+          e.preventDefault();
+          goTo({ accounts: baseSelection.accounts, view });
+          return;
+        }
+      }
+      if (plain && e.key === "?") {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
       const kind = plain ? toggles[e.key] : undefined;
       if (kind) {
         const action = toggleFor(kind, targets);
@@ -396,6 +422,8 @@ export function Shell() {
     toggleReader,
     startNew,
     compose,
+    goTo,
+    baseSelection.accounts,
   ]);
 
   if (accountsQuery.isPending) return null;
@@ -729,11 +757,13 @@ export function Shell() {
             readerOpen,
             toggleSidebar,
             toggleReader,
+            showShortcuts: () => setShortcutsOpen(true),
             destinations: destinations(accountList, labels),
             goTo,
           })}
         />
       )}
+      {shortcutsOpen && <ShortcutsHelp onClose={() => setShortcutsOpen(false)} />}
       <Toast toast={toast} onDismiss={dismissToast} />
     </div>
   );

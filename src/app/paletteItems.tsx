@@ -42,6 +42,7 @@ export function paletteItems(p: {
   readerOpen: boolean;
   toggleSidebar: () => void;
   toggleReader: () => void;
+  showShortcuts: () => void;
   destinations: Destination[];
   goTo: (s: Selection) => void;
 }): PaletteItem[] {
@@ -139,6 +140,13 @@ export function paletteItems(p: {
       run: p.toggleReader,
     },
   );
+  items.push({
+    id: "shortcuts",
+    group: "View",
+    title: "Keyboard shortcuts",
+    shortcut: "?",
+    run: p.showShortcuts,
+  });
   for (const d of p.destinations)
     items.push({
       id: `go:${d.key}`,
