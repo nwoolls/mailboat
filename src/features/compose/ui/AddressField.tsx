@@ -178,7 +178,7 @@ export function AddressField({
   return (
     <div
       ref={lineRef}
-      className="flex min-h-9 flex-wrap items-center gap-1 border-b border-stroke py-1"
+      className="flex min-h-9 cursor-text flex-wrap items-center gap-1 border-b border-stroke py-1"
       onClick={() => inputRef.current?.focus()}
     >
       <span className="w-12 shrink-0 text-content/45">{label}</span>
@@ -208,6 +208,8 @@ export function AddressField({
         autoCapitalize="off"
         autoComplete="off"
         spellCheck={false}
+        // Says the line takes more people (it looked fixed in replies).
+        placeholder={value.length > 0 ? "Add people" : undefined}
         value={text}
         onChange={(e) => {
           cancelled.current = false;
@@ -229,7 +231,7 @@ export function AddressField({
           cancelled.current = false;
           setAnchor(null);
         }}
-        className="h-7 min-w-[8rem] flex-1 bg-transparent outline-none focus-visible:outline-none"
+        className="h-7 min-w-[8rem] flex-1 bg-transparent outline-none placeholder:text-content/30 focus-visible:outline-none"
       />
       {trailing}
       {open && (

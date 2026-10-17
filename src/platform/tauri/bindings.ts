@@ -114,7 +114,10 @@ export const commands = {
 	 *  time, replacing it after) and returns its local draft ID.
 	 */
 	draftSave: (draft: number | null, message: OutgoingMessage) => typedError<DraftId, AppError>(__TAURI_INVOKE("draft_save", { draft, message })),
-	/**  Deletes a saved draft (discarded), from Gmail too. */
+	/**
+	 *  Deletes a saved draft (discarded), from Gmail too, and lists refresh
+	 *  (it leaves its conversation and Drafts at once).
+	 */
 	draftDelete: (draft: DraftId) => typedError<null, AppError>(__TAURI_INVOKE("draft_delete", { draft })),
 	/**
 	 *  Opens a draft shown in a conversation for editing (made here or in

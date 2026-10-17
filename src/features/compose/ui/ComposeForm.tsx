@@ -51,11 +51,24 @@ export function ComposeForm({
   // Replies start in the text, above the quote (new messages and
   // forwards start in To). Asked again (focusKey) when `r` is pressed on
   // a conversation already being answered.
+  // The whole reply is scrolled into view, its header to its Send button,
+  // and kept there while it finishes laying out (the signature loads a
+  // moment later), not just the line being typed on.
   useEffect(() => {
     if ((draft.kind === "new" || draft.kind === "forward") && entry.focusKey === 0) return;
     if (!editor) return;
     editor.commands.focus(entry.focusKey === 0 ? "start" : undefined);
-    formRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const whole = formRef.current?.closest("section") ?? formRef.current;
+    if (!whole) return;
+    const show = () => whole.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    show();
+    const growing = new ResizeObserver(show);
+    growing.observe(whole);
+    const settled = window.setTimeout(() => growing.disconnect(), 1500);
+    return () => {
+      growing.disconnect();
+      window.clearTimeout(settled);
+    };
   }, [editor, draft.kind, entry.focusKey]);
 
   useEffect(() => {
