@@ -22,9 +22,13 @@ export type PaletteItem = {
  */
 export function CommandPalette({ items, onClose }: { items: PaletteItem[]; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const el = ref.current;
     el?.showModal();
+    // Opening the dialog moves focus to the dialog itself (React's
+    // autoFocus ran before it was open), so put it in the field after.
+    input.current?.focus();
     return () => el?.close();
   }, []);
   const groups = [...new Set(items.map((i) => i.group))];
@@ -45,7 +49,7 @@ export function CommandPalette({ items, onClose }: { items: PaletteItem[]; onClo
     >
       <Command label="Command palette" loop>
         <Command.Input
-          autoFocus
+          ref={input}
           placeholder="Type a command or a place…"
           className="h-11 w-full border-b border-stroke bg-transparent px-4 outline-none placeholder:text-content/40"
         />

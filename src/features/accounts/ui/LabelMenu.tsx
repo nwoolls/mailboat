@@ -109,10 +109,13 @@ function RenameDialog({
   onCancel: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const field = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(label.name);
   useEffect(() => {
     const el = ref.current;
     el?.showModal();
+    // Opening focuses the dialog itself; put focus in the name, selected.
+    field.current?.select();
     return () => el?.close();
   }, []);
   return (
@@ -135,7 +138,7 @@ function RenameDialog({
           Rename label
         </h2>
         <input
-          autoFocus
+          ref={field}
           aria-label="Label name"
           value={name}
           onChange={(e) => setName(e.target.value)}

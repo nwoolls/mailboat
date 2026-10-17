@@ -26,9 +26,13 @@ export function ConfirmDialog({
   onCancel: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const el = ref.current;
     el?.showModal();
+    // Opening focuses the dialog itself (React's autoFocus ran before it
+    // was open), so move focus to Cancel afterwards.
+    cancel.current?.focus();
     return () => el?.close();
   }, []);
 
@@ -50,8 +54,8 @@ export function ConfirmDialog({
       {error && <p className="selectable mt-3 text-xs text-danger">{error}</p>}
       <div className="mt-5 flex justify-end gap-2">
         <button
+          ref={cancel}
           type="button"
-          autoFocus
           disabled={busy}
           onClick={onCancel}
           className="h-7 rounded-md px-3 bg-selection hover:bg-selection-strong disabled:opacity-50"
