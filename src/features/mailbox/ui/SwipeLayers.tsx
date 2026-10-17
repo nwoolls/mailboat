@@ -118,7 +118,7 @@ export function SwipeButton({
       }}
       // Only the uncovered part shows; what's inside keeps the button's
       // full width, so it's revealed rather than squeezed.
-      className={`absolute overflow-hidden whitespace-nowrap ${
+      className={`group absolute overflow-hidden whitespace-nowrap ${
         open ? "pointer-events-auto cursor-pointer" : "pointer-events-none"
       }`}
       style={{
@@ -139,6 +139,14 @@ export function SwipeButton({
           transformOrigin: side === "left" ? "right center" : "left center",
         }}
       >
+        {open && (
+          // Hover, once it can be clicked: a touch more of the row's own
+          // fill, as rows do, and the icon and word come up to full.
+          <span
+            aria-hidden
+            className="absolute inset-0 rounded-lg transition-colors duration-150 group-hover:bg-selection"
+          />
+        )}
         <span
           aria-hidden
           className="absolute inset-0 rounded-lg bg-accent/20 transition-[opacity,transform] duration-200 ease-[cubic-bezier(.3,1.6,.5,1)]"
@@ -146,7 +154,7 @@ export function SwipeButton({
         />
         <span
           className={`relative flex items-center gap-1.5 transition-[color,transform] duration-200 ease-[cubic-bezier(.3,1.6,.5,1)] ${
-            pose.armed ? "text-accent" : "text-content/70"
+            pose.armed ? "text-accent" : "text-content/70 group-hover:text-content"
           }`}
           style={{ opacity: pose.label, transform: `scale(${pose.armed ? 1.06 : 1})` }}
         >

@@ -33,6 +33,11 @@ describe("swipe pose", () => {
     expect([p.joined, p.separated]).toEqual([false, true]);
   });
 
+  it("keeps the ring empty just past revealing the button", () => {
+    expect(swipePose(openRest() + SWIPE.ringAfter).ring).toBe(0);
+    expect(swipePose(openRest() + SWIPE.ringAfter + 10).ring).toBeGreaterThan(0);
+  });
+
   it("arms a little further on, with the ring full", () => {
     const at = openRest() + SWIPE.armAfter;
     expect(swipePose(at - 1).armed).toBe(false);

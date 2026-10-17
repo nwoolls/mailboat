@@ -682,6 +682,9 @@ each was a "not yet" note above)*:
       - Putting a row back is eager (owner): a 16px push back on an open
         row closes it on release (was about 66px), and it goes home on a
         quicker, barely bouncing spring
+      - The open button has a hover (a touch more fill, icon and word to
+        full). The ring stays empty while the button settles open and for
+        20px past it, so a swipe that only reveals it shows no progress
 - [x] Create, rename and delete labels (the label picker only applies
       existing ones) *(not in the M3 list; noted while building it)*.
       Typing a new name in the picker (`l`) offers "Create “name”", which

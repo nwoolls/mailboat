@@ -129,7 +129,13 @@ export function ThreadList({
           const picked = checked.has(t.id);
           const account = showAccount ? accounts.get(t.accountId) : undefined;
           const swiped = swipe?.id === t.id ? swipe : null;
-          const pose = swiped ? swipePose(swiped.d) : null;
+          const raw = swiped ? swipePose(swiped.d) : null;
+          // Settling open (the spring overshoots a little) or resting
+          // there, the ring stays empty: it only fills under the fingers.
+          const pose =
+            raw && swiped && (swiped.mode === "settle" || swiped.mode === "open")
+              ? { ...raw, ring: 0, armed: false }
+              : raw;
           const swipeAction = swiped ? swipeActions(t)[swiped.side] : null;
           const rowHeight = ROW_HEIGHT - 4;
           const out = swiped?.mode === "out";

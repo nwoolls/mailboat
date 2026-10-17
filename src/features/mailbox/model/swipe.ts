@@ -30,6 +30,11 @@ export const SWIPE = {
   apart: 10,
   /** Row travel past separation at which letting go does the action. */
   armAfter: 72,
+  /**
+   * Row travel past separation before the ring starts to fill: a swipe
+   * that just reveals the button (and overshoots a little) shows none.
+   */
+  ringAfter: 20,
   /** Past this row travel, each pixel counts for less (rubber band). */
   maxPull: 200,
   /** Row travel under which a release springs back instead of opening. */
@@ -97,7 +102,7 @@ export function swipePose(d: number, s = SWIPE): SwipePose {
     joined: shift < s.capsule,
     separated: shift - s.capsule >= SNAP_GAP,
     label: smooth(s.capsule * 0.35, s.capsule, shift),
-    ring: clamp((shift - separated) / s.armAfter),
+    ring: clamp((shift - separated - s.ringAfter) / (s.armAfter - s.ringAfter)),
     armed: shift >= armShift(s),
   };
 }
