@@ -736,7 +736,8 @@ approve it, and an ARCHITECTURE decision row.
       - Every request logged (what was read, never the content), so the
         owner can see what an AI looked at
 - [ ] Icon, round three *(owner request, 2026-10-17)*: keep the current
-      look (the green folded-ribbon M, flat, high contrast) but try other
+      look (the folded-ribbon M in Apple's system blue, C17, on a
+      flat near-black tile with the Liquid Glass rim) but try other
       fold directions so it reads more like a folded envelope. Offer a
       sheet of variants in `design/icon/sheets/` to pick from, as before
 - [ ] Idle screensavers for the empty reader and list *(owner request,
