@@ -489,9 +489,11 @@ Stage 2: the card and inline replies
       floating card (not a separate window), so other mail can be read
       while writing. The conversation then says it's open in its own card,
       with "Show it"; replying again brings it forward
-- [x] Switch kind *(owner, 2026-10-17: "yes" to Gmail's)*: the menu at the
-      top left of an inline reply turns it into Reply, Reply all or
-      Forward without starting over. What was written, From, Bcc and
+- [x] Switch kind *(owner, 2026-10-17: "yes" to Gmail's)*: a small
+      button showing the current kind, on the To line by Cc and Bcc (as in
+      Mimestream; first built at the top of the reply, where the owner
+      missed it), turns it into Reply, Reply all or Forward without
+      starting over. What was written, From, Bcc and
       attached files stay; recipients, subject and the quote change. Not
       offered for a reopened draft (its quote is part of its saved text)
 - [ ] Inline replies and forwards: the rest of the polish (scrolling to

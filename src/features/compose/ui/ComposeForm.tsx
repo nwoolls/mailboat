@@ -5,14 +5,35 @@ import { IS_TAURI } from "../../../platform/tauri/ipc";
 import type { Account, Identity } from "../../../platform/tauri/bindings";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { AccountDot } from "../../../shared/ui/AccountDot";
-import { AttachmentIcon, ClearIcon, TrashIcon } from "../../../shared/ui/icons";
+import {
+  AttachmentIcon,
+  ClearIcon,
+  ForwardIcon,
+  ReplyAllIcon,
+  ReplyIcon,
+  TrashIcon,
+} from "../../../shared/ui/icons";
 import type { OutgoingAttachment } from "../../../platform/tauri/bindings";
 import { formatSize } from "../../reader/model/attachments";
 import { attachmentSize } from "../model/draft";
 import type { ComposeEntry } from "../model/composeState";
-import { type Draft, hasChanges, sendProblem, withIdentity } from "../model/draft";
+import {
+  type ComposeKind,
+  type Draft,
+  hasChanges,
+  sendProblem,
+  withIdentity,
+} from "../model/draft";
 import { AddressField } from "./AddressField";
 import { EditorBody, FormatBar, useRichEditor } from "./RichEditor";
+
+export type ReplyKind = Exclude<ComposeKind, "new">;
+
+export const KIND_LABELS: Record<ReplyKind, string> = {
+  reply: "Reply",
+  replyAll: "Reply all",
+  forward: "Forward",
+};
 
 /**
  * The fields of a message being written: From (when there's a choice),
@@ -27,6 +48,7 @@ export function ComposeForm({
   onChange,
   onSend,
   onDiscard,
+  onSwitchKind,
 }: {
   entry: ComposeEntry;
   identities: Identity[];
@@ -36,6 +58,8 @@ export function ComposeForm({
   onChange: (change: (d: Draft) => Draft) => void;
   onSend: () => void;
   onDiscard: () => void;
+  /** Offered for replies that can turn into another kind. */
+  onSwitchKind?: (kind: ReplyKind) => void;
 }) {
   const { draft, sending, error } = entry;
   const [problem, setProblem] = useState<string | null>(null);
@@ -154,7 +178,14 @@ export function ComposeForm({
             </select>
           </div>
         )}
-        <AddressFieldRow draft={draft} onChange={onChange} />
+        <AddressFieldRow
+          draft={draft}
+          onChange={onChange}
+          kindMenu={
+            onSwitchKind &&
+            draft.kind !== "new" && <KindMenu kind={draft.kind} onSwitch={onSwitchKind} />
+          }
+        />
         {/* Replies keep the conversation's subject, popped out too. */}
         {!inline && draft.kind === "new" && (
           <input
@@ -277,9 +308,11 @@ export function ComposeForm({
 function AddressFieldRow({
   draft,
   onChange,
+  kindMenu,
 }: {
   draft: Draft;
   onChange: (change: (d: Draft) => Draft) => void;
+  kindMenu?: React.ReactNode;
 }) {
   const toggle = (field: "showCc" | "showBcc", label: string) =>
     !draft[field] && (
@@ -302,7 +335,8 @@ function AddressFieldRow({
         autoFocus={draft.kind === "new" || draft.kind === "forward"}
         onChange={(to) => onChange((d) => ({ ...d, to }))}
         trailing={
-          <span className="ml-auto flex shrink-0">
+          <span className="ml-auto flex shrink-0 items-center">
+            {kindMenu}
             {toggle("showCc", "Cc")}
             {toggle("showBcc", "Bcc")}
           </span>
@@ -323,6 +357,41 @@ function AddressFieldRow({
         />
       )}
     </>
+  );
+}
+
+/**
+ * Reply / Reply all / Forward, switched without starting over: a small
+ * button showing the current kind, by Cc and Bcc on the To line, as in
+ * Mimestream (Gmail has it left of the recipients). A native menu, opened
+ * by a select laid invisibly over the button.
+ */
+function KindMenu({ kind, onSwitch }: { kind: ReplyKind; onSwitch: (kind: ReplyKind) => void }) {
+  const Icon = kind === "forward" ? ForwardIcon : kind === "replyAll" ? ReplyAllIcon : ReplyIcon;
+  return (
+    <span
+      title={`${KIND_LABELS[kind]}: change to reply, reply all or forward`}
+      // Not the line's click, which would move the focus to the address box.
+      onClick={(e) => e.stopPropagation()}
+      className="relative mr-1 flex h-6 items-center gap-0.5 rounded px-1.5 text-content/50 hover:bg-selection hover:text-content"
+    >
+      <Icon size={14} />
+      <span aria-hidden className="text-[9px] leading-none">
+        ▾
+      </span>
+      <select
+        aria-label="Kind of reply"
+        value={kind}
+        onChange={(e) => onSwitch(e.target.value as ReplyKind)}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      >
+        {(Object.keys(KIND_LABELS) as ReplyKind[]).map((k) => (
+          <option key={k} value={k}>
+            {KIND_LABELS[k]}
+          </option>
+        ))}
+      </select>
+    </span>
   );
 }
 

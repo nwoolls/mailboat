@@ -7,8 +7,8 @@ import {
   ReplyIcon,
 } from "../../../shared/ui/icons";
 import { type ComposeEntry, poppedReplyIn, replyIn } from "../model/composeState";
-import { canSwitchKind, type ComposeKind, editorKey } from "../model/draft";
-import { ComposeForm } from "./ComposeForm";
+import { canSwitchKind, editorKey } from "../model/draft";
+import { ComposeForm, KIND_LABELS, type ReplyKind } from "./ComposeForm";
 import { useEffect, useRef, useState } from "react";
 import type { MessageId } from "../../../platform/tauri/bindings";
 import {
@@ -20,14 +20,6 @@ import {
   updateDraft,
   useComposeState,
 } from "./useCompose";
-
-type ReplyKind = Exclude<ComposeKind, "new">;
-
-const KIND_LABELS: Record<ReplyKind, string> = {
-  reply: "Reply",
-  replyAll: "Reply all",
-  forward: "Forward",
-};
 
 /**
  * The foot of a conversation: Reply / Reply all / Forward, or the reply
@@ -89,25 +81,7 @@ export function ReplyArea({
         style={{ boxShadow: `inset 3px 0 0 ${account?.color ?? "transparent"}` }}
       >
         <div className="flex items-center gap-2 pt-2 pr-2 pl-3 text-xs text-content/50">
-          {canSwitchKind(draft) ? (
-            // As Gmail's menu by the reply arrow: switch without starting over.
-            <select
-              aria-label="Kind of reply"
-              title="Change to reply, reply all or forward"
-              value={draft.kind}
-              disabled={reply.sending}
-              onChange={(e) => onSwitch(draft.id, e.target.value as ReplyKind)}
-              className="rounded bg-transparent px-1 py-0.5 outline-none hover:bg-selection hover:text-content"
-            >
-              {(Object.keys(KIND_LABELS) as ReplyKind[]).map((k) => (
-                <option key={k} value={k}>
-                  {KIND_LABELS[k]}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className="px-1">{KIND_LABELS[draft.kind === "new" ? "reply" : draft.kind]}</span>
-          )}
+          <span className="px-1">{KIND_LABELS[draft.kind === "new" ? "reply" : draft.kind]}</span>
           <button
             type="button"
             aria-label="Pop out"
@@ -126,6 +100,7 @@ export function ReplyArea({
           accounts={accounts}
           inline
           onChange={(change) => updateDraft(draft.id, change)}
+          onSwitchKind={canSwitchKind(draft) ? (kind) => onSwitch(draft.id, kind) : undefined}
           onSend={() => onSend(reply)}
           onDiscard={() => closeDraft(draft.id)}
         />
