@@ -636,7 +636,11 @@ each was a "not yet" note above)*:
       creates it in the conversations' account and applies it. Right-click
       a sidebar label for Rename… (labels nested under it follow, as in
       Gmail) and Delete… (asks first; its conversations stay)
-- [ ] Command palette (cmdk)
+- [x] Command palette (cmdk): ⌘K (outside the editor, where ⌘K adds a
+      link). Type to find: the open or picked conversations' actions
+      (Reply, Archive, Report spam, Labels…), New message, Search, Sync
+      now, the panels, and every view to go to (unified and per account,
+      labels included). Each shows its key
 - [ ] Full keyboard shortcuts
 - [x] Remote Gmail search (`q=`) fanned out per account, merged by date.
       Search shows local matches at once; once the text has stayed the

@@ -1,0 +1,92 @@
+import { Command } from "cmdk";
+import { useEffect, useRef } from "react";
+import type { IconProps } from "../../../shared/ui/icons";
+
+/** One thing the palette can do. */
+export type PaletteItem = {
+  id: string;
+  group: string;
+  title: string;
+  /** Faint text after the title (an account's address). */
+  detail?: string | null;
+  /** The key that does the same outside the palette. */
+  shortcut?: string;
+  icon?: (props: IconProps) => React.ReactNode;
+  run: () => void;
+};
+
+/**
+ * ⌘K: type to find an action or a place, ↑/↓ and Return to run it, Esc to
+ * close (cmdk does the filtering and keys). A modal `<dialog>`, so it sits
+ * above everything and keeps focus.
+ */
+export function CommandPalette({ items, onClose }: { items: PaletteItem[]; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    el?.showModal();
+    return () => el?.close();
+  }, []);
+  const groups = [...new Set(items.map((i) => i.group))];
+
+  return (
+    <dialog
+      ref={ref}
+      aria-label="Command palette"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      // A click on the backdrop (outside the box) closes it.
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="dialog mx-auto mt-[12vh] w-[min(560px,90vw)] overflow-hidden rounded-xl p-0 text-[13px] text-content"
+    >
+      <Command label="Command palette" loop>
+        <Command.Input
+          autoFocus
+          placeholder="Type a command or a place…"
+          className="h-11 w-full border-b border-stroke bg-transparent px-4 outline-none placeholder:text-content/40"
+        />
+        <Command.List className="max-h-[min(420px,60vh)] overflow-y-auto p-1.5">
+          <Command.Empty className="px-3 py-2 text-content/50">Nothing matches.</Command.Empty>
+          {groups.map((group) => (
+            <Command.Group
+              key={group}
+              heading={group}
+              className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:text-content/45"
+            >
+              {items
+                .filter((i) => i.group === group)
+                .map((item) => (
+                  <Command.Item
+                    key={item.id}
+                    value={`${item.title} ${item.detail ?? ""} ${item.id}`}
+                    onSelect={() => {
+                      onClose();
+                      item.run();
+                    }}
+                    className="flex h-8 cursor-default items-center gap-2.5 rounded-md px-2.5 data-[selected=true]:bg-selection-strong"
+                  >
+                    <span className="flex w-4 shrink-0 justify-center text-content/60">
+                      {item.icon && <item.icon size={15} />}
+                    </span>
+                    <span className="truncate">{item.title}</span>
+                    {item.detail && (
+                      <span className="truncate text-xs text-content/45">{item.detail}</span>
+                    )}
+                    {item.shortcut && (
+                      <kbd className="ml-auto shrink-0 font-sans text-xs text-content/45">
+                        {item.shortcut}
+                      </kbd>
+                    )}
+                  </Command.Item>
+                ))}
+            </Command.Group>
+          ))}
+        </Command.List>
+      </Command>
+    </dialog>
+  );
+}

@@ -69,6 +69,9 @@ import { emptyStateFor, emptyStateKey } from "../features/mailbox/model/emptySta
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
+import { destinations } from "../features/palette/model/destinations";
+import { CommandPalette } from "../features/palette/ui/CommandPalette";
+import { paletteItems } from "./paletteItems";
 import { accountForNew } from "../features/compose/model/draft";
 import { openCardEntry } from "../features/compose/model/composeState";
 import { ComposeCard } from "../features/compose/ui/ComposeCard";
@@ -178,6 +181,12 @@ export function Shell() {
   const [labelAnchor, setLabelAnchor] = useState<MenuAnchor | null>(null);
   // A conversation's right-click menu, at the pointer.
   const [rowMenu, setRowMenu] = useState<MenuAnchor | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const goTo = useCallback((s: Selection) => {
+    setChosen(s);
+    setSearch("");
+    setSelectedId(null);
+  }, []);
   const { mutate: mutateThreads } = useThreadAction();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   // Past the last cached page, ask Gmail for older mail. Not while the
@@ -283,6 +292,12 @@ export function Shell() {
         e.preventDefault();
         if (panel === "sidebar") toggleSidebar();
         else toggleReader();
+        return;
+      }
+      // ⌘K: the command palette (inside the editor, ⌘K adds a link).
+      if (e.key === "k" && e.metaKey && !e.ctrlKey && !e.altKey && !isEditable(e.target)) {
+        e.preventDefault();
+        setPaletteOpen(true);
         return;
       }
       if (e.key === "/" && !isEditable(e.target)) {
@@ -441,11 +456,7 @@ export function Shell() {
               width={sidebarWidth}
               syncStates={syncStates}
               selection={baseSelection}
-              onSelect={(s) => {
-                setChosen(s);
-                setSearch("");
-                setSelectedId(null);
-              }}
+              onSelect={goTo}
               onAccountRemoved={(id) => {
                 // Leave views that only showed that account's mail, and
                 // close its conversation if one was open.
@@ -701,6 +712,27 @@ export function Shell() {
             Labels…
           </MenuItem>
         </Menu>
+      )}
+      {paletteOpen && (
+        <CommandPalette
+          onClose={() => setPaletteOpen(false)}
+          items={paletteItems({
+            targets,
+            toggle,
+            startReply: (kind) => void compose.startReply(kind, targets[0]!.id),
+            openLabels: () =>
+              setLabelAnchor({ x: window.innerWidth / 2 + 128, y: 96, align: "end" }),
+            startNew,
+            focusSearch: () => document.getElementById(SEARCH_INPUT_ID)?.focus(),
+            syncNow: () => void commands.syncNow(null),
+            sidebarOpen,
+            readerOpen,
+            toggleSidebar,
+            toggleReader,
+            destinations: destinations(accountList, labels),
+            goTo,
+          })}
+        />
       )}
       <Toast toast={toast} onDismiss={dismissToast} />
     </div>
