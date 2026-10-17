@@ -541,8 +541,11 @@ Stage 4: drafts and undo send
       at the foot. Works for drafts made in Gmail elsewhere too. Discard
       is the composer's own trash button (deleted from Gmail, and gone
       from the list at once). ✕ closes at once and saves in the
-      background; if that fails, the card comes back with the error. Not
-      yet: a resumed draft's saved attachments
+      background; if that fails, the card comes back with the error.
+      Closing a reopened draft leaves it in Drafts (only Discard deletes;
+      owner report, 2026-10-16), and a saved draft shows in Drafts at
+      once instead of after the next sync. Not yet: a resumed draft's
+      saved attachments
 - [x] Undo send (5 seconds): Send closes the message at once and
       "Sending…" offers Undo (or `z` / ⌘Z) for 5 seconds before anything
       goes to Google; Undo puts it back exactly as it was. If sending then

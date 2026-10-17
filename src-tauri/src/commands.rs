@@ -603,17 +603,24 @@ pub async fn message_send(
 #[tauri::command]
 #[specta::specta]
 pub async fn draft_save(
+    app: AppHandle,
     state: State<'_, AppState>,
     draft: Option<DraftId>,
     message: OutgoingMessage,
 ) -> CmdResult<DraftId> {
-    Ok(compose::save_draft(
+    let id = compose::save_draft(
         &state.db,
         |account| state.gmail_for(account),
         draft,
         &message,
     )
-    .await?)
+    .await?;
+    // The saved draft is cached already: lists (Drafts) refresh now.
+    let _ = MailChangedEvent {
+        account_id: message.account_id,
+    }
+    .emit(&app);
+    Ok(id)
 }
 
 /// Deletes a saved draft (discarded), from Gmail too.

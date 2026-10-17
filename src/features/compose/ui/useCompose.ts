@@ -164,7 +164,11 @@ export async function saveNow(id: number): Promise<boolean> {
 export function closeKeepingDraft(id: number) {
   const entry = S.entryById(state, id);
   if (!entry || !hasChanges(entry.draft)) {
-    closeDraft(id);
+    // Nothing new to save. Just close: a reopened draft stays in Drafts
+    // as it was (only Discard deletes), and an empty new one never saved.
+    finish(entry);
+    set(S.close(state, id));
+    saves.delete(id);
     return;
   }
   const s = slot(id);

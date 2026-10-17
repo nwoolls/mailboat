@@ -16,6 +16,7 @@ use specta::Type;
 use crate::db::now_millis;
 use crate::db::{store, Db};
 use crate::error::{CoreError, Result};
+use crate::gmail::types::DraftRef;
 use crate::gmail::{parse, GmailClient};
 use crate::model::{AccountId, Address, DraftId, MessageId, ThreadId};
 use crate::sync::fetch_body;
@@ -315,27 +316,56 @@ pub async fn save_draft(
     };
     if let Some((id, (account, gmail_id))) = saved {
         if account == msg.account_id {
-            gmail_for(account)?
+            let gmail = gmail_for(account)?;
+            let saved = gmail
                 .update_draft(&gmail_id, &raw, thread.as_deref())
                 .await?;
             db.conn().execute(
                 "UPDATE drafts SET updated_at = ?2 WHERE id = ?1",
                 params![id, now_millis()],
             )?;
+            cache_draft(db, &gmail, account, id, &saved).await;
             return Ok(id);
         }
         // From changed account: the draft moves with it.
         delete_draft(db, &gmail_for, id).await?;
     }
-    let created = gmail_for(msg.account_id)?
-        .create_draft(&raw, thread.as_deref())
-        .await?;
-    let conn = db.conn();
-    conn.execute(
-        "INSERT INTO drafts (account_id, gmail_draft_id, updated_at) VALUES (?1, ?2, ?3)",
-        params![msg.account_id, created.id, now_millis()],
-    )?;
-    Ok(DraftId(conn.last_insert_rowid()))
+    let gmail = gmail_for(msg.account_id)?;
+    let created = gmail.create_draft(&raw, thread.as_deref()).await?;
+    let id = {
+        let conn = db.conn();
+        conn.execute(
+            "INSERT INTO drafts (account_id, gmail_draft_id, updated_at) VALUES (?1, ?2, ?3)",
+            params![msg.account_id, created.id, now_millis()],
+        )?;
+        DraftId(conn.last_insert_rowid())
+    };
+    cache_draft(db, &gmail, msg.account_id, id, &created).await;
+    Ok(id)
+}
+
+/// Brings a just-saved draft's conversation into the cache, so it shows in
+/// Drafts (and its conversation) at once rather than after the next sync,
+/// and links the draft to its message. Best effort: sync catches up anyway.
+async fn cache_draft(
+    db: &Db,
+    gmail: &GmailClient,
+    account: AccountId,
+    id: DraftId,
+    saved: &DraftRef,
+) {
+    let Ok(Some(thread)) = gmail.thread_metadata(&saved.message.thread_id).await else {
+        return;
+    };
+    let mut conn = db.conn();
+    if store::upsert_thread(&mut conn, account, &parse::thread_to_incoming(&thread)).is_ok() {
+        let _ = conn.execute(
+            "UPDATE drafts SET message_id =
+               (SELECT id FROM messages WHERE account_id = ?2 AND gmail_message_id = ?3)
+             WHERE id = ?1",
+            params![id, account, saved.message.id],
+        );
+    }
 }
 
 fn draft_row(db: &Db, id: DraftId) -> Result<Option<(AccountId, String)>> {

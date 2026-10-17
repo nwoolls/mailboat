@@ -544,3 +544,35 @@ async fn conversations_that_are_only_a_draft_say_so() {
     assert!(query::thread_summary(&conn, draft_only).unwrap().only_draft);
     assert!(!query::thread_summary(&conn, t1).unwrap().only_draft);
 }
+
+#[tokio::test]
+async fn a_saved_draft_is_cached_at_once() {
+    let server = MockServer::start().await;
+    mount_drafts(&server, "d1").await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/threads/dt"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "dt",
+            "messages": [{ "id": "dm", "threadId": "dt", "labelIds": ["DRAFT"],
+                           "internalDate": "5", "payload": { "headers": [] } }]
+        })))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let uri = server.uri();
+    let gmail_for = |_| Ok(client(&uri).0);
+    let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.com", None))
+        .await
+        .unwrap();
+    let linked: Option<i64> = db
+        .conn()
+        .query_row(
+            "SELECT d.message_id FROM drafts d JOIN messages m ON m.id = d.message_id
+             WHERE d.id = ?1 AND m.gmail_message_id = 'dm'",
+            [id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert!(linked.is_some(), "the draft's message is cached and linked");
+}
