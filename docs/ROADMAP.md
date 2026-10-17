@@ -496,9 +496,12 @@ Stage 2: the card and inline replies
       starting over. What was written, From, Bcc and
       attached files stay; recipients, subject and the quote change. Not
       offered for a reopened draft (its quote is part of its saved text)
-- [ ] Inline replies and forwards: the rest of the polish (scrolling to
-      the cursor on `r`, leaving a half-written reply, how fast the sent
-      message shows) once the owner has tried them
+- [x] Inline replies and forwards: the rest of the polish, after the
+      owner tried them (2026-10-17): `r` shows the whole reply; keys work
+      after clicking into a message; deleting a draft reply takes it out
+      at once; the newest real message opens, not the hidden draft; the
+      Reply / Reply all / Forward switch sits by the recipients. Leaving a
+      half-written reply keeps it as a draft (no complaint from the owner)
 
 Stage 3: formatting, signatures, attachments
 
@@ -612,10 +615,16 @@ each was a "not yet" note above)*:
       so recipients see them. Still shown as placeholders in the "•••"
       preview while writing; signatures with embedded (not web-hosted)
       images aren't handled (Gmail stores signature images on the web)
-- [ ] Gmail visually collapses the blank line between a reply and its
-      quote; decide whether Mailboat should too
+- [x] Gmail visually collapses the blank line between a reply and its
+      quote: Mailboat's gap is now one line, as Gmail sends, and a shorter
+      signature no longer leaves the old one's height behind (owner
+      reviewed, 2026-10-17)
 
 ## Milestone 5: Polish
+
+*Open at the end of the 2026-10-17 session, in the order agreed: the
+Settings page (and the app icon chooser in it), then meeting invitations
+(after the new permissions, shared with Milestone 6).*
 
 - [ ] Answer meeting invitations in the reader *(owner request,
       2026-10-16; first in this milestone)*: a card with the event (time,
