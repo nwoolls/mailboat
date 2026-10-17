@@ -16,6 +16,5 @@ describe("app icon choice", () => {
   it("names choices for people", () => {
     expect(iconLabel("C10-orange")).toBe("Orange");
     expect(iconLabel("C17-system-blue")).toBe("System blue");
-    expect(iconLabel("glass-midnight")).toBe("Glass (the earlier icon)");
   });
 });

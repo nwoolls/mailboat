@@ -18,7 +18,6 @@ export function iconSetting(choice: string): string | null {
 
 /** A choice's name for people: "C10-orange" → "Orange". */
 export function iconLabel(choice: string): string {
-  if (choice === "glass-midnight") return "Glass (the earlier icon)";
   const words = choice.replace(/^C\d+-/, "").replace(/-/g, " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

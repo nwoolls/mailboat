@@ -10,8 +10,11 @@
   regenerate everything.
 - `choices/` holds the icons offered in Settings → Appearance → App icon
   (run `scripts/build-icon-choices.sh` after changing one, to re-render the
-  PNGs the Dock uses): the folded-ribbon M (fold style S4) in 16 colours on a flat
-  near-black tile, and the earlier glass icon (`glass-midnight.svg`). The
+  PNGs the Dock uses; the order Settings shows them in is set in
+  `src-tauri/src/app_icon.rs`): the folded-ribbon M (fold style S4) in 16 colours on a flat
+  near-black tile. The earlier glass icon (`glass-midnight.svg`, now in
+  this folder) was offered too, until the owner dropped it as the odd one
+  out (2026-10-17). The
   current icon is `C17-system-blue` (tried before: `C13-green`, `C04-cobalt`,
   `C03-sky`). C17 is Apple's system blue, added after the sheet: macOS renders
   it within a few points of Mail's icon blue.

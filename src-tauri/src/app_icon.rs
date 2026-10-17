@@ -4,11 +4,34 @@
 //! (`dock::set_icon`); Finder and a quit app keep the built-in icon, since
 //! changing the app's own files would break its code signature.
 
-/// Each choice's name (its file name) and picture.
+/// Each choice's name (its file name) and picture, in the order Settings
+/// shows them: by hue from red round to pink, then white and silver.
 pub const CHOICES: &[(&str, &[u8])] = &[
+    ("C16-red", include_bytes!("../icons/choices/C16-red.png")),
+    (
+        "C09-coral",
+        include_bytes!("../icons/choices/C09-coral.png"),
+    ),
+    (
+        "C10-orange",
+        include_bytes!("../icons/choices/C10-orange.png"),
+    ),
+    (
+        "C11-amber",
+        include_bytes!("../icons/choices/C11-amber.png"),
+    ),
+    ("C12-lime", include_bytes!("../icons/choices/C12-lime.png")),
+    (
+        "C13-green",
+        include_bytes!("../icons/choices/C13-green.png"),
+    ),
     ("C01-mint", include_bytes!("../icons/choices/C01-mint.png")),
     ("C02-teal", include_bytes!("../icons/choices/C02-teal.png")),
     ("C03-sky", include_bytes!("../icons/choices/C03-sky.png")),
+    (
+        "C17-system-blue",
+        include_bytes!("../icons/choices/C17-system-blue.png"),
+    ),
     (
         "C04-cobalt",
         include_bytes!("../icons/choices/C04-cobalt.png"),
@@ -27,38 +50,12 @@ pub const CHOICES: &[(&str, &[u8])] = &[
     ),
     ("C08-pink", include_bytes!("../icons/choices/C08-pink.png")),
     (
-        "C09-coral",
-        include_bytes!("../icons/choices/C09-coral.png"),
-    ),
-    (
-        "C10-orange",
-        include_bytes!("../icons/choices/C10-orange.png"),
-    ),
-    (
-        "C11-amber",
-        include_bytes!("../icons/choices/C11-amber.png"),
-    ),
-    ("C12-lime", include_bytes!("../icons/choices/C12-lime.png")),
-    (
-        "C13-green",
-        include_bytes!("../icons/choices/C13-green.png"),
-    ),
-    (
         "C14-white",
         include_bytes!("../icons/choices/C14-white.png"),
     ),
     (
         "C15-silver",
         include_bytes!("../icons/choices/C15-silver.png"),
-    ),
-    ("C16-red", include_bytes!("../icons/choices/C16-red.png")),
-    (
-        "C17-system-blue",
-        include_bytes!("../icons/choices/C17-system-blue.png"),
-    ),
-    (
-        "glass-midnight",
-        include_bytes!("../icons/choices/glass-midnight.png"),
     ),
 ];
 

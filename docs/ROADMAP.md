@@ -756,14 +756,16 @@ and the owner seeing the app icon change in the Dock.*
       conversation (it brings Mailboat forward)
 - [x] Settings: choose the app icon from `design/icon/choices/` (the
       folded M in 16 colours, or the earlier glass icon). In Appearance,
-      after Theme: a grid of the 18 choices (System blue, the built-in one,
-      is the default). The choice shows in the Dock while Mailboat runs;
+      after Theme: a grid of the choices (System blue, the built-in one,
+      is the default). Owner checked the Dock change (2026-10-17), then
+      asked to drop the earlier glass icon (the odd one out) and sort the
+      rest by hue, red first, white and silver last. The choice shows in the Dock while Mailboat runs;
       Finder and the Dock after quitting keep the built-in icon, because
       changing the app's own files would break its code signature (and
       with it the keychain's "Always Allow"). The flat pictures have no
       glass rim; only the built-in icon gets macOS's. *Not yet seen
       working in the Dock (2026-10-17): the picker was checked, the Dock
-      change wasn't; owner to try it.*
+      change wasn't; owner to try it.* Since tried by the owner: works.
 - [x] Settings screen *(owner request, 2026-10-16)*. Decided (owner,
       2026-10-17):
       - **A page in the main window** (as MonoCode): the sidebar becomes
