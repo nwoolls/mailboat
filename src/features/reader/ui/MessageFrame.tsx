@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { commands } from "../../../platform/tauri/bindings";
 import type { MessageId } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
@@ -16,10 +16,61 @@ import { AttachmentList } from "./AttachmentList";
  * the content height. Links were rewritten in Rust to `mailboat-link:` URLs,
  * which the app opens in the default browser (see `mail/links.rs`).
  */
+/** The message frame last clicked into, whose selection ⌘C copies. */
+let clickedFrame: HTMLIFrameElement | null = null;
+
 export function MessageFrame({ messageId }: { messageId: MessageId }) {
   const qc = useQueryClient();
   const message = useOpenedMessage(messageId);
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const holderRef = useRef<HTMLDivElement>(null);
+
+  // Keys pressed in an iframe never reach the app, and WebKit won't run
+  // listeners inside a frame without scripts (even the app's own), so
+  // keys can't be passed on from there. Instead, clicking into a message
+  // hands focus straight back to the app (r, e, j… keep working); the
+  // selection made in the message stays, and ⌘C copies it from here.
+  useEffect(() => {
+    const onBlur = () =>
+      // After the focus has moved.
+      window.setTimeout(() => {
+        const frame = frameRef.current;
+        if (!frame || document.activeElement !== frame) return;
+        clickedFrame = frame;
+        holderRef.current?.focus({ preventScroll: true });
+      });
+    const frameSelection = () => {
+      const frame = frameRef.current;
+      if (!frame || frame !== clickedFrame || !(window.getSelection()?.isCollapsed ?? true))
+        return null;
+      const selection = frame.contentWindow?.getSelection();
+      return selection && !selection.isCollapsed ? selection : null;
+    };
+    // WebKit only offers Copy when something here is selected, unless
+    // "beforecopy" is cancelled.
+    const onBeforeCopy = (e: Event) => {
+      if (frameSelection()) e.preventDefault();
+    };
+    const onCopy = (e: ClipboardEvent) => {
+      const selection = frameSelection();
+      if (!selection || !e.clipboardData) return;
+      const html = document.createElement("div");
+      for (let i = 0; i < selection.rangeCount; i++)
+        html.append(selection.getRangeAt(i).cloneContents());
+      e.clipboardData.setData("text/plain", selection.toString());
+      e.clipboardData.setData("text/html", html.innerHTML);
+      e.preventDefault();
+    };
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("beforecopy", onBeforeCopy);
+    document.addEventListener("copy", onCopy);
+    return () => {
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("beforecopy", onBeforeCopy);
+      document.removeEventListener("copy", onCopy);
+      if (clickedFrame && !clickedFrame.isConnected) clickedFrame = null;
+    };
+  }, []);
   const [height, setHeight] = useState(120);
   // The frame stays invisible until its content has been measured, then
   // fades in, so the white card never pops in short and jumps taller.
@@ -39,23 +90,6 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
     measure();
     setReady(true);
     for (const img of Array.from(doc.images)) img.addEventListener("load", measure);
-    // Keys pressed with the message clicked into (r, e, j…) go to the app
-    // as if pressed outside it: an iframe's keys never reach the window.
-    doc.addEventListener("keydown", (e) => {
-      const copy = new KeyboardEvent("keydown", {
-        key: e.key,
-        code: e.code,
-        metaKey: e.metaKey,
-        ctrlKey: e.ctrlKey,
-        altKey: e.altKey,
-        shiftKey: e.shiftKey,
-        repeat: e.repeat,
-        bubbles: true,
-        cancelable: true,
-      });
-      frameRef.current?.dispatchEvent(copy);
-      if (copy.defaultPrevented) e.preventDefault();
-    });
     const observer = new ResizeObserver(measure);
     observer.observe(doc.documentElement);
   }, []);
@@ -79,7 +113,8 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
   const notice = imageNotice(m);
 
   return (
-    <div>
+    // Takes the focus back from the frame (see above); never shows a ring.
+    <div ref={holderRef} tabIndex={-1} className="outline-none">
       {notice && (
         <div
           // A lighter layer inside the message card, always one line.
