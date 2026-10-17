@@ -159,8 +159,11 @@ export function ComposeForm({
           {draft.signature && (
             // Read-only, as it will be sent (Gmail's own HTML). It follows
             // the From address; edit signatures in Gmail's settings.
-            <div className="pt-4 pb-3" title="Signature (changes with From)">
-              <HtmlPreview title="Signature" html={draft.signature} />
+            // pt-2 plus the editor's bottom padding makes one blank line,
+            // the gap Gmail sends between the text and the signature.
+            <div className="pt-2 pb-3" title="Signature (changes with From)">
+              {/* Keyed so a new signature is measured afresh, not at the old height. */}
+              <HtmlPreview key={draft.signature} title="Signature" html={draft.signature} />
             </div>
           )}
           {draft.quoteText && <QuoteFold html={draft.quote} startOpen={draft.kind === "forward"} />}
