@@ -26,6 +26,7 @@ import {
   type Checked,
   NONE,
   prune,
+  menuTargets,
   rangeChecked,
   toggleChecked,
 } from "../features/mailbox/model/multiSelect";
@@ -182,7 +183,11 @@ export function Shell() {
   const toast = useToast();
   const [labelAnchor, setLabelAnchor] = useState<MenuAnchor | null>(null);
   // A conversation's right-click menu, at the pointer.
-  const [rowMenu, setRowMenu] = useState<MenuAnchor | null>(null);
+  // A conversation's right-click menu: where, and which row was clicked.
+  // It never opens the row (see `menuTargets`).
+  const [rowMenu, setRowMenu] = useState<{ at: MenuAnchor; clicked: ThreadId } | null>(null);
+  // The label picker opened from that menu acts on the menu's rows.
+  const [labelFor, setLabelFor] = useState<ThreadId[] | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   // When `g` was pressed, for Gmail's "go to" keys (0: not waiting).
@@ -383,7 +388,10 @@ export function Shell() {
       if (plain && e.key === "l" && targets.length > 0) {
         e.preventDefault();
         const button = document.getElementById(LABEL_BUTTON_ID);
-        if (button) setLabelAnchor(anchorBelow(button));
+        if (button) {
+          setLabelFor(null);
+          setLabelAnchor(anchorBelow(button));
+        }
         return;
       }
       if (plain && e.key === "c") {
@@ -444,11 +452,41 @@ export function Shell() {
     star: toggle("star"),
     label:
       targets.length > 0
-        ? (button: HTMLElement) => setLabelAnchor((open) => (open ? null : anchorBelow(button)))
+        ? (button: HTMLElement) => {
+            setLabelFor(null);
+            setLabelAnchor((open) => (open ? null : anchorBelow(button)));
+          }
         : null,
   };
-  const pickerAccount = targets[0]?.accountId;
+  // The label picker's conversations: the menu's rows if opened from it.
+  const pickerRows = labelFor ? threads.filter((t) => labelFor.includes(t.id)) : targets;
+  const pickerIds = pickerRows.map((t) => t.id);
+  const pickerAccount = pickerRows[0]?.accountId;
   const pickerLabels = labels.filter((l) => l.accountId === pickerAccount);
+  // The right-click menu's conversations, and what each action would do.
+  const menuRows = rowMenu ? menuTargets(threads, checked, rowMenu.clicked) : [];
+  // Writing a reply happens in the conversation, so that one opens.
+  const replyFromMenu = (kind: "reply" | "replyAll" | "forward") => {
+    const row = menuRows[0];
+    setRowMenu(null);
+    if (!row) return;
+    setChecked(NONE);
+    setSelectedId(row.id);
+    void compose.startReply(kind, row.id);
+  };
+  const menuToggle = (kind: "read" | "archive" | "star" | "trash" | "spam") => {
+    const action = toggleFor(kind, menuRows);
+    return action
+      ? {
+          action,
+          run: () =>
+            act(
+              action,
+              menuRows.map((t) => t.id),
+            ),
+        }
+      : null;
+  };
 
   return (
     <div className="flex h-full flex-col bg-glass-sidebar">
@@ -564,16 +602,10 @@ export function Shell() {
                 setChecked(NONE);
                 setSelectedId(null);
               }}
-              onRowMenu={(id, at) => {
-                // As in Mail: right-clicking a conversation that isn't
-                // picked opens it, so the menu is about that one; on a
-                // picked one, it's about all the picked.
-                if (!checked.has(id)) {
-                  setChecked(NONE);
-                  setSelectedId(id);
-                }
-                setRowMenu(at);
-              }}
+              // The menu is about the clicked row (or all picks, if it's
+              // one); nothing opens, and the reader stays as it is.
+              onRowMenu={(id, at) => setRowMenu({ at, clicked: id })}
+              menuRowId={rowMenu?.clicked ?? null}
               // Not while the previous view's list stands in for this one.
               hasMore={(hasNextPage && !threadsQuery.isPlaceholderData) || fromGmail}
               loadMore={loadMore}
@@ -629,24 +661,24 @@ export function Shell() {
           </div>
         </div>
       </div>
-      {labelAnchor && targets.length > 0 && (
+      {labelAnchor && pickerRows.length > 0 && (
         <LabelPicker
           anchor={labelAnchor}
           labels={pickerLabels}
-          targets={targets}
+          targets={pickerRows}
           onToggle={(label) => {
-            const action = labelToggle(targets, label);
-            act(action, targetIds);
+            const action = labelToggle(pickerRows, label);
+            act(action, pickerIds);
             // Removing the label of the view you're in sends the
             // conversation away (and opens the next): the picker would now
             // be about a different conversation, so it closes.
             if (leavesView(action, selection.view)) setLabelAnchor(null);
           }}
           onCreate={(name) => {
-            const account = targets[0]?.accountId;
+            const account = pickerAccount;
             if (account === undefined) return;
             unwrap(commands.labelCreate(account, name))
-              .then((label) => act({ kind: "labels", add: [label], remove: [] }, targetIds))
+              .then((label) => act({ kind: "labels", add: [label], remove: [] }, pickerIds))
               .catch((e: unknown) =>
                 showToast({
                   tone: "error",
@@ -654,7 +686,10 @@ export function Shell() {
                 }),
               );
           }}
-          onClose={() => setLabelAnchor(null)}
+          onClose={() => {
+            setLabelAnchor(null);
+            setLabelFor(null);
+          }}
         />
       )}
       {openCard && (
@@ -671,15 +706,15 @@ export function Shell() {
         accounts={accountList}
         besideCard={openCard !== undefined && cardSpot === "bottom-right"}
       />
-      {rowMenu && targets.length > 0 && (
-        <Menu anchor={rowMenu} onClose={() => setRowMenu(null)} label="Conversation">
-          {targets.length === 1 && !targets[0]!.onlyDraft && (
+      {rowMenu && menuRows.length > 0 && (
+        <Menu anchor={rowMenu.at} onClose={() => setRowMenu(null)} label="Conversation">
+          {menuRows.length === 1 && !menuRows[0]!.onlyDraft && (
             <>
               <MenuItem
                 icon={ReplyIcon}
                 onSelect={() => {
                   setRowMenu(null);
-                  void compose.startReply("reply", targets[0]!.id);
+                  replyFromMenu("reply");
                 }}
               >
                 Reply
@@ -688,7 +723,7 @@ export function Shell() {
                 icon={ReplyAllIcon}
                 onSelect={() => {
                   setRowMenu(null);
-                  void compose.startReply("replyAll", targets[0]!.id);
+                  replyFromMenu("replyAll");
                 }}
               >
                 Reply all
@@ -697,7 +732,7 @@ export function Shell() {
                 icon={ForwardIcon}
                 onSelect={() => {
                   setRowMenu(null);
-                  void compose.startReply("forward", targets[0]!.id);
+                  replyFromMenu("forward");
                 }}
               >
                 Forward
@@ -714,7 +749,7 @@ export function Shell() {
               ["spam", SpamIcon],
             ] as const
           ).map(([kind, icon]) => {
-            const entry = toggle(kind);
+            const entry = menuToggle(kind);
             if (!entry) return null;
             return (
               <MenuItem
@@ -732,8 +767,9 @@ export function Shell() {
           <MenuItem
             icon={LabelIcon}
             onSelect={() => {
-              const at = rowMenu;
+              const at = rowMenu.at;
               setRowMenu(null);
+              setLabelFor(menuRows.map((t) => t.id));
               setLabelAnchor(at);
             }}
           >

@@ -26,6 +26,8 @@ type Props = {
   onClearSelection: () => void;
   /** Right-click on a row: its menu at the pointer. */
   onRowMenu: (id: ThreadId, at: { x: number; y: number }) => void;
+  /** The row whose menu is open: outlined, as in Mail. */
+  menuRowId: ThreadId | null;
   hasMore: boolean;
   loadMore: () => void;
   /** The first page, or the next cached page, is loading. */
@@ -45,6 +47,7 @@ export function ThreadList({
   onSelect,
   onClearSelection,
   onRowMenu,
+  menuRowId,
   hasMore,
   loadMore,
   loading,
@@ -127,6 +130,9 @@ export function ThreadList({
                   : selected
                     ? "bg-selection-strong"
                     : "hover:bg-selection-subtle"
+              } ${
+                // The row a right-click menu is open for, without opening it.
+                t.id === menuRowId ? "outline-2 -outline-offset-2 outline-accent/60" : ""
               }`}
               style={{ top: item.start, height: ROW_HEIGHT - 4 }}
             >

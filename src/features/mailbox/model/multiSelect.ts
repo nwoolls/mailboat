@@ -46,6 +46,21 @@ export function actionTargets<T extends Pick<ThreadSummary, "id">>(
   return one ? [one] : [];
 }
 
+/**
+ * What a right-click menu acts on: all the picks when the clicked row is
+ * one of them, otherwise just the clicked row. The open conversation is
+ * left as it is (a right-click never opens anything).
+ */
+export function menuTargets<T extends Pick<ThreadSummary, "id">>(
+  threads: T[],
+  checked: Checked,
+  clicked: ThreadId,
+): T[] {
+  if (checked.has(clicked)) return threads.filter((t) => checked.has(t.id));
+  const one = threads.find((t) => t.id === clicked);
+  return one ? [one] : [];
+}
+
 /** Picks that are still in the list (the rest were archived, trashed, …). */
 export function prune(checked: Checked, threads: Pick<ThreadSummary, "id">[]): Checked {
   if (checked.size === 0) return checked;

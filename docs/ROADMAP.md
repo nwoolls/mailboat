@@ -623,8 +623,10 @@ each was a "not yet" note above)*:
       *(owner request, 2026-10-16)*. Conversations: Reply, Reply all,
       Forward (one conversation), then Archive / Move to Trash / Mark as
       read / Star / Report spam (each worded for what it would do now)
-      and Labels…; right-clicking a conversation that isn't picked opens
-      it first, as Mail does. Also on sidebar labels (Rename, Delete) and
+      and Labels…. A right-click never opens or previews anything *(owner,
+      2026-10-17)*: the menu acts on the clicked conversation (outlined
+      while the menu is open), or on all picks if it's one of them; only
+      Reply and Forward open it, since that's where you write. Also on sidebar labels (Rename, Delete) and
       account headers (already there). More places as they come up
 - [ ] Swipe on a conversation (trackpad, two fingers): one way archives,
       the other toggles read/unread *(owner request, 2026-10-16)*.

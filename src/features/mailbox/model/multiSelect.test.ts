@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { actionTargets, NONE, prune, rangeChecked, toggleChecked } from "./multiSelect";
+import {
+  actionTargets,
+  menuTargets,
+  NONE,
+  prune,
+  rangeChecked,
+  toggleChecked,
+} from "./multiSelect";
 
 const list = [1, 2, 3, 4, 5].map((id) => ({ id }));
 
@@ -31,4 +38,11 @@ describe("multi-select", () => {
     const same = new Set([1, 2]);
     expect(prune(same, list)).toBe(same);
   });
+});
+
+it("a right-click menu acts on the clicked row, or all picks if it's one", () => {
+  const rows = [{ id: 1 }, { id: 2 }, { id: 3 }];
+  expect(menuTargets(rows, new Set([1, 3]), 3).map((t) => t.id)).toEqual([1, 3]);
+  expect(menuTargets(rows, new Set([1, 3]), 2).map((t) => t.id)).toEqual([2]);
+  expect(menuTargets(rows, new Set(), 9)).toEqual([]);
 });
