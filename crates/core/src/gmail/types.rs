@@ -183,6 +183,40 @@ pub struct DraftList {
     pub drafts: Vec<DraftRef>,
 }
 
+/// A page of People API contacts (saved ones come as `connections`,
+/// automatic ones as `otherContacts`).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PeoplePage {
+    #[serde(default)]
+    pub connections: Vec<Person>,
+    #[serde(default)]
+    pub other_contacts: Vec<Person>,
+    pub next_page_token: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Person {
+    #[serde(default)]
+    pub names: Vec<PersonName>,
+    #[serde(default)]
+    pub email_addresses: Vec<PersonEmail>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PersonName {
+    #[serde(default)]
+    pub display_name: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct PersonEmail {
+    #[serde(default)]
+    pub value: String,
+}
+
 /// `settings.sendAs.list`: the addresses an account can send as.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

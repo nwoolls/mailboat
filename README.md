@@ -22,7 +22,9 @@ for how it is built.
 Mailboat uses your own Google OAuth client, so no app review is needed.
 
 1. In [Google Cloud Console](https://console.cloud.google.com), create a
-   project and enable the **Gmail API**.
+   project and enable the **Gmail API** and the **People API** (address
+   suggestions from Google Contacts; Mailboat works without it, suggesting
+   only from mail).
 2. Configure the OAuth consent screen as **External** and set it to
    **In production** (Testing mode expires sign-ins every 7 days).
 3. Create an OAuth client ID of type **Desktop app** and download its JSON.
@@ -33,6 +35,11 @@ Mailboat uses your own Google OAuth client, so no app review is needed.
 
 When you sign in, Google warns that the app isn't verified. Click
 **Advanced → Go to Mailboat**. This happens once per account.
+
+Accounts added before Mailboat asked for Google Contacts (read-only) keep
+working without them. To add them, sign in to the account again (the +
+in the sidebar, same Google account): the consent screen asks for the
+contacts permission once.
 
 ## Run
 

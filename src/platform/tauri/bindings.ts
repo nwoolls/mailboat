@@ -196,7 +196,10 @@ export type AttachmentId = number;
 export type Contact = {
 	name: string | null,
 	email: string,
-	/**  You've sent them mail (they rank above people who only wrote to you). */
+	/**
+	 *  You've sent them mail (they rank first; then saved Google
+	 *  contacts, then everyone else).
+	 */
 	wrote: boolean,
 };
 

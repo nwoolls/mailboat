@@ -576,3 +576,52 @@ async fn a_saved_draft_is_cached_at_once() {
         .unwrap();
     assert!(linked.is_some(), "the draft's message is cached and linked");
 }
+
+#[tokio::test]
+async fn google_contacts_are_fetched_from_both_lists() {
+    use mailboat_core::compose::contacts;
+    let server = MockServer::start().await;
+    Mock::given(path("/v1/people/me/connections"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "connections": [{ "names": [{ "displayName": "Pat Lee" }],
+                              "emailAddresses": [{ "value": "pat@z.com" }, { "value": "pat@work.com" }] }]
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(path("/v1/otherContacts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "otherContacts": [{ "emailAddresses": [{ "value": "old@w.com" }, { "value": "not-an-address" }] }]
+        })))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let (gmail, _) = client(&server.uri());
+    assert_eq!(contacts::refresh_google(&db, &gmail, a).await.unwrap(), 3);
+    // Refreshing replaces, never duplicates.
+    contacts::refresh_google(&db, &gmail, a).await.unwrap();
+    let emails: Vec<String> = contacts::all(&db.conn())
+        .unwrap()
+        .into_iter()
+        .map(|c| c.email)
+        .collect();
+    assert_eq!(emails.len(), 3, "{emails:?}");
+}
+
+#[tokio::test]
+async fn an_account_without_the_contacts_permission_is_refused_not_broken() {
+    use mailboat_core::compose::contacts;
+    let server = MockServer::start().await;
+    Mock::given(path("/v1/people/me/connections"))
+        .respond_with(ResponseTemplate::new(403).set_body_json(serde_json::json!({
+            "error": { "code": 403, "message": "Request had insufficient authentication scopes.",
+                       "errors": [{ "reason": "insufficientPermissions" }] }
+        })))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let (gmail, _) = client(&server.uri());
+    let err = contacts::refresh_google(&db, &gmail, a).await.unwrap_err();
+    assert!(matches!(err, CoreError::Api { status: 403, .. }), "{err:?}");
+}

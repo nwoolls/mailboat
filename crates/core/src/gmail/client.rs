@@ -12,11 +12,12 @@ use super::batch;
 use super::pacer::{cost, QuotaPacer};
 use super::types::{
     AttachmentBody, DraftList, DraftRef, ErrorEnvelope, HistoryList, LabelList, Message,
-    MessageList, MessageRef, Profile, SendAsList, Thread, ThreadList,
+    MessageList, MessageRef, PeoplePage, Profile, SendAsList, Thread, ThreadList,
 };
 use crate::error::{CoreError, Result};
 
 pub const GMAIL_BASE_URL: &str = "https://gmail.googleapis.com";
+pub const PEOPLE_BASE_URL: &str = "https://people.googleapis.com";
 
 /// Headers requested with `format=metadata`.
 pub const METADATA_HEADERS: [&str; 9] = [
@@ -81,6 +82,8 @@ pub type Logger = Arc<dyn Fn(&str) + Send + Sync>;
 pub struct GmailClient {
     http: reqwest::Client,
     base_url: String,
+    /// Google's People API (contacts), with the same sign-in.
+    people_base_url: String,
     tokens: Arc<dyn TokenSource>,
     retry: RetryPolicy,
     /// Shared by every clone of this client, so all calls for the account
@@ -93,7 +96,10 @@ pub struct GmailClient {
 
 impl GmailClient {
     pub fn new(http: reqwest::Client, tokens: Arc<dyn TokenSource>) -> Self {
-        Self::with_base_url(http, tokens, GMAIL_BASE_URL)
+        Self {
+            people_base_url: PEOPLE_BASE_URL.into(),
+            ..Self::with_base_url(http, tokens, GMAIL_BASE_URL)
+        }
     }
 
     pub fn with_base_url(
@@ -104,6 +110,8 @@ impl GmailClient {
         Self {
             http,
             base_url: base_url.trim_end_matches('/').to_string(),
+            // Tests point both at one mock server.
+            people_base_url: base_url.trim_end_matches('/').to_string(),
             tokens,
             retry: RetryPolicy::default(),
             pacer: QuotaPacer::default(),
@@ -338,6 +346,33 @@ impl GmailClient {
             Retry::Transient,
         )
         .await
+    }
+
+    /// People API `people.connections.list`: the account's saved contacts
+    /// (names and addresses only). Not Gmail quota, so no pacing.
+    pub async fn contacts_page(&self, page_token: Option<&str>) -> Result<PeoplePage> {
+        let url = format!("{}/v1/people/me/connections", self.people_base_url);
+        let mut query = vec![
+            ("personFields", "names,emailAddresses"),
+            ("pageSize", "1000"),
+        ];
+        if let Some(t) = page_token {
+            query.push(("pageToken", t));
+        }
+        let response = self.send(|| self.http.get(&url).query(&query)).await?;
+        response.json().await.map_err(net_error)
+    }
+
+    /// People API `otherContacts.list`: people Gmail saved automatically
+    /// because the account exchanged mail with them.
+    pub async fn other_contacts_page(&self, page_token: Option<&str>) -> Result<PeoplePage> {
+        let url = format!("{}/v1/otherContacts", self.people_base_url);
+        let mut query = vec![("readMask", "names,emailAddresses"), ("pageSize", "1000")];
+        if let Some(t) = page_token {
+            query.push(("pageToken", t));
+        }
+        let response = self.send(|| self.http.get(&url).query(&query)).await?;
+        response.json().await.map_err(net_error)
     }
 
     /// `drafts.list`: every draft's ID with its message (one page of up to

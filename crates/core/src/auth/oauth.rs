@@ -26,12 +26,17 @@ use crate::error::{CoreError, Result};
 // from the `oauth2` crate. This file adds the loopback listener, Google's
 // user-info call and the mapping of failures onto Mailboat's errors.
 
-pub const SCOPES: [&str; 5] = [
+pub const SCOPES: [&str; 7] = [
     "openid",
     "email",
     "profile",
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/gmail.compose",
+    // Address suggestions from Google Contacts (saved and "other"
+    // contacts), read-only. Accounts that signed in before these were
+    // asked for simply go without until they sign in again.
+    "https://www.googleapis.com/auth/contacts.readonly",
+    "https://www.googleapis.com/auth/contacts.other.readonly",
 ];
 
 /// How long to wait for the user to finish in the browser.

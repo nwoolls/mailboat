@@ -218,3 +218,16 @@ CREATE TABLE send_as (
   UNIQUE (account_id, email)
 );
 "#;
+
+/// People from each account's Google Contacts (`saved`) and Gmail's
+/// automatic "other contacts" (`other`), for address suggestions.
+pub const MIGRATION_V8: &str = r#"
+CREATE TABLE google_contacts (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  email TEXT NOT NULL COLLATE NOCASE,
+  name TEXT,
+  kind TEXT NOT NULL CHECK (kind IN ('saved', 'other')),
+  UNIQUE (account_id, email, kind)
+);
+"#;

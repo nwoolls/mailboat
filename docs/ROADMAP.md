@@ -554,9 +554,12 @@ Stage 4: drafts and undo send
 
 Stage 5: Google Contacts
 
-- [ ] Suggestions from Google Contacts (saved and "other" contacts) as
-      well as from mail. Last because it needs the owner to turn on the
-      People API and each account to sign in again
+- [x] Suggestions from Google Contacts (saved and "other" contacts) as
+      well as from mail. Saved contacts rank right after people you've
+      written to, and their names win over header names. Needs the owner
+      to turn on the People API in the Cloud project and each account to
+      sign in again (the + in the sidebar, same account); until then that
+      account suggests from mail only (noted in the sync log)
 
 Found while testing stage 3 (owner, 2026-10-16):
 

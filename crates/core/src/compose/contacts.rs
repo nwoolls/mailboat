@@ -10,8 +10,10 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::db::now_millis;
+use crate::db::{now_millis, Db};
 use crate::error::Result;
+use crate::gmail::GmailClient;
+use crate::model::AccountId;
 
 /// A month: a message this old counts half as much as one from today.
 const HALF_WEIGHT_AGE_MS: f64 = 30.0 * 24.0 * 3600.0 * 1000.0;
@@ -22,8 +24,61 @@ const HALF_WEIGHT_AGE_MS: f64 = 30.0 * 24.0 * 3600.0 * 1000.0;
 pub struct Contact {
     pub name: Option<String>,
     pub email: String,
-    /// You've sent them mail (they rank above people who only wrote to you).
+    /// You've sent them mail (they rank first; then saved Google
+    /// contacts, then everyone else).
     pub wrote: bool,
+}
+
+/// Pages of Google contacts fetched at most (1,000 each).
+const MAX_CONTACT_PAGES: usize = 20;
+
+/// Replaces an account's Google contacts with what the People API has:
+/// saved contacts and Gmail's automatic "other contacts". An account that
+/// signed in before Mailboat asked for contacts gets a 403; the caller logs
+/// it and carries on (suggestions still come from mail).
+pub async fn refresh_google(db: &Db, gmail: &GmailClient, account: AccountId) -> Result<usize> {
+    let mut rows: Vec<(String, Option<String>, &str)> = Vec::new();
+    for kind in ["saved", "other"] {
+        let mut token: Option<String> = None;
+        for _ in 0..MAX_CONTACT_PAGES {
+            let page = if kind == "saved" {
+                gmail.contacts_page(token.as_deref()).await?
+            } else {
+                gmail.other_contacts_page(token.as_deref()).await?
+            };
+            for person in page.connections.iter().chain(&page.other_contacts) {
+                let name = person
+                    .names
+                    .first()
+                    .map(|n| n.display_name.trim().to_string())
+                    .filter(|n| !n.is_empty());
+                for e in &person.email_addresses {
+                    let email = e.value.trim();
+                    if email.contains('@') {
+                        rows.push((email.to_string(), name.clone(), kind));
+                    }
+                }
+            }
+            token = page.next_page_token;
+            if token.is_none() {
+                break;
+            }
+        }
+    }
+    let mut conn = db.conn();
+    let tx = conn.transaction()?;
+    tx.execute(
+        "DELETE FROM google_contacts WHERE account_id = ?1",
+        [account],
+    )?;
+    for (email, name, kind) in &rows {
+        tx.execute(
+            "INSERT OR IGNORE INTO google_contacts (account_id, email, name, kind) VALUES (?1, ?2, ?3, ?4)",
+            params![account, email, name, kind],
+        )?;
+    }
+    tx.commit()?;
+    Ok(rows.len())
 }
 
 /// Everyone worth suggesting, best first: one entry per address.
@@ -51,12 +106,22 @@ pub fn all(conn: &Connection) -> Result<Vec<Contact>> {
            UNION ALL
            SELECT from_email, from_name, internal_date, 1 FROM messages
              WHERE from_email != '' AND id NOT IN (SELECT message_id FROM junk)
+           UNION ALL
+           -- Google Contacts: saved ones (weight 2: chosen by you) and
+           -- Gmail's automatic other contacts (1). No date, so they
+           -- rank by tier, after people you actually mail.
+           SELECT email, name, 0, CASE kind WHEN 'saved' THEN 2 ELSE 1 END FROM google_contacts
          ),
-         -- Newest non-empty name per address (SQLite takes the bare
-         -- column from the row holding MAX).
-         names AS (
+         -- One name per address: a saved contact's name, else the newest
+         -- one seen on mail (SQLite takes the bare column from the row
+         -- holding MAX).
+         mail_names AS (
            SELECT lower(email) AS key, name, MAX(at) FROM cand
-           WHERE name IS NOT NULL AND name != '' GROUP BY key
+           WHERE name IS NOT NULL AND name != '' AND w != 2 GROUP BY key
+         ),
+         saved_names AS (
+           SELECT lower(email) AS key, MAX(name) AS name FROM google_contacts
+           WHERE kind = 'saved' AND name IS NOT NULL AND name != '' GROUP BY key
          ),
          ranked AS (
            SELECT lower(email) AS key, email,
@@ -67,9 +132,11 @@ pub fn all(conn: &Connection) -> Result<Vec<Contact>> {
            WHERE email IS NOT NULL AND email LIKE '%@%'
            GROUP BY key
          )
-         SELECT r.email, n.name, r.wrote, r.score, r.last_at, r.key
-         FROM ranked r LEFT JOIN names n ON n.key = r.key
-         WHERE r.wrote = 3 OR NOT (
+         SELECT r.email, COALESCE(sn.name, mn.name), r.wrote, r.score, r.last_at, r.key
+         FROM ranked r
+         LEFT JOIN saved_names sn ON sn.key = r.key
+         LEFT JOIN mail_names mn ON mn.key = r.key
+         WHERE r.wrote >= 2 OR NOT (
            r.key LIKE '%noreply%' OR r.key LIKE '%no-reply%' OR r.key LIKE '%donotreply%'
            OR r.key LIKE '%do-not-reply%' OR r.key LIKE 'notifications@%'
            OR r.key LIKE 'mailer-daemon@%' OR r.key LIKE '%bounce%')
@@ -193,5 +260,62 @@ mod tests {
         let found = all(&conn).unwrap();
         assert_eq!(found.len(), 1, "{found:?}");
         assert_eq!(found[0].name.as_deref(), Some("Kim"));
+    }
+
+    #[test]
+    fn google_contacts_join_in_with_their_saved_names() {
+        let db = Db::open_in_memory().unwrap();
+        let a = account(&db, "a");
+        let now = now_millis();
+        let mut conn = db.conn();
+        // Mail: wrote to Sally; Sam wrote to us with a header name.
+        upsert_thread(
+            &mut conn,
+            a,
+            &message(
+                "s1",
+                &["SENT"],
+                addr("", "a@me.com"),
+                vec![addr("", "sally@y.com")],
+                now,
+            ),
+        )
+        .unwrap();
+        upsert_thread(
+            &mut conn,
+            a,
+            &message("r1", &["INBOX"], addr("sammy", "sam@x.com"), vec![], now),
+        )
+        .unwrap();
+        for (email, name, kind) in [
+            ("sam@x.com", "Sam Smith", "saved"),
+            ("pat@z.com", "Pat Lee", "saved"),
+            ("old@w.com", "", "other"),
+        ] {
+            conn.execute(
+                "INSERT INTO google_contacts (account_id, email, name, kind) VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![a, email, name, kind],
+            )
+            .unwrap();
+        }
+        let found = all(&conn).unwrap();
+        let order: Vec<&str> = found.iter().map(|c| c.email.as_str()).collect();
+        // Written to first, then saved contacts, then everyone else (my own
+        // address included: mail to yourself is allowed).
+        assert_eq!(
+            order,
+            [
+                "sally@y.com",
+                "sam@x.com",
+                "pat@z.com",
+                "a@me.com",
+                "old@w.com"
+            ]
+        );
+        assert_eq!(
+            found[1].name.as_deref(),
+            Some("Sam Smith"),
+            "saved name wins"
+        );
     }
 }

@@ -156,6 +156,7 @@ async fn run_worker(
     // From addresses are fetched once per worker (each launch, or after
     // signing in again), after a pass shows Gmail is reachable.
     let mut identities_fresh = false;
+    let mut contacts_fresh = false;
     loop {
         set_status(&db, &*events, account, SyncStatus::Syncing, None);
         let progress_events = events.clone();
@@ -190,6 +191,25 @@ async fn run_worker(
                 set_status(&db, &*events, account, SyncStatus::Idle, None);
                 if outcome.changed_threads > 0 {
                     events.mail_changed(account);
+                }
+                if !contacts_fresh {
+                    // Once per launch, like aliases. An account without the
+                    // contacts permission (signed in before it was asked
+                    // for) is noted in the log and carries on.
+                    contacts_fresh = true;
+                    match crate::compose::contacts::refresh_google(&db, &gmail, account).await {
+                        Ok(n) => {
+                            events.log(account, &format!("Google contacts: {n} addresses"));
+                            events.mail_changed(account);
+                        }
+                        Err(e) => events.log(
+                            account,
+                            &format!(
+                                "Google contacts unavailable ({}): {e}; sign in again to allow them",
+                                e.kind()
+                            ),
+                        ),
+                    }
                 }
                 if !identities_fresh {
                     match crate::compose::identities::refresh(&db, &gmail, account).await {

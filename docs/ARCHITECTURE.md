@@ -217,12 +217,20 @@ fresh one; small parts come with the message and have no ID at all.
   Mail cached before that has NULL there; replying fetches that one
   message's headers (5 units) and remembers them.
 - **Address suggestions** (`compose::contacts`): one query over cached
-  mail of every account builds the whole ranked list (thousands of people, fast), which the UI loads once and filters as you type
-  (`features/compose/model/contacts.ts`); it refreshes when mail changes.
-  People you've sent to (To/Cc of SENT mail) rank above people who only
-  wrote to you; within each, every message counts less the older it is
-  (a month old counts half). Spam, Trash and no-reply or bounce senders
-  you never wrote to are left out.
+  mail of every account, plus each account's Google Contacts, builds the
+  whole ranked list (thousands of people, fast), which the UI loads once
+  and filters as you type (`features/compose/model/contacts.ts`); it
+  refreshes when mail changes. Order: people you've sent to (To/Cc of
+  SENT mail), then saved Google contacts, then everyone else (people who
+  wrote to you, Gmail's automatic "other contacts"); within each, every
+  message counts less the older it is (a month old counts half). A saved
+  contact's name wins over names seen in headers. Spam, Trash and
+  no-reply or bounce senders you never wrote to are left out.
+- **Google Contacts** (`google_contacts` table): each sync worker reads
+  the account's saved contacts (`people.connections`) and other contacts
+  (`otherContacts`) from the People API once per launch, with the same
+  sign-in (People API quota, not Gmail's). Accounts that signed in before
+  the contacts scopes were asked for get a 403, logged, and carry on.
 
 ## Showing email safely
 
@@ -302,4 +310,5 @@ fresh one; small parts come with the message and have no ID at all.
 | 2026-10-16 | Signatures and quotes stay outside the editor and are appended when sending | TipTap's schema rewrote them (dropped `<font>`, inline styles, tables, Gmail's line structure). Shown read-only in a sandboxed preview, sent as Gmail's own HTML in its `gmail_signature` / `gmail_quote` wrappers, as Gmail sends them. |
 | 2026-10-16 | Address suggestions filtered in the UI from a list loaded once, not queried per keystroke | Owner noticed a lag: each key cost a database query plus an IPC trip. The ranked list is small (a small list for thousands of people), so filtering in memory is instant. A per-address name lookup written as a correlated subquery took many seconds on a large cache; a grouped join is instant. |
 | 2026-10-16 | Drafts saved with `drafts.create`/`drafts.update` (upload endpoint) ~2.5s after typing pauses; local `drafts` rows give the UI a `DraftId`, Gmail's draft ID stays in Rust | As Gmail does, so a draft survives quitting and shows on the phone. One save per draft at a time (a create retried after a timeout could duplicate, so create only retries when Google certainly didn't act). After sending, the draft is deleted; if that fails the mail is still sent and the leftover is logged. |
+| 2026-10-16 | Ask for `contacts.readonly` and `contacts.other.readonly` | Owner's choice (Milestone 4): suggestions from Google Contacts as well as mail. Read-only; both are "sensitive" scopes, so the unverified-app warning stays as it is. Existing accounts aren't forced to sign in again: without the scopes, suggestions come from mail only. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |
