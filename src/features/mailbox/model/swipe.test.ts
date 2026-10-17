@@ -17,11 +17,12 @@ describe("swipe pose", () => {
     expect(swipePose(SWIPE.deadZone).shift).toBeLessThan(SWIPE.deadZone / 2);
   });
 
-  it("then follows the fingers one to one, the button filling the space", () => {
+  it("then follows the fingers one to one, uncovering the button as one shape", () => {
     const a = swipePose(40);
     const b = swipePose(50);
     expect(b.shift - a.shift).toBeCloseTo(10);
     expect(a.budWidth).toBe(a.shift);
+    expect([a.joined, a.separated]).toEqual([true, false]);
   });
 
   it("stops the button at its width, then the gap opens and it stands apart", () => {
@@ -29,6 +30,7 @@ describe("swipe pose", () => {
     expect(p.budWidth).toBe(SWIPE.capsule);
     expect(p.shift - p.budWidth).toBeCloseTo(SWIPE.apart);
     expect([p.label, p.ring, p.armed]).toEqual([1, 0, false]);
+    expect([p.joined, p.separated]).toEqual([false, true]);
   });
 
   it("arms a little further on, with the ring full", () => {

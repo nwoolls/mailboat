@@ -6,6 +6,7 @@ mod files;
 mod links;
 mod state;
 mod sync_log;
+mod trackpad;
 mod window_place;
 
 use std::sync::Arc;
@@ -69,7 +70,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             SyncStatusEvent,
             SyncProgressEvent,
             MailChangedEvent,
-            IdentitiesChangedEvent
+            IdentitiesChangedEvent,
+            trackpad::TrackpadEvent
         ])
         // IDs and millisecond timestamps stay far below 2^53, so plain JS
         // numbers are exact.
@@ -111,6 +113,7 @@ pub fn run() {
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
+            trackpad::watch(app.handle());
             let data_dir = app.path().app_data_dir()?;
             let config_dir = app.path().app_config_dir()?;
             let db = Arc::new(Db::open(&data_dir.join("mailboat.sqlite3"))?);

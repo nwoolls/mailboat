@@ -27,7 +27,10 @@ tauri-plugin-window-state = "2"
 tauri-plugin-notification = "2"
 
 # Already part of the build through Tauri; declared to clear Tauri's dev
-# Dock picture (src/dock.rs). Same versions as Tauri and MonoCode.
+# Dock picture (src/dock.rs) and to read trackpad phases (src/trackpad.rs).
+# Same versions as Tauri and MonoCode.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "NSImage", "NSResponder"] }
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "NSImage", "NSResponder", "NSEvent", "block2"] }
+# The trackpad monitor's handler (src/trackpad.rs); same version as Tauri's.
+block2 = "0.6"

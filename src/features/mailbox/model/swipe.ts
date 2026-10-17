@@ -6,12 +6,13 @@ import type { ThreadAction } from "./threadActions";
  * 2026-10-17, after iOS 26 notification swipes, in Mailboat's own style):
  *
  * 0. A little resistance first: the first few pixels barely give.
- * 1. Stretch: the row follows the fingers one to one, and the space it
- *    leaves fills with the button, same height and corners as the row,
- *    joined to it, so it looks like the row growing. Icon and word fade in.
- * 2. Break away: the button stops growing at its width; as the row keeps
- *    going the join necks and snaps (the goo blur lets go at ~7px), and
- *    the button stands apart. Letting go here leaves it showing, to click.
+ * 1. Stretch: the row follows the fingers one to one, uncovering a button
+ *    of fixed width under its end, same height and corners as the row.
+ *    Until it's fully uncovered the two are one shape (no corners between
+ *    them), so it looks like the row growing. Icon and word fade in.
+ * 2. Break away: once its inner corners would come into view they split
+ *    from the row (the goo blur necks, then lets go at ~7px) and the
+ *    button springs a little. Letting go here leaves it showing, to click.
  * 3. Armed: a little further, a ring round the icon fills; when it closes
  *    the button takes an accent wash. Letting go then does the action.
  *
@@ -23,12 +24,12 @@ export const SWIPE = {
   deadZone: 12,
   /** How much the row gives within the dead zone (fraction). */
   deadGive: 0.25,
-  /** The button's width once it stops growing. */
-  capsule: 84,
+  /** The button's width (room for icon, word and padding). */
+  capsule: 104,
   /** The gap once button and row have separated (the blur lets go ~7px). */
   apart: 10,
   /** Row travel past separation at which letting go does the action. */
-  armAfter: 44,
+  armAfter: 72,
   /** Past this row travel, each pixel counts for less (rubber band). */
   maxPull: 200,
   /** Row travel under which a release springs back instead of opening. */
@@ -43,14 +44,21 @@ export type SwipeSide = "left" | "right";
 export type SwipePose = {
   /** How far the row (its content and plate) has moved, in px. */
   shift: number;
-  /** The button's width, from the row's original edge. */
+  /** How much of the button is uncovered, from the row's original edge. */
   budWidth: number;
+  /** Not yet fully uncovered: button and row are drawn as one shape. */
+  joined: boolean;
+  /** Clearly apart (past where the join lets go). */
+  separated: boolean;
   /** Icon and label opacity, 0–1. */
   label: number;
   /** The ring round the icon, 0–1 (full = armed). */
   ring: number;
   armed: boolean;
 };
+
+/** The gap at which the goo blur lets go of the join (see SwipeLayers). */
+export const SNAP_GAP = 7;
 
 const clamp = (x: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, x));
 const smooth = (a: number, b: number, x: number) => {
@@ -77,8 +85,9 @@ export function swipePose(d: number, s = SWIPE): SwipePose {
   const separated = s.capsule + s.apart;
   return {
     shift,
-    // Fills the space the row leaves, up to its own width.
     budWidth: Math.min(shift, s.capsule),
+    joined: shift < s.capsule,
+    separated: shift - s.capsule >= SNAP_GAP,
     label: smooth(s.capsule * 0.35, s.capsule, shift),
     ring: clamp((shift - separated) / s.armAfter),
     armed: shift >= armShift(s),

@@ -673,6 +673,12 @@ each was a "not yet" note above)*:
         the icon has filled and the button takes an accent wash: armed.
         One button per side; no trackpad "tick" yet. Swiping back stops
         at closed: the other side takes a new swipe, as in Mimestream
+      - Round three (owner): only letting go acts (macOS now reports the
+        lift; holding still or swiping back never acts); the button has a
+        fixed width (104px, more padding) and is uncovered by the row,
+        drawn as one shape with it until its inner corners would show,
+        then splits off with a small elastic snap; arming takes 72px past
+        separation (was 44)
 - [x] Create, rename and delete labels (the label picker only applies
       existing ones) *(not in the M3 list; noted while building it)*.
       Typing a new name in the picker (`l`) offers "Create “name”", which

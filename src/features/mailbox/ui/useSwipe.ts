@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { events } from "../../../platform/tauri/bindings";
 import type { ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
+import { IS_TAURI } from "../../../platform/tauri/ipc";
 import {
   feedWheel,
   GESTURE_IDLE_MS,
@@ -123,19 +125,34 @@ export function useSwipe(
     let side: SwipeSide | null = null;
     let idle = 0;
     let ended = false;
+    // macOS says when fingers touch and lift (src-tauri/src/trackpad.rs).
+    // Once heard from, only a lift lets go: holding still, or swiping back
+    // while still touching, never acts. A mouse wheel never reports, so
+    // there the old guess (events stop, or coasting) still applies.
+    let reported = false;
+    let touching = false;
 
     const finish = () => {
       const s = live.current.swipe;
       if (s && s.mode === "drag") release(s);
     };
-    const onWheel = (e: WheelEvent) => {
+    const reset = () => {
+      gesture = NEW_GESTURE;
+      row = null;
+      ended = false;
+    };
+    // Quiet for a moment: the gesture is over (unless fingers are still
+    // down, holding). Coasting after a lift keeps it going until it stops.
+    const resetWhenQuiet = () => {
       window.clearTimeout(idle);
       idle = window.setTimeout(() => {
+        if (reported && touching) return;
         if (!ended) finish();
-        gesture = NEW_GESTURE;
-        row = null;
-        ended = false;
+        reset();
       }, GESTURE_IDLE_MS);
+    };
+    const onWheel = (e: WheelEvent) => {
+      resetWhenQuiet();
       if (gesture === NEW_GESTURE) {
         const el = (e.target as Element).closest<HTMLElement>("[data-thread-id]");
         row = el ? Number(el.dataset.threadId) : null;
@@ -155,7 +172,7 @@ export function useSwipe(
       // Sideways: ours, not the page's (or a back/forward gesture).
       e.preventDefault();
       if (ended) return;
-      if (gesture.released) {
+      if (gesture.released && !reported) {
         ended = true;
         finish();
         return;
@@ -180,10 +197,26 @@ export function useSwipe(
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && live.current.swipe?.mode === "open") close();
     };
+    const lifted = IS_TAURI
+      ? events.trackpadEvent.listen((e) => {
+          reported = true;
+          touching = e.payload.touching;
+          if (touching) {
+            // A new touch is a new gesture (it also stops any coasting).
+            window.clearTimeout(idle);
+            reset();
+            return;
+          }
+          if (!ended) finish();
+          ended = true;
+          resetWhenQuiet();
+        })
+      : null;
     list.addEventListener("wheel", onWheel, { passive: false });
     list.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("keydown", onKey);
     return () => {
+      void lifted?.then((stop) => stop());
       window.clearTimeout(idle);
       list.removeEventListener("wheel", onWheel);
       list.removeEventListener("pointerdown", onPointerDown, true);

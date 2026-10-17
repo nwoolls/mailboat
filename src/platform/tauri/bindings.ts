@@ -152,6 +152,7 @@ export const events = {
 	mailChangedEvent: makeEvent<MailChangedEvent>("mail-changed-event"),
 	syncProgressEvent: makeEvent<SyncProgressEvent>("sync-progress-event"),
 	syncStatusEvent: makeEvent<SyncStatusEvent>("sync-status-event"),
+	trackpadEvent: makeEvent<TrackpadEvent>("trackpad-event"),
 };
 
 /* Types */
@@ -520,6 +521,14 @@ export type ThreadSummary = {
 	onlyDraft: boolean,
 	/**  In Spam (so "Not spam" applies; otherwise "Report spam"). */
 	inSpam: boolean,
+};
+
+/**
+ *  Fingers touched (`true`) or left (`false`) the trackpad while
+ *  scrolling. Never sent for a mouse wheel, which has no phases.
+ */
+export type TrackpadEvent = {
+	touching: boolean,
 };
 
 /* Tauri Specta runtime */
