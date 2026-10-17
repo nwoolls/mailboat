@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use mailboat_core::auth::tokens::ScopeHook;
 use mailboat_core::auth::{AccountTokens, OAuthClientConfig, SecretStore};
 use mailboat_core::db::{accounts, Db};
 use mailboat_core::gmail::GmailClient;
@@ -44,6 +45,9 @@ pub struct AppState {
     pub sign_in_cancel: tokio::sync::Notify,
     /// How far "load older mail" has walked each account's views.
     older: Mutex<HashMap<(AccountId, String), OlderCursor>>,
+    /// Tells the window an account changed (e.g. the permissions its
+    /// sign-in carries), so it re-reads the account list.
+    accounts_changed: Arc<dyn Fn() + Send + Sync>,
 }
 
 impl AppState {
@@ -54,6 +58,7 @@ impl AppState {
         supervisor: Supervisor,
         dirs: AppDirs,
         sync_log: Arc<crate::sync_log::SyncLog>,
+        accounts_changed: Arc<dyn Fn() + Send + Sync>,
     ) -> Self {
         Self {
             db,
@@ -69,7 +74,21 @@ impl AppState {
             sign_in: tokio::sync::Mutex::new(()),
             sign_in_cancel: tokio::sync::Notify::new(),
             older: Mutex::new(HashMap::new()),
+            accounts_changed,
         }
+    }
+
+    /// Records the permissions each new access token carries, so features
+    /// that need a newer one know whether the account must sign in again.
+    pub fn scope_hook(&self, account: AccountId) -> ScopeHook {
+        let db = self.db.clone();
+        let notify = self.accounts_changed.clone();
+        Arc::new(move |scopes: &[String]| {
+            let changed = accounts::set_granted_scopes(&db.conn(), account, scopes);
+            if changed.unwrap_or(false) {
+                notify();
+            }
+        })
     }
 
     /// Loaded fresh each time so a newly saved client file is picked up
@@ -87,12 +106,15 @@ impl AppState {
             return Ok(client);
         }
         let sub = accounts::google_sub(&self.db.conn(), account)?;
-        let tokens = Arc::new(AccountTokens::new(
-            self.http.clone(),
-            self.oauth_config()?,
-            self.secrets.clone(),
-            &sub,
-        ));
+        let tokens = Arc::new(
+            AccountTokens::new(
+                self.http.clone(),
+                self.oauth_config()?,
+                self.secrets.clone(),
+                &sub,
+            )
+            .with_scope_hook(self.scope_hook(account)),
+        );
         Ok(self.set_tokens(account, tokens))
     }
 
@@ -207,6 +229,7 @@ mod tests {
                 downloads: None,
             },
             log,
+            Arc::new(|| {}),
         );
 
         let (done_tx, done_rx) = std::sync::mpsc::channel();

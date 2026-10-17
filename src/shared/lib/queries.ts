@@ -200,6 +200,9 @@ export function useMailEvents() {
         void qc.invalidateQueries({ queryKey: keys.unreadCounts });
         void qc.invalidateQueries({ queryKey: ["contacts"] });
       }),
+      events.accountsChangedEvent.listen(() => {
+        void qc.invalidateQueries({ queryKey: keys.accounts });
+      }),
       events.identitiesChangedEvent.listen(() => {
         void qc.invalidateQueries({ queryKey: keys.identities });
       }),

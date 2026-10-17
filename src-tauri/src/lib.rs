@@ -17,11 +17,11 @@ use std::sync::Arc;
 use mailboat_core::db::Db;
 use mailboat_core::sync::{Supervisor, SyncConfig, WorkerTiming};
 use tauri::Manager;
-use tauri_specta::{collect_commands, collect_events, Builder};
+use tauri_specta::{collect_commands, collect_events, Builder, Event};
 
 use crate::events::{
-    IdentitiesChangedEvent, MailChangedEvent, OpenSettingsEvent, SyncProgressEvent,
-    SyncStatusEvent, TauriSyncEvents,
+    AccountsChangedEvent, IdentitiesChangedEvent, MailChangedEvent, OpenSettingsEvent,
+    SyncProgressEvent, SyncStatusEvent, TauriSyncEvents,
 };
 use crate::state::{AppDirs, AppState};
 
@@ -81,6 +81,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             MailChangedEvent,
             IdentitiesChangedEvent,
             OpenSettingsEvent,
+            AccountsChangedEvent,
             trackpad::TrackpadEvent
         ])
         // IDs and millisecond timestamps stay far below 2^53, so plain JS
@@ -155,6 +156,12 @@ pub fn run() {
                     downloads: app.path().download_dir().ok(),
                 },
                 sync_log,
+                Arc::new({
+                    let app = app.handle().clone();
+                    move || {
+                        let _ = AccountsChangedEvent.emit(&app);
+                    }
+                }),
             );
             // Before the window first paints, so it opens in the chosen theme.
             let saved = mailboat_core::settings::load(&db.conn()).unwrap_or_default();

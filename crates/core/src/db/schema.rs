@@ -274,3 +274,11 @@ CREATE TABLE app_settings (
   value TEXT NOT NULL
 );
 "#;
+
+/// The Google permissions each account's sign-in carries (space-separated,
+/// as Google reports them on sign-in and every token refresh), so features
+/// needing a newer permission can ask the account to sign in again. NULL
+/// until the first refresh after updating.
+pub const MIGRATION_V12: &str = r#"
+ALTER TABLE accounts ADD COLUMN granted_scopes TEXT;
+"#;

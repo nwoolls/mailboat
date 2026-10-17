@@ -9,6 +9,7 @@ const account = (id: number, email: string): Account => ({
   avatarUrl: null,
   color: "#000",
   oauthClient: "default",
+  missingPermissions: [],
 });
 const label = (id: number, accountId: number, name: string): Label => ({
   id,

@@ -26,7 +26,7 @@ use crate::error::{CoreError, Result};
 // from the `oauth2` crate. This file adds the loopback listener, Google's
 // user-info call and the mapping of failures onto Mailboat's errors.
 
-pub const SCOPES: [&str; 7] = [
+pub const SCOPES: [&str; 9] = [
     "openid",
     "email",
     "profile",
@@ -37,7 +37,18 @@ pub const SCOPES: [&str; 7] = [
     // asked for simply go without until they sign in again.
     "https://www.googleapis.com/auth/contacts.readonly",
     "https://www.googleapis.com/auth/contacts.other.readonly",
+    // Answering meeting invitations through Google Calendar, as Gmail
+    // does: read your events (and clashes) and set your answer.
+    CALENDAR_SCOPE,
+    // Gmail's settings: rules (filters), signatures, vacation responder
+    // (Milestone 6). Asked for together with Calendar so each account
+    // signs in again only once.
+    GMAIL_SETTINGS_SCOPE,
 ];
+
+pub const CALENDAR_SCOPE: &str = "https://www.googleapis.com/auth/calendar.events";
+pub const GMAIL_SETTINGS_SCOPE: &str = "https://www.googleapis.com/auth/gmail.settings.basic";
+pub const CONTACTS_SCOPE: &str = "https://www.googleapis.com/auth/contacts.readonly";
 
 /// How long to wait for the user to finish in the browser.
 pub const SIGN_IN_TIMEOUT: Duration = Duration::from_secs(300);
@@ -48,6 +59,9 @@ pub struct TokenResponse {
     pub access_token: String,
     pub expires_in: u64,
     pub refresh_token: Option<String>,
+    /// The permissions this token carries, as Google reports them (Google
+    /// always does, on sign-in and on every refresh).
+    pub scopes: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -151,6 +165,9 @@ fn convert(token: oauth2::basic::BasicTokenResponse) -> TokenResponse {
         access_token: token.access_token().secret().clone(),
         expires_in: token.expires_in().map_or(3600, |d| d.as_secs()),
         refresh_token: token.refresh_token().map(|t| t.secret().clone()),
+        scopes: token
+            .scopes()
+            .map(|s| s.iter().map(|scope| scope.to_string()).collect()),
     }
 }
 
@@ -321,6 +338,7 @@ pub struct SignedIn {
     pub refresh_token: String,
     pub access_token: String,
     pub expires_in: u64,
+    pub scopes: Option<Vec<String>>,
 }
 
 /// Runs the whole browser sign-in. `open_browser` is given the consent URL.
@@ -371,6 +389,7 @@ async fn sign_in_inner(
         refresh_token,
         access_token: tokens.access_token,
         expires_in: tokens.expires_in,
+        scopes: tokens.scopes,
     })
 }
 

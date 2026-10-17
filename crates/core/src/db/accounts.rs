@@ -1,8 +1,9 @@
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use super::now_millis;
+use crate::auth::oauth::{CALENDAR_SCOPE, CONTACTS_SCOPE, GMAIL_SETTINGS_SCOPE};
 use crate::error::{CoreError, Result};
-use crate::model::{Account, AccountId};
+use crate::model::{Account, AccountId, Permission};
 
 /// Calm, distinguishable account colors, assigned in order.
 pub const ACCOUNT_COLORS: [&str; 8] = [
@@ -17,7 +18,7 @@ pub struct NewAccount<'a> {
     pub oauth_client: &'a str,
 }
 
-const COLUMNS: &str = "id, email, display_name, avatar_url, color, oauth_client";
+const COLUMNS: &str = "id, email, display_name, avatar_url, color, oauth_client, granted_scopes";
 
 fn from_row(row: &Row<'_>) -> rusqlite::Result<Account> {
     Ok(Account {
@@ -27,7 +28,38 @@ fn from_row(row: &Row<'_>) -> rusqlite::Result<Account> {
         avatar_url: row.get(3)?,
         color: row.get(4)?,
         oauth_client: row.get(5)?,
+        missing_permissions: missing(row.get::<_, Option<String>>(6)?.as_deref()),
     })
+}
+
+/// The optional permissions not among `granted` (space-separated, as
+/// stored). Not known yet (`None`, until the first token refresh after
+/// updating) counts as none granted.
+fn missing(granted: Option<&str>) -> Vec<Permission> {
+    let granted: Vec<&str> = granted.unwrap_or("").split_whitespace().collect();
+    [
+        (Permission::Contacts, CONTACTS_SCOPE),
+        (Permission::Calendar, CALENDAR_SCOPE),
+        (Permission::GmailSettings, GMAIL_SETTINGS_SCOPE),
+    ]
+    .into_iter()
+    .filter(|(_, scope)| !granted.contains(scope))
+    .map(|(p, _)| p)
+    .collect()
+}
+
+/// Records the permissions an account's sign-in carries (from Google's
+/// token responses). Returns whether they changed.
+pub fn set_granted_scopes(conn: &Connection, id: AccountId, scopes: &[String]) -> Result<bool> {
+    let mut sorted: Vec<&str> = scopes.iter().map(String::as_str).collect();
+    sorted.sort_unstable();
+    sorted.dedup();
+    let changed = conn.execute(
+        "UPDATE accounts SET granted_scopes = ?2
+         WHERE id = ?1 AND granted_scopes IS NOT ?2",
+        params![id, sorted.join(" ")],
+    )?;
+    Ok(changed > 0)
 }
 
 /// Adds an account, or refreshes its profile if this Google identity is
@@ -195,5 +227,39 @@ mod tests {
             Err(CoreError::NotFound(_))
         ));
         assert_eq!(get(&conn, a.id).unwrap().color, ACCOUNT_COLORS[3]);
+    }
+
+    #[test]
+    fn missing_permissions_follow_what_google_granted() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        let a = upsert(&conn, &new("sub-1", "a@example.com")).unwrap();
+        // Not known yet: every optional permission counts as missing.
+        assert_eq!(
+            a.missing_permissions,
+            vec![
+                Permission::Contacts,
+                Permission::Calendar,
+                Permission::GmailSettings
+            ]
+        );
+        let old = vec![
+            "openid".to_string(),
+            "https://www.googleapis.com/auth/gmail.modify".into(),
+            CONTACTS_SCOPE.into(),
+        ];
+        assert!(set_granted_scopes(&conn, a.id, &old).unwrap());
+        assert!(!set_granted_scopes(&conn, a.id, &old).unwrap());
+        assert_eq!(
+            get(&conn, a.id).unwrap().missing_permissions,
+            vec![Permission::Calendar, Permission::GmailSettings]
+        );
+        let all = [
+            old,
+            vec![CALENDAR_SCOPE.into(), GMAIL_SETTINGS_SCOPE.into()],
+        ]
+        .concat();
+        set_granted_scopes(&conn, a.id, &all).unwrap();
+        assert!(get(&conn, a.id).unwrap().missing_permissions.is_empty());
     }
 }

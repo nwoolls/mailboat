@@ -29,6 +29,11 @@ pub struct IdentitiesChangedEvent {
     pub account_id: AccountId,
 }
 
+/// An account changed in Rust (e.g. the permissions its sign-in carries);
+/// re-read the account list.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct AccountsChangedEvent;
+
 /// Mailboat → Settings… (⌘,) in the menu bar: open the Settings page.
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct OpenSettingsEvent;

@@ -15,6 +15,7 @@ import {
   useSetAccountColor,
 } from "../../../shared/lib/queries";
 import { syncHint } from "../../accounts/model/accounts";
+import { signInAgainReason } from "../../accounts/model/permissions";
 import { AccountAvatar } from "../../accounts/ui/AccountAvatar";
 import { RemoveAccountDialog } from "../../accounts/ui/RemoveAccountDialog";
 import { useSignIn } from "../../accounts/ui/useSignIn";
@@ -114,6 +115,7 @@ function AccountGroup({
   const setColor = useSetAccountColor();
   const addresses = (useIdentities().data ?? []).filter((i) => i.accountId === account.id);
   const name = account.displayName?.trim();
+  const reason = signInAgainReason(account.missingPermissions);
   return (
     <Group
       title={
@@ -151,7 +153,13 @@ function AccountGroup({
       </Row>
       <Row
         label="Sign in again"
-        description="If Google asks you to, or to give Mailboat new permissions."
+        description={
+          reason ? (
+            <span className="text-warn">{reason}</span>
+          ) : (
+            "If Google asks you to, or to give Mailboat new permissions."
+          )
+        }
       >
         <Button onClick={onSignIn} disabled={busy}>
           Sign in again

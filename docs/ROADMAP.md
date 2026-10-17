@@ -651,6 +651,11 @@ invitations (after the new permissions, shared with Milestone 6).*
         by), and `gmail::parse::extract_calendar` finds that part. Still
         to do, with the owner: the new permission and Calendar API setup,
         storing the part when a message is fetched, the card and answering
+      - Permissions (2026-10-17): Mailboat now asks for `calendar.events` and
+        `gmail.settings.basic` (Milestone 6) together. Each account records
+        the permissions Google says its sign-in carries (on sign-in and
+        every token refresh); Settings → Accounts says when an account
+        should sign in again, and for what
 - [x] Report spam (and "Not spam" in the Spam view) as an action, routed
       per account like the others *(owner request, 2026-10-16)*. Toolbar
       button and `!` (Gmail's key); Report spam moves conversations out

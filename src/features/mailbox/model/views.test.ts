@@ -24,6 +24,7 @@ const accounts: Account[] = [
     avatarUrl: null,
     color: "#5b8def",
     oauthClient: "default",
+    missingPermissions: [],
   },
   {
     id: 2,
@@ -32,6 +33,7 @@ const accounts: Account[] = [
     avatarUrl: null,
     color: "#e0795b",
     oauthClient: "default",
+    missingPermissions: [],
   },
 ];
 const work = (id: number, accountId: number): Label => ({

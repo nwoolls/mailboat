@@ -94,7 +94,13 @@ pub struct AccountTokens {
     /// Read from the keychain once per launch, then kept in memory, so
     /// macOS asks for keychain access at most once per run.
     refresh_token: std::sync::Mutex<Option<String>>,
+    /// Told the permissions Google reports with each new access token, so
+    /// they can be recorded (see `accounts::set_granted_scopes`).
+    on_scopes: Option<ScopeHook>,
 }
+
+/// Receives the permissions an account's token carries.
+pub type ScopeHook = Arc<dyn Fn(&[String]) + Send + Sync>;
 
 impl AccountTokens {
     pub fn new(
@@ -110,7 +116,14 @@ impl AccountTokens {
             key: refresh_token_key(google_sub),
             cached: tokio::sync::Mutex::new(None),
             refresh_token: std::sync::Mutex::new(None),
+            on_scopes: None,
         }
+    }
+
+    /// Calls `hook` with the permissions of each new access token.
+    pub fn with_scope_hook(mut self, hook: ScopeHook) -> Self {
+        self.on_scopes = Some(hook);
+        self
     }
 
     fn refresh_token(&self) -> Result<String> {
@@ -159,6 +172,9 @@ impl TokenSource for AccountTokens {
         if let Some(rotated) = &fresh.refresh_token {
             self.secrets.set(&self.key, rotated)?;
             *self.refresh_token.lock().unwrap() = Some(rotated.clone());
+        }
+        if let (Some(hook), Some(scopes)) = (&self.on_scopes, &fresh.scopes) {
+            hook(scopes);
         }
         *cached = Some(CachedToken {
             value: fresh.access_token.clone(),

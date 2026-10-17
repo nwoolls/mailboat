@@ -109,18 +109,26 @@ pub async fn account_add(
             oauth_client: &config.name,
         },
     )?;
-    let account_tokens = Arc::new(AccountTokens::new(
-        state.http.clone(),
-        config,
-        state.secrets.clone(),
-        &signed_in.user.sub,
-    ));
+    let hook = state.scope_hook(account.id);
+    if let Some(scopes) = &signed_in.scopes {
+        hook(scopes);
+    }
+    let account_tokens = Arc::new(
+        AccountTokens::new(
+            state.http.clone(),
+            config,
+            state.secrets.clone(),
+            &signed_in.user.sub,
+        )
+        .with_scope_hook(hook),
+    );
     account_tokens
         .seed(signed_in.access_token, signed_in.expires_in)
         .await;
     let _ = state.set_tokens(account.id, account_tokens);
     state.start_sync(account.id)?;
-    Ok(account)
+    // Re-read, with the permissions just recorded.
+    Ok(accounts::get(&state.db.conn(), account.id)?)
 }
 
 /// Stops waiting for a browser sign-in started by `account_add`.

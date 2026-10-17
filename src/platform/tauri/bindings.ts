@@ -158,6 +158,7 @@ export const commands = {
 
 /** Events */
 export const events = {
+	accountsChangedEvent: makeEvent<AccountsChangedEvent>("accounts-changed-event"),
 	identitiesChangedEvent: makeEvent<IdentitiesChangedEvent>("identities-changed-event"),
 	mailChangedEvent: makeEvent<MailChangedEvent>("mail-changed-event"),
 	openSettingsEvent: makeEvent<OpenSettingsEvent>("open-settings-event"),
@@ -176,6 +177,11 @@ export type Account = {
 	color: string,
 	/**  Which OAuth client config this account signed in with. */
 	oauthClient: string,
+	/**
+	 *  Features this account's sign-in doesn't cover yet (it signed in
+	 *  before Mailboat asked for them); signing in again adds them.
+	 */
+	missingPermissions: Permission[],
 };
 
 /**  Which accounts a query covers. A single-account view is `Only` with one ID. */
@@ -190,6 +196,12 @@ export type AccountSyncState = {
 	errorMessage: string | null,
 	lastSyncAt: number | null,
 };
+
+/**
+ *  An account changed in Rust (e.g. the permissions its sign-in carries);
+ *  re-read the account list.
+ */
+export type AccountsChangedEvent = null;
 
 export type Address = {
 	name: string | null,
@@ -450,6 +462,15 @@ export type OutgoingMessage = {
 	/**  The message this replies to or forwards, for threading. */
 	replyingTo: MessageId | null,
 };
+
+/**  Optional Google permissions, by the feature that needs them. */
+export type Permission = 
+/**  Address suggestions from Google Contacts. */
+"contacts" | 
+/**  Answering meeting invitations. */
+"calendar" | 
+/**  Rules, signatures and the vacation responder. */
+"gmailSettings";
 
 /**  What compose needs from a message to reply to or forward it. */
 export type ReplySource = {

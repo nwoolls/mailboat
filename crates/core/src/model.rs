@@ -46,6 +46,21 @@ pub struct Account {
     pub color: String,
     /// Which OAuth client config this account signed in with.
     pub oauth_client: String,
+    /// Features this account's sign-in doesn't cover yet (it signed in
+    /// before Mailboat asked for them); signing in again adds them.
+    pub missing_permissions: Vec<Permission>,
+}
+
+/// Optional Google permissions, by the feature that needs them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum Permission {
+    /// Address suggestions from Google Contacts.
+    Contacts,
+    /// Answering meeting invitations.
+    Calendar,
+    /// Rules, signatures and the vacation responder.
+    GmailSettings,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
