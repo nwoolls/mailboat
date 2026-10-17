@@ -844,11 +844,11 @@ owner has seen invitations and the Dock icon working.*
 **Goal (owner, 2026-10-17): stop needing Gmail on the web.** Wanted soon
 rather than later.
 
-Both need Gmail's settings scope (`gmail.settings.basic`), which Mailboat
-doesn't ask for yet. It's added together with `calendar.events` (meeting
-invitations, Milestone 5) so each account signs in again only once for
-both; plus an ARCHITECTURE decision row. The editors live in Settings
-(Signatures, Rules), so the Settings page comes first.
+These need Gmail's settings permission (`gmail.settings.basic`). Mailboat
+asks for it since 2026-10-17, together with `calendar.events` (meeting
+invitations, Milestone 5), so each account signs in again only once for
+both; Settings → Accounts says when an account still lacks it. The
+editors live in Settings (Signatures, Rules), which now exists.
 
 - [ ] Rules (Gmail filters): list, create, edit, delete *(owner request,
       2026-10-16)*
@@ -868,6 +868,16 @@ both; plus an ARCHITECTURE decision row. The editors live in Settings
         (blocking is a filter, so Rules covers it)
 
 ## Later / unscheduled
+
+- [ ] Onboarding *(owner request, 2026-10-17)*: a first-launch flow
+      instead of today's single Welcome screen. At least: add one or
+      more accounts (each shown as it signs in, with its first sync
+      under way). Maybe also: choose the theme and the app icon, allow
+      notifications. Steps after accounts can be skipped, and all of it
+      is in Settings afterwards. To design with the owner before
+      building. Today's Welcome screen also needs its Google setup steps
+      brought up to date: it names only the Gmail API, but the README
+      now lists the People and Google Calendar APIs too
 
 - [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
 - [ ] Windows build and testing; Linux nice-to-have
