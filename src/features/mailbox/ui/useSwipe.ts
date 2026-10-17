@@ -173,7 +173,7 @@ export function useSwipe(
         resumedFrom = resuming ? open.d : null;
         side = resuming ? open.side : null;
       }
-      gesture = feedWheel(gesture, e.deltaX, e.deltaY);
+      gesture = feedWheel(gesture, e.deltaX, e.deltaY, !reported);
       if (gesture.axis === "y") {
         // Scrolling the list closes an open row.
         if (live.current.swipe?.mode === "open") close();

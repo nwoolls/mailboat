@@ -165,7 +165,13 @@ export const NEW_GESTURE: WheelGesture = { axis: null, dx: 0, recent: [], releas
 /** No events for this long ends a gesture. */
 export const GESTURE_IDLE_MS = 110;
 
-export function feedWheel(g: WheelGesture, dx: number, dy: number): WheelGesture {
+/**
+ * `guessLift`: watch for coasting to tell the fingers lifted. Only when
+ * macOS isn't reporting the lift itself (a mouse wheel): a hand slowing
+ * smoothly can look like coasting, and treating it as a release froze the
+ * row under the fingers.
+ */
+export function feedWheel(g: WheelGesture, dx: number, dy: number, guessLift = true): WheelGesture {
   if (g.released) return g;
   let axis = g.axis;
   if (axis === null) {
@@ -174,7 +180,7 @@ export function feedWheel(g: WheelGesture, dx: number, dy: number): WheelGesture
   }
   if (axis === "y") return { ...g, axis };
   const recent = [...g.recent, dx].slice(-4);
-  return { axis, dx: g.dx + dx, recent, released: isCoasting(recent) };
+  return { axis, dx: g.dx + dx, recent, released: guessLift && isCoasting(recent) };
 }
 
 /**

@@ -96,6 +96,13 @@ describe("reading the trackpad", () => {
     expect(after.dx).toBe(g.dx);
   });
 
+  it("keeps following a smoothly slowing hand when macOS reports the lift", () => {
+    let g = NEW_GESTURE;
+    for (const d of [12, 10, 9, 8.2, 7.5, 6.9]) g = feedWheel(g, d, 0, false);
+    expect(g.released).toBe(false);
+    expect(g.dx).toBeCloseTo(53.6);
+  });
+
   it("tells coasting from a hand slowing unevenly", () => {
     expect(isCoasting([20, 18, 16.5, 15])).toBe(true);
     expect(isCoasting([20, 12, 11, 4])).toBe(false);
