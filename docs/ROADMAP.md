@@ -623,10 +623,11 @@ each was a "not yet" note above)*:
 ## Milestone 5: Polish
 
 *Open at the end of the 2026-10-17 session, in the order agreed: the
-Settings page and its app icon chooser (built), then meeting
-invitations (after the new permissions, shared with Milestone 6).*
+Settings page and its app icon chooser, then meeting invitations: all
+built (2026-10-17). Left: the emailed-reply fallback for invitations,
+and the owner seeing the app icon change in the Dock.*
 
-- [ ] Answer meeting invitations in the reader *(owner request,
+- [x] Answer meeting invitations in the reader *(owner request,
       2026-10-16; first in this milestone)*: a card with the event (time,
       place, organizer, your current answer) and Yes / No / Maybe, instead
       of the email's own buttons, which open the browser.
@@ -656,7 +657,8 @@ invitations (after the new permissions, shared with Milestone 6).*
         the permissions Google says its sign-in carries (on sign-in and
         every token refresh); Settings → Accounts says when an account
         should sign in again, and for what
-      - **Built, not yet tried against real Google (2026-10-17):** the
+      - **Built; the owner tried it against real Google and it works
+        (2026-10-17):** the
         card at the top of an opened invitation: what it is (invitation,
         updated, cancelled, or "Sam accepted your invitation"), title,
         when (in your time zone), place, organizer, clashes on your
@@ -664,8 +666,12 @@ invitations (after the new permissions, shared with Milestone 6).*
         Calendar", and "Remove from calendar" for a cancelled event still
         on it. Not on your calendar yet: answering adds it first. An
         account without the permission gets "Sign in again" on the card.
-        The Calendar API is turned on in the owner's project. Not built:
-        the emailed-reply fallback when Calendar can't add the event
+        The Calendar API is turned on in the owner's project. The
+        emailed-reply fallback is its own item below
+- [ ] Invitations Calendar can't add (e.g. a time zone Google doesn't
+      know): answer by email instead, with the standard calendar reply
+      (as Apple Mail sends). Split out of the invitations item when that
+      was done (2026-10-17)
 - [x] Report spam (and "Not spam" in the Spam view) as an action, routed
       per account like the others *(owner request, 2026-10-16)*. Toolbar
       button and `!` (Gmail's key); Report spam moves conversations out
