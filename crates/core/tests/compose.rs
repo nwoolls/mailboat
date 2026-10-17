@@ -62,6 +62,7 @@ fn outgoing(account: AccountId, from: &str, replying_to: Option<MessageId>) -> O
         html: None,
         attachments: vec![],
         draft: None,
+        forwarded: vec![],
         replying_to,
     }
 }
@@ -624,4 +625,53 @@ async fn an_account_without_the_contacts_permission_is_refused_not_broken() {
     let (gmail, _) = client(&server.uri());
     let err = contacts::refresh_google(&db, &gmail, a).await.unwrap_err();
     assert!(matches!(err, CoreError::Api { status: 403, .. }), "{err:?}");
+}
+
+#[tokio::test]
+async fn a_forward_carries_the_originals_attachments() {
+    let server = MockServer::start().await;
+    mount_send(&server, "t1").await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    load_t1(&db, a);
+    let m2 = message_id(&db, a, "m2");
+    // The original's attachment, already downloaded to the cache.
+    let cache = std::env::temp_dir().join(format!("mailboat-fwd-{}", std::process::id()));
+    let file = cache.join("plan.pdf");
+    std::fs::create_dir_all(&cache).unwrap();
+    std::fs::write(&file, b"%PDF-plan").unwrap();
+    db.conn()
+        .execute(
+            "INSERT INTO attachments (account_id, message_id, part_id, filename, mime_type, size, cached_path)
+             VALUES (?1, ?2, '2', 'plan.pdf', 'application/pdf', 9, ?3)",
+            rusqlite::params![a, m2, file.to_string_lossy()],
+        )
+        .unwrap();
+    let attachment: AttachmentId = db
+        .conn()
+        .query_row("SELECT id FROM attachments", [], |r| r.get(0))
+        .unwrap();
+
+    let (gmail, _) = client(&server.uri());
+    let files =
+        compose::forwarded_files(&db, |_| Ok(client(&server.uri()).0), &[attachment], &cache)
+            .await
+            .unwrap();
+    let mut msg = outgoing(a, "a@x.com", Some(m2));
+    msg.forwarded = vec![attachment];
+    compose::send_with_files(&db, &gmail, &msg, &files)
+        .await
+        .unwrap();
+
+    let requests = server.received_requests().await.unwrap();
+    let send = requests
+        .iter()
+        .find(|r| r.url.path().ends_with("/messages/send"))
+        .unwrap();
+    let (raw, _) = sent_raw(send);
+    assert!(
+        raw.contains("plan.pdf") && raw.contains("application/pdf"),
+        "{raw}"
+    );
+    let _ = std::fs::remove_dir_all(&cache);
 }

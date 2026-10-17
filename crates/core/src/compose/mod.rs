@@ -18,7 +18,7 @@ use crate::db::{store, Db};
 use crate::error::{CoreError, Result};
 use crate::gmail::types::DraftRef;
 use crate::gmail::{parse, GmailClient};
-use crate::model::{AccountId, Address, DraftId, MessageId, ThreadId};
+use crate::model::{AccountId, Address, Attachment, AttachmentId, DraftId, MessageId, ThreadId};
 use crate::sync::fetch_body;
 
 /// A message the user wants sent.
@@ -40,6 +40,8 @@ pub struct OutgoingMessage {
     pub attachments: Vec<OutgoingAttachment>,
     /// The saved draft this is (deleted once sent).
     pub draft: Option<DraftId>,
+    /// Attachments of the original carried along (forwards), by ID.
+    pub forwarded: Vec<AttachmentId>,
     /// The message this replies to or forwards, for threading.
     pub replying_to: Option<MessageId>,
 }
@@ -52,6 +54,29 @@ pub struct OutgoingAttachment {
     pub mime_type: String,
     /// The file's bytes, base64 (standard alphabet).
     pub data: String,
+}
+
+/// Files ready to attach: (name, MIME type, bytes).
+pub type Files = Vec<(String, String, Vec<u8>)>;
+
+/// Fetches attachments of received mail (a forward's originals), each with
+/// its own account's client, through the attachment cache.
+pub async fn forwarded_files(
+    db: &Db,
+    gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
+    ids: &[AttachmentId],
+    cache_dir: &std::path::Path,
+) -> Result<Files> {
+    let mut out = Files::new();
+    for &id in ids {
+        let a = store::attachment_ref(&db.conn(), id)?;
+        let gmail = gmail_for(a.account)?;
+        let path = crate::attachments::download(db, &gmail, id, cache_dir).await?;
+        let bytes = std::fs::read(&path)
+            .map_err(|e| CoreError::Other(format!("couldn't read {}: {e}", a.filename)))?;
+        out.push((a.filename, a.mime_type, bytes));
+    }
+    Ok(out)
 }
 
 /// Gmail's limit for attachments on one message.
@@ -102,6 +127,8 @@ pub struct ReplySource {
     /// scripts, styles sheets, forms or event handlers (`ammonia`'s
     /// defaults). `None` for plain-text mail.
     pub html: Option<String>,
+    /// The original's files (a forward carries them along).
+    pub attachments: Vec<Attachment>,
 }
 
 struct Original {
@@ -192,6 +219,7 @@ pub async fn reply_source(db: &Db, gmail: &GmailClient, message: MessageId) -> R
         date: o.date,
         text,
         html,
+        attachments: store::attachments_for(&db.conn(), message)?,
     })
 }
 
@@ -223,8 +251,18 @@ pub fn validate(db: &Db, msg: &OutgoingMessage) -> Result<()> {
 /// it lands in, so it shows at once. Returns that thread (`None` if Gmail
 /// couldn't be asked for it straight after; sync brings it in later).
 pub async fn send(db: &Db, gmail: &GmailClient, msg: &OutgoingMessage) -> Result<Option<ThreadId>> {
+    send_with_files(db, gmail, msg, &[]).await
+}
+
+/// [`send`], with forwarded files already fetched ([`forwarded_files`]).
+pub async fn send_with_files(
+    db: &Db,
+    gmail: &GmailClient,
+    msg: &OutgoingMessage,
+    forwarded: &[(String, String, Vec<u8>)],
+) -> Result<Option<ThreadId>> {
     validate(db, msg)?;
-    let (raw, thread) = prepare(db, msg, &msg.to, &msg.cc, &msg.bcc)?;
+    let (raw, thread) = prepare(db, msg, &msg.to, &msg.cc, &msg.bcc, forwarded)?;
     let sent = gmail.send_message(&raw, thread.as_deref()).await?;
     // The mail is gone; failing to cache it now only delays it until sync.
     let fetched = gmail.thread_metadata(&sent.thread_id).await;
@@ -247,7 +285,15 @@ fn prepare(
     to: &[Address],
     cc: &[Address],
     bcc: &[Address],
+    forwarded: &[(String, String, Vec<u8>)],
 ) -> Result<(Vec<u8>, Option<String>)> {
+    let mut files = decode_attachments(&msg.attachments)?;
+    files.extend(forwarded.iter().cloned());
+    if files.iter().map(|f| f.2.len()).sum::<usize>() > MAX_ATTACHMENTS_BYTES {
+        return Err(CoreError::Invalid(
+            "Attachments are over Gmail's 25 MB limit.".into(),
+        ));
+    }
     let original = msg.replying_to.map(|m| original(db, m)).transpose()?;
     let (in_reply_to, references) = match &original {
         Some(o) => {
@@ -277,7 +323,7 @@ fn prepare(
         subject: msg.subject.clone(),
         text: msg.text.clone(),
         html: msg.html.clone(),
-        attachments: decode_attachments(&msg.attachments)?,
+        attachments: files,
         in_reply_to,
         references,
     })?;
@@ -295,6 +341,17 @@ pub async fn save_draft(
     existing: Option<DraftId>,
     msg: &OutgoingMessage,
 ) -> Result<DraftId> {
+    save_draft_with_files(db, gmail_for, existing, msg, &[]).await
+}
+
+/// [`save_draft`], with forwarded files already fetched.
+pub async fn save_draft_with_files(
+    db: &Db,
+    gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
+    existing: Option<DraftId>,
+    msg: &OutgoingMessage,
+    forwarded: &[(String, String, Vec<u8>)],
+) -> Result<DraftId> {
     if !identities::owns(&db.conn(), msg.account_id, &msg.from.email)? {
         return Err(CoreError::Invalid(format!(
             "{} isn't an address this account can send from.",
@@ -309,7 +366,14 @@ pub async fn save_draft(
             .cloned()
             .collect()
     };
-    let (raw, thread) = prepare(db, msg, &keep(&msg.to), &keep(&msg.cc), &keep(&msg.bcc))?;
+    let (raw, thread) = prepare(
+        db,
+        msg,
+        &keep(&msg.to),
+        &keep(&msg.cc),
+        &keep(&msg.bcc),
+        forwarded,
+    )?;
     let saved = match existing {
         Some(id) => draft_row(db, id)?.map(|row| (id, row)),
         None => None,

@@ -578,7 +578,14 @@ pub async fn message_send(
     message: OutgoingMessage,
 ) -> CmdResult<Option<ThreadId>> {
     let gmail = state.gmail_for(message.account_id)?.interactive();
-    let thread = compose::send(&state.db, &gmail, &message).await?;
+    let files = compose::forwarded_files(
+        &state.db,
+        |account| Ok(state.gmail_for(account)?.interactive()),
+        &message.forwarded,
+        &state.attachments_dir,
+    )
+    .await?;
+    let thread = compose::send_with_files(&state.db, &gmail, &message, &files).await?;
     // Sent: its saved draft goes. If that fails the mail is still sent;
     // the leftover draft is logged and shows in Drafts to delete by hand.
     if let Some(draft) = message.draft {
@@ -608,11 +615,19 @@ pub async fn draft_save(
     draft: Option<DraftId>,
     message: OutgoingMessage,
 ) -> CmdResult<DraftId> {
-    let id = compose::save_draft(
+    let files = compose::forwarded_files(
+        &state.db,
+        |account| state.gmail_for(account),
+        &message.forwarded,
+        &state.attachments_dir,
+    )
+    .await?;
+    let id = compose::save_draft_with_files(
         &state.db,
         |account| state.gmail_for(account),
         draft,
         &message,
+        &files,
     )
     .await?;
     // The saved draft is cached already: lists (Drafts) refresh now.

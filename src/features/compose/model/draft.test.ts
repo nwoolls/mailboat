@@ -67,6 +67,7 @@ function source(over: Partial<ReplySource> = {}): ReplySource {
     date: 0,
     text: "Noon?\n\nJ",
     html: null,
+    attachments: [],
     ...over,
   };
 }
@@ -291,4 +292,14 @@ it("a resumed draft goes inline when it's a reply, in the card otherwise", () =>
   expect(reply.signature).toBe("");
   const fresh = resumedDraft({ ...opened, replyingTo: null, html: "", text: "a\n\nb" }, 78);
   expect([fresh.kind, fresh.threadId, fresh.html]).toEqual(["new", null, "<p>a</p><p>b</p>"]);
+});
+
+it("a forward carries the original's files; replies don't", () => {
+  const pdf = { id: 3, messageId: 10, filename: "plan.pdf", mimeType: "application/pdf", size: 9 };
+  const fwd = replyDraft("forward", source({ attachments: [pdf] }), identities, "me@x.com", date);
+  expect(fwd.forwarded).toEqual([pdf]);
+  expect(toOutgoing({ ...fwd, to: [a("b@z.com")] }).forwarded).toEqual([3]);
+  expect(
+    replyDraft("reply", source({ attachments: [pdf] }), identities, "me@x.com", date).forwarded,
+  ).toEqual([]);
 });

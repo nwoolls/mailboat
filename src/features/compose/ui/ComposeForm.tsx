@@ -166,12 +166,27 @@ export function ComposeForm({
           {draft.quoteText && <QuoteFold html={draft.quote} startOpen={draft.kind === "forward"} />}
         </div>
       </fieldset>
-      {draft.attachments.length > 0 && (
+      {draft.attachments.length + draft.forwarded.length > 0 && (
         <AttachmentChips
-          files={draft.attachments}
-          onRemove={(i) =>
-            onChange((d) => ({ ...d, attachments: d.attachments.filter((_, j) => j !== i) }))
-          }
+          files={[
+            ...draft.forwarded.map((f) => ({
+              key: `fwd:${f.id}`,
+              name: f.filename,
+              size: f.size,
+              remove: () =>
+                onChange((d) => ({ ...d, forwarded: d.forwarded.filter((x) => x.id !== f.id) })),
+            })),
+            ...draft.attachments.map((f, i) => ({
+              key: `new:${f.filename}:${f.data.length}:${f.data.slice(-24)}`,
+              name: f.filename,
+              size: attachmentSize(f),
+              remove: () =>
+                onChange((d) => ({
+                  ...d,
+                  attachments: d.attachments.filter((_, j) => j !== i),
+                })),
+            })),
+          ]}
         />
       )}
       <FormatBar editor={editor} />
@@ -401,29 +416,26 @@ function AttachButton({
   );
 }
 
-function AttachmentChips({
-  files,
-  onRemove,
-}: {
-  files: OutgoingAttachment[];
-  onRemove: (index: number) => void;
-}) {
+type Chip = { key: string; name: string; size: number; remove: () => void };
+
+/** Files going with the message: new ones and a forward's originals. */
+function AttachmentChips({ files }: { files: Chip[] }) {
   return (
     <ul className="flex flex-wrap gap-1.5 px-4 pb-2" aria-label="Attachments">
-      {files.map((f, i) => (
+      {files.map((f) => (
         <li
-          key={`${f.filename}:${f.data.length}:${f.data.slice(-24)}`}
+          key={f.key}
           className="flex h-7 max-w-60 items-center gap-1.5 rounded-md bg-selection pr-0.5 pl-2 text-xs"
         >
           <AttachmentIcon size={13} className="shrink-0 text-content/55" />
-          <span className="truncate" title={f.filename}>
-            {f.filename}
+          <span className="truncate" title={f.name}>
+            {f.name}
           </span>
-          <span className="shrink-0 text-content/45">{formatSize(attachmentSize(f))}</span>
+          <span className="shrink-0 text-content/45">{formatSize(f.size)}</span>
           <button
             type="button"
-            aria-label={`Remove ${f.filename}`}
-            onClick={() => onRemove(i)}
+            aria-label={`Remove ${f.name}`}
+            onClick={f.remove}
             className="rounded p-1 text-content/45 hover:bg-selection-strong hover:text-content"
           >
             <ClearIcon size={12} />

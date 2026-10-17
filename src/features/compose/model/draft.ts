@@ -1,6 +1,7 @@
 import type {
   AccountFilter,
   AccountId,
+  Attachment,
   Address,
   DraftId,
   Identity,
@@ -52,6 +53,8 @@ export type Draft = {
   resumedFrom: MessageId | null;
   /** Files to send with it. */
   attachments: OutgoingAttachment[];
+  /** The original's files a forward carries along (removable). */
+  forwarded: Attachment[];
   /** The message replied to or forwarded. */
   replyingTo: MessageId | null;
   /** The conversation a reply or forward was started from. */
@@ -162,6 +165,7 @@ export function newDraft(
     quoteText: "",
     signature: signatureOf(identities, accountId, from),
     attachments: [],
+    forwarded: [],
     savedId: null,
     resumedFrom: null,
     replyingTo: null,
@@ -321,6 +325,7 @@ export function replyDraft(
     html: "",
     signature: signatureOf(identities, source.accountId, from),
     attachments: [],
+    forwarded: kind === "forward" ? source.attachments : [],
     savedId: null,
     resumedFrom: null,
     quote,
@@ -361,6 +366,7 @@ export function resumedDraft(opened: OpenedDraft, from: MessageId): Draft {
     savedId: opened.draft,
     resumedFrom: from,
     attachments: [],
+    forwarded: [],
     replyingTo: opened.replyingTo,
     threadId: reply ? opened.threadId : null,
     showCc: opened.cc.length > 0,
@@ -399,7 +405,9 @@ export function attachmentSize(a: Pick<OutgoingAttachment, "data">): number {
 
 /** Why it can't be sent yet, or null. */
 export function sendProblem(draft: Draft): string | null {
-  const total = draft.attachments.reduce((sum, a) => sum + attachmentSize(a), 0);
+  const total =
+    draft.attachments.reduce((sum, a) => sum + attachmentSize(a), 0) +
+    draft.forwarded.reduce((sum, a) => sum + a.size, 0);
   if (total > MAX_ATTACHMENT_BYTES) return "Attachments are over Gmail’s 25 MB limit.";
   const everyone = [...draft.to, ...draft.cc, ...draft.bcc];
   if (everyone.length === 0) return "Add at least one recipient.";
@@ -451,6 +459,7 @@ export function toOutgoing(draft: Draft): OutgoingMessage {
     text,
     html,
     attachments: draft.attachments,
+    forwarded: draft.forwarded.map((a) => a.id),
     draft: draft.savedId,
     replyingTo: draft.replyingTo,
   };

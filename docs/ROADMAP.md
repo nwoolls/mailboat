@@ -586,7 +586,10 @@ each was a "not yet" note above)*:
 - [x] Drag files onto the composer to attach them ("Drop to attach"
       shows while dragging over a message being written; files dropped
       elsewhere do nothing)
-- [ ] Forwarding includes the original's attachments, as Gmail does
+- [x] Forwarding includes the original's attachments, as Gmail does:
+      they show as chips (✕ leaves one out), are fetched through the
+      attachment cache with the original's account, and go with the
+      forward and its saved draft; Gmail's 25 MB limit counts them
 - [ ] Reopening a draft brings back its saved attachments
 - [ ] Images embedded in an email itself (`cid:`), in quotes, forwards and
       signatures (web-hosted images already work)

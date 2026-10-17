@@ -383,6 +383,8 @@ export type OutgoingMessage = {
 	attachments: OutgoingAttachment[],
 	/**  The saved draft this is (deleted once sent). */
 	draft: DraftId | null,
+	/**  Attachments of the original carried along (forwards), by ID. */
+	forwarded: AttachmentId[],
 	/**  The message this replies to or forwards, for threading. */
 	replyingTo: MessageId | null,
 };
@@ -408,6 +410,8 @@ export type ReplySource = {
 	 *  defaults). `None` for plain-text mail.
 	 */
 	html: string | null,
+	/**  The original's files (a forward carries them along). */
+	attachments: Attachment[],
 };
 
 export type SafeMessage = {
