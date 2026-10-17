@@ -285,8 +285,10 @@ it("a resumed draft goes inline when it's a reply, in the card otherwise", () =>
     html: "<p>Sure</p>",
     text: "Sure",
     replyingTo: 10,
+    files: [{ filename: "a.txt", mimeType: "text/plain", data: "aGk=" }],
   };
   const reply = resumedDraft(opened, 77);
+  expect(reply.attachments.map((f) => f.filename)).toEqual(["a.txt"]);
   expect(reply.resumedFrom).toBe(77);
   expect([reply.kind, reply.threadId, reply.savedId, reply.showBcc]).toEqual(["reply", 5, 9, true]);
   expect(reply.signature).toBe("");

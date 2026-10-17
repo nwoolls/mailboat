@@ -675,3 +675,51 @@ async fn a_forward_carries_the_originals_attachments() {
     );
     let _ = std::fs::remove_dir_all(&cache);
 }
+
+#[tokio::test]
+async fn reopening_a_draft_brings_its_files() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/drafts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "drafts": [{ "id": "dWeb", "message": { "id": "m2", "threadId": "t1" } }]
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "m2", "threadId": "t1",
+            "payload": {
+                "mimeType": "multipart/mixed",
+                "headers": [
+                    { "name": "From", "value": "a@x.com" },
+                    { "name": "To", "value": "bob@example.com" },
+                    { "name": "Subject", "value": "Plan" }
+                ],
+                "parts": [
+                    { "partId": "0", "mimeType": "text/plain", "filename": "",
+                      "body": { "size": 2, "data": parse::encode_base64url(b"Hi") } },
+                    { "partId": "1", "mimeType": "application/pdf", "filename": "plan.pdf",
+                      "body": { "size": 9, "data": parse::encode_base64url(b"%PDF-plan") } }
+                ]
+            }
+        })))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    load_t1(&db, a);
+    let m2 = message_id(&db, a, "m2");
+    let (gmail, _) = client(&server.uri());
+
+    let opened = compose::open_draft(&db, &gmail, m2).await.unwrap();
+    assert_eq!(opened.subject, "Plan");
+    assert_eq!(opened.files.len(), 1);
+    assert_eq!(opened.files[0].filename, "plan.pdf");
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&opened.files[0].data)
+        .unwrap();
+    assert_eq!(bytes, b"%PDF-plan");
+}

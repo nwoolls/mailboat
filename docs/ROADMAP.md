@@ -543,8 +543,8 @@ Stage 4: drafts and undo send
       background; if that fails, the card comes back with the error.
       Closing a reopened draft leaves it in Drafts (only Discard deletes;
       owner report, 2026-10-16), and a saved draft shows in Drafts at
-      once instead of after the next sync. Not yet: a resumed draft's
-      saved attachments
+      once instead of after the next sync. A reopened draft keeps its
+      attachments (see the leftovers below)
 - [x] Undo send (5 seconds): Send closes the message at once and
       "Sending…" offers Undo (or `z` / ⌘Z) for 5 seconds before anything
       goes to Google; Undo puts it back exactly as it was. If sending then
@@ -590,7 +590,9 @@ each was a "not yet" note above)*:
       they show as chips (✕ leaves one out), are fetched through the
       attachment cache with the original's account, and go with the
       forward and its saved draft; Gmail's 25 MB limit counts them
-- [ ] Reopening a draft brings back its saved attachments
+- [x] Reopening a draft brings back its saved attachments: downloaded
+      when the draft opens and kept as ordinary attachments (the draft's
+      own message, and its parts, are replaced on the next save)
 - [ ] Images embedded in an email itself (`cid:`), in quotes, forwards and
       signatures (web-hosted images already work)
 - [ ] Gmail visually collapses the blank line between a reply and its

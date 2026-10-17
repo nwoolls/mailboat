@@ -560,6 +560,8 @@ pub struct OpenedDraft {
     pub text: String,
     /// The message it answers, when it's a reply in its conversation.
     pub replying_to: Option<MessageId>,
+    /// Its attached files, downloaded, ready to go with it again.
+    pub files: Vec<OutgoingAttachment>,
 }
 
 /// The local draft ID for a draft message, recording it if it was made
@@ -622,6 +624,27 @@ pub async fn open_draft(db: &Db, gmail: &GmailClient, message: MessageId) -> Res
     };
     let list = |name: &str| parse::parse_address_list(&h(name));
     let body = parse::extract_body(&payload);
+    // Its files come along as plain attachments: the draft's message (and
+    // with it these parts) is replaced the first time it's saved again.
+    let mut files = Vec::new();
+    for part in parse::extract_attachments(&payload, body.html.as_deref())
+        .into_iter()
+        .filter(|p| !p.inline)
+    {
+        let bytes = match parse::part_data(&payload, &part.part_id) {
+            Some(bytes) => bytes,
+            None => match &part.gmail_attachment_id {
+                Some(id) => gmail.attachment(&gmail_message_id, id).await?,
+                None => continue,
+            },
+        };
+        use base64::Engine;
+        files.push(OutgoingAttachment {
+            filename: part.filename,
+            mime_type: part.mime_type,
+            data: base64::engine::general_purpose::STANDARD.encode(bytes),
+        });
+    }
     let in_reply_to = h("In-Reply-To");
     let replying_to: Option<MessageId> = if in_reply_to.trim().is_empty() {
         None
@@ -646,6 +669,7 @@ pub async fn open_draft(db: &Db, gmail: &GmailClient, message: MessageId) -> Res
         html: body.html.clone().unwrap_or_default(),
         text: body.text.unwrap_or_default(),
         replying_to,
+        files,
     })
 }
 

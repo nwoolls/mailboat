@@ -365,7 +365,8 @@ export function resumedDraft(opened: OpenedDraft, from: MessageId): Draft {
     signature: "",
     savedId: opened.draft,
     resumedFrom: from,
-    attachments: [],
+    // Its saved files, as plain attachments (sent and saved again as is).
+    attachments: opened.files,
     forwarded: [],
     replyingTo: opened.replyingTo,
     threadId: reply ? opened.threadId : null,

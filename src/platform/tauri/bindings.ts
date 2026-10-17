@@ -346,6 +346,8 @@ export type OpenedDraft = {
 	text: string,
 	/**  The message it answers, when it's a reply in its conversation. */
 	replyingTo: MessageId | null,
+	/**  Its attached files, downloaded, ready to go with it again. */
+	files: OutgoingAttachment[],
 };
 
 export type OpenedMessage = {
