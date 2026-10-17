@@ -719,12 +719,43 @@ each was a "not yet" note above)*:
       conversation (it brings Mailboat forward)
 - [ ] Settings: choose the app icon from `design/icon/choices/` (the
       folded M in 16 colours, or the earlier glass icon)
-- [ ] Settings screen *(owner request, 2026-10-16: **discuss first** how
-      it opens (⌘, menu, the sidebar's icon bar), and whether it's its own
-      window, a sheet, or a page in the main window)*, with a transparency
-      slider per area (sidebar and reader, list panel). Per area, because one shared slider scaling
-      each tint by the same share changed the list far more than the
-      sidebar
+- [ ] Settings screen *(owner request, 2026-10-16)*. Decided (owner,
+      2026-10-17):
+      - **A page in the main window** (as MonoCode): the sidebar becomes
+        the list of sections with Back at its foot; Esc or Back returns to
+        the mail as it was. Each section is a column of grouped rows (a
+        title, a line saying what it does, the control on the right),
+        MonoCode's layout, which suits Mailboat's look better than Mail's
+        label-colon forms
+      - **Opens with** ⌘, and Mailboat → Settings… in the menu bar, and a
+        gear in the sidebar's foot bar, on the right (the "+" stays left)
+      - **Plan for most of Mail's and Mimestream's options in the long
+        run, in a conventional order.** Sections, in order, with what
+        each will hold (✱ = has something to put there now):
+        1. General ✱: default email reader, text size, delete key
+           (trash or archive), sounds, unread count on the Dock icon,
+           which searches include Trash and Spam, About and version
+        2. Accounts ✱: each account's colour, name, sign in again, remove;
+           its aliases and signatures shown (edited in Gmail until
+           Milestone 6)
+        3. Notifications ✱: on/off, which mail (Inbox only, all, VIP),
+           sound
+        4. Appearance ✱: transparency per area (sidebar and reader, list),
+           app icon (`design/icon/choices/`), light/dark/system, accent
+        5. Sidebar & List: list density, preview lines, which views show,
+           swipe actions (what left and right do)
+        6. Viewing: remote images (the policy in `mail/images`, allowed
+           and blocked senders), mark as read (on open, after a delay,
+           never), conversation order
+        7. Composing: default From, reply quoting, undo send delay,
+           default font and size
+        8. Signatures and Templates (Milestone 6 and later)
+        9. Rules / Filters (Milestone 6)
+        10. Keyboard ✱: the shortcuts (`?` sheet), later rebinding
+        11. Advanced: sync log, cache size and clearing, reset; later the
+            MCP server and AI keys (see Later)
+      - First build: the page itself, openers, and the ✱ sections with
+        what exists today; the others appear as their features arrive
 - [x] Remember the window between launches: position, size, and
       maximized/full-screen state *(owner request, 2026-10-16)*. Works with
       several monitors: reopens on the display it was last on, and if that
