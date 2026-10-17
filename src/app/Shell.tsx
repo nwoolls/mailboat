@@ -30,6 +30,7 @@ import {
   toggleChecked,
 } from "../features/mailbox/model/multiSelect";
 import {
+  actionLabel,
   actionMessage,
   actionVerb,
   inverse,
@@ -42,7 +43,18 @@ import {
 import { LabelPicker } from "../features/mailbox/ui/LabelPicker";
 import { useOlderMail } from "../features/mailbox/ui/useOlderMail";
 import { useThreadAction } from "../features/mailbox/ui/useThreadAction";
-import { anchorBelow, type MenuAnchor } from "../shared/ui/Menu";
+import { anchorBelow, Menu, type MenuAnchor, MenuItem, MenuSeparator } from "../shared/ui/Menu";
+import {
+  ArchiveIcon,
+  ForwardIcon,
+  LabelIcon,
+  MarkUnreadIcon,
+  ReplyAllIcon,
+  ReplyIcon,
+  SpamIcon,
+  StarIcon,
+  TrashIcon,
+} from "../shared/ui/icons";
 import { dismissToast, showToast, useToast } from "../shared/lib/toast";
 import { Toast } from "../shared/ui/Toast";
 import {
@@ -151,6 +163,8 @@ export function Shell() {
   const targets = actionTargets(threads, checked, selectedId);
   const toast = useToast();
   const [labelAnchor, setLabelAnchor] = useState<MenuAnchor | null>(null);
+  // A conversation's right-click menu, at the pointer.
+  const [rowMenu, setRowMenu] = useState<MenuAnchor | null>(null);
   const { mutate: mutateThreads } = useThreadAction();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   // Past the last cached page, ask Gmail for older mail. Not while the
@@ -494,6 +508,16 @@ export function Shell() {
                 setChecked(NONE);
                 setSelectedId(null);
               }}
+              onRowMenu={(id, at) => {
+                // As in Mail: right-clicking a conversation that isn't
+                // picked opens it, so the menu is about that one; on a
+                // picked one, it's about all the picked.
+                if (!checked.has(id)) {
+                  setChecked(NONE);
+                  setSelectedId(id);
+                }
+                setRowMenu(at);
+              }}
               // Not while the previous view's list stands in for this one.
               hasMore={(hasNextPage && !threadsQuery.isPlaceholderData) || fromGmail}
               loadMore={loadMore}
@@ -591,6 +615,76 @@ export function Shell() {
         accounts={accountList}
         besideCard={openCard !== undefined && cardSpot === "bottom-right"}
       />
+      {rowMenu && targets.length > 0 && (
+        <Menu anchor={rowMenu} onClose={() => setRowMenu(null)} label="Conversation">
+          {targets.length === 1 && !targets[0]!.onlyDraft && (
+            <>
+              <MenuItem
+                icon={ReplyIcon}
+                onSelect={() => {
+                  setRowMenu(null);
+                  void compose.startReply("reply", targets[0]!.id);
+                }}
+              >
+                Reply
+              </MenuItem>
+              <MenuItem
+                icon={ReplyAllIcon}
+                onSelect={() => {
+                  setRowMenu(null);
+                  void compose.startReply("replyAll", targets[0]!.id);
+                }}
+              >
+                Reply all
+              </MenuItem>
+              <MenuItem
+                icon={ForwardIcon}
+                onSelect={() => {
+                  setRowMenu(null);
+                  void compose.startReply("forward", targets[0]!.id);
+                }}
+              >
+                Forward
+              </MenuItem>
+              <MenuSeparator />
+            </>
+          )}
+          {(
+            [
+              ["archive", ArchiveIcon],
+              ["trash", TrashIcon],
+              ["read", MarkUnreadIcon],
+              ["star", StarIcon],
+              ["spam", SpamIcon],
+            ] as const
+          ).map(([kind, icon]) => {
+            const entry = toggle(kind);
+            if (!entry) return null;
+            return (
+              <MenuItem
+                key={kind}
+                icon={icon}
+                onSelect={() => {
+                  setRowMenu(null);
+                  entry.run();
+                }}
+              >
+                {actionLabel(entry.action)}
+              </MenuItem>
+            );
+          })}
+          <MenuItem
+            icon={LabelIcon}
+            onSelect={() => {
+              const at = rowMenu;
+              setRowMenu(null);
+              setLabelAnchor(at);
+            }}
+          >
+            Labels…
+          </MenuItem>
+        </Menu>
+      )}
       <Toast toast={toast} onDismiss={dismissToast} />
     </div>
   );

@@ -210,6 +210,24 @@ export function actionMessage(action: ThreadAction, count: number): string | nul
   }
 }
 
+/** A menu item's words for what the action would do now. */
+export function actionLabel(action: ThreadAction): string {
+  switch (action.kind) {
+    case "read":
+      return action.read ? "Mark as read" : "Mark as unread";
+    case "archive":
+      return action.archived ? "Archive" : "Move to Inbox";
+    case "star":
+      return action.starred ? "Star" : "Unstar";
+    case "trash":
+      return action.trashed ? "Move to Trash" : "Restore from Trash";
+    case "spam":
+      return action.spam ? "Report spam" : "Not spam";
+    case "labels":
+      return "Labels…";
+  }
+}
+
 /** Verb for an error line: "Couldn't archive: …". */
 export function actionVerb(action: ThreadAction): string {
   switch (action.kind) {

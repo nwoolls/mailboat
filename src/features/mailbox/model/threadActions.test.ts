@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Label, ThreadDetail, ThreadSummary } from "../../../platform/tauri/bindings";
 import {
+  actionLabel,
   actionMessage,
   inverse,
   labelState,
@@ -234,4 +235,10 @@ describe("spam", () => {
       },
     );
   });
+});
+
+it("menu items say what they'd do now", () => {
+  expect(actionLabel({ kind: "archive", archived: false })).toBe("Move to Inbox");
+  expect(actionLabel({ kind: "spam", spam: true })).toBe("Report spam");
+  expect(actionLabel(toggleFor("star", [thread(1, { starred: true })])!)).toBe("Unstar");
 });

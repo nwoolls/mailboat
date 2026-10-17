@@ -24,6 +24,8 @@ type Props = {
   onSelect: (id: ThreadId, how: "open" | "toggle" | "range") => void;
   /** A click on the empty area below the rows, as in Mail and Mimestream. */
   onClearSelection: () => void;
+  /** Right-click on a row: its menu at the pointer. */
+  onRowMenu: (id: ThreadId, at: { x: number; y: number }) => void;
   hasMore: boolean;
   loadMore: () => void;
   /** The first page, or the next cached page, is loading. */
@@ -42,6 +44,7 @@ export function ThreadList({
   checked,
   onSelect,
   onClearSelection,
+  onRowMenu,
   hasMore,
   loadMore,
   loading,
@@ -106,6 +109,10 @@ export function ThreadList({
               onClick={(e) =>
                 onSelect(t.id, e.metaKey || e.ctrlKey ? "toggle" : e.shiftKey ? "range" : "open")
               }
+              onContextMenu={(e) => {
+                e.preventDefault();
+                onRowMenu(t.id, { x: e.clientX, y: e.clientY });
+              }}
               // ⇧-click shouldn't also select the rows' text.
               onMouseDown={(e) => {
                 if (e.shiftKey) e.preventDefault();

@@ -618,9 +618,14 @@ each was a "not yet" note above)*:
       per account like the others *(owner request, 2026-10-16)*. Toolbar
       button and `!` (Gmail's key); Report spam moves conversations out
       of the Inbox into Spam, Not spam back to the Inbox; both with Undo
-- [ ] Right-click menus on conversations (archive, trash, read, star,
+- [x] Right-click menus on conversations (archive, trash, read, star,
       labels, spam, …) and other places where macOS apps have them
-      *(owner request, 2026-10-16)*
+      *(owner request, 2026-10-16)*. Conversations: Reply, Reply all,
+      Forward (one conversation), then Archive / Move to Trash / Mark as
+      read / Star / Report spam (each worded for what it would do now)
+      and Labels…; right-clicking a conversation that isn't picked opens
+      it first, as Mail does. Also on sidebar labels (Rename, Delete) and
+      account headers (already there). More places as they come up
 - [ ] Swipe on a conversation (trackpad, two fingers): one way archives,
       the other toggles read/unread *(owner request, 2026-10-16)*.
       **Discuss the animation with the owner first** (what shows behind
