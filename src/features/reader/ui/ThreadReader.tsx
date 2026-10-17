@@ -13,10 +13,19 @@ import { useThreadAction } from "../../mailbox/ui/useThreadAction";
 import { wholePixelSlack } from "../model/pixelSnap";
 import { MessageFrame } from "./MessageFrame";
 
-/** Messages expanded when a thread opens: unread ones plus the newest. */
-export function initiallyExpanded(messages: Pick<MessageMeta, "id" | "unread">[]): Set<MessageId> {
-  const open = new Set(messages.filter((m) => m.unread).map((m) => m.id));
-  const last = messages.at(-1);
+/**
+ * Messages expanded when a thread opens: unread ones plus the newest.
+ * A draft reply doesn't count as the newest (it shows as the reply being
+ * written instead), so the last real message opens whether or not the
+ * draft has been cached yet.
+ */
+export function initiallyExpanded(
+  messages: Pick<MessageMeta, "id" | "unread" | "draft">[],
+): Set<MessageId> {
+  const real = messages.filter((m) => !m.draft);
+  const shown = real.length > 0 ? real : messages;
+  const open = new Set(shown.filter((m) => m.unread).map((m) => m.id));
+  const last = shown.at(-1);
   if (last) open.add(last.id);
   return open;
 }
