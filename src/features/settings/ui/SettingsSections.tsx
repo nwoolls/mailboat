@@ -61,16 +61,27 @@ export function AccountsSection({
 }) {
   const signIn = useSignIn();
   const [removing, setRemoving] = useState<Account | null>(null);
+  // Which sign-in is waiting for the browser: an account's address, or ""
+  // for a new account. Nothing is ever disabled while it waits: closing
+  // the browser tab can't be detected, so starting again (which replaces
+  // the waiting sign-in) or cancelling is always possible, as with "+".
+  const [waitingFor, setWaitingFor] = useState("");
+  const start = (email: string | null) => {
+    setWaitingFor(email ?? "");
+    signIn.start(email);
+  };
+  const waiting = (email: string) => signIn.pending && waitingFor === email;
   return (
     <>
       {header(
-        signIn.pending ? (
+        waiting("") ? (
           <span className="flex items-center gap-2 text-[12px] text-content/55">
             Waiting for browser sign-in…
+            <Button onClick={() => start(null)}>Start again</Button>
             <Button onClick={signIn.cancel}>Cancel</Button>
           </span>
         ) : (
-          <Button onClick={() => signIn.start()}>Add account</Button>
+          <Button onClick={() => start(null)}>Add account</Button>
         ),
       )}
       {signIn.error && <p className="selectable pb-4 text-[12px] text-danger">{signIn.error}</p>}
@@ -79,8 +90,9 @@ export function AccountsSection({
           key={account.id}
           account={account}
           state={syncStates.find((s) => s.accountId === account.id)}
-          busy={signIn.pending}
-          onSignIn={() => signIn.start(account.email)}
+          waiting={waiting(account.email)}
+          onSignIn={() => start(account.email)}
+          onCancelSignIn={signIn.cancel}
           onRemove={() => setRemoving(account)}
         />
       ))}
@@ -101,14 +113,17 @@ export function AccountsSection({
 function AccountGroup({
   account,
   state,
-  busy,
+  waiting,
   onSignIn,
+  onCancelSignIn,
   onRemove,
 }: {
   account: Account;
   state: AccountSyncState | undefined;
-  busy: boolean;
+  /** Its sign-in is waiting for the browser. */
+  waiting: boolean;
   onSignIn: () => void;
+  onCancelSignIn: () => void;
   onRemove: () => void;
 }) {
   const colors = useAppInfo().data?.accountColors ?? [];
@@ -154,16 +169,23 @@ function AccountGroup({
       <Row
         label="Sign in again"
         description={
-          reason ? (
+          waiting ? (
+            "Waiting for you to finish in the browser. Closed it? Start again."
+          ) : reason ? (
             <span className="text-warn">{reason}</span>
           ) : (
             "If Google asks you to, or to give Mailboat new permissions."
           )
         }
       >
-        <Button onClick={onSignIn} disabled={busy}>
-          Sign in again
-        </Button>
+        {waiting ? (
+          <>
+            <Button onClick={onSignIn}>Start again</Button>
+            <Button onClick={onCancelSignIn}>Cancel</Button>
+          </>
+        ) : (
+          <Button onClick={onSignIn}>Sign in again</Button>
+        )}
       </Row>
       <Row
         label="Send mail as"

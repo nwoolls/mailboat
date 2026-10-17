@@ -69,15 +69,28 @@ export function InviteCard({
           {clash && <div className="mt-0.5 text-xs text-warn">{clash}</div>}
           {calendar.kind === "needsSignIn" && (
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-content/60">
-              Sign in to this account again to answer from Mailboat.
+              {signIn.pending
+                ? "Waiting for you to finish in the browser."
+                : "Sign in to this account again to answer from Mailboat."}
+              {/* Never disabled: a closed browser tab can't be detected,
+                  so starting again (replacing the waiting sign-in) or
+                  cancelling stays possible, as with "+". */}
               <button
                 type="button"
-                disabled={signIn.pending}
                 onClick={() => signIn.start(account?.email ?? null)}
-                className="text-accent hover:underline disabled:opacity-50"
+                className="text-accent hover:underline"
               >
-                {signIn.pending ? "Waiting for browser…" : "Sign in again"}
+                {signIn.pending ? "Start again" : "Sign in again"}
               </button>
+              {signIn.pending && (
+                <button
+                  type="button"
+                  onClick={signIn.cancel}
+                  className="hover:text-content hover:underline"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           )}
           {calendar.kind === "unavailable" && (

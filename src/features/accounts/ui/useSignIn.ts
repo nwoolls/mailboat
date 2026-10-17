@@ -13,6 +13,8 @@ export function useSignIn() {
       void qc.invalidateQueries({ queryKey: keys.accounts });
       void qc.invalidateQueries({ queryKey: keys.syncStates });
       void qc.invalidateQueries({ queryKey: keys.oauthSetup });
+      // Invitation cards that asked for this sign-in can answer now.
+      void qc.invalidateQueries({ queryKey: ["invite"] });
     },
   });
   return {
