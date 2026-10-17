@@ -19,23 +19,26 @@ describe("appearance", () => {
   });
 
   it("reads saved values, kept within range and whole", () => {
-    expect(parseAppearance('{"sidebarTint":4.6,"listTint":-99}')).toEqual({
+    expect(parseAppearance('{"sidebarTint":4.6,"listTint":-99,"accent":"green"}')).toEqual({
       sidebarTint: 5,
       listTint: TINT_RANGE.listTint.min,
+      accent: "green",
     });
+    expect(parseAppearance('{"accent":"plaid"}').accent).toBe("blue");
   });
 
   it("changes one tint, clamped", () => {
     const a = withTint(DEFAULT_APPEARANCE, "sidebarTint", 999);
-    expect(a).toEqual({ sidebarTint: TINT_RANGE.sidebarTint.max, listTint: 0 });
+    expect(a).toEqual({ ...DEFAULT_APPEARANCE, sidebarTint: TINT_RANGE.sidebarTint.max });
     expect(isDefault(a)).toBe(false);
     expect(isDefault(DEFAULT_APPEARANCE)).toBe(true);
   });
 
   it("becomes CSS adjustments in percentage points", () => {
-    expect(appearanceVars({ sidebarTint: -3, listTint: 10 })).toEqual({
+    expect(appearanceVars({ sidebarTint: -3, listTint: 10, accent: "blue" })).toEqual({
       "--glass-sidebar-adjust": "-3%",
       "--glass-panel-adjust": "10%",
+      "--color-accent": "hsl(217 85% 62%)",
     });
   });
 

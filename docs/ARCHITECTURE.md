@@ -279,8 +279,15 @@ Settings are stored in one of two places:
 - **Rust acts on it** (new-mail notifications on/off): `mailboat_core::settings`,
   one JSON value in the `app_settings` table. A setting missing from it
   takes its default, so adding one needs no migration.
-- **Only the window uses it** (transparency): `localStorage`, applied in
-  `main.tsx` before the first render so it never flashes the default.
+- **Only the window uses it** (transparency, accent colour):
+  `localStorage`, applied in `main.tsx` before the first render so it
+  never flashes the default.
+
+The theme (System, Light, Dark) is a Rust setting because it's set on the
+app itself (`src-tauri/src/theme.rs`, at launch and when changed): macOS
+then draws the glass in that look and the web view's
+`prefers-color-scheme` follows, so the CSS and emails' own dark styles
+need no theme logic of their own.
 
 Account colours change through `accounts::set_color`, limited to the
 palette in `ACCOUNT_COLORS`.
@@ -352,4 +359,5 @@ palette in `ACCOUNT_COLORS`.
 | 2026-10-17 | Settings Rust needs live in SQLite (`app_settings`, one JSON value); window-only settings live in `localStorage` | Rust can't read the web view's storage, and the notification switch must work with no window listening. Transparency, though, must apply before the first paint; an IPC round trip on launch would flash the default tint. JSON with serde defaults means a new setting needs no migration. |
 | 2026-10-17 | Transparency is an adjustment (percentage points) to the owner's tints, not an absolute value | Light and dark use different base tints; one adjustment keeps both in step. The sidebar slider stops at −6 because its default is already nearly clear. |
 | 2026-10-17 | Account colours only from the fixed palette | The eight colours were picked to stay distinct and readable on the glass in light and dark; a free colour picker could make an account's mark vanish. |
+| 2026-10-17 | Theme set on the native app (`AppHandle::set_theme`), not with a CSS class | A CSS-only theme would leave macOS drawing the window's glass in the system look (light glass under dark text), and emails' `prefers-color-scheme` styles would disagree with the app. Setting it natively fixes both, and the existing light/dark CSS keeps working unchanged. Stored in Rust's settings so it's applied before the window first paints. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |

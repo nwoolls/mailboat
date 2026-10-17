@@ -775,12 +775,14 @@ invitations (after the new permissions, shared with Milestone 6).*
         button to macOS's settings for style and sound. Appearance: two
         transparency sliders (sidebar and reader, list) with Restore
         defaults; they show how see-through each area is, in percent,
-        and right is clearer (owner found "+5"/"−5" confusing). Keyboard: every shortcut. Still to come in the ✱
+        and right is clearer (owner found "+5"/"−5" confusing). Then (owner
+        request) first in Appearance: Theme (System, the default, Light,
+        Dark) and an accent colour (seven, as macOS offers, minus yellow),
+        with Restore defaults now for the whole page. Keyboard: every shortcut. Still to come in the ✱
         sections, with their features: default email reader, text size,
         delete key, sounds, Dock unread count, search scope (General);
         renaming an account; which mail notifies, VIP (Notifications);
-        app icon (its own item below), light/dark/system, accent
-        (Appearance); rebinding keys (Keyboard)
+        app icon (its own item below) (Appearance); rebinding keys (Keyboard)
 - [x] Remember the window between launches: position, size, and
       maximized/full-screen state *(owner request, 2026-10-16)*. Works with
       several monitors: reopens on the display it was last on, and if that

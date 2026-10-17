@@ -215,6 +215,11 @@ export type AppInfo = {
 export type AppSettings = {
 	/**  Show a macOS notification when new mail arrives in an Inbox. */
 	newMailNotifications?: boolean,
+	/**
+	 *  Set on the window from Rust, so the glass, the page and emails'
+	 *  own dark styles all follow it, from the first paint.
+	 */
+	theme?: Theme,
 };
 
 /**
@@ -503,6 +508,9 @@ export type SyncStatusEvent = AccountSyncState;
 
 /**  Gmail system labels that unify across accounts. */
 export type SystemLabel = "inbox" | "unread" | "starred" | "important" | "sent" | "draft" | "spam" | "trash";
+
+/**  Light or dark, or following macOS (the default). */
+export type Theme = "system" | "light" | "dark";
 
 export type ThreadDetail = {
 	thread: ThreadSummary,

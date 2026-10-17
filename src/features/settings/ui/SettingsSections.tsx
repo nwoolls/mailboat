@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   commands,
   type Account,
@@ -14,20 +14,21 @@ import {
   useSaveAppSettings,
   useSetAccountColor,
 } from "../../../shared/lib/queries";
-import { CheckIcon } from "../../../shared/ui/icons";
 import { syncHint } from "../../accounts/model/accounts";
 import { AccountAvatar } from "../../accounts/ui/AccountAvatar";
 import { RemoveAccountDialog } from "../../accounts/ui/RemoveAccountDialog";
 import { useSignIn } from "../../accounts/ui/useSignIn";
 import { SHORTCUTS } from "../../mailbox/model/shortcuts";
+import type { Theme } from "../../../platform/tauri/bindings";
 import {
+  ACCENTS,
   DEFAULT_APPEARANCE,
   isDefault,
   seeThrough,
   sliderRange,
   withTint,
 } from "../model/appearance";
-import { Button, Group, Row, Slider, Toggle } from "./controls";
+import { Button, Group, Row, Segmented, Slider, Swatches, Toggle } from "./controls";
 import { useAppearance } from "./useAppearance";
 
 function errorText(e: unknown): string {
@@ -125,38 +126,23 @@ function AccountGroup({
         label="Colour"
         description="Marks its conversations where several accounts show together."
       >
-        <div role="radiogroup" aria-label="Account colour" className="flex gap-1.5">
-          {colors.map((color) => {
-            const chosen = color.toLowerCase() === account.color.toLowerCase();
-            return (
-              <button
-                key={color}
-                type="button"
-                role="radio"
-                aria-checked={chosen}
-                aria-label={color}
-                onClick={() =>
-                  setColor.mutate(
-                    { account: account.id, color },
-                    {
-                      onError: (e) =>
-                        showToast({
-                          tone: "error",
-                          message: `Couldn’t change the colour: ${errorText(e)}`,
-                        }),
-                    },
-                  )
-                }
-                className={`flex size-5 items-center justify-center rounded-full text-white transition-shadow duration-[120ms] ${
-                  chosen ? "ring-2 ring-content/60 ring-offset-1 ring-offset-transparent" : ""
-                }`}
-                style={{ background: color }}
-              >
-                {chosen && <CheckIcon size={12} strokeWidth={2.5} />}
-              </button>
-            );
-          })}
-        </div>
+        <Swatches
+          label="Account colour"
+          value={account.color.toLowerCase()}
+          options={colors.map((c) => ({ value: c.toLowerCase(), label: c, color: c }))}
+          onChange={(color) =>
+            setColor.mutate(
+              { account: account.id, color },
+              {
+                onError: (e) =>
+                  showToast({
+                    tone: "error",
+                    message: `Couldn’t change the colour: ${errorText(e)}`,
+                  }),
+              },
+            )
+          }
+        />
       </Row>
       <Row label="Sync" description={syncHint(state)}>
         <Button onClick={() => void commands.syncNow([account.id])}>Sync now</Button>
@@ -267,41 +253,113 @@ export function NotificationsSection() {
   );
 }
 
+const LIGHT = "(prefers-color-scheme: light)";
+
+/**
+ * Whether the page is light now. Changing the theme flips this a moment
+ * after the setting saves (macOS redraws the window), so the see-through
+ * percentages, which differ between light and dark, re-read then.
+ */
+function useLight(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const query = window.matchMedia(LIGHT);
+      query.addEventListener("change", onChange);
+      return () => query.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(LIGHT).matches,
+  );
+}
+
 /** A percentage CSS variable on the page (light and dark differ), as a number. */
 function cssPercent(name: string): number {
   return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
 }
 
-export function AppearanceSection() {
+const THEMES: { value: Theme; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
+
+export function AppearanceSection({
+  header,
+}: {
+  /** The page header, which holds "Restore defaults". */
+  header: (action: React.ReactNode) => React.ReactNode;
+}) {
   const [appearance, setAppearance] = useAppearance();
+  // Read for its re-render: the bases below differ between light and dark.
+  useLight();
+  const settings = useAppSettings().data;
+  const save = useSaveAppSettings();
+  const theme = settings?.theme ?? "system";
+  const setTheme = (next: Theme) =>
+    settings &&
+    save.mutate(
+      { ...settings, theme: next },
+      {
+        onError: (e) => showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
+      },
+    );
   return (
-    <Group
-      title="Transparency"
-      description="How much of what’s behind the window shows through. More see-through looks lighter; less is easier to read."
-      action={
-        <Button onClick={() => setAppearance(DEFAULT_APPEARANCE)} disabled={isDefault(appearance)}>
+    <>
+      {header(
+        <Button
+          onClick={() => {
+            setAppearance(DEFAULT_APPEARANCE);
+            setTheme("system");
+          }}
+          disabled={isDefault(appearance) && theme === "system"}
+        >
           Restore defaults
-        </Button>
-      }
-    >
-      {(
-        [
-          ["sidebarTint", "Sidebar and reader", "--glass-sidebar-base"],
-          ["listTint", "Conversation list", "--glass-panel-base"],
-        ] as const
-      ).map(([key, label, baseVar]) => (
-        <Row key={key} label={label}>
-          <Slider
-            label={`${label} see-through`}
-            value={-appearance[key]}
-            display={`${seeThrough(cssPercent(baseVar), appearance[key])}%`}
-            {...sliderRange(key)}
-            onChange={(v) => setAppearance(withTint(appearance, key, -v))}
-            onReset={() => setAppearance(withTint(appearance, key, 0))}
+        </Button>,
+      )}
+      <Group title="Theme">
+        <Row label="Theme" description="System follows macOS, light or dark.">
+          <Segmented
+            label="Theme"
+            value={theme}
+            options={THEMES}
+            onChange={setTheme}
+            disabled={!settings}
           />
         </Row>
-      ))}
-    </Group>
+        <Row
+          label="Accent colour"
+          description="Buttons, switches, the focused conversation and other highlights."
+        >
+          <Swatches
+            label="Accent colour"
+            value={appearance.accent}
+            options={ACCENTS.map((a) => ({ value: a.id, label: a.label, color: a.color }))}
+            onChange={(accent) => setAppearance({ ...appearance, accent })}
+          />
+        </Row>
+      </Group>
+      <Group
+        title="Transparency"
+        description="How much of what’s behind the window shows through. More see-through looks lighter; less is easier to read."
+      >
+        {(
+          [
+            ["sidebarTint", "Sidebar and reader", "--glass-sidebar-base"],
+            ["listTint", "Conversation list", "--glass-panel-base"],
+          ] as const
+        ).map(([key, label, baseVar]) => (
+          <Row key={key} label={label}>
+            <Slider
+              label={`${label} see-through`}
+              value={-appearance[key]}
+              display={`${seeThrough(cssPercent(baseVar), appearance[key])}%`}
+              {...sliderRange(key)}
+              onChange={(v) => setAppearance(withTint(appearance, key, -v))}
+              onReset={() => setAppearance(withTint(appearance, key, 0))}
+            />
+          </Row>
+        ))}
+      </Group>
+    </>
   );
 }
 

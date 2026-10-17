@@ -1,3 +1,5 @@
+import { CheckIcon } from "../../../shared/ui/icons";
+
 /**
  * The Settings page's building blocks, after MonoCode's `SettingsView`:
  * a group is a titled, rounded card of rows; each row is a title, a line
@@ -175,6 +177,86 @@ export function Slider({
       <span className="w-14 shrink-0 text-right text-[12px] text-content/70 tabular-nums">
         {display}
       </span>
+    </div>
+  );
+}
+
+/** A row of choices, one chosen (as MonoCode's). */
+export function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  disabled = false,
+}: {
+  label: string;
+  value: T;
+  options: readonly { value: T; label: string }[];
+  onChange: (value: T) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="inline-grid shrink-0 gap-0.5 rounded-md border border-content/10 p-0.5 text-[12px]"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={value === option.value}
+          disabled={disabled}
+          onClick={() => onChange(option.value)}
+          className={`min-w-0 rounded-[5px] px-2.5 py-1 transition-colors duration-[120ms] disabled:opacity-40 ${
+            value === option.value
+              ? "bg-selection-strong text-content"
+              : "text-content/55 hover:text-content"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Round colour choices, the chosen one ticked (account and accent colours). */
+export function Swatches<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: readonly { value: T; label: string; color: string }[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex gap-1.5">
+      {options.map((o) => {
+        const chosen = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={chosen}
+            aria-label={o.label}
+            title={o.label}
+            onClick={() => onChange(o.value)}
+            className={`flex size-5 items-center justify-center rounded-full text-white transition-shadow duration-[120ms] ${
+              chosen ? "ring-2 ring-content/60 ring-offset-1 ring-offset-transparent" : ""
+            }`}
+            style={{ background: o.color }}
+          >
+            {chosen && <CheckIcon size={12} strokeWidth={2.5} />}
+          </button>
+        );
+      })}
     </div>
   );
 }

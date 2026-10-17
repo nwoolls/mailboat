@@ -73,12 +73,13 @@ export function SettingsPage({
               onAccountRemoved={onAccountRemoved}
               header={header}
             />
+          ) : section === "appearance" ? (
+            <AppearanceSection header={header} />
           ) : (
             header()
           )}
           {section === "general" && <GeneralSection />}
           {section === "notifications" && <NotificationsSection />}
-          {section === "appearance" && <AppearanceSection />}
           {section === "keyboard" && <KeyboardSection />}
         </div>
       </div>

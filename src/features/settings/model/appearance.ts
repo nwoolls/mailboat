@@ -13,11 +13,33 @@ export type Appearance = {
   sidebarTint: number;
   /** The conversation list's panel. */
   listTint: number;
+  /** One of `ACCENTS`, by id. */
+  accent: AccentId;
 };
+
+/**
+ * Accent colours, as macOS offers (no yellow: white text and icons sit on
+ * the accent, and wouldn't read on it). Blue is Mailboat's own.
+ */
+export const ACCENTS = [
+  { id: "blue", label: "Blue", color: "hsl(217 85% 62%)" },
+  { id: "purple", label: "Purple", color: "hsl(266 65% 64%)" },
+  { id: "pink", label: "Pink", color: "hsl(330 70% 62%)" },
+  { id: "red", label: "Red", color: "hsl(2 72% 60%)" },
+  { id: "orange", label: "Orange", color: "hsl(26 85% 56%)" },
+  { id: "green", label: "Green", color: "hsl(142 50% 46%)" },
+  { id: "graphite", label: "Graphite", color: "hsl(240 4% 56%)" },
+] as const;
+
+export type AccentId = (typeof ACCENTS)[number]["id"];
 
 export const APPEARANCE_STORAGE_KEY = "mailboat.appearance";
 
-export const DEFAULT_APPEARANCE: Appearance = { sidebarTint: 0, listTint: 0 };
+export const DEFAULT_APPEARANCE: Appearance = { sidebarTint: 0, listTint: 0, accent: "blue" };
+
+function accentFor(id: unknown): AccentId {
+  return ACCENTS.find((a) => a.id === id)?.id ?? "blue";
+}
 
 /** How far each slider goes. The sidebar's default is nearly clear already. */
 export const TINT_RANGE = {
@@ -25,7 +47,7 @@ export const TINT_RANGE = {
   listTint: { min: -30, max: 40 },
 } as const;
 
-function clampTint(key: keyof Appearance, value: unknown): number {
+function clampTint(key: TintKey, value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0;
   const { min, max } = TINT_RANGE[key];
   return Math.min(max, Math.max(min, Math.round(value)));
@@ -43,10 +65,13 @@ export function parseAppearance(raw: string | null): Appearance {
   return {
     sidebarTint: clampTint("sidebarTint", saved.sidebarTint),
     listTint: clampTint("listTint", saved.listTint),
+    accent: accentFor(saved.accent),
   };
 }
 
-export function withTint(a: Appearance, key: keyof Appearance, value: number): Appearance {
+type TintKey = "sidebarTint" | "listTint";
+
+export function withTint(a: Appearance, key: TintKey, value: number): Appearance {
   return { ...a, [key]: clampTint(key, value) };
 }
 
@@ -55,6 +80,7 @@ export function appearanceVars(a: Appearance): Record<string, string> {
   return {
     "--glass-sidebar-adjust": `${a.sidebarTint}%`,
     "--glass-panel-adjust": `${a.listTint}%`,
+    "--color-accent": ACCENTS.find((x) => x.id === a.accent)!.color,
   };
 }
 
@@ -72,10 +98,10 @@ export function seeThrough(base: number, tint: number): number {
  * The sliders run in see-through terms (right is clearer), so their value
  * is the tint flipped, and their ends are the tint range flipped.
  */
-export function sliderRange(key: keyof Appearance): { min: number; max: number } {
+export function sliderRange(key: TintKey): { min: number; max: number } {
   return { min: -TINT_RANGE[key].max, max: -TINT_RANGE[key].min };
 }
 
 export function isDefault(a: Appearance): boolean {
-  return a.sidebarTint === 0 && a.listTint === 0;
+  return a.sidebarTint === 0 && a.listTint === 0 && a.accent === "blue";
 }

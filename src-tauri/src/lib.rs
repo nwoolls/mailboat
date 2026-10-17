@@ -7,6 +7,7 @@ mod links;
 mod menu;
 mod state;
 mod sync_log;
+mod theme;
 mod trackpad;
 mod window_place;
 
@@ -154,6 +155,9 @@ pub fn run() {
                 },
                 sync_log,
             );
+            // Before the window first paints, so it opens in the chosen theme.
+            let saved = mailboat_core::settings::load(&db.conn()).unwrap_or_default();
+            theme::apply(app.handle(), saved.theme);
             state.resume_all_accounts()?;
             app.manage(state);
             // After the plugin restored it: fully on a connected display.

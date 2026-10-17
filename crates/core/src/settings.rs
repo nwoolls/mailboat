@@ -13,17 +13,31 @@ use crate::error::{CoreError, Result};
 
 const KEY: &str = "app";
 
+/// Light or dark, or following macOS (the default).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum Theme {
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppSettings {
     /// Show a macOS notification when new mail arrives in an Inbox.
     pub new_mail_notifications: bool,
+    /// Set on the window from Rust, so the glass, the page and emails'
+    /// own dark styles all follow it, from the first paint.
+    pub theme: Theme,
 }
 
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
             new_mail_notifications: true,
+            theme: Theme::System,
         }
     }
 }
@@ -67,6 +81,7 @@ mod tests {
         assert!(load(&conn).unwrap().new_mail_notifications);
         let off = AppSettings {
             new_mail_notifications: false,
+            theme: Theme::Dark,
         };
         save(&conn, &off).unwrap();
         save(&conn, &off).unwrap();
@@ -78,10 +93,12 @@ mod tests {
         let db = Db::open_in_memory().unwrap();
         let conn = db.conn();
         conn.execute(
-            "INSERT INTO app_settings (key, value) VALUES ('app', '{}')",
+            "INSERT INTO app_settings (key, value) VALUES ('app', '{\"theme\":\"light\"}')",
             [],
         )
         .unwrap();
-        assert_eq!(load(&conn).unwrap(), AppSettings::default());
+        let loaded = load(&conn).unwrap();
+        assert_eq!(loaded.theme, Theme::Light);
+        assert!(loaded.new_mail_notifications);
     }
 }

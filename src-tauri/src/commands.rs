@@ -837,8 +837,14 @@ pub fn settings_get(state: State<'_, AppState>) -> CmdResult<AppSettings> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn settings_set(state: State<'_, AppState>, settings: AppSettings) -> CmdResult<()> {
-    Ok(settings::save(&state.db.conn(), &settings)?)
+pub fn settings_set(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    settings: AppSettings,
+) -> CmdResult<()> {
+    settings::save(&state.db.conn(), &settings)?;
+    crate::theme::apply(&app, settings.theme);
+    Ok(())
 }
 
 /// Marks an account's rows with another colour from `AppInfo::account_colors`.
