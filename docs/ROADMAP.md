@@ -649,8 +649,8 @@ each was a "not yet" note above)*:
       while the menu is open), or on all picks if it's one of them; only
       Reply and Forward open it, since that's where you write. Also on sidebar labels (Rename, Delete) and
       account headers (already there). More places as they come up
-- [ ] Swipe on a conversation (trackpad, two fingers) *(owner request,
-      2026-10-16)*. Decided (owner, 2026-10-17):
+- [x] Swipe on a conversation (trackpad, two fingers) *(owner request,
+      2026-10-16; owner approved 2026-10-17)*. Decided (owner, 2026-10-17):
       - Left archives (Trash where Archive doesn't apply, e.g. in
         Archive or Sent); right toggles read/unread
       - A long swipe commits on release; a short one stops with the
