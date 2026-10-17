@@ -5,7 +5,8 @@
  * Transparency is an adjustment, in percentage points, to the glass tint
  * the owner picked for each area (`--glass-*-base` in `index.css`), so one
  * setting works in both light and dark, whose tints differ. Negative is
- * clearer, positive more solid; 0 is the default.
+ * clearer, positive more solid; 0 is the default. Sliders show it as a
+ * see-through percentage instead (`seeThrough`).
  */
 export type Appearance = {
   /** The sidebar and the reader, which sit on the window's glass. */
@@ -57,10 +58,22 @@ export function appearanceVars(a: Appearance): Record<string, string> {
   };
 }
 
-/** How a slider's value reads: "Default", or signed ("+5", "−5"). */
-export function tintLabel(value: number): string {
-  if (value === 0) return "Default";
-  return value > 0 ? `+${value}` : `−${-value}`;
+/**
+ * How see-through an area is, in percent: 100 minus its tint. `base` is the
+ * area's default tint for the current light or dark look (e.g. 6.5). This
+ * is what the sliders show, since "93% see-through" means more than an
+ * adjustment like "+5".
+ */
+export function seeThrough(base: number, tint: number): number {
+  return Math.round(100 - Math.min(100, Math.max(0, base + tint)));
+}
+
+/**
+ * The sliders run in see-through terms (right is clearer), so their value
+ * is the tint flipped, and their ends are the tint range flipped.
+ */
+export function sliderRange(key: keyof Appearance): { min: number; max: number } {
+  return { min: -TINT_RANGE[key].max, max: -TINT_RANGE[key].min };
 }
 
 export function isDefault(a: Appearance): boolean {

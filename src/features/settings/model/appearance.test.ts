@@ -5,7 +5,8 @@ import {
   isDefault,
   parseAppearance,
   TINT_RANGE,
-  tintLabel,
+  seeThrough,
+  sliderRange,
   withTint,
 } from "./appearance";
 
@@ -38,9 +39,17 @@ describe("appearance", () => {
     });
   });
 
-  it("labels slider values", () => {
-    expect(tintLabel(0)).toBe("Default");
-    expect(tintLabel(5)).toBe("+5");
-    expect(tintLabel(-5)).toBe("−5");
+  it("shows how see-through an area is, in percent", () => {
+    expect(seeThrough(6.5, 0)).toBe(94);
+    expect(seeThrough(34, 10)).toBe(56);
+    expect(seeThrough(6.5, -6)).toBe(100);
+    expect(seeThrough(90, 40)).toBe(0);
+  });
+
+  it("runs sliders the other way, right being clearer", () => {
+    expect(sliderRange("sidebarTint")).toEqual({
+      min: -TINT_RANGE.sidebarTint.max,
+      max: -TINT_RANGE.sidebarTint.min,
+    });
   });
 });

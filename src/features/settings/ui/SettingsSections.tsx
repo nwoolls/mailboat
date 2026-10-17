@@ -23,8 +23,8 @@ import { SHORTCUTS } from "../../mailbox/model/shortcuts";
 import {
   DEFAULT_APPEARANCE,
   isDefault,
-  TINT_RANGE,
-  tintLabel,
+  seeThrough,
+  sliderRange,
   withTint,
 } from "../model/appearance";
 import { Button, Group, Row, Slider, Toggle } from "./controls";
@@ -267,38 +267,40 @@ export function NotificationsSection() {
   );
 }
 
+/** A percentage CSS variable on the page (light and dark differ), as a number. */
+function cssPercent(name: string): number {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
+}
+
 export function AppearanceSection() {
   const [appearance, setAppearance] = useAppearance();
   return (
     <Group
       title="Transparency"
-      description="How much of what’s behind the window shows through. Clearer shows more; more solid is easier to read."
+      description="How much of what’s behind the window shows through. More see-through looks lighter; less is easier to read."
       action={
         <Button onClick={() => setAppearance(DEFAULT_APPEARANCE)} disabled={isDefault(appearance)}>
           Restore defaults
         </Button>
       }
     >
-      <Row label="Sidebar and reader">
-        <Slider
-          label="Sidebar and reader tint"
-          value={appearance.sidebarTint}
-          display={tintLabel(appearance.sidebarTint)}
-          {...TINT_RANGE.sidebarTint}
-          onChange={(v) => setAppearance(withTint(appearance, "sidebarTint", v))}
-          onReset={() => setAppearance(withTint(appearance, "sidebarTint", 0))}
-        />
-      </Row>
-      <Row label="Conversation list">
-        <Slider
-          label="Conversation list tint"
-          value={appearance.listTint}
-          display={tintLabel(appearance.listTint)}
-          {...TINT_RANGE.listTint}
-          onChange={(v) => setAppearance(withTint(appearance, "listTint", v))}
-          onReset={() => setAppearance(withTint(appearance, "listTint", 0))}
-        />
-      </Row>
+      {(
+        [
+          ["sidebarTint", "Sidebar and reader", "--glass-sidebar-base"],
+          ["listTint", "Conversation list", "--glass-panel-base"],
+        ] as const
+      ).map(([key, label, baseVar]) => (
+        <Row key={key} label={label}>
+          <Slider
+            label={`${label} see-through`}
+            value={-appearance[key]}
+            display={`${seeThrough(cssPercent(baseVar), appearance[key])}%`}
+            {...sliderRange(key)}
+            onChange={(v) => setAppearance(withTint(appearance, key, -v))}
+            onReset={() => setAppearance(withTint(appearance, key, 0))}
+          />
+        </Row>
+      ))}
     </Group>
   );
 }

@@ -774,7 +774,8 @@ invitations (after the new permissions, shared with Milestone 6).*
         Notifications: an on/off switch for new-mail notifications, and a
         button to macOS's settings for style and sound. Appearance: two
         transparency sliders (sidebar and reader, list) with Restore
-        defaults. Keyboard: every shortcut. Still to come in the ✱
+        defaults; they show how see-through each area is, in percent,
+        and right is clearer (owner found "+5"/"−5" confusing). Keyboard: every shortcut. Still to come in the ✱
         sections, with their features: default email reader, text size,
         delete key, sounds, Dock unread count, search scope (General);
         renaming an account; which mail notifies, VIP (Notifications);
