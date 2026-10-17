@@ -24,6 +24,7 @@ specta-typescript = "0.0.12"
 open = "5"
 time = { version = "0.3.55", features = ["formatting"] }
 tauri-plugin-window-state = "2"
+tauri-plugin-notification = "2"
 
 # Already part of the build through Tauri; declared to clear Tauri's dev
 # Dock picture (src/dock.rs). Same versions as Tauri and MonoCode.

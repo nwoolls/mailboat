@@ -653,7 +653,14 @@ each was a "not yet" note above)*:
       matches it doesn't have, and every Gmail match joins the results
       (even ones matched on a body Mailboat hasn't downloaded). Gmail's
       operators (`from:`, `has:attachment`, …) work there
-- [ ] Notifications
+- [x] Notifications: new unread mail arriving in any account's Inbox
+      (not your own, not drafts, not during a first full sync or when
+      loading older mail) shows a macOS notification with the sender and
+      subject, and the account's address when there are several. More
+      than three at once become one "N new messages". macOS asks once for
+      permission; turn them off or change their style in System Settings
+      → Notifications → Mailboat. Not yet: clicking one opening that
+      conversation (it brings Mailboat forward)
 - [ ] Settings: choose the app icon from `design/icon/choices/` (the
       folded M in 16 colours, or the earlier glass icon)
 - [ ] Settings screen *(owner request, 2026-10-16: **discuss first** how

@@ -3,6 +3,7 @@
 pub mod colors;
 pub mod images;
 pub mod links;
+pub mod notify;
 pub mod sanitize;
 
 use std::collections::HashMap;

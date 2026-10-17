@@ -32,6 +32,8 @@ pub struct IdentitiesChangedEvent {
 pub struct TauriSyncEvents {
     pub app: AppHandle,
     pub log: std::sync::Arc<crate::sync_log::SyncLog>,
+    /// For reading what new mail notifications say.
+    pub db: std::sync::Arc<mailboat_core::db::Db>,
 }
 
 impl SyncEvents for TauriSyncEvents {
@@ -46,6 +48,31 @@ impl SyncEvents for TauriSyncEvents {
     }
     fn log(&self, account: AccountId, line: &str) {
         self.log.write(account, line);
+    }
+    fn new_mail(&self, account: AccountId, messages: &[mailboat_core::model::MessageId]) {
+        use tauri_plugin_notification::NotificationExt;
+        // The account's address, when there's more than one to tell apart.
+        let label = {
+            let conn = self.db.conn();
+            let all = mailboat_core::db::accounts::list(&conn).unwrap_or_default();
+            (all.len() > 1)
+                .then(|| all.into_iter().find(|a| a.id == account).map(|a| a.email))
+                .flatten()
+        };
+        let notices = {
+            let conn = self.db.conn();
+            mailboat_core::mail::notify::notices(&conn, account, messages, label.as_deref())
+                .unwrap_or_default()
+        };
+        for n in notices {
+            let _ = self
+                .app
+                .notification()
+                .builder()
+                .title(n.title)
+                .body(n.body)
+                .show();
+        }
     }
     fn identities_changed(&self, account_id: AccountId) {
         let _ = IdentitiesChangedEvent { account_id }.emit(&self.app);

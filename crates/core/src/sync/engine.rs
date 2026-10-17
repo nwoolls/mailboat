@@ -89,6 +89,9 @@ pub struct SyncOutcome {
     pub kind: SyncKind,
     /// Threads added, changed or removed.
     pub changed_threads: usize,
+    /// Messages that just arrived unread in the Inbox (not on a full sync),
+    /// for notifications.
+    pub new_inbox: Vec<MessageId>,
 }
 
 /// Threads fetched per write, so progress updates and DB locks stay short.
@@ -121,6 +124,7 @@ impl SyncEngine<'_> {
             outcome = SyncOutcome {
                 kind: SyncKind::Widened,
                 changed_threads: outcome.changed_threads + added,
+                new_inbox: outcome.new_inbox,
             };
         }
         let attachments = store::attachments_version(&self.db.conn(), self.account)?;
@@ -209,6 +213,7 @@ impl SyncEngine<'_> {
         Ok(SyncOutcome {
             kind: SyncKind::Full,
             changed_threads: ids.len() + stale.len(),
+            new_inbox: Vec::new(),
         })
     }
 
@@ -259,12 +264,14 @@ impl SyncEngine<'_> {
     pub async fn incremental(&self, start: u64) -> Result<SyncOutcome> {
         let mut changed: BTreeSet<String> = BTreeSet::new();
         let mut deleted: Vec<String> = Vec::new();
+        let mut added: Vec<String> = Vec::new();
         let mut page_token: Option<String> = None;
         let mut latest = start;
         let mut labels_changed = false;
         loop {
             let page = self.gmail.history(start, page_token.as_deref()).await?;
             for h in &page.history {
+                added.extend(h.messages_added.iter().map(|m| m.message.id.clone()));
                 for m in h
                     .messages_added
                     .iter()
@@ -301,9 +308,11 @@ impl SyncEngine<'_> {
         let ids: Vec<String> = changed.into_iter().collect();
         self.fetch_threads(&ids).await?;
         store::set_history_id(&self.db.conn(), self.account, Some(latest), false)?;
+        let new_inbox = store::new_inbox_messages(&self.db.conn(), self.account, &added)?;
         Ok(SyncOutcome {
             kind: SyncKind::Incremental,
             changed_threads: ids.len(),
+            new_inbox,
         })
     }
 

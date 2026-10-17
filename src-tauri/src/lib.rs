@@ -103,6 +103,8 @@ pub fn run() {
                 )
                 .build(),
         )
+        // New-mail notifications, shown from Rust (no web permission).
+        .plugin(tauri_plugin_notification::init())
         .register_uri_scheme_protocol(mailboat_core::mail::links::SCHEME, |_ctx, request| {
             links::handle(&request)
         })
@@ -123,6 +125,7 @@ pub fn run() {
                 Arc::new(TauriSyncEvents {
                     app: app.handle().clone(),
                     log: sync_log.clone(),
+                    db: db.clone(),
                 }),
                 SyncConfig::default(),
                 WorkerTiming::default(),

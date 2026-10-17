@@ -422,3 +422,24 @@ async fn reporting_spam_moves_it_out_of_the_inbox_for_its_own_account() {
     assert!(after.in_spam && !after.in_inbox);
     assert!(!query::thread_summary(&db.conn(), b_t1).unwrap().in_spam);
 }
+
+#[test]
+fn only_unread_inbox_mail_from_others_counts_as_new() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    load_t1(&db, a);
+    // In t1, m1 is read and m2 unread; both in the Inbox.
+    let new = store::new_inbox_messages(&db.conn(), a, &["m1".into(), "m2".into()]).unwrap();
+    let m2: MessageId = db
+        .conn()
+        .query_row(
+            "SELECT id FROM messages WHERE gmail_message_id = 'm2'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(new, vec![m2]);
+    assert!(store::new_inbox_messages(&db.conn(), a, &[])
+        .unwrap()
+        .is_empty());
+}

@@ -24,6 +24,8 @@ pub trait SyncEvents: Send + Sync {
     fn log(&self, _account: AccountId, _line: &str) {}
     /// The account's From addresses (Gmail "Send mail as") were refreshed.
     fn identities_changed(&self, _account: AccountId) {}
+    /// New unread mail arrived in the account's Inbox (for notifications).
+    fn new_mail(&self, _account: AccountId, _messages: &[crate::model::MessageId]) {}
 }
 
 #[derive(Debug, Clone)]
@@ -191,6 +193,9 @@ async fn run_worker(
                 set_status(&db, &*events, account, SyncStatus::Idle, None);
                 if outcome.changed_threads > 0 {
                     events.mail_changed(account);
+                }
+                if !outcome.new_inbox.is_empty() {
+                    events.new_mail(account, &outcome.new_inbox);
                 }
                 if !contacts_fresh {
                     // Once per launch, like aliases. An account without the

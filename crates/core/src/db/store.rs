@@ -617,6 +617,41 @@ pub fn messages_missing_body(
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
+/// Of these just-added messages (Gmail IDs), the ones now unread in the
+/// Inbox, excluding your own sent mail and drafts: what notifications are
+/// about.
+pub fn new_inbox_messages(
+    conn: &Connection,
+    account: AccountId,
+    gmail_ids: &[String],
+) -> Result<Vec<MessageId>> {
+    if gmail_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let has = |label: &str| {
+        format!(
+            "EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                     WHERE ml.message_id = m.id AND l.gmail_label_id = '{label}')"
+        )
+    };
+    let sql = format!(
+        "SELECT m.id FROM messages m
+         WHERE m.account_id = ? AND m.gmail_message_id IN ({})
+           AND {} AND {} AND NOT {} AND NOT {}
+         ORDER BY m.internal_date",
+        placeholders(gmail_ids.len()),
+        has("INBOX"),
+        has("UNREAD"),
+        has("SENT"),
+        has("DRAFT"),
+    );
+    let mut values: Vec<&dyn rusqlite::ToSql> = vec![&account];
+    values.extend(gmail_ids.iter().map(|g| g as &dyn rusqlite::ToSql));
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(values.as_slice(), |r| r.get(0))?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
 // ---- Sync state ----
 
 pub fn history_id(conn: &Connection, account: AccountId) -> Result<Option<u64>> {
