@@ -735,3 +735,17 @@ approve it, and an ARCHITECTURE decision row.
         (`rmcp`), recorded in ARCHITECTURE when chosen
       - Every request logged (what was read, never the content), so the
         owner can see what an AI looked at
+- [ ] Icon, round three *(owner request, 2026-10-17)*: keep the current
+      look (the green folded-ribbon M, flat, high contrast) but try other
+      fold directions so it reads more like a folded envelope. Offer a
+      sheet of variants in `design/icon/sheets/` to pick from, as before
+- [ ] Idle screensavers for the empty reader and list *(owner request,
+      2026-10-17; discuss first, then pick one to try and iterate)*: an
+      alternative to the pointer-following glow. Interactive pixel art
+      that starts after about a minute without input and stops on any
+      key or pointer move. It might play with the empty state's icon and
+      text, or the pointer. Owner's starting ideas, not commitments:
+      falling sand (like the old desk sand-art frames), a fish aquarium,
+      fireworks. To settle: which one first, the idle delay, whether it
+      replaces the glow or comes on after it, and keeping it light on
+      battery (pause when the window is hidden or unfocused)
