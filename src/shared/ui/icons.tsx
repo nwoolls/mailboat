@@ -55,6 +55,7 @@ import Palette from "@hugeicons/core-free-icons/PaletteIcon";
 import Settings02 from "@hugeicons/core-free-icons/Settings02Icon";
 import SlidersHorizontal from "@hugeicons/core-free-icons/SlidersHorizontalIcon";
 import Tick02 from "@hugeicons/core-free-icons/Tick02Icon";
+import Calendar03 from "@hugeicons/core-free-icons/Calendar03Icon";
 import UserMultiple from "@hugeicons/core-free-icons/UserMultipleIcon";
 
 /**
@@ -126,3 +127,4 @@ export const NotificationIcon = wrap(Notification01);
 export const AppearanceIcon = wrap(Palette);
 export const KeyboardIcon = wrap(Keyboard);
 export const CheckIcon = wrap(Tick02);
+export const CalendarIcon = wrap(Calendar03);

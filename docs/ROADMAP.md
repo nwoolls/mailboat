@@ -656,6 +656,16 @@ invitations (after the new permissions, shared with Milestone 6).*
         the permissions Google says its sign-in carries (on sign-in and
         every token refresh); Settings → Accounts says when an account
         should sign in again, and for what
+      - **Built, not yet tried against real Google (2026-10-17):** the
+        card at the top of an opened invitation: what it is (invitation,
+        updated, cancelled, or "Sam accepted your invitation"), title,
+        when (in your time zone), place, organizer, clashes on your
+        calendar, Yes / Maybe / No with your current answer, "Open in
+        Calendar", and "Remove from calendar" for a cancelled event still
+        on it. Not on your calendar yet: answering adds it first. An
+        account without the permission gets "Sign in again" on the card.
+        The Calendar API is turned on in the owner's project. Not built:
+        the emailed-reply fallback when Calendar can't add the event
 - [x] Report spam (and "Not spam" in the Spam view) as an action, routed
       per account like the others *(owner request, 2026-10-16)*. Toolbar
       button and `!` (Gmail's key); Report spam moves conversations out

@@ -11,6 +11,7 @@ import type {
   AccountFilter,
   AccountId,
   AccountSyncState,
+  Answer,
   AppSettings,
   MessageId,
   ThreadId,
@@ -34,6 +35,7 @@ export const keys = {
   contacts: ["contacts"] as const,
   appInfo: ["appInfo"] as const,
   appSettings: ["appSettings"] as const,
+  invite: (id: MessageId) => ["invite", id] as const,
 };
 
 export function useAccounts() {
@@ -178,6 +180,30 @@ export function useSetAccountColor() {
     mutationFn: ({ account, color }: { account: AccountId; color: string }) =>
       unwrap(commands.accountSetColor(account, color)),
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.accounts }),
+  });
+}
+
+/**
+ * The meeting invitation in an opened message, if any, with what Google
+ * Calendar says. Asked once the message is open (its body, which holds
+ * the invitation, is stored by then).
+ */
+export function useInviteCard(id: MessageId, enabled: boolean) {
+  return useQuery({
+    queryKey: keys.invite(id),
+    queryFn: () => unwrap(commands.inviteCard(id)),
+    enabled: IS_TAURI && enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** Yes / No / Maybe, or removing a cancelled event; the card updates. */
+export function useInviteAction(id: MessageId) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (action: Answer | "remove") =>
+      unwrap(action === "remove" ? commands.inviteRemove(id) : commands.inviteAnswer(id, action)),
+    onSuccess: (card) => qc.setQueryData(keys.invite(id), card),
   });
 }
 

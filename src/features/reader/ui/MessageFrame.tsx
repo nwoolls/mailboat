@@ -5,6 +5,7 @@ import type { MessageId } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { useOpenedMessage } from "../../../shared/lib/queries";
 import { imageNotice } from "../model/imageNotice";
+import { InviteCard } from "./InviteCard";
 import { AttachmentList } from "./AttachmentList";
 
 /**
@@ -115,6 +116,7 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
   return (
     // Takes the focus back from the frame (see above); never shows a ring.
     <div ref={holderRef} tabIndex={-1} className="outline-none">
+      <InviteCard messageId={m.messageId} accountId={m.accountId} />
       {notice && (
         <div
           // A lighter layer inside the message card, always one line.

@@ -6,11 +6,13 @@ use std::time::Duration;
 
 use mailboat_core::attachments;
 use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
+use mailboat_core::calendar::{self, InviteCard};
 use mailboat_core::compose::contacts::Contact;
 use mailboat_core::compose::identities::{self, Identity};
 use mailboat_core::compose::{self, OpenedDraft, OutgoingMessage, ReplySource};
 use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
+use mailboat_core::mail::invite::Answer;
 use mailboat_core::mail::{self, SafeMessage};
 use mailboat_core::model::{
     Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, DraftId, Label,
@@ -294,6 +296,8 @@ pub fn unread_counts(
 #[serde(rename_all = "camelCase")]
 pub struct OpenedMessage {
     pub message_id: MessageId,
+    /// The account it belongs to (e.g. to sign it in again).
+    pub account_id: AccountId,
     pub sender_email: String,
     pub images_allowed: bool,
     /// Why images did or didn't load, so the reader can offer the opposite.
@@ -356,6 +360,7 @@ pub async fn message_open(
     let attachments = store::attachments_for(&state.db.conn(), message_id)?;
     Ok(OpenedMessage {
         message_id,
+        account_id: account,
         sender_email,
         images_allowed,
         image_policy,
@@ -881,4 +886,44 @@ pub fn notification_settings_open(app: AppHandle) -> CmdResult<()> {
     ))
     .map_err(|e| CoreError::Other(format!("could not open System Settings: {e}")))?;
     Ok(())
+}
+
+/// The meeting invitation in a message, if any, with what Google Calendar
+/// says about it (your answer, clashes). Calendar problems are part of
+/// the card, not an error.
+#[tauri::command]
+#[specta::specta]
+pub async fn invite_card(
+    state: State<'_, AppState>,
+    message_id: MessageId,
+) -> CmdResult<Option<InviteCard>> {
+    let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
+    let gmail = state.gmail_for(account)?.interactive();
+    Ok(calendar::card_for(&state.db, &gmail, message_id).await?)
+}
+
+/// Yes / No / Maybe on a message's invitation, with the owning account's
+/// sign-in. Google Calendar then tells the organizer.
+#[tauri::command]
+#[specta::specta]
+pub async fn invite_answer(
+    state: State<'_, AppState>,
+    message_id: MessageId,
+    answer: Answer,
+) -> CmdResult<InviteCard> {
+    let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
+    let gmail = state.gmail_for(account)?.interactive();
+    Ok(calendar::answer(&state.db, &gmail, message_id, answer).await?)
+}
+
+/// Removes a cancelled invitation's event from the account's calendar.
+#[tauri::command]
+#[specta::specta]
+pub async fn invite_remove(
+    state: State<'_, AppState>,
+    message_id: MessageId,
+) -> CmdResult<InviteCard> {
+    let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
+    let gmail = state.gmail_for(account)?.interactive();
+    Ok(calendar::remove(&state.db, &gmail, message_id).await?)
 }

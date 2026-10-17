@@ -297,6 +297,22 @@ on the Dock at launch and when it changes.
 Account colours change through `accounts::set_color`, limited to the
 palette in `ACCOUNT_COLORS`.
 
+## Meeting invitations
+
+Fetching a body keeps its inline calendar part (`message_bodies.calendar`;
+`calendar_read` marks bodies read with that in mind). Older cached bodies
+aren't all re-fetched: only ones with an `.ics` attachment, when shown.
+`mail::invite` parses the part (`icalendar`, times through `chrono-tz`).
+`calendar.rs` adds Google Calendar calls to the account's client (same
+sign-in and retries as Gmail, no Gmail quota pacing): find the event by
+its iCalendar UID, events in a range for clashes, answer with
+`attendeesOmitted` (only your entry is sent; Google tells the organizer),
+import an invitation that isn't on the calendar, remove a cancelled one.
+`card_for` is what the reader shows (`InviteCard`, above the message);
+Calendar failures become part of the card, never hide the invitation.
+Accounts lacking `calendar.events` (see `accounts.granted_scopes`) get
+"Sign in again" instead of a failed request.
+
 ## Decisions
 
 | Date | Decision | Why |

@@ -76,6 +76,15 @@ pub struct Invite {
     pub your_answer: Option<Answer>,
     /// Cancelled (by a CANCEL, or the event's status).
     pub cancelled: bool,
+    /// For a reply: who answered, and how.
+    pub replied: Option<Replied>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Replied {
+    pub who: Person,
+    pub answer: Answer,
 }
 
 /// Reads the first event of a calendar part. `mine` are this account's
@@ -103,18 +112,26 @@ pub fn parse(ics: &str, mine: &[&str]) -> Option<Invite> {
             name: p.get_param_as("CN", non_empty),
         })
     });
-    let your_answer = event
-        .get_attendees()
+    let attendees = event.get_attendees();
+    // A reply lists only the person answering.
+    let replied = (kind == InviteKind::Reply)
+        .then(|| attendees.first())
+        .flatten()
+        .and_then(|a| {
+            Some(Replied {
+                who: Person {
+                    email: address(&a.cal_address)?,
+                    name: a.cn.as_deref().and_then(non_empty),
+                },
+                answer: answer_of(a.part_stat),
+            })
+        });
+    let your_answer = attendees
         .iter()
         .find(|a| {
             address(&a.cal_address).is_some_and(|e| mine.iter().any(|m| m.eq_ignore_ascii_case(&e)))
         })
-        .map(|a| match a.part_stat {
-            Some(PartStat::Accepted) => Answer::Yes,
-            Some(PartStat::Declined) => Answer::No,
-            Some(PartStat::Tentative) => Answer::Maybe,
-            _ => Answer::NeedsAction,
-        });
+        .map(|a| answer_of(a.part_stat));
     Some(Invite {
         kind,
         uid,
@@ -126,7 +143,17 @@ pub fn parse(ics: &str, mine: &[&str]) -> Option<Invite> {
         organizer,
         your_answer,
         cancelled: kind == InviteKind::Cancel || event.get_status() == Some(EventStatus::Cancelled),
+        replied,
     })
+}
+
+fn answer_of(status: Option<PartStat>) -> Answer {
+    match status {
+        Some(PartStat::Accepted) => Answer::Yes,
+        Some(PartStat::Declined) => Answer::No,
+        Some(PartStat::Tentative) => Answer::Maybe,
+        _ => Answer::NeedsAction,
+    }
 }
 
 fn moment(value: DatePerhapsTime) -> Option<Moment> {
@@ -285,6 +312,27 @@ END:VCALENDAR\r
                 zone: Some("Eastern Standard Time".into()),
             }
         );
+    }
+
+    #[test]
+    fn a_reply_says_who_answered() {
+        let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:REPLY\r\nBEGIN:VEVENT\r\n\
+UID:abc\r\nDTSTART:20261020T180000Z\r\n\
+ATTENDEE;PARTSTAT=ACCEPTED;CN=Sam Lee:mailto:sam@example.com\r\n\
+END:VEVENT\r\nEND:VCALENDAR\r\n";
+        let invite = parse(ics, &[]).unwrap();
+        assert_eq!(invite.kind, InviteKind::Reply);
+        assert_eq!(
+            invite.replied,
+            Some(Replied {
+                who: Person {
+                    email: "sam@example.com".into(),
+                    name: Some("Sam Lee".into()),
+                },
+                answer: Answer::Yes,
+            })
+        );
+        assert_eq!(parse(GOOGLE, &[]).unwrap().replied, None);
     }
 
     #[test]

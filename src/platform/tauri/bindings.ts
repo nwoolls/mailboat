@@ -154,6 +154,22 @@ export const commands = {
 	 *  keeps whether notifications may show and in what style.
 	 */
 	notificationSettingsOpen: () => typedError<null, AppError>(__TAURI_INVOKE("notification_settings_open")),
+	/**
+	 *  The meeting invitation in a message, if any, with what Google Calendar
+	 *  says about it (your answer, clashes). Calendar problems are part of
+	 *  the card, not an error.
+	 */
+	inviteCard: (messageId: MessageId) => typedError<{
+	invite: Invite,
+	calendar: CalendarState,
+} | null, AppError>(__TAURI_INVOKE("invite_card", { messageId })),
+	/**
+	 *  Yes / No / Maybe on a message's invitation, with the owning account's
+	 *  sign-in. Google Calendar then tells the organizer.
+	 */
+	inviteAnswer: (messageId: MessageId, answer: Answer) => typedError<InviteCard, AppError>(__TAURI_INVOKE("invite_answer", { messageId, answer })),
+	/**  Removes a cancelled invitation's event from the account's calendar. */
+	inviteRemove: (messageId: MessageId) => typedError<InviteCard, AppError>(__TAURI_INVOKE("invite_remove", { messageId })),
 };
 
 /** Events */
@@ -208,6 +224,9 @@ export type Address = {
 	email: string,
 };
 
+/**  How someone answered. */
+export type Answer = "needsAction" | "yes" | "no" | "maybe";
+
 /**  The error shape every command returns to the UI. */
 export type AppError = {
 	/**  Stable category, e.g. "auth", "config", "network". */
@@ -256,6 +275,24 @@ export type Attachment = {
 
 export type AttachmentId = number;
 
+/**  What Calendar says about the invitation. */
+export type CalendarState = 
+/**  The account signed in before Mailboat asked for Calendar. */
+{ kind: "needsSignIn" } | 
+/**  Someone's answer to your invitation: nothing to look up. */
+{ kind: "notNeeded" } | { kind: "notOnCalendar" } | { kind: "onCalendar"; eventId: string; yourAnswer: Answer | null; cancelled: boolean; clashes: Clash[]; 
+/**  The event in Google Calendar on the web. */
+link: string | null } | 
+/**  Calendar couldn't be asked (offline, API turned off, …). */
+{ kind: "unavailable"; message: string };
+
+/**  Something on your calendar at the same time. */
+export type Clash = {
+	title: string | null,
+	start: Moment,
+	end: Moment | null,
+};
+
 /**  Someone compose can suggest, best first in [`all`]. */
 export type Contact = {
 	name: string | null,
@@ -299,6 +336,39 @@ export type ImagePolicy =
 "blockedInSpam" | 
 /**  The message is in Trash and the sender has no saved choice. */
 "blockedInTrash";
+
+export type Invite = {
+	kind: InviteKind,
+	/**  The event's id across calendars (iCalendar `UID`). */
+	uid: string,
+	/**  Higher means a newer version of the same event. */
+	sequence: number,
+	title: string | null,
+	location: string | null,
+	start: Moment,
+	end: Moment | null,
+	organizer: Person | null,
+	/**  This account's answer, as the calendar part says, if it lists you. */
+	yourAnswer: Answer | null,
+	/**  Cancelled (by a CANCEL, or the event's status). */
+	cancelled: boolean,
+	/**  For a reply: who answered, and how. */
+	replied: Replied | null,
+};
+
+export type InviteCard = {
+	invite: Invite,
+	calendar: CalendarState,
+};
+
+/**  What the calendar part asks for. */
+export type InviteKind = 
+/**  A new invitation, or an update to one (a higher `sequence`). */
+"request" | 
+/**  The organizer cancelled the event. */
+"cancel" | 
+/**  Someone answered an invitation you sent. */
+"reply";
 
 export type Label = {
 	id: LabelId,
@@ -379,6 +449,21 @@ export type MessageMeta = {
 	draft: boolean,
 };
 
+/**
+ *  A moment in the event: a whole day, an exact time, or a time whose zone
+ *  couldn't be worked out (shown as written, with the zone's name).
+ */
+export type Moment = 
+/**  `YYYY-MM-DD`. */
+{ kind: "allDay"; date: string } | 
+/**  Milliseconds since 1970 (UTC). */
+{ kind: "at"; ms: number } | 
+/**
+ *  `YYYY-MM-DDTHH:MM:SS` in a zone not in the time zone database
+ *  (e.g. Outlook's "Eastern Standard Time"), or none (floating).
+ */
+{ kind: "local"; time: string; zone: string | null };
+
 export type OAuthSetup = {
 	/**  True if a Google OAuth client is available (file or env vars). */
 	configured: boolean,
@@ -419,6 +504,8 @@ export type OpenedDraft = {
 
 export type OpenedMessage = {
 	messageId: MessageId,
+	/**  The account it belongs to (e.g. to sign it in again). */
+	accountId: AccountId,
 	senderEmail: string,
 	imagesAllowed: boolean,
 	/**  Why images did or didn't load, so the reader can offer the opposite. */
@@ -471,6 +558,16 @@ export type Permission =
 "calendar" | 
 /**  Rules, signatures and the vacation responder. */
 "gmailSettings";
+
+export type Person = {
+	email: string,
+	name: string | null,
+};
+
+export type Replied = {
+	who: Person,
+	answer: Answer,
+};
 
 /**  What compose needs from a message to reply to or forward it. */
 export type ReplySource = {
