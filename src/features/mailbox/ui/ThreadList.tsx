@@ -136,12 +136,14 @@ export function ThreadList({
             raw && swiped && (swiped.mode === "settle" || swiped.mode === "open")
               ? { ...raw, ring: 0, armed: false }
               : raw;
-          const swipeAction = swiped ? swipeActions(t)[swiped.side] : null;
+          // Pulled the other way past closed: the row moves, no button.
+          const bare = swiped?.bare === true;
+          const swipeAction = swiped && !bare ? swipeActions(t)[swiped.side] : null;
           const rowHeight = ROW_HEIGHT - 4;
           const out = swiped?.mode === "out";
           return (
             <Fragment key={t.id}>
-              {swiped && pose && (
+              {swiped && pose && !bare && (
                 <div
                   className="pointer-events-none absolute inset-x-0 mx-2"
                   style={{
@@ -179,7 +181,7 @@ export function ThreadList({
                 // subjects and snippets line up whether a row is read or not.
                 className={`absolute inset-x-0 mx-2 flex flex-col justify-center gap-0.5 rounded-lg pr-3 pl-6 ${
                   // While swiped, the plate behind is drawn by SwipeBack.
-                  swiped
+                  swiped && !bare
                     ? ""
                     : picked
                       ? "bg-accent/18 ring-1 ring-accent/35 ring-inset"

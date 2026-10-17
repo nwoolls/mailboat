@@ -29,6 +29,12 @@ export type SwipeState = {
   mode: "drag" | "open" | "settle" | "out";
   /** Where this swipe started, if on a row that was already open. */
   from?: number | null;
+  /**
+   * Pulled past closed the other way within the same swipe: the row moves
+   * with the fingers, but that side's button doesn't show (it takes a new
+   * swipe), as in Mail and Mimestream. Always springs back on release.
+   */
+  bare?: boolean;
 };
 
 function actionOf(threads: ThreadSummary[], s: SwipeState): ThreadAction | null {
@@ -89,7 +95,7 @@ export function useSwipe(
   /** Lets go: does the action, rests open, or springs back. */
   const release = useCallback(
     (s: SwipeState) => {
-      const to = releaseTo(s.d, undefined, s.from ?? null);
+      const to = s.bare ? "close" : releaseTo(s.d, undefined, s.from ?? null);
       const action = actionOf(live.current.threads, s);
       if (to === "commit" && action) {
         if (s.side === "left") {
@@ -193,12 +199,18 @@ export function useSwipe(
         if (total === 0) return;
         side = total > 0 ? "left" : "right";
       }
-      const travel = Math.max(0, (side === "left" ? 1 : -1) * total);
+      const signed = (side === "left" ? 1 : -1) * total;
+      cancelAnimationFrame(frame.current);
+      if (signed < 0) {
+        // Past closed, the other way: the row follows, no button.
+        const other: SwipeSide = side === "left" ? "right" : "left";
+        setSwipe({ id: row, side: other, d: -signed, mode: "drag", bare: true });
+        return;
+      }
       const t = live.current.threads.find((x) => x.id === row);
       const can = t ? swipeActions(t)[side] !== null : false;
-      cancelAnimationFrame(frame.current);
       // A side with nothing to do barely gives.
-      const d = can ? travel : Math.min(12, travel * 0.15);
+      const d = can ? signed : Math.min(12, signed * 0.15);
       setSwipe({ id: row, side, d, mode: "drag", from: resumedFrom });
     };
     // A click anywhere but the open row's button closes it.

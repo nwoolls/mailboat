@@ -671,8 +671,9 @@ each was a "not yet" note above)*:
         stops growing and as the row goes on the join necks and snaps
         (apart at 10px; 18px looked too far); 44px further a ring round
         the icon has filled and the button takes an accent wash: armed.
-        One button per side; no trackpad "tick" yet. Swiping back stops
-        at closed: the other side takes a new swipe, as in Mimestream
+        One button per side; no trackpad "tick" yet. Swiping back past
+        closed keeps moving the row the other way, but that side's button
+        only shows on a new swipe, as in Mail and Mimestream
       - Round three (owner): only letting go acts (macOS now reports the
         lift; holding still or swiping back never acts); the button has a
         fixed width (104px, more padding) and is uncovered by the row,
