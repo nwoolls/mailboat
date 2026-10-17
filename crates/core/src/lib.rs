@@ -6,6 +6,7 @@
 pub mod actions;
 pub mod attachments;
 pub mod auth;
+pub mod calendar;
 pub mod compose;
 pub mod db;
 pub mod error;

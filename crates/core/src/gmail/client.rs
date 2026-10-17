@@ -18,6 +18,7 @@ use crate::error::{CoreError, Result};
 
 pub const GMAIL_BASE_URL: &str = "https://gmail.googleapis.com";
 pub const PEOPLE_BASE_URL: &str = "https://people.googleapis.com";
+pub const CALENDAR_BASE_URL: &str = "https://www.googleapis.com";
 
 /// Headers requested with `format=metadata`.
 pub const METADATA_HEADERS: [&str; 9] = [
@@ -80,10 +81,12 @@ pub type Logger = Arc<dyn Fn(&str) + Send + Sync>;
 
 #[derive(Clone)]
 pub struct GmailClient {
-    http: reqwest::Client,
+    pub(crate) http: reqwest::Client,
     base_url: String,
     /// Google's People API (contacts), with the same sign-in.
     people_base_url: String,
+    /// Google Calendar API (meeting invitations), with the same sign-in.
+    pub(crate) calendar_base_url: String,
     tokens: Arc<dyn TokenSource>,
     retry: RetryPolicy,
     /// Shared by every clone of this client, so all calls for the account
@@ -98,6 +101,7 @@ impl GmailClient {
     pub fn new(http: reqwest::Client, tokens: Arc<dyn TokenSource>) -> Self {
         Self {
             people_base_url: PEOPLE_BASE_URL.into(),
+            calendar_base_url: CALENDAR_BASE_URL.into(),
             ..Self::with_base_url(http, tokens, GMAIL_BASE_URL)
         }
     }
@@ -112,6 +116,7 @@ impl GmailClient {
             base_url: base_url.trim_end_matches('/').to_string(),
             // Tests point both at one mock server.
             people_base_url: base_url.trim_end_matches('/').to_string(),
+            calendar_base_url: base_url.trim_end_matches('/').to_string(),
             tokens,
             retry: RetryPolicy::default(),
             pacer: QuotaPacer::default(),
@@ -633,7 +638,7 @@ impl GmailClient {
     }
 
     /// Sends a request, adding auth and retrying transient failures.
-    async fn send(&self, build: impl Fn() -> RequestBuilder) -> Result<Response> {
+    pub(crate) async fn send(&self, build: impl Fn() -> RequestBuilder) -> Result<Response> {
         self.send_with(build, Retry::Transient).await
     }
 
@@ -758,6 +763,6 @@ fn api_error(status: u16, body: &str) -> CoreError {
     }
 }
 
-fn net_error(e: reqwest::Error) -> CoreError {
+pub(crate) fn net_error(e: reqwest::Error) -> CoreError {
     CoreError::Network(e.to_string())
 }

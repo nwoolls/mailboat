@@ -282,3 +282,11 @@ CREATE TABLE app_settings (
 pub const MIGRATION_V12: &str = r#"
 ALTER TABLE accounts ADD COLUMN granted_scopes TEXT;
 "#;
+
+/// A message's calendar part (meeting invitations), kept with its body.
+/// `calendar_read` says the body was read looking for one, so `calendar`
+/// NULL means "none" rather than "not looked at" (bodies cached earlier).
+pub const MIGRATION_V13: &str = r#"
+ALTER TABLE message_bodies ADD COLUMN calendar TEXT;
+ALTER TABLE message_bodies ADD COLUMN calendar_read INTEGER NOT NULL DEFAULT 0;
+"#;

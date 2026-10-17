@@ -173,21 +173,52 @@ fn walk_bodies(part: &MessagePart, html: &mut Option<String>, text: &mut Option<
     }
 }
 
-/// The calendar part of a message (a meeting invitation, update,
-/// cancellation or answer), if it came inline. Read by `mail::invite`.
-pub fn extract_calendar(payload: &MessagePart) -> Option<String> {
-    if payload.mime_type.eq_ignore_ascii_case("text/calendar") {
-        if let Some(bytes) = payload
+/// Where a message's calendar part (a meeting invitation, update,
+/// cancellation or answer) is: inline, or an attachment to download.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CalendarPart {
+    Inline(String),
+    Attachment { attachment_id: String },
+}
+
+/// The message's calendar part, read by `mail::invite`. An inline
+/// `text/calendar` part (Google and Outlook send one) wins over an
+/// attached `.ics` file.
+pub fn calendar_part(payload: &MessagePart) -> Option<CalendarPart> {
+    inline_calendar(payload)
+        .map(CalendarPart::Inline)
+        .or_else(|| {
+            attached_calendar(payload)
+                .map(|attachment_id| CalendarPart::Attachment { attachment_id })
+        })
+}
+
+fn inline_calendar(part: &MessagePart) -> Option<String> {
+    if part.mime_type.eq_ignore_ascii_case("text/calendar") {
+        if let Some(bytes) = part
             .body
             .as_ref()
             .and_then(|b| b.data.as_deref())
             .and_then(decode_base64url)
         {
-            let charset = header(payload, "Content-Type").and_then(charset_of);
+            let charset = header(part, "Content-Type").and_then(charset_of);
             return Some(decode_charset(&bytes, charset.as_deref()));
         }
     }
-    payload.parts.iter().find_map(extract_calendar)
+    part.parts.iter().find_map(inline_calendar)
+}
+
+fn attached_calendar(part: &MessagePart) -> Option<String> {
+    let mime = part.mime_type.to_ascii_lowercase();
+    let is_calendar = mime == "text/calendar"
+        || mime == "application/ics"
+        || part.filename.to_ascii_lowercase().ends_with(".ics");
+    if is_calendar {
+        if let Some(id) = part.body.as_ref().and_then(|b| b.attachment_id.clone()) {
+            return Some(id);
+        }
+    }
+    part.parts.iter().find_map(attached_calendar)
 }
 
 /// The attachment parts of a `format=full` payload: every part with a file
@@ -391,12 +422,30 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(
-            extract_calendar(&payload).as_deref(),
-            Some("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n")
+            calendar_part(&payload),
+            Some(CalendarPart::Inline(
+                "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n".into()
+            ))
+        );
+        // Only an attached .ics: download it.
+        let attached: MessagePart = serde_json::from_value(serde_json::json!({
+            "mimeType": "multipart/mixed",
+            "parts": [
+                { "mimeType": "text/plain", "body": { "data": encode_base64url(b"hi") } },
+                { "mimeType": "application/octet-stream", "filename": "Meeting.ICS",
+                  "body": { "attachmentId": "A2", "size": 900 } }
+            ]
+        }))
+        .unwrap();
+        assert_eq!(
+            calendar_part(&attached),
+            Some(CalendarPart::Attachment {
+                attachment_id: "A2".into()
+            })
         );
         let plain: MessagePart =
             serde_json::from_value(serde_json::json!({ "mimeType": "text/plain" })).unwrap();
-        assert_eq!(extract_calendar(&plain), None);
+        assert_eq!(calendar_part(&plain), None);
     }
 
     #[test]

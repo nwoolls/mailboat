@@ -428,6 +428,40 @@ pub fn get_body(conn: &Connection, message: MessageId) -> Result<Option<StoredBo
         .optional()?)
 }
 
+/// A message's calendar part: `Some(None)` if its body was read and has
+/// none, `None` if it hasn't been looked for (not fetched, or cached
+/// before Mailboat kept calendar parts).
+pub fn calendar(conn: &Connection, message: MessageId) -> Result<Option<Option<String>>> {
+    Ok(conn
+        .query_row(
+            "SELECT calendar FROM message_bodies WHERE message_id = ?1 AND calendar_read",
+            [message],
+            |r| r.get(0),
+        )
+        .optional()?)
+}
+
+/// Records what a fetched body's calendar part is (or that it has none).
+/// The body must already be stored.
+pub fn set_calendar(conn: &Connection, message: MessageId, ics: Option<&str>) -> Result<()> {
+    conn.execute(
+        "UPDATE message_bodies SET calendar = ?2, calendar_read = 1 WHERE message_id = ?1",
+        params![message, ics],
+    )?;
+    Ok(())
+}
+
+/// Whether a message has an `.ics` file attached (Google's invitations
+/// do): worth re-reading a body cached before calendar parts were kept.
+pub fn has_calendar_attachment(conn: &Connection, message: MessageId) -> Result<bool> {
+    Ok(conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM attachments WHERE message_id = ?1 AND
+           (lower(mime_type) IN ('text/calendar', 'application/ics') OR lower(filename) LIKE '%.ics'))",
+        [message],
+        |r| r.get(0),
+    )?)
+}
+
 /// Stores a fetched body and its attachment parts. Attachments already
 /// downloaded keep their cached file (matched by part ID).
 pub fn set_body(

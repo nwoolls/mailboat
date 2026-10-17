@@ -406,5 +406,15 @@ pub async fn fetch_body(db: &Db, gmail: &GmailClient, message: MessageId) -> Res
         .map(|p| parse::extract_attachments(p, body.html.as_deref()))
         .unwrap_or_default();
     store::set_body(&mut db.conn(), message, &body, &attachments)?;
+    // Meeting invitations: keep an inline calendar part with the body. An
+    // attached-only one is downloaded when the invitation is shown
+    // (`calendar::invite_for`), not for every body sync fetches.
+    match full.payload.as_ref().and_then(parse::calendar_part) {
+        Some(parse::CalendarPart::Inline(ics)) => {
+            store::set_calendar(&db.conn(), message, Some(&ics))?
+        }
+        Some(parse::CalendarPart::Attachment { .. }) => {}
+        None => store::set_calendar(&db.conn(), message, None)?,
+    }
     Ok(body)
 }
