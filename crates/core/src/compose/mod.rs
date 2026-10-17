@@ -42,6 +42,9 @@ pub struct OutgoingMessage {
     pub draft: Option<DraftId>,
     /// Attachments of the original carried along (forwards), by ID.
     pub forwarded: Vec<AttachmentId>,
+    /// Images embedded in the quoted original (`cid:`), sent along so the
+    /// quote shows them.
+    pub inline_images: Vec<AttachmentId>,
     /// The message this replies to or forwards, for threading.
     pub replying_to: Option<MessageId>,
 }
@@ -56,25 +59,42 @@ pub struct OutgoingAttachment {
     pub data: String,
 }
 
-/// Files ready to attach: (name, MIME type, bytes).
+/// Files ready to attach: (name, MIME type, bytes); for inline images
+/// the first item is the Content-ID.
 pub type Files = Vec<(String, String, Vec<u8>)>;
 
-/// Fetches attachments of received mail (a forward's originals), each with
-/// its own account's client, through the attachment cache.
-pub async fn forwarded_files(
+/// Parts of received mail a message carries along, already fetched: a
+/// forward's attachments and the quote's embedded images.
+#[derive(Debug, Clone, Default)]
+pub struct Carried {
+    pub forwarded: Files,
+    pub inline: Files,
+}
+
+/// Fetches what a message carries from received mail, each part with its
+/// own account's client, through the attachment cache.
+pub async fn carried_parts(
     db: &Db,
     gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
-    ids: &[AttachmentId],
+    msg: &OutgoingMessage,
     cache_dir: &std::path::Path,
-) -> Result<Files> {
-    let mut out = Files::new();
-    for &id in ids {
-        let a = store::attachment_ref(&db.conn(), id)?;
-        let gmail = gmail_for(a.account)?;
-        let path = crate::attachments::download(db, &gmail, id, cache_dir).await?;
-        let bytes = std::fs::read(&path)
-            .map_err(|e| CoreError::Other(format!("couldn't read {}: {e}", a.filename)))?;
-        out.push((a.filename, a.mime_type, bytes));
+) -> Result<Carried> {
+    let mut out = Carried::default();
+    for (ids, inline) in [(&msg.forwarded, false), (&msg.inline_images, true)] {
+        for &id in ids {
+            let a = store::attachment_ref(&db.conn(), id)?;
+            let gmail = gmail_for(a.account)?;
+            let path = crate::attachments::download(db, &gmail, id, cache_dir).await?;
+            let bytes = std::fs::read(&path)
+                .map_err(|e| CoreError::Other(format!("couldn't read {}: {e}", a.filename)))?;
+            if inline {
+                if let Some(cid) = a.content_id {
+                    out.inline.push((cid, a.mime_type, bytes));
+                }
+            } else {
+                out.forwarded.push((a.filename, a.mime_type, bytes));
+            }
+        }
     }
     Ok(out)
 }
@@ -129,6 +149,8 @@ pub struct ReplySource {
     pub html: Option<String>,
     /// The original's files (a forward carries them along).
     pub attachments: Vec<Attachment>,
+    /// Images embedded in the original (`cid:`), for its quote.
+    pub inline_images: Vec<AttachmentId>,
 }
 
 struct Original {
@@ -207,6 +229,17 @@ pub async fn reply_source(db: &Db, gmail: &GmailClient, message: MessageId) -> R
         .text
         .or_else(|| body.html.as_deref().map(parse::html_to_text))
         .unwrap_or_default();
+    // One lock, bound first: two `db.conn()` in one expression deadlock.
+    let (attachments, inline_images) = {
+        let conn = db.conn();
+        let files = store::attachments_for(&conn, message)?;
+        let inline: Vec<AttachmentId> = store::inline_parts(&conn, message)?
+            .into_iter()
+            .filter(|a| a.content_id.is_some())
+            .map(|a| a.id)
+            .collect();
+        (files, inline)
+    };
     Ok(ReplySource {
         message_id: message,
         account_id: o.account,
@@ -219,7 +252,8 @@ pub async fn reply_source(db: &Db, gmail: &GmailClient, message: MessageId) -> R
         date: o.date,
         text,
         html,
-        attachments: store::attachments_for(&db.conn(), message)?,
+        attachments,
+        inline_images,
     })
 }
 
@@ -251,18 +285,18 @@ pub fn validate(db: &Db, msg: &OutgoingMessage) -> Result<()> {
 /// it lands in, so it shows at once. Returns that thread (`None` if Gmail
 /// couldn't be asked for it straight after; sync brings it in later).
 pub async fn send(db: &Db, gmail: &GmailClient, msg: &OutgoingMessage) -> Result<Option<ThreadId>> {
-    send_with_files(db, gmail, msg, &[]).await
+    send_with_files(db, gmail, msg, &Carried::default()).await
 }
 
-/// [`send`], with forwarded files already fetched ([`forwarded_files`]).
+/// [`send`], with carried parts already fetched ([`carried_parts`]).
 pub async fn send_with_files(
     db: &Db,
     gmail: &GmailClient,
     msg: &OutgoingMessage,
-    forwarded: &[(String, String, Vec<u8>)],
+    carried: &Carried,
 ) -> Result<Option<ThreadId>> {
     validate(db, msg)?;
-    let (raw, thread) = prepare(db, msg, &msg.to, &msg.cc, &msg.bcc, forwarded)?;
+    let (raw, thread) = prepare(db, msg, &msg.to, &msg.cc, &msg.bcc, carried)?;
     let sent = gmail.send_message(&raw, thread.as_deref()).await?;
     // The mail is gone; failing to cache it now only delays it until sync.
     let fetched = gmail.thread_metadata(&sent.thread_id).await;
@@ -285,11 +319,12 @@ fn prepare(
     to: &[Address],
     cc: &[Address],
     bcc: &[Address],
-    forwarded: &[(String, String, Vec<u8>)],
+    carried: &Carried,
 ) -> Result<(Vec<u8>, Option<String>)> {
     let mut files = decode_attachments(&msg.attachments)?;
-    files.extend(forwarded.iter().cloned());
-    if files.iter().map(|f| f.2.len()).sum::<usize>() > MAX_ATTACHMENTS_BYTES {
+    files.extend(carried.forwarded.iter().cloned());
+    let total: usize = files.iter().chain(&carried.inline).map(|f| f.2.len()).sum();
+    if total > MAX_ATTACHMENTS_BYTES {
         return Err(CoreError::Invalid(
             "Attachments are over Gmail's 25 MB limit.".into(),
         ));
@@ -324,6 +359,7 @@ fn prepare(
         text: msg.text.clone(),
         html: msg.html.clone(),
         attachments: files,
+        inline: carried.inline.clone(),
         in_reply_to,
         references,
     })?;
@@ -341,16 +377,16 @@ pub async fn save_draft(
     existing: Option<DraftId>,
     msg: &OutgoingMessage,
 ) -> Result<DraftId> {
-    save_draft_with_files(db, gmail_for, existing, msg, &[]).await
+    save_draft_with_files(db, gmail_for, existing, msg, &Carried::default()).await
 }
 
-/// [`save_draft`], with forwarded files already fetched.
+/// [`save_draft`], with carried parts already fetched.
 pub async fn save_draft_with_files(
     db: &Db,
     gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
     existing: Option<DraftId>,
     msg: &OutgoingMessage,
-    forwarded: &[(String, String, Vec<u8>)],
+    carried: &Carried,
 ) -> Result<DraftId> {
     if !identities::owns(&db.conn(), msg.account_id, &msg.from.email)? {
         return Err(CoreError::Invalid(format!(
@@ -372,7 +408,7 @@ pub async fn save_draft_with_files(
         &keep(&msg.to),
         &keep(&msg.cc),
         &keep(&msg.bcc),
-        forwarded,
+        carried,
     )?;
     let saved = match existing {
         Some(id) => draft_row(db, id)?.map(|row| (id, row)),
@@ -466,6 +502,8 @@ pub async fn delete_draft(
 /// nothing like the original.)
 pub fn quote_clean(html: &str) -> String {
     ammonia::Builder::default()
+        // Embedded images stay as `cid:` links; their parts go along.
+        .add_url_schemes(&["cid"])
         .rm_clean_content_tags(&["style"])
         .add_tags(&["style", "center", "font"])
         .add_generic_attributes(&[
@@ -514,6 +552,13 @@ mod tests {
             decode_attachments(&[bad]),
             Err(CoreError::Invalid(_))
         ));
+    }
+
+    #[test]
+    fn quoted_html_keeps_embedded_image_links() {
+        let clean = super::quote_clean(r#"<img src="cid:logo@x"><img src="javascript:x()">"#);
+        assert!(clean.contains(r#"src="cid:logo@x""#), "{clean}");
+        assert!(!clean.contains("javascript"), "{clean}");
     }
 
     #[test]

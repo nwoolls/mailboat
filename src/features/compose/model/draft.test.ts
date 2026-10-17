@@ -68,6 +68,7 @@ function source(over: Partial<ReplySource> = {}): ReplySource {
     text: "Noon?\n\nJ",
     html: null,
     attachments: [],
+    inlineImages: [],
     ...over,
   };
 }
@@ -304,4 +305,9 @@ it("a forward carries the original's files; replies don't", () => {
   expect(
     replyDraft("reply", source({ attachments: [pdf] }), identities, "me@x.com", date).forwarded,
   ).toEqual([]);
+});
+
+it("replies and forwards carry the quote's embedded images", () => {
+  const d = replyDraft("reply", source({ inlineImages: [7] }), identities, "me@x.com", date);
+  expect(toOutgoing({ ...d, to: [a("b@z.com")] }).inlineImages).toEqual([7]);
 });

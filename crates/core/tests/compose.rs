@@ -63,6 +63,7 @@ fn outgoing(account: AccountId, from: &str, replying_to: Option<MessageId>) -> O
         attachments: vec![],
         draft: None,
         forwarded: vec![],
+        inline_images: vec![],
         replying_to,
     }
 }
@@ -653,12 +654,11 @@ async fn a_forward_carries_the_originals_attachments() {
         .unwrap();
 
     let (gmail, _) = client(&server.uri());
-    let files =
-        compose::forwarded_files(&db, |_| Ok(client(&server.uri()).0), &[attachment], &cache)
-            .await
-            .unwrap();
     let mut msg = outgoing(a, "a@x.com", Some(m2));
     msg.forwarded = vec![attachment];
+    let files = compose::carried_parts(&db, |_| Ok(client(&server.uri()).0), &msg, &cache)
+        .await
+        .unwrap();
     compose::send_with_files(&db, &gmail, &msg, &files)
         .await
         .unwrap();
@@ -722,4 +722,51 @@ async fn reopening_a_draft_brings_its_files() {
         .decode(&opened.files[0].data)
         .unwrap();
     assert_eq!(bytes, b"%PDF-plan");
+}
+
+#[tokio::test]
+async fn a_quote_carries_the_originals_embedded_images() {
+    let server = MockServer::start().await;
+    mount_send(&server, "t1").await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    load_t1(&db, a);
+    let m2 = message_id(&db, a, "m2");
+    let cache = std::env::temp_dir().join(format!("mailboat-cid-{}", std::process::id()));
+    let file = cache.join("logo.png");
+    std::fs::create_dir_all(&cache).unwrap();
+    std::fs::write(&file, [137u8, 80, 78, 71]).unwrap();
+    db.conn()
+        .execute(
+            "INSERT INTO attachments (account_id, message_id, part_id, filename, mime_type, size,
+               content_id, inline, cached_path)
+             VALUES (?1, ?2, '3', 'logo.png', 'image/png', 4, 'logo@x', 1, ?3)",
+            rusqlite::params![a, m2, file.to_string_lossy()],
+        )
+        .unwrap();
+    let logo: AttachmentId = db
+        .conn()
+        .query_row("SELECT id FROM attachments", [], |r| r.get(0))
+        .unwrap();
+
+    let mut msg = outgoing(a, "a@x.com", Some(m2));
+    msg.html = Some(r#"<p>Hi</p><blockquote><img src="cid:logo@x"></blockquote>"#.into());
+    msg.inline_images = vec![logo];
+    let carried = compose::carried_parts(&db, |_| Ok(client(&server.uri()).0), &msg, &cache)
+        .await
+        .unwrap();
+    let (gmail, _) = client(&server.uri());
+    compose::send_with_files(&db, &gmail, &msg, &carried)
+        .await
+        .unwrap();
+
+    let requests = server.received_requests().await.unwrap();
+    let send = requests
+        .iter()
+        .find(|r| r.url.path().ends_with("/messages/send"))
+        .unwrap();
+    let (raw, _) = sent_raw(send);
+    assert!(raw.contains("Content-ID: <logo@x>"), "{raw}");
+    assert!(raw.contains("cid:logo@x"), "{raw}");
+    let _ = std::fs::remove_dir_all(&cache);
 }

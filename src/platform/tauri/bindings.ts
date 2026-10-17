@@ -387,6 +387,11 @@ export type OutgoingMessage = {
 	draft: DraftId | null,
 	/**  Attachments of the original carried along (forwards), by ID. */
 	forwarded: AttachmentId[],
+	/**
+	 *  Images embedded in the quoted original (`cid:`), sent along so the
+	 *  quote shows them.
+	 */
+	inlineImages: AttachmentId[],
 	/**  The message this replies to or forwards, for threading. */
 	replyingTo: MessageId | null,
 };
@@ -414,6 +419,8 @@ export type ReplySource = {
 	html: string | null,
 	/**  The original's files (a forward carries them along). */
 	attachments: Attachment[],
+	/**  Images embedded in the original (`cid:`), for its quote. */
+	inlineImages: AttachmentId[],
 };
 
 export type SafeMessage = {

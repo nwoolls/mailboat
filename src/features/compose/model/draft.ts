@@ -2,6 +2,7 @@ import type {
   AccountFilter,
   AccountId,
   Attachment,
+  AttachmentId,
   Address,
   DraftId,
   Identity,
@@ -55,6 +56,8 @@ export type Draft = {
   attachments: OutgoingAttachment[];
   /** The original's files a forward carries along (removable). */
   forwarded: Attachment[];
+  /** Images embedded in the quoted original, sent so the quote shows them. */
+  inlineImages: AttachmentId[];
   /** The message replied to or forwarded. */
   replyingTo: MessageId | null;
   /** The conversation a reply or forward was started from. */
@@ -166,6 +169,7 @@ export function newDraft(
     signature: signatureOf(identities, accountId, from),
     attachments: [],
     forwarded: [],
+    inlineImages: [],
     savedId: null,
     resumedFrom: null,
     replyingTo: null,
@@ -326,6 +330,7 @@ export function replyDraft(
     signature: signatureOf(identities, source.accountId, from),
     attachments: [],
     forwarded: kind === "forward" ? source.attachments : [],
+    inlineImages: source.inlineImages,
     savedId: null,
     resumedFrom: null,
     quote,
@@ -368,6 +373,7 @@ export function resumedDraft(opened: OpenedDraft, from: MessageId): Draft {
     // Its saved files, as plain attachments (sent and saved again as is).
     attachments: opened.files,
     forwarded: [],
+    inlineImages: [],
     replyingTo: opened.replyingTo,
     threadId: reply ? opened.threadId : null,
     showCc: opened.cc.length > 0,
@@ -461,6 +467,7 @@ export function toOutgoing(draft: Draft): OutgoingMessage {
     html,
     attachments: draft.attachments,
     forwarded: draft.forwarded.map((a) => a.id),
+    inlineImages: draft.inlineImages,
     draft: draft.savedId,
     replyingTo: draft.replyingTo,
   };

@@ -22,6 +22,9 @@ pub struct MimeMessage {
     pub html: Option<String>,
     /// Files: (name, MIME type, bytes).
     pub attachments: Vec<(String, String, Vec<u8>)>,
+    /// Images the HTML shows itself as `cid:…`: (Content-ID without
+    /// brackets, MIME type, bytes).
+    pub inline: Vec<(String, String, Vec<u8>)>,
     /// Message-IDs (with angle brackets) of the message being answered.
     pub in_reply_to: Option<String>,
     /// The whole chain, oldest first, ending with `in_reply_to`.
@@ -38,6 +41,9 @@ pub fn build(msg: &MimeMessage) -> Result<Vec<u8>> {
         .text_body(normalize_newlines(&msg.text));
     if let Some(html) = msg.html.as_deref().filter(|h| !h.trim().is_empty()) {
         builder = builder.html_body(html.to_string());
+    }
+    for (cid, mime_type, bytes) in &msg.inline {
+        builder = builder.inline(mime_type.clone(), one_line(cid), bytes.clone());
     }
     for (name, mime_type, bytes) in &msg.attachments {
         builder = builder.attachment(mime_type.clone(), one_line(name), bytes.clone());
@@ -229,6 +235,21 @@ mod tests {
         assert!(raw.contains("multipart/mixed"), "{raw}");
         assert!(raw.contains("application/pdf"), "{raw}");
         assert!(raw.contains("report.pdf"), "{raw}");
+    }
+
+    #[test]
+    fn inline_images_keep_their_content_id() {
+        let raw = built(&MimeMessage {
+            from: addr(None, "me@x.com"),
+            to: vec![addr(None, "a@y.com")],
+            subject: "Logo".into(),
+            text: "see".into(),
+            html: Some(r#"<img src="cid:logo@x">"#.into()),
+            inline: vec![("logo@x".into(), "image/png".into(), vec![1, 2, 3])],
+            ..Default::default()
+        });
+        assert!(raw.contains("Content-ID: <logo@x>"), "{raw}");
+        assert!(raw.contains("image/png"), "{raw}");
     }
 
     #[test]

@@ -578,10 +578,10 @@ pub async fn message_send(
     message: OutgoingMessage,
 ) -> CmdResult<Option<ThreadId>> {
     let gmail = state.gmail_for(message.account_id)?.interactive();
-    let files = compose::forwarded_files(
+    let files = compose::carried_parts(
         &state.db,
         |account| Ok(state.gmail_for(account)?.interactive()),
-        &message.forwarded,
+        &message,
         &state.attachments_dir,
     )
     .await?;
@@ -615,10 +615,10 @@ pub async fn draft_save(
     draft: Option<DraftId>,
     message: OutgoingMessage,
 ) -> CmdResult<DraftId> {
-    let files = compose::forwarded_files(
+    let files = compose::carried_parts(
         &state.db,
         |account| state.gmail_for(account),
-        &message.forwarded,
+        &message,
         &state.attachments_dir,
     )
     .await?;

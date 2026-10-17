@@ -593,8 +593,12 @@ each was a "not yet" note above)*:
 - [x] Reopening a draft brings back its saved attachments: downloaded
       when the draft opens and kept as ordinary attachments (the draft's
       own message, and its parts, are replaced on the next save)
-- [ ] Images embedded in an email itself (`cid:`), in quotes, forwards and
-      signatures (web-hosted images already work)
+- [x] Images embedded in an email itself (`cid:`), in quotes and
+      forwards: the quote keeps its `cid:` links and the original's
+      embedded images go along as inline parts with the same Content-IDs,
+      so recipients see them. Still shown as placeholders in the "•••"
+      preview while writing; signatures with embedded (not web-hosted)
+      images aren't handled (Gmail stores signature images on the web)
 - [ ] Gmail visually collapses the blank line between a reply and its
       quote; decide whether Mailboat should too
 
