@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatListDate, sendersLabel } from "./format";
+import { formatListDate, senderParts } from "./format";
 
 describe("formatListDate", () => {
   const now = new Date(2026, 9, 14, 15, 0);
@@ -14,22 +14,33 @@ describe("formatListDate", () => {
   });
 });
 
-describe("sendersLabel", () => {
+const p = (name: string | null, email: string, unread = false) => ({ name, email, unread });
+
+describe("senderParts", () => {
   it("uses the full name for a single sender", () => {
-    expect(sendersLabel([{ name: "Jane Doe", email: "jane@x.com" }], 1)).toBe("Jane Doe");
+    const [only] = senderParts([p("Jane Doe", "jane@x.com")]);
+    expect([only?.text, only?.unread]).toEqual(["Jane Doe", false]);
   });
-  it("uses first names, 'me' and a count for conversations", () => {
-    const senders = [
-      { name: "Jane Doe", email: "jane@x.com" },
-      { name: null, email: "me@gmail.com" },
-    ];
-    expect(sendersLabel(senders, 3, ["ME@gmail.com"])).toBe("Jane, me (3)");
+  it("uses first names and 'me', and marks who has unread mail", () => {
+    const parts = senderParts(
+      [p("Jane Doe", "jane@x.com", true), p(null, "me@gmail.com")],
+      ["ME@gmail.com"],
+    );
+    expect(parts.map(({ text, unread }) => ({ text, unread }))).toEqual([
+      { text: "Jane", unread: true },
+      { text: "me", unread: false },
+    ]);
   });
   it("falls back to the address when there is no name", () => {
-    expect(sendersLabel([{ name: null, email: "billing@vendor.com" }], 1)).toBe("billing");
+    expect(senderParts([p(null, "billing@vendor.com")])[0]?.text).toBe("billing");
   });
   it("elides long sender lists", () => {
-    const s = ["A a", "B b", "C c", "D d"].map((n, i) => ({ name: n, email: `${i}@x.com` }));
-    expect(sendersLabel(s, 4)).toBe("A, …, C, D (4)");
+    const s = ["A a", "B b", "C c", "D d"].map((n, i) => p(n, `${i}@x.com`, i === 3));
+    expect(senderParts(s).map((x) => (x.unread ? `*${x.text}` : x.text))).toEqual([
+      "A",
+      "…",
+      "C",
+      "*D",
+    ]);
   });
 });

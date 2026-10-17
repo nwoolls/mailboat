@@ -443,3 +443,37 @@ fn only_unread_inbox_mail_from_others_counts_as_new() {
         .unwrap()
         .is_empty());
 }
+
+#[tokio::test]
+async fn senders_say_who_has_unread_mail_and_follow_read_changes() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/gmail/v1/users/me/threads/t1/modify"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw("{}", "application/json"))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1(&db, a);
+    // In t1, Jane's message is read and Bob's isn't.
+    let who = |db: &Db| -> Vec<(String, bool)> {
+        query::thread_summary(&db.conn(), t1)
+            .unwrap()
+            .senders
+            .into_iter()
+            .map(|s| (s.email, s.unread))
+            .collect()
+    };
+    assert_eq!(
+        who(&db),
+        vec![
+            ("jane@example.com".into(), false),
+            ("bob@example.com".into(), true)
+        ]
+    );
+    let uri = server.uri();
+    actions::set_read(&db, |_| Ok(client(&uri).0), &[t1], true)
+        .await
+        .unwrap();
+    assert!(who(&db).iter().all(|(_, unread)| !unread));
+}

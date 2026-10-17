@@ -87,7 +87,12 @@ export function leavesView(action: ThreadAction, view: MailView): boolean {
 export function updateSummary(action: ThreadAction, t: ThreadSummary): ThreadSummary {
   switch (action.kind) {
     case "read":
-      return { ...t, unread: !action.read };
+      return {
+        ...t,
+        unread: !action.read,
+        // Everyone's mail in it changes with it (Gmail marks them all).
+        senders: t.senders.map((s) => ({ ...s, unread: !action.read })),
+      };
     case "archive":
       return { ...t, inInbox: !action.archived };
     case "star":

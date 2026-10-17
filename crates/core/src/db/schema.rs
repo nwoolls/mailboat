@@ -245,3 +245,22 @@ CREATE TABLE search_hits (
   FOREIGN KEY (account_id, thread_id) REFERENCES threads (account_id, id) ON DELETE CASCADE
 );
 "#;
+
+/// Each sender in a thread's list row now says whether they have unread
+/// mail in it (bold in the list, as in Gmail). Rebuild every thread's
+/// sender list with that flag, keeping the order senders first wrote in.
+pub const MIGRATION_V10: &str = r#"
+UPDATE threads SET senders_json = COALESCE((
+  SELECT json_group_array(json_object('name', name, 'email', email, 'unread', json(unread)))
+  FROM (
+    SELECT m.from_name AS name, m.from_email AS email, MIN(m.internal_date) AS first,
+           CASE WHEN MAX(EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                                 WHERE ml.message_id = m.id AND l.gmail_label_id = 'UNREAD'))
+                THEN 'true' ELSE 'false' END AS unread
+    FROM messages m
+    WHERE m.thread_id = threads.id AND m.from_email != ''
+    GROUP BY lower(m.from_email)
+    ORDER BY first
+  )
+), '[]');
+"#;

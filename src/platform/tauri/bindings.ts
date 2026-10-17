@@ -486,13 +486,21 @@ export type ThreadPage = {
 	nextCursor: ListCursor | null,
 };
 
+/**  Someone who wrote in a conversation, for its list row. */
+export type ThreadSender = {
+	name: string | null,
+	email: string,
+	/**  At least one of their messages in it is unread. */
+	unread?: boolean,
+};
+
 export type ThreadSummary = {
 	id: ThreadId,
 	accountId: AccountId,
 	subject: string,
 	snippet: string,
-	/**  Distinct senders in the thread, oldest first. */
-	senders: Address[],
+	/**  Distinct senders in the thread, in the order they first wrote. */
+	senders: ThreadSender[],
 	/**  Unix milliseconds of the newest message. */
 	lastMessageAt: number,
 	messageCount: number,

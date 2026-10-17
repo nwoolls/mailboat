@@ -192,8 +192,8 @@ pub struct ThreadSummary {
     pub account_id: AccountId,
     pub subject: String,
     pub snippet: String,
-    /// Distinct senders in the thread, oldest first.
-    pub senders: Vec<Address>,
+    /// Distinct senders in the thread, in the order they first wrote.
+    pub senders: Vec<ThreadSender>,
     /// Unix milliseconds of the newest message.
     pub last_message_at: i64,
     pub message_count: u32,
@@ -210,6 +210,17 @@ pub struct ThreadSummary {
     pub only_draft: bool,
     /// In Spam (so "Not spam" applies; otherwise "Report spam").
     pub in_spam: bool,
+}
+
+/// Someone who wrote in a conversation, for its list row.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ThreadSender {
+    pub name: Option<String>,
+    pub email: String,
+    /// At least one of their messages in it is unread.
+    #[serde(default)]
+    pub unread: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]

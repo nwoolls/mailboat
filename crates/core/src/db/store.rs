@@ -9,7 +9,7 @@ use super::{now_millis, placeholders};
 use crate::error::{CoreError, Result};
 use crate::model::{
     AccountId, AccountSyncState, Address, Attachment, AttachmentId, LabelId, LabelKind, MessageId,
-    SyncStatus, ThreadId,
+    SyncStatus, ThreadId, ThreadSender,
 };
 
 /// A label as reported by Gmail's `labels.list`.
@@ -262,20 +262,32 @@ fn refresh_thread(conn: &Connection, account: AccountId, thread: ThreadId) -> Re
         params![account, thread],
     )?;
 
+    // Each sender once, in the order they first wrote; unread if any of
+    // their messages is (the list bolds those, as Gmail does).
     let mut stmt = conn.prepare(
-        "SELECT from_name, from_email FROM messages WHERE thread_id = ?1 ORDER BY internal_date, id",
+        "SELECT m.from_name, m.from_email,
+           EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                   WHERE ml.message_id = m.id AND l.gmail_label_id = 'UNREAD')
+         FROM messages m WHERE m.thread_id = ?1 ORDER BY m.internal_date, m.id",
     )?;
-    let mut senders: Vec<Address> = Vec::new();
-    let mut seen = HashSet::new();
+    let mut senders: Vec<ThreadSender> = Vec::new();
     for row in stmt.query_map([thread], |r| {
-        Ok(Address {
+        Ok(ThreadSender {
             name: r.get(0)?,
             email: r.get(1)?,
+            unread: r.get(2)?,
         })
     })? {
-        let addr = row?;
-        if !addr.email.is_empty() && seen.insert(addr.email.to_lowercase()) {
-            senders.push(addr);
+        let sender = row?;
+        if sender.email.is_empty() {
+            continue;
+        }
+        match senders
+            .iter_mut()
+            .find(|s| s.email.eq_ignore_ascii_case(&sender.email))
+        {
+            Some(seen) => seen.unread |= sender.unread,
+            None => senders.push(sender),
         }
     }
 

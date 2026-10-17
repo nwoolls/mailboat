@@ -1,4 +1,4 @@
-import type { Address } from "../../../platform/tauri/bindings";
+import type { Address, ThreadSender } from "../../../platform/tauri/bindings";
 
 /** Short list-row date: time today, "Oct 9" this year, "10/9/24" before. */
 export function formatListDate(ms: number, now: Date = new Date(), locale?: string): string {
@@ -31,21 +31,27 @@ export function displayName(a: Address, selfEmails: string[] = []): string {
   return a.email.split("@")[0] ?? a.email;
 }
 
-/** Thread-row sender summary like Gmail: "Jane, Bob" with a count when longer. */
-export function sendersLabel(
-  senders: Address[],
-  messageCount: number,
-  selfEmails: string[] = [],
-): string {
-  if (senders.length === 0) return "(no sender)";
-  const names = senders.map((s) => {
+/** One name in a row's sender line; `unread` ones show in bold, as in Gmail. */
+export type SenderPart = { key: string; text: string; unread: boolean };
+
+/**
+ * A row's sender line, as Gmail shows it: first names when several people
+ * wrote ("Jane, me"), "me" for you, and with more than three, the first,
+ * "…" and the last two. Each part says whether that person has unread
+ * mail in the conversation. The message count is shown separately.
+ */
+export function senderParts(senders: ThreadSender[], selfEmails: string[] = []): SenderPart[] {
+  if (senders.length === 0) return [{ key: "none", text: "(no sender)", unread: false }];
+  const parts = senders.map((s) => {
     const name = displayName(s, selfEmails);
     // Use first names when several people are listed.
-    return senders.length > 1 && name !== "me" && !name.includes(",")
-      ? (name.split(/\s+/)[0] ?? name)
-      : name;
+    const text =
+      senders.length > 1 && name !== "me" && !name.includes(",")
+        ? (name.split(/\s+/)[0] ?? name)
+        : name;
+    return { key: s.email.toLowerCase(), text, unread: s.unread ?? false };
   });
-  const shown = names.length > 3 ? [names[0], "…", ...names.slice(-2)] : names;
-  const label = shown.join(", ");
-  return messageCount > 1 ? `${label} (${messageCount})` : label;
+  return parts.length > 3
+    ? [parts[0]!, { key: "…", text: "…", unread: false }, ...parts.slice(-2)]
+    : parts;
 }

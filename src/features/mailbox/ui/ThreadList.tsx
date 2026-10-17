@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
 import { AttachmentIcon, StarIcon } from "../../../shared/ui/icons";
 import type { AccountIndex } from "../../accounts/model/accounts";
-import { formatListDate, sendersLabel } from "../model/format";
+import { formatListDate, senderParts } from "../model/format";
 import type { OlderStatus } from "./useOlderMail";
 
 const ROW_HEIGHT = 72;
@@ -163,10 +163,29 @@ export function ThreadList({
                     aria-label={account.email}
                   />
                 )}
-                <span
-                  className={`truncate ${t.unread ? "font-semibold text-content" : "font-medium text-content/85"}`}
-                >
-                  {sendersLabel(t.senders, t.messageCount, selfEmails)}
+                {/* As in Gmail: people with unread mail in bold, the rest
+                    plain, then the message count in grey. */}
+                <span className="truncate">
+                  {senderParts(t.senders, selfEmails).map((part, i) => (
+                    <span key={part.key}>
+                      {i > 0 && (
+                        <span className="text-content/60">{part.text === "…" ? " " : ", "}</span>
+                      )}
+                      <span
+                        className={
+                          part.unread ? "font-semibold text-content" : "font-medium text-content/75"
+                        }
+                      >
+                        {part.text}
+                      </span>
+                      {part.text === "…" && " "}
+                    </span>
+                  ))}
+                  {t.messageCount > 1 && (
+                    <span className="ml-1.5 text-xs font-normal text-content/45">
+                      {t.messageCount}
+                    </span>
+                  )}
                 </span>
                 <span className="ml-auto shrink-0 text-xs text-content/40">
                   {formatListDate(t.lastMessageAt)}
