@@ -20,6 +20,7 @@ import {
   newDraft,
   replyDraft,
   resumedDraft,
+  switchedKind,
   toOutgoing,
 } from "../model/draft";
 
@@ -200,7 +201,7 @@ export async function resumeDraft(messageId: MessageId): Promise<boolean> {
     );
     if (already) {
       set(
-        already.draft.kind === "new"
+        state.cards.includes(already)
           ? S.expand(state, already.draft.id)
           : S.focus(state, already.draft.id),
       );
@@ -232,6 +233,11 @@ export async function resumeThreadDraft(threadId: ThreadId) {
       message: `Couldn’t open the draft: ${e instanceof Error ? e.message : String(e)}`,
     });
   }
+}
+
+/** Moves an inline reply into the floating card. */
+export function popOutReply(id: number) {
+  set(S.popOut(state, id));
 }
 
 export function minimizeCard(id: number) {
@@ -324,6 +330,28 @@ export function useComposeActions(accounts: Account[]) {
     [qc, identities, emailOf],
   );
 
+  /** Turns a reply into reply all or a forward (or back), keeping the text. */
+  const switchKind = useCallback(
+    async (id: number, kind: Exclude<ComposeKind, "new">) => {
+      const replyingTo = S.entryById(state, id)?.draft.replyingTo;
+      if (replyingTo == null) return;
+      try {
+        const [source, list] = await Promise.all([
+          unwrap(commands.replySource(replyingTo)),
+          identities(),
+        ]);
+        const fresh = replyDraft(kind, source, list, emailOf(source.accountId));
+        updateDraft(id, (d) => switchedKind(d, fresh));
+      } catch (e) {
+        showToast({
+          tone: "error",
+          message: `Couldn’t switch: ${e instanceof Error ? e.message : String(e)}`,
+        });
+      }
+    },
+    [identities, emailOf],
+  );
+
   /**
    * Undo send, as Gmail: the message closes at once and "Sending…" offers
    * Undo (or z / ⌘Z) for 5 seconds before anything goes to Google.
@@ -379,5 +407,8 @@ export function useComposeActions(accounts: Account[]) {
     });
   }, []);
 
-  return useMemo(() => ({ startNew, startReply, send }), [startNew, startReply, send]);
+  return useMemo(
+    () => ({ startNew, startReply, switchKind, send }),
+    [startNew, startReply, switchKind, send],
+  );
 }

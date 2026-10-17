@@ -142,7 +142,8 @@ export function ComposeForm({
           </div>
         )}
         <AddressFieldRow draft={draft} onChange={onChange} />
-        {!inline && (
+        {/* Replies keep the conversation's subject, popped out too. */}
+        {!inline && draft.kind === "new" && (
           <input
             aria-label="Subject"
             placeholder="Subject"

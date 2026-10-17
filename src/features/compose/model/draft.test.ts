@@ -18,6 +18,8 @@ import {
   replyRecipients,
   replySubject,
   sendProblem,
+  switchedKind,
+  canSwitchKind,
   toOutgoing,
   trimSignature,
   withIdentity,
@@ -310,4 +312,27 @@ it("a forward carries the original's files; replies don't", () => {
 it("replies and forwards carry the quote's embedded images", () => {
   const d = replyDraft("reply", source({ inlineImages: [7] }), identities, "me@x.com", date);
   expect(toOutgoing({ ...d, to: [a("b@z.com")] }).inlineImages).toEqual([7]);
+});
+
+it("switching kind keeps the writing and swaps recipients and quote", () => {
+  const src = source();
+  const reply = {
+    ...replyDraft("reply", src, identities, "me@x.com", date),
+    html: "<p>Hi</p>",
+    text: "Hi",
+    edited: true,
+    bcc: [a("hidden@z.com")],
+  };
+  const fwd = switchedKind(reply, replyDraft("forward", src, identities, "me@x.com", date));
+  expect([fwd.id, fwd.kind, fwd.html, fwd.to, fwd.bcc]).toEqual([
+    reply.id,
+    "forward",
+    "<p>Hi</p>",
+    [],
+    [a("hidden@z.com")],
+  ]);
+  expect(fwd.subject).toBe(forwardSubject(src.subject));
+  expect(fwd.quote).toBe(forwardHtml(src, date));
+  expect(canSwitchKind(reply)).toBe(true);
+  expect(canSwitchKind({ ...reply, resumedFrom: 9 })).toBe(false);
 });

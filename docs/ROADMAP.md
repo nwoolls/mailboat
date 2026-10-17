@@ -484,8 +484,19 @@ Stage 2: the card and inline replies
       surface, with its own blur since it floats over the app's content.
       Tint 72% dark / 78% light (`--glass-compose-strength`); tune once
       seen in use
-- [ ] Inline replies and forwards: polish after the owner has used the
-      stage 1 version
+- [x] Pop out a reply *(owner, 2026-10-17: "yes" to Gmail's)*: the
+      button at the top right of an inline reply moves it into the
+      floating card (not a separate window), so other mail can be read
+      while writing. The conversation then says it's open in its own card,
+      with "Show it"; replying again brings it forward
+- [x] Switch kind *(owner, 2026-10-17: "yes" to Gmail's)*: the menu at the
+      top left of an inline reply turns it into Reply, Reply all or
+      Forward without starting over. What was written, From, Bcc and
+      attached files stay; recipients, subject and the quote change. Not
+      offered for a reopened draft (its quote is part of its saved text)
+- [ ] Inline replies and forwards: the rest of the polish (scrolling to
+      the cursor on `r`, leaving a half-written reply, how fast the sent
+      message shows) once the owner has tried them
 
 Stage 3: formatting, signatures, attachments
 

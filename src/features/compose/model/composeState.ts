@@ -12,12 +12,14 @@ export type ComposeEntry = {
   minimized: boolean;
   /** Saving to Gmail's Drafts, for the "Saving…" / "Saved" note. */
   save: "saving" | "saved" | "failed" | null;
+  /** A reply popped out of its conversation into the floating card. */
+  popped: boolean;
 };
 
 /**
- * Everything being written: new messages (at most one open as the
- * floating card, the rest minimised along the bottom) and inline replies,
- * at most one per conversation.
+ * Everything being written: new messages and popped-out replies (at most
+ * one open as the floating card, the rest minimised along the bottom) and
+ * inline replies, at most one per conversation.
  */
 export type ComposeState = {
   cards: ComposeEntry[];
@@ -27,7 +29,15 @@ export type ComposeState = {
 export const EMPTY: ComposeState = { cards: [], replies: [] };
 
 function entry(draft: Draft, focusKey = 0): ComposeEntry {
-  return { draft, sending: false, error: null, focusKey, minimized: false, save: null };
+  return {
+    draft,
+    sending: false,
+    error: null,
+    focusKey,
+    minimized: false,
+    save: null,
+    popped: false,
+  };
 }
 
 /** The new message showing as the floating card, if any. */
@@ -78,6 +88,9 @@ export function minimize(state: ComposeState, id: number): ComposeState {
  * is replaced, so `r` then `a` switches to reply-all.
  */
 export function openReply(state: ComposeState, draft: Draft): ComposeState {
+  // One reply per conversation: a popped-out one is brought forward.
+  const popped = poppedReplyIn(state, draft.threadId);
+  if (popped) return expand(state, popped.draft.id);
   const existing = replyIn(state, draft.threadId);
   if (existing && hasChanges(existing.draft)) return focus(state, existing.draft.id);
   const others = state.replies.filter((r) => r.draft.threadId !== draft.threadId);
@@ -86,6 +99,28 @@ export function openReply(state: ComposeState, draft: Draft): ComposeState {
 
 export function replyIn(state: ComposeState, threadId: ThreadId | null): ComposeEntry | undefined {
   return state.replies.find((r) => r.draft.threadId === threadId);
+}
+
+/** A reply to this conversation that was popped out into the card. */
+export function poppedReplyIn(
+  state: ComposeState,
+  threadId: ThreadId | null,
+): ComposeEntry | undefined {
+  return state.cards.find((c) => c.popped && c.draft.threadId === threadId);
+}
+
+/**
+ * Moves an inline reply into the floating card, as Gmail's pop-out, so
+ * other mail can be read while writing. The card open before is minimised.
+ */
+export function popOut(state: ComposeState, id: number): ComposeState {
+  const target = state.replies.find((r) => r.draft.id === id);
+  if (!target) return state;
+  const shown = { ...target, popped: true, minimized: false, focusKey: target.focusKey + 1 };
+  return {
+    cards: [...stepAside(state.cards), shown],
+    replies: state.replies.filter((r) => r.draft.id !== id),
+  };
 }
 
 function mapEntry(
@@ -134,11 +169,13 @@ export function entryById(state: ComposeState, id: number): ComposeEntry | undef
 
 /**
  * Puts a draft back on screen as it was (after Undo send, or when sending
- * failed): a new message as the open card, a reply in its conversation.
+ * failed): a new message (or popped-out reply) as the open card, a reply
+ * in its conversation.
  */
 export function reopen(state: ComposeState, e: ComposeEntry, error: string | null = null) {
   const back = { ...e, sending: false, error, minimized: false, focusKey: e.focusKey + 1 };
-  if (e.draft.kind === "new") return { ...state, cards: [...stepAside(state.cards), back] };
+  if (e.draft.kind === "new" || e.popped)
+    return { ...state, cards: [...stepAside(state.cards), back] };
   const others = state.replies.filter((r) => r.draft.threadId !== e.draft.threadId);
   return { ...state, replies: [...others, back] };
 }

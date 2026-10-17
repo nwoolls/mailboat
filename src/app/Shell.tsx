@@ -651,6 +651,7 @@ export function Shell() {
                         identities={identities}
                         accounts={accountList}
                         onStart={(kind) => void compose.startReply(kind, detail.thread.id)}
+                        onSwitch={(id, kind) => void compose.switchKind(id, kind)}
                         onSend={(entry) => void compose.send(entry.draft)}
                       />
                     )}

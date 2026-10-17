@@ -1,35 +1,64 @@
 import type { Account, Identity, ThreadDetail } from "../../../platform/tauri/bindings";
-import { ForwardIcon, type IconProps, ReplyAllIcon, ReplyIcon } from "../../../shared/ui/icons";
-import { type ComposeEntry, replyIn } from "../model/composeState";
-import { type ComposeKind, editorKey } from "../model/draft";
+import {
+  ForwardIcon,
+  type IconProps,
+  PopOutIcon,
+  ReplyAllIcon,
+  ReplyIcon,
+} from "../../../shared/ui/icons";
+import { type ComposeEntry, poppedReplyIn, replyIn } from "../model/composeState";
+import { canSwitchKind, type ComposeKind, editorKey } from "../model/draft";
 import { ComposeForm } from "./ComposeForm";
 import { useEffect, useRef, useState } from "react";
 import type { MessageId } from "../../../platform/tauri/bindings";
-import { closeDraft, draftFinished, resumeDraft, updateDraft, useComposeState } from "./useCompose";
+import {
+  closeDraft,
+  draftFinished,
+  expandCard,
+  popOutReply,
+  resumeDraft,
+  updateDraft,
+  useComposeState,
+} from "./useCompose";
+
+type ReplyKind = Exclude<ComposeKind, "new">;
+
+const KIND_LABELS: Record<ReplyKind, string> = {
+  reply: "Reply",
+  replyAll: "Reply all",
+  forward: "Forward",
+};
 
 /**
  * The foot of a conversation: Reply / Reply all / Forward, or the reply
- * being written there (inline, as Gmail does).
+ * being written there (inline, as Gmail does), which can switch kind or
+ * pop out into the floating card.
  */
 export function ReplyArea({
   detail,
   identities,
   accounts,
   onStart,
+  onSwitch,
   onSend,
 }: {
   detail: ThreadDetail;
   identities: Identity[];
   accounts: Account[];
-  onStart: (kind: Exclude<ComposeKind, "new">) => void;
+  onStart: (kind: ReplyKind) => void;
+  /** Turns the reply being written into another kind, keeping its text. */
+  onSwitch: (id: number, kind: ReplyKind) => void;
   onSend: (entry: ComposeEntry) => void;
 }) {
-  const reply = replyIn(useComposeState(), detail.thread.id);
+  const compose = useComposeState();
+  const reply = replyIn(compose, detail.thread.id);
+  const popped = poppedReplyIn(compose, detail.thread.id);
   // A draft reply saved in this conversation (here or in Gmail elsewhere)
   // opens as the reply being written, as in Gmail, once per visit.
   const pendingDraft = detail.messages.findLast((m) => m.draft);
   const resumeId =
     !reply &&
+    !popped &&
     pendingDraft &&
     detail.messages.some((m) => !m.draft) &&
     !draftFinished(pendingDraft.id)
@@ -53,8 +82,36 @@ export function ReplyArea({
         className="message-card mt-2 rounded-[10px] ring-1 ring-stroke ring-inset"
         style={{ boxShadow: `inset 3px 0 0 ${account?.color ?? "transparent"}` }}
       >
-        <div className="px-4 pt-3 text-xs text-content/50">
-          {draft.kind === "forward" ? "Forward" : draft.kind === "replyAll" ? "Reply all" : "Reply"}
+        <div className="flex items-center gap-2 pt-2 pr-2 pl-3 text-xs text-content/50">
+          {canSwitchKind(draft) ? (
+            // As Gmail's menu by the reply arrow: switch without starting over.
+            <select
+              aria-label="Kind of reply"
+              title="Change to reply, reply all or forward"
+              value={draft.kind}
+              disabled={reply.sending}
+              onChange={(e) => onSwitch(draft.id, e.target.value as ReplyKind)}
+              className="rounded bg-transparent px-1 py-0.5 outline-none hover:bg-selection hover:text-content"
+            >
+              {(Object.keys(KIND_LABELS) as ReplyKind[]).map((k) => (
+                <option key={k} value={k}>
+                  {KIND_LABELS[k]}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="px-1">{KIND_LABELS[draft.kind === "new" ? "reply" : draft.kind]}</span>
+          )}
+          <button
+            type="button"
+            aria-label="Pop out"
+            title="Pop out (keep writing while you read other mail)"
+            disabled={reply.sending}
+            onClick={() => popOutReply(draft.id)}
+            className="ml-auto flex h-6 w-6 items-center justify-center rounded-md text-content/60 hover:bg-selection hover:text-content"
+          >
+            <PopOutIcon size={14} />
+          </button>
         </div>
         <ComposeForm
           key={editorKey(draft)}
@@ -69,6 +126,20 @@ export function ReplyArea({
       </section>
     );
   }
+  if (popped)
+    return (
+      <div className="flex items-center gap-2 px-1 pt-3 pb-4 text-xs text-content/50">
+        Your {KIND_LABELS[popped.draft.kind === "new" ? "reply" : popped.draft.kind].toLowerCase()}{" "}
+        is open in its own card.
+        <button
+          type="button"
+          onClick={() => expandCard(popped.draft.id)}
+          className="rounded px-1.5 py-0.5 text-content/70 ring-1 ring-stroke ring-inset hover:bg-selection hover:text-content"
+        >
+          Show it
+        </button>
+      </div>
+    );
   if (resumeId !== null && failed !== resumeId)
     return <div className="px-4 pt-3 pb-4 text-xs text-content/45">Opening your draft…</div>;
   // Reply all only when there's someone else to include.

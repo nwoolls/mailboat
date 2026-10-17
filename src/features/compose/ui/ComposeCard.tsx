@@ -76,7 +76,7 @@ export function ComposeCard({
 
   return (
     <section
-      aria-label="New message"
+      aria-label={draft.kind === "new" ? "New message" : "Reply"}
       className={`compose-card compose-snap fixed z-40 flex flex-col overflow-hidden rounded-xl ${
         dragAt ? "dragging" : ""
       }`}

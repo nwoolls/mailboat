@@ -8,6 +8,8 @@ import {
   openCard,
   openCardEntry,
   openReply,
+  popOut,
+  poppedReplyIn,
   reopen,
   replyIn,
   setSaved,
@@ -115,5 +117,25 @@ describe("compose state", () => {
     expect(s.cards[0]?.save).toBe("saved");
     expect(s.cards[0]?.error).toBe("Network error");
     expect(s.cards[0]?.draft.edited).toBe(false);
+  });
+
+  it("pops a reply out into the card, and keeps it there", () => {
+    let s = openReply(EMPTY, reply(1));
+    const id = s.replies[0]!.draft.id;
+    s = updateDraft(s, id, (d) => ({ ...d, edited: true }));
+    s = popOut(s, id);
+    expect(replyIn(s, 1)).toBeUndefined();
+    expect(openCardEntry(s)?.draft.id).toBe(id);
+    expect(poppedReplyIn(s, 1)?.focusKey).toBe(1);
+    // Replying again brings the popped one back rather than starting over.
+    s = minimize(s, id);
+    s = openReply(s, reply(1, "forward"));
+    expect(s.replies).toHaveLength(0);
+    expect(openCardEntry(s)?.draft.kind).toBe("reply");
+    // Undo send puts it back in the card, not the conversation.
+    const entry = openCardEntry(s)!;
+    s = reopen(close(s, id), entry);
+    expect(openCardEntry(s)?.draft.id).toBe(id);
+    expect(s.replies).toHaveLength(0);
   });
 });

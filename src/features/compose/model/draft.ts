@@ -396,6 +396,35 @@ export function withIdentity(draft: Draft, identity: Identity): Draft {
   };
 }
 
+/**
+ * Turns a reply into reply all or a forward (or back), as Gmail's menu
+ * does: recipients, subject, quote and forwarded files come from `fresh`
+ * (the new kind, started from the same message); what was written, From,
+ * its signature, Bcc, attached files and the saved draft stay.
+ */
+export function switchedKind(draft: Draft, fresh: Draft): Draft {
+  return {
+    ...draft,
+    kind: fresh.kind,
+    to: fresh.to,
+    cc: fresh.cc,
+    subject: fresh.subject,
+    quote: fresh.quote,
+    quoteText: fresh.quoteText,
+    forwarded: fresh.forwarded,
+    inlineImages: fresh.inlineImages,
+    showCc: draft.showCc || fresh.cc.length > 0,
+  };
+}
+
+/**
+ * Whether the kind can change. Not for a reopened draft: its quote is part
+ * of its saved text, so there's nothing separate to swap.
+ */
+export function canSwitchKind(draft: Draft): boolean {
+  return draft.kind !== "new" && draft.replyingTo !== null && draft.resumedFrom === null;
+}
+
 /** The editor reloads only for a different draft. */
 export function editorKey(draft: Draft): string {
   return `${draft.id}`;
