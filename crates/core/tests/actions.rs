@@ -388,3 +388,37 @@ async fn a_refused_label_change_restores_every_label_it_touched() {
     );
     assert_eq!(query::thread_detail(&db.conn(), t1).unwrap(), before);
 }
+
+#[tokio::test]
+async fn reporting_spam_moves_it_out_of_the_inbox_for_its_own_account() {
+    let server_a = MockServer::start().await;
+    let server_b = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/gmail/v1/users/me/threads/t1/modify"))
+        .and(body_json(
+            serde_json::json!({ "addLabelIds": ["SPAM"], "removeLabelIds": ["INBOX"] }),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_raw("{}", "application/json"))
+        .expect(1)
+        .mount(&server_a)
+        .await;
+    Mock::given(wiremock::matchers::any())
+        .respond_with(ResponseTemplate::new(500))
+        .expect(0)
+        .mount(&server_b)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    let a_t1 = load_t1(&db, a);
+    let b_t1 = load_t1(&db, b);
+    let servers = HashMap::from([(a, server_a.uri()), (b, server_b.uri())]);
+    let gmail_for = |acct: AccountId| Ok::<GmailClient, CoreError>(client(&servers[&acct]).0);
+
+    actions::set_spam(&db, gmail_for, &[a_t1], true)
+        .await
+        .unwrap();
+    let after = query::thread_summary(&db.conn(), a_t1).unwrap();
+    assert!(after.in_spam && !after.in_inbox);
+    assert!(!query::thread_summary(&db.conn(), b_t1).unwrap().in_spam);
+}

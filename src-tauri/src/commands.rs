@@ -431,6 +431,25 @@ pub async fn threads_set_trashed(
     Ok(())
 }
 
+/// Reports threads as spam or not spam. Routed per account like
+/// `threads_set_read`.
+#[tauri::command]
+#[specta::specta]
+pub async fn threads_set_spam(
+    state: State<'_, AppState>,
+    thread_ids: Vec<ThreadId>,
+    spam: bool,
+) -> CmdResult<()> {
+    mailboat_core::actions::set_spam(
+        &state.db,
+        |account| state.gmail_for(account),
+        &thread_ids,
+        spam,
+    )
+    .await?;
+    Ok(())
+}
+
 /// Adds and removes user labels. Each label applies only to threads of
 /// the account it belongs to.
 #[tauri::command]

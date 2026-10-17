@@ -8,6 +8,7 @@ import {
   leavesView,
   nextAfterRemoval,
   toggleFor,
+  updateSummary,
   withAction,
   withDetailAction,
 } from "./threadActions";
@@ -27,6 +28,7 @@ const thread = (id: number, over: Partial<ThreadSummary> = {}): ThreadSummary =>
   inTrash: false,
   labelIds: [],
   onlyDraft: false,
+  inSpam: false,
   ...over,
 });
 
@@ -214,5 +216,22 @@ describe("labels in the picker", () => {
       inbox,
     )!;
     expect(next.pages[0]!.threads[0]!.labelIds).toEqual([7]);
+  });
+});
+
+describe("spam", () => {
+  it("reports spam unless all are spam, and leaves or returns to the view", () => {
+    const a = toggleFor("spam", [thread(1), thread(2, { inSpam: true })]);
+    expect(a).toEqual({ kind: "spam", spam: true });
+    expect(toggleFor("spam", [thread(1, { inSpam: true })])).toEqual({ kind: "spam", spam: false });
+    expect(leavesView({ kind: "spam", spam: true }, { kind: "system", label: "inbox" })).toBe(true);
+    expect(leavesView({ kind: "spam", spam: false }, { kind: "system", label: "spam" })).toBe(true);
+    expect(inverse({ kind: "spam", spam: true })).toEqual({ kind: "spam", spam: false });
+    expect(updateSummary({ kind: "spam", spam: true }, thread(1, { inInbox: true }))).toMatchObject(
+      {
+        inSpam: true,
+        inInbox: false,
+      },
+    );
   });
 });

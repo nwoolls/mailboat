@@ -14,9 +14,10 @@ export type ThreadAction =
   | { kind: "archive"; archived: boolean }
   | { kind: "star"; starred: boolean }
   | { kind: "trash"; trashed: boolean }
+  | { kind: "spam"; spam: boolean }
   | { kind: "labels"; add: Label[]; remove: Label[] };
 
-type Flags = Pick<ThreadSummary, "unread" | "starred" | "inInbox" | "inTrash">;
+type Flags = Pick<ThreadSummary, "unread" | "starred" | "inInbox" | "inTrash" | "inSpam">;
 
 /** Whether a label is on all, some or none of these conversations. */
 export function labelState(
@@ -43,7 +44,7 @@ export function labelToggle(
  * (e.g. star all unless every one is already starred).
  */
 export function toggleFor(
-  kind: "read" | "archive" | "star" | "trash",
+  kind: "read" | "archive" | "star" | "trash" | "spam",
   threads: Flags[],
 ): ThreadAction | null {
   if (threads.length === 0) return null;
@@ -56,6 +57,8 @@ export function toggleFor(
       return { kind, starred: threads.some((t) => !t.starred) };
     case "trash":
       return { kind, trashed: threads.some((t) => !t.inTrash) };
+    case "spam":
+      return { kind, spam: threads.some((t) => !t.inSpam) };
   }
 }
 
@@ -67,6 +70,8 @@ export function leavesView(action: ThreadAction, view: MailView): boolean {
       return action.archived ? system === "inbox" : view.kind === "archive";
     case "trash":
       return action.trashed ? system !== "trash" : system === "trash";
+    case "spam":
+      return action.spam ? system !== "spam" : system === "spam";
     case "star":
       return !action.starred && system === "starred";
     case "labels":
@@ -89,6 +94,8 @@ export function updateSummary(action: ThreadAction, t: ThreadSummary): ThreadSum
       return { ...t, starred: action.starred };
     case "trash":
       return { ...t, inTrash: action.trashed };
+    case "spam":
+      return { ...t, inSpam: action.spam, inInbox: !action.spam };
     case "labels": {
       const removed = new Set(action.remove.map((l) => l.id));
       const kept = t.labelIds.filter((id) => !removed.has(id));
@@ -168,6 +175,8 @@ export function inverse(action: ThreadAction): ThreadAction {
       return { kind: "star", starred: !action.starred };
     case "trash":
       return { kind: "trash", trashed: !action.trashed };
+    case "spam":
+      return { kind: "spam", spam: !action.spam };
     case "labels":
       return { kind: "labels", add: action.remove, remove: action.add };
   }
@@ -187,6 +196,8 @@ export function actionMessage(action: ThreadAction, count: number): string | nul
       return action.archived ? `${what} archived` : `${what} moved to Inbox`;
     case "trash":
       return action.trashed ? `${what} moved to Trash` : `${what} restored from Trash`;
+    case "spam":
+      return action.spam ? `${what} reported as spam` : `${what} marked not spam`;
     case "labels": {
       const parts = [
         action.add.length > 0 && `Labeled ${quoted(action.add)}`,
@@ -210,6 +221,8 @@ export function actionVerb(action: ThreadAction): string {
       return action.starred ? "star" : "unstar";
     case "trash":
       return action.trashed ? "move to Trash" : "restore from Trash";
+    case "spam":
+      return action.spam ? "report spam" : "mark as not spam";
     case "labels":
       return "change labels";
   }

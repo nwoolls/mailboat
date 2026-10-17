@@ -58,6 +58,11 @@ export const commands = {
 	 */
 	threadsSetTrashed: (threadIds: ThreadId[], trashed: boolean) => typedError<null, AppError>(__TAURI_INVOKE("threads_set_trashed", { threadIds, trashed })),
 	/**
+	 *  Reports threads as spam or not spam. Routed per account like
+	 *  `threads_set_read`.
+	 */
+	threadsSetSpam: (threadIds: ThreadId[], spam: boolean) => typedError<null, AppError>(__TAURI_INVOKE("threads_set_spam", { threadIds, spam })),
+	/**
 	 *  Adds and removes user labels. Each label applies only to threads of
 	 *  the account it belongs to.
 	 */
@@ -496,6 +501,8 @@ export type ThreadSummary = {
 	labelIds: LabelId[],
 	/**  Nothing but an unsent draft: opening it goes to the composer. */
 	onlyDraft: boolean,
+	/**  In Spam (so "Not spam" applies; otherwise "Report spam"). */
+	inSpam: boolean,
 };
 
 /* Tauri Specta runtime */

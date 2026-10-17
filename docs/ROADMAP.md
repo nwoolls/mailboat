@@ -614,8 +614,10 @@ each was a "not yet" note above)*:
       invitation reply sent with Gmail, no new permission, but your own
       Google Calendar may not show your answer until it syncs). Needs
       Milestone 4's sending either way for the email route
-- [ ] Report spam (and "Not spam" in the Spam view) as an action, routed
-      per account like the others *(owner request, 2026-10-16)*
+- [x] Report spam (and "Not spam" in the Spam view) as an action, routed
+      per account like the others *(owner request, 2026-10-16)*. Toolbar
+      button and `!` (Gmail's key); Report spam moves conversations out
+      of the Inbox into Spam, Not spam back to the Inbox; both with Undo
 - [ ] Right-click menus on conversations (archive, trash, read, star,
       labels, spam, …) and other places where macOS apps have them
       *(owner request, 2026-10-16)*

@@ -208,6 +208,8 @@ pub struct ThreadSummary {
     pub label_ids: Vec<LabelId>,
     /// Nothing but an unsent draft: opening it goes to the composer.
     pub only_draft: bool,
+    /// In Spam (so "Not spam" applies; otherwise "Report spam").
+    pub in_spam: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]

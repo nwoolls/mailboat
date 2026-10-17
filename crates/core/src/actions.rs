@@ -17,6 +17,7 @@ const UNREAD: &str = "UNREAD";
 const INBOX: &str = "INBOX";
 const STARRED: &str = "STARRED";
 const TRASH: &str = "TRASH";
+const SPAM: &str = "SPAM";
 
 /// Which Gmail call carries the change.
 #[derive(Debug, Clone, Copy)]
@@ -244,5 +245,21 @@ pub async fn change_labels(
             }
         }
     }
+    apply(db, gmail_for, plans, Remote::Modify).await
+}
+
+/// Reports threads as spam (out of the Inbox, into Spam, as Gmail does) or
+/// as not spam (back to the Inbox). Routed per account like the others.
+pub async fn set_spam(
+    db: &Db,
+    gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
+    threads: &[ThreadId],
+    spam: bool,
+) -> Result<Vec<AccountId>> {
+    let plans = if spam {
+        system_plan(db, threads, &[SPAM], &[INBOX])?
+    } else {
+        system_plan(db, threads, &[INBOX], &[SPAM])?
+    };
     apply(db, gmail_for, plans, Remote::Modify).await
 }

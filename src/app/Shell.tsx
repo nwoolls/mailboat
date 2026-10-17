@@ -286,11 +286,13 @@ export function Shell() {
         return;
       }
       const plain = !isEditable(e.target) && !e.metaKey && !e.ctrlKey && !e.altKey;
-      const toggles: Record<string, "read" | "archive" | "star" | "trash"> = {
+      const toggles: Record<string, "read" | "archive" | "star" | "trash" | "spam"> = {
         u: "read",
         e: "archive",
         s: "star",
         "#": "trash",
+        // Gmail's key for Report spam.
+        "!": "spam",
       };
       const kind = plain ? toggles[e.key] : undefined;
       if (kind) {
@@ -354,13 +356,14 @@ export function Shell() {
   // The reader only appears with a conversation to show.
   const readerVisible = readerOpen && selectedId !== null;
   const targetIds = targets.map((t) => t.id);
-  const toggle = (kind: "read" | "archive" | "star" | "trash") => {
+  const toggle = (kind: "read" | "archive" | "star" | "trash" | "spam") => {
     const action = toggleFor(kind, targets);
     return action ? { action, run: () => act(action, targetIds) } : null;
   };
   const toolbarActions: ToolbarActions = {
     archive: toggle("archive"),
     trash: toggle("trash"),
+    spam: toggle("spam"),
     read: toggle("read"),
     star: toggle("star"),
     label:

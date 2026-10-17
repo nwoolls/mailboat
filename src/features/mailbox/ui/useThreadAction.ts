@@ -28,6 +28,8 @@ function run({ ids, action }: ActionVars): Promise<null> {
       return unwrap(commands.threadsSetStarred(ids, action.starred));
     case "trash":
       return unwrap(commands.threadsSetTrashed(ids, action.trashed));
+    case "spam":
+      return unwrap(commands.threadsSetSpam(ids, action.spam));
     case "labels":
       return unwrap(
         commands.threadsChangeLabels(

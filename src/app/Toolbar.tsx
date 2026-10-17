@@ -10,6 +10,7 @@ import {
   ReaderToggleIcon,
   RestoreIcon,
   SidebarToggleIcon,
+  SpamIcon,
   StarIcon,
   TrashIcon,
 } from "../shared/ui/icons";
@@ -27,6 +28,7 @@ type Toggle = { action: ThreadAction; run: () => void } | null;
 export type ToolbarActions = {
   archive: Toggle;
   trash: Toggle;
+  spam: Toggle;
   read: Toggle;
   star: Toggle;
   /** Opens (or closes) the label picker under the button. */
@@ -72,6 +74,8 @@ export function Toolbar({
   const many = count > 1 ? ` ${count} conversations` : "";
   const archive = actions.archive?.action;
   const trash = actions.trash?.action;
+  const spam = actions.spam?.action;
+  const notSpam = spam?.kind === "spam" && !spam.spam;
   const read = actions.read?.action;
   const star = actions.star?.action;
   const moveToInbox = archive?.kind === "archive" && !archive.archived;
@@ -107,6 +111,13 @@ export function Toolbar({
         shortcut="#"
         onClick={actions.trash?.run}
         disabled={!actions.trash}
+      />
+      <ToolButton
+        icon={SpamIcon}
+        label={(notSpam ? "Not spam" : "Report spam") + many}
+        shortcut="!"
+        onClick={actions.spam?.run}
+        disabled={!actions.spam}
       />
       <ToolButton
         icon={MarkUnreadIcon}

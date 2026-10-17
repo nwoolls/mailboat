@@ -41,6 +41,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::threads_set_archived,
             commands::threads_set_starred,
             commands::threads_set_trashed,
+            commands::threads_set_spam,
             commands::threads_change_labels,
             commands::sender_allow_images,
             commands::attachment_open,
