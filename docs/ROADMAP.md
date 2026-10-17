@@ -695,7 +695,7 @@ each was a "not yet" note above)*:
       `src-tauri/src/window_place.rs`, which moves a window that's partly
       off screen fully onto the display it's mostly on (shrinking it if
       that display is smaller); the plugin alone accepts partly visible
-- [ ] Offline mode
+- Offline mode: moved to Later, lowest priority *(owner, 2026-10-17)*
 
 ## Milestone 6: Rules and signatures
 
@@ -752,3 +752,15 @@ approve it, and an ARCHITECTURE decision row.
       fireworks. To settle: which one first, the idle delay, whether it
       replaces the glow or comes on after it, and keeping it light on
       battery (pause when the window is hidden or unfocused)
+- [ ] Offline mode *(moved from Milestone 5; owner, 2026-10-17: likes all
+      three ideas, but lowest priority: almost never offline, and doesn't
+      expect to send while offline)*. Today reading cached mail and local
+      search work offline; actions and sending fail with an error (a send
+      reopens, nothing is lost); sync catches up when back. Ideas, in the
+      order they'd likely be built:
+      - Actions (archive, star, label…) apply at once and go to Gmail when
+        the connection returns, as Gmail's offline mode does
+      - An Outbox: Send while offline queues the message and it goes once
+        online
+      - Download recent message bodies ahead (say 30 days) so any recent
+        mail opens offline; costs disk space and Gmail quota
