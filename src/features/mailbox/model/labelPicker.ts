@@ -19,3 +19,18 @@ export function filterLabels(labels: Label[], text: string): Label[] {
     })
     .toSorted((a, b) => pickerName(a).localeCompare(pickerName(b)));
 }
+
+/**
+ * The name a new label would get from what's typed, or null when there's
+ * nothing typed or a label of that name exists already (any case).
+ */
+export function newLabelName(labels: Pick<Label, "name">[], text: string): string | null {
+  const name = text
+    .split("/")
+    .map((part) => part.trim())
+    .join("/")
+    .trim();
+  if (!name || name.split("/").some((part) => !part)) return null;
+  const taken = labels.some((l) => l.name.toLowerCase() === name.toLowerCase());
+  return taken ? null : name;
+}

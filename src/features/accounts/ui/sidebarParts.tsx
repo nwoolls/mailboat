@@ -43,6 +43,8 @@ export type SidebarBodyProps = {
   /** Folds, by key; they reset on relaunch. */
   isOpen: (key: string) => boolean;
   toggle: (key: string) => void;
+  /** Right-click on a label: its Rename / Delete menu. */
+  onLabelMenu?: (label: Label, at: MenuAnchor) => void;
 };
 
 export type Icon = (props: IconProps) => React.ReactNode;
@@ -110,6 +112,7 @@ export function Row({
   expanded,
   hint,
   count = 0,
+  onContextMenu,
 }: {
   title: React.ReactNode;
   selected: boolean;
@@ -121,6 +124,7 @@ export function Row({
   /** A collapsed fold that holds the current view gets a faint fill. */
   hint?: boolean;
   count?: number;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }) {
   const shown = countText(count);
   return (
@@ -136,6 +140,7 @@ export function Row({
       <button
         type="button"
         onClick={onClick}
+        onContextMenu={onContextMenu}
         aria-expanded={expanded}
         aria-current={selected ? "page" : undefined}
         className="flex min-w-0 flex-1 items-center gap-2 self-stretch pr-1 text-left"
@@ -222,6 +227,7 @@ export function LabelRows({
   onSelect,
   isOpen,
   toggle,
+  onLabelMenu,
 }: {
   tree: LabelNode[];
   depth?: number;
@@ -232,7 +238,16 @@ export function LabelRows({
   onSelect: (s: Selection) => void;
   isOpen: (key: string) => boolean;
   toggle: (key: string) => void;
+  /** Right-click on a label: Rename / Delete. */
+  onLabelMenu?: (label: Label, at: { x: number; y: number }) => void;
 }) {
+  const menuFor = (label: Label | null) =>
+    label && onLabelMenu
+      ? (e: React.MouseEvent) => {
+          e.preventDefault();
+          onLabelMenu(label, { x: e.clientX, y: e.clientY });
+        }
+      : undefined;
   const selectedLabel = selection.view.kind === "userLabel" ? selection.view.labelId : null;
   const countOf = (label: Label | null) =>
     label ? countFor({ kind: "userLabel", labelId: label.id }, { kind: "all" }) : 0;
@@ -248,6 +263,7 @@ export function LabelRows({
           count={countOf(node.label)}
           selected={sameSelection(selection, s)}
           onClick={() => onSelect(s)}
+          onContextMenu={menuFor(node.label)}
         />
       );
     }
@@ -264,6 +280,7 @@ export function LabelRows({
           count={countOf(node.label)}
           selected={own !== null && sameSelection(selection, own)}
           hint={!groupOpen && selectedLabel !== null && containsLabel(node, selectedLabel)}
+          onContextMenu={menuFor(node.label)}
           onClick={() => {
             // A group that is also a label opens its mail and the fold.
             if (own) onSelect(own);

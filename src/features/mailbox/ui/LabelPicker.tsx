@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Label, ThreadSummary } from "../../../platform/tauri/bindings";
 import { nextMenuIndex } from "../../../shared/lib/menuNavigation";
 import type { MenuAnchor } from "../../../shared/ui/Menu";
-import { filterLabels, pickerName } from "../model/labelPicker";
+import { filterLabels, newLabelName, pickerName } from "../model/labelPicker";
 import { labelState } from "../model/threadActions";
 
 /**
@@ -19,6 +19,7 @@ export function LabelPicker({
   labels,
   targets,
   onToggle,
+  onCreate,
   onClose,
 }: {
   anchor: MenuAnchor;
@@ -26,6 +27,8 @@ export function LabelPicker({
   labels: Label[];
   targets: Pick<ThreadSummary, "accountId" | "labelIds">[];
   onToggle: (label: Label) => void;
+  /** Creates a label in the conversations' account (and applies it). */
+  onCreate: (name: string) => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -39,6 +42,8 @@ export function LabelPicker({
   const spansAccounts = accounts.size > 1;
   const shown = spansAccounts ? [] : filterLabels(labels, text);
   const highlighted = shown[Math.min(at, shown.length - 1)];
+  // Typing a name no label has offers to create it, as Gmail does.
+  const fresh = spansAccounts ? null : newLabelName(labels, text);
 
   useEffect(() => {
     const el = ref.current;
@@ -73,6 +78,7 @@ export function LabelPicker({
       // With one match, Enter picks it without arrowing to it first.
       const pick = highlighted ?? (shown.length === 1 ? shown[0] : undefined);
       if (pick) onToggle(pick);
+      else if (fresh) onCreate(fresh);
     }
   };
 
@@ -106,7 +112,7 @@ export function LabelPicker({
             className="mb-1 h-7 rounded-md bg-selection-subtle px-2 outline-none placeholder:text-content/40"
           />
           <div id="label-picker-list" role="listbox" className="min-h-0 overflow-y-auto">
-            {shown.length === 0 && (
+            {shown.length === 0 && !fresh && (
               <p className="px-2 py-1.5 text-xs text-content/50">
                 {labels.length === 0 ? "This account has no labels yet." : "No matching labels."}
               </p>
@@ -138,6 +144,18 @@ export function LabelPicker({
                 </button>
               );
             })}
+            {fresh && (
+              <button
+                type="button"
+                onClick={() => onCreate(fresh)}
+                className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-accent hover:bg-selection-strong"
+              >
+                <span aria-hidden className="w-3.5 shrink-0 text-center">
+                  +
+                </span>
+                <span className="truncate">Create “{fresh}”</span>
+              </button>
+            )}
           </div>
         </>
       )}

@@ -176,6 +176,7 @@ export function SidebarSections(props: SidebarBodyProps) {
                       onSelect={onSelect}
                       isOpen={isOpen}
                       toggle={toggle}
+                      onLabelMenu={props.onLabelMenu}
                     />
                   </Fold>
                 </>

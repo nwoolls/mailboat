@@ -431,6 +431,67 @@ pub async fn threads_set_trashed(
     Ok(())
 }
 
+/// Creates a user label in one account.
+#[tauri::command]
+#[specta::specta]
+pub async fn label_create(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    account_id: AccountId,
+    name: String,
+) -> CmdResult<Label> {
+    let gmail = state.gmail_for(account_id)?.interactive();
+    let label = mailboat_core::labels::create(&state.db, &gmail, account_id, &name).await?;
+    let _ = MailChangedEvent { account_id }.emit(&app);
+    Ok(label)
+}
+
+/// Renames a user label (and the labels nested under it).
+#[tauri::command]
+#[specta::specta]
+pub async fn label_rename(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    label_id: LabelId,
+    name: String,
+) -> CmdResult<()> {
+    let (account, _, _) = store::label_ref(&state.db.conn(), label_id)?;
+    mailboat_core::labels::rename(
+        &state.db,
+        |a| Ok(state.gmail_for(a)?.interactive()),
+        label_id,
+        &name,
+    )
+    .await?;
+    let _ = MailChangedEvent {
+        account_id: account,
+    }
+    .emit(&app);
+    Ok(())
+}
+
+/// Deletes a user label; its conversations stay.
+#[tauri::command]
+#[specta::specta]
+pub async fn label_delete(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    label_id: LabelId,
+) -> CmdResult<()> {
+    let (account, _, _) = store::label_ref(&state.db.conn(), label_id)?;
+    mailboat_core::labels::delete(
+        &state.db,
+        |a| Ok(state.gmail_for(a)?.interactive()),
+        label_id,
+    )
+    .await?;
+    let _ = MailChangedEvent {
+        account_id: account,
+    }
+    .emit(&app);
+    Ok(())
+}
+
 /// Reports threads as spam or not spam. Routed per account like
 /// `threads_set_read`.
 #[tauri::command]

@@ -2,9 +2,10 @@ import { useRef, useState } from "react";
 import type { Account, AccountId, AccountSyncState } from "../../../platform/tauri/bindings";
 import { useLabels, useUnreadCounts } from "../../../shared/lib/queries";
 import { AddIcon, ClearIcon } from "../../../shared/ui/icons";
-import type { Selection } from "../../mailbox/model/views";
+import { type Selection, systemSelection } from "../../mailbox/model/views";
 import { viewUnread } from "../model/sidebar";
 import { AccountMenu, type AccountMenuTarget } from "./AccountMenu";
+import { LabelMenu, type LabelMenuTarget } from "./LabelMenu";
 import { SidebarSections } from "./SidebarSections";
 import { useSignIn } from "./useSignIn";
 
@@ -40,6 +41,7 @@ export function Sidebar({
     });
 
   const [menu, setMenu] = useState<AccountMenuTarget | null>(null);
+  const [labelMenu, setLabelMenu] = useState<LabelMenuTarget | null>(null);
   // Clicking the avatar of an open menu closes it (the click outside),
   // then would reopen it straight away; remember the close to skip that.
   const lastClose = useRef({ account: -1, at: 0 });
@@ -67,6 +69,7 @@ export function Sidebar({
           onSelect={onSelect}
           onReauth={(account) => signIn.start(account.email)}
           onAccountMenu={openMenu}
+          onLabelMenu={(label, anchor) => setLabelMenu({ label, anchor })}
           isOpen={(key) => open.has(key)}
           toggle={toggle}
         />
@@ -90,6 +93,15 @@ export function Sidebar({
         )}
       </div>
       {signIn.error && <p className="selectable px-4 pb-2 text-xs text-danger">{signIn.error}</p>}
+      <LabelMenu
+        target={labelMenu}
+        onClose={() => setLabelMenu(null)}
+        onDeleted={(label) => {
+          // Viewing the deleted label: go to its account's Inbox.
+          if (selection.view.kind === "userLabel" && selection.view.labelId === label.id)
+            onSelect(systemSelection("inbox", label.accountId));
+        }}
+      />
       <AccountMenu
         target={menu}
         state={syncStates.find((s) => s.accountId === menu?.account.id)}

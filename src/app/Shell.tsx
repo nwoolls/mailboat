@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { commands } from "../platform/tauri/bindings";
 import type { ThreadId } from "../platform/tauri/bindings";
+import { unwrap } from "../platform/tauri/ipc";
 import { indexAccounts, syncAttention } from "../features/accounts/model/accounts";
 import { Sidebar } from "../features/accounts/ui/Sidebar";
 import {
@@ -559,6 +561,18 @@ export function Shell() {
             // conversation away (and opens the next): the picker would now
             // be about a different conversation, so it closes.
             if (leavesView(action, selection.view)) setLabelAnchor(null);
+          }}
+          onCreate={(name) => {
+            const account = targets[0]?.accountId;
+            if (account === undefined) return;
+            unwrap(commands.labelCreate(account, name))
+              .then((label) => act({ kind: "labels", add: [label], remove: [] }, targetIds))
+              .catch((e: unknown) =>
+                showToast({
+                  tone: "error",
+                  message: `Couldn’t create the label: ${e instanceof Error ? e.message : String(e)}`,
+                }),
+              );
           }}
           onClose={() => setLabelAnchor(null)}
         />

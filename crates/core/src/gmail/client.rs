@@ -197,6 +197,40 @@ impl GmailClient {
             .await
     }
 
+    /// `labels.create`: a new user label, shown in lists as Gmail does.
+    pub async fn create_label(&self, name: &str) -> Result<super::types::Label> {
+        self.spend(cost::LABELS_CHANGE).await;
+        let url = self.url("labels");
+        let body = serde_json::json!({
+            "name": name,
+            "labelListVisibility": "labelShow",
+            "messageListVisibility": "show",
+        });
+        let response = self
+            .send_with(|| self.http.post(&url).json(&body), Retry::OnlyUnsent)
+            .await?;
+        response.json().await.map_err(net_error)
+    }
+
+    /// `labels.patch`: renames a user label.
+    pub async fn rename_label(&self, id: &str, name: &str) -> Result<()> {
+        self.spend(cost::LABELS_CHANGE).await;
+        let url = self.url(&format!("labels/{id}"));
+        let body = serde_json::json!({ "name": name });
+        self.send(|| self.http.patch(&url).json(&body)).await?;
+        Ok(())
+    }
+
+    /// `labels.delete`. Already gone counts as deleted.
+    pub async fn delete_label(&self, id: &str) -> Result<()> {
+        self.spend(cost::LABELS_CHANGE).await;
+        let url = self.url(&format!("labels/{id}"));
+        match self.send(|| self.http.delete(&url)).await {
+            Ok(_) | Err(CoreError::NotFound(_)) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
     /// `threads.list`, newest first. `None` lists All Mail (everything but
     /// Spam and Trash).
     pub async fn list_threads(

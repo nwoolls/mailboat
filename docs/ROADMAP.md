@@ -625,8 +625,12 @@ each was a "not yet" note above)*:
       the other toggles read/unread *(owner request, 2026-10-16)*.
       **Discuss the animation with the owner first** (what shows behind
       the row, how far to swipe, what commits or springs back)
-- [ ] Create, rename and delete labels (the label picker only applies
-      existing ones) *(not in the M3 list; noted while building it)*
+- [x] Create, rename and delete labels (the label picker only applies
+      existing ones) *(not in the M3 list; noted while building it)*.
+      Typing a new name in the picker (`l`) offers "Create “name”", which
+      creates it in the conversations' account and applies it. Right-click
+      a sidebar label for Rename… (labels nested under it follow, as in
+      Gmail) and Delete… (asks first; its conversations stay)
 - [ ] Command palette (cmdk)
 - [ ] Full keyboard shortcuts
 - [ ] Remote Gmail search (`q=`) fanned out per account, merged by date

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Label } from "../../../platform/tauri/bindings";
-import { filterLabels, pickerName } from "./labelPicker";
+import { filterLabels, newLabelName, pickerName } from "./labelPicker";
 
 const label = (id: number, name: string): Label => ({
   id,
@@ -26,4 +26,13 @@ describe("label picker", () => {
     expect(filterLabels(labels, "notes WORK").map((l) => l.id)).toEqual([3]);
     expect(filterLabels(labels, "zzz")).toEqual([]);
   });
+});
+
+it("offers a new label only for a fresh, complete name", () => {
+  const labels = [{ name: "Work" }, { name: "Work/Acme" }];
+  expect(newLabelName(labels, " Travel ")).toBe("Travel");
+  expect(newLabelName(labels, "work")).toBeNull();
+  expect(newLabelName(labels, "Work / Beta")).toBe("Work/Beta");
+  expect(newLabelName(labels, "Work/")).toBeNull();
+  expect(newLabelName(labels, "  ")).toBeNull();
 });

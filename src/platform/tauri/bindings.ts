@@ -62,6 +62,12 @@ export const commands = {
 	 *  `threads_set_read`.
 	 */
 	threadsSetSpam: (threadIds: ThreadId[], spam: boolean) => typedError<null, AppError>(__TAURI_INVOKE("threads_set_spam", { threadIds, spam })),
+	/**  Creates a user label in one account. */
+	labelCreate: (accountId: AccountId, name: string) => typedError<Label, AppError>(__TAURI_INVOKE("label_create", { accountId, name })),
+	/**  Renames a user label (and the labels nested under it). */
+	labelRename: (labelId: LabelId, name: string) => typedError<null, AppError>(__TAURI_INVOKE("label_rename", { labelId, name })),
+	/**  Deletes a user label; its conversations stay. */
+	labelDelete: (labelId: LabelId) => typedError<null, AppError>(__TAURI_INVOKE("label_delete", { labelId })),
 	/**
 	 *  Adds and removes user labels. Each label applies only to threads of
 	 *  the account it belongs to.
