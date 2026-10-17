@@ -39,6 +39,23 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
     measure();
     setReady(true);
     for (const img of Array.from(doc.images)) img.addEventListener("load", measure);
+    // Keys pressed with the message clicked into (r, e, j…) go to the app
+    // as if pressed outside it: an iframe's keys never reach the window.
+    doc.addEventListener("keydown", (e) => {
+      const copy = new KeyboardEvent("keydown", {
+        key: e.key,
+        code: e.code,
+        metaKey: e.metaKey,
+        ctrlKey: e.ctrlKey,
+        altKey: e.altKey,
+        shiftKey: e.shiftKey,
+        repeat: e.repeat,
+        bubbles: true,
+        cancelable: true,
+      });
+      frameRef.current?.dispatchEvent(copy);
+      if (copy.defaultPrevented) e.preventDefault();
+    });
     const observer = new ResizeObserver(measure);
     observer.observe(doc.documentElement);
   }, []);
