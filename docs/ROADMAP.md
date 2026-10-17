@@ -290,21 +290,8 @@ Options offered during the spike that the owner didn't pick (yet):
 - [x] Emails shown on the white card ignore their own dark-mode rules (an
       a software vendor email's text went white on white, in Mimestream too), and an
       email's page title no longer shows at the top of the body
-- [ ] Emails on the glass, step 2: remap colors set in an email's own style
-      sheet (needs a CSS parser), so more newsletters can adapt
-- [ ] Dark mode for emails that declare it (`color-scheme: light dark`, as
-      a vendor's do): apply their own dark rules plus our remap of their
-      inline colours, as Mail.app does, instead of the white card. Their
-      dark rules alone aren't enough (a vendor's turn text white but never
-      darken its inline white backgrounds). Fall back to the white card if
-      their style sheet sets text colours outside its dark-mode block
-- [ ] "Original colors" toggle per message, for emails the remap gets wrong
-- [ ] Softer look for the remaining white cards on the glass
-- [ ] A setting to switch the default back to "blocked"
-- [ ] Load by default only for people you've written to (option B, not
-      built)
-- [ ] Background image prefetch during sync, like Apple Mail, so senders
-      can't tell when you opened (option C, not built)
+- Its open follow-ups (email colours and dark mode, remote-image
+  options) moved to UX Spike 2 (owner, 2026-10-17)
 
 - [x] Sidebar spacing matches the panes: its rows end 8px before the list
       (was 16px, an extra right padding), the same gap as list to reader
@@ -867,24 +854,49 @@ editors live in Settings (Signatures, Rules), which now exists.
       - Inbox categories (Promotions, Social…) and blocked senders
         (blocking is a filter, so Rules covers it)
 
-## Later / unscheduled
+## UX Spike 2
 
-- [ ] Onboarding *(owner request, 2026-10-17)*: a first-launch flow
-      instead of today's single Welcome screen. At least: add one or
-      more accounts (each shown as it signs in, with its first sync
-      under way). Maybe also: choose the theme and the app icon, allow
-      notifications. Steps after accounts can be skipped, and all of it
-      is in Settings afterwards. To design with the owner before
-      building. Today's Welcome screen also needs its Google setup steps
-      brought up to date: it names only the Gmail API, but the README
-      now lists the People and Google Calendar APIs too
+*Polish, gathered here at the owner's request (2026-10-17): the
+email-display and remote-image follow-ups left open in UX Spike 1, and the
+look-and-feel items from Later. As with Spike 1, built to try in the app
+and settled with the owner one at a time.*
 
-- [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
-- [ ] Windows build and testing; Linux nice-to-have
-- [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
-      ones that hide when not scrolling); check they look right on
-      Windows, and style them there only if needed
-- [ ] Release signing and packaging
+- [ ] Emails on the glass, step 2: remap colors set in an email's own style
+      sheet (needs a CSS parser), so more newsletters can adapt
+- [ ] Dark mode for emails that declare it (`color-scheme: light dark`, as
+      a vendor's do): apply their own dark rules plus our remap of their
+      inline colours, as Mail.app does, instead of the white card. Their
+      dark rules alone aren't enough (a vendor's turn text white but never
+      darken its inline white backgrounds). Fall back to the white card if
+      their style sheet sets text colours outside its dark-mode block
+- [ ] "Original colors" toggle per message, for emails the remap gets wrong
+- [ ] Softer look for the remaining white cards on the glass
+- [ ] A setting to switch the default back to "blocked"
+- [ ] Load by default only for people you've written to (option B of UX
+      Spike 1's remote-image choice, not built)
+- [ ] Background image prefetch during sync, like Apple Mail, so senders
+      can't tell when you opened (option C of the same choice, not built)
+- [ ] Icon, round three *(owner request, 2026-10-17)*: keep the current
+      look (the folded-ribbon M in Apple's system blue, C17, on a
+      flat near-black tile with the Liquid Glass rim) but try other
+      fold directions so it reads more like a folded envelope. Offer a
+      sheet of variants in `design/icon/sheets/` to pick from, as before
+- [ ] Idle screensavers for the empty reader and list *(owner request,
+      2026-10-17; discuss first, then pick one to try and iterate)*: an
+      alternative to the pointer-following glow. Interactive pixel art
+      that starts after about a minute without input and stops on any
+      key or pointer move. It might play with the empty state's icon and
+      text, or the pointer. Owner's starting ideas, not commitments:
+      falling sand (like the old desk sand-art frames), a fish aquarium,
+      fireworks. To settle: which one first, the idle delay, whether it
+      replaces the glow or comes on after it, and keeping it light on
+      battery (pause when the window is hidden or unfocused)
+
+## AI Spike
+
+*The AI work, gathered from Later at the owner's request (2026-10-17).
+Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
+
 - [ ] AI-drafted replies with user-supplied OpenAI/Anthropic keys (see `CLAUDE.md`)
 - [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
       Mailboat's mail *(owner request, 2026-10-16)*. Worth it because Mailboat
@@ -905,21 +917,25 @@ editors live in Settings (Signatures, Rules), which now exists.
         (`rmcp`), recorded in ARCHITECTURE when chosen
       - Every request logged (what was read, never the content), so the
         owner can see what an AI looked at
-- [ ] Icon, round three *(owner request, 2026-10-17)*: keep the current
-      look (the folded-ribbon M in Apple's system blue, C17, on a
-      flat near-black tile with the Liquid Glass rim) but try other
-      fold directions so it reads more like a folded envelope. Offer a
-      sheet of variants in `design/icon/sheets/` to pick from, as before
-- [ ] Idle screensavers for the empty reader and list *(owner request,
-      2026-10-17; discuss first, then pick one to try and iterate)*: an
-      alternative to the pointer-following glow. Interactive pixel art
-      that starts after about a minute without input and stops on any
-      key or pointer move. It might play with the empty state's icon and
-      text, or the pointer. Owner's starting ideas, not commitments:
-      falling sand (like the old desk sand-art frames), a fish aquarium,
-      fireworks. To settle: which one first, the idle delay, whether it
-      replaces the glow or comes on after it, and keeping it light on
-      battery (pause when the window is hidden or unfocused)
+
+## Later / unscheduled
+
+- [ ] Onboarding *(owner request, 2026-10-17)*: a first-launch flow
+      instead of today's single Welcome screen. At least: add one or
+      more accounts (each shown as it signs in, with its first sync
+      under way). Maybe also: choose the theme and the app icon, allow
+      notifications. Steps after accounts can be skipped, and all of it
+      is in Settings afterwards. To design with the owner before
+      building. Today's Welcome screen also needs its Google setup steps
+      brought up to date: it names only the Gmail API, but the README
+      now lists the People and Google Calendar APIs too
+
+- [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
+- [ ] Windows build and testing; Linux nice-to-have
+- [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
+      ones that hide when not scrolling); check they look right on
+      Windows, and style them there only if needed
+- [ ] Release signing and packaging
 - [ ] Offline mode *(moved from Milestone 5; owner, 2026-10-17: likes all
       three ideas, but lowest priority: almost never offline, and doesn't
       expect to send while offline)*. Today reading cached mail and local
