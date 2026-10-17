@@ -64,7 +64,10 @@ export function answerText(answer: Answer | null): string {
 
 /** Your current answer: Calendar's if it has the event, else the email's. */
 export function currentAnswer(card: InviteCard): Answer | null {
-  return card.calendar.kind === "onCalendar" ? card.calendar.yourAnswer : card.invite.yourAnswer;
+  const { calendar } = card;
+  if (calendar.kind === "onCalendar" || calendar.kind === "repliedByEmail")
+    return calendar.yourAnswer;
+  return card.invite.yourAnswer;
 }
 
 /** The small heading above the event's title. */
@@ -90,7 +93,8 @@ export function canAnswer(card: InviteCard): boolean {
   const { invite, calendar } = card;
   if (invite.kind !== "request" || invite.cancelled) return false;
   if (calendar.kind === "onCalendar") return !calendar.cancelled;
-  return calendar.kind === "notOnCalendar";
+  // Answered by email: answering again sends another reply.
+  return calendar.kind === "notOnCalendar" || calendar.kind === "repliedByEmail";
 }
 
 /** Whether to offer "Remove from calendar" (a cancellation still on it). */

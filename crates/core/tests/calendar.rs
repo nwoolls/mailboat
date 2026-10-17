@@ -258,3 +258,55 @@ async fn a_message_without_a_calendar_part_has_no_card_and_costs_nothing_more() 
     assert_eq!(calendar::card_for(&db, &gmail, m2).await.unwrap(), None);
     assert_eq!(calendar::card_for(&db, &gmail, m2).await.unwrap(), None);
 }
+
+#[tokio::test]
+async fn when_calendar_refuses_the_event_the_answer_goes_by_email() {
+    let (db, m2) = setup(&SCOPES);
+    let server = MockServer::start().await;
+    serve_invitation(&server).await;
+    serve_lookup(&server, vec![]).await;
+    Mock::given(method("POST"))
+        .and(path("/calendar/v3/calendars/primary/events/import"))
+        .respond_with(ResponseTemplate::new(400).set_body_json(serde_json::json!({
+            "error": { "code": 400, "message": "Invalid time zone definition", "errors": [] }
+        })))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/upload/gmail/v1/users/me/messages/send"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({ "id": "s1", "threadId": "t9" })),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    let (gmail, _) = client(&server.uri());
+    fetch_body(&db, &gmail, m2).await.unwrap();
+
+    let card = calendar::answer(&db, &gmail, m2, Answer::No).await.unwrap();
+    assert_eq!(
+        card.calendar,
+        CalendarState::RepliedByEmail {
+            your_answer: Answer::No
+        }
+    );
+    // To the organizer, from the invited address, with the calendar reply.
+    let requests = server.received_requests().await.unwrap();
+    let sent = requests
+        .iter()
+        .find(|r| r.url.path().ends_with("/messages/send"))
+        .unwrap();
+    let raw = String::from_utf8_lossy(&sent.body);
+    assert!(
+        raw.contains("To: \"Pat\" <pat@example.com>") || raw.contains("To: Pat <pat@example.com>"),
+        "{raw}"
+    );
+    assert!(raw.contains("Subject: Declined: Design review"), "{raw}");
+    assert!(
+        raw.contains("method=REPLY") || raw.contains("method=\"REPLY\""),
+        "{raw}"
+    );
+    assert!(raw.contains("METHOD:REPLY"), "{raw}");
+    assert!(raw.contains("PARTSTAT=DECLINED"), "{raw}");
+}

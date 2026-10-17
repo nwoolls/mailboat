@@ -74,6 +74,8 @@ pub struct Invite {
     pub organizer: Option<Person>,
     /// This account's answer, as the calendar part says, if it lists you.
     pub your_answer: Option<Answer>,
+    /// Which of your addresses the invitation lists (maybe an alias).
+    pub you: Option<String>,
     /// Cancelled (by a CANCEL, or the event's status).
     pub cancelled: bool,
     /// For a reply: who answered, and how.
@@ -126,12 +128,11 @@ pub fn parse(ics: &str, mine: &[&str]) -> Option<Invite> {
                 answer: answer_of(a.part_stat),
             })
         });
-    let your_answer = attendees
-        .iter()
-        .find(|a| {
-            address(&a.cal_address).is_some_and(|e| mine.iter().any(|m| m.eq_ignore_ascii_case(&e)))
-        })
-        .map(|a| answer_of(a.part_stat));
+    let yours = attendees.iter().find(|a| {
+        address(&a.cal_address).is_some_and(|e| mine.iter().any(|m| m.eq_ignore_ascii_case(&e)))
+    });
+    let your_answer = yours.map(|a| answer_of(a.part_stat));
+    let you = yours.and_then(|a| address(&a.cal_address));
     Some(Invite {
         kind,
         uid,
@@ -142,9 +143,72 @@ pub fn parse(ics: &str, mine: &[&str]) -> Option<Invite> {
         end: event.get_end().and_then(moment),
         organizer,
         your_answer,
+        you,
         cancelled: kind == InviteKind::Cancel || event.get_status() == Some(EventStatus::Cancelled),
         replied,
     })
+}
+
+/// The standard calendar reply (RFC 5546 `METHOD:REPLY`) answering
+/// `invite` as `you`: what Apple Mail and Outlook send, and what Google
+/// Calendar and Outlook read to update the organizer's event. Used when
+/// Google Calendar can't take the answer itself.
+pub fn reply_ics(invite: &Invite, you: &str, answer: Answer) -> String {
+    use icalendar::{Event, Property};
+    let partstat = match answer {
+        Answer::Yes => "ACCEPTED",
+        Answer::No => "DECLINED",
+        Answer::Maybe => "TENTATIVE",
+        Answer::NeedsAction => "NEEDS-ACTION",
+    };
+    let mut event = Event::new();
+    event
+        .uid(&invite.uid)
+        .sequence(invite.sequence)
+        .timestamp(chrono::Utc::now())
+        .append_multi_property(
+            Property::new("ATTENDEE", format!("mailto:{you}"))
+                .add_parameter("PARTSTAT", partstat)
+                .done(),
+        );
+    if let Some(title) = &invite.title {
+        event.summary(title);
+    }
+    event.append_property(start_property(&invite.start));
+    if let Some(organizer) = &invite.organizer {
+        event.append_property(Property::new(
+            "ORGANIZER",
+            format!("mailto:{}", organizer.email),
+        ));
+    }
+    let mut calendar = Calendar::new();
+    calendar.append_property(Property::new("METHOD", "REPLY"));
+    calendar.push(event.done());
+    calendar.done().to_string()
+}
+
+/// DTSTART for the reply, as the invitation had it.
+fn start_property(start: &Moment) -> icalendar::Property {
+    use icalendar::Property;
+    match start {
+        Moment::AllDay { date } => Property::new("DTSTART", date.replace('-', ""))
+            .add_parameter("VALUE", "DATE")
+            .done(),
+        Moment::At { ms } => Property::new(
+            "DTSTART",
+            chrono::DateTime::from_timestamp_millis(*ms)
+                .unwrap_or_default()
+                .format("%Y%m%dT%H%M%SZ")
+                .to_string(),
+        ),
+        Moment::Local { time, zone } => {
+            let mut p = Property::new("DTSTART", time.replace(['-', ':'], ""));
+            if let Some(zone) = zone {
+                p.add_parameter("TZID", zone);
+            }
+            p.done()
+        }
+    }
 }
 
 fn answer_of(status: Option<PartStat>) -> Answer {
@@ -333,6 +397,23 @@ END:VEVENT\r\nEND:VCALENDAR\r\n";
             })
         );
         assert_eq!(parse(GOOGLE, &[]).unwrap().replied, None);
+    }
+
+    #[test]
+    fn a_reply_answers_the_same_event_as_you() {
+        let invite = parse(GOOGLE, &["me@example.com"]).unwrap();
+        assert_eq!(invite.you.as_deref(), Some("me@example.com"));
+        let ics = reply_ics(&invite, "me@example.com", Answer::Maybe);
+        // Read back: a reply for the same event, from you, with your answer.
+        let reply = parse(&ics, &[]).unwrap();
+        assert_eq!(reply.kind, InviteKind::Reply);
+        assert_eq!(reply.uid, "abc123@google.com");
+        assert_eq!(reply.sequence, 2);
+        assert_eq!(reply.start, invite.start);
+        assert_eq!(reply.organizer.unwrap().email, "pat@example.com");
+        let replied = reply.replied.unwrap();
+        assert_eq!(replied.who.email, "me@example.com");
+        assert_eq!(replied.answer, Answer::Maybe);
     }
 
     #[test]

@@ -93,6 +93,12 @@ export function InviteCard({
               )}
             </div>
           )}
+          {calendar.kind === "repliedByEmail" && (
+            <div className="mt-1.5 text-xs text-content/60">
+              Google Calendar couldn’t add this event, so your answer went to the organizer by
+              email.
+            </div>
+          )}
           {calendar.kind === "unavailable" && (
             <div className="selectable mt-1.5 text-xs text-content/60">{calendar.message}</div>
           )}

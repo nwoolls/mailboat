@@ -284,7 +284,12 @@ export type CalendarState =
 /**  The event in Google Calendar on the web. */
 link: string | null } | 
 /**  Calendar couldn't be asked (offline, API turned off, …). */
-{ kind: "unavailable"; message: string };
+{ kind: "unavailable"; message: string } | 
+/**
+ *  Calendar couldn't add the event, so the answer went to the
+ *  organizer by email (the standard calendar reply).
+ */
+{ kind: "repliedByEmail"; yourAnswer: Answer };
 
 /**  Something on your calendar at the same time. */
 export type Clash = {
@@ -350,6 +355,8 @@ export type Invite = {
 	organizer: Person | null,
 	/**  This account's answer, as the calendar part says, if it lists you. */
 	yourAnswer: Answer | null,
+	/**  Which of your addresses the invitation lists (maybe an alias). */
+	you: string | null,
 	/**  Cancelled (by a CANCEL, or the event's status). */
 	cancelled: boolean,
 	/**  For a reply: who answered, and how. */

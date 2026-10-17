@@ -292,6 +292,12 @@ pub enum CalendarState {
     Unavailable {
         message: String,
     },
+    /// Calendar couldn't add the event, so the answer went to the
+    /// organizer by email (the standard calendar reply).
+    #[serde(rename_all = "camelCase")]
+    RepliedByEmail {
+        your_answer: Answer,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -452,7 +458,21 @@ pub async fn answer(
         None => {
             let (account, _) = store::message_gmail_ref(&db.conn(), message)?;
             let email = accounts::get(&db.conn(), account)?.email;
-            gmail.calendar_import(&invite, &email).await?
+            match gmail.calendar_import(&invite, &email).await {
+                Ok(event) => event,
+                // Calendar refused the event (e.g. a time zone it doesn't
+                // know): answer by email instead, as Apple Mail does.
+                Err(CoreError::Api { .. }) => {
+                    reply_by_email(db, gmail, message, &invite, answer).await?;
+                    return Ok(InviteCard {
+                        invite,
+                        calendar: CalendarState::RepliedByEmail {
+                            your_answer: answer,
+                        },
+                    });
+                }
+                Err(e) => return Err(e),
+            }
         }
     };
     // The address the invitation went to (maybe an alias), as Calendar
@@ -469,6 +489,60 @@ pub async fn answer(
         .await
         .unwrap_or_else(unavailable);
     Ok(InviteCard { invite, calendar })
+}
+
+/// Sends the organizer the standard calendar reply, from the address the
+/// invitation went to (an alias, maybe), with its "Send mail as" name.
+async fn reply_by_email(
+    db: &Db,
+    gmail: &GmailClient,
+    message: MessageId,
+    invite: &Invite,
+    answer: Answer,
+) -> Result<()> {
+    let organizer = invite
+        .organizer
+        .as_ref()
+        .ok_or_else(|| CoreError::Invalid("the invitation doesn't say who sent it".into()))?;
+    let (account, _) = store::message_gmail_ref(&db.conn(), message)?;
+    let identities = identities::list(&db.conn())?;
+    let mine: Vec<_> = identities
+        .into_iter()
+        .filter(|i| i.account_id == account)
+        .collect();
+    let me = invite
+        .you
+        .as_deref()
+        .and_then(|you| mine.iter().find(|i| i.email.eq_ignore_ascii_case(you)))
+        .or_else(|| mine.iter().find(|i| i.is_primary))
+        .or(mine.first())
+        .ok_or_else(|| CoreError::NotFound("no address to answer from".into()))?;
+    let (verb, line) = match answer {
+        Answer::Yes => ("Accepted", "has accepted this invitation."),
+        Answer::No => ("Declined", "has declined this invitation."),
+        Answer::Maybe => (
+            "Tentatively accepted",
+            "has tentatively accepted this invitation.",
+        ),
+        Answer::NeedsAction => ("Reply", "has replied to this invitation."),
+    };
+    let title = invite.title.as_deref().unwrap_or("Invitation");
+    let who = me.name.clone().unwrap_or_else(|| me.email.clone());
+    let raw = crate::compose::mime::build_calendar_reply(
+        &crate::model::Address {
+            name: me.name.clone(),
+            email: me.email.clone(),
+        },
+        &crate::model::Address {
+            name: organizer.name.clone(),
+            email: organizer.email.clone(),
+        },
+        &format!("{verb}: {title}"),
+        &format!("{who} {line}"),
+        &invite::reply_ics(invite, &me.email, answer),
+    )?;
+    gmail.send_message(&raw, None).await?;
+    Ok(())
 }
 
 /// Removes a cancelled invitation's event from your calendar.

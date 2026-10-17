@@ -31,6 +31,37 @@ pub struct MimeMessage {
     pub references: Vec<String>,
 }
 
+/// A calendar reply email (RFC 6047): a line of text for people, and the
+/// `METHOD:REPLY` calendar part calendars read, as `multipart/alternative`
+/// (the shape Apple Mail and Outlook send).
+pub fn build_calendar_reply(
+    from: &Address,
+    to: &Address,
+    subject: &str,
+    text: &str,
+    ics: &str,
+) -> Result<Vec<u8>> {
+    use mail_builder::headers::content_type::ContentType;
+    use mail_builder::mime::MimePart;
+    let calendar = ContentType::new("text/calendar")
+        .attribute("method", "REPLY")
+        .attribute("charset", "utf-8");
+    MessageBuilder::new()
+        .from(mime_address(from))
+        .to(mime_address(to))
+        .subject(one_line(subject))
+        .message_id(new_message_id(&from.email))
+        .body(MimePart::new(
+            "multipart/alternative",
+            vec![
+                MimePart::new("text/plain", normalize_newlines(text)),
+                MimePart::new(calendar, ics.to_string()),
+            ],
+        ))
+        .write_to_vec()
+        .map_err(|e| CoreError::Other(format!("could not build the reply: {e}")))
+}
+
 /// Serializes the message. Gmail reads Bcc from the raw message for
 /// delivery and strips it before anyone else sees it.
 pub fn build(msg: &MimeMessage) -> Result<Vec<u8>> {

@@ -624,8 +624,8 @@ each was a "not yet" note above)*:
 
 *Open at the end of the 2026-10-17 session, in the order agreed: the
 Settings page and its app icon chooser, then meeting invitations: all
-built (2026-10-17). Left: the emailed-reply fallback for invitations,
-and the owner seeing the app icon change in the Dock.*
+built (2026-10-17), including the emailed-reply fallback, and the
+owner has seen invitations and the Dock icon working.*
 
 - [x] Answer meeting invitations in the reader *(owner request,
       2026-10-16; first in this milestone)*: a card with the event (time,
@@ -668,10 +668,15 @@ and the owner seeing the app icon change in the Dock.*
         account without the permission gets "Sign in again" on the card.
         The Calendar API is turned on in the owner's project. The
         emailed-reply fallback is its own item below
-- [ ] Invitations Calendar can't add (e.g. a time zone Google doesn't
+- [x] Invitations Calendar can't add (e.g. a time zone Google doesn't
       know): answer by email instead, with the standard calendar reply
       (as Apple Mail sends). Split out of the invitations item when that
-      was done (2026-10-17)
+      was done (2026-10-17). Built: when Calendar refuses to add
+      the event, Yes / Maybe / No sends the organizer a calendar reply
+      email (`METHOD:REPLY`, from the invited address and its name),
+      which Google Calendar and Outlook read; the card says it went by
+      email. Not tried against a real refusal (rare; tested against a
+      stand-in Google)
 - [x] Report spam (and "Not spam" in the Spam view) as an action, routed
       per account like the others *(owner request, 2026-10-16)*. Toolbar
       button and `!` (Gmail's key); Report spam moves conversations out

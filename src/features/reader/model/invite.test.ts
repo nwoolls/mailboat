@@ -25,6 +25,7 @@ const invite: Invite = {
   end: at(2026, 10, 20, 14, 30),
   organizer: { email: "pat@example.com", name: "Pat" },
   yourAnswer: "needsAction",
+  you: null,
   cancelled: false,
   replied: null,
 };
@@ -71,6 +72,8 @@ describe("invitation card", () => {
   it("takes your answer from Calendar when it has the event", () => {
     expect(currentAnswer(card({}, onCalendar({ yourAnswer: "maybe" })))).toBe("maybe");
     expect(currentAnswer(card({}, { kind: "notOnCalendar" }))).toBe("needsAction");
+    expect(currentAnswer(card({}, { kind: "repliedByEmail", yourAnswer: "no" }))).toBe("no");
+    expect(canAnswer(card({}, { kind: "repliedByEmail", yourAnswer: "no" }))).toBe(true);
     expect(answerText(null)).toBe("Not answered");
     expect(answerText("yes")).toBe("Going");
   });
