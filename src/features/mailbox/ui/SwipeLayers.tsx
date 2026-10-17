@@ -3,8 +3,8 @@ import { ArchiveIcon, MarkUnreadIcon, TrashIcon, UnreadIcon } from "../../../sha
 import { type SwipePose, type SwipeSide, swipeLabel } from "../model/swipe";
 import type { ThreadAction } from "../model/threadActions";
 
-/** Space between the row's edge and the capsule, above and below. */
-const INSET = 6;
+/** The row's corner radius (rounded-lg); the button shares it. */
+const RADIUS = 8;
 
 type Geometry = {
   pose: SwipePose;
@@ -30,7 +30,6 @@ export function SwipeBack({
 }: Geometry & { selected: boolean }) {
   const filter = useId();
   const left = side === "left";
-  const bud = { h: height - INSET * 2, w: pose.budWidth };
   return (
     <svg
       aria-hidden
@@ -53,14 +52,16 @@ export function SwipeBack({
         </filter>
       </defs>
       <g filter={`url(#${filter})`} fill="currentColor">
-        <rect x={left ? -pose.shift : pose.shift} y={0} width={width} height={height} rx={9} />
-        {bud.w > 1 && (
+        <rect x={left ? -pose.shift : pose.shift} y={0} width={width} height={height} rx={RADIUS} />
+        {pose.budWidth > 1 && (
+          // Same height and corners as the row: while joined it reads as
+          // the row growing, not a smaller button appearing.
           <rect
-            x={left ? width - bud.w : 0}
-            y={INSET}
-            width={bud.w}
-            height={bud.h}
-            rx={Math.min(bud.h, bud.w) / 2}
+            x={left ? width - pose.budWidth : 0}
+            y={0}
+            width={pose.budWidth}
+            height={height}
+            rx={Math.min(RADIUS, pose.budWidth / 2)}
           />
         )}
       </g>
@@ -93,19 +94,19 @@ export function SwipeButton({
         e.stopPropagation();
         if (open) onCommit();
       }}
-      className={`absolute flex items-center justify-center overflow-hidden rounded-full whitespace-nowrap ${
+      className={`absolute flex items-center justify-center overflow-hidden rounded-lg whitespace-nowrap ${
         open ? "pointer-events-auto cursor-pointer" : "pointer-events-none"
       }`}
       style={{
-        top: INSET,
-        height: height - INSET * 2,
+        top: 0,
+        height,
         width: pose.budWidth,
         [side === "left" ? "right" : "left"]: 0,
       }}
     >
       <span
         aria-hidden
-        className="absolute inset-0 rounded-full bg-accent/20 transition-[opacity,transform] duration-200 ease-[cubic-bezier(.3,1.6,.5,1)]"
+        className="absolute inset-0 rounded-lg bg-accent/20 transition-[opacity,transform] duration-200 ease-[cubic-bezier(.3,1.6,.5,1)]"
         style={{ opacity: pose.armed ? 1 : 0, transform: `scale(${pose.armed ? 1 : 0.85})` }}
       />
       <span

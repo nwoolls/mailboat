@@ -5,32 +5,34 @@ import type { ThreadAction } from "./threadActions";
  * Swiping a conversation with two fingers on the trackpad (owner's design,
  * 2026-10-17, after iOS 26 notification swipes, in Mailboat's own style):
  *
- * 1. Stretch: the row barely moves; a button "bud" swells out of its end,
- *    joined to it, its icon and label fading in.
- * 2. Break away: the join thins and lets go; the button is its own
- *    capsule. Letting go here leaves it showing, to click.
- * 3. Armed: a little further (not the full width), a ring round the icon
- *    fills; when it closes the capsule takes an accent wash. Letting go
- *    then does the action.
+ * 0. A little resistance first: the first few pixels barely give.
+ * 1. Stretch: the row follows the fingers one to one, and the space it
+ *    leaves fills with the button, same height and corners as the row,
+ *    joined to it, so it looks like the row growing. Icon and word fade in.
+ * 2. Break away: the button stops growing at its width; as the row keeps
+ *    going the join necks and snaps (the goo blur lets go at ~12px), and
+ *    the button stands apart. Letting go here leaves it showing, to click.
+ * 3. Armed: a little further, a ring round the icon fills; when it closes
+ *    the button takes an accent wash. Letting go then does the action.
  *
- * Distances are the fingers' travel in pixels. All tunable here.
+ * Distances are pixels of finger travel; `shift` is how far the row has
+ * moved. All tunable here.
  */
 export const SWIPE = {
-  /** The button capsule's full width. */
-  capsule: 92,
-  /** Where the bud and row start to come apart. */
-  joined: 28,
-  /** Where they have fully separated (and a release leaves it open). */
-  breakAt: 64,
-  /** Where letting go does the action. */
-  armAt: 128,
-  /** Past this the row resists, like a rubber band. */
-  maxPull: 170,
-  /** Overlap while joined (negative gap) and the gap once apart. */
-  overlap: 14,
-  gap: 6,
-  /** The finger travel a release under this springs back from. */
-  openAt: 40,
+  /** Finger travel that barely moves the row before the swipe takes. */
+  deadZone: 12,
+  /** How much the row gives within the dead zone (fraction). */
+  deadGive: 0.25,
+  /** The button's width once it stops growing. */
+  capsule: 84,
+  /** The gap at which button and row have clearly separated. */
+  apart: 18,
+  /** Row travel past separation at which letting go does the action. */
+  armAfter: 44,
+  /** Past this row travel, each pixel counts for less (rubber band). */
+  maxPull: 200,
+  /** Row travel under which a release springs back instead of opening. */
+  openAt: 48,
   /** Spring for settling (stiffness, damping): slightly bouncy. */
   stiffness: 420,
   damping: 26,
@@ -41,7 +43,7 @@ export type SwipeSide = "left" | "right";
 export type SwipePose = {
   /** How far the row (its content and plate) has moved, in px. */
   shift: number;
-  /** The bud/capsule's width, from the row's original edge. */
+  /** The button's width, from the row's original edge. */
   budWidth: number;
   /** Icon and label opacity, 0–1. */
   label: number;
@@ -55,39 +57,44 @@ const smooth = (a: number, b: number, x: number) => {
   const t = clamp((x - a) / (b - a));
   return t * t * (3 - 2 * t);
 };
-const easeOut = (t: number) => 1 - (1 - t) ** 3;
 
-/** Past `maxPull` each pixel counts for less. */
-export function resisted(d: number, s = SWIPE): number {
-  return d <= s.maxPull ? d : s.maxPull + (d - s.maxPull) * 0.25;
+/** Row travel for `d` of finger travel: resisting at first, then 1:1, then rubbery. */
+export function rowShift(d: number, s = SWIPE): number {
+  const x = Math.max(0, d);
+  const held = Math.min(x, s.deadZone) * s.deadGive;
+  const free = held + Math.max(0, x - s.deadZone);
+  return free <= s.maxPull ? free : s.maxPull + (free - s.maxPull) * 0.25;
 }
 
-/** The swipe's shape after `d` pixels of travel (0 or more). */
+/** Row travel at which letting go does the action. */
+export function armShift(s = SWIPE): number {
+  return s.capsule + s.apart + s.armAfter;
+}
+
+/** The swipe's shape after `d` pixels of finger travel (0 or more). */
 export function swipePose(d: number, s = SWIPE): SwipePose {
-  const dd = resisted(Math.max(0, d), s);
-  const budWidth = s.capsule * easeOut(clamp(dd / s.breakAt));
-  // Overlapping while joined, then a small gap: the bud breaks away.
-  const gap = -s.overlap + (s.overlap + s.gap) * smooth(s.joined, s.breakAt, dd);
-  // Past the break the row keeps following the fingers, a little slower.
-  const shift = Math.max(0, budWidth + gap) + Math.max(0, dd - s.breakAt) * 0.6;
+  const shift = rowShift(d, s);
+  const separated = s.capsule + s.apart;
   return {
     shift,
-    budWidth,
-    label: smooth(s.joined * 0.4, s.breakAt, dd),
-    ring: clamp((dd - s.breakAt) / (s.armAt - s.breakAt)),
-    armed: dd >= s.armAt,
+    // Fills the space the row leaves, up to its own width.
+    budWidth: Math.min(shift, s.capsule),
+    label: smooth(s.capsule * 0.35, s.capsule, shift),
+    ring: clamp((shift - separated) / s.armAfter),
+    armed: shift >= armShift(s),
   };
 }
 
 /** Where a released swipe goes: the action, open with its button, or back. */
 export function releaseTo(d: number, s = SWIPE): "commit" | "open" | "close" {
-  if (resisted(d, s) >= s.armAt) return "commit";
-  return d >= s.openAt ? "open" : "close";
+  const shift = rowShift(d, s);
+  if (shift >= armShift(s)) return "commit";
+  return shift >= s.openAt ? "open" : "close";
 }
 
-/** The travel at which an open swipe rests: separated, ring empty. */
+/** The finger travel at which an open swipe rests: separated, ring empty. */
 export function openRest(s = SWIPE): number {
-  return s.breakAt;
+  return s.deadZone + (s.capsule + s.apart - s.deadZone * s.deadGive);
 }
 
 /** One step of a damped spring towards `target` (dt in seconds). */
@@ -132,7 +139,7 @@ export function feedWheel(g: WheelGesture, dx: number, dy: number): WheelGesture
   let axis = g.axis;
   if (axis === null) {
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return g;
-    axis = Math.abs(dx) > Math.abs(dy) * 1.5 ? "x" : "y";
+    axis = Math.abs(dx) > Math.abs(dy) * 2 ? "x" : "y";
   }
   if (axis === "y") return { ...g, axis };
   const recent = [...g.recent, dx].slice(-4);

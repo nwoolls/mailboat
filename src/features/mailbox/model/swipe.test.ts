@@ -13,31 +13,34 @@ import {
 } from "./swipe";
 
 describe("swipe pose", () => {
-  it("starts joined: the bud grows while the row barely moves", () => {
-    const p = swipePose(16);
-    expect(p.budWidth).toBeGreaterThan(p.shift);
-    expect(p.label).toBeLessThan(0.5);
-    expect(p.armed).toBe(false);
+  it("resists a little before it takes", () => {
+    expect(swipePose(SWIPE.deadZone).shift).toBeLessThan(SWIPE.deadZone / 2);
   });
 
-  it("breaks away into a capsule with a gap, label shown", () => {
-    const p = swipePose(SWIPE.breakAt);
-    expect(p.budWidth).toBeCloseTo(SWIPE.capsule);
-    expect(p.shift - p.budWidth).toBeCloseTo(SWIPE.gap);
-    expect(p.label).toBe(1);
-    expect(p.ring).toBe(0);
+  it("then follows the fingers one to one, the button filling the space", () => {
+    const a = swipePose(40);
+    const b = swipePose(50);
+    expect(b.shift - a.shift).toBeCloseTo(10);
+    expect(a.budWidth).toBe(a.shift);
+  });
+
+  it("stops the button at its width, then the gap opens and it stands apart", () => {
+    const p = swipePose(openRest());
+    expect(p.budWidth).toBe(SWIPE.capsule);
+    expect(p.shift - p.budWidth).toBeCloseTo(SWIPE.apart);
+    expect([p.label, p.ring, p.armed]).toEqual([1, 0, false]);
   });
 
   it("arms a little further on, with the ring full", () => {
-    expect(swipePose(SWIPE.armAt - 1).armed).toBe(false);
-    const p = swipePose(SWIPE.armAt);
+    const at = openRest() + SWIPE.armAfter;
+    expect(swipePose(at - 1).armed).toBe(false);
+    const p = swipePose(at);
     expect([p.armed, p.ring]).toEqual([true, 1]);
-    expect(SWIPE.armAt).toBeLessThan(200);
   });
 
   it("never goes backwards as the fingers travel", () => {
     let last = swipePose(0);
-    for (let d = 1; d < 300; d++) {
+    for (let d = 1; d < 400; d++) {
       const p = swipePose(d);
       expect(p.shift).toBeGreaterThanOrEqual(last.shift);
       expect(p.budWidth).toBeGreaterThanOrEqual(last.budWidth);
@@ -48,10 +51,9 @@ describe("swipe pose", () => {
 
 describe("release", () => {
   it("commits when armed, opens past a short swipe, else springs back", () => {
-    expect(releaseTo(SWIPE.armAt)).toBe("commit");
-    expect(releaseTo(SWIPE.openAt + 1)).toBe("open");
-    expect(releaseTo(10)).toBe("close");
+    expect(releaseTo(openRest() + SWIPE.armAfter)).toBe("commit");
     expect(releaseTo(openRest())).toBe("open");
+    expect(releaseTo(20)).toBe("close");
   });
 
   it("settles on its target", () => {

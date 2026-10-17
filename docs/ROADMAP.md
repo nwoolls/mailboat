@@ -662,11 +662,16 @@ each was a "not yet" note above)*:
         label fading in, then breaks away as a separate button. Committing
         needs only a little further, with an indicator, not a full-width
         swipe
-      - First version built to try by feel (2026-10-17): the row's plate
-        and a button bud are one soft shape that stretches, then necks
-        and snaps apart (~64px); a ring round the icon fills and, armed
-        (~128px), the capsule gets an accent wash and a small pop. One
-        button per side. Tune with the owner; no trackpad "tick" yet
+      - Built to try by feel (2026-10-17), then tuned after the owner's
+        first go (it outran the fingers, the button was a smaller pill,
+        it never visibly separated, it started too easily): a small dead
+        zone first, then the row follows the fingers one to one; the
+        space it leaves fills with the button, same height and corners as
+        the row, so it looks like the row growing; at 84px the button
+        stops growing and as the row goes on the join necks and snaps
+        (clearly apart at 18px); 44px further a ring round the icon has
+        filled and the button takes an accent wash: armed. One button per
+        side; no trackpad "tick" yet
 - [x] Create, rename and delete labels (the label picker only applies
       existing ones) *(not in the M3 list; noted while building it)*.
       Typing a new name in the picker (`l`) offers "Create “name”", which
