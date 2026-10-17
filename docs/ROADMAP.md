@@ -623,7 +623,7 @@ each was a "not yet" note above)*:
 ## Milestone 5: Polish
 
 *Open at the end of the 2026-10-17 session, in the order agreed: the
-Settings page (built), the app icon chooser in it (next), then meeting
+Settings page and its app icon chooser (built), then meeting
 invitations (after the new permissions, shared with Milestone 6).*
 
 - [ ] Answer meeting invitations in the reader *(owner request,
@@ -726,8 +726,16 @@ invitations (after the new permissions, shared with Milestone 6).*
       permission; turn them off or change their style in System Settings
       → Notifications → Mailboat. Not yet: clicking one opening that
       conversation (it brings Mailboat forward)
-- [ ] Settings: choose the app icon from `design/icon/choices/` (the
-      folded M in 16 colours, or the earlier glass icon)
+- [x] Settings: choose the app icon from `design/icon/choices/` (the
+      folded M in 16 colours, or the earlier glass icon). In Appearance,
+      after Theme: a grid of the 18 choices (System blue, the built-in one,
+      is the default). The choice shows in the Dock while Mailboat runs;
+      Finder and the Dock after quitting keep the built-in icon, because
+      changing the app's own files would break its code signature (and
+      with it the keychain's "Always Allow"). The flat pictures have no
+      glass rim; only the built-in icon gets macOS's. *Not yet seen
+      working in the Dock (2026-10-17): the picker was checked, the Dock
+      change wasn't; owner to try it.*
 - [x] Settings screen *(owner request, 2026-10-16)*. Decided (owner,
       2026-10-17):
       - **A page in the main window** (as MonoCode): the sidebar becomes
@@ -782,7 +790,7 @@ invitations (after the new permissions, shared with Milestone 6).*
         sections, with their features: default email reader, text size,
         delete key, sounds, Dock unread count, search scope (General);
         renaming an account; which mail notifies, VIP (Notifications);
-        app icon (its own item below) (Appearance); rebinding keys (Keyboard)
+        nothing more yet (Appearance); rebinding keys (Keyboard)
 - [x] Remember the window between launches: position, size, and
       maximized/full-screen state *(owner request, 2026-10-16)*. Works with
       several monitors: reopens on the display it was last on, and if that

@@ -210,6 +210,8 @@ export type AppError = {
 export type AppInfo = {
 	version: string,
 	accountColors: string[],
+	/**  The app icons Settings offers, by name (see `app_icon`). */
+	iconChoices: string[],
 };
 
 export type AppSettings = {
@@ -220,6 +222,11 @@ export type AppSettings = {
 	 *  own dark styles all follow it, from the first paint.
 	 */
 	theme?: Theme,
+	/**
+	 *  Which of the app icon choices shows in the Dock, by name (e.g.
+	 *  "C10-orange"); `None` is the icon Mailboat is built with.
+	 */
+	appIcon?: string | null,
 };
 
 /**

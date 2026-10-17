@@ -19,7 +19,7 @@ import { AccountAvatar } from "../../accounts/ui/AccountAvatar";
 import { RemoveAccountDialog } from "../../accounts/ui/RemoveAccountDialog";
 import { useSignIn } from "../../accounts/ui/useSignIn";
 import { SHORTCUTS } from "../../mailbox/model/shortcuts";
-import type { Theme } from "../../../platform/tauri/bindings";
+import type { AppSettings, Theme } from "../../../platform/tauri/bindings";
 import {
   ACCENTS,
   DEFAULT_APPEARANCE,
@@ -30,6 +30,8 @@ import {
 } from "../model/appearance";
 import { Button, Group, Row, Segmented, Slider, Swatches, Toggle } from "./controls";
 import { useAppearance } from "./useAppearance";
+import { AppIconPicker } from "./AppIconPicker";
+import { iconSetting, shownIcon } from "../model/appIcon";
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -293,24 +295,27 @@ export function AppearanceSection({
   useLight();
   const settings = useAppSettings().data;
   const save = useSaveAppSettings();
+  const iconChoices = useAppInfo().data?.iconChoices ?? [];
   const theme = settings?.theme ?? "system";
-  const setTheme = (next: Theme) =>
+  const icon = shownIcon(settings?.appIcon);
+  const change = (next: Partial<AppSettings>) =>
     settings &&
     save.mutate(
-      { ...settings, theme: next },
+      { ...settings, ...next },
       {
         onError: (e) => showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
       },
     );
+  const setTheme = (next: Theme) => change({ theme: next });
   return (
     <>
       {header(
         <Button
           onClick={() => {
             setAppearance(DEFAULT_APPEARANCE);
-            setTheme("system");
+            change({ theme: "system", appIcon: null });
           }}
-          disabled={isDefault(appearance) && theme === "system"}
+          disabled={isDefault(appearance) && theme === "system" && !settings?.appIcon}
         >
           Restore defaults
         </Button>,
@@ -336,6 +341,19 @@ export function AppearanceSection({
             onChange={(accent) => setAppearance({ ...appearance, accent })}
           />
         </Row>
+      </Group>
+      <Group
+        title="App icon"
+        description="Shows in the Dock while Mailboat is open. Finder, and the Dock once Mailboat quits, keep the built-in icon."
+      >
+        <div className="px-4 pt-0.5 pb-3.5">
+          <AppIconPicker
+            choices={iconChoices}
+            value={icon}
+            onChange={(choice) => change({ appIcon: iconSetting(choice) })}
+            disabled={!settings}
+          />
+        </div>
       </Group>
       <Group
         title="Transparency"

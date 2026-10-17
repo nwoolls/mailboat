@@ -8,8 +8,9 @@
   On macOS 26+ the system draws that with its glass rim and depth.
 - Change either, then run `scripts/build-app-icon.sh` (needs Xcode) to
   regenerate everything.
-- `choices/` holds the icons the owner wants to offer in a future Settings
-  icon picker: the folded-ribbon M (fold style S4) in 16 colours on a flat
+- `choices/` holds the icons offered in Settings → Appearance → App icon
+  (run `scripts/build-icon-choices.sh` after changing one, to re-render the
+  PNGs the Dock uses): the folded-ribbon M (fold style S4) in 16 colours on a flat
   near-black tile, and the earlier glass icon (`glass-midnight.svg`). The
   current icon is `C17-system-blue` (tried before: `C13-green`, `C04-cobalt`,
   `C03-sky`). C17 is Apple's system blue, added after the sheet: macOS renders

@@ -289,6 +289,11 @@ then draws the glass in that look and the web view's
 `prefers-color-scheme` follows, so the CSS and emails' own dark styles
 need no theme logic of their own.
 
+The app icon choice (a name from `design/icon/choices/`) is a Rust setting
+too: `dock.rs` puts its PNG (rendered by `scripts/build-icon-choices.sh`
+into `src-tauri/icons/choices/`, built into the binary by `app_icon.rs`)
+on the Dock at launch and when it changes.
+
 Account colours change through `accounts::set_color`, limited to the
 palette in `ACCOUNT_COLORS`.
 
@@ -360,4 +365,5 @@ palette in `ACCOUNT_COLORS`.
 | 2026-10-17 | Transparency is an adjustment (percentage points) to the owner's tints, not an absolute value | Light and dark use different base tints; one adjustment keeps both in step. The sidebar slider stops at −6 because its default is already nearly clear. |
 | 2026-10-17 | Account colours only from the fixed palette | The eight colours were picked to stay distinct and readable on the glass in light and dark; a free colour picker could make an account's mark vanish. |
 | 2026-10-17 | Theme set on the native app (`AppHandle::set_theme`), not with a CSS class | A CSS-only theme would leave macOS drawing the window's glass in the system look (light glass under dark text), and emails' `prefers-color-scheme` styles would disagree with the app. Setting it natively fixes both, and the existing light/dark CSS keeps working unchanged. Stored in Rust's settings so it's applied before the window first paints. |
+| 2026-10-17 | A chosen app icon changes the Dock only while Mailboat runs (`setApplicationIconImage`), not the app's files | Changing the icon Finder shows means writing into `Mailboat.app` (`NSWorkspace.setIcon`), which breaks its code signature; macOS then treats it as a different app and the keychain's "Always Allow" for the Google tokens stops applying. Mimestream-style Dock-only icons avoid that. The choices are pre-rendered PNGs (18 × ~20 KB in the binary) rather than SVGs rendered at runtime, so the fold shadows (SVG filters) look as designed. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |

@@ -1,3 +1,4 @@
+mod app_icon;
 mod commands;
 mod dock;
 mod error;
@@ -168,9 +169,13 @@ pub fn run() {
         })
         .build(tauri::generate_context!())
         .expect("error while building Mailboat")
-        .run(|_app, event| {
+        .run(|app, event| {
             if let tauri::RunEvent::Ready = event {
-                dock::prefer_bundle_icon();
+                let choice = app
+                    .try_state::<AppState>()
+                    .and_then(|state| mailboat_core::settings::load(&state.db.conn()).ok())
+                    .and_then(|s| s.app_icon);
+                dock::show_at_launch(app_icon::png(choice.as_deref()));
             }
         });
 }

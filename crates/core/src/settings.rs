@@ -31,6 +31,9 @@ pub struct AppSettings {
     /// Set on the window from Rust, so the glass, the page and emails'
     /// own dark styles all follow it, from the first paint.
     pub theme: Theme,
+    /// Which of the app icon choices shows in the Dock, by name (e.g.
+    /// "C10-orange"); `None` is the icon Mailboat is built with.
+    pub app_icon: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -38,6 +41,7 @@ impl Default for AppSettings {
         Self {
             new_mail_notifications: true,
             theme: Theme::System,
+            app_icon: None,
         }
     }
 }
@@ -82,6 +86,7 @@ mod tests {
         let off = AppSettings {
             new_mail_notifications: false,
             theme: Theme::Dark,
+            app_icon: Some("C10-orange".into()),
         };
         save(&conn, &off).unwrap();
         save(&conn, &off).unwrap();
@@ -100,5 +105,6 @@ mod tests {
         let loaded = load(&conn).unwrap();
         assert_eq!(loaded.theme, Theme::Light);
         assert!(loaded.new_mail_notifications);
+        assert_eq!(loaded.app_icon, None);
     }
 }

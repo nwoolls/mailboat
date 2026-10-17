@@ -815,6 +815,8 @@ pub fn sync_status_list(state: State<'_, AppState>) -> CmdResult<Vec<AccountSync
 pub struct AppInfo {
     pub version: String,
     pub account_colors: Vec<String>,
+    /// The app icons Settings offers, by name (see `app_icon`).
+    pub icon_choices: Vec<String>,
 }
 
 #[tauri::command]
@@ -826,6 +828,7 @@ pub fn app_info() -> AppInfo {
             .iter()
             .map(|c| (*c).to_string())
             .collect(),
+        icon_choices: crate::app_icon::names(),
     }
 }
 
@@ -844,6 +847,7 @@ pub fn settings_set(
 ) -> CmdResult<()> {
     settings::save(&state.db.conn(), &settings)?;
     crate::theme::apply(&app, settings.theme);
+    crate::dock::set_icon(&app, crate::app_icon::png(settings.app_icon.as_deref()));
     Ok(())
 }
 

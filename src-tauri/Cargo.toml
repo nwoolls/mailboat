@@ -26,11 +26,13 @@ time = { version = "0.3.55", features = ["formatting"] }
 tauri-plugin-window-state = "2"
 tauri-plugin-notification = "2"
 
-# Already part of the build through Tauri; declared to clear Tauri's dev
-# Dock picture (src/dock.rs) and to read trackpad phases (src/trackpad.rs).
+# Already part of the build through Tauri; declared to set the Dock picture
+# (src/dock.rs) and to read trackpad phases (src/trackpad.rs).
 # Same versions as Tauri and MonoCode.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "NSImage", "NSResponder", "NSEvent", "block2"] }
+# NSData, to turn a chosen app icon's PNG into an NSImage (src/dock.rs).
+objc2-foundation = { version = "0.3", features = ["NSData"] }
 # The trackpad monitor's handler (src/trackpad.rs); same version as Tauri's.
 block2 = "0.6"
