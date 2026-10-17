@@ -6,6 +6,7 @@ mod files;
 mod links;
 mod state;
 mod sync_log;
+mod window_place;
 
 use std::sync::Arc;
 
@@ -87,6 +88,18 @@ pub fn run() {
     export_bindings(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(BINDINGS_PATH));
 
     tauri::Builder::default()
+        // Remembers the window's position, size and maximized/full-screen
+        // state between launches (Rust only: no web permission).
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED
+                        | tauri_plugin_window_state::StateFlags::FULLSCREEN,
+                )
+                .build(),
+        )
         .register_uri_scheme_protocol(mailboat_core::mail::links::SCHEME, |_ctx, request| {
             links::handle(&request)
         })
@@ -125,6 +138,10 @@ pub fn run() {
             );
             state.resume_all_accounts()?;
             app.manage(state);
+            // After the plugin restored it: fully on a connected display.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window_place::keep_on_screen(&window);
+            }
             Ok(())
         })
         .build(tauri::generate_context!())

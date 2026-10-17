@@ -639,13 +639,17 @@ each was a "not yet" note above)*:
       slider per area (sidebar and reader, list panel). Per area, because one shared slider scaling
       each tint by the same share changed the list far more than the
       sidebar
-- [ ] Remember the window between launches: position, size, and
+- [x] Remember the window between launches: position, size, and
       maximized/full-screen state *(owner request, 2026-10-16)*. Works with
       several monitors: reopens on the display it was last on, and if that
       display is gone (unplugged, or the arrangement changed) or the saved
       spot would be off-screen, it moves fully onto a connected display
       instead of opening out of sight. Likely Tauri's `window-state`
-      plugin, which would need a reason recorded for the new plugin
+      plugin, which would need a reason recorded for the new plugin. Built with `tauri-plugin-window-state`
+      (position, size, maximized, full screen; Rust side only) plus
+      `src-tauri/src/window_place.rs`, which moves a window that's partly
+      off screen fully onto the display it's mostly on (shrinking it if
+      that display is smaller); the plugin alone accepts partly visible
 - [ ] Offline mode
 
 ## Milestone 6: Rules and signatures
