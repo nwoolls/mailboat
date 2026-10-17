@@ -649,10 +649,19 @@ each was a "not yet" note above)*:
       while the menu is open), or on all picks if it's one of them; only
       Reply and Forward open it, since that's where you write. Also on sidebar labels (Rename, Delete) and
       account headers (already there). More places as they come up
-- [ ] Swipe on a conversation (trackpad, two fingers): one way archives,
-      the other toggles read/unread *(owner request, 2026-10-16)*.
-      **Discuss the animation with the owner first** (what shows behind
-      the row, how far to swipe, what commits or springs back)
+- [ ] Swipe on a conversation (trackpad, two fingers) *(owner request,
+      2026-10-16)*. Decided (owner, 2026-10-17):
+      - Left archives (Trash where Archive doesn't apply, e.g. in
+        Archive or Sent); right toggles read/unread
+      - A long swipe commits on release; a short one stops with the
+        button(s) showing, to click
+      - **Not** Mail's or Mimestream's coloured strips (garish, worse on
+        glass). Closer to iOS 26/27 notification swipes, in Mailboat's own
+        style rather than Liquid Glass: the row stretches rather than
+        slides, the button grows out of it joined to the row with its
+        label fading in, then breaks away as a separate button. Committing
+        needs only a little further, with an indicator, not a full-width
+        swipe. Animation still being designed with the owner
 - [x] Create, rename and delete labels (the label picker only applies
       existing ones) *(not in the M3 list; noted while building it)*.
       Typing a new name in the picker (`l`) offers "Create “name”", which
