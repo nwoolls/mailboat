@@ -571,6 +571,7 @@ export function Shell() {
             </div>
             <ThreadList
               threads={threads}
+              onSwipe={(id, action) => act(action, [id])}
               accounts={accounts}
               showAccount={showAccount}
               selectedId={selectedId}

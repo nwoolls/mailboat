@@ -1,10 +1,14 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, useMemo, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
 import { AttachmentIcon, StarIcon } from "../../../shared/ui/icons";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { formatListDate, senderParts } from "../model/format";
+import { swipeActions, swipePose } from "../model/swipe";
+import type { ThreadAction } from "../model/threadActions";
+import { SwipeBack, SwipeButton } from "./SwipeLayers";
 import type { OlderStatus } from "./useOlderMail";
+import { useSwipe } from "./useSwipe";
 
 const ROW_HEIGHT = 72;
 /** Room before the row's text for the account ring and star (12px + gap). */
@@ -36,6 +40,8 @@ type Props = {
   older: { status: OlderStatus; busy: boolean; retry: () => void; searching?: boolean };
   /** Shown when the view has no conversations. */
   empty: React.ReactNode;
+  /** A two-finger swipe on a row did this (archive, trash, read…). */
+  onSwipe: (id: ThreadId, action: ThreadAction) => void;
 };
 
 export function ThreadList({
@@ -53,8 +59,21 @@ export function ThreadList({
   loading,
   older,
   empty,
+  onSwipe,
 }: Props) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // The list element as state too, so the swipe's listeners attach once
+  // it exists (it doesn't while the view is empty).
+  const [listEl, setListEl] = useState<HTMLDivElement | null>(null);
+  const [rowWidth, setRowWidth] = useState(0);
+  useEffect(() => {
+    if (!listEl) return;
+    // Rows sit 8px in from each side (mx-2).
+    const observer = new ResizeObserver(() => setRowWidth(listEl.clientWidth - 16));
+    observer.observe(listEl);
+    return () => observer.disconnect();
+  }, [listEl]);
+  const { swipe, commit } = useSwipe(listEl, threads, onSwipe);
   const virtualizer = useVirtualizer({
     count: threads.length,
     getScrollElement: () => scrollRef.current,
@@ -84,7 +103,10 @@ export function ThreadList({
 
   return (
     <div
-      ref={scrollRef}
+      ref={(el) => {
+        scrollRef.current = el;
+        setListEl(el);
+      }}
       role="listbox"
       // Only a click on the list's own background (below the last row)
       // clears the selection; the gaps between rows belong to the rows'
@@ -106,124 +128,178 @@ export function ThreadList({
           const selected = t.id === selectedId;
           const picked = checked.has(t.id);
           const account = showAccount ? accounts.get(t.accountId) : undefined;
+          const swiped = swipe?.id === t.id ? swipe : null;
+          const pose = swiped ? swipePose(swiped.d) : null;
+          const swipeAction = swiped ? swipeActions(t)[swiped.side] : null;
+          const rowHeight = ROW_HEIGHT - 4;
+          const out = swiped?.mode === "out";
           return (
-            <div
-              key={t.id}
-              role="option"
-              aria-selected={selected || picked}
-              onClick={(e) =>
-                onSelect(t.id, e.metaKey || e.ctrlKey ? "toggle" : e.shiftKey ? "range" : "open")
-              }
-              onContextMenu={(e) => {
-                e.preventDefault();
-                onRowMenu(t.id, { x: e.clientX, y: e.clientY });
-              }}
-              // ⇧-click shouldn't also select the rows' text.
-              onMouseDown={(e) => {
-                if (e.shiftKey) e.preventDefault();
-              }}
-              // pl-6 leaves a fixed gutter for the unread dot, so senders,
-              // subjects and snippets line up whether a row is read or not.
-              className={`absolute inset-x-0 mx-2 flex flex-col justify-center gap-0.5 rounded-lg pr-3 pl-6 ${
-                picked
-                  ? "bg-accent/18 ring-1 ring-accent/35 ring-inset"
-                  : selected
-                    ? "bg-selection-strong"
-                    : "hover:bg-selection-subtle"
-              } ${
-                // The row a right-click menu is open for, without opening it.
-                t.id === menuRowId ? "outline-2 -outline-offset-2 outline-accent/60" : ""
-              }`}
-              style={{ top: item.start, height: ROW_HEIGHT - 4 }}
-            >
-              {/* Sender, subject and snippet all start after a fixed icon
+            <Fragment key={t.id}>
+              {swiped && pose && (
+                <div
+                  className="pointer-events-none absolute inset-x-0 mx-2"
+                  style={{
+                    top: item.start,
+                    height: rowHeight,
+                    opacity: out ? 0 : 1,
+                    transition: out ? "opacity 140ms ease-in" : undefined,
+                  }}
+                >
+                  <SwipeBack
+                    pose={out ? { ...pose, shift: pose.shift + rowWidth } : pose}
+                    side={swiped.side}
+                    width={rowWidth}
+                    height={rowHeight}
+                    selected={selected || picked}
+                  />
+                </div>
+              )}
+              <div
+                data-thread-id={t.id}
+                role="option"
+                aria-selected={selected || picked}
+                onClick={(e) =>
+                  onSelect(t.id, e.metaKey || e.ctrlKey ? "toggle" : e.shiftKey ? "range" : "open")
+                }
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  onRowMenu(t.id, { x: e.clientX, y: e.clientY });
+                }}
+                // ⇧-click shouldn't also select the rows' text.
+                onMouseDown={(e) => {
+                  if (e.shiftKey) e.preventDefault();
+                }}
+                // pl-6 leaves a fixed gutter for the unread dot, so senders,
+                // subjects and snippets line up whether a row is read or not.
+                className={`absolute inset-x-0 mx-2 flex flex-col justify-center gap-0.5 rounded-lg pr-3 pl-6 ${
+                  // While swiped, the plate behind is drawn by SwipeBack.
+                  swiped
+                    ? ""
+                    : picked
+                      ? "bg-accent/18 ring-1 ring-accent/35 ring-inset"
+                      : selected
+                        ? "bg-selection-strong"
+                        : "hover:bg-selection-subtle"
+                } ${
+                  // The row a right-click menu is open for, without opening it.
+                  t.id === menuRowId ? "outline-2 -outline-offset-2 outline-accent/60" : ""
+                }`}
+                style={{
+                  top: item.start,
+                  height: rowHeight,
+                  transform: pose
+                    ? `translateX(${(swiped?.side === "left" ? -1 : 1) * (pose.shift + (out ? rowWidth : 0))}px)`
+                    : undefined,
+                  opacity: out ? 0 : undefined,
+                  transition: out ? "transform 140ms ease-in, opacity 140ms ease-in" : undefined,
+                }}
+              >
+                {/* Sender, subject and snippet all start after a fixed icon
                   column (ICON_COLUMN): the account ring sits in it on the
                   first line and the star under it on the second, so icons
                   line up with icons and text with text on every row. */}
-              <div
-                className="relative flex items-center gap-2"
-                style={{ paddingLeft: ICON_COLUMN }}
-              >
-                {t.unread && (
-                  <span
-                    className="absolute top-1/2 -left-3.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent"
-                    aria-label="Unread"
-                  />
-                )}
-                {account && (
-                  // The account as a hollow ring in a softened account
-                  // colour: hollow, so it can't be mistaken for the solid
-                  // unread dot beside it, whatever the account's colour.
-                  <span
-                    className="absolute top-1/2 left-0.5 h-2 w-2 -translate-y-1/2 rounded-full"
-                    style={{
-                      border: `1.5px solid color-mix(in srgb, ${account.color} 75%, transparent)`,
-                    }}
-                    title={account.email}
-                    aria-label={account.email}
-                  />
-                )}
-                {/* As in Gmail: people with unread mail in bold, the rest
-                    plain, then the message count in grey. */}
-                <span className="truncate">
-                  {senderParts(t.senders, selfEmails).map((part, i) => (
-                    <span key={part.key}>
-                      {i > 0 && (
-                        <span className="text-content/60">{part.text === "…" ? " " : ", "}</span>
-                      )}
-                      <span
-                        className={
-                          part.unread ? "font-semibold text-content" : "font-medium text-content/75"
-                        }
-                      >
-                        {part.text}
-                      </span>
-                      {part.text === "…" && " "}
-                    </span>
-                  ))}
-                  {t.messageCount > 1 && (
-                    <span className="ml-1.5 text-xs font-normal text-content/45">
-                      {t.messageCount}
-                    </span>
+                <div
+                  className="relative flex items-center gap-2"
+                  style={{ paddingLeft: ICON_COLUMN }}
+                >
+                  {t.unread && (
+                    <span
+                      className="absolute top-1/2 -left-3.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent"
+                      aria-label="Unread"
+                    />
                   )}
-                </span>
-                <span className="ml-auto shrink-0 text-xs text-content/40">
-                  {formatListDate(t.lastMessageAt)}
-                </span>
+                  {account && (
+                    // The account as a hollow ring in a softened account
+                    // colour: hollow, so it can't be mistaken for the solid
+                    // unread dot beside it, whatever the account's colour.
+                    <span
+                      className="absolute top-1/2 left-0.5 h-2 w-2 -translate-y-1/2 rounded-full"
+                      style={{
+                        border: `1.5px solid color-mix(in srgb, ${account.color} 75%, transparent)`,
+                      }}
+                      title={account.email}
+                      aria-label={account.email}
+                    />
+                  )}
+                  {/* As in Gmail: people with unread mail in bold, the rest
+                    plain, then the message count in grey. */}
+                  <span className="truncate">
+                    {senderParts(t.senders, selfEmails).map((part, i) => (
+                      <span key={part.key}>
+                        {i > 0 && (
+                          <span className="text-content/60">{part.text === "…" ? " " : ", "}</span>
+                        )}
+                        <span
+                          className={
+                            part.unread
+                              ? "font-semibold text-content"
+                              : "font-medium text-content/75"
+                          }
+                        >
+                          {part.text}
+                        </span>
+                        {part.text === "…" && " "}
+                      </span>
+                    ))}
+                    {t.messageCount > 1 && (
+                      <span className="ml-1.5 text-xs font-normal text-content/45">
+                        {t.messageCount}
+                      </span>
+                    )}
+                  </span>
+                  <span className="ml-auto shrink-0 text-xs text-content/40">
+                    {formatListDate(t.lastMessageAt)}
+                  </span>
+                </div>
+                <div
+                  // Not `truncate` here: its clipping would hide the paperclip
+                  // in the gutter; the subject truncates itself.
+                  className={`relative flex min-w-0 items-center ${t.unread ? "font-semibold text-content" : "font-medium text-content/70"}`}
+                  style={{ paddingLeft: ICON_COLUMN }}
+                >
+                  {t.hasAttachments && (
+                    // In the gutter under the unread dot, centred on the same
+                    // line, so it never pushes the subject around.
+                    <AttachmentIcon
+                      size={11}
+                      strokeWidth={2}
+                      className="absolute top-1/2 -left-4 -translate-y-1/2 text-content/35"
+                      aria-label="Has attachments"
+                    />
+                  )}
+                  {t.starred && (
+                    <StarIcon
+                      size={12}
+                      strokeWidth={2}
+                      className="absolute top-1/2 left-0 -translate-y-1/2 text-warn"
+                      aria-label="Starred"
+                    />
+                  )}
+                  <span className="truncate">{t.subject || "(no subject)"}</span>
+                </div>
+                <div
+                  className="truncate text-xs font-medium text-content/40"
+                  style={{ paddingLeft: ICON_COLUMN }}
+                >
+                  {t.snippet}
+                </div>
               </div>
-              <div
-                // Not `truncate` here: its clipping would hide the paperclip
-                // in the gutter; the subject truncates itself.
-                className={`relative flex min-w-0 items-center ${t.unread ? "font-semibold text-content" : "font-medium text-content/70"}`}
-                style={{ paddingLeft: ICON_COLUMN }}
-              >
-                {t.hasAttachments && (
-                  // In the gutter under the unread dot, centred on the same
-                  // line, so it never pushes the subject around.
-                  <AttachmentIcon
-                    size={11}
-                    strokeWidth={2}
-                    className="absolute top-1/2 -left-4 -translate-y-1/2 text-content/35"
-                    aria-label="Has attachments"
+              {swiped && pose && swipeAction && !out && (
+                <div
+                  className="pointer-events-none absolute inset-x-0 mx-2"
+                  style={{ top: item.start, height: rowHeight }}
+                >
+                  <SwipeButton
+                    pose={pose}
+                    side={swiped.side}
+                    height={rowHeight}
+                    action={swipeAction}
+                    open={swiped.mode === "open"}
+                    onCommit={commit}
                   />
-                )}
-                {t.starred && (
-                  <StarIcon
-                    size={12}
-                    strokeWidth={2}
-                    className="absolute top-1/2 left-0 -translate-y-1/2 text-warn"
-                    aria-label="Starred"
-                  />
-                )}
-                <span className="truncate">{t.subject || "(no subject)"}</span>
-              </div>
-              <div
-                className="truncate text-xs font-medium text-content/40"
-                style={{ paddingLeft: ICON_COLUMN }}
-              >
-                {t.snippet}
-              </div>
-            </div>
+                </div>
+              )}
+            </Fragment>
           );
         })}
         {footer && (

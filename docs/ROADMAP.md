@@ -661,7 +661,12 @@ each was a "not yet" note above)*:
         slides, the button grows out of it joined to the row with its
         label fading in, then breaks away as a separate button. Committing
         needs only a little further, with an indicator, not a full-width
-        swipe. Animation still being designed with the owner
+        swipe
+      - First version built to try by feel (2026-10-17): the row's plate
+        and a button bud are one soft shape that stretches, then necks
+        and snaps apart (~64px); a ring round the icon fills and, armed
+        (~128px), the capsule gets an accent wash and a small pop. One
+        button per side. Tune with the owner; no trackpad "tick" yet
 - [x] Create, rename and delete labels (the label picker only applies
       existing ones) *(not in the M3 list; noted while building it)*.
       Typing a new name in the picker (`l`) offers "Create “name”", which
