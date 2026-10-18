@@ -880,7 +880,10 @@ and settled with the owner one at a time.*
       look (the folded-ribbon M in Apple's system blue, C17, on a
       flat near-black tile with the Liquid Glass rim) but try other
       fold directions so it reads more like a folded envelope. Offer a
-      sheet of variants in `design/icon/sheets/` to pick from, as before
+      sheet of variants in `design/icon/sheets/` to pick from, as before.
+      *Sheet offered: `8-envelope-folds.png` (six variants, E1–E6, folded
+      at the top corners instead of the middle); waiting on the owner's
+      pick*
 - [ ] Idle screensavers for the empty reader and list *(owner request,
       2026-10-17; discuss first, then pick one to try and iterate)*: an
       alternative to the pointer-following glow. Interactive pixel art

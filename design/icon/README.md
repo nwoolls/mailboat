@@ -28,3 +28,12 @@
   6. Six ways to shade the fold; S4 (even shading) was picked
   7. S4 in 16 colours; C13 (green) was picked, then C04 (cobalt), C03 (sky) and
      finally C17 (system blue, not on the sheet)
+  8. Round three (2026-10-17, not picked yet): the M as one ribbon folded
+     over at its top corners, like an envelope's flap, so the folds and
+     shadows sit left and right and the V is one unbroken piece. "Now" is
+     today's icon for comparison. E1–E3 fold at 41°; E4 and E6 at 50°
+     (a deeper flap); E5 keeps square stem tops with the flap laid over
+     them. In E1, E2, E4 and E5 the flap folds over the front and shadows
+     the stems; in E3 and E6 it tucks behind and the stems shadow it. The
+     flap is darker (the ribbon's back) in all but E1. Sources are in
+     `envelope/`
