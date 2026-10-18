@@ -882,8 +882,9 @@ and settled with the owner one at a time.*
       fold directions so it reads more like a folded envelope. Offer a
       sheet of variants in `design/icon/sheets/` to pick from, as before.
       *Sheet offered: `8-envelope-folds.png` (six variants, E1–E6, folded
-      at the top corners instead of the middle); waiting on the owner's
-      pick*
+      at the top corners instead of the middle). Owner's steer: Now's
+      square tips, V folded in front, what's behind slightly darker.
+      Second sheet `9-front-folds.png` (N1–N4); waiting on the pick*
 - [ ] Idle screensavers for the empty reader and list *(owner request,
       2026-10-17; discuss first, then pick one to try and iterate)*: an
       alternative to the pointer-following glow. Interactive pixel art

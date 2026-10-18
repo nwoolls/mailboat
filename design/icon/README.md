@@ -37,3 +37,10 @@
      the stems; in E3 and E6 it tucks behind and the stems shadow it. The
      flap is darker (the ribbon's back) in all but E1. Sources are in
      `envelope/`
+  9. The owner's steer on round 8: keep Now's square-tipped shape, fold
+     the V over the front (as E1), and shade what's behind a little
+     darker (as E3). The V is one piece, shadowing the sides only at the
+     top corners. N1, N2: the V darker; N3, N4: the sides darker and the
+     V bright. N1, N3 keep Now's arm ends (a square cut just inside each
+     side); N2, N4 square them off to the sides' top corners. Sources in
+     `envelope/`
