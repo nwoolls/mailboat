@@ -4,7 +4,8 @@ import {
   isRealMove,
   GRAIN,
   SAND_CELL_PX,
-  SAND_COLORS,
+  HELD,
+  SAND_KINDS,
   SAND_SHADES,
   SandShow,
   SCREENSAVER_EVENT,
@@ -16,13 +17,13 @@ const CLOSE_MS = 450;
 
 /**
  * When the empty list's screensaver runs. It starts after
- * SCREENSAVER_IDLE_SECONDS without any input while the window is in front
- * (or at once from the palette's "Start screensaver"), and closes on a key,
- * click or scroll. Moving the pointer doesn't close it: the sand plays with
- * the pointer instead. Never starts with "Reduce motion" on.
+ * SCREENSAVER_IDLE_SECONDS without any input while the window is visible,
+ * even with another app in front (owner's choice: it's something to look
+ * at beside other work), or at once from the palette's "Start
+ * screensaver". It closes on a key, click or scroll. Moving the pointer
+ * doesn't close it: the sand plays with the pointer instead. Never starts
+ * with "Reduce motion" on.
  *
- * Focus is tracked from the window's blur and focus events, not
- * `document.hasFocus()`, which can't be relied on in the app's web view.
  * Pointer events that don't actually move (WebKit sends some when the page
  * changes under a still cursor, such as when the palette closes) don't
  * count as input.
@@ -33,21 +34,19 @@ export function useScreensaver(): ScreensaverPhase {
   useEffect(() => {
     const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let timer = 0;
-    let inFront = !document.hidden;
     let last: { x: number; y: number } | null = null;
-    const startIfInFront = () => {
+    const startIfVisible = () => {
       if (reduced()) return;
-      if (inFront && !document.hidden) setPhase("on");
+      if (!document.hidden) setPhase("on");
       else arm();
     };
     const arm = () => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(startIfInFront, SCREENSAVER_IDLE_SECONDS * 1000);
+      timer = window.setTimeout(startIfVisible, SCREENSAVER_IDLE_SECONDS * 1000);
     };
     if (phase === "off") {
       arm();
-      // Asked for: start regardless of focus, and don't let the palette
-      // closing (its key, a stray pointer event) cancel it.
+      // Asked for: start now, and don't let the palette closing (its key, a stray pointer event) cancel it.
       let now = 0;
       const onStartNow = () => {
         window.clearTimeout(now);
@@ -58,24 +57,15 @@ export function useScreensaver(): ScreensaverPhase {
         last = { x: e.clientX, y: e.clientY };
         if (moved) arm();
       };
-      const onBlur = () => (inFront = false);
-      const onFocus = () => {
-        inFront = true;
-        arm();
-      };
       const events = ["keydown", "pointerdown", "wheel"] as const;
       for (const e of events) window.addEventListener(e, arm, { passive: true });
       window.addEventListener("pointermove", onMove, { passive: true });
-      window.addEventListener("blur", onBlur);
-      window.addEventListener("focus", onFocus);
       window.addEventListener(SCREENSAVER_EVENT, onStartNow);
       return () => {
         window.clearTimeout(timer);
         window.clearTimeout(now);
         for (const e of events) window.removeEventListener(e, arm);
         window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("blur", onBlur);
-        window.removeEventListener("focus", onFocus);
         window.removeEventListener(SCREENSAVER_EVENT, onStartNow);
       };
     }
@@ -98,7 +88,8 @@ export function useScreensaver(): ScreensaverPhase {
  * Pixel sand over the empty list (see `model/sand.ts`). It fills `areaRef`
  * (the empty state's box below the title row), treats the icon box and
  * each letter of the words as solid, and the pointer too while it's over
- * the area. Paused while the window is in the background.
+ * the area. It keeps playing while another app is in front, and pauses
+ * only when the window is hidden (minimized, or another Space).
  */
 export function SandScreensaver({
   areaRef,
@@ -167,7 +158,7 @@ export function SandScreensaver({
       const { cells, particles, cols } = show.box;
       for (let i = 0; i < cells.length; i++) {
         const v = cells[i]!;
-        pixels[i] = v >= GRAIN ? colors[v - GRAIN]! : 0;
+        pixels[i] = v >= GRAIN ? colors[(v & ~HELD) - GRAIN]! : 0;
       }
       for (const p of particles) {
         const x = Math.round(p.x);
@@ -182,8 +173,12 @@ export function SandScreensaver({
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
       if (show) {
-        show.box.setCursor(pointer, arrow);
+        // The pointer stays out of the sand while the frame turns over.
+        if (show.phase !== "turning") show.box.setCursor(pointer, arrow);
         if (show.frame(dt, icon)) shrugRef.current();
+        // Turn the canvas itself; at the end the grid is turned instead.
+        const turn = show.phase === "turning" ? easeInOut(show.turn) * 180 : 0;
+        canvas.style.transform = turn ? `rotate(${turn}deg)` : "";
         draw();
       }
       frame = requestAnimationFrame(tick);
@@ -217,16 +212,12 @@ export function SandScreensaver({
     resize.observe(area);
     card.addEventListener("pointermove", onMove);
     card.addEventListener("pointerleave", onLeave);
-    window.addEventListener("blur", pause);
-    window.addEventListener("focus", play);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       pause();
       resize.disconnect();
       card.removeEventListener("pointermove", onMove);
       card.removeEventListener("pointerleave", onLeave);
-      window.removeEventListener("blur", pause);
-      window.removeEventListener("focus", play);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [areaRef, iconRef, wordsRef]);
@@ -241,16 +232,20 @@ export function SandScreensaver({
   );
 }
 
+function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+}
+
 /** Every grain value's colour as a little-endian RGBA word, shades included. */
 function grainColors(): Uint32Array {
-  const out = new Uint32Array(SAND_COLORS.length * SAND_SHADES);
-  SAND_COLORS.forEach((hex, c) => {
+  const out = new Uint32Array(SAND_KINDS.length * SAND_SHADES);
+  SAND_KINDS.forEach(({ color: hex }, c) => {
     const n = Number.parseInt(hex.slice(1), 16);
     for (let s = 0; s < SAND_SHADES; s++) {
       // Shades from a little darker to a little lighter than the colour.
       const k = 0.86 + (s / (SAND_SHADES - 1)) * 0.24;
       const ch = (shift: number) => Math.min(255, Math.round(((n >> shift) & 255) * k));
-      const alpha = 235;
+      const alpha = 255; // The canvas carries the glass's opacity.
       out[c * SAND_SHADES + s] = ((alpha << 24) | (ch(0) << 16) | (ch(8) << 8) | ch(16)) >>> 0;
     }
   });

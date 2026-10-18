@@ -898,22 +898,22 @@ and settled with the owner one at a time.*
       fireworks. To settle: which one first, the idle delay, whether it
       replaces the glow or comes on after it, and keeping it light on
       battery (pause when the window is hidden or unfocused)
-      *First try built (2026-10-17), waiting on the owner: falling sand,
-      like a desk sand-art frame. Coloured layers pour from a wandering
-      spout, heap on the icon box and on the letters of the words, rest
-      on the pointer (moving it digs and scatters them), and when the
-      heap reaches about a third of the way up the floor opens and it
-      drains like an hourglass, then starts over. When the icon's heap
-      grows it nods and shrugs it off. Starts after 60s without input
-      (any empty view, window focused), or at once from the palette's
-      "Start screensaver"; a key, click or scroll ends it, the pointer
-      doesn't. It plays over the glow, which keeps drifting behind it.
-      Off with "Reduce motion"; paused when the window is hidden or in
-      the background. Fixed after the owner found it never started: any
-      pointer event (even WebKit's still-cursor ones, as when the
-      palette closes) cancelled the palette's start and reset the idle
-      wait, and `document.hasFocus()` could stop it from starting or
-      drawing*
+      *First try (2026-10-17): falling sand poured from a spout, draining
+      like an hourglass. Fixed after the owner found it never started (any
+      pointer event, even WebKit's still-cursor ones, cancelled the start
+      and reset the idle wait). Second try, after the owner pointed to
+      sandscapes (the sand-and-liquid frames you turn over), waiting on
+      the owner: a layered ceiling leaks through three wandering gaps in
+      slow curtains that lay down fine dark and light layers in steep
+      hills, heaping on the icon box, the letters of the words and the
+      pointer (moving it digs and stirs). The icon nods and shrugs its
+      heap off. Once the ceiling is spent it rests 12s, the frame turns
+      over (the canvas rotates 180°), and the landscape is the next
+      ceiling. The sand is as see-through as the list card's glass and
+      follows the Transparency setting. Starts after 60s without input,
+      even with another app in front (owner's request), or at once from
+      the palette's "Start screensaver"; a key, click or scroll ends it.
+      Off with "Reduce motion"; paused only when the window is hidden*
 
 ## AI Spike
 

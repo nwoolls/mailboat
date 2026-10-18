@@ -1,11 +1,15 @@
 /**
- * The empty list's screensaver: pixel sand, like a desk sand-art frame.
- * Coloured layers pour in from a wandering spout, heap up on the empty
- * state's icon and words (and on the pointer), then drain away through the
- * floor like an hourglass, and it starts over.
+ * The empty list's screensaver: pixel sand in the style of a sandscape
+ * (the frames of sand and liquid between two panes of glass that you turn
+ * over). A ceiling of layered sand leaks through a few gaps in slow, thin
+ * curtains that settle into steep, finely layered hills, heaping on the
+ * empty state's icon and words and on the pointer too. When the ceiling is
+ * spent and the hills are still, the frame rests a while, turns over, and
+ * the finished landscape becomes the next ceiling.
  *
  * Pure logic on a grid of cells, one cell per few screen pixels; the UI
- * (`SandScreensaver`) draws the grid and feeds in the solids and pointer.
+ * (`SandScreensaver`) draws the grid, turns the canvas during the flip and
+ * feeds in the solids and pointer.
  */
 
 /** Screen pixels per sand cell: chunky enough to read as pixel art. */
@@ -15,23 +19,42 @@ export const SCREENSAVER_IDLE_SECONDS = 60;
 /** Window event that starts the screensaver now (the palette's command). */
 export const SCREENSAVER_EVENT = "mailboat:screensaver";
 
-/** Sand-art colours, poured in turn so the heap shows layers. */
-export const SAND_COLORS = ["#0a84ff", "#e8cfa0", "#7fbfff", "#b4a7ff", "#5fd4c4", "#f2a98a"];
-/** Each grain gets one of a few shades of its colour, for texture. */
+/**
+ * The sands. Heavier ones sink faster through the liquid (`fall` is the
+ * chance of dropping a cell each frame), which is part of why real
+ * sandscapes settle in separate layers.
+ */
+export const SAND_KINDS = [
+  { color: "#2a5fb8", fall: 0.95 }, // deep blue, heaviest
+  { color: "#e9ddc3", fall: 0.82 }, // cream, lightest
+  { color: "#0a84ff", fall: 0.9 }, // system blue
+  { color: "#a3d0ff", fall: 0.86 }, // pale sky
+] as const;
+/** Each grain gets one of a few shades of its sand, for texture. */
 export const SAND_SHADES = 4;
-/** Seconds each colour pours before the next. */
-export const LAYER_SECONDS = 5;
+/** How long a finished landscape rests before the frame turns over. */
+export const REST_SECONDS = 12;
+/** How long the turn takes. */
+export const FLIP_SECONDS = 1.8;
 
 export const EMPTY = 0;
 /** The icon and words: sand rests on them. */
 export const SOLID = 1;
 /** The pointer: sand rests on it and is pushed aside as it moves. */
 export const CURSOR = 2;
-/** Grain values start here: GRAIN + colour × SAND_SHADES + shade. */
+/** Grain values start here: GRAIN + kind × SAND_SHADES + shade. */
 export const GRAIN = 16;
+/** Set on grains of the ceiling, which hang until a leak lets them go. */
+export const HELD = 128;
 
-const MAX_SPEED = 5;
-const GRAVITY = 0.12;
+/** In liquid, flung grains slow quickly and sink gently. */
+const GRAVITY = 0.05;
+const DRAG = 0.92;
+/** Frames a landed grain may still roll down a 45° slope before it locks. */
+const ROLL_FRAMES = 3;
+const LEAKS = 3;
+/** How far either side of a gap the ceiling gives way, in cells. */
+const LEAK_REACH = 3;
 
 export type Rng = () => number;
 
@@ -48,8 +71,13 @@ export function isRealMove(
   return Math.abs(e.clientX - last.x) + Math.abs(e.clientY - last.y) > 2;
 }
 
-export function grainValue(color: number, shade: number): number {
-  return GRAIN + (color % SAND_COLORS.length) * SAND_SHADES + (shade % SAND_SHADES);
+export function grainValue(kind: number, shade: number): number {
+  return GRAIN + (kind % SAND_KINDS.length) * SAND_SHADES + (shade % SAND_SHADES);
+}
+
+/** Which sand a grain value is (held or not). */
+export function kindOf(v: number): number {
+  return Math.floor(((v & ~HELD) - GRAIN) / SAND_SHADES);
 }
 
 /** A grain in flight (pushed by the pointer or shrugged off the icon). */
@@ -58,14 +86,17 @@ type Particle = { x: number; y: number; vx: number; vy: number; v: number };
 /** The grid and its physics. */
 export class SandBox {
   readonly cells: Uint8Array;
-  private readonly speed: Uint8Array;
+  /** Frames left in which each landed grain may roll. */
+  private readonly roll: Uint8Array;
   readonly particles: Particle[] = [];
   private cursor: number[] = [];
   private cursorAt: { x: number; y: number } | null = null;
-  /** While true the floor is open and grains fall out of the bottom. */
-  draining = false;
   /** Grains on the grid plus those in flight. */
   grains = 0;
+  /** Of those, how many hang in the ceiling. */
+  held = 0;
+  /** How many grains moved (or were still falling) in the last step. */
+  moving = 0;
 
   constructor(
     readonly cols: number,
@@ -73,7 +104,7 @@ export class SandBox {
     private readonly rng: Rng = Math.random,
   ) {
     this.cells = new Uint8Array(cols * rows);
-    this.speed = new Uint8Array(cols * rows);
+    this.roll = new Uint8Array(cols * rows);
   }
 
   /** Marks cells sand can't enter (1 in `mask`); grains already there go. */
@@ -81,68 +112,134 @@ export class SandBox {
     for (let i = 0; i < this.cells.length; i++) {
       const v = this.cells[i]!;
       if (mask[i]) {
-        if (v >= GRAIN) this.grains--;
+        if (v >= GRAIN) this.forget(v);
         this.cells[i] = SOLID;
       } else if (v === SOLID) this.cells[i] = EMPTY;
     }
   }
 
-  /** Drops a grain in at the top, if there's room. */
+  private forget(v: number) {
+    this.grains--;
+    if (v & HELD) this.held--;
+  }
+
+  /** Drops a free grain in at the top, if there's room. */
   pour(x: number, v: number): boolean {
     const cx = Math.round(x);
     if (cx < 0 || cx >= this.cols || this.cells[cx] !== EMPTY) return false;
     this.cells[cx] = v;
-    this.speed[cx] = 1;
     this.grains++;
     return true;
   }
 
-  /** One frame: grains in flight move, then the sand falls and slides. */
-  step() {
-    const { cols, rows, cells, speed, rng } = this;
-    this.stepParticles();
-    if (this.draining) {
-      const base = (rows - 1) * cols;
-      for (let x = 0; x < cols; x++) {
-        if (cells[base + x]! >= GRAIN && rng() < 0.4) {
-          cells[base + x] = EMPTY;
-          this.grains--;
-        }
+  /** Places a ceiling grain at (x, y), if the cell is free. */
+  hang(x: number, y: number, v: number): boolean {
+    const at = y * this.cols + x;
+    if (this.cells[at] !== EMPTY) return false;
+    this.cells[at] = v | HELD;
+    this.grains++;
+    this.held++;
+    return true;
+  }
+
+  /**
+   * The row of the lowest ceiling grain in column x, if nothing holds it
+   * up from below (so it could fall); otherwise -1.
+   */
+  private looseBottom(x: number): number {
+    if (x < 0 || x >= this.cols) return -1;
+    const { cols, cells } = this;
+    for (let y = this.rows - 1; y >= 0; y--) {
+      const v = cells[y * cols + x]!;
+      if (v < GRAIN || !(v & HELD)) continue;
+      return y + 1 < this.rows && cells[(y + 1) * cols + x] === EMPTY ? y : -1;
+    }
+    return -1;
+  }
+
+  /**
+   * Lets a ceiling grain go near column x: the lowest loose one within
+   * `reach` columns, so the ceiling wears away in a wide funnel rather
+   * than a slot. With `v` it falls as that sand instead (the show uses
+   * this to pour in layers). Returns whether one fell.
+   */
+  release(x: number, reach = 0, v?: number): boolean {
+    let best = -1;
+    let bestY = -1;
+    for (let cx = x - reach; cx <= x + reach; cx++) {
+      const y = this.looseBottom(cx);
+      // Ties go to the column nearer the gap.
+      if (y > bestY || (y === bestY && y >= 0 && Math.abs(cx - x) < Math.abs(best - x))) {
+        best = cx;
+        bestY = y;
       }
     }
+    if (bestY < 0) return false;
+    const at = bestY * this.cols + best;
+    this.cells[at] = v ?? this.cells[at]! & ~HELD;
+    this.held--;
+    return true;
+  }
+
+  /**
+   * One frame: grains in flight move, then free sand sinks, drifting a
+   * little, and slides. A grain sinks a cell with its sand's `fall`
+   * chance. Landed grains slide down steep (2:1) slopes, and down 45° ones
+   * only for a few frames after landing, so hills stand steep and jagged
+   * as they do in liquid.
+   */
+  step() {
+    const { cols, rows, cells, roll, rng } = this;
+    this.stepParticles();
+    let moving = 0;
     // Bottom-up, so a grain that falls lands in a row already done this
     // frame and isn't moved twice. The direction across alternates at
-    // random so heaps don't lean.
+    // random so hills don't lean.
     for (let y = rows - 2; y >= 0; y--) {
       const ltr = rng() < 0.5;
       for (let i = 0; i < cols; i++) {
         const x = ltr ? i : cols - 1 - i;
         const at = y * cols + x;
         const v = cells[at]!;
-        if (v < GRAIN) continue;
-        const s = speed[at]!;
-        let ny = y;
-        while (ny - y < s && ny + 1 < rows && cells[(ny + 1) * cols + x] === EMPTY) ny++;
-        if (ny > y) {
-          const to = ny * cols + x;
+        if (v < GRAIN || v & HELD) continue;
+        const below = at + cols;
+        if (cells[below] === EMPTY) {
+          moving++;
+          if (rng() >= SAND_KINDS[kindOf(v)]!.fall) continue;
+          let to = below;
+          if (rng() < 0.08) {
+            const nx = x + (rng() < 0.5 ? -1 : 1);
+            if (
+              nx >= 0 &&
+              nx < cols &&
+              cells[y * cols + nx] === EMPTY &&
+              cells[below - x + nx] === EMPTY
+            )
+              to = below - x + nx;
+          }
           cells[at] = EMPTY;
           cells[to] = v;
-          speed[to] = ny - y === s ? Math.min(s + 1, MAX_SPEED) : 1;
+          roll[to] = ROLL_FRAMES;
           continue;
         }
-        speed[at] = 1;
         const first = rng() < 0.5 ? -1 : 1;
         for (const d of [first, -first]) {
           const nx = x + d;
           if (nx < 0 || nx >= cols) continue;
-          if (cells[y * cols + nx] !== EMPTY || cells[(y + 1) * cols + nx] !== EMPTY) continue;
+          const diag = below + d;
+          if (cells[at + d] !== EMPTY || cells[diag] !== EMPTY) continue;
+          const steep = y + 2 < rows && cells[diag + cols] === EMPTY;
+          if (!steep && roll[at] === 0) continue;
           cells[at] = EMPTY;
-          cells[(y + 1) * cols + nx] = v;
-          speed[(y + 1) * cols + nx] = 1;
+          cells[diag] = v;
+          roll[diag] = Math.max(0, roll[at]! - 1);
+          moving++;
           break;
         }
+        if (cells[at] === v && roll[at]! > 0) roll[at] = roll[at]! - 1;
       }
     }
+    this.moving = moving + this.particles.length;
   }
 
   private stepParticles() {
@@ -150,7 +247,8 @@ export class SandBox {
     const kept: Particle[] = [];
     for (const p of this.particles) {
       p.vy += GRAVITY;
-      p.vx *= 0.98;
+      p.vx *= DRAG;
+      p.vy *= DRAG;
       const n = Math.max(1, Math.ceil(Math.max(Math.abs(p.vx), Math.abs(p.vy))));
       let landed = false;
       for (let k = 0; k < n; k++) {
@@ -161,8 +259,7 @@ export class SandBox {
           p.vx = -p.vx * 0.4;
         }
         if (ny > rows - 1) {
-          if (this.draining) this.grains--;
-          else this.settle(nx, rows - 1, p.v);
+          this.settle(nx, rows - 1, p.v);
           landed = true;
           break;
         }
@@ -175,37 +272,51 @@ export class SandBox {
         p.x = nx;
         p.y = ny;
       }
+      // Slowed to a drift: it rejoins the sand and sinks from here.
+      if (!landed && Math.abs(p.vx) < 0.15 && p.vy > 0 && p.vy < 0.6) {
+        this.settle(p.x, p.y, p.v);
+        landed = true;
+      }
       if (!landed) kept.push(p);
     }
     this.particles.length = 0;
     this.particles.push(...kept);
   }
 
-  /** Puts a grain from flight back on the grid, at or above (x, y). */
+  /**
+   * Puts a grain from flight back on the grid: at (x, y) or the nearest
+   * free cell above it, else the nearest below (it may have flown above
+   * the top edge, onto a full top row).
+   */
   private settle(x: number, y: number, v: number) {
     const cx = Math.max(0, Math.min(this.cols - 1, Math.round(x)));
-    for (let cy = Math.min(this.rows - 1, Math.max(0, Math.round(y))); cy >= 0; cy--) {
-      const at = cy * this.cols + cx;
-      if (this.cells[at] === EMPTY) {
-        this.cells[at] = v;
-        this.speed[at] = 1;
-        return;
+    const cy = Math.min(this.rows - 1, Math.max(0, Math.round(y)));
+    for (let d = 0; d < this.rows; d++) {
+      for (const ty of [cy - d, cy + d]) {
+        if (ty < 0 || ty >= this.rows) continue;
+        const at = ty * this.cols + cx;
+        if (this.cells[at] === EMPTY) {
+          this.cells[at] = v;
+          this.roll[at] = ROLL_FRAMES;
+          return;
+        }
       }
     }
-    this.grains--; // No room in this column: the grain is lost.
+    this.grains--; // The whole column is full: the grain is lost.
   }
 
   private launch(at: number, vx: number, vy: number) {
     const v = this.cells[at]!;
+    if (v & HELD) this.held--;
     this.cells[at] = EMPTY;
-    this.particles.push({ x: at % this.cols, y: Math.floor(at / this.cols), vx, vy, v });
+    this.particles.push({ x: at % this.cols, y: Math.floor(at / this.cols), vx, vy, v: v & ~HELD });
   }
 
   /**
    * Moves the pointer's shape (cell offsets from its tip) to (x, y), or
-   * takes it away with null. Grains in its new place are flung along the
-   * way it moved, so it can dig and scatter; grains resting on it stay
-   * until it moves out from under them.
+   * takes it away with null. Grains in its new place are pushed along the
+   * way it moved, so it can dig and stir; grains resting on it stay until
+   * it moves out from under them.
    */
   setCursor(at: { x: number; y: number } | null, shape: readonly (readonly [number, number])[]) {
     const { cols, rows, cells, rng } = this;
@@ -225,7 +336,7 @@ export class SandBox {
       const i = y * cols + x;
       if (cells[i] === SOLID) continue;
       if (cells[i]! >= GRAIN)
-        this.launch(i, mvx * 0.7 + (rng() - 0.5), Math.min(mvy * 0.7, 0) - 0.4 - rng() * 0.8);
+        this.launch(i, mvx * 0.8 + (rng() - 0.5), Math.min(mvy * 0.8, 0) - 0.6 - rng() * 0.8);
       cells[i] = CURSOR;
       this.cursor.push(i);
     }
@@ -253,35 +364,74 @@ export class SandBox {
         const i = y * this.cols + x;
         if (this.cells[i]! < GRAIN) break;
         const out = (x - mid) / half;
-        this.launch(i, out * (1 + this.rng() * 1.2), -1.2 - this.rng() * 1.8);
+        this.launch(i, out * (1.5 + this.rng() * 1.5), -2 - this.rng() * 2);
         n++;
       }
     }
     return n;
   }
+
+  /**
+   * Turns the frame over (180°): every grain moves to the opposite cell.
+   * Grains in flight land first; any that would land inside the icon or
+   * words are lost. Then whatever hangs from the top edge in an unbroken
+   * column becomes the new ceiling; the rest falls.
+   */
+  turnOver() {
+    const { cells } = this;
+    for (const i of this.cursor) if (cells[i] === CURSOR) cells[i] = EMPTY;
+    this.cursor = [];
+    this.cursorAt = null;
+    for (const p of this.particles) this.settle(p.x, p.y, p.v);
+    this.particles.length = 0;
+    const n = cells.length;
+    const moved: [number, number][] = [];
+    for (let i = 0; i < n; i++) {
+      const v = cells[i]!;
+      if (v < GRAIN) continue;
+      moved.push([n - 1 - i, v & ~HELD]);
+      cells[i] = EMPTY;
+    }
+    this.held = 0;
+    for (const [to, v] of moved) {
+      if (cells[to] === EMPTY) cells[to] = v;
+      else this.grains--;
+    }
+    this.roll.fill(0);
+    for (let x = 0; x < this.cols; x++) {
+      for (let y = 0; y < this.rows; y++) {
+        const at = y * this.cols + x;
+        if (cells[at]! < GRAIN) break;
+        cells[at] = cells[at]! | HELD;
+        this.held++;
+      }
+    }
+  }
 }
 
-/** Where the spout is, as a share of the width, `t` seconds in: a slow wander. */
-export function spoutAt(t: number): number {
-  return 0.5 + 0.38 * Math.sin(t * 0.21) * Math.cos(t * 0.067 + 1.3);
-}
+/** A gap in the ceiling that sand trickles through for a while. */
+type Leak = { x: number; rate: number; life: number; owed: number; drift: number };
 
-/** Which colour pours `t` seconds in. */
-export function layerAt(t: number): number {
-  return Math.floor(t / LAYER_SECONDS) % SAND_COLORS.length;
-}
+export type ShowPhase = "falling" | "resting" | "turning";
 
 /**
- * The whole show: pour until the frame holds `budget` grains, drain until
- * nearly empty, repeat. Also tells the UI when the icon's heap is high
- * enough to shrug off.
+ * The whole show: a layered ceiling leaks through a few wandering gaps
+ * into a landscape; once the ceiling is spent and the sand is still, it
+ * rests, turns over, and the landscape is the next ceiling. Also tells the
+ * UI when the icon's heap is high enough to shrug off.
  */
 export class SandShow {
   readonly box: SandBox;
-  /** Fill target: the heap reaches about a third of the way up. */
-  readonly budget: number;
+  phase: ShowPhase = "falling";
+  /** How far through the turn (0 to 1) while `phase` is "turning". */
+  turn = 0;
   private t = 0;
+  private quiet = 0;
+  private restLeft = 0;
   private lastShrug = -Infinity;
+  private readonly leaks: Leak[] = [];
+  /** The sand falling now, and for how much longer, so curtains lay down layers. */
+  private layer = { kind: 0, left: 0 };
 
   constructor(
     cols: number,
@@ -289,11 +439,7 @@ export class SandShow {
     private readonly rng: Rng = Math.random,
   ) {
     this.box = new SandBox(cols, rows, rng);
-    this.budget = Math.round(cols * rows * 0.16);
-  }
-
-  get phase(): "pouring" | "draining" {
-    return this.box.draining ? "draining" : "pouring";
+    fillCeiling(this.box, rng);
   }
 
   /**
@@ -301,25 +447,112 @@ export class SandShow {
    * cells; returns true when it should shrug its heap off this frame.
    */
   frame(dt: number, icon?: { x0: number; x1: number; top: number }): boolean {
-    const { box, rng } = this;
+    const { box } = this;
     this.t += dt;
-    if (box.draining) {
-      if (box.grains <= this.budget * 0.03) box.draining = false;
-    } else if (box.grains >= this.budget) {
-      box.draining = true;
-    } else {
-      const x = spoutAt(this.t) * (box.cols - 1);
-      const color = layerAt(this.t);
-      for (let k = 0; k < 3; k++)
-        box.pour(x + (rng() - 0.5) * 3, grainValue(color, Math.floor(rng() * SAND_SHADES)));
+    if (this.phase === "turning") {
+      this.turn = Math.min(1, this.turn + dt / FLIP_SECONDS);
+      if (this.turn >= 1) {
+        box.turnOver();
+        this.phase = "falling";
+        this.turn = 0;
+        this.quiet = 0;
+        this.leaks.length = 0;
+      }
+      return false;
+    }
+    if (this.phase === "falling") {
+      this.leak(dt);
+      this.quiet = box.held === 0 && box.moving === 0 ? this.quiet + dt : 0;
+      if (this.quiet > 1) {
+        this.phase = "resting";
+        this.restLeft = REST_SECONDS;
+      }
+    } else if ((this.restLeft -= dt) <= 0) {
+      this.phase = "turning";
+      this.turn = 0;
+      return false;
     }
     box.step();
     if (!icon || this.t - this.lastShrug < 4) return false;
     const width = icon.x1 - icon.x0 + 1;
-    if (box.restingOn(icon.x0, icon.x1, icon.top, 4) < width * 2.2) return false;
+    if (box.restingOn(icon.x0, icon.x1, icon.top, 5) < width * 2.6) return false;
     this.lastShrug = this.t;
     box.shrug(icon.x0, icon.x1, icon.top);
     return true;
+  }
+
+  private leak(dt: number) {
+    const { box, rng } = this;
+    if (box.held === 0) return;
+    if ((this.layer.left -= dt) <= 0) this.layer = nextLayer(this.layer.kind, rng);
+    while (this.leaks.length < LEAKS) this.leaks.push(this.newLeak());
+    for (const leak of this.leaks) {
+      leak.life -= dt;
+      leak.owed += leak.rate * dt;
+      // Gaps wander slowly, so curtains sweep a little.
+      leak.x = Math.max(0, Math.min(box.cols - 1, leak.x + leak.drift * dt));
+      while (leak.owed >= 1) {
+        leak.owed--;
+        const v = grainValue(this.layer.kind, Math.floor(rng() * SAND_SHADES));
+        if (!box.release(Math.round(leak.x), LEAK_REACH, v)) {
+          leak.life = Math.min(leak.life, 0.5);
+          break;
+        }
+      }
+      if (leak.life <= 0) Object.assign(leak, this.newLeak());
+    }
+  }
+
+  private newLeak(): Leak {
+    const { box, rng } = this;
+    // Somewhere the ceiling still has sand, if a few tries find it.
+    let x = Math.floor(rng() * box.cols);
+    for (let k = 0; k < 12 && !(box.cells[x]! & HELD); k++) x = Math.floor(rng() * box.cols);
+    return {
+      x,
+      rate: 25 + rng() * 20,
+      life: 6 + rng() * 8,
+      owed: 0,
+      drift: (rng() - 0.5) * 3,
+    };
+  }
+}
+
+/**
+ * The next layer: dark and light sands take turns in thin bands, with the
+ * odd blue one in place of the dark.
+ */
+function nextLayer(kind: number, rng: Rng): { kind: number; left: number } {
+  const next = kind === 1 ? (rng() < 0.65 ? 0 : rng() < 0.5 ? 2 : 3) : 1;
+  return { kind: next, left: 1.2 + rng() * 2.5 };
+}
+
+/**
+ * The first ceiling: about a sixth of the frame, hanging from the top with
+ * a wavy lower edge, in thin bands that alternate dark and light sands
+ * (with the occasional blue), as a sandscape's ceiling looks after a turn.
+ */
+export function fillCeiling(box: SandBox, rng: Rng) {
+  const { cols, rows } = box;
+  const p1 = rng() * 6;
+  const p2 = rng() * 6;
+  const bands: number[] = [];
+  let kind = 0;
+  for (let y = 0; y < rows;) {
+    const thick = 2 + Math.floor(rng() * 4);
+    for (let k = 0; k < thick; k++) bands.push(kind);
+    y += thick;
+    kind = kind === 1 ? (rng() < 0.6 ? 0 : rng() < 0.6 ? 2 : 3) : 1;
+  }
+  for (let x = 0; x < cols; x++) {
+    const depth = Math.round(
+      rows * (0.17 + 0.05 * Math.sin(x * 0.06 + p1) + 0.03 * Math.sin(x * 0.17 + p2)),
+    );
+    const wave = Math.round(2 * Math.sin(x * 0.05 + p2));
+    for (let y = 0; y < Math.min(rows, depth); y++) {
+      const band = bands[Math.max(0, Math.min(bands.length - 1, y + wave))]!;
+      box.hang(x, y, grainValue(band, Math.floor(rng() * SAND_SHADES)));
+    }
   }
 }
 
