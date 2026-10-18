@@ -909,7 +909,11 @@ and settled with the owner one at a time.*
       "Start screensaver"; a key, click or scroll ends it, the pointer
       doesn't. It plays over the glow, which keeps drifting behind it.
       Off with "Reduce motion"; paused when the window is hidden or in
-      the background*
+      the background. Fixed after the owner found it never started: any
+      pointer event (even WebKit's still-cursor ones, as when the
+      palette closes) cancelled the palette's start and reset the idle
+      wait, and `document.hasFocus()` could stop it from starting or
+      drawing*
 
 ## AI Spike
 

@@ -5,6 +5,7 @@ import {
   EMPTY,
   GRAIN,
   grainValue,
+  isRealMove,
   layerAt,
   LAYER_SECONDS,
   SAND_COLORS,
@@ -170,5 +171,14 @@ describe("arrowCells", () => {
       expect(y).toBeLessThan(7);
     }
     expect(cells.length).toBeGreaterThan(8);
+  });
+});
+
+describe("isRealMove", () => {
+  it("ignores pointer events that don't move", () => {
+    expect(isRealMove(null, { clientX: 5, clientY: 5 })).toBe(false);
+    expect(isRealMove({ x: 5, y: 5 }, { clientX: 5, clientY: 5 })).toBe(false);
+    expect(isRealMove({ x: 5, y: 5 }, { clientX: 6, clientY: 6 })).toBe(false);
+    expect(isRealMove({ x: 5, y: 5 }, { clientX: 12, clientY: 5 })).toBe(true);
   });
 });

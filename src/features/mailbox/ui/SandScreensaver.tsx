@@ -1,6 +1,7 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import {
   arrowCells,
+  isRealMove,
   GRAIN,
   SAND_CELL_PX,
   SAND_COLORS,
@@ -15,10 +16,16 @@ const CLOSE_MS = 450;
 
 /**
  * When the empty list's screensaver runs. It starts after
- * SCREENSAVER_IDLE_SECONDS without any input while the window has focus
+ * SCREENSAVER_IDLE_SECONDS without any input while the window is in front
  * (or at once from the palette's "Start screensaver"), and closes on a key,
  * click or scroll. Moving the pointer doesn't close it: the sand plays with
  * the pointer instead. Never starts with "Reduce motion" on.
+ *
+ * Focus is tracked from the window's blur and focus events, not
+ * `document.hasFocus()`, which can't be relied on in the app's web view.
+ * Pointer events that don't actually move (WebKit sends some when the page
+ * changes under a still cursor, such as when the palette closes) don't
+ * count as input.
  */
 export function useScreensaver(): ScreensaverPhase {
   const [phase, setPhase] = useState<ScreensaverPhase>("off");
@@ -26,31 +33,49 @@ export function useScreensaver(): ScreensaverPhase {
   useEffect(() => {
     const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let timer = 0;
-    const start = () => {
+    let inFront = !document.hidden;
+    let last: { x: number; y: number } | null = null;
+    const startIfInFront = () => {
       if (reduced()) return;
-      if (!document.hasFocus()) {
-        arm();
-        return;
-      }
-      setPhase("on");
+      if (inFront && !document.hidden) setPhase("on");
+      else arm();
     };
     const arm = () => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(start, SCREENSAVER_IDLE_SECONDS * 1000);
+      timer = window.setTimeout(startIfInFront, SCREENSAVER_IDLE_SECONDS * 1000);
     };
     if (phase === "off") {
       arm();
+      // Asked for: start regardless of focus, and don't let the palette
+      // closing (its key, a stray pointer event) cancel it.
+      let now = 0;
       const onStartNow = () => {
-        window.clearTimeout(timer);
-        // After the palette's own key and close have passed.
-        timer = window.setTimeout(start, 300);
+        window.clearTimeout(now);
+        now = window.setTimeout(() => !reduced() && setPhase("on"), 300);
       };
-      const events = ["keydown", "pointerdown", "pointermove", "wheel"] as const;
+      const onMove = (e: PointerEvent) => {
+        const moved = isRealMove(last, e);
+        last = { x: e.clientX, y: e.clientY };
+        if (moved) arm();
+      };
+      const onBlur = () => (inFront = false);
+      const onFocus = () => {
+        inFront = true;
+        arm();
+      };
+      const events = ["keydown", "pointerdown", "wheel"] as const;
       for (const e of events) window.addEventListener(e, arm, { passive: true });
+      window.addEventListener("pointermove", onMove, { passive: true });
+      window.addEventListener("blur", onBlur);
+      window.addEventListener("focus", onFocus);
       window.addEventListener(SCREENSAVER_EVENT, onStartNow);
       return () => {
         window.clearTimeout(timer);
+        window.clearTimeout(now);
         for (const e of events) window.removeEventListener(e, arm);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("blur", onBlur);
+        window.removeEventListener("focus", onFocus);
         window.removeEventListener(SCREENSAVER_EVENT, onStartNow);
       };
     }
@@ -164,7 +189,7 @@ export function SandScreensaver({
       frame = requestAnimationFrame(tick);
     };
     const play = () => {
-      if (frame || document.hidden || !document.hasFocus()) return;
+      if (frame || document.hidden) return;
       last = performance.now();
       frame = requestAnimationFrame(tick);
     };
