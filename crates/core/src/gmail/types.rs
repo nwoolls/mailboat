@@ -1,7 +1,7 @@
 //! Gmail REST API response shapes (only the fields Mailboat uses).
 //! Reference: https://developers.google.com/gmail/api/reference/rest
 
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// Gmail sends 64-bit numbers (historyId, internalDate) as strings.
 fn u64_from_string<'de, D: Deserializer<'de>>(d: D) -> Result<u64, D::Error> {
@@ -263,4 +263,62 @@ pub struct ErrorBody {
 pub struct ErrorItem {
     #[serde(default)]
     pub reason: String,
+}
+
+/// `settings.filters.list` response.
+#[derive(Debug, Clone, Deserialize)]
+pub struct FilterList {
+    #[serde(default)]
+    pub filter: Vec<Filter>,
+}
+
+/// A Gmail filter (what Mailboat calls a rule). Sent back to Gmail as well,
+/// so empty fields are left out.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Filter {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default)]
+    pub criteria: FilterCriteria,
+    #[serde(default)]
+    pub action: FilterAction,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FilterCriteria {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub to: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject: Option<String>,
+    /// "Has the words": any Gmail search.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+    /// "Doesn't have".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub negated_query: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub has_attachment: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exclude_chats: Option<bool>,
+    /// Bytes, compared by `size_comparison`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u32>,
+    /// "larger", "smaller" or "unspecified".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size_comparison: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FilterAction {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub add_label_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub remove_label_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub forward: Option<String>,
 }

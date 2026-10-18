@@ -18,6 +18,9 @@ use mailboat_core::model::{
     Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, DraftId, Label,
     LabelId, LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
 };
+use mailboat_core::rules::{
+    self, AccountRules, MatchCount, RuleActions, RuleCriteria, RulesState, SavedRule,
+};
 use mailboat_core::settings::{self, AppSettings};
 use mailboat_core::sync::{fetch_body, load_older, OLDER_BATCH};
 use mailboat_core::CoreError;
@@ -926,4 +929,108 @@ pub async fn invite_remove(
     let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
     let gmail = state.gmail_for(account)?.interactive();
     Ok(calendar::remove(&state.db, &gmail, message_id).await?)
+}
+
+/// Every account's rules (Gmail filters), or why an account's can't be
+/// shown. Accounts are asked one after another; one failing doesn't stop
+/// the others.
+#[tauri::command]
+#[specta::specta]
+pub async fn rules_list(state: State<'_, AppState>) -> CmdResult<Vec<AccountRules>> {
+    let accounts = accounts::list(&state.db.conn())?;
+    let mut out = Vec::new();
+    for account in accounts {
+        let listed = match state.gmail_for(account.id) {
+            Ok(gmail) => rules::list(&state.db, &gmail.interactive(), account.id).await,
+            Err(e) => Err(e),
+        };
+        out.push(listed.unwrap_or_else(|e| AccountRules {
+            account_id: account.id,
+            state: RulesState::Unavailable {
+                message: e.to_string(),
+            },
+        }));
+    }
+    Ok(out)
+}
+
+/// Creates a rule in one account. Applying it to existing mail changes
+/// labels in Gmail, so that account syncs straight after.
+#[tauri::command]
+#[specta::specta]
+pub async fn rule_create(
+    state: State<'_, AppState>,
+    account_id: AccountId,
+    criteria: RuleCriteria,
+    actions: RuleActions,
+    apply_to_existing: bool,
+) -> CmdResult<SavedRule> {
+    let gmail = state.gmail_for(account_id)?.interactive();
+    let saved = rules::create(
+        &state.db,
+        &gmail,
+        account_id,
+        &criteria,
+        &actions,
+        apply_to_existing,
+    )
+    .await?;
+    if saved.applied.is_some_and(|a| a.messages > 0) {
+        state.supervisor.sync_now(Some(&[account_id]));
+    }
+    Ok(saved)
+}
+
+/// Replaces a rule with an edited version (Gmail can't edit in place).
+#[tauri::command]
+#[specta::specta]
+pub async fn rule_update(
+    state: State<'_, AppState>,
+    account_id: AccountId,
+    filter_id: String,
+    criteria: RuleCriteria,
+    actions: RuleActions,
+    apply_to_existing: bool,
+) -> CmdResult<SavedRule> {
+    let gmail = state.gmail_for(account_id)?.interactive();
+    let saved = rules::update(
+        &state.db,
+        &gmail,
+        account_id,
+        &filter_id,
+        &criteria,
+        &actions,
+        apply_to_existing,
+    )
+    .await?;
+    if saved.applied.is_some_and(|a| a.messages > 0) {
+        state.supervisor.sync_now(Some(&[account_id]));
+    }
+    Ok(saved)
+}
+
+/// Deletes a rule; mail it already sorted stays as it is.
+#[tauri::command]
+#[specta::specta]
+pub async fn rule_delete(
+    state: State<'_, AppState>,
+    account_id: AccountId,
+    filter_id: String,
+) -> CmdResult<()> {
+    let gmail = state.gmail_for(account_id)?.interactive();
+    rules::delete(&gmail, &filter_id).await?;
+    Ok(())
+}
+
+/// How many conversations in the account match a rule's criteria now
+/// (`None` until something is filled in).
+#[tauri::command]
+#[specta::specta]
+pub async fn rule_match_count(
+    state: State<'_, AppState>,
+    account_id: AccountId,
+    criteria: RuleCriteria,
+) -> CmdResult<Option<MatchCount>> {
+    let gmail = state.gmail_for(account_id)?.interactive();
+    Ok(rules::match_count(&gmail, &criteria).await?)
 }

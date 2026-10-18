@@ -170,6 +170,30 @@ export const commands = {
 	inviteAnswer: (messageId: MessageId, answer: Answer) => typedError<InviteCard, AppError>(__TAURI_INVOKE("invite_answer", { messageId, answer })),
 	/**  Removes a cancelled invitation's event from the account's calendar. */
 	inviteRemove: (messageId: MessageId) => typedError<InviteCard, AppError>(__TAURI_INVOKE("invite_remove", { messageId })),
+	/**
+	 *  Every account's rules (Gmail filters), or why an account's can't be
+	 *  shown. Accounts are asked one after another; one failing doesn't stop
+	 *  the others.
+	 */
+	rulesList: () => typedError<AccountRules[], AppError>(__TAURI_INVOKE("rules_list")),
+	/**
+	 *  Creates a rule in one account. Applying it to existing mail changes
+	 *  labels in Gmail, so that account syncs straight after.
+	 */
+	ruleCreate: (accountId: AccountId, criteria: RuleCriteria, actions: RuleActions, applyToExisting: boolean) => typedError<SavedRule, AppError>(__TAURI_INVOKE("rule_create", { accountId, criteria, actions, applyToExisting })),
+	/**  Replaces a rule with an edited version (Gmail can't edit in place). */
+	ruleUpdate: (accountId: AccountId, filterId: string, criteria: RuleCriteria, actions: RuleActions, applyToExisting: boolean) => typedError<SavedRule, AppError>(__TAURI_INVOKE("rule_update", { accountId, filterId, criteria, actions, applyToExisting })),
+	/**  Deletes a rule; mail it already sorted stays as it is. */
+	ruleDelete: (accountId: AccountId, filterId: string) => typedError<null, AppError>(__TAURI_INVOKE("rule_delete", { accountId, filterId })),
+	/**
+	 *  How many conversations in the account match a rule's criteria now
+	 *  (`None` until something is filled in).
+	 */
+	ruleMatchCount: (accountId: AccountId, criteria: RuleCriteria) => typedError<{
+	conversations: number,
+	/**  More than `conversations` match (only the first page is counted). */
+	more: boolean,
+} | null, AppError>(__TAURI_INVOKE("rule_match_count", { accountId, criteria })),
 };
 
 /** Events */
@@ -204,6 +228,11 @@ export type Account = {
 export type AccountFilter = { kind: "all" } | { kind: "only"; ids: AccountId[] };
 
 export type AccountId = number;
+
+export type AccountRules = {
+	accountId: AccountId,
+	state: RulesState,
+};
 
 export type AccountSyncState = {
 	accountId: AccountId,
@@ -260,6 +289,13 @@ export type AppSettings = {
 	appIcon?: string | null,
 };
 
+/**  What applying a rule to mail already received changed. */
+export type Applied = {
+	messages: number,
+	/**  Stopped at `APPLY_MAX`; older matching mail was left alone. */
+	capped: boolean,
+};
+
 /**
  *  A file attached to a received message. Inline images the email shows
  *  itself (`cid:`) aren't listed as attachments.
@@ -290,6 +326,9 @@ link: string | null } |
  *  organizer by email (the standard calendar reply).
  */
 { kind: "repliedByEmail"; yourAnswer: Answer };
+
+/**  Gmail's inbox tabs. */
+export type Category = "primary" | "social" | "updates" | "forums" | "promotions";
 
 /**  Something on your calendar at the same time. */
 export type Clash = {
@@ -341,6 +380,8 @@ export type ImagePolicy =
 "blockedInSpam" | 
 /**  The message is in Trash and the sender has no saved choice. */
 "blockedInTrash";
+
+export type Importance = "leave" | "always" | "never";
 
 export type Invite = {
 	kind: InviteKind,
@@ -435,6 +476,13 @@ export type MailView =
 { kind: "archive" } | 
 /**  Local full-text search (Spam and Trash excluded, as in Gmail). */
 { kind: "search"; text: string };
+
+/**  How many conversations a rule's criteria match now. */
+export type MatchCount = {
+	conversations: number,
+	/**  More than `conversations` match (only the first page is counted). */
+	more: boolean,
+};
 
 export type MessageId = number;
 
@@ -603,6 +651,52 @@ export type ReplySource = {
 	inlineImages: AttachmentId[],
 };
 
+export type Rule = {
+	accountId: AccountId,
+	/**  Gmail's filter ID, unique only within its account. */
+	filterId: string,
+	criteria: RuleCriteria,
+	actions: RuleActions,
+};
+
+/**  What a rule does to matching mail (Gmail's filter actions). */
+export type RuleActions = {
+	/**  Archive it. */
+	skipInbox: boolean,
+	markRead: boolean,
+	star: boolean,
+	/**  User labels of the rule's account. */
+	labels: LabelId[],
+	neverSpam: boolean,
+	/**  Move it to the Trash. */
+	trash: boolean,
+	importance: Importance,
+	category: Category | null,
+	/**
+	 *  Forwarding set up in Gmail: shown, and kept when the rule is edited,
+	 *  but not changed here (it needs another permission). Ignored when
+	 *  saving.
+	 */
+	forwardTo: string | null,
+};
+
+/**  Which mail a rule is for. Every filled-in part must match. */
+export type RuleCriteria = {
+	from: string,
+	to: string,
+	subject: string,
+	/**  Any Gmail search ("Has the words"). */
+	hasWords: string,
+	doesntHave: string,
+	hasAttachment: boolean,
+	size: SizeLimit | null,
+};
+
+/**  One account's rules, or why they can't be shown. */
+export type RulesState = { kind: "ready"; rules: Rule[] } | 
+/**  The account signed in before Mailboat asked for Gmail's settings. */
+{ kind: "needsSignIn" } | { kind: "unavailable"; message: string };
+
 export type SafeMessage = {
 	/**  A complete HTML document for the iframe's `srcdoc`. */
 	document: string,
@@ -618,6 +712,21 @@ export type SafeMessage = {
 	 *  light only: those keep a white card.
 	 */
 	adaptive: boolean,
+};
+
+export type SavedRule = {
+	rule: Rule,
+	/**  Set when it was also applied to existing mail. */
+	applied: Applied | null,
+	/**  The rule saved, but applying it to existing mail failed. */
+	applyError: string | null,
+};
+
+export type SizeComparison = "larger" | "smaller";
+
+export type SizeLimit = {
+	comparison: SizeComparison,
+	bytes: number,
 };
 
 export type SyncPhase = "listing" | "fetching" | "bodies";

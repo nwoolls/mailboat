@@ -313,6 +313,28 @@ Calendar failures become part of the card, never hide the invitation.
 Accounts lacking `calendar.events` (see `accounts.granted_scopes`) get
 "Sign in again" instead of a failed request.
 
+## Rules
+
+Rules are Gmail's filters (`settings.filters`, needs `gmail.settings.basic`).
+Gmail runs them on its servers as mail arrives, so Mailboat stores nothing:
+`rules.rs` reads them live per account (1 quota unit) and the UI caches
+the answer with TanStack Query. A `Rule` is Gmail's filter in the shape
+of Gmail's filter form: criteria (from, to, subject, has the words,
+doesn't have, has attachment, size) and actions (skip Inbox, mark read,
+star, labels, never spam, trash, importance, category). Labels cross the
+IPC boundary as surrogate `LabelId`s; a rule is identified by its account
+plus Gmail's filter ID. Gmail has no filter update, so editing creates the
+new filter and deletes the old (rolling the new one back if the delete
+fails); an unchanged rule isn't re-saved, since Gmail refuses duplicates.
+What Mailboat can't show (forwarding, "exclude chats", labels it doesn't
+know) is read back from the old filter and kept. "Also apply to existing
+mail" lists matching messages (`messages.list` with the criteria as a
+Gmail search, newest 10,000) and changes their labels with
+`messages.batchModify`; the account then syncs. The editor's "N
+conversations match" counts one `threads.list` page (up to 500). Each
+account answers separately, so one account lacking the permission shows
+"Sign in again" without hiding another's rules.
+
 ## Decisions
 
 | Date | Decision | Why |
@@ -386,5 +408,8 @@ Accounts lacking `calendar.events` (see `accounts.granted_scopes`) get
 | 2026-10-17 | Record each account's granted permissions from Google's token responses (`accounts.granted_scopes`) | Accounts that signed in before a permission was asked for silently lack it; Google reports a token's scopes on sign-in and on every refresh, so recording them (and re-reading after each refresh) tells the UI which features need a new sign-in, with no failed request first. `calendar.events` and `gmail.settings.basic` are asked for together so each account signs in again once. |
 | 2026-10-18 | Screensavers are scenes that draw palette *slots* (dark, mid, light, bright, accent), not colours | Seven scenes × six palettes would otherwise mean colour logic in every scene. Each scene (`features/screensaver/model`, pure and tested) writes slot-and-shade values into a cell buffer; the canvas maps them through the chosen palette's colour table, so a palette change recolours a running scene at once. The empty state's shapes (icon box, each letter) reach every scene the same way (`SceneSetup`). No libraries: each scene is a few hundred lines at most. |
 | 2026-10-18 | Feature flags are a small store in the web view's storage (`shared/lib/featureFlags.ts`), not app settings in SQLite | They only switch window features (the glow, screensavers), which Rust never reads, so they follow the window-only Appearance settings. A `useSyncExternalStore` store means a switch in Settings → Advanced reaches the empty list at once without a query round trip. Unknown or unreadable values fall back to each flag's default. |
+| 2026-10-18 | Rules are read from Gmail each time, not cached in SQLite | Filters change rarely, cost 1 unit to list, and only Settings and the rule editor need them; a local copy would need its own sync (Gmail's history doesn't report filter changes) for no gain. TanStack Query keeps the last answer while Settings is open. |
+| 2026-10-18 | "Apply to existing mail" works on matching messages with `messages.batchModify`, capped at the newest 10,000 | Gmail applies filters per message, and batchModify changes 1,000 messages for 50 units, where per-conversation `threads.modify` costs 10 units each (10,000 conversations would take minutes of the quota). The cap bounds one save to about 600 units; the result says when it was reached. |
+| 2026-10-18 | Rules can't set forwarding | Forwarding addresses need `gmail.settings.sharing`, a more sensitive permission (see Milestone 6). Forwarding set up in Gmail is shown and kept on edit. |
 | 2026-10-17 | Empty-list screensaver is our own falling-sand grid on one `<canvas>`, no library | A few hundred lines of cellular automaton (`model/sand.ts`, tested) is smaller than any particle/physics library and needs no permissions. One canvas pixel per 3px sand cell, scaled with `image-rendering: pixelated`, keeps drawing cheap; the loop stops when the window is hidden or loses focus. The icon box and each letter of the words are drawn to an off-screen canvas and reduced to cells so sand rests on them. Moving the pointer doesn't end it (the roadmap first said it would): the owner asked for the pointer to play with the sand, so only a key, click or scroll ends it. It runs with another app in front (owner's request) and pauses only when the window is hidden; it doesn't use `document.hasFocus()`, and pointer events without movement (WebKit sends them when the page changes under a still cursor) don't count as input. Sandscape version (2026-10-18): the canvas takes the list card's glass opacity, so the sand follows the Transparency setting. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |

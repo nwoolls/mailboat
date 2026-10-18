@@ -317,25 +317,7 @@ impl SyncEngine<'_> {
     }
 
     async fn sync_labels(&self) -> Result<()> {
-        let labels: Vec<IncomingLabel> = self
-            .gmail
-            .labels()
-            .await?
-            .labels
-            .into_iter()
-            .map(|l| IncomingLabel {
-                kind: if l.label_type.as_deref() == Some("user") {
-                    LabelKind::User
-                } else {
-                    LabelKind::System
-                },
-                color_bg: l.color.as_ref().and_then(|c| c.background_color.clone()),
-                color_fg: l.color.as_ref().and_then(|c| c.text_color.clone()),
-                gmail_label_id: l.id,
-                name: l.name,
-            })
-            .collect();
-        store::sync_labels(&mut self.db.conn(), self.account, &labels)
+        refresh_labels(self.db, self.gmail, self.account).await
     }
 
     /// Fetches threads by Gmail ID and writes them (or deletes vanished ones).
@@ -382,6 +364,28 @@ impl SyncEngine<'_> {
         }
         Ok(())
     }
+}
+
+/// Fetches an account's labels from Gmail and stores them.
+pub async fn refresh_labels(db: &Db, gmail: &GmailClient, account: AccountId) -> Result<()> {
+    let labels: Vec<IncomingLabel> = gmail
+        .labels()
+        .await?
+        .labels
+        .into_iter()
+        .map(|l| IncomingLabel {
+            kind: if l.label_type.as_deref() == Some("user") {
+                LabelKind::User
+            } else {
+                LabelKind::System
+            },
+            color_bg: l.color.as_ref().and_then(|c| c.background_color.clone()),
+            color_fg: l.color.as_ref().and_then(|c| c.text_color.clone()),
+            gmail_label_id: l.id,
+            name: l.name,
+        })
+        .collect();
+    store::sync_labels(&mut db.conn(), account, &labels)
 }
 
 /// Returns a message body, fetching and caching it if needed.

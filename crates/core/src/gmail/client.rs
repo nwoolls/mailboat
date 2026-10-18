@@ -11,8 +11,8 @@ use serde::de::DeserializeOwned;
 use super::batch;
 use super::pacer::{cost, QuotaPacer};
 use super::types::{
-    AttachmentBody, DraftList, DraftRef, ErrorEnvelope, HistoryList, LabelList, Message,
-    MessageList, MessageRef, PeoplePage, Profile, SendAsList, Thread, ThreadList,
+    AttachmentBody, DraftList, DraftRef, ErrorEnvelope, Filter, FilterList, HistoryList, LabelList,
+    Message, MessageList, MessageRef, PeoplePage, Profile, SendAsList, Thread, ThreadList,
 };
 use crate::error::{CoreError, Result};
 
@@ -333,6 +333,67 @@ impl GmailClient {
     pub async fn send_as(&self) -> Result<SendAsList> {
         self.get_json(&self.url("settings/sendAs"), &[], cost::SETTINGS_GET)
             .await
+    }
+
+    /// `settings.filters.list`: the account's rules.
+    pub async fn filters(&self) -> Result<FilterList> {
+        self.get_json(&self.url("settings/filters"), &[], cost::SETTINGS_GET)
+            .await
+    }
+
+    /// `settings.filters.get`: one rule. `Ok(None)` if it's gone.
+    pub async fn filter(&self, id: &str) -> Result<Option<Filter>> {
+        match self
+            .get_json(
+                &self.url(&format!("settings/filters/{id}")),
+                &[],
+                cost::SETTINGS_GET,
+            )
+            .await
+        {
+            Ok(f) => Ok(Some(f)),
+            Err(CoreError::NotFound(_)) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// `settings.filters.create`. Only retried when Google certainly
+    /// didn't act, so a retry can't leave two copies.
+    pub async fn create_filter(&self, filter: &Filter) -> Result<Filter> {
+        self.spend(cost::SETTINGS_CHANGE).await;
+        let url = self.url("settings/filters");
+        let response = self
+            .send_with(|| self.http.post(&url).json(filter), Retry::OnlyUnsent)
+            .await?;
+        response.json().await.map_err(net_error)
+    }
+
+    /// `settings.filters.delete`. Already gone counts as deleted.
+    pub async fn delete_filter(&self, id: &str) -> Result<()> {
+        self.spend(cost::SETTINGS_CHANGE).await;
+        let url = self.url(&format!("settings/filters/{id}"));
+        match self.send(|| self.http.delete(&url)).await {
+            Ok(_) | Err(CoreError::NotFound(_)) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// `messages.batchModify`: add/remove labels on up to 1,000 messages.
+    pub async fn batch_modify_messages(
+        &self,
+        ids: &[String],
+        add: &[String],
+        remove: &[String],
+    ) -> Result<()> {
+        self.spend(cost::MESSAGES_BATCH_MODIFY).await;
+        let url = self.url("messages/batchModify");
+        let body = serde_json::json!({
+            "ids": ids,
+            "addLabelIds": add,
+            "removeLabelIds": remove,
+        });
+        self.send(|| self.http.post(&url).json(&body)).await?;
+        Ok(())
     }
 
     /// `messages.send` with a complete RFC 5322 message. `thread_id` puts it

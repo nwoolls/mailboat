@@ -77,6 +77,11 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::invite_card,
             commands::invite_answer,
             commands::invite_remove,
+            commands::rules_list,
+            commands::rule_create,
+            commands::rule_update,
+            commands::rule_delete,
+            commands::rule_match_count,
         ])
         .events(collect_events![
             SyncStatusEvent,
