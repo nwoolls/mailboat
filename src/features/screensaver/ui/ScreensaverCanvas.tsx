@@ -1,16 +1,16 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import {
-  arrowCells,
   isRealMove,
-  GRAIN,
-  SAND_CELL_PX,
-  HELD,
-  SAND_KINDS,
-  SAND_SHADES,
-  SandShow,
+  isSceneId,
+  makeScene,
+  pickScene,
   SCREENSAVER_EVENT,
   SCREENSAVER_IDLE_SECONDS,
-} from "../model/sand";
+  type SceneId,
+} from "../model/catalog";
+import { colorTable, type PaletteId, paletteColors, parseColor } from "../model/palettes";
+import { type Pointer, type Rect, type Scene, SCENE_CELL_PX } from "../model/scene";
+import { screensaverPrefs } from "./prefs";
 
 export type ScreensaverPhase = "off" | "on" | "closing";
 const CLOSE_MS = 450;
@@ -29,18 +29,25 @@ const CLOSE_MS = 450;
  * changes under a still cursor, such as when the palette closes) don't
  * count as input.
  */
-export function useScreensaver(enabled: boolean): ScreensaverPhase {
+export function useScreensaver(enabled: boolean): { phase: ScreensaverPhase; scene: SceneId } {
   const [phase, setPhase] = useState<ScreensaverPhase>("off");
+  const [scene, setScene] = useState<SceneId>("sandscape");
 
   useEffect(() => {
     if (!enabled) return;
     const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let timer = 0;
     let last: { x: number; y: number } | null = null;
+    // Picks the scene (the one asked for, the chosen one, or a random one
+    // other than the last) and starts it.
+    const begin = (asked: SceneId | null) => {
+      setScene((prev) => pickScene(asked, screensaverPrefs.get().choice, prev, Math.random));
+      setPhase("on");
+    };
     const startIfVisible = () => {
       if (reduced()) return;
-      if (!document.hidden) setPhase("on");
-      else arm();
+      if (document.hidden) arm();
+      else begin(null);
     };
     const arm = () => {
       window.clearTimeout(timer);
@@ -50,9 +57,10 @@ export function useScreensaver(enabled: boolean): ScreensaverPhase {
       arm();
       // Asked for: start now, and don't let the palette closing (its key, a stray pointer event) cancel it.
       let now = 0;
-      const onStartNow = () => {
+      const onStartNow = (e: Event) => {
+        const asked = e instanceof CustomEvent && isSceneId(e.detail) ? e.detail : null;
         window.clearTimeout(now);
-        now = window.setTimeout(() => !reduced() && setPhase("on"), 300);
+        now = window.setTimeout(() => !reduced() && begin(asked), 300);
       };
       const onMove = (e: PointerEvent) => {
         const moved = isRealMove(last, e);
@@ -83,34 +91,45 @@ export function useScreensaver(enabled: boolean): ScreensaverPhase {
     return () => window.clearTimeout(timer);
   }, [phase, enabled]);
 
-  return enabled ? phase : "off";
+  return { phase: enabled ? phase : "off", scene };
 }
 
 /**
- * Pixel sand over the empty list (see `model/sand.ts`). It fills `areaRef`
- * (the empty state's box below the title row), treats the icon box and
- * each letter of the words as solid, and the pointer too while it's over
- * the area. It keeps playing while another app is in front, and pauses
- * only when the window is hidden (minimized, or another Space).
+ * A screensaver scene over the empty list (see `model/scene.ts`). It fills
+ * `areaRef` (the empty state's box below the title row), gives the scene
+ * the icon box and each letter of the words as shapes to play with, and
+ * the pointer while it's over the area, and colours it with `palette`. It
+ * keeps playing while another app is in front, and pauses only when the
+ * window is hidden (minimized, or another Space).
  */
-export function SandScreensaver({
+export function ScreensaverCanvas({
+  sceneId,
+  palette,
   areaRef,
   iconRef,
   wordsRef,
   closing,
-  onShrug,
+  onNod,
 }: {
+  sceneId: SceneId;
+  palette: PaletteId;
   areaRef: RefObject<HTMLElement | null>;
   iconRef: RefObject<HTMLElement | null>;
   wordsRef: RefObject<HTMLElement | null>;
   closing: boolean;
-  onShrug: () => void;
+  onNod: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const shrugRef = useRef(onShrug);
+  const nodRef = useRef(onNod);
+  const colorsRef = useRef<Uint32Array>(new Uint32Array(0));
   useEffect(() => {
-    shrugRef.current = onShrug;
-  }, [onShrug]);
+    nodRef.current = onNod;
+  }, [onNod]);
+  // Recoloured at once when the palette changes, without restarting.
+  useEffect(() => {
+    const accent = getComputedStyle(document.documentElement).getPropertyValue("--color-accent");
+    colorsRef.current = colorTable(paletteColors(palette, parseColor(accent)));
+  }, [palette]);
 
   useEffect(() => {
     const area = areaRef.current;
@@ -119,69 +138,57 @@ export function SandScreensaver({
     const ctx = canvas?.getContext("2d");
     if (!area || !canvas || !card || !ctx) return;
 
-    const colors = grainColors();
-    const arrow = arrowCells(SAND_CELL_PX);
-    let show: SandShow | null = null;
+    let scene: Scene | null = null;
     let image: ImageData | null = null;
     let pixels: Uint32Array | null = null;
-    let icon: { x0: number; x1: number; top: number } | undefined;
-    let pointer: { x: number; y: number } | null = null;
+    let cells: Uint8Array | null = null;
+    let pointer: Pointer = null;
     let frame = 0;
     let last = 0;
 
-    // (Re)builds the grid to fit the area, with the icon and words as solids.
+    // (Re)starts the scene to fit the area, with the icon and words in it.
     const layout = () => {
       const a = area.getBoundingClientRect();
       const c = card.getBoundingClientRect();
-      const cols = Math.max(1, Math.floor(a.width / SAND_CELL_PX));
-      const rows = Math.max(1, Math.floor(a.height / SAND_CELL_PX));
+      const cols = Math.max(1, Math.floor(a.width / SCENE_CELL_PX));
+      const rows = Math.max(1, Math.floor(a.height / SCENE_CELL_PX));
       Object.assign(canvas.style, {
         left: `${a.left - c.left}px`,
         top: `${a.top - c.top}px`,
-        width: `${cols * SAND_CELL_PX}px`,
-        height: `${rows * SAND_CELL_PX}px`,
+        width: `${cols * SCENE_CELL_PX}px`,
+        height: `${rows * SCENE_CELL_PX}px`,
       });
       canvas.width = cols;
       canvas.height = rows;
       image = ctx.createImageData(cols, rows);
       pixels = new Uint32Array(image.data.buffer);
-      show = new SandShow(cols, rows);
-      show.box.setSolids(solidMask(a, cols, rows, iconRef.current, wordsRef.current));
-      const box = iconRef.current?.getBoundingClientRect();
-      icon = box && {
-        x0: Math.ceil((box.left - a.left) / SAND_CELL_PX),
-        x1: Math.floor((box.right - a.left) / SAND_CELL_PX) - 1,
-        top: Math.floor((box.top - a.top) / SAND_CELL_PX),
-      };
-    };
-
-    const draw = () => {
-      if (!show || !image || !pixels) return;
-      const { cells, particles, cols } = show.box;
-      for (let i = 0; i < cells.length; i++) {
-        const v = cells[i]!;
-        pixels[i] = v >= GRAIN ? colors[(v & ~HELD) - GRAIN]! : 0;
-      }
-      for (const p of particles) {
-        const x = Math.round(p.x);
-        const y = Math.round(p.y);
-        if (x >= 0 && x < cols && y >= 0 && y < show.box.rows)
-          pixels[y * cols + x] = colors[p.v - GRAIN]!;
-      }
-      ctx.putImageData(image, 0, 0);
+      cells = new Uint8Array(cols * rows);
+      const { solid, letters } = solidMask(a, cols, rows, iconRef.current, wordsRef.current);
+      scene = makeScene(sceneId, {
+        cols,
+        rows,
+        solid,
+        letters,
+        icon: rectOf(iconRef.current, a, cols, rows),
+        // The words' box is wider than the text; use the letters' extent.
+        words: boundsOf(letters, cols),
+        rng: Math.random,
+      });
     };
 
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
-      if (show) {
-        // The pointer stays out of the sand while the frame turns over.
-        if (show.phase !== "turning") show.box.setCursor(pointer, arrow);
-        if (show.frame(dt, icon)) shrugRef.current();
-        // Turn the canvas itself; at the end the grid is turned instead.
-        const turn = show.phase === "turning" ? easeInOut(show.turn) * 180 : 0;
-        canvas.style.transform = turn ? `rotate(${turn}deg)` : "";
-        draw();
+      if (scene && image && pixels && cells) {
+        const result = scene.frame(dt, pointer);
+        if (result.nod) nodRef.current();
+        if (result.hideWords !== undefined) setWordsHidden(wordsRef.current, result.hideWords);
+        // The sandscape's turn: the canvas rotates, then the grid is turned.
+        canvas.style.transform = result.turn ? `rotate(${result.turn}deg)` : "";
+        scene.draw(cells);
+        const colors = colorsRef.current;
+        for (let i = 0; i < cells.length; i++) pixels[i] = colors[cells[i]!] ?? 0;
+        ctx.putImageData(image, 0, 0);
       }
       frame = requestAnimationFrame(tick);
     };
@@ -200,7 +207,7 @@ export function SandScreensaver({
       const inside =
         e.clientX >= a.left && e.clientX < a.right && e.clientY >= a.top && e.clientY < a.bottom;
       pointer = inside
-        ? { x: (e.clientX - a.left) / SAND_CELL_PX, y: (e.clientY - a.top) / SAND_CELL_PX }
+        ? { x: (e.clientX - a.left) / SCENE_CELL_PX, y: (e.clientY - a.top) / SCENE_CELL_PX }
         : null;
     };
     const onLeave = () => {
@@ -215,48 +222,73 @@ export function SandScreensaver({
     card.addEventListener("pointermove", onMove);
     card.addEventListener("pointerleave", onLeave);
     document.addEventListener("visibilitychange", onVisibility);
+    const words = wordsRef.current;
     return () => {
       pause();
       resize.disconnect();
       card.removeEventListener("pointermove", onMove);
       card.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("visibilitychange", onVisibility);
+      setWordsHidden(words, false);
     };
-  }, [areaRef, iconRef, wordsRef]);
+  }, [sceneId, areaRef, iconRef, wordsRef]);
 
   return (
     <canvas
       ref={canvasRef}
       aria-hidden
-      className="sand-screensaver"
+      className="screensaver"
       data-closing={closing || undefined}
     />
   );
 }
 
-function easeInOut(t: number): number {
-  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+/** Fades the words out (Life plays with them) or back in. */
+function setWordsHidden(words: HTMLElement | null, hidden: boolean) {
+  if (!words) return;
+  if (hidden) words.dataset.sceneHidden = "";
+  else delete words.dataset.sceneHidden;
 }
 
-/** Every grain value's colour as a little-endian RGBA word, shades included. */
-function grainColors(): Uint32Array {
-  const out = new Uint32Array(SAND_KINDS.length * SAND_SHADES);
-  SAND_KINDS.forEach(({ color: hex }, c) => {
-    const n = Number.parseInt(hex.slice(1), 16);
-    for (let s = 0; s < SAND_SHADES; s++) {
-      // Shades from a little darker to a little lighter than the colour.
-      const k = 0.86 + (s / (SAND_SHADES - 1)) * 0.24;
-      const ch = (shift: number) => Math.min(255, Math.round(((n >> shift) & 255) * k));
-      const alpha = 255; // The canvas carries the glass's opacity.
-      out[c * SAND_SHADES + s] = ((alpha << 24) | (ch(0) << 16) | (ch(8) << 8) | ch(16)) >>> 0;
+/** The smallest box around the set cells of `mask`, or null if none are. */
+function boundsOf(mask: Uint8Array, cols: number): Rect | null {
+  let box: Rect | null = null;
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i]) continue;
+    const x = i % cols;
+    const y = Math.floor(i / cols);
+    if (!box) box = { x0: x, y0: y, x1: x, y1: y };
+    else {
+      box.x0 = Math.min(box.x0, x);
+      box.x1 = Math.max(box.x1, x);
+      box.y1 = y;
     }
-  });
-  return out;
+  }
+  return box;
+}
+
+/** A distance in pixels as a cell index, kept on the grid. */
+function cell(v: number, max: number): number {
+  return Math.max(0, Math.min(max - 1, Math.floor(v / SCENE_CELL_PX)));
+}
+
+/** An element's box in cells of the area, or null if it isn't there. */
+function rectOf(el: HTMLElement | null, area: DOMRect, cols: number, rows: number): Rect | null {
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  return {
+    x0: cell(r.left - area.left, cols),
+    y0: cell(r.top - area.top, rows),
+    x1: cell(r.right - area.left - 1, cols),
+    y1: cell(r.bottom - area.top - 1, rows),
+  };
 }
 
 /**
  * Which cells are solid: the icon's rounded box and the words' letters,
  * drawn at full size and then reduced to cells (any inked pixel counts).
+ * `letters` is the letters alone.
  */
 function solidMask(
   area: DOMRect,
@@ -264,24 +296,15 @@ function solidMask(
   rows: number,
   icon: HTMLElement | null,
   words: HTMLElement | null,
-): Uint8Array {
-  const mask = new Uint8Array(cols * rows);
-  const width = cols * SAND_CELL_PX;
-  const height = rows * SAND_CELL_PX;
+): { solid: Uint8Array; letters: Uint8Array } {
+  const width = cols * SCENE_CELL_PX;
+  const height = rows * SCENE_CELL_PX;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return mask;
+  if (!ctx) return { solid: new Uint8Array(cols * rows), letters: new Uint8Array(cols * rows) };
   ctx.fillStyle = "#000";
-
-  if (icon) {
-    const r = icon.getBoundingClientRect();
-    const radius = Number.parseFloat(getComputedStyle(icon).borderTopLeftRadius) || 0;
-    ctx.beginPath();
-    ctx.roundRect(r.left - area.left, r.top - area.top, r.width, r.height, radius);
-    ctx.fill();
-  }
 
   // Each letter where the page laid it out, in the same font.
   for (const p of words?.querySelectorAll("p") ?? []) {
@@ -303,15 +326,30 @@ function solidMask(
       ctx.fillText(chars[i]!, r.left - area.left, baseline - area.top);
     }
   }
+  const letters = toCells(ctx, cols, rows);
 
-  const data = ctx.getImageData(0, 0, width, height).data;
+  if (icon) {
+    const r = icon.getBoundingClientRect();
+    const radius = Number.parseFloat(getComputedStyle(icon).borderTopLeftRadius) || 0;
+    ctx.beginPath();
+    ctx.roundRect(r.left - area.left, r.top - area.top, r.width, r.height, radius);
+    ctx.fill();
+  }
+  return { solid: toCells(ctx, cols, rows), letters };
+}
+
+/** Reduces what's drawn to cells: a cell counts if any pixel in it is inked. */
+function toCells(ctx: CanvasRenderingContext2D, cols: number, rows: number): Uint8Array {
+  const width = cols * SCENE_CELL_PX;
+  const data = ctx.getImageData(0, 0, width, rows * SCENE_CELL_PX).data;
+  const mask = new Uint8Array(cols * rows);
   for (let cy = 0; cy < rows; cy++)
     for (let cx = 0; cx < cols; cx++) {
-      let solid = false;
-      for (let y = 0; y < SAND_CELL_PX && !solid; y++)
-        for (let x = 0; x < SAND_CELL_PX && !solid; x++)
-          solid = data[((cy * SAND_CELL_PX + y) * width + cx * SAND_CELL_PX + x) * 4 + 3]! > 110;
-      if (solid) mask[cy * cols + cx] = 1;
+      let inked = false;
+      for (let y = 0; y < SCENE_CELL_PX && !inked; y++)
+        for (let x = 0; x < SCENE_CELL_PX && !inked; x++)
+          inked = data[((cy * SCENE_CELL_PX + y) * width + cx * SCENE_CELL_PX + x) * 4 + 3]! > 110;
+      if (inked) mask[cy * cols + cx] = 1;
     }
   return mask;
 }

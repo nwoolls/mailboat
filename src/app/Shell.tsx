@@ -70,7 +70,7 @@ import {
 } from "../features/mailbox/model/views";
 import { emptyStateFor, emptyStateKey } from "../features/mailbox/model/emptyState";
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
-import { SCREENSAVER_EVENT } from "../features/mailbox/model/sand";
+import { SCREENSAVER_EVENT, SCREENSAVERS } from "../features/screensaver/model/catalog";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
 import { destinations } from "../features/palette/model/destinations";
@@ -858,10 +858,12 @@ export function Shell() {
             toggleReader,
             showShortcuts: () => setShortcutsOpen(true),
             openSettings,
-            startScreensaver:
-              flags.sandscape && threads.length === 0 && !threadsQuery.isPending
-                ? () => window.dispatchEvent(new Event(SCREENSAVER_EVENT))
-                : undefined,
+            screensavers:
+              flags.screensavers && threads.length === 0 && !threadsQuery.isPending
+                ? SCREENSAVERS.map(({ id, label }) => ({ id, label }))
+                : [],
+            startScreensaver: (id) =>
+              window.dispatchEvent(new CustomEvent(SCREENSAVER_EVENT, { detail: id })),
             destinations: destinations(accountList, labels),
             goTo,
           })}

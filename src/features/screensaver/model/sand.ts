@@ -7,29 +7,33 @@
  * spent and the hills are still, the frame rests a while, turns over, and
  * the finished landscape becomes the next ceiling.
  *
- * Pure logic on a grid of cells, one cell per few screen pixels; the UI
- * (`SandScreensaver`) draws the grid, turns the canvas during the flip and
- * feeds in the solids and pointer.
+ * `SandBox` is the grid and its physics, `SandShow` the cycle, and
+ * `SandscapeScene` fits them to the scene contract (`scene.ts`).
  */
 
-/** Screen pixels per sand cell: chunky enough to read as pixel art. */
-export const SAND_CELL_PX = 3;
-/** How long without input before the screensaver starts. */
-export const SCREENSAVER_IDLE_SECONDS = 60;
-/** Window event that starts the screensaver now (the palette's command). */
-export const SCREENSAVER_EVENT = "mailboat:screensaver";
+import {
+  type FrameResult,
+  ink,
+  type Pointer,
+  type Rng,
+  type Scene,
+  SCENE_CELL_PX,
+  type SceneSetup,
+  SLOT,
+  type Slot,
+} from "./scene";
 
 /**
  * The sands. Heavier ones sink faster through the liquid (`fall` is the
  * chance of dropping a cell each frame), which is part of why real
  * sandscapes settle in separate layers.
  */
-export const SAND_KINDS = [
-  { color: "#2a5fb8", fall: 0.95 }, // deep blue, heaviest
-  { color: "#e9ddc3", fall: 0.82 }, // cream, lightest
-  { color: "#0a84ff", fall: 0.9 }, // system blue
-  { color: "#a3d0ff", fall: 0.86 }, // pale sky
-] as const;
+export const SAND_KINDS: readonly { slot: Slot; fall: number }[] = [
+  { slot: SLOT.dark, fall: 0.95 }, // heaviest
+  { slot: SLOT.bright, fall: 0.82 }, // lightest
+  { slot: SLOT.accent, fall: 0.9 },
+  { slot: SLOT.light, fall: 0.86 },
+];
 /** Each grain gets one of a few shades of its sand, for texture. */
 export const SAND_SHADES = 4;
 /** How long a finished landscape rests before the frame turns over. */
@@ -55,21 +59,6 @@ const ROLL_FRAMES = 3;
 const LEAKS = 3;
 /** How far either side of a gap the ceiling gives way, in cells. */
 const LEAK_REACH = 3;
-
-export type Rng = () => number;
-
-/**
- * Whether a pointer event is the user moving the pointer: more than a
- * couple of pixels from the last one. WebKit also sends pointer events
- * without movement when the page changes under a still cursor.
- */
-export function isRealMove(
-  last: { x: number; y: number } | null,
-  e: { clientX: number; clientY: number },
-): boolean {
-  if (!last) return false;
-  return Math.abs(e.clientX - last.x) + Math.abs(e.clientY - last.y) > 2;
-}
 
 export function grainValue(kind: number, shade: number): number {
   return GRAIN + (kind % SAND_KINDS.length) * SAND_SHADES + (shade % SAND_SHADES);
@@ -592,4 +581,45 @@ export function arrowCells(cellPx: number): [number, number][] {
       )
         cells.push([cx, cy]);
   return cells;
+}
+
+/** The sandscape as a scene: the show, the pointer's arrow, and drawing. */
+export class SandscapeScene implements Scene {
+  private readonly show: SandShow;
+  private readonly arrow = arrowCells(SCENE_CELL_PX);
+  private readonly icon?: { x0: number; x1: number; top: number };
+
+  constructor(setup: SceneSetup) {
+    this.show = new SandShow(setup.cols, setup.rows, setup.rng);
+    this.show.box.setSolids(setup.solid);
+    if (setup.icon) this.icon = { x0: setup.icon.x0, x1: setup.icon.x1, top: setup.icon.y0 };
+  }
+
+  frame(dt: number, pointer: Pointer): FrameResult {
+    const { show } = this;
+    // The pointer stays out of the sand while the frame turns over.
+    if (show.phase !== "turning") show.box.setCursor(pointer, this.arrow);
+    const nod = show.frame(dt, this.icon);
+    const t = show.turn;
+    const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+    return { nod, turn: show.phase === "turning" ? eased * 180 : 0 };
+  }
+
+  draw(out: Uint8Array) {
+    const { cells, particles, cols, rows } = this.show.box;
+    for (let i = 0; i < cells.length; i++) {
+      const v = cells[i]!;
+      out[i] = v >= GRAIN ? grainInk(v) : 0;
+    }
+    for (const p of particles) {
+      const x = Math.round(p.x);
+      const y = Math.round(p.y);
+      if (x >= 0 && x < cols && y >= 0 && y < rows) out[y * cols + x] = grainInk(p.v);
+    }
+  }
+}
+
+function grainInk(v: number): number {
+  const g = (v & ~HELD) - GRAIN;
+  return ink(SAND_KINDS[Math.floor(g / SAND_SHADES)]!.slot, g % SAND_SHADES);
 }

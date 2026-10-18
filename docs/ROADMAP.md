@@ -909,11 +909,24 @@ and settled with the owner one at a time.*
       even with another app in front (owner's request), or at once from
       the palette's "Start screensaver"; a key, click or scroll ends it.
       Off with "Reduce motion"; paused only when the window is hidden*
+      *Six more (owner's pick of the ideas offered, 2026-10-18), all pixel
+      art and playing with the icon, words or pointer: an envelope flock
+      (perches on the icon and words, scatters from the pointer, the odd
+      one glides off as a paper plane), Life (the words dissolve into
+      Conway's Game of Life and return), rain on the glass (drops slide in
+      fits, pool on the icon, the pointer wipes a streak), a koi pond
+      (koi nibble the letters, ripples from the pointer), fireflies (blink
+      into step, gather into the M), and a lava lamp (wax flows around the
+      icon and words). Settings → Advanced → Screensaver picks one or
+      Random (a different one each time), plus colours: six palettes,
+      "Mono + accent" (greys plus the Appearance accent) by default, then
+      Accent, Ocean (the original sand colours), Desert, Dusk, Forest. ⌘K
+      can start any of them by name. Waiting on the owner*
 
 - [x] Feature flags *(owner request, 2026-10-18)*: Settings → Advanced
       (the roadmap's last section, started early) has switches for
-      features still being tried: the empty-list glow and the sandscape
-      screensaver, both on by default. Window-only, kept in the web
+      features still being tried: the empty-list glow and the
+      screensavers (first just the sandscape), both on by default. Window-only, kept in the web
       view's storage like Appearance. The glow now fades out while the
       screensaver plays
 

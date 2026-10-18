@@ -306,10 +306,10 @@ html.resizing .panel-slide {
   transform-origin: 50% 80%;
   animation: empty-nod 600ms var(--motion-ease-out) both;
 }
-/* The empty list's sand screensaver (SandScreensaver): one canvas pixel
-   per sand cell, scaled up without smoothing. Placed from JavaScript over
-   the empty state, behind its icon and words, above the glow. */
-.sand-screensaver {
+/* The empty list's screensaver (features/screensaver): one canvas pixel
+   per cell, scaled up without smoothing. Placed from JavaScript over the
+   empty state, behind its icon and words, above the glow. */
+.screensaver {
   position: absolute;
   /* As see-through as the list card's glass it sits on, following
      Settings → Appearance → Transparency. */
@@ -320,7 +320,14 @@ html.resizing .panel-slide {
   animation: empty-swap 600ms ease-out both;
   transition: opacity 450ms ease-out;
 }
-.sand-screensaver[data-closing] {
+.screensaver[data-closing] {
+  opacity: 0;
+}
+/* A scene can fade the words out (Life turns them into cells). */
+.empty-words p {
+  transition: opacity 0.8s ease-out;
+}
+.empty-words[data-scene-hidden] p {
   opacity: 0;
 }
 @media (prefers-reduced-motion: reduce) {

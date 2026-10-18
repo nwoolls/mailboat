@@ -45,8 +45,10 @@ export function paletteItems(p: {
   toggleReader: () => void;
   showShortcuts: () => void;
   openSettings: () => void;
-  /** Only while the list is empty, where the screensaver plays. */
-  startScreensaver?: () => void;
+  /** The screensavers to offer: only while the list is empty, where they play. */
+  screensavers: { id: string; label: string }[];
+  /** Starts one by id, or the chosen one (Settings → Advanced) with null. */
+  startScreensaver: (id: string | null) => void;
   destinations: Destination[];
   goTo: (s: Selection) => void;
 }): PaletteItem[] {
@@ -151,13 +153,21 @@ export function paletteItems(p: {
     shortcut: "?",
     run: p.showShortcuts,
   });
-  if (p.startScreensaver)
+  if (p.screensavers.length) {
     items.push({
       id: "screensaver",
-      group: "View",
+      group: "Screensaver",
       title: "Start screensaver",
-      run: p.startScreensaver,
+      run: () => p.startScreensaver(null),
     });
+    for (const s of p.screensavers)
+      items.push({
+        id: `screensaver:${s.id}`,
+        group: "Screensaver",
+        title: `Start screensaver: ${s.label}`,
+        run: () => p.startScreensaver(s.id),
+      });
+  }
   items.push({
     id: "settings",
     group: "View",

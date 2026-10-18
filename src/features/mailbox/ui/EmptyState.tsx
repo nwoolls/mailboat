@@ -20,7 +20,8 @@ import {
   GLOW_RETURN_SECONDS,
 } from "../model/glow";
 import { useFeatureFlags } from "../../../shared/lib/featureFlags";
-import { SandScreensaver, useScreensaver } from "./SandScreensaver";
+import { ScreensaverCanvas, useScreensaver } from "../../screensaver/ui/ScreensaverCanvas";
+import { screensaverPrefs } from "../../screensaver/ui/prefs";
 
 const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
   caughtUp: ThumbsUpIcon,
@@ -48,9 +49,9 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
  * label) only cross-fades the glyph and words in place. `swapKey` names
  * what's shown, so typing a search doesn't count as a change.
  *
- * After a minute without input, sand pours over it (`SandScreensaver`),
- * heaping on the icon and words; when the icon's heap grows, it shrugs it
- * off with a nod. The glow fades out while the sand plays. Both are behind
+ * After a minute without input a screensaver plays over it
+ * (`features/screensaver`), playing with the icon and words; the icon
+ * nods when a scene asks. The glow fades out while it plays. Both are behind
  * feature flags (Settings → Advanced).
  */
 export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey: string }) {
@@ -59,7 +60,8 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
   const { anchorRef, pullRef, glowRef } = useGlowPull(flags.emptyGlow);
   const iconRef = useRef<HTMLDivElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
-  const screensaver = useScreensaver(flags.sandscape);
+  const { phase: screensaver, scene } = useScreensaver(flags.screensavers);
+  const { palette } = screensaverPrefs.use();
   const [shrugs, setShrugs] = useState(0);
   const shrug = useCallback(() => setShrugs((n) => n + 1), []);
   const iconMotion =
@@ -79,12 +81,14 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
         </div>
       )}
       {screensaver !== "off" && (
-        <SandScreensaver
+        <ScreensaverCanvas
+          sceneId={scene}
+          palette={palette}
           areaRef={anchorRef}
           iconRef={iconRef}
           wordsRef={wordsRef}
           closing={screensaver === "closing"}
-          onShrug={shrug}
+          onNod={shrug}
         />
       )}
       <div className="empty-rise relative flex flex-col items-center text-center">
@@ -99,7 +103,7 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
         <div
           ref={wordsRef}
           key={swapKey}
-          className="empty-swap absolute top-full left-1/2 mt-4 w-80 max-w-[80vw] -translate-x-1/2"
+          className="empty-words empty-swap absolute top-full left-1/2 mt-4 w-80 max-w-[80vw] -translate-x-1/2"
         >
           <p className="text-[15px] font-semibold">{state.title}</p>
           {state.detail && <p className="mt-1 text-content/60">{state.detail}</p>}

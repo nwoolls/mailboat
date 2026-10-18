@@ -29,7 +29,15 @@ import {
   sliderRange,
   withTint,
 } from "../model/appearance";
-import { Button, Group, Row, Segmented, Slider, Swatches, Toggle } from "./controls";
+import { Button, ChoiceGrid, Group, Row, Segmented, Slider, Swatches, Toggle } from "./controls";
+import { SCREENSAVERS } from "../../screensaver/model/catalog";
+import {
+  PALETTES,
+  type PaletteId,
+  paletteColors,
+  parseColor,
+} from "../../screensaver/model/palettes";
+import { screensaverPrefs } from "../../screensaver/ui/prefs";
 import { FEATURE_FLAGS, setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
@@ -430,20 +438,80 @@ export function KeyboardSection() {
 
 export function AdvancedSection() {
   const flags = useFeatureFlags();
+  const prefs = screensaverPrefs.use();
   return (
-    <Group
-      title="Feature flags"
-      description="Features still being tried. Changes apply at once and are remembered on this Mac."
-    >
-      {FEATURE_FLAGS.map((flag) => (
-        <Row key={flag.id} label={flag.label} description={flag.description}>
-          <Toggle
-            label={flag.label}
-            on={flags[flag.id]}
-            onChange={(on) => setFeatureFlag(flag.id, on)}
-          />
-        </Row>
+    <>
+      <Group
+        title="Feature flags"
+        description="Features still being tried. Changes apply at once and are remembered on this Mac."
+      >
+        {FEATURE_FLAGS.map((flag) => (
+          <Row key={flag.id} label={flag.label} description={flag.description}>
+            <Toggle
+              label={flag.label}
+              on={flags[flag.id]}
+              onChange={(on) => setFeatureFlag(flag.id, on)}
+            />
+          </Row>
+        ))}
+      </Group>
+      {flags.screensavers && (
+        <Group
+          title="Screensaver"
+          description="Plays over an empty list. To try one now, open an empty list and use “Start screensaver” in ⌘K."
+        >
+          <div className="px-4 py-3.5">
+            <ChoiceGrid
+              label="Screensaver"
+              value={prefs.choice}
+              options={[
+                { value: "random", label: "Random" },
+                ...SCREENSAVERS.map((s) => ({ value: s.id, label: s.label })),
+              ]}
+              onChange={(choice) => screensaverPrefs.set({ ...prefs, choice })}
+            />
+          </div>
+          <div className="px-4 pb-2">
+            <div className="text-[13px] font-medium text-content">Colours</div>
+            <div className="mt-1 text-[12px] leading-relaxed text-content/45">
+              “Mono + accent” and “Accent” follow the accent colour in Appearance.
+            </div>
+          </div>
+          <div className="px-4 pb-3.5">
+            <ChoiceGrid
+              label="Colours"
+              columns={3}
+              value={prefs.palette}
+              options={PALETTES.map((p) => ({
+                value: p.id,
+                label: p.label,
+                picture: <PaletteStrip id={p.id} />,
+              }))}
+              onChange={(palette) => screensaverPrefs.set({ ...prefs, palette })}
+            />
+          </div>
+        </Group>
+      )}
+    </>
+  );
+}
+
+const SLOT_NAMES = ["dark", "mid", "light", "bright", "accent"];
+
+/** A palette's five colours as a row of pixel squares. */
+function PaletteStrip({ id }: { id: PaletteId }) {
+  const accent = parseColor(
+    getComputedStyle(document.documentElement).getPropertyValue("--color-accent"),
+  );
+  return (
+    <span className="flex gap-px" aria-hidden>
+      {paletteColors(id, accent).map((c, i) => (
+        <span
+          key={SLOT_NAMES[i]}
+          className="size-3.5"
+          style={{ background: `rgb(${c.join(" ")})` }}
+        />
       ))}
-    </Group>
+    </span>
   );
 }

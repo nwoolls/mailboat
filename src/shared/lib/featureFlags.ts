@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { localStore } from "./localStore";
 
 /**
  * Feature flags: switches for features still being tried, in Settings →
@@ -8,8 +8,8 @@ import { useSyncExternalStore } from "react";
 export type FeatureFlags = {
   /** The soft glow drifting behind an empty list, drawn to the pointer. */
   emptyGlow: boolean;
-  /** The sandscape screensaver over an empty list. */
-  sandscape: boolean;
+  /** Screensavers over an empty list (which one: Settings → Advanced). */
+  screensavers: boolean;
 };
 
 export type FeatureFlagId = keyof FeatureFlags;
@@ -23,14 +23,14 @@ export const FEATURE_FLAGS: readonly { id: FeatureFlagId; label: string; descrip
       "A soft glow drifts behind an empty list and follows the pointer. Hidden while the screensaver plays.",
   },
   {
-    id: "sandscape",
-    label: "Sandscape screensaver",
+    id: "screensavers",
+    label: "Screensavers",
     description:
-      "After a minute without input, layered sand trickles over an empty list. Also in ⌘K as “Start screensaver”.",
+      "After a minute without input, a pixel-art scene plays over an empty list. Also in ⌘K as “Start screensaver”.",
   },
 ];
 
-export const DEFAULT_FLAGS: FeatureFlags = { emptyGlow: true, sandscape: true };
+export const DEFAULT_FLAGS: FeatureFlags = { emptyGlow: true, screensavers: true };
 
 export const FLAGS_STORAGE_KEY = "mailboat.featureFlags";
 
@@ -49,27 +49,14 @@ export function parseFlags(raw: string | null): FeatureFlags {
   return flags;
 }
 
-let current: FeatureFlags | null = null;
-const listeners = new Set<() => void>();
-
-function snapshot(): FeatureFlags {
-  current ??= parseFlags(localStorage.getItem(FLAGS_STORAGE_KEY));
-  return current;
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
+const store = localStore(FLAGS_STORAGE_KEY, parseFlags);
 
 /** Turns a flag on or off, remembers it, and updates everything showing it. */
 export function setFeatureFlag(id: FeatureFlagId, on: boolean) {
-  current = { ...snapshot(), [id]: on };
-  localStorage.setItem(FLAGS_STORAGE_KEY, JSON.stringify(current));
-  for (const listener of listeners) listener();
+  store.set({ ...store.get(), [id]: on });
 }
 
 /** The flags, re-rendering when one changes. */
 export function useFeatureFlags(): FeatureFlags {
-  return useSyncExternalStore(subscribe, snapshot);
+  return store.use();
 }

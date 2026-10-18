@@ -6,13 +6,14 @@ import {
   GRAIN,
   grainValue,
   HELD,
-  isRealMove,
   kindOf,
   SAND_KINDS,
   SandBox,
   SandShow,
+  SandscapeScene,
   SOLID,
 } from "./sand";
+import { testSetup } from "./scene";
 
 /** A repeatable stand-in for Math.random. */
 function seeded(seed = 1) {
@@ -214,15 +215,6 @@ describe("grains", () => {
   });
 });
 
-describe("isRealMove", () => {
-  it("ignores pointer events that don't move", () => {
-    expect(isRealMove(null, { clientX: 5, clientY: 5 })).toBe(false);
-    expect(isRealMove({ x: 5, y: 5 }, { clientX: 5, clientY: 5 })).toBe(false);
-    expect(isRealMove({ x: 5, y: 5 }, { clientX: 6, clientY: 6 })).toBe(false);
-    expect(isRealMove({ x: 5, y: 5 }, { clientX: 12, clientY: 5 })).toBe(true);
-  });
-});
-
 describe("arrowCells", () => {
   it("covers the pointer's tip and stays within its size", () => {
     const cells = arrowCells(3);
@@ -232,5 +224,18 @@ describe("arrowCells", () => {
       expect(y).toBeLessThan(7);
     }
     expect(cells.length).toBeGreaterThan(8);
+  });
+});
+
+describe("SandscapeScene", () => {
+  it("draws its ceiling and turns the canvas when it flips", () => {
+    const scene = new SandscapeScene(testSetup(60, 60, seeded()));
+    const out = new Uint8Array(60 * 60);
+    scene.draw(out);
+    expect(out.some((v) => v > 0)).toBe(true);
+    let turned = false;
+    for (let i = 0; i < 60 * 180 && !turned; i++)
+      turned = (scene.frame(1 / 60, null).turn ?? 0) > 0;
+    expect(turned).toBe(true);
   });
 });

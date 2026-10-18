@@ -19,10 +19,10 @@ describe("feature flags", () => {
   });
 
   it("remembers a change", () => {
-    setFeatureFlag("sandscape", false);
-    expect(parseFlags(localStorage.getItem(FLAGS_STORAGE_KEY)).sandscape).toBe(false);
-    setFeatureFlag("sandscape", true);
-    expect(parseFlags(localStorage.getItem(FLAGS_STORAGE_KEY)).sandscape).toBe(true);
+    setFeatureFlag("screensavers", false);
+    expect(parseFlags(localStorage.getItem(FLAGS_STORAGE_KEY)).screensavers).toBe(false);
+    setFeatureFlag("screensavers", true);
+    expect(parseFlags(localStorage.getItem(FLAGS_STORAGE_KEY)).screensavers).toBe(true);
   });
 
   it("lists every flag once in Settings", () => {

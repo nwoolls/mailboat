@@ -223,6 +223,54 @@ export function Segmented<T extends string>({
   );
 }
 
+/**
+ * Choices laid out in a wrapping grid, for more than fit a segmented
+ * control. Each may carry a small picture (e.g. a palette's colours).
+ */
+export function ChoiceGrid<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  columns = 4,
+}: {
+  label: string;
+  value: T;
+  options: readonly { value: T; label: string; picture?: React.ReactNode }[];
+  onChange: (value: T) => void;
+  columns?: number;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="grid w-full gap-1.5 text-[12px]"
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+    >
+      {options.map((option) => {
+        const chosen = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={chosen}
+            onClick={() => onChange(option.value)}
+            className={`flex min-w-0 flex-col items-center gap-1.5 rounded-lg border px-2 py-2 transition-colors duration-[120ms] ${
+              chosen
+                ? "border-accent bg-selection-strong text-content"
+                : "border-content/10 text-content/60 hover:bg-selection hover:text-content"
+            }`}
+          >
+            {option.picture}
+            <span className="truncate">{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Round colour choices, the chosen one ticked (account and accent colours). */
 export function Swatches<T extends string>({
   label,
