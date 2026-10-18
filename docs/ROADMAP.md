@@ -864,21 +864,10 @@ email-display and remote-image follow-ups left open in UX Spike 1, and the
 look-and-feel items from Later. As with Spike 1, built to try in the app
 and settled with the owner one at a time.*
 
-- [ ] Emails on the glass, step 2: remap colors set in an email's own style
-      sheet (needs a CSS parser), so more newsletters can adapt
-- [ ] Dark mode for emails that declare it (`color-scheme: light dark`, as
-      a vendor's do): apply their own dark rules plus our remap of their
-      inline colours, as Mail.app does, instead of the white card. Their
-      dark rules alone aren't enough (a vendor's turn text white but never
-      darken its inline white backgrounds). Fall back to the white card if
-      their style sheet sets text colours outside its dark-mode block
-- [ ] "Original colors" toggle per message, for emails the remap gets wrong
-- [ ] Softer look for the remaining white cards on the glass
-- [ ] A setting to switch the default back to "blocked"
-- [ ] Load by default only for people you've written to (option B of UX
-      Spike 1's remote-image choice, not built)
-- [ ] Background image prefetch during sync, like Apple Mail, so senders
-      can't tell when you opened (option C of the same choice, not built)
+**Done (owner, 2026-10-18):** the owner called the spike complete with
+the app as it stands. The email-colour and remote-image items it carried
+weren't built and moved to Later / unscheduled ("From UX Spike 2").
+
 - [x] Icon, round three *(owner request, 2026-10-17)*: the folded-ribbon
       M now folds like an envelope. The V folds over the front of the
       sides and meets them edge to edge at the top corners (the fold and
@@ -886,7 +875,7 @@ and settled with the owner one at a time.*
       sides a shade darker. Owner picked N7 after four sheets in
       `design/icon/sheets/` (8 to 11); every colour in Settings → App
       icon, the built-in icon and the Liquid Glass layer use it
-- [ ] Idle screensavers for the empty reader and list *(owner request,
+- [x] Idle screensavers for the empty list *(owner request,
       2026-10-17; discuss first, then pick one to try and iterate)*: an
       alternative to the pointer-following glow. Interactive pixel art
       that starts after about a minute without input and stops on any
@@ -900,8 +889,8 @@ and settled with the owner one at a time.*
       like an hourglass. Fixed after the owner found it never started (any
       pointer event, even WebKit's still-cursor ones, cancelled the start
       and reset the idle wait). Second try, after the owner pointed to
-      sandscapes (the sand-and-liquid frames you turn over), waiting on
-      the owner: a layered ceiling leaks through three wandering gaps in
+      sandscapes (the sand-and-liquid frames you turn over): a layered
+      ceiling leaks through three wandering gaps in
       slow curtains that lay down fine dark and light layers in steep
       hills, heaping on the icon box, the letters of the words and the
       pointer (moving it digs and stirs). The icon nods and shrugs its
@@ -924,13 +913,15 @@ and settled with the owner one at a time.*
       Random (a different one each time), plus colours: six palettes,
       "Mono + accent" (greys plus the Appearance accent) by default, then
       Accent, Ocean (the original sand colours), Desert, Dusk, Forest. ⌘K
-      can start any of them by name. Waiting on the owner*
+      can start any of them by name. The owner kept them as they are
+      (2026-10-18), behind the Screensavers feature flag*
 
 - [x] Feature flags *(owner request, 2026-10-18)*: Settings → Advanced
       (the roadmap's last section, started early) has switches for
       features still being tried: the empty-list glow and the
-      screensavers (first just the sandscape), both on by default. Window-only, kept in the web
-      view's storage like Appearance. The glow now fades out while the
+      screensavers (first just the sandscape), both on by default.
+      Window-only, kept in the web view's storage like Appearance. Whether
+      they stay flags is to rethink later (owner, 2026-10-18). The glow now fades out while the
       screensaver plays
 
 ## AI Spike
@@ -989,3 +980,21 @@ Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
         online
       - Download recent message bodies ahead (say 30 days) so any recent
         mail opens offline; costs disk space and Gmail quota
+
+### From UX Spike 2 (moved unbuilt when the spike closed, 2026-10-18)
+
+- [ ] Emails on the glass, step 2: remap colors set in an email's own style
+      sheet (needs a CSS parser), so more newsletters can adapt
+- [ ] Dark mode for emails that declare it (`color-scheme: light dark`, as
+      a vendor's do): apply their own dark rules plus our remap of their
+      inline colours, as Mail.app does, instead of the white card. Their
+      dark rules alone aren't enough (a vendor's turn text white but never
+      darken its inline white backgrounds). Fall back to the white card if
+      their style sheet sets text colours outside its dark-mode block
+- [ ] "Original colors" toggle per message, for emails the remap gets wrong
+- [ ] Softer look for the remaining white cards on the glass
+- [ ] A setting to switch the default back to "blocked"
+- [ ] Load by default only for people you've written to (option B of UX
+      Spike 1's remote-image choice, not built)
+- [ ] Background image prefetch during sync, like Apple Mail, so senders
+      can't tell when you opened (option C of the same choice, not built)
