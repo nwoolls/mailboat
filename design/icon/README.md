@@ -50,3 +50,7 @@
      sides' top and outer edges, so no side pokes out beside the fold.
      N5: the V as wide as the sides; N6: the V's end is exactly the top
      edge, so it's slimmer; N7: N5, steeper
+  11. N6 with a deeper V, so its ribbons are wider (owner request). The
+     fold line is the side's whole top edge, so the V's width follows
+     from its angle: D1 45° (74 wide), D2 48° (77), D3 51° (81), D4 54°
+     (84, its point level with the sides' feet). The sides are 104

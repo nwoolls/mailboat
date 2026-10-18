@@ -886,7 +886,8 @@ and settled with the owner one at a time.*
       square tips, V folded in front, what's behind slightly darker.
       Second sheet `9-front-folds.png` (N1–N4): N4 closest. Third,
       `10-edge-folds.png` (N5–N7): the V's ends meet the sides edge to
-      edge at the corners; waiting on the pick*
+      edge at the corners: N6 liked. Fourth, `11-deeper-v.png` (D1–D4):
+      N6 with a deeper, wider V; waiting on the pick*
 - [ ] Idle screensavers for the empty reader and list *(owner request,
       2026-10-17; discuss first, then pick one to try and iterate)*: an
       alternative to the pointer-following glow. Interactive pixel art
