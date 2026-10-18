@@ -22,16 +22,18 @@ const CLOSE_MS = 450;
  * at beside other work), or at once from the palette's "Start
  * screensaver". It closes on a key, click or scroll. Moving the pointer
  * doesn't close it: the sand plays with the pointer instead. Never starts
- * with "Reduce motion" on.
+ * with "Reduce motion" on, and never while `enabled` (its feature flag) is
+ * off.
  *
  * Pointer events that don't actually move (WebKit sends some when the page
  * changes under a still cursor, such as when the palette closes) don't
  * count as input.
  */
-export function useScreensaver(): ScreensaverPhase {
+export function useScreensaver(enabled: boolean): ScreensaverPhase {
   const [phase, setPhase] = useState<ScreensaverPhase>("off");
 
   useEffect(() => {
+    if (!enabled) return;
     const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let timer = 0;
     let last: { x: number; y: number } | null = null;
@@ -79,9 +81,9 @@ export function useScreensaver(): ScreensaverPhase {
     }
     timer = window.setTimeout(() => setPhase("off"), CLOSE_MS);
     return () => window.clearTimeout(timer);
-  }, [phase]);
+  }, [phase, enabled]);
 
-  return phase;
+  return enabled ? phase : "off";
 }
 
 /**

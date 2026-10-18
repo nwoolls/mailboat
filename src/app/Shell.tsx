@@ -91,6 +91,7 @@ import {
   useComposeActions,
   useComposeState,
 } from "../features/compose/ui/useCompose";
+import { useFeatureFlags } from "../shared/lib/featureFlags";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
 import { LABEL_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
 import {
@@ -149,6 +150,7 @@ export function Shell() {
   const setup = useOAuthSetup();
   const syncStates = useSyncStates().data ?? [];
   const labels = useLabels({ kind: "all" }).data ?? [];
+  const flags = useFeatureFlags();
   const accountList = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
   const accounts = useMemo(() => indexAccounts(accountList), [accountList]);
   const identities = useIdentities().data ?? [];
@@ -857,7 +859,7 @@ export function Shell() {
             showShortcuts: () => setShortcutsOpen(true),
             openSettings,
             startScreensaver:
-              threads.length === 0 && !threadsQuery.isPending
+              flags.sandscape && threads.length === 0 && !threadsQuery.isPending
                 ? () => window.dispatchEvent(new Event(SCREENSAVER_EVENT))
                 : undefined,
             destinations: destinations(accountList, labels),

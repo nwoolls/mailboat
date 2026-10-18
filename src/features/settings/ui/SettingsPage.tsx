@@ -4,6 +4,7 @@ import { sectionFor, type SettingsSectionId } from "../model/sections";
 import { PageHeader } from "./controls";
 import {
   AccountsSection,
+  AdvancedSection,
   AppearanceSection,
   GeneralSection,
   KeyboardSection,
@@ -81,6 +82,7 @@ export function SettingsPage({
           {section === "general" && <GeneralSection />}
           {section === "notifications" && <NotificationsSection />}
           {section === "keyboard" && <KeyboardSection />}
+          {section === "advanced" && <AdvancedSection />}
         </div>
       </div>
     </section>

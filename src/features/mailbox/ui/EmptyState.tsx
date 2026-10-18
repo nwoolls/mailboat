@@ -19,6 +19,7 @@ import {
   GLOW_LINGER_SECONDS,
   GLOW_RETURN_SECONDS,
 } from "../model/glow";
+import { useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { SandScreensaver, useScreensaver } from "./SandScreensaver";
 
 const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
@@ -49,14 +50,16 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
  *
  * After a minute without input, sand pours over it (`SandScreensaver`),
  * heaping on the icon and words; when the icon's heap grows, it shrugs it
- * off with a nod.
+ * off with a nod. The glow fades out while the sand plays. Both are behind
+ * feature flags (Settings → Advanced).
  */
 export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey: string }) {
   const Icon = ICONS[state.icon];
-  const { anchorRef, pullRef, glowRef } = useGlowPull();
+  const flags = useFeatureFlags();
+  const { anchorRef, pullRef, glowRef } = useGlowPull(flags.emptyGlow);
   const iconRef = useRef<HTMLDivElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
-  const screensaver = useScreensaver();
+  const screensaver = useScreensaver(flags.sandscape);
   const [shrugs, setShrugs] = useState(0);
   const shrug = useCallback(() => setShrugs((n) => n + 1), []);
   const iconMotion =
@@ -65,9 +68,16 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
     <div ref={anchorRef} className="flex flex-1 items-center justify-center px-8">
       {/* Positioned against the card (.panel), not this box, so it can
           reach under the title row; z-index -1 keeps it behind text. */}
-      <div ref={pullRef} aria-hidden className="empty-glow-pull">
-        <div ref={glowRef} className="empty-glow" />
-      </div>
+      {flags.emptyGlow && (
+        <div
+          ref={pullRef}
+          aria-hidden
+          className="empty-glow-pull"
+          data-screensaver={screensaver !== "off" || undefined}
+        >
+          <div ref={glowRef} className="empty-glow" />
+        </div>
+      )}
       {screensaver !== "off" && (
         <SandScreensaver
           areaRef={anchorRef}
@@ -109,7 +119,7 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
  * path, after which the loop stops. Pointer moves only update the target,
  * so nothing re-renders and no transition restarts.
  */
-function useGlowPull() {
+function useGlowPull(enabled: boolean) {
   const anchorRef = useRef<HTMLDivElement>(null);
   const pullRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
@@ -118,7 +128,7 @@ function useGlowPull() {
     const anchor = anchorRef.current;
     const pull = pullRef.current;
     const card = anchor?.closest<HTMLElement>(".panel");
-    if (!anchor || !pull || !card) return;
+    if (!enabled || !anchor || !pull || !card) return;
     const m = { x: 0, y: 0, cx: 0, cy: 0, attracted: false, leftAt: 0, frame: 0, last: 0 };
 
     // Rest the glow behind the icon, which sits below the card's centre
@@ -182,7 +192,7 @@ function useGlowPull() {
       resize.disconnect();
       cancelAnimationFrame(m.frame);
     };
-  }, []);
+  }, [enabled]);
 
   return { anchorRef, pullRef, glowRef };
 }

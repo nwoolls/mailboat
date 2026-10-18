@@ -241,6 +241,16 @@ html.resizing .panel-slide {
   opacity: 1;
   transition-duration: 0.4s;
 }
+/* The screensaver plays without the glow: it fades out, and its drift
+   pauses so it costs nothing meanwhile. */
+.empty-glow-pull[data-screensaver],
+.empty-glow-pull[data-screensaver][data-attracted="true"] {
+  opacity: 0;
+  transition-duration: 0.8s;
+}
+.empty-glow-pull[data-screensaver] .empty-glow {
+  animation-play-state: paused;
+}
 @keyframes empty-drift {
   0% {
     transform: translate(-30%, -25%) scale(1);

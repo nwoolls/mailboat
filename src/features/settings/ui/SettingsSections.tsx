@@ -30,6 +30,7 @@ import {
   withTint,
 } from "../model/appearance";
 import { Button, Group, Row, Segmented, Slider, Swatches, Toggle } from "./controls";
+import { FEATURE_FLAGS, setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
 import { iconSetting, shownIcon } from "../model/appIcon";
@@ -424,5 +425,25 @@ export function KeyboardSection() {
         </Group>
       ))}
     </>
+  );
+}
+
+export function AdvancedSection() {
+  const flags = useFeatureFlags();
+  return (
+    <Group
+      title="Feature flags"
+      description="Features still being tried. Changes apply at once and are remembered on this Mac."
+    >
+      {FEATURE_FLAGS.map((flag) => (
+        <Row key={flag.id} label={flag.label} description={flag.description}>
+          <Toggle
+            label={flag.label}
+            on={flags[flag.id]}
+            onChange={(on) => setFeatureFlag(flag.id, on)}
+          />
+        </Row>
+      ))}
+    </Group>
   );
 }

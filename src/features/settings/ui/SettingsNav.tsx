@@ -1,5 +1,6 @@
 import {
   AccountsIcon,
+  AdvancedIcon,
   AppearanceIcon,
   BackIcon,
   GeneralIcon,
@@ -15,6 +16,7 @@ const ICONS: Record<SettingsSectionId, (props: IconProps) => React.ReactNode> = 
   notifications: NotificationIcon,
   appearance: AppearanceIcon,
   keyboard: KeyboardIcon,
+  advanced: AdvancedIcon,
 };
 
 /**

@@ -1,7 +1,7 @@
 /**
  * The Settings page's sections, in the order decided in the roadmap
  * (Milestone 5). Only sections with something in them are listed; the
- * others (Sidebar & List, Viewing, Composing, Signatures, Rules, Advanced)
+ * others (Sidebar & List, Viewing, Composing, Signatures, Rules)
  * join as their features arrive, in their place in that order.
  */
 export type SettingsSectionId =
@@ -9,7 +9,8 @@ export type SettingsSectionId =
   | "accounts"
   | "notifications"
   | "appearance"
-  | "keyboard";
+  | "keyboard"
+  | "advanced";
 
 export type SettingsSection = { id: SettingsSectionId; label: string; description: string };
 
@@ -27,6 +28,11 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   },
   { id: "appearance", label: "Appearance", description: "How Mailboat looks." },
   { id: "keyboard", label: "Keyboard", description: "Every keyboard shortcut." },
+  {
+    id: "advanced",
+    label: "Advanced",
+    description: "Features still being tried, to turn on or off.",
+  },
 ];
 
 export function sectionFor(id: SettingsSectionId): SettingsSection {

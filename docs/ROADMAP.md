@@ -910,6 +910,13 @@ and settled with the owner one at a time.*
       the palette's "Start screensaver"; a key, click or scroll ends it.
       Off with "Reduce motion"; paused only when the window is hidden*
 
+- [x] Feature flags *(owner request, 2026-10-18)*: Settings → Advanced
+      (the roadmap's last section, started early) has switches for
+      features still being tried: the empty-list glow and the sandscape
+      screensaver, both on by default. Window-only, kept in the web
+      view's storage like Appearance. The glow now fades out while the
+      screensaver plays
+
 ## AI Spike
 
 *The AI work, gathered from Later at the owner's request (2026-10-17).
