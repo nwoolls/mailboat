@@ -45,6 +45,8 @@ export function paletteItems(p: {
   toggleReader: () => void;
   showShortcuts: () => void;
   openSettings: () => void;
+  /** Only while the list is empty, where the screensaver plays. */
+  startScreensaver?: () => void;
   destinations: Destination[];
   goTo: (s: Selection) => void;
 }): PaletteItem[] {
@@ -149,6 +151,13 @@ export function paletteItems(p: {
     shortcut: "?",
     run: p.showShortcuts,
   });
+  if (p.startScreensaver)
+    items.push({
+      id: "screensaver",
+      group: "View",
+      title: "Start screensaver",
+      run: p.startScreensaver,
+    });
   items.push({
     id: "settings",
     group: "View",

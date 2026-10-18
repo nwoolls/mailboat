@@ -894,6 +894,18 @@ and settled with the owner one at a time.*
       fireworks. To settle: which one first, the idle delay, whether it
       replaces the glow or comes on after it, and keeping it light on
       battery (pause when the window is hidden or unfocused)
+      *First try built (2026-10-17), waiting on the owner: falling sand,
+      like a desk sand-art frame. Coloured layers pour from a wandering
+      spout, heap on the icon box and on the letters of the words, rest
+      on the pointer (moving it digs and scatters them), and when the
+      heap reaches about a third of the way up the floor opens and it
+      drains like an hourglass, then starts over. When the icon's heap
+      grows it nods and shrugs it off. Starts after 60s without input
+      (any empty view, window focused), or at once from the palette's
+      "Start screensaver"; a key, click or scroll ends it, the pointer
+      doesn't. It plays over the glow, which keeps drifting behind it.
+      Off with "Reduce motion"; paused when the window is hidden or in
+      the background*
 
 ## AI Spike
 

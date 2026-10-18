@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArchiveIcon,
   DraftIcon,
@@ -19,6 +19,7 @@ import {
   GLOW_LINGER_SECONDS,
   GLOW_RETURN_SECONDS,
 } from "../model/glow";
+import { SandScreensaver, useScreensaver } from "./SandScreensaver";
 
 const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
   caughtUp: ThumbsUpIcon,
@@ -45,10 +46,21 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
  * when the list turns empty; switching to another empty view (Drafts to a
  * label) only cross-fades the glyph and words in place. `swapKey` names
  * what's shown, so typing a search doesn't count as a change.
+ *
+ * After a minute without input, sand pours over it (`SandScreensaver`),
+ * heaping on the icon and words; when the icon's heap grows, it shrugs it
+ * off with a nod.
  */
 export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey: string }) {
   const Icon = ICONS[state.icon];
   const { anchorRef, pullRef, glowRef } = useGlowPull();
+  const iconRef = useRef<HTMLDivElement>(null);
+  const wordsRef = useRef<HTMLDivElement>(null);
+  const screensaver = useScreensaver();
+  const [shrugs, setShrugs] = useState(0);
+  const shrug = useCallback(() => setShrugs((n) => n + 1), []);
+  const iconMotion =
+    shrugs > 0 ? "empty-shrug" : state.icon === "caughtUp" ? "empty-nod" : "empty-swap";
   return (
     <div ref={anchorRef} className="flex flex-1 items-center justify-center px-8">
       {/* Positioned against the card (.panel), not this box, so it can
@@ -56,13 +68,26 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
       <div ref={pullRef} aria-hidden className="empty-glow-pull">
         <div ref={glowRef} className="empty-glow" />
       </div>
+      {screensaver !== "off" && (
+        <SandScreensaver
+          areaRef={anchorRef}
+          iconRef={iconRef}
+          wordsRef={wordsRef}
+          closing={screensaver === "closing"}
+          onShrug={shrug}
+        />
+      )}
       <div className="empty-rise relative flex flex-col items-center text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-selection-subtle text-content/80 ring-1 ring-stroke">
-          <span key={swapKey} className={state.icon === "caughtUp" ? "empty-nod" : "empty-swap"}>
+        <div
+          ref={iconRef}
+          className="flex h-14 w-14 items-center justify-center rounded-2xl bg-selection-subtle text-content/80 ring-1 ring-stroke"
+        >
+          <span key={`${swapKey}:${shrugs}`} className={iconMotion}>
             <Icon size={26} strokeWidth={1.5} />
           </span>
         </div>
         <div
+          ref={wordsRef}
           key={swapKey}
           className="empty-swap absolute top-full left-1/2 mt-4 w-80 max-w-[80vw] -translate-x-1/2"
         >

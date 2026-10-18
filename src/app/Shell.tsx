@@ -70,6 +70,7 @@ import {
 } from "../features/mailbox/model/views";
 import { emptyStateFor, emptyStateKey } from "../features/mailbox/model/emptyState";
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
+import { SCREENSAVER_EVENT } from "../features/mailbox/model/sand";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
 import { destinations } from "../features/palette/model/destinations";
@@ -855,6 +856,10 @@ export function Shell() {
             toggleReader,
             showShortcuts: () => setShortcutsOpen(true),
             openSettings,
+            startScreensaver:
+              threads.length === 0 && !threadsQuery.isPending
+                ? () => window.dispatchEvent(new Event(SCREENSAVER_EVENT))
+                : undefined,
             destinations: destinations(accountList, labels),
             goTo,
           })}
