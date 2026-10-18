@@ -725,7 +725,10 @@ owner has seen invitations and the Dock icon working.*
       link). Type to find: the open or picked conversations' actions
       (Reply, Archive, Report spam, Labels…), New message, Search, Sync
       now, the panels, and every view to go to (unified and per account,
-      labels included). Each shows its key
+      labels included). Each shows its key. Fixed (2026-10-18, owner
+      report): holding ↓ jumped the pick back up whenever the list
+      scrolled, because WebKit's still-cursor pointer events made cmdk
+      pick the row under the idle mouse; only real pointer moves count
 - [x] Full keyboard shortcuts: Gmail's "go to" keys (`g` then `i`
       Inbox, `s` Starred, `t` Sent, `d` Drafts, `a` All Mail, `e`
       Archive; they keep the accounts being viewed), and `?` for a sheet

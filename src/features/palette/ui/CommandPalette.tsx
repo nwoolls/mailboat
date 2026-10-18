@@ -1,5 +1,6 @@
 import { Command } from "cmdk";
 import { useEffect, useRef } from "react";
+import { isRealMove } from "../../../shared/lib/pointer";
 import type { IconProps } from "../../../shared/ui/icons";
 
 /** One thing the palette can do. */
@@ -19,10 +20,16 @@ export type PaletteItem = {
  * ⌘K: type to find an action or a place, ↑/↓ and Return to run it, Esc to
  * close (cmdk does the filtering and keys). A modal `<dialog>`, so it sits
  * above everything and keeps focus.
+ *
+ * cmdk picks the row under the pointer on every pointer move. WebKit sends
+ * one without movement whenever the list scrolls under a still cursor, so
+ * holding ↓ snapped the pick back to the row under the idle mouse each
+ * time the list scrolled. Only real moves reach cmdk now.
  */
 export function CommandPalette({ items, onClose }: { items: PaletteItem[]; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const pointer = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
     const el = ref.current;
     el?.showModal();
@@ -53,7 +60,14 @@ export function CommandPalette({ items, onClose }: { items: PaletteItem[]; onClo
           placeholder="Type a command or a place…"
           className="h-11 w-full border-b border-stroke bg-transparent px-4 outline-none placeholder:text-content/40"
         />
-        <Command.List className="max-h-[min(420px,60vh)] overflow-y-auto p-1.5">
+        <Command.List
+          className="max-h-[min(420px,60vh)] overflow-y-auto p-1.5"
+          onPointerMoveCapture={(e) => {
+            const moved = isRealMove(pointer.current, e);
+            pointer.current = { x: e.clientX, y: e.clientY };
+            if (!moved) e.stopPropagation();
+          }}
+        >
           <Command.Empty className="px-3 py-2 text-content/50">Nothing matches.</Command.Empty>
           {groups.map((group) => (
             <Command.Group

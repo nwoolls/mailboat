@@ -1,6 +1,5 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import {
-  isRealMove,
   isSceneId,
   makeScene,
   pickScene,
@@ -10,6 +9,7 @@ import {
 } from "../model/catalog";
 import { colorTable, type PaletteId, paletteColors, parseColor } from "../model/palettes";
 import { type Pointer, type Rect, type Scene, SCENE_CELL_PX } from "../model/scene";
+import { isRealMove } from "../../../shared/lib/pointer";
 import { screensaverPrefs } from "./prefs";
 
 export type ScreensaverPhase = "off" | "on" | "closing";
