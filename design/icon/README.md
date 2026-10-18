@@ -1,6 +1,7 @@
 # App icon
 
-- `mailboat-icon.svg` is the current icon, tile included. The classic icons in
+- `mailboat-icon.svg` is the current icon, tile included: round three's N7,
+  the M's V folding over the front of the sides like an envelope's flap. The classic icons in
   `src-tauri/icons/` (Windows, older macOS, the fallback) come from it.
 - `mailboat-icon-layer.svg` is the same M without the tile, on Icon Composer's
   1024px canvas. It is the artwork layer of `src-tauri/macos/AppIcon.icon`
@@ -11,7 +12,8 @@
 - `choices/` holds the icons offered in Settings → Appearance → App icon
   (run `scripts/build-icon-choices.sh` after changing one, to re-render the
   PNGs the Dock uses; the order Settings shows them in is set in
-  `src-tauri/src/app_icon.rs`): the folded-ribbon M (fold style S4) in 16 colours on a flat
+  `src-tauri/src/app_icon.rs`): the envelope-fold M (N7, round three;
+  fold style S4 before) in 17 colours on a flat
   near-black tile. The earlier glass icon (`glass-midnight.svg`, now in
   this folder) was offered too, until the owner dropped it as the odd one
   out (2026-10-17). The
@@ -53,4 +55,7 @@
   11. N6 with a deeper V, so its ribbons are wider (owner request). The
      fold line is the side's whole top edge, so the V's width follows
      from its angle: D1 45° (74 wide), D2 48° (77), D3 51° (81), D4 54°
-     (84, its point level with the sides' feet). The sides are 104
+     (84, its point level with the sides' feet). The sides are 104.
+     The owner picked N7 from sheet 10 (2026-10-18): every choice, the
+     built-in icon and the glass layer now use it, each colour keeping its
+     darker shade for the sides

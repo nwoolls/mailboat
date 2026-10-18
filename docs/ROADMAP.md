@@ -876,18 +876,13 @@ and settled with the owner one at a time.*
       Spike 1's remote-image choice, not built)
 - [ ] Background image prefetch during sync, like Apple Mail, so senders
       can't tell when you opened (option C of the same choice, not built)
-- [ ] Icon, round three *(owner request, 2026-10-17)*: keep the current
-      look (the folded-ribbon M in Apple's system blue, C17, on a
-      flat near-black tile with the Liquid Glass rim) but try other
-      fold directions so it reads more like a folded envelope. Offer a
-      sheet of variants in `design/icon/sheets/` to pick from, as before.
-      *Sheet offered: `8-envelope-folds.png` (six variants, E1–E6, folded
-      at the top corners instead of the middle). Owner's steer: Now's
-      square tips, V folded in front, what's behind slightly darker.
-      Second sheet `9-front-folds.png` (N1–N4): N4 closest. Third,
-      `10-edge-folds.png` (N5–N7): the V's ends meet the sides edge to
-      edge at the corners: N6 liked. Fourth, `11-deeper-v.png` (D1–D4):
-      N6 with a deeper, wider V; waiting on the pick*
+- [x] Icon, round three *(owner request, 2026-10-17)*: the folded-ribbon
+      M now folds like an envelope. The V folds over the front of the
+      sides and meets them edge to edge at the top corners (the fold and
+      its shadow sit left and right, nothing folds in the middle), the
+      sides a shade darker. Owner picked N7 after four sheets in
+      `design/icon/sheets/` (8 to 11); every colour in Settings → App
+      icon, the built-in icon and the Liquid Glass layer use it
 - [ ] Idle screensavers for the empty reader and list *(owner request,
       2026-10-17; discuss first, then pick one to try and iterate)*: an
       alternative to the pointer-following glow. Interactive pixel art

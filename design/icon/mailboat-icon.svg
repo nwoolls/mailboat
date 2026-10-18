@@ -1,19 +1,17 @@
-<!-- Mailboat app icon: a blue M drawn as a ribbon folding over itself at
-     each corner (after VS Code's logo), on a flat near-black tile. Fold
-     style S4, colour C17 (Apple's system blue, matching Mail);
-     a copy of design/icon/choices/C17-system-blue.svg.
-     Regenerate every size with `bun tauri icon design/icon/mailboat-icon.svg`
-     (then delete src-tauri/icons/android and ios). -->
+<!-- Mailboat app icon: a blue M drawn as a ribbon whose V folds over the
+     front of the sides, meeting them edge to edge at the top corners like
+     an envelope's flap (round three, N7), on a flat near-black tile. Colour
+     C17 (Apple's system blue, matching Mail); a copy of
+     design/icon/choices/C17-system-blue.svg.
+     Regenerate every size with scripts/build-app-icon.sh. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
 <defs>
   <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity="0.30"/></filter>
   <filter id="fold" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#000" flood-opacity="0.5"/></filter>
-  
 </defs>
 <rect x="100" y="100" width="824" height="824" rx="186" fill="#0d0f14" filter="url(#shadow)"/>
 <rect x="101.5" y="101.5" width="821" height="821" rx="185" fill="none" stroke="#ffffff" stroke-opacity="0.13" stroke-width="3"/>
-<path d="M 227.8 398.2 L 477.8 616.2 L 546.2 537.8 L 296.2 319.8 Z" fill="#086acc"/>
-<path d="M 507.0 650.4 L 796.2 398.2 L 727.8 319.8 L 438.6 572.0 Z" fill="#0a84ff" filter="url(#fold)"/>
-<path d="M 314.0 717.0 L 314.0 307.0 L 210.0 307.0 L 210.0 717.0 Z" fill="#0a84ff" filter="url(#fold)"/>
-<path d="M 710.0 307.0 L 710.0 717.0 L 814.0 717.0 L 814.0 307.0 Z" fill="#0a84ff" filter="url(#fold)"/>
+<path d="M 210.0 717.0 L 210.0 307.0 L 314.0 307.0 L 314.0 717.0 Z" fill="#086acc"/>
+<path d="M 710.0 717.0 L 710.0 307.0 L 814.0 307.0 L 814.0 717.0 Z" fill="#086acc"/>
+<path d="M 210.0 346.9 L 210.0 307.0 L 314.0 307.0 L 512.0 526.9 L 710.0 307.0 L 814.0 307.0 L 814.0 346.9 L 512.0 682.3 Z" fill="#0a84ff" filter="url(#fold)"/>
 </svg>
