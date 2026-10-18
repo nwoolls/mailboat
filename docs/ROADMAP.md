@@ -884,7 +884,9 @@ and settled with the owner one at a time.*
       *Sheet offered: `8-envelope-folds.png` (six variants, E1–E6, folded
       at the top corners instead of the middle). Owner's steer: Now's
       square tips, V folded in front, what's behind slightly darker.
-      Second sheet `9-front-folds.png` (N1–N4); waiting on the pick*
+      Second sheet `9-front-folds.png` (N1–N4): N4 closest. Third,
+      `10-edge-folds.png` (N5–N7): the V's ends meet the sides edge to
+      edge at the corners; waiting on the pick*
 - [ ] Idle screensavers for the empty reader and list *(owner request,
       2026-10-17; discuss first, then pick one to try and iterate)*: an
       alternative to the pointer-following glow. Interactive pixel art

@@ -1,0 +1,15 @@
+<!-- Icon round three, N6: as N5, the V's end is exactly the sides' top edge (a slimmer V). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity="0.30"/></filter>
+  <filter id="fold" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#000" flood-opacity="0.5"/></filter>
+  <filter id="foldlo" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.55"/></filter>
+</defs>
+<rect x="100" y="100" width="824" height="824" rx="186" fill="#0d0f14" filter="url(#shadow)"/>
+<rect x="101.5" y="101.5" width="821" height="821" rx="185" fill="none" stroke="#ffffff" stroke-opacity="0.13" stroke-width="3"/>
+<g transform="translate(0 0.0)">
+<path d="M 210.0 717.0 L 210.0 307.0 L 314.0 307.0 L 314.0 717.0 Z" fill="#086acc"/>
+<path d="M 710.0 717.0 L 710.0 307.0 L 814.0 307.0 L 814.0 717.0 Z" fill="#086acc"/>
+<path d="M 210.0 307.0 L 314.0 307.0 L 512.0 479.7 L 710.0 307.0 L 814.0 307.0 L 512.0 570.3 Z" fill="#0a84ff" filter="url(#fold)"/>
+</g>
+</svg>

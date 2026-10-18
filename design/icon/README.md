@@ -44,3 +44,9 @@
      V bright. N1, N3 keep Now's arm ends (a square cut just inside each
      side); N2, N4 square them off to the sides' top corners. Sources in
      `envelope/`
+  10. N4 was closest. The owner wants the overlapping parts to meet edge
+     to edge at the top corners, like a real fold-over envelope (the
+     ribbon needn't be straight if unfolded). The V's ends now share the
+     sides' top and outer edges, so no side pokes out beside the fold.
+     N5: the V as wide as the sides; N6: the V's end is exactly the top
+     edge, so it's slimmer; N7: N5, steeper
