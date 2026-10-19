@@ -1258,6 +1258,15 @@ seen for real.*
       back to the top when the view changes, so it keeps whatever offset
       it had. Fix: start each view at the top (or, if wanted, remember
       each view's own position)
+- [ ] Reply all: the sender in To, everyone else in Cc *(owner request,
+      2026-10-19)*. Today (`replyRecipients` in compose/model/draft.ts)
+      To is the sender plus the original's To, and Cc the original's Cc,
+      minus your own addresses. That is what Gmail, Apple Mail and Outlook
+      do, so when everyone was in To they all land in To again. The owner
+      wants the sender alone in To and the rest in Cc. To settle when
+      fixing: make that the rule, or a setting (Settings → Composing, with
+      the Gmail way as the other choice). Replying to your own message
+      keeps its To as To either way
 - [ ] "Download Image" in an email's right-click menu does nothing
       *(owner report, 2026-10-19)*. Right-clicking an image inside an
       email shows the web view's own menu (Mailboat doesn't make it; it may
