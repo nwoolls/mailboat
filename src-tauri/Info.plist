@@ -8,5 +8,18 @@
 	     rim; older macOS keeps using the classic icon.icns. -->
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
+	<!-- Mailboat can be the default email reader: macOS sends it mailto:
+	     links (src/mail_handler.rs). Keep in step with scripts/dev-run.sh. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Email Address URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>mailto</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

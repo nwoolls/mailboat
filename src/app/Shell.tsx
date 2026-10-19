@@ -324,6 +324,27 @@ export function Shell() {
     );
     if (account !== undefined) void openNew(account);
   }, [openNew, baseSelection.accounts, accountList]);
+  // `mailto:` links (another app's, with Mailboat the default email reader,
+  // or one clicked in an email) open a new message, from the open
+  // conversation's account if there is one. Links wait in Rust until the
+  // accounts have loaded, so one that launched the app isn't lost.
+  const { startFromMailto } = compose;
+  const mailtoAccount =
+    threads.find((t) => t.id === selectedId)?.accountId ??
+    accountForNew(
+      baseSelection.accounts,
+      accountList.map((a) => a.id),
+    );
+  useEffect(() => {
+    if (!IS_TAURI || mailtoAccount === undefined) return;
+    const take = () =>
+      void commands.mailtoTake().then((links) => {
+        for (const link of links) void startFromMailto(mailtoAccount, link);
+      });
+    take();
+    const unlisten = events.mailtoEvent.listen(take);
+    return () => void unlisten.then((fn) => fn());
+  }, [mailtoAccount, startFromMailto]);
   const [panesRef, panesWidth] = useElementWidth<HTMLDivElement>();
   const resizeSidebar = (w: number) =>
     saveLayout({ ...layout, sidebarWidth: clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max) });

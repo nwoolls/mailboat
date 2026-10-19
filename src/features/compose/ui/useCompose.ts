@@ -5,6 +5,7 @@ import type {
   Account,
   AccountId,
   DraftId,
+  Mailto,
   MessageId,
   ThreadId,
 } from "../../../platform/tauri/bindings";
@@ -23,6 +24,7 @@ import {
   switchedKind,
   toOutgoing,
 } from "../model/draft";
+import { draftFromMailto } from "../model/mailto";
 
 /**
  * Drafts on screen, shared app-wide (the toolbar, keys and the reader all
@@ -302,6 +304,16 @@ export function useComposeActions(accounts: Account[]) {
     [identities, emailOf],
   );
 
+  /** A new message filled in from a `mailto:` link. */
+  const startFromMailto = useCallback(
+    async (accountId: AccountId, link: Mailto) => {
+      const list = await identities();
+      const draft = newDraft(list, accountId, emailOf(accountId));
+      set(S.openCard(state, draftFromMailto(draft, link)));
+    },
+    [identities, emailOf],
+  );
+
   /** Replies to (or forwards) the newest message of a conversation. */
   const startReply = useCallback(
     async (kind: Exclude<ComposeKind, "new">, threadId: ThreadId) => {
@@ -408,7 +420,7 @@ export function useComposeActions(accounts: Account[]) {
   }, []);
 
   return useMemo(
-    () => ({ startNew, startReply, switchKind, send }),
-    [startNew, startReply, switchKind, send],
+    () => ({ startNew, startFromMailto, startReply, switchKind, send }),
+    [startNew, startFromMailto, startReply, switchKind, send],
   );
 }

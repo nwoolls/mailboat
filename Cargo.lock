@@ -2685,6 +2685,7 @@ dependencies = [
  "lol_html",
  "mail-builder",
  "oauth2",
+ "percent-encoding",
  "reqwest",
  "rusqlite",
  "serde",

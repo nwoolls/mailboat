@@ -31,8 +31,10 @@ tauri-plugin-notification = "2"
 # Same versions as Tauri and MonoCode.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "NSImage", "NSResponder", "NSEvent", "block2"] }
-# NSData, to turn a chosen app icon's PNG into an NSImage (src/dock.rs).
-objc2-foundation = { version = "0.3", features = ["NSData"] }
+# NSWorkspace: which app opens mailto: links, and making Mailboat it (src/mail_handler.rs).
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "NSImage", "NSResponder", "NSEvent", "NSWorkspace", "block2"] }
+# NSData, to turn a chosen app icon's PNG into an NSImage (src/dock.rs);
+# NSBundle, NSURL, NSString and NSError for src/mail_handler.rs.
+objc2-foundation = { version = "0.3", features = ["NSData", "NSBundle", "NSURL", "NSString", "NSError"] }
 # The trackpad monitor's handler (src/trackpad.rs); same version as Tauri's.
 block2 = "0.6"

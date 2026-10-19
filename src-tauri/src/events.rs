@@ -95,3 +95,7 @@ impl SyncEvents for TauriSyncEvents {
         let _ = IdentitiesChangedEvent { account_id }.emit(&self.app);
     }
 }
+
+/// A `mailto:` link arrived; take it with `mailto_take`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct MailtoEvent;

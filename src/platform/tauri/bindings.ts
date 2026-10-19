@@ -203,6 +203,15 @@ export const commands = {
 	vacationList: () => typedError<AccountVacation[], AppError>(__TAURI_INVOKE("vacation_list")),
 	/**  Saves an account's vacation responder. */
 	vacationSet: (accountId: AccountId, settings: VacationSettings) => typedError<AccountVacation, AppError>(__TAURI_INVOKE("vacation_set", { accountId, settings })),
+	/**  `mailto:` links waiting to become new messages (see `mail_handler`). */
+	mailtoTake: () => __TAURI_INVOKE<Mailto[]>("mailto_take"),
+	/**  Which app opens `mailto:` links (Settings → General). */
+	mailAppDefault: () => __TAURI_INVOKE<DefaultMailApp>("mail_app_default"),
+	/**
+	 *  Asks macOS to make this copy of Mailboat the default email reader; macOS
+	 *  asks the user to confirm.
+	 */
+	mailAppMakeDefault: () => typedError<null, AppError>(__TAURI_INVOKE("mail_app_make_default")),
 };
 
 /** Events */
@@ -210,6 +219,7 @@ export const events = {
 	accountsChangedEvent: makeEvent<AccountsChangedEvent>("accounts-changed-event"),
 	identitiesChangedEvent: makeEvent<IdentitiesChangedEvent>("identities-changed-event"),
 	mailChangedEvent: makeEvent<MailChangedEvent>("mail-changed-event"),
+	mailtoEvent: makeEvent<MailtoEvent>("mailto-event"),
 	openSettingsEvent: makeEvent<OpenSettingsEvent>("open-settings-event"),
 	syncProgressEvent: makeEvent<SyncProgressEvent>("sync-progress-event"),
 	syncStatusEvent: makeEvent<SyncStatusEvent>("sync-status-event"),
@@ -362,6 +372,19 @@ export type Contact = {
 	wrote: boolean,
 };
 
+/**  Which app opens `mailto:` links. */
+export type DefaultMailApp = 
+/**  This copy of Mailboat. */
+{ kind: "this" } | 
+/**  Another copy of Mailboat (a dev build, or the installed app), at `path`. */
+{ kind: "otherCopy"; path: string } | 
+/**  Another app, by name (Mail, say). */
+{ kind: "other"; name: string } | 
+/**  Nothing claims mailto links. */
+{ kind: "none" } | 
+/**  Not on this platform yet. */
+{ kind: "unsupported" };
+
 export type DraftId = number;
 
 /**  An account's From addresses (Gmail "Send mail as") changed. */
@@ -490,6 +513,22 @@ export type MailView =
 { kind: "archive" } | 
 /**  Local full-text search (Spam and Trash excluded, as in Gmail). */
 { kind: "search"; text: string };
+
+/**
+ *  What a `mailto:` link fills in. Recipients are kept as written (a
+ *  comma-separated list, names allowed); the composer parses them.
+ */
+export type Mailto = {
+	to: string[],
+	cc: string[],
+	bcc: string[],
+	subject: string,
+	/**  Plain text. */
+	body: string,
+};
+
+/**  A `mailto:` link arrived; take it with `mailto_take`. */
+export type MailtoEvent = null;
 
 /**  How many conversations a rule's criteria match now. */
 export type MatchCount = {

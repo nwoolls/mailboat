@@ -3,11 +3,14 @@
 //! custom-scheme pattern.
 
 use tauri::http::{Request, Response};
+use tauri::AppHandle;
 
-/// Opens the real link in the default browser and answers 204 No Content,
-/// which tells the web view to keep showing the email.
-pub fn handle(request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
+/// Opens the real link in the default browser (a `mailto:` link becomes a
+/// new message here) and answers 204 No Content, which tells the web view
+/// to keep showing the email.
+pub fn handle(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     let status = match mailboat_core::mail::links::unwrap(&request.uri().to_string()) {
+        Some(url) if crate::mail_handler::open(app, &url) => 204,
         Some(url) => match open::that_detached(&url) {
             Ok(()) => 204,
             Err(e) => {

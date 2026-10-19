@@ -10,7 +10,9 @@ import { showToast } from "../../../shared/lib/toast";
 import {
   useAppInfo,
   useAppSettings,
+  useDefaultMailApp,
   useIdentities,
+  useMakeDefaultMailApp,
   useSaveAppSettings,
   useSetAccountColor,
 } from "../../../shared/lib/queries";
@@ -42,6 +44,7 @@ import { FEATURE_FLAGS, setFeatureFlag, useFeatureFlags } from "../../../shared/
 import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
 import { iconSetting, shownIcon } from "../model/appIcon";
+import { defaultMailAppRow } from "../model/mailApp";
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -50,8 +53,41 @@ function errorText(e: unknown): string {
 export function GeneralSection() {
   const info = useAppInfo().data;
   return (
-    <Group title="About">
-      <Row label="Mailboat" description={info ? `Version ${info.version}` : undefined} />
+    <>
+      <DefaultMailAppGroup />
+      <Group title="About">
+        <Row label="Mailboat" description={info ? `Version ${info.version}` : undefined} />
+      </Group>
+    </>
+  );
+}
+
+/** Whether `mailto:` links open in Mailboat, and a button to make them. */
+function DefaultMailAppGroup() {
+  const current = useDefaultMailApp().data;
+  const makeDefault = useMakeDefaultMailApp();
+  if (!current) return null;
+  const row = defaultMailAppRow(current);
+  return (
+    <Group title="Email links">
+      <Row label="Default email reader" description={row.description}>
+        {row.action && (
+          <Button
+            disabled={makeDefault.isPending}
+            onClick={() =>
+              makeDefault.mutate(undefined, {
+                onError: (e) =>
+                  showToast({
+                    tone: "error",
+                    message: `Mailboat isn’t the default: ${errorText(e)}`,
+                  }),
+              })
+            }
+          >
+            {row.action}
+          </Button>
+        )}
+      </Row>
     </Group>
   );
 }

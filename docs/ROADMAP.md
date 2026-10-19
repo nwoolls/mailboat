@@ -962,6 +962,10 @@ comparison"), or to "Considered, not planned" there.*
       Settings → General shows whether it's the default with "Make Mailboat
       the default" (macOS asks once). A dev build and the installed app
       both register; macOS opens whichever is the default
+      *Built (2026-10-19), waiting for the owner to try it: Settings →
+      General → Email links. A `mailto:` link clicked inside an email now
+      opens a new message here too, instead of in the system's mail app.
+      Windows comes with the Windows work*
 - [ ] Unread count on the Dock icon (unread Inbox conversations, every
       account), with a setting for Inbox only / all unread / off
 - [ ] What opens after archiving or deleting the open conversation: the

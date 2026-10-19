@@ -241,6 +241,15 @@ fresh one; small parts come with the message and have no ID at all.
   (`otherContacts`) from the People API once per launch, with the same
   sign-in (People API quota, not Gmail's). Accounts that signed in before
   the contacts scopes were asked for get a 403, logged, and carry on.
+- **`mailto:` links** (Milestone 7): the bundle's Info.plist claims the
+  `mailto` scheme, so Mailboat can be the default email reader (Settings →
+  General asks macOS through `NSWorkspace`; `src-tauri/src/mail_handler.rs`).
+  macOS hands links over as Tauri's `RunEvent::Opened`; links clicked in
+  an email arrive through the `mailboat-link:` handler. Rust parses them
+  (`mailboat_core::mail::mailto`, RFC 6068) and queues them, then emits
+  `MailtoEvent`; the window takes the queue (`mailto_take`) once accounts
+  have loaded, so a link that launched the app isn't lost. Each opens a
+  new message from the open conversation's account, else the usual one.
 
 ## Showing email safely
 
@@ -261,7 +270,8 @@ fresh one; small parts come with the message and have no ID at all.
 4. Links (http, https, mailto only) are rewritten to Mailboat's own
    `mailboat-link:` scheme. A click makes the frame request that URL; the app
    opens the real link in the default browser and answers 204 No Content,
-   so the email stays put. Other links are made inert.
+   so the email stays put. A `mailto:` link opens a new message in Mailboat
+   instead (see Compose). Other links are made inert.
 
 ## Settings
 
@@ -435,3 +445,4 @@ replying right now (`active`), which the mail view shows as a banner.
 | 2026-10-19 | Two copies of Mailboat (installed app and a dev build) notice each other's writes by polling SQLite's `PRAGMA data_version` every 2 seconds | Both open the same database (WAL, so that's safe) and each syncs on its own, so one could show stale lists. `data_version` changes only when another connection commits, so a 2-second check is one tiny query with no file watcher, no IPC between copies, and no false alarms from this copy's own writes. On a change the window gets the usual "mail changed" and "accounts changed" events. Both copies still sync (using the Gmail quota twice); fine for the owner's dev setup. |
 | 2026-10-17 | Empty-list screensaver is our own falling-sand grid on one `<canvas>`, no library | A few hundred lines of cellular automaton (`model/sand.ts`, tested) is smaller than any particle/physics library and needs no permissions. One canvas pixel per 3px sand cell, scaled with `image-rendering: pixelated`, keeps drawing cheap; the loop stops when the window is hidden or loses focus. The icon box and each letter of the words are drawn to an off-screen canvas and reduced to cells so sand rests on them. Moving the pointer doesn't end it (the roadmap first said it would): the owner asked for the pointer to play with the sand, so only a key, click or scroll ends it. It runs with another app in front (owner's request) and pauses only when the window is hidden; it doesn't use `document.hasFocus()`, and pointer events without movement (WebKit sends them when the page changes under a still cursor) don't count as input. Sandscape version (2026-10-18): the canvas takes the list card's glass opacity, so the sand follows the Transparency setting. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |
+| 2026-10-19 | `mailto:` links come in through Tauri's own `RunEvent::Opened`, not `tauri-plugin-deep-link`; parsing uses `percent-encoding` (from the `url` crate's authors), not `url`'s query parser | `Opened` is all macOS needs and adds no plugin or web permission (the plugin's extras are Windows/Linux registration and a JS API, for later). `url`'s query parser reads `+` as a space, as web forms do, which would break `jane+news@x.com`; RFC 6068 keeps it. "Is Mailboat the default" compares bundle paths, since the dev build and the installed app share a bundle ID; the dev script registers its bundle with Launch Services so either can be made the default. |

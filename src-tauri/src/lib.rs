@@ -5,6 +5,7 @@ mod error;
 mod events;
 mod files;
 mod links;
+mod mail_handler;
 mod menu;
 mod state;
 mod sync_log;
@@ -20,7 +21,7 @@ use tauri::Manager;
 use tauri_specta::{collect_commands, collect_events, Builder, Event};
 
 use crate::events::{
-    AccountsChangedEvent, IdentitiesChangedEvent, MailChangedEvent, OpenSettingsEvent,
+    AccountsChangedEvent, IdentitiesChangedEvent, MailChangedEvent, MailtoEvent, OpenSettingsEvent,
     SyncProgressEvent, SyncStatusEvent, TauriSyncEvents,
 };
 use crate::state::{AppDirs, AppState};
@@ -85,6 +86,9 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::signature_set,
             commands::vacation_list,
             commands::vacation_set,
+            commands::mailto_take,
+            commands::mail_app_default,
+            commands::mail_app_make_default,
         ])
         .events(collect_events![
             SyncStatusEvent,
@@ -93,6 +97,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             IdentitiesChangedEvent,
             OpenSettingsEvent,
             AccountsChangedEvent,
+            MailtoEvent,
             trackpad::TrackpadEvent
         ])
         // IDs and millisecond timestamps stay far below 2^53, so plain JS
@@ -129,8 +134,9 @@ pub fn run() {
         )
         // New-mail notifications, shown from Rust (no web permission).
         .plugin(tauri_plugin_notification::init())
-        .register_uri_scheme_protocol(mailboat_core::mail::links::SCHEME, |_ctx, request| {
-            links::handle(&request)
+        .manage(mail_handler::MailtoQueue::default())
+        .register_uri_scheme_protocol(mailboat_core::mail::links::SCHEME, |ctx, request| {
+            links::handle(ctx.app_handle(), &request)
         })
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
@@ -189,6 +195,13 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building Mailboat")
         .run(|app, event| {
+            // macOS hands over links Mailboat is the default app for.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = &event {
+                for url in urls {
+                    mail_handler::open(app, url.as_str());
+                }
+            }
             if let tauri::RunEvent::Ready = event {
                 let choice = app
                     .try_state::<AppState>()

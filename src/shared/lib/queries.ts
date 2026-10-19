@@ -38,6 +38,7 @@ export const keys = {
   identities: ["identities"] as const,
   contacts: ["contacts"] as const,
   appInfo: ["appInfo"] as const,
+  defaultMailApp: ["defaultMailApp"] as const,
   appSettings: ["appSettings"] as const,
   invite: (id: MessageId) => ["invite", id] as const,
   rules: ["rules"] as const,
@@ -152,6 +153,28 @@ export function useAppInfo() {
     queryFn: () => commands.appInfo(),
     enabled: IS_TAURI,
     staleTime: Infinity,
+  });
+}
+
+/**
+ * Which app opens `mailto:` links (Settings → General). Read fresh each
+ * time Settings shows it: it can change in another app.
+ */
+export function useDefaultMailApp() {
+  return useQuery({
+    queryKey: keys.defaultMailApp,
+    queryFn: () => commands.mailAppDefault(),
+    enabled: IS_TAURI,
+    staleTime: 0,
+  });
+}
+
+/** Asks macOS to make Mailboat the default email reader (macOS confirms). */
+export function useMakeDefaultMailApp() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(commands.mailAppMakeDefault()),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.defaultMailApp }),
   });
 }
 

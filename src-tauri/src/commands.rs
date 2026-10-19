@@ -13,6 +13,7 @@ use mailboat_core::compose::{self, OpenedDraft, OutgoingMessage, ReplySource};
 use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::invite::Answer;
+use mailboat_core::mail::mailto::Mailto;
 use mailboat_core::mail::{self, SafeMessage};
 use mailboat_core::model::{
     Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, DraftId, Label,
@@ -30,7 +31,7 @@ use specta::Type;
 use tauri::{AppHandle, State};
 use tauri_specta::Event;
 
-use crate::error::CmdResult;
+use crate::error::{AppError, CmdResult};
 use crate::events::{IdentitiesChangedEvent, MailChangedEvent};
 use crate::files;
 use crate::state::AppState;
@@ -1084,4 +1085,31 @@ pub async fn vacation_set(
 ) -> CmdResult<AccountVacation> {
     let gmail = state.gmail_for(account_id)?.interactive();
     Ok(vacation::set(&state.db, &gmail, account_id, &settings).await?)
+}
+
+/// `mailto:` links waiting to become new messages (see `mail_handler`).
+#[tauri::command]
+#[specta::specta]
+pub fn mailto_take(queue: State<'_, crate::mail_handler::MailtoQueue>) -> Vec<Mailto> {
+    queue.take()
+}
+
+/// Which app opens `mailto:` links (Settings → General).
+#[tauri::command]
+#[specta::specta]
+pub fn mail_app_default() -> crate::mail_handler::DefaultMailApp {
+    crate::mail_handler::default_app()
+}
+
+/// Asks macOS to make this copy of Mailboat the default email reader; macOS
+/// asks the user to confirm.
+#[tauri::command]
+#[specta::specta]
+pub async fn mail_app_make_default(app: tauri::AppHandle) -> CmdResult<()> {
+    crate::mail_handler::make_default(&app)
+        .await
+        .map_err(|message| AppError {
+            kind: "platform".into(),
+            message,
+        })
 }

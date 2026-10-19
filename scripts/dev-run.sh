@@ -15,6 +15,10 @@
 #    certificate gives every build the same identity, so "Always Allow"
 #    sticks. Override the certificate with MAILBOAT_DEV_SIGNING_IDENTITY if you
 #    have several.
+#
+# 3. mailto: links. The Info.plist claims the mailto scheme, and the bundle
+#    is registered with Launch Services, so Settings → General can make
+#    this dev build the default email reader.
 set -e
 bin="$1"
 shift
@@ -59,6 +63,17 @@ cat > "$app/Contents/Info.plist" <<PLIST
 	<string>$version</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Email Address URL</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>mailto</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
 PLIST
@@ -73,5 +88,8 @@ if [ -n "$identity" ]; then
 else
   echo "dev-run: no Apple Development certificate found; macOS will ask for keychain access after each rebuild (see CLAUDE.md)" >&2
 fi
+
+lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+[ -x "$lsregister" ] && "$lsregister" -f "$app" >/dev/null 2>&1 || true
 
 exec "$app/Contents/MacOS/mailboat" "$@"
