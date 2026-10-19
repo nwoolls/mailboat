@@ -882,7 +882,9 @@ editors live in Settings (Signatures, Rules), which now exists.
       with a table (from signature generators) get a warning that saving
       here will simplify them. Settings → Accounts now points here. Not
       yet tried by the owner against real Gmail
-- [ ] Several signatures to choose from *(owner feedback, 2026-10-19)*.
+- Several signatures to choose from *(owner feedback, 2026-10-19;
+      decided 2026-10-19: left as is, one signature per address as Gmail's
+      API offers; not planned)*.
       Gmail's API only has one signature per address (the one Mailboat
       edits now); Gmail on the web's named signatures and its "for new
       mail / for replies" defaults aren't in the API. So Mailboat would keep
