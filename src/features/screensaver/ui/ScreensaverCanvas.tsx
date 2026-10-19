@@ -44,14 +44,15 @@ export function useScreensaver(enabled: boolean): { phase: ScreensaverPhase; sce
       setScene((prev) => pickScene(asked, screensaverPrefs.get().choice, prev, Math.random));
       setPhase("on");
     };
-    const startIfVisible = () => {
-      if (reduced()) return;
-      if (document.hidden) arm();
-      else begin(null);
-    };
+    // Starts even while the window is hidden: macOS counts a window that
+    // another app covers completely as hidden, and waiting for it to show
+    // again meant coming back to no screensaver (and another minute's wait,
+    // which the click bringing it forward then reset). The canvas pauses
+    // itself while hidden, so this costs nothing.
+    const start = () => !reduced() && begin(null);
     const arm = () => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(startIfVisible, SCREENSAVER_IDLE_SECONDS * 1000);
+      timer = window.setTimeout(start, SCREENSAVER_IDLE_SECONDS * 1000);
     };
     if (phase === "off") {
       arm();

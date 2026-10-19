@@ -988,6 +988,13 @@ comparison"), or to "Considered, not planned" there.*
       hidden, and which sidebar folds are open *(moved from UX Spike 1's
       deferred ideas, owner, 2026-10-19)*. Today both panels start shown
       every launch; pane widths and the window are already remembered
+- [ ] The screensaver sometimes didn't start *(owner report,
+      2026-10-19)*. Likely cause, fixed: when the idle minute ran out
+      while the window was hidden it waited another minute instead of
+      starting, and macOS counts a window that another app covers
+      completely as hidden. It now starts anyway (the canvas pauses while
+      hidden). To tick once the owner hasn't seen it again; if they do,
+      diagnose further
 
 ## UX Spike 2
 
