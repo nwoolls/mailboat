@@ -957,7 +957,7 @@ Mail.app's settings with Mailboat's (client-only, IMAP and junk-mail
 settings left out). The other gaps went to Later ("From the settings
 comparison"), or to "Considered, not planned" there.*
 
-- [ ] Default email reader: Mailboat registers for `mailto:` links, opens a
+- [x] Default email reader: Mailboat registers for `mailto:` links, opens a
       new message filled in from one (to, cc, bcc, subject, body), and
       Settings → General shows whether it's the default with "Make Mailboat
       the default" (macOS asks once). A dev build and the installed app
@@ -969,8 +969,9 @@ comparison"), or to "Considered, not planned" there.*
       *First try (owner, 2026-10-19): links did nothing. macOS keeps the
       default by app ID, which the dev build and installed app share, and
       sent links to the installed copy, built before this. "Use this
-      copy" is gone; Settings now says which copy gets links. Needs a
-      fresh install to /Applications to try for real*
+      copy" is gone; Settings now says which copy gets links. Owner
+      confirmed (2026-10-19) a link handed to the dev build opens a filled-in
+      message; plain links reach the installed copy once it's rebuilt*
 - [ ] Unread count on the Dock icon (unread Inbox conversations, every
       account), with a setting for Inbox only / all unread / off
 - [ ] What opens after archiving or deleting the open conversation: the
