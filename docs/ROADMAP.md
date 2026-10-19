@@ -936,6 +936,41 @@ editors live in Settings (Signatures, Rules), which now exists.
       built: Snooze, Schedule send, "Send mail as" aliases and forwarding,
       inbox category tabs. Blocked senders was built (Block sender above)
 
+## Milestone 7: Settings everyday
+
+*Agreed with the owner (2026-10-19) after comparing Mimestream's and
+Mail.app's settings with Mailboat's (client-only, IMAP and junk-mail
+settings left out). The other gaps went to Later ("From the settings
+comparison"), or to "Considered, not planned" there.*
+
+- [ ] Default email reader: Mailboat registers for `mailto:` links, opens a
+      new message filled in from one (to, cc, bcc, subject, body), and
+      Settings → General shows whether it's the default with "Make Mailboat
+      the default" (macOS asks once). A dev build and the installed app
+      both register; macOS opens whichever is the default
+- [ ] Unread count on the Dock icon (unread Inbox conversations, every
+      account), with a setting for Inbox only / all unread / off
+- [ ] What opens after archiving or deleting the open conversation: the
+      next one down, the one above, or none (check what happens today
+      first)
+- [ ] Reply quotes the selected text: with text selected in a message,
+      `r` / `a` / `f` quote just that; otherwise the whole message
+- [ ] Undo send delay: 5 (today), 10, 20 or 30 seconds, as Gmail offers
+- [ ] Text size for the reader and list
+- [ ] Mark as read: on open (today), after a few seconds, or never; and
+      conversation order (oldest first, today, or newest first)
+- [ ] Default From for new mail (today: the account being viewed) and
+      the composer's starting font
+- [ ] Menus trued up *(owner request, 2026-10-19)*: the macOS menu bar
+      is still Tauri's default plus "Settings…", so mail actions live only
+      in the toolbar, the right-click menu and ⌘K. Give the menu bar the
+      app's actions with their shortcuts (New Message; Reply, Reply all,
+      Forward; Archive, Trash, Spam, Read/Unread, Star, Labels…; Make a
+      rule / Block sender; Sync now; show/hide sidebar and reader; go to
+      views), and make the toolbar, right-click menu, ⌘K and menu bar
+      offer the same actions under the same names, ideally from one list
+      so they can't drift apart again
+
 ## UX Spike 2
 
 *Polish, gathered here at the owner's request (2026-10-17): the
@@ -1052,7 +1087,9 @@ Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
 - [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
       ones that hide when not scrolling); check they look right on
       Windows, and style them there only if needed
-- [ ] Release signing and packaging
+- [ ] Release signing and packaging, with automatic software updates
+      (Mimestream has an update channel setting) *(updates added
+      2026-10-19, settings comparison)*
 - [ ] Offline mode *(moved from Milestone 5; owner, 2026-10-17: likes all
       three ideas, but lowest priority: almost never offline, and doesn't
       expect to send while offline)*. Today reading cached mail and local
@@ -1096,3 +1133,34 @@ Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
       (Settings → Accounts has "Open in Gmail")
 - [ ] Inbox category tabs (Promotions, Social…). Rules can already put
       mail in a category
+
+### From the settings comparison (2026-10-19, nice to have)
+
+- [ ] Templates: saved replies to insert while writing (Gmail's own
+      templates aren't in its API, so these would be Mailboat's)
+- [ ] Warn about outside recipients (addresses not ending with chosen
+      domains are marked while writing)
+- [ ] Remove an address from compose suggestions
+- [ ] Which mail notifies (Inbox only / all; already in the Settings
+      plan) and quiet hours
+- [ ] List density and preview lines (also a UX Spike 1 deferred idea)
+- [ ] Choose what each swipe does, plus a second swipe each way
+- [ ] Delete key: Trash or Archive (in the Settings plan)
+- [ ] Include Trash and Spam in search (in the Settings plan)
+- [ ] Duplicate a rule
+- [ ] Show original (the raw message and its headers)
+- [ ] Advanced section: clear the cache, reset, the sync log (in the
+      Settings plan)
+- [ ] Sounds for new mail and for actions, if wanted
+
+### Considered, not planned (settings comparison, 2026-10-19)
+
+Turning off conversation grouping (Gmail is conversations); fonts for the
+list and messages, fixed-width plain text and coloured quote levels;
+automatically Cc/Bcc myself; full addresses while writing and "smart
+addresses"; link previews; extensions; split view in full screen; a
+downloads folder choice and removing unedited downloads; large
+attachments through Google Drive (needs a Drive permission); profiles
+(the unified inbox and account filtering cover them; quiet hours is
+listed above). Mail Privacy Protection's ideas are already in "From UX
+Spike 2"; summaries and smart replies belong with the AI Spike.
