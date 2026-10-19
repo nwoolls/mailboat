@@ -1109,6 +1109,12 @@ Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
       - Download recent message bodies ahead (say 30 days) so any recent
         mail opens offline; costs disk space and Gmail quota
 
+### Toybox
+
+- [ ] With the screensaver set to Random, switch to another screensaver
+      every hour while it keeps playing *(owner request, 2026-10-19)*;
+      today Random picks one each time it starts
+
 ### From UX Spike 2 (moved unbuilt when the spike closed, 2026-10-18)
 
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
