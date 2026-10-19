@@ -274,7 +274,7 @@ was, scroll and folds included. It opens from the gear in the sidebar's
 foot bar, the ⌘K palette, and Mailboat → Settings… (⌘,), a macOS menu item
 (`src-tauri/src/menu.rs`) that emits `OpenSettingsEvent`.
 
-Settings are stored in one of two places:
+Settings are stored in one of three places:
 
 - **Rust acts on it** (new-mail notifications on/off): `mailboat_core::settings`,
   one JSON value in the `app_settings` table. A setting missing from it
@@ -282,6 +282,11 @@ Settings are stored in one of two places:
 - **Only the window uses it** (transparency, accent colour):
   `localStorage`, applied in `main.tsx` before the first render so it
   never flashes the default.
+- **Gmail keeps it** (Rules, Signatures, Vacation responder): read from
+  and saved to the account's Gmail settings each time, never copied into
+  SQLite (see "Rules" and "Signatures and vacation responder" below).
+  Toybox's switches (glow, screensavers) are window-only, in
+  `localStorage` under their original feature-flag key.
 
 The theme (System, Light, Dark) is a Rust setting because it's set on the
 app itself (`src-tauri/src/theme.rs`, at launch and when changed): macOS
