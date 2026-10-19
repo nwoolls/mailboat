@@ -210,7 +210,9 @@ function AccountGroup({
                 </li>
               ))}
             </ul>
-            <p className="mt-2">Addresses and signatures are changed in Gmail for now.</p>
+            <p className="mt-2">
+              Addresses are changed in Gmail; signatures in Settings → Signatures.
+            </p>
           </>
         }
       >

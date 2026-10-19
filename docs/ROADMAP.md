@@ -866,8 +866,25 @@ editors live in Settings (Signatures, Rules), which now exists.
       who started the conversation (not you), or several senders joined
       with OR when several conversations are picked. Conversations from
       different accounts can't share a rule, so the item is greyed out
-- [ ] Manage signatures per address (using them is in Milestone 4)
-- [ ] Vacation responder (same permission)
+- [x] Manage signatures per address (using them is in Milestone 4).
+      **Built (2026-10-18):** Settings → Signatures lists every "Send mail
+      as" address per account with its signature shown as compose shows
+      it, and Add / Edit opens the composer's editor (fonts, colours,
+      links, web images) with Save, Cancel and Remove signature; ⌘↩
+      saves. Gmail keeps its own cleaned-up copy, which Mailboat stores, so
+      compose uses the new one at once (Gmail too). Signatures laid out
+      with a table (from signature generators) get a warning that saving
+      here will simplify them. Settings → Accounts now points here. Not
+      yet tried by the owner against real Gmail
+- [x] Vacation responder (same permission). **Built (2026-10-18):**
+      Settings → Vacation responder, per account, as Gmail's form: on/off,
+      first day, optional last day, subject, message (the composer's
+      editor), only my contacts, and only my organization (Workspace
+      accounts only; @gmail.com has none). Save and Discard changes. While
+      a responder is replying, a banner above the conversation list says
+      so ("Vacation responder is on until the end of Fri, Oct 24") with
+      Turn off and Settings, so it's never left on by mistake. Not yet
+      tried by the owner against real Gmail
 - [ ] What else still sends the owner to Gmail on the web, to settle:
       - Snooze and Schedule send have **no Gmail API**: Mailboat would have
         to do them itself (hold the message or conversation and act at

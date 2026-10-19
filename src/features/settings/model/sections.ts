@@ -1,7 +1,7 @@
 /**
  * The Settings page's sections, in the order decided in the roadmap
  * (Milestone 5). Only sections with something in them are listed; the
- * others (Sidebar & List, Viewing, Composing, Signatures)
+ * others (Sidebar & List, Viewing, Composing)
  * join as their features arrive, in their place in that order.
  */
 export type SettingsSectionId =
@@ -9,7 +9,9 @@ export type SettingsSectionId =
   | "accounts"
   | "notifications"
   | "appearance"
+  | "signatures"
   | "rules"
+  | "vacation"
   | "keyboard"
   | "advanced";
 
@@ -29,9 +31,19 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   },
   { id: "appearance", label: "Appearance", description: "How Mailboat looks." },
   {
+    id: "signatures",
+    label: "Signatures",
+    description: "Added to new mail and replies from each address, here and in Gmail.",
+  },
+  {
     id: "rules",
     label: "Rules",
     description: "Gmail filters: what happens to mail as it arrives, even when Mailboat is closed.",
+  },
+  {
+    id: "vacation",
+    label: "Vacation responder",
+    description: "Gmail's automatic reply while you're away, sent even when Mailboat is closed.",
   },
   { id: "keyboard", label: "Keyboard", description: "Every keyboard shortcut." },
   {

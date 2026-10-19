@@ -15,8 +15,10 @@ import type {
   AppSettings,
   MessageId,
   RuleActions,
+  AccountVacation,
   RuleCriteria,
   ThreadId,
+  VacationSettings,
 } from "../../platform/tauri/bindings";
 import { IS_TAURI, unwrap } from "../../platform/tauri/ipc";
 import { upsertSyncState } from "../../features/accounts/model/accounts";
@@ -39,6 +41,7 @@ export const keys = {
   appSettings: ["appSettings"] as const,
   invite: (id: MessageId) => ["invite", id] as const,
   rules: ["rules"] as const,
+  vacations: ["vacations"] as const,
   ruleMatch: (account: AccountId, criteria: RuleCriteria) =>
     ["ruleMatch", account, criteria] as const,
 };
@@ -268,6 +271,43 @@ export function useDeleteRule() {
   });
 }
 
+/**
+ * Every account's vacation responder. Settings shows and edits it; the
+ * mail view shows a banner while one is replying. Asked again every few
+ * minutes at most (1 quota unit per account).
+ */
+export function useVacations() {
+  return useQuery({
+    queryKey: keys.vacations,
+    queryFn: () => unwrap(commands.vacationList()),
+    enabled: IS_TAURI,
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Saves an account's vacation responder; the banner follows. */
+export function useSaveVacation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ account, settings }: { account: AccountId; settings: VacationSettings }) =>
+      unwrap(commands.vacationSet(account, settings)),
+    onSuccess: (saved) =>
+      qc.setQueryData<AccountVacation[]>(keys.vacations, (list) =>
+        list?.map((v) => (v.accountId === saved.accountId ? saved : v)),
+      ),
+  });
+}
+
+/** Changes one address's signature in Gmail; compose uses it straight away. */
+export function useSetSignature() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ account, email, html }: { account: AccountId; email: string; html: string }) =>
+      unwrap(commands.signatureSet(account, email, html)),
+    onSettled: () => void qc.invalidateQueries({ queryKey: keys.identities }),
+  });
+}
+
 /** Keeps the cache in step with Rust: sync status updates and mail changes. */
 export function useMailEvents() {
   const qc = useQueryClient();
@@ -291,6 +331,7 @@ export function useMailEvents() {
         void qc.invalidateQueries({ queryKey: keys.accounts });
         // A new sign-in may have added the permission rules need.
         void qc.invalidateQueries({ queryKey: keys.rules });
+        void qc.invalidateQueries({ queryKey: keys.vacations });
       }),
       events.identitiesChangedEvent.listen(() => {
         void qc.invalidateQueries({ queryKey: keys.identities });

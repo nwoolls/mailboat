@@ -79,6 +79,7 @@ import { CommandPalette } from "../features/palette/ui/CommandPalette";
 import { paletteItems } from "./paletteItems";
 import { criteriaLikeThreads } from "../features/rules/model/likeThis";
 import { RuleEditor, type RuleEditorTarget } from "../features/rules/ui/RuleEditor";
+import { VacationBanner } from "../features/vacation/ui/VacationBanner";
 import type { SettingsSectionId } from "../features/settings/model/sections";
 import { SettingsNav } from "../features/settings/ui/SettingsNav";
 import { SettingsPage } from "../features/settings/ui/SettingsPage";
@@ -645,6 +646,10 @@ export function Shell() {
                   </span>
                 )}
               </div>
+              <VacationBanner
+                accounts={accountList}
+                onOpenSettings={() => setSettings("vacation")}
+              />
               <ThreadList
                 threads={threads}
                 onSwipe={(id, action) => act(action, [id])}

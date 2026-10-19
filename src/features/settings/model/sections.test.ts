@@ -8,7 +8,9 @@ describe("settings sections", () => {
       "accounts",
       "notifications",
       "appearance",
+      "signatures",
       "rules",
+      "vacation",
       "keyboard",
       "advanced",
     ]);

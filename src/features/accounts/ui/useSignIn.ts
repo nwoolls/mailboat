@@ -16,6 +16,7 @@ export function useSignIn() {
       // Invitation cards that asked for this sign-in can answer now.
       void qc.invalidateQueries({ queryKey: ["invite"] });
       void qc.invalidateQueries({ queryKey: keys.rules });
+      void qc.invalidateQueries({ queryKey: keys.vacations });
     },
   });
   return {
