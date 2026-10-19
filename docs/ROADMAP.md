@@ -1059,6 +1059,60 @@ weren't built and moved to Later / unscheduled ("From UX Spike 2").
       "Empty list", which read like a missing word), with the rows "Glow"
       and "Screensavers"; it applies to any view with no mail
 
+## UX Spike 3: Reading
+
+*Milestones 8 onward and UX Spike 3 were laid out with the owner
+(2026-10-19) from what was in Later. Releasing to other people is the
+Release Spike, last: the owner may never distribute Mailboat.*
+
+*How email looks and how private opening it is. Built to try by feel and
+settled with the owner one at a time, as in the earlier spikes.*
+
+- [ ] Emails on the glass, step 2: remap colors set in an email's own style
+      sheet (needs a CSS parser), so more newsletters can adapt
+- [ ] Dark mode for emails that declare it (`color-scheme: light dark`, as
+      a vendor's do): apply their own dark rules plus our remap of their
+      inline colours, as Mail.app does, instead of the white card. Their
+      dark rules alone aren't enough (a vendor's turn text white but never
+      darken its inline white backgrounds). Fall back to the white card if
+      their style sheet sets text colours outside its dark-mode block
+- [ ] "Original colors" toggle per message, for emails the remap gets wrong
+- [ ] Softer look for the remaining white cards on the glass
+- [ ] A setting to switch the default back to "blocked"
+- [ ] Load by default only for people you've written to (option B of UX
+      Spike 1's remote-image choice, not built)
+- [ ] Background image prefetch during sync, like Apple Mail, so senders
+      can't tell when you opened (option C of the same choice, not built)
+- [ ] With the screensaver set to Random, switch to another screensaver
+      every hour while it keeps playing *(owner request, 2026-10-19)*;
+      today Random picks one each time it starts
+
+## Milestone 8: Triage and notifications
+
+*Getting through mail faster, plus the tools for when something goes
+wrong (Advanced and Show original, moved here from the Release Spike
+idea because they're useful without distributing).*
+
+- [ ] Choose what each swipe does, plus a second swipe each way
+- [ ] Delete key: Trash or Archive (in the Settings plan)
+- [ ] List density and preview lines (also a UX Spike 1 deferred idea)
+- [ ] Include Trash and Spam in search (in the Settings plan)
+- [ ] Which mail notifies (Inbox only / all; already in the Settings
+      plan) and quiet hours
+- [ ] Sounds for new mail and for actions, if wanted
+- [ ] Duplicate a rule
+- [ ] Advanced section: clear the cache, reset, the sync log (in the
+      Settings plan)
+- [ ] Show original (the raw message and its headers)
+
+## Milestone 9: Writing
+
+- [ ] Templates: saved replies to insert while writing (Gmail's own
+      templates aren't in its API, so these would be Mailboat's)
+- [ ] Warn about outside recipients (addresses not ending with chosen
+      domains are marked while writing)
+- [ ] Remove an address from compose suggestions
+
 ## AI Spike
 
 *The AI work, gathered from Later at the owner's request (2026-10-17).
@@ -1085,8 +1139,21 @@ Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
       - Every request logged (what was read, never the content), so the
         owner can see what an AI looked at
 
-## Later / unscheduled
+## Milestone 10: Windows
 
+- [ ] Windows build and testing; Linux nice-to-have
+- [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
+      ones that hide when not scrolling); check they look right on
+      Windows, and style them there only if needed
+
+## Release Spike (last; only if Mailboat is distributed)
+
+*Making Mailboat installable by other people. The owner is unsure whether
+it will ever be distributed (2026-10-19), so this comes last.*
+
+- [ ] Release signing and packaging, with automatic software updates
+      (Mimestream has an update channel setting) *(updates added
+      2026-10-19, settings comparison)*
 - [ ] Onboarding *(owner request, 2026-10-17)*: a first-launch flow
       instead of today's single Welcome screen. At least: add one or
       more accounts (each shown as it signs in, with its first sync
@@ -1096,15 +1163,11 @@ Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
       building. Today's Welcome screen also needs its Google setup steps
       brought up to date: it names only the Gmail API, but the README
       now lists the People and Google Calendar APIs too
-
 - [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
-- [ ] Windows build and testing; Linux nice-to-have
-- [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
-      ones that hide when not scrolling); check they look right on
-      Windows, and style them there only if needed
-- [ ] Release signing and packaging, with automatic software updates
-      (Mimestream has an update channel setting) *(updates added
-      2026-10-19, settings comparison)*
+
+## Later / unscheduled
+
+
 - [ ] Offline mode *(moved from Milestone 5; owner, 2026-10-17: likes all
       three ideas, but lowest priority: almost never offline, and doesn't
       expect to send while offline)*. Today reading cached mail and local
@@ -1118,30 +1181,6 @@ Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
       - Download recent message bodies ahead (say 30 days) so any recent
         mail opens offline; costs disk space and Gmail quota
 
-### Toybox
-
-- [ ] With the screensaver set to Random, switch to another screensaver
-      every hour while it keeps playing *(owner request, 2026-10-19)*;
-      today Random picks one each time it starts
-
-### From UX Spike 2 (moved unbuilt when the spike closed, 2026-10-18)
-
-- [ ] Emails on the glass, step 2: remap colors set in an email's own style
-      sheet (needs a CSS parser), so more newsletters can adapt
-- [ ] Dark mode for emails that declare it (`color-scheme: light dark`, as
-      a vendor's do): apply their own dark rules plus our remap of their
-      inline colours, as Mail.app does, instead of the white card. Their
-      dark rules alone aren't enough (a vendor's turn text white but never
-      darken its inline white backgrounds). Fall back to the white card if
-      their style sheet sets text colours outside its dark-mode block
-- [ ] "Original colors" toggle per message, for emails the remap gets wrong
-- [ ] Softer look for the remaining white cards on the glass
-- [ ] A setting to switch the default back to "blocked"
-- [ ] Load by default only for people you've written to (option B of UX
-      Spike 1's remote-image choice, not built)
-- [ ] Background image prefetch during sync, like Apple Mail, so senders
-      can't tell when you opened (option C of the same choice, not built)
-
 ### From Milestone 6 (moved unbuilt when it closed, 2026-10-19; the owner uses none of these)
 
 - [ ] Snooze. No Gmail API: Mailboat would do it itself (likely a "Snoozed"
@@ -1154,25 +1193,6 @@ Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
       (Settings → Accounts has "Open in Gmail")
 - [ ] Inbox category tabs (Promotions, Social…). Rules can already put
       mail in a category
-
-### From the settings comparison (2026-10-19, nice to have)
-
-- [ ] Templates: saved replies to insert while writing (Gmail's own
-      templates aren't in its API, so these would be Mailboat's)
-- [ ] Warn about outside recipients (addresses not ending with chosen
-      domains are marked while writing)
-- [ ] Remove an address from compose suggestions
-- [ ] Which mail notifies (Inbox only / all; already in the Settings
-      plan) and quiet hours
-- [ ] List density and preview lines (also a UX Spike 1 deferred idea)
-- [ ] Choose what each swipe does, plus a second swipe each way
-- [ ] Delete key: Trash or Archive (in the Settings plan)
-- [ ] Include Trash and Spam in search (in the Settings plan)
-- [ ] Duplicate a rule
-- [ ] Show original (the raw message and its headers)
-- [ ] Advanced section: clear the cache, reset, the sync log (in the
-      Settings plan)
-- [ ] Sounds for new mail and for actions, if wanted
 
 ### Considered, not planned (settings comparison, 2026-10-19)
 
