@@ -23,7 +23,9 @@ import {
   resumedDraft,
   switchedKind,
   toOutgoing,
+  withSelection,
 } from "../model/draft";
+import { selectedInMessage } from "../../reader/ui/MessageFrame";
 import { draftFromMailto } from "../model/mailto";
 
 /**
@@ -322,14 +324,23 @@ export function useComposeActions(accounts: Account[]) {
           queryKey: keys.thread(threadId),
           queryFn: () => unwrap(commands.threadGet(threadId)),
         });
-        // The newest real message: drafts sit in conversations too.
-        const last = detail.messages.findLast((m) => !m.draft);
-        if (!last) return;
-        const [source, list] = await Promise.all([
-          unwrap(commands.replySource(last.id)),
+        // Text selected in one of its messages: answer that message,
+        // quoting just the selection. Otherwise the newest real message
+        // (drafts sit in conversations too), quoted whole.
+        const picked = selectedInMessage();
+        const selectedIn = picked
+          ? detail.messages.find((m) => m.id === picked.messageId && !m.draft)
+          : undefined;
+        const target = selectedIn ?? detail.messages.findLast((m) => !m.draft);
+        if (!target) return;
+        const [original, list] = await Promise.all([
+          unwrap(commands.replySource(target.id)),
           identities(),
         ]);
-        set(S.openReply(state, replyDraft(kind, source, list, emailOf(source.accountId))));
+        const selection = selectedIn && picked ? picked.text : undefined;
+        const source = selection ? withSelection(original, selection) : original;
+        const draft = replyDraft(kind, source, list, emailOf(source.accountId));
+        set(S.openReply(state, { ...draft, quotedSelection: selection }));
       } catch (e) {
         showToast({
           tone: "error",
@@ -345,13 +356,16 @@ export function useComposeActions(accounts: Account[]) {
   /** Turns a reply into reply all or a forward (or back), keeping the text. */
   const switchKind = useCallback(
     async (id: number, kind: Exclude<ComposeKind, "new">) => {
-      const replyingTo = S.entryById(state, id)?.draft.replyingTo;
+      const current = S.entryById(state, id)?.draft;
+      const replyingTo = current?.replyingTo;
       if (replyingTo == null) return;
       try {
-        const [source, list] = await Promise.all([
+        const [original, list] = await Promise.all([
           unwrap(commands.replySource(replyingTo)),
           identities(),
         ]);
+        const selection = current?.quotedSelection;
+        const source = selection ? withSelection(original, selection) : original;
         const fresh = replyDraft(kind, source, list, emailOf(source.accountId));
         updateDraft(id, (d) => switchedKind(d, fresh));
       } catch (e) {

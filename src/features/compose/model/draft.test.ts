@@ -23,6 +23,7 @@ import {
   toOutgoing,
   trimSignature,
   withIdentity,
+  withSelection,
 } from "./draft";
 
 const a = (email: string, name: string | null = null): Address => ({ name, email });
@@ -74,6 +75,23 @@ function source(over: Partial<ReplySource> = {}): ReplySource {
     ...over,
   };
 }
+
+describe("withSelection", () => {
+  const original = source({ html: "<p>Noon?</p><p>J</p>", inlineImages: [7] });
+  it("quotes just the selected text, as plain text", () => {
+    const cut = withSelection(original, "  Noon?\u00a0Sure\r\n ");
+    expect(cut.text).toBe("Noon? Sure");
+    expect(cut.html).toBeNull();
+    expect(cut.inlineImages).toEqual([]);
+    const reply = replyDraft("reply", cut, [], "me@x.com");
+    expect(reply.quote).toContain("Noon? Sure");
+    expect(reply.quote).not.toContain("<p>J</p>");
+    expect(reply.to).toEqual([a("jane@z.com", "Jane")]);
+  });
+  it("keeps the whole message when only spaces are selected", () => {
+    expect(withSelection(original, " \n ")).toBe(original);
+  });
+});
 
 describe("replyRecipients", () => {
   const mine = ["me@x.com", "alias@x.com"];

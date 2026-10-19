@@ -241,6 +241,11 @@ fresh one; small parts come with the message and have no ID at all.
   (`otherContacts`) from the People API once per launch, with the same
   sign-in (People API quota, not Gmail's). Accounts that signed in before
   the contacts scopes were asked for get a 403, logged, and carry on.
+- **Quoting a selection** (Milestone 7): text selected in a message (the
+  frame last clicked into, `selectedInMessage` in `MessageFrame`) makes a
+  reply or forward answer that message and quote just that text
+  (`withSelection`), as plain text: the displayed HTML has `mailboat-link:`
+  addresses and display-only attributes that mustn't be sent.
 - **`mailto:` links** (Milestone 7): the bundle's Info.plist claims the
   `mailto` scheme, so Mailboat can be the default email reader (Settings →
   General asks macOS through `NSWorkspace`; `src-tauri/src/mail_handler.rs`).

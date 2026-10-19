@@ -992,6 +992,13 @@ comparison"), or to "Considered, not planned" there.*
       confirmed it works (2026-10-19)*
 - [ ] Reply quotes the selected text: with text selected in a message,
       `r` / `a` / `f` quote just that; otherwise the whole message
+      *Built (2026-10-19), waiting for the owner to try it. Any way of
+      replying or forwarding (keys, toolbar, menus, ⌘K, the reply bar)
+      answers the message the selection is in, quoting only that;
+      switching to Reply all or Forward keeps it. The selection is quoted
+      as plain text (line breaks kept): the email on screen carries
+      Mailboat's own link addresses, which mustn't go out in mail. Quoting
+      it with its formatting could come later*
 - [ ] Undo send delay: 5 (today), 10, 20 or 30 seconds, as Gmail offers
 - [ ] Text size for the reader and list
 - [ ] Mark as read: on open (today), after a few seconds, or never; and

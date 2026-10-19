@@ -20,6 +20,19 @@ import { AttachmentList } from "./AttachmentList";
 /** The message frame last clicked into, whose selection ⌘C copies. */
 let clickedFrame: HTMLIFrameElement | null = null;
 
+/**
+ * The text selected in the message last clicked into, and which message
+ * that is, so a reply can quote just that. None if the app's own page has
+ * a selection instead, or the message is no longer on screen.
+ */
+export function selectedInMessage(): { messageId: MessageId; text: string } | null {
+  const frame = clickedFrame;
+  if (!frame?.isConnected || !(window.getSelection()?.isCollapsed ?? true)) return null;
+  const text = frame.contentWindow?.getSelection()?.toString() ?? "";
+  const messageId = Number(frame.dataset.messageId);
+  return text.trim() && messageId ? { messageId, text } : null;
+}
+
 export function MessageFrame({ messageId }: { messageId: MessageId }) {
   const qc = useQueryClient();
   const message = useOpenedMessage(messageId);
@@ -147,6 +160,7 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
       <iframe
         ref={frameRef}
         title="Message content"
+        data-message-id={m.messageId}
         sandbox="allow-same-origin"
         srcDoc={m.document}
         onLoad={onLoad}

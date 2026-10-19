@@ -52,6 +52,12 @@ export type Draft = {
   savedId: DraftId | null;
   /** The draft message it was reopened from (shown in a conversation). */
   resumedFrom: MessageId | null;
+  /**
+   * The text selected in the original when the reply started, which is
+   * all it quotes (kept so switching to Forward or Reply all still
+   * quotes just that).
+   */
+  quotedSelection?: string;
   /** Files to send with it. */
   attachments: OutgoingAttachment[];
   /** The original's files a forward carries along (removable). */
@@ -296,6 +302,20 @@ export function forwardText(source: Original, formatDate = defaultFormatDate): s
 }
 
 /** A reply, reply-all or forward of `source`, from the account it's in. */
+/**
+ * The original cut down to the text selected in it, so a reply or forward
+ * quotes just that (as Mail and Gmail do). Plain text: the HTML on screen
+ * carries Mailboat's own link addresses, which mustn't go out in mail. No
+ * embedded images either, since the text has none.
+ */
+export function withSelection(source: ReplySource, selected: string): ReplySource {
+  const text = selected
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .trim();
+  return text ? { ...source, text, html: null, inlineImages: [] } : source;
+}
+
 export function replyDraft(
   kind: Exclude<ComposeKind, "new">,
   source: ReplySource,
