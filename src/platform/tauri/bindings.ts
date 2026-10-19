@@ -212,6 +212,10 @@ export const commands = {
 	 *  asks the user to confirm.
 	 */
 	mailAppMakeDefault: () => typedError<null, AppError>(__TAURI_INVOKE("mail_app_make_default")),
+	/**  Puts the window's commands in the menu bar (see `menu.rs`). */
+	menuBarSet: (menus: MenuSpec[]) => typedError<null, AppError>(__TAURI_INVOKE("menu_bar_set", { menus })),
+	/**  New names and on/off states for the menu bar's commands. */
+	menuBarUpdate: (items: MenuItemState[]) => typedError<null, AppError>(__TAURI_INVOKE("menu_bar_update", { items })),
 };
 
 /** Events */
@@ -220,6 +224,7 @@ export const events = {
 	identitiesChangedEvent: makeEvent<IdentitiesChangedEvent>("identities-changed-event"),
 	mailChangedEvent: makeEvent<MailChangedEvent>("mail-changed-event"),
 	mailtoEvent: makeEvent<MailtoEvent>("mailto-event"),
+	menuCommandEvent: makeEvent<MenuCommandEvent>("menu-command-event"),
 	openSettingsEvent: makeEvent<OpenSettingsEvent>("open-settings-event"),
 	syncProgressEvent: makeEvent<SyncProgressEvent>("sync-progress-event"),
 	syncStatusEvent: makeEvent<SyncStatusEvent>("sync-status-event"),
@@ -588,6 +593,29 @@ export type MatchCount = {
 	conversations: number,
 	/**  More than `conversations` match (only the first page is counted). */
 	more: boolean,
+};
+
+/**  A command chosen in the menu bar, by its ID (`features/commands`). */
+export type MenuCommandEvent = string;
+
+export type MenuEntry = { kind: "item"; id: string; title: string; 
+/**  Tauri's accelerator form, e.g. "Shift+Cmd+R". */
+accel: string | null; enabled: boolean } | { kind: "separator" };
+
+/**  A command's current name and whether it can be chosen. */
+export type MenuItemState = {
+	id: string,
+	title: string,
+	enabled: boolean,
+};
+
+/**
+ *  One of the window's menus: joins macOS's own of that name (File,
+ *  View), or is added before Window.
+ */
+export type MenuSpec = {
+	title: string,
+	items: MenuEntry[],
 };
 
 export type MessageId = number;

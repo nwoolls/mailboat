@@ -1044,6 +1044,22 @@ comparison"), or to "Considered, not planned" there.*
       views), and make the toolbar, right-click menu, ⌘K and menu bar
       offer the same actions under the same names, ideally from one list
       so they can't drift apart again
+      *Built (2026-10-19), waiting for the owner to try it. One list
+      (`features/commands`) names every action once, with its key; the
+      menu bar, right-click menu, ⌘K, the toolbar's tooltips and More menu,
+      and the `?` sheet all read it. The menu bar gains File → New message,
+      View (sidebar, reader, command palette, keyboard shortcuts),
+      Mailbox (Sync now, Search, Go to Inbox / Starred / Sent / Drafts /
+      All Mail / Archive) and Message (Reply, Reply all, Forward, Archive,
+      Move to Trash, Mark as read, Star, Report spam, Labels…, Filter
+      messages like this…, Block sender…), names following what each will
+      do. Mail's ⌘ shortcuts come with it (⌘N, ⌘R, ⇧⌘R, ⇧⌘F, ⌃⌘A, ⇧⌘U,
+      ⇧⌘L, ⇧⌘J, ⇧⌘N); Gmail's single keys stay. Delete has no ⌘⌫ (in a
+      text field that deletes the line), and the actions that change a
+      conversation grey out while typing in a field. The right-click menu
+      now shows each action's key. Not verified in the app by the agent:
+      that ⌃⌘S, ⌃⌘R and ⌘K toggle once, not twice (the page and the menu
+      both know them)*
 - [ ] Remember between launches whether the sidebar and the reader are
       hidden, and which sidebar folds are open *(moved from UX Spike 1's
       deferred ideas, owner, 2026-10-19)*. Today both panels start shown

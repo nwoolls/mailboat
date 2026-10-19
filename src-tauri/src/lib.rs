@@ -22,8 +22,8 @@ use tauri::Manager;
 use tauri_specta::{collect_commands, collect_events, Builder, Event};
 
 use crate::events::{
-    AccountsChangedEvent, IdentitiesChangedEvent, MailChangedEvent, MailtoEvent, OpenSettingsEvent,
-    SyncProgressEvent, SyncStatusEvent, TauriSyncEvents,
+    AccountsChangedEvent, IdentitiesChangedEvent, MailChangedEvent, MailtoEvent, MenuCommandEvent,
+    OpenSettingsEvent, SyncProgressEvent, SyncStatusEvent, TauriSyncEvents,
 };
 use crate::state::{AppDirs, AppState};
 
@@ -90,6 +90,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::mailto_take,
             commands::mail_app_default,
             commands::mail_app_make_default,
+            commands::menu_bar_set,
+            commands::menu_bar_update,
         ])
         .events(collect_events![
             SyncStatusEvent,
@@ -99,6 +101,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             OpenSettingsEvent,
             AccountsChangedEvent,
             MailtoEvent,
+            MenuCommandEvent,
             trackpad::TrackpadEvent
         ])
         // IDs and millisecond timestamps stay far below 2^53, so plain JS
@@ -136,6 +139,7 @@ pub fn run() {
         // New-mail notifications, shown from Rust (no web permission).
         .plugin(tauri_plugin_notification::init())
         .manage(mail_handler::MailtoQueue::default())
+        .manage(menu::MenuItems::default())
         .register_uri_scheme_protocol(mailboat_core::mail::links::SCHEME, |ctx, request| {
             links::handle(ctx.app_handle(), &request)
         })

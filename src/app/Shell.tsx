@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { commands, events } from "../platform/tauri/bindings";
 import type { AccountId, ThreadId, ThreadSummary } from "../platform/tauri/bindings";
 import { IS_TAURI, unwrap } from "../platform/tauri/ipc";
@@ -31,7 +31,6 @@ import {
   toggleChecked,
 } from "../features/mailbox/model/multiSelect";
 import {
-  actionLabel,
   actionMessage,
   actionVerb,
   inverse,
@@ -48,19 +47,8 @@ import { GO_TO_MS, goToView } from "../features/mailbox/model/shortcuts";
 import { useOlderMail } from "../features/mailbox/ui/useOlderMail";
 import { useThreadAction } from "../features/mailbox/ui/useThreadAction";
 import { anchorBelow, Menu, type MenuAnchor, MenuItem, MenuSeparator } from "../shared/ui/Menu";
-import {
-  ArchiveIcon,
-  ForwardIcon,
-  BlockIcon,
-  LabelIcon,
-  RulesIcon,
-  MarkUnreadIcon,
-  ReplyAllIcon,
-  ReplyIcon,
-  SpamIcon,
-  StarIcon,
-  TrashIcon,
-} from "../shared/ui/icons";
+import { MoreIcon } from "../shared/ui/icons";
+import { COMMAND_ICONS } from "./commandIcons";
 import { dismissToast, showToast, useToast } from "../shared/lib/toast";
 import { Toast } from "../shared/ui/Toast";
 import {
@@ -80,6 +68,16 @@ import { ThreadReader } from "../features/reader/ui/ThreadReader";
 import { destinations } from "../features/palette/model/destinations";
 import { CommandPalette } from "../features/palette/ui/CommandPalette";
 import { paletteItems } from "./paletteItems";
+import {
+  appCommands,
+  type CommandId,
+  conversationCommands,
+  isCommandId,
+  MENU_BAR,
+  menuBarSpecs,
+  type MenuState,
+  menuStates,
+} from "../features/commands/model/commands";
 import { criteriaLikeThreads, senderToBlock } from "../features/rules/model/likeThis";
 import { BlockSenderDialog } from "../features/rules/ui/BlockSenderDialog";
 import { RuleEditor, type RuleEditorTarget } from "../features/rules/ui/RuleEditor";
@@ -353,6 +351,144 @@ export function Shell() {
   const resizeList = (w: number) =>
     saveLayout({ ...layout, listShare: listShareFor(w, panesWidth) });
 
+  // Whether the focus is in a text field: the Message actions are off
+  // then, so a menu shortcut can't archive anything mid-sentence.
+  const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    // After the focus has settled (focusout fires before the next focusin).
+    const check = () => window.setTimeout(() => setEditing(isEditable(document.activeElement)));
+    document.addEventListener("focusin", check);
+    document.addEventListener("focusout", check);
+    return () => {
+      document.removeEventListener("focusin", check);
+      document.removeEventListener("focusout", check);
+    };
+  }, []);
+
+  // The app's commands, named once for the menu bar, the right-click menu,
+  // ⌘K and the toolbar (`features/commands`).
+  const selfEmailsOf = (account: AccountId) =>
+    identities.filter((i) => i.accountId === account).map((i) => i.email);
+  const commandsFor = (rows: ThreadSummary[]) =>
+    conversationCommands(rows, {
+      // The palette's own search box doesn't count as typing.
+      editing: (editing && !paletteOpen) || settings !== null,
+      canFilter: criteriaLikeThreads(rows, selfEmailsOf) !== null,
+      blockEmail: senderToBlock(rows, selfEmailsOf)?.email ?? null,
+    });
+  const conversationList = commandsFor(targets);
+  const appList = appCommands({ sidebarOpen, readerOpen, hasConversation: selectedId !== null });
+  const allCommands = [...conversationList, ...appList];
+
+  /**
+   * Runs a command on `rows` (the open or picked conversations, or the
+   * right-clicked ones). Labels opens the picker at `labelsAt`, or under
+   * the toolbar's Labels button.
+   */
+  const runCommand = (id: CommandId, rows = targets, labelsAt?: MenuAnchor) => {
+    const command = commandsFor(rows).find((c) => c.id === id) ?? appList.find((c) => c.id === id);
+    if (!command?.enabled) return;
+    const ids = rows.map((t) => t.id);
+    switch (id) {
+      case "reply":
+      case "replyAll":
+      case "forward": {
+        const row = rows[0];
+        if (!row) return;
+        // Writing a reply happens in the conversation, so that one opens.
+        if (row.id !== selectedId) {
+          setChecked(NONE);
+          setSelectedId(row.id);
+        }
+        setReaderOpen(true);
+        void compose.startReply(id, row.id);
+        return;
+      }
+      case "archive":
+      case "trash":
+      case "read":
+      case "star":
+      case "spam":
+        if (command.action) act(command.action, ids);
+        return;
+      case "labels": {
+        const button = document.getElementById(LABEL_BUTTON_ID);
+        const at = labelsAt ?? (button ? anchorBelow(button) : null);
+        if (!at) return;
+        setLabelFor(labelsAt ? ids : null);
+        setLabelAnchor(at);
+        return;
+      }
+      case "filterLike": {
+        const like = criteriaLikeThreads(rows, selfEmailsOf);
+        if (like)
+          setRuleEditor({
+            kind: "new",
+            accountId: like.accountId,
+            criteria: like.criteria,
+            fromMail: true,
+          });
+        return;
+      }
+      case "block": {
+        const who = senderToBlock(rows, selfEmailsOf);
+        if (who) setBlocking(who);
+        return;
+      }
+      case "new":
+        startNew();
+        return;
+      case "search":
+        document.getElementById(SEARCH_INPUT_ID)?.focus();
+        return;
+      case "sync":
+        void commands.syncNow(null);
+        return;
+      case "sidebar":
+        toggleSidebar();
+        return;
+      case "reader":
+        toggleReader();
+        return;
+      case "palette":
+        setPaletteOpen(true);
+        return;
+      case "shortcuts":
+        setShortcutsOpen(true);
+        return;
+      default: {
+        const view = goToView(id.slice(3));
+        if (view) goTo({ accounts: baseSelection.accounts, view });
+      }
+    }
+  };
+
+  // The menu bar: built once with the commands, then kept up to date with
+  // their names and on/off states. Its clicks come back as events.
+  const runRef = useRef(runCommand);
+  useEffect(() => {
+    runRef.current = runCommand;
+  });
+  const menuStatesKey = JSON.stringify(menuStates(allCommands));
+  const menuBuilt = useRef(false);
+  useEffect(() => {
+    if (!IS_TAURI) return;
+    const states: MenuState[] = JSON.parse(menuStatesKey);
+    if (menuBuilt.current) {
+      void commands.menuBarUpdate(states.map(({ id, title, enabled }) => ({ id, title, enabled })));
+      return;
+    }
+    menuBuilt.current = true;
+    void commands.menuBarSet(menuBarSpecs(MENU_BAR, states));
+  }, [menuStatesKey]);
+  useEffect(() => {
+    if (!IS_TAURI) return;
+    const unlisten = events.menuCommandEvent.listen((e) => {
+      if (isCommandId(e.payload)) runRef.current(e.payload);
+    });
+    return () => void unlisten.then((fn) => fn());
+  }, [runRef]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Settings handles its own keys (Esc closes it).
@@ -519,28 +655,6 @@ export function Shell() {
     const action = toggleFor(kind, targets);
     return action ? { action, run: () => act(action, targetIds) } : null;
   };
-  // "Filter messages like these": a new rule from the conversations'
-  // senders. Null when they span accounts (a rule belongs to one).
-  const selfEmails = (account: AccountId) =>
-    identities.filter((i) => i.accountId === account).map((i) => i.email);
-  const filterLike = (rows: ThreadSummary[]) => {
-    const like = criteriaLikeThreads(rows, selfEmails);
-    if (!like) return null;
-    return () =>
-      setRuleEditor({
-        kind: "new",
-        accountId: like.accountId,
-        criteria: like.criteria,
-        fromMail: true,
-      });
-  };
-  const filterTargets = filterLike(targets);
-  // "Block sender": only when the conversations have one sender (not you).
-  const blockFor = (rows: ThreadSummary[]) => {
-    const who = senderToBlock(rows, selfEmails);
-    return who ? { email: who.email, run: () => setBlocking(who) } : null;
-  };
-  const blockTargets = blockFor(targets);
   const toolbarActions: ToolbarActions = {
     archive: toggle("archive"),
     trash: toggle("trash"),
@@ -566,29 +680,6 @@ export function Shell() {
   const pickerLabels = labels.filter((l) => l.accountId === pickerAccount);
   // The right-click menu's conversations, and what each action would do.
   const menuRows = rowMenu ? menuTargets(threads, checked, rowMenu.clicked) : [];
-  const menuBlock = blockFor(menuRows);
-  // Writing a reply happens in the conversation, so that one opens.
-  const replyFromMenu = (kind: "reply" | "replyAll" | "forward") => {
-    const row = menuRows[0];
-    setRowMenu(null);
-    if (!row) return;
-    setChecked(NONE);
-    setSelectedId(row.id);
-    void compose.startReply(kind, row.id);
-  };
-  const menuToggle = (kind: "read" | "archive" | "star" | "trash" | "spam") => {
-    const action = toggleFor(kind, menuRows);
-    return action
-      ? {
-          action,
-          run: () =>
-            act(
-              action,
-              menuRows.map((t) => t.id),
-            ),
-        }
-      : null;
-  };
 
   return (
     <div className="flex h-full flex-col bg-glass-sidebar">
@@ -604,6 +695,7 @@ export function Shell() {
           readerOpen={readerOpen}
           hasSelection={selectedId !== null}
           count={targets.length}
+          names={Object.fromEntries(allCommands.map((c) => [c.id, c.title]))}
           onToggleSidebar={toggleSidebar}
           onToggleReader={toggleReader}
           onCompose={startNew}
@@ -846,117 +938,49 @@ export function Shell() {
       />
       {rowMenu && menuRows.length > 0 && (
         <Menu anchor={rowMenu.at} onClose={() => setRowMenu(null)} label="Conversation">
-          {menuRows.length === 1 && !menuRows[0]!.onlyDraft && (
-            <>
-              <MenuItem
-                icon={ReplyIcon}
-                onSelect={() => {
-                  setRowMenu(null);
-                  replyFromMenu("reply");
-                }}
-              >
-                Reply
-              </MenuItem>
-              <MenuItem
-                icon={ReplyAllIcon}
-                onSelect={() => {
-                  setRowMenu(null);
-                  replyFromMenu("replyAll");
-                }}
-              >
-                Reply all
-              </MenuItem>
-              <MenuItem
-                icon={ForwardIcon}
-                onSelect={() => {
-                  setRowMenu(null);
-                  replyFromMenu("forward");
-                }}
-              >
-                Forward
-              </MenuItem>
-              <MenuSeparator />
-            </>
-          )}
-          {(
-            [
-              ["archive", ArchiveIcon],
-              ["trash", TrashIcon],
-              ["read", MarkUnreadIcon],
-              ["star", StarIcon],
-              ["spam", SpamIcon],
-            ] as const
-          ).map(([kind, icon]) => {
-            const entry = menuToggle(kind);
-            if (!entry) return null;
+          {commandsFor(menuRows).map((c, _i, list) => {
+            // Replies only for one conversation; a line after them, and
+            // before the rules (where Gmail and Mail draw one too).
+            if ((c.id === "reply" || c.id === "replyAll" || c.id === "forward") && !c.enabled)
+              return null;
+            const line = (c.id === "archive" && list[0]?.enabled) || c.id === "filterLike";
             return (
-              <MenuItem
-                key={kind}
-                icon={icon}
-                onSelect={() => {
-                  setRowMenu(null);
-                  entry.run();
-                }}
-              >
-                {actionLabel(entry.action)}
-              </MenuItem>
+              <Fragment key={c.id}>
+                {line && <MenuSeparator />}
+                <MenuItem
+                  icon={COMMAND_ICONS[c.id] ?? MoreIcon}
+                  disabled={!c.enabled}
+                  hint={c.key}
+                  onSelect={() => {
+                    const at = rowMenu.at;
+                    setRowMenu(null);
+                    runCommand(c.id, menuRows, at);
+                  }}
+                >
+                  {c.title}
+                </MenuItem>
+              </Fragment>
             );
           })}
-          <MenuItem
-            icon={LabelIcon}
-            onSelect={() => {
-              const at = rowMenu.at;
-              setRowMenu(null);
-              setLabelFor(menuRows.map((t) => t.id));
-              setLabelAnchor(at);
-            }}
-          >
-            Labels…
-          </MenuItem>
-          <MenuItem
-            icon={RulesIcon}
-            disabled={filterLike(menuRows) === null}
-            onSelect={() => {
-              setRowMenu(null);
-              filterLike(menuRows)?.();
-            }}
-          >
-            {menuRows.length > 1 ? "Filter messages like these…" : "Filter messages like this…"}
-          </MenuItem>
-          <MenuItem
-            icon={BlockIcon}
-            disabled={menuBlock === null}
-            onSelect={() => {
-              setRowMenu(null);
-              menuBlock?.run();
-            }}
-          >
-            {menuBlock ? `Block ${menuBlock.email}…` : "Block sender…"}
-          </MenuItem>
         </Menu>
       )}
       {moreAnchor && targets.length > 0 && (
         <Menu anchor={moreAnchor} onClose={() => setMoreAnchor(null)} label="More">
-          <MenuItem
-            icon={RulesIcon}
-            disabled={filterTargets === null}
-            onSelect={() => {
-              setMoreAnchor(null);
-              filterTargets?.();
-            }}
-          >
-            {targets.length > 1 ? "Filter messages like these…" : "Filter messages like this…"}
-          </MenuItem>
-          <MenuItem
-            icon={BlockIcon}
-            disabled={blockTargets === null}
-            onSelect={() => {
-              setMoreAnchor(null);
-              blockTargets?.run();
-            }}
-          >
-            {blockTargets ? `Block ${blockTargets.email}…` : "Block sender…"}
-          </MenuItem>
+          {conversationList
+            .filter((c) => c.id === "filterLike" || c.id === "block")
+            .map((c) => (
+              <MenuItem
+                key={c.id}
+                icon={COMMAND_ICONS[c.id] ?? MoreIcon}
+                disabled={!c.enabled}
+                onSelect={() => {
+                  setMoreAnchor(null);
+                  runCommand(c.id);
+                }}
+              >
+                {c.title}
+              </MenuItem>
+            ))}
         </Menu>
       )}
       {blocking && (
@@ -977,21 +1001,8 @@ export function Shell() {
         <CommandPalette
           onClose={() => setPaletteOpen(false)}
           items={paletteItems({
-            targets,
-            toggle,
-            startReply: (kind) => void compose.startReply(kind, targets[0]!.id),
-            openLabels: () =>
-              setLabelAnchor({ x: window.innerWidth / 2 + 128, y: 96, align: "end" }),
-            filterLike: filterTargets,
-            block: blockTargets,
-            startNew,
-            focusSearch: () => document.getElementById(SEARCH_INPUT_ID)?.focus(),
-            syncNow: () => void commands.syncNow(null),
-            sidebarOpen,
-            readerOpen,
-            toggleSidebar,
-            toggleReader,
-            showShortcuts: () => setShortcutsOpen(true),
+            commands: allCommands,
+            run: (id) => runCommand(id),
             openSettings,
             screensavers:
               flags.screensavers && threads.length === 0 && !threadsQuery.isPending

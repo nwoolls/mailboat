@@ -119,12 +119,15 @@ export function MenuItem({
   onSelect,
   danger,
   disabled,
+  hint,
 }: {
   icon: (props: IconProps) => React.ReactNode;
   children: React.ReactNode;
   onSelect: () => void;
   danger?: boolean;
   disabled?: boolean;
+  /** The key that does the same, shown faintly at the right. */
+  hint?: string;
 }) {
   return (
     <button
@@ -138,6 +141,7 @@ export function MenuItem({
     >
       <Icon size={15} className={danger ? "" : "text-content/60"} />
       {children}
+      {hint && <kbd className="ml-auto pl-4 font-sans text-xs text-content/40">{hint}</kbd>}
     </button>
   );
 }

@@ -1,3 +1,4 @@
+import type { CommandId } from "../features/commands/model/commands";
 import type { ThreadAction } from "../features/mailbox/model/threadActions";
 import {
   ArchiveIcon,
@@ -50,6 +51,11 @@ type Props = {
   hasSelection: boolean;
   /** How many conversations the actions apply to (named in tooltips if several). */
   count: number;
+  /**
+   * The commands' names (`features/commands`), so tooltips say what the
+   * menu bar, right-click menu and ⌘K say.
+   */
+  names: Partial<Record<CommandId, string>>;
   onToggleSidebar: () => void;
   onToggleReader: () => void;
   onCompose: () => void;
@@ -69,6 +75,7 @@ export function Toolbar({
   readerOpen,
   hasSelection,
   count,
+  names,
   onToggleSidebar,
   onToggleReader,
   onCompose,
@@ -76,9 +83,6 @@ export function Toolbar({
   const many = count > 1 ? ` ${count} conversations` : "";
   const archive = actions.archive?.action;
   const trash = actions.trash?.action;
-  const spam = actions.spam?.action;
-  const notSpam = spam?.kind === "spam" && !spam.spam;
-  const read = actions.read?.action;
   const star = actions.star?.action;
   const moveToInbox = archive?.kind === "archive" && !archive.archived;
   const restore = trash?.kind === "trash" && !trash.trashed;
@@ -91,7 +95,7 @@ export function Toolbar({
     >
       <ToolButton
         icon={SidebarToggleIcon}
-        label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+        label={names.sidebar ?? ""}
         shortcut="⌃⌘S"
         onClick={onToggleSidebar}
         pressed={sidebarOpen}
@@ -102,35 +106,35 @@ export function Toolbar({
       {/* Conversation actions dim with nothing chosen. */}
       <ToolButton
         icon={moveToInbox ? MoveToInboxIcon : ArchiveIcon}
-        label={(moveToInbox ? "Move to Inbox" : "Archive") + many}
+        label={(names.archive ?? "") + many}
         shortcut="e"
         onClick={actions.archive?.run}
         disabled={!actions.archive}
       />
       <ToolButton
         icon={restore ? RestoreIcon : TrashIcon}
-        label={(restore ? "Restore from Trash" : "Move to Trash") + many}
+        label={(names.trash ?? "") + many}
         shortcut="#"
         onClick={actions.trash?.run}
         disabled={!actions.trash}
       />
       <ToolButton
         icon={SpamIcon}
-        label={(notSpam ? "Not spam" : "Report spam") + many}
+        label={(names.spam ?? "") + many}
         shortcut="!"
         onClick={actions.spam?.run}
         disabled={!actions.spam}
       />
       <ToolButton
         icon={MarkUnreadIcon}
-        label={(read?.kind === "read" && !read.read ? "Mark as unread" : "Mark as read") + many}
+        label={(names.read ?? "") + many}
         shortcut="u"
         onClick={actions.read?.run}
         disabled={!actions.read}
       />
       <ToolButton
         icon={StarIcon}
-        label={(unstar ? "Unstar" : "Star") + many}
+        label={(names.star ?? "") + many}
         shortcut="s"
         onClick={actions.star?.run}
         disabled={!actions.star}
@@ -141,7 +145,7 @@ export function Toolbar({
       <ToolButton
         id={LABEL_BUTTON_ID}
         icon={LabelIcon}
-        label={"Labels" + many}
+        label={(names.labels ?? "") + many}
         shortcut="l"
         onClick={actions.label ?? undefined}
         disabled={!actions.label}
@@ -153,17 +157,11 @@ export function Toolbar({
         disabled={!actions.more}
       />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
-      <ToolButton icon={ComposeIcon} label="New message" shortcut="c" onClick={onCompose} />
+      <ToolButton icon={ComposeIcon} label={names.new ?? ""} shortcut="c" onClick={onCompose} />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
       <ToolButton
         icon={ReaderToggleIcon}
-        label={
-          !hasSelection
-            ? "Reader opens with a conversation"
-            : readerOpen
-              ? "Hide reader"
-              : "Show reader"
-        }
+        label={!hasSelection ? "Reader opens with a conversation" : (names.reader ?? "")}
         shortcut="⌃⌘R"
         onClick={onToggleReader}
         disabled={!hasSelection}

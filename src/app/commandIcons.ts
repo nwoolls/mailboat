@@ -1,0 +1,40 @@
+import type { CommandId } from "../features/commands/model/commands";
+import {
+  ArchiveIcon,
+  BlockIcon,
+  ComposeIcon,
+  ForwardIcon,
+  type IconProps,
+  LabelIcon,
+  MarkUnreadIcon,
+  ReaderToggleIcon,
+  ReplyAllIcon,
+  ReplyIcon,
+  RulesIcon,
+  SearchIcon,
+  SidebarToggleIcon,
+  SpamIcon,
+  StarIcon,
+  SyncIcon,
+  TrashIcon,
+} from "../shared/ui/icons";
+
+/** Each command's icon, wherever it's listed (palette, right-click menu). */
+export const COMMAND_ICONS: Partial<Record<CommandId, (props: IconProps) => React.ReactNode>> = {
+  reply: ReplyIcon,
+  replyAll: ReplyAllIcon,
+  forward: ForwardIcon,
+  archive: ArchiveIcon,
+  trash: TrashIcon,
+  read: MarkUnreadIcon,
+  star: StarIcon,
+  spam: SpamIcon,
+  labels: LabelIcon,
+  filterLike: RulesIcon,
+  block: BlockIcon,
+  new: ComposeIcon,
+  search: SearchIcon,
+  sync: SyncIcon,
+  sidebar: SidebarToggleIcon,
+  reader: ReaderToggleIcon,
+};

@@ -99,3 +99,7 @@ impl SyncEvents for TauriSyncEvents {
 /// A `mailto:` link arrived; take it with `mailto_take`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct MailtoEvent;
+
+/// A command chosen in the menu bar, by its ID (`features/commands`).
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct MenuCommandEvent(pub String);

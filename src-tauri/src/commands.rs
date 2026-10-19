@@ -1113,3 +1113,23 @@ pub async fn mail_app_make_default(app: tauri::AppHandle) -> CmdResult<()> {
             message,
         })
 }
+
+/// Puts the window's commands in the menu bar (see `menu.rs`).
+#[tauri::command]
+#[specta::specta]
+pub fn menu_bar_set(app: AppHandle, menus: Vec<crate::menu::MenuSpec>) -> CmdResult<()> {
+    crate::menu::set(&app, &menus).map_err(|e| AppError {
+        kind: "platform".into(),
+        message: e.to_string(),
+    })
+}
+
+/// New names and on/off states for the menu bar's commands.
+#[tauri::command]
+#[specta::specta]
+pub fn menu_bar_update(app: AppHandle, items: Vec<crate::menu::MenuItemState>) -> CmdResult<()> {
+    crate::menu::update(&app, &items).map_err(|e| AppError {
+        kind: "platform".into(),
+        message: e.to_string(),
+    })
+}

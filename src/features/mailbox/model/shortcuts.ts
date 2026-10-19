@@ -1,4 +1,5 @@
 import type { MailView } from "../../../platform/tauri/bindings";
+import { accelLabel, appCommands, conversationCommands } from "../../commands/model/commands";
 
 /**
  * Gmail's "go to" keys: `g` then a letter, within a moment. They keep the
@@ -70,5 +71,16 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
       ["?", "These shortcuts"],
       ["⌘,", "Settings"],
     ],
+  },
+  {
+    // As in Mail, from the menu bar (`features/commands`); they work while
+    // typing too, so the ones that change a conversation are off then.
+    group: "Menu bar",
+    keys: [
+      ...conversationCommands([], { editing: false, canFilter: false, blockEmail: null }),
+      ...appCommands({ sidebarOpen: true, readerOpen: true, hasConversation: true }),
+    ]
+      .filter((c) => c.accel && c.key !== accelLabel(c.accel))
+      .map((c): [string, string] => [accelLabel(c.accel!), c.title]),
   },
 ];
