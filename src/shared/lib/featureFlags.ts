@@ -19,15 +19,15 @@ export type FeatureFlagId = keyof FeatureFlags;
 export const FEATURE_FLAGS: readonly { id: FeatureFlagId; label: string; description: string }[] = [
   {
     id: "emptyGlow",
-    label: "Empty list glow",
+    label: "Glow",
     description:
-      "A soft glow drifts behind an empty list and follows the pointer. Hidden while the screensaver plays.",
+      "A soft glow drifts behind the empty view and follows the pointer. Hidden while the screensaver plays.",
   },
   {
     id: "screensavers",
     label: "Screensavers",
     description:
-      "After a minute without input, a pixel-art scene plays over an empty list. Also in ⌘K as “Start screensaver”.",
+      "After a minute without input, a pixel-art scene plays over the empty view. Also in ⌘K as “Start screensaver”.",
   },
 ];
 

@@ -444,7 +444,10 @@ export function ToyboxSection() {
   const prefs = screensaverPrefs.use();
   return (
     <>
-      <Group title="Empty list" description="Remembered on this Mac.">
+      <Group
+        title="Inbox Zero"
+        description="When a view has no mail: your Inbox, a label or a search. Remembered on this Mac."
+      >
         {FEATURE_FLAGS.map((flag) => (
           <Row key={flag.id} label={flag.label} description={flag.description}>
             <Toggle
@@ -458,7 +461,7 @@ export function ToyboxSection() {
       {flags.screensavers && (
         <Group
           title="Screensaver"
-          description="Plays over an empty list. To try one now, open an empty list and use “Start screensaver” in ⌘K."
+          description="Plays at Inbox Zero. To try one now, open a view with no mail and use “Start screensaver” in ⌘K."
         >
           <div className="px-4 py-3.5">
             <ChoiceGrid

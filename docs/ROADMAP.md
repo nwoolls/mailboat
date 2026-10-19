@@ -1015,7 +1015,9 @@ weren't built and moved to Later / unscheduled ("From UX Spike 2").
       picker now live in their own Settings → Toybox section (Pac-Man
       icon, last in the list) instead of "Feature flags" under Advanced;
       Advanced comes back when it has its planned contents. Choices made
-      before are kept
+      before are kept. Its group is headed "Inbox Zero" (owner's pick, 2026-10-19, over
+      "Empty list", which read like a missing word), with the rows "Glow"
+      and "Screensavers"; it applies to any view with no mail
 
 ## AI Spike
 
