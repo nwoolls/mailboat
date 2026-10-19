@@ -975,7 +975,8 @@ comparison"), or to "Considered, not planned" there.*
 - [x] Unread count on the Dock icon (unread Inbox conversations, every
       account), with a setting for Inbox only / all unread / off
       *Built (2026-10-19), waiting for the owner to try it: Settings →
-      Notifications → Dock badge (Inbox, the default; All unread; Off).
+      Notifications → Dock badge (Inbox, the default; All unread; Off;
+      now "Unread count" in its own "Dock" group there).
       Counts match the sidebar's (Spam and Trash left out). Choices
       renamed after the folders they match (owner, 2026-10-19): All
       Inboxes, Unread, Off. Owner confirmed it works (2026-10-19)*
@@ -1025,6 +1026,13 @@ comparison"), or to "Considered, not planned" there.*
       hidden, and which sidebar folds are open *(moved from UX Spike 1's
       deferred ideas, owner, 2026-10-19)*. Today both panels start shown
       every launch; pane widths and the window are already remembered
+- [x] Settings wording trued up *(owner request, 2026-10-19)*: section
+      subtitles said what the sections held before Milestone 7 (General's
+      was "About Mailboat."). General, Notifications and Viewing now
+      describe what's there; the Dock badge has its own "Dock" group
+      instead of sitting under "New mail"; Toybox no longer says
+      "Remembered on this Mac", which only it said though most settings are
+      kept that way
 - [ ] The screensaver sometimes didn't start *(owner report,
       2026-10-19)*. Likely cause, fixed: when the idle minute ran out
       while the window was hidden it waited another minute instead of

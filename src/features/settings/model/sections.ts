@@ -20,7 +20,11 @@ export type SettingsSectionId =
 export type SettingsSection = { id: SettingsSectionId; label: string; description: string };
 
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
-  { id: "general", label: "General", description: "About Mailboat." },
+  {
+    id: "general",
+    label: "General",
+    description: "Email links, and which version of Mailboat this is.",
+  },
   {
     id: "accounts",
     label: "Accounts",
@@ -29,10 +33,10 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   {
     id: "notifications",
     label: "Notifications",
-    description: "When Mailboat tells you about new mail.",
+    description: "New-mail alerts, and the unread count on the Dock.",
   },
   { id: "appearance", label: "Appearance", description: "How Mailboat looks." },
-  { id: "viewing", label: "Viewing", description: "Reading conversations." },
+  { id: "viewing", label: "Viewing", description: "Reading and moving through conversations." },
   { id: "composing", label: "Composing", description: "Writing and sending mail." },
   {
     id: "signatures",

@@ -294,66 +294,70 @@ export function NotificationsSection() {
   const settings = useAppSettings().data;
   const save = useSaveAppSettings();
   return (
-    <Group title="New mail">
-      <Row
-        label="Notify me about new mail"
-        description="When new mail arrives in an Inbox. Not your own messages or drafts, and not while an account first syncs."
-      >
-        <Toggle
+    <>
+      <Group title="New mail">
+        <Row
           label="Notify me about new mail"
-          on={settings?.newMailNotifications ?? true}
-          disabled={!settings}
-          onChange={(on) =>
-            settings &&
-            save.mutate(
-              { ...settings, newMailNotifications: on },
-              {
-                onError: (e) =>
-                  showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
-              },
-            )
-          }
-        />
-      </Row>
-      <Row
-        label="Style and sound"
-        description="macOS decides whether they show, as banners or alerts, and with what sound."
-      >
-        <Button
-          onClick={() =>
-            void unwrap(commands.notificationSettingsOpen()).catch((e: unknown) =>
-              showToast({
-                tone: "error",
-                message: `Couldn’t open System Settings: ${errorText(e)}`,
-              }),
-            )
-          }
+          description="When new mail arrives in an Inbox. Not your own messages or drafts, and not while an account first syncs."
         >
-          Open System Settings
-        </Button>
-      </Row>
-      <Row
-        label="Dock badge"
-        description="How many unread conversations are in All Inboxes or in Unread, on Mailboat’s Dock icon."
-      >
-        <Segmented
-          label="Dock badge"
-          value={settings?.dockBadge ?? "inbox"}
-          options={DOCK_BADGES}
-          disabled={!settings}
-          onChange={(dockBadge) =>
-            settings &&
-            save.mutate(
-              { ...settings, dockBadge },
-              {
-                onError: (e) =>
-                  showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
-              },
-            )
-          }
-        />
-      </Row>
-    </Group>
+          <Toggle
+            label="Notify me about new mail"
+            on={settings?.newMailNotifications ?? true}
+            disabled={!settings}
+            onChange={(on) =>
+              settings &&
+              save.mutate(
+                { ...settings, newMailNotifications: on },
+                {
+                  onError: (e) =>
+                    showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
+                },
+              )
+            }
+          />
+        </Row>
+        <Row
+          label="Style and sound"
+          description="macOS decides whether they show, as banners or alerts, and with what sound."
+        >
+          <Button
+            onClick={() =>
+              void unwrap(commands.notificationSettingsOpen()).catch((e: unknown) =>
+                showToast({
+                  tone: "error",
+                  message: `Couldn’t open System Settings: ${errorText(e)}`,
+                }),
+              )
+            }
+          >
+            Open System Settings
+          </Button>
+        </Row>
+      </Group>
+      <Group title="Dock">
+        <Row
+          label="Unread count"
+          description="On Mailboat’s Dock icon: unread conversations in All Inboxes or in Unread, as the sidebar counts them."
+        >
+          <Segmented
+            label="Unread count on the Dock"
+            value={settings?.dockBadge ?? "inbox"}
+            options={DOCK_BADGES}
+            disabled={!settings}
+            onChange={(dockBadge) =>
+              settings &&
+              save.mutate(
+                { ...settings, dockBadge },
+                {
+                  onError: (e) =>
+                    showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
+                },
+              )
+            }
+          />
+        </Row>
+      </Group>
+    </>
   );
 }
 
@@ -562,7 +566,7 @@ export function ToyboxSection() {
     <>
       <Group
         title="Inbox Zero"
-        description="When a view has no mail: your Inbox, a label or a search. Remembered on this Mac."
+        description="When a view has no mail: your Inbox, a label or a search."
       >
         {FEATURE_FLAGS.map((flag) => (
           <Row key={flag.id} label={flag.label} description={flag.description}>
