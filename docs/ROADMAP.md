@@ -1057,8 +1057,8 @@ comparison"), or to "Considered, not planned" there.*
 ## Bug Spike 1
 
 *Added at the owner's request (2026-10-19): with these, Mailboat isn't
-usable day to day yet, so they come before Milestone 7's last two items
-(Default From and font, the menu bar). Moved here from the Bug backlog,
+usable day to day yet. Done straight after Milestone 7, in its own
+session (owner, 2026-10-19). Moved here from the Bug backlog,
 most pressing first; the last was found reading code and hasn't been
 seen for real. As with the UX spikes, each is tried by the owner before
 it's ticked.*
