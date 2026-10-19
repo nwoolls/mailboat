@@ -37,6 +37,7 @@ export const UNIFIED_VIEWS: MailView[] = [
   system("unread"),
   system("starred"),
   system("sent"),
+  system("draft"),
   ARCHIVE,
   ALL_MAIL,
 ];
@@ -135,8 +136,8 @@ export function selectionTitle(s: Selection, accounts: Account[], labels: Label[
   if (v.kind === "search") return `Results for “${v.text}”`;
   if (v.kind === "userLabel") return labels.find((l) => l.id === v.labelId)?.name ?? "Label";
   const base = viewTitle(v);
-  if (s.accounts.kind === "all")
-    return v.kind === "system" && v.label === "inbox" ? "All Inboxes" : base;
+  // Every account's: named plainly, as the sidebar's "All accounts" does.
+  if (s.accounts.kind === "all") return base;
   const [only, ...others] = s.accounts.ids;
   if (only !== undefined && others.length === 0 && accounts.length > 1) {
     const account = accounts.find((a) => a.id === only);

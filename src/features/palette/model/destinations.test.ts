@@ -27,7 +27,7 @@ it("lists unified views only with several accounts, then each account's views an
   expect(one.at(-1)).toMatchObject({ title: "Work / Acme" });
 
   const two = destinations([account(1, "a@x.com"), account(2, "b@y.com")], [label(5, 2, "Bills")]);
-  expect(two[0]).toMatchObject({ title: "All Inboxes", detail: "All accounts" });
+  expect(two[0]).toMatchObject({ title: "Inbox", detail: "All accounts" });
   expect(two.find((d) => d.title === "Bills")?.detail).toBe("b@y.com");
   expect(new Set(two.map((d) => d.key)).size).toBe(two.length);
 });

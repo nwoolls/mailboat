@@ -7,6 +7,8 @@ import { accelLabel, appCommands, conversationCommands } from "../../commands/mo
  */
 const GO_TO: Record<string, MailView> = {
   i: { kind: "system", label: "inbox" },
+  // Not Gmail's (it has no Unread view): `g then u`, as Todoist and others.
+  u: { kind: "system", label: "unread" },
   s: { kind: "system", label: "starred" },
   t: { kind: "system", label: "sent" },
   d: { kind: "system", label: "draft" },
@@ -31,6 +33,7 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
       ["/", "Search"],
       ["⌘K", "Command palette"],
       ["g then i", "Go to Inbox"],
+      ["g then u", "Go to Unread"],
       ["g then s", "Go to Starred"],
       ["g then t", "Go to Sent"],
       ["g then d", "Go to Drafts"],

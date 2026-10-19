@@ -56,9 +56,7 @@ export function SidebarSections(props: SidebarBodyProps) {
                 count={countFor(view, s.accounts)}
                 selected={sameSelection(selection, s)}
                 onClick={() => onSelect(s)}
-                title={
-                  view.kind === "system" && view.label === "inbox" ? "All Inboxes" : viewTitle(view)
-                }
+                title={viewTitle(view)}
               />
             );
           })}

@@ -347,7 +347,7 @@ export function NotificationsSection() {
       <Group title="Dock">
         <Row
           label="Unread count"
-          description="On Mailboat’s Dock icon: unread conversations in All Inboxes or in Unread, as the sidebar counts them."
+          description="On Mailboat’s Dock icon: unread conversations in Inbox or in Unread (every account’s), as the sidebar counts them."
         >
           <Segmented
             label="Unread count on the Dock"
@@ -372,7 +372,7 @@ export function NotificationsSection() {
 }
 
 const DOCK_BADGES: { value: DockBadge; label: string }[] = [
-  { value: "inbox", label: "All Inboxes" },
+  { value: "inbox", label: "Inbox" },
   { value: "unread", label: "Unread" },
   { value: "off", label: "Off" },
 ];

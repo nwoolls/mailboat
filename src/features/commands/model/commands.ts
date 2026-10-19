@@ -44,7 +44,7 @@ export type AppCommandId =
   | "shortcuts"
   | GoToId;
 
-export type GoToId = `go:${"i" | "s" | "t" | "d" | "a" | "e"}`;
+export type GoToId = `go:${"i" | "u" | "s" | "t" | "d" | "e" | "a"}`;
 
 export type CommandId = ConversationCommandId | AppCommandId;
 
@@ -106,13 +106,20 @@ export function conversationCommands(
   return commands;
 }
 
+/**
+ * The views to go to, in the sidebar's order, numbered ⌘1 to ⌘7 in the
+ * menu bar as Mail numbers its favourite mailboxes. Keyed by Gmail's
+ * `g then …` letters (`u` and `e` are Mailboat's: Gmail has no Unread or
+ * Archive view).
+ */
 const GO_TO: { id: GoToId; title: string }[] = [
   { id: "go:i", title: "Go to Inbox" },
+  { id: "go:u", title: "Go to Unread" },
   { id: "go:s", title: "Go to Starred" },
   { id: "go:t", title: "Go to Sent" },
   { id: "go:d", title: "Go to Drafts" },
-  { id: "go:a", title: "Go to All Mail" },
   { id: "go:e", title: "Go to Archive" },
+  { id: "go:a", title: "Go to All Mail" },
 ];
 
 /** The rest: writing, searching, panels, help and going to views. */
@@ -141,7 +148,13 @@ export function appCommands(o: {
     },
     { id: "palette", title: "Command palette", key: "⌘K", accel: "Cmd+K", enabled: true },
     { id: "shortcuts", title: "Keyboard shortcuts", key: "?", enabled: true },
-    ...GO_TO.map(({ id, title }) => ({ id, title, key: `g then ${id.slice(3)}`, enabled: true })),
+    ...GO_TO.map(({ id, title }, i) => ({
+      id,
+      title,
+      key: `g then ${id.slice(3)}`,
+      accel: `Cmd+${i + 1}`,
+      enabled: true,
+    })),
   ];
 }
 
@@ -157,7 +170,7 @@ export const MENU_BAR: MenuSpec[] = [
   { title: "View", items: ["sidebar", "reader", "-", "palette", "shortcuts"] },
   {
     title: "Mailbox",
-    items: ["sync", "search", "-", "go:i", "go:s", "go:t", "go:d", "go:a", "go:e"],
+    items: ["sync", "search", "-", "go:i", "go:u", "go:s", "go:t", "go:d", "go:e", "go:a"],
   },
   {
     title: "Message",

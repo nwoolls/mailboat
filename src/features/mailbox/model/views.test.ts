@@ -47,7 +47,7 @@ const work = (id: number, accountId: number): Label => ({
 });
 
 describe("selections", () => {
-  it("All Inboxes is the inbox query over every account", () => {
+  it("the shared Inbox is the inbox query over every account", () => {
     expect(toListQuery(ALL_INBOXES)).toEqual({
       accounts: { kind: "all" },
       view: { kind: "system", label: "inbox" },
@@ -81,7 +81,7 @@ describe("selections", () => {
   });
 
   it("titles", () => {
-    expect(selectionTitle(ALL_INBOXES, accounts, [])).toBe("All Inboxes");
+    expect(selectionTitle(ALL_INBOXES, accounts, [])).toBe("Inbox");
     expect(selectionTitle(systemSelection("sent", 2), accounts, [])).toBe("Sent · me@example.com");
     expect(selectionTitle(labelSelection(work(10, 1)), accounts, [work(10, 1)])).toBe("Work");
   });

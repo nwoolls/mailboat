@@ -165,7 +165,7 @@ export function Shell() {
   const openCard = openCardEntry(composeState);
   const cardSpot = useCardSpot();
 
-  // Until the user picks a view: All Inboxes, or the inbox itself when
+  // Until the user picks a view: every account's Inbox, or the inbox itself when
   // there is only one account.
   const [chosen, setChosen] = useState<Selection | null>(null);
   const onlyAccount = accountList.length === 1 ? accountList[0] : undefined;

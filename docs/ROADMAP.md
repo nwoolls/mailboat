@@ -1060,6 +1060,16 @@ comparison"), or to "Considered, not planned" there.*
       now shows each action's key. Not verified in the app by the agent:
       that ⌃⌘S, ⌃⌘R and ⌘K toggle once, not twice (the page and the menu
       both know them)*
+      *Owner's first try (2026-10-19): works, but Go to Drafts had no
+      shared Drafts to go to, and the menu said Inbox where the sidebar
+      said All Inboxes. Now: a shared Drafts in "All accounts" (after
+      Sent, as under each account); "All Inboxes" is "Inbox" everywhere
+      (sidebar, list heading, ⌘K, the Dock badge choice), as the shared
+      Starred and Sent were already named; `g then u` goes to Unread
+      (Gmail has g+i/s/t/d/a, checked in Google's help, but no Unread;
+      `g then e` for Archive was already Mailboat's own); and the Go to items
+      are ⌘1 to ⌘7 in the sidebar's order, as Mail numbers its favourite
+      mailboxes*
 - [ ] Remember between launches whether the sidebar and the reader are
       hidden, and which sidebar folds are open *(moved from UX Spike 1's
       deferred ideas, owner, 2026-10-19)*. Today both panels start shown
@@ -1077,7 +1087,9 @@ comparison"), or to "Considered, not planned" there.*
       starting, and macOS counts a window that another app covers
       completely as hidden. It now starts anyway (the canvas pauses while
       hidden). To tick once the owner hasn't seen it again; if they do,
-      diagnose further
+      diagnose further. Owner's guess (2026-10-19): it was on another
+      Space when it didn't start, which macOS also reports as hidden, so
+      the same fix covers it
 
 ## Bug Spike 1
 

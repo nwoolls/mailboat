@@ -29,9 +29,7 @@ export function destinations(accounts: Account[], labels: Label[]): Destination[
     out.push({ key: selectionKey(selection), title, detail, selection });
   if (accounts.length > 1)
     for (const view of UNIFIED_VIEWS) {
-      const title =
-        view.kind === "system" && view.label === "inbox" ? "All Inboxes" : viewTitle(view);
-      add(title, "All accounts", viewSelection(view));
+      add(viewTitle(view), "All accounts", viewSelection(view));
     }
   const detail = (a: Account) => (accounts.length > 1 ? a.email : null);
   for (const account of accounts) {
