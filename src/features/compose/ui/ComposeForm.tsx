@@ -24,6 +24,7 @@ import {
 import { AddressField } from "./AddressField";
 import { HtmlPreview } from "./HtmlPreview";
 import { EditorBody, FormatBar, useRichEditor } from "./RichEditor";
+import { useStuck } from "../../../shared/ui/useStuck";
 
 export type ReplyKind = Exclude<ComposeKind, "new">;
 
@@ -38,6 +39,9 @@ export const KIND_LABELS: Record<ReplyKind, string> = {
  * To/Cc/Bcc, Subject (new messages), the text, then Send and Discard.
  * ⌘↩ sends. Shared by the floating card and inline replies.
  */
+/** About how tall the pinned formatting and Send bar is, in pixels. */
+const PINNED_FOOT_HEIGHT = 96;
+
 export function ComposeForm({
   entry,
   identities,
@@ -64,10 +68,15 @@ export function ComposeForm({
   const [confirming, setConfirming] = useState(false);
   const [dropping, setDropping] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const [footMarker, footStuck] = useStuck();
   // Loaded once with the draft's opening HTML (the quote, for replies);
   // a different draft gets a fresh form (keyed by draft ID).
-  const editor = useRichEditor(draft.html, ({ html, text, edited }) =>
-    onChange((d) => ({ ...d, html, text, edited: d.edited || edited })),
+  const editor = useRichEditor(
+    draft.html,
+    ({ html, text, edited }) => onChange((d) => ({ ...d, html, text, edited: d.edited || edited })),
+    // Inline, the pinned Send bar covers the reader's bottom edge: keep
+    // the line being typed above it.
+    inline ? { keepClearBelow: PINNED_FOOT_HEIGHT } : undefined,
   );
 
   // Replies start in the text, above the quote (new messages and
@@ -235,51 +244,59 @@ export function ComposeForm({
           ]}
         />
       )}
-      <FormatBar editor={editor} />
-      <div className="flex shrink-0 items-center gap-3 px-4 pt-1 pb-3">
-        <button
-          type="submit"
-          disabled={sending}
-          title="Send (⌘↩)"
-          className="h-7 rounded-md bg-accent px-3.5 font-medium text-white hover:brightness-110 disabled:opacity-60"
-        >
-          {sending ? "Sending…" : "Send"}
-        </button>
-        {!message && entry.save && (
-          <span className="text-xs text-content/45" role="status">
-            {entry.save === "saving"
-              ? "Saving…"
-              : entry.save === "saved"
-                ? "Saved to Drafts"
-                : "Couldn’t save the draft"}
-          </span>
-        )}
-        {message && (
-          <span
-            role="alert"
-            className="selectable min-w-0 flex-1 truncate text-xs text-danger"
-            title={message}
+      {/* Inline in the reader, formatting and Send stay at the bottom of
+        the window while a long reply or forward scrolls under them. */}
+      <div
+        className={inline ? "reader-foot reader-foot-in-card pt-1" : ""}
+        data-stuck={(inline && footStuck) || undefined}
+      >
+        <FormatBar editor={editor} />
+        <div className="flex shrink-0 items-center gap-3 px-4 pt-1 pb-3">
+          <button
+            type="submit"
+            disabled={sending}
+            title="Send (⌘↩)"
+            className="h-7 rounded-md bg-accent px-3.5 font-medium text-white hover:brightness-110 disabled:opacity-60"
           >
-            {message}
-          </span>
-        )}
-        <AttachButton
-          disabled={sending}
-          onFiles={(files) =>
-            onChange((d) => ({ ...d, attachments: [...d.attachments, ...files] }))
-          }
-        />
-        <button
-          type="button"
-          aria-label="Discard"
-          title="Discard"
-          disabled={sending}
-          onClick={discard}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-content/60 hover:bg-selection hover:text-content disabled:opacity-35"
-        >
-          <TrashIcon />
-        </button>
+            {sending ? "Sending…" : "Send"}
+          </button>
+          {!message && entry.save && (
+            <span className="text-xs text-content/45" role="status">
+              {entry.save === "saving"
+                ? "Saving…"
+                : entry.save === "saved"
+                  ? "Saved to Drafts"
+                  : "Couldn’t save the draft"}
+            </span>
+          )}
+          {message && (
+            <span
+              role="alert"
+              className="selectable min-w-0 flex-1 truncate text-xs text-danger"
+              title={message}
+            >
+              {message}
+            </span>
+          )}
+          <AttachButton
+            disabled={sending}
+            onFiles={(files) =>
+              onChange((d) => ({ ...d, attachments: [...d.attachments, ...files] }))
+            }
+          />
+          <button
+            type="button"
+            aria-label="Discard"
+            title="Discard"
+            disabled={sending}
+            onClick={discard}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-content/60 hover:bg-selection hover:text-content disabled:opacity-35"
+          >
+            <TrashIcon />
+          </button>
+        </div>
       </div>
+      {inline && <div ref={footMarker} aria-hidden className="h-px" />}
       {dropping && (
         <div className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-accent bg-accent/10 text-[13px] font-medium text-accent">
           Drop to attach

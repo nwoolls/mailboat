@@ -10,6 +10,7 @@ import { type ComposeEntry, poppedReplyIn, replyIn } from "../model/composeState
 import { canSwitchKind, editorKey } from "../model/draft";
 import { ComposeForm, KIND_LABELS, type ReplyKind } from "./ComposeForm";
 import { useEffect, useRef, useState } from "react";
+import { useStuck } from "../../../shared/ui/useStuck";
 import type { MessageId } from "../../../platform/tauri/bindings";
 import {
   closeDraft,
@@ -109,7 +110,7 @@ export function ReplyArea({
   }
   if (popped)
     return (
-      <div className="flex items-center gap-2 px-1 pt-3 pb-4 text-xs text-content/50">
+      <PinnedFoot className="flex items-center gap-2 px-1 pt-3 pb-4 text-xs text-content/50">
         Your {KIND_LABELS[popped.draft.kind === "new" ? "reply" : popped.draft.kind].toLowerCase()}{" "}
         is open in its own card.
         <button
@@ -119,7 +120,7 @@ export function ReplyArea({
         >
           Show it
         </button>
-      </div>
+      </PinnedFoot>
     );
   if (resumeId !== null && failed !== resumeId)
     return <div className="px-4 pt-3 pb-4 text-xs text-content/45">Opening your draft…</div>;
@@ -127,7 +128,7 @@ export function ReplyArea({
   const last = detail.messages.findLast((m) => !m.draft);
   const several = last ? last.to.length + last.cc.length > 1 : false;
   return (
-    <div className="flex gap-2 px-1 pt-3 pb-4">
+    <PinnedFoot className="flex gap-2 px-1 pt-3 pb-4">
       <ReplyButton icon={ReplyIcon} label="Reply" shortcut="r" onClick={() => onStart("reply")} />
       {several && (
         <ReplyButton
@@ -143,7 +144,23 @@ export function ReplyArea({
         shortcut="f"
         onClick={() => onStart("forward")}
       />
-    </div>
+    </PinnedFoot>
+  );
+}
+
+/**
+ * Stays at the bottom of the reader while the email scrolls under it, so
+ * Reply and Forward are always at hand (see `.reader-foot`).
+ */
+function PinnedFoot({ className, children }: { className: string; children: React.ReactNode }) {
+  const [marker, stuck] = useStuck();
+  return (
+    <>
+      <div className={`reader-foot ${className}`} data-stuck={stuck || undefined}>
+        {children}
+      </div>
+      <div ref={marker} aria-hidden className="h-px" />
+    </>
   );
 }
 

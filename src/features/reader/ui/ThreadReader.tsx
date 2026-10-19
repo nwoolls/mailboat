@@ -99,7 +99,8 @@ function ThreadBody({
       // card's bottom lines up with the list panel's at the end.
       // Bottom corners round like the list panel's, so whatever reaches
       // the bottom edge is clipped to the same curve, scrolled or not.
-      className={`reader-enter flex-1 overflow-y-auto rounded-b-[10px] transition-opacity duration-150 ${
+      // `reader-scroll`: the frame the reply foot pins itself to (index.css).
+      className={`reader-enter reader-scroll flex-1 overflow-y-auto rounded-b-[10px] transition-opacity duration-150 ${
         leaving ? "opacity-50" : ""
       }`}
     >

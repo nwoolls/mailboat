@@ -885,6 +885,16 @@ editors live in Settings (Signatures, Rules), which now exists.
       so ("Vacation responder is on until the end of Fri, Oct 24") with
       Turn off and Settings, so it's never left on by mistake. Not yet
       tried by the owner against real Gmail
+- [x] Reply, Forward and Send stay on screen *(owner request, 2026-10-19,
+      before trying the Milestone 6 items; as Gmail does)*: replying to
+      or forwarding a long email, and sending a forward, needed scrolling
+      to the end. The reader's foot (Reply / Reply all / Forward, or an
+      inline reply's formatting bar and Send) now stays pinned to the
+      bottom of the window while the email scrolls under it, with a
+      blurred tint while it covers the email. In a short window (reader
+      under 24rem, about 384px) it scrolls with the email instead, so the
+      message isn't hidden. The line being typed stays above the pinned
+      bar. Not yet tried by the owner
 - [x] Block sender *(from the list below; 2026-10-18)*: "Block
       sender@x.com…" in the toolbar's More menu, the right-click menu and
       ⌘K, offered when the picked conversations have one sender other
