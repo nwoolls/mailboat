@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { Label, ThreadDetail, ThreadSummary } from "../../../platform/tauri/bindings";
+import type {
+  Label,
+  ThreadDetail,
+  ThreadId,
+  ThreadSummary,
+} from "../../../platform/tauri/bindings";
 import {
   actionLabel,
   actionMessage,
@@ -8,6 +13,7 @@ import {
   labelToggle,
   leavesView,
   nextAfterRemoval,
+  selectionAfterUndo,
   toggleFor,
   updateSummary,
   withAction,
@@ -241,4 +247,17 @@ it("menu items say what they'd do now", () => {
   expect(actionLabel({ kind: "archive", archived: false })).toBe("Move to Inbox");
   expect(actionLabel({ kind: "spam", spam: true })).toBe("Report spam");
   expect(actionLabel(toggleFor("star", [thread(1, { starred: true })])!)).toBe("Unstar");
+});
+
+const id = (n: number) => n as ThreadId;
+
+describe("selection after undo", () => {
+  it("reopens the conversation that was open when it was archived", () => {
+    expect(selectionAfterUndo(id(1), [id(1)], id(2))).toBe(1);
+  });
+
+  it("doesn't open a conversation that wasn't open (a swipe, or Inbox Zero)", () => {
+    expect(selectionAfterUndo(null, [id(1)], null)).toBeNull();
+    expect(selectionAfterUndo(id(3), [id(1)], id(3))).toBe(3);
+  });
 });

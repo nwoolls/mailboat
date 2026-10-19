@@ -348,6 +348,10 @@ split per account for selections that span accounts.
       scope, and Gmail empties the Trash after 30 days itself
 - [x] Undo: archive, trash and label changes show a toast with Undo
       (also `z` or ⌘Z while it's up); errors show there too
+      *Fixed (owner report, 2026-10-19):* Undo used to open the
+      conversation it brought back even if it wasn't open before (e.g.
+      swiped away to Inbox Zero, then Undo). It now reopens only the
+      conversation that was open when the action ran
 - [x] Several conversations at once: ⌘-click picks one, ⇧-click a
       range, `x` the open one; Esc clears. Every action applies to all
       picked, split per account in Rust

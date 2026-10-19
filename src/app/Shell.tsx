@@ -38,6 +38,7 @@ import {
   labelToggle,
   leavesView,
   nextAfterRemoval,
+  selectionAfterUndo,
   type ThreadAction,
   toggleFor,
 } from "../features/mailbox/model/threadActions";
@@ -184,6 +185,12 @@ export function Shell() {
     [threadsQuery.data],
   );
   const [selectedId, setSelectedId] = useState<ThreadId | null>(null);
+  // The open conversation as of the last render, for actions to remember
+  // what was open when they ran (Undo goes back to it).
+  const openNow = useRef<ThreadId | null>(null);
+  useEffect(() => {
+    openNow.current = selectedId;
+  });
   // The last conversation opened, kept while the reader slides closed so it
   // doesn't empty out mid-animation. Updated during render, not in an effect.
   const [shownId, setShownId] = useState<ThreadId | null>(null);
@@ -272,6 +279,7 @@ export function Shell() {
     // Named, so Undo can call it again.
     function run(action: ThreadAction, ids: ThreadId[], undoable = true) {
       if (ids.length === 0) return;
+      const openBefore = openNow.current;
       if (leavesView(action, selection.view)) {
         const removed = new Set(ids);
         setSelectedId((current) => nextAfterRemoval(threads, removed, current));
@@ -286,9 +294,10 @@ export function Shell() {
                 label: "Undo",
                 run: () => {
                   run(inverse(action), ids, false);
-                  // Back to where you were, if it had moved on.
-                  if (leavesView(action, selection.view) && ids.length === 1)
-                    setSelectedId(ids[0]!);
+                  // Back to the conversation that was open, if this moved
+                  // on from it; one that wasn't open (a swipe) stays closed.
+                  if (leavesView(action, selection.view))
+                    setSelectedId((current) => selectionAfterUndo(openBefore, ids, current));
                 },
               }
             : undefined,

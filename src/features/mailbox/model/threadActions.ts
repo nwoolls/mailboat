@@ -273,3 +273,17 @@ export function nextAfterRemoval(
   }
   return null;
 }
+
+/**
+ * What's open after Undo brings conversations back: the one that was open
+ * before the action, if it's among them (archiving the open conversation
+ * moved on; Undo goes back to it). Otherwise whatever is open now stays,
+ * so undoing a swipe on a row that wasn't open doesn't open it.
+ */
+export function selectionAfterUndo(
+  openBefore: ThreadId | null,
+  restored: readonly ThreadId[],
+  current: ThreadId | null,
+): ThreadId | null {
+  return openBefore !== null && restored.includes(openBefore) ? openBefore : current;
+}
