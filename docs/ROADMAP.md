@@ -1250,6 +1250,17 @@ seen for real.*
       such loop so far. Likely fix: wait for "Retry" after a partial
       failure, as after a full one
 
+- [ ] "Download Image" in an email's right-click menu does nothing
+      *(owner report, 2026-10-19)*. Right-clicking an image inside an
+      email shows the web view's own menu (Mailboat doesn't make it; it may
+      or may not be wanted there), and its "Download Image" saves nothing
+      to Downloads. Saving an image is what the owner wanted to do. Likely
+      cause, not yet checked: macOS's web view hands downloads to the app,
+      and Mailboat (through Tauri) doesn't take them. To decide when fixing:
+      make that item work (Tauri's download hook, saving to Downloads as
+      attachments do), or replace the web view's menu over emails with
+      Mailboat's own (Save image, Copy image, Copy link)
+
 ## Later / unscheduled
 
 
