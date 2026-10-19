@@ -856,7 +856,12 @@ editors live in Settings (Signatures, Rules), which now exists.
       10,000 messages). ⌘↩ saves. Forwarding can't be set (needs the
       `gmail.settings.sharing` permission); forwarding set up in Gmail is
       shown and kept. An account without the permission shows "Sign in
-      again" in its group. Not yet tried by the owner against real Gmail
+      again" in its group. Not yet tried by the owner against real Gmail.
+      *Owner feedback (2026-10-19):* the list ran far off the page, so each
+      account's rules now show 10 at a time with "11–20 of N" and
+      Previous / Next (a new search starts at the first page; an account
+      picker may follow later); and quoted phrases Gmail stores (`"weekly
+      report"`) showed doubled quotes, now shown once
 - [x] Create a rule from a message, as Gmail's "Filter messages like
       these": sender, subject and so on filled in from it. **Built
       (2026-10-18):** "Filter messages like this…" in the toolbar's More

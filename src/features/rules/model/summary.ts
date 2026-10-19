@@ -22,14 +22,26 @@ function sentence(parts: string[]): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/**
+ * A typed value in curly quotes, without doubling quotes it already has
+ * (Gmail searches often hold a quoted phrase: `"weekly report"`). A value
+ * with quotes inside (`"a" OR "b"`) is shown as written.
+ */
+export function quoted(value: string): string {
+  const v = value.trim();
+  const inner = /^["“](.*)["”]$/.exec(v)?.[1];
+  if (inner !== undefined && !/["“”]/.test(inner)) return `“${inner}”`;
+  return /["“”]/.test(v) ? v : `“${v}”`;
+}
+
 /** Which mail a rule is for: "From news@x.com, subject “Invoice”, with an attachment". */
 export function describeCriteria(c: RuleCriteria): string {
   const parts: string[] = [];
   if (c.from) parts.push(`from ${c.from}`);
   if (c.to) parts.push(`to ${c.to}`);
-  if (c.subject) parts.push(`subject “${c.subject}”`);
-  if (c.hasWords) parts.push(`has “${c.hasWords}”`);
-  if (c.doesntHave) parts.push(`doesn’t have “${c.doesntHave}”`);
+  if (c.subject) parts.push(`subject ${quoted(c.subject)}`);
+  if (c.hasWords) parts.push(`has ${quoted(c.hasWords)}`);
+  if (c.doesntHave) parts.push(`doesn’t have ${quoted(c.doesntHave)}`);
   if (c.hasAttachment) parts.push("with an attachment");
   if (c.size) {
     const { value, unit } = sizeParts(c.size.bytes);
@@ -54,7 +66,7 @@ export function describeActions(
   if (a.star) parts.push("star");
   for (const id of a.labels) {
     const name = labelName(id);
-    if (name) parts.push(`label “${name}”`);
+    if (name) parts.push(`label ${quoted(name)}`);
   }
   if (a.category) parts.push(`categorize as ${CATEGORY_NAMES[a.category]}`);
   if (a.importance === "always") parts.push("mark as important");

@@ -6,6 +6,7 @@ import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { AccountAvatar } from "../../accounts/ui/AccountAvatar";
 import { useSignIn } from "../../accounts/ui/useSignIn";
 import { Button, Group, Row } from "../../settings/ui/controls";
+import { pageOf } from "../model/paging";
 import { describeActions, describeCriteria, ruleMatchesSearch } from "../model/summary";
 import { RuleEditor, type RuleEditorTarget } from "./RuleEditor";
 
@@ -118,6 +119,10 @@ function AccountRulesGroup({
   const state = listed?.state;
   const ready = state?.kind === "ready";
   const shown = ready ? state.rules.filter((r) => ruleMatchesSearch(r, search, labelName)) : [];
+  // A new search starts at the first page (worked out here, not in an effect).
+  const [paging, setPaging] = useState({ search, page: 0 });
+  const page = pageOf(shown, paging.search === search ? paging.page : 0);
+  const goTo = (n: number) => setPaging({ search, page: n });
   const name = account.displayName?.trim();
   return (
     <Group
@@ -158,18 +163,33 @@ function AccountRulesGroup({
       ) : shown.length === 0 ? (
         <Row label="No rules match the search" />
       ) : (
-        shown.map((rule) => (
-          <Row
-            key={rule.filterId}
-            label={<span className="selectable">{describeCriteria(rule.criteria)}</span>}
-            description={describeActions(rule.actions, labelName)}
-          >
-            <Button onClick={() => onEdit(rule)}>Edit</Button>
-            <Button danger onClick={() => onDelete(rule)}>
-              Delete
-            </Button>
-          </Row>
-        ))
+        <>
+          {page.items.map((rule) => (
+            <Row
+              key={rule.filterId}
+              label={<span className="selectable">{describeCriteria(rule.criteria)}</span>}
+              description={describeActions(rule.actions, labelName)}
+            >
+              <Button onClick={() => onEdit(rule)}>Edit</Button>
+              <Button danger onClick={() => onDelete(rule)}>
+                Delete
+              </Button>
+            </Row>
+          ))}
+          {page.pages > 1 && (
+            <div className="flex items-center gap-2 px-4 py-2.5 text-[12px] text-content/55">
+              <span className="flex-1 tabular-nums">
+                {page.from}–{page.to} of {page.total}
+              </span>
+              <Button onClick={() => goTo(page.page - 1)} disabled={page.page === 0}>
+                Previous
+              </Button>
+              <Button onClick={() => goTo(page.page + 1)} disabled={page.page === page.pages - 1}>
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </Group>
   );

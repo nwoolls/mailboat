@@ -7,6 +7,7 @@ import {
   describeActions,
   describeCriteria,
   matchText,
+  quoted,
   ruleMatchesSearch,
   savedMessage,
 } from "./summary";
@@ -22,6 +23,19 @@ describe("rule summaries", () => {
         size: { comparison: "larger", bytes: 2 * 1024 * 1024 },
       }),
     ).toBe("From news@x.com, subject “Weekly”, with an attachment, larger than 2 MB");
+  });
+
+  it("never doubles quotes Gmail already stores", () => {
+    expect(quoted("Invoice")).toBe("“Invoice”");
+    expect(quoted('"weekly report"')).toBe("“weekly report”");
+    expect(quoted("“weekly report”")).toBe("“weekly report”");
+    expect(quoted('"a" OR "b"')).toBe('"a" OR "b"');
+    expect(quoted('from "Sam"')).toBe('from "Sam"');
+    expect(
+      describeCriteria({
+        ...toCriteria(emptyForm({ subject: '"Your order"', hasWords: '"unsubscribe"' })),
+      }),
+    ).toBe("Subject “Your order”, has “unsubscribe”");
   });
 
   it("describes what a rule does, skipping labels that are gone", () => {
