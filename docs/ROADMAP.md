@@ -882,6 +882,14 @@ editors live in Settings (Signatures, Rules), which now exists.
       with a table (from signature generators) get a warning that saving
       here will simplify them. Settings → Accounts now points here. Not
       yet tried by the owner against real Gmail
+- [ ] Several signatures to choose from *(owner feedback, 2026-10-19)*.
+      Gmail's API only has one signature per address (the one Mailboat
+      edits now); Gmail on the web's named signatures and its "for new
+      mail / for replies" defaults aren't in the API. So Mailboat would keep
+      its own named signatures on this Mac, with defaults per address and
+      a picker in compose, copying the "new mail" default to Gmail so
+      other apps use it. Gmail's own named signatures can't be imported.
+      Waiting on the owner's go-ahead
 - [x] Vacation responder (same permission). **Built (2026-10-18):**
       Settings → Vacation responder, per account, as Gmail's form: on/off,
       first day, optional last day, subject, message (the composer's
