@@ -1001,6 +1001,11 @@ comparison"), or to "Considered, not planned" there.*
       it with its formatting could come later. Owner confirmed it works
       (2026-10-19)*
 - [ ] Undo send delay: 5 (today), 10, 20 or 30 seconds, as Gmail offers
+      *Built (2026-10-19), waiting for the owner to try it: Settings →
+      Composing (a new section, where the settings plan put it) → Undo
+      send. The "Sending…" notice now stays up for the whole wait, so its
+      Undo (and z / ⌘Z) work to the end; it used to vanish after 6s.
+      Another notice (archiving, say) still replaces it, as in Gmail*
 - [ ] Text size for the reader and list
 - [ ] Mark as read: on open (today), after a few seconds, or never; and
       conversation order (oldest first, today, or newest first)

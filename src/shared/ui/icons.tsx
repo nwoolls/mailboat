@@ -137,6 +137,7 @@ export const ToyboxIcon = wrap(Pacman01);
 export const SignatureIcon = wrap(Signature);
 export const VacationIcon = wrap(Beach);
 export const ViewingIcon = wrap(BookOpen01);
+export const ComposingIcon = wrap(PencilEdit02);
 export const BlockIcon = wrap(UserBlock01);
 export const CheckIcon = wrap(Tick02);
 export const CalendarIcon = wrap(Calendar03);

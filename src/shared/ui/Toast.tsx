@@ -6,6 +6,8 @@ export type ToastData = {
   message: string;
   tone?: "error";
   action?: { label: string; run: () => void };
+  /** How long it stays up, if not the usual few seconds. */
+  ms?: number;
 };
 
 /** How long a toast stays up. */
@@ -19,7 +21,7 @@ const TOAST_MS = 6000;
 export function Toast({ toast, onDismiss }: { toast: ToastData | null; onDismiss: () => void }) {
   useEffect(() => {
     if (!toast) return;
-    const timer = window.setTimeout(onDismiss, TOAST_MS);
+    const timer = window.setTimeout(onDismiss, toast.ms ?? TOAST_MS);
     return () => window.clearTimeout(timer);
   }, [toast, onDismiss]);
 

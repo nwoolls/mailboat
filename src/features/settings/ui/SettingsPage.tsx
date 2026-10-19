@@ -8,6 +8,7 @@ import { PageHeader } from "./controls";
 import {
   AccountsSection,
   AppearanceSection,
+  ComposingSection,
   GeneralSection,
   KeyboardSection,
   NotificationsSection,
@@ -88,6 +89,7 @@ export function SettingsPage({
           {section === "general" && <GeneralSection />}
           {section === "notifications" && <NotificationsSection />}
           {section === "viewing" && <ViewingSection />}
+          {section === "composing" && <ComposingSection />}
           {section === "signatures" && <SignaturesSection accounts={accounts} />}
           {section === "vacation" && <VacationSection accounts={accounts} />}
           {section === "keyboard" && <KeyboardSection />}

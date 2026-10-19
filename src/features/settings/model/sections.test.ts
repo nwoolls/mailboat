@@ -9,6 +9,7 @@ describe("settings sections", () => {
       "notifications",
       "appearance",
       "viewing",
+      "composing",
       "signatures",
       "rules",
       "vacation",

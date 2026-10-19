@@ -297,7 +297,8 @@ Settings are stored in one of three places:
   one JSON value in the `app_settings` table. A setting missing from it
   takes its default, so adding one needs no migration.
 - **Only the window uses it** (transparency, accent colour, Viewing's
-  "after archiving or deleting"):
+  "after archiving or deleting", Composing's undo send delay, since the
+  wait runs in the window):
   `localStorage`, applied in `main.tsx` before the first render so it
   never flashes the default.
 - **Gmail keeps it** (Rules, Signatures, Vacation responder): read from

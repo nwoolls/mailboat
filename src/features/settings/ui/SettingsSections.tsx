@@ -42,6 +42,8 @@ import {
 import { screensaverPrefs } from "../../screensaver/ui/prefs";
 import type { AfterRemoval } from "../../mailbox/model/threadActions";
 import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
+import { UNDO_SEND_CHOICES } from "../../compose/model/composingPrefs";
+import { composingPrefs } from "../../compose/ui/composingPrefs";
 import { FEATURE_FLAGS, setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
@@ -374,6 +376,30 @@ export function ViewingSection() {
           value={prefs.afterRemoval}
           options={AFTER_REMOVAL}
           onChange={(afterRemoval) => viewingPrefs.set({ ...prefs, afterRemoval })}
+        />
+      </Row>
+    </Group>
+  );
+}
+
+export function ComposingSection() {
+  const prefs = composingPrefs.use();
+  return (
+    <Group title="Sending">
+      <Row
+        label="Undo send"
+        description="How long Undo can stop a message after you send it. It waits that long before going to Gmail."
+      >
+        <Segmented
+          label="Undo send"
+          value={String(prefs.undoSendSeconds)}
+          options={UNDO_SEND_CHOICES.map((s) => ({ value: String(s), label: `${s} sec` }))}
+          onChange={(value) =>
+            composingPrefs.set({
+              ...prefs,
+              undoSendSeconds: UNDO_SEND_CHOICES.find((s) => String(s) === value) ?? 5,
+            })
+          }
         />
       </Row>
     </Group>

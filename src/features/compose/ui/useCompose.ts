@@ -27,6 +27,7 @@ import {
 } from "../model/draft";
 import { selectedInMessage } from "../../reader/ui/MessageFrame";
 import { draftFromMailto } from "../model/mailto";
+import { composingPrefs } from "./composingPrefs";
 
 /**
  * Drafts on screen, shared app-wide (the toolbar, keys and the reader all
@@ -279,9 +280,6 @@ export function closeDraft(id: number) {
   if (!s.running) saves.delete(id);
 }
 
-/** How long Undo send waits before sending (Gmail's default). */
-export const UNDO_SEND_MS = 5000;
-
 /** Opens, replies and sends. Needs the accounts to know each one's address. */
 export function useComposeActions(accounts: Account[]) {
   const qc = useQueryClient();
@@ -394,6 +392,8 @@ export function useComposeActions(accounts: Account[]) {
     const inFlight = pending.running ?? Promise.resolve(true);
     finish(entry);
     set(S.close(state, draft.id));
+    // Settings → Composing: 5 seconds unless chosen otherwise.
+    const holdMs = composingPrefs.get().undoSendSeconds * 1000;
     let undone = false;
     let started = false;
     const timer = window.setTimeout(() => {
@@ -412,13 +412,15 @@ export function useComposeActions(accounts: Account[]) {
           set(S.reopen(state, entry, message));
           showToast({ tone: "error", message: `Couldn’t send: ${message}` });
         });
-    }, UNDO_SEND_MS);
+    }, holdMs);
     showToast({
       message: "Sending…",
+      // Up as long as Undo can still stop it (z / ⌘Z need it showing).
+      ms: holdMs,
       action: {
         label: "Undo",
         run: () => {
-          // Past the 5 seconds it's on its way; say so rather than
+          // Past the wait it's on its way; say so rather than
           // reopening a message that was sent.
           if (started) {
             showToast({ message: "Too late to undo: the message was sent" });

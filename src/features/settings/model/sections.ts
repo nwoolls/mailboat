@@ -1,7 +1,7 @@
 /**
  * The Settings page's sections, in the order decided in the roadmap
  * (Milestone 5). Only sections with something in them are listed; the
- * others (Sidebar & List, Composing)
+ * others (Sidebar & List, Advanced)
  * join as their features arrive, in their place in that order.
  */
 export type SettingsSectionId =
@@ -10,6 +10,7 @@ export type SettingsSectionId =
   | "notifications"
   | "appearance"
   | "viewing"
+  | "composing"
   | "signatures"
   | "rules"
   | "vacation"
@@ -32,6 +33,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   },
   { id: "appearance", label: "Appearance", description: "How Mailboat looks." },
   { id: "viewing", label: "Viewing", description: "Reading conversations." },
+  { id: "composing", label: "Composing", description: "Writing and sending mail." },
   {
     id: "signatures",
     label: "Signatures",
