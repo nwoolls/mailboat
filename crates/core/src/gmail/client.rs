@@ -12,7 +12,8 @@ use super::batch;
 use super::pacer::{cost, QuotaPacer};
 use super::types::{
     AttachmentBody, DraftList, DraftRef, ErrorEnvelope, Filter, FilterList, HistoryList, LabelList,
-    Message, MessageList, MessageRef, PeoplePage, Profile, SendAsList, Thread, ThreadList,
+    Message, MessageList, MessageRef, PeoplePage, Profile, SendAs, SendAsList, Thread, ThreadList,
+    Vacation,
 };
 use crate::error::{CoreError, Result};
 
@@ -333,6 +334,30 @@ impl GmailClient {
     pub async fn send_as(&self) -> Result<SendAsList> {
         self.get_json(&self.url("settings/sendAs"), &[], cost::SETTINGS_GET)
             .await
+    }
+
+    /// `settings.sendAs.patch` with only the signature (the one part of an
+    /// address `gmail.settings.basic` may change).
+    pub async fn set_signature(&self, email: &str, html: &str) -> Result<SendAs> {
+        self.spend(cost::SEND_AS_CHANGE).await;
+        let url = self.url(&format!("settings/sendAs/{}", path_segment(email)));
+        let body = serde_json::json!({ "signature": html });
+        let response = self.send(|| self.http.patch(&url).json(&body)).await?;
+        response.json().await.map_err(net_error)
+    }
+
+    /// `settings.getVacation`: the vacation responder.
+    pub async fn vacation(&self) -> Result<Vacation> {
+        self.get_json(&self.url("settings/vacation"), &[], cost::SETTINGS_GET)
+            .await
+    }
+
+    /// `settings.updateVacation`: replaces the vacation responder settings.
+    pub async fn set_vacation(&self, vacation: &Vacation) -> Result<Vacation> {
+        self.spend(cost::SETTINGS_CHANGE).await;
+        let url = self.url("settings/vacation");
+        let response = self.send(|| self.http.put(&url).json(vacation)).await?;
+        response.json().await.map_err(net_error)
     }
 
     /// `settings.filters.list`: the account's rules.
@@ -766,6 +791,19 @@ impl GmailClient {
             });
         }
     }
+}
+
+/// An email address as one URL path segment (`+` and `@` are fine, but
+/// anything else odd is escaped).
+fn path_segment(s: &str) -> String {
+    s.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'@' | b'.' | b'-' | b'_' | b'+' | b'~' => {
+                (b as char).to_string()
+            }
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
 }
 
 fn thread_message(thread_id: Option<&str>) -> serde_json::Value {

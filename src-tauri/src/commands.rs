@@ -23,6 +23,7 @@ use mailboat_core::rules::{
 };
 use mailboat_core::settings::{self, AppSettings};
 use mailboat_core::sync::{fetch_body, load_older, OLDER_BATCH};
+use mailboat_core::vacation::{self, AccountVacation, VacationSettings, VacationState};
 use mailboat_core::CoreError;
 use serde::Serialize;
 use specta::Type;
@@ -30,7 +31,7 @@ use tauri::{AppHandle, State};
 use tauri_specta::Event;
 
 use crate::error::CmdResult;
-use crate::events::MailChangedEvent;
+use crate::events::{IdentitiesChangedEvent, MailChangedEvent};
 use crate::files;
 use crate::state::AppState;
 
@@ -1033,4 +1034,54 @@ pub async fn rule_match_count(
 ) -> CmdResult<Option<MatchCount>> {
     let gmail = state.gmail_for(account_id)?.interactive();
     Ok(rules::match_count(&gmail, &criteria).await?)
+}
+
+/// Changes one of an account's addresses' signature in Gmail ("" removes
+/// it). Compose picks the new one up straight away.
+#[tauri::command]
+#[specta::specta]
+pub async fn signature_set(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    account_id: AccountId,
+    email: String,
+    html: String,
+) -> CmdResult<Option<String>> {
+    let gmail = state.gmail_for(account_id)?.interactive();
+    let kept = identities::set_signature(&state.db, &gmail, account_id, &email, &html).await?;
+    let _ = IdentitiesChangedEvent { account_id }.emit(&app);
+    Ok(kept)
+}
+
+/// Every account's vacation responder, or why an account's can't be shown.
+#[tauri::command]
+#[specta::specta]
+pub async fn vacation_list(state: State<'_, AppState>) -> CmdResult<Vec<AccountVacation>> {
+    let accounts = accounts::list(&state.db.conn())?;
+    let mut out = Vec::new();
+    for account in accounts {
+        let got = match state.gmail_for(account.id) {
+            Ok(gmail) => vacation::get(&state.db, &gmail.interactive(), account.id).await,
+            Err(e) => Err(e),
+        };
+        out.push(got.unwrap_or_else(|e| AccountVacation {
+            account_id: account.id,
+            state: VacationState::Unavailable {
+                message: e.to_string(),
+            },
+        }));
+    }
+    Ok(out)
+}
+
+/// Saves an account's vacation responder.
+#[tauri::command]
+#[specta::specta]
+pub async fn vacation_set(
+    state: State<'_, AppState>,
+    account_id: AccountId,
+    settings: VacationSettings,
+) -> CmdResult<AccountVacation> {
+    let gmail = state.gmail_for(account_id)?.interactive();
+    Ok(vacation::set(&state.db, &gmail, account_id, &settings).await?)
 }

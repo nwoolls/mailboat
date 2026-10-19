@@ -52,6 +52,12 @@ impl CoreError {
         }
     }
 
+    /// Google refused because the account's sign-in lacks a permission
+    /// (it signed in before Mailboat asked for it).
+    pub fn is_missing_scope(&self) -> bool {
+        matches!(self, CoreError::Api { status: 403, message } if message.contains("insufficient"))
+    }
+
     /// Errors worth retrying later with backoff (as opposed to needing the
     /// user to do something).
     pub fn is_transient(&self) -> bool {

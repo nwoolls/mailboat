@@ -465,14 +465,10 @@ pub fn search_query(c: &FilterCriteria) -> String {
     parts.join(" ")
 }
 
-fn is_missing_scope(e: &CoreError) -> bool {
-    matches!(e, CoreError::Api { status: 403, message } if message.contains("insufficient"))
-}
-
 /// Gmail's refusals, in words.
 fn friendly(e: CoreError) -> CoreError {
     match e {
-        e if is_missing_scope(&e) => CoreError::Invalid(
+        e if e.is_missing_scope() => CoreError::Invalid(
             "Sign in to this account again (Settings → Accounts) so Mailboat can change its rules."
                 .into(),
         ),
@@ -497,7 +493,7 @@ pub async fn list(db: &Db, gmail: &GmailClient, account: AccountId) -> Result<Ac
             Ok(list) => RulesState::Ready {
                 rules: rules_from(db, gmail, account, &list.filter).await?,
             },
-            Err(e) if is_missing_scope(&e) => RulesState::NeedsSignIn,
+            Err(e) if e.is_missing_scope() => RulesState::NeedsSignIn,
             Err(CoreError::Network(_)) => RulesState::Unavailable {
                 message: "Couldn’t reach Gmail.".into(),
             },

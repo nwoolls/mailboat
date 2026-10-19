@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::db::{accounts, Db};
-use crate::error::Result;
+use crate::error::{CoreError, Result};
 use crate::gmail::types::SendAs;
 use crate::gmail::GmailClient;
 use crate::model::AccountId;
@@ -121,4 +121,52 @@ pub fn owns(conn: &Connection, account: AccountId, email: &str) -> Result<bool> 
     Ok(list(conn)?
         .iter()
         .any(|i| i.account_id == account && i.email.eq_ignore_ascii_case(email)))
+}
+
+/// Gmail's limit on a signature's length (characters of HTML).
+pub const SIGNATURE_MAX: usize = 10_000;
+
+/// Changes one address's signature in Gmail and stores what Gmail kept
+/// (Gmail cleans signature HTML itself). Empty removes it.
+pub async fn set_signature(
+    db: &Db,
+    gmail: &GmailClient,
+    account: AccountId,
+    email: &str,
+    html: &str,
+) -> Result<Option<String>> {
+    // Gmail names the address as it spells it.
+    let email = list(&db.conn())?
+        .into_iter()
+        .find(|i| i.account_id == account && i.email.eq_ignore_ascii_case(email))
+        .map(|i| i.email)
+        .ok_or_else(|| CoreError::NotFound(format!("address {email}")))?;
+    let email = email.as_str();
+    let html = html.trim();
+    if html.chars().count() > SIGNATURE_MAX {
+        return Err(CoreError::Invalid(format!(
+            "Gmail allows signatures up to {} characters (including formatting); this one is longer.",
+            SIGNATURE_MAX
+        )));
+    }
+    let saved = gmail.set_signature(email, html).await.map_err(|e| {
+        if e.is_missing_scope() {
+            CoreError::Invalid(
+                "Sign in to this account again (Settings → Accounts) so Mailboat can change its signatures."
+                    .into(),
+            )
+        } else {
+            e
+        }
+    })?;
+    let signature = saved.signature.filter(|s| !s.trim().is_empty());
+    let updated = db.conn().execute(
+        "UPDATE send_as SET signature = ?3 WHERE account_id = ?1 AND email = ?2",
+        params![account, email, signature],
+    )?;
+    // Addresses never fetched yet: fetch them all now.
+    if updated == 0 {
+        refresh(db, gmail, account).await?;
+    }
+    Ok(signature)
 }

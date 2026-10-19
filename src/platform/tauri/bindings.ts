@@ -194,6 +194,15 @@ export const commands = {
 	/**  More than `conversations` match (only the first page is counted). */
 	more: boolean,
 } | null, AppError>(__TAURI_INVOKE("rule_match_count", { accountId, criteria })),
+	/**
+	 *  Changes one of an account's addresses' signature in Gmail ("" removes
+	 *  it). Compose picks the new one up straight away.
+	 */
+	signatureSet: (accountId: AccountId, email: string, html: string) => typedError<string | null, AppError>(__TAURI_INVOKE("signature_set", { accountId, email, html })),
+	/**  Every account's vacation responder, or why an account's can't be shown. */
+	vacationList: () => typedError<AccountVacation[], AppError>(__TAURI_INVOKE("vacation_list")),
+	/**  Saves an account's vacation responder. */
+	vacationSet: (accountId: AccountId, settings: VacationSettings) => typedError<AccountVacation, AppError>(__TAURI_INVOKE("vacation_set", { accountId, settings })),
 };
 
 /** Events */
@@ -240,6 +249,11 @@ export type AccountSyncState = {
 	errorKind: string | null,
 	errorMessage: string | null,
 	lastSyncAt: number | null,
+};
+
+export type AccountVacation = {
+	accountId: AccountId,
+	state: VacationState,
 };
 
 /**
@@ -807,6 +821,33 @@ export type ThreadSummary = {
 export type TrackpadEvent = {
 	touching: boolean,
 };
+
+export type VacationSettings = {
+	enabled: boolean,
+	subject: string,
+	bodyHtml: string,
+	/**
+	 *  The same reply as plain text (Gmail sends it to mail apps that
+	 *  don't show HTML).
+	 */
+	bodyText: string,
+	/**  Only reply to people in your contacts. */
+	contactsOnly: boolean,
+	/**  Only reply to people in your organization (Workspace accounts). */
+	domainOnly: boolean,
+	/**  When replies start and stop (Unix ms; the end is exclusive). */
+	start: number | null,
+	end: number | null,
+};
+
+export type VacationState = { kind: "ready"; settings: VacationSettings; 
+/**
+ *  Gmail offers "only people in my organization" for Workspace
+ *  accounts, not @gmail.com ones.
+ */
+canLimitToDomain: boolean; 
+/**  Replying right now (on, and within its dates). */
+active: boolean } | { kind: "needsSignIn" } | { kind: "unavailable"; message: string };
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

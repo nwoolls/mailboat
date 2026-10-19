@@ -322,3 +322,25 @@ pub struct FilterAction {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub forward: Option<String>,
 }
+
+/// `settings.getVacation` / `updateVacation`. Times are epoch ms strings.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Vacation {
+    #[serde(default)]
+    pub enable_auto_reply: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response_subject: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response_body_plain_text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub response_body_html: Option<String>,
+    #[serde(default)]
+    pub restrict_to_contacts: bool,
+    #[serde(default)]
+    pub restrict_to_domain: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_time: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_time: Option<String>,
+}

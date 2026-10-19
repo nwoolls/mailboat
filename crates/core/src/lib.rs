@@ -17,6 +17,7 @@ pub mod model;
 pub mod rules;
 pub mod settings;
 pub mod sync;
+pub mod vacation;
 
 pub use error::{CoreError, Result};
 pub use reqwest;

@@ -335,6 +335,18 @@ conversations match" counts one `threads.list` page (up to 500). Each
 account answers separately, so one account lacking the permission shows
 "Sign in again" without hiding another's rules.
 
+## Signatures and vacation responder
+
+Both need `gmail.settings.basic`, like rules. A signature is changed with
+`settings.sendAs.patch` sending only `signature` (the one field of an
+address that permission may change; 100 quota units). Gmail cleans the
+HTML itself, so `identities::set_signature` stores what Gmail sends back
+in `send_as`, and `IdentitiesChangedEvent` refreshes compose. The editor
+is the composer's TipTap editor. `vacation.rs` reads and writes
+`settings.getVacation` / `updateVacation` as `VacationSettings` (dates as
+Unix ms, the end exclusive, as Gmail treats it) and says whether it's
+replying right now (`active`), which the mail view shows as a banner.
+
 ## Decisions
 
 | Date | Decision | Why |
@@ -411,5 +423,7 @@ account answers separately, so one account lacking the permission shows
 | 2026-10-18 | Rules are read from Gmail each time, not cached in SQLite | Filters change rarely, cost 1 unit to list, and only Settings and the rule editor need them; a local copy would need its own sync (Gmail's history doesn't report filter changes) for no gain. TanStack Query keeps the last answer while Settings is open. |
 | 2026-10-18 | "Apply to existing mail" works on matching messages with `messages.batchModify`, capped at the newest 10,000 | Gmail applies filters per message, and batchModify changes 1,000 messages for 50 units, where per-conversation `threads.modify` costs 10 units each (10,000 conversations would take minutes of the quota). The cap bounds one save to about 600 units; the result says when it was reached. |
 | 2026-10-18 | Rules can't set forwarding | Forwarding addresses need `gmail.settings.sharing`, a more sensitive permission (see Milestone 6). Forwarding set up in Gmail is shown and kept on edit. |
+| 2026-10-18 | Signatures are edited in the composer's TipTap editor, with the signature's current look shown beside it | Gmail signatures are simple HTML (text, links, web images), which TipTap keeps. Ones with tables (some generated signatures) would be simplified, so the editor warns before saving such a one rather than silently changing it. |
+| 2026-10-18 | The vacation responder's dates are whole days in your time zone, stored as Gmail's epoch ms | Gmail's own form picks days, not times. The first day starts at local midnight; the last day ends at the next local midnight (Gmail's end time is exclusive). |
 | 2026-10-17 | Empty-list screensaver is our own falling-sand grid on one `<canvas>`, no library | A few hundred lines of cellular automaton (`model/sand.ts`, tested) is smaller than any particle/physics library and needs no permissions. One canvas pixel per 3px sand cell, scaled with `image-rendering: pixelated`, keeps drawing cheap; the loop stops when the window is hidden or loses focus. The icon box and each letter of the words are drawn to an off-screen canvas and reduced to cells so sand rests on them. Moving the pointer doesn't end it (the roadmap first said it would): the owner asked for the pointer to play with the sand, so only a key, click or scroll ends it. It runs with another app in front (owner's request) and pauses only when the window is hidden; it doesn't use `document.hasFocus()`, and pointer events without movement (WebKit sends them when the page changes under a still cursor) don't count as input. Sandscape version (2026-10-18): the canvas takes the list card's glass opacity, so the sand follows the Transparency setting. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |
