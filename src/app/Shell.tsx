@@ -74,6 +74,7 @@ import {
 import { emptyStateFor, emptyStateKey } from "../features/mailbox/model/emptyState";
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
 import { SCREENSAVER_EVENT, SCREENSAVERS } from "../features/screensaver/model/catalog";
+import { viewingPrefs } from "../features/mailbox/ui/viewingPrefs";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
 import { ThreadReader } from "../features/reader/ui/ThreadReader";
 import { destinations } from "../features/palette/model/destinations";
@@ -282,7 +283,8 @@ export function Shell() {
       const openBefore = openNow.current;
       if (leavesView(action, selection.view)) {
         const removed = new Set(ids);
-        setSelectedId((current) => nextAfterRemoval(threads, removed, current));
+        const { afterRemoval } = viewingPrefs.get();
+        setSelectedId((current) => nextAfterRemoval(threads, removed, current, afterRemoval));
         setChecked(NONE);
       }
       const message = actionMessage(action, ids.length);

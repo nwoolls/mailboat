@@ -191,6 +191,15 @@ describe("nextAfterRemoval", () => {
   });
   it("keeps the open conversation if it stays", () => {
     expect(nextAfterRemoval(list, new Set([3]), 1)).toBe(1);
+    expect(nextAfterRemoval(list, new Set([3]), 1, "none")).toBe(1);
+  });
+  it("can open the one above instead, else below", () => {
+    expect(nextAfterRemoval(list, new Set([3]), 3, "above")).toBe(2);
+    expect(nextAfterRemoval(list, new Set([2, 3]), 3, "above")).toBe(1);
+    expect(nextAfterRemoval(list, new Set([1]), 1, "above")).toBe(2);
+  });
+  it("can open nothing", () => {
+    expect(nextAfterRemoval(list, new Set([2]), 2, "none")).toBeNull();
   });
 });
 

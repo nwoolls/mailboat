@@ -40,6 +40,8 @@ import {
   parseColor,
 } from "../../screensaver/model/palettes";
 import { screensaverPrefs } from "../../screensaver/ui/prefs";
+import type { AfterRemoval } from "../../mailbox/model/threadActions";
+import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import { FEATURE_FLAGS, setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
@@ -357,6 +359,31 @@ const DOCK_BADGES: { value: DockBadge; label: string }[] = [
   { value: "inbox", label: "All Inboxes" },
   { value: "unread", label: "Unread" },
   { value: "off", label: "Off" },
+];
+
+export function ViewingSection() {
+  const prefs = viewingPrefs.use();
+  return (
+    <Group title="Conversations">
+      <Row
+        label="After archiving or deleting"
+        description="What opens when the open conversation leaves the list."
+      >
+        <Segmented
+          label="After archiving or deleting"
+          value={prefs.afterRemoval}
+          options={AFTER_REMOVAL}
+          onChange={(afterRemoval) => viewingPrefs.set({ ...prefs, afterRemoval })}
+        />
+      </Row>
+    </Group>
+  );
+}
+
+const AFTER_REMOVAL: { value: AfterRemoval; label: string }[] = [
+  { value: "below", label: "Next below" },
+  { value: "above", label: "Next above" },
+  { value: "none", label: "Nothing" },
 ];
 
 const LIGHT = "(prefers-color-scheme: light)";

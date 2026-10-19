@@ -291,7 +291,8 @@ Settings are stored in one of three places:
 - **Rust acts on it** (new-mail notifications on/off): `mailboat_core::settings`,
   one JSON value in the `app_settings` table. A setting missing from it
   takes its default, so adding one needs no migration.
-- **Only the window uses it** (transparency, accent colour):
+- **Only the window uses it** (transparency, accent colour, Viewing's
+  "after archiving or deleting"):
   `localStorage`, applied in `main.tsx` before the first render so it
   never flashes the default.
 - **Gmail keeps it** (Rules, Signatures, Vacation responder): read from

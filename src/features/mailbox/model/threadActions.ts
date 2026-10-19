@@ -251,27 +251,30 @@ export function actionVerb(action: ThreadAction): string {
   }
 }
 
+/** What opens when the open conversation leaves the list (Settings → Viewing). */
+export type AfterRemoval = "below" | "above" | "none";
+
 /**
- * The conversation to open after some leave the list: the next one below
- * the open conversation that stays (as Mail does), else the nearest above,
- * else none.
+ * The conversation to open after some leave the list. The open one stays
+ * if it isn't among them. Otherwise, by `after`: the next one below that
+ * stays (as Mail does; the default), else the nearest above; the nearest
+ * above, else below; or none, back to just the list.
  */
 export function nextAfterRemoval(
   threads: Pick<ThreadSummary, "id">[],
   removed: ReadonlySet<ThreadId>,
   current: ThreadId | null,
+  after: AfterRemoval = "below",
 ): ThreadId | null {
   if (current === null) return null;
   if (!removed.has(current)) return current;
+  if (after === "none") return null;
   const index = threads.findIndex((t) => t.id === current);
   if (index < 0) return null;
-  for (let i = index + 1; i < threads.length; i++) {
-    if (!removed.has(threads[i]!.id)) return threads[i]!.id;
-  }
-  for (let i = index - 1; i >= 0; i--) {
-    if (!removed.has(threads[i]!.id)) return threads[i]!.id;
-  }
-  return null;
+  const below = threads.slice(index + 1);
+  const above = threads.slice(0, index).toReversed();
+  const order = after === "below" ? [...below, ...above] : [...above, ...below];
+  return order.find((t) => !removed.has(t.id))?.id ?? null;
 }
 
 /**

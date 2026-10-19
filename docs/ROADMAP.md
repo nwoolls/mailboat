@@ -982,6 +982,13 @@ comparison"), or to "Considered, not planned" there.*
 - [ ] What opens after archiving or deleting the open conversation: the
       next one down, the one above, or none (check what happens today
       first)
+      *Built (2026-10-19), waiting for the owner to try it. Today it was
+      the next one below, else the nearest above, else nothing; that stays
+      the default. Settings → Viewing (a new section, where the settings
+      plan put reading choices) → After archiving or deleting: Next
+      below, Next above (else below), Nothing. Applies to anything that
+      takes the open conversation out of the list (archive, Trash, Spam,
+      a label change), from any key, button, menu or swipe*
 - [ ] Reply quotes the selected text: with text selected in a message,
       `r` / `a` / `f` quote just that; otherwise the whole message
 - [ ] Undo send delay: 5 (today), 10, 20 or 30 seconds, as Gmail offers

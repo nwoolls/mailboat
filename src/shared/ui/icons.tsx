@@ -2,6 +2,7 @@ import { HugeiconsIcon, type HugeiconsIconProps, type IconSvgElement } from "@hu
 import Add01 from "@hugeicons/core-free-icons/Add01Icon";
 import AlertCircle from "@hugeicons/core-free-icons/AlertCircleIcon";
 import Archive02 from "@hugeicons/core-free-icons/Archive02Icon";
+import BookOpen01 from "@hugeicons/core-free-icons/BookOpen01Icon";
 import ArrowRight01 from "@hugeicons/core-free-icons/ArrowRight01Icon";
 import Attachment01 from "@hugeicons/core-free-icons/Attachment01Icon";
 import Cancel01 from "@hugeicons/core-free-icons/Cancel01Icon";
@@ -135,6 +136,7 @@ export const RulesIcon = wrap(Filter);
 export const ToyboxIcon = wrap(Pacman01);
 export const SignatureIcon = wrap(Signature);
 export const VacationIcon = wrap(Beach);
+export const ViewingIcon = wrap(BookOpen01);
 export const BlockIcon = wrap(UserBlock01);
 export const CheckIcon = wrap(Tick02);
 export const CalendarIcon = wrap(Calendar03);

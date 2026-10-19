@@ -12,6 +12,7 @@ import {
   KeyboardSection,
   NotificationsSection,
   ToyboxSection,
+  ViewingSection,
 } from "./SettingsSections";
 
 /**
@@ -86,6 +87,7 @@ export function SettingsPage({
           )}
           {section === "general" && <GeneralSection />}
           {section === "notifications" && <NotificationsSection />}
+          {section === "viewing" && <ViewingSection />}
           {section === "signatures" && <SignaturesSection accounts={accounts} />}
           {section === "vacation" && <VacationSection accounts={accounts} />}
           {section === "keyboard" && <KeyboardSection />}
