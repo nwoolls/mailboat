@@ -1035,7 +1035,7 @@ comparison"), or to "Considered, not planned" there.*
       written (signature and quote keep theirs), "Default" sending as
       before. An address that's gone (account removed) falls back to the
       viewed account Owner confirmed it works (2026-10-19)*
-- [ ] Menus trued up *(owner request, 2026-10-19)*: the macOS menu bar
+- [x] Menus trued up *(owner request, 2026-10-19)*: the macOS menu bar
       is still Tauri's default plus "Settings…", so mail actions live only
       in the toolbar, the right-click menu and ⌘K. Give the menu bar the
       app's actions with their shortcuts (New Message; Reply, Reply all,
@@ -1069,7 +1069,7 @@ comparison"), or to "Considered, not planned" there.*
       (Gmail has g+i/s/t/d/a, checked in Google's help, but no Unread;
       `g then e` for Archive was already Mailboat's own); and the Go to items
       are ⌘1 to ⌘7 in the sidebar's order, as Mail numbers its favourite
-      mailboxes*
+      mailboxes. Owner confirmed (2026-10-19)*
 - [ ] Remember between launches whether the sidebar and the reader are
       hidden, and which sidebar folds are open *(moved from UX Spike 1's
       deferred ideas, owner, 2026-10-19)*. Today both panels start shown
