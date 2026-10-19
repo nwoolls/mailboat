@@ -1267,6 +1267,13 @@ seen for real.*
       fixing: make that the rule, or a setting (Settings → Composing, with
       the Gmail way as the other choice). Replying to your own message
       keeps its To as To either way
+- [ ] Addresses can't be dragged between To, Cc and Bcc *(owner report,
+      2026-10-19)*. In other mail apps an address can be dragged from one
+      field to another (say from To down to Cc); in the composer nothing
+      happens, so moving someone means deleting and retyping them. Needs
+      the address chips in `AddressField` to be draggable and each field
+      to accept a drop (moving the address, never copying it, and keeping
+      its name)
 - [ ] "Download Image" in an email's right-click menu does nothing
       *(owner report, 2026-10-19)*. Right-clicking an image inside an
       email shows the web view's own menu (Mailboat doesn't make it; it may
