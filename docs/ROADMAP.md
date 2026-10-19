@@ -840,8 +840,23 @@ invitations, Milestone 5), so each account signs in again only once for
 both; Settings → Accounts says when an account still lacks it. The
 editors live in Settings (Signatures, Rules), which now exists.
 
-- [ ] Rules (Gmail filters): list, create, edit, delete *(owner request,
-      2026-10-16)*
+*Order (owner, 2026-10-18): rules first (used most), then signatures.*
+
+- [x] Rules (Gmail filters): list, create, edit, delete *(owner request,
+      2026-10-16)*. **Built (2026-10-18):** Settings → Rules (between
+      Appearance and Keyboard) lists each account's rules as a sentence
+      ("From news@x.com" / "Skip the Inbox, label “News”"), with a search,
+      New rule, Edit and Delete. One editor, laid out like Gmail's filter
+      form: From, To, Subject, Has the words, Doesn't have, Size, Has an
+      attachment; then Skip the Inbox, Mark as read, Star, Never send to
+      Spam, Delete, labels (with "Create" as in the label picker),
+      Importance and Category. While you type it says how many
+      conversations match now, and "Also apply to the N matching
+      conversations already here" does what Gmail's checkbox does (newest
+      10,000 messages). ⌘↩ saves. Forwarding can't be set (needs the
+      `gmail.settings.sharing` permission); forwarding set up in Gmail is
+      shown and kept. An account without the permission shows "Sign in
+      again" in its group. Not yet tried by the owner against real Gmail
 - [ ] Create a rule from a message, as Gmail's "Filter messages like
       these": sender, subject and so on filled in from it
 - [ ] Manage signatures per address (using them is in Milestone 4)

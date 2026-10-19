@@ -1,0 +1,72 @@
+import { describe, expect, it } from "vitest";
+import type { LabelId, Rule } from "../../../platform/tauri/bindings";
+import { emptyForm, formFromRule, formProblem, sizeParts, toActions, toCriteria } from "./ruleForm";
+
+const rule: Rule = {
+  accountId: 1,
+  filterId: "f1",
+  criteria: {
+    from: "news@x.com",
+    to: "",
+    subject: "",
+    hasWords: "",
+    doesntHave: "",
+    hasAttachment: true,
+    size: { comparison: "smaller", bytes: 5 * 1024 * 1024 },
+  },
+  actions: {
+    skipInbox: true,
+    markRead: false,
+    star: false,
+    labels: [7 as LabelId],
+    neverSpam: false,
+    trash: false,
+    importance: "never",
+    category: "updates",
+    forwardTo: "me@elsewhere.com",
+  },
+};
+
+describe("rule form", () => {
+  it("round-trips a rule", () => {
+    const form = formFromRule(rule);
+    expect(form.sizeValue).toBe("5");
+    expect(form.sizeUnit).toBe("mb");
+    expect(toCriteria(form)).toEqual(rule.criteria);
+    expect(toActions(form)).toEqual(rule.actions);
+  });
+
+  it("shows a size in the largest whole unit", () => {
+    expect(sizeParts(2048)).toEqual({ value: "2", unit: "kb" });
+    expect(sizeParts(1500)).toEqual({ value: "1500", unit: "bytes" });
+    expect(sizeParts(3 * 1024 * 1024)).toEqual({ value: "3", unit: "mb" });
+  });
+
+  it("converts a typed size to bytes, and trims text", () => {
+    const form = {
+      ...emptyForm({ from: "  a@x.com " }),
+      sizeValue: "1.5",
+      sizeUnit: "kb" as const,
+    };
+    expect(toCriteria(form)).toMatchObject({
+      from: "a@x.com",
+      size: { comparison: "larger", bytes: 1536 },
+    });
+  });
+
+  it("says what's missing before saving", () => {
+    expect(formProblem(emptyForm())).toMatch(/which mail/);
+    expect(formProblem(emptyForm({ from: "a@x.com" }))).toMatch(/at least one thing/);
+    expect(formProblem({ ...emptyForm({ from: "a@x.com" }), star: true })).toBeNull();
+    expect(formProblem({ ...emptyForm(), star: true, sizeValue: "-3" })).toMatch(/number/);
+    expect(formProblem({ ...emptyForm(), star: true, sizeValue: "9999" })).toMatch(/4,095 MB/);
+    // A size alone is enough to say which mail.
+    expect(formProblem({ ...emptyForm(), star: true, sizeValue: "10" })).toBeNull();
+  });
+
+  it("starts from what the message suggests", () => {
+    const form = emptyForm({ from: "news@x.com" });
+    expect(form.from).toBe("news@x.com");
+    expect(form.applyToExisting).toBe(false);
+  });
+});

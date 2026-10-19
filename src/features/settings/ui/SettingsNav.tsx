@@ -7,6 +7,7 @@ import {
   type IconProps,
   KeyboardIcon,
   NotificationIcon,
+  RulesIcon,
 } from "../../../shared/ui/icons";
 import { SETTINGS_SECTIONS, type SettingsSectionId } from "../model/sections";
 
@@ -15,6 +16,7 @@ const ICONS: Record<SettingsSectionId, (props: IconProps) => React.ReactNode> = 
   accounts: AccountsIcon,
   notifications: NotificationIcon,
   appearance: AppearanceIcon,
+  rules: RulesIcon,
   keyboard: KeyboardIcon,
   advanced: AdvancedIcon,
 };

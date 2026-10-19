@@ -14,6 +14,8 @@ import type {
   Answer,
   AppSettings,
   MessageId,
+  RuleActions,
+  RuleCriteria,
   ThreadId,
 } from "../../platform/tauri/bindings";
 import { IS_TAURI, unwrap } from "../../platform/tauri/ipc";
@@ -36,6 +38,9 @@ export const keys = {
   appInfo: ["appInfo"] as const,
   appSettings: ["appSettings"] as const,
   invite: (id: MessageId) => ["invite", id] as const,
+  rules: ["rules"] as const,
+  ruleMatch: (account: AccountId, criteria: RuleCriteria) =>
+    ["ruleMatch", account, criteria] as const,
 };
 
 export function useAccounts() {
@@ -207,6 +212,62 @@ export function useInviteAction(id: MessageId) {
   });
 }
 
+/** Every account's rules (Gmail filters), read from Gmail each time Settings shows them. */
+export function useRules() {
+  return useQuery({
+    queryKey: keys.rules,
+    queryFn: () => unwrap(commands.rulesList()),
+    enabled: IS_TAURI,
+  });
+}
+
+/**
+ * How many conversations match a rule's criteria now, for the editor.
+ * Pass the criteria once typing has paused; null asks nothing.
+ */
+export function useRuleMatchCount(account: AccountId, criteria: RuleCriteria | null) {
+  return useQuery({
+    queryKey: keys.ruleMatch(account, criteria!),
+    queryFn: () => unwrap(commands.ruleMatchCount(account, criteria!)),
+    enabled: IS_TAURI && criteria !== null,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+    retry: false,
+  });
+}
+
+export type RuleSave = {
+  accountId: AccountId;
+  /** The rule being edited, or null for a new one. */
+  filterId: string | null;
+  criteria: RuleCriteria;
+  actions: RuleActions;
+  applyToExisting: boolean;
+};
+
+/** Creates or replaces a rule; the rules list refreshes. */
+export function useSaveRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (r: RuleSave) =>
+      unwrap(
+        r.filterId === null
+          ? commands.ruleCreate(r.accountId, r.criteria, r.actions, r.applyToExisting)
+          : commands.ruleUpdate(r.accountId, r.filterId, r.criteria, r.actions, r.applyToExisting),
+      ),
+    onSettled: () => void qc.invalidateQueries({ queryKey: keys.rules }),
+  });
+}
+
+export function useDeleteRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accountId, filterId }: { accountId: AccountId; filterId: string }) =>
+      unwrap(commands.ruleDelete(accountId, filterId)),
+    onSettled: () => void qc.invalidateQueries({ queryKey: keys.rules }),
+  });
+}
+
 /** Keeps the cache in step with Rust: sync status updates and mail changes. */
 export function useMailEvents() {
   const qc = useQueryClient();
@@ -228,6 +289,8 @@ export function useMailEvents() {
       }),
       events.accountsChangedEvent.listen(() => {
         void qc.invalidateQueries({ queryKey: keys.accounts });
+        // A new sign-in may have added the permission rules need.
+        void qc.invalidateQueries({ queryKey: keys.rules });
       }),
       events.identitiesChangedEvent.listen(() => {
         void qc.invalidateQueries({ queryKey: keys.identities });

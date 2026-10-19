@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Account, AccountId, AccountSyncState } from "../../../platform/tauri/bindings";
 import { sectionFor, type SettingsSectionId } from "../model/sections";
+import { RulesSection } from "../../rules/ui/RulesSection";
 import { PageHeader } from "./controls";
 import {
   AccountsSection,
@@ -76,6 +77,8 @@ export function SettingsPage({
             />
           ) : section === "appearance" ? (
             <AppearanceSection header={header} />
+          ) : section === "rules" ? (
+            <RulesSection accounts={accounts} header={header} />
           ) : (
             header()
           )}
