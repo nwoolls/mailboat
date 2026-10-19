@@ -966,6 +966,11 @@ comparison"), or to "Considered, not planned" there.*
       General → Email links. A `mailto:` link clicked inside an email now
       opens a new message here too, instead of in the system's mail app.
       Windows comes with the Windows work*
+      *First try (owner, 2026-10-19): links did nothing. macOS keeps the
+      default by app ID, which the dev build and installed app share, and
+      sent links to the installed copy, built before this. "Use this
+      copy" is gone; Settings now says which copy gets links. Needs a
+      fresh install to /Applications to try for real*
 - [ ] Unread count on the Dock icon (unread Inbox conversations, every
       account), with a setting for Inbox only / all unread / off
 - [ ] What opens after archiving or deleting the open conversation: the
@@ -1178,6 +1183,23 @@ it will ever be distributed (2026-10-19), so this comes last.*
       brought up to date: it names only the Gmail API, but the README
       now lists the People and Google Calendar APIs too
 - [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
+
+## Bug backlog
+
+*Bugs found in passing and not yet fixed (started 2026-10-19 at the
+owner's request). Each says how it was found and whether it has been
+seen for real.*
+
+- [ ] "Load older mail" can ask Gmail again and again for an empty view.
+      `threads_load_older` (src-tauri/src/commands.rs) answers "not
+      exhausted" when one account fails (no Gmail client, say) while
+      another succeeds. The list then asks again at once, because an
+      empty view is always "near the end", so the requests repeat for as
+      long as that account keeps failing, and the empty view (and its
+      screensaver wait) restarts each time. Found reading the code while
+      looking into the screensaver (2026-10-19); the sync log shows no
+      such loop so far. Likely fix: wait for "Retry" after a partial
+      failure, as after a full one
 
 ## Later / unscheduled
 

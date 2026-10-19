@@ -9,9 +9,10 @@ export function defaultMailAppRow(app: DefaultMailApp): { description: string; a
     case "this":
       return { description: "Mailboat is your default email reader: email links open here." };
     case "otherCopy":
+      // macOS keeps the default by app ID, which every copy shares, and
+      // chooses the copy itself: a button couldn't change it.
       return {
-        description: `Another copy of Mailboat opens email links (${app.path}).`,
-        action: "Use this copy",
+        description: `Mailboat is your default email reader. macOS sends email links to the copy at ${app.path}.`,
       };
     case "other":
       return { description: `${app.name} opens email links.`, action: "Make Mailboat the default" };

@@ -376,7 +376,12 @@ export type Contact = {
 export type DefaultMailApp = 
 /**  This copy of Mailboat. */
 { kind: "this" } | 
-/**  Another copy of Mailboat (a dev build, or the installed app), at `path`. */
+/**
+ *  Mailboat, but macOS sends links to another copy, at `path`. The
+ *  default is kept by bundle ID, which the dev build and the installed
+ *  app share, so macOS picks the copy (usually the one in
+ *  /Applications); no button here can change that.
+ */
 { kind: "otherCopy"; path: string } | 
 /**  Another app, by name (Mail, say). */
 { kind: "other"; name: string } | 

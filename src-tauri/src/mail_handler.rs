@@ -49,7 +49,10 @@ pub fn open(app: &AppHandle, link: &str) -> bool {
 pub enum DefaultMailApp {
     /// This copy of Mailboat.
     This,
-    /// Another copy of Mailboat (a dev build, or the installed app), at `path`.
+    /// Mailboat, but macOS sends links to another copy, at `path`. The
+    /// default is kept by bundle ID, which the dev build and the installed
+    /// app share, so macOS picks the copy (usually the one in
+    /// /Applications); no button here can change that.
     OtherCopy { path: String },
     /// Another app, by name (Mail, say).
     Other { name: String },

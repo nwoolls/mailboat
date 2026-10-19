@@ -12,9 +12,9 @@ describe("defaultMailAppRow", () => {
     expect(row.action).toBe("Make Mailboat the default");
   });
 
-  it("tells a dev build from the installed app", () => {
+  it("says which copy gets links, with no button that couldn't change it", () => {
     const row = defaultMailAppRow({ kind: "otherCopy", path: "/Applications/Mailboat.app" });
     expect(row.description).toContain("/Applications/Mailboat.app");
-    expect(row.action).toBe("Use this copy");
+    expect(row.action).toBeUndefined();
   });
 });
