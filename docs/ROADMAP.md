@@ -194,9 +194,8 @@ Options offered during the spike that the owner didn't pick (yet):
 
 ### Deferred ideas
 
-- Remember which panels are hidden between launches (pane widths are
-  remembered now)
-- Remember which sidebar folds are open
+- Remember which panels are hidden between launches, and which sidebar
+  folds are open: *moved to Milestone 7 (owner, 2026-10-19)*
 - Thread row density (rows are still 72px, three lines)
 - Unread count in the list title (sidebar counts are done)
 - Reader header, message stacking, how the white email card sits in dark mode
@@ -985,6 +984,10 @@ comparison"), or to "Considered, not planned" there.*
       views), and make the toolbar, right-click menu, ⌘K and menu bar
       offer the same actions under the same names, ideally from one list
       so they can't drift apart again
+- [ ] Remember between launches whether the sidebar and the reader are
+      hidden, and which sidebar folds are open *(moved from UX Spike 1's
+      deferred ideas, owner, 2026-10-19)*. Today both panels start shown
+      every launch; pane widths and the window are already remembered
 
 ## UX Spike 2
 
