@@ -1026,6 +1026,15 @@ comparison"), or to "Considered, not planned" there.*
       last card, the oldest message*
 - [ ] Default From for new mail (today: the account being viewed) and
       the composer's starting font
+      *Built (2026-10-19), waiting for the owner to try it: Settings →
+      Composing → New mail. "Send from" is "The account you're viewing"
+      (as before) or any address of any account; it applies to new mail
+      and mailto: links, and replies still start from the address the
+      conversation was sent to. "Font" picks one of Gmail's fonts and
+      sizes; the editor shows it and sent mail carries it around what was
+      written (signature and quote keep theirs), "Default" sending as
+      before. An address that's gone (account removed) falls back to the
+      viewed account*
 - [ ] Menus trued up *(owner request, 2026-10-19)*: the macOS menu bar
       is still Tauri's default plus "Settings…", so mail actions live only
       in the toolbar, the right-click menu and ⌘K. Give the menu bar the

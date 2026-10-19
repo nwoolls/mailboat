@@ -24,6 +24,7 @@ import {
   trimSignature,
   withIdentity,
   withSelection,
+  preferredIdentity,
 } from "./draft";
 
 const a = (email: string, name: string | null = null): Address => ({ name, email });
@@ -75,6 +76,42 @@ function source(over: Partial<ReplySource> = {}): ReplySource {
     ...over,
   };
 }
+
+describe("starting font", () => {
+  it("wraps what was written in the chosen font, and nothing else", () => {
+    expect(emailHtml("<p>Hi</p>", { font: "Georgia, serif", size: "" })).toBe(
+      '<div style="font-family:Georgia, serif"><p style="margin:0">Hi</p></div>',
+    );
+    expect(emailHtml("<p>Hi</p>", { font: "'Times New Roman', Times, serif", size: "18px" })).toBe(
+      '<div style="font-family:\'Times New Roman\', Times, serif;font-size:18px"><p style="margin:0">Hi</p></div>',
+    );
+  });
+  it("leaves mail as before with no font chosen or nothing written", () => {
+    expect(emailHtml("<p>Hi</p>")).toBe('<p style="margin:0">Hi</p>');
+    expect(emailHtml("", { font: "Georgia, serif", size: "" })).toBe("");
+  });
+  it("sends the signature and quote outside the wrapper", () => {
+    const d = {
+      ...newDraft(identities, ME, "me@x.com"),
+      html: "<p>Hi</p>",
+      quote: "<blockquote>q</blockquote>",
+    };
+    const html = toOutgoing(d, { font: "Georgia, serif", size: "" }).html ?? "";
+    expect(html.indexOf("</div>")).toBeLessThan(html.indexOf("<blockquote>"));
+  });
+});
+
+describe("preferredIdentity", () => {
+  it("finds the chosen address, or none if it's gone", () => {
+    expect(preferredIdentity(identities, null)).toBeUndefined();
+    expect(preferredIdentity(identities, { accountId: ME, email: "ALIAS@x.com" })?.email).toBe(
+      "alias@x.com",
+    );
+    expect(
+      preferredIdentity(identities, { accountId: OTHER, email: "alias@x.com" }),
+    ).toBeUndefined();
+  });
+});
 
 describe("withSelection", () => {
   const original = source({ html: "<p>Noon?</p><p>J</p>", inlineImages: [7] });

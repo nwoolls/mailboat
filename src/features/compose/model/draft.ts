@@ -13,6 +13,7 @@ import type {
   ReplySource,
   ThreadId,
 } from "../../../platform/tauri/bindings";
+import { PLAIN_STYLE, styleCss, type TextStyle } from "./fonts";
 import { formatAddress, isValidEmail, sameEmail, uniqueAddresses } from "./addresses";
 
 export type ComposeKind = "new" | "reply" | "replyAll" | "forward";
@@ -406,6 +407,21 @@ export function resumedDraft(opened: OpenedDraft, from: MessageId): Draft {
  * and the new address's signature replaces the old one (it's not part of
  * the text, so this works after typing too).
  */
+/**
+ * The address new mail starts from when one is chosen (Settings →
+ * Composing), if it still exists; otherwise none, and new mail starts
+ * from the account being viewed.
+ */
+export function preferredIdentity(
+  identities: Identity[],
+  chosen: { accountId: AccountId; email: string } | null,
+): Identity | undefined {
+  if (!chosen) return undefined;
+  return identities.find(
+    (i) => i.accountId === chosen.accountId && sameEmail(i.email, chosen.email),
+  );
+}
+
 export function withIdentity(draft: Draft, identity: Identity): Draft {
   const from = identityAddress(identity);
   return {
@@ -484,23 +500,27 @@ export function hasChanges(draft: Draft): boolean {
  * gaps browsers add between them (the editor shows none), and empty
  * lines kept as lines (an empty paragraph would collapse to nothing).
  */
-export function emailHtml(html: string): string {
-  return html
+export function emailHtml(html: string, style: TextStyle = PLAIN_STYLE): string {
+  const body = html
     .replace(/<p><\/p>/g, "<p><br></p>")
     .replace(/<p style="/g, '<p style="margin:0;')
     .replace(/<p>/g, '<p style="margin:0">');
+  // The starting font (Settings → Composing) around what was written, so
+  // it reaches the reader; text formatted in the editor keeps its own.
+  const css = styleCss(style);
+  return css && body ? `<div style="${css.replace(/"/g, "'")}">${body}</div>` : body;
 }
 
 /**
  * The message as sent: what was written, a blank line, the signature (in
  * Gmail's wrapper), then the quote, in both copies.
  */
-export function toOutgoing(draft: Draft): OutgoingMessage {
+export function toOutgoing(draft: Draft, style: TextStyle = PLAIN_STYLE): OutgoingMessage {
   const signature = draft.signature ? `<div class="gmail_signature">${draft.signature}</div>` : "";
   const after = [signature, draft.quote].filter(Boolean);
   const html =
     draft.html.trim() || after.length > 0
-      ? emailHtml(draft.html) + after.map((part) => `<div><br></div>${part}`).join("")
+      ? emailHtml(draft.html, style) + after.map((part) => `<div><br></div>${part}`).join("")
       : null;
   const text = [draft.text.trimEnd(), htmlToText(draft.signature), draft.quoteText]
     .filter(Boolean)

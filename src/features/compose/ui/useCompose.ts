@@ -22,7 +22,9 @@ import {
   replyDraft,
   resumedDraft,
   switchedKind,
+  preferredIdentity,
   toOutgoing,
+  withIdentity,
   withSelection,
 } from "../model/draft";
 import { selectedInMessage } from "../../reader/ui/MessageFrame";
@@ -142,7 +144,9 @@ export async function saveNow(id: number): Promise<boolean> {
   if (!entry || !hasChanges(entry.draft)) return true;
   set(S.setSaved(state, id, "saving"));
   const savedId = s.savedId ?? entry.draft.savedId;
-  s.running = unwrap(commands.draftSave(savedId, toOutgoing(entry.draft)))
+  s.running = unwrap(
+    commands.draftSave(savedId, toOutgoing(entry.draft, composingPrefs.get().style)),
+  )
     .then((saved) => {
       s.savedId = saved;
       if (s.discarded) {
@@ -296,22 +300,34 @@ export function useComposeActions(accounts: Account[]) {
     [accounts],
   );
 
-  const startNew = useCallback(
+  /**
+   * A blank new message: from the address chosen in Settings → Composing,
+   * if any, else from `accountId` (the one being viewed).
+   */
+  const blankDraft = useCallback(
     async (accountId: AccountId) => {
       const list = await identities();
-      set(S.openCard(state, newDraft(list, accountId, emailOf(accountId))));
+      const chosen = preferredIdentity(list, composingPrefs.get().defaultFrom);
+      if (!chosen) return newDraft(list, accountId, emailOf(accountId));
+      const account = chosen.accountId;
+      return withIdentity(newDraft(list, account, emailOf(account)), chosen);
     },
     [identities, emailOf],
+  );
+
+  const startNew = useCallback(
+    async (accountId: AccountId) => {
+      set(S.openCard(state, await blankDraft(accountId)));
+    },
+    [blankDraft],
   );
 
   /** A new message filled in from a `mailto:` link. */
   const startFromMailto = useCallback(
     async (accountId: AccountId, link: Mailto) => {
-      const list = await identities();
-      const draft = newDraft(list, accountId, emailOf(accountId));
-      set(S.openCard(state, draftFromMailto(draft, link)));
+      set(S.openCard(state, draftFromMailto(await blankDraft(accountId), link)));
     },
-    [identities, emailOf],
+    [blankDraft],
   );
 
   /** Replies to (or forwards) the newest message of a conversation. */
@@ -404,7 +420,9 @@ export function useComposeActions(accounts: Account[]) {
         .then(() => {
           // The latest saved ID, if a save finished meanwhile.
           const savedId = pending.savedId ?? entry.draft.savedId;
-          return unwrap(commands.messageSend(toOutgoing({ ...draft, savedId })));
+          return unwrap(
+            commands.messageSend(toOutgoing({ ...draft, savedId }, composingPrefs.get().style)),
+          );
         })
         .then(() => showToast({ message: "Message sent" }))
         .catch((e: unknown) => {

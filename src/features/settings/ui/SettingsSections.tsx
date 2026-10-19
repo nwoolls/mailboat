@@ -9,6 +9,7 @@ import { unwrap } from "../../../platform/tauri/ipc";
 import { showToast } from "../../../shared/lib/toast";
 import {
   useAppInfo,
+  useAccounts,
   useAppSettings,
   useDefaultMailApp,
   useIdentities,
@@ -48,6 +49,8 @@ import {
   type MessageOrder,
 } from "../../mailbox/model/viewingPrefs";
 import { UNDO_SEND_CHOICES } from "../../compose/model/composingPrefs";
+import { FONTS, SIZES } from "../../compose/model/fonts";
+import { sameEmail } from "../../compose/model/addresses";
 import { composingPrefs } from "../../compose/ui/composingPrefs";
 import { TEXT_SIZES } from "../model/textSize";
 import { textSize } from "./textSize";
@@ -414,27 +417,116 @@ export function ViewingSection() {
 
 export function ComposingSection() {
   const prefs = composingPrefs.use();
+  const identities = useIdentities().data ?? [];
+  const accounts = useAccounts().data ?? [];
+  const chosen = prefs.defaultFrom;
+  // A chosen address that's gone (its account removed) shows as the default.
+  const fromValue =
+    chosen &&
+    identities.some((i) => i.accountId === chosen.accountId && sameEmail(i.email, chosen.email))
+      ? fromKey(chosen.accountId, chosen.email)
+      : "";
   return (
-    <Group title="Sending">
-      <Row
-        label="Undo send"
-        description="How long Undo can stop a message after you send it. It waits that long before going to Gmail."
-      >
-        <Segmented
+    <>
+      <Group title="New mail">
+        <Row
+          label="Send from"
+          description="The address new messages start from. Replies start from the address the conversation was sent to."
+        >
+          <select
+            aria-label="Send new mail from"
+            value={fromValue}
+            onChange={(e) => {
+              const picked = identities.find(
+                (i) => fromKey(i.accountId, i.email) === e.target.value,
+              );
+              composingPrefs.set({
+                ...prefs,
+                defaultFrom: picked ? { accountId: picked.accountId, email: picked.email } : null,
+              });
+            }}
+            className={SELECT_CLASS}
+          >
+            <option value="">The account you’re viewing</option>
+            {accounts.map((account) => (
+              <optgroup key={account.id} label={account.email}>
+                {identities
+                  .filter((i) => i.accountId === account.id)
+                  .map((i) => (
+                    <option
+                      key={fromKey(i.accountId, i.email)}
+                      value={fromKey(i.accountId, i.email)}
+                    >
+                      {i.name ? `${i.name} <${i.email}>` : i.email}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
+          </select>
+        </Row>
+        <Row
+          label="Font"
+          description="What new messages and replies start in, as Gmail sends it. Text you format in the message keeps its own."
+        >
+          <div className="flex gap-2">
+            <select
+              aria-label="Starting font"
+              value={prefs.style.font}
+              onChange={(e) =>
+                composingPrefs.set({ ...prefs, style: { ...prefs.style, font: e.target.value } })
+              }
+              className={SELECT_CLASS}
+            >
+              <option value="">Default</option>
+              {FONTS.map(([label, family]) => (
+                <option key={label} value={family} style={{ fontFamily: family }}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Starting size"
+              value={prefs.style.size}
+              onChange={(e) =>
+                composingPrefs.set({ ...prefs, style: { ...prefs.style, size: e.target.value } })
+              }
+              className={SELECT_CLASS}
+            >
+              {SIZES.map(([label, size]) => (
+                <option key={label} value={size}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </Row>
+      </Group>
+      <Group title="Sending">
+        <Row
           label="Undo send"
-          value={String(prefs.undoSendSeconds)}
-          options={UNDO_SEND_CHOICES.map((s) => ({ value: String(s), label: `${s} sec` }))}
-          onChange={(value) =>
-            composingPrefs.set({
-              ...prefs,
-              undoSendSeconds: UNDO_SEND_CHOICES.find((s) => String(s) === value) ?? 5,
-            })
-          }
-        />
-      </Row>
-    </Group>
+          description="How long Undo can stop a message after you send it. It waits that long before going to Gmail."
+        >
+          <Segmented
+            label="Undo send"
+            value={String(prefs.undoSendSeconds)}
+            options={UNDO_SEND_CHOICES.map((s) => ({ value: String(s), label: `${s} sec` }))}
+            onChange={(value) =>
+              composingPrefs.set({
+                ...prefs,
+                undoSendSeconds: UNDO_SEND_CHOICES.find((s) => String(s) === value) ?? 5,
+              })
+            }
+          />
+        </Row>
+      </Group>
+    </>
   );
 }
+
+const fromKey = (accountId: number, email: string) => `${accountId}:${email.toLowerCase()}`;
+
+const SELECT_CLASS =
+  "h-7 max-w-64 rounded-md border border-content/10 bg-transparent px-1.5 text-[12px] text-content/80 hover:bg-selection";
 
 const MARK_READ: { value: MarkRead; label: string }[] = [
   { value: "open", label: "On open" },

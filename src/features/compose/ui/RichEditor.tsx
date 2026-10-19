@@ -23,29 +23,7 @@ import {
   TextColorIcon,
   UnderlineIcon,
 } from "../../../shared/ui/icons";
-
-/** Gmail's font choices, with the stacks Gmail sends. */
-const FONTS: [label: string, family: string][] = [
-  ["Sans Serif", "Arial, Helvetica, sans-serif"],
-  ["Serif", "'Times New Roman', Times, serif"],
-  ["Fixed width", "monospace"],
-  ["Wide", "'Arial Black', sans-serif"],
-  ["Narrow", "'Arial Narrow', sans-serif"],
-  ["Comic Sans MS", "'Comic Sans MS', sans-serif"],
-  ["Garamond", "Garamond, serif"],
-  ["Georgia", "Georgia, serif"],
-  ["Tahoma", "Tahoma, sans-serif"],
-  ["Trebuchet MS", "'Trebuchet MS', sans-serif"],
-  ["Verdana", "Verdana, sans-serif"],
-];
-
-/** Gmail's four sizes; "Normal" leaves the reader's default. */
-const SIZES: [label: string, size: string][] = [
-  ["Small", "10px"],
-  ["Normal", ""],
-  ["Large", "18px"],
-  ["Huge", "32px"],
-];
+import { FONTS, SIZES } from "../model/fonts";
 
 export type EditorChange = { html: string; text: string; edited: boolean };
 
@@ -100,8 +78,16 @@ export function useRichEditor(
   });
 }
 
-export function EditorBody({ editor, className }: { editor: Editor | null; className?: string }) {
-  return <EditorContent editor={editor} className={className} />;
+export function EditorBody({
+  editor,
+  className,
+  style,
+}: {
+  editor: Editor | null;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return <EditorContent editor={editor} className={className} style={style} />;
 }
 
 /** Gmail's formatting bar: font, size, bold/italic/underline, colour, alignment, lists, quote, link. */

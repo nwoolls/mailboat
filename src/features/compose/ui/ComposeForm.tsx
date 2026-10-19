@@ -24,6 +24,7 @@ import {
 import { AddressField } from "./AddressField";
 import { HtmlPreview } from "./HtmlPreview";
 import { EditorBody, FormatBar, useRichEditor } from "./RichEditor";
+import { composingPrefs } from "./composingPrefs";
 import { useStuck } from "../../../shared/ui/useStuck";
 
 export type ReplyKind = Exclude<ComposeKind, "new">;
@@ -64,6 +65,7 @@ export function ComposeForm({
   onSwitchKind?: (kind: ReplyKind) => void;
 }) {
   const { draft, sending, error } = entry;
+  const { style } = composingPrefs.use();
   const [problem, setProblem] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [dropping, setDropping] = useState(false);
@@ -207,6 +209,8 @@ export function ComposeForm({
           <EditorBody
             editor={editor}
             className={draft.quote || draft.signature ? "" : "min-h-40"}
+            // Shown in the starting font it will be sent in (Settings → Composing).
+            style={{ fontFamily: style.font || undefined, fontSize: style.size || undefined }}
           />
           {draft.signature && (
             // Read-only, as it will be sent (Gmail's own HTML). It follows
