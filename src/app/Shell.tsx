@@ -50,6 +50,7 @@ import { anchorBelow, Menu, type MenuAnchor, MenuItem, MenuSeparator } from "../
 import {
   ArchiveIcon,
   ForwardIcon,
+  BlockIcon,
   LabelIcon,
   RulesIcon,
   MarkUnreadIcon,
@@ -77,7 +78,8 @@ import { ThreadReader } from "../features/reader/ui/ThreadReader";
 import { destinations } from "../features/palette/model/destinations";
 import { CommandPalette } from "../features/palette/ui/CommandPalette";
 import { paletteItems } from "./paletteItems";
-import { criteriaLikeThreads } from "../features/rules/model/likeThis";
+import { criteriaLikeThreads, senderToBlock } from "../features/rules/model/likeThis";
+import { BlockSenderDialog } from "../features/rules/ui/BlockSenderDialog";
 import { RuleEditor, type RuleEditorTarget } from "../features/rules/ui/RuleEditor";
 import { VacationBanner } from "../features/vacation/ui/VacationBanner";
 import type { SettingsSectionId } from "../features/settings/model/sections";
@@ -203,6 +205,8 @@ export function Shell() {
   const [moreAnchor, setMoreAnchor] = useState<MenuAnchor | null>(null);
   // A rule being made from mail ("Filter messages like these").
   const [ruleEditor, setRuleEditor] = useState<RuleEditorTarget | null>(null);
+  // A sender about to be blocked (a rule sending their mail to the Trash).
+  const [blocking, setBlocking] = useState<{ accountId: AccountId; email: string } | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   // The Settings page's section while it's open. The mail stays mounted
@@ -485,10 +489,10 @@ export function Shell() {
   };
   // "Filter messages like these": a new rule from the conversations'
   // senders. Null when they span accounts (a rule belongs to one).
+  const selfEmails = (account: AccountId) =>
+    identities.filter((i) => i.accountId === account).map((i) => i.email);
   const filterLike = (rows: ThreadSummary[]) => {
-    const like = criteriaLikeThreads(rows, (account) =>
-      identities.filter((i) => i.accountId === account).map((i) => i.email),
-    );
+    const like = criteriaLikeThreads(rows, selfEmails);
     if (!like) return null;
     return () =>
       setRuleEditor({
@@ -499,6 +503,12 @@ export function Shell() {
       });
   };
   const filterTargets = filterLike(targets);
+  // "Block sender": only when the conversations have one sender (not you).
+  const blockFor = (rows: ThreadSummary[]) => {
+    const who = senderToBlock(rows, selfEmails);
+    return who ? { email: who.email, run: () => setBlocking(who) } : null;
+  };
+  const blockTargets = blockFor(targets);
   const toolbarActions: ToolbarActions = {
     archive: toggle("archive"),
     trash: toggle("trash"),
@@ -524,6 +534,7 @@ export function Shell() {
   const pickerLabels = labels.filter((l) => l.accountId === pickerAccount);
   // The right-click menu's conversations, and what each action would do.
   const menuRows = rowMenu ? menuTargets(threads, checked, rowMenu.clicked) : [];
+  const menuBlock = blockFor(menuRows);
   // Writing a reply happens in the conversation, so that one opens.
   const replyFromMenu = (kind: "reply" | "replyAll" | "forward") => {
     const row = menuRows[0];
@@ -880,6 +891,16 @@ export function Shell() {
           >
             {menuRows.length > 1 ? "Filter messages like these…" : "Filter messages like this…"}
           </MenuItem>
+          <MenuItem
+            icon={BlockIcon}
+            disabled={menuBlock === null}
+            onSelect={() => {
+              setRowMenu(null);
+              menuBlock?.run();
+            }}
+          >
+            {menuBlock ? `Block ${menuBlock.email}…` : "Block sender…"}
+          </MenuItem>
         </Menu>
       )}
       {moreAnchor && targets.length > 0 && (
@@ -894,7 +915,24 @@ export function Shell() {
           >
             {targets.length > 1 ? "Filter messages like these…" : "Filter messages like this…"}
           </MenuItem>
+          <MenuItem
+            icon={BlockIcon}
+            disabled={blockTargets === null}
+            onSelect={() => {
+              setMoreAnchor(null);
+              blockTargets?.run();
+            }}
+          >
+            {blockTargets ? `Block ${blockTargets.email}…` : "Block sender…"}
+          </MenuItem>
         </Menu>
+      )}
+      {blocking && (
+        <BlockSenderDialog
+          accountId={blocking.accountId}
+          email={blocking.email}
+          onClose={() => setBlocking(null)}
+        />
       )}
       {ruleEditor && (
         <RuleEditor
@@ -913,6 +951,7 @@ export function Shell() {
             openLabels: () =>
               setLabelAnchor({ x: window.innerWidth / 2 + 128, y: 96, align: "end" }),
             filterLike: filterTargets,
+            block: blockTargets,
             startNew,
             focusSearch: () => document.getElementById(SEARCH_INPUT_ID)?.focus(),
             syncNow: () => void commands.syncNow(null),

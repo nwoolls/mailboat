@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AccountId, LabelId, Rule } from "../../../platform/tauri/bindings";
-import { criteriaLikeThreads } from "./likeThis";
+import { blockRule, criteriaLikeThreads, senderToBlock } from "./likeThis";
 import { emptyForm, toActions, toCriteria } from "./ruleForm";
 import {
   applyText,
@@ -104,5 +104,31 @@ describe("filter messages like these", () => {
     expect(criteriaLikeThreads([thread(1, "me@x.com")], self)?.criteria).toEqual({});
     expect(criteriaLikeThreads([thread(1, "a@y.com"), thread(2, "b@y.com")], self)).toBeNull();
     expect(criteriaLikeThreads([], self)).toBeNull();
+  });
+});
+
+describe("block sender", () => {
+  it("blocks the one person who wrote, not you", () => {
+    expect(senderToBlock([thread(1, "me@x.com", "Spam@Y.com")], self)).toEqual({
+      accountId: 1,
+      email: "spam@y.com",
+    });
+    // The same sender in several conversations is still one person.
+    expect(senderToBlock([thread(1, "a@y.com"), thread(1, "a@y.com")], self)?.email).toBe(
+      "a@y.com",
+    );
+  });
+
+  it("offers nothing for several senders, your own mail, or mixed accounts", () => {
+    expect(senderToBlock([thread(1, "a@y.com"), thread(1, "b@y.com")], self)).toBeNull();
+    expect(senderToBlock([thread(1, "me@x.com")], self)).toBeNull();
+    expect(senderToBlock([thread(1, "a@y.com"), thread(2, "a@y.com")], self)).toBeNull();
+  });
+
+  it("makes a rule that deletes their mail and nothing else", () => {
+    const rule = blockRule("a@y.com");
+    expect(rule.criteria.from).toBe("a@y.com");
+    expect(rule.actions.trash).toBe(true);
+    expect(describeActions(rule.actions, names)).toBe("Delete");
   });
 });

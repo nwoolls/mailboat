@@ -1,4 +1,9 @@
-import type { AccountId, RuleCriteria, ThreadSummary } from "../../../platform/tauri/bindings";
+import type {
+  AccountId,
+  RuleActions,
+  RuleCriteria,
+  ThreadSummary,
+} from "../../../platform/tauri/bindings";
 
 /**
  * What "Filter messages like these" starts from, as Gmail's does: the
@@ -21,4 +26,45 @@ export function criteriaLikeThreads(
     if (email && !senders.includes(email)) senders.push(email);
   }
   return { accountId, criteria: senders.length ? { from: senders.join(" OR ") } : {} };
+}
+
+/**
+ * Who "Block sender" would block: the one person (other than you) who
+ * started the picked conversations, or null if there are several, none,
+ * or the conversations span accounts.
+ */
+export function senderToBlock(
+  threads: Pick<ThreadSummary, "accountId" | "senders">[],
+  selfEmails: (account: AccountId) => string[],
+): { accountId: AccountId; email: string } | null {
+  const like = criteriaLikeThreads(threads, selfEmails);
+  const from = like?.criteria.from;
+  if (!like || !from || from.includes(" OR ")) return null;
+  return { accountId: like.accountId, email: from };
+}
+
+/** The rule "Block sender" makes: their mail goes to the Trash. */
+export function blockRule(email: string): { criteria: RuleCriteria; actions: RuleActions } {
+  return {
+    criteria: {
+      from: email,
+      to: "",
+      subject: "",
+      hasWords: "",
+      doesntHave: "",
+      hasAttachment: false,
+      size: null,
+    },
+    actions: {
+      skipInbox: false,
+      markRead: false,
+      star: false,
+      labels: [],
+      neverSpam: false,
+      trash: true,
+      importance: "leave",
+      category: null,
+      forwardTo: null,
+    },
+  };
 }

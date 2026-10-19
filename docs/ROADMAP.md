@@ -885,16 +885,35 @@ editors live in Settings (Signatures, Rules), which now exists.
       so ("Vacation responder is on until the end of Fri, Oct 24") with
       Turn off and Settings, so it's never left on by mistake. Not yet
       tried by the owner against real Gmail
-- [ ] What else still sends the owner to Gmail on the web, to settle:
+- [x] Block sender *(from the list below; 2026-10-18)*: "Block
+      sender@x.com…" in the toolbar's More menu, the right-click menu and
+      ⌘K, offered when the picked conversations have one sender other
+      than you. After a confirmation it makes the rule "From them →
+      Delete it" and applies it to their mail already here, so it all
+      goes to the Trash. Undo by deleting the rule in Settings → Rules.
+      Gmail's own Blocked addresses list (which sends to Spam) has no
+      API, so this is the filter Gmail's form would make. Not yet tried
+      by the owner against real Gmail
+- [ ] What else still sends the owner to Gmail on the web, to settle.
+      *Proposed (2026-10-18), for the owner to confirm:*
       - Snooze and Schedule send have **no Gmail API**: Mailboat would have
         to do them itself (hold the message or conversation and act at
         the time, only while Mailboat is running, or with a label so it
-        shows in Gmail), so they'd differ from Gmail's own
+        shows in Gmail), so they'd differ from Gmail's own. *Proposal:*
+        not straightforward, so not built in this milestone; move both
+        to Later as their own items, with a design to agree first
+        (likely a "Snoozed" label plus a local timer, so Gmail shows
+        it too; Schedule send kept as a local draft sent while Mailboat is
+        open)
       - "Send mail as" aliases and forwarding need a second, more
-        sensitive permission (`gmail.settings.sharing`); probably
-        leave those in Gmail, as they're set once
-      - Inbox categories (Promotions, Social…) and blocked senders
-        (blocking is a filter, so Rules covers it)
+        sensitive permission (`gmail.settings.sharing`). *Proposal:*
+        leave them in Gmail (set once; Settings → Accounts has "Open in
+        Gmail"); no new permission
+      - Inbox categories (Promotions, Social…): rules can now put mail
+        in a category. *Proposal:* showing category tabs in Mailboat is a
+        separate feature for Later, if wanted at all (the owner keeps
+        Inbox Zero)
+      - Blocked senders: done, as Block sender above
 
 ## UX Spike 2
 

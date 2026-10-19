@@ -6,6 +6,7 @@ import type { Destination } from "../features/palette/model/destinations";
 import type { PaletteItem } from "../features/palette/ui/CommandPalette";
 import {
   ArchiveIcon,
+  BlockIcon,
   ComposeIcon,
   ForwardIcon,
   InboxIcon,
@@ -39,6 +40,8 @@ export function paletteItems(p: {
   openLabels: () => void;
   /** "Filter messages like these", when the conversations share an account. */
   filterLike: (() => void) | null;
+  /** "Block sender", when the conversations have one sender. */
+  block: { email: string; run: () => void } | null;
   startNew: () => void;
   focusSearch: () => void;
   syncNow: () => void;
@@ -120,6 +123,14 @@ export function paletteItems(p: {
       title: p.targets.length > 1 ? "Filter messages like these…" : "Filter messages like this…",
       icon: RulesIcon,
       run: p.filterLike,
+    });
+  if (p.block)
+    items.push({
+      id: "block",
+      group: "Conversation",
+      title: `Block ${p.block.email}…`,
+      icon: BlockIcon,
+      run: p.block.run,
     });
 
   items.push(
