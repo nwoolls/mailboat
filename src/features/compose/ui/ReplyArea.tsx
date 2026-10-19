@@ -110,7 +110,7 @@ export function ReplyArea({
   }
   if (popped)
     return (
-      <PinnedFoot className="flex items-center gap-2 px-1 pt-3 pb-4 text-xs text-content/50">
+      <PinnedFoot className="flex items-center gap-2 px-1 py-2.5 text-xs text-content/50">
         Your {KIND_LABELS[popped.draft.kind === "new" ? "reply" : popped.draft.kind].toLowerCase()}{" "}
         is open in its own card.
         <button
@@ -128,7 +128,7 @@ export function ReplyArea({
   const last = detail.messages.findLast((m) => !m.draft);
   const several = last ? last.to.length + last.cc.length > 1 : false;
   return (
-    <PinnedFoot className="flex gap-2 px-1 pt-3 pb-4">
+    <PinnedFoot className="flex gap-2 px-1 py-2.5">
       <ReplyButton icon={ReplyIcon} label="Reply" shortcut="r" onClick={() => onStart("reply")} />
       {several && (
         <ReplyButton
@@ -150,7 +150,9 @@ export function ReplyArea({
 
 /**
  * Stays at the bottom of the reader while the email scrolls under it, so
- * Reply and Forward are always at hand (see `.reader-foot`).
+ * Reply and Forward are always at hand (see `.reader-foot`). Its padding
+ * is the same above and below, so the buttons sit in the middle of the
+ * bar when it's pinned (owner report: 16px below, 12px above looked off).
  */
 function PinnedFoot({ className, children }: { className: string; children: React.ReactNode }) {
   const [marker, stuck] = useStuck();

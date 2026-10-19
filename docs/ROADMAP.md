@@ -894,7 +894,9 @@ editors live in Settings (Signatures, Rules), which now exists.
       blurred tint while it covers the email. In a short window (reader
       under 24rem, about 384px) it scrolls with the email instead, so the
       message isn't hidden. The line being typed stays above the pinned
-      bar. Not yet tried by the owner
+      bar. The owner tried it (2026-10-19): works; the Reply / Forward bar
+      was too tall with its buttons above centre, so its padding is now
+      even (10px above and below) and the reply's Send bar evened out too
 - [x] Block sender *(from the list below; 2026-10-18)*: "Block
       sender@x.com…" in the toolbar's More menu, the right-click menu and
       ⌘K, offered when the picked conversations have one sender other

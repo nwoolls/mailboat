@@ -247,7 +247,7 @@ export function ComposeForm({
       {/* Inline in the reader, formatting and Send stay at the bottom of
         the window while a long reply or forward scrolls under them. */}
       <div
-        className={inline ? "reader-foot reader-foot-in-card pt-1" : ""}
+        className={inline ? "reader-foot reader-foot-in-card pt-2" : ""}
         data-stuck={(inline && footStuck) || undefined}
       >
         <FormatBar editor={editor} />
