@@ -979,7 +979,7 @@ comparison"), or to "Considered, not planned" there.*
       Counts match the sidebar's (Spam and Trash left out). Choices
       renamed after the folders they match (owner, 2026-10-19): All
       Inboxes, Unread, Off. Owner confirmed it works (2026-10-19)*
-- [ ] What opens after archiving or deleting the open conversation: the
+- [x] What opens after archiving or deleting the open conversation: the
       next one down, the one above, or none (check what happens today
       first)
       *Built (2026-10-19), waiting for the owner to try it. Today it was
@@ -988,7 +988,8 @@ comparison"), or to "Considered, not planned" there.*
       plan put reading choices) → After archiving or deleting: Next
       below, Next above (else below), Nothing. Applies to anything that
       takes the open conversation out of the list (archive, Trash, Spam,
-      a label change), from any key, button, menu or swipe*
+      a label change), from any key, button, menu or swipe. Owner
+      confirmed it works (2026-10-19)*
 - [ ] Reply quotes the selected text: with text selected in a message,
       `r` / `a` / `f` quote just that; otherwise the whole message
 - [ ] Undo send delay: 5 (today), 10, 20 or 30 seconds, as Gmail offers
