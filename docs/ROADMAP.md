@@ -1009,6 +1009,13 @@ comparison"), or to "Considered, not planned" there.*
       Another notice (archiving, say) still replaces it, as in Gmail.
       Owner confirmed it works (2026-10-19)*
 - [ ] Text size for the reader and list
+      *Built (2026-10-19), waiting for the owner to try it: Settings →
+      Appearance → Text size (Small, Default, Large, Larger), in
+      Appearance rather than General as the settings plan had it, since
+      it's about how Mailboat looks. Scales the list's rows (which grow to
+      fit), the reader's subject and message headers, and each email
+      itself; Restore defaults resets it. Sidebar, toolbar and Settings
+      keep their size*
 - [ ] Mark as read: on open (today), after a few seconds, or never; and
       conversation order (oldest first, today, or newest first)
 - [ ] Default From for new mail (today: the account being viewed) and

@@ -9,6 +9,7 @@ import type { ThreadAction } from "../model/threadActions";
 import { SwipeBack, SwipeButton } from "./SwipeLayers";
 import type { OlderStatus } from "./useOlderMail";
 import { useSwipe } from "./useSwipe";
+import { useTextZoom } from "../../settings/ui/textSize";
 
 const ROW_HEIGHT = 72;
 /** Room before the row's text for the account ring and star (12px + gap). */
@@ -74,12 +75,19 @@ export function ThreadList({
     return () => observer.disconnect();
   }, [listEl]);
   const { swipe, commit } = useSwipe(listEl, threads, onSwipe);
+  // Settings → Appearance → Text size: rows grow with their text, which
+  // zooms inside them, so positions and swipes stay in whole rows.
+  const zoom = useTextZoom();
+  const rowStep = Math.round(ROW_HEIGHT * zoom);
   const virtualizer = useVirtualizer({
     count: threads.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: () => rowStep,
     overscan: 12,
   });
+  useEffect(() => {
+    virtualizer.measure();
+  }, [rowStep, virtualizer]);
   const items = virtualizer.getVirtualItems();
   const selfEmails = useMemo(() => [...accounts.values()].map((a) => a.email), [accounts]);
 
@@ -139,7 +147,7 @@ export function ThreadList({
           // Pulled the other way past closed: the row moves, no button.
           const bare = swiped?.bare === true;
           const swipeAction = swiped && !bare ? swipeActions(t)[swiped.side] : null;
-          const rowHeight = ROW_HEIGHT - 4;
+          const rowHeight = rowStep - 4;
           // Sliding out, or out and waiting for the list to drop it.
           const out = swiped?.mode === "out" || swiped?.mode === "gone";
           const back = swiped?.mode === "back";
@@ -211,90 +219,94 @@ export function ThreadList({
                   column (ICON_COLUMN): the account ring sits in it on the
                   first line and the star under it on the second, so icons
                   line up with icons and text with text on every row. */}
-                <div
-                  className="relative flex items-center gap-2"
-                  style={{ paddingLeft: ICON_COLUMN }}
-                >
-                  {t.unread && (
-                    <span
-                      className="absolute top-1/2 -left-3.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent"
-                      aria-label="Unread"
-                    />
-                  )}
-                  {account && (
-                    // The account as a hollow ring in a softened account
-                    // colour: hollow, so it can't be mistaken for the solid
-                    // unread dot beside it, whatever the account's colour.
-                    <span
-                      className="absolute top-1/2 left-0.5 h-2 w-2 -translate-y-1/2 rounded-full"
-                      style={{
-                        border: `1.5px solid color-mix(in srgb, ${account.color} 75%, transparent)`,
-                      }}
-                      title={account.email}
-                      aria-label={account.email}
-                    />
-                  )}
-                  {/* As in Gmail: people with unread mail in bold, the rest
-                    plain, then the message count in grey. */}
-                  <span className="truncate">
-                    {senderParts(t.senders, selfEmails).map((part, i) => (
-                      <span key={part.key}>
-                        {i > 0 && (
-                          <span className="text-content/60">{part.text === "…" ? " " : ", "}</span>
-                        )}
-                        <span
-                          className={
-                            part.unread
-                              ? "font-semibold text-content"
-                              : "font-medium text-content/75"
-                          }
-                        >
-                          {part.text}
-                        </span>
-                        {part.text === "…" && " "}
-                      </span>
-                    ))}
-                    {t.messageCount > 1 && (
-                      <span className="ml-1.5 text-xs font-normal text-content/45">
-                        {t.messageCount}
-                      </span>
+                <div className="flex min-w-0 flex-col gap-0.5" style={{ zoom }}>
+                  <div
+                    className="relative flex items-center gap-2"
+                    style={{ paddingLeft: ICON_COLUMN }}
+                  >
+                    {t.unread && (
+                      <span
+                        className="absolute top-1/2 -left-3.5 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent"
+                        aria-label="Unread"
+                      />
                     )}
-                  </span>
-                  <span className="ml-auto shrink-0 text-xs text-content/40">
-                    {formatListDate(t.lastMessageAt)}
-                  </span>
-                </div>
-                <div
-                  // Not `truncate` here: its clipping would hide the paperclip
-                  // in the gutter; the subject truncates itself.
-                  className={`relative flex min-w-0 items-center ${t.unread ? "font-semibold text-content" : "font-medium text-content/70"}`}
-                  style={{ paddingLeft: ICON_COLUMN }}
-                >
-                  {t.hasAttachments && (
-                    // In the gutter under the unread dot, centred on the same
-                    // line, so it never pushes the subject around.
-                    <AttachmentIcon
-                      size={11}
-                      strokeWidth={2}
-                      className="absolute top-1/2 -left-4 -translate-y-1/2 text-content/35"
-                      aria-label="Has attachments"
-                    />
-                  )}
-                  {t.starred && (
-                    <StarIcon
-                      size={12}
-                      strokeWidth={2}
-                      className="absolute top-1/2 left-0 -translate-y-1/2 text-warn"
-                      aria-label="Starred"
-                    />
-                  )}
-                  <span className="truncate">{t.subject || "(no subject)"}</span>
-                </div>
-                <div
-                  className="truncate text-xs font-medium text-content/40"
-                  style={{ paddingLeft: ICON_COLUMN }}
-                >
-                  {t.snippet}
+                    {account && (
+                      // The account as a hollow ring in a softened account
+                      // colour: hollow, so it can't be mistaken for the solid
+                      // unread dot beside it, whatever the account's colour.
+                      <span
+                        className="absolute top-1/2 left-0.5 h-2 w-2 -translate-y-1/2 rounded-full"
+                        style={{
+                          border: `1.5px solid color-mix(in srgb, ${account.color} 75%, transparent)`,
+                        }}
+                        title={account.email}
+                        aria-label={account.email}
+                      />
+                    )}
+                    {/* As in Gmail: people with unread mail in bold, the rest
+                    plain, then the message count in grey. */}
+                    <span className="truncate">
+                      {senderParts(t.senders, selfEmails).map((part, i) => (
+                        <span key={part.key}>
+                          {i > 0 && (
+                            <span className="text-content/60">
+                              {part.text === "…" ? " " : ", "}
+                            </span>
+                          )}
+                          <span
+                            className={
+                              part.unread
+                                ? "font-semibold text-content"
+                                : "font-medium text-content/75"
+                            }
+                          >
+                            {part.text}
+                          </span>
+                          {part.text === "…" && " "}
+                        </span>
+                      ))}
+                      {t.messageCount > 1 && (
+                        <span className="ml-1.5 text-xs font-normal text-content/45">
+                          {t.messageCount}
+                        </span>
+                      )}
+                    </span>
+                    <span className="ml-auto shrink-0 text-xs text-content/40">
+                      {formatListDate(t.lastMessageAt)}
+                    </span>
+                  </div>
+                  <div
+                    // Not `truncate` here: its clipping would hide the paperclip
+                    // in the gutter; the subject truncates itself.
+                    className={`relative flex min-w-0 items-center ${t.unread ? "font-semibold text-content" : "font-medium text-content/70"}`}
+                    style={{ paddingLeft: ICON_COLUMN }}
+                  >
+                    {t.hasAttachments && (
+                      // In the gutter under the unread dot, centred on the same
+                      // line, so it never pushes the subject around.
+                      <AttachmentIcon
+                        size={11}
+                        strokeWidth={2}
+                        className="absolute top-1/2 -left-4 -translate-y-1/2 text-content/35"
+                        aria-label="Has attachments"
+                      />
+                    )}
+                    {t.starred && (
+                      <StarIcon
+                        size={12}
+                        strokeWidth={2}
+                        className="absolute top-1/2 left-0 -translate-y-1/2 text-warn"
+                        aria-label="Starred"
+                      />
+                    )}
+                    <span className="truncate">{t.subject || "(no subject)"}</span>
+                  </div>
+                  <div
+                    className="truncate text-xs font-medium text-content/40"
+                    style={{ paddingLeft: ICON_COLUMN }}
+                  >
+                    {t.snippet}
+                  </div>
                 </div>
               </div>
               {swiped && pose && swipeAction && !out && !back && (

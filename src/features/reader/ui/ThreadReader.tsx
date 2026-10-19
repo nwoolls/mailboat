@@ -11,6 +11,7 @@ import type { AccountIndex } from "../../accounts/model/accounts";
 import { displayName, formatFullDate, formatListDate } from "../../mailbox/model/format";
 import { useThreadAction } from "../../mailbox/ui/useThreadAction";
 import { wholePixelSlack } from "../model/pixelSnap";
+import { useTextZoom } from "../../settings/ui/textSize";
 import { MessageFrame } from "./MessageFrame";
 
 /**
@@ -69,6 +70,10 @@ function ThreadBody({
   renderFooter?: (detail: ThreadDetail) => React.ReactNode;
 }) {
   const contentRef = useWholePixelHeight();
+  // Settings → Appearance → Text size. Zoomed piece by piece, never around
+  // an email: WebKit misreports a frame's size inside a zoomed parent, so
+  // each email zooms itself (`MessageFrame`).
+  const zoom = useTextZoom();
   const [expanded, setExpanded] = useState<Set<MessageId>>(() => initiallyExpanded(data.messages));
   // Every message opened so far; its body stays mounted when closed.
   const [opened, setOpened] = useState<Set<MessageId>>(expanded);
@@ -105,7 +110,7 @@ function ThreadBody({
       }`}
     >
       <div ref={contentRef}>
-        <header className="px-4 pt-5 pb-3">
+        <header className="px-4 pt-5 pb-3" style={{ zoom }}>
           <h1 className="selectable text-lg leading-snug font-semibold">
             {data.thread.subject || "(no subject)"}
           </h1>
@@ -166,6 +171,7 @@ function ThreadBody({
                   }`}
                   onClick={toggle}
                   aria-expanded={isOpen}
+                  style={{ zoom }}
                 >
                   <div className="flex h-7 items-center gap-3">
                     <SenderInitial name={name} />

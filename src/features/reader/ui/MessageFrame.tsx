@@ -7,6 +7,7 @@ import { useOpenedMessage } from "../../../shared/lib/queries";
 import { imageNotice } from "../model/imageNotice";
 import { InviteCard } from "./InviteCard";
 import { AttachmentList } from "./AttachmentList";
+import { useTextZoom } from "../../settings/ui/textSize";
 
 /**
  * Shows one message's sanitized HTML.
@@ -97,9 +98,23 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["message"] }),
   });
 
+  // Settings → Appearance → Text size, applied inside the email (WebKit
+  // then reports its zoomed height, which sizes the frame). Read through a
+  // ref so a change re-zooms without reloading the email.
+  const zoom = useTextZoom();
+  const zoomRef = useRef(zoom);
+  useEffect(() => {
+    zoomRef.current = zoom;
+    const doc = frameRef.current?.contentDocument;
+    if (!doc?.documentElement) return;
+    doc.documentElement.style.setProperty("zoom", String(zoom));
+    setHeight(Math.max(60, doc.documentElement.scrollHeight));
+  }, [zoom]);
+
   const onLoad = useCallback(() => {
     const doc = frameRef.current?.contentDocument;
     if (!doc) return;
+    doc.documentElement.style.setProperty("zoom", String(zoomRef.current));
     const measure = () => setHeight(Math.max(60, doc.documentElement.scrollHeight));
     measure();
     setReady(true);

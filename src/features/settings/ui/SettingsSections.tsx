@@ -44,6 +44,8 @@ import type { AfterRemoval } from "../../mailbox/model/threadActions";
 import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import { UNDO_SEND_CHOICES } from "../../compose/model/composingPrefs";
 import { composingPrefs } from "../../compose/ui/composingPrefs";
+import { TEXT_SIZES } from "../model/textSize";
+import { textSize } from "./textSize";
 import { FEATURE_FLAGS, setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
@@ -468,15 +470,19 @@ export function AppearanceSection({
       },
     );
   const setTheme = (next: Theme) => change({ theme: next });
+  const size = textSize.use();
   return (
     <>
       {header(
         <Button
           onClick={() => {
             setAppearance(DEFAULT_APPEARANCE);
+            textSize.set("default");
             change({ theme: "system", appIcon: null });
           }}
-          disabled={isDefault(appearance) && theme === "system" && !settings?.appIcon}
+          disabled={
+            isDefault(appearance) && size === "default" && theme === "system" && !settings?.appIcon
+          }
         >
           Restore defaults
         </Button>,
@@ -501,6 +507,14 @@ export function AppearanceSection({
             options={ACCENTS.map((a) => ({ value: a.id, label: a.label, color: a.color }))}
             onChange={(accent) => setAppearance({ ...appearance, accent })}
           />
+        </Row>
+      </Group>
+      <Group title="Text">
+        <Row
+          label="Text size"
+          description="The conversation list, and conversations and emails in the reader."
+        >
+          <Segmented label="Text size" value={size} options={TEXT_SIZES} onChange={textSize.set} />
         </Row>
       </Group>
       <Group
