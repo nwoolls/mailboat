@@ -832,6 +832,9 @@ owner has seen invitations and the Dock icon working.*
 
 ## Milestone 6: Rules and signatures
 
+**Closed (owner, 2026-10-19).** What was left moved to Later /
+unscheduled ("From Milestone 6").
+
 **Goal (owner, 2026-10-17): stop needing Gmail on the web.** Wanted soon
 rather than later.
 
@@ -927,26 +930,11 @@ editors live in Settings (Signatures, Rules), which now exists.
       Gmail's own Blocked addresses list (which sends to Spam) has no
       API, so this is the filter Gmail's form would make. Not yet tried
       by the owner against real Gmail
-- [ ] What else still sends the owner to Gmail on the web, to settle.
-      *Proposed (2026-10-18), for the owner to confirm:*
-      - Snooze and Schedule send have **no Gmail API**: Mailboat would have
-        to do them itself (hold the message or conversation and act at
-        the time, only while Mailboat is running, or with a label so it
-        shows in Gmail), so they'd differ from Gmail's own. *Proposal:*
-        not straightforward, so not built in this milestone; move both
-        to Later as their own items, with a design to agree first
-        (likely a "Snoozed" label plus a local timer, so Gmail shows
-        it too; Schedule send kept as a local draft sent while Mailboat is
-        open)
-      - "Send mail as" aliases and forwarding need a second, more
-        sensitive permission (`gmail.settings.sharing`). *Proposal:*
-        leave them in Gmail (set once; Settings → Accounts has "Open in
-        Gmail"); no new permission
-      - Inbox categories (Promotions, Social…): rules can now put mail
-        in a category. *Proposal:* showing category tabs in Mailboat is a
-        separate feature for Later, if wanted at all (the owner keeps
-        Inbox Zero)
-      - Blocked senders: done, as Block sender above
+- [x] What else still sends the owner to Gmail on the web: settled
+      (owner, 2026-10-19). The owner uses none of what was left, so it
+      moved to Later / unscheduled ("From Milestone 6") rather than being
+      built: Snooze, Schedule send, "Send mail as" aliases and forwarding,
+      inbox category tabs. Blocked senders was built (Block sender above)
 
 ## UX Spike 2
 
@@ -1095,3 +1083,16 @@ Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
       Spike 1's remote-image choice, not built)
 - [ ] Background image prefetch during sync, like Apple Mail, so senders
       can't tell when you opened (option C of the same choice, not built)
+
+### From Milestone 6 (moved unbuilt when it closed, 2026-10-19; the owner uses none of these)
+
+- [ ] Snooze. No Gmail API: Mailboat would do it itself (likely a "Snoozed"
+      label plus a timer, acting only while Mailboat runs), so it would
+      differ from Gmail's own. Design to agree first
+- [ ] Schedule send. No Gmail API either: a draft Mailboat sends at the time,
+      only while it's running. Design to agree first
+- [ ] "Send mail as" aliases and forwarding. Need the more sensitive
+      `gmail.settings.sharing` permission; for now they're set up in Gmail
+      (Settings → Accounts has "Open in Gmail")
+- [ ] Inbox category tabs (Promotions, Social…). Rules can already put
+      mail in a category
