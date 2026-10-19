@@ -1075,13 +1075,13 @@ it's ticked.*
 - [ ] Reply all: the sender in To, everyone else in Cc *(owner request,
       2026-10-19)*. Today (`replyRecipients` in compose/model/draft.ts)
       To is the sender plus the original's To, and Cc the original's Cc,
-      minus your own addresses. That is what Gmail, Apple Mail and Outlook
-      do, so when everyone was in To they all land in To again. The owner
-      wants the sender alone in To and the rest in Cc. To settle when
-      fixing: make that the rule, or a setting (Settings → Composing, with
-      the Gmail way as the other choice). Replying to your own message
-      keeps its To as To either way
-
+      minus your own addresses, so when everyone was in To they all land
+      in To again. Gmail on the web puts the sender alone in To and
+      everyone else (the original's To and Cc, minus you) in Cc; the
+      owner showed it with screenshots after an agent wrongly said Gmail
+      worked like Mailboat does today. Fix: do what Gmail does, as the only
+      behaviour (no setting needed). Replying to your own message keeps
+      its To as To
 - [ ] Addresses can't be dragged between To, Cc and Bcc *(owner report,
       2026-10-19)*. In other mail apps an address can be dragged from one
       field to another (say from To down to Cc); in the composer nothing
