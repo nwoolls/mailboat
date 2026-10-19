@@ -1008,23 +1008,23 @@ comparison"), or to "Considered, not planned" there.*
       Undo (and z / ⌘Z) work to the end; it used to vanish after 6s.
       Another notice (archiving, say) still replaces it, as in Gmail.
       Owner confirmed it works (2026-10-19)*
-- [ ] Text size for the reader and list
+- [x] Text size for the reader and list
       *Built (2026-10-19), waiting for the owner to try it: Settings →
       Appearance → Text size (Small, Default, Large, Larger), in
       Appearance rather than General as the settings plan had it, since
       it's about how Mailboat looks. Scales the list's rows (which grow to
       fit), the reader's subject and message headers, and each email
       itself; Restore defaults resets it. Sidebar, toolbar and Settings
-      keep their size*
-- [ ] Mark as read: on open (today), after a few seconds, or never; and
+      keep their size Owner confirmed it works (2026-10-19)*
+- [x] Mark as read: on open (today), after a few seconds, or never; and
       conversation order (oldest first, today, or newest first)
       *Built (2026-10-19), waiting for the owner to try it: Settings →
       Viewing → Mark as read (On open, After 3 seconds, Never; with the
       delay, moving on sooner leaves it unread, so skimming with j/k
       doesn't mark everything read) and Message order (Oldest first,
       Newest first). With newest first the reply bar stays under the
-      last card, the oldest message*
-- [ ] Default From for new mail (today: the account being viewed) and
+      last card, the oldest message Owner confirmed it works (2026-10-19)*
+- [x] Default From for new mail (today: the account being viewed) and
       the composer's starting font
       *Built (2026-10-19), waiting for the owner to try it: Settings →
       Composing → New mail. "Send from" is "The account you're viewing"
@@ -1034,7 +1034,7 @@ comparison"), or to "Considered, not planned" there.*
       sizes; the editor shows it and sent mail carries it around what was
       written (signature and quote keep theirs), "Default" sending as
       before. An address that's gone (account removed) falls back to the
-      viewed account*
+      viewed account Owner confirmed it works (2026-10-19)*
 - [ ] Menus trued up *(owner request, 2026-10-19)*: the macOS menu bar
       is still Tauri's default plus "Settings…", so mail actions live only
       in the toolbar, the right-click menu and ⌘K. Give the menu bar the
