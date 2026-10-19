@@ -974,6 +974,9 @@ comparison"), or to "Considered, not planned" there.*
       message; plain links reach the installed copy once it's rebuilt*
 - [ ] Unread count on the Dock icon (unread Inbox conversations, every
       account), with a setting for Inbox only / all unread / off
+      *Built (2026-10-19), waiting for the owner to try it: Settings →
+      Notifications → Dock badge (Inbox, the default; All unread; Off).
+      Counts match the sidebar's (Spam and Trash left out)*
 - [ ] What opens after archiving or deleting the open conversation: the
       next one down, the one above, or none (check what happens today
       first)

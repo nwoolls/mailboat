@@ -23,6 +23,17 @@ pub enum Theme {
     Dark,
 }
 
+/// What the number on the Dock icon counts: unread conversations in the
+/// Inboxes (the default), unread anywhere, or nothing.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum DockBadge {
+    #[default]
+    Inbox,
+    AllUnread,
+    Off,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppSettings {
@@ -34,6 +45,8 @@ pub struct AppSettings {
     /// Which of the app icon choices shows in the Dock, by name (e.g.
     /// "C10-orange"); `None` is the icon Mailboat is built with.
     pub app_icon: Option<String>,
+    /// The unread count on the Dock icon, across every account.
+    pub dock_badge: DockBadge,
 }
 
 impl Default for AppSettings {
@@ -42,6 +55,7 @@ impl Default for AppSettings {
             new_mail_notifications: true,
             theme: Theme::System,
             app_icon: None,
+            dock_badge: DockBadge::Inbox,
         }
     }
 }
@@ -87,6 +101,7 @@ mod tests {
             new_mail_notifications: false,
             theme: Theme::Dark,
             app_icon: Some("C10-orange".into()),
+            dock_badge: DockBadge::Off,
         };
         save(&conn, &off).unwrap();
         save(&conn, &off).unwrap();

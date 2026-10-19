@@ -1,4 +1,5 @@
 mod app_icon;
+mod badge;
 mod commands;
 mod dock;
 mod error;
@@ -186,6 +187,7 @@ pub fn run() {
             state.resume_all_accounts()?;
             app.manage(state);
             watch_other_copies(app.handle().clone(), db.clone());
+            badge::watch(app.handle().clone(), db.clone());
             // After the plugin restored it: fully on a connected display.
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window_place::keep_on_screen(&window);

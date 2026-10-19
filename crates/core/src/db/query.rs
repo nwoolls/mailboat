@@ -338,6 +338,21 @@ pub fn unread_counts(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
+/// Unread conversations across every account, for the Dock badge: in an
+/// Inbox, or anywhere (Spam and Trash left out either way). Same rules as
+/// the sidebar's counts, so All Inboxes and the badge agree.
+pub fn unread_threads(conn: &Connection, inbox_only: bool) -> Result<u32> {
+    let inbox = if inbox_only {
+        format!("AND {IN_INBOX}")
+    } else {
+        String::new()
+    };
+    let sql = format!(
+        "SELECT COUNT(*) FROM threads t WHERE t.unread_count > 0 {inbox} AND {IN_ALL_MAIL}"
+    );
+    Ok(conn.query_row(&sql, [], |r| r.get(0))?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

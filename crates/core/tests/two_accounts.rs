@@ -558,6 +558,34 @@ fn unread_counts_stay_per_account() {
 }
 
 #[test]
+fn dock_badge_counts_unread_in_every_account() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "sub-a", "me@gmail.com");
+    let b = add_account(&db, "sub-b", "me@example.com");
+    store::sync_labels(&mut db.conn(), a.id, &work_label()).unwrap();
+    store::sync_labels(&mut db.conn(), b.id, &work_label()).unwrap();
+    // Same Gmail IDs in both accounts. Unread: A's t1 (Inbox), B's t1
+    // (Inbox) and B's t2 (archived, in Work). Read: A's t2 (Inbox).
+    for (account, t, m, labels) in [
+        (a.id, "t1", "m1", vec!["INBOX", "UNREAD"]),
+        (a.id, "t2", "m2", vec!["INBOX"]),
+        (b.id, "t1", "m1", vec!["INBOX", "UNREAD"]),
+        (b.id, "t2", "m2", vec!["Label_1", "UNREAD"]),
+    ] {
+        store::upsert_thread(
+            &mut db.conn(),
+            account,
+            &thread(t, m, "x@y.com", "Hi", 1_000, &labels),
+        )
+        .unwrap();
+    }
+    let inbox = query::unread_threads(&db.conn(), true).unwrap();
+    let anywhere = query::unread_threads(&db.conn(), false).unwrap();
+    assert_eq!(inbox, 2, "one per account, not merged by Gmail ID");
+    assert_eq!(anywhere, 3);
+}
+
+#[test]
 fn unread_leaves_out_spam_and_trash() {
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "sub-a", "me@gmail.com");

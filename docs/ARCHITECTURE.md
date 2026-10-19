@@ -306,6 +306,12 @@ then draws the glass in that look and the web view's
 `prefers-color-scheme` follows, so the CSS and emails' own dark styles
 need no theme logic of their own.
 
+The Dock badge (unread in the Inboxes, unread anywhere, or off; every
+account) is a Rust setting too. `src-tauri/src/badge.rs` checks once a
+second whether the database was written to and recounts only then
+(`query::unread_threads`, the sidebar's rules), so sync, actions and the
+setting itself all update it without hooks in each.
+
 The app icon choice (a name from `design/icon/choices/`) is a Rust setting
 too: `dock.rs` puts its PNG (rendered by `scripts/build-icon-choices.sh`
 into `src-tauri/icons/choices/`, built into the binary by `app_icon.rs`)
@@ -448,3 +454,4 @@ replying right now (`active`), which the mail view shows as a banner.
 | 2026-10-17 | Empty-list screensaver is our own falling-sand grid on one `<canvas>`, no library | A few hundred lines of cellular automaton (`model/sand.ts`, tested) is smaller than any particle/physics library and needs no permissions. One canvas pixel per 3px sand cell, scaled with `image-rendering: pixelated`, keeps drawing cheap; the loop stops when the window is hidden or loses focus. The icon box and each letter of the words are drawn to an off-screen canvas and reduced to cells so sand rests on them. Moving the pointer doesn't end it (the roadmap first said it would): the owner asked for the pointer to play with the sand, so only a key, click or scroll ends it. It runs with another app in front (owner's request) and pauses only when the window is hidden; it doesn't use `document.hasFocus()`, and pointer events without movement (WebKit sends them when the page changes under a still cursor) don't count as input. Sandscape version (2026-10-18): the canvas takes the list card's glass opacity, so the sand follows the Transparency setting. |
 | 2026-10-16 | Older mail loads by walking Gmail's list for the view and skipping cached threads, not with a `before:<oldest date>` search | The cache isn't one date range per view (an old starred thread can sit far below the rest of a label), so “older than the oldest cached” would silently skip gaps. Listing IDs costs 10 units per 500, so skipping the cached part is cheap. |
 | 2026-10-19 | `mailto:` links come in through Tauri's own `RunEvent::Opened`, not `tauri-plugin-deep-link`; parsing uses `percent-encoding` (from the `url` crate's authors), not `url`'s query parser | `Opened` is all macOS needs and adds no plugin or web permission (the plugin's extras are Windows/Linux registration and a JS API, for later). `url`'s query parser reads `+` as a space, as web forms do, which would break `jane+news@x.com`; RFC 6068 keeps it. Launch Services keeps the default by bundle ID, which the dev build and the installed app share, so macOS chooses which copy gets links (the one in /Applications, as tried 2026-10-19). Settings says which copy that is rather than offering a switch that can't work; a separate dev bundle ID would fix it but would also move the dev build's keychain access, so not now. |
+| 2026-10-19 | The Dock badge refreshes from a once-a-second check of SQLite's write counters (`total_changes`, `data_version`), not from events | Unread state changes in sync, in every action command (which don't emit events) and in another copy of Mailboat. Two pragma reads a second cost next to nothing and catch them all; the count itself only runs after a write. A badge up to a second late is fine. |

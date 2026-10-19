@@ -311,6 +311,8 @@ export type AppSettings = {
 	 *  "C10-orange"); `None` is the icon Mailboat is built with.
 	 */
 	appIcon?: string | null,
+	/**  The unread count on the Dock icon, across every account. */
+	dockBadge?: DockBadge,
 };
 
 /**  What applying a rule to mail already received changed. */
@@ -389,6 +391,12 @@ export type DefaultMailApp =
 { kind: "none" } | 
 /**  Not on this platform yet. */
 { kind: "unsupported" };
+
+/**
+ *  What the number on the Dock icon counts: unread conversations in the
+ *  Inboxes (the default), unread anywhere, or nothing.
+ */
+export type DockBadge = "inbox" | "allUnread" | "off";
 
 export type DraftId = number;
 

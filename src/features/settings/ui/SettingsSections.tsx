@@ -22,7 +22,7 @@ import { AccountAvatar } from "../../accounts/ui/AccountAvatar";
 import { RemoveAccountDialog } from "../../accounts/ui/RemoveAccountDialog";
 import { useSignIn } from "../../accounts/ui/useSignIn";
 import { SHORTCUTS } from "../../mailbox/model/shortcuts";
-import type { AppSettings, Theme } from "../../../platform/tauri/bindings";
+import type { AppSettings, DockBadge, Theme } from "../../../platform/tauri/bindings";
 import {
   ACCENTS,
   DEFAULT_APPEARANCE,
@@ -328,9 +328,36 @@ export function NotificationsSection() {
           Open System Settings
         </Button>
       </Row>
+      <Row
+        label="Dock badge"
+        description="Unread conversations, in every account, shown on Mailboat’s Dock icon."
+      >
+        <Segmented
+          label="Dock badge"
+          value={settings?.dockBadge ?? "inbox"}
+          options={DOCK_BADGES}
+          disabled={!settings}
+          onChange={(dockBadge) =>
+            settings &&
+            save.mutate(
+              { ...settings, dockBadge },
+              {
+                onError: (e) =>
+                  showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
+              },
+            )
+          }
+        />
+      </Row>
     </Group>
   );
 }
+
+const DOCK_BADGES: { value: DockBadge; label: string }[] = [
+  { value: "inbox", label: "Inbox" },
+  { value: "allUnread", label: "All unread" },
+  { value: "off", label: "Off" },
+];
 
 const LIGHT = "(prefers-color-scheme: light)";
 
