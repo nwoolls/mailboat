@@ -23,14 +23,17 @@ pub enum Theme {
     Dark,
 }
 
-/// What the number on the Dock icon counts: unread conversations in the
-/// Inboxes (the default), unread anywhere, or nothing.
+/// What the number on the Dock icon counts, named after the folders it
+/// matches: unread in All Inboxes (the default), everything in Unread, or
+/// nothing.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum DockBadge {
     #[default]
     Inbox,
-    AllUnread,
+    /// Saved as "allUnread" before it was renamed to match the folder.
+    #[serde(alias = "allUnread")]
+    Unread,
     Off,
 }
 
@@ -121,5 +124,17 @@ mod tests {
         assert_eq!(loaded.theme, Theme::Light);
         assert!(loaded.new_mail_notifications);
         assert_eq!(loaded.app_icon, None);
+    }
+
+    #[test]
+    fn dock_badge_saved_under_its_old_name_still_loads() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES ('app', '{\"dockBadge\":\"allUnread\"}')",
+            [],
+        )
+        .unwrap();
+        assert_eq!(load(&conn).unwrap().dock_badge, DockBadge::Unread);
     }
 }

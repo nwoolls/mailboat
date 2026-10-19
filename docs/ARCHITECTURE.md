@@ -306,8 +306,8 @@ then draws the glass in that look and the web view's
 `prefers-color-scheme` follows, so the CSS and emails' own dark styles
 need no theme logic of their own.
 
-The Dock badge (unread in the Inboxes, unread anywhere, or off; every
-account) is a Rust setting too. `src-tauri/src/badge.rs` checks once a
+The Dock badge (unread in All Inboxes, everything in Unread, or off; the
+choices are named after those folders) is a Rust setting too. `src-tauri/src/badge.rs` checks once a
 second whether the database was written to and recounts only then
 (`query::unread_threads`, the sidebar's rules), so sync, actions and the
 setting itself all update it without hooks in each.

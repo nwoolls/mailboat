@@ -145,8 +145,8 @@ export const commands = {
 	syncNow: (accountIds: AccountId[] | null) => __TAURI_INVOKE<void>("sync_now", { accountIds }),
 	syncStatusList: () => typedError<AccountSyncState[], AppError>(__TAURI_INVOKE("sync_status_list")),
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
-	settingsGet: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("settings_get")),
-	settingsSet: (settings: AppSettings) => typedError<null, AppError>(__TAURI_INVOKE("settings_set", { settings })),
+	settingsGet: () => typedError<AppSettings_Serialize, AppError>(__TAURI_INVOKE("settings_get")),
+	settingsSet: (settings: AppSettings_Deserialize) => typedError<null, AppError>(__TAURI_INVOKE("settings_set", { settings })),
 	/**  Marks an account's rows with another colour from `AppInfo::account_colors`. */
 	accountSetColor: (accountId: AccountId, color: string) => typedError<Account, AppError>(__TAURI_INVOKE("account_set_color", { accountId, color })),
 	/**
@@ -298,7 +298,9 @@ export type AppInfo = {
 	iconChoices: string[],
 };
 
-export type AppSettings = {
+export type AppSettings = AppSettings_Serialize | AppSettings_Deserialize;
+
+export type AppSettings_Deserialize = {
 	/**  Show a macOS notification when new mail arrives in an Inbox. */
 	newMailNotifications?: boolean,
 	/**
@@ -312,7 +314,24 @@ export type AppSettings = {
 	 */
 	appIcon?: string | null,
 	/**  The unread count on the Dock icon, across every account. */
-	dockBadge?: DockBadge,
+	dockBadge?: DockBadge_Deserialize,
+};
+
+export type AppSettings_Serialize = {
+	/**  Show a macOS notification when new mail arrives in an Inbox. */
+	newMailNotifications: boolean,
+	/**
+	 *  Set on the window from Rust, so the glass, the page and emails'
+	 *  own dark styles all follow it, from the first paint.
+	 */
+	theme: Theme,
+	/**
+	 *  Which of the app icon choices shows in the Dock, by name (e.g.
+	 *  "C10-orange"); `None` is the icon Mailboat is built with.
+	 */
+	appIcon: string | null,
+	/**  The unread count on the Dock icon, across every account. */
+	dockBadge: DockBadge_Serialize,
 };
 
 /**  What applying a rule to mail already received changed. */
@@ -393,10 +412,31 @@ export type DefaultMailApp =
 { kind: "unsupported" };
 
 /**
- *  What the number on the Dock icon counts: unread conversations in the
- *  Inboxes (the default), unread anywhere, or nothing.
+ *  What the number on the Dock icon counts, named after the folders it
+ *  matches: unread in All Inboxes (the default), everything in Unread, or
+ *  nothing.
  */
-export type DockBadge = "inbox" | "allUnread" | "off";
+export type DockBadge = DockBadge_Serialize | DockBadge_Deserialize;
+
+/**
+ *  What the number on the Dock icon counts, named after the folders it
+ *  matches: unread in All Inboxes (the default), everything in Unread, or
+ *  nothing.
+ */
+export type DockBadge_Deserialize = "inbox" | 
+/**  Saved as "allUnread" before it was renamed to match the folder. */
+"unread" | 
+/**  Saved as "allUnread" before it was renamed to match the folder. */
+"allUnread" | "off";
+
+/**
+ *  What the number on the Dock icon counts, named after the folders it
+ *  matches: unread in All Inboxes (the default), everything in Unread, or
+ *  nothing.
+ */
+export type DockBadge_Serialize = "inbox" | 
+/**  Saved as "allUnread" before it was renamed to match the folder. */
+"unread" | "off";
 
 export type DraftId = number;
 

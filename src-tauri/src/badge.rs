@@ -57,7 +57,7 @@ fn badge(db: &Db) -> mailboat_core::Result<Option<i64>> {
     let unread = match which {
         DockBadge::Off => return Ok(None),
         DockBadge::Inbox => query::unread_threads(&conn, true)?,
-        DockBadge::AllUnread => query::unread_threads(&conn, false)?,
+        DockBadge::Unread => query::unread_threads(&conn, false)?,
     };
     Ok((unread > 0).then_some(i64::from(unread)))
 }

@@ -330,7 +330,7 @@ export function NotificationsSection() {
       </Row>
       <Row
         label="Dock badge"
-        description="Unread conversations, in every account, shown on Mailboat’s Dock icon."
+        description="How many unread conversations are in All Inboxes or in Unread, on Mailboat’s Dock icon."
       >
         <Segmented
           label="Dock badge"
@@ -354,8 +354,8 @@ export function NotificationsSection() {
 }
 
 const DOCK_BADGES: { value: DockBadge; label: string }[] = [
-  { value: "inbox", label: "Inbox" },
-  { value: "allUnread", label: "All unread" },
+  { value: "inbox", label: "All Inboxes" },
+  { value: "unread", label: "Unread" },
   { value: "off", label: "Off" },
 ];
 
