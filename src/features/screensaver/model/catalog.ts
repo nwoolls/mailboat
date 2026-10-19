@@ -33,7 +33,7 @@ export const SCREENSAVER_IDLE_SECONDS = 60;
  */
 export const SCREENSAVER_EVENT = "mailboat:screensaver";
 
-/** Which screensaver plays, and in which colours (Settings → Advanced). */
+/** Which screensaver plays, and in which colours (Settings → Toybox). */
 export type ScreensaverPrefs = { choice: SceneId | "random"; palette: PaletteId };
 export const DEFAULT_SCREENSAVER_PREFS: ScreensaverPrefs = {
   choice: "random",

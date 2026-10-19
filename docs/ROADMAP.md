@@ -794,7 +794,8 @@ owner has seen invitations and the Dock icon working.*
         8. Signatures and Templates (Milestone 6 and later)
         9. Rules / Filters (Milestone 6)
         10. Keyboard ✱: the shortcuts (`?` sheet), later rebinding
-        11. Advanced: sync log, cache size and clearing, reset; later the
+        11. Toybox (added 2026-10-19): the empty-list glow and screensavers
+        12. Advanced: sync log, cache size and clearing, reset; later the
             MCP server and AI keys (see Later)
       - First build: the page itself, openers, and the ✱ sections with
         what exists today; the others appear as their features arrive
@@ -997,7 +998,11 @@ weren't built and moved to Later / unscheduled ("From UX Spike 2").
       screensavers (first just the sandscape), both on by default.
       Window-only, kept in the web view's storage like Appearance. Whether
       they stay flags is to rethink later (owner, 2026-10-18). The glow now fades out while the
-      screensaver plays
+      screensaver plays. *Moved (owner, 2026-10-19):* the two switches and the screensaver
+      picker now live in their own Settings → Toybox section (Pac-Man
+      icon, last in the list) instead of "Feature flags" under Advanced;
+      Advanced comes back when it has its planned contents. Choices made
+      before are kept
 
 ## AI Spike
 

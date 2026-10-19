@@ -53,7 +53,7 @@ export function paletteItems(p: {
   openSettings: () => void;
   /** The screensavers to offer: only while the list is empty, where they play. */
   screensavers: { id: string; label: string }[];
-  /** Starts one by id, or the chosen one (Settings → Advanced) with null. */
+  /** Starts one by id, or the chosen one (Settings → Toybox) with null. */
   startScreensaver: (id: string | null) => void;
   destinations: Destination[];
   goTo: (s: Selection) => void;

@@ -438,15 +438,13 @@ export function KeyboardSection() {
   );
 }
 
-export function AdvancedSection() {
+/** Settings → Toybox: the empty list's glow and screensavers. */
+export function ToyboxSection() {
   const flags = useFeatureFlags();
   const prefs = screensaverPrefs.use();
   return (
     <>
-      <Group
-        title="Feature flags"
-        description="Features still being tried. Changes apply at once and are remembered on this Mac."
-      >
+      <Group title="Empty list" description="Remembered on this Mac.">
         {FEATURE_FLAGS.map((flag) => (
           <Row key={flag.id} label={flag.label} description={flag.description}>
             <Toggle

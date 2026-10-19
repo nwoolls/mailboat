@@ -1,14 +1,15 @@
 import { localStore } from "./localStore";
 
 /**
- * Feature flags: switches for features still being tried, in Settings →
- * Advanced. Window-only, so they live in the web view's storage like the
+ * Switches for the playful extras, in Settings → Toybox (they began as
+ * feature flags, hence the name; the storage key stays so choices made
+ * then are kept). Window-only, so they live in the web view's storage like the
  * appearance settings, and every part of the window sees a change at once.
  */
 export type FeatureFlags = {
   /** The soft glow drifting behind an empty list, drawn to the pointer. */
   emptyGlow: boolean;
-  /** Screensavers over an empty list (which one: Settings → Advanced). */
+  /** Screensavers over an empty list (which one: Settings → Toybox). */
   screensavers: boolean;
 };
 

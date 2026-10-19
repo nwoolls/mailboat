@@ -13,7 +13,7 @@ export type SettingsSectionId =
   | "rules"
   | "vacation"
   | "keyboard"
-  | "advanced";
+  | "toybox";
 
 export type SettingsSection = { id: SettingsSectionId; label: string; description: string };
 
@@ -47,9 +47,9 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   },
   { id: "keyboard", label: "Keyboard", description: "Every keyboard shortcut." },
   {
-    id: "advanced",
-    label: "Advanced",
-    description: "Features still being tried, to turn on or off.",
+    id: "toybox",
+    label: "Toybox",
+    description: "Playful extras for an empty list: the glow and the screensavers.",
   },
 ];
 

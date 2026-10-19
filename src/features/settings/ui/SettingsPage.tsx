@@ -7,11 +7,11 @@ import { VacationSection } from "../../vacation/ui/VacationSection";
 import { PageHeader } from "./controls";
 import {
   AccountsSection,
-  AdvancedSection,
   AppearanceSection,
   GeneralSection,
   KeyboardSection,
   NotificationsSection,
+  ToyboxSection,
 } from "./SettingsSections";
 
 /**
@@ -89,7 +89,7 @@ export function SettingsPage({
           {section === "signatures" && <SignaturesSection accounts={accounts} />}
           {section === "vacation" && <VacationSection accounts={accounts} />}
           {section === "keyboard" && <KeyboardSection />}
-          {section === "advanced" && <AdvancedSection />}
+          {section === "toybox" && <ToyboxSection />}
         </div>
       </div>
     </section>

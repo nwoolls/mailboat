@@ -52,7 +52,7 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
  * After a minute without input a screensaver plays over it
  * (`features/screensaver`), playing with the icon and words; the icon
  * nods when a scene asks. The glow fades out while it plays. Both are behind
- * feature flags (Settings → Advanced).
+ * Toybox switches (Settings → Toybox).
  */
 export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey: string }) {
   const Icon = ICONS[state.icon];
