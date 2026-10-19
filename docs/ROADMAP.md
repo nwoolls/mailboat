@@ -1054,6 +1054,65 @@ comparison"), or to "Considered, not planned" there.*
       hidden). To tick once the owner hasn't seen it again; if they do,
       diagnose further
 
+## Bug Spike 1
+
+*Added at the owner's request (2026-10-19): with these, Mailboat isn't
+usable day to day yet, so they come before Milestone 7's last two items
+(Default From and font, the menu bar). Moved here from the Bug backlog,
+most pressing first; the last was found reading code and hasn't been
+seen for real. As with the UX spikes, each is tried by the owner before
+it's ticked.*
+
+- [ ] The list keeps its scroll position when switching views *(owner
+      report, 2026-10-19)*. Scrolled down in Unread, then going to
+      Archive (or any other view), the new list opens scrolled down too,
+      by the same distance. Cause, from the code: every view's list is
+      drawn in one scroll area (`ThreadList`), and nothing scrolls it
+      back to the top when the view changes, so it keeps whatever offset
+      it had. Fix: start each view at the top (or, if wanted, remember
+      each view's own position)
+
+- [ ] Reply all: the sender in To, everyone else in Cc *(owner request,
+      2026-10-19)*. Today (`replyRecipients` in compose/model/draft.ts)
+      To is the sender plus the original's To, and Cc the original's Cc,
+      minus your own addresses. That is what Gmail, Apple Mail and Outlook
+      do, so when everyone was in To they all land in To again. The owner
+      wants the sender alone in To and the rest in Cc. To settle when
+      fixing: make that the rule, or a setting (Settings → Composing, with
+      the Gmail way as the other choice). Replying to your own message
+      keeps its To as To either way
+
+- [ ] Addresses can't be dragged between To, Cc and Bcc *(owner report,
+      2026-10-19)*. In other mail apps an address can be dragged from one
+      field to another (say from To down to Cc); in the composer nothing
+      happens, so moving someone means deleting and retyping them. Needs
+      the address chips in `AddressField` to be draggable and each field
+      to accept a drop (moving the address, never copying it, and keeping
+      its name)
+
+- [ ] "Download Image" in an email's right-click menu does nothing
+      *(owner report, 2026-10-19)*. Right-clicking an image inside an
+      email shows the web view's own menu (Mailboat doesn't make it; it may
+      or may not be wanted there), and its "Download Image" saves nothing
+      to Downloads. Saving an image is what the owner wanted to do. Likely
+      cause, not yet checked: macOS's web view hands downloads to the app,
+      and Mailboat (through Tauri) doesn't take them. To decide when fixing:
+      make that item work (Tauri's download hook, saving to Downloads as
+      attachments do), or replace the web view's menu over emails with
+      Mailboat's own (Save image, Copy image, Copy link)
+
+- [ ] "Load older mail" can ask Gmail again and again for an empty view.
+      `threads_load_older` (src-tauri/src/commands.rs) answers "not
+      exhausted" when one account fails (no Gmail client, say) while
+      another succeeds. The list then asks again at once, because an
+      empty view is always "near the end", so the requests repeat for as
+      long as that account keeps failing, and the empty view (and its
+      screensaver wait) restarts each time. Found reading the code while
+      looking into the screensaver (2026-10-19); the sync log shows no
+      such loop so far. Likely fix: wait for "Retry" after a partial
+      failure, as after a full one
+
+
 ## UX Spike 2
 
 *Polish, gathered here at the owner's request (2026-10-17): the
@@ -1237,53 +1296,7 @@ it will ever be distributed (2026-10-19), so this comes last.*
 
 *Bugs found in passing and not yet fixed (started 2026-10-19 at the
 owner's request). Each says how it was found and whether it has been
-seen for real.*
-
-- [ ] "Load older mail" can ask Gmail again and again for an empty view.
-      `threads_load_older` (src-tauri/src/commands.rs) answers "not
-      exhausted" when one account fails (no Gmail client, say) while
-      another succeeds. The list then asks again at once, because an
-      empty view is always "near the end", so the requests repeat for as
-      long as that account keeps failing, and the empty view (and its
-      screensaver wait) restarts each time. Found reading the code while
-      looking into the screensaver (2026-10-19); the sync log shows no
-      such loop so far. Likely fix: wait for "Retry" after a partial
-      failure, as after a full one
-
-- [ ] The list keeps its scroll position when switching views *(owner
-      report, 2026-10-19)*. Scrolled down in Unread, then going to
-      Archive (or any other view), the new list opens scrolled down too,
-      by the same distance. Cause, from the code: every view's list is
-      drawn in one scroll area (`ThreadList`), and nothing scrolls it
-      back to the top when the view changes, so it keeps whatever offset
-      it had. Fix: start each view at the top (or, if wanted, remember
-      each view's own position)
-- [ ] Reply all: the sender in To, everyone else in Cc *(owner request,
-      2026-10-19)*. Today (`replyRecipients` in compose/model/draft.ts)
-      To is the sender plus the original's To, and Cc the original's Cc,
-      minus your own addresses. That is what Gmail, Apple Mail and Outlook
-      do, so when everyone was in To they all land in To again. The owner
-      wants the sender alone in To and the rest in Cc. To settle when
-      fixing: make that the rule, or a setting (Settings → Composing, with
-      the Gmail way as the other choice). Replying to your own message
-      keeps its To as To either way
-- [ ] Addresses can't be dragged between To, Cc and Bcc *(owner report,
-      2026-10-19)*. In other mail apps an address can be dragged from one
-      field to another (say from To down to Cc); in the composer nothing
-      happens, so moving someone means deleting and retyping them. Needs
-      the address chips in `AddressField` to be draggable and each field
-      to accept a drop (moving the address, never copying it, and keeping
-      its name)
-- [ ] "Download Image" in an email's right-click menu does nothing
-      *(owner report, 2026-10-19)*. Right-clicking an image inside an
-      email shows the web view's own menu (Mailboat doesn't make it; it may
-      or may not be wanted there), and its "Download Image" saves nothing
-      to Downloads. Saving an image is what the owner wanted to do. Likely
-      cause, not yet checked: macOS's web view hands downloads to the app,
-      and Mailboat (through Tauri) doesn't take them. To decide when fixing:
-      make that item work (Tauri's download hook, saving to Downloads as
-      attachments do), or replace the web view's menu over emails with
-      Mailboat's own (Save image, Copy image, Copy link)
+seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
 
 ## Later / unscheduled
 
