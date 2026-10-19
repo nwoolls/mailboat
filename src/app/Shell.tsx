@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { commands, events } from "../platform/tauri/bindings";
-import type { AccountId, ThreadId } from "../platform/tauri/bindings";
+import type { AccountId, ThreadId, ThreadSummary } from "../platform/tauri/bindings";
 import { IS_TAURI, unwrap } from "../platform/tauri/ipc";
 import { indexAccounts, syncAttention } from "../features/accounts/model/accounts";
 import { Sidebar } from "../features/accounts/ui/Sidebar";
@@ -51,6 +51,7 @@ import {
   ArchiveIcon,
   ForwardIcon,
   LabelIcon,
+  RulesIcon,
   MarkUnreadIcon,
   ReplyAllIcon,
   ReplyIcon,
@@ -76,6 +77,8 @@ import { ThreadReader } from "../features/reader/ui/ThreadReader";
 import { destinations } from "../features/palette/model/destinations";
 import { CommandPalette } from "../features/palette/ui/CommandPalette";
 import { paletteItems } from "./paletteItems";
+import { criteriaLikeThreads } from "../features/rules/model/likeThis";
+import { RuleEditor, type RuleEditorTarget } from "../features/rules/ui/RuleEditor";
 import type { SettingsSectionId } from "../features/settings/model/sections";
 import { SettingsNav } from "../features/settings/ui/SettingsNav";
 import { SettingsPage } from "../features/settings/ui/SettingsPage";
@@ -195,6 +198,10 @@ export function Shell() {
   const [rowMenu, setRowMenu] = useState<{ at: MenuAnchor; clicked: ThreadId } | null>(null);
   // The label picker opened from that menu acts on the menu's rows.
   const [labelFor, setLabelFor] = useState<ThreadId[] | null>(null);
+  // The toolbar's More menu, under its button.
+  const [moreAnchor, setMoreAnchor] = useState<MenuAnchor | null>(null);
+  // A rule being made from mail ("Filter messages like these").
+  const [ruleEditor, setRuleEditor] = useState<RuleEditorTarget | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   // The Settings page's section while it's open. The mail stays mounted
@@ -475,6 +482,22 @@ export function Shell() {
     const action = toggleFor(kind, targets);
     return action ? { action, run: () => act(action, targetIds) } : null;
   };
+  // "Filter messages like these": a new rule from the conversations'
+  // senders. Null when they span accounts (a rule belongs to one).
+  const filterLike = (rows: ThreadSummary[]) => {
+    const like = criteriaLikeThreads(rows, (account) =>
+      identities.filter((i) => i.accountId === account).map((i) => i.email),
+    );
+    if (!like) return null;
+    return () =>
+      setRuleEditor({
+        kind: "new",
+        accountId: like.accountId,
+        criteria: like.criteria,
+        fromMail: true,
+      });
+  };
+  const filterTargets = filterLike(targets);
   const toolbarActions: ToolbarActions = {
     archive: toggle("archive"),
     trash: toggle("trash"),
@@ -487,6 +510,10 @@ export function Shell() {
             setLabelFor(null);
             setLabelAnchor((open) => (open ? null : anchorBelow(button)));
           }
+        : null,
+    more:
+      targets.length > 0
+        ? (button: HTMLElement) => setMoreAnchor((open) => (open ? null : anchorBelow(button)))
         : null,
   };
   // The label picker's conversations: the menu's rows if opened from it.
@@ -838,7 +865,38 @@ export function Shell() {
           >
             Labels…
           </MenuItem>
+          <MenuItem
+            icon={RulesIcon}
+            disabled={filterLike(menuRows) === null}
+            onSelect={() => {
+              setRowMenu(null);
+              filterLike(menuRows)?.();
+            }}
+          >
+            {menuRows.length > 1 ? "Filter messages like these…" : "Filter messages like this…"}
+          </MenuItem>
         </Menu>
+      )}
+      {moreAnchor && targets.length > 0 && (
+        <Menu anchor={moreAnchor} onClose={() => setMoreAnchor(null)} label="More">
+          <MenuItem
+            icon={RulesIcon}
+            disabled={filterTargets === null}
+            onSelect={() => {
+              setMoreAnchor(null);
+              filterTargets?.();
+            }}
+          >
+            {targets.length > 1 ? "Filter messages like these…" : "Filter messages like this…"}
+          </MenuItem>
+        </Menu>
+      )}
+      {ruleEditor && (
+        <RuleEditor
+          target={ruleEditor}
+          accounts={accountList}
+          onClose={() => setRuleEditor(null)}
+        />
       )}
       {paletteOpen && (
         <CommandPalette
@@ -849,6 +907,7 @@ export function Shell() {
             startReply: (kind) => void compose.startReply(kind, targets[0]!.id),
             openLabels: () =>
               setLabelAnchor({ x: window.innerWidth / 2 + 128, y: 96, align: "end" }),
+            filterLike: filterTargets,
             startNew,
             focusSearch: () => document.getElementById(SEARCH_INPUT_ID)?.focus(),
             syncNow: () => void commands.syncNow(null),

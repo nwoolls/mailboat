@@ -14,6 +14,7 @@ import {
   ReaderToggleIcon,
   ReplyAllIcon,
   ReplyIcon,
+  RulesIcon,
   SearchIcon,
   SettingsIcon,
   SidebarToggleIcon,
@@ -36,6 +37,8 @@ export function paletteItems(p: {
   toggle: (kind: ToggleKind) => Toggle;
   startReply: (kind: Exclude<ComposeKind, "new">) => void;
   openLabels: () => void;
+  /** "Filter messages like these", when the conversations share an account. */
+  filterLike: (() => void) | null;
   startNew: () => void;
   focusSearch: () => void;
   syncNow: () => void;
@@ -109,6 +112,14 @@ export function paletteItems(p: {
       shortcut: "l",
       icon: LabelIcon,
       run: p.openLabels,
+    });
+  if (p.filterLike)
+    items.push({
+      id: "filterLike",
+      group: "Conversation",
+      title: p.targets.length > 1 ? "Filter messages like these…" : "Filter messages like this…",
+      icon: RulesIcon,
+      run: p.filterLike,
     });
 
   items.push(

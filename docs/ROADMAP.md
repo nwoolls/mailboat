@@ -857,8 +857,15 @@ editors live in Settings (Signatures, Rules), which now exists.
       `gmail.settings.sharing` permission); forwarding set up in Gmail is
       shown and kept. An account without the permission shows "Sign in
       again" in its group. Not yet tried by the owner against real Gmail
-- [ ] Create a rule from a message, as Gmail's "Filter messages like
-      these": sender, subject and so on filled in from it
+- [x] Create a rule from a message, as Gmail's "Filter messages like
+      these": sender, subject and so on filled in from it. **Built
+      (2026-10-18):** "Filter messages like this…" in the toolbar's More
+      menu (its first item; the button did nothing before), the
+      conversation's right-click menu, and ⌘K. It opens the rule editor
+      for the conversation's account with From filled in, as Gmail does:
+      who started the conversation (not you), or several senders joined
+      with OR when several conversations are picked. Conversations from
+      different accounts can't share a rule, so the item is greyed out
 - [ ] Manage signatures per address (using them is in Milestone 4)
 - [ ] Vacation responder (same permission)
 - [ ] What else still sends the owner to Gmail on the web, to settle:

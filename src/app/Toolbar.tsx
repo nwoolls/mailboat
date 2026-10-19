@@ -33,6 +33,8 @@ export type ToolbarActions = {
   star: Toggle;
   /** Opens (or closes) the label picker under the button. */
   label: ((button: HTMLElement) => void) | null;
+  /** Opens (or closes) the More menu under the button. */
+  more: ((button: HTMLElement) => void) | null;
 };
 
 type Props = {
@@ -144,7 +146,12 @@ export function Toolbar({
         onClick={actions.label ?? undefined}
         disabled={!actions.label}
       />
-      <ToolButton icon={MoreIcon} label="More" disabled={!hasSelection} />
+      <ToolButton
+        icon={MoreIcon}
+        label="More"
+        onClick={actions.more ?? undefined}
+        disabled={!actions.more}
+      />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
       <ToolButton icon={ComposeIcon} label="New message" shortcut="c" onClick={onCompose} />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
