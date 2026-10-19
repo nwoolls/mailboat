@@ -23,10 +23,12 @@ export type SwipeState = {
   /** Finger travel, 0 or more (see `swipePose`). */
   d: number;
   /**
-   * Following the fingers, resting open with its button, settling, or
-   * sliding out after an archive.
+   * Following the fingers, resting open with its button, settling,
+   * sliding out after an archive, gone (hidden until the list drops the
+   * row, so it never flashes back in place), or gliding back (the row
+   * stayed, e.g. archived in All Mail).
    */
-  mode: "drag" | "open" | "settle" | "out";
+  mode: "drag" | "open" | "settle" | "out" | "gone" | "back";
   /** Where this swipe started, if on a row that was already open. */
   from?: number | null;
   /**
@@ -44,6 +46,10 @@ function actionOf(threads: ThreadSummary[], s: SwipeState): ThreadAction | null 
 
 /** How long a committed archive slides out before it's done. */
 const SLIDE_OUT_MS = 140;
+/** A row still listed this long after its action stayed in the view. */
+const STAYED_MS = 600;
+/** How long a row that stayed takes to glide back. */
+const BACK_MS = 200;
 
 /**
  * Two-finger swipes on the list's rows (see `model/swipe.ts`): reads the
@@ -55,6 +61,9 @@ export function useSwipe(
   onAction: (id: ThreadId, action: ThreadAction) => void,
 ) {
   const [swipe, setSwipe] = useState<SwipeState | null>(null);
+  // A row that slid out is forgotten once the list has dropped it (worked
+  // out here, during render, so it never shows again in between).
+  if (swipe?.mode === "gone" && !threads.some((t) => t.id === swipe.id)) setSwipe(null);
   // Read inside event handlers, which outlive renders.
   const live = useRef({ swipe, threads, onAction });
   useEffect(() => {
@@ -103,7 +112,18 @@ export function useSwipe(
           setSwipe({ ...s, mode: "out" });
           window.setTimeout(() => {
             live.current.onAction(s.id, action);
-            setSwipe(null);
+            // Stays hidden until the list drops it (see above).
+            setSwipe({ ...s, mode: "gone" });
+            window.setTimeout(() => {
+              // Still listed: it belongs in this view, so it glides back.
+              setSwipe((now) =>
+                now?.id === s.id && now.mode === "gone" ? { ...s, d: 0, mode: "back" } : now,
+              );
+              window.setTimeout(
+                () => setSwipe((now) => (now?.id === s.id && now.mode === "back" ? null : now)),
+                BACK_MS,
+              );
+            }, STAYED_MS);
           }, SLIDE_OUT_MS);
         } else {
           live.current.onAction(s.id, action);

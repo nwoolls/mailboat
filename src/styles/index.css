@@ -581,3 +581,29 @@ html.resizing .panel-slide {
       inset -1px 0 0 var(--color-stroke);
   }
 }
+
+/* Conversation rows glide to their new place when one leaves (archived,
+   swiped away) or arrives, instead of jumping. A swiped-away row slides
+   out and fades; one that stays in the view glides back. */
+.thread-row {
+  transition: top 180ms var(--motion-ease-out);
+}
+.thread-row.swipe-out {
+  transition:
+    top 180ms var(--motion-ease-out),
+    transform 140ms ease-in,
+    opacity 140ms ease-in;
+}
+.thread-row.swipe-back {
+  transition:
+    top 180ms var(--motion-ease-out),
+    transform 200ms var(--motion-ease-out),
+    opacity 200ms var(--motion-ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .thread-row,
+  .thread-row.swipe-out,
+  .thread-row.swipe-back {
+    transition: none;
+  }
+}

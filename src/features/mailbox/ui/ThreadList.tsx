@@ -140,10 +140,12 @@ export function ThreadList({
           const bare = swiped?.bare === true;
           const swipeAction = swiped && !bare ? swipeActions(t)[swiped.side] : null;
           const rowHeight = ROW_HEIGHT - 4;
-          const out = swiped?.mode === "out";
+          // Sliding out, or out and waiting for the list to drop it.
+          const out = swiped?.mode === "out" || swiped?.mode === "gone";
+          const back = swiped?.mode === "back";
           return (
             <Fragment key={t.id}>
-              {swiped && pose && !bare && (
+              {swiped && pose && !bare && !back && (
                 <div
                   className="pointer-events-none absolute inset-x-0 mx-2"
                   style={{
@@ -179,7 +181,11 @@ export function ThreadList({
                 }}
                 // pl-6 leaves a fixed gutter for the unread dot, so senders,
                 // subjects and snippets line up whether a row is read or not.
-                className={`absolute inset-x-0 mx-2 flex flex-col justify-center gap-0.5 rounded-lg pr-3 pl-6 ${
+                // thread-row: rows glide into place when one leaves or
+                // arrives (index.css); swipe-out / swipe-back animate a swipe.
+                className={`thread-row absolute inset-x-0 mx-2 flex flex-col justify-center gap-0.5 rounded-lg pr-3 pl-6 ${
+                  out ? "swipe-out" : back ? "swipe-back" : ""
+                } ${
                   // While swiped, the plate behind is drawn by SwipeBack.
                   swiped && !bare
                     ? ""
@@ -199,7 +205,6 @@ export function ThreadList({
                     ? `translateX(${(swiped?.side === "left" ? -1 : 1) * (pose.shift + (out ? rowWidth : 0))}px)`
                     : undefined,
                   opacity: out ? 0 : undefined,
-                  transition: out ? "transform 140ms ease-in, opacity 140ms ease-in" : undefined,
                 }}
               >
                 {/* Sender, subject and snippet all start after a fixed icon
@@ -292,7 +297,7 @@ export function ThreadList({
                   {t.snippet}
                 </div>
               </div>
-              {swiped && pose && swipeAction && !out && (
+              {swiped && pose && swipeAction && !out && !back && (
                 <div
                   className="pointer-events-none absolute inset-x-0 mx-2"
                   style={{ top: item.start, height: rowHeight }}

@@ -715,6 +715,12 @@ owner has seen invitations and the Dock icon working.*
       - The open button has a hover (a touch more fill, icon and word to
         full). The ring stays empty while the button settles open and for
         20px past it, so a swipe that only reveals it shows no progress
+      - *Fixed (owner report, 2026-10-19):* a full swipe flashed the row
+        back in its place for a moment before it left the list (the list
+        drops it a beat after the slide-out ended). The row now stays
+        hidden until the list has dropped it, glides back if it stays in
+        the view (e.g. archived from All Mail), and the rows below glide up
+        into the gap instead of jumping (also when archiving with `e`)
 - [x] Create, rename and delete labels (the label picker only applies
       existing ones) *(not in the M3 list; noted while building it)*.
       Typing a new name in the picker (`l`) offers "Create “name”", which
