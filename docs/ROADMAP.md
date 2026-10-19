@@ -721,6 +721,11 @@ owner has seen invitations and the Dock icon working.*
         hidden until the list has dropped it, glides back if it stays in
         the view (e.g. archived from All Mail), and the rows below glide up
         into the gap instead of jumping (also when archiving with `e`)
+      - *Fixed (owner report, 2026-10-19):* a quick full swipe could
+        archive the next row too, untouched. After the fingers lift macOS
+        keeps sending coasting scroll events; a pause in them started a
+        new swipe on the row that had moved under the pointer. On a
+        trackpad a new swipe now only begins while fingers are on it
 - [x] Create, rename and delete labels (the label picker only applies
       existing ones) *(not in the M3 list; noted while building it)*.
       Typing a new name in the picker (`l`) offers "Create “name”", which

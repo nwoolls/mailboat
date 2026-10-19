@@ -188,6 +188,13 @@ export function useSwipe(
       }, GESTURE_IDLE_MS);
     };
     const onWheel = (e: WheelEvent) => {
+      // On a trackpad, a new swipe only begins with fingers on it. After a
+      // quick flick macOS keeps sending "coasting" events once they lift;
+      // after a pause in those, they used to start a fresh swipe on
+      // whatever row had moved under the pointer (the next one, once the
+      // swiped row left), which then archived itself (owner report,
+      // 2026-10-19). Coasting can finish a swipe, never start one.
+      if (gesture === NEW_GESTURE && reported && !touching) return;
       resetWhenQuiet();
       if (gesture === NEW_GESTURE) {
         const el = (e.target as Element).closest<HTMLElement>("[data-thread-id]");
