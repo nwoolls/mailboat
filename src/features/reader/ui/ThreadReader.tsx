@@ -10,6 +10,8 @@ import { AccountDot } from "../../../shared/ui/AccountDot";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { displayName, formatFullDate, formatListDate } from "../../mailbox/model/format";
 import { useThreadAction } from "../../mailbox/ui/useThreadAction";
+import { MARK_READ_DELAY_MS, inOrder } from "../../mailbox/model/viewingPrefs";
+import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import { wholePixelSlack } from "../model/pixelSnap";
 import { useTextZoom } from "../../settings/ui/textSize";
 import { MessageFrame } from "./MessageFrame";
@@ -80,17 +82,24 @@ function ThreadBody({
   if ([...expanded].some((id) => !opened.has(id))) setOpened(new Set([...opened, ...expanded]));
   // Opening a conversation marks it read, once (pressing `u` afterwards
   // leaves it unread). Remembered at open so later updates don't re-trigger.
+  // Settings → Viewing: at once, after a few seconds (moving on sooner
+  // leaves it unread), or never. Also the order of the messages.
   const [unreadWhenOpened] = useState(data.thread.unread);
+  const { markRead, order } = viewingPrefs.use();
   const threadId = data.thread.id;
   const { mutate: act } = useThreadAction();
   useEffect(() => {
-    if (unreadWhenOpened) act({ ids: [threadId], action: { kind: "read", read: true } });
-  }, [threadId, unreadWhenOpened, act]);
+    if (!unreadWhenOpened || markRead === "never") return;
+    const read = () => act({ ids: [threadId], action: { kind: "read", read: true } });
+    if (markRead === "open") return read();
+    const timer = window.setTimeout(read, MARK_READ_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [threadId, unreadWhenOpened, markRead, act]);
   // A draft reply opens as the reply being written at the foot (as in
   // Gmail), so it isn't listed as a message too. A conversation that's
   // only a draft still shows it.
   const real = data.messages.filter((m) => !m.draft);
-  const shown = real.length > 0 ? real : data.messages;
+  const shown = inOrder(real.length > 0 ? real : data.messages, order);
   const account = accounts.get(data.thread.accountId);
   const selfEmails = account ? [account.email] : [];
   // Which account it's in matters only when there's more than one.

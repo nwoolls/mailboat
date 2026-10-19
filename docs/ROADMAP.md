@@ -1018,6 +1018,12 @@ comparison"), or to "Considered, not planned" there.*
       keep their size*
 - [ ] Mark as read: on open (today), after a few seconds, or never; and
       conversation order (oldest first, today, or newest first)
+      *Built (2026-10-19), waiting for the owner to try it: Settings →
+      Viewing → Mark as read (On open, After 3 seconds, Never; with the
+      delay, moving on sooner leaves it unread, so skimming with j/k
+      doesn't mark everything read) and Message order (Oldest first,
+      Newest first). With newest first the reply bar stays under the
+      last card, the oldest message*
 - [ ] Default From for new mail (today: the account being viewed) and
       the composer's starting font
 - [ ] Menus trued up *(owner request, 2026-10-19)*: the macOS menu bar

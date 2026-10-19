@@ -42,6 +42,11 @@ import {
 import { screensaverPrefs } from "../../screensaver/ui/prefs";
 import type { AfterRemoval } from "../../mailbox/model/threadActions";
 import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
+import {
+  MARK_READ_DELAY_MS,
+  type MarkRead,
+  type MessageOrder,
+} from "../../mailbox/model/viewingPrefs";
 import { UNDO_SEND_CHOICES } from "../../compose/model/composingPrefs";
 import { composingPrefs } from "../../compose/ui/composingPrefs";
 import { TEXT_SIZES } from "../model/textSize";
@@ -384,6 +389,25 @@ export function ViewingSection() {
           onChange={(afterRemoval) => viewingPrefs.set({ ...prefs, afterRemoval })}
         />
       </Row>
+      <Row
+        label="Mark as read"
+        description="When opening an unread conversation marks it read. With a delay, moving on sooner leaves it unread."
+      >
+        <Segmented
+          label="Mark as read"
+          value={prefs.markRead}
+          options={MARK_READ}
+          onChange={(markRead) => viewingPrefs.set({ ...prefs, markRead })}
+        />
+      </Row>
+      <Row label="Message order" description="Within a conversation.">
+        <Segmented
+          label="Message order"
+          value={prefs.order}
+          options={ORDERS}
+          onChange={(order) => viewingPrefs.set({ ...prefs, order })}
+        />
+      </Row>
     </Group>
   );
 }
@@ -411,6 +435,17 @@ export function ComposingSection() {
     </Group>
   );
 }
+
+const MARK_READ: { value: MarkRead; label: string }[] = [
+  { value: "open", label: "On open" },
+  { value: "delay", label: `After ${MARK_READ_DELAY_MS / 1000} seconds` },
+  { value: "never", label: "Never" },
+];
+
+const ORDERS: { value: MessageOrder; label: string }[] = [
+  { value: "oldestFirst", label: "Oldest first" },
+  { value: "newestFirst", label: "Newest first" },
+];
 
 const AFTER_REMOVAL: { value: AfterRemoval; label: string }[] = [
   { value: "below", label: "Next below" },

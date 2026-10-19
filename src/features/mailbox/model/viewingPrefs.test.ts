@@ -1,13 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_VIEWING_PREFS, parseViewingPrefs } from "./viewingPrefs";
+import { DEFAULT_VIEWING_PREFS, inOrder, parseViewingPrefs } from "./viewingPrefs";
 
 describe("parseViewingPrefs", () => {
   it("defaults when nothing or nonsense was saved", () => {
     expect(parseViewingPrefs(null)).toEqual(DEFAULT_VIEWING_PREFS);
     expect(parseViewingPrefs("{oops")).toEqual(DEFAULT_VIEWING_PREFS);
-    expect(parseViewingPrefs('{"afterRemoval":"sideways"}')).toEqual(DEFAULT_VIEWING_PREFS);
+    expect(parseViewingPrefs('{"afterRemoval":"sideways","markRead":"soon"}')).toEqual(
+      DEFAULT_VIEWING_PREFS,
+    );
   });
-  it("keeps a saved choice", () => {
-    expect(parseViewingPrefs('{"afterRemoval":"none"}').afterRemoval).toBe("none");
+  it("keeps saved choices, and fills in ones saved before they existed", () => {
+    expect(parseViewingPrefs('{"afterRemoval":"none"}')).toEqual({
+      ...DEFAULT_VIEWING_PREFS,
+      afterRemoval: "none",
+    });
+    const all = parseViewingPrefs('{"markRead":"never","order":"newestFirst"}');
+    expect(all.markRead).toBe("never");
+    expect(all.order).toBe("newestFirst");
+  });
+});
+
+describe("inOrder", () => {
+  it("keeps oldest first, or turns it round without changing the original", () => {
+    const messages = [1, 2, 3];
+    expect(inOrder(messages, "oldestFirst")).toEqual([1, 2, 3]);
+    expect(inOrder(messages, "newestFirst")).toEqual([3, 2, 1]);
+    expect(messages).toEqual([1, 2, 3]);
   });
 });
