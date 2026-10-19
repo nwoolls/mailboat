@@ -179,6 +179,7 @@ pub fn run() {
             theme::apply(app.handle(), saved.theme);
             state.resume_all_accounts()?;
             app.manage(state);
+            watch_other_copies(app.handle().clone(), db.clone());
             // After the plugin restored it: fully on a connected display.
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window_place::keep_on_screen(&window);
@@ -196,6 +197,30 @@ pub fn run() {
                 dock::show_at_launch(app_icon::png(choice.as_deref()));
             }
         });
+}
+
+/// Another copy of Mailboat (say a dev build next to the installed app)
+/// shares this database and syncs too. Every 2 seconds, if it wrote
+/// something, the window refreshes as if this copy had: one cheap SQLite
+/// pragma, no file watching.
+fn watch_other_copies(app: tauri::AppHandle, db: Arc<Db>) {
+    tauri::async_runtime::spawn(async move {
+        let mut tick = tokio::time::interval(std::time::Duration::from_secs(2));
+        loop {
+            tick.tick().await;
+            if !db.changed_elsewhere().unwrap_or(false) {
+                continue;
+            }
+            let accounts = mailboat_core::db::accounts::list(&db.conn()).unwrap_or_default();
+            for account in accounts {
+                let _ = MailChangedEvent {
+                    account_id: account.id,
+                }
+                .emit(&app);
+            }
+            let _ = AccountsChangedEvent.emit(&app);
+        }
+    });
 }
 
 #[cfg(test)]

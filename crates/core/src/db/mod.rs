@@ -7,6 +7,7 @@ mod schema;
 pub mod store;
 
 use std::path::Path;
+use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -16,6 +17,8 @@ use crate::error::{CoreError, Result};
 
 pub struct Db {
     conn: Mutex<Connection>,
+    /// SQLite's `data_version` when last checked (see `changed_elsewhere`).
+    seen_version: AtomicI64,
 }
 
 impl Db {
@@ -39,8 +42,10 @@ impl Db {
 
     fn init(mut conn: Connection) -> Result<Self> {
         migrate(&mut conn)?;
+        let version = data_version(&conn)?;
         Ok(Self {
             conn: Mutex::new(conn),
+            seen_version: AtomicI64::new(version),
         })
     }
 
@@ -51,6 +56,21 @@ impl Db {
         // rollback keeps the data consistent, so continue with the connection.
         self.conn.lock().unwrap_or_else(|e| e.into_inner())
     }
+}
+
+impl Db {
+    /// Whether another process (a second copy of Mailboat, e.g. a dev build
+    /// next to the installed app) wrote to the database since the last
+    /// call. SQLite's `data_version` only moves for other connections'
+    /// commits, so this process's own writes don't count.
+    pub fn changed_elsewhere(&self) -> Result<bool> {
+        let now = data_version(&self.conn())?;
+        Ok(self.seen_version.swap(now, Ordering::Relaxed) != now)
+    }
+}
+
+fn data_version(conn: &Connection) -> Result<i64> {
+    Ok(conn.query_row("PRAGMA data_version", [], |r| r.get(0))?)
 }
 
 fn migrate(conn: &mut Connection) -> Result<()> {
@@ -154,5 +174,38 @@ mod tests {
                 .unwrap();
             assert!(has, "{table} must have an account_id column");
         }
+    }
+}
+
+#[cfg(test)]
+mod changed_elsewhere_tests {
+    use super::*;
+
+    #[test]
+    fn notices_another_process_writing_but_not_its_own_writes() {
+        let dir = std::env::temp_dir().join(format!("mailboat-dv-{}", fastrand::u64(..)));
+        let path = dir.join("db.sqlite3");
+        let mine = Db::open(&path).unwrap();
+        let other = Db::open(&path).unwrap();
+        assert!(!mine.changed_elsewhere().unwrap());
+
+        mine.conn()
+            .execute(
+                "INSERT INTO app_settings (key, value) VALUES ('a', '1')",
+                [],
+            )
+            .unwrap();
+        assert!(!mine.changed_elsewhere().unwrap(), "own writes don't count");
+
+        other
+            .conn()
+            .execute(
+                "INSERT INTO app_settings (key, value) VALUES ('b', '2')",
+                [],
+            )
+            .unwrap();
+        assert!(mine.changed_elsewhere().unwrap());
+        assert!(!mine.changed_elsewhere().unwrap(), "reported once");
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

@@ -911,6 +911,11 @@ editors live in Settings (Signatures, Rules), which now exists.
       bar. The owner tried it (2026-10-19): works; the Reply / Forward bar
       was too tall with its buttons above centre, so its padding is now
       even (10px above and below) and the reply's Send bar evened out too
+- [x] A second copy of Mailboat running (installed app plus a dev build)
+      refreshes when the other one syncs new mail *(owner request,
+      2026-10-19)*: both share one database, and each checks every 2
+      seconds whether the other wrote to it, then refreshes its lists.
+      Both copies still sync with Gmail on their own
 - [x] Block sender *(from the list below; 2026-10-18)*: "Block
       sender@x.com…" in the toolbar's More menu, the right-click menu and
       ⌘K, offered when the picked conversations have one sender other
