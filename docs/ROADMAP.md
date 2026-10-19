@@ -1250,6 +1250,14 @@ seen for real.*
       such loop so far. Likely fix: wait for "Retry" after a partial
       failure, as after a full one
 
+- [ ] The list keeps its scroll position when switching views *(owner
+      report, 2026-10-19)*. Scrolled down in Unread, then going to
+      Archive (or any other view), the new list opens scrolled down too,
+      by the same distance. Cause, from the code: every view's list is
+      drawn in one scroll area (`ThreadList`), and nothing scrolls it
+      back to the top when the view changes, so it keeps whatever offset
+      it had. Fix: start each view at the top (or, if wanted, remember
+      each view's own position)
 - [ ] "Download Image" in an email's right-click menu does nothing
       *(owner report, 2026-10-19)*. Right-clicking an image inside an
       email shows the web view's own menu (Mailboat doesn't make it; it may
