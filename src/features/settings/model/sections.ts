@@ -49,7 +49,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   {
     id: "toybox",
     label: "Toybox",
-    description: "Playful extras for an empty list: the glow and the screensavers.",
+    description: "Playful extras, just for fun.",
   },
 ];
 
