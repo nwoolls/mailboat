@@ -71,3 +71,26 @@ function parseOne(piece: string): Address {
   }
   return { name: null, email: piece.replace(/^"|"$/g, "").trim() };
 }
+
+export type AddressLine = "to" | "cc" | "bcc";
+
+/**
+ * Moves one person from one address line to another (a chip dragged from
+ * To down to Cc, say): it leaves the first line and joins the end of the
+ * second, name and all. Never a copy; if the second line already has the
+ * address, it just leaves the first.
+ */
+export function moveAddress<T extends Record<AddressLine, Address[]>>(
+  lines: T,
+  address: Address,
+  from: AddressLine,
+  to: AddressLine,
+): T {
+  if (from === to) return lines;
+  const rest = lines[from].filter((a) => !sameEmail(a.email, address.email));
+  return {
+    ...lines,
+    [from]: rest,
+    [to]: uniqueAddresses([...lines[to], address]),
+  };
+}

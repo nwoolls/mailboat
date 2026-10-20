@@ -3,6 +3,7 @@ import type { Address } from "../../../platform/tauri/bindings";
 import { useContacts } from "../../../shared/lib/queries";
 import { matchContacts } from "../model/contacts";
 import {
+  type AddressLine,
   formatAddress,
   isValidEmail,
   parseAddresses,
@@ -76,17 +77,30 @@ function SuggestionList({
  * suggests people from cached mail; ↑/↓ and Return or Tab pick one. A
  * comma, semicolon, Return or leaving the field turns typed text into
  * chips; Backspace in an empty box takes the last chip back for editing.
+ * A chip can be dragged to another line (To, Cc, Bcc), as in Mail.
  */
 export function AddressField({
   label,
+  line,
   value,
   onChange,
+  dropTarget,
+  onDragOver,
+  onMove,
   autoFocus,
   trailing,
 }: {
   label: string;
+  /** Which line this is, for dragging chips between lines. */
+  line: AddressLine;
   value: Address[];
   onChange: (next: Address[]) => void;
+  /** A chip is being dragged over this line: highlight it. */
+  dropTarget: boolean;
+  /** A dragged chip is over this line (or another), or over none. */
+  onDragOver: (line: AddressLine | null) => void;
+  /** A chip from this line was dropped on another. */
+  onMove: (address: Address, to: AddressLine) => void;
   autoFocus?: boolean;
   /** Shown at the end of the line (the Cc/Bcc toggles). */
   trailing?: React.ReactNode;
@@ -178,7 +192,10 @@ export function AddressField({
   return (
     <div
       ref={lineRef}
-      className="flex min-h-9 cursor-text flex-wrap items-center gap-1 border-b border-stroke py-1"
+      data-address-line={line}
+      className={`flex min-h-9 cursor-text flex-wrap items-center gap-1 border-b border-stroke py-1 ${
+        dropTarget ? "bg-selection-subtle" : ""
+      }`}
       onClick={() => inputRef.current?.focus()}
     >
       <span className="w-12 shrink-0 text-content/45">{label}</span>
@@ -186,6 +203,11 @@ export function AddressField({
         <Chip
           key={a.email.toLowerCase()}
           address={a}
+          onDragOver={onDragOver}
+          onDrop={(to) => {
+            onDragOver(null);
+            if (to && to !== line) onMove(a, to);
+          }}
           onRemove={() => onChange(value.filter((v) => v !== a))}
           onEdit={() => {
             onChange(value.filter((v) => v !== a));
@@ -248,22 +270,75 @@ export function AddressField({
   );
 }
 
+/** How far the pointer moves before a press on a chip becomes a drag. */
+const DRAG_THRESHOLD = 4;
+
+/** The address line under the pointer, looking past the dragged chip. */
+function lineAt(x: number, y: number, chip: Element): AddressLine | null {
+  const under = document.elementsFromPoint(x, y).find((el) => !chip.contains(el));
+  const found = under?.closest<HTMLElement>("[data-address-line]")?.dataset.addressLine;
+  return found === "to" || found === "cc" || found === "bcc" ? found : null;
+}
+
 function Chip({
   address,
+  onDragOver,
+  onDrop,
   onRemove,
   onEdit,
 }: {
   address: Address;
+  onDragOver: (line: AddressLine | null) => void;
+  onDrop: (line: AddressLine | null) => void;
   onRemove: () => void;
   onEdit: () => void;
 }) {
   const valid = isValidEmail(address.email);
+  // Where the press started, and once it's a drag, how far it has moved.
+  // Pointer events rather than HTML drag and drop, which Tauri's window
+  // file-drop handling can swallow.
+  const press = useRef<{ x: number; y: number } | null>(null);
+  const [shift, setShift] = useState<{ x: number; y: number } | null>(null);
+  const end = () => {
+    press.current = null;
+    setShift(null);
+  };
   return (
     <span
       title={valid ? formatAddress(address) : `“${address.email}” isn’t a valid email address`}
-      className={`flex h-6 max-w-[16rem] items-center gap-0.5 rounded-md pr-0.5 pl-2 ${
+      onPointerDown={(e) => {
+        if (e.button !== 0 || (e.target as Element).closest("[data-chip-remove]")) return;
+        press.current = { x: e.clientX, y: e.clientY };
+      }}
+      onPointerMove={(e) => {
+        const start = press.current;
+        if (!start) return;
+        const x = e.clientX - start.x;
+        const y = e.clientY - start.y;
+        if (!shift) {
+          if (Math.hypot(x, y) < DRAG_THRESHOLD) return;
+          // Captured only once it's a drag: captured from the press, the
+          // double-click that edits a chip would miss its button.
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }
+        setShift({ x, y });
+        onDragOver(lineAt(e.clientX, e.clientY, e.currentTarget));
+      }}
+      onPointerLeave={() => {
+        if (!shift) press.current = null;
+      }}
+      onPointerUp={(e) => {
+        if (shift) onDrop(lineAt(e.clientX, e.clientY, e.currentTarget));
+        end();
+      }}
+      onPointerCancel={() => {
+        if (shift) onDrop(null);
+        end();
+      }}
+      className={`flex h-6 max-w-[16rem] items-center gap-0.5 rounded-md pr-0.5 pl-2 select-none ${
         valid ? "bg-selection" : "bg-danger/15 text-danger"
-      }`}
+      } ${shift ? "relative z-50 cursor-grabbing shadow-md" : ""}`}
+      style={shift ? { transform: `translate(${shift.x}px, ${shift.y}px)` } : undefined}
     >
       <button
         type="button"
@@ -278,6 +353,7 @@ function Chip({
       </button>
       <button
         type="button"
+        data-chip-remove
         aria-label={`Remove ${address.email}`}
         className="rounded px-1 text-content/45 hover:bg-selection-strong hover:text-content"
         onClick={(e) => {

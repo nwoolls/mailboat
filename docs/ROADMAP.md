@@ -1136,6 +1136,12 @@ ticked.*
       the address chips in `AddressField` to be draggable and each field
       to accept a drop (moving the address, never copying it, and keeping
       its name)
+      *Built (2026-10-19), waiting for the owner to try it: drag a chip
+      onto another line (it follows the pointer, the line under it
+      shades); it moves there with its name, and if that line already
+      has it, it just leaves the first. Cc or Bcc must be showing to
+      drop on it. Pointer-based rather than the web view's drag and
+      drop, which Tauri's window file-drop handling can swallow*
 
 - [ ] "Download Image" in an email's right-click menu does nothing
       *(owner report, 2026-10-19)*. Right-clicking an image inside an

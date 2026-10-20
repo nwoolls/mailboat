@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { Account, Identity } from "../../../platform/tauri/bindings";
+import type { Account, Address, Identity } from "../../../platform/tauri/bindings";
+import { type AddressLine, moveAddress } from "../model/addresses";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { AccountDot } from "../../../shared/ui/AccountDot";
 import {
@@ -333,6 +334,15 @@ function AddressFieldRow({
   onChange: (change: (d: Draft) => Draft) => void;
   kindMenu?: React.ReactNode;
 }) {
+  // The line a dragged address chip is over, highlighted until it drops.
+  const [dragOver, setDragOver] = useState<AddressLine | null>(null);
+  const lineProps = (line: AddressLine) => ({
+    line,
+    dropTarget: dragOver === line,
+    onDragOver: setDragOver,
+    onMove: (address: Address, to: AddressLine) =>
+      onChange((d) => moveAddress(d, address, line, to)),
+  });
   const toggle = (field: "showCc" | "showBcc", label: string) =>
     !draft[field] && (
       <button
@@ -350,6 +360,7 @@ function AddressFieldRow({
     <>
       <AddressField
         label="To"
+        {...lineProps("to")}
         value={draft.to}
         autoFocus={draft.kind === "new" || draft.kind === "forward"}
         onChange={(to) => onChange((d) => ({ ...d, to }))}
@@ -364,6 +375,7 @@ function AddressFieldRow({
       {draft.showCc && (
         <AddressField
           label="Cc"
+          {...lineProps("cc")}
           value={draft.cc}
           onChange={(cc) => onChange((d) => ({ ...d, cc }))}
         />
@@ -371,6 +383,7 @@ function AddressFieldRow({
       {draft.showBcc && (
         <AddressField
           label="Bcc"
+          {...lineProps("bcc")}
           value={draft.bcc}
           onChange={(bcc) => onChange((d) => ({ ...d, bcc }))}
         />
