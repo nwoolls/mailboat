@@ -497,6 +497,10 @@ export function hasChanges(draft: Draft): boolean {
   return draft.to.length + draft.cc.length + draft.bcc.length > 0 || draft.subject.trim() !== "";
 }
 
+const LIST_STYLE = "margin:0;padding-left:1.5em";
+const TABLE_STYLE = "border-collapse:collapse";
+const CELL_STYLE = "border:1px solid #d0d0d0;padding:2px 8px;text-align:left;vertical-align:top";
+
 /**
  * The editor's HTML as mail apps should show it: paragraphs without the
  * gaps browsers add between them (the editor shows none), and empty
@@ -506,7 +510,17 @@ export function emailHtml(html: string, style: TextStyle = PLAIN_STYLE): string 
   const body = html
     .replace(/<p><\/p>/g, "<p><br></p>")
     .replace(/<p style="/g, '<p style="margin:0;')
-    .replace(/<p>/g, '<p style="margin:0">');
+    .replace(/<p>/g, '<p style="margin:0">')
+    // Lists without the gaps mail apps put above and below them.
+    .replace(
+      /<(ul|ol)( [^>]*)?>/g,
+      (_m, tag: string, attrs = "") => `<${tag}${attrs} style="${LIST_STYLE}">`,
+    )
+    // Tables as the editor shows them: thin grey lines, no column widths
+    // (the editor's own sizing hints mean nothing in an email).
+    .replace(/<colgroup>.*?<\/colgroup>/g, "")
+    .replace(/<table[^>]*>/g, `<table style="${TABLE_STYLE}">`)
+    .replace(/<(th|td)[^>]*>/g, (_m, tag: string) => `<${tag} style="${CELL_STYLE}">`);
   // The starting font (Settings → Composing) around what was written, so
   // it reaches the reader; text formatted in the editor keeps its own.
   const css = styleCss(style);

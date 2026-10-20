@@ -1,4 +1,5 @@
 import { Image } from "@tiptap/extension-image";
+import { TableKit } from "@tiptap/extension-table";
 import { TextAlign } from "@tiptap/extension-text-align";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import { type Editor, EditorContent, useEditor, useEditorState } from "@tiptap/react";
@@ -55,6 +56,9 @@ export function useRichEditor(
       // this the editor dropped them and left their empty lines.
       Image.configure({ inline: true, allowBase64: false }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      // Tables the writing assistant writes (or pasted ones). Plain: no
+      // column resizing, styled for sending by `emailHtml`.
+      TableKit.configure({ table: { resizable: false } }),
     ],
     content: initialHtml,
     editorProps: {

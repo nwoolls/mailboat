@@ -135,13 +135,18 @@ pub struct WriteRequest {
     pub draft: String,
     /// The chat so far, ending with the newest request.
     pub chat: Vec<ChatTurn>,
+    /// A signature follows the text (so no name in the sign-off).
+    pub has_signature: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WriteAnswer {
-    /// The email text.
+    /// The email as the model wrote it (Markdown), for the chat and for
+    /// asking again.
     pub text: String,
+    /// The same as the composer's HTML (`format::markdown_to_html`).
+    pub html: String,
     /// For new mail without a subject: the one the model suggested.
     pub subject: Option<String>,
 }
@@ -166,6 +171,7 @@ pub async fn write(
         to: request.to.clone(),
         subject: request.subject.clone(),
         draft: request.draft.clone(),
+        has_signature: request.has_signature,
     };
     let prompt = prompts::write(&ctx, &request.chat, provider);
     // New mail may lead with "Subject:"; the chat shouldn't show it as text.
@@ -188,5 +194,13 @@ pub async fn write(
             "The AI didn't write anything; try asking differently.".into(),
         ));
     }
-    Ok((WriteAnswer { text, subject }, answer))
+    let html = super::format::markdown_to_html(&text);
+    Ok((
+        WriteAnswer {
+            text,
+            html,
+            subject,
+        },
+        answer,
+    ))
 }

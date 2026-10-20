@@ -1449,6 +1449,18 @@ built, tested and waiting for the owner to try.*
       and live provider tests. To decide with the owner: side panel vs
       above for the card, its width (340px), and whether "Insert" (keep
       what's written) is wanted beside "Use this"
+- [x] Owner feedback on the first try (2026-10-20), with a screenshot:
+      - With a signature, the sign-off had the owner's name too: now just
+        "Thanks," when a signature follows (the name stays without one)
+      - "Use this" lost the blank lines between paragraphs: drafts now
+        reach the editor as HTML with blank lines as empty paragraphs
+      - Formatting: drafts may use bullets, numbered lists, bold, italics
+        and tables, shown formatted in the chat and in the editor, sent
+        without list margins or a font of their own (tables with thin
+        grey lines). Checked live: all three providers wrote a numbered
+        agenda, a table and bold text when asked
+      - "Use this" to be renamed: options offered to the owner, waiting
+        for their pick
 - Ideas not built: AI actions in ⌘K (summarize, reply with AI), a
   "Reply with AI" button on the reply bar, per-provider model choice
   (today Claude uses Haiku for summaries and Sonnet for writing; Codex

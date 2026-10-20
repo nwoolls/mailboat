@@ -78,6 +78,8 @@ pub struct WritingContext {
     pub subject: String,
     /// What's in the editor now.
     pub draft: String,
+    /// Their signature (with their name) follows the text.
+    pub has_signature: bool,
 }
 
 /// A draft from the owner's request and the chat so far. The model's
@@ -88,17 +90,17 @@ pub fn write(ctx: &WritingContext, chat: &[ChatTurn], provider: AiProvider) -> P
     let instructions = format!(
         "You help {writer} write an email ({kind}). Write in the first person as them, in a natural, \
 friendly, concise style that matches how they write in the conversation if they have. \
-Answer with the email text only: no explanations, no notes, no markdown, no placeholders in \
+Answer with the email text only: no explanations, no notes, no placeholders in \
 brackets unless something essential is unknown. Start with a greeting only if one fits. \
-End with a short sign-off{sign_as}, but no signature block (theirs is added automatically). \
+{sign_off} \
+Use Markdown only where formatting helps the reader: - bullets, 1. numbered lists, **bold**, \
+*italic*, and tables for side-by-side details. No headings, code blocks or images. \
 When replying, address everything the newest message asks for. \
 {subject_rule}\
 When asked to change a draft, rewrite the whole email with the change. {UNTRUSTED}",
         writer = if ctx.writer.is_empty() { "the user" } else { &ctx.writer },
         kind = ctx.kind,
-        sign_as = first_name(&ctx.writer)
-            .map(|n| format!(" and the name \"{n}\""))
-            .unwrap_or_default(),
+        sign_off = sign_off(ctx),
         subject_rule = if new_message {
             "If there's no subject yet, put \"Subject: …\" alone on the first line, then a blank line, then the email. "
         } else {
@@ -159,6 +161,22 @@ When asked to change a draft, rewrite the whole email with the change. {UNTRUSTE
         input,
         quality: Quality::Best,
         max_tokens: Some(700),
+    }
+}
+
+/// How the email ends. With a signature (which carries their name) just
+/// a closing like "Thanks,"; without one, the closing and their first name.
+fn sign_off(ctx: &WritingContext) -> String {
+    if ctx.has_signature {
+        return "End with a short closing line such as \"Thanks,\" and nothing after it: no name \
+and no signature, because their signature (with their name) follows automatically."
+            .into();
+    }
+    match first_name(&ctx.writer) {
+        Some(n) => format!(
+            "End with a short closing such as \"Thanks,\" and the name \"{n}\" on the next line."
+        ),
+        None => "End with a short closing such as \"Thanks,\".".into(),
     }
 }
 
@@ -251,6 +269,7 @@ mod tests {
             to: "Sam <s@x.com>".into(),
             subject: "Re: Review".into(),
             draft: "Thursday is fine".into(),
+            has_signature: false,
         };
         let chat = vec![
             ChatTurn {
@@ -316,6 +335,14 @@ mod tests {
         assert!(write(&ctx, &[], AiProvider::Apple)
             .instructions
             .contains("the name \"Jordan\""));
+        // A signature already has the name.
+        let signed = WritingContext {
+            has_signature: true,
+            ..ctx
+        };
+        let p = write(&signed, &[], AiProvider::Apple);
+        assert!(p.instructions.contains("no name"));
+        assert!(!p.instructions.contains("\"Jordan\""));
     }
 
     #[test]

@@ -524,6 +524,21 @@ html.resizing .panel-slide {
   border-left: 2px solid var(--color-stroke);
   color: color-mix(in srgb, var(--color-content) 65%, transparent);
 }
+/* As sent (see emailHtml): collapsed, thin grey lines, a little padding. */
+.compose-editor table {
+  border-collapse: collapse;
+  margin: 0;
+}
+.compose-editor th,
+.compose-editor td {
+  border: 1px solid var(--color-stroke);
+  padding: 2px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.compose-editor th {
+  font-weight: 600;
+}
 .compose-editor a {
   color: var(--color-accent);
   text-decoration: underline;

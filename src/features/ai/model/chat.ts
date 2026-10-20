@@ -7,6 +7,8 @@ export type ChatMessage = {
   id: number;
   role: "user" | "assistant";
   text: string;
+  /** A draft as the composer's HTML (Markdown converted and cleaned in Rust). */
+  html?: string;
   /** A subject the model suggested (new mail without one). */
   subject?: string | null;
   /** The request failed: shown, but not sent back to the model. */
@@ -40,6 +42,8 @@ export function writeRequest(draft: Draft, messages: ChatMessage[]): WriteReques
     subject: draft.subject,
     draft: draft.edited ? draft.text : "",
     chat: toTurns(messages),
+    // Its signature carries the name, so the sign-off leaves it out.
+    hasSignature: draft.signature.trim() !== "",
   };
 }
 

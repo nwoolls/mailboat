@@ -77,6 +77,27 @@ function source(over: Partial<ReplySource> = {}): ReplySource {
   };
 }
 
+describe("formatting in sent mail", () => {
+  it("adds no gaps around lists and no font of its own", () => {
+    expect(emailHtml('<ul><li><p>One</p></li></ul><ol start="3"><li><p>Two</p></li></ol>')).toBe(
+      '<ul style="margin:0;padding-left:1.5em"><li><p style="margin:0">One</p></li></ul>' +
+        '<ol start="3" style="margin:0;padding-left:1.5em"><li><p style="margin:0">Two</p></li></ol>',
+    );
+  });
+  it("gives tables thin lines and drops the editor's sizing", () => {
+    const editor =
+      '<table style="min-width: 50px"><colgroup><col style="min-width: 25px"><col style="min-width: 25px"></colgroup>' +
+      '<tbody><tr><th colspan="1" rowspan="1"><p>Who</p></th></tr><tr><td colspan="1" rowspan="1"><p>Sam</p></td></tr></tbody></table>';
+    const out = emailHtml(editor);
+    expect(out).not.toContain("colgroup");
+    expect(out).not.toContain("min-width");
+    expect(out).toContain(
+      '<table style="border-collapse:collapse"><tbody><tr><th style="border:1px solid',
+    );
+    expect(out).toContain('<p style="margin:0">Sam</p></td>');
+  });
+});
+
 describe("starting font", () => {
   it("wraps what was written in the chosen font, and nothing else", () => {
     expect(emailHtml("<p>Hi</p>", { font: "Georgia, serif", size: "" })).toBe(

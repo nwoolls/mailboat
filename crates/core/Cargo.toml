@@ -25,6 +25,9 @@ lol_html = "3.0.1"
 # Reads emails' style sheets (mail::stylesheet); Servo's, already in the
 # build through ammonia.
 cssparser = "0.38"
+# The writing assistant's Markdown (lists, bold, tables) as email HTML
+# (ai::format); the most used Rust Markdown parser.
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 oauth2 = { version = "5", default-features = false }
 mail-builder = { version = "1", default-features = false }
 icalendar = { version = "0.17", default-features = false, features = ["parser"] }

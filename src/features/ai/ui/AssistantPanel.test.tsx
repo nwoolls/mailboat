@@ -21,7 +21,11 @@ describe("AssistantPanel", () => {
   it("asks with the chat, shows the draft, and Use this hands it over", async () => {
     aiWrite.mockResolvedValue({
       status: "ok",
-      data: { text: "Yes, Thursday works.", subject: null },
+      data: {
+        text: "Yes, **Thursday** works.",
+        html: "<p>Yes, <strong>Thursday</strong> works.</p>",
+        subject: null,
+      },
     });
     const onUse = vi.fn();
     const draft = { ...newDraft([], 1, "me@x.com"), kind: "reply" as const, threadId: 42 };
@@ -36,12 +40,15 @@ describe("AssistantPanel", () => {
     expect(aiWrite).toHaveBeenCalledTimes(1);
     const [request] = aiWrite.mock.calls[0]!;
     expect(request).toMatchObject({
+      hasSignature: false,
       threadId: 42,
       kind: "reply",
       chat: [{ role: "user", text: "Say yes" }],
     });
     fireEvent.click(await screen.findByText("Use this"));
-    expect(onUse).toHaveBeenCalledWith("Yes, Thursday works.", null);
+    expect(onUse).toHaveBeenCalledWith("<p>Yes, <strong>Thursday</strong> works.</p>", null);
+    // Shown formatted in the chat, not as Markdown.
+    expect(screen.getByText("Thursday").tagName).toBe("STRONG");
   });
 
   it("shows a failure in the chat, and Escape closes the panel", async () => {

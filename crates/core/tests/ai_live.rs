@@ -72,16 +72,23 @@ async fn write_with(provider: AiProvider) {
         to: "Sam Lee <sam@example.com>".into(),
         subject: "Re: Quarterly review".into(),
         draft: String::new(),
+        has_signature: true,
     };
     let chat = vec![ChatTurn {
         role: ChatRole::User,
-        text: "Say yes, but I'll be 10 minutes late".into(),
+        text: "Say yes, but I'll be 10 minutes late. Then propose an agenda as a numbered list, \
+and a small table of who brings what (budget: me, slides: Sam). Bold the time."
+            .into(),
     }];
     let prompt = prompts::write(&ctx, &chat, provider);
     let answer = ai::ask(&programs(), provider, &prompt, &|_| {})
         .await
         .unwrap();
     println!("--- {provider:?} wrote:\n{}\n", answer.text);
+    println!(
+        "--- as HTML:\n{}\n",
+        mailboat_core::ai::format::markdown_to_html(&answer.text)
+    );
     assert!(!answer.text.is_empty());
 }
 

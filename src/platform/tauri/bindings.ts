@@ -1218,8 +1218,13 @@ canLimitToDomain: boolean;
 active: boolean } | { kind: "needsSignIn" } | { kind: "unavailable"; message: string };
 
 export type WriteAnswer = {
-	/**  The email text. */
+	/**
+	 *  The email as the model wrote it (Markdown), for the chat and for
+	 *  asking again.
+	 */
 	text: string,
+	/**  The same as the composer's HTML (`format::markdown_to_html`). */
+	html: string,
 	/**  For new mail without a subject: the one the model suggested. */
 	subject: string | null,
 };
@@ -1237,6 +1242,8 @@ export type WriteRequest = {
 	draft: string,
 	/**  The chat so far, ending with the newest request. */
 	chat: ChatTurn[],
+	/**  A signature follows the text (so no name in the sign-off). */
+	hasSignature: boolean,
 };
 
 /* Tauri Specta runtime */

@@ -3,7 +3,7 @@ import { commands } from "../../../platform/tauri/bindings";
 import { IpcError, unwrap } from "../../../platform/tauri/ipc";
 import { useAiStatus, useAppSettings, useSaveAppSettings } from "../../../shared/lib/queries";
 import { AiIcon, AskIcon, ClearIcon, StopIcon } from "../../../shared/ui/icons";
-import type { Draft } from "../../compose/model/draft";
+import { type Draft, textToHtml } from "../../compose/model/draft";
 import { type ChatMessage, chatMessage, suggestions, writeRequest } from "../model/chat";
 import { aiChoices, offered, PROVIDER_NAMES, statusLine, statusOf } from "../model/providers";
 import { dropText, newRequestId, useStreamedText } from "./stream";
@@ -33,7 +33,8 @@ export function AssistantPanel({
   draft: Draft;
   /** Beside the floating card's form, or above an inline reply. */
   placement: "side" | "top";
-  onUse: (text: string, subject: string | null) => void;
+  /** The draft as the composer's HTML (cleaned in Rust), and a subject. */
+  onUse: (html: string, subject: string | null) => void;
   onClose: () => void;
 }) {
   const settings = useAppSettings().data;
@@ -82,7 +83,12 @@ export function AssistantPanel({
       .then((answer) =>
         setMessages((m) => [
           ...m,
-          chatMessage({ role: "assistant", text: answer.text, subject: answer.subject }),
+          chatMessage({
+            role: "assistant",
+            text: answer.text,
+            html: answer.html,
+            subject: answer.subject,
+          }),
         ]),
       )
       .catch((e: unknown) => {
@@ -198,7 +204,11 @@ export function AssistantPanel({
               {m.text}
             </p>
           ) : (
-            <DraftBubble key={m.id} message={m} onUse={() => onUse(m.text, m.subject ?? null)} />
+            <DraftBubble
+              key={m.id}
+              message={m}
+              onUse={() => onUse(m.html ?? textToHtml(m.text), m.subject ?? null)}
+            />
           ),
         )}
         {pending !== null && (
@@ -275,7 +285,16 @@ function DraftBubble({ message, onUse }: { message: ChatMessage; onUse: () => vo
           Subject: <span className="text-content/80">{message.subject}</span>
         </p>
       )}
-      <p className="selectable whitespace-pre-wrap text-content/85">{message.text}</p>
+      {message.html ? (
+        <div
+          className="compose-editor selectable text-content/85"
+          // Cleaned in Rust (ai::format) to plain formatting tags: no
+          // images, styles, scripts or attributes but links' href.
+          dangerouslySetInnerHTML={{ __html: message.html }}
+        />
+      ) : (
+        <p className="selectable whitespace-pre-wrap text-content/85">{message.text}</p>
+      )}
       <div className="mt-1.5 flex justify-end">
         <button
           type="button"

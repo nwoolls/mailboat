@@ -21,7 +21,6 @@ import {
   type Draft,
   hasChanges,
   sendProblem,
-  textToHtml,
   withIdentity,
 } from "../model/draft";
 import { AssistantPanel } from "../../ai/ui/AssistantPanel";
@@ -132,9 +131,9 @@ export function ComposeForm({
 
   // "Use this": the AI's draft replaces the text (signature and quote
   // stay as they are); new mail without a subject takes the one suggested.
-  const applyDraft = (text: string, subject: string | null) => {
+  const applyDraft = (html: string, subject: string | null) => {
     if (!editor) return;
-    editor.commands.setContent(textToHtml(text), { emitUpdate: true });
+    editor.commands.setContent(html, { emitUpdate: true });
     editor.commands.focus("end");
     if (subject && draft.kind === "new")
       onChange((d) => (d.subject.trim() ? d : { ...d, subject }));
