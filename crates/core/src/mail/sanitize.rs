@@ -418,12 +418,14 @@ pub fn sanitize_html_colors(
         light_only_style_sheets(&rewritten)
     };
 
+    let (pinned, dark_css) = dark.into_inner().css();
     SafeMessage {
         document: wrap_document(
             &rewritten,
             allow_images,
             adaptive,
-            &dark.into_inner().css(),
+            &pinned,
+            &dark_css,
             if adaptive { &sheet.css } else { "" },
         ),
         blocked_images: blocked.get(),
@@ -484,6 +486,14 @@ fn adapt_plan(raw: &str, cleaned: &str) -> Option<stylesheet::SheetRemap> {
     if lower.contains("color-scheme") && !lower.contains("dark") {
         return None;
     }
+    // Said outright ("color-scheme: light only", or the `only light`
+    // order): it wins over any dark-mode rules, which in such emails force
+    // light colors back (a news site's kept its page white while its text was
+    // remapped light).
+    let collapsed: String = lower.split_whitespace().collect::<Vec<_>>().join(" ");
+    if collapsed.contains("light only") || collapsed.contains("only light") {
+        return None;
+    }
     stylesheet::remap(&style_sheets(cleaned))
 }
 
@@ -520,6 +530,28 @@ struct DarkRules {
     /// darker card instead of see-through, so its edges still show (Gmail's
     /// notices draw no top border and rely on white against grey).
     veils: Rc<Cell<u32>>,
+    /// Inline colors marked `!important`, moved out of the `style`
+    /// attribute into rules of their own (`data-mp`): an inline
+    /// `!important` beats every style sheet, so it blocked the dark
+    /// remap (a notice's white box kept its white behind light text).
+    pinned: Vec<String>,
+}
+
+/// Whether a declaration sets a color the dark remap changes (as `mark`
+/// reads them): text, background (not an image) and border colors.
+fn is_color_property(prop: &str, value: &str) -> bool {
+    match prop {
+        "color" | "background-color" => true,
+        "background" => !value.contains("url("),
+        p => {
+            p.starts_with("border")
+                && !p.contains("radius")
+                && !p.contains("width")
+                && !p.contains("style")
+                && !p.contains("collapse")
+                && !p.contains("spacing")
+        }
+    }
 }
 
 impl DarkRules {
@@ -607,7 +639,43 @@ impl DarkRules {
             let n = Self::number(&mut self.border, format!("border-color:{color}!important"));
             el.set_attribute("data-mr", &n.to_string())?;
         }
+        self.pin_important(el)?;
         Ok(())
+    }
+
+    /// Moves the element's `!important` inline colors into a rule of its
+    /// own, as strong as the email's sheets ever see (one `:not(#…)`; the
+    /// email can't use ids), so light mode looks the same, while the dark
+    /// remap's two `:not(#…)` now win in dark mode.
+    fn pin_important(
+        &mut self,
+        el: &mut lol_html::html_content::Element<'_, '_>,
+    ) -> Result<(), lol_html::errors::AttributeNameError> {
+        let Some(style) = el.get_attribute("style") else {
+            return Ok(());
+        };
+        let mut kept: Vec<&str> = Vec::new();
+        let mut moved: Vec<String> = Vec::new();
+        for decl in style.split(';') {
+            let pin = decl.split_once(':').is_some_and(|(prop, value)| {
+                let value = value.to_ascii_lowercase();
+                value.contains("!important")
+                    && is_color_property(&prop.trim().to_ascii_lowercase(), &value)
+            });
+            if pin {
+                moved.push(decl.trim().to_string());
+            } else if !decl.trim().is_empty() {
+                kept.push(decl.trim());
+            }
+        }
+        if moved.is_empty() || moved.iter().any(|d| d.contains(['{', '}', '<', '@', '\\'])) {
+            return Ok(());
+        }
+        let n = self.pinned.len();
+        self.pinned
+            .push(format!("[data-mp=\"{n}\"]{PIN}{{{}}}", moved.join(";")));
+        el.set_attribute("style", &kept.join(";"))?;
+        el.set_attribute("data-mp", &n.to_string())
     }
 
     fn number(map: &mut HashMap<String, usize>, css: String) -> usize {
@@ -615,7 +683,10 @@ impl DarkRules {
         *map.entry(css).or_insert(next)
     }
 
-    fn css(self) -> String {
+    /// The pinned `!important` colors (for every color scheme) and the dark
+    /// remap (for dark mode).
+    fn css(self) -> (String, String) {
+        let pinned = self.pinned.concat();
         let mut rules: Vec<(String, usize, String)> = self
             .text
             .into_iter()
@@ -632,26 +703,29 @@ impl DarkRules {
             )
             .collect();
         rules.sort();
-        rules
+        let dark: String = rules
             .into_iter()
             // Two `:not(#…)` raise the rule above any email selector
             // (ammonia drops `id`s, so the email's own `#id` rules never
             // match): an inline color beat the email's sheet in light mode,
             // so its remap must beat the sheet's remap in dark mode.
             .map(|(attr, n, css)| format!("[data-{attr}=\"{n}\"]{BOOST}{{{css}}}"))
-            .collect()
+            .collect();
+        (pinned, dark)
     }
 }
 
 /// See `DarkRules::css`.
 const BOOST: &str = ":not(#mailboat-none):not(#mailboat-none)";
+/// See `DarkRules::pin_important`: above the email's sheets, below `BOOST`.
+const PIN: &str = ":not(#mailboat-none)";
 
 /// Plain-text messages are escaped and shown with preserved line breaks.
 pub fn text_document(text: &str) -> SafeMessage {
     let escaped = ammonia::clean_text(text);
     let body = format!("<div class=\"mailboat-plain\">{escaped}</div>");
     SafeMessage {
-        document: wrap_document(&body, false, true, "", ""),
+        document: wrap_document(&body, false, true, "", "", ""),
         blocked_images: 0,
         loaded_images: 0,
         trackers_removed: 0,
@@ -685,12 +759,13 @@ fn wrap_document(
     body: &str,
     allow_images: bool,
     adaptive: bool,
+    pinned_rules: &str,
     dark_rules: &str,
     sheet_rules: &str,
 ) -> String {
     let page = if adaptive {
-        "html,body{margin:0;padding:0;background:transparent;color:#1f1f1f}\nbody{padding:0 0 4px}\n@media (prefers-color-scheme:dark){body{color:#e4e4e7}a{color:#8ab4f8}img[data-mailboat-blocked],img[data-mailboat-inline]{background:rgba(255,255,255,.08)!important}"
-            .to_string()
+        pinned_rules.to_string()
+            + "html,body{margin:0;padding:0;background:transparent;color:#1f1f1f}\nbody{padding:0 0 4px}\n@media (prefers-color-scheme:dark){body{color:#e4e4e7}a{color:#8ab4f8}img[data-mailboat-blocked],img[data-mailboat-inline]{background:rgba(255,255,255,.08)!important}"
             + dark_rules
             + "}"
     } else {
@@ -1099,6 +1174,62 @@ mod tests {
         assert!(!light_only.adaptive);
         assert!(sanitize_html("<style>p{margin:0}</style><p>Hi</p>", false).adaptive);
         assert!(text_document("hi").adaptive);
+    }
+
+    /// a news site (owner report, 2026-10-20): "light only", plus a dark-mode
+    /// block that forces white back. It was adapted (its text turned light)
+    /// while its own rule kept the page white.
+    #[test]
+    fn light_only_wins_over_defensive_dark_rules() {
+        let newsy = r#"<style>body { color-scheme: light only; }
+            @media (prefers-color-scheme: dark) { body, .bg { background-color: #ffffff !important; } }
+            </style><table class="bg" style="background-color:#ffffff;color:#26242d"><tr><td>Hi</td></tr></table>"#;
+        let out = sanitize_html(newsy, false);
+        assert!(!out.adaptive, "kept on the white card");
+        assert!(!sanitize_html(r#"<p style="color-scheme:only light">x</p>"#, false).adaptive);
+        // An email with real dark-mode rules (a vendor's) still adapts.
+        let vendor = r#"<meta name="color-scheme" content="light dark"><style>
+            @media (prefers-color-scheme: dark) { .t { color: #fff !important } }</style><p class="t">Hi</p>"#;
+        assert!(sanitize_html(vendor, false).adaptive);
+    }
+
+    /// a notice (owner report, 2026-10-20): an inline `!important` white
+    /// beat the dark remap (style sheets can't beat inline `!important`),
+    /// so light text sat on white. It's now a rule the remap can beat, as
+    /// strong as before against the email's own sheets.
+    #[test]
+    fn inline_important_colors_give_way_to_the_dark_remap() {
+        let out = sanitize_html(
+            r#"<style>.box{background:#eee !important}</style><table><tr><td class="box" style="padding:4px; background:#ffffff !important; color:#2D2D2D">Hello</td></tr></table>"#,
+            false,
+        );
+        assert!(out.adaptive);
+        let doc = &out.document;
+        // The !important color left the element's own style…
+        assert!(
+            doc.contains(r#"style="padding:4px;color:#2D2D2D""#),
+            "{doc}"
+        );
+        // …for a rule of its own, above the email's sheet (one id) but
+        // below the dark remap (two ids).
+        assert!(
+            doc.contains(r#"[data-mp="0"]:not(#mailboat-none){background:#ffffff !important}"#),
+            "{doc}"
+        );
+        assert!(doc.contains(r#"data-mp="0""#));
+        assert!(
+            doc.contains(r#"[data-mb="0"]:not(#mailboat-none):not(#mailboat-none){background-color:"#)
+        );
+        // Not adapted (original colors): the email is left exactly as it was.
+        let original = sanitize_html_colors(
+            r#"<table><tr><td style="background:#ffffff !important">Hello</td></tr></table>"#,
+            false,
+            &HashMap::new(),
+            &HashMap::new(),
+            true,
+        );
+        assert!(!original.document.contains("data-mp"));
+        assert!(original.document.contains("background:#ffffff !important"));
     }
 
     #[test]

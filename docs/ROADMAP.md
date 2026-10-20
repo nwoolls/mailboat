@@ -1483,6 +1483,10 @@ built, tested and waiting for the owner to try.*
         its prompt asks for four kinds of response (agree, decline, ask,
         suggest) with no examples, after the email. Checked live on two
         emails with all three providers
+      - The pinned Reply bar's tint follows Settings → Appearance →
+        "Sidebar and reader" *(owner report: it had its own fixed tint,
+        the compose card's)*, offset so it still hides the email under
+        it; at the default it looks as before
       - "Reply with AI" on the reply bar (after Forward, while the
         writing provider is ready): starts a Reply with the AI panel
         open. A plain Reply rather than Reply all, so nobody extra is
@@ -1556,6 +1560,26 @@ it will ever be distributed (2026-10-19), so this comes last.*
 - [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
 
 ## Bug backlog
+
+- [x] Emails mangled in dark mode *(owner report with screenshots,
+      2026-10-20: a news site, a notice, a bank)*. Rendered outside the app
+      (`examples/render_email`, headless Chrome in dark mode) to find
+      three causes:
+      - a news site says `color-scheme: light only` but also has a dark-mode
+        block forcing its page white; any mention of "dark" counted as
+        supporting dark mode, so its text was remapped light on its white
+        page. An explicit "light only" now wins: it keeps the white card
+        (a small share of cached HTML emails)
+      - a notice sets a white box inline with `!important`, which beats
+        every style sheet, so the dark remap couldn't reach it while the
+        text inside was turned light. Such inline colors now move into a
+        rule of their own, as strong as before against the email's own
+        sheets (light mode unchanged) but below the dark remap (some emails)
+      - a bank: by design rather than a bug (its pale grey page becomes
+        see-through, its white boxes darker cards); its logo is dark text
+        in a transparent image, which no color remap can fix. "Original
+        colors" is the way out; remembering that choice per sender could
+        come later
 
 *Bugs found in passing and not yet fixed (started 2026-10-19 at the
 owner's request). Each says how it was found and whether it has been
