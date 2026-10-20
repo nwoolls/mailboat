@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import type { Account, Identity } from "../../../platform/tauri/bindings";
 import { ClearIcon, MinimizeIcon } from "../../../shared/ui/icons";
-import { editorKey, hasChanges } from "../model/draft";
+import { canSwitchKind, editorKey, hasChanges } from "../model/draft";
 import type { ComposeEntry } from "../model/composeState";
-import { ComposeForm } from "./ComposeForm";
+import { ComposeForm, type ReplyKind } from "./ComposeForm";
 import { useAssistantOpen } from "../../ai/ui/assistantOpen";
 import { cardSize, nearestSpot, type Point, spotPosition } from "../model/snap";
 import {
@@ -28,11 +28,14 @@ export function ComposeCard({
   identities,
   accounts,
   onSend,
+  onSwitch,
 }: {
   entry: ComposeEntry;
   identities: Identity[];
   accounts: Account[];
   onSend: () => void;
+  /** Turns a reply into another kind, keeping its text (as inline). */
+  onSwitch: (id: number, kind: ReplyKind) => void;
 }) {
   const { draft } = entry;
   const account = accounts.find((a) => a.id === draft.accountId);
@@ -142,6 +145,8 @@ export function ComposeCard({
         onChange={(change) => updateDraft(draft.id, change)}
         onSend={onSend}
         onDiscard={() => closeDraft(draft.id)}
+        // Reply / Reply all / Forward, as inline; not for new mail.
+        onSwitchKind={canSwitchKind(draft) ? (kind) => onSwitch(draft.id, kind) : undefined}
         assistant={{ open: assistant, onToggle: setAssistant }}
       />
     </section>

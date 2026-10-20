@@ -946,6 +946,7 @@ export function Shell() {
           identities={identities}
           accounts={accountList}
           onSend={() => void compose.send(openCard.draft)}
+          onSwitch={(id, kind) => void compose.switchKind(id, kind)}
         />
       )}
       <MinimizedTabs

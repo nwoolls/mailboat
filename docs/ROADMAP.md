@@ -1493,6 +1493,9 @@ built, tested and waiting for the owner to try.*
         Codex's reasoning effort on its default model (Mailboat runs Codex
         without the owner's Codex config and has no reliable list of its
         models, so no model list). Summaries stay on the quick setting
+      - The Reply / Reply all / Forward switch is in the floating card
+        too, not only inline (owner report): the card was never given it.
+        Shown for replies and forwards that started here, not new mail
 - Ideas not built: AI actions in ⌘K (summarize, reply with AI), AI
   search ("find the invoice from…"; owner: only if small, and it isn't:
   it needs its own design in the search box)
