@@ -1143,7 +1143,7 @@ ticked.*
       drop on it. Pointer-based rather than the web view's drag and
       drop, which Tauri's window file-drop handling can swallow*
 
-- [ ] "Download Image" in an email's right-click menu does nothing
+- [x] "Download Image" in an email's right-click menu does nothing
       *(owner report, 2026-10-19)*. Right-clicking an image inside an
       email shows the web view's own menu (Mailboat doesn't make it; it may
       or may not be wanted there), and its "Download Image" saves nothing
@@ -1157,7 +1157,8 @@ ticked.*
       owner to try it: right-clicking an image or link in an email shows
       Save Image (to Downloads, with Show in Finder), Copy Image, Open
       Link and Copy Link; over text the system menu stays. macOS only;
-      Windows comes with the Windows work*
+      Windows comes with the Windows work. Owner confirmed it works
+      (2026-10-19)*
 
 - [ ] "Load older mail" can ask Gmail again and again for an empty view.
       `threads_load_older` (src-tauri/src/commands.rs) answers "not
