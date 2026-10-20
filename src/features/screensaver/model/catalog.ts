@@ -27,6 +27,8 @@ export function makeScene(id: SceneId, setup: SceneSetup): Scene {
 
 /** How long without input before the screensaver starts. */
 export const SCREENSAVER_IDLE_SECONDS = 60;
+/** With "Random" chosen, how often a running screensaver changes scene. */
+export const SCREENSAVER_ROTATE_MINUTES = 60;
 /**
  * Window event that starts the screensaver now (the palette's commands).
  * Its `detail` may name a scene; otherwise the chosen one plays.

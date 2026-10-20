@@ -5,6 +5,7 @@ import {
   pickScene,
   SCREENSAVER_EVENT,
   SCREENSAVER_IDLE_SECONDS,
+  SCREENSAVER_ROTATE_MINUTES,
   type SceneId,
 } from "../model/catalog";
 import { colorTable, type PaletteId, paletteColors, parseColor } from "../model/palettes";
@@ -25,6 +26,10 @@ const CLOSE_MS = 450;
  * with "Reduce motion" on, and never while `enabled` (its feature flag) is
  * off.
  *
+ * With "Random" chosen, a screensaver left running switches to another
+ * scene every SCREENSAVER_ROTATE_MINUTES (a scene picked by name from the
+ * palette stays).
+ *
  * Pointer events that don't actually move (WebKit sends some when the page
  * changes under a still cursor, such as when the palette closes) don't
  * count as input.
@@ -32,6 +37,8 @@ const CLOSE_MS = 450;
 export function useScreensaver(enabled: boolean): { phase: ScreensaverPhase; scene: SceneId } {
   const [phase, setPhase] = useState<ScreensaverPhase>("off");
   const [scene, setScene] = useState<SceneId>("sandscape");
+  // Whether the running screensaver came from "Random", so it rotates.
+  const rotating = useRef(false);
 
   useEffect(() => {
     if (!enabled) return;
@@ -41,7 +48,9 @@ export function useScreensaver(enabled: boolean): { phase: ScreensaverPhase; sce
     // Picks the scene (the one asked for, the chosen one, or a random one
     // other than the last) and starts it.
     const begin = (asked: SceneId | null) => {
-      setScene((prev) => pickScene(asked, screensaverPrefs.get().choice, prev, Math.random));
+      const choice = screensaverPrefs.get().choice;
+      rotating.current = asked === null && choice === "random";
+      setScene((prev) => pickScene(asked, choice, prev, Math.random));
       setPhase("on");
     };
     // Starts even while the window is hidden: macOS counts a window that
@@ -84,7 +93,12 @@ export function useScreensaver(enabled: boolean): { phase: ScreensaverPhase; sce
       const close = () => setPhase("closing");
       const events = ["keydown", "pointerdown", "wheel"] as const;
       for (const e of events) window.addEventListener(e, close, { passive: true });
+      const rotate = window.setInterval(() => {
+        if (rotating.current && screensaverPrefs.get().choice === "random")
+          setScene((prev) => pickScene(null, "random", prev, Math.random));
+      }, SCREENSAVER_ROTATE_MINUTES * 60_000);
       return () => {
+        window.clearInterval(rotate);
         for (const e of events) window.removeEventListener(e, close);
       };
     }

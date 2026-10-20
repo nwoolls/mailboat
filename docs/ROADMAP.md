@@ -1300,6 +1300,11 @@ settled with the owner one at a time, as in the earlier spikes.*
 - [ ] With the screensaver set to Random, switch to another screensaver
       every hour while it keeps playing *(owner request, 2026-10-19)*;
       today Random picks one each time it starts
+      *Built (2026-10-20), waiting for the owner to try it: with Random
+      chosen, a screensaver left playing changes to another scene every
+      hour (a straight cut, not a fade). One started by name from the ⌘K
+      palette stays. The hour is `SCREENSAVER_ROTATE_MINUTES` in
+      `screensaver/model/catalog.ts`*
 
 ## Milestone 8: Triage and notifications
 
