@@ -1121,7 +1121,7 @@ ticked.*
       session so the old position can be reached. Owner confirmed it
       works (2026-10-20)*
 
-- [ ] Reply all: the sender in To, everyone else in Cc *(owner request,
+- [x] Reply all: the sender in To, everyone else in Cc *(owner request,
       2026-10-19)*. Today (`replyRecipients` in compose/model/draft.ts)
       To is the sender plus the original's To, and Cc the original's Cc,
       minus your own addresses, so when everyone was in To they all land
@@ -1134,7 +1134,8 @@ ticked.*
       *Built (2026-10-19), waiting for the owner to try it: Reply all
       now puts the sender (or the Reply-To address) alone in To and
       everyone else from To and Cc in Cc, minus your own addresses.
-      Replying to your own message keeps To as To and Cc as Cc*
+      Replying to your own message keeps To as To and Cc as Cc. Owner
+      confirmed it works (2026-10-20)*
 - [ ] Addresses can't be dragged between To, Cc and Bcc *(owner report,
       2026-10-19)*. In other mail apps an address can be dragged from one
       field to another (say from To down to Cc); in the composer nothing
