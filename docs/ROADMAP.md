@@ -1393,6 +1393,27 @@ seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
         online
       - Download recent message bodies ahead (say 30 days) so any recent
         mail opens offline; costs disk space and Gmail quota
+- [ ] Independent code review by an agent *(owner request, 2026-10-19)*:
+      a fresh agent, with none of the context of the agents that wrote the
+      code, reviews the whole codebase for bugs, security problems
+      (sanitizing, tokens, capabilities), the multi-account rules and
+      code that has grown messy. Findings come back as a list to go
+      through with the owner one at a time, not as fixes made straight
+      away. Scope and timing to agree first (whole app, or a milestone's
+      work at a time)
+- [ ] Search history *(owner request, 2026-10-19)*: recent searches
+      offered when the search box opens, picked with ↑/↓ and Return.
+      Kept locally (searches can be private, so never synced), with a way
+      to remove one or clear them all. To agree: how many to keep, whether
+      they show in ⌘K too, and whether a search can be pinned (saved
+      searches)
+- [ ] Look through GotEmail and bytemail for features and enhancements
+      worth borrowing *(owner request, 2026-10-19)*. An agent researches
+      both and writes up what each does that Mailboat doesn't, or does
+      better, as a short list for the owner to pick from one at a time
+      (as the Mimestream and Mail.app settings comparison was done).
+      Nothing about either app is assumed here; the research says what
+      they actually do. Picked items join a milestone or this list
 
 ### From Milestone 6 (moved unbuilt when it closed, 2026-10-19; the owner uses none of these)
 
