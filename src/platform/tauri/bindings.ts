@@ -360,7 +360,7 @@ export type Address = {
 /**  A conversation's one-line summary for the list is ready. */
 export type AiLineSummaryEvent = Summary;
 
-export type AiProvider = "apple" | "claude" | "chatgpt";
+export type AiProvider = "apple" | "chatgpt" | "claude";
 
 export type AiSettings = {
 	/**

@@ -56,7 +56,7 @@ export function AiSection() {
     <>
       <Group
         title="Providers"
-        description="Apple Intelligence runs on this Mac. Claude and ChatGPT use your own subscription: connecting signs in through their apps in the browser, with no API key."
+        description="Apple Intelligence runs on this Mac. ChatGPT and Claude use your own subscription: connecting signs in through their apps in the browser, with no API key."
       >
         {PROVIDERS.map((p) => (
           <ProviderRow key={p} provider={p} connected={p === "apple" || ai.connected.includes(p)} />

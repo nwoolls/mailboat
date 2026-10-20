@@ -15,8 +15,8 @@ describe("providers", () => {
     expect(offered(ai)).toEqual(["apple", "chatgpt"]);
     expect(offered({ ...ai, connected: ["chatgpt", "claude"] })).toEqual([
       "apple",
-      "claude",
       "chatgpt",
+      "claude",
     ]);
   });
 

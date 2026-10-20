@@ -37,13 +37,14 @@ use crate::error::{CoreError, Result};
 #[serde(rename_all = "camelCase")]
 pub enum AiProvider {
     Apple,
-    Claude,
     #[serde(rename = "chatgpt")]
     ChatGpt,
+    Claude,
 }
 
 impl AiProvider {
-    pub const ALL: [AiProvider; 3] = [AiProvider::Apple, AiProvider::Claude, AiProvider::ChatGpt];
+    /// Alphabetical by name (Apple Intelligence, ChatGPT, Claude), as listed.
+    pub const ALL: [AiProvider; 3] = [AiProvider::Apple, AiProvider::ChatGpt, AiProvider::Claude];
 
     pub fn as_str(self) -> &'static str {
         match self {

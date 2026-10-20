@@ -27,7 +27,8 @@ export function aiChoices(settings: AppSettings | undefined): AiChoices {
   };
 }
 
-export const PROVIDERS: AiProvider[] = ["apple", "claude", "chatgpt"];
+/** Alphabetical by name, wherever providers are listed. */
+export const PROVIDERS: AiProvider[] = ["apple", "chatgpt", "claude"];
 
 export const PROVIDER_NAMES: Record<AiProvider, string> = {
   apple: "Apple Intelligence",
@@ -55,7 +56,7 @@ export function isReady(statuses: ProviderStatus[] | undefined, provider: AiProv
 
 /**
  * The providers a feature can use: Apple Intelligence (built in), then
- * whichever of Claude and ChatGPT were connected.
+ * whichever of ChatGPT and Claude were connected.
  */
 export function offered(ai: AiChoices): AiProvider[] {
   return PROVIDERS.filter((p) => p === "apple" || ai.connected.includes(p));

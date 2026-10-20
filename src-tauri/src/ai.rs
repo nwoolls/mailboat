@@ -129,12 +129,12 @@ async fn cancellable<T: Send + 'static>(
 #[specta::specta]
 pub async fn ai_status(ai: State<'_, AiState>) -> CmdResult<Vec<ProviderStatus>> {
     let programs = ai.refresh();
-    let (apple, claude, chatgpt) = tokio::join!(
+    let (apple, chatgpt, claude) = tokio::join!(
         ai::status(&programs, AiProvider::Apple),
-        ai::status(&programs, AiProvider::Claude),
         ai::status(&programs, AiProvider::ChatGpt),
+        ai::status(&programs, AiProvider::Claude),
     );
-    Ok(vec![apple, claude, chatgpt])
+    Ok(vec![apple, chatgpt, claude])
 }
 
 /// Connects Claude or ChatGPT: if its tool isn't signed in, starts its
