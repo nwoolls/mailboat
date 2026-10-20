@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { ProviderStatus } from "../../../platform/tauri/bindings";
-import { type AiChoices, aiChoices, isReady, leavesMac, offered, statusLine } from "./providers";
+import {
+  type AiChoices,
+  aiChoices,
+  isReady,
+  leavesMac,
+  offered,
+  qualityChoices,
+  statusLine,
+} from "./providers";
 
 const ai: AiChoices = {
   connected: ["chatgpt"],
@@ -8,6 +16,7 @@ const ai: AiChoices = {
   readerSummary: "auto",
   readerProvider: "apple",
   writingProvider: "apple",
+  writingQuality: "best",
 };
 
 describe("providers", () => {
@@ -35,6 +44,13 @@ describe("providers", () => {
       statusLine({ provider: "apple", state: "unavailable", reason: "Turn it on." }, false),
     ).toBe("Turn it on.");
     expect(statusLine(undefined, false)).toBe("Checking…");
+  });
+
+  it("offers each provider's own model choice for writing", () => {
+    expect(qualityChoices("claude")?.map((c) => c.label)).toEqual(["Haiku", "Sonnet", "Opus"]);
+    expect(qualityChoices("chatgpt")?.find((c) => c.value === "strongest")?.label).toBe("Thorough");
+    expect(qualityChoices("apple")).toBeNull();
+    expect(aiChoices(undefined).writingQuality).toBe("best");
   });
 
   it("knows which ones keep mail on the Mac", () => {

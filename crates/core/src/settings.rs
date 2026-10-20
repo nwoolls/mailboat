@@ -9,7 +9,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::ai::AiProvider;
+use crate::ai::{AiProvider, Quality};
 use crate::error::{CoreError, Result};
 use crate::mail::images::RemoteImages;
 
@@ -88,6 +88,8 @@ pub struct AiSettings {
     pub reader_provider: AiProvider,
     /// Who helps write replies and new mail.
     pub writing_provider: AiProvider,
+    /// Which model writes (Claude) or how hard it thinks (ChatGPT).
+    pub writing_quality: Quality,
 }
 
 impl Default for AiSettings {
@@ -99,6 +101,7 @@ impl Default for AiSettings {
             reader_summary: ReaderSummary::Auto,
             reader_provider: AiProvider::Apple,
             writing_provider: AiProvider::Apple,
+            writing_quality: Quality::Best,
         }
     }
 }
@@ -169,6 +172,7 @@ mod tests {
                 reader_summary: ReaderSummary::Button,
                 reader_provider: AiProvider::Claude,
                 writing_provider: AiProvider::ChatGpt,
+                writing_quality: Quality::Strongest,
             },
         };
         save(&conn, &off).unwrap();

@@ -38,6 +38,7 @@ pub fn args(prompt: &Prompt) -> Vec<String> {
     let effort = match prompt.quality {
         Quality::Fast => "low",
         Quality::Best => "medium",
+        Quality::Strongest => "high",
     };
     let mut a: Vec<String> = [
         "exec",

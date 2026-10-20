@@ -1487,9 +1487,15 @@ built, tested and waiting for the owner to try.*
         writing provider is ready): starts a Reply with the AI panel
         open. A plain Reply rather than Reply all, so nobody extra is
         emailed by default; the reply's kind menu switches it
-- Ideas not built: AI actions in ⌘K (summarize, reply with AI), per-provider model choice
-  (today Claude uses Haiku for summaries and Sonnet for writing; Codex
-  its default model), AI search ("find the invoice from…")
+      - Model choice for writing (Settings → AI → Writing → Model, shown
+        for Claude and ChatGPT): Claude's Haiku / Sonnet (default) /
+        Opus; ChatGPT's Quick / Balanced (default) / Thorough, which is
+        Codex's reasoning effort on its default model (Mailboat runs Codex
+        without the owner's Codex config and has no reliable list of its
+        models, so no model list). Summaries stay on the quick setting
+- Ideas not built: AI actions in ⌘K (summarize, reply with AI), AI
+  search ("find the invoice from…"; owner: only if small, and it isn't:
+  it needs its own design in the search box)
 - [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
       Mailboat's mail *(owner request, 2026-10-16)*. Worth it because Mailboat
       already has every account's mail in one local, searchable cache

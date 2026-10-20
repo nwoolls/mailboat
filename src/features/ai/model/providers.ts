@@ -3,6 +3,7 @@ import type {
   AiSettings,
   AppSettings,
   ProviderStatus,
+  Quality,
 } from "../../../platform/tauri/bindings";
 
 /** The AI settings with Rust's defaults filled in (Apple for everything). */
@@ -14,6 +15,7 @@ export const AI_DEFAULTS: AiChoices = {
   readerSummary: "auto",
   readerProvider: "apple",
   writingProvider: "apple",
+  writingQuality: "best",
 };
 
 export function aiChoices(settings: AppSettings | undefined): AiChoices {
@@ -24,6 +26,7 @@ export function aiChoices(settings: AppSettings | undefined): AiChoices {
     readerSummary: ai.readerSummary ?? AI_DEFAULTS.readerSummary,
     readerProvider: ai.readerProvider ?? AI_DEFAULTS.readerProvider,
     writingProvider: ai.writingProvider ?? AI_DEFAULTS.writingProvider,
+    writingQuality: ai.writingQuality ?? AI_DEFAULTS.writingQuality,
   };
 }
 
@@ -84,4 +87,27 @@ export function statusLine(status: ProviderStatus | undefined, connected: boolea
 /** Whether Mailboat sends mail off the Mac when using it. */
 export function leavesMac(provider: AiProvider): boolean {
   return provider !== "apple";
+}
+
+/**
+ * The writing model choice in each provider's own terms: Claude's models,
+ * or how hard ChatGPT (Codex) thinks. Apple has one model: no choice.
+ */
+export function qualityChoices(provider: AiProvider): { value: Quality; label: string }[] | null {
+  switch (provider) {
+    case "claude":
+      return [
+        { value: "fast", label: "Haiku" },
+        { value: "best", label: "Sonnet" },
+        { value: "strongest", label: "Opus" },
+      ];
+    case "chatgpt":
+      return [
+        { value: "fast", label: "Quick" },
+        { value: "best", label: "Balanced" },
+        { value: "strongest", label: "Thorough" },
+      ];
+    case "apple":
+      return null;
+  }
 }

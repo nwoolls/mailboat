@@ -17,6 +17,7 @@ pub fn args(prompt: &Prompt) -> Vec<String> {
     let model = match prompt.quality {
         Quality::Fast => "haiku",
         Quality::Best => "sonnet",
+        Quality::Strongest => "opus",
     };
     [
         "-p",
@@ -235,6 +236,15 @@ mod tests {
         assert_eq!(parse_status("garbage"), ProviderState::SignedOut);
     }
 
+    fn best_prompt() -> Prompt {
+        Prompt {
+            instructions: String::new(),
+            input: String::new(),
+            quality: Quality::Best,
+            max_tokens: None,
+        }
+    }
+
     #[test]
     fn every_tool_is_off_and_the_model_fits_the_job() {
         let p = Prompt {
@@ -254,5 +264,10 @@ mod tests {
             ..p
         });
         assert!(best.contains(&"sonnet".to_string()));
+        let strongest = args(&Prompt {
+            quality: Quality::Strongest,
+            ..best_prompt()
+        });
+        assert!(strongest.contains(&"opus".to_string()));
     }
 }

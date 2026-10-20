@@ -339,6 +339,7 @@ pub async fn ai_write(
 ) -> CmdResult<WriteAnswer> {
     let saved = load_settings(&state)?;
     let provider = saved.ai.writing_provider;
+    let quality = saved.ai.writing_quality;
     check_usable(&saved, provider)?;
     let gmail = match request.thread_id {
         Some(t) => {
@@ -358,7 +359,16 @@ pub async fn ai_write(
             }
             .emit(&emit);
         };
-        tasks::write(&db, gmail.as_ref(), &programs, provider, &request, &on_text).await
+        tasks::write(
+            &db,
+            gmail.as_ref(),
+            &programs,
+            provider,
+            quality,
+            &request,
+            &on_text,
+        )
+        .await
     })
     .await?;
     ai.note(&raw);

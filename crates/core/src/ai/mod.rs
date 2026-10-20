@@ -64,12 +64,17 @@ impl AiProvider {
     }
 }
 
-/// How much model a request deserves: summaries want speed, writing wants
-/// the better model.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// How much model a request deserves: summaries want speed, writing the
+/// better model, and the owner can choose for writing (Settings → AI).
+/// Claude: Haiku, Sonnet, Opus. ChatGPT: Codex's reasoning effort low,
+/// medium, high. Apple has one model.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub enum Quality {
     Fast,
+    #[default]
     Best,
+    Strongest,
 }
 
 /// One request: what the model is told to do, and the material.

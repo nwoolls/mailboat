@@ -9,7 +9,7 @@ use super::context::{thread_text, ThreadText};
 use super::prompts::{self, ChatTurn, WritingContext};
 use super::summaries::{self, Summary, SummaryKind};
 use super::usage::{self, Purpose};
-use super::{ask, AiProvider, Answer, Programs, Prompt};
+use super::{ask, AiProvider, Answer, Programs, Prompt, Quality};
 use crate::db::Db;
 use crate::error::{CoreError, Result};
 use crate::gmail::GmailClient;
@@ -156,6 +156,7 @@ pub async fn write(
     gmail: Option<&GmailClient>,
     programs: &Programs,
     provider: AiProvider,
+    quality: Quality,
     request: &WriteRequest,
     on_text: &(dyn Fn(&str) + Send + Sync),
 ) -> Result<(WriteAnswer, Answer)> {
@@ -173,7 +174,10 @@ pub async fn write(
         draft: request.draft.clone(),
         has_signature: request.has_signature,
     };
-    let prompt = prompts::write(&ctx, &request.chat, provider);
+    let prompt = Prompt {
+        quality,
+        ..prompts::write(&ctx, &request.chat, provider)
+    };
     // New mail may lead with "Subject:"; the chat shouldn't show it as text.
     let shown = |t: &str| {
         let body = if new_message {

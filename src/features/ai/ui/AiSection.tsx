@@ -24,6 +24,7 @@ import {
   PROVIDER_NAMES,
   PROVIDER_TOOLS,
   PROVIDERS,
+  qualityChoices,
   statusLine,
   statusOf,
 } from "../model/providers";
@@ -148,8 +149,8 @@ export function AiSection() {
           description={
             <>
               In a reply or new message, ⌘J (or the ✦ button) opens a chat beside it: ask for a
-              draft, refine it, then Use it. It reads the conversation you’re answering. Nothing is
-              sent until you ask.
+              draft, refine it, then Insert or Replace. It reads the conversation you’re answering.
+              Nothing is sent until you ask.
               {leavesMac(ai.writingProvider) &&
                 ` Your request and the conversation go to ${PROVIDER_NAMES[ai.writingProvider]}.`}
             </>
@@ -163,6 +164,24 @@ export function AiSection() {
             onChange={(p) => p && update({ writingProvider: p })}
           />
         </Row>
+        {qualityChoices(ai.writingProvider) && (
+          <Row
+            label="Model"
+            description={
+              ai.writingProvider === "claude"
+                ? "Haiku is quickest, Opus writes best but uses more of your plan. Summaries always use Haiku."
+                : "How long ChatGPT thinks before writing (Codex’s reasoning effort). Summaries are always quick."
+            }
+          >
+            <Segmented
+              label="Model"
+              value={ai.writingQuality}
+              options={qualityChoices(ai.writingProvider) ?? []}
+              disabled={!settings}
+              onChange={(writingQuality) => update({ writingQuality })}
+            />
+          </Row>
+        )}
       </Group>
       <UsageGroup />
     </>

@@ -382,6 +382,8 @@ export type AiSettings = {
 	readerProvider?: AiProvider,
 	/**  Who helps write replies and new mail. */
 	writingProvider?: AiProvider,
+	/**  Which model writes (Claude) or how hard it thinks (ChatGPT). */
+	writingQuality?: Quality,
 };
 
 /**  Part of an answer as it's written: the whole text so far. */
@@ -964,6 +966,14 @@ export type ProviderUsage = {
 	today: UsageTotals,
 	last30Days: UsageTotals,
 };
+
+/**
+ *  How much model a request deserves: summaries want speed, writing the
+ *  better model, and the owner can choose for writing (Settings → AI).
+ *  Claude: Haiku, Sonnet, Opus. ChatGPT: Codex's reasoning effort low,
+ *  medium, high. Apple has one model.
+ */
+export type Quality = "fast" | "best" | "strongest";
 
 /**  When the summary above an opened conversation appears. */
 export type ReaderSummary = "off" | 
