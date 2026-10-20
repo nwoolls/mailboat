@@ -97,10 +97,19 @@ export function ComposeForm({
   // The whole reply is scrolled into view, its header to its Send button,
   // and kept there while it finishes laying out (the signature loads a
   // moment later), not just the line being typed on.
+  // A reply that opens with the writing assistant ("Reply with AI") leaves
+  // the cursor in the assistant's box instead. Read through a ref, so
+  // opening or closing the assistant later doesn't move the cursor here.
+  const assistantOpen = useRef(assistant?.open ?? false);
+  useEffect(() => {
+    assistantOpen.current = assistant?.open ?? false;
+  });
   useEffect(() => {
     if ((draft.kind === "new" || draft.kind === "forward") && entry.focusKey === 0) return;
     if (!editor) return;
-    editor.commands.focus(entry.focusKey === 0 ? "start" : undefined);
+    // (Pressing `r` again still goes to the text.)
+    if (!(assistantOpen.current && entry.focusKey === 0))
+      editor.commands.focus(entry.focusKey === 0 ? "start" : undefined);
     const whole = formRef.current?.closest("section") ?? formRef.current;
     if (!whole) return;
     const show = () => whole.scrollIntoView({ block: "nearest", behavior: "smooth" });

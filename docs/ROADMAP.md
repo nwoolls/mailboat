@@ -1486,7 +1486,9 @@ built, tested and waiting for the owner to try.*
       - "Reply with AI" on the reply bar (after Forward, while the
         writing provider is ready): starts a Reply with the AI panel
         open. A plain Reply rather than Reply all, so nobody extra is
-        emailed by default; the reply's kind menu switches it
+        emailed by default; the reply's kind menu switches it. Fixed (owner
+        report): the cursor landed in the email text, not the chat box;
+        a reply opening with the assistant now leaves it in the chat
       - Model choice for writing (Settings → AI → Writing → Model, shown
         for Claude and ChatGPT): Claude's Haiku / Sonnet (default) /
         Opus; ChatGPT's Quick / Balanced (default) / Thorough, which is
