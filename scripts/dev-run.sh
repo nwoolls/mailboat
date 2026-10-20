@@ -32,6 +32,8 @@ version="$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$root/src-tauri/tauri.c
 app="$(dirname "$bin")/Mailboat.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin" "$app/Contents/MacOS/mailboat"
+# The Apple Intelligence helper, which Tauri copies next to the binary.
+[ -f "$(dirname "$bin")/mailboat-ai" ] && cp "$(dirname "$bin")/mailboat-ai" "$app/Contents/MacOS/mailboat-ai" || true
 cp "$root/src-tauri/icons/icon.icns" "$app/Contents/Resources/AppIcon.icns"
 cp "$root/src-tauri/macos/Assets.car" "$app/Contents/Resources/Assets.car"
 cat > "$app/Contents/Info.plist" <<PLIST
@@ -83,6 +85,9 @@ touch "$app"
 identity="${MAILBOAT_DEV_SIGNING_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null \
   | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -n 1)}"
 if [ -n "$identity" ]; then
+  # Nested code is signed first, or signing the app fails.
+  [ -f "$app/Contents/MacOS/mailboat-ai" ] && codesign --force --sign "$identity" \
+    --identifier com.nwoolls.mailboat.ai "$app/Contents/MacOS/mailboat-ai" 2>/dev/null || true
   codesign --force --sign "$identity" --identifier com.nwoolls.mailboat "$app" 2>/dev/null \
     || echo "dev-run: signing with \"$identity\" failed; continuing unsigned" >&2
 else

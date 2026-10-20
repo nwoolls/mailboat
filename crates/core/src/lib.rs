@@ -4,6 +4,7 @@
 //! commands, forwards events to the window and owns OS integration.
 
 pub mod actions;
+pub mod ai;
 pub mod attachments;
 pub mod auth;
 pub mod calendar;

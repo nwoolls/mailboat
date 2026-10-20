@@ -9,6 +9,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use crate::ai::AiProvider;
 use crate::error::{CoreError, Result};
 use crate::mail::images::RemoteImages;
 
@@ -58,6 +59,48 @@ pub struct AppSettings {
     pub image_prefetch: bool,
     /// The most the downloaded images may take, in MB.
     pub image_cache_mb: u32,
+    /// Summaries and writing help (Settings → AI).
+    pub ai: AiSettings,
+}
+
+/// When the summary above an opened conversation appears.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ReaderSummary {
+    Off,
+    /// A Summarize button; nothing is sent until it's pressed.
+    Button,
+    /// By itself, for conversations long enough to need one.
+    #[default]
+    Auto,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AiSettings {
+    /// Claude and ChatGPT once connected (signed in through their own
+    /// tools). Apple Intelligence needs no connecting.
+    pub connected: Vec<AiProvider>,
+    /// Who writes the one-line summaries in the list; `None` is off
+    /// (the email's own first words show, as before).
+    pub list_summaries: Option<AiProvider>,
+    pub reader_summary: ReaderSummary,
+    pub reader_provider: AiProvider,
+    /// Who helps write replies and new mail.
+    pub writing_provider: AiProvider,
+}
+
+impl Default for AiSettings {
+    /// Apple Intelligence for everything, as it keeps mail on the Mac.
+    fn default() -> Self {
+        Self {
+            connected: Vec::new(),
+            list_summaries: Some(AiProvider::Apple),
+            reader_summary: ReaderSummary::Auto,
+            reader_provider: AiProvider::Apple,
+            writing_provider: AiProvider::Apple,
+        }
+    }
 }
 
 impl Default for AppSettings {
@@ -70,6 +113,7 @@ impl Default for AppSettings {
             remote_images: RemoteImages::Load,
             image_prefetch: true,
             image_cache_mb: 500,
+            ai: AiSettings::default(),
         }
     }
 }
@@ -119,6 +163,13 @@ mod tests {
             remote_images: RemoteImages::Correspondents,
             image_prefetch: false,
             image_cache_mb: 1000,
+            ai: AiSettings {
+                connected: vec![AiProvider::Claude],
+                list_summaries: None,
+                reader_summary: ReaderSummary::Button,
+                reader_provider: AiProvider::Claude,
+                writing_provider: AiProvider::ChatGpt,
+            },
         };
         save(&conn, &off).unwrap();
         save(&conn, &off).unwrap();
@@ -141,6 +192,7 @@ mod tests {
         assert_eq!(loaded.remote_images, RemoteImages::Load);
         assert!(loaded.image_prefetch);
         assert_eq!(loaded.image_cache_mb, 500);
+        assert_eq!(loaded.ai.list_summaries, Some(AiProvider::Apple));
     }
 
     #[test]

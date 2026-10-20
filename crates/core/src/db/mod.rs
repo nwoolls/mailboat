@@ -101,6 +101,7 @@ fn migrate(conn: &mut Connection) -> Result<()> {
         (12, schema::MIGRATION_V12),
         (13, schema::MIGRATION_V13),
         (14, schema::MIGRATION_V14),
+        (15, schema::MIGRATION_V15),
     ];
     for (version, sql) in steps {
         if current < *version {
@@ -140,7 +141,7 @@ mod tests {
         let versions: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(versions, 14);
+        assert_eq!(versions, 15);
         conn.execute(
             "INSERT INTO messages_fts (rowid, subject, sender, recipients, snippet, body) VALUES (1, 'hello', '', '', '', '')",
             [],
@@ -165,6 +166,7 @@ mod tests {
             "send_as",
             "google_contacts",
             "search_hits",
+            "ai_summaries",
         ] {
             let has: bool = conn
                 .query_row(

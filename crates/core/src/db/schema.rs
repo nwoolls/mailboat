@@ -308,3 +308,36 @@ CREATE TABLE image_cache (
 );
 ALTER TABLE message_bodies ADD COLUMN images_prefetched INTEGER NOT NULL DEFAULT 0;
 "#;
+
+/// AI (AI Spike). `ai_summaries` caches each conversation's summaries:
+/// `line` for the list, `full` for above the opened conversation. A
+/// summary is current while the conversation's newest message is still
+/// `newest_message_id`. `ai_usage` records each request's size and cost,
+/// never its content; it describes this Mac's use, not mail, so it has no
+/// account.
+pub const MIGRATION_V15: &str = r#"
+CREATE TABLE ai_summaries (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL,
+  thread_id INTEGER NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('line', 'full')),
+  provider TEXT NOT NULL,
+  newest_message_id INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  UNIQUE (account_id, thread_id, kind),
+  FOREIGN KEY (account_id, thread_id) REFERENCES threads (account_id, id) ON DELETE CASCADE
+);
+
+CREATE TABLE ai_usage (
+  id INTEGER PRIMARY KEY,
+  at INTEGER NOT NULL,
+  provider TEXT NOT NULL,
+  purpose TEXT NOT NULL,
+  ok INTEGER NOT NULL,
+  input_tokens INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  cost_usd REAL
+);
+CREATE INDEX ai_usage_by_time ON ai_usage (at);
+"#;

@@ -309,6 +309,25 @@ export type Address = {
 	email: string,
 };
 
+export type AiProvider = "apple" | "claude" | "chatgpt";
+
+export type AiSettings = {
+	/**
+	 *  Claude and ChatGPT once connected (signed in through their own
+	 *  tools). Apple Intelligence needs no connecting.
+	 */
+	connected?: AiProvider[],
+	/**
+	 *  Who writes the one-line summaries in the list; `None` is off
+	 *  (the email's own first words show, as before).
+	 */
+	listSummaries?: AiProvider | null,
+	readerSummary?: ReaderSummary,
+	readerProvider?: AiProvider,
+	/**  Who helps write replies and new mail. */
+	writingProvider?: AiProvider,
+};
+
 /**  How someone answered. */
 export type Answer = "needsAction" | "yes" | "no" | "maybe";
 
@@ -356,6 +375,8 @@ export type AppSettings_Deserialize = {
 	imagePrefetch?: boolean,
 	/**  The most the downloaded images may take, in MB. */
 	imageCacheMb?: number,
+	/**  Summaries and writing help (Settings → AI). */
+	ai?: AiSettings,
 };
 
 export type AppSettings_Serialize = {
@@ -382,6 +403,8 @@ export type AppSettings_Serialize = {
 	imagePrefetch: boolean,
 	/**  The most the downloaded images may take, in MB. */
 	imageCacheMb: number,
+	/**  Summaries and writing help (Settings → AI). */
+	ai: AiSettings,
 };
 
 /**  What applying a rule to mail already received changed. */
@@ -828,6 +851,13 @@ export type Person = {
 	email: string,
 	name: string | null,
 };
+
+/**  When the summary above an opened conversation appears. */
+export type ReaderSummary = "off" | 
+/**  A Summarize button; nothing is sent until it's pressed. */
+"button" | 
+/**  By itself, for conversations long enough to need one. */
+"auto";
 
 /**
  *  Whether remote images load for senders without a saved choice

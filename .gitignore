@@ -24,3 +24,6 @@ coverage/
 .idea/
 .vscode/settings.json
 .DS_Store
+
+# Built by src-tauri/build.rs (the Apple Intelligence helper)
+src-tauri/binaries/

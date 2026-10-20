@@ -30,6 +30,9 @@ pub enum CoreError {
     /// The user cancelled (e.g. closed sign-in). Not shown as an error.
     #[error("cancelled")]
     Cancelled,
+    /// An AI provider failed or refused; the message says why, for people.
+    #[error("{0}")]
+    Ai(String),
     #[error("{0}")]
     Other(String),
 }
@@ -48,6 +51,7 @@ impl CoreError {
             CoreError::Config(_) => "config",
             CoreError::Keychain(_) => "keychain",
             CoreError::Cancelled => "cancelled",
+            CoreError::Ai(_) => "ai",
             CoreError::Other(_) => "other",
         }
     }
