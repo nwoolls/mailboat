@@ -10,7 +10,8 @@ for how it is built.
 
 ## Requirements
 
-- macOS with Xcode command line tools
+- macOS with Xcode command line tools (its Swift compiler builds the
+  Apple Intelligence helper; Apple Intelligence itself needs macOS 26+)
 - [Rust](https://rustup.rs) (stable)
 - [Bun](https://bun.sh): `brew install oven-sh/bun/bun`
 - Optional but recommended: an Apple Development certificate (free Apple ID,
@@ -43,6 +44,28 @@ signatures) keep working without it. Settings → Accounts says which
 features an account is missing; **Sign in again** there (or the + in the
 sidebar, same Google account) and the consent screen asks for them once.
 
+## AI (optional)
+
+Settings → AI. Summaries and writing help use **Apple Intelligence** by
+default: nothing to set up beyond turning it on in System Settings →
+Apple Intelligence & Siri, and mail stays on the Mac.
+
+To use **Claude** or **ChatGPT** instead, install its command-line tool,
+then press Connect in Settings → AI; the tool's own sign-in opens in the
+browser and uses your subscription (no API key):
+
+| Provider | Install | Signs in with |
+|---|---|---|
+| Claude | [Claude Code](https://claude.com/product/claude-code) (`claude`) | `claude auth login` |
+| ChatGPT | [Codex CLI](https://developers.openai.com/codex/cli) (`codex`) | `codex login` |
+
+If Connect's browser sign-in doesn't finish, run the sign-in command in
+Terminal once, then press Connect again. Disconnecting only stops Mailboat
+using it; the tool stays signed in.
+
+To check all three from Terminal after building once:
+`cargo test -p mailboat-core --test ai_live -- --ignored --nocapture`.
+
 ## Run
 
 ```sh
@@ -67,3 +90,4 @@ bun run check   # format, lint, type check, Vitest, clippy, cargo test
 | OAuth client file | `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json` |
 | Sign-in tokens | macOS Keychain, service `com.nwoolls.mailboat` |
 | Sync log | `~/Library/Logs/com.nwoolls.mailboat/sync.log` |
+| AI summaries and usage | In the mail cache (`ai_summaries`, `ai_usage`: sizes only, never content) |

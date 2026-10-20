@@ -387,6 +387,60 @@ is the composer's TipTap editor. `vacation.rs` reads and writes
 Unix ms, the end exclusive, as Gmail treats it) and says whether it's
 replying right now (`active`), which the mail view shows as a banner.
 
+## AI
+
+Summaries (one line in the list, a few points above an opened
+conversation) and a writing assistant in the composer. The logic is in
+`mailboat_core::ai`; `src-tauri/src/ai.rs` is the glue; the UI is
+`src/features/ai`.
+
+```mermaid
+flowchart LR
+  UI["List / reader / composer"] -->|"ai_* commands"| T["src-tauri ai.rs"]
+  T --> C["mailboat_core::ai"]
+  C -->|"stdin JSON"| A["mailboat-ai (Swift, Foundation Models)"]
+  C -->|"claude -p, no tools"| CL["Claude Code CLI"]
+  C -->|"codex exec, no tools"| CX["Codex CLI"]
+  C --> DB[("ai_summaries, ai_usage")]
+  T -->|"AiTextEvent, AiLineSummaryEvent"| UI
+```
+
+- **Providers are programs, not keys.** Apple Intelligence through
+  `mailboat-ai`, a small Swift helper (`src-tauri/macos/ai-helper.swift`,
+  built by `build.rs`, a Tauri sidecar), because Foundation Models is
+  Swift-only. Claude and ChatGPT through the `claude` and `codex`
+  command-line tools, signed in with the owner's subscriptions; Mailboat
+  finds them in the usual install folders (a Mac app has no shell PATH).
+  "Connect" runs `claude auth login` / `codex login`, which open the
+  browser, and waits until the tool reports it's signed in.
+- **One request, one run, no tools.** Each request starts the program
+  once in an empty temp folder, prompt on stdin, answer read line by line
+  (`ai::process`). Claude runs with `--tools ""`, no settings, MCP or
+  skills; Codex with its shell, web search, plugins and the rest turned
+  off and a read-only sandbox. An email written to steer a model can
+  only change the text it returns, which is shown as plain text, and a
+  draft is only ever put in the editor for the owner to read.
+- **Context** (`ai::context`): the conversation from the cache, oldest
+  first, drafts left out, each message cut at its quoted history and
+  signature, marked "(me)" for the owner's addresses. Bodies not cached
+  are fetched with the owning account's Gmail client first. A size budget
+  per provider: Apple's model reads ~4k tokens in all, so it gets ~7,000
+  characters; the others 80,000. Newest messages get the room.
+- **Summaries** are cached in `ai_summaries` per conversation (account-
+  scoped by its surrogate thread ID) with the newest message they cover;
+  new mail makes them stale. The list asks for the rows on screen; a
+  background queue in `ai.rs` writes missing ones newest-first, skips
+  Spam and Trash, and rests 10 minutes after three failures in a row.
+  The reader's automatic summary skips short conversations (< 700
+  characters of text).
+- **Usage** (`ai_usage`): one row per request with provider, purpose,
+  success, tokens and Claude's cost estimate. Never content. Claude's
+  subscription limits come with each answer and are kept in memory for
+  Settings.
+- **Settings** live in `AppSettings.ai` (Rust acts on them): connected
+  providers, and which provider each feature uses. Apple Intelligence is
+  the default for everything.
+
 ## Decisions
 
 | Date | Decision | Why |
@@ -478,3 +532,7 @@ replying right now (`active`), which the mail view shows as a banner.
 | 2026-10-20 | Remote-image default is a setting (load for everyone / people you've written to / block), stored with Rust's settings | The rule runs in Rust when a message opens, so the choice lives in `AppSettings`, not the window's storage. "Written to" means on To or Cc of any SENT message in any account, matched case-insensitively and looked up only when that choice is on; Google Contacts don't count (saving a contact isn't writing to them). The per-sender choice still wins, and Spam stays blocked whatever the setting. Option C (prefetching images during sync) is still not built. |
 | 2026-10-20 | Email style sheets are read with `cssparser` (Servo's CSS tokenizer) and remapped rule by rule for dark mode, not with `lightningcss` or a hand-written scanner | `cssparser` is maintained, handles comments, strings and nesting correctly, and was already in the build through `ammonia`, so it adds nothing to download or compile; `lightningcss` would add a large dependency tree for typed values we don't need. Only selectors (dropped if they hold `{ } < ; @ \\`) and colors we computed are written out, so an email can't use this to inject CSS beyond what its own `<style>` already does. Rules are repeated, not edited, so light mode shows exactly what the email asks for. An email falls back to the white card only for colors it can't read (`var()`, `color-mix()`, light gradients); invalid values are skipped, as browsers skip them. Nearly all emails adapt, each in a few milliseconds. |
 | 2026-10-20 | Remote images of new mail are downloaded at sync time, like Apple Mail's Protect Mail Activity, but directly from this Mac | Apple's guide says it downloads remote content "in the background when you receive a message" and hides the IP through Apple's relays; Mailboat has no relays, so it gets the timing benefit (a sender can't tell when, or whether, you opened) but not IP hiding. Only images the image rule would load are fetched, so it never confirms a Spam address. Defaults follow Apple (on), with limits chosen to keep it modest: newest 25 messages per account per pass, last 14 days only (not a new account's backlog), 40 images × 5 MB per message, 500 MB cache trimmed least-recently-viewed first. Copies are files in the app cache (`images/<id>`), indexed in `image_cache` by URL and shared across accounts (an image's bytes don't depend on who received it; no Gmail ID is involved). They reach the frame as `data:` URLs, as inline images do. The fetch sends a Safari user agent and no cookies or referrer, so it looks like the reader's own load. |
+| 2026-10-20 | AI providers are reached through programs on the Mac (Mailboat's Swift helper for Apple Intelligence, the `claude` and `codex` CLIs), not API keys | The owner asked to sign in to ChatGPT and Claude rather than paste keys. Those subscriptions are only offered to the vendors' own apps, so Mailboat runs them (Claude Code, Codex) instead of borrowing their sign-in: no tokens are copied, stored or seen by Mailboat, and each tool keeps its own login. Costs: the tools must be installed (Settings links to them), each request starts a process (Claude ~2s, Codex ~5s, Apple ~1s), and Codex doesn't stream text. `CLAUDE.md`'s earlier plan of API keys in the keychain stays possible as another provider. |
+| 2026-10-20 | Every AI request runs with all tools off, in an empty folder | Email is untrusted input. Claude gets `--tools ""` with no settings, MCP servers or skills; Codex gets `-c features.<tool>=false` for its shell, web, browser, plugins and the rest (newer versions ignore unknown names, where `--disable` would fail), plus a read-only sandbox; checked by asking each to run `ls ~` (both said they couldn't). Prompts also mark the email as material, not instructions. |
+| 2026-10-20 | Apple Intelligence is the default for every AI feature, including automatic summaries | The owner's choice ("on by default"). It runs on the Mac, so summarizing on its own doesn't send mail anywhere, which keeps `CLAUDE.md`'s rule that mail reaches a model only by an explicit choice: choosing Claude or ChatGPT for a feature in Settings is that choice, and the setting says what will be sent. Spam and Trash are never summarized by themselves. |
+| 2026-10-20 | Apple's helper is a separate program, not Swift linked into the app | Linking Swift into the Rust binary means carrying the Swift runtime's link flags and weak-linking the framework for older macOS; a helper builds with one `swiftc` call, fails alone (Apple Intelligence shows as unavailable) and speaks the same stdin/stdout protocol as the CLIs. Built for macOS 26, where Foundation Models arrived. Shipped as a Tauri sidecar (`tauri.macos.conf.json`); `scripts/dev-run.sh` copies and signs it into the dev app before the app itself. |

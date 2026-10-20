@@ -174,9 +174,14 @@ these rules. Keep it passing.
 
 ## Future direction (don't build yet)
 
-AI-drafted replies via user-supplied OpenAI/Anthropic API keys. Keys would go
-in the OS keychain like Google tokens; sending an email to a model is always
-an explicit user action. Plain-text bodies are already stored for this.
+AI (built in the AI Spike, see `docs/ARCHITECTURE.md` → AI): summaries and
+a writing assistant through Apple Intelligence (on-device, the default) or the
+owner's Claude / ChatGPT subscriptions via the `claude` and `codex` CLIs. Mailboat
+holds no AI keys or tokens. Rules: every request runs with all tools off;
+mail goes to a cloud model only when the owner chose that provider for the
+feature; never send AI output without the owner seeing it in the editor;
+never log prompts or answers. API keys (keychain, like Google tokens) could
+be added later as another provider.
 
 An MCP server exposing Mailboat's mail to AI apps (see `docs/ROADMAP.md`,
 Later): off by default, read-only first, never sends.

@@ -1397,7 +1397,62 @@ idea because they're useful without distributing).*
 *The AI work, gathered from Later at the owner's request (2026-10-17).
 Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
 
-- [ ] AI-drafted replies with user-supplied OpenAI/Anthropic keys (see `CLAUDE.md`)
+*Started 2026-10-20 at the owner's request, built while they were away
+("do what you can without asking"). Their brief: several providers, Apple
+Intelligence on by default; ChatGPT and Claude added by signing in, not
+with API keys; usage tracking if easy; summaries in the list and above the
+email; AI replies from their own prompt with the conversation as context,
+chat-style, with a button to put the result in the email, and no overlay
+on top of the composer's overlay; maybe new mail too. Everything below is
+built, tested and waiting for the owner to try.*
+
+- [x] Providers *(built 2026-10-20)*: Apple Intelligence through Mailboat's
+      own Swift helper (on-device; default for everything), Claude through
+      Claude Code (`claude`) and ChatGPT through Codex (`codex`), each
+      signed in with the owner's subscription. Settings → AI → Connect
+      runs the tool's sign-in, which opens the browser; no key is typed
+      into Mailboat. Every request runs with all tools off (see ARCHITECTURE
+      decisions). Checked live on this Mac: all three answer (Apple ~1s,
+      Claude ~2s, ChatGPT ~5s). *Replaces the plan of user-supplied API
+      keys (owner, 2026-10-20: sign in, not keys).* Not tried: Connect for
+      a tool that's signed out (both were already signed in here)
+- [x] Usage *(built 2026-10-20)*: Settings → AI → Usage, per provider,
+      today and last 30 days: requests (and failures), tokens in and out,
+      Claude's API-price estimate, and Claude's plan limits (5-hour and
+      weekly) as of its latest answer. Apple and Codex report no cost
+      (Codex reports tokens)
+- [x] Summaries in the list *(built 2026-10-20)*: one line in place of
+      the email's first words, with a small sparkle; hover for the
+      original. Written in the background for the rows on screen, newest
+      first, cached until new mail arrives in the conversation; never for
+      Spam or Trash. Settings → AI → In the list: Off or a provider (a
+      warning says when every conversation scrolled past would be sent to
+      Claude or ChatGPT). Seen working in the dev app: summaries written by Apple Intelligence on the visible rows
+- [x] Summary above the email *(built 2026-10-20)*: a card of a few
+      points above the messages, streamed as it's written, with
+      "Summarize again" and Hide. Automatically for conversations long
+      enough to need one (default), with a Summarize button, or off; its
+      own provider choice. Apple's guardrails sometimes refuse an email;
+      the card then says why with "Try again"
+- [x] AI replies and new mail *(built 2026-10-20)*: ⌘J or the ✦ by the
+      paperclip opens a chat. In the floating card it opens beside the
+      form and the card widens (no overlay on the overlay); inline in
+      the reader it opens above the reply inside its card. Say what to
+      write (or pick a suggestion: Say yes, Politely decline…); each
+      answer is a whole draft with "Use this", which replaces the text
+      (signature and quote stay); ask again to refine it. It reads the
+      conversation and what's written so far; new mail takes a suggested
+      subject if it has none. Provider picker in the panel, Stop, Esc
+      closes. The prompt was tuned after trying all three (Apple signed
+      off as an invented name). *Not seen in the window by the agent*
+      (it can't screenshot from its shell): checked by component tests
+      and live provider tests. To decide with the owner: side panel vs
+      above for the card, its width (340px), and whether "Insert" (keep
+      what's written) is wanted beside "Use this"
+- Ideas not built: AI actions in ⌘K (summarize, reply with AI), a
+  "Reply with AI" button on the reply bar, per-provider model choice
+  (today Claude uses Haiku for summaries and Sonnet for writing; Codex
+  its default model), AI search ("find the invoice from…")
 - [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
       Mailboat's mail *(owner request, 2026-10-16)*. Worth it because Mailboat
       already has every account's mail in one local, searchable cache
