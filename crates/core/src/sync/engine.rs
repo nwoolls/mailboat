@@ -38,6 +38,9 @@ pub struct SyncConfig {
     pub scope: Vec<ScopePart>,
     /// Bodies of the newest messages to prefetch after each pass.
     pub body_prefetch: u32,
+    /// Downloads new mail's remote images after each pass (Settings can
+    /// turn it off); `None` never does (tests).
+    pub images: Option<crate::mail::prefetch::Prefetch>,
 }
 
 impl Default for SyncConfig {
@@ -55,6 +58,7 @@ impl Default for SyncConfig {
                 part(Some("TRASH"), 100),
             ],
             body_prefetch: 25,
+            images: None,
         }
     }
 }

@@ -82,6 +82,48 @@ fn is_tiny(value: Option<String>) -> bool {
     value.is_some_and(|v| matches!(v.trim().trim_end_matches("px"), "0" | "1"))
 }
 
+/// The address a remote image is loaded from: always HTTPS (the CSP
+/// allows nothing else), so `http://` and `//` addresses are upgraded.
+/// Also the key cached images are stored under (`mail::prefetch`).
+pub fn remote_image_url(src: &str) -> String {
+    let src = src.trim();
+    if let Some(rest) = src.strip_prefix("http://") {
+        format!("https://{rest}")
+    } else if let Some(rest) = src.strip_prefix("//") {
+        format!("https://{rest}")
+    } else {
+        src.to_string()
+    }
+}
+
+/// The remote images an email would load (trackers left out), as
+/// `remote_image_url` gives them, for downloading ahead of time.
+pub fn remote_image_urls(html: &str) -> Vec<String> {
+    let cleaned = ammonia_builder().clean(html).to_string();
+    let urls = RefCell::new(Vec::<String>::new());
+    let _ = rewrite_str(
+        &cleaned,
+        RewriteStrSettings::new().append_element_content_handler(element!("img", |el| {
+            let src = attr(el, "src").unwrap_or_default();
+            if is_remote(&src)
+                && !looks_like_tracker(
+                    &src,
+                    el.get_attribute("width"),
+                    el.get_attribute("height"),
+                    el.get_attribute("style"),
+                )
+            {
+                let url = remote_image_url(&src);
+                if !urls.borrow().contains(&url) {
+                    urls.borrow_mut().push(url);
+                }
+            }
+            Ok(())
+        })),
+    );
+    urls.into_inner()
+}
+
 fn looks_like_tracker(
     src: &str,
     width: Option<String>,
@@ -236,16 +278,20 @@ pub fn sanitize_html_with(
     allow_images: bool,
     inline_images: &HashMap<String, String>,
 ) -> SafeMessage {
-    sanitize_html_colors(html, allow_images, inline_images, false)
+    sanitize_html_colors(html, allow_images, inline_images, &HashMap::new(), false)
 }
 
-/// Like `sanitize_html_with`; `original_colors` keeps an email that could
+/// Like `sanitize_html_with`, with remote images downloaded ahead of time
+/// (`mail::prefetch`) as `data:` URLs keyed by `remote_image_url`: when
+/// images are allowed, those show from the copy and aren't requested
+/// again. `original_colors` keeps an email that could
 /// be adapted on the white card with its own colors (the reader's
 /// "Original colors", for emails the remap gets wrong).
 pub fn sanitize_html_colors(
     html: &str,
     allow_images: bool,
     inline_images: &HashMap<String, String>,
+    cached_images: &HashMap<String, String>,
     original_colors: bool,
 ) -> SafeMessage {
     let cleaned = ammonia_builder().clean(html).to_string();
@@ -294,8 +340,14 @@ pub fn sanitize_html_colors(
                     {
                         el.set_attribute("data-mailboat-fixed", "")?;
                     }
-                    // Images are only loaded over HTTPS (the CSP allows nothing else).
-                    if let Some(rest) = src.trim().strip_prefix("http://") {
+                    let url = remote_image_url(&src);
+                    if let Some(data_url) = cached_images.get(&url) {
+                        // Downloaded when the mail arrived: opening it now
+                        // makes no request.
+                        el.set_attribute("src", data_url)?;
+                    } else if let Some(rest) = src.trim().strip_prefix("http://") {
+                        // Images are only loaded over HTTPS (the CSP allows
+                        // nothing else).
                         set_attr(el, "src", &format!("https://{rest}"))?;
                     }
                 } else if let Some(cid) = src.trim().get(4..).filter(|_| {
@@ -863,9 +915,9 @@ mod tests {
     #[test]
     fn original_colors_puts_an_adaptable_email_on_the_white_card() {
         let html = r##"<td style="color:#24292f;background:#ffffff">Hi</td>"##;
-        let adapted = sanitize_html_colors(html, false, &HashMap::new(), false);
+        let adapted = sanitize_html_colors(html, false, &HashMap::new(), &HashMap::new(), false);
         assert!(adapted.adaptive && adapted.recolorable);
-        let original = sanitize_html_colors(html, false, &HashMap::new(), true);
+        let original = sanitize_html_colors(html, false, &HashMap::new(), &HashMap::new(), true);
         assert!(!original.adaptive, "white card");
         assert!(original.recolorable, "so the reader can switch back");
         assert!(!original.document.contains("data-mc="));
@@ -940,6 +992,36 @@ mod tests {
         // Its own dark text color wins: `.white-color`'s text isn't
         // remapped, which leaves nothing for the sheet's dark block.
         assert!(!doc.contains("<style>@media (prefers-color-scheme:dark){"));
+    }
+
+    #[test]
+    fn prefetched_images_show_from_their_copy() {
+        let html = r#"<img src="http://cdn.shop.com/a.png" width="200">
+            <img src="//cdn.shop.com/b.png" width="200">
+            <img src="https://cdn.shop.com/a.png" width="200">
+            <img src="https://mailtrack.io/open.gif" width="1" height="1">"#;
+        assert_eq!(
+            remote_image_urls(html),
+            vec!["https://cdn.shop.com/a.png", "https://cdn.shop.com/b.png"],
+            "upgraded, once each, trackers left out"
+        );
+        let cached = HashMap::from([(
+            "https://cdn.shop.com/a.png".to_string(),
+            "data:image/png;base64,AAAA".to_string(),
+        )]);
+        let shown = sanitize_html_colors(html, true, &HashMap::new(), &cached, false);
+        assert_eq!(
+            shown.document.matches("data:image/png;base64,AAAA").count(),
+            2
+        );
+        assert!(
+            shown.document.contains("//cdn.shop.com/b.png"),
+            "not cached: loads live"
+        );
+        assert_eq!(shown.loaded_images, 3);
+        // Held back means held back, copy or not.
+        let blocked = sanitize_html_colors(html, false, &HashMap::new(), &cached, false);
+        assert!(!blocked.document.contains("base64,AAAA"));
     }
 
     #[test]

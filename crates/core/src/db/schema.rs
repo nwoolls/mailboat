@@ -290,3 +290,21 @@ pub const MIGRATION_V13: &str = r#"
 ALTER TABLE message_bodies ADD COLUMN calendar TEXT;
 ALTER TABLE message_bodies ADD COLUMN calendar_read INTEGER NOT NULL DEFAULT 0;
 "#;
+
+/// Remote images downloaded when mail arrives (`mail::prefetch`), so
+/// opening an email doesn't tell its sender when. Keyed by address, not by
+/// account: the same image is the same file whichever account received it.
+/// The bytes are files named by `id` in the image cache folder.
+/// `images_prefetched` marks bodies already handled (fetched, or opened
+/// first, when images load live anyway).
+pub const MIGRATION_V14: &str = r#"
+CREATE TABLE image_cache (
+  id INTEGER PRIMARY KEY,
+  url TEXT NOT NULL UNIQUE,
+  mime TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  fetched_at INTEGER NOT NULL,
+  used_at INTEGER NOT NULL
+);
+ALTER TABLE message_bodies ADD COLUMN images_prefetched INTEGER NOT NULL DEFAULT 0;
+"#;

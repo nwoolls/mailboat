@@ -32,6 +32,8 @@ pub struct AppState {
     pub config_dir: PathBuf,
     /// Downloaded attachments, one folder per account.
     pub attachments_dir: PathBuf,
+    /// Remote images downloaded when mail arrived (`mail::prefetch`).
+    pub images_dir: PathBuf,
     /// Where "Save" puts attachments (the user's Downloads folder).
     pub downloads_dir: Option<PathBuf>,
     /// Where each attachment was last saved, for "Show in Finder".
@@ -67,6 +69,7 @@ impl AppState {
             supervisor,
             config_dir: dirs.config,
             attachments_dir: dirs.cache.join("attachments"),
+            images_dir: dirs.cache.join("images"),
             downloads_dir: dirs.downloads,
             saved: Mutex::new(HashMap::new()),
             sync_log,

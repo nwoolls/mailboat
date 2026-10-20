@@ -53,6 +53,11 @@ pub struct AppSettings {
     pub dock_badge: DockBadge,
     /// Whether remote images load for senders without a saved choice.
     pub remote_images: RemoteImages,
+    /// Download remote images when mail arrives, as Apple Mail's "Protect
+    /// Mail Activity" does (`mail::prefetch`).
+    pub image_prefetch: bool,
+    /// The most the downloaded images may take, in MB.
+    pub image_cache_mb: u32,
 }
 
 impl Default for AppSettings {
@@ -63,6 +68,8 @@ impl Default for AppSettings {
             app_icon: None,
             dock_badge: DockBadge::Inbox,
             remote_images: RemoteImages::Load,
+            image_prefetch: true,
+            image_cache_mb: 500,
         }
     }
 }
@@ -110,6 +117,8 @@ mod tests {
             app_icon: Some("C10-orange".into()),
             dock_badge: DockBadge::Off,
             remote_images: RemoteImages::Correspondents,
+            image_prefetch: false,
+            image_cache_mb: 1000,
         };
         save(&conn, &off).unwrap();
         save(&conn, &off).unwrap();
@@ -130,6 +139,8 @@ mod tests {
         assert!(loaded.new_mail_notifications);
         assert_eq!(loaded.app_icon, None);
         assert_eq!(loaded.remote_images, RemoteImages::Load);
+        assert!(loaded.image_prefetch);
+        assert_eq!(loaded.image_cache_mb, 500);
     }
 
     #[test]

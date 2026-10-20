@@ -28,6 +28,22 @@ pub async fn load(http: &reqwest::Client, src: &str) -> Result<EmailImage> {
     if src.starts_with("data:") {
         return from_data_url(src);
     }
+    let (bytes, mime, url) = fetch_web_image(http, src, MAX_IMAGE_BYTES).await?;
+    let filename = filename_for(&url, &mime);
+    Ok(EmailImage {
+        bytes,
+        mime,
+        filename,
+    })
+}
+
+/// Fetches an image from the web (http or https only): its bytes, type and
+/// final address. Anything but an image, or over `max` bytes, is refused.
+pub async fn fetch_web_image(
+    http: &reqwest::Client,
+    src: &str,
+    max: usize,
+) -> Result<(Vec<u8>, String, url::Url)> {
     let url = url::Url::parse(src).map_err(|_| not_an_image())?;
     if !matches!(url.scheme(), "http" | "https") {
         return Err(not_an_image());
@@ -57,18 +73,14 @@ pub async fn load(http: &reqwest::Client, src: &str) -> Result<EmailImage> {
     let mut bytes = Vec::new();
     while let Some(chunk) = response.chunk().await.map_err(net_error)? {
         bytes.extend_from_slice(&chunk);
-        if bytes.len() > MAX_IMAGE_BYTES {
-            return Err(CoreError::Invalid(
-                "the image is too large (over 25 MB)".into(),
-            ));
+        if bytes.len() > max {
+            return Err(CoreError::Invalid(format!(
+                "the image is too large (over {} MB)",
+                max / (1024 * 1024)
+            )));
         }
     }
-    let filename = filename_for(&url, &mime);
-    Ok(EmailImage {
-        bytes,
-        mime,
-        filename,
-    })
+    Ok((bytes, mime, url))
 }
 
 fn not_an_image() -> CoreError {

@@ -167,6 +167,12 @@ export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
 	settingsGet: () => typedError<AppSettings_Serialize, AppError>(__TAURI_INVOKE("settings_get")),
 	settingsSet: (settings: AppSettings_Deserialize) => typedError<null, AppError>(__TAURI_INVOKE("settings_set", { settings })),
+	imageCacheSize: () => typedError<ImageCacheSize, AppError>(__TAURI_INVOKE("image_cache_size")),
+	/**
+	 *  Deletes every downloaded image; emails load theirs live until new mail
+	 *  fills the cache again.
+	 */
+	imageCacheClear: () => typedError<null, AppError>(__TAURI_INVOKE("image_cache_clear")),
 	/**  Marks an account's rows with another colour from `AppInfo::account_colors`. */
 	accountSetColor: (accountId: AccountId, color: string) => typedError<Account, AppError>(__TAURI_INVOKE("account_set_color", { accountId, color })),
 	/**
@@ -343,6 +349,13 @@ export type AppSettings_Deserialize = {
 	dockBadge?: DockBadge_Deserialize,
 	/**  Whether remote images load for senders without a saved choice. */
 	remoteImages?: RemoteImages,
+	/**
+	 *  Download remote images when mail arrives, as Apple Mail's "Protect
+	 *  Mail Activity" does (`mail::prefetch`).
+	 */
+	imagePrefetch?: boolean,
+	/**  The most the downloaded images may take, in MB. */
+	imageCacheMb?: number,
 };
 
 export type AppSettings_Serialize = {
@@ -362,6 +375,13 @@ export type AppSettings_Serialize = {
 	dockBadge: DockBadge_Serialize,
 	/**  Whether remote images load for senders without a saved choice. */
 	remoteImages: RemoteImages,
+	/**
+	 *  Download remote images when mail arrives, as Apple Mail's "Protect
+	 *  Mail Activity" does (`mail::prefetch`).
+	 */
+	imagePrefetch: boolean,
+	/**  The most the downloaded images may take, in MB. */
+	imageCacheMb: number,
 };
 
 /**  What applying a rule to mail already received changed. */
@@ -497,6 +517,13 @@ export type Identity = {
 	isDefault: boolean,
 	/**  HTML signature from Gmail's settings, if any. */
 	signature: string | null,
+};
+
+/**  How much the downloaded-images cache holds (Settings → Viewing). */
+export type ImageCacheSize = {
+	/**  Whole kilobytes (a float would reach TypeScript as `number | null`). */
+	kilobytes: number,
+	images: number,
 };
 
 /**  The decision, and why, so the reader can offer the right choice. */

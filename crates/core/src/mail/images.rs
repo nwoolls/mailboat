@@ -12,8 +12,13 @@
 //! - With a stricter default, senders it leaves out, unless the user chose
 //!   to load their images.
 
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use specta::Type;
+
+use crate::db::store;
+use crate::error::{CoreError, Result};
+use crate::model::MessageId;
 
 /// Whether remote images load for senders without a saved choice
 /// (Settings → Viewing).
@@ -84,6 +89,35 @@ pub fn image_policy(default: RemoteImages, c: ImageContext) -> ImagePolicy {
             RemoteImages::Block => ImagePolicy::BlockedByDefault,
         },
     }
+}
+
+/// Decides for a cached message, reading everything the rule needs: its
+/// sender, where it is, the saved per-sender choice and the default from
+/// Settings. Returns the sender's address too, for the reader's notice.
+pub fn policy_for_message(conn: &Connection, message: MessageId) -> Result<(ImagePolicy, String)> {
+    let sender: String = conn
+        .query_row(
+            "SELECT from_email FROM messages WHERE id = ?1",
+            [message],
+            |r| r.get(0),
+        )
+        .map_err(CoreError::from)?;
+    let sender_choice = store::sender_image_choice(conn, &sender)?;
+    let (in_spam, in_trash) = store::message_spam_trash(conn, message)?;
+    let default = crate::settings::load(conn)?.remote_images;
+    // Only looked up when the default depends on it.
+    let wrote_to_sender = default == RemoteImages::Correspondents
+        && crate::compose::contacts::wrote_to(conn, &sender)?;
+    let policy = image_policy(
+        default,
+        ImageContext {
+            in_spam,
+            in_trash,
+            sender_choice,
+            wrote_to_sender,
+        },
+    );
+    Ok((policy, sender))
 }
 
 #[cfg(test)]

@@ -7,14 +7,14 @@ use std::time::Duration;
 use mailboat_core::attachments;
 use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
 use mailboat_core::calendar::{self, InviteCard};
-use mailboat_core::compose::contacts::{self, Contact};
+use mailboat_core::compose::contacts::Contact;
 use mailboat_core::compose::identities::{self, Identity};
 use mailboat_core::compose::{self, OpenedDraft, OutgoingMessage, ReplySource};
 use mailboat_core::db::{accounts, query, store};
 use mailboat_core::mail::images::{self, ImagePolicy};
 use mailboat_core::mail::invite::Answer;
 use mailboat_core::mail::mailto::Mailto;
-use mailboat_core::mail::{self, SafeMessage};
+use mailboat_core::mail::{self, prefetch, SafeMessage};
 use mailboat_core::model::{
     Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, DraftId, Label,
     LabelId, LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
@@ -348,30 +348,7 @@ pub async fn message_open(
             .await?
         }
     };
-    let sender_email: String = state
-        .db
-        .conn()
-        .query_row(
-            "SELECT from_email FROM messages WHERE id = ?1",
-            [message_id],
-            |r| r.get(0),
-        )
-        .map_err(CoreError::from)?;
-    let sender_choice = store::sender_image_choice(&state.db.conn(), &sender_email)?;
-    let (in_spam, in_trash) = store::message_spam_trash(&state.db.conn(), message_id)?;
-    let default = settings::load(&state.db.conn())?.remote_images;
-    // Only looked up when the default depends on it.
-    let wrote_to_sender = default == images::RemoteImages::Correspondents
-        && contacts::wrote_to(&state.db.conn(), &sender_email)?;
-    let image_policy = images::image_policy(
-        default,
-        images::ImageContext {
-            in_spam,
-            in_trash,
-            sender_choice,
-            wrote_to_sender,
-        },
-    );
+    let (image_policy, sender_email) = images::policy_for_message(&state.db.conn(), message_id)?;
     let images_allowed = image_policy.allows();
     // Inline images are part of the email, not remote content, so they're
     // fetched (once, then cached) whatever the remote-image choice.
@@ -387,6 +364,16 @@ pub async fn message_open(
         }
         Err(_) => Default::default(),
     };
+    // Images downloaded when the mail arrived show from their copies; once
+    // opened, the rest load now, so there's nothing left to download.
+    let cached = match (&body.html, images_allowed) {
+        (Some(html), true) => {
+            let urls = mail::sanitize::remote_image_urls(html);
+            mail::prefetch::cached_for(&state.db.conn(), &state.images_dir, &urls)?
+        }
+        _ => Default::default(),
+    };
+    prefetch::mark_done(&state.db.conn(), message_id)?;
     let attachments = store::attachments_for(&state.db.conn(), message_id)?;
     Ok(OpenedMessage {
         message_id,
@@ -395,7 +382,7 @@ pub async fn message_open(
         images_allowed,
         image_policy,
         attachments,
-        content: mail::safe_message(&body, images_allowed, &inline, original_colors),
+        content: mail::safe_message(&body, images_allowed, &inline, &cached, original_colors),
     })
 }
 
@@ -953,6 +940,12 @@ pub fn settings_set(
     settings: AppSettings,
 ) -> CmdResult<()> {
     settings::save(&state.db.conn(), &settings)?;
+    // A smaller image cache takes effect now, not at the next download.
+    prefetch::evict(
+        &state.db.conn(),
+        &state.images_dir,
+        u64::from(settings.image_cache_mb) * 1024 * 1024,
+    )?;
     crate::theme::apply(&app, settings.theme);
     crate::dock::set_icon(&app, crate::app_icon::png(settings.app_icon.as_deref()));
     Ok(())
@@ -1221,4 +1214,31 @@ pub fn menu_bar_update(app: AppHandle, items: Vec<crate::menu::MenuItemState>) -
         kind: "platform".into(),
         message: e.to_string(),
     })
+}
+
+/// How much the downloaded-images cache holds (Settings → Viewing).
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageCacheSize {
+    /// Whole kilobytes (a float would reach TypeScript as `number | null`).
+    pub kilobytes: u32,
+    pub images: u32,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn image_cache_size(state: State<'_, AppState>) -> CmdResult<ImageCacheSize> {
+    let (bytes, images) = prefetch::size(&state.db.conn())?;
+    Ok(ImageCacheSize {
+        kilobytes: u32::try_from(bytes / 1024).unwrap_or(u32::MAX),
+        images,
+    })
+}
+
+/// Deletes every downloaded image; emails load theirs live until new mail
+/// fills the cache again.
+#[tauri::command]
+#[specta::specta]
+pub fn image_cache_clear(state: State<'_, AppState>) -> CmdResult<()> {
+    Ok(prefetch::clear(&state.db.conn(), &state.images_dir)?)
 }

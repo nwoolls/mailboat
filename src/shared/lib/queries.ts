@@ -40,6 +40,7 @@ export const keys = {
   appInfo: ["appInfo"] as const,
   defaultMailApp: ["defaultMailApp"] as const,
   appSettings: ["appSettings"] as const,
+  imageCache: ["imageCache"] as const,
   invite: (id: MessageId) => ["invite", id] as const,
   rules: ["rules"] as const,
   vacations: ["vacations"] as const,
@@ -189,6 +190,23 @@ export function useMakeDefaultMailApp() {
 }
 
 /** Settings Rust acts on (Settings page). */
+/** How much the images downloaded ahead of time take (Settings → Viewing). */
+export function useImageCacheSize() {
+  return useQuery({
+    queryKey: keys.imageCache,
+    queryFn: () => unwrap(commands.imageCacheSize()),
+    enabled: IS_TAURI,
+  });
+}
+
+export function useClearImageCache() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(commands.imageCacheClear()),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.imageCache }),
+  });
+}
+
 export function useAppSettings() {
   return useQuery({
     queryKey: keys.appSettings,
@@ -215,6 +233,9 @@ export function useSaveAppSettings() {
     onSuccess: (_saved, next, context) => {
       if (context?.previous?.remoteImages !== next.remoteImages)
         void qc.invalidateQueries({ queryKey: ["message"] });
+      // A smaller limit trims the cache at once.
+      if (context?.previous?.imageCacheMb !== next.imageCacheMb)
+        void qc.invalidateQueries({ queryKey: keys.imageCache });
     },
   });
 }

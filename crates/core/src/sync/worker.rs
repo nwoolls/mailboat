@@ -197,6 +197,25 @@ async fn run_worker(
                 if !outcome.new_inbox.is_empty() {
                     events.new_mail(account, &outcome.new_inbox);
                 }
+                // Images of mail that just arrived, so opening it later
+                // doesn't tell the sender when. A failure only costs the
+                // head start: images then load when the email is opened.
+                if let Some(prefetch) = &config.images {
+                    match crate::mail::prefetch::run(&db, prefetch, account).await {
+                        Ok(r) if r.messages > 0 => events.log(
+                            account,
+                            &format!(
+                                "images downloaded ahead: {} for {} messages ({} failed)",
+                                r.images, r.messages, r.failed
+                            ),
+                        ),
+                        Ok(_) => {}
+                        Err(e) => events.log(
+                            account,
+                            &format!("image download failed ({}): {e}", e.kind()),
+                        ),
+                    }
+                }
                 if !contacts_fresh {
                     // Once per launch, like aliases. An account without the
                     // contacts permission (signed in before it was asked

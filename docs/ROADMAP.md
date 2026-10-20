@@ -1338,6 +1338,22 @@ settled with the owner one at a time, as in the earlier spikes.*
       Contacts you've never mailed. "Load for everyone" stays the default*
 - [ ] Background image prefetch during sync, like Apple Mail, so senders
       can't tell when you opened (option C of the same choice, not built)
+      *Built (2026-10-20), waiting for the owner to try it (owner: "sane
+      defaults, start with how Apple does it, the rest configurable").
+      Apple's guide says Protect Mail Activity downloads remote content
+      "in the background when you receive a message" and hides your IP;
+      Mailboat copies the timing but has no relay servers, so senders still
+      see the IP. After each sync pass, each account downloads the images
+      of its newest arrivals (25 per pass, received in the last 14 days),
+      only where the image rule would load them anyway (never Spam,
+      blocked senders or Trash; trackers skipped), up to 40 images of
+      5 MB each per message. Opening the email shows the saved copies
+      with no request. Settings → Viewing → Privacy: "Download images
+      when mail arrives" (on by default, like Apple), "Space for saved
+      images" (250 MB / 500 MB default / 1 GB / 2 GB, least recently
+      viewed removed first) and Clear. Images set in style sheets
+      (`background: url()`) and the `background` attribute still load
+      when opened. The sync log notes how many were downloaded*
 - [ ] With the screensaver set to Random, switch to another screensaver
       every hour while it keeps playing *(owner request, 2026-10-19)*;
       today Random picks one each time it starts

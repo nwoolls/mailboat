@@ -160,7 +160,9 @@ these rules. Keep it passing.
   the sender is allowed). A per-sender "load" or "block" choice is
   remembered by address (global, not per account) and wins outside Spam.
   Known tracking pixels are always removed. The rule lives in
-  `mailboat_core::mail::images`.
+  `mailboat_core::mail::images`. Images of new mail that the rule would load
+  are downloaded as mail arrives (`mail::prefetch`, on by default, like
+  Apple Mail), so opening an email makes no request.
 - Tauri capabilities stay as narrow as possible. Do not add plugins or
   permissions to the web side without a reason recorded in the commit.
 

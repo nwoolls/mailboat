@@ -11,7 +11,9 @@ import {
   useAppInfo,
   useAccounts,
   useAppSettings,
+  useClearImageCache,
   useDefaultMailApp,
+  useImageCacheSize,
   useIdentities,
   useMakeDefaultMailApp,
   useSaveAppSettings,
@@ -59,6 +61,7 @@ import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
 import { iconSetting, shownIcon } from "../model/appIcon";
 import { defaultMailAppRow } from "../model/mailApp";
+import { describeImageCache, IMAGE_CACHE_SIZES } from "../model/imageCache";
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -381,6 +384,16 @@ export function ViewingSection() {
   const prefs = viewingPrefs.use();
   const settings = useAppSettings().data;
   const save = useSaveAppSettings();
+  const cache = useImageCacheSize().data;
+  const clearCache = useClearImageCache();
+  const update = (change: Partial<AppSettings>) =>
+    settings &&
+    save.mutate(
+      { ...settings, ...change },
+      {
+        onError: (e) => showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
+      },
+    );
   return (
     <>
       <Group title="Conversations">
@@ -418,7 +431,7 @@ export function ViewingSection() {
       <Group title="Privacy">
         <Row
           label="Remote images"
-          description="Whether pictures from the web load when you open an email, for senders you haven’t chosen for. Loading one tells the sender when you opened it. Spam never loads them, and known trackers are always removed."
+          description="Whether pictures from the web load in emails, for senders you haven’t chosen for. Spam never loads them, and known trackers are always removed."
         >
           <select
             aria-label="Remote images"
@@ -442,6 +455,44 @@ export function ViewingSection() {
               </option>
             ))}
           </select>
+        </Row>
+        <Row
+          label="Download images when mail arrives"
+          description="Like Apple Mail’s Protect Mail Activity: images of new mail are saved as it arrives, so opening an email later doesn’t tell the sender when. Unlike Apple’s, they come straight from this Mac, so senders still see your IP address. Only images that would load anyway."
+        >
+          <Toggle
+            label="Download images when mail arrives"
+            on={settings?.imagePrefetch ?? true}
+            disabled={!settings}
+            onChange={(imagePrefetch) => update({ imagePrefetch })}
+          />
+        </Row>
+        <Row
+          label="Space for saved images"
+          description={`The least recently viewed are removed past this. ${
+            cache ? describeImageCache(cache) : ""
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Segmented
+              label="Space for saved images"
+              value={String(settings?.imageCacheMb ?? 500)}
+              options={IMAGE_CACHE_SIZES}
+              disabled={!settings}
+              onChange={(mb) => update({ imageCacheMb: Number(mb) })}
+            />
+            <Button
+              disabled={!cache?.images || clearCache.isPending}
+              onClick={() =>
+                clearCache.mutate(undefined, {
+                  onError: (e) =>
+                    showToast({ tone: "error", message: `Couldn’t clear: ${errorText(e)}` }),
+                })
+              }
+            >
+              Clear
+            </Button>
+          </div>
         </Row>
       </Group>
     </>

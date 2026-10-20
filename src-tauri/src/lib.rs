@@ -80,6 +80,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::app_info,
             commands::settings_get,
             commands::settings_set,
+            commands::image_cache_size,
+            commands::image_cache_clear,
             commands::account_set_color,
             commands::notification_settings_open,
             commands::invite_card,
@@ -172,7 +174,12 @@ pub fn run() {
                     log: sync_log.clone(),
                     db: db.clone(),
                 }),
-                SyncConfig::default(),
+                SyncConfig {
+                    images: Some(mailboat_core::mail::prefetch::Prefetch::new(
+                        app.path().app_cache_dir()?.join("images"),
+                    )?),
+                    ..SyncConfig::default()
+                },
                 WorkerTiming::default(),
             );
             let state = AppState::new(

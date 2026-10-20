@@ -6,6 +6,7 @@ pub mod invite;
 pub mod links;
 pub mod mailto;
 pub mod notify;
+pub mod prefetch;
 pub mod sanitize;
 pub mod saved_image;
 pub mod stylesheet;
@@ -21,12 +22,17 @@ pub fn safe_message(
     body: &StoredBody,
     allow_images: bool,
     inline_images: &HashMap<String, String>,
+    cached_images: &HashMap<String, String>,
     original_colors: bool,
 ) -> SafeMessage {
     match (&body.html, &body.text) {
-        (Some(html), _) if !html.trim().is_empty() => {
-            sanitize::sanitize_html_colors(html, allow_images, inline_images, original_colors)
-        }
+        (Some(html), _) if !html.trim().is_empty() => sanitize::sanitize_html_colors(
+            html,
+            allow_images,
+            inline_images,
+            cached_images,
+            original_colors,
+        ),
         (_, Some(text)) => sanitize::text_document(text),
         _ => sanitize::text_document(""),
     }
