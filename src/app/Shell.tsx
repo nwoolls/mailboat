@@ -795,6 +795,7 @@ export function Shell() {
               />
               <ThreadList
                 viewKey={selectionKey(selection)}
+                placeholder={threadsQuery.isPlaceholderData}
                 threads={threads}
                 onSwipe={(id, action) => act(action, [id])}
                 accounts={accounts}

@@ -17,9 +17,20 @@ const ICON_COLUMN = 18;
 /** The line under the last row while older mail loads (or failed to). */
 const FOOTER_HEIGHT = 40;
 
+/**
+ * How far down each view was scrolled, by `selectionKey`, until the app
+ * quits. Outside the component, which unmounts while a view is empty.
+ */
+const scrollPositions = new Map<string, number>();
+
 type Props = {
-  /** Which view the list shows (`selectionKey`): a new one starts at the top. */
+  /**
+   * Which view the list is for (`selectionKey`). Each view comes back
+   * scrolled as far as it was left; one not seen yet starts at the top.
+   */
   viewKey: string;
+  /** `threads` are still the previous view's, until this one's arrive. */
+  placeholder: boolean;
   threads: ThreadSummary[];
   accounts: AccountIndex;
   /** Show each row's account marker (views that mix accounts). */
@@ -49,6 +60,7 @@ type Props = {
 
 export function ThreadList({
   viewKey,
+  placeholder,
   threads,
   accounts,
   showAccount,
@@ -103,11 +115,15 @@ export function ThreadList({
   const footer = older.status !== "idle";
 
   // Every view's list is drawn in this one scroll area, so without this a
-  // new view opened scrolled down as far as the last one was. Before
-  // paint, so the old offset never flashes.
+  // new view opened scrolled down as far as the last one was. Once the new
+  // view's own rows are in (not the previous view's, standing in), it goes
+  // to where that view was left; before paint, so nothing jumps.
+  const shownKey = useRef<string | null>(null);
   useLayoutEffect(() => {
-    virtualizer.scrollToOffset(0);
-  }, [viewKey, virtualizer]);
+    if (placeholder || shownKey.current === viewKey) return;
+    shownKey.current = viewKey;
+    virtualizer.scrollToOffset(scrollPositions.get(viewKey) ?? 0);
+  }, [viewKey, placeholder, virtualizer]);
 
   // Keep the keyboard selection visible.
   useEffect(() => {
@@ -133,6 +149,10 @@ export function ThreadList({
         if (e.target === e.currentTarget) onClearSelection();
       }}
       aria-label="Conversations"
+      onScroll={(e) => {
+        if (shownKey.current !== null)
+          scrollPositions.set(shownKey.current, e.currentTarget.scrollTop);
+      }}
       className="flex-1 overflow-y-auto"
     >
       <div

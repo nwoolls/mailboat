@@ -100,6 +100,10 @@ export function useThreads(selection: Selection) {
     // in between, and an empty state was removed and re-added on every
     // first visit to an empty label, replaying its entrance.
     placeholderData: keepPreviousData,
+    // Every page loaded stays until the app quits (not 5 minutes after
+    // leaving), so a view comes back scrolled as far down as it was left
+    // (`ThreadList`). Not searches: each typed letter is a new one.
+    gcTime: selection.view.kind === "search" ? undefined : Infinity,
   });
 }
 

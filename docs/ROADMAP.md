@@ -1114,6 +1114,11 @@ ticked.*
       *Built (2026-10-19), waiting for the owner to try it: every view
       (and each new search) now opens at the top, as Gmail does. Views
       don't remember their own positions; say if that's wanted*
+      *Owner tried it (2026-10-19): works, but would rather each view
+      remembered its own position. Now each view comes back scrolled as
+      far as it was left, until the app quits; a view not seen yet, or a
+      new search, starts at the top. Its loaded pages stay cached for the
+      session so the old position can be reached*
 
 - [ ] Reply all: the sender in To, everyone else in Cc *(owner request,
       2026-10-19)*. Today (`replyRecipients` in compose/model/draft.ts)
