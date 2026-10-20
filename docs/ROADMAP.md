@@ -1578,9 +1578,13 @@ it will ever be distributed (2026-10-19), so this comes last.*
       - a bank: by design rather than a bug (its pale grey page becomes
         see-through, its white boxes darker cards); its logo is dark text
         in a transparent image, which no color remap can fix. "Original
-        colors" is the way out; remembering that choice per sender could
-        come later
+        colors" is the way out
       Owner confirmed the fixes (2026-10-20)
+- [x] "Original colors" is remembered per sender *(owner, 2026-10-20:
+      "yes", after a bank's logo, which no remap can fix)*. Switching an
+      email to Original colors now applies to every email from that
+      address, in any account (kept like the per-sender image choice);
+      Adapted colors forgets it. It was per message, until the app quit
 
 *Bugs found in passing and not yet fixed (started 2026-10-19 at the
 owner's request). Each says how it was found and whether it has been

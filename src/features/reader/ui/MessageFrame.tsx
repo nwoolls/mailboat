@@ -8,7 +8,6 @@ import { imageNotice } from "../model/imageNotice";
 import { InviteCard } from "./InviteCard";
 import { AttachmentList } from "./AttachmentList";
 import { useTextZoom } from "../../settings/ui/textSize";
-import { setOriginalColors, useOriginalColors } from "./originalColors";
 
 /**
  * Shows one message's sanitized HTML.
@@ -37,8 +36,7 @@ export function selectedInMessage(): { messageId: MessageId; text: string } | nu
 
 export function MessageFrame({ messageId }: { messageId: MessageId }) {
   const qc = useQueryClient();
-  const original = useOriginalColors(messageId);
-  const message = useOpenedMessage(messageId, original);
+  const message = useOpenedMessage(messageId);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const holderRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +97,13 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
     // Other open messages from the same sender should follow the choice too.
     onSuccess: () => qc.invalidateQueries({ queryKey: ["message"] }),
   });
+  // "Original colors" is remembered per sender, so their other emails (open
+  // now, and later) follow it too.
+  const senderColors = useMutation({
+    mutationFn: ({ email, original }: { email: string; original: boolean }) =>
+      unwrap(commands.senderOriginalColors(email, original)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["message"] }),
+  });
 
   // Settings → Appearance → Text size, applied inside the email (WebKit
   // then reports its zoomed height, which sizes the frame). Read through a
@@ -142,6 +147,7 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
     );
   const m = message.data;
   const notice = imageNotice(m);
+  const original = m.originalColors;
 
   return (
     // Takes the focus back from the frame (see above); never shows a ring.
@@ -181,11 +187,12 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
         {m.recolorable && (
           <button
             type="button"
-            onClick={() => setOriginalColors(messageId, !original)}
+            disabled={senderColors.isPending}
+            onClick={() => senderColors.mutate({ email: m.senderEmail, original: !original })}
             title={
               original
-                ? "Show this email on the glass, with colors adjusted for dark mode"
-                : "Show this email on a white card, with its own colors"
+                ? `Show emails from ${m.senderEmail} on the glass, with colors adjusted for dark mode`
+                : `Always show emails from ${m.senderEmail} on a white card, with their own colors`
             }
             className={`email-colors-switch absolute top-1.5 right-1.5 z-10 rounded-full px-2 py-px text-[11px] text-content/55 transition-opacity duration-150 hover:text-content/90 focus-visible:opacity-100 ${
               original ? "opacity-60 group-hover:opacity-100" : "opacity-0 group-hover:opacity-100"

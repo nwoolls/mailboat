@@ -320,19 +320,22 @@ pub struct OpenedMessage {
     pub image_policy: ImagePolicy,
     /// Files attached to the message (inline images left out).
     pub attachments: Vec<Attachment>,
+    /// Shown with its original colors on the white card, because its
+    /// sender was switched to "Original colors" (remembered by address).
+    pub original_colors: bool,
     #[serde(flatten)]
     pub content: SafeMessage,
 }
 
 /// Returns a message ready for display, downloading its body with the
-/// owning account's credentials if it isn't cached yet. `original_colors`
-/// shows an email that would sit on the glass on the white card instead.
+/// owning account's credentials if it isn't cached yet. An email whose
+/// sender was switched to "Original colors" is shown on the white card
+/// with its own colors instead of on the glass.
 #[tauri::command]
 #[specta::specta]
 pub async fn message_open(
     state: State<'_, AppState>,
     message_id: MessageId,
-    original_colors: bool,
 ) -> CmdResult<OpenedMessage> {
     let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
     let cached = store::get_body(&state.db.conn(), message_id)?;
@@ -350,6 +353,7 @@ pub async fn message_open(
     };
     let (image_policy, sender_email) = images::policy_for_message(&state.db.conn(), message_id)?;
     let images_allowed = image_policy.allows();
+    let original_colors = store::sender_wants_original_colors(&state.db.conn(), &sender_email)?;
     // Inline images are part of the email, not remote content, so they're
     // fetched (once, then cached) whatever the remote-image choice.
     let inline = match state.gmail_for(account) {
@@ -382,8 +386,25 @@ pub async fn message_open(
         images_allowed,
         image_policy,
         attachments,
+        original_colors,
         content: mail::safe_message(&body, images_allowed, &inline, &cached, original_colors),
     })
+}
+
+/// Remembers (or forgets) that a sender's emails open with their original
+/// colors on the white card, for every account.
+#[tauri::command]
+#[specta::specta]
+pub fn sender_original_colors(
+    state: State<'_, AppState>,
+    sender_email: String,
+    original: bool,
+) -> CmdResult<()> {
+    Ok(store::set_sender_original_colors(
+        &state.db.conn(),
+        &sender_email,
+        original,
+    )?)
 }
 
 /// Marks threads read or unread. Threads may span accounts; each is sent to

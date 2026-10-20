@@ -848,6 +848,38 @@ pub fn set_sender_allows_images(conn: &Connection, sender_email: &str, allow: bo
     Ok(())
 }
 
+/// Whether the sender's emails open with their original colors (the
+/// reader's "Original colors"), remembered by address for every account.
+pub fn sender_wants_original_colors(conn: &Connection, sender_email: &str) -> Result<bool> {
+    Ok(conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sender_color_prefs WHERE sender_email = ?1)",
+        [sender_email],
+        |r| r.get(0),
+    )?)
+}
+
+/// Remembers (or forgets) that a sender's emails open with their original
+/// colors.
+pub fn set_sender_original_colors(
+    conn: &Connection,
+    sender_email: &str,
+    original: bool,
+) -> Result<()> {
+    if original {
+        conn.execute(
+            "INSERT INTO sender_color_prefs (sender_email, updated_at) VALUES (?1, ?2)
+             ON CONFLICT (sender_email) DO UPDATE SET updated_at = excluded.updated_at",
+            params![sender_email, now_millis()],
+        )?;
+    } else {
+        conn.execute(
+            "DELETE FROM sender_color_prefs WHERE sender_email = ?1",
+            [sender_email],
+        )?;
+    }
+    Ok(())
+}
+
 // ---- Local label changes for actions (applied optimistically) ----
 
 /// The owning account and Gmail ID of a local thread.
@@ -996,4 +1028,22 @@ pub fn set_scope_version(conn: &Connection, account: AccountId, version: u32) ->
         params![account, version],
     )?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn original_colors_are_remembered_per_sender_whatever_the_case() {
+        let db = crate::db::Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        assert!(!sender_wants_original_colors(&conn, "news@key.example").unwrap());
+        set_sender_original_colors(&conn, "News@key.example", true).unwrap();
+        set_sender_original_colors(&conn, "news@key.example", true).unwrap();
+        assert!(sender_wants_original_colors(&conn, "news@key.example").unwrap());
+        assert!(!sender_wants_original_colors(&conn, "other@key.example").unwrap());
+        set_sender_original_colors(&conn, "news@key.example", false).unwrap();
+        assert!(!sender_wants_original_colors(&conn, "NEWS@key.example").unwrap());
+    }
 }

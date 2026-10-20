@@ -57,6 +57,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::label_delete,
             commands::threads_change_labels,
             commands::sender_allow_images,
+            commands::sender_original_colors,
             commands::attachment_open,
             commands::attachment_preview,
             commands::attachment_save,

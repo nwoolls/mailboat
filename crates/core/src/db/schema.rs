@@ -359,3 +359,13 @@ CREATE TABLE ai_reply_ideas (
   FOREIGN KEY (account_id, thread_id) REFERENCES threads (account_id, id) ON DELETE CASCADE
 );
 "#;
+
+/// Senders whose emails open with their original colors on the white card
+/// (the reader's "Original colors"), kept by address like
+/// `sender_image_prefs`: it describes a sender, not mailbox data.
+pub const MIGRATION_V17: &str = r#"
+CREATE TABLE sender_color_prefs (
+  sender_email TEXT PRIMARY KEY COLLATE NOCASE,
+  updated_at INTEGER NOT NULL
+);
+"#;

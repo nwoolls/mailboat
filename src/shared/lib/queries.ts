@@ -124,14 +124,14 @@ export function useThread(id: ThreadId | null) {
 }
 
 /**
- * A message ready to show. `originalColors` asks for it on the white card
- * with its own colors; switching keeps the current one up until the other
- * arrives.
+ * A message ready to show, with its sender's choices applied (images,
+ * original colors). A changed choice refetches it; the current one stays
+ * up until the new one arrives.
  */
-export function useOpenedMessage(id: MessageId, originalColors = false) {
+export function useOpenedMessage(id: MessageId) {
   return useQuery({
-    queryKey: [...keys.message(id), originalColors],
-    queryFn: () => unwrap(commands.messageOpen(id, originalColors)),
+    queryKey: keys.message(id),
+    queryFn: () => unwrap(commands.messageOpen(id)),
     enabled: IS_TAURI,
     staleTime: Infinity,
     placeholderData: keepPreviousData,

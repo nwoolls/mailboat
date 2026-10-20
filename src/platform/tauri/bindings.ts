@@ -37,10 +37,11 @@ export const commands = {
 	unreadCounts: (accounts: AccountFilter) => typedError<LabelUnread[], AppError>(__TAURI_INVOKE("unread_counts", { accounts })),
 	/**
 	 *  Returns a message ready for display, downloading its body with the
-	 *  owning account's credentials if it isn't cached yet. `original_colors`
-	 *  shows an email that would sit on the glass on the white card instead.
+	 *  owning account's credentials if it isn't cached yet. An email whose
+	 *  sender was switched to "Original colors" is shown on the white card
+	 *  with its own colors instead of on the glass.
 	 */
-	messageOpen: (messageId: MessageId, originalColors: boolean) => typedError<OpenedMessage, AppError>(__TAURI_INVOKE("message_open", { messageId, originalColors })),
+	messageOpen: (messageId: MessageId) => typedError<OpenedMessage, AppError>(__TAURI_INVOKE("message_open", { messageId })),
 	/**
 	 *  Marks threads read or unread. Threads may span accounts; each is sent to
 	 *  its own account. The local cache changes immediately; anything Gmail
@@ -80,6 +81,11 @@ export const commands = {
 	 *  every account. Spam stays blocked regardless.
 	 */
 	senderAllowImages: (senderEmail: string, allow: boolean) => typedError<null, AppError>(__TAURI_INVOKE("sender_allow_images", { senderEmail, allow })),
+	/**
+	 *  Remembers (or forgets) that a sender's emails open with their original
+	 *  colors on the white card, for every account.
+	 */
+	senderOriginalColors: (senderEmail: string, original: boolean) => typedError<null, AppError>(__TAURI_INVOKE("sender_original_colors", { senderEmail, original })),
 	/**  Opens an attachment with its default app. */
 	attachmentOpen: (attachmentId: AttachmentId) => typedError<null, AppError>(__TAURI_INVOKE("attachment_open", { attachmentId })),
 	/**  Shows an attachment in Quick Look (macOS). */
@@ -901,6 +907,11 @@ export type OpenedMessage = {
 	imagePolicy: ImagePolicy,
 	/**  Files attached to the message (inline images left out). */
 	attachments: Attachment[],
+	/**
+	 *  Shown with its original colors on the white card, because its
+	 *  sender was switched to "Original colors" (remembered by address).
+	 */
+	originalColors: boolean,
 } & SafeMessage;
 
 /**  A file attached to a message being sent. */
