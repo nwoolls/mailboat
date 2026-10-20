@@ -198,9 +198,10 @@ export function forwardSubject(subject: string): string {
 
 /**
  * Who a reply goes to, as Gmail does it. Replying to someone else's mail
- * goes to its Reply-To (or From); reply-all adds the other To and Cc
- * people. Replying to your own sent mail goes to the same people again.
- * Your own addresses are left out of reply-all.
+ * goes to its Reply-To (or From); reply-all puts everyone else (the
+ * original's To and Cc) in Cc, so only the sender is in To. Replying to
+ * your own sent mail goes to the same people again, To as To and Cc as
+ * Cc. Your own addresses are left out of reply-all.
  */
 export function replyRecipients(
   source: Pick<ReplySource, "from" | "to" | "cc" | "replyTo">,
@@ -210,8 +211,9 @@ export function replyRecipients(
   const fromMe = myEmails.some((e) => sameEmail(e, source.from.email));
   const sender = source.replyTo.length > 0 ? source.replyTo : [source.from];
   if (!all) return { to: fromMe ? source.to : sender, cc: [] };
-  let to = uniqueAddresses(fromMe ? source.to : [...sender, ...source.to], myEmails);
-  let cc = uniqueAddresses(source.cc, [...myEmails, ...to.map((a) => a.email)]);
+  let to = uniqueAddresses(fromMe ? source.to : sender, myEmails);
+  const others = fromMe ? source.cc : [...source.to, ...source.cc];
+  let cc = uniqueAddresses(others, [...myEmails, ...to.map((a) => a.email)]);
   // Only Cc'd people left: they become the To.
   if (to.length === 0) [to, cc] = [cc, []];
   return { to, cc };

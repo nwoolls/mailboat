@@ -145,11 +145,27 @@ describe("replyRecipients", () => {
     expect(replyRecipients(s, false, mine).to).toEqual([a("list@z.com")]);
   });
 
-  it("reply all keeps everyone but me, without repeats", () => {
+  it("reply all: the sender in To, everyone else but me in Cc, without repeats", () => {
     const s = source({ cc: [a("carol@z.com"), a("ALIAS@x.com"), a("bob@z.com")] });
     expect(replyRecipients(s, true, mine)).toEqual({
-      to: [a("jane@z.com", "Jane"), a("bob@z.com", "Bob")],
-      cc: [a("carol@z.com")],
+      to: [a("jane@z.com", "Jane")],
+      cc: [a("bob@z.com", "Bob"), a("carol@z.com")],
+    });
+  });
+
+  it("reply all moves the original's other To people to Cc", () => {
+    const s = source({ to: [a("me@x.com"), a("bob@z.com"), a("dan@z.com")] });
+    expect(replyRecipients(s, true, mine)).toEqual({
+      to: [a("jane@z.com", "Jane")],
+      cc: [a("bob@z.com"), a("dan@z.com"), a("carol@z.com")],
+    });
+  });
+
+  it("reply all to a Reply-To list keeps the sender out of To", () => {
+    const s = source({ replyTo: [a("list@z.com")], to: [a("bob@z.com")] });
+    expect(replyRecipients(s, true, mine)).toEqual({
+      to: [a("list@z.com")],
+      cc: [a("bob@z.com"), a("carol@z.com")],
     });
   });
 

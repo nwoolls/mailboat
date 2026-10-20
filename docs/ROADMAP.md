@@ -1125,6 +1125,10 @@ ticked.*
       worked like Mailboat does today. Fix: do what Gmail does, as the only
       behaviour (no setting needed). Replying to your own message keeps
       its To as To
+      *Built (2026-10-19), waiting for the owner to try it: Reply all
+      now puts the sender (or the Reply-To address) alone in To and
+      everyone else from To and Cc in Cc, minus your own addresses.
+      Replying to your own message keeps To as To and Cc as Cc*
 - [ ] Addresses can't be dragged between To, Cc and Bcc *(owner report,
       2026-10-19)*. In other mail apps an address can be dragged from one
       field to another (say from To down to Cc); in the composer nothing
