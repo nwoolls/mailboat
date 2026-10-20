@@ -1284,12 +1284,27 @@ settled with the owner one at a time, as in the earlier spikes.*
 
 - [ ] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
+      *Built (2026-10-20), waiting for the owner to try it: each style
+      rule that sets a color is repeated for dark mode with the color
+      remapped (`mail/stylesheet.rs`, parsed with `cssparser`), the same
+      way inline colors are. Most cached HTML emails now sit on the glass; the rest keep the white card (light gradients, `var()` colors, "light
+      only"). Also new: Outlook's `windowtext`, every CSS color name,
+      `hsl()` and 8-digit hex are understood, in inline styles too.
+      Checked by rendering several newsletters in dark mode outside the app;
+      "Original colors" is the way out for any that look wrong*
 - [ ] Dark mode for emails that declare it (`color-scheme: light dark`, as
       a vendor's do): apply their own dark rules plus our remap of their
       inline colours, as Mail.app does, instead of the white card. Their
       dark rules alone aren't enough (a vendor's turn text white but never
       darken its inline white backgrounds). Fall back to the white card if
       their style sheet sets text colours outside its dark-mode block
+      *Built (2026-10-20) with step 2, waiting for the owner to try it:
+      these emails now sit on the glass with their own dark rules kept
+      and our remap of their inline and style-sheet colors added. Where
+      their dark rules set the same thing for the same selector, theirs
+      win. Instead of falling back to the white card when their sheet
+      sets text colors outside the dark block, those colors are remapped
+      too (step 2 made that possible)*
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong
       *Built (2026-10-20), waiting for the owner to try it: hovering an
       email that sits on the glass shows "Original colors" at its top

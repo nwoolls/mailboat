@@ -270,11 +270,18 @@ fresh one; small parts come with the message and have no ID at all.
    opposite choice.
 3. The result is a full document with its own Content-Security-Policy,
    shown in an `<iframe sandbox>` without `allow-scripts`.
-   Emails without their own style sheet (and not marked "light only") are
-   "adaptive": the page is transparent so they sit on the reader's glass,
-   and a `prefers-color-scheme: dark` sheet remaps their inline colors
-   (`mail/colors.rs`). Elements get `data-mc` / `data-mb` numbers; the sheet
-   holds only colors the sanitizer computed.
+   Emails not marked "light only", whose style sheets only use colors it
+   can remap, are "adaptive": the page is transparent so they sit on the
+   reader's glass, and a `prefers-color-scheme: dark` sheet remaps their
+   inline colors (`mail/colors.rs`). Elements get `data-mc` / `data-mb` /
+   `data-mr` numbers; the sheet holds only colors the sanitizer computed.
+   Rules in the email's own `<style>` blocks that set colors are repeated
+   with remapped colors in a second dark-mode sheet placed after the
+   email's (`mail/stylesheet.rs`); the email's own dark-mode rules stay
+   and win for the same selector. Inline remaps carry two `:not(#…)` so
+   they outrank any sheet rule, as inline styles did. The reader's
+   "Original colors" asks for the same email on the white card instead
+   (`message_open(…, original_colors)`).
 4. Links (http, https, mailto only) are rewritten to Mailboat's own
    `mailboat-link:` scheme. A click makes the frame request that URL; the app
    opens the real link in the default browser and answers 204 No Content,
@@ -467,3 +474,4 @@ replying right now (`active`), which the mail view shows as a banner.
 | 2026-10-19 | The menu bar is built in Rust from a list the window sends (`menu_bar_set`, then `menu_bar_update` for names and on/off), not from Tauri's JS menu API | The actions, their names and when they apply all live in the window (`features/commands`), shared with the right-click menu and ⌘K; Rust only draws them and sends clicks back (`MenuCommandEvent`), so no menu permission is opened to the web side. The menu bar uses Mail's ⌘ shortcuts, which also work while typing; Gmail's single keys can't be menu shortcuts without firing in text fields, so they stay in the page. The conversation actions turn off while a text field has focus, and Delete gets no ⌘⌫. Keys the page already handles (⌃⌘S, ⌃⌘R, ⌘K) are also menu shortcuts, relying on WebKit not passing a key to the menu once the page has called `preventDefault` (as web apps overriding ⌘B in Safari do); confirmed by the owner in the app (2026-10-20): each acts once. |
 | 2026-10-19 | Mailboat's own right-click menu over images and links in emails (Save Image, Copy Image, Open Link, Copy Link), found by overriding the web view's `willOpenMenu:withEvent:` (`src-tauri/src/email_menu.rs`); over text the system menu stays | WebKit's "Download Image" saved nothing: it hands downloads to the app, and Tauri only takes them on windows built in code. The owner picked Mailboat's own menu over fixing that item (2026-10-19). An email's frame runs no listeners, not even the app's, so the page can't catch the click; overriding `willOpenMenu:withEvent:` is Apple's documented way to change a WKWebView's menu. When WebKit's items are for an image or link (matched by WebKit's `WKMenuItemIdentifier…` names, checked present in macOS's WebKit), the menu is emptied (an empty menu doesn't show) and the page is told where; it finds the element from the frame's `:hover` state. Images are re-read in Rust (`mail::saved_image`: `data:` decoded, web images fetched, images only, 25 MB cap) because the page can't read cross-origin image bytes. The clipboard is AppKit's `NSPasteboard` directly, not Tauri's clipboard plugin, so no clipboard permission opens to the web side. Windows keeps WebView2's menu for now. |
 | 2026-10-20 | Remote-image default is a setting (load for everyone / people you've written to / block), stored with Rust's settings | The rule runs in Rust when a message opens, so the choice lives in `AppSettings`, not the window's storage. "Written to" means on To or Cc of any SENT message in any account, matched case-insensitively and looked up only when that choice is on; Google Contacts don't count (saving a contact isn't writing to them). The per-sender choice still wins, and Spam stays blocked whatever the setting. Option C (prefetching images during sync) is still not built. |
+| 2026-10-20 | Email style sheets are read with `cssparser` (Servo's CSS tokenizer) and remapped rule by rule for dark mode, not with `lightningcss` or a hand-written scanner | `cssparser` is maintained, handles comments, strings and nesting correctly, and was already in the build through `ammonia`, so it adds nothing to download or compile; `lightningcss` would add a large dependency tree for typed values we don't need. Only selectors (dropped if they hold `{ } < ; @ \\`) and colors we computed are written out, so an email can't use this to inject CSS beyond what its own `<style>` already does. Rules are repeated, not edited, so light mode shows exactly what the email asks for. An email falls back to the white card only for colors it can't read (`var()`, `color-mix()`, light gradients); invalid values are skipped, as browsers skip them. Nearly all emails adapt, each in a few milliseconds. |

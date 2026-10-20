@@ -32,86 +32,130 @@ impl Rgb {
     }
 }
 
-/// Parses the CSS color forms emails actually use: `#rgb`, `#rrggbb`,
-/// `rgb()`/`rgba()` and the common color names. Anything else (`inherit`,
-/// `transparent`, gradients) is left alone by returning `None`.
+/// Parses the CSS color forms emails actually use: hex (`#rgb`, `#rgba`,
+/// `#rrggbb`, `#rrggbbaa`), `rgb()`/`rgba()`, `hsl()`/`hsla()`, the CSS
+/// color names and Outlook's `windowtext`. Mostly see-through colors and
+/// anything else (`inherit`, `transparent`, gradients) give `None`.
 pub fn parse_color(value: &str) -> Option<Rgb> {
+    match read_color(value) {
+        ColorRead::Color(c) => Some(c),
+        _ => None,
+    }
+}
+
+/// What a CSS color value is, as far as remapping goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ColorRead {
+    Color(Rgb),
+    /// Mostly see-through (alpha under 0.5), or `transparent`: nothing to
+    /// remap.
+    SeeThrough,
+    /// Not a color this can read.
+    Unknown,
+}
+
+pub fn read_color(value: &str) -> ColorRead {
     let v = value
         .trim()
         .trim_end_matches("!important")
         .trim()
         .to_ascii_lowercase();
+    let color = |r, g, b, alpha: f32| {
+        if alpha < 0.5 {
+            ColorRead::SeeThrough
+        } else {
+            ColorRead::Color(Rgb(r, g, b))
+        }
+    };
+    if v == "transparent" {
+        return ColorRead::SeeThrough;
+    }
     if let Some(hex) = v.strip_prefix('#') {
-        let digits: Vec<u8> = hex
-            .chars()
-            .map(|c| c.to_digit(16).map(|d| d as u8))
-            .collect::<Option<_>>()?;
-        return match digits.as_slice() {
-            [r, g, b] => Some(Rgb(r * 17, g * 17, b * 17)),
-            [r1, r2, g1, g2, b1, b2] => Some(Rgb(r1 * 16 + r2, g1 * 16 + g2, b1 * 16 + b2)),
-            _ => None,
+        return match cssparser::color::parse_hash_color(hex.as_bytes()) {
+            Ok((r, g, b, a)) => color(r, g, b, a),
+            Err(()) => ColorRead::Unknown,
         };
     }
-    if let Some(args) = v
-        .strip_prefix("rgba(")
-        .or_else(|| v.strip_prefix("rgb("))
-        .and_then(|rest| rest.strip_suffix(')'))
-    {
+    for (prefix, hsl) in [
+        ("rgba(", false),
+        ("rgb(", false),
+        ("hsla(", true),
+        ("hsl(", true),
+    ] {
+        let Some(args) = v.strip_prefix(prefix).and_then(|r| r.strip_suffix(')')) else {
+            continue;
+        };
         let parts: Vec<&str> = args
             .split([',', ' ', '/'])
             .filter(|p| !p.is_empty())
             .collect();
         if parts.len() < 3 {
-            return None;
+            return ColorRead::Unknown;
         }
-        // A see-through color isn't worth remapping.
-        if let Some(alpha) = parts.get(3) {
-            let a: f32 = alpha.trim_end_matches('%').parse().ok()?;
-            let a = if alpha.ends_with('%') { a / 100.0 } else { a };
-            if a < 0.5 {
-                return None;
-            }
-        }
-        let channel = |p: &str| -> Option<u8> {
-            let n: f32 = p.trim_end_matches('%').parse().ok()?;
-            let n = if p.ends_with('%') { n * 2.55 } else { n };
-            Some(n.clamp(0.0, 255.0).round() as u8)
+        let number = |p: &str| -> Option<(f32, bool)> {
+            let percent = p.ends_with('%');
+            let n: f32 = p
+                .trim_end_matches('%')
+                .trim_end_matches("deg")
+                .parse()
+                .ok()?;
+            Some((n, percent))
         };
-        return Some(Rgb(
-            channel(parts[0])?,
-            channel(parts[1])?,
-            channel(parts[2])?,
-        ));
+        let alpha = match parts.get(3).map(|a| number(a)) {
+            None => 1.0,
+            Some(Some((a, true))) => a / 100.0,
+            Some(Some((a, false))) => a,
+            Some(None) => return ColorRead::Unknown,
+        };
+        let (Some(a), Some(b), Some(c)) = (number(parts[0]), number(parts[1]), number(parts[2]))
+        else {
+            return ColorRead::Unknown;
+        };
+        if hsl {
+            let unit = |(n, _): (f32, bool)| (n / 100.0).clamp(0.0, 1.0);
+            let Rgb(r, g, b) = from_hsl(a.0.rem_euclid(360.0), unit(b), unit(c));
+            return color(r, g, b, alpha);
+        }
+        let channel = |(n, percent): (f32, bool)| {
+            let n = if percent { n * 2.55 } else { n };
+            n.clamp(0.0, 255.0).round() as u8
+        };
+        return color(channel(a), channel(b), channel(c), alpha);
     }
-    NAMED
-        .iter()
-        .find(|(name, _)| *name == v)
-        .map(|(_, rgb)| *rgb)
+    // Outlook (Word) writes text colors as the system's window text.
+    if v == "windowtext" {
+        return color(0, 0, 0, 1.0);
+    }
+    match cssparser::color::parse_named_color(&v) {
+        Ok((r, g, b)) => color(r, g, b, 1.0),
+        Err(()) => ColorRead::Unknown,
+    }
 }
 
-const NAMED: &[(&str, Rgb)] = &[
-    ("black", Rgb(0, 0, 0)),
-    ("white", Rgb(255, 255, 255)),
-    ("gray", Rgb(128, 128, 128)),
-    ("grey", Rgb(128, 128, 128)),
-    ("darkgray", Rgb(169, 169, 169)),
-    ("darkgrey", Rgb(169, 169, 169)),
-    ("dimgray", Rgb(105, 105, 105)),
-    ("dimgrey", Rgb(105, 105, 105)),
-    ("lightgray", Rgb(211, 211, 211)),
-    ("lightgrey", Rgb(211, 211, 211)),
-    ("silver", Rgb(192, 192, 192)),
-    ("whitesmoke", Rgb(245, 245, 245)),
-    ("gainsboro", Rgb(220, 220, 220)),
-    ("red", Rgb(255, 0, 0)),
-    ("maroon", Rgb(128, 0, 0)),
-    ("green", Rgb(0, 128, 0)),
-    ("blue", Rgb(0, 0, 255)),
-    ("navy", Rgb(0, 0, 128)),
-    ("purple", Rgb(128, 0, 128)),
-    ("teal", Rgb(0, 128, 128)),
-    ("orange", Rgb(255, 165, 0)),
-];
+/// A CSS value split at spaces (or `sep`), keeping brackets whole:
+/// `1px solid rgb(0, 0, 0)` is three parts.
+pub fn parts(value: &str, sep: char) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut depth = 0u32;
+    let mut start = 0;
+    for (i, ch) in value.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth = depth.saturating_sub(1),
+            c if depth == 0 && (c == sep || (sep == ' ' && c.is_whitespace())) => {
+                if !value[start..i].trim().is_empty() {
+                    out.push(value[start..i].trim());
+                }
+                start = i + c.len_utf8();
+            }
+            _ => {}
+        }
+    }
+    if !value[start..].trim().is_empty() {
+        out.push(value[start..].trim());
+    }
+    out
+}
 
 /// Hue in degrees, saturation and lightness 0–1.
 fn to_hsl(Rgb(r, g, b): Rgb) -> (f32, f32, f32) {
@@ -215,6 +259,27 @@ mod tests {
         assert_eq!(parse_color("inherit"), None);
         assert_eq!(parse_color("rgba(0,0,0,0.1)"), None, "mostly see-through");
         assert_eq!(parse_color("#12345"), None);
+        assert_eq!(parse_color("DodgerBlue"), Some(Rgb(30, 144, 255)));
+        assert_eq!(parse_color("windowtext"), Some(Rgb(0, 0, 0)));
+        assert_eq!(parse_color("#ffffff80"), Some(Rgb(255, 255, 255)));
+        assert_eq!(parse_color("hsl(0, 0%, 100%)"), Some(Rgb(255, 255, 255)));
+        assert_eq!(parse_color("hsl(120deg 100% 25%)"), Some(Rgb(0, 128, 0)));
+        assert_eq!(read_color("rgba(0, 0, 0, 0.05)"), ColorRead::SeeThrough);
+        assert_eq!(read_color("#0000"), ColorRead::SeeThrough);
+        assert_eq!(read_color("transparent"), ColorRead::SeeThrough);
+        assert_eq!(read_color("var(--x)"), ColorRead::Unknown);
+    }
+
+    #[test]
+    fn values_split_at_spaces_but_not_inside_brackets() {
+        assert_eq!(
+            parts("1px solid rgb(0, 0, 0)", ' '),
+            vec!["1px", "solid", "rgb(0, 0, 0)"]
+        );
+        assert_eq!(
+            parts("linear-gradient(#fff, #eee), url(a.png)", ','),
+            vec!["linear-gradient(#fff, #eee)", "url(a.png)"]
+        );
     }
 
     #[test]

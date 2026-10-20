@@ -20,6 +20,7 @@ use std::rc::Rc;
 use lol_html::{element, rewrite_str, RewriteStrSettings};
 
 use super::colors::{self, DarkBackground};
+use super::stylesheet;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -247,13 +248,20 @@ pub fn sanitize_html_colors(
     inline_images: &HashMap<String, String>,
     original_colors: bool,
 ) -> SafeMessage {
-    let recolorable = can_adapt(html);
-    let adaptive = recolorable && !original_colors;
     let cleaned = ammonia_builder().clean(html).to_string();
+    let plan = adapt_plan(html, &cleaned);
+    let recolorable = plan.is_some();
+    let adaptive = recolorable && !original_colors;
+    let sheet = plan.unwrap_or_default();
     let blocked = Cell::new(0u32);
     let loaded = Cell::new(0u32);
     let trackers = Cell::new(0u32);
     let dark = RefCell::new(DarkRules::default());
+    // A grey page set in the style sheet holds everything, as far as the
+    // white boxes inside it are concerned.
+    if sheet.veil {
+        dark.borrow().veils.set(1);
+    }
 
     let rewritten = rewrite_str(
         &cleaned,
@@ -359,7 +367,13 @@ pub fn sanitize_html_colors(
     };
 
     SafeMessage {
-        document: wrap_document(&rewritten, allow_images, adaptive, &dark.into_inner().css()),
+        document: wrap_document(
+            &rewritten,
+            allow_images,
+            adaptive,
+            &dark.into_inner().css(),
+            if adaptive { &sheet.css } else { "" },
+        ),
         blocked_images: blocked.get(),
         loaded_images: loaded.get(),
         trackers_removed: trackers.get(),
@@ -410,26 +424,34 @@ fn light_only_style_sheets(html: &str) -> String {
     out
 }
 
-/// Whether an email can be adapted: not if it asks for light only, and not
-/// if it styles colors in a `<style>` sheet (those rules aren't rewritten,
-/// so dark text could land on the dark glass). Checked on the raw HTML,
-/// since ammonia drops `<meta>`.
-fn can_adapt(raw: &str) -> bool {
+/// How an email can be adapted, or `None` if it can't: it asks for light
+/// only (checked on the raw HTML, since ammonia drops `<meta>`), or its
+/// style sheets set colors `mail::stylesheet` can't remap.
+fn adapt_plan(raw: &str, cleaned: &str) -> Option<stylesheet::SheetRemap> {
     let lower = raw.to_ascii_lowercase();
     if lower.contains("color-scheme") && !lower.contains("dark") {
-        return false;
+        return None;
     }
-    let mut rest = lower.as_str();
-    while let Some(start) = rest.find("<style") {
-        let after = &rest[start..];
-        let end = after.find("</style").unwrap_or(after.len());
-        let sheet = &after[..end];
-        if sheet.contains("background") || sheet.contains("color:") || sheet.contains("color :") {
-            return false;
-        }
-        rest = &after[end..];
+    stylesheet::remap(&style_sheets(cleaned))
+}
+
+/// The text of each `<style>` block in sanitized HTML.
+fn style_sheets(html: &str) -> Vec<String> {
+    // ASCII lowercasing keeps byte offsets identical to `html`.
+    let lower = html.to_ascii_lowercase();
+    let mut sheets = Vec::new();
+    let mut pos = 0;
+    while let Some(start) = lower[pos..].find("<style").map(|i| pos + i) {
+        let Some(open_end) = lower[start..].find('>').map(|i| start + i + 1) else {
+            break;
+        };
+        let end = lower[open_end..]
+            .find("</style")
+            .map_or(lower.len(), |i| open_end + i);
+        sheets.push(html[open_end..end].to_string());
+        pos = end;
     }
-    true
+    sheets
 }
 
 /// Dark-mode overrides for an adaptive email: each distinct remapped color
@@ -470,8 +492,8 @@ impl DarkRules {
                     "background-color" => background = colors::parse_color(value).or(background),
                     // The shorthand: use its color, unless it's an image.
                     "background" if !value.contains("url(") => {
-                        background = value
-                            .split_whitespace()
+                        background = colors::parts(value, ' ')
+                            .into_iter()
                             .find_map(colors::parse_color)
                             .or(background);
                     }
@@ -484,8 +506,8 @@ impl DarkRules {
                         && !p.contains("collapse")
                         && !p.contains("spacing") =>
                     {
-                        border = value
-                            .split_whitespace()
+                        border = colors::parts(value, ' ')
+                            .into_iter()
                             .find_map(colors::parse_color)
                             .or(border);
                     }
@@ -510,14 +532,15 @@ impl DarkRules {
             }
         }
         let bg_css = match bg {
-            Some(DarkBackground::Transparent) if self.veils.get() > 0 => {
-                Some("background-color:rgba(0,0,0,0.22)!important".to_string())
-            }
+            Some(DarkBackground::Transparent) if self.veils.get() > 0 => Some(format!(
+                "background-color:{}!important",
+                stylesheet::CARD_IN_VEIL
+            )),
             Some(DarkBackground::Transparent) => {
                 Some("background-color:transparent!important".to_string())
             }
             Some(DarkBackground::Veil) => {
-                Some("background-color:rgba(255,255,255,0.05)!important".to_string())
+                Some(format!("background-color:{}!important", stylesheet::VEIL))
             }
             Some(DarkBackground::Color(c)) => {
                 Some(format!("background-color:{}!important", c.hex()))
@@ -559,17 +582,24 @@ impl DarkRules {
         rules.sort();
         rules
             .into_iter()
-            .map(|(attr, n, css)| format!("[data-{attr}=\"{n}\"]{{{css}}}"))
+            // Two `:not(#…)` raise the rule above any email selector
+            // (ammonia drops `id`s, so the email's own `#id` rules never
+            // match): an inline color beat the email's sheet in light mode,
+            // so its remap must beat the sheet's remap in dark mode.
+            .map(|(attr, n, css)| format!("[data-{attr}=\"{n}\"]{BOOST}{{{css}}}"))
             .collect()
     }
 }
+
+/// See `DarkRules::css`.
+const BOOST: &str = ":not(#mailboat-none):not(#mailboat-none)";
 
 /// Plain-text messages are escaped and shown with preserved line breaks.
 pub fn text_document(text: &str) -> SafeMessage {
     let escaped = ammonia::clean_text(text);
     let body = format!("<div class=\"mailboat-plain\">{escaped}</div>");
     SafeMessage {
-        document: wrap_document(&body, false, true, ""),
+        document: wrap_document(&body, false, true, "", ""),
         blocked_images: 0,
         loaded_images: 0,
         trackers_removed: 0,
@@ -595,7 +625,17 @@ pub fn csp(allow_images: bool) -> String {
 /// Adaptive documents have a transparent page (the message card shows
 /// through), no side padding so text lines up with the card's edge, and a dark
 /// sheet: default text and links for dark mode plus `dark_rules`.
-fn wrap_document(body: &str, allow_images: bool, adaptive: bool, dark_rules: &str) -> String {
+///
+/// `sheet_rules` (the email's style sheets remapped, `mail::stylesheet`) go
+/// in a dark-mode sheet at the end of the body, after the email's own
+/// sheets, so they win over the light colors they repeat.
+fn wrap_document(
+    body: &str,
+    allow_images: bool,
+    adaptive: bool,
+    dark_rules: &str,
+    sheet_rules: &str,
+) -> String {
     let page = if adaptive {
         "html,body{margin:0;padding:0;background:transparent;color:#1f1f1f}\nbody{padding:0 0 4px}\n@media (prefers-color-scheme:dark){body{color:#e4e4e7}a{color:#8ab4f8}img[data-mailboat-blocked],img[data-mailboat-inline]{background:rgba(255,255,255,.08)!important}"
             .to_string()
@@ -617,8 +657,13 @@ img[data-mailboat-blocked],img[data-mailboat-inline]{{display:inline-block;min-w
 .mailboat-plain{{white-space:pre-wrap;font-family:inherit}}
 a{{color:#2f6fde}}
 {page}
-</style></head><body>{body}</body></html>"#,
-        csp = csp(allow_images)
+</style></head><body>{body}{sheet}</body></html>"#,
+        csp = csp(allow_images),
+        sheet = if sheet_rules.is_empty() {
+            String::new()
+        } else {
+            format!("<style>@media (prefers-color-scheme:dark){{{sheet_rules}}}</style>")
+        }
     )
 }
 
@@ -826,16 +871,16 @@ mod tests {
         assert!(!original.document.contains("data-mc="));
         assert!(original.document.contains("background:#fff"));
         // Emails that can't adapt, and plain text, offer no switch.
-        assert!(!sanitize_html("<style>p{color:red}</style><p>Hi</p>", false).recolorable);
+        assert!(!sanitize_html("<style>p{color:var(--x)}</style><p>Hi</p>", false).recolorable);
         assert!(!text_document("hi").recolorable);
     }
 
     #[test]
     fn emails_on_the_white_card_ignore_their_own_dark_mode_rules() {
-        // a vendor's billing email: a style sheet (so it's shown on the
-        // white card) whose dark-mode rules turn its text white.
+        // a vendor's billing email (a gradient added, which keeps it on the
+        // white card): dark-mode rules that turned its text white there.
         let out = sanitize_html(
-            r#"<style>:root{color-scheme:light dark}
+            r#"<style>:root{color-scheme:light dark} .hero{background:linear-gradient(#fff,#eee)}
                @media (prefers-color-scheme: dark) { .white-color { color: #FFFFFF !important; } }
                @media (PREFERS-COLOR-SCHEME:dark){a{color:#4C9AFF}}
                @media (prefers-color-scheme: light){p{margin:0}}</style>
@@ -851,6 +896,50 @@ mod tests {
         assert!(doc.contains("(prefers-color-scheme: light)"));
         assert!(doc.contains("Talk about prefers-color-scheme: dark here"));
         assert!(doc.contains("html{color-scheme:light!important}"));
+    }
+
+    #[test]
+    fn emails_with_their_own_style_sheet_adapt_too() {
+        let out = sanitize_html(
+            r##"<style>body{background:#f4f4f4} .card{background:#ffffff;color:#333}</style>
+               <div class="card"><p style="color:#555">Hi</p><table bgcolor="#ffffff"><tr><td>x</td></tr></table></div>"##,
+            false,
+        );
+        assert!(out.adaptive && out.recolorable);
+        let doc = &out.document;
+        // The sheet's remap comes after the email's own sheet, in a dark block.
+        let own = doc.find(".card{background:#ffffff").unwrap();
+        let ours = doc
+            .find("<style>@media (prefers-color-scheme:dark){")
+            .unwrap();
+        assert!(ours > own);
+        assert!(doc.contains(".card{background-color:rgba(0,0,0,0.22)!important;color:#"));
+        // A grey page from the sheet makes inline white boxes the darker card.
+        assert!(doc.contains(r##"bgcolor="#ffffff" data-mb="##));
+        assert!(doc.contains("background-color:rgba(0,0,0,0.22)!important}"));
+        // Inline remaps outrank the sheet's.
+        assert!(doc.contains(r#"[data-mc="0"]:not(#mailboat-none):not(#mailboat-none){"#));
+    }
+
+    #[test]
+    fn emails_that_declare_dark_mode_keep_their_rules_and_get_ours() {
+        // a vendor's: its dark rules turn text white but leave the inline
+        // white background, which ours makes see-through.
+        let out = sanitize_html(
+            r#"<style>:root{color-scheme:light dark}
+               .white-color{color:#172B4D}
+               @media (prefers-color-scheme: dark) { .white-color { color: #FFFFFF !important; } }</style>
+               <p class="white-color" style="background:#fff">Hi</p>"#,
+            false,
+        );
+        assert!(out.adaptive);
+        let doc = &out.document;
+        assert!(doc.contains("(prefers-color-scheme: dark) { .white-color"));
+        assert!(!doc.contains("mailboat-light-only"));
+        assert!(doc.contains("background-color:transparent!important"));
+        // Its own dark text color wins: `.white-color`'s text isn't
+        // remapped, which leaves nothing for the sheet's dark block.
+        assert!(!doc.contains("<style>@media (prefers-color-scheme:dark){"));
     }
 
     #[test]
@@ -914,8 +1003,11 @@ mod tests {
     }
 
     #[test]
-    fn emails_with_their_own_style_sheet_or_light_only_keep_the_white_card() {
-        let styled = sanitize_html("<style>.x{background:#eee}</style><p class=x>Hi</p>", false);
+    fn emails_with_sheets_it_cant_remap_or_light_only_keep_the_white_card() {
+        let styled = sanitize_html(
+            "<style>.x{background:linear-gradient(#fff,#eee)}</style><p class=x>Hi</p>",
+            false,
+        );
         assert!(!styled.adaptive);
         assert!(styled.document.contains("background:#fff"));
         let light_only = sanitize_html(
