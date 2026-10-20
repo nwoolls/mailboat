@@ -61,6 +61,16 @@
   /* The compose card floats over the app's own content (often a white
      email), so it needs more tint than the panels to keep writing legible. */
   --glass-compose-strength: 72%;
+  /* The reader's pinned Reply bar: the reader's own glass ("Sidebar and
+     reader" in Settings → Appearance) plus enough tint that the email
+     scrolling under it doesn't show through the buttons. At the default
+     it matches the compose card's tint, as before. */
+  --glass-reader-foot-lift: 65.5%;
+  --glass-reader-foot-strength: clamp(
+    40%,
+    calc(var(--glass-sidebar-strength) + var(--glass-reader-foot-lift)),
+    100%
+  );
   color-scheme: dark;
 }
 
@@ -72,6 +82,7 @@
     --glass-sidebar-base: 10%;
     --glass-panel-base: 37%;
     --glass-compose-strength: 78%;
+    --glass-reader-foot-lift: 68%;
     color-scheme: light;
   }
 }
@@ -611,7 +622,7 @@ html.resizing .panel-slide {
   .reader-foot[data-stuck] {
     background: color-mix(
       in srgb,
-      var(--color-background-base) var(--glass-compose-strength),
+      var(--color-background-base) var(--glass-reader-foot-strength),
       transparent
     );
     -webkit-backdrop-filter: blur(28px) saturate(1.6);
