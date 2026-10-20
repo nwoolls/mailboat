@@ -1,3 +1,4 @@
+mod ai;
 mod app_icon;
 mod badge;
 mod commands;
@@ -100,6 +101,16 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::mail_app_make_default,
             commands::menu_bar_set,
             commands::menu_bar_update,
+            ai::ai_status,
+            ai::ai_connect,
+            ai::ai_connect_cancel,
+            ai::ai_disconnect,
+            ai::ai_thread_summary,
+            ai::ai_list_summaries,
+            ai::ai_write,
+            ai::ai_cancel,
+            ai::ai_usage,
+            ai::ai_summaries_clear,
         ])
         .events(collect_events![
             SyncStatusEvent,
@@ -111,7 +122,9 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             MailtoEvent,
             MenuCommandEvent,
             trackpad::TrackpadEvent,
-            email_menu::EmailMenuEvent
+            email_menu::EmailMenuEvent,
+            ai::AiTextEvent,
+            ai::AiLineSummaryEvent
         ])
         // IDs and millisecond timestamps stay far below 2^53, so plain JS
         // numbers are exact.
@@ -149,6 +162,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .manage(mail_handler::MailtoQueue::default())
         .manage(menu::MenuItems::default())
+        .manage(ai::AiState::new())
         .register_uri_scheme_protocol(mailboat_core::mail::links::SCHEME, |ctx, request| {
             links::handle(ctx.app_handle(), &request)
         })
@@ -205,6 +219,7 @@ pub fn run() {
             theme::apply(app.handle(), saved.theme);
             state.resume_all_accounts()?;
             app.manage(state);
+            ai::run_line_queue(app.handle().clone());
             watch_other_copies(app.handle().clone(), db.clone());
             badge::watch(app.handle().clone(), db.clone());
             // After the plugin restored it: fully on a connected display.

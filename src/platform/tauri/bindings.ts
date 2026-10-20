@@ -242,11 +242,57 @@ export const commands = {
 	menuBarSet: (menus: MenuSpec[]) => typedError<null, AppError>(__TAURI_INVOKE("menu_bar_set", { menus })),
 	/**  New names and on/off states for the menu bar's commands. */
 	menuBarUpdate: (items: MenuItemState[]) => typedError<null, AppError>(__TAURI_INVOKE("menu_bar_update", { items })),
+	/**  Whether each provider can be used now. */
+	aiStatus: () => typedError<ProviderStatus[], AppError>(__TAURI_INVOKE("ai_status")),
+	/**
+	 *  Connects Claude or ChatGPT: if its tool isn't signed in, starts its
+	 *  sign-in (which opens the browser) and waits for it, then remembers the
+	 *  provider as connected. Returns the settings with it added.
+	 */
+	aiConnect: (provider: AiProvider) => typedError<AppSettings_Serialize, AppError>(__TAURI_INVOKE("ai_connect", { provider })),
+	aiConnectCancel: () => __TAURI_INVOKE<void>("ai_connect_cancel"),
+	/**
+	 *  Stops using a provider in Mailboat. Its tool stays signed in (Claude Code
+	 *  and Codex have other uses). Features that used it go back to Apple.
+	 */
+	aiDisconnect: (provider: AiProvider) => typedError<AppSettings_Serialize, AppError>(__TAURI_INVOKE("ai_disconnect", { provider })),
+	/**
+	 *  The summary above an opened conversation, from the cache or written
+	 *  now (streamed as `AiTextEvent`s). `automatic` is the reader asking by
+	 *  itself: short conversations, Spam and Trash get none (`None`).
+	 */
+	aiThreadSummary: (threadId: ThreadId, automatic: boolean, fresh: boolean, requestId: number) => typedError<{
+	threadId: ThreadId,
+	text: string,
+	provider: AiProvider,
+	createdAt: number,
+} | null, AppError>(__TAURI_INVOKE("ai_thread_summary", { threadId, automatic, fresh, requestId })),
+	/**
+	 *  The current one-line summaries for these conversations (the ones on
+	 *  screen). Those without one are queued and arrive as
+	 *  `AiLineSummaryEvent`s. Empty when list summaries are off.
+	 */
+	aiListSummaries: (threadIds: ThreadId[]) => typedError<Summary[], AppError>(__TAURI_INVOKE("ai_list_summaries", { threadIds })),
+	/**
+	 *  Writes (or rewrites) an email from the owner's request, the
+	 *  conversation and the draft; streamed as `AiTextEvent`s.
+	 */
+	aiWrite: (request: WriteRequest, requestId: number) => typedError<WriteAnswer, AppError>(__TAURI_INVOKE("ai_write", { request, requestId })),
+	aiCancel: (requestId: number) => __TAURI_INVOKE<void>("ai_cancel", { requestId }),
+	/**
+	 *  Requests, tokens and cost per provider. `today_start` is local
+	 *  midnight in Unix ms (the window knows the time zone).
+	 */
+	aiUsage: (todayStart: number | null) => typedError<AiUsageReport, AppError>(__TAURI_INVOKE("ai_usage", { todayStart })),
+	/**  Forgets every summary (they're written again as needed). */
+	aiSummariesClear: () => typedError<null, AppError>(__TAURI_INVOKE("ai_summaries_clear")),
 };
 
 /** Events */
 export const events = {
 	accountsChangedEvent: makeEvent<AccountsChangedEvent>("accounts-changed-event"),
+	aiLineSummaryEvent: makeEvent<AiLineSummaryEvent>("ai-line-summary-event"),
+	aiTextEvent: makeEvent<AiTextEvent>("ai-text-event"),
 	emailMenuEvent: makeEvent<EmailMenuEvent>("email-menu-event"),
 	identitiesChangedEvent: makeEvent<IdentitiesChangedEvent>("identities-changed-event"),
 	mailChangedEvent: makeEvent<MailChangedEvent>("mail-changed-event"),
@@ -309,6 +355,9 @@ export type Address = {
 	email: string,
 };
 
+/**  A conversation's one-line summary for the list is ready. */
+export type AiLineSummaryEvent = Summary;
+
 export type AiProvider = "apple" | "claude" | "chatgpt";
 
 export type AiSettings = {
@@ -326,6 +375,18 @@ export type AiSettings = {
 	readerProvider?: AiProvider,
 	/**  Who helps write replies and new mail. */
 	writingProvider?: AiProvider,
+};
+
+/**  Part of an answer as it's written: the whole text so far. */
+export type AiTextEvent = {
+	requestId: number,
+	text: string,
+};
+
+export type AiUsageReport = {
+	providers: ProviderUsage[],
+	/**  Claude's subscription limits, as of its latest answer this session. */
+	limits: PlanLimit[],
 };
 
 /**  How someone answered. */
@@ -447,6 +508,17 @@ link: string | null } |
 
 /**  Gmail's inbox tabs. */
 export type Category = "primary" | "social" | "updates" | "forums" | "promotions";
+
+export type ChatRole = 
+/**  What the owner asked for. */
+"user" | 
+/**  A draft the model wrote. */
+"assistant";
+
+export type ChatTurn = {
+	role: ChatRole,
+	text: string,
+};
 
 /**  Something on your calendar at the same time. */
 export type Clash = {
@@ -852,6 +924,40 @@ export type Person = {
 	name: string | null,
 };
 
+/**
+ *  How much of a subscription's rolling limits is used, when the provider
+ *  says (Claude does, with every answer).
+ */
+export type PlanLimit = {
+	/**  e.g. "five_hour", "seven_day". */
+	window: string,
+	/**  0 to 1. */
+	used: number | null,
+	/**  Unix seconds. */
+	resetsAt: number | null,
+};
+
+/**  Whether a provider can be used now, and if not, what to do about it. */
+export type ProviderState = { state: "ready"; 
+/**  Who it's signed in as, when the provider says. */
+account: string | null } | 
+/**  Its program isn't on this Mac. */
+{ state: "notInstalled" } | 
+/**  Installed but not signed in. */
+{ state: "signedOut" } | 
+/**  Apple Intelligence is off, still downloading, or not supported here. */
+{ state: "unavailable"; reason: string };
+
+export type ProviderStatus = {
+	provider: AiProvider,
+} & ProviderState;
+
+export type ProviderUsage = {
+	provider: AiProvider,
+	today: UsageTotals,
+	last30Days: UsageTotals,
+};
+
 /**  When the summary above an opened conversation appears. */
 export type ReaderSummary = "off" | 
 /**  A Summarize button; nothing is sent until it's pressed. */
@@ -987,6 +1093,13 @@ export type SizeLimit = {
 	bytes: number,
 };
 
+export type Summary = {
+	threadId: ThreadId,
+	text: string,
+	provider: AiProvider,
+	createdAt: number,
+};
+
 export type SyncPhase = "listing" | "fetching" | "bodies";
 
 export type SyncProgress = {
@@ -1066,6 +1179,15 @@ export type TrackpadEvent = {
 	touching: boolean,
 };
 
+export type UsageTotals = {
+	requests: number,
+	failed: number,
+	inputTokens: number,
+	outputTokens: number,
+	/**  Sum of reported costs; `None` if the provider reports none. */
+	costUsd: number | null,
+};
+
 export type VacationSettings = {
 	enabled: boolean,
 	subject: string,
@@ -1092,6 +1214,28 @@ export type VacationState = { kind: "ready"; settings: VacationSettings;
 canLimitToDomain: boolean; 
 /**  Replying right now (on, and within its dates). */
 active: boolean } | { kind: "needsSignIn" } | { kind: "unavailable"; message: string };
+
+export type WriteAnswer = {
+	/**  The email text. */
+	text: string,
+	/**  For new mail without a subject: the one the model suggested. */
+	subject: string | null,
+};
+
+/**  What the writing assistant is asked, from the composer. */
+export type WriteRequest = {
+	/**  The conversation being answered; none for a new message. */
+	threadId: ThreadId | null,
+	/**  "reply", "reply all", "forward" or "new message". */
+	kind: string,
+	writer: string,
+	to: string,
+	subject: string,
+	/**  The editor's text now. */
+	draft: string,
+	/**  The chat so far, ending with the newest request. */
+	chat: ChatTurn[],
+};
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {
