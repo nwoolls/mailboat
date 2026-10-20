@@ -11,6 +11,14 @@ vi.mock("../../../shared/lib/queries", () => ({
   useAppSettings: () => ({ data: { ai: {} } }),
   useSaveAppSettings: () => ({ mutate: vi.fn() }),
   useAiStatus: () => ({ data: [{ provider: "apple", state: "ready", account: null }] }),
+  useAiReplyIdeas: (thread: number | null) =>
+    thread === null
+      ? { isError: false, isSuccess: false, data: undefined }
+      : {
+          isError: false,
+          isSuccess: true,
+          data: ["Confirm Thursday at 3pm", "Ask about the budget"],
+        },
 }));
 
 const { AssistantPanel } = await import("./AssistantPanel");
@@ -72,6 +80,13 @@ describe("AssistantPanel", () => {
     );
     // Shown formatted in the chat, not as Markdown.
     expect(screen.getByText("Thursday").tagName).toBe("STRONG");
+  });
+
+  it("offers ideas written from the email when replying", () => {
+    const reply = { ...newDraft([], 1, "me@x.com"), kind: "reply" as const, threadId: 42 };
+    render(<AssistantPanel draft={reply} placement="top" onUse={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByText("Confirm Thursday at 3pm")).toBeTruthy();
+    expect(screen.queryByText("Say yes")).toBeNull();
   });
 
   it("shows a failure in the chat, and Escape closes the panel", async () => {

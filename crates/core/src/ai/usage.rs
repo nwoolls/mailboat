@@ -15,6 +15,8 @@ pub enum Purpose {
     ListSummary,
     Summary,
     Writing,
+    /// The suggestion chips in the writing assistant.
+    ReplyIdeas,
 }
 
 impl Purpose {
@@ -23,6 +25,7 @@ impl Purpose {
             Purpose::ListSummary => "listSummary",
             Purpose::Summary => "summary",
             Purpose::Writing => "writing",
+            Purpose::ReplyIdeas => "replyIdeas",
         }
     }
 }

@@ -22,6 +22,7 @@ import type {
   VacationSettings,
 } from "../../platform/tauri/bindings";
 import { IS_TAURI, unwrap } from "../../platform/tauri/ipc";
+import { newRequestId } from "../../features/ai/ui/stream";
 import { upsertSyncState } from "../../features/accounts/model/accounts";
 import { type Selection, selectionKey, toListQuery } from "../../features/mailbox/model/views";
 
@@ -271,6 +272,26 @@ export function useAiDisconnect() {
   return useMutation({
     mutationFn: (provider: AiProvider) => unwrap(commands.aiDisconnect(provider)),
     onSuccess: (saved) => qc.setQueryData(keys.appSettings, saved),
+  });
+}
+
+/**
+ * The writing assistant's suggestion chips for a conversation being
+ * answered or forwarded, written from it (once per conversation, kind and
+ * provider this session). `null` skips asking (new mail). Leaving stops it.
+ */
+export function useAiReplyIdeas(thread: ThreadId | null, forward: boolean, provider: AiProvider) {
+  return useQuery({
+    queryKey: ["aiReplyIdeas", thread, forward, provider],
+    queryFn: async ({ signal }) => {
+      const id = newRequestId();
+      signal.addEventListener("abort", () => void commands.aiCancel(id));
+      return unwrap(commands.aiReplyIdeas(thread!, forward, id));
+    },
+    enabled: IS_TAURI && thread !== null,
+    staleTime: Infinity,
+    gcTime: 30 * 60_000,
+    retry: false,
   });
 }
 

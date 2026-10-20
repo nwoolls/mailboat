@@ -278,6 +278,11 @@ export const commands = {
 	 *  conversation and the draft; streamed as `AiTextEvent`s.
 	 */
 	aiWrite: (request: WriteRequest, requestId: number) => typedError<WriteAnswer, AppError>(__TAURI_INVOKE("ai_write", { request, requestId })),
+	/**
+	 *  Suggestions for the writing assistant's chips, from the conversation
+	 *  being answered or forwarded (with the writing provider).
+	 */
+	aiReplyIdeas: (threadId: ThreadId, forward: boolean, requestId: number) => typedError<string[], AppError>(__TAURI_INVOKE("ai_reply_ideas", { threadId, forward, requestId })),
 	aiCancel: (requestId: number) => __TAURI_INVOKE<void>("ai_cancel", { requestId }),
 	/**
 	 *  Requests, tokens and cost per provider. `today_start` is local

@@ -209,6 +209,62 @@ pub fn split_subject(answer: &str) -> (Option<String>, String) {
     (None, tidy(answer))
 }
 
+/// Most suggestions the writing assistant offers.
+pub const MAX_IDEAS: usize = 4;
+
+/// Short requests the owner might make about this conversation, offered
+/// as chips in the writing assistant (e.g. "Confirm Thursday at 3pm").
+pub fn reply_ideas(thread: &ThreadText, forward: bool, provider: AiProvider) -> Prompt {
+    let what = if forward {
+        "a short note to add when forwarding this email"
+    } else {
+        "a reply to the newest message in this email"
+    };
+    // The request comes after the email: Apple's small model follows the
+    // last thing it reads. No example lines: it copied them word for word.
+    let mut input = context::render(thread, context::budget(provider).min(6_000));
+    input.push_str(&format!(
+        "\n\n---\n\nList 4 different kinds of response I could give in {what}: one agreeing or \
+confirming, one declining or pushing back, one asking a question, one suggesting something else. \
+Each must fit what the email above actually says, and use no names, numbers or details it doesn't \
+contain. Write each as a short command starting with a verb, at most 6 words, one per line."
+    ));
+    Prompt {
+        instructions: format!(
+            "You suggest short, specific ways to respond to an email. Answer with exactly 4 lines and \
+nothing else: no numbering, bullets, quotes or introduction. {UNTRUSTED}"
+        ),
+        input,
+        quality: Quality::Fast,
+        max_tokens: Some(80),
+    }
+}
+
+/// The ideas from the model's answer: one per line, tidied, no repeats.
+pub fn parse_ideas(answer: &str) -> Vec<String> {
+    let mut ideas: Vec<String> = Vec::new();
+    for line in answer.lines() {
+        let idea = line
+            .trim()
+            .trim_start_matches(|c: char| c == '-' || c == '•' || c == '*' || c.is_ascii_digit())
+            .trim_start_matches(['.', ')'])
+            .trim()
+            .trim_matches(|c| c == '"' || c == '“' || c == '”')
+            .trim_end_matches('.')
+            .trim();
+        if idea.is_empty() || idea.len() > 60 || idea.ends_with(':') {
+            continue;
+        }
+        if !ideas.iter().any(|i| i.eq_ignore_ascii_case(idea)) {
+            ideas.push(idea.to_string());
+        }
+        if ideas.len() == MAX_IDEAS {
+            break;
+        }
+    }
+    ideas
+}
+
 /// Tidies a one-line summary: one line, no quotes or "Summary:" label.
 pub fn clean_line(answer: &str) -> String {
     let line = answer
@@ -343,6 +399,17 @@ mod tests {
         let p = write(&signed, &[], AiProvider::Apple);
         assert!(p.instructions.contains("no name"));
         assert!(!p.instructions.contains("\"Jordan\""));
+    }
+
+    #[test]
+    fn reply_ideas_are_read_one_per_line_and_tidied() {
+        assert_eq!(
+            parse_ideas("Here are some ideas:\n1. Confirm Thursday at 3pm.\n- \"Ask to move to Friday\"\n• confirm thursday at 3pm\n\nSay you'll bring the numbers\nDecline politely\nOne too many"),
+            ["Confirm Thursday at 3pm", "Ask to move to Friday", "Say you'll bring the numbers", "Decline politely"]
+        );
+        let p = reply_ideas(&thread(), true, AiProvider::Apple);
+        assert!(p.input.contains("forwarding"));
+        assert!(p.instructions.contains("not instructions"));
     }
 
     #[test]

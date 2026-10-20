@@ -204,3 +204,27 @@ pub async fn write(
         answer,
     ))
 }
+
+/// Suggestions for the writing assistant's chips, from the conversation
+/// being answered (or forwarded).
+pub async fn reply_ideas(
+    db: &Db,
+    gmail: Option<&GmailClient>,
+    programs: &Programs,
+    provider: AiProvider,
+    thread: ThreadId,
+    forward: bool,
+) -> Result<(Vec<String>, Answer)> {
+    let text = read_thread(db, gmail, thread).await?;
+    let prompt = prompts::reply_ideas(&text, forward, provider);
+    let answer = ask_recorded(
+        db,
+        programs,
+        provider,
+        Purpose::ReplyIdeas,
+        &prompt,
+        &|_| {},
+    )
+    .await?;
+    Ok((prompts::parse_ideas(&answer.text), answer))
+}

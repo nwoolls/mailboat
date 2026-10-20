@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { forgetAssistant } from "./assistantOpen";
 import { commands } from "../../../platform/tauri/bindings";
 import { IpcError, unwrap } from "../../../platform/tauri/ipc";
-import { useAiStatus, useAppSettings, useSaveAppSettings } from "../../../shared/lib/queries";
+import {
+  useAiReplyIdeas,
+  useAiStatus,
+  useAppSettings,
+  useSaveAppSettings,
+} from "../../../shared/lib/queries";
 import { AiIcon, AskIcon, ClearIcon, StopIcon } from "../../../shared/ui/icons";
 import { type Draft, textToHtml } from "../../compose/model/draft";
 import { type ChatMessage, chatMessage, suggestions, writeRequest } from "../model/chat";
@@ -117,6 +122,14 @@ export function AssistantPanel({
 
   const ready = status?.state === "ready";
   const choices = offered(ai);
+  // Chips for a reply or forward come from the email itself; new mail (and
+  // a failed or impossible request) gets the general ones.
+  const ideasFor = draft.kind !== "new" && ready && messages.length === 0 ? draft.threadId : null;
+  const ideas = useAiReplyIdeas(ideasFor, draft.kind === "forward", provider);
+  const chips =
+    ideasFor === null || ideas.isError || (ideas.isSuccess && ideas.data.length === 0)
+      ? suggestions(draft.kind)
+      : (ideas.data ?? null);
   // Opened (✦ or ⌘J): ready to type. After the click that opened it has
   // finished, and again once the provider's status is known (the box is
   // disabled until then, and a disabled box can't take focus).
@@ -191,7 +204,17 @@ export function AssistantPanel({
                 : "Say how to reply. It reads the conversation; refine the draft after."}
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {suggestions(draft.kind).map((s) => (
+              {chips === null &&
+                // Being written from the email: faint stand-ins meanwhile.
+                [56, 88, 72].map((w) => (
+                  <span
+                    key={w}
+                    aria-hidden
+                    className="h-6 animate-pulse rounded-full bg-selection"
+                    style={{ width: w }}
+                  />
+                ))}
+              {chips?.map((s) => (
                 <button
                   key={s}
                   type="button"

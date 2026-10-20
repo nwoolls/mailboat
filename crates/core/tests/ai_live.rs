@@ -109,3 +109,54 @@ async fn claude_writes() {
 async fn chatgpt_writes() {
     write_with(AiProvider::ChatGpt).await;
 }
+
+async fn ideas_with(provider: AiProvider) {
+    ideas_for(provider, "Hi Jordan, the quarterly review moved to Thursday 3pm in room 4B. Can you bring the budget numbers? Thanks, Sam").await;
+    ideas_for(provider, "Hello, your invoice #4821 for $1,250 is attached and due Nov 15. Please confirm the PO number we should reference. Regards, Billing").await;
+}
+
+async fn ideas_for(provider: AiProvider, email: &str) {
+    use mailboat_core::ai::context::{ContextMessage, ThreadText};
+    use mailboat_core::ai::prompts;
+    use mailboat_core::model::{Address, MessageId};
+    let thread = ThreadText {
+        subject: "Quarterly review".into(),
+        messages: vec![ContextMessage {
+            id: MessageId(1),
+            from: Address {
+                name: Some("Sam Lee".into()),
+                email: "sam@example.com".into(),
+            },
+            to: vec![],
+            date: 1_792_000_000_000,
+            mine: false,
+            text: email.into(),
+        }],
+        missing_bodies: vec![],
+    };
+    let prompt = prompts::reply_ideas(&thread, false, provider);
+    let answer = ai::ask(&programs(), provider, &prompt, &|_| {})
+        .await
+        .unwrap();
+    let ideas = prompts::parse_ideas(&answer.text);
+    println!("--- {provider:?} ideas: {ideas:?}");
+    assert!(!ideas.is_empty());
+}
+
+#[tokio::test]
+#[ignore]
+async fn apple_ideas() {
+    ideas_with(AiProvider::Apple).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn claude_ideas() {
+    ideas_with(AiProvider::Claude).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn chatgpt_ideas() {
+    ideas_with(AiProvider::ChatGpt).await;
+}

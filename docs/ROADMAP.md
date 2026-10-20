@@ -1467,6 +1467,22 @@ built, tested and waiting for the owner to try.*
         and the editor took the focus back. The layout no longer changes
         when the panel opens, and the chat box is focused once the
         provider is known to be ready
+- [x] Small items (owner, 2026-10-20):
+      - Opening Settings minimizes a message being written in the
+        floating card (it floated over the Settings page)
+      - Providers listed alphabetically everywhere: Apple Intelligence,
+        ChatGPT, Claude
+      - The AI panel stays open when a message is minimized and restored
+        (or a reply popped out): it was the card's own state, lost while
+        minimized; now kept per message
+      - The suggestion chips for a reply or forward are written from the
+        email (e.g. "Ask which budget numbers to bring"), by the writing
+        provider, once per conversation per session; new mail keeps the
+        general ones, also the fallback if asking fails. Apple's model
+        copied example lines word for word and invented PO numbers, so
+        its prompt asks for four kinds of response (agree, decline, ask,
+        suggest) with no examples, after the email. Checked live on two
+        emails with all three providers
 - Ideas not built: AI actions in ⌘K (summarize, reply with AI), a
   "Reply with AI" button on the reply bar, per-provider model choice
   (today Claude uses Haiku for summaries and Sonnet for writing; Codex

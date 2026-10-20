@@ -365,6 +365,32 @@ pub async fn ai_write(
     Ok(answer)
 }
 
+/// Suggestions for the writing assistant's chips, from the conversation
+/// being answered or forwarded (with the writing provider).
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_reply_ideas(
+    state: State<'_, AppState>,
+    ai: State<'_, AiState>,
+    thread_id: ThreadId,
+    forward: bool,
+    request_id: u32,
+) -> CmdResult<Vec<String>> {
+    let saved = load_settings(&state)?;
+    let provider = saved.ai.writing_provider;
+    check_usable(&saved, provider)?;
+    let (account, _) = store::thread_gmail_ref(&state.db.conn(), thread_id)?;
+    let gmail = state.gmail_for(account).ok().map(|g| g.interactive());
+    let db = state.db.clone();
+    let programs = ai.programs();
+    let (ideas, raw) = cancellable(&ai, request_id, async move {
+        tasks::reply_ideas(&db, gmail.as_ref(), &programs, provider, thread_id, forward).await
+    })
+    .await?;
+    ai.note(&raw);
+    Ok(ideas)
+}
+
 #[tauri::command]
 #[specta::specta]
 pub fn ai_cancel(ai: State<'_, AiState>, request_id: u32) {
