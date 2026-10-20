@@ -1,5 +1,5 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
 import { AttachmentIcon, StarIcon } from "../../../shared/ui/icons";
 import type { AccountIndex } from "../../accounts/model/accounts";
@@ -18,6 +18,8 @@ const ICON_COLUMN = 18;
 const FOOTER_HEIGHT = 40;
 
 type Props = {
+  /** Which view the list shows (`selectionKey`): a new one starts at the top. */
+  viewKey: string;
   threads: ThreadSummary[];
   accounts: AccountIndex;
   /** Show each row's account marker (views that mix accounts). */
@@ -46,6 +48,7 @@ type Props = {
 };
 
 export function ThreadList({
+  viewKey,
   threads,
   accounts,
   showAccount,
@@ -98,6 +101,13 @@ export function ThreadList({
     if (hasMore && !busy && lastIndex >= threads.length - 20) loadMore();
   }, [hasMore, busy, lastIndex, threads.length, loadMore]);
   const footer = older.status !== "idle";
+
+  // Every view's list is drawn in this one scroll area, so without this a
+  // new view opened scrolled down as far as the last one was. Before
+  // paint, so the old offset never flashes.
+  useLayoutEffect(() => {
+    virtualizer.scrollToOffset(0);
+  }, [viewKey, virtualizer]);
 
   // Keep the keyboard selection visible.
   useEffect(() => {

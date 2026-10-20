@@ -1111,6 +1111,9 @@ ticked.*
       back to the top when the view changes, so it keeps whatever offset
       it had. Fix: start each view at the top (or, if wanted, remember
       each view's own position)
+      *Built (2026-10-19), waiting for the owner to try it: every view
+      (and each new search) now opens at the top, as Gmail does. Views
+      don't remember their own positions; say if that's wanted*
 
 - [ ] Reply all: the sender in To, everyone else in Cc *(owner request,
       2026-10-19)*. Today (`replyRecipients` in compose/model/draft.ts)

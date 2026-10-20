@@ -55,6 +55,7 @@ import { Toast } from "../shared/ui/Toast";
 import {
   ALL_INBOXES,
   type Selection,
+  selectionKey,
   selectionNeedsAccount,
   selectionTitle,
   spansAccounts,
@@ -793,6 +794,7 @@ export function Shell() {
                 onOpenSettings={() => setSettings("vacation")}
               />
               <ThreadList
+                viewKey={selectionKey(selection)}
                 threads={threads}
                 onSwipe={(id, action) => act(action, [id])}
                 accounts={accounts}
