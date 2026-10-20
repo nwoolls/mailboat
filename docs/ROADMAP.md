@@ -1136,7 +1136,7 @@ ticked.*
       everyone else from To and Cc in Cc, minus your own addresses.
       Replying to your own message keeps To as To and Cc as Cc. Owner
       confirmed it works (2026-10-20)*
-- [ ] Addresses can't be dragged between To, Cc and Bcc *(owner report,
+- [x] Addresses can't be dragged between To, Cc and Bcc *(owner report,
       2026-10-19)*. In other mail apps an address can be dragged from one
       field to another (say from To down to Cc); in the composer nothing
       happens, so moving someone means deleting and retyping them. Needs
@@ -1148,7 +1148,8 @@ ticked.*
       shades); it moves there with its name, and if that line already
       has it, it just leaves the first. Cc or Bcc must be showing to
       drop on it. Pointer-based rather than the web view's drag and
-      drop, which Tauri's window file-drop handling can swallow*
+      drop, which Tauri's window file-drop handling can swallow. Owner
+      confirmed it works (2026-10-20)*
 
 - [x] "Download Image" in an email's right-click menu does nothing
       *(owner report, 2026-10-19)*. Right-clicking an image inside an
