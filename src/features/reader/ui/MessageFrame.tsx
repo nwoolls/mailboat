@@ -187,8 +187,8 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
                 ? "Show this email on the glass, with colors adjusted for dark mode"
                 : "Show this email on a white card, with its own colors"
             }
-            className={`email-colors-switch absolute top-1.5 right-1.5 z-10 rounded-md px-2 py-0.5 text-xs text-content/70 transition-opacity duration-150 hover:text-content focus-visible:opacity-100 ${
-              original ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            className={`email-colors-switch absolute top-1.5 right-1.5 z-10 rounded-full px-2 py-px text-[11px] text-content/55 transition-opacity duration-150 hover:text-content/90 focus-visible:opacity-100 ${
+              original ? "opacity-60 group-hover:opacity-100" : "opacity-0 group-hover:opacity-100"
             }`}
           >
             {original ? "Adapted colors" : "Original colors"}

@@ -1313,6 +1313,10 @@ settled with the owner one at a time, as in the earlier spikes.*
       Remembered per message until the app quits. Plain-text emails and
       ones already on the white card don't offer it. Not in ⌘K yet; say
       if wanted*
+      *Owner (2026-10-20): less obtrusive, glassy. Now a smaller pill of
+      the app's glass (blurs the email under it, hairline edge, no
+      shadow) with softer text; once switched, "Adapted colors" rests
+      at 60% and brightens when the email is hovered*
 - [ ] Softer look for the remaining white cards on the glass
       *First try built (2026-10-20), waiting for the owner's eye: in dark
       mode the white card is dimmed to 90% brightness (images too) with a
