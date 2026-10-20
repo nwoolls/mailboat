@@ -205,7 +205,7 @@ async fn inline_images_are_embedded_in_the_email() {
     assert_eq!(images["logo@x"], "data:image/png;base64,iVBORw==");
     assert!(images["dot@x"].starts_with("data:image/gif;base64,R0lGOD"));
 
-    let shown = mail::safe_message(&body, false, &images);
+    let shown = mail::safe_message(&body, false, &images, false);
     assert!(shown.document.contains("data:image/png;base64,iVBORw=="));
     assert!(!shown.document.contains("cid:"));
     std::fs::remove_dir_all(&cache).unwrap();
