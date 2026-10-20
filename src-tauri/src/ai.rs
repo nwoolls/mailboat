@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+use mailboat_core::ai::codex::CodexModel;
 use mailboat_core::ai::summaries::{self, Summary, SummaryKind};
 use mailboat_core::ai::tasks::{self, Summarized, SummaryRequest, WriteAnswer, WriteRequest};
 use mailboat_core::ai::usage::{self, ProviderUsage};
@@ -48,6 +49,8 @@ pub struct AiState {
     connect_cancel: tokio::sync::Notify,
     /// Claude's subscription limits, as of its latest answer.
     limits: Mutex<Vec<PlanLimit>>,
+    /// Codex's model catalog, read once (`codex debug models`).
+    codex_catalog: Mutex<Option<Vec<CodexModel>>>,
     queue: LineQueue,
 }
 
@@ -62,6 +65,7 @@ impl AiState {
             jobs: Mutex::new(HashMap::new()),
             connect_cancel: tokio::sync::Notify::new(),
             limits: Mutex::new(Vec::new()),
+            codex_catalog: Mutex::new(None),
             queue: LineQueue::default(),
         }
     }
@@ -73,8 +77,31 @@ impl AiState {
         found
     }
 
-    fn programs(&self) -> Programs {
-        self.programs.lock().unwrap().clone()
+    /// The programs, with the Codex models to use: the catalog's fast one
+    /// for quick requests, the owner's choice (Settings → AI) for writing.
+    async fn programs_for(&self, saved: &AppSettings) -> Programs {
+        let mut programs = self.programs.lock().unwrap().clone();
+        let catalog = self.codex_catalog(&programs, false).await;
+        programs.codex_models = ai::codex::Models {
+            fast: ai::codex::fast_model(&catalog),
+            writing: saved.ai.chatgpt_model.clone(),
+        };
+        programs
+    }
+
+    /// Codex's models, read once (or again when `fresh`). Empty if Codex
+    /// isn't installed or can't say: it then uses its own default model.
+    async fn codex_catalog(&self, programs: &Programs, fresh: bool) -> Vec<CodexModel> {
+        let cached = self.codex_catalog.lock().unwrap().clone();
+        if let (Some(list), false) = (cached, fresh) {
+            return list;
+        }
+        let Some(codex) = programs.codex.clone() else {
+            return Vec::new();
+        };
+        let list = ai::codex::models(&codex).await.unwrap_or_default();
+        *self.codex_catalog.lock().unwrap() = Some(list.clone());
+        list
     }
 
     fn note(&self, answer: &Answer) {
@@ -265,7 +292,7 @@ pub async fn ai_thread_summary(
     let (account, _) = store::thread_gmail_ref(&state.db.conn(), thread_id)?;
     let gmail = state.gmail_for(account).ok().map(|g| g.interactive());
     let db = state.db.clone();
-    let programs = ai.programs();
+    let programs = ai.programs_for(&saved).await;
     let request = SummaryRequest {
         thread: thread_id,
         kind: SummaryKind::Full,
@@ -349,7 +376,7 @@ pub async fn ai_write(
         None => None,
     };
     let db = state.db.clone();
-    let programs = ai.programs();
+    let programs = ai.programs_for(&saved).await;
     let emit = app.clone();
     let (answer, raw) = cancellable(&ai, request_id, async move {
         let on_text = move |text: &str| {
@@ -392,7 +419,7 @@ pub async fn ai_reply_ideas(
     let (account, _) = store::thread_gmail_ref(&state.db.conn(), thread_id)?;
     let gmail = state.gmail_for(account).ok().map(|g| g.interactive());
     let db = state.db.clone();
-    let programs = ai.programs();
+    let programs = ai.programs_for(&saved).await;
     let (ideas, raw) = cancellable(&ai, request_id, async move {
         tasks::reply_ideas(&db, gmail.as_ref(), &programs, provider, thread_id, forward).await
     })
@@ -433,6 +460,14 @@ pub fn ai_usage(
         providers,
         limits: ai.limits.lock().unwrap().clone(),
     })
+}
+
+/// The ChatGPT models Codex offers, for Settings → AI (read afresh).
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_chatgpt_models(ai: State<'_, AiState>) -> CmdResult<Vec<CodexModel>> {
+    let programs = ai.refresh();
+    Ok(ai.codex_catalog(&programs, true).await)
 }
 
 /// Opens System Settings → Apple Intelligence & Siri, where it's turned on.
@@ -540,7 +575,7 @@ pub fn run_line_queue(app: AppHandle) {
                 automatic: true,
                 fresh: false,
             };
-            let programs = ai.programs();
+            let programs = ai.programs_for(&saved).await;
             let result = tasks::summarize(
                 &state.db,
                 gmail.as_ref(),

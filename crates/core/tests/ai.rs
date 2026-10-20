@@ -244,3 +244,55 @@ async fn automatic_summaries_skip_short_mail_and_spam() {
     assert!(matches!(r, Summarized::NotNeeded));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// The chips are saved per conversation, like summaries: asked once, then
+/// instant until new mail arrives.
+#[tokio::test]
+async fn reply_ideas_are_saved_until_new_mail() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a", "a@x.com");
+    let b = add_account(&db, "b", "b@x.com");
+    let t = put_thread(
+        &db,
+        a,
+        vec![message("m1", 1_000, &["INBOX"])],
+        "alpha plans",
+    );
+    let tb = put_thread(&db, b, vec![message("m1", 1_000, &["INBOX"])], "beta plans");
+    let (programs, dir) = fake_apple();
+    let ask = |thread| tasks::reply_ideas(&db, None, &programs, AiProvider::Apple, thread, false);
+    assert_eq!(ask(t).await.unwrap().0, ["Alpha summary"]);
+    assert_eq!(
+        ask(tb).await.unwrap().0,
+        ["Beta summary"],
+        "per account, same Gmail IDs"
+    );
+    ask(t).await.unwrap();
+    let requests = |db: &Db| {
+        usage::report(&db.conn(), 0)
+            .unwrap()
+            .into_iter()
+            .find(|u| u.provider == AiProvider::Apple)
+            .unwrap()
+            .today
+            .requests
+    };
+    assert_eq!(requests(&db), 2, "the second time came from the saved copy");
+    // A forward's chips are separate from a reply's.
+    assert!(summaries::current_ideas(&db.conn(), t, true)
+        .unwrap()
+        .is_none());
+    put_thread(
+        &db,
+        a,
+        vec![
+            message("m1", 1_000, &["INBOX"]),
+            message("m2", 2_000, &["INBOX"]),
+        ],
+        "alpha again",
+    );
+    assert!(summaries::current_ideas(&db.conn(), t, false)
+        .unwrap()
+        .is_none());
+    let _ = std::fs::remove_dir_all(dir);
+}

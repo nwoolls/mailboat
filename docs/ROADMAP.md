@@ -1489,12 +1489,20 @@ built, tested and waiting for the owner to try.*
         emailed by default; the reply's kind menu switches it. Fixed (owner
         report): the cursor landed in the email text, not the chat box;
         a reply opening with the assistant now leaves it in the chat
-      - Model choice for writing (Settings → AI → Writing → Model, shown
-        for Claude and ChatGPT): Claude's Haiku / Sonnet (default) /
-        Opus; ChatGPT's Quick / Balanced (default) / Thorough, which is
-        Codex's reasoning effort on its default model (Mailboat runs Codex
-        without the owner's Codex config and has no reliable list of its
-        models, so no model list). Summaries stay on the quick setting
+      - Model choice for writing (Settings → AI → Writing → Model):
+        Claude's Haiku / Sonnet (default) / Opus; ChatGPT's models from
+        Codex's own list (`codex debug models`; "Codex's default" first).
+        *First built as Quick / Balanced / Thorough for ChatGPT, on the
+        agent's wrong belief that Codex had no model list.* Summaries and
+        chips always use the quick model
+      - Faster chips *(owner, 2026-10-20: "many seconds")*. Measured per
+        email: ChatGPT was the slowest, Claude and Apple faster, and part of Codex's time is starting up. Now: ChatGPT's quick requests (chips, summaries)
+        use Codex's fast model (the catalog's newest "fast" one, today
+        GPT-6-Luna) with no reasoning, faster, with ideas as specific in testing; chips are saved per conversation like summaries
+        (instant until new mail arrives); Reply with AI starts them
+        while the reply loads. Not done: writing chips as soon as a
+        conversation opens (it would send every opened email to a cloud
+        provider unasked), and keeping Codex running between requests
       - The Reply / Reply all / Forward switch is in the floating card
         too, not only inline (owner report): the card was never given it.
         Shown for replies and forwards that started here, not new mail

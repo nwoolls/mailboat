@@ -12,7 +12,7 @@ import { canSwitchKind, editorKey } from "../model/draft";
 import { ComposeForm, KIND_LABELS, type ReplyKind } from "./ComposeForm";
 import { openAssistantForNextReply, useAssistantOpen } from "../../ai/ui/assistantOpen";
 import { aiChoices, isReady } from "../../ai/model/providers";
-import { useAiStatus, useAppSettings } from "../../../shared/lib/queries";
+import { useAiStatus, useAppSettings, usePrefetchAiReplyIdeas } from "../../../shared/lib/queries";
 import { useEffect, useRef, useState } from "react";
 import { useStuck } from "../../../shared/ui/useStuck";
 import type { MessageId } from "../../../platform/tauri/bindings";
@@ -74,6 +74,7 @@ export function ReplyArea({
   const [failed, setFailed] = useState<MessageId | null>(null);
   const settings = useAppSettings().data;
   const aiStatus = useAiStatus().data;
+  const prefetchIdeas = usePrefetchAiReplyIdeas();
   // The writing assistant (⌘J), above the reply; kept per message, so it
   // stays open when the reply pops out into the card and back.
   const [assistant, setAssistant] = useAssistantOpen(reply?.draft ?? NO_DRAFT);
@@ -170,6 +171,8 @@ export function ReplyArea({
           label="Reply with AI"
           onClick={() => {
             openAssistantForNextReply(detail.thread.id);
+            // The chips start being written now, while the reply loads.
+            prefetchIdeas(detail.thread.id, writing);
             onStart("reply");
           }}
         />

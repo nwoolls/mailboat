@@ -16,6 +16,7 @@ export const AI_DEFAULTS: AiChoices = {
   readerProvider: "apple",
   writingProvider: "apple",
   writingQuality: "best",
+  chatgptModel: null,
 };
 
 export function aiChoices(settings: AppSettings | undefined): AiChoices {
@@ -27,6 +28,7 @@ export function aiChoices(settings: AppSettings | undefined): AiChoices {
     readerProvider: ai.readerProvider ?? AI_DEFAULTS.readerProvider,
     writingProvider: ai.writingProvider ?? AI_DEFAULTS.writingProvider,
     writingQuality: ai.writingQuality ?? AI_DEFAULTS.writingQuality,
+    chatgptModel: ai.chatgptModel ?? AI_DEFAULTS.chatgptModel,
   };
 }
 
@@ -90,8 +92,8 @@ export function leavesMac(provider: AiProvider): boolean {
 }
 
 /**
- * The writing model choice in each provider's own terms: Claude's models,
- * or how hard ChatGPT (Codex) thinks. Apple has one model: no choice.
+ * Claude's writing model choice. ChatGPT picks a model from Codex's own
+ * list instead (Settings → AI); Apple has one model: no choice.
  */
 export function qualityChoices(provider: AiProvider): { value: Quality; label: string }[] | null {
   switch (provider) {
@@ -102,11 +104,6 @@ export function qualityChoices(provider: AiProvider): { value: Quality; label: s
         { value: "strongest", label: "Opus" },
       ];
     case "chatgpt":
-      return [
-        { value: "fast", label: "Quick" },
-        { value: "best", label: "Balanced" },
-        { value: "strongest", label: "Thorough" },
-      ];
     case "apple":
       return null;
   }

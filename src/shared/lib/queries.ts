@@ -277,21 +277,48 @@ export function useAiDisconnect() {
 
 /**
  * The writing assistant's suggestion chips for a conversation being
- * answered or forwarded, written from it (once per conversation, kind and
- * provider this session). `null` skips asking (new mail). Leaving stops it.
+ * answered or forwarded, written from it (saved per conversation in
+ * Rust, so asking again is instant until new mail arrives). Leaving
+ * stops it. Shared with `prefetchAiReplyIdeas`, so Reply with AI can
+ * start them before the reply has loaded.
  */
-export function useAiReplyIdeas(thread: ThreadId | null, forward: boolean, provider: AiProvider) {
-  return useQuery({
-    queryKey: ["aiReplyIdeas", thread, forward, provider],
-    queryFn: async ({ signal }) => {
+function aiReplyIdeasQuery(thread: ThreadId | null, forward: boolean, provider: AiProvider) {
+  return {
+    queryKey: ["aiReplyIdeas", thread, forward, provider] as const,
+    queryFn: async ({ signal }: { signal: AbortSignal }) => {
       const id = newRequestId();
       signal.addEventListener("abort", () => void commands.aiCancel(id));
       return unwrap(commands.aiReplyIdeas(thread!, forward, id));
     },
-    enabled: IS_TAURI && thread !== null,
     staleTime: Infinity,
     gcTime: 30 * 60_000,
     retry: false,
+  };
+}
+
+/** `null` skips asking (new mail). */
+export function useAiReplyIdeas(thread: ThreadId | null, forward: boolean, provider: AiProvider) {
+  return useQuery({
+    ...aiReplyIdeasQuery(thread, forward, provider),
+    enabled: IS_TAURI && thread !== null,
+  });
+}
+
+/** Starts writing a reply's chips now (Reply with AI, while the reply loads). */
+export function usePrefetchAiReplyIdeas() {
+  const qc = useQueryClient();
+  return (thread: ThreadId, provider: AiProvider) => {
+    if (IS_TAURI) void qc.prefetchQuery(aiReplyIdeasQuery(thread, false, provider));
+  };
+}
+
+/** The ChatGPT models Codex offers (Settings → AI). */
+export function useChatgptModels(enabled: boolean) {
+  return useQuery({
+    queryKey: ["chatgptModels"],
+    queryFn: () => unwrap(commands.aiChatgptModels()),
+    enabled: IS_TAURI && enabled,
+    staleTime: Infinity,
   });
 }
 

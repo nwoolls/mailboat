@@ -126,6 +126,9 @@ pub struct Programs {
     pub apple: Option<PathBuf>,
     pub claude: Option<PathBuf>,
     pub codex: Option<PathBuf>,
+    /// Which Codex models to use (filled in by the app from Codex's
+    /// catalog and Settings).
+    pub codex_models: codex::Models,
 }
 
 impl Programs {
@@ -136,6 +139,7 @@ impl Programs {
             apple: apple_helper.filter(|p| p.is_file()),
             claude: process::find_program("claude"),
             codex: process::find_program("codex"),
+            codex_models: codex::Models::default(),
         }
     }
 
@@ -202,7 +206,7 @@ pub async fn ask(
     let answer = match provider {
         AiProvider::Apple => apple::ask(path, prompt, on_text).await?,
         AiProvider::Claude => claude::ask(path, prompt, on_text).await?,
-        AiProvider::ChatGpt => codex::ask(path, prompt, on_text).await?,
+        AiProvider::ChatGpt => codex::ask(path, prompt, &programs.codex_models, on_text).await?,
     };
     if answer.text.trim().is_empty() {
         return Err(CoreError::Ai(format!(

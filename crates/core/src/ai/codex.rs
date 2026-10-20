@@ -6,10 +6,17 @@
 //! newer versions ignore for names they don't know (`--disable` would
 //! fail instead), and runs read-only in an empty folder. Its `--json`
 //! output doesn't stream text, so the answer arrives whole.
+//!
+//! Models come from Codex's own catalog (`codex debug models`). Quick
+//! requests (summaries, the writing assistant's chips) use the catalog's
+//! fast model with no reasoning, faster as the default model
+//! with the same results in testing; writing uses the owner's choice.
 
 use std::path::Path;
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use specta::Type;
 
 use super::{process, Answer, Prompt, ProviderState, Quality, Usage};
 use crate::error::{CoreError, Result};
@@ -34,12 +41,50 @@ const TOOLS_OFF: &[&str] = &[
     "memories",
 ];
 
-pub fn args(prompt: &Prompt) -> Vec<String> {
-    let effort = match prompt.quality {
-        Quality::Fast => "low",
-        Quality::Best => "medium",
-        Quality::Strongest => "high",
-    };
+/// Which model and reasoning effort a request runs with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Choice {
+    /// `None`: Codex's default model.
+    pub model: Option<String>,
+    pub effort: &'static str,
+}
+
+/// The models Mailboat uses: the fast one for quick requests (from the
+/// catalog) and the owner's choice for writing (Settings → AI).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Models {
+    pub fast: Option<String>,
+    pub writing: Option<String>,
+}
+
+/// The model and effort for a request. Quick requests on the fast model
+/// skip reasoning ("none"), which the default model refuses, so it keeps
+/// "low"; `ask` falls back to "low" if a model refuses "none".
+pub fn choice(quality: Quality, models: &Models) -> Choice {
+    match quality {
+        Quality::Fast => match &models.fast {
+            Some(m) => Choice {
+                model: Some(m.clone()),
+                effort: "none",
+            },
+            None => Choice {
+                model: None,
+                effort: "low",
+            },
+        },
+        Quality::Best => Choice {
+            model: models.writing.clone(),
+            effort: "medium",
+        },
+        Quality::Strongest => Choice {
+            model: models.writing.clone(),
+            effort: "high",
+        },
+    }
+}
+
+pub fn args(choice: &Choice) -> Vec<String> {
+    let effort = choice.effort;
     let mut a: Vec<String> = [
         "exec",
         "--json",
@@ -61,6 +106,10 @@ pub fn args(prompt: &Prompt) -> Vec<String> {
     a.push("web_search=\"disabled\"".into());
     a.push("-c".into());
     a.push(format!("model_reasoning_effort=\"{effort}\""));
+    if let Some(model) = &choice.model {
+        a.push("-m".into());
+        a.push(model.clone());
+    }
     // The prompt comes on stdin.
     a.push("-".into());
     a
@@ -157,17 +206,91 @@ impl Reader {
 pub async fn ask(
     program: &Path,
     prompt: &Prompt,
+    models: &Models,
     on_text: &(dyn Fn(&str) + Send + Sync),
 ) -> Result<Answer> {
+    let mut chosen = choice(prompt.quality, models);
+    let answer = match run(program, prompt, &chosen).await {
+        // A model that doesn't take "none" (a newer fast model, say)
+        // gets one more try with "low".
+        Err(CoreError::Ai(m)) if chosen.effort == "none" && m.contains("Unsupported value") => {
+            chosen.effort = "low";
+            run(program, prompt, &chosen).await?
+        }
+        other => other?,
+    };
+    on_text(&answer.text);
+    Ok(answer)
+}
+
+async fn run(program: &Path, prompt: &Prompt, chosen: &Choice) -> Result<Answer> {
     let mut reader = Reader::default();
-    let exit = process::run_lines(program, &args(prompt), &stdin(prompt), |line| {
+    let exit = process::run_lines(program, &args(chosen), &stdin(prompt), |line| {
         reader.line(line);
         Ok(())
     })
     .await?;
-    let answer = reader.finish(exit)?;
-    on_text(&answer.text);
-    Ok(answer)
+    reader.finish(exit)
+}
+
+/// One model from Codex's catalog, as offered in Settings → AI.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexModel {
+    /// What Codex calls it (`-m`), e.g. "gpt-6-luna".
+    pub slug: String,
+    /// e.g. "GPT-6-Luna".
+    pub name: String,
+    /// e.g. "Fast and affordable model for easier tasks."
+    pub description: String,
+}
+
+/// The catalog's models Codex lists for people, in its order.
+pub fn parse_models(json: &str) -> Vec<CodexModel> {
+    let v: Value = serde_json::from_str(json).unwrap_or(Value::Null);
+    let mut listed: Vec<(i64, CodexModel)> = v["models"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|m| m["visibility"] == "list")
+        .filter_map(|m| {
+            Some((
+                m["priority"].as_i64().unwrap_or(i64::MAX),
+                CodexModel {
+                    slug: m["slug"].as_str()?.to_string(),
+                    name: m["display_name"].as_str().unwrap_or_default().to_string(),
+                    description: m["description"].as_str().unwrap_or_default().to_string(),
+                },
+            ))
+        })
+        .collect();
+    listed.sort_by_key(|(p, _)| *p);
+    listed.into_iter().map(|(_, m)| m).collect()
+}
+
+/// The newest model the catalog calls fast (the first in its order whose
+/// description says "fast" and not "older").
+pub fn fast_model(models: &[CodexModel]) -> Option<String> {
+    models
+        .iter()
+        .find(|m| {
+            let d = m.description.to_lowercase();
+            d.contains("fast") && !d.contains("older")
+        })
+        .map(|m| m.slug.clone())
+}
+
+/// Codex's model catalog, read from the tool itself.
+pub async fn models(program: &Path) -> Result<Vec<CodexModel>> {
+    let (ok, stdout, stderr) = process::run_quick(program, &["debug", "models"]).await?;
+    let found = parse_models(&stdout);
+    if !ok || found.is_empty() {
+        return Err(CoreError::Ai(format!(
+            "Couldn't read Codex's models: {}",
+            stderr.trim()
+        )));
+    }
+    Ok(found)
 }
 
 #[cfg(test)]
@@ -223,14 +346,57 @@ mod tests {
         );
     }
 
+    const CATALOG: &str = r#"{"models": [
+      {"slug": "gpt-6-luna", "display_name": "GPT-6-Luna", "description": "Fast and affordable model for easier tasks.", "visibility": "list", "priority": 5},
+      {"slug": "gpt-reserve", "display_name": "GPT-Reserve", "description": "Fast and affordable agentic coding model.", "visibility": "hide", "priority": 4},
+      {"slug": "gpt-5.6-luna", "display_name": "GPT-5.6-Luna", "description": "Older fast and efficient model.", "visibility": "list", "priority": 9},
+      {"slug": "gpt-6.1-sol", "display_name": "GPT-6.1-Sol", "description": "Latest workhorse model.", "visibility": "list", "priority": 1}
+    ]}"#;
+
+    #[test]
+    fn reads_the_listed_models_in_order_and_finds_the_fast_one() {
+        let models = parse_models(CATALOG);
+        let slugs: Vec<&str> = models.iter().map(|m| m.slug.as_str()).collect();
+        assert_eq!(
+            slugs,
+            ["gpt-6.1-sol", "gpt-6-luna", "gpt-5.6-luna"],
+            "hidden left out"
+        );
+        assert_eq!(models[1].name, "GPT-6-Luna");
+        assert_eq!(fast_model(&models), Some("gpt-6-luna".into()));
+        assert!(parse_models("not json").is_empty());
+    }
+
+    #[test]
+    fn quick_requests_use_the_fast_model_and_writing_the_chosen_one() {
+        let models = Models {
+            fast: Some("gpt-6-luna".into()),
+            writing: Some("gpt-6-astra".into()),
+        };
+        let fast = choice(Quality::Fast, &models);
+        assert_eq!(
+            (fast.model.as_deref(), fast.effort),
+            (Some("gpt-6-luna"), "none")
+        );
+        let a = args(&fast);
+        assert_eq!(
+            a[a.iter().position(|x| x == "-m").unwrap() + 1],
+            "gpt-6-luna"
+        );
+        let write = choice(Quality::Best, &models);
+        assert_eq!(
+            (write.model.as_deref(), write.effort),
+            (Some("gpt-6-astra"), "medium")
+        );
+        // Without a catalog, Codex's default model at low effort, no -m.
+        let plain = choice(Quality::Fast, &Models::default());
+        assert_eq!(plain.effort, "low");
+        assert!(!args(&plain).contains(&"-m".to_string()));
+    }
+
     #[test]
     fn tools_are_off_and_the_prompt_comes_on_stdin() {
-        let a = args(&Prompt {
-            instructions: String::new(),
-            input: String::new(),
-            quality: Quality::Fast,
-            max_tokens: None,
-        });
+        let a = args(&choice(Quality::Fast, &Models::default()));
         assert!(a.contains(&"features.shell_tool=false".to_string()));
         assert!(a.contains(&"web_search=\"disabled\"".to_string()));
         assert!(a.contains(&"read-only".to_string()));

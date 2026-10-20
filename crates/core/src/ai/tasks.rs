@@ -219,6 +219,11 @@ pub async fn reply_ideas(
     thread: ThreadId,
     forward: bool,
 ) -> Result<(Vec<String>, Answer)> {
+    // Saved ones while the conversation hasn't changed: instant.
+    let saved = summaries::current_ideas(&db.conn(), thread, forward)?;
+    if let Some(ideas) = saved {
+        return Ok((ideas, Answer::default()));
+    }
     let text = read_thread(db, gmail, thread).await?;
     let prompt = prompts::reply_ideas(&text, forward, provider);
     let answer = ask_recorded(
@@ -230,5 +235,9 @@ pub async fn reply_ideas(
         &|_| {},
     )
     .await?;
-    Ok((prompts::parse_ideas(&answer.text), answer))
+    let ideas = prompts::parse_ideas(&answer.text);
+    if !ideas.is_empty() {
+        summaries::store_ideas(&db.conn(), thread, forward, &ideas)?;
+    }
+    Ok((ideas, answer))
 }

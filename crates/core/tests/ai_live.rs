@@ -5,10 +5,20 @@
 
 use mailboat_core::ai::{self, AiProvider, Programs, Prompt, Quality};
 
+/// As the app sets them up: Codex's fast model from its own catalog.
 fn programs() -> Programs {
     let helper =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/debug/mailboat-ai");
-    Programs::find(Some(helper))
+    let mut programs = Programs::find(Some(helper));
+    if let Some(codex) = programs.codex.clone() {
+        let catalog = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(ai::codex::models(&codex))
+        })
+        .unwrap_or_default();
+        programs.codex_models.fast = ai::codex::fast_model(&catalog);
+        println!("Codex fast model: {:?}", programs.codex_models.fast);
+    }
+    programs
 }
 
 async fn check(provider: AiProvider) {
@@ -31,19 +41,19 @@ async fn check(provider: AiProvider) {
     assert!(!answer.text.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn apple_answers() {
     check(AiProvider::Apple).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn claude_answers() {
     check(AiProvider::Claude).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn chatgpt_answers() {
     check(AiProvider::ChatGpt).await;
@@ -92,19 +102,19 @@ and a small table of who brings what (budget: me, slides: Sam). Bold the time."
     assert!(!answer.text.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn apple_writes() {
     write_with(AiProvider::Apple).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn claude_writes() {
     write_with(AiProvider::Claude).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn chatgpt_writes() {
     write_with(AiProvider::ChatGpt).await;
@@ -143,19 +153,19 @@ async fn ideas_for(provider: AiProvider, email: &str) {
     assert!(!ideas.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn apple_ideas() {
     ideas_with(AiProvider::Apple).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn claude_ideas() {
     ideas_with(AiProvider::Claude).await;
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn chatgpt_ideas() {
     ideas_with(AiProvider::ChatGpt).await;

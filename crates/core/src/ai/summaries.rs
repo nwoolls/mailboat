@@ -129,8 +129,50 @@ pub fn in_spam_or_trash(conn: &Connection, thread: ThreadId) -> Result<bool> {
     )?)
 }
 
-/// Removes every cached summary (Settings → AI → Clear).
+/// Removes every cached summary and suggestion (Settings → AI → Clear).
 pub fn clear(conn: &Connection) -> Result<()> {
     conn.execute("DELETE FROM ai_summaries", [])?;
+    conn.execute("DELETE FROM ai_reply_ideas", [])?;
+    Ok(())
+}
+
+/// The writing assistant's saved chips for a conversation, if they still
+/// cover its newest message.
+pub fn current_ideas(
+    conn: &Connection,
+    thread: ThreadId,
+    forward: bool,
+) -> Result<Option<Vec<String>>> {
+    let Some(newest) = newest_message(conn, thread)? else {
+        return Ok(None);
+    };
+    let json: Option<String> = conn
+        .query_row(
+            "SELECT ideas FROM ai_reply_ideas
+             WHERE thread_id = ?1 AND forward = ?2 AND newest_message_id = ?3",
+            params![thread, forward, newest],
+            |r| r.get(0),
+        )
+        .optional()?;
+    Ok(json.and_then(|j| serde_json::from_str(&j).ok()))
+}
+
+pub fn store_ideas(
+    conn: &Connection,
+    thread: ThreadId,
+    forward: bool,
+    ideas: &[String],
+) -> Result<()> {
+    let Some(newest) = newest_message(conn, thread)? else {
+        return Ok(());
+    };
+    conn.execute(
+        "INSERT INTO ai_reply_ideas (account_id, thread_id, forward, newest_message_id, ideas, created_at)
+         SELECT account_id, id, ?2, ?3, ?4, ?5 FROM threads WHERE id = ?1
+         ON CONFLICT (account_id, thread_id, forward) DO UPDATE SET
+           newest_message_id = excluded.newest_message_id, ideas = excluded.ideas,
+           created_at = excluded.created_at",
+        params![thread, forward, newest, serde_json::to_string(ideas)?, now_millis()],
+    )?;
     Ok(())
 }

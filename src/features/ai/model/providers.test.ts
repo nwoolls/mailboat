@@ -17,6 +17,7 @@ const ai: AiChoices = {
   readerProvider: "apple",
   writingProvider: "apple",
   writingQuality: "best",
+  chatgptModel: null,
 };
 
 describe("providers", () => {
@@ -48,7 +49,8 @@ describe("providers", () => {
 
   it("offers each provider's own model choice for writing", () => {
     expect(qualityChoices("claude")?.map((c) => c.label)).toEqual(["Haiku", "Sonnet", "Opus"]);
-    expect(qualityChoices("chatgpt")?.find((c) => c.value === "strongest")?.label).toBe("Thorough");
+    expect(qualityChoices("chatgpt")).toBeNull();
+    expect(aiChoices(undefined).chatgptModel).toBeNull();
     expect(qualityChoices("apple")).toBeNull();
     expect(aiChoices(undefined).writingQuality).toBe("best");
   });

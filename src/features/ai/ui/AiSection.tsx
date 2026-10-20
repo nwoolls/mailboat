@@ -11,6 +11,7 @@ import {
   useAiDisconnect,
   useAiStatus,
   useAiUsage,
+  useChatgptModels,
   useAppSettings,
   useSaveAppSettings,
 } from "../../../shared/lib/queries";
@@ -167,11 +168,7 @@ export function AiSection() {
         {qualityChoices(ai.writingProvider) && (
           <Row
             label="Model"
-            description={
-              ai.writingProvider === "claude"
-                ? "Haiku is quickest, Opus writes best but uses more of your plan. Summaries always use Haiku."
-                : "How long ChatGPT thinks before writing (Codex’s reasoning effort). Summaries are always quick."
-            }
+            description="Haiku is quickest, Opus writes best but uses more of your plan. Summaries and suggestions always use Haiku."
           >
             <Segmented
               label="Model"
@@ -182,9 +179,59 @@ export function AiSection() {
             />
           </Row>
         )}
+        {ai.writingProvider === "chatgpt" && (
+          <ChatgptModelRow
+            value={ai.chatgptModel}
+            disabled={!settings}
+            onChange={(chatgptModel) => update({ chatgptModel })}
+          />
+        )}
       </Group>
       <UsageGroup />
     </>
+  );
+}
+
+/**
+ * ChatGPT's writing model, from Codex's own list. Summaries and the chips
+ * always use the list's fast model, whatever is chosen here.
+ */
+function ChatgptModelRow({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string | null;
+  disabled: boolean;
+  onChange: (model: string | null) => void;
+}) {
+  const models = useChatgptModels(true).data ?? [];
+  // One chosen before Codex dropped it still shows as chosen.
+  const listed = value && !models.some((m) => m.slug === value);
+  return (
+    <Row
+      label="Model"
+      description={`${
+        models.find((m) => m.slug === value)?.description ??
+        "Whichever model Codex uses by default."
+      } Summaries and suggestions always use Codex’s fast model.`}
+    >
+      <select
+        aria-label="ChatGPT model"
+        value={value ?? "default"}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value === "default" ? null : e.target.value)}
+        className={SELECT_CLASS}
+      >
+        <option value="default">Codex’s default</option>
+        {models.map((m) => (
+          <option key={m.slug} value={m.slug}>
+            {m.name}
+          </option>
+        ))}
+        {listed && <option value={value}>{value}</option>}
+      </select>
+    </Row>
   );
 }
 

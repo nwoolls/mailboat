@@ -88,8 +88,12 @@ pub struct AiSettings {
     pub reader_provider: AiProvider,
     /// Who helps write replies and new mail.
     pub writing_provider: AiProvider,
-    /// Which model writes (Claude) or how hard it thinks (ChatGPT).
+    /// Which Claude model writes (Haiku, Sonnet, Opus); for ChatGPT, how
+    /// hard it thinks (always "best", medium, now that the model is chosen).
     pub writing_quality: Quality,
+    /// Which ChatGPT model writes (a Codex catalog slug); `None` is
+    /// Codex's default.
+    pub chatgpt_model: Option<String>,
 }
 
 impl Default for AiSettings {
@@ -102,6 +106,7 @@ impl Default for AiSettings {
             reader_provider: AiProvider::Apple,
             writing_provider: AiProvider::Apple,
             writing_quality: Quality::Best,
+            chatgpt_model: None,
         }
     }
 }
@@ -173,6 +178,7 @@ mod tests {
                 reader_provider: AiProvider::Claude,
                 writing_provider: AiProvider::ChatGpt,
                 writing_quality: Quality::Strongest,
+                chatgpt_model: Some("gpt-6-astra".into()),
             },
         };
         save(&conn, &off).unwrap();

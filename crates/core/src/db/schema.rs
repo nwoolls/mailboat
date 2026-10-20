@@ -341,3 +341,21 @@ CREATE TABLE ai_usage (
 );
 CREATE INDEX ai_usage_by_time ON ai_usage (at);
 "#;
+
+/// The writing assistant's suggestion chips per conversation (AI Spike),
+/// kept like summaries: current while the conversation's newest message is
+/// still `newest_message_id`. `forward` separates a forward's chips from a
+/// reply's. `ideas` is a JSON array of strings.
+pub const MIGRATION_V16: &str = r#"
+CREATE TABLE ai_reply_ideas (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL,
+  thread_id INTEGER NOT NULL,
+  forward INTEGER NOT NULL,
+  newest_message_id INTEGER NOT NULL,
+  ideas TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  UNIQUE (account_id, thread_id, forward),
+  FOREIGN KEY (account_id, thread_id) REFERENCES threads (account_id, id) ON DELETE CASCADE
+);
+"#;

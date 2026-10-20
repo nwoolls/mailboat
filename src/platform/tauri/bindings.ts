@@ -283,6 +283,8 @@ export const commands = {
 	 *  being answered or forwarded (with the writing provider).
 	 */
 	aiReplyIdeas: (threadId: ThreadId, forward: boolean, requestId: number) => typedError<string[], AppError>(__TAURI_INVOKE("ai_reply_ideas", { threadId, forward, requestId })),
+	/**  The ChatGPT models Codex offers, for Settings → AI (read afresh). */
+	aiChatgptModels: () => typedError<CodexModel[], AppError>(__TAURI_INVOKE("ai_chatgpt_models")),
 	aiCancel: (requestId: number) => __TAURI_INVOKE<void>("ai_cancel", { requestId }),
 	/**
 	 *  Requests, tokens and cost per provider. `today_start` is local
@@ -382,8 +384,16 @@ export type AiSettings = {
 	readerProvider?: AiProvider,
 	/**  Who helps write replies and new mail. */
 	writingProvider?: AiProvider,
-	/**  Which model writes (Claude) or how hard it thinks (ChatGPT). */
+	/**
+	 *  Which Claude model writes (Haiku, Sonnet, Opus); for ChatGPT, how
+	 *  hard it thinks (always "best", medium, now that the model is chosen).
+	 */
 	writingQuality?: Quality,
+	/**
+	 *  Which ChatGPT model writes (a Codex catalog slug); `None` is
+	 *  Codex's default.
+	 */
+	chatgptModel?: string | null,
 };
 
 /**  Part of an answer as it's written: the whole text so far. */
@@ -534,6 +544,16 @@ export type Clash = {
 	title: string | null,
 	start: Moment,
 	end: Moment | null,
+};
+
+/**  One model from Codex's catalog, as offered in Settings → AI. */
+export type CodexModel = {
+	/**  What Codex calls it (`-m`), e.g. "gpt-6-luna". */
+	slug: string,
+	/**  e.g. "GPT-6-Luna". */
+	name: string,
+	/**  e.g. "Fast and affordable model for easier tasks." */
+	description: string,
 };
 
 /**  Someone compose can suggest, best first in [`all`]. */
