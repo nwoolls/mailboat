@@ -165,6 +165,27 @@ html.resizing iframe {
 .message-notice-strong {
   background: color-mix(in srgb, var(--color-content) 8%, transparent);
 }
+/* The white card for emails that can't sit on the glass. In dark mode it
+   is dimmed a little and its edge softened, so a bright white block
+   doesn't glare against the dark glass; light mode shows it as is. */
+.email-card {
+  background: #fff;
+  border-radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  .email-card {
+    filter: brightness(0.9);
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.06),
+      0 1px 3px rgb(0 0 0 / 0.25);
+  }
+}
+@media (prefers-color-scheme: light) {
+  .email-card {
+    box-shadow: 0 0 0 1px var(--color-stroke);
+  }
+}
+
 /* "Original colors" over an email: solid enough to read over the email
    itself, including the white card in dark mode. */
 .email-colors-switch {

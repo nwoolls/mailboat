@@ -1314,6 +1314,12 @@ settled with the owner one at a time, as in the earlier spikes.*
       ones already on the white card don't offer it. Not in ⌘K yet; say
       if wanted*
 - [ ] Softer look for the remaining white cards on the glass
+      *First try built (2026-10-20), waiting for the owner's eye: in dark
+      mode the white card is dimmed to 90% brightness (images too) with a
+      faint light edge and a small shadow instead of the grey ring, and
+      rounded like the message cards (10px). Light mode is unchanged
+      apart from the rounding. After step 2 only a small share of emails still use the card, plus any switched to "Original colors". Numbers are
+      in `.email-card` in `src/styles/index.css`*
 - [ ] A setting to switch the default back to "blocked"
       *Built (2026-10-20), waiting for the owner to try it: Settings →
       Viewing → Privacy → Remote images, "Block until I allow a sender".

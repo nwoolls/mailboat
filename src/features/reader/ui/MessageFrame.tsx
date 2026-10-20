@@ -204,9 +204,7 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
           // Adaptive emails (plain text, inline colors) sit straight on the
           // glass with colors remapped for dark mode in Rust; emails with
           // their own style sheet keep a white card.
-          className={`frame-reveal block w-full ${
-            m.adaptive ? "bg-transparent" : "rounded-lg bg-white ring-1 ring-stroke"
-          }`}
+          className={`frame-reveal block w-full ${m.adaptive ? "bg-transparent" : "email-card"}`}
           style={{ height, opacity: ready ? 1 : 0 }}
         />
       </div>
