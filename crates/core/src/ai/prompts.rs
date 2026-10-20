@@ -90,11 +90,15 @@ pub fn write(ctx: &WritingContext, chat: &[ChatTurn], provider: AiProvider) -> P
 friendly, concise style that matches how they write in the conversation if they have. \
 Answer with the email text only: no explanations, no notes, no markdown, no placeholders in \
 brackets unless something essential is unknown. Start with a greeting only if one fits. \
-Don't add a signature or sign-off name block: Mailboat adds their signature. \
+End with a short sign-off{sign_as}, but no signature block (theirs is added automatically). \
+When replying, address everything the newest message asks for. \
 {subject_rule}\
 When asked to change a draft, rewrite the whole email with the change. {UNTRUSTED}",
         writer = if ctx.writer.is_empty() { "the user" } else { &ctx.writer },
         kind = ctx.kind,
+        sign_as = first_name(&ctx.writer)
+            .map(|n| format!(" and the name \"{n}\""))
+            .unwrap_or_default(),
         subject_rule = if new_message {
             "If there's no subject yet, put \"Subject: …\" alone on the first line, then a blank line, then the email. "
         } else {
@@ -158,14 +162,33 @@ When asked to change a draft, rewrite the whole email with the change. {UNTRUSTE
     }
 }
 
+/// The first word of "Jordan Lee <n@x.com>" ("Jordan"); none for a bare
+/// address.
+fn first_name(writer: &str) -> Option<String> {
+    let name = writer.split('<').next()?.trim().trim_matches('"');
+    if name.is_empty() || name.contains('@') {
+        return None;
+    }
+    name.split_whitespace().next().map(String::from)
+}
+
 /// Splits a leading "Subject: …" line (new messages) from the body.
+/// Lines keep no trailing spaces (Markdown's line-break habit).
 pub fn split_subject(answer: &str) -> (Option<String>, String) {
+    let tidy = |s: &str| {
+        s.lines()
+            .map(str::trim_end)
+            .collect::<Vec<_>>()
+            .join("\n")
+            .trim()
+            .to_string()
+    };
     let trimmed = answer.trim_start();
     if let Some(rest) = trimmed.strip_prefix("Subject:") {
         let (line, body) = rest.split_once('\n').unwrap_or((rest, ""));
-        return (Some(line.trim().to_string()), body.trim().to_string());
+        return (Some(line.trim().to_string()), tidy(body));
     }
-    (None, answer.trim().to_string())
+    (None, tidy(answer))
 }
 
 /// Tidies a one-line summary: one line, no quotes or "Summary:" label.
@@ -275,6 +298,24 @@ mod tests {
             (Some("Lunch?".into()), "Hi Sam,\nLunch Thursday?".into())
         );
         assert_eq!(split_subject("Hi Sam"), (None, "Hi Sam".into()));
+        assert_eq!(
+            split_subject("Thanks,  \nJordan"),
+            (None, "Thanks,\nJordan".into())
+        );
+    }
+
+    #[test]
+    fn signs_off_with_the_writers_first_name() {
+        assert_eq!(first_name("Jordan Lee <n@x.com>"), Some("Jordan".into()));
+        assert_eq!(first_name("\"Sam\" <s@x.com>"), Some("Sam".into()));
+        assert_eq!(first_name("n@x.com"), None);
+        let ctx = WritingContext {
+            writer: "Jordan Lee <n@x.com>".into(),
+            ..Default::default()
+        };
+        assert!(write(&ctx, &[], AiProvider::Apple)
+            .instructions
+            .contains("the name \"Jordan\""));
     }
 
     #[test]

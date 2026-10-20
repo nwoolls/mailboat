@@ -522,7 +522,10 @@ pub fn run_line_queue(app: AppHandle) {
                 }
                 Ok(Summarized::NotNeeded) => {}
                 Err(e) => {
-                    failures += 1;
+                    // A refusal is about that email; the provider still works.
+                    if !is_refusal(&e) {
+                        failures += 1;
+                    }
                     state.sync_log.write(
                         account,
                         &format!("AI list summary failed ({}): {e}", provider.as_str()),
@@ -540,9 +543,26 @@ pub fn run_line_queue(app: AppHandle) {
     });
 }
 
+/// The model declined this email (Apple's guardrails), rather than the
+/// provider being off or signed out.
+fn is_refusal(e: &CoreError) -> bool {
+    let m = e.to_string().to_lowercase();
+    m.contains("guardrail") || m.contains("declined")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn refusals_are_told_apart_from_a_provider_being_down() {
+        assert!(is_refusal(&CoreError::Ai(
+            "The model's safety guardrails were triggered.".into()
+        )));
+        assert!(!is_refusal(&CoreError::Ai(
+            "Turn on Apple Intelligence in System Settings.".into()
+        )));
+    }
 
     #[test]
     fn the_newest_requests_go_first_and_failures_are_skipped() {

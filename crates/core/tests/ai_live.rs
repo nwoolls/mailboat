@@ -48,3 +48,57 @@ async fn claude_answers() {
 async fn chatgpt_answers() {
     check(AiProvider::ChatGpt).await;
 }
+
+async fn write_with(provider: AiProvider) {
+    use mailboat_core::ai::context::{ContextMessage, ThreadText};
+    use mailboat_core::ai::prompts::{self, ChatRole, ChatTurn, WritingContext};
+    use mailboat_core::model::{Address, MessageId};
+    let thread = ThreadText {
+        subject: "Quarterly review".into(),
+        messages: vec![ContextMessage {
+            id: MessageId(1),
+            from: Address { name: Some("Sam Lee".into()), email: "sam@example.com".into() },
+            to: vec![Address { name: Some("Jordan".into()), email: "jordan@example.com".into() }],
+            date: 1_792_000_000_000,
+            mine: false,
+            text: "Hi Jordan, the quarterly review moved to Thursday 3pm in room 4B. Can you bring the budget numbers? Thanks, Sam".into(),
+        }],
+        missing_bodies: vec![],
+    };
+    let ctx = WritingContext {
+        thread: Some(thread),
+        writer: "Jordan <jordan@example.com>".into(),
+        kind: "reply".into(),
+        to: "Sam Lee <sam@example.com>".into(),
+        subject: "Re: Quarterly review".into(),
+        draft: String::new(),
+    };
+    let chat = vec![ChatTurn {
+        role: ChatRole::User,
+        text: "Say yes, but I'll be 10 minutes late".into(),
+    }];
+    let prompt = prompts::write(&ctx, &chat, provider);
+    let answer = ai::ask(&programs(), provider, &prompt, &|_| {})
+        .await
+        .unwrap();
+    println!("--- {provider:?} wrote:\n{}\n", answer.text);
+    assert!(!answer.text.is_empty());
+}
+
+#[tokio::test]
+#[ignore]
+async fn apple_writes() {
+    write_with(AiProvider::Apple).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn claude_writes() {
+    write_with(AiProvider::Claude).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn chatgpt_writes() {
+    write_with(AiProvider::ChatGpt).await;
+}
