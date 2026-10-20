@@ -98,6 +98,7 @@ import {
   useCardSpot,
   useComposeActions,
   useComposeState,
+  minimizeOpenCard,
 } from "../features/compose/ui/useCompose";
 import { useFeatureFlags } from "../shared/lib/featureFlags";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
@@ -227,6 +228,12 @@ export function Shell() {
     const unlisten = events.openSettingsEvent.listen(openSettings);
     return () => void unlisten.then((fn) => fn());
   }, [openSettings]);
+  // Settings covers the mail, so a message being written folds into its
+  // tab at the bottom rather than floating over the Settings page.
+  const settingsOpen = settings !== null;
+  useEffect(() => {
+    if (settingsOpen) minimizeOpenCard();
+  }, [settingsOpen]);
   // When `g` was pressed, for Gmail's "go to" keys (0: not waiting).
   const goPending = useRef(0);
   const goTo = useCallback((s: Selection) => {

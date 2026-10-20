@@ -256,6 +256,12 @@ export function minimizeCard(id: number) {
   set(S.minimize(state, id));
 }
 
+/** Minimises the floating card, if one is open (e.g. Settings opened). */
+export function minimizeOpenCard() {
+  const open = S.openCardEntry(state);
+  if (open) minimizeCard(open.draft.id);
+}
+
 export function expandCard(id: number) {
   set(S.expand(state, id));
 }
