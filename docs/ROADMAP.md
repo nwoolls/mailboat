@@ -1483,8 +1483,11 @@ built, tested and waiting for the owner to try.*
         its prompt asks for four kinds of response (agree, decline, ask,
         suggest) with no examples, after the email. Checked live on two
         emails with all three providers
-- Ideas not built: AI actions in ⌘K (summarize, reply with AI), a
-  "Reply with AI" button on the reply bar, per-provider model choice
+      - "Reply with AI" on the reply bar (after Forward, while the
+        writing provider is ready): starts a Reply with the AI panel
+        open. A plain Reply rather than Reply all, so nobody extra is
+        emailed by default; the reply's kind menu switches it
+- Ideas not built: AI actions in ⌘K (summarize, reply with AI), per-provider model choice
   (today Claude uses Haiku for summaries and Sonnet for writing; Codex
   its default model), AI search ("find the invoice from…")
 - [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with

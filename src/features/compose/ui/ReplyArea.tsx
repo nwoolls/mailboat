@@ -1,5 +1,6 @@
 import type { Account, Identity, ThreadDetail } from "../../../platform/tauri/bindings";
 import {
+  AiIcon,
   ForwardIcon,
   type IconProps,
   PopOutIcon,
@@ -9,7 +10,9 @@ import {
 import { type ComposeEntry, poppedReplyIn, replyIn } from "../model/composeState";
 import { canSwitchKind, editorKey } from "../model/draft";
 import { ComposeForm, KIND_LABELS, type ReplyKind } from "./ComposeForm";
-import { useAssistantOpen } from "../../ai/ui/assistantOpen";
+import { openAssistantForNextReply, useAssistantOpen } from "../../ai/ui/assistantOpen";
+import { aiChoices, isReady } from "../../ai/model/providers";
+import { useAiStatus, useAppSettings } from "../../../shared/lib/queries";
 import { useEffect, useRef, useState } from "react";
 import { useStuck } from "../../../shared/ui/useStuck";
 import type { MessageId } from "../../../platform/tauri/bindings";
@@ -69,6 +72,8 @@ export function ReplyArea({
       : null;
   const asked = useRef<MessageId | null>(null);
   const [failed, setFailed] = useState<MessageId | null>(null);
+  const settings = useAppSettings().data;
+  const aiStatus = useAiStatus().data;
   // The writing assistant (⌘J), above the reply; kept per message, so it
   // stays open when the reply pops out into the card and back.
   const [assistant, setAssistant] = useAssistantOpen(reply?.draft ?? NO_DRAFT);
@@ -132,6 +137,11 @@ export function ReplyArea({
     );
   if (resumeId !== null && failed !== resumeId)
     return <div className="px-4 pt-3 pb-4 text-xs text-content/45">Opening your draft…</div>;
+  // Offered while the writing provider (Settings → AI) is ready.
+  const writing = aiChoices(settings).writingProvider;
+  const aiReady =
+    isReady(aiStatus, writing) &&
+    (writing === "apple" || aiChoices(settings).connected.includes(writing));
   // Reply all only when there's someone else to include.
   const last = detail.messages.findLast((m) => !m.draft);
   const several = last ? last.to.length + last.cc.length > 1 : false;
@@ -152,6 +162,18 @@ export function ReplyArea({
         shortcut="f"
         onClick={() => onStart("forward")}
       />
+      {aiReady && (
+        // A plain Reply with the writing assistant open (its kind menu
+        // turns it into Reply all), so nobody extra is emailed by default.
+        <ReplyButton
+          icon={AiIcon}
+          label="Reply with AI"
+          onClick={() => {
+            openAssistantForNextReply(detail.thread.id);
+            onStart("reply");
+          }}
+        />
+      )}
     </PinnedFoot>
   );
 }
@@ -182,13 +204,13 @@ function ReplyButton({
 }: {
   icon: (props: IconProps) => React.ReactNode;
   label: string;
-  shortcut: string;
+  shortcut?: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      title={`${label} (${shortcut})`}
+      title={shortcut ? `${label} (${shortcut})` : label}
       onClick={onClick}
       className="flex h-8 items-center gap-1.5 rounded-lg px-3 text-[13px] text-content/75 ring-1 ring-stroke ring-inset hover:bg-selection hover:text-content"
     >
