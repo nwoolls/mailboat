@@ -4,6 +4,7 @@ import { ClearIcon, MinimizeIcon } from "../../../shared/ui/icons";
 import { editorKey, hasChanges } from "../model/draft";
 import type { ComposeEntry } from "../model/composeState";
 import { ComposeForm } from "./ComposeForm";
+import { useAssistantOpen } from "../../ai/ui/assistantOpen";
 import { cardSize, nearestSpot, type Point, spotPosition } from "../model/snap";
 import {
   closeDraft,
@@ -37,7 +38,8 @@ export function ComposeCard({
   const account = accounts.find((a) => a.id === draft.accountId);
   const viewport = useViewport();
   // The writing assistant (⌘J) opens beside the form, widening the card.
-  const [assistant, setAssistant] = useState(false);
+  // Kept per message, so it's still open after minimising and restoring.
+  const [assistant, setAssistant] = useAssistantOpen(draft);
   const size = cardSize(viewport, assistant);
   const rest = spotPosition(useCardSpot(), viewport, size);
   // Where it is while being dragged (null: resting at its spot).

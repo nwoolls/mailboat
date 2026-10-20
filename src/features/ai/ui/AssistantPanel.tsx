@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { forgetAssistant } from "./assistantOpen";
 import { commands } from "../../../platform/tauri/bindings";
 import { IpcError, unwrap } from "../../../platform/tauri/ipc";
 import { useAiStatus, useAppSettings, useSaveAppSettings } from "../../../shared/lib/queries";
@@ -19,6 +20,7 @@ const chats = new Map<number, ChatMessage[]>();
 
 export function forgetChat(draftId: number) {
   chats.delete(draftId);
+  forgetAssistant({ id: draftId, threadId: null });
 }
 
 /**

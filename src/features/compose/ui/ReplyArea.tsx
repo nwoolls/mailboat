@@ -9,6 +9,7 @@ import {
 import { type ComposeEntry, poppedReplyIn, replyIn } from "../model/composeState";
 import { canSwitchKind, editorKey } from "../model/draft";
 import { ComposeForm, KIND_LABELS, type ReplyKind } from "./ComposeForm";
+import { useAssistantOpen } from "../../ai/ui/assistantOpen";
 import { useEffect, useRef, useState } from "react";
 import { useStuck } from "../../../shared/ui/useStuck";
 import type { MessageId } from "../../../platform/tauri/bindings";
@@ -21,6 +22,9 @@ import {
   updateDraft,
   useComposeState,
 } from "./useCompose";
+
+/** Stands in while there's no reply (hooks can't be skipped). */
+const NO_DRAFT = { id: -1, kind: "new", threadId: null } as const;
 
 /**
  * The foot of a conversation: Reply / Reply all / Forward, or the reply
@@ -65,8 +69,9 @@ export function ReplyArea({
       : null;
   const asked = useRef<MessageId | null>(null);
   const [failed, setFailed] = useState<MessageId | null>(null);
-  // The writing assistant (⌘J), above the reply.
-  const [assistant, setAssistant] = useState(false);
+  // The writing assistant (⌘J), above the reply; kept per message, so it
+  // stays open when the reply pops out into the card and back.
+  const [assistant, setAssistant] = useAssistantOpen(reply?.draft ?? NO_DRAFT);
   useEffect(() => {
     if (resumeId === null || asked.current === resumeId) return;
     asked.current = resumeId;
