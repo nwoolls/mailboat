@@ -2,6 +2,7 @@ mod app_icon;
 mod badge;
 mod commands;
 mod dock;
+mod email_menu;
 mod error;
 mod events;
 mod files;
@@ -59,6 +60,11 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::attachment_preview,
             commands::attachment_save,
             commands::attachment_reveal,
+            commands::email_image_save,
+            commands::email_image_copy,
+            commands::email_link_open,
+            commands::email_link_copy,
+            commands::download_reveal,
             commands::identities_list,
             commands::contacts_list,
             commands::reply_source,
@@ -102,7 +108,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             AccountsChangedEvent,
             MailtoEvent,
             MenuCommandEvent,
-            trackpad::TrackpadEvent
+            trackpad::TrackpadEvent,
+            email_menu::EmailMenuEvent
         ])
         // IDs and millisecond timestamps stay far below 2^53, so plain JS
         // numbers are exact.
@@ -148,6 +155,7 @@ pub fn run() {
             builder.mount_events(app);
             menu::install(app.handle())?;
             trackpad::watch(app.handle());
+            email_menu::install(app.handle());
             let data_dir = app.path().app_data_dir()?;
             let config_dir = app.path().app_config_dir()?;
             let db = Arc::new(Db::open(&data_dir.join("mailboat.sqlite3"))?);

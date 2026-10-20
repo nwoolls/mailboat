@@ -7,6 +7,7 @@ pub mod links;
 pub mod mailto;
 pub mod notify;
 pub mod sanitize;
+pub mod saved_image;
 
 use std::collections::HashMap;
 

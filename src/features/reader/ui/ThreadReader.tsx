@@ -14,6 +14,7 @@ import { MARK_READ_DELAY_MS, inOrder } from "../../mailbox/model/viewingPrefs";
 import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import { wholePixelSlack } from "../model/pixelSnap";
 import { useTextZoom } from "../../settings/ui/textSize";
+import { EmailContextMenu } from "./EmailContextMenu";
 import { MessageFrame } from "./MessageFrame";
 
 /**
@@ -230,6 +231,7 @@ function ThreadBody({
         </div>
         {renderFooter?.(data)}
       </div>
+      <EmailContextMenu />
     </article>
   );
 }

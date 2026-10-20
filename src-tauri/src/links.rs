@@ -10,8 +10,7 @@ use tauri::AppHandle;
 /// to keep showing the email.
 pub fn handle(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     let status = match mailboat_core::mail::links::unwrap(&request.uri().to_string()) {
-        Some(url) if crate::mail_handler::open(app, &url) => 204,
-        Some(url) => match open::that_detached(&url) {
+        Some(url) => match open(app, &url) {
             Ok(()) => 204,
             Err(e) => {
                 eprintln!("could not open link: {e}");
@@ -24,4 +23,13 @@ pub fn handle(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> 
         .status(status)
         .body(Vec::new())
         .unwrap_or_default()
+}
+
+/// Opens an email's link: a `mailto:` link as a new message here, any
+/// other in the default browser.
+pub fn open(app: &AppHandle, url: &str) -> std::io::Result<()> {
+    if crate::mail_handler::open(app, url) {
+        return Ok(());
+    }
+    open::that_detached(url)
 }

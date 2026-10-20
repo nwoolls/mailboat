@@ -1153,6 +1153,11 @@ ticked.*
       make that item work (Tauri's download hook, saving to Downloads as
       attachments do), or replace the web view's menu over emails with
       Mailboat's own (Save image, Copy image, Copy link)
+      *Owner chose Mailboat's own menu (2026-10-19). Built, waiting for the
+      owner to try it: right-clicking an image or link in an email shows
+      Save Image (to Downloads, with Show in Finder), Copy Image, Open
+      Link and Copy Link; over text the system menu stays. macOS only;
+      Windows comes with the Windows work*
 
 - [ ] "Load older mail" can ask Gmail again and again for an empty view.
       `threads_load_older` (src-tauri/src/commands.rs) answers "not

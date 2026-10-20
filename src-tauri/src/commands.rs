@@ -633,6 +633,70 @@ pub fn attachment_reveal(state: State<'_, AppState>, attachment_id: AttachmentId
     Ok(files::reveal(&path)?)
 }
 
+/// Saves an image from an email (its right-click menu) to Downloads
+/// ("logo (1).png" if the name is taken) and returns the file name it got.
+/// `src` is the image's address as the email shows it: a `data:` URL or a
+/// web address (fetched again; it has already loaded on screen).
+#[tauri::command]
+#[specta::specta]
+pub async fn email_image_save(state: State<'_, AppState>, src: String) -> CmdResult<String> {
+    let downloads = state
+        .downloads_dir
+        .clone()
+        .ok_or_else(|| CoreError::Config("couldn't find the Downloads folder".into()))?;
+    let image = mailboat_core::mail::saved_image::load(&state.http, &src).await?;
+    let target = attachments::unique_path(&downloads, &image.filename);
+    std::fs::write(&target, &image.bytes)
+        .map_err(|e| CoreError::Other(format!("could not save to Downloads: {e}")))?;
+    files::quarantine(&target);
+    Ok(target
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or(image.filename))
+}
+
+/// Shows a file saved to Downloads (by `email_image_save`) in Finder.
+#[tauri::command]
+#[specta::specta]
+pub fn download_reveal(state: State<'_, AppState>, file_name: String) -> CmdResult<()> {
+    let downloads = state
+        .downloads_dir
+        .clone()
+        .ok_or_else(|| CoreError::Config("couldn't find the Downloads folder".into()))?;
+    // Only a name in Downloads, never a path elsewhere.
+    let path = downloads.join(attachments::safe_filename(&file_name));
+    Ok(files::reveal(&path)?)
+}
+
+/// Puts an image from an email on the clipboard.
+#[tauri::command]
+#[specta::specta]
+pub async fn email_image_copy(state: State<'_, AppState>, src: String) -> CmdResult<()> {
+    let image = mailboat_core::mail::saved_image::load(&state.http, &src).await?;
+    Ok(crate::email_menu::copy_image(&image.bytes).map_err(CoreError::Other)?)
+}
+
+/// Opens a link from an email (its `mailboat-link:` address, as the email
+/// shows it), as clicking it would.
+#[tauri::command]
+#[specta::specta]
+pub fn email_link_open(app: AppHandle, link: String) -> CmdResult<()> {
+    let url = mailboat_core::mail::links::unwrap(&link)
+        .ok_or_else(|| CoreError::Invalid("not a link Mailboat can open".into()))?;
+    crate::links::open(&app, &url)
+        .map_err(|e| CoreError::Other(format!("could not open the link: {e}")))?;
+    Ok(())
+}
+
+/// Puts the real address of a link from an email on the clipboard.
+#[tauri::command]
+#[specta::specta]
+pub fn email_link_copy(link: String) -> CmdResult<()> {
+    let url = mailboat_core::mail::links::unwrap(&link)
+        .ok_or_else(|| CoreError::Invalid("not a link Mailboat can copy".into()))?;
+    Ok(crate::email_menu::copy_text(&url).map_err(CoreError::Other)?)
+}
+
 /// Remembers to load (`allow`) or block remote images from this sender, in
 /// every account. Spam stays blocked regardless.
 #[tauri::command]

@@ -91,6 +91,24 @@ export const commands = {
 	/**  Shows a saved attachment in Finder. */
 	attachmentReveal: (attachmentId: AttachmentId) => typedError<null, AppError>(__TAURI_INVOKE("attachment_reveal", { attachmentId })),
 	/**
+	 *  Saves an image from an email (its right-click menu) to Downloads
+	 *  ("logo (1).png" if the name is taken) and returns the file name it got.
+	 *  `src` is the image's address as the email shows it: a `data:` URL or a
+	 *  web address (fetched again; it has already loaded on screen).
+	 */
+	emailImageSave: (src: string) => typedError<string, AppError>(__TAURI_INVOKE("email_image_save", { src })),
+	/**  Puts an image from an email on the clipboard. */
+	emailImageCopy: (src: string) => typedError<null, AppError>(__TAURI_INVOKE("email_image_copy", { src })),
+	/**
+	 *  Opens a link from an email (its `mailboat-link:` address, as the email
+	 *  shows it), as clicking it would.
+	 */
+	emailLinkOpen: (link: string) => typedError<null, AppError>(__TAURI_INVOKE("email_link_open", { link })),
+	/**  Puts the real address of a link from an email on the clipboard. */
+	emailLinkCopy: (link: string) => typedError<null, AppError>(__TAURI_INVOKE("email_link_copy", { link })),
+	/**  Shows a file saved to Downloads (by `email_image_save`) in Finder. */
+	downloadReveal: (fileName: string) => typedError<null, AppError>(__TAURI_INVOKE("download_reveal", { fileName })),
+	/**
 	 *  Every address mail can be sent from: each account and its Gmail "Send
 	 *  mail as" aliases (read by sync; `IdentitiesChangedEvent` says when).
 	 */
@@ -222,6 +240,7 @@ export const commands = {
 /** Events */
 export const events = {
 	accountsChangedEvent: makeEvent<AccountsChangedEvent>("accounts-changed-event"),
+	emailMenuEvent: makeEvent<EmailMenuEvent>("email-menu-event"),
 	identitiesChangedEvent: makeEvent<IdentitiesChangedEvent>("identities-changed-event"),
 	mailChangedEvent: makeEvent<MailChangedEvent>("mail-changed-event"),
 	mailtoEvent: makeEvent<MailtoEvent>("mailto-event"),
@@ -445,6 +464,17 @@ export type DockBadge_Serialize = "inbox" |
 "unread" | "off";
 
 export type DraftId = number;
+
+/**
+ *  A right-click on an image or link inside an email, at `x`, `y` in the
+ *  window's page coordinates. `image` / `link`: what WebKit found there.
+ */
+export type EmailMenuEvent = {
+	x: number | null,
+	y: number | null,
+	image: boolean,
+	link: boolean,
+};
 
 /**  An account's From addresses (Gmail "Send mail as") changed. */
 export type IdentitiesChangedEvent = {
