@@ -165,6 +165,14 @@ html.resizing iframe {
 .message-notice-strong {
   background: color-mix(in srgb, var(--color-content) 8%, transparent);
 }
+/* "Original colors" over an email: solid enough to read over the email
+   itself, including the white card in dark mode. */
+.email-colors-switch {
+  background: var(--color-background-raised);
+  box-shadow:
+    0 0 0 1px var(--color-stroke),
+    0 2px 6px rgb(0 0 0 / 0.18);
+}
 
 /* The thin arc around an account avatar during a long sync. */
 .sync-ring {

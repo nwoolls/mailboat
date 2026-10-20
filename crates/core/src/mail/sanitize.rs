@@ -38,6 +38,10 @@ pub struct SafeMessage {
     /// mode. False for emails with their own style sheet or that ask for
     /// light only: those keep a white card.
     pub adaptive: bool,
+    /// An HTML email that can sit on the glass with adapted colors (whether
+    /// or not it does now), so the reader can offer its original colors on
+    /// the white card, and back. False for plain text, which has none.
+    pub recolorable: bool,
 }
 
 /// Hosts (or host suffixes) that only serve open-tracking pixels.
@@ -231,7 +235,20 @@ pub fn sanitize_html_with(
     allow_images: bool,
     inline_images: &HashMap<String, String>,
 ) -> SafeMessage {
-    let adaptive = can_adapt(html);
+    sanitize_html_colors(html, allow_images, inline_images, false)
+}
+
+/// Like `sanitize_html_with`; `original_colors` keeps an email that could
+/// be adapted on the white card with its own colors (the reader's
+/// "Original colors", for emails the remap gets wrong).
+pub fn sanitize_html_colors(
+    html: &str,
+    allow_images: bool,
+    inline_images: &HashMap<String, String>,
+    original_colors: bool,
+) -> SafeMessage {
+    let recolorable = can_adapt(html);
+    let adaptive = recolorable && !original_colors;
     let cleaned = ammonia_builder().clean(html).to_string();
     let blocked = Cell::new(0u32);
     let loaded = Cell::new(0u32);
@@ -347,6 +364,7 @@ pub fn sanitize_html_with(
         loaded_images: loaded.get(),
         trackers_removed: trackers.get(),
         adaptive,
+        recolorable,
     }
 }
 
@@ -556,6 +574,7 @@ pub fn text_document(text: &str) -> SafeMessage {
         loaded_images: 0,
         trackers_removed: 0,
         adaptive: true,
+        recolorable: false,
     }
 }
 
@@ -794,6 +813,21 @@ mod tests {
         assert!(doc.contains(r##"style="background-color:#b8aef2;color:#fff">"##));
         // Light mode keeps the email's own colors inline.
         assert!(doc.contains("color:#24292f"));
+    }
+
+    #[test]
+    fn original_colors_puts_an_adaptable_email_on_the_white_card() {
+        let html = r##"<td style="color:#24292f;background:#ffffff">Hi</td>"##;
+        let adapted = sanitize_html_colors(html, false, &HashMap::new(), false);
+        assert!(adapted.adaptive && adapted.recolorable);
+        let original = sanitize_html_colors(html, false, &HashMap::new(), true);
+        assert!(!original.adaptive, "white card");
+        assert!(original.recolorable, "so the reader can switch back");
+        assert!(!original.document.contains("data-mc="));
+        assert!(original.document.contains("background:#fff"));
+        // Emails that can't adapt, and plain text, offer no switch.
+        assert!(!sanitize_html("<style>p{color:red}</style><p>Hi</p>", false).recolorable);
+        assert!(!text_document("hi").recolorable);
     }
 
     #[test]

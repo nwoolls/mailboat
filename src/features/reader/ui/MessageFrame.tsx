@@ -8,6 +8,7 @@ import { imageNotice } from "../model/imageNotice";
 import { InviteCard } from "./InviteCard";
 import { AttachmentList } from "./AttachmentList";
 import { useTextZoom } from "../../settings/ui/textSize";
+import { setOriginalColors, useOriginalColors } from "./originalColors";
 
 /**
  * Shows one message's sanitized HTML.
@@ -36,7 +37,8 @@ export function selectedInMessage(): { messageId: MessageId; text: string } | nu
 
 export function MessageFrame({ messageId }: { messageId: MessageId }) {
   const qc = useQueryClient();
-  const message = useOpenedMessage(messageId);
+  const original = useOriginalColors(messageId);
+  const message = useOpenedMessage(messageId, original);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const holderRef = useRef<HTMLDivElement>(null);
 
@@ -172,21 +174,42 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
           )}
         </div>
       )}
-      <iframe
-        ref={frameRef}
-        title="Message content"
-        data-message-id={m.messageId}
-        sandbox="allow-same-origin"
-        srcDoc={m.document}
-        onLoad={onLoad}
-        // Adaptive emails (plain text, inline colors) sit straight on the
-        // glass with colors remapped for dark mode in Rust; emails with
-        // their own style sheet keep a white card.
-        className={`frame-reveal block w-full ${
-          m.adaptive ? "bg-transparent" : "rounded-lg bg-white ring-1 ring-stroke"
-        }`}
-        style={{ height, opacity: ready ? 1 : 0 }}
-      />
+      {/* Hovering an email that sits on the glass offers its own colors on
+        the white card, for emails the dark-mode remap gets wrong; once
+        switched, the way back stays in view. */}
+      <div className="group relative">
+        {m.recolorable && (
+          <button
+            type="button"
+            onClick={() => setOriginalColors(messageId, !original)}
+            title={
+              original
+                ? "Show this email on the glass, with colors adjusted for dark mode"
+                : "Show this email on a white card, with its own colors"
+            }
+            className={`email-colors-switch absolute top-1.5 right-1.5 z-10 rounded-md px-2 py-0.5 text-xs text-content/70 transition-opacity duration-150 hover:text-content focus-visible:opacity-100 ${
+              original ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            }`}
+          >
+            {original ? "Adapted colors" : "Original colors"}
+          </button>
+        )}
+        <iframe
+          ref={frameRef}
+          title="Message content"
+          data-message-id={m.messageId}
+          sandbox="allow-same-origin"
+          srcDoc={m.document}
+          onLoad={onLoad}
+          // Adaptive emails (plain text, inline colors) sit straight on the
+          // glass with colors remapped for dark mode in Rust; emails with
+          // their own style sheet keep a white card.
+          className={`frame-reveal block w-full ${
+            m.adaptive ? "bg-transparent" : "rounded-lg bg-white ring-1 ring-stroke"
+          }`}
+          style={{ height, opacity: ready ? 1 : 0 }}
+        />
+      </div>
       <AttachmentList attachments={m.attachments} />
     </div>
   );

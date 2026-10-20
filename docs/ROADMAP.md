@@ -1291,6 +1291,13 @@ settled with the owner one at a time, as in the earlier spikes.*
       darken its inline white backgrounds). Fall back to the white card if
       their style sheet sets text colours outside its dark-mode block
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong
+      *Built (2026-10-20), waiting for the owner to try it: hovering an
+      email that sits on the glass shows "Original colors" at its top
+      right; it reshows that email on the white card with its own colors,
+      and the button stays as "Adapted colors" to switch back.
+      Remembered per message until the app quits. Plain-text emails and
+      ones already on the white card don't offer it. Not in ⌘K yet; say
+      if wanted*
 - [ ] Softer look for the remaining white cards on the glass
 - [ ] A setting to switch the default back to "blocked"
       *Built (2026-10-20), waiting for the owner to try it: Settings →

@@ -325,12 +325,14 @@ pub struct OpenedMessage {
 }
 
 /// Returns a message ready for display, downloading its body with the
-/// owning account's credentials if it isn't cached yet.
+/// owning account's credentials if it isn't cached yet. `original_colors`
+/// shows an email that would sit on the glass on the white card instead.
 #[tauri::command]
 #[specta::specta]
 pub async fn message_open(
     state: State<'_, AppState>,
     message_id: MessageId,
+    original_colors: bool,
 ) -> CmdResult<OpenedMessage> {
     let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
     let cached = store::get_body(&state.db.conn(), message_id)?;
@@ -393,7 +395,7 @@ pub async fn message_open(
         images_allowed,
         image_policy,
         attachments,
-        content: mail::safe_message(&body, images_allowed, &inline),
+        content: mail::safe_message(&body, images_allowed, &inline, original_colors),
     })
 }
 

@@ -37,9 +37,10 @@ export const commands = {
 	unreadCounts: (accounts: AccountFilter) => typedError<LabelUnread[], AppError>(__TAURI_INVOKE("unread_counts", { accounts })),
 	/**
 	 *  Returns a message ready for display, downloading its body with the
-	 *  owning account's credentials if it isn't cached yet.
+	 *  owning account's credentials if it isn't cached yet. `original_colors`
+	 *  shows an email that would sit on the glass on the white card instead.
 	 */
-	messageOpen: (messageId: MessageId) => typedError<OpenedMessage, AppError>(__TAURI_INVOKE("message_open", { messageId })),
+	messageOpen: (messageId: MessageId, originalColors: boolean) => typedError<OpenedMessage, AppError>(__TAURI_INVOKE("message_open", { messageId, originalColors })),
 	/**
 	 *  Marks threads read or unread. Threads may span accounts; each is sent to
 	 *  its own account. The local cache changes immediately; anything Gmail
@@ -906,6 +907,12 @@ export type SafeMessage = {
 	 *  light only: those keep a white card.
 	 */
 	adaptive: boolean,
+	/**
+	 *  An HTML email that can sit on the glass with adapted colors (whether
+	 *  or not it does now), so the reader can offer its original colors on
+	 *  the white card, and back. False for plain text, which has none.
+	 */
+	recolorable: boolean,
 };
 
 export type SavedRule = {

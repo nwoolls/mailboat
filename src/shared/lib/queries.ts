@@ -118,12 +118,18 @@ export function useThread(id: ThreadId | null) {
   });
 }
 
-export function useOpenedMessage(id: MessageId) {
+/**
+ * A message ready to show. `originalColors` asks for it on the white card
+ * with its own colors; switching keeps the current one up until the other
+ * arrives.
+ */
+export function useOpenedMessage(id: MessageId, originalColors = false) {
   return useQuery({
-    queryKey: keys.message(id),
-    queryFn: () => unwrap(commands.messageOpen(id)),
+    queryKey: [...keys.message(id), originalColors],
+    queryFn: () => unwrap(commands.messageOpen(id, originalColors)),
     enabled: IS_TAURI,
     staleTime: Infinity,
+    placeholderData: keepPreviousData,
   });
 }
 
