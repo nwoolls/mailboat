@@ -1,7 +1,10 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
-import { AttachmentIcon, StarIcon } from "../../../shared/ui/icons";
+import { AiIcon, AttachmentIcon, StarIcon } from "../../../shared/ui/icons";
+import { useAiStatus, useAppSettings } from "../../../shared/lib/queries";
+import { useLineSummaries } from "../../ai/ui/lineSummaries";
+import { aiChoices, isReady } from "../../ai/model/providers";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { formatListDate, senderParts } from "../model/format";
 import { swipeActions, swipePose } from "../model/swipe";
@@ -104,6 +107,13 @@ export function ThreadList({
     virtualizer.measure();
   }, [rowStep, virtualizer]);
   const items = virtualizer.getVirtualItems();
+  // Settings → AI: a one-line summary in place of the email's first words,
+  // for the rows on screen (written in the background as they come into view).
+  const listProvider = aiChoices(useAppSettings().data).listSummaries;
+  const aiStatus = useAiStatus().data;
+  const summarize = listProvider !== null && isReady(aiStatus, listProvider);
+  const onScreen = items.flatMap((i) => (threads[i.index] ? [threads[i.index]!.id] : []));
+  const lines = useLineSummaries(onScreen, summarize && !placeholder);
   const selfEmails = useMemo(() => [...accounts.values()].map((a) => a.email), [accounts]);
 
   // Fetch the next page when the user nears the end.
@@ -335,7 +345,20 @@ export function ThreadList({
                     className="truncate text-xs font-medium text-content/40"
                     style={{ paddingLeft: ICON_COLUMN }}
                   >
-                    {t.snippet}
+                    {summarize && lines.get(t.id) ? (
+                      // Hovering shows the email's own first words.
+                      <span title={t.snippet}>
+                        <AiIcon
+                          size={10}
+                          strokeWidth={2}
+                          className="mr-1 inline align-[-1px] text-accent/70"
+                          aria-label="Summary"
+                        />
+                        {lines.get(t.id)}
+                      </span>
+                    ) : (
+                      t.snippet
+                    )}
                   </div>
                 </div>
               </div>

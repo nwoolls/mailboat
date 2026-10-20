@@ -1,5 +1,6 @@
 import {
   AccountsIcon,
+  AiIcon,
   AppearanceIcon,
   BackIcon,
   ComposingIcon,
@@ -22,6 +23,7 @@ const ICONS: Record<SettingsSectionId, (props: IconProps) => React.ReactNode> = 
   appearance: AppearanceIcon,
   viewing: ViewingIcon,
   composing: ComposingIcon,
+  ai: AiIcon,
   signatures: SignatureIcon,
   rules: RulesIcon,
   vacation: VacationIcon,

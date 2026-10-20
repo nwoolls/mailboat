@@ -399,6 +399,15 @@ pub fn ai_usage(
     })
 }
 
+/// Opens System Settings → Apple Intelligence & Siri, where it's turned on.
+#[tauri::command]
+#[specta::specta]
+pub fn ai_apple_settings_open() -> CmdResult<()> {
+    open::that_detached("x-apple.systempreferences:com.apple.Siri-Settings.extension")
+        .map_err(|e| CoreError::Other(format!("could not open System Settings: {e}")))?;
+    Ok(())
+}
+
 /// Forgets every summary (they're written again as needed).
 #[tauri::command]
 #[specta::specta]

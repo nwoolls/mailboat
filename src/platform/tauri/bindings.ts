@@ -286,6 +286,8 @@ export const commands = {
 	aiUsage: (todayStart: number | null) => typedError<AiUsageReport, AppError>(__TAURI_INVOKE("ai_usage", { todayStart })),
 	/**  Forgets every summary (they're written again as needed). */
 	aiSummariesClear: () => typedError<null, AppError>(__TAURI_INVOKE("ai_summaries_clear")),
+	/**  Opens System Settings → Apple Intelligence & Siri, where it's turned on. */
+	aiAppleSettingsOpen: () => typedError<null, AppError>(__TAURI_INVOKE("ai_apple_settings_open")),
 };
 
 /** Events */

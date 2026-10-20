@@ -63,6 +63,9 @@ import SlidersHorizontal from "@hugeicons/core-free-icons/SlidersHorizontalIcon"
 import Tick02 from "@hugeicons/core-free-icons/Tick02Icon";
 import Calendar03 from "@hugeicons/core-free-icons/Calendar03Icon";
 import UserMultiple from "@hugeicons/core-free-icons/UserMultipleIcon";
+import Sparkles from "@hugeicons/core-free-icons/SparklesIcon";
+import ArrowUp02 from "@hugeicons/core-free-icons/ArrowUp02Icon";
+import Stop from "@hugeicons/core-free-icons/StopIcon";
 
 /**
  * The app's icons: Hugeicons outline set, as MonoCode uses. Each icon is
@@ -141,3 +144,7 @@ export const ComposingIcon = wrap(PencilEdit02);
 export const BlockIcon = wrap(UserBlock01);
 export const CheckIcon = wrap(Tick02);
 export const CalendarIcon = wrap(Calendar03);
+/** AI: summaries and writing help. */
+export const AiIcon = wrap(Sparkles);
+export const AskIcon = wrap(ArrowUp02);
+export const StopIcon = wrap(Stop);

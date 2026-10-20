@@ -11,6 +11,7 @@ export type SettingsSectionId =
   | "appearance"
   | "viewing"
   | "composing"
+  | "ai"
   | "signatures"
   | "rules"
   | "vacation"
@@ -42,6 +43,11 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     description: "Reading, moving through conversations, and remote images.",
   },
   { id: "composing", label: "Composing", description: "Writing and sending mail." },
+  {
+    id: "ai",
+    label: "AI",
+    description: "Summaries and help writing, with Apple Intelligence, Claude or ChatGPT.",
+  },
   {
     id: "signatures",
     label: "Signatures",

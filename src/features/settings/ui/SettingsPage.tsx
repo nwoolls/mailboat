@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Account, AccountId, AccountSyncState } from "../../../platform/tauri/bindings";
 import { sectionFor, type SettingsSectionId } from "../model/sections";
 import { RulesSection } from "../../rules/ui/RulesSection";
+import { AiSection } from "../../ai/ui/AiSection";
 import { SignaturesSection } from "../../signatures/ui/SignaturesSection";
 import { VacationSection } from "../../vacation/ui/VacationSection";
 import { PageHeader } from "./controls";
@@ -90,6 +91,7 @@ export function SettingsPage({
           {section === "notifications" && <NotificationsSection />}
           {section === "viewing" && <ViewingSection />}
           {section === "composing" && <ComposingSection />}
+          {section === "ai" && <AiSection />}
           {section === "signatures" && <SignaturesSection accounts={accounts} />}
           {section === "vacation" && <VacationSection accounts={accounts} />}
           {section === "keyboard" && <KeyboardSection />}

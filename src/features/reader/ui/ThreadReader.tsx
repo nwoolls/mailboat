@@ -15,6 +15,7 @@ import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import { wholePixelSlack } from "../model/pixelSnap";
 import { useTextZoom } from "../../settings/ui/textSize";
 import { EmailContextMenu } from "./EmailContextMenu";
+import { ThreadSummaryCard } from "../../ai/ui/ThreadSummaryCard";
 import { MessageFrame } from "./MessageFrame";
 
 /**
@@ -147,6 +148,7 @@ function ThreadBody({
             </div>
           )}
         </header>
+        <ThreadSummaryCard detail={data} zoom={zoom} />
         {/* Each message is a card on the glass, edged and rounded like the
           list panel; collapsed ones are a shade lighter. Avatar, notice and
           body share one left edge (16px), as does the subject above. */}

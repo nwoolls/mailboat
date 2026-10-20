@@ -111,6 +111,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             ai::ai_cancel,
             ai::ai_usage,
             ai::ai_summaries_clear,
+            ai::ai_apple_settings_open,
         ])
         .events(collect_events![
             SyncStatusEvent,

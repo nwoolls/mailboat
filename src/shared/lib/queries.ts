@@ -8,6 +8,7 @@ import {
 import { useEffect } from "react";
 import { commands, events } from "../../platform/tauri/bindings";
 import type {
+  AiProvider,
   AccountFilter,
   AccountId,
   AccountSyncState,
@@ -46,6 +47,8 @@ export const keys = {
   vacations: ["vacations"] as const,
   ruleMatch: (account: AccountId, criteria: RuleCriteria) =>
     ["ruleMatch", account, criteria] as const,
+  aiStatus: ["aiStatus"] as const,
+  aiUsage: ["aiUsage"] as const,
 };
 
 export function useAccounts() {
@@ -237,6 +240,46 @@ export function useSaveAppSettings() {
       if (context?.previous?.imageCacheMb !== next.imageCacheMb)
         void qc.invalidateQueries({ queryKey: keys.imageCache });
     },
+  });
+}
+
+/** Whether Apple Intelligence, Claude and ChatGPT can be used now. */
+export function useAiStatus() {
+  return useQuery({
+    queryKey: keys.aiStatus,
+    queryFn: () => unwrap(commands.aiStatus()),
+    enabled: IS_TAURI,
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Connects Claude or ChatGPT, signing in through its own tool (the
+ * browser opens) if needed. Settings come back with it added.
+ */
+export function useAiConnect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (provider: AiProvider) => unwrap(commands.aiConnect(provider)),
+    onSuccess: (saved) => qc.setQueryData(keys.appSettings, saved),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.aiStatus }),
+  });
+}
+
+export function useAiDisconnect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (provider: AiProvider) => unwrap(commands.aiDisconnect(provider)),
+    onSuccess: (saved) => qc.setQueryData(keys.appSettings, saved),
+  });
+}
+
+/** Requests, tokens and cost per provider, today and over 30 days. */
+export function useAiUsage(todayStart: number) {
+  return useQuery({
+    queryKey: [...keys.aiUsage, todayStart],
+    queryFn: () => unwrap(commands.aiUsage(todayStart)),
+    enabled: IS_TAURI,
   });
 }
 
