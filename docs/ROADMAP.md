@@ -1164,6 +1164,11 @@ ticked.*
       looking into the screensaver (2026-10-19); the sync log shows no
       such loop so far. Likely fix: wait for "Retry" after a partial
       failure, as after a full one
+      *Fixed (2026-10-19): the command now says how many accounts
+      failed, and after any failure the list shows "Couldn't load older
+      mail. Try again" and waits, as after a full failure. Try again asks
+      only the accounts with more to give. Never seen for real, so there's
+      nothing for the owner to watch for; tick on the owner's say-so*
 - [ ] The screensaver sometimes didn't start *(owner report,
       2026-10-19; moved from Milestone 7)*. Likely cause, fixed: when the idle minute ran out
       while the window was hidden it waited another minute instead of

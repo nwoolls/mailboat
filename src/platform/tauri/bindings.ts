@@ -27,7 +27,8 @@ export const commands = {
 	 *  Fetches conversations older than the cache for a view, from each
 	 *  account in the filter at once (each has its own quota). Rows appear as
 	 *  they arrive (`MailChangedEvent`). One account failing doesn't stop the
-	 *  others; the error is only returned if every account failed.
+	 *  others; the error is only returned if every account failed, and
+	 *  otherwise counted in `failed`.
 	 */
 	threadsLoadOlder: (accounts: AccountFilter, view: MailView) => typedError<OlderLoaded, AppError>(__TAURI_INVOKE("threads_load_older", { accounts, view })),
 	threadGet: (threadId: ThreadId) => typedError<ThreadDetail, AppError>(__TAURI_INVOKE("thread_get", { threadId })),
@@ -667,6 +668,12 @@ export type OlderLoaded = {
 	added: number,
 	/**  Gmail has nothing older in this view for any of the accounts. */
 	exhausted: boolean,
+	/**
+	 *  Accounts that couldn't load (no Gmail client, a network error…).
+	 *  The list waits for "Try again" after any, rather than asking again
+	 *  at once and failing the same way over and over.
+	 */
+	failed: number,
 };
 
 /**  Mailboat → Settings… (⌘,) in the menu bar: open the Settings page. */

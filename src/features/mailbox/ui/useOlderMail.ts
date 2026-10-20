@@ -11,15 +11,25 @@ export type OlderStatus = "idle" | "loading" | "error";
  * Fetches conversations older than the cache from Gmail when a list
  * reaches its end. For a search, it asks Gmail's own search (`q=`), each
  * account at once; what Gmail matched joins the local results. Remembers (until relaunch) which views Gmail has
- * nothing older for, so they stop asking. After an error it waits for
- * `retry` instead of asking again on every scroll.
+ * nothing older for, so they stop asking. After an error, even one
+ * account's, it waits for `retry` instead of asking again on every scroll
+ * (an empty view is always at its end, so it would ask again at once).
  */
 export function useOlderMail(selection: Selection) {
   const qc = useQueryClient();
   const key = selectionKey(selection);
   const [exhausted, setExhausted] = useState<ReadonlySet<string>>(() => new Set());
   const mutation = useMutation({
-    mutationFn: (s: Selection) => unwrap(commands.threadsLoadOlder(s.accounts, s.view)),
+    mutationFn: async (s: Selection) => {
+      const result = await unwrap(commands.threadsLoadOlder(s.accounts, s.view));
+      if (result.failed > 0) {
+        // The other accounts' rows still show; then the footer offers
+        // "Try again", which asks only the accounts not yet exhausted.
+        await qc.invalidateQueries({ queryKey: keys.threads(s) });
+        throw new Error("Some accounts couldn't load older mail");
+      }
+      return result;
+    },
     onSuccess: async (result, s) => {
       if (result.exhausted) setExhausted((prev) => new Set(prev).add(selectionKey(s)));
       // Stay "loading" until the list has the new rows, so reaching the

@@ -173,12 +173,17 @@ pub struct OlderLoaded {
     pub added: u32,
     /// Gmail has nothing older in this view for any of the accounts.
     pub exhausted: bool,
+    /// Accounts that couldn't load (no Gmail client, a network error…).
+    /// The list waits for "Try again" after any, rather than asking again
+    /// at once and failing the same way over and over.
+    pub failed: u32,
 }
 
 /// Fetches conversations older than the cache for a view, from each
 /// account in the filter at once (each has its own quota). Rows appear as
 /// they arrive (`MailChangedEvent`). One account failing doesn't stop the
-/// others; the error is only returned if every account failed.
+/// others; the error is only returned if every account failed, and
+/// otherwise counted in `failed`.
 #[tauri::command]
 #[specta::specta]
 pub async fn threads_load_older(
@@ -233,9 +238,11 @@ pub async fn threads_load_older(
     }
 
     let (mut added, mut exhausted, mut failures, mut tried) = (0, true, Vec::new(), 0);
+    let mut panicked = 0;
     while let Some(joined) = tasks.join_next().await {
         let Ok((account, outcome)) = joined else {
             exhausted = false;
+            panicked += 1;
             continue;
         };
         tried += 1;
@@ -267,7 +274,11 @@ pub async fn threads_load_older(
     if tried > 0 && failures.len() == tried {
         return Err(failures.swap_remove(0).into());
     }
-    Ok(OlderLoaded { added, exhausted })
+    Ok(OlderLoaded {
+        added,
+        exhausted,
+        failed: failures.len() as u32 + panicked,
+    })
 }
 
 enum OlderCursorResult {
