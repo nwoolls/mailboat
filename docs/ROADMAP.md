@@ -1103,7 +1103,7 @@ fix waiting to be seen holding, and a check the agent couldn't make in
 the app. As with the UX spikes, each is tried by the owner before it's
 ticked.*
 
-- [ ] The list keeps its scroll position when switching views *(owner
+- [x] The list keeps its scroll position when switching views *(owner
       report, 2026-10-19)*. Scrolled down in Unread, then going to
       Archive (or any other view), the new list opens scrolled down too,
       by the same distance. Cause, from the code: every view's list is
@@ -1118,7 +1118,8 @@ ticked.*
       remembered its own position. Now each view comes back scrolled as
       far as it was left, until the app quits; a view not seen yet, or a
       new search, starts at the top. Its loaded pages stay cached for the
-      session so the old position can be reached*
+      session so the old position can be reached. Owner confirmed it
+      works (2026-10-20)*
 
 - [ ] Reply all: the sender in To, everyone else in Cc *(owner request,
       2026-10-19)*. Today (`replyRecipients` in compose/model/draft.ts)
