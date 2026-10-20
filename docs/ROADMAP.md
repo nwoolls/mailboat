@@ -1094,6 +1094,11 @@ comparison"), or to "Considered, not planned" there.*
 
 ## Bug Spike 1
 
+**Closed (owner, 2026-10-20).** Every item built and tried by the owner
+(the older-mail fix, never seen for real, ticked on the owner's say-so).
+The screensaver item, still waiting to see whether its fix holds, moved
+to the Bug backlog to keep watching. UX Spike 3 is next.
+
 *Added at the owner's request (2026-10-19): with these, Mailboat isn't
 usable day to day yet. Next, straight after Milestone 7 (closed
 2026-10-19), in its own session. The first five came from the Bug
@@ -1184,15 +1189,6 @@ ticked.*
       only the accounts with more to give. Never seen for real, so there's
       nothing for the owner to watch for; tick on the owner's say-so.
       Ticked on the owner's say-so (2026-10-20)*
-- [ ] The screensaver sometimes didn't start *(owner report,
-      2026-10-19; moved from Milestone 7)*. Likely cause, fixed: when the idle minute ran out
-      while the window was hidden it waited another minute instead of
-      starting, and macOS counts a window that another app covers
-      completely as hidden. It now starts anyway (the canvas pauses while
-      hidden). To tick once the owner hasn't seen it again; if they do,
-      diagnose further. Owner's guess (2026-10-19): it was on another
-      Space when it didn't start, which macOS also reports as hidden, so
-      the same fix covers it
 - [x] Check that ⌃⌘S, ⌃⌘R and ⌘K act once, not twice *(from Milestone
       7, 2026-10-19)*. Since the menus were trued up, both the page and
       the menu bar know these keys. The page stops the key reaching the
@@ -1388,6 +1384,17 @@ it will ever be distributed (2026-10-19), so this comes last.*
 *Bugs found in passing and not yet fixed (started 2026-10-19 at the
 owner's request). Each says how it was found and whether it has been
 seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
+
+- [ ] The screensaver sometimes didn't start *(owner report,
+      2026-10-19; moved from Milestone 7, then from Bug Spike 1 when it
+      closed, 2026-10-20)*. Likely cause, fixed: when the idle minute ran out
+      while the window was hidden it waited another minute instead of
+      starting, and macOS counts a window that another app covers
+      completely as hidden. It now starts anyway (the canvas pauses while
+      hidden). To tick once the owner hasn't seen it again; if they do,
+      diagnose further. Owner's guess (2026-10-19): it was on another
+      Space when it didn't start, which macOS also reports as hidden, so
+      the same fix covers it
 
 ## Later / unscheduled
 
