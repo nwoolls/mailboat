@@ -1486,7 +1486,7 @@ built, tested and waiting for the owner to try.*
       - The pinned Reply bar's tint follows Settings → Appearance →
         "Sidebar and reader" *(owner report: it had its own fixed tint,
         the compose card's)*, offset so it still hides the email under
-        it; at the default it looks as before
+        it; at the default it looks as before. Owner confirmed (2026-10-20)
       - "Reply with AI" on the reply bar (after Forward, while the
         writing provider is ready): starts a Reply with the AI panel
         open. A plain Reply rather than Reply all, so nobody extra is
@@ -1580,6 +1580,7 @@ it will ever be distributed (2026-10-19), so this comes last.*
         in a transparent image, which no color remap can fix. "Original
         colors" is the way out; remembering that choice per sender could
         come later
+      Owner confirmed the fixes (2026-10-20)
 
 *Bugs found in passing and not yet fixed (started 2026-10-19 at the
 owner's request). Each says how it was found and whether it has been
