@@ -952,6 +952,10 @@ editors live in Settings (Signatures, Rules), which now exists.
 
 ## Milestone 7: Settings everyday
 
+**Closed (owner, 2026-10-19).** Every item built and tried by the owner.
+The screensaver item, waiting to see whether the fix holds, moved to
+Bug Spike 1, which comes next.
+
 *Agreed with the owner (2026-10-19) after comparing Mimestream's and
 Mail.app's settings with Mailboat's (client-only, IMAP and junk-mail
 settings left out). The other gaps went to Later ("From the settings
@@ -1070,7 +1074,7 @@ comparison"), or to "Considered, not planned" there.*
       `g then e` for Archive was already Mailboat's own); and the Go to items
       are ⌘1 to ⌘7 in the sidebar's order, as Mail numbers its favourite
       mailboxes. Owner confirmed (2026-10-19)*
-- [ ] Remember between launches whether the sidebar and the reader are
+- [x] Remember between launches whether the sidebar and the reader are
       hidden, and which sidebar folds are open *(moved from UX Spike 1's
       deferred ideas, owner, 2026-10-19)*. Today both panels start shown
       every launch; pane widths and the window are already remembered
@@ -1079,7 +1083,7 @@ comparison"), or to "Considered, not planned" there.*
       their More and Labels), now come back as they were, kept with the
       pane widths in the window's storage. Opening a conversation still
       brings a hidden reader back, as before; only the reader toggle
-      itself is remembered*
+      itself is remembered. Owner confirmed it works (2026-10-19)*
 - [x] Settings wording trued up *(owner request, 2026-10-19)*: section
       subtitles said what the sections held before Milestone 7 (General's
       was "About Mailboat."). General, Notifications and Viewing now
@@ -1087,24 +1091,17 @@ comparison"), or to "Considered, not planned" there.*
       instead of sitting under "New mail"; Toybox no longer says
       "Remembered on this Mac", which only it said though most settings are
       kept that way
-- [ ] The screensaver sometimes didn't start *(owner report,
-      2026-10-19)*. Likely cause, fixed: when the idle minute ran out
-      while the window was hidden it waited another minute instead of
-      starting, and macOS counts a window that another app covers
-      completely as hidden. It now starts anyway (the canvas pauses while
-      hidden). To tick once the owner hasn't seen it again; if they do,
-      diagnose further. Owner's guess (2026-10-19): it was on another
-      Space when it didn't start, which macOS also reports as hidden, so
-      the same fix covers it
 
 ## Bug Spike 1
 
 *Added at the owner's request (2026-10-19): with these, Mailboat isn't
-usable day to day yet. Done straight after Milestone 7, in its own
-session (owner, 2026-10-19). Moved here from the Bug backlog,
-most pressing first; the last was found reading code and hasn't been
-seen for real. As with the UX spikes, each is tried by the owner before
-it's ticked.*
+usable day to day yet. Next, straight after Milestone 7 (closed
+2026-10-19), in its own session. The first five came from the Bug
+backlog, most pressing first; "Load older mail" was found reading code
+and hasn't been seen for real. The last two came from Milestone 7: a
+fix waiting to be seen holding, and a check the agent couldn't make in
+the app. As with the UX spikes, each is tried by the owner before it's
+ticked.*
 
 - [ ] The list keeps its scroll position when switching views *(owner
       report, 2026-10-19)*. Scrolled down in Unread, then going to
@@ -1154,7 +1151,24 @@ it's ticked.*
       looking into the screensaver (2026-10-19); the sync log shows no
       such loop so far. Likely fix: wait for "Retry" after a partial
       failure, as after a full one
-
+- [ ] The screensaver sometimes didn't start *(owner report,
+      2026-10-19; moved from Milestone 7)*. Likely cause, fixed: when the idle minute ran out
+      while the window was hidden it waited another minute instead of
+      starting, and macOS counts a window that another app covers
+      completely as hidden. It now starts anyway (the canvas pauses while
+      hidden). To tick once the owner hasn't seen it again; if they do,
+      diagnose further. Owner's guess (2026-10-19): it was on another
+      Space when it didn't start, which macOS also reports as hidden, so
+      the same fix covers it
+- [ ] Check that ⌃⌘S, ⌃⌘R and ⌘K act once, not twice *(from Milestone
+      7, 2026-10-19)*. Since the menus were trued up, both the page and
+      the menu bar know these keys. The page stops the key reaching the
+      menu (it calls `preventDefault`, which WebKit is expected to honour,
+      as web apps overriding ⌘B in Safari rely on); if it didn't, the
+      sidebar or reader would hide and show again at once, or the palette
+      open twice. Not checked in the app by the agent. If it does happen:
+      drop those three accelerators from the menu bar, or the page's own
+      handling of them
 
 ## UX Spike 2
 
