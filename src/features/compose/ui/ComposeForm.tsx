@@ -4,6 +4,7 @@ import { type AddressLine, moveAddress } from "../model/addresses";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { AccountDot } from "../../../shared/ui/AccountDot";
 import {
+  AiIcon,
   AttachmentIcon,
   ClearIcon,
   ForwardIcon,
@@ -20,8 +21,10 @@ import {
   type Draft,
   hasChanges,
   sendProblem,
+  textToHtml,
   withIdentity,
 } from "../model/draft";
+import { AssistantPanel } from "../../ai/ui/AssistantPanel";
 import { AddressField } from "./AddressField";
 import { HtmlPreview } from "./HtmlPreview";
 import { EditorBody, FormatBar, useRichEditor } from "./RichEditor";
@@ -53,6 +56,7 @@ export function ComposeForm({
   onSend,
   onDiscard,
   onSwitchKind,
+  assistant,
 }: {
   entry: ComposeEntry;
   identities: Identity[];
@@ -64,6 +68,12 @@ export function ComposeForm({
   onDiscard: () => void;
   /** Offered for replies that can turn into another kind. */
   onSwitchKind?: (kind: ReplyKind) => void;
+  /**
+   * The writing assistant (⌘J): beside the form in the floating card,
+   * above it inline. Its parent keeps whether it's open, so the card can
+   * widen for it.
+   */
+  assistant?: { open: boolean; onToggle: (open: boolean) => void };
 }) {
   const { draft, sending, error } = entry;
   const { style } = composingPrefs.use();
@@ -120,7 +130,28 @@ export function ComposeForm({
   const account = accounts.find((a) => a.id === draft.accountId);
   const message = problem ?? error;
 
-  return (
+  // "Use this": the AI's draft replaces the text (signature and quote
+  // stay as they are); new mail without a subject takes the one suggested.
+  const applyDraft = (text: string, subject: string | null) => {
+    if (!editor) return;
+    editor.commands.setContent(textToHtml(text), { emitUpdate: true });
+    editor.commands.focus("end");
+    if (subject && draft.kind === "new")
+      onChange((d) => (d.subject.trim() ? d : { ...d, subject }));
+  };
+  const panel = assistant?.open && (
+    <AssistantPanel
+      draft={draft}
+      placement={inline ? "top" : "side"}
+      onUse={applyDraft}
+      onClose={() => {
+        assistant.onToggle(false);
+        editor?.commands.focus();
+      }}
+    />
+  );
+
+  const form = (
     <form
       ref={formRef}
       // Files dropped anywhere on the message attach to it (checked before
@@ -155,6 +186,10 @@ export function ComposeForm({
         if (e.key === "Enter" && e.metaKey) {
           e.preventDefault();
           trySend();
+        }
+        if (e.key === "j" && e.metaKey && assistant) {
+          e.preventDefault();
+          assistant.onToggle(!assistant.open);
         }
       }}
     >
@@ -283,7 +318,23 @@ export function ComposeForm({
               {message}
             </span>
           )}
+          {assistant && (
+            <button
+              type="button"
+              aria-label="Write with AI"
+              aria-pressed={assistant.open}
+              title="Write with AI (⌘J)"
+              disabled={sending}
+              onClick={() => assistant.onToggle(!assistant.open)}
+              className={`ml-auto flex h-7 w-7 items-center justify-center rounded-md hover:bg-selection hover:text-content disabled:opacity-35 ${
+                assistant.open ? "bg-selection text-accent" : "text-content/60"
+              }`}
+            >
+              <AiIcon />
+            </button>
+          )}
           <AttachButton
+            className={assistant ? "" : "ml-auto"}
             disabled={sending}
             onFiles={(files) =>
               onChange((d) => ({ ...d, attachments: [...d.attachments, ...files] }))
@@ -322,6 +373,18 @@ export function ComposeForm({
         </ConfirmDialog>
       )}
     </form>
+  );
+  if (!panel) return form;
+  return inline ? (
+    <>
+      {panel}
+      {form}
+    </>
+  ) : (
+    <div className="flex min-h-0 flex-1">
+      {panel}
+      <div className="flex min-w-0 flex-1 flex-col">{form}</div>
+    </div>
   );
 }
 
@@ -472,15 +535,17 @@ async function readFile(file: File): Promise<OutgoingAttachment> {
 function AttachButton({
   disabled,
   onFiles,
+  className,
 }: {
   disabled: boolean;
   onFiles: (files: OutgoingAttachment[]) => void;
+  className: string;
 }) {
   return (
     <label
       title="Attach files"
       aria-disabled={disabled}
-      className="ml-auto flex h-7 w-7 cursor-default items-center justify-center rounded-md text-content/60 hover:bg-selection hover:text-content"
+      className={`${className} flex h-7 w-7 cursor-default items-center justify-center rounded-md text-content/60 hover:bg-selection hover:text-content`}
     >
       <AttachmentIcon />
       <input

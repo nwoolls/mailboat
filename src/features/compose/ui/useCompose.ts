@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { forgetChat } from "../../ai/ui/AssistantPanel";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { commands } from "../../../platform/tauri/bindings";
 import type {
@@ -178,6 +179,7 @@ export function closeKeepingDraft(id: number) {
     // as it was (only Discard deletes), and an empty new one never saved.
     finish(entry);
     set(S.close(state, id));
+    forgetChat(id);
     saves.delete(id);
     return;
   }
@@ -185,6 +187,7 @@ export function closeKeepingDraft(id: number) {
   s.closed = entry;
   finish(entry);
   set(S.close(state, id));
+  forgetChat(id);
   void saveNow(id).then((ok) => {
     saves.delete(id);
     if (ok) showToast({ message: "Saved to Drafts" });
@@ -264,6 +267,7 @@ export function closeDraft(id: number) {
   window.clearTimeout(s.timer);
   s.discarded = true;
   set(S.close(state, id));
+  forgetChat(id);
   finish(entry);
   const savedId = entry?.draft.savedId;
   const from = entry?.draft.resumedFrom;
@@ -408,6 +412,7 @@ export function useComposeActions(accounts: Account[]) {
     const inFlight = pending.running ?? Promise.resolve(true);
     finish(entry);
     set(S.close(state, draft.id));
+    forgetChat(draft.id);
     // Settings → Composing: 5 seconds unless chosen otherwise.
     const holdMs = composingPrefs.get().undoSendSeconds * 1000;
     let undone = false;

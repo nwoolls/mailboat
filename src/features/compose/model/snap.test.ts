@@ -10,6 +10,13 @@ describe("snapping", () => {
     expect(cardSize({ width: 400, height: 500 })).toEqual({ width: 368, height: 436 });
   });
 
+  it("widens for the writing assistant, still inside the window", () => {
+    expect(cardSize(viewport, true)).toEqual({ width: 840, height: 560 });
+    expect(cardSize({ width: 820, height: 600 }, true).width).toBe(788);
+    // Resting bottom-right, it grows to the left.
+    expect(spotPosition("bottom-right", viewport, cardSize(viewport, true)).x).toBe(544);
+  });
+
   it("places spots inside the window's edges", () => {
     expect(spotPosition("bottom-right", viewport, card)).toEqual({ x: 884, y: 324 });
     expect(spotPosition("top-left", viewport, card)).toEqual({ x: 16, y: 48 });

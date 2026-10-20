@@ -36,7 +36,9 @@ export function ComposeCard({
   const { draft } = entry;
   const account = accounts.find((a) => a.id === draft.accountId);
   const viewport = useViewport();
-  const size = cardSize(viewport);
+  // The writing assistant (⌘J) opens beside the form, widening the card.
+  const [assistant, setAssistant] = useState(false);
+  const size = cardSize(viewport, assistant);
   const rest = spotPosition(useCardSpot(), viewport, size);
   // Where it is while being dragged (null: resting at its spot).
   const [dragAt, setDragAt] = useState<Point | null>(null);
@@ -138,6 +140,7 @@ export function ComposeCard({
         onChange={(change) => updateDraft(draft.id, change)}
         onSend={onSend}
         onDiscard={() => closeDraft(draft.id)}
+        assistant={{ open: assistant, onToggle: setAssistant }}
       />
     </section>
   );

@@ -65,6 +65,8 @@ export function ReplyArea({
       : null;
   const asked = useRef<MessageId | null>(null);
   const [failed, setFailed] = useState<MessageId | null>(null);
+  // The writing assistant (⌘J), above the reply.
+  const [assistant, setAssistant] = useState(false);
   useEffect(() => {
     if (resumeId === null || asked.current === resumeId) return;
     asked.current = resumeId;
@@ -104,6 +106,7 @@ export function ReplyArea({
           onSwitchKind={canSwitchKind(draft) ? (kind) => onSwitch(draft.id, kind) : undefined}
           onSend={() => onSend(reply)}
           onDiscard={() => closeDraft(draft.id)}
+          assistant={{ open: assistant, onToggle: setAssistant }}
         />
       </section>
     );

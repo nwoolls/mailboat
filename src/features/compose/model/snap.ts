@@ -31,10 +31,13 @@ export type Point = { x: number; y: number };
 export const EDGE = 16;
 export const TOP_EDGE = 48;
 
-/** Gmail's size, shrunk to fit small windows. */
-export function cardSize(viewport: Size): Size {
+/** How much wider the card gets with the writing assistant beside the form. */
+export const ASSISTANT_WIDTH = 340;
+
+/** Gmail's size, shrunk to fit small windows; wider with the assistant open. */
+export function cardSize(viewport: Size, assistant = false): Size {
   return {
-    width: Math.min(500, viewport.width - 2 * EDGE),
+    width: Math.min(500 + (assistant ? ASSISTANT_WIDTH : 0), viewport.width - 2 * EDGE),
     height: Math.min(560, viewport.height - TOP_EDGE - EDGE),
   };
 }
