@@ -8,6 +8,9 @@ import {
   listShareFor,
   panelToggleFor,
   parseLayout,
+  parsePanels,
+  DEFAULT_PANELS,
+  toggledFold,
   READER_MIN_WIDTH,
   SIDEBAR_WIDTH,
   SPLITTER_WIDTH,
@@ -88,5 +91,25 @@ describe("panelToggleFor", () => {
     expect(panelToggleFor(key("KeyS", { ctrlKey: false }))).toBeNull();
     expect(panelToggleFor(key("KeyR", { metaKey: false }))).toBeNull();
     expect(panelToggleFor(key("KeyS", { shiftKey: true }))).toBeNull();
+  });
+});
+
+describe("parsePanels", () => {
+  it("defaults when nothing or nonsense was saved", () => {
+    expect(parsePanels(null)).toEqual(DEFAULT_PANELS);
+    expect(parsePanels("{oops")).toEqual(DEFAULT_PANELS);
+    expect(parsePanels('{"sidebarOpen":"no","folds":[3,"1:labels"]}')).toEqual({
+      ...DEFAULT_PANELS,
+      folds: ["1:labels"],
+    });
+  });
+  it("keeps what was saved", () => {
+    expect(
+      parsePanels('{"sidebarOpen":false,"readerOpen":false,"folds":["2:collapsed","2:more"]}'),
+    ).toEqual({ sidebarOpen: false, readerOpen: false, folds: ["2:collapsed", "2:more"] });
+  });
+  it("flips one fold", () => {
+    expect(toggledFold(["a"], "b")).toEqual(["a", "b"]);
+    expect(toggledFold(["a", "b"], "a")).toEqual(["b"]);
   });
 });

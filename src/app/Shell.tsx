@@ -19,6 +19,7 @@ import {
 } from "../features/layout/model/panes";
 import { Splitter } from "../features/layout/ui/Splitter";
 import { useElementWidth } from "../features/layout/ui/useElementWidth";
+import { panels, setSavedReaderOpen, setSidebarOpen } from "../features/layout/ui/panels";
 import { Welcome } from "../features/accounts/ui/Welcome";
 import { moveSelection, navKeyFor } from "../features/mailbox/model/listNavigation";
 import {
@@ -258,17 +259,23 @@ export function Shell() {
     localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(next));
   };
   const sidebarWidth = layout.sidebarWidth;
-  // Either side panel can be hidden, down to just the list. Not persisted.
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [readerOpen, setReaderOpen] = useState(true);
+  // Either side panel can be hidden, down to just the list; remembered
+  // between launches.
+  // The reader's own state: opening a conversation brings it back (set
+  // during render below), which only the user's toggle remembers.
+  const sidebarOpen = panels.use().sidebarOpen;
+  const [readerOpen, setReaderOpen] = useState(() => panels.get().readerOpen);
   // Opening a different conversation (click or j/k) brings a hidden reader
   // back. Adjusted during render rather than in an effect.
   if (selectedId !== null && selectedId !== shownId) {
     setShownId(selectedId);
     setReaderOpen(true);
   }
-  const toggleSidebar = useCallback(() => setSidebarOpen((open) => !open), []);
-  const toggleReader = useCallback(() => setReaderOpen((open) => !open), []);
+  const toggleSidebar = useCallback(() => setSidebarOpen(!panels.get().sidebarOpen), []);
+  const toggleReader = useCallback(() => {
+    setReaderOpen(!readerOpen);
+    setSavedReaderOpen(!readerOpen);
+  }, [readerOpen]);
   /**
    * Runs an action on the chosen conversations (or `ids`). If they leave
    * the current view, the next conversation opens, as in Mail. Archive,

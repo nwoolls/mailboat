@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { panels, toggleFold } from "../../layout/ui/panels";
 import type { Account, AccountId, AccountSyncState } from "../../../platform/tauri/bindings";
 import { useLabels, useUnreadCounts } from "../../../shared/lib/queries";
 import { AddIcon, ClearIcon, SettingsIcon } from "../../../shared/ui/icons";
@@ -31,16 +32,10 @@ export function Sidebar({
   const labels = useLabels({ kind: "all" }).data ?? [];
   const counts = useUnreadCounts().data ?? [];
   const signIn = useSignIn();
-  // Which folds are open (or, for ones that start open, closed). They
-  // reset on relaunch.
-  const [open, setOpen] = useState<Set<string>>(() => new Set());
-  const toggle = (key: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  // Which folds are open (or, for ones that start open, closed),
+  // remembered between launches.
+  const open = new Set(panels.use().folds);
+  const toggle = toggleFold;
 
   const [menu, setMenu] = useState<AccountMenuTarget | null>(null);
   const [labelMenu, setLabelMenu] = useState<LabelMenuTarget | null>(null);

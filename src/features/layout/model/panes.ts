@@ -79,3 +79,36 @@ export function panelToggleFor(
   if (e.code === "KeyR") return "reader";
   return null;
 }
+
+/**
+ * Which panels are shown and which sidebar folds are open (or, for folds
+ * that start open, closed), remembered between launches like the widths.
+ */
+export type SavedPanels = { sidebarOpen: boolean; readerOpen: boolean; folds: string[] };
+export const DEFAULT_PANELS: SavedPanels = { sidebarOpen: true, readerOpen: true, folds: [] };
+export const PANELS_STORAGE_KEY = "mailboat.panels";
+
+const flag = (v: unknown, fallback: boolean) => (typeof v === "boolean" ? v : fallback);
+
+/** Saved panels; anything missing or unreadable is the default. */
+export function parsePanels(saved: string | null): SavedPanels {
+  let raw: unknown;
+  try {
+    raw = saved ? JSON.parse(saved) : null;
+  } catch {
+    raw = null;
+  }
+  const value = (raw ?? {}) as Partial<Record<keyof SavedPanels, unknown>>;
+  return {
+    sidebarOpen: flag(value.sidebarOpen, DEFAULT_PANELS.sidebarOpen),
+    readerOpen: flag(value.readerOpen, DEFAULT_PANELS.readerOpen),
+    folds: Array.isArray(value.folds)
+      ? [...new Set(value.folds.filter((f): f is string => typeof f === "string"))]
+      : [],
+  };
+}
+
+/** The folds with `key` flipped open or closed. */
+export function toggledFold(folds: string[], key: string): string[] {
+  return folds.includes(key) ? folds.filter((f) => f !== key) : [...folds, key];
+}

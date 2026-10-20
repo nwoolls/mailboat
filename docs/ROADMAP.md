@@ -1074,6 +1074,12 @@ comparison"), or to "Considered, not planned" there.*
       hidden, and which sidebar folds are open *(moved from UX Spike 1's
       deferred ideas, owner, 2026-10-19)*. Today both panels start shown
       every launch; pane widths and the window are already remembered
+      *Built (2026-10-19), waiting for the owner to try it: whether the
+      sidebar and reader are shown, and every sidebar fold (accounts,
+      their More and Labels), now come back as they were, kept with the
+      pane widths in the window's storage. Opening a conversation still
+      brings a hidden reader back, as before; only the reader toggle
+      itself is remembered*
 - [x] Settings wording trued up *(owner request, 2026-10-19)*: section
       subtitles said what the sections held before Milestone 7 (General's
       was "About Mailboat."). General, Notifications and Viewing now
