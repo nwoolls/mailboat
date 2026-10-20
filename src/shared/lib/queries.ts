@@ -205,6 +205,11 @@ export function useSaveAppSettings() {
     onError: (_error, _next, context) => {
       if (context?.previous) qc.setQueryData(keys.appSettings, context.previous);
     },
+    // Open emails follow a new remote-image default at once.
+    onSuccess: (_saved, next, context) => {
+      if (context?.previous?.remoteImages !== next.remoteImages)
+        void qc.invalidateQueries({ queryKey: ["message"] });
+    },
   });
 }
 

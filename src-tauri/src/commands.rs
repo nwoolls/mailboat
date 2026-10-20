@@ -7,7 +7,7 @@ use std::time::Duration;
 use mailboat_core::attachments;
 use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
 use mailboat_core::calendar::{self, InviteCard};
-use mailboat_core::compose::contacts::Contact;
+use mailboat_core::compose::contacts::{self, Contact};
 use mailboat_core::compose::identities::{self, Identity};
 use mailboat_core::compose::{self, OpenedDraft, OutgoingMessage, ReplySource};
 use mailboat_core::db::{accounts, query, store};
@@ -355,9 +355,21 @@ pub async fn message_open(
             |r| r.get(0),
         )
         .map_err(CoreError::from)?;
-    let choice = store::sender_image_choice(&state.db.conn(), &sender_email)?;
+    let sender_choice = store::sender_image_choice(&state.db.conn(), &sender_email)?;
     let (in_spam, in_trash) = store::message_spam_trash(&state.db.conn(), message_id)?;
-    let image_policy = images::image_policy(in_spam, in_trash, choice);
+    let default = settings::load(&state.db.conn())?.remote_images;
+    // Only looked up when the default depends on it.
+    let wrote_to_sender = default == images::RemoteImages::Correspondents
+        && contacts::wrote_to(&state.db.conn(), &sender_email)?;
+    let image_policy = images::image_policy(
+        default,
+        images::ImageContext {
+            in_spam,
+            in_trash,
+            sender_choice,
+            wrote_to_sender,
+        },
+    );
     let images_allowed = image_policy.allows();
     // Inline images are part of the email, not remote content, so they're
     // fetched (once, then cached) whatever the remote-image choice.

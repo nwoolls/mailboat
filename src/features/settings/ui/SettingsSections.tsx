@@ -23,7 +23,7 @@ import { AccountAvatar } from "../../accounts/ui/AccountAvatar";
 import { RemoveAccountDialog } from "../../accounts/ui/RemoveAccountDialog";
 import { useSignIn } from "../../accounts/ui/useSignIn";
 import { SHORTCUTS } from "../../mailbox/model/shortcuts";
-import type { AppSettings, DockBadge, Theme } from "../../../platform/tauri/bindings";
+import type { AppSettings, DockBadge, RemoteImages, Theme } from "../../../platform/tauri/bindings";
 import {
   ACCENTS,
   DEFAULT_APPEARANCE,
@@ -379,41 +379,80 @@ const DOCK_BADGES: { value: DockBadge; label: string }[] = [
 
 export function ViewingSection() {
   const prefs = viewingPrefs.use();
+  const settings = useAppSettings().data;
+  const save = useSaveAppSettings();
   return (
-    <Group title="Conversations">
-      <Row
-        label="After archiving or deleting"
-        description="What opens when the open conversation leaves the list."
-      >
-        <Segmented
+    <>
+      <Group title="Conversations">
+        <Row
           label="After archiving or deleting"
-          value={prefs.afterRemoval}
-          options={AFTER_REMOVAL}
-          onChange={(afterRemoval) => viewingPrefs.set({ ...prefs, afterRemoval })}
-        />
-      </Row>
-      <Row
-        label="Mark as read"
-        description="When opening an unread conversation marks it read. With a delay, moving on sooner leaves it unread."
-      >
-        <Segmented
+          description="What opens when the open conversation leaves the list."
+        >
+          <Segmented
+            label="After archiving or deleting"
+            value={prefs.afterRemoval}
+            options={AFTER_REMOVAL}
+            onChange={(afterRemoval) => viewingPrefs.set({ ...prefs, afterRemoval })}
+          />
+        </Row>
+        <Row
           label="Mark as read"
-          value={prefs.markRead}
-          options={MARK_READ}
-          onChange={(markRead) => viewingPrefs.set({ ...prefs, markRead })}
-        />
-      </Row>
-      <Row label="Message order" description="Within a conversation.">
-        <Segmented
-          label="Message order"
-          value={prefs.order}
-          options={ORDERS}
-          onChange={(order) => viewingPrefs.set({ ...prefs, order })}
-        />
-      </Row>
-    </Group>
+          description="When opening an unread conversation marks it read. With a delay, moving on sooner leaves it unread."
+        >
+          <Segmented
+            label="Mark as read"
+            value={prefs.markRead}
+            options={MARK_READ}
+            onChange={(markRead) => viewingPrefs.set({ ...prefs, markRead })}
+          />
+        </Row>
+        <Row label="Message order" description="Within a conversation.">
+          <Segmented
+            label="Message order"
+            value={prefs.order}
+            options={ORDERS}
+            onChange={(order) => viewingPrefs.set({ ...prefs, order })}
+          />
+        </Row>
+      </Group>
+      <Group title="Privacy">
+        <Row
+          label="Remote images"
+          description="Whether pictures from the web load when you open an email, for senders you haven’t chosen for. Loading one tells the sender when you opened it. Spam never loads them, and known trackers are always removed."
+        >
+          <select
+            aria-label="Remote images"
+            value={settings?.remoteImages ?? "load"}
+            disabled={!settings}
+            onChange={(e) =>
+              settings &&
+              save.mutate(
+                { ...settings, remoteImages: e.target.value as RemoteImages },
+                {
+                  onError: (err) =>
+                    showToast({ tone: "error", message: `Couldn’t save: ${errorText(err)}` }),
+                },
+              )
+            }
+            className={SELECT_CLASS}
+          >
+            {REMOTE_IMAGES.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Row>
+      </Group>
+    </>
   );
 }
+
+const REMOTE_IMAGES: { value: RemoteImages; label: string }[] = [
+  { value: "load", label: "Load for everyone" },
+  { value: "correspondents", label: "Load for people I’ve written to" },
+  { value: "block", label: "Block until I allow a sender" },
+];
 
 export function ComposingSection() {
   const prefs = composingPrefs.use();

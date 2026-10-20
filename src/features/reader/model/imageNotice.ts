@@ -36,6 +36,8 @@ export function imageNotice(m: Message): ImageNotice | null {
         quiet: true,
       };
     case "blockedForSender":
+    case "blockedByDefault":
+    case "blockedNotWrittenTo":
     case "blockedInTrash":
     case "blockedInSpam": {
       if (m.blockedImages === 0 && !trackers) return null;

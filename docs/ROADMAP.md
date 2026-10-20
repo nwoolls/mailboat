@@ -1293,8 +1293,17 @@ settled with the owner one at a time, as in the earlier spikes.*
 - [ ] "Original colors" toggle per message, for emails the remap gets wrong
 - [ ] Softer look for the remaining white cards on the glass
 - [ ] A setting to switch the default back to "blocked"
+      *Built (2026-10-20), waiting for the owner to try it: Settings →
+      Viewing → Privacy → Remote images, "Block until I allow a sender".
+      The reader's notice then offers "Load images" per sender, as for
+      Trash. Open emails follow a change at once*
 - [ ] Load by default only for people you've written to (option B of UX
       Spike 1's remote-image choice, not built)
+      *Built (2026-10-20), waiting for the owner to try it: the same
+      setting's middle choice, "Load for people I've written to". It
+      counts anyone on To or Cc of mail you've sent from any account
+      (the same test that ranks compose suggestions), not Google
+      Contacts you've never mailed. "Load for everyone" stays the default*
 - [ ] Background image prefetch during sync, like Apple Mail, so senders
       can't tell when you opened (option C of the same choice, not built)
 - [ ] With the screensaver set to Random, switch to another screensaver

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::error::{CoreError, Result};
+use crate::mail::images::RemoteImages;
 
 const KEY: &str = "app";
 
@@ -50,6 +51,8 @@ pub struct AppSettings {
     pub app_icon: Option<String>,
     /// The unread count on the Dock icon, across every account.
     pub dock_badge: DockBadge,
+    /// Whether remote images load for senders without a saved choice.
+    pub remote_images: RemoteImages,
 }
 
 impl Default for AppSettings {
@@ -59,6 +62,7 @@ impl Default for AppSettings {
             theme: Theme::System,
             app_icon: None,
             dock_badge: DockBadge::Inbox,
+            remote_images: RemoteImages::Load,
         }
     }
 }
@@ -105,6 +109,7 @@ mod tests {
             theme: Theme::Dark,
             app_icon: Some("C10-orange".into()),
             dock_badge: DockBadge::Off,
+            remote_images: RemoteImages::Correspondents,
         };
         save(&conn, &off).unwrap();
         save(&conn, &off).unwrap();
@@ -124,6 +129,7 @@ mod tests {
         assert_eq!(loaded.theme, Theme::Light);
         assert!(loaded.new_mail_notifications);
         assert_eq!(loaded.app_icon, None);
+        assert_eq!(loaded.remote_images, RemoteImages::Load);
     }
 
     #[test]

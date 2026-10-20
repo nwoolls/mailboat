@@ -340,6 +340,8 @@ export type AppSettings_Deserialize = {
 	appIcon?: string | null,
 	/**  The unread count on the Dock icon, across every account. */
 	dockBadge?: DockBadge_Deserialize,
+	/**  Whether remote images load for senders without a saved choice. */
+	remoteImages?: RemoteImages,
 };
 
 export type AppSettings_Serialize = {
@@ -357,6 +359,8 @@ export type AppSettings_Serialize = {
 	appIcon: string | null,
 	/**  The unread count on the Dock icon, across every account. */
 	dockBadge: DockBadge_Serialize,
+	/**  Whether remote images load for senders without a saved choice. */
+	remoteImages: RemoteImages,
 };
 
 /**  What applying a rule to mail already received changed. */
@@ -505,7 +509,14 @@ export type ImagePolicy =
 /**  The message is in Spam. */
 "blockedInSpam" | 
 /**  The message is in Trash and the sender has no saved choice. */
-"blockedInTrash";
+"blockedInTrash" | 
+/**  Blocked by the default in Settings ("Block"), sender has no choice. */
+"blockedByDefault" | 
+/**
+ *  The default loads only for people you've written to, and you
+ *  haven't written to this sender.
+ */
+"blockedNotWrittenTo";
 
 export type Importance = "leave" | "always" | "never";
 
@@ -789,6 +800,18 @@ export type Person = {
 	email: string,
 	name: string | null,
 };
+
+/**
+ *  Whether remote images load for senders without a saved choice
+ *  (Settings → Viewing).
+ */
+export type RemoteImages = 
+/**  Load for everyone (outside Spam and Trash). */
+"load" | 
+/**  Load only for people you've sent mail to, from any account. */
+"correspondents" | 
+/**  Load for no one: each sender has to be allowed. */
+"block";
 
 export type Replied = {
 	who: Person,

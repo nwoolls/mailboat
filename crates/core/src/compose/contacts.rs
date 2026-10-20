@@ -152,6 +152,29 @@ pub fn all(conn: &Connection) -> Result<Vec<Contact>> {
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
+/// Whether you've sent mail to `email` (To or Cc, any account), the same
+/// test as [`Contact::wrote`]. Used by the "people you've written to"
+/// remote-image default.
+pub fn wrote_to(conn: &Connection, email: &str) -> Result<bool> {
+    Ok(conn.query_row(
+        "SELECT EXISTS (
+           SELECT 1 FROM messages m
+           JOIN message_labels ml ON ml.message_id = m.id
+           JOIN labels l ON l.id = ml.label_id AND l.gmail_label_id = 'SENT',
+           json_each(m.to_json) j
+           WHERE lower(json_extract(j.value, '$.email')) = lower(?1)
+           UNION ALL
+           SELECT 1 FROM messages m
+           JOIN message_labels ml ON ml.message_id = m.id
+           JOIN labels l ON l.id = ml.label_id AND l.gmail_label_id = 'SENT',
+           json_each(m.cc_json) j
+           WHERE lower(json_extract(j.value, '$.email')) = lower(?1)
+         )",
+        [email.trim()],
+        |r| r.get(0),
+    )?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -317,5 +340,42 @@ mod tests {
             Some("Sam Smith"),
             "saved name wins"
         );
+    }
+
+    #[test]
+    fn wrote_to_counts_to_and_cc_of_sent_mail_only() {
+        let db = Db::open_in_memory().unwrap();
+        let a = account(&db, "a");
+        let mut conn = db.conn();
+        upsert_thread(
+            &mut conn,
+            a,
+            &message(
+                "s1",
+                &["SENT"],
+                addr("", "a@me.com"),
+                vec![addr("Sally", "Sally@y.com")],
+                1,
+            ),
+        )
+        .unwrap();
+        upsert_thread(
+            &mut conn,
+            a,
+            &message(
+                "r1",
+                &["INBOX"],
+                addr("Sam", "sam@x.com"),
+                vec![addr("", "a@me.com")],
+                1,
+            ),
+        )
+        .unwrap();
+        assert!(wrote_to(&conn, "sally@y.com").unwrap(), "case is ignored");
+        assert!(
+            !wrote_to(&conn, "sam@x.com").unwrap(),
+            "received from, never wrote to"
+        );
+        assert!(!wrote_to(&conn, "nobody@z.com").unwrap());
     }
 }

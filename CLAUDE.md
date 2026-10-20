@@ -154,7 +154,8 @@ these rules. Keep it passing.
 
 - Email HTML is sanitized in Rust (`mailboat_core::mail::sanitize`), then shown
   in an `<iframe sandbox>` without `allow-scripts`, with a per-message CSP.
-- Remote images load by default (owner's decision, 2026-10-15), except in
+- Remote images load by default (owner's decision, 2026-10-15; Settings →
+  Viewing can make it "people you've written to" or "blocked"), except in
   Spam (always blocked, even for allowed senders) and Trash (blocked unless
   the sender is allowed). A per-sender "load" or "block" choice is
   remembered by address (global, not per account) and wins outside Spam.

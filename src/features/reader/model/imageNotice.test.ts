@@ -34,8 +34,13 @@ describe("imageNotice", () => {
     expect(n?.text).toBe("Images shown · 2 trackers removed");
   });
 
-  it("offers to load images for a blocked sender and in Trash", () => {
-    for (const imagePolicy of ["blockedForSender", "blockedInTrash"] as const) {
+  it("offers to load images for a blocked sender, in Trash and under a stricter default", () => {
+    for (const imagePolicy of [
+      "blockedForSender",
+      "blockedInTrash",
+      "blockedByDefault",
+      "blockedNotWrittenTo",
+    ] as const) {
       const n = imageNotice({ ...base, imagePolicy, blockedImages: 1 });
       expect(n?.quiet).toBe(false);
       expect(n?.action?.allow).toBe(true);
