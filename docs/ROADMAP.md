@@ -1193,7 +1193,7 @@ ticked.*
       diagnose further. Owner's guess (2026-10-19): it was on another
       Space when it didn't start, which macOS also reports as hidden, so
       the same fix covers it
-- [ ] Check that ⌃⌘S, ⌃⌘R and ⌘K act once, not twice *(from Milestone
+- [x] Check that ⌃⌘S, ⌃⌘R and ⌘K act once, not twice *(from Milestone
       7, 2026-10-19)*. Since the menus were trued up, both the page and
       the menu bar know these keys. The page stops the key reaching the
       menu (it calls `preventDefault`, which WebKit is expected to honour,
@@ -1202,6 +1202,7 @@ ticked.*
       open twice. Not checked in the app by the agent. If it does happen:
       drop those three accelerators from the menu bar, or the page's own
       handling of them
+      *Owner checked (2026-10-20): each acts once*
 
 ## UX Spike 2
 
