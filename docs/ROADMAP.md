@@ -1168,7 +1168,7 @@ ticked.*
       Windows comes with the Windows work. Owner confirmed it works
       (2026-10-19)*
 
-- [ ] "Load older mail" can ask Gmail again and again for an empty view.
+- [x] "Load older mail" can ask Gmail again and again for an empty view.
       `threads_load_older` (src-tauri/src/commands.rs) answers "not
       exhausted" when one account fails (no Gmail client, say) while
       another succeeds. The list then asks again at once, because an
@@ -1182,7 +1182,8 @@ ticked.*
       failed, and after any failure the list shows "Couldn't load older
       mail. Try again" and waits, as after a full failure. Try again asks
       only the accounts with more to give. Never seen for real, so there's
-      nothing for the owner to watch for; tick on the owner's say-so*
+      nothing for the owner to watch for; tick on the owner's say-so.
+      Ticked on the owner's say-so (2026-10-20)*
 - [ ] The screensaver sometimes didn't start *(owner report,
       2026-10-19; moved from Milestone 7)*. Likely cause, fixed: when the idle minute ran out
       while the window was hidden it waited another minute instead of
