@@ -1275,6 +1275,9 @@ weren't built and moved to Later / unscheduled ("From UX Spike 2").
 
 ## UX Spike 3: Reading
 
+**Closed (owner, 2026-10-20).** Every item built and approved by the
+owner ("LGTM", 2026-10-20). Milestone 8 is next.
+
 *Milestones 8 onward and UX Spike 3 were laid out with the owner
 (2026-10-19) from what was in Later. Releasing to other people is the
 Release Spike, last: the owner may never distribute Mailboat.*
@@ -1282,7 +1285,7 @@ Release Spike, last: the owner may never distribute Mailboat.*
 *How email looks and how private opening it is. Built to try by feel and
 settled with the owner one at a time, as in the earlier spikes.*
 
-- [ ] Emails on the glass, step 2: remap colors set in an email's own style
+- [x] Emails on the glass, step 2: remap colors set in an email's own style
       sheet (needs a CSS parser), so more newsletters can adapt
       *Built (2026-10-20), waiting for the owner to try it: each style
       rule that sets a color is repeated for dark mode with the color
@@ -1292,7 +1295,7 @@ settled with the owner one at a time, as in the earlier spikes.*
       `hsl()` and 8-digit hex are understood, in inline styles too.
       Checked by rendering several newsletters in dark mode outside the app;
       "Original colors" is the way out for any that look wrong*
-- [ ] Dark mode for emails that declare it (`color-scheme: light dark`, as
+- [x] Dark mode for emails that declare it (`color-scheme: light dark`, as
       a vendor's do): apply their own dark rules plus our remap of their
       inline colours, as Mail.app does, instead of the white card. Their
       dark rules alone aren't enough (a vendor's turn text white but never
@@ -1305,7 +1308,7 @@ settled with the owner one at a time, as in the earlier spikes.*
       win. Instead of falling back to the white card when their sheet
       sets text colors outside the dark block, those colors are remapped
       too (step 2 made that possible)*
-- [ ] "Original colors" toggle per message, for emails the remap gets wrong
+- [x] "Original colors" toggle per message, for emails the remap gets wrong
       *Built (2026-10-20), waiting for the owner to try it: hovering an
       email that sits on the glass shows "Original colors" at its top
       right; it reshows that email on the white card with its own colors,
@@ -1317,26 +1320,26 @@ settled with the owner one at a time, as in the earlier spikes.*
       the app's glass (blurs the email under it, hairline edge, no
       shadow) with softer text; once switched, "Adapted colors" rests
       at 60% and brightens when the email is hovered*
-- [ ] Softer look for the remaining white cards on the glass
+- [x] Softer look for the remaining white cards on the glass
       *First try built (2026-10-20), waiting for the owner's eye: in dark
       mode the white card is dimmed to 90% brightness (images too) with a
       faint light edge and a small shadow instead of the grey ring, and
       rounded like the message cards (10px). Light mode is unchanged
       apart from the rounding. After step 2 only a small share of emails still use the card, plus any switched to "Original colors". Numbers are
       in `.email-card` in `src/styles/index.css`*
-- [ ] A setting to switch the default back to "blocked"
+- [x] A setting to switch the default back to "blocked"
       *Built (2026-10-20), waiting for the owner to try it: Settings →
       Viewing → Privacy → Remote images, "Block until I allow a sender".
       The reader's notice then offers "Load images" per sender, as for
       Trash. Open emails follow a change at once*
-- [ ] Load by default only for people you've written to (option B of UX
+- [x] Load by default only for people you've written to (option B of UX
       Spike 1's remote-image choice, not built)
       *Built (2026-10-20), waiting for the owner to try it: the same
       setting's middle choice, "Load for people I've written to". It
       counts anyone on To or Cc of mail you've sent from any account
       (the same test that ranks compose suggestions), not Google
       Contacts you've never mailed. "Load for everyone" stays the default*
-- [ ] Background image prefetch during sync, like Apple Mail, so senders
+- [x] Background image prefetch during sync, like Apple Mail, so senders
       can't tell when you opened (option C of the same choice, not built)
       *Built (2026-10-20), waiting for the owner to try it (owner: "sane
       defaults, start with how Apple does it, the rest configurable").
@@ -1354,7 +1357,7 @@ settled with the owner one at a time, as in the earlier spikes.*
       viewed removed first) and Clear. Images set in style sheets
       (`background: url()`) and the `background` attribute still load
       when opened. The sync log notes how many were downloaded*
-- [ ] With the screensaver set to Random, switch to another screensaver
+- [x] With the screensaver set to Random, switch to another screensaver
       every hour while it keeps playing *(owner request, 2026-10-19)*;
       today Random picks one each time it starts
       *Built (2026-10-20), waiting for the owner to try it: with Random
