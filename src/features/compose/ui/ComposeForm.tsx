@@ -23,7 +23,7 @@ import {
   sendProblem,
   withIdentity,
 } from "../model/draft";
-import { AssistantPanel } from "../../ai/ui/AssistantPanel";
+import { AssistantPanel, type UseMode } from "../../ai/ui/AssistantPanel";
 import { AddressField } from "./AddressField";
 import { HtmlPreview } from "./HtmlPreview";
 import { EditorBody, FormatBar, useRichEditor } from "./RichEditor";
@@ -129,12 +129,18 @@ export function ComposeForm({
   const account = accounts.find((a) => a.id === draft.accountId);
   const message = problem ?? error;
 
-  // "Use this": the AI's draft replaces the text (signature and quote
-  // stay as they are); new mail without a subject takes the one suggested.
-  const applyDraft = (html: string, subject: string | null) => {
+  // The AI's draft: Insert adds it where the cursor was (the editor keeps
+  // its selection while the chat has focus), Replace puts it in place of
+  // the text. Signature and quote stay either way; new mail without a
+  // subject takes the one suggested.
+  const applyDraft = (html: string, subject: string | null, how: UseMode) => {
     if (!editor) return;
-    editor.commands.setContent(html, { emitUpdate: true });
-    editor.commands.focus("end");
+    if (how === "insert") {
+      editor.chain().focus().insertContent(html).run();
+    } else {
+      editor.commands.setContent(html, { emitUpdate: true });
+      editor.commands.focus("end");
+    }
     if (subject && draft.kind === "new")
       onChange((d) => (d.subject.trim() ? d : { ...d, subject }));
   };
@@ -373,7 +379,9 @@ export function ComposeForm({
       )}
     </form>
   );
-  if (!panel) return form;
+  // The same layout whether the assistant is open or not, so opening it
+  // doesn't rebuild the form (which took the focus back into the editor
+  // and away from the chat box).
   return inline ? (
     <>
       {panel}

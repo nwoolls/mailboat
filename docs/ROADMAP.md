@@ -1448,7 +1448,7 @@ built, tested and waiting for the owner to try.*
       (it can't screenshot from its shell): checked by component tests
       and live provider tests. To decide with the owner: side panel vs
       above for the card, its width (340px), and whether "Insert" (keep
-      what's written) is wanted beside "Use this"
+      what's written) is wanted beside "Use this" (done: see below)
 - [x] Owner feedback on the first try (2026-10-20), with a screenshot:
       - With a signature, the sign-off had the owner's name too: now just
         "Thanks," when a signature follows (the name stays without one)
@@ -1459,8 +1459,14 @@ built, tested and waiting for the owner to try.*
         without list margins or a font of their own (tables with thin
         grey lines). Checked live: all three providers wrote a numbered
         agenda, a table and bold text when asked
-      - "Use this" to be renamed: options offered to the owner, waiting
-        for their pick
+      - "Use this" became two buttons *(owner's pick, 2026-10-20)*:
+        **Insert** (at the cursor, keeping what's written) and **Replace**
+        (in place of the text; signature and quote stay either way)
+      - The ✦ button didn't put the cursor in the chat box *(owner
+        report)*: opening the panel in the floating card rebuilt the form,
+        and the editor took the focus back. The layout no longer changes
+        when the panel opens, and the chat box is focused once the
+        provider is known to be ready
 - Ideas not built: AI actions in ⌘K (summarize, reply with AI), a
   "Reply with AI" button on the reply bar, per-provider model choice
   (today Claude uses Haiku for summaries and Sonnet for writing; Codex

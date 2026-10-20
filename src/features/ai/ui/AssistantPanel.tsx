@@ -8,6 +8,9 @@ import { type ChatMessage, chatMessage, suggestions, writeRequest } from "../mod
 import { aiChoices, offered, PROVIDER_NAMES, statusLine, statusOf } from "../model/providers";
 import { dropText, newRequestId, useStreamedText } from "./stream";
 
+/** Insert: at the cursor, keeping what's written. Replace: instead of it. */
+export type UseMode = "insert" | "replace";
+
 /**
  * Each message's chat, by draft, so closing the panel (or popping a reply
  * out into the card) keeps it until the message is sent or discarded.
@@ -20,7 +23,7 @@ export function forgetChat(draftId: number) {
 
 /**
  * The writing assistant: a chat about the message being written. Each
- * answer is a whole draft; "Use this" puts it in the editor (replacing
+ * answer is a whole draft; "Insert" puts it at the cursor, "Replace" in place of
  * what's there, above the signature and quote). Nothing is sent to the
  * model until a request is.
  */
@@ -34,7 +37,7 @@ export function AssistantPanel({
   /** Beside the floating card's form, or above an inline reply. */
   placement: "side" | "top";
   /** The draft as the composer's HTML (cleaned in Rust), and a subject. */
-  onUse: (html: string, subject: string | null) => void;
+  onUse: (html: string, subject: string | null, how: UseMode) => void;
   onClose: () => void;
 }) {
   const settings = useAppSettings().data;
@@ -112,6 +115,14 @@ export function AssistantPanel({
 
   const ready = status?.state === "ready";
   const choices = offered(ai);
+  // Opened (✦ or ⌘J): ready to type. After the click that opened it has
+  // finished, and again once the provider's status is known (the box is
+  // disabled until then, and a disabled box can't take focus).
+  useEffect(() => {
+    if (!ready) return;
+    const frame = requestAnimationFrame(() => field.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [ready]);
 
   return (
     <aside
@@ -207,7 +218,7 @@ export function AssistantPanel({
             <DraftBubble
               key={m.id}
               message={m}
-              onUse={() => onUse(m.html ?? textToHtml(m.text), m.subject ?? null)}
+              onUse={(how) => onUse(m.html ?? textToHtml(m.text), m.subject ?? null, how)}
             />
           ),
         )}
@@ -230,8 +241,6 @@ export function AssistantPanel({
       >
         <textarea
           ref={field}
-          // Opened on purpose (⌘J or ✦): ready to type.
-          autoFocus
           rows={2}
           value={input}
           disabled={!ready}
@@ -276,8 +285,8 @@ export function AssistantPanel({
   );
 }
 
-/** One draft from the model, with Use this. */
-function DraftBubble({ message, onUse }: { message: ChatMessage; onUse: () => void }) {
+/** One draft from the model, with Insert and Replace. */
+function DraftBubble({ message, onUse }: { message: ChatMessage; onUse: (how: UseMode) => void }) {
   return (
     <div className="rounded-lg bg-selection px-2.5 pt-2 pb-1.5">
       {message.subject && (
@@ -295,14 +304,22 @@ function DraftBubble({ message, onUse }: { message: ChatMessage; onUse: () => vo
       ) : (
         <p className="selectable whitespace-pre-wrap text-content/85">{message.text}</p>
       )}
-      <div className="mt-1.5 flex justify-end">
+      <div className="mt-1.5 flex justify-end gap-1.5">
         <button
           type="button"
-          onClick={onUse}
-          title="Put this in the message (replaces what’s written)"
+          onClick={() => onUse("insert")}
+          title="Add this where the cursor is, keeping what’s written"
+          className="h-6 rounded-md px-2.5 text-xs font-medium text-content/80 ring-1 ring-stroke ring-inset hover:bg-selection-strong hover:text-content"
+        >
+          Insert
+        </button>
+        <button
+          type="button"
+          onClick={() => onUse("replace")}
+          title="Put this in place of what’s written (signature and quote stay)"
           className="h-6 rounded-md bg-accent px-2.5 text-xs font-medium text-white hover:brightness-110"
         >
-          Use this
+          Replace
         </button>
       </div>
     </div>

@@ -18,7 +18,20 @@ const { AssistantPanel } = await import("./AssistantPanel");
 afterEach(cleanup);
 
 describe("AssistantPanel", () => {
-  it("asks with the chat, shows the draft, and Use this hands it over", async () => {
+  it("puts the cursor in the chat box when it opens", async () => {
+    render(
+      <AssistantPanel
+        draft={newDraft([], 1, "me@x.com")}
+        placement="side"
+        onUse={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    await act(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+    expect(document.activeElement).toBe(screen.getByLabelText("Ask the AI"));
+  });
+
+  it("asks with the chat, shows the draft, and Insert or Replace hands it over", async () => {
     aiWrite.mockResolvedValue({
       status: "ok",
       data: {
@@ -45,8 +58,18 @@ describe("AssistantPanel", () => {
       kind: "reply",
       chat: [{ role: "user", text: "Say yes" }],
     });
-    fireEvent.click(await screen.findByText("Use this"));
-    expect(onUse).toHaveBeenCalledWith("<p>Yes, <strong>Thursday</strong> works.</p>", null);
+    fireEvent.click(await screen.findByText("Replace"));
+    expect(onUse).toHaveBeenCalledWith(
+      "<p>Yes, <strong>Thursday</strong> works.</p>",
+      null,
+      "replace",
+    );
+    fireEvent.click(screen.getByText("Insert"));
+    expect(onUse).toHaveBeenLastCalledWith(
+      "<p>Yes, <strong>Thursday</strong> works.</p>",
+      null,
+      "insert",
+    );
     // Shown formatted in the chat, not as Markdown.
     expect(screen.getByText("Thursday").tagName).toBe("STRONG");
   });
