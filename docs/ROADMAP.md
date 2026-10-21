@@ -1695,7 +1695,10 @@ seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
       the sidebar.* Now the peek glides into the sidebar's exact place
       (8px left, 4px up) and loses its glass, shadow and corners while the
       sidebar opens beneath it without its own slide, both in the panel
-      slide's 0.22s; then the peek goes. Not seen in the app by the agent;
+      slide's 0.22s; then the peek goes. *Owner: the glass changed at one
+      moment instead of fading.* WebKit can't fade a backdrop blur, so it
+      switched off in one step; the glass is now a layer behind the
+      contents that fades by opacity. Not seen in the app by the agent;
       a right-click menu opened in the peek may lose it when the pointer
       moves onto the menu
 ### From Milestone 6 (moved unbuilt when it closed, 2026-10-19; the owner uses none of these)
