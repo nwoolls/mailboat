@@ -33,24 +33,32 @@ pub fn notices(
     }
     let mut out = Vec::new();
     for &m in messages {
-        let row: Option<(Option<String>, String, String)> = conn
+        let row: Option<(Option<String>, String, String, String)> = conn
             .query_row(
-                "SELECT from_name, from_email, subject FROM messages WHERE id = ?1 AND account_id = ?2",
+                "SELECT from_name, from_email, subject, snippet FROM messages WHERE id = ?1 AND account_id = ?2",
                 params![m, account],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
             )
             .ok();
-        if let Some((name, email, subject)) = row {
+        if let Some((name, email, subject, snippet)) = row {
             let who = name.filter(|n| !n.trim().is_empty()).unwrap_or(email);
             let subject = if subject.trim().is_empty() {
                 "(no subject)".to_string()
             } else {
                 subject
             };
-            out.push(Notice {
-                title: who,
-                body: format!("{subject}{suffix}"),
-            });
+            // A sign-in code leads, so it can be read off the banner.
+            let notice = match super::codes::find(&subject, &snippet) {
+                Some(code) => Notice {
+                    title: format!("{code} · {who}"),
+                    body: format!("Sign-in code · {subject}{suffix}"),
+                },
+                None => Notice {
+                    title: who,
+                    body: format!("{subject}{suffix}"),
+                },
+            };
+            out.push(notice);
         }
     }
     Ok(out)
@@ -141,5 +149,40 @@ mod tests {
                 body: "Inbox".into()
             }]
         );
+    }
+
+    #[test]
+    fn a_sign_in_code_leads_the_notice_and_arrives_for_the_window() {
+        let (db, a, _) = setup(0);
+        let thread = upsert_thread(
+            &mut db.conn(),
+            a,
+            &IncomingThread {
+                gmail_thread_id: "c".into(),
+                messages: vec![IncomingMessage {
+                    gmail_message_id: "c1".into(),
+                    subject: "Your Spotify login code".into(),
+                    snippet: "Your login code is 346625. It expires in 15 minutes.".into(),
+                    from: Some(Address {
+                        name: Some("Spotify".into()),
+                        email: "no-reply@spotify.com".into(),
+                    }),
+                    ..Default::default()
+                }],
+            },
+        )
+        .unwrap();
+        let id: MessageId = db
+            .conn()
+            .query_row("SELECT id FROM messages", [], |r| r.get(0))
+            .unwrap();
+        let n = notices(&db.conn(), a, &[id], None).unwrap();
+        assert_eq!(n[0].title, "346625 · Spotify");
+        assert_eq!(n[0].body, "Sign-in code · Your Spotify login code");
+        let (found, needs_body) = super::super::codes::in_messages(&db.conn(), &[id]).unwrap();
+        assert!(needs_body.is_empty());
+        assert_eq!(found[0].code, "346625");
+        assert_eq!(found[0].thread_id, thread);
+        assert_eq!(found[0].sender, "Spotify");
     }
 }

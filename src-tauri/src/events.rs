@@ -60,6 +60,8 @@ impl SyncEvents for TauriSyncEvents {
     }
     fn new_mail(&self, account: AccountId, messages: &[mailboat_core::model::MessageId]) {
         use tauri_plugin_notification::NotificationExt;
+        // Sign-in codes go to the window whether or not notifications are on.
+        crate::codes::arrived(&self.app, &self.db, messages);
         // Turned off in Settings → Notifications.
         let enabled = {
             let conn = self.db.conn();

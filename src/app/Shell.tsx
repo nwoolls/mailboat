@@ -91,6 +91,7 @@ import { SettingsTitleBar } from "../features/settings/ui/SettingsTitleBar";
 import { accountForNew } from "../features/compose/model/draft";
 import { openCardEntry } from "../features/compose/model/composeState";
 import { ComposeCard } from "../features/compose/ui/ComposeCard";
+import { CodeNotices } from "../features/codes/ui/CodeNotices";
 import { MinimizedTabs } from "../features/compose/ui/MinimizedTabs";
 import { ReplyArea } from "../features/compose/ui/ReplyArea";
 import {
@@ -949,6 +950,12 @@ export function Shell() {
           onSwitch={(id, kind) => void compose.switchKind(id, kind)}
         />
       )}
+      <CodeNotices
+        onOpen={(id) => {
+          setSelectedId(id);
+          setReaderOpen(true);
+        }}
+      />
       <MinimizedTabs
         entries={composeState.cards.filter((c) => c.minimized)}
         accounts={accountList}

@@ -225,6 +225,9 @@ pub struct ThreadSummary {
     pub only_draft: bool,
     /// In Spam (so "Not spam" applies; otherwise "Report spam").
     pub in_spam: bool,
+    /// A sign-in code in its newest mail, if it arrived in the last day
+    /// (`mail::codes`), shown on the row to copy.
+    pub sign_in_code: Option<String>,
 }
 
 /// Someone who wrote in a conversation, for its list row.

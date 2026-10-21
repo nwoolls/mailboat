@@ -86,6 +86,8 @@ export const commands = {
 	 *  colors on the white card, for every account.
 	 */
 	senderOriginalColors: (senderEmail: string, original: boolean) => typedError<null, AppError>(__TAURI_INVOKE("sender_original_colors", { senderEmail, original })),
+	/**  Copies text to the clipboard (a sign-in code, say). */
+	textCopy: (text: string) => typedError<null, AppError>(__TAURI_INVOKE("text_copy", { text })),
 	/**  Opens an attachment with its default app. */
 	attachmentOpen: (attachmentId: AttachmentId) => typedError<null, AppError>(__TAURI_INVOKE("attachment_open", { attachmentId })),
 	/**  Shows an attachment in Quick Look (macOS). */
@@ -314,6 +316,7 @@ export const events = {
 	mailtoEvent: makeEvent<MailtoEvent>("mailto-event"),
 	menuCommandEvent: makeEvent<MenuCommandEvent>("menu-command-event"),
 	openSettingsEvent: makeEvent<OpenSettingsEvent>("open-settings-event"),
+	signInCodeEvent: makeEvent<SignInCodeEvent>("sign-in-code-event"),
 	syncProgressEvent: makeEvent<SyncProgressEvent>("sync-progress-event"),
 	syncStatusEvent: makeEvent<SyncStatusEvent>("sync-status-event"),
 	trackpadEvent: makeEvent<TrackpadEvent>("trackpad-event"),
@@ -498,6 +501,17 @@ export type Applied = {
 	messages: number,
 	/**  Stopped at `APPLY_MAX`; older matching mail was left alone. */
 	capped: boolean,
+};
+
+/**  A sign-in code in a message that just arrived. */
+export type ArrivedCode = {
+	messageId: MessageId,
+	threadId: ThreadId,
+	accountId: AccountId,
+	code: string,
+	/**  The sender's name, or address. */
+	sender: string,
+	subject: string,
 };
 
 /**
@@ -1134,6 +1148,9 @@ export type SavedRule = {
 	applyError: string | null,
 };
 
+/**  A sign-in code arrived in new mail. */
+export type SignInCodeEvent = ArrivedCode;
+
 export type SizeComparison = "larger" | "smaller";
 
 export type SizeLimit = {
@@ -1217,6 +1234,11 @@ export type ThreadSummary = {
 	onlyDraft: boolean,
 	/**  In Spam (so "Not spam" applies; otherwise "Report spam"). */
 	inSpam: boolean,
+	/**
+	 *  A sign-in code in its newest mail, if it arrived in the last day
+	 *  (`mail::codes`), shown on the row to copy.
+	 */
+	signInCode: string | null,
 };
 
 /**

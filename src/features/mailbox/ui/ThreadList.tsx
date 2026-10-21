@@ -4,6 +4,7 @@ import type { ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
 import { AiIcon, AttachmentIcon, StarIcon } from "../../../shared/ui/icons";
 import { useAiStatus, useAppSettings } from "../../../shared/lib/queries";
 import { useLineSummaries } from "../../ai/ui/lineSummaries";
+import { CodePill } from "../../codes/ui/CodePill";
 import { aiChoices, isReady } from "../../ai/model/providers";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { formatListDate, senderParts } from "../model/format";
@@ -340,6 +341,7 @@ export function ThreadList({
                       />
                     )}
                     <span className="truncate">{t.subject || "(no subject)"}</span>
+                    {t.signInCode && <CodePill code={t.signInCode} />}
                   </div>
                   <div
                     className="truncate text-xs font-medium text-content/40"

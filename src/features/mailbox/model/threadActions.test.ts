@@ -36,6 +36,7 @@ const thread = (id: number, over: Partial<ThreadSummary> = {}): ThreadSummary =>
   labelIds: [],
   onlyDraft: false,
   inSpam: false,
+  signInCode: null,
   ...over,
 });
 

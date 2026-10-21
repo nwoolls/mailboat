@@ -1,6 +1,7 @@
 mod ai;
 mod app_icon;
 mod badge;
+mod codes;
 mod commands;
 mod dock;
 mod email_menu;
@@ -58,6 +59,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::threads_change_labels,
             commands::sender_allow_images,
             commands::sender_original_colors,
+            commands::text_copy,
             commands::attachment_open,
             commands::attachment_preview,
             commands::attachment_save,
@@ -127,6 +129,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             MenuCommandEvent,
             trackpad::TrackpadEvent,
             email_menu::EmailMenuEvent,
+            codes::SignInCodeEvent,
             ai::AiTextEvent,
             ai::AiLineSummaryEvent
         ])

@@ -1630,14 +1630,55 @@ seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
       to remove one or clear them all. To agree: how many to keep, whether
       they show in ⌘K too, and whether a search can be pinned (saved
       searches)
-- [ ] Look through GotEmail and bytemail for features and enhancements
-      worth borrowing *(owner request, 2026-10-19)*. An agent researches
-      both and writes up what each does that Mailboat doesn't, or does
-      better, as a short list for the owner to pick from one at a time
-      (as the Mimestream and Mail.app settings comparison was done).
-      Nothing about either app is assumed here; the research says what
-      they actually do. Picked items join a milestone or this list
-
+- [x] Look through GotEmail and bytemail for features and enhancements
+      worth borrowing *(owner request, 2026-10-19; researched
+      2026-10-20 from their websites, marketing claims unverified)*.
+      Picked first by the owner: sign-in codes (below). The rest, for the
+      owner to pick from one at a time:
+      - **Codes, more** (both): a menu-bar list of codes from the last 15
+        minutes (GotEmail); archive the email once its code is copied
+        (bytemail); magic sign-in links with an Open button (both)
+      - **Menu bar item** (GotEmail): unread count, compose, check mail
+      - **To Reply** (bytemail): a view of conversations where someone is
+        waiting on you, leaving out newsletters and receipts
+      - **Remind me if no reply** (bytemail): a sent message comes back to
+        the top of the Inbox if nobody answers by a chosen time
+      - **Unsubscribe and Subscriptions** (bytemail): one-click
+        unsubscribe where senders support it, and a list of senders by
+        how much they send
+      - **Phishing warnings** (bytemail): look-alike domains, sender
+        authenticity, links whose text and address differ
+      - **Strip tracking codes from links** (bytemail): utm_ and the like,
+        alongside the tracking pixels Mailboat already removes
+      - **Translate** (GotEmail): Apple's on-device translation of an
+        email, with Show original
+      - **Rewrite selected text** (bytemail): shorten, soften or translate
+        what's written, with Apple Intelligence
+      - **Sender logos** in the list (GotEmail)
+      - **Contacts view** (GotEmail): everyone you write to, with recent
+        mail both ways
+      - **Chat-style conversations** (bytemail), with a classic view per
+        account
+      - Already in Mailboat or its plans: unified inbox, AI drafting and
+        summaries, invitations, rules, undo send, tracker removal,
+        per-sender images, remote search, MCP server (AI Spike), snooze
+        and send later (Later), category tabs (Later). Not for Mailboat:
+        read tracking and read receipts (need a server), IMAP providers
+- [x] Sign-in codes *(owner pick, 2026-10-20: "surfacing sign-in codes,
+      maybe as modeless notifications in the upper right like the
+      harness updates in MonoCode… we'd have to play with it")*. Built to
+      try: `mail::codes` finds a code by its wording (e.g. "verification
+      code", "one-time passcode", "is your … code"), never in replies,
+      forwards, invitations (meeting passcodes) or Spam, nor promo codes,
+      years, prices, order or phone numbers. Shown three ways:
+      - a glass notice at the top right as the email arrives (MonoCode's
+        style): sender, subject, the code, Copy (then it goes); Open
+        shows the email; it leaves by itself after 10 minutes
+      - the code leads the macOS notification ("346625 · Spotify")
+      - a pill on the conversation's row for a day; clicking copies it
+      Checked on invented sign-in emails of many styles; promotional wording; meeting
+      passcodes and people writing about codes are left alone
+      (`examples/code_stats`). Not seen in the app by the agent
 ### From Milestone 6 (moved unbuilt when it closed, 2026-10-19; the owner uses none of these)
 
 - [ ] Snooze. No Gmail API: Mailboat would do it itself (likely a "Snoozed"

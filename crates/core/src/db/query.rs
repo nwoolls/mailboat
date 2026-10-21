@@ -53,15 +53,28 @@ const THREAD_COLUMNS: &str =
   EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
           WHERE tl.thread_id = t.id AND l.gmail_label_id = 'SPAM')";
 
+/// How long a sign-in code is worth showing on its row: codes expire in
+/// minutes, so an old one is only noise.
+const CODE_SHOWN_FOR_MS: i64 = 24 * 60 * 60 * 1000;
+
 fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
     let senders: String = row.get(4)?;
+    let subject: String = row.get(2)?;
+    let snippet: String = row.get(3)?;
+    let last_message_at: i64 = row.get(5)?;
+    let in_spam: bool = row.get(14)?;
+    // From the subject and Gmail's snippet (the body may not be downloaded
+    // yet); never in Spam, where codes are bait.
+    let sign_in_code = (!in_spam && crate::db::now_millis() - last_message_at < CODE_SHOWN_FOR_MS)
+        .then(|| crate::mail::codes::find(&subject, &snippet))
+        .flatten();
     Ok(ThreadSummary {
         id: row.get(0)?,
         account_id: row.get(1)?,
-        subject: row.get(2)?,
-        snippet: row.get(3)?,
+        subject,
+        snippet,
         senders: serde_json::from_str(&senders).unwrap_or_default(),
-        last_message_at: row.get(5)?,
+        last_message_at,
         message_count: row.get(6)?,
         unread: row.get(7)?,
         starred: row.get(8)?,
@@ -75,7 +88,8 @@ fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
             .filter_map(|id| id.parse().ok().map(LabelId))
             .collect(),
         only_draft: row.get(13)?,
-        in_spam: row.get(14)?,
+        in_spam,
+        sign_in_code,
     })
 }
 

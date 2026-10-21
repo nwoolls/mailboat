@@ -15,6 +15,7 @@ const row = (over: Partial<Parameters<typeof conversationCommands>[0][number]> =
   starred: false,
   inTrash: false,
   inSpam: false,
+  signInCode: null,
   onlyDraft: false,
   ...over,
 });

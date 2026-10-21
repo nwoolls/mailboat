@@ -391,6 +391,13 @@ pub async fn message_open(
     })
 }
 
+/// Copies text to the clipboard (a sign-in code, say).
+#[tauri::command]
+#[specta::specta]
+pub fn text_copy(text: String) -> CmdResult<()> {
+    Ok(crate::email_menu::copy_text(&text).map_err(CoreError::Other)?)
+}
+
 /// Remembers (or forgets) that a sender's emails open with their original
 /// colors on the white card, for every account.
 #[tauri::command]
