@@ -1687,7 +1687,11 @@ seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
       stays while the pointer is on it (views can be picked from it) and
       goes 0.28s after the pointer leaves both, or with Esc; clicking the
       button still pins it open as before. Timings are `PEEK_OPEN_MS` and
-      `PEEK_CLOSE_MS` in `app/Shell.tsx`. Not seen in the app by the agent;
+      `PEEK_CLOSE_MS` in `app/Shell.tsx`. *Owner (2026-10-20): a small delay
+      before it shows, and a quick slide in from the side.* Now it opens
+      after 0.3s, slides in from past the window's left edge in 0.16s and
+      slides back out in 0.12s (moving back onto it keeps it). Not seen in
+      the app by the agent;
       a right-click menu opened in the peek may lose it when the pointer
       moves onto the menu
 ### From Milestone 6 (moved unbuilt when it closed, 2026-10-19; the owner uses none of these)

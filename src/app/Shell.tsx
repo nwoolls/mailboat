@@ -154,12 +154,17 @@ function isEditable(target: EventTarget | null): boolean {
 }
 
 /**
- * How long the pointer rests on the sidebar button before the peek opens,
- * and how long after it leaves that the peek closes (time to cross the
- * gap between the button and the panel).
+ * The sidebar peek's timing: how long the pointer rests on the sidebar
+ * button before it opens (so passing over the button doesn't open it),
+ * how long after the pointer leaves that it closes (time to cross the gap
+ * between the button and the panel), and how long it takes to slide out
+ * (`peek-out` in index.css; sliding in is `peek-in`).
  */
-const PEEK_OPEN_MS = 120;
+const PEEK_OPEN_MS = 300;
 const PEEK_CLOSE_MS = 280;
+const PEEK_SLIDE_OUT_MS = 120;
+
+type Peek = "closed" | "open" | "leaving";
 
 export function Shell() {
   useMailEvents();
@@ -291,19 +296,36 @@ export function Shell() {
   // While the sidebar is hidden, hovering its toolbar button floats it over
   // the list (as Notion Calendar does); it stays while the pointer is on
   // it and goes a moment after the pointer leaves both.
-  const [peek, setPeek] = useState(false);
+  const [peek, setPeek] = useState<Peek>("closed");
   const peekTimer = useRef(0);
-  const hoverSidebar = useCallback((inside: boolean) => {
+  // Slides out, then goes (unless the pointer came back meanwhile).
+  const closePeek = useCallback(() => {
     window.clearTimeout(peekTimer.current);
-    if (inside && !panels.get().sidebarOpen) {
-      // Not if the sidebar was pinned open meanwhile (the button clicked).
-      peekTimer.current = window.setTimeout(() => setPeek(!panels.get().sidebarOpen), PEEK_OPEN_MS);
-    } else if (!inside) {
-      peekTimer.current = window.setTimeout(() => setPeek(false), PEEK_CLOSE_MS);
-    }
+    setPeek((p) => (p === "closed" ? p : "leaving"));
+    peekTimer.current = window.setTimeout(
+      () => setPeek((p) => (p === "leaving" ? "closed" : p)),
+      PEEK_SLIDE_OUT_MS,
+    );
   }, []);
+  const hoverSidebar = useCallback(
+    (inside: boolean) => {
+      window.clearTimeout(peekTimer.current);
+      if (inside && !panels.get().sidebarOpen) {
+        // Back onto it while it slides out: it stays. Otherwise it opens
+        // after a moment, unless the sidebar was pinned open meanwhile.
+        setPeek((p) => (p === "leaving" ? "open" : p));
+        peekTimer.current = window.setTimeout(
+          () => setPeek((p) => (panels.get().sidebarOpen ? "closed" : p === "closed" ? "open" : p)),
+          PEEK_OPEN_MS,
+        );
+      } else if (!inside) {
+        peekTimer.current = window.setTimeout(closePeek, PEEK_CLOSE_MS);
+      }
+    },
+    [closePeek],
+  );
   const toggleSidebar = useCallback(() => {
-    setPeek(false);
+    setPeek("closed");
     setSidebarOpen(!panels.get().sidebarOpen);
   }, []);
   const toggleReader = useCallback(() => {
@@ -790,14 +812,15 @@ export function Shell() {
             />
           </div>
         </div>
-        {peek && !sidebarShown && (
+        {peek !== "closed" && !sidebarShown && (
           // The hidden sidebar, floating over the list for a peek.
           <div
             className="sidebar-peek absolute top-10 bottom-2 left-2 z-30 flex overflow-hidden rounded-[10px] pt-1 pr-2"
+            data-leaving={peek === "leaving" || undefined}
             onPointerEnter={() => hoverSidebar(true)}
             onPointerLeave={() => hoverSidebar(false)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") setPeek(false);
+              if (e.key === "Escape") closePeek();
             }}
           >
             <Sidebar

@@ -490,12 +490,22 @@ html.resizing .panel-slide {
   box-shadow:
     inset 0 0 0 1px var(--color-stroke),
     0 18px 48px -12px rgb(0 0 0 / 0.5);
-  animation: peek-in 180ms var(--motion-ease-out) backwards;
+  animation: peek-in 160ms var(--motion-ease-out) backwards;
 }
+/* Leaving: slides back out (PEEK_SLIDE_OUT_MS in app/Shell.tsx). */
+.sidebar-peek[data-leaving] {
+  animation: peek-out 120ms ease-in forwards;
+}
+/* In from (and out to) past the window's left edge: its own width plus
+   the 8px gap it sits in from. */
 @keyframes peek-in {
   from {
-    opacity: 0;
-    translate: -12px 0;
+    translate: calc(-100% - 8px) 0;
+  }
+}
+@keyframes peek-out {
+  to {
+    translate: calc(-100% - 8px) 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
