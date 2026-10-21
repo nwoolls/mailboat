@@ -41,16 +41,22 @@ function accentFor(id: unknown): AccentId {
   return ACCENTS.find((a) => a.id === id)?.id ?? "blue";
 }
 
-/** How far each slider goes. The sidebar's default is nearly clear already. */
+/**
+ * What may be stored: enough to reach fully clear (0% tint) and fully
+ * solid (100%) from each area's default tint in light or dark (sidebar
+ * 6.5% dark, 10% light; list 34% dark, 37% light, in `index.css`). The CSS
+ * clamps the sum to 0–100% either way.
+ */
 export const TINT_RANGE = {
-  sidebarTint: { min: -6, max: 40 },
-  listTint: { min: -30, max: 40 },
+  sidebarTint: { min: -10, max: 93.5 },
+  listTint: { min: -37, max: 66 },
 } as const;
 
+/** Kept to half points, so a default of 6.5% can reach exactly 0. */
 function clampTint(key: TintKey, value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0;
   const { min, max } = TINT_RANGE[key];
-  return Math.min(max, Math.max(min, Math.round(value)));
+  return Math.min(max, Math.max(min, Math.round(value * 2) / 2));
 }
 
 /** Saved appearance; anything missing or unreadable is the default. */
@@ -95,11 +101,12 @@ export function seeThrough(base: number, tint: number): number {
 }
 
 /**
- * The sliders run in see-through terms (right is clearer), so their value
- * is the tint flipped, and their ends are the tint range flipped.
+ * The adjustment that makes an area `percent` see-through, from its
+ * default tint `base` (the sliders run 0–100% see-through, right being
+ * clearer).
  */
-export function sliderRange(key: TintKey): { min: number; max: number } {
-  return { min: -TINT_RANGE[key].max, max: -TINT_RANGE[key].min };
+export function tintFor(base: number, percent: number): number {
+  return 100 - Math.min(100, Math.max(0, percent)) - base;
 }
 
 export function isDefault(a: Appearance): boolean {

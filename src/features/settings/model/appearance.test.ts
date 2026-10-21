@@ -5,8 +5,8 @@ import {
   isDefault,
   parseAppearance,
   TINT_RANGE,
+  tintFor,
   seeThrough,
-  sliderRange,
   withTint,
 } from "./appearance";
 
@@ -18,9 +18,9 @@ describe("appearance", () => {
     expect(parseAppearance('{"sidebarTint":"a"}')).toEqual(DEFAULT_APPEARANCE);
   });
 
-  it("reads saved values, kept within range and whole", () => {
+  it("reads saved values, kept within range, to half points", () => {
     expect(parseAppearance('{"sidebarTint":4.6,"listTint":-99,"accent":"green"}')).toEqual({
-      sidebarTint: 5,
+      sidebarTint: 4.5,
       listTint: TINT_RANGE.listTint.min,
       accent: "green",
     });
@@ -49,10 +49,27 @@ describe("appearance", () => {
     expect(seeThrough(90, 40)).toBe(0);
   });
 
-  it("runs sliders the other way, right being clearer", () => {
-    expect(sliderRange("sidebarTint")).toEqual({
-      min: -TINT_RANGE.sidebarTint.max,
-      max: -TINT_RANGE.sidebarTint.min,
+  it("runs sliders from 0% to 100% see-through, keeping saved settings", () => {
+    // Both ends reachable from either look's default (dark 6.5, light 10).
+    for (const base of [6.5, 10]) {
+      const clear = withTint(DEFAULT_APPEARANCE, "sidebarTint", tintFor(base, 100));
+      expect(seeThrough(base, clear.sidebarTint)).toBe(100);
+      expect(base + clear.sidebarTint).toBe(0);
+      const solid = withTint(DEFAULT_APPEARANCE, "sidebarTint", tintFor(base, 0));
+      expect(seeThrough(base, solid.sidebarTint)).toBe(0);
+    }
+    for (const base of [34, 37]) {
+      expect(
+        seeThrough(base, withTint(DEFAULT_APPEARANCE, "listTint", tintFor(base, 0)).listTint),
+      ).toBe(0);
+      expect(
+        seeThrough(base, withTint(DEFAULT_APPEARANCE, "listTint", tintFor(base, 100)).listTint),
+      ).toBe(100);
+    }
+    // A setting saved under the old ranges reads back unchanged.
+    expect(parseAppearance('{"sidebarTint":-6,"listTint":40}')).toMatchObject({
+      sidebarTint: -6,
+      listTint: 40,
     });
   });
 });

@@ -1372,6 +1372,12 @@ settled with the owner one at a time, as in the earlier spikes.*
 wrong (Advanced and Show original, moved here from the Release Spike
 idea because they're useful without distributing).*
 
+- [x] Both transparency sliders run the full 0% to 100% see-through
+      *(owner request, 2026-10-21)*. They were limited to a range around
+      each default (the sidebar's could only get 6 points clearer). Saved
+      settings keep their value; the sliders now work in see-through
+      percent from each area's default for the current light or dark
+      look, and both ends are reachable in either
 - [ ] Choose what each swipe does, plus a second swipe each way
 - [ ] Delete key: Trash or Archive (in the Settings plan)
 - [ ] List density and preview lines (also a UX Spike 1 deferred idea)

@@ -31,7 +31,7 @@ import {
   DEFAULT_APPEARANCE,
   isDefault,
   seeThrough,
-  sliderRange,
+  tintFor,
   withTint,
 } from "../model/appearance";
 import { Button, ChoiceGrid, Group, Row, Segmented, Slider, Swatches, Toggle } from "./controls";
@@ -760,10 +760,13 @@ export function AppearanceSection({
           <Row key={key} label={label}>
             <Slider
               label={`${label} see-through`}
-              value={-appearance[key]}
+              value={seeThrough(cssPercent(baseVar), appearance[key])}
               display={`${seeThrough(cssPercent(baseVar), appearance[key])}%`}
-              {...sliderRange(key)}
-              onChange={(v) => setAppearance(withTint(appearance, key, -v))}
+              min={0}
+              max={100}
+              onChange={(v) =>
+                setAppearance(withTint(appearance, key, tintFor(cssPercent(baseVar), v)))
+              }
               onReset={() => setAppearance(withTint(appearance, key, 0))}
             />
           </Row>
