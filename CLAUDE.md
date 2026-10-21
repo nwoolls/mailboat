@@ -56,6 +56,7 @@ Commits: one topic each, imperative subject, a body that explains why.
 | Rust checks only (fmt, clippy, cargo test) | `bun run check:rust` |
 | Rust tests only | `cargo test --workspace` |
 | Frontend tests only | `bun run test` |
+| Browser tests (Playwright, WebKit) | `bun run test:browser` |
 | Format TS | `bun run fmt` |
 | Regenerate TS bindings | `cargo test -p mailboat bindings` |
 | Regenerate app icons (needs Xcode) | `scripts/build-app-icon.sh` |
@@ -171,6 +172,13 @@ these rules. Keep it passing.
 - Rust: `cargo test` against Gmail API JSON fixtures in
   `crates/core/tests/fixtures/gmail/`, with `wiremock` standing in for Google.
 - Frontend logic: Vitest, files named `*.test.ts(x)` next to the code.
+- UI behaviour unit tests can't see (animation, layout, scrolling):
+  Playwright in WebKit (the macOS web view's engine), `tests/browser/`.
+  `harness.tsx` mounts real components with the Rust side faked by
+  Tauri's `mockIPC`; pick the setup by URL (`?mode=…`). Measure what's
+  painted: sample in a `ResizeObserver` created after the component's,
+  not at the start of a frame. Before trusting a new test, put the old
+  behaviour back and see it fail. One-time setup: `bunx playwright install webkit`.
 
 ## Future direction (don't build yet)
 

@@ -1395,7 +1395,14 @@ idea because they're useful without distributing).*
       either side, while the edge and width ease into place; and the
       inline panel stays drawn until its closing animation has certainly
       ended (it was removed a frame early, leaving a fraction of a pixel
-      uncorrected per close). Not seen in the app by the agent
+      uncorrected per close). Not seen in the app by the agent. *Now
+      covered by browser tests (owner request, 2026-10-21):*
+      `tests/browser/ai-panel.spec.ts` checks, in WebKit, that the card
+      opens the panel on the side with room and bounces as a whole on
+      either side with the form ending where it was, and that the inline
+      reply stays within 2px through 12 opens and closes. Each fails when
+      the old behaviour is put back (no nudge; no scroll correction; the
+      version that crept)
 - [x] Settings → Appearance → Transparency: "Sidebar and reader" is now
       "Window" *(owner: it affects the list too)*, since it's the
       window's glass behind everything; each slider says what it covers

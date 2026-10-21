@@ -79,7 +79,13 @@ the pace); the inbox fills in first. Later syncs only fetch changes.
 ## Check
 
 ```sh
-bun run check   # format, lint, type check, Vitest, clippy, cargo test
+bun run check   # format, lint, type check, Vitest, clippy, cargo test, Playwright
+```
+
+The browser tests (`tests/browser`, Playwright in WebKit) need WebKit once:
+
+```sh
+bunx playwright install webkit
 ```
 
 ## Files on your Mac

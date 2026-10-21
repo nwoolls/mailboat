@@ -27,3 +27,7 @@ coverage/
 
 # Built by src-tauri/build.rs (the Apple Intelligence helper)
 src-tauri/binaries/
+
+# Playwright (tests/browser)
+test-results/
+playwright-report/

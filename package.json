@@ -10,11 +10,12 @@
     "tauri": "tauri",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:browser": "playwright test",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --report-unused-disable-directives",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "check": "bun run check:web && bun run check:rust",
+    "check": "bun run check:web && bun run check:rust && bun run test:browser",
     "check:web": "bun run fmt:check && bun run lint && bun run typecheck && bun run test",
     "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace"
   },
@@ -36,6 +37,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.12.3",
     "@testing-library/react": "^16.3.3",
