@@ -1594,6 +1594,11 @@ it will ever be distributed (2026-10-19), so this comes last.*
       menu stretched the menu across most of the window for a very long
       sender address. Cap the menu's width and cut long items off with
       "…", with the full text in a tooltip
+- [ ] Rethink where the "Original colors" button sits *(owner report with
+      a screenshot, 2026-10-21)*: it floats over the top right of the
+      email, so it covers the first line when that line runs to the edge
+      (the end of a long first line hidden under it). Options: the message header
+      row (by the time), the "…" menu, or showing it only on hover
 - [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
       the AI Spike when it closed, 2026-10-21; never tried for real: both
       were already signed in on the owner's Mac)*. Connect runs `claude
