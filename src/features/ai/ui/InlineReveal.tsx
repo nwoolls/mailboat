@@ -2,28 +2,44 @@ import { useLayoutEffect, useRef } from "react";
 
 /**
  * The writing assistant above an inline reply, growing open and shrinking
- * closed quickly. The reader scrolls by the same amount each frame, so the
- * reply being written stays where it is and the conversation above moves
- * up instead (nothing is pushed below the fold).
+ * closed quickly. The reply below it (the next element) is held where it
+ * was on screen: each frame the reader scrolls so the reply's top is back
+ * where it started, so the conversation above moves instead and nothing
+ * is pushed below the fold. Measured against the reply itself, not added
+ * up from size changes, which drifted (the browser also scrolls on its
+ * own when content shrinks at the bottom).
  */
 export function InlineReveal({ open, children }: { open: boolean; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     const scroller = el?.closest(".reader-scroll");
-    if (!el || !scroller) return;
-    let height = el.getBoundingClientRect().height;
-    const observer = new ResizeObserver(() => {
-      const next = el.getBoundingClientRect().height;
-      scroller.scrollTop += next - height;
-      height = next;
+    const reply = el?.nextElementSibling;
+    if (!el || !scroller || !reply) return;
+    // Opening, where it was before the panel took any room (in case the
+    // panel already has some height by now).
+    const where =
+      reply.getBoundingClientRect().top - (open ? el.getBoundingClientRect().height : 0);
+    const hold = () => {
+      scroller.scrollTop += reply.getBoundingClientRect().top - where;
+    };
+    // Every frame of the animation (a resize alone can miss the last one).
+    let frame = requestAnimationFrame(function tick() {
+      hold();
+      frame = requestAnimationFrame(tick);
     });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+    const stop = window.setTimeout(() => cancelAnimationFrame(frame), REVEAL_MS + 60);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(stop);
+    };
+  }, [open]);
   return (
     <div ref={ref} className="inline-reveal grid" data-open={open || undefined}>
       <div className="min-h-0 overflow-hidden">{children}</div>
     </div>
   );
 }
+
+/** `.inline-reveal`'s duration in index.css. */
+export const REVEAL_MS = 180;

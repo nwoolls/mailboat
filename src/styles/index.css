@@ -595,15 +595,15 @@ html.resizing .panel-slide {
 
 /* Released, the compose card springs to its spot, overshooting a little
    and settling (the rubber band). No transition while it follows the
-   pointer, or when motion is reduced. Its width springs the same way as
-   the writing assistant opens and closes: with the left edge moving by
-   the same amount, the form stays still and only the panel's edge
-   bounces. */
+   pointer, or when motion is reduced. As the writing assistant opens or
+   closes, the left edge springs while the width eases without
+   overshooting, so the whole card (panel and form) bounces a little and
+   settles with the form back in its place, both ways. */
 .compose-snap {
   transition:
     left 420ms cubic-bezier(0.34, 1.45, 0.64, 1),
     top 420ms cubic-bezier(0.34, 1.45, 0.64, 1),
-    width 420ms cubic-bezier(0.34, 1.45, 0.64, 1);
+    width 420ms var(--motion-ease-out);
 }
 
 /* The writing assistant above an inline reply: grows open from nothing

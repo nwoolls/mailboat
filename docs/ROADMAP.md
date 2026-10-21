@@ -1380,7 +1380,17 @@ idea because they're useful without distributing).*
       only if neither side has room. Inline reply: the panel grows and
       shrinks quickly (0.18s) above the reply, and the reader scrolls with
       it so the reply stays in place and the conversation above moves up.
-      Not seen in the app by the agent
+      *Owner feedback:* the card should bounce as a whole when the panel
+      opens, as it does closing (now the left edge springs while the
+      width eases, so both ways the whole card bounces and settles with
+      the form in place); and inline, the reply still slid under the
+      pinned Send bar, more so when closing. The reply is now held at its
+      on-screen position each frame (adding up size changes drifted, and
+      the browser's own scrolling as content shrank at the bottom doubled
+      it). Not seen in the app by the agent
+- [x] Settings → Appearance → Transparency: "Sidebar and reader" is now
+      "Window" *(owner: it affects the list too)*, since it's the
+      window's glass behind everything; each slider says what it covers
 - [x] Both transparency sliders run the full 0% to 100% see-through
       *(owner request, 2026-10-21)*. They were limited to a range around
       each default (the sidebar's could only get 6 points clearer). Saved
@@ -1504,7 +1514,7 @@ built, tested and waiting for the owner to try.*
         suggest) with no examples, after the email. Checked live on two
         emails with all three providers
       - The pinned Reply bar's tint follows Settings → Appearance →
-        "Sidebar and reader" *(owner report: it had its own fixed tint,
+        "Window" (then "Sidebar and reader") *(owner report: it had its own fixed tint,
         the compose card's)*, offset so it still hides the email under
         it; at the default it looks as before. Owner confirmed (2026-10-20)
       - "Reply with AI" on the reply bar (after Forward, while the
