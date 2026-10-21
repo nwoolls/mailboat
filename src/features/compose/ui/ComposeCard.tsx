@@ -59,6 +59,17 @@ export function ComposeCard({
   const drag = useRef<{ grab: Point; last: Point; lastTime: number; velocity: Point } | null>(null);
   const at = dragAt ?? rest;
   const layout = assistantLayout(at, size, viewport, assistant);
+  // Opening or closing the assistant nudges the whole card the way it's
+  // growing or shrinking and lets it settle: the bounce, on either side.
+  // (Derived during render; the parity retriggers the animation.)
+  const [seenAssistant, setSeenAssistant] = useState(assistant);
+  const [nudge, setNudge] = useState<{ dir: "left" | "right"; n: number } | null>(null);
+  if (assistant !== seenAssistant) {
+    setSeenAssistant(assistant);
+    // Growing on the left or shrinking from the right moves it left.
+    const dir = assistant === (layout.side === "left") ? "left" : "right";
+    setNudge({ dir, n: (nudge?.n ?? 0) + 1 });
+  }
 
   const onPointerDown = (e: React.PointerEvent) => {
     // Buttons in the header still click.
@@ -96,7 +107,10 @@ export function ComposeCard({
       aria-label={draft.kind === "new" ? "New message" : "Reply"}
       className={`compose-card compose-snap fixed z-40 flex flex-col overflow-hidden rounded-xl ${
         dragAt ? "dragging" : ""
-      }`}
+      } ${nudge ? `assistant-moving nudge-${nudge.dir}-${nudge.n % 2}` : ""}`}
+      onAnimationEnd={(e) => {
+        if (e.target === e.currentTarget && e.animationName.startsWith("nudge-")) setNudge(null);
+      }}
       style={{
         left: layout.left,
         top: at.y,

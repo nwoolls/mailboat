@@ -28,7 +28,8 @@ export function InlineReveal({ open, children }: { open: boolean; children: Reac
       hold();
       frame = requestAnimationFrame(tick);
     });
-    const stop = window.setTimeout(() => cancelAnimationFrame(frame), REVEAL_MS + 60);
+    // Until the panel would be gone (ReplyArea keeps it REVEAL_MS + 100).
+    const stop = window.setTimeout(() => cancelAnimationFrame(frame), REVEAL_MS + 100);
     return () => {
       cancelAnimationFrame(frame);
       window.clearTimeout(stop);

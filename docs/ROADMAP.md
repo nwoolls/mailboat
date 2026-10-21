@@ -1387,7 +1387,15 @@ idea because they're useful without distributing).*
       pinned Send bar, more so when closing. The reply is now held at its
       on-screen position each frame (adding up size changes drifted, and
       the browser's own scrolling as content shrank at the bottom doubled
-      it). Not seen in the app by the agent
+      it). *Owner feedback:* no bounce with the card on the left (the
+      panel opens to the right, so the springing left edge never moved),
+      and the inline reply still crept under the Send bar after several
+      opens and closes. Now the bounce is a small nudge of the whole card
+      the way it grows or shrinks (14px, settling back), the same on
+      either side, while the edge and width ease into place; and the
+      inline panel stays drawn until its closing animation has certainly
+      ended (it was removed a frame early, leaving a fraction of a pixel
+      uncorrected per close). Not seen in the app by the agent
 - [x] Settings → Appearance → Transparency: "Sidebar and reader" is now
       "Window" *(owner: it affects the list too)*, since it's the
       window's glass behind everything; each slider says what it covers

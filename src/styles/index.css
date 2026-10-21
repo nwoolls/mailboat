@@ -595,15 +595,66 @@ html.resizing .panel-slide {
 
 /* Released, the compose card springs to its spot, overshooting a little
    and settling (the rubber band). No transition while it follows the
-   pointer, or when motion is reduced. As the writing assistant opens or
-   closes, the left edge springs while the width eases without
-   overshooting, so the whole card (panel and form) bounces a little and
-   settles with the form back in its place, both ways. */
+   pointer, or when motion is reduced. */
 .compose-snap {
   transition:
     left 420ms cubic-bezier(0.34, 1.45, 0.64, 1),
     top 420ms cubic-bezier(0.34, 1.45, 0.64, 1),
     width 420ms var(--motion-ease-out);
+}
+/* The writing assistant opening or closing: the edge and width ease into
+   place (no spring, so the form stays put) while the whole card nudges
+   the way it's growing or shrinking and settles, the same bounce on
+   either side of the form. Two copies of each so a new toggle restarts it. */
+.compose-snap.assistant-moving {
+  transition:
+    left 300ms var(--motion-ease-out),
+    top 300ms var(--motion-ease-out),
+    width 300ms var(--motion-ease-out);
+}
+.nudge-left-0 {
+  animation: nudge-left-0 420ms var(--motion-ease-out);
+}
+.nudge-left-1 {
+  animation: nudge-left-1 420ms var(--motion-ease-out);
+}
+.nudge-right-0 {
+  animation: nudge-right-0 420ms var(--motion-ease-out);
+}
+.nudge-right-1 {
+  animation: nudge-right-1 420ms var(--motion-ease-out);
+}
+@keyframes nudge-left-0 {
+  40% {
+    translate: -14px 0;
+  }
+  72% {
+    translate: 4px 0;
+  }
+}
+@keyframes nudge-left-1 {
+  40% {
+    translate: -14px 0;
+  }
+  72% {
+    translate: 4px 0;
+  }
+}
+@keyframes nudge-right-0 {
+  40% {
+    translate: 14px 0;
+  }
+  72% {
+    translate: -4px 0;
+  }
+}
+@keyframes nudge-right-1 {
+  40% {
+    translate: 14px 0;
+  }
+  72% {
+    translate: -4px 0;
+  }
 }
 
 /* The writing assistant above an inline reply: grows open from nothing
@@ -632,8 +683,15 @@ html.resizing .panel-slide {
   transition: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .compose-snap {
+  .compose-snap,
+  .compose-snap.assistant-moving {
     transition: none;
+  }
+  .nudge-left-0,
+  .nudge-left-1,
+  .nudge-right-0,
+  .nudge-right-1 {
+    animation: none;
   }
 }
 
