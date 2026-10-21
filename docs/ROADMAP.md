@@ -1423,6 +1423,11 @@ idea because they're useful without distributing).*
 - [ ] Advanced section: clear the cache, reset, the sync log (in the
       Settings plan)
 - [ ] Show original (the raw message and its headers)
+- [ ] Mute a conversation *(owner request, 2026-10-21)*: later replies
+      skip the Inbox and don't notify, as Gmail's Mute does
+- [ ] Clicking a new-mail notification selects that email and shows it
+      in the reader *(owner request, 2026-10-21; today it only brings
+      Mailboat forward, see Milestone 5 → Notifications)*
 
 ## Milestone 9: Writing
 
@@ -1584,6 +1589,11 @@ it will ever be distributed (2026-10-19), so this comes last.*
 
 ## Bug backlog
 
+- [ ] Menus grow as wide as their longest item *(owner report with a
+      screenshot, 2026-10-21)*: "Block <address>" in the list's context
+      menu stretched the menu across most of the window for a very long
+      sender address. Cap the menu's width and cut long items off with
+      "…", with the full text in a tooltip
 - [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
       the AI Spike when it closed, 2026-10-21; never tried for real: both
       were already signed in on the owner's Mac)*. Connect runs `claude
