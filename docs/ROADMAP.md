@@ -1679,6 +1679,17 @@ seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
       Checked on invented sign-in emails of many styles; promotional wording; meeting
       passcodes and people writing about codes are left alone
       (`examples/code_stats`). Not seen in the app by the agent
+- [x] Sidebar peek *(owner request, 2026-10-20: "a floating sidebar when
+      you mouse over the toolbar button for it while it's collapsed, like
+      in Notion Calendar")*. Built to try: with the sidebar hidden, resting
+      the pointer on its toolbar button (0.12s) floats the sidebar over
+      the list on the compose card's glass, sliding in from the left. It
+      stays while the pointer is on it (views can be picked from it) and
+      goes 0.28s after the pointer leaves both, or with Esc; clicking the
+      button still pins it open as before. Timings are `PEEK_OPEN_MS` and
+      `PEEK_CLOSE_MS` in `app/Shell.tsx`. Not seen in the app by the agent;
+      a right-click menu opened in the peek may lose it when the pointer
+      moves onto the menu
 ### From Milestone 6 (moved unbuilt when it closed, 2026-10-19; the owner uses none of these)
 
 - [ ] Snooze. No Gmail API: Mailboat would do it itself (likely a "Snoozed"

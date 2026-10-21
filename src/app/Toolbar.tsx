@@ -57,6 +57,8 @@ type Props = {
    */
   names: Partial<Record<CommandId, string>>;
   onToggleSidebar: () => void;
+  /** The pointer went onto (true) or off (false) the sidebar button. */
+  onSidebarHover?: (inside: boolean) => void;
   onToggleReader: () => void;
   onCompose: () => void;
 };
@@ -77,6 +79,7 @@ export function Toolbar({
   count,
   names,
   onToggleSidebar,
+  onSidebarHover,
   onToggleReader,
   onCompose,
 }: Props) {
@@ -98,6 +101,7 @@ export function Toolbar({
         label={names.sidebar ?? ""}
         shortcut="⌃⌘S"
         onClick={onToggleSidebar}
+        onHover={onSidebarHover}
         pressed={sidebarOpen}
         dot={sidebarOpen ? null : syncAttention}
       />
@@ -181,6 +185,7 @@ function ToolButton({
   pressed,
   tone,
   dot,
+  onHover,
 }: {
   id?: string;
   icon: (props: IconProps) => React.ReactNode;
@@ -194,6 +199,8 @@ function ToolButton({
   tone?: string;
   /** Small status dot in the corner (e.g. a sync problem behind a hidden panel). */
   dot?: "warn" | "error" | null;
+  /** The pointer went onto (true) or off (false) the button. */
+  onHover?: (inside: boolean) => void;
 }) {
   const soon = !onClick && !disabled;
   const title = [label, shortcut && `(${shortcut})`, soon && "· coming soon"]
@@ -207,6 +214,8 @@ function ToolButton({
       aria-label={label}
       aria-pressed={pressed}
       onClick={(e) => onClick?.(e.currentTarget)}
+      onPointerEnter={onHover && (() => onHover(true))}
+      onPointerLeave={onHover && (() => onHover(false))}
       disabled={disabled}
       className={`relative flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-[120ms] hover:bg-selection hover:text-content disabled:opacity-35 disabled:hover:bg-transparent ${
         tone ?? "text-content/70"

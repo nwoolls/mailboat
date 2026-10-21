@@ -153,6 +153,14 @@ function isEditable(target: EventTarget | null): boolean {
   );
 }
 
+/**
+ * How long the pointer rests on the sidebar button before the peek opens,
+ * and how long after it leaves that the peek closes (time to cross the
+ * gap between the button and the panel).
+ */
+const PEEK_OPEN_MS = 120;
+const PEEK_CLOSE_MS = 280;
+
 export function Shell() {
   useMailEvents();
   useIgnoreStrayDrops();
@@ -280,7 +288,24 @@ export function Shell() {
     setShownId(selectedId);
     setReaderOpen(true);
   }
-  const toggleSidebar = useCallback(() => setSidebarOpen(!panels.get().sidebarOpen), []);
+  // While the sidebar is hidden, hovering its toolbar button floats it over
+  // the list (as Notion Calendar does); it stays while the pointer is on
+  // it and goes a moment after the pointer leaves both.
+  const [peek, setPeek] = useState(false);
+  const peekTimer = useRef(0);
+  const hoverSidebar = useCallback((inside: boolean) => {
+    window.clearTimeout(peekTimer.current);
+    if (inside && !panels.get().sidebarOpen) {
+      // Not if the sidebar was pinned open meanwhile (the button clicked).
+      peekTimer.current = window.setTimeout(() => setPeek(!panels.get().sidebarOpen), PEEK_OPEN_MS);
+    } else if (!inside) {
+      peekTimer.current = window.setTimeout(() => setPeek(false), PEEK_CLOSE_MS);
+    }
+  }, []);
+  const toggleSidebar = useCallback(() => {
+    setPeek(false);
+    setSidebarOpen(!panels.get().sidebarOpen);
+  }, []);
   const toggleReader = useCallback(() => {
     setReaderOpen(!readerOpen);
     setSavedReaderOpen(!readerOpen);
@@ -698,7 +723,7 @@ export function Shell() {
   const menuRows = rowMenu ? menuTargets(threads, checked, rowMenu.clicked) : [];
 
   return (
-    <div className="flex h-full flex-col bg-glass-sidebar">
+    <div className="relative flex h-full flex-col bg-glass-sidebar">
       {settings ? (
         <SettingsTitleBar section={settings} />
       ) : (
@@ -713,6 +738,7 @@ export function Shell() {
           count={targets.length}
           names={Object.fromEntries(allCommands.map((c) => [c.id, c.title]))}
           onToggleSidebar={toggleSidebar}
+          onSidebarHover={hoverSidebar}
           onToggleReader={toggleReader}
           onCompose={startNew}
         />
@@ -764,6 +790,27 @@ export function Shell() {
             />
           </div>
         </div>
+        {peek && !sidebarShown && (
+          // The hidden sidebar, floating over the list for a peek.
+          <div
+            className="sidebar-peek absolute top-10 bottom-2 left-2 z-30 flex overflow-hidden rounded-[10px] pt-1 pr-2"
+            onPointerEnter={() => hoverSidebar(true)}
+            onPointerLeave={() => hoverSidebar(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setPeek(false);
+            }}
+          >
+            <Sidebar
+              accounts={accountList}
+              width={sidebarWidth}
+              syncStates={syncStates}
+              selection={baseSelection}
+              onSelect={goTo}
+              onAccountRemoved={onAccountRemoved}
+              onOpenSettings={openSettings}
+            />
+          </div>
+        )}
         <div className="relative flex min-w-0 flex-1">
           <div
             ref={panesRef}
