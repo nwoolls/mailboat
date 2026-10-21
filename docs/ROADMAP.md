@@ -1690,8 +1690,12 @@ seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
       `PEEK_CLOSE_MS` in `app/Shell.tsx`. *Owner (2026-10-20): a small delay
       before it shows, and a quick slide in from the side.* Now it opens
       after 0.3s, slides in from past the window's left edge in 0.16s and
-      slides back out in 0.12s (moving back onto it keeps it). Not seen in
-      the app by the agent;
+      slides back out in 0.12s (moving back onto it keeps it). *Owner:
+      clicking the button while peeking should snap the peek into place as
+      the sidebar.* Now the peek glides into the sidebar's exact place
+      (8px left, 4px up) and loses its glass, shadow and corners while the
+      sidebar opens beneath it without its own slide, both in the panel
+      slide's 0.22s; then the peek goes. Not seen in the app by the agent;
       a right-click menu opened in the peek may lose it when the pointer
       moves onto the menu
 ### From Milestone 6 (moved unbuilt when it closed, 2026-10-19; the owner uses none of these)

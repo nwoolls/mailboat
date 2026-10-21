@@ -163,8 +163,13 @@ function isEditable(target: EventTarget | null): boolean {
 const PEEK_OPEN_MS = 300;
 const PEEK_CLOSE_MS = 280;
 const PEEK_SLIDE_OUT_MS = 120;
+/** Docking (the button clicked while peeking): as long as the panel slide
+ * (`--motion-panel-duration`), so the two finish together. */
+const PEEK_DOCK_MS = 220;
 
-type Peek = "closed" | "open" | "leaving";
+/** "docking": the button was clicked while peeking; the peek glides into
+ * the sidebar's place as the sidebar opens under it, then goes. */
+type Peek = "closed" | "open" | "leaving" | "docking";
 
 export function Shell() {
   useMailEvents();
@@ -301,7 +306,8 @@ export function Shell() {
   // Slides out, then goes (unless the pointer came back meanwhile).
   const closePeek = useCallback(() => {
     window.clearTimeout(peekTimer.current);
-    setPeek((p) => (p === "closed" ? p : "leaving"));
+    // (A docking peek finishes docking.)
+    setPeek((p) => (p === "closed" || p === "docking" ? p : "leaving"));
     peekTimer.current = window.setTimeout(
       () => setPeek((p) => (p === "leaving" ? "closed" : p)),
       PEEK_SLIDE_OUT_MS,
@@ -325,8 +331,12 @@ export function Shell() {
     [closePeek],
   );
   const toggleSidebar = useCallback(() => {
-    setPeek("closed");
-    setSidebarOpen(!panels.get().sidebarOpen);
+    const opening = !panels.get().sidebarOpen;
+    // Pinning it open while peeking: the peek becomes the sidebar instead
+    // of the sidebar sliding in a second time behind it.
+    setPeek((p) => (opening && (p === "open" || p === "leaving") ? "docking" : "closed"));
+    window.setTimeout(() => setPeek((p) => (p === "docking" ? "closed" : p)), PEEK_DOCK_MS);
+    setSidebarOpen(opening);
   }, []);
   const toggleReader = useCallback(() => {
     setReaderOpen(!readerOpen);
@@ -777,6 +787,8 @@ export function Shell() {
           <div
             className="panel-slide-content flex shrink-0"
             data-open={sidebarShown}
+            // Under the docking peek, already in place: no slide of its own.
+            data-instant={peek === "docking" || undefined}
             style={{ width: sidebarWidth + SPLITTER_WIDTH }}
           >
             {/* Settings' sections cover the mail sidebar, which stays as it
@@ -812,11 +824,12 @@ export function Shell() {
             />
           </div>
         </div>
-        {peek !== "closed" && !sidebarShown && (
+        {(peek === "docking" || (peek !== "closed" && !sidebarShown)) && (
           // The hidden sidebar, floating over the list for a peek.
           <div
             className="sidebar-peek absolute top-10 bottom-2 left-2 z-30 flex overflow-hidden rounded-[10px] pt-1 pr-2"
             data-leaving={peek === "leaving" || undefined}
+            data-docking={peek === "docking" || undefined}
             onPointerEnter={() => hoverSidebar(true)}
             onPointerLeave={() => hoverSidebar(false)}
             onKeyDown={(e) => {
