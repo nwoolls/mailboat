@@ -24,6 +24,7 @@ import {
   withIdentity,
 } from "../model/draft";
 import { AssistantPanel, type UseMode } from "../../ai/ui/AssistantPanel";
+import { InlineReveal } from "../../ai/ui/InlineReveal";
 import { AddressField } from "./AddressField";
 import { HtmlPreview } from "./HtmlPreview";
 import { EditorBody, FormatBar, useRichEditor } from "./RichEditor";
@@ -72,7 +73,15 @@ export function ComposeForm({
    * above it inline. Its parent keeps whether it's open, so the card can
    * widen for it.
    */
-  assistant?: { open: boolean; onToggle: (open: boolean) => void };
+  assistant?: {
+    open: boolean;
+    /** Still drawn while it animates closed. */
+    shown: boolean;
+    /** In the card: the side it opens on, and the form's fixed width. */
+    side?: "left" | "right";
+    formWidth?: number;
+    onToggle: (open: boolean) => void;
+  };
 }) {
   const { draft, sending, error } = entry;
   const { style } = composingPrefs.use();
@@ -153,10 +162,10 @@ export function ComposeForm({
     if (subject && draft.kind === "new")
       onChange((d) => (d.subject.trim() ? d : { ...d, subject }));
   };
-  const panel = assistant?.open && (
+  const panel = assistant?.shown && (
     <AssistantPanel
       draft={draft}
-      placement={inline ? "top" : "side"}
+      placement={inline ? "top" : (assistant.side ?? "left")}
       onUse={applyDraft}
       onClose={() => {
         assistant.onToggle(false);
@@ -391,15 +400,25 @@ export function ComposeForm({
   // The same layout whether the assistant is open or not, so opening it
   // doesn't rebuild the form (which took the focus back into the editor
   // and away from the chat box).
+  // Inline, the panel grows and shrinks above the reply, the reader
+  // scrolling with it so the reply stays put. In the card the form keeps
+  // its width and place while the card's spring widens it: the panel takes
+  // whatever width the card has beyond the form, so it springs open and
+  // collapses on its side.
   return inline ? (
     <>
-      {panel}
+      {panel && <InlineReveal open={assistant?.open ?? false}>{panel}</InlineReveal>}
       {form}
     </>
   ) : (
-    <div className="flex min-h-0 flex-1">
-      {panel}
-      <div className="flex min-w-0 flex-1 flex-col">{form}</div>
+    <div className={`flex min-h-0 flex-1 ${assistant?.side === "right" ? "flex-row-reverse" : ""}`}>
+      {panel && <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">{panel}</div>}
+      <div
+        className="flex min-w-0 flex-1 flex-col"
+        style={assistant?.formWidth ? { flex: `0 0 ${assistant.formWidth}px` } : undefined}
+      >
+        {form}
+      </div>
     </div>
   );
 }

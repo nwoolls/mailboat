@@ -30,7 +30,7 @@ describe("AssistantPanel", () => {
     render(
       <AssistantPanel
         draft={newDraft([], 1, "me@x.com")}
-        placement="side"
+        placement="left"
         onUse={vi.fn()}
         onClose={vi.fn()}
       />,
@@ -50,7 +50,7 @@ describe("AssistantPanel", () => {
     });
     const onUse = vi.fn();
     const draft = { ...newDraft([], 1, "me@x.com"), kind: "reply" as const, threadId: 42 };
-    render(<AssistantPanel draft={draft} placement="side" onUse={onUse} onClose={vi.fn()} />);
+    render(<AssistantPanel draft={draft} placement="left" onUse={onUse} onClose={vi.fn()} />);
 
     const field = screen.getByLabelText("Ask the AI");
     fireEvent.change(field, { target: { value: "Say yes" } });

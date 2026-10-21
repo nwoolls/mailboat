@@ -42,6 +42,46 @@ export function cardSize(viewport: Size, assistant = false): Size {
   };
 }
 
+/** Where the writing assistant sits beside the form, and the card around both. */
+export type AssistantLayout = {
+  /** The card's left edge and width (the form plus the open panel). */
+  left: number;
+  width: number;
+  /** The side with room for the panel; kept while it opens and closes. */
+  side: "left" | "right";
+  /** The open panel's width (0 when closed). */
+  panelWidth: number;
+};
+
+/**
+ * The card around the form at `form` (its top-left, where it rests or is
+ * dragged to) with the assistant open or closed. The form doesn't move:
+ * the panel opens on the side with room, the left first (the card's home
+ * is the lower right). Only if neither side has room is the card moved
+ * along to keep it in the window, and on a narrow window the panel is
+ * narrower.
+ */
+export function assistantLayout(
+  form: Point,
+  formSize: Size,
+  viewport: Size,
+  open: boolean,
+): AssistantLayout {
+  const roomLeft = form.x - EDGE;
+  const roomRight = viewport.width - EDGE - (form.x + formSize.width);
+  const side =
+    roomLeft >= ASSISTANT_WIDTH || (roomRight < ASSISTANT_WIDTH && roomLeft >= roomRight)
+      ? "left"
+      : "right";
+  const panelWidth = open
+    ? Math.max(0, Math.min(ASSISTANT_WIDTH, viewport.width - 2 * EDGE - formSize.width))
+    : 0;
+  const width = formSize.width + panelWidth;
+  const wanted = side === "left" ? form.x - panelWidth : form.x;
+  const left = Math.min(Math.max(wanted, EDGE), Math.max(EDGE, viewport.width - EDGE - width));
+  return { left, width, side, panelWidth };
+}
+
 /** The card's top-left corner when resting at a spot. */
 export function spotPosition(spot: Spot, viewport: Size, card: Size): Point {
   const left = EDGE;

@@ -5,7 +5,12 @@ import { canSwitchKind, editorKey, hasChanges } from "../model/draft";
 import type { ComposeEntry } from "../model/composeState";
 import { ComposeForm, type ReplyKind } from "./ComposeForm";
 import { useAssistantOpen } from "../../ai/ui/assistantOpen";
-import { cardSize, nearestSpot, type Point, spotPosition } from "../model/snap";
+import { assistantLayout, cardSize, nearestSpot, type Point, spotPosition } from "../model/snap";
+import { usePresence } from "../../../shared/ui/usePresence";
+
+/** The card's spring (`.compose-snap` in index.css), which the assistant
+ * panel opens and closes with. */
+const ASSISTANT_SPRING_MS = 420;
 import {
   closeDraft,
   closeKeepingDraft,
@@ -43,12 +48,17 @@ export function ComposeCard({
   // The writing assistant (⌘J) opens beside the form, widening the card.
   // Kept per message, so it's still open after minimising and restoring.
   const [assistant, setAssistant] = useAssistantOpen(draft);
-  const size = cardSize(viewport, assistant);
+  // Drawn while it closes too, so it collapses rather than vanishing.
+  const assistantShown = usePresence(assistant, ASSISTANT_SPRING_MS);
+  // Positions are the form's: it rests at its spot (or follows the pointer)
+  // and the assistant opens beside it without moving it.
+  const size = cardSize(viewport);
   const rest = spotPosition(useCardSpot(), viewport, size);
   // Where it is while being dragged (null: resting at its spot).
   const [dragAt, setDragAt] = useState<Point | null>(null);
   const drag = useRef<{ grab: Point; last: Point; lastTime: number; velocity: Point } | null>(null);
   const at = dragAt ?? rest;
+  const layout = assistantLayout(at, size, viewport, assistant);
 
   const onPointerDown = (e: React.PointerEvent) => {
     // Buttons in the header still click.
@@ -88,9 +98,9 @@ export function ComposeCard({
         dragAt ? "dragging" : ""
       }`}
       style={{
-        left: at.x,
+        left: layout.left,
         top: at.y,
-        width: size.width,
+        width: layout.width,
         height: size.height,
         // The From account's colour along the top edge.
         borderTop: `2px solid ${account?.color ?? "transparent"}`,
@@ -147,7 +157,13 @@ export function ComposeCard({
         onDiscard={() => closeDraft(draft.id)}
         // Reply / Reply all / Forward, as inline; not for new mail.
         onSwitchKind={canSwitchKind(draft) ? (kind) => onSwitch(draft.id, kind) : undefined}
-        assistant={{ open: assistant, onToggle: setAssistant }}
+        assistant={{
+          open: assistant,
+          shown: assistantShown,
+          side: layout.side,
+          formWidth: size.width,
+          onToggle: setAssistant,
+        }}
       />
     </section>
   );

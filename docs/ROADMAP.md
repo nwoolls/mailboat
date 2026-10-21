@@ -1372,6 +1372,15 @@ settled with the owner one at a time, as in the earlier spikes.*
 wrong (Advanced and Show original, moved here from the Release Spike
 idea because they're useful without distributing).*
 
+- [x] The AI panel opens and closes smoothly *(owner request,
+      2026-10-21)*. Floating card: the form no longer moves; the panel
+      springs open on the side with room (left at the card's home, the
+      lower right; right when the card sits at the left), with the card's
+      existing bounce, and collapses back the same way. The card moves
+      only if neither side has room. Inline reply: the panel grows and
+      shrinks quickly (0.18s) above the reply, and the reader scrolls with
+      it so the reply stays in place and the conversation above moves up.
+      Not seen in the app by the agent
 - [x] Both transparency sliders run the full 0% to 100% see-through
       *(owner request, 2026-10-21)*. They were limited to a range around
       each default (the sidebar's could only get 6 points clearer). Saved

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardSize, nearestSpot, spotPosition } from "./snap";
+import { assistantLayout, cardSize, nearestSpot, spotPosition } from "./snap";
 
 const viewport = { width: 1400, height: 900 };
 const card = cardSize(viewport);
@@ -33,5 +33,38 @@ describe("snapping", () => {
     const at = { x: 100, y: 48 };
     expect(nearestSpot(at, { x: 0, y: 0 }, viewport, card)).toBe("top-left");
     expect(nearestSpot(at, { x: 5000, y: 0 }, viewport, card)).toBe("top-right");
+  });
+
+  it("opens the assistant beside the form without moving it", () => {
+    // Lower right (home): the panel opens to the left; the form stays.
+    const home = spotPosition("bottom-right", viewport, card);
+    const open = assistantLayout(home, card, viewport, true);
+    expect(open).toEqual({ left: home.x - 340, width: 840, side: "left", panelWidth: 340 });
+    expect(open.left + open.width).toBe(home.x + card.width);
+    // Closed: just the form, same side (it collapses back that way).
+    expect(assistantLayout(home, card, viewport, false)).toEqual({
+      left: home.x,
+      width: 500,
+      side: "left",
+      panelWidth: 0,
+    });
+    // Lower left: no room on the left, so it opens to the right.
+    const left = spotPosition("bottom-left", viewport, card);
+    expect(assistantLayout(left, card, viewport, true)).toMatchObject({
+      left: left.x,
+      side: "right",
+    });
+  });
+
+  it("moves the card only when neither side has room", () => {
+    const narrow = { width: 900, height: 700 };
+    const form = { x: 200, y: 100 };
+    const layout = assistantLayout(form, card, narrow, true);
+    expect(layout.side).toBe("left");
+    expect(layout.left).toBe(16);
+    expect(layout.left + layout.width).toBeLessThanOrEqual(narrow.width - 16);
+    // A very narrow window: a narrower panel, still inside.
+    const tiny = assistantLayout({ x: 16, y: 0 }, card, { width: 820, height: 600 }, true);
+    expect(tiny.panelWidth).toBe(820 - 32 - 500);
   });
 });

@@ -41,8 +41,8 @@ export function AssistantPanel({
   onClose,
 }: {
   draft: Draft;
-  /** Beside the floating card's form, or above an inline reply. */
-  placement: "side" | "top";
+  /** Beside the floating card's form (on its left or right), or above an inline reply. */
+  placement: "left" | "right" | "top";
   /** The draft as the composer's HTML (cleaned in Rust), and a subject. */
   onUse: (html: string, subject: string | null, how: UseMode) => void;
   onClose: () => void;
@@ -143,9 +143,10 @@ export function AssistantPanel({
     <aside
       aria-label="Write with AI"
       className={`flex min-h-0 flex-col text-[13px] ${
-        placement === "side"
-          ? "w-[340px] shrink-0 border-r border-stroke"
-          : "max-h-[340px] border-b border-stroke"
+        placement === "top"
+          ? "max-h-[340px] border-b border-stroke"
+          : // Fixed width: the card's spring reveals and hides it.
+            `w-[340px] shrink-0 border-stroke ${placement === "left" ? "border-r" : "border-l"}`
       }`}
       onKeyDown={(e) => {
         // Esc closes the panel, not the whole message.

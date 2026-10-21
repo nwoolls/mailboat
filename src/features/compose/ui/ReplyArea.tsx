@@ -10,6 +10,7 @@ import {
 import { type ComposeEntry, poppedReplyIn, replyIn } from "../model/composeState";
 import { canSwitchKind, editorKey } from "../model/draft";
 import { ComposeForm, KIND_LABELS, type ReplyKind } from "./ComposeForm";
+import { usePresence } from "../../../shared/ui/usePresence";
 import { openAssistantForNextReply, useAssistantOpen } from "../../ai/ui/assistantOpen";
 import { aiChoices, isReady } from "../../ai/model/providers";
 import { useAiStatus, useAppSettings, usePrefetchAiReplyIdeas } from "../../../shared/lib/queries";
@@ -78,6 +79,8 @@ export function ReplyArea({
   // The writing assistant (⌘J), above the reply; kept per message, so it
   // stays open when the reply pops out into the card and back.
   const [assistant, setAssistant] = useAssistantOpen(reply?.draft ?? NO_DRAFT);
+  // Drawn while it shrinks closed (`.inline-reveal`, 180ms).
+  const assistantShown = usePresence(assistant, 180);
   useEffect(() => {
     if (resumeId === null || asked.current === resumeId) return;
     asked.current = resumeId;
@@ -117,7 +120,7 @@ export function ReplyArea({
           onSwitchKind={canSwitchKind(draft) ? (kind) => onSwitch(draft.id, kind) : undefined}
           onSend={() => onSend(reply)}
           onDiscard={() => closeDraft(draft.id)}
-          assistant={{ open: assistant, onToggle: setAssistant }}
+          assistant={{ open: assistant, shown: assistantShown, onToggle: setAssistant }}
         />
       </section>
     );
