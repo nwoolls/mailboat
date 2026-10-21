@@ -1394,6 +1394,11 @@ idea because they're useful without distributing).*
 
 ## AI Spike
 
+**Closed (owner, 2026-10-21).** Everything built was tried and approved
+by the owner. Moved out when it closed: the MCP server and the AI ideas
+not built (to Later, "From the AI Spike"), and Connect from a signed-out
+Claude Code or Codex, never tried for real (to the Bug backlog, to watch).
+
 *The AI work, gathered from Later at the owner's request (2026-10-17).
 Sending an email to a model is always an explicit choice (`CLAUDE.md`).*
 
@@ -1510,28 +1515,6 @@ built, tested and waiting for the owner to try.*
       - The Reply / Reply all / Forward switch is in the floating card
         too, not only inline (owner report): the card was never given it.
         Shown for replies and forwards that started here, not new mail
-- Ideas not built: AI actions in ⌘K (summarize, reply with AI), AI
-  search ("find the invoice from…"; owner: only if small, and it isn't:
-  it needs its own design in the search box)
-- [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
-      Mailboat's mail *(owner request, 2026-10-16)*. Worth it because Mailboat
-      already has every account's mail in one local, searchable cache
-      and their sign-ins: one connection covers all accounts, with no
-      extra Google setup. Design to agree before building:
-      - **Off by default;** turned on in Settings, per account. Turning it
-        on is the explicit choice `CLAUDE.md` requires before any email
-        reaches a model
-      - **Read-only first:** search (local, all accounts), list a view,
-        read a conversation, list labels. Then, each opt-in: label,
-        archive, create drafts. **Never send:** drafts only, the owner
-        sends from Mailboat
-      - **How it connects:** the running app serves MCP on localhost
-        (with an access token), or a small `mailboat-mcp` command that
-        Claude starts and that talks to the app. Either way sync, quota
-        and tokens stay in the app. Likely the official Rust MCP SDK
-        (`rmcp`), recorded in ARCHITECTURE when chosen
-      - Every request logged (what was read, never the content), so the
-        owner can see what an AI looked at
 
 ## Milestone 10: Windows
 
@@ -1560,6 +1543,15 @@ it will ever be distributed (2026-10-19), so this comes last.*
 - [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
 
 ## Bug backlog
+
+- [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
+      the AI Spike when it closed, 2026-10-21; never tried for real: both
+      were already signed in on the owner's Mac)*. Connect runs `claude
+      auth login` / `codex login`, which should open the browser, and
+      waits up to 5 minutes for the tool to say it's signed in. To tick
+      once it has worked once; if the browser doesn't open, the fallback
+      is signing in from Terminal (Settings says so) and pressing Connect
+      again
 
 - [x] Emails mangled in dark mode *(owner report with screenshots,
       2026-10-20: a news site, a notice, a bank)*. Rendered outside the app
@@ -1602,6 +1594,33 @@ seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
       the same fix covers it
 
 ## Later / unscheduled
+
+### From the AI Spike (moved unbuilt when it closed, 2026-10-21)
+
+- [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
+      Mailboat's mail *(owner request, 2026-10-16)*. Worth it because Mailboat
+      already has every account's mail in one local, searchable cache
+      and their sign-ins: one connection covers all accounts, with no
+      extra Google setup. Design to agree before building:
+      - **Off by default;** turned on in Settings, per account. Turning it
+        on is the explicit choice `CLAUDE.md` requires before any email
+        reaches a model
+      - **Read-only first:** search (local, all accounts), list a view,
+        read a conversation, list labels. Then, each opt-in: label,
+        archive, create drafts. **Never send:** drafts only, the owner
+        sends from Mailboat
+      - **How it connects:** the running app serves MCP on localhost
+        (with an access token), or a small `mailboat-mcp` command that
+        Claude starts and that talks to the app. Either way sync, quota
+        and tokens stay in the app. Likely the official Rust MCP SDK
+        (`rmcp`), recorded in ARCHITECTURE when chosen
+      - Every request logged (what was read, never the content), so the
+        owner can see what an AI looked at
+- [ ] AI ideas not built during the spike: AI actions in ⌘K (Summarize,
+      Reply with AI); AI search ("find the invoice from…"; owner: only if
+      small, and it isn't: it needs its own design in the search box);
+      keeping Codex running between requests (its ~3s start on every
+      request is most of what's left of ChatGPT's wait)
 
 
 - [ ] Offline mode *(moved from Milestone 5; owner, 2026-10-17: likes all
