@@ -1604,6 +1604,15 @@ it will ever be distributed (2026-10-19), so this comes last.*
       preview; it likely also reaches the list's own Esc handling
       (clear selection), so the list falls back to its first row
 - [x] A conversation's summary missed its newest reply *(owner report, 2026-10-21)*: a summary still described a thread as waiting on an answer after a one-line reply had arrived. Cause: Apple's small on-device model gave a one-line reply too little weight after a longer email. Fixed: the newest email is headed "Newest message" in what the model reads, and the summary is told to start with where things stand by it, even when it is one line. The list's one-line summaries are told the same. To try: press "Summarize again" (saved summaries stay until then or until a new reply)
+- [ ] The envelope flock screensaver looks jumpy and low-res *(owner
+      report, 2026-10-21)*; experiment with larger envelopes. Why it
+      looks that way: every screensaver draws on a grid of 3px cells
+      (`SCENE_CELL_PX`) and an envelope is a 7×5-cell sprite
+      (`screensaver/model/envelopes.ts`), so each one is 21×15px and
+      moves in 3px steps. Things to try: a bigger sprite with more detail
+      (say 11×8 or 14×10), fewer envelopes, and finer movement for this
+      scene only (a smaller cell, or drawing the sprites at their exact
+      position rather than snapped to the grid)
 - [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
       the AI Spike when it closed, 2026-10-21; never tried for real: both
       were already signed in on the owner's Mac)*. Connect runs `claude
