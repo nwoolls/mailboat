@@ -792,8 +792,13 @@ export function Shell() {
             style={{ width: sidebarWidth + SPLITTER_WIDTH }}
           >
             {/* Settings' sections cover the mail sidebar, which stays as it
-                was (folds, scroll) underneath. */}
-            <div className="relative flex shrink-0">
+                was (folds, scroll) underneath. While a peek docks over it,
+                it's hidden (not faded), so its text isn't drawn twice, and
+                shows again in the same frame the peek goes. */}
+            <div
+              className="relative flex shrink-0"
+              style={{ visibility: peek === "docking" ? "hidden" : undefined }}
+            >
               <div className={`flex ${settings ? "invisible" : ""}`} inert={settings !== null}>
                 <Sidebar
                   accounts={accountList}
@@ -827,7 +832,9 @@ export function Shell() {
         {(peek === "docking" || (peek !== "closed" && !sidebarShown)) && (
           // The hidden sidebar, floating over the list for a peek.
           <div
-            className="sidebar-peek absolute top-10 bottom-2 left-2 z-30 flex overflow-hidden rounded-[10px] pt-1 pr-2"
+            // `on-glass` as the sidebar's own panel has, so its text is the
+            // same weight and nothing changes when it hands over.
+            className="sidebar-peek on-glass absolute top-10 bottom-2 left-2 z-30 flex overflow-hidden rounded-[10px] pt-1 pr-2"
             data-leaving={peek === "leaving" || undefined}
             data-docking={peek === "docking" || undefined}
             onPointerEnter={() => hoverSidebar(true)}

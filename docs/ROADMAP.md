@@ -1698,7 +1698,12 @@ seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
       slide's 0.22s; then the peek goes. *Owner: the glass changed at one
       moment instead of fading.* WebKit can't fade a backdrop blur, so it
       switched off in one step; the glass is now a layer behind the
-      contents that fades by opacity. Not seen in the app by the agent;
+      contents that fades by opacity. *Owner: still a pop at the end.*
+      The cause: the docked sidebar's panel sets medium-weight text
+      (`on-glass`) and the peek didn't, so the text thickened when the
+      peek went, on top of being drawn twice during the dock. The peek now
+      has the same styling, and the sidebar under it stays hidden until
+      the frame the peek goes. Not seen in the app by the agent;
       a right-click menu opened in the peek may lose it when the pointer
       moves onto the menu
 ### From Milestone 6 (moved unbuilt when it closed, 2026-10-19; the owner uses none of these)
