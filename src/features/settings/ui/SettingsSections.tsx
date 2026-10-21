@@ -753,11 +753,21 @@ export function AppearanceSection({
       >
         {(
           [
-            ["sidebarTint", "Sidebar and reader", "--glass-sidebar-base"],
-            ["listTint", "Conversation list", "--glass-panel-base"],
+            [
+              "sidebarTint",
+              "Window",
+              "--glass-sidebar-base",
+              "The glass behind everything: sidebar, reader and list.",
+            ],
+            [
+              "listTint",
+              "Conversation list",
+              "--glass-panel-base",
+              "The list’s own panel, on top of the window’s glass.",
+            ],
           ] as const
-        ).map(([key, label, baseVar]) => (
-          <Row key={key} label={label}>
+        ).map(([key, label, baseVar, about]) => (
+          <Row key={key} label={label} description={about}>
             <Slider
               label={`${label} see-through`}
               value={seeThrough(cssPercent(baseVar), appearance[key])}
