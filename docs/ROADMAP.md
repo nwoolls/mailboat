@@ -1640,6 +1640,16 @@ seen working.*
       the editor a reasonable minimum height, and lay the attachments
       out more compactly: chips in columns (wrapping side by side), then
       a capped height that scrolls, or a "+N more" that expands
+- [ ] An open conversation stayed unread *(owner report with a
+      screenshot, 2026-10-22)*: a thread showing in the reader, newest reply expanded, still unread after
+      several seconds until marked read by hand. Likely cause, from the
+      code: the reader decides whether to mark read once, when the
+      conversation opens (`unreadWhenOpened` in `ThreadReader.tsx`, so
+      pressing `u` afterwards sticks). If the conversation was already
+      open, or opened while it was read, and a new reply then arrives
+      and makes it unread again, nothing marks it read. Fix: also mark
+      read when a new unread message arrives in the conversation being
+      shown (after the same delay), while still respecting a manual `u`
 - [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
       the AI Spike when it closed, 2026-10-21; never tried for real: both
       were already signed in on the owner's Mac)*. Connect runs `claude
