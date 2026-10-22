@@ -1586,8 +1586,8 @@ built, tested and waiting for the owner to try.*
 *Started 2026-10-21 at the owner's request, to do soonish: every open
 bug from the Bug backlog moved here, and new bugs go straight here until
 it starts. Each says how it was found and whether it has been seen for
-real. Two are only to watch (Connect from a signed-out CLI, the
-screensaver not starting): they tick once seen working.*
+real. Connect from a signed-out CLI is only to watch: it ticks once
+seen working.*
 
 - [ ] Menus grow as wide as their longest item *(owner report with a
       screenshot, 2026-10-21)*: "Block <address>" in the list's context
@@ -1633,7 +1633,7 @@ screensaver not starting): they tick once seen working.*
       once it has worked once; if the browser doesn't open, the fallback
       is signing in from Terminal (Settings says so) and pressing Connect
       again
-- [ ] The screensaver sometimes didn't start *(owner report,
+- [x] The screensaver sometimes didn't start *(owner report,
       2026-10-19; moved from Milestone 7, then from Bug Spike 1 when it
       closed, 2026-10-20)*. Likely cause, fixed: when the idle minute ran out
       while the window was hidden it waited another minute instead of
@@ -1642,7 +1642,8 @@ screensaver not starting): they tick once seen working.*
       hidden). To tick once the owner hasn't seen it again; if they do,
       diagnose further. Owner's guess (2026-10-19): it was on another
       Space when it didn't start, which macOS also reports as hidden, so
-      the same fix covers it
+      the same fix covers it. Owner (2026-10-21): not seen since
+      the fix
 
 ## Milestone 10: Windows
 
