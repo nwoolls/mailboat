@@ -1439,6 +1439,15 @@ idea because they're useful without distributing).*
       calendar apps (Notion Mail, Superhuman, Spark, Apple Mail, Things).
       Then try the best few behind a feature flag, as with the
       screensavers
+- [ ] Empty Spam *(owner request, 2026-10-21)*: one button at the top of
+      Spam, as in Gmail ("Delete all spam messages now"), with a
+      confirmation; per account in the unified view, split per account
+      (rule 5). Catch to decide first: deleting for good needs Gmail's
+      full-access scope (`https://mail.google.com/`), which Mailboat doesn't
+      ask for (it has `gmail.modify`). Without it, "Empty" can only move
+      Spam to Trash, which Gmail deletes after 30 days. Adding the scope
+      means every account signs in again and a scarier consent screen.
+      Empty Trash has the same catch and would come with it
 
 ## Milestone 9: Writing
 
