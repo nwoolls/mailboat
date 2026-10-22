@@ -1456,6 +1456,15 @@ idea because they're useful without distributing).*
 - [ ] Warn about outside recipients (addresses not ending with chosen
       domains are marked while writing)
 - [ ] Remove an address from compose suggestions
+- [ ] Images inline in the email being written, as Gmail does *(owner
+      request, 2026-10-22)*: dropping (or pasting) an image into the
+      composer puts it in the body where it lands, while other files
+      (documents, PDFs…) still become attachments. Today every dropped
+      file is an attachment. Sent as inline parts with Content-IDs
+      (`cid:`), the same way forwards already carry the original's
+      embedded images; to decide: resizing in the editor (Gmail offers
+      small / best fit / original), and a large image's share of
+      Gmail's 25 MB limit
 
 ## AI Spike
 
