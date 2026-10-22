@@ -1581,33 +1581,13 @@ built, tested and waiting for the owner to try.*
         too, not only inline (owner report): the card was never given it.
         Shown for replies and forwards that started here, not new mail
 
-## Milestone 10: Windows
+## Bug Spike 2
 
-- [ ] Windows build and testing; Linux nice-to-have
-- [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
-      ones that hide when not scrolling); check they look right on
-      Windows, and style them there only if needed
-
-## Release Spike (last; only if Mailboat is distributed)
-
-*Making Mailboat installable by other people. The owner is unsure whether
-it will ever be distributed (2026-10-19), so this comes last.*
-
-- [ ] Release signing and packaging, with automatic software updates
-      (Mimestream has an update channel setting) *(updates added
-      2026-10-19, settings comparison)*
-- [ ] Onboarding *(owner request, 2026-10-17)*: a first-launch flow
-      instead of today's single Welcome screen. At least: add one or
-      more accounts (each shown as it signs in, with its first sync
-      under way). Maybe also: choose the theme and the app icon, allow
-      notifications. Steps after accounts can be skipped, and all of it
-      is in Settings afterwards. To design with the owner before
-      building. Today's Welcome screen also needs its Google setup steps
-      brought up to date: it names only the Gmail API, but the README
-      now lists the People and Google Calendar APIs too
-- [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
-
-## Bug backlog
+*Started 2026-10-21 at the owner's request, to do soonish: every open
+bug from the Bug backlog moved here, and new bugs go straight here until
+it starts. Each says how it was found and whether it has been seen for
+real. Two are only to watch (Connect from a signed-out CLI, the
+screensaver not starting): they tick once seen working.*
 
 - [ ] Menus grow as wide as their longest item *(owner report with a
       screenshot, 2026-10-21)*: "Block <address>" in the list's context
@@ -1653,6 +1633,49 @@ it will ever be distributed (2026-10-19), so this comes last.*
       once it has worked once; if the browser doesn't open, the fallback
       is signing in from Terminal (Settings says so) and pressing Connect
       again
+- [ ] The screensaver sometimes didn't start *(owner report,
+      2026-10-19; moved from Milestone 7, then from Bug Spike 1 when it
+      closed, 2026-10-20)*. Likely cause, fixed: when the idle minute ran out
+      while the window was hidden it waited another minute instead of
+      starting, and macOS counts a window that another app covers
+      completely as hidden. It now starts anyway (the canvas pauses while
+      hidden). To tick once the owner hasn't seen it again; if they do,
+      diagnose further. Owner's guess (2026-10-19): it was on another
+      Space when it didn't start, which macOS also reports as hidden, so
+      the same fix covers it
+
+## Milestone 10: Windows
+
+- [ ] Windows build and testing; Linux nice-to-have
+- [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
+      ones that hide when not scrolling); check they look right on
+      Windows, and style them there only if needed
+
+## Release Spike (last; only if Mailboat is distributed)
+
+*Making Mailboat installable by other people. The owner is unsure whether
+it will ever be distributed (2026-10-19), so this comes last.*
+
+- [ ] Release signing and packaging, with automatic software updates
+      (Mimestream has an update channel setting) *(updates added
+      2026-10-19, settings comparison)*
+- [ ] Onboarding *(owner request, 2026-10-17)*: a first-launch flow
+      instead of today's single Welcome screen. At least: add one or
+      more accounts (each shown as it signs in, with its first sync
+      under way). Maybe also: choose the theme and the app icon, allow
+      notifications. Steps after accounts can be skipped, and all of it
+      is in Settings afterwards. To design with the owner before
+      building. Today's Welcome screen also needs its Google setup steps
+      brought up to date: it names only the Gmail API, but the README
+      now lists the People and Google Calendar APIs too
+- [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
+
+## Bug backlog
+
+*Bugs found in passing (started 2026-10-19 at the owner's request).
+Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
+(2026-10-21); new bugs go to Bug Spike 2 while it is open. What stays
+here is done.*
 
 - [x] Emails mangled in dark mode *(owner report with screenshots,
       2026-10-20: a news site, a notice, a bank)*. Rendered outside the app
@@ -1673,26 +1696,12 @@ it will ever be distributed (2026-10-19), so this comes last.*
         in a transparent image, which no color remap can fix. "Original
         colors" is the way out
       Owner confirmed the fixes (2026-10-20)
+
 - [x] "Original colors" is remembered per sender *(owner, 2026-10-20:
       "yes", after a bank's logo, which no remap can fix)*. Switching an
       email to Original colors now applies to every email from that
       address, in any account (kept like the per-sender image choice);
       Adapted colors forgets it. It was per message, until the app quit
-
-*Bugs found in passing and not yet fixed (started 2026-10-19 at the
-owner's request). Each says how it was found and whether it has been
-seen for real. The first five moved to Bug Spike 1 (owner, 2026-10-19).*
-
-- [ ] The screensaver sometimes didn't start *(owner report,
-      2026-10-19; moved from Milestone 7, then from Bug Spike 1 when it
-      closed, 2026-10-20)*. Likely cause, fixed: when the idle minute ran out
-      while the window was hidden it waited another minute instead of
-      starting, and macOS counts a window that another app covers
-      completely as hidden. It now starts anyway (the canvas pauses while
-      hidden). To tick once the owner hasn't seen it again; if they do,
-      diagnose further. Owner's guess (2026-10-19): it was on another
-      Space when it didn't start, which macOS also reports as hidden, so
-      the same fix covers it
 
 ## Later / unscheduled
 
