@@ -1431,10 +1431,14 @@ idea because they're useful without distributing).*
 - [ ] Research other "empty state" designs and build a few to try
       *(owner request, 2026-10-21)*: what an empty list (Inbox zero, an
       empty label or search) shows, alongside today's icon and words with
-      the pointer-following glow and the idle screensavers. Look at what
-      other mail and calendar apps do (Notion Mail, Superhuman, Spark,
-      Apple Mail, Things), then try the best few behind a feature flag,
-      as with the screensavers
+      the pointer-following glow and the idle screensavers. Look well
+      beyond mail apps: newer apps and design work shared on X (and
+      sites like Dribbble, Mobbin), including interactive empty states
+      such as small minigames (owner, 2026-10-21: "seen newer stuff
+      that's interactive with eg minigames"), as well as mail and
+      calendar apps (Notion Mail, Superhuman, Spark, Apple Mail, Things).
+      Then try the best few behind a feature flag, as with the
+      screensavers
 
 ## Milestone 9: Writing
 
