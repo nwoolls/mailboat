@@ -1428,6 +1428,13 @@ idea because they're useful without distributing).*
 - [ ] Clicking a new-mail notification selects that email and shows it
       in the reader *(owner request, 2026-10-21; today it only brings
       Mailboat forward, see Milestone 5 → Notifications)*
+- [ ] Research other "empty state" designs and build a few to try
+      *(owner request, 2026-10-21)*: what an empty list (Inbox zero, an
+      empty label or search) shows, alongside today's icon and words with
+      the pointer-following glow and the idle screensavers. Look at what
+      other mail and calendar apps do (Notion Mail, Superhuman, Spark,
+      Apple Mail, Things), then try the best few behind a feature flag,
+      as with the screensavers
 
 ## Milestone 9: Writing
 
