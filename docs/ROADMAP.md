@@ -1634,6 +1634,12 @@ seen working.*
       (say 11×8 or 14×10), fewer envelopes, and finer movement for this
       scene only (a smaller cell, or drawing the sprites at their exact
       position rather than snapped to the grid)
+- [ ] Many attachments squeeze the composer's writing area *(owner
+      report, 2026-10-22)*: each attachment chip takes a row, so with
+      enough of them the editable area shrinks to almost nothing. Give
+      the editor a reasonable minimum height, and lay the attachments
+      out more compactly: chips in columns (wrapping side by side), then
+      a capped height that scrolls, or a "+N more" that expands
 - [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
       the AI Spike when it closed, 2026-10-21; never tried for real: both
       were already signed in on the owner's Mac)*. Connect runs `claude
