@@ -1695,6 +1695,25 @@ it will ever be distributed (2026-10-19), so this comes last.*
       brought up to date: it names only the Gmail API, but the README
       now lists the People and Google Calendar APIs too
 - [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
+- [ ] Demo mode *(owner, 2026-10-22, after asking about a trailer)*:
+      the real app started with its own data folder (e.g. an env var or
+      launch flag), filled with made-up accounts, conversations,
+      labels, summaries and sign-in codes, and no Google connection, so
+      none of the owner's mail can show. Sending is faked (it lands in
+      Sent, and a scripted reply can arrive). For screenshots, the
+      README or a website, and the trailer below. The fake data is
+      shared with the trailer and the browser tests' harness
+- [ ] Teaser trailer *(owner, 2026-10-22)*: a short video made in code
+      with Remotion (videos written in React), drawing Mailboat's real
+      components with the demo data, as the browser tests do. Scripted
+      camera moves, a gliding cursor, typing, the AI panel opening, mail
+      arriving; rendered to MP4 at 16:9, square and vertical. Not
+      AI-generated video: it garbles text and invents UI that isn't
+      Mailboat's. Limits: it renders in Chromium, so the window's glass is
+      imitated over a chosen wallpaper rather than macOS's own; music or
+      a voiceover come from the owner (cuts can be timed to a chosen
+      track). Check Remotion's licence (free for individuals and small
+      companies) when starting, and record it in ARCHITECTURE
 
 ## Bug backlog
 
