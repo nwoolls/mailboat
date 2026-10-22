@@ -1624,6 +1624,18 @@ it will ever be distributed (2026-10-19), so this comes last.*
       preview; it likely also reaches the list's own Esc handling
       (clear selection), so the list falls back to its first row
 - [x] A conversation's summary missed its newest reply *(owner report, 2026-10-21)*: a summary still described a thread as waiting on an answer after a one-line reply had arrived. Cause: Apple's small on-device model gave a one-line reply too little weight after a longer email. Fixed: the newest email is headed "Newest message" in what the model reads, and the summary is told to start with where things stand by it, even when it is one line. The list's one-line summaries are told the same. To try: press "Summarize again" (saved summaries stay until then or until a new reply)
+- [ ] The floating composer flashes see-through just after its bounce
+      *(owner report, 2026-10-21; likely since the whole-card bounce,
+      commits 25c03a7 / 3429692)*: opening or closing the AI panel, right
+      after the bounce settles, the content behind the window shows
+      through for a moment. Likely cause, not yet confirmed: the bounce
+      is a `translate` animation on the card (`.nudge-*` in
+      `index.css`), and when it ends WebKit rebuilds the card's
+      compositing layer and draws one frame without its backdrop blur.
+      Things to try: keep the card on its own layer all the time (e.g. a
+      resting `translate: 0 0` or `will-change: translate`), or bounce
+      an inner element rather than the glass card. The browser tests
+      can't see backdrop blur, so this one needs checking in the app
 - [ ] The envelope flock screensaver looks jumpy and low-res *(owner
       report, 2026-10-21)*; experiment with larger envelopes. Why it
       looks that way: every screensaver draws on a grid of 3px cells
