@@ -1671,6 +1671,17 @@ seen working.*
       the content itself (the body's own height), not the frame's
       document, and add a browser test that narrows then widens the
       reader
+- [ ] Opening a conversation should land on the first unread email
+      *(owner request, 2026-10-22, filed as a bug)*: read emails
+      collapsed, unread ones expanded, and the reader scrolled so the
+      first unread one is at the top (focused for the keyboard). Today
+      the expanding already works that way (`initiallyExpanded` in
+      `ThreadReader.tsx`: the unread ones plus the newest), but nothing
+      scrolls, so the reader opens at the top: the subject, summary and
+      the collapsed rows, with the first unread email possibly below the
+      fold. With nothing unread it stays as now (the newest expanded).
+      Must wait for the emails above to be measured, or it lands short
+      (see the blank-space item above); a browser test can check it
 - [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
       the AI Spike when it closed, 2026-10-21; never tried for real: both
       were already signed in on the owner's Mac)*. Connect runs `claude
