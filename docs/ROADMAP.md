@@ -1682,6 +1682,13 @@ seen working.*
       fold. With nothing unread it stays as now (the newest expanded).
       Must wait for the emails above to be measured, or it lands short
       (see the blank-space item above); a browser test can check it
+- [ ] Try the AI summary's sparkle icon in the list's left gutter
+      *(owner request with a screenshot, 2026-10-23: "looks a bit off";
+      worth a try)*: on a row's third line the sparkle sits just before
+      the summary text, indented with it, while the unread dot,
+      paperclip and star line up in the gutter column on the left. Move
+      it into that column under them (the summary text stays where it
+      is), and compare in the app before keeping it
 - [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
       the AI Spike when it closed, 2026-10-21; never tried for real: both
       were already signed in on the owner's Mac)*. Connect runs `claude
