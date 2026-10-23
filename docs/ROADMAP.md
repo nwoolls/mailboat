@@ -1650,6 +1650,27 @@ seen working.*
       and makes it unread again, nothing marks it read. Fix: also mark
       read when a new unread message arrives in the conversation being
       shown (after the same delay), while still respecting a manual `u`
+- [ ] Reply with AI doesn't scroll the reply into view *(owner report
+      with a screenshot, 2026-10-22)*: the reader stopped partway down the
+      last email, with the reply form (and the AI chat) still below. May
+      share a cause with the next item: it scrolls to where the end was
+      when clicked, and an email that then grows (or is already too
+      tall) moves the target. Fix: scroll once the reply area is laid
+      out, and again if it moves while opening; a browser test with
+      the real reader can check it ends fully in view
+- [ ] Blank space below the end of an email *(owner report with a
+      screenshot, 2026-10-22; frequent, no reliable steps)*: a corporate email
+      ended with most of the reader's height empty below it. Likely
+      cause, from the code: each email's frame is sized from
+      `documentElement.scrollHeight` (`MessageFrame.tsx`), which is never
+      less than the frame's current height. So a frame can grow but
+      never shrink: once the email is measured tall (the reader
+      narrower for a moment, while the sidebar docks, the AI panel
+      opens or the window is resized, or images and fonts arriving),
+      it keeps that height when the text re-wraps shorter. Fix: measure
+      the content itself (the body's own height), not the frame's
+      document, and add a browser test that narrows then widens the
+      reader
 - [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
       the AI Spike when it closed, 2026-10-21; never tried for real: both
       were already signed in on the owner's Mac)*. Connect runs `claude
