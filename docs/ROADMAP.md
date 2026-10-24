@@ -1727,6 +1727,16 @@ at a time; each is ticked once the owner has tried it.*
       fold. With nothing unread it stays as now (the newest expanded).
       Must wait for the emails above to be measured, or it lands short
       (see the blank-space item above); a browser test can check it
+      *Built (2026-10-24), waiting for the owner to try it: when read
+      emails come before the first unread one, the reader opens with that
+      email's card at the top, and keeps it there for 1.5s while the
+      emails above finish measuring (or until you scroll). With the first
+      email unread, or none, it opens at the top as before. Not done: the
+      email isn't given keyboard focus, since focusing its header button
+      would make Space and Enter fold it; say what "focused" should do.
+      A browser test opens five emails, the last two unread (without the
+      fix the card sat 213px down). To try: open a conversation with an
+      unread reply after a few read emails*
 - [ ] Try the AI summary's sparkle icon in the list's left gutter
       *(owner request with a screenshot, 2026-10-23: "looks a bit off";
       worth a try)*: on a row's third line the sparkle sits just before

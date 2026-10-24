@@ -3,6 +3,8 @@
  * with the Rust side faked by Tauri's own `mockIPC`. Picked by the URL:
  *
  *   ?mode=card&spot=bottom-left   a new message in the floating card
+ *   ?mode=unread                  a conversation of five emails, the last
+ *                                 two unread, in the reader
  *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a
  *                                 scrolled reader with mail above it
@@ -66,7 +68,20 @@ const thread = {
   inSpam: false,
   signInCode: null,
 };
-const detail = { thread, messages: [message], labels: [] };
+const unreadMode = new URLSearchParams(location.search).get("mode") === "unread";
+const detail = unreadMode
+  ? {
+      thread: { ...thread, unread: true, messageCount: 5 },
+      messages: [10, 11, 12, 13, 14].map((id, i) =>
+        Object.assign(structuredClone(message), {
+          id,
+          internalDate: message.internalDate + i * 60_000,
+          unread: i >= 3,
+        }),
+      ),
+      labels: [],
+    }
+  : { thread, messages: [message], labels: [] };
 
 mockIPC((cmd) => {
   switch (cmd) {

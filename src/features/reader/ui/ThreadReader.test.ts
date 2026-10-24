@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { initiallyExpanded, unreadArrivals } from "./ThreadReader";
+import { initiallyExpanded, landingMessage, unreadArrivals } from "./ThreadReader";
+
+const m = (id: number, unread: boolean, draft = false) => ({ id, unread, draft });
+
+describe("landingMessage", () => {
+  it("lands on the first unread email after read ones", () => {
+    expect(landingMessage([m(1, false), m(2, false), m(3, true), m(4, true)])).toBe(3);
+  });
+  it("stays at the top when the first email is unread, or none is", () => {
+    expect(landingMessage([m(1, true), m(2, false), m(3, true)])).toBeNull();
+    expect(landingMessage([m(1, false), m(2, false)])).toBeNull();
+    expect(landingMessage([])).toBeNull();
+  });
+  it("skips drafts", () => {
+    expect(landingMessage([m(1, false), m(2, true, true), m(3, true)])).toBe(3);
+  });
+});
 
 describe("unreadArrivals", () => {
   const seen = new Set([1, 2]);

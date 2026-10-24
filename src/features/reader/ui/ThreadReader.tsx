@@ -47,6 +47,21 @@ export function unreadArrivals(
   return messages.filter((m) => m.unread && !m.draft && !seen.has(m.id)).map((m) => m.id);
 }
 
+/**
+ * The email a conversation opens scrolled to: the first unread one, when
+ * read ones come before it (it's at the top already otherwise). In the
+ * order shown, so "newest first" lands on the newest unread.
+ */
+export function landingMessage(
+  shown: Pick<MessageMeta, "id" | "unread" | "draft">[],
+): MessageId | null {
+  const index = shown.findIndex((m) => m.unread && !m.draft);
+  return index > 0 ? shown[index]!.id : null;
+}
+
+/** How long the landing email is kept at the top while the emails above settle. */
+const LANDING_SETTLE_MS = 1500;
+
 export function ThreadReader({
   threadId,
   accounts,
@@ -131,9 +146,11 @@ function ThreadBody({
   const selfEmails = account ? [account.email] : [];
   // Which account it's in matters only when there's more than one.
   const showAccount = accounts.size > 1;
+  const articleRef = useLandOn(useState(() => landingMessage(shown))[0]);
 
   return (
     <article
+      ref={articleRef}
       // macOS overlay scrollbars take no width, so a long email appearing
       // doesn't narrow the reader or reflow it. No padding of its own: the
       // window's 8px edge and the splitter frame the cards, so the last
@@ -191,6 +208,7 @@ function ThreadBody({
             return (
               <section
                 key={m.id}
+                data-message-id={m.id}
                 className={`rounded-[10px] ring-1 ring-stroke ring-inset transition-colors duration-[120ms] ${
                   isOpen ? "message-card" : "message-card-collapsed"
                 }`}
@@ -261,6 +279,37 @@ function ThreadBody({
       <EmailContextMenu />
     </article>
   );
+}
+
+/**
+ * Scrolls the reader so the given email's card is at the top, and keeps it
+ * there while what's above it finishes laying out (the summary arriving,
+ * an expanded email measured), or it would land short. Stops as soon as
+ * the reader is scrolled by hand.
+ */
+function useLandOn(messageId: MessageId | null) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const scroller = ref.current;
+    const card = scroller?.querySelector(`[data-message-id="${messageId}"]`);
+    if (messageId === null || !scroller || !card) return;
+    const land = () => {
+      scroller.scrollTop += card.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    };
+    land();
+    const growing = new ResizeObserver(land);
+    if (scroller.firstElementChild) growing.observe(scroller.firstElementChild);
+    const stop = () => growing.disconnect();
+    const settled = window.setTimeout(stop, LANDING_SETTLE_MS);
+    const byHand = ["wheel", "pointerdown", "keydown", "touchstart"] as const;
+    for (const type of byHand) window.addEventListener(type, stop, { capture: true, once: true });
+    return () => {
+      stop();
+      window.clearTimeout(settled);
+      for (const type of byHand) window.removeEventListener(type, stop, { capture: true });
+    };
+  }, [messageId]);
+  return ref;
 }
 
 /**
