@@ -1427,10 +1427,8 @@ each is ticked once the owner has tried it.*
       in Spam), with its own icon and word on the button. Archive,
       Trash and Spam slide the row out whichever side they're on; read
       and star spring back.*
-      *Not built: the second swipe each way (a longer swipe doing a
-      second action). It changes the feel of the owner's swipe design
-      (where the ring fills, what a long pull means), so it waits to be
-      worked out with the owner*
+      *Second swipe each way: dropped (owner, 2026-10-24: "no second
+      button"). One choosable action per side*
 - [ ] Delete key: Trash or Archive (in the Settings plan)
       *Built (2026-10-24), waiting for the owner to try it. Mailboat had no
       Delete key; now ⌫ (and the forward delete key) moves the selected
@@ -1462,7 +1460,8 @@ each is ticked once the owner has tried it.*
       07:00 to start; overnight works), and no notification shows then,
       by this Mac's clock. Mail still syncs, the Dock count still moves,
       and sign-in codes still show in the window*
-- [ ] Sounds for new mail and for actions, if wanted
+- Sounds for new mail and for actions: not wanted (owner, 2026-10-24),
+  moved to "Considered, not planned"
 - [ ] Duplicate a rule
       *Built (2026-10-24), waiting for the owner to try it: Settings →
       Rules → Duplicate, by Edit, opens "Duplicate rule" filled in from
@@ -2191,6 +2190,10 @@ here is done.*
       mail in a category
 
 ### Considered, not planned (settings comparison, 2026-10-19)
+
+- Sounds for new mail and for actions *(from Milestone 8; owner,
+  2026-10-24: skip them)*. macOS plays its own sound with each
+  notification, set in System Settings → Notifications → Mailboat
 
 Turning off conversation grouping (Gmail is conversations); fonts for the
 list and messages, fixed-width plain text and coloured quote levels;
