@@ -1640,6 +1640,14 @@ at a time; each is ticked once the owner has tried it.*
       resting `translate: 0 0` or `will-change: translate`), or bounce
       an inner element rather than the glass card. The browser tests
       can't see backdrop blur, so this one needs checking in the app
+      *Built (2026-10-24), waiting for the owner to check it in the
+      app: the card now keeps its own layer all the time (`will-change:
+      translate`), the first of the two ideas. That makes it the frame
+      for fixed-positioned content inside it, but everything floating
+      from it is a top-layer popover, which a WebKit check confirmed
+      isn't affected. To try: open a new message and toggle the AI panel
+      (⌘J) several times, watching just after each bounce settles. If it
+      still flashes, the next try is bouncing an inner element*
 - [ ] The envelope flock screensaver looks jumpy and low-res *(owner
       report, 2026-10-21)*; experiment with larger envelopes. Why it
       looks that way: every screensaver draws on a grid of 3px cells

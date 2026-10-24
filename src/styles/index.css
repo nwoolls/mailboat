@@ -586,6 +586,13 @@ html.resizing .panel-slide {
   /* "backwards", not "both": a transform kept after the animation would
      make the card the frame for anything fixed-positioned inside it. */
   animation: toast-in 180ms var(--motion-ease-out) backwards;
+  /* Its own compositing layer all the time, not only while it bounces
+     (`.nudge-*`): when a bounce ended, WebKit rebuilt the layer and drew
+     a frame without the backdrop blur, so the card flashed see-through.
+     This also makes the card the frame for fixed-positioned content, but
+     everything that floats from it (menus, address suggestions) is a
+     popover in the top layer, which that doesn't affect. */
+  will-change: translate;
 }
 @media (prefers-reduced-motion: reduce) {
   .compose-card {
