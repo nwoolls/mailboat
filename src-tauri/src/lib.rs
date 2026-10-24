@@ -119,6 +119,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             ai::ai_thread_summary,
             ai::ai_list_summaries,
             ai::ai_write,
+            ai::ai_rewrite,
             ai::ai_reply_ideas,
             ai::ai_chatgpt_models,
             ai::ai_cancel,

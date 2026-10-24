@@ -9,8 +9,11 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use mailboat_core::ai::codex::CodexModel;
+use mailboat_core::ai::prompts::RewriteStyle;
 use mailboat_core::ai::summaries::{self, Summary, SummaryKind};
-use mailboat_core::ai::tasks::{self, Summarized, SummaryRequest, WriteAnswer, WriteRequest};
+use mailboat_core::ai::tasks::{
+    self, RewriteAnswer, Summarized, SummaryRequest, WriteAnswer, WriteRequest,
+};
 use mailboat_core::ai::usage::{self, ProviderUsage};
 use mailboat_core::ai::{
     self, AiProvider, Answer, PlanLimit, Programs, ProviderState, ProviderStatus,
@@ -396,6 +399,39 @@ pub async fn ai_write(
             &on_text,
         )
         .await
+    })
+    .await?;
+    ai.note(&raw);
+    Ok(answer)
+}
+
+/// Rewrites text selected in the composer with the writing provider;
+/// streamed as `AiTextEvent`s. Only the selection is sent.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_rewrite(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    ai: State<'_, AiState>,
+    text: String,
+    style: RewriteStyle,
+    request_id: u32,
+) -> CmdResult<RewriteAnswer> {
+    let saved = load_settings(&state)?;
+    let provider = saved.ai.writing_provider;
+    check_usable(&saved, provider)?;
+    let db = state.db.clone();
+    let programs = ai.programs_for(&saved).await;
+    let emit = app.clone();
+    let (answer, raw) = cancellable(&ai, request_id, async move {
+        let on_text = move |text: &str| {
+            let _ = AiTextEvent {
+                request_id,
+                text: text.to_string(),
+            }
+            .emit(&emit);
+        };
+        tasks::rewrite(&db, &programs, provider, &text, style, &on_text).await
     })
     .await?;
     ai.note(&raw);

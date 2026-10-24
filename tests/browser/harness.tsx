@@ -109,6 +109,11 @@ mockIPC((cmd, args) => {
       return { ai: { writingProvider: "apple" } };
     case "ai_status":
       return [{ provider: "apple", state: "ready", account: null }];
+    case "ai_rewrite": {
+      // Shouts the selection back, so a test can see what was sent.
+      const text = (args as { text: string }).text.toUpperCase();
+      return new Promise((done) => setTimeout(() => done({ text, html: `<p>${text}</p>` }), 300));
+    }
     case "ai_reply_ideas":
       // A moment later, as from a model, so the stand-ins show first.
       return new Promise((done) => setTimeout(() => done(["Say yes", "Ask for details"]), 800));

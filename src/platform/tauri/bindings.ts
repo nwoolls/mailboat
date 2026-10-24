@@ -313,6 +313,11 @@ export const commands = {
 	 */
 	aiWrite: (request: WriteRequest, requestId: number) => typedError<WriteAnswer, AppError>(__TAURI_INVOKE("ai_write", { request, requestId })),
 	/**
+	 *  Rewrites text selected in the composer with the writing provider;
+	 *  streamed as `AiTextEvent`s. Only the selection is sent.
+	 */
+	aiRewrite: (text: string, style: RewriteStyle, requestId: number) => typedError<RewriteAnswer, AppError>(__TAURI_INVOKE("ai_rewrite", { text, style, requestId })),
+	/**
 	 *  Suggestions for the writing assistant's chips, from the conversation
 	 *  being answered or forwarded (with the writing provider).
 	 */
@@ -1181,6 +1186,18 @@ export type ReplySource = {
 	/**  Images embedded in the original (`cid:`), for its quote. */
 	inlineImages: AttachmentId[],
 };
+
+/**  Selected text, rewritten, as plain text and as the composer's HTML. */
+export type RewriteAnswer = {
+	text: string,
+	html: string,
+};
+
+/**
+ *  Tidies a one-line summary: one line, no quotes or "Summary:" label.
+ *  How text selected in the composer is rewritten.
+ */
+export type RewriteStyle = "shorter" | "friendlier" | "moreFormal" | "fixGrammar";
 
 export type Rule = {
 	accountId: AccountId,

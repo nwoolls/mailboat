@@ -67,6 +67,11 @@ import Tick02 from "@hugeicons/core-free-icons/Tick02Icon";
 import Calendar03 from "@hugeicons/core-free-icons/Calendar03Icon";
 import UserMultiple from "@hugeicons/core-free-icons/UserMultipleIcon";
 import Sparkles from "@hugeicons/core-free-icons/SparklesIcon";
+import MagicWand01 from "@hugeicons/core-free-icons/MagicWand01Icon";
+import ArrowShrink02 from "@hugeicons/core-free-icons/ArrowShrink02Icon";
+import Smile from "@hugeicons/core-free-icons/SmileIcon";
+import Tie from "@hugeicons/core-free-icons/TieIcon";
+import SpellCheck from "@hugeicons/core-free-icons/SpellCheckIcon";
 import ArrowUp02 from "@hugeicons/core-free-icons/ArrowUp02Icon";
 import Stop from "@hugeicons/core-free-icons/StopIcon";
 
@@ -153,5 +158,11 @@ export const CheckIcon = wrap(Tick02);
 export const CalendarIcon = wrap(Calendar03);
 /** AI: summaries and writing help. */
 export const AiIcon = wrap(Sparkles);
+/** Rewrite selected text (the composer's formatting bar). */
+export const RewriteIcon = wrap(MagicWand01);
+export const ShorterIcon = wrap(ArrowShrink02);
+export const FriendlierIcon = wrap(Smile);
+export const FormalIcon = wrap(Tie);
+export const SpellCheckIcon = wrap(SpellCheck);
 export const AskIcon = wrap(ArrowUp02);
 export const StopIcon = wrap(Stop);

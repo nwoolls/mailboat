@@ -17,6 +17,8 @@ pub enum Purpose {
     Writing,
     /// The suggestion chips in the writing assistant.
     ReplyIdeas,
+    /// Rewriting text selected in the composer.
+    Rewrite,
 }
 
 impl Purpose {
@@ -26,6 +28,7 @@ impl Purpose {
             Purpose::Summary => "summary",
             Purpose::Writing => "writing",
             Purpose::ReplyIdeas => "replyIdeas",
+            Purpose::Rewrite => "rewrite",
         }
     }
 }

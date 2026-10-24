@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use super::context::{thread_text, ThreadText};
-use super::prompts::{self, ChatTurn, WritingContext};
+use super::prompts::{self, ChatTurn, RewriteStyle, WritingContext};
 use super::summaries::{self, Summary, SummaryKind};
 use super::usage::{self, Purpose};
 use super::{ask, AiProvider, Answer, Programs, Prompt, Quality};
@@ -207,6 +207,46 @@ pub async fn write(
         },
         answer,
     ))
+}
+
+/// Selected text, rewritten, as plain text and as the composer's HTML.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RewriteAnswer {
+    pub text: String,
+    pub html: String,
+}
+
+/// Rewrites text selected in the composer (shorter, friendlier…). Only
+/// the selection is sent, not the rest of the email or the conversation.
+pub async fn rewrite(
+    db: &Db,
+    programs: &Programs,
+    provider: AiProvider,
+    text: &str,
+    style: RewriteStyle,
+    on_text: &(dyn Fn(&str) + Send + Sync),
+) -> Result<(RewriteAnswer, Answer)> {
+    if text.trim().is_empty() {
+        return Err(CoreError::Ai("Select some text to rewrite.".into()));
+    }
+    if text.chars().count() > prompts::rewrite_limit(provider) {
+        return Err(CoreError::Ai(format!(
+            "That's too much text to rewrite at once with {}; select a paragraph or two.",
+            super::display_name(provider)
+        )));
+    }
+    let prompt = prompts::rewrite(text, style);
+    let shown = |t: &str| on_text(&prompts::clean_rewrite(t));
+    let answer = ask_recorded(db, programs, provider, Purpose::Rewrite, &prompt, &shown).await?;
+    let text = prompts::clean_rewrite(&answer.text);
+    if text.is_empty() {
+        return Err(CoreError::Ai(
+            "The AI didn't write anything; try again.".into(),
+        ));
+    }
+    let html = super::format::markdown_to_html(&text);
+    Ok((RewriteAnswer { text, html }, answer))
 }
 
 /// Suggestions for the writing assistant's chips, from the conversation

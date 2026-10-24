@@ -24,6 +24,7 @@ import {
   withIdentity,
 } from "../model/draft";
 import { AssistantPanel, type UseMode } from "../../ai/ui/AssistantPanel";
+import { RewriteButton } from "../../ai/ui/RewriteButton";
 import { InlineReveal } from "../../ai/ui/InlineReveal";
 import { AddressField } from "./AddressField";
 import { HtmlPreview } from "./HtmlPreview";
@@ -327,7 +328,7 @@ export function ComposeForm({
         className={inline ? "reader-foot reader-foot-in-card pt-2" : ""}
         data-stuck={(inline && footStuck) || undefined}
       >
-        <FormatBar editor={editor} />
+        <FormatBar editor={editor}>{editor && <RewriteButton editor={editor} />}</FormatBar>
         <div className="flex shrink-0 items-center gap-3 px-4 pt-1 pb-3">
           <button
             type="submit"

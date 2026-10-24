@@ -441,6 +441,11 @@ flowchart LR
 - **Settings** live in `AppSettings.ai` (Rust acts on them): connected
   providers, and which provider each feature uses. Apple Intelligence is
   the default for everything.
+- **Rewrite** (the composer's formatting bar): the selected text alone
+  goes to the writing provider at the quick level (`ai_rewrite`,
+  `prompts::rewrite`), with a size cap for Apple's small model. The
+  answer replaces the selection in one undo step (`applyRewrite`): one
+  line as plain text so it stays inside its paragraph, more as HTML.
 - **Commands:** Summarize and Reply with AI are also in the shared
   command list (`features/commands`), so ⌘K, the menu bar and the
   right-click menu offer them. A summary asked for that way goes through
@@ -552,3 +557,4 @@ flowchart LR
 | 2026-10-24 | Show original reads the raw email with the `mail-parser` crate (Stalwart's), fetched fresh with `format=raw` each time and never stored | Decoding headers (RFC 2047 names and subjects, address lists, dates) is a standard protocol, so a maintained, fuzzed parser beats hand-written code; `mail-builder`, already used for sending, is from the same authors and has no parser. The raw email isn't cached: it can be 25 MB, it's rarely looked at, and the bodies table already holds what the reader needs. SPF, DKIM and DMARC come only from the topmost `Authentication-Results` header naming `mx.google.com`, since a sender can write such headers into their own mail; Gmail adds its own at the top. At most 1 MB of the source shows on screen; Download saves the whole `.eml`. |
 | 2026-10-24 | New-mail notifications on macOS go through `UNUserNotificationCenter` directly (`objc2-user-notifications`, `src-tauri/src/notifications.rs`), not the notification plugin | The plugin (notify-rust, on the deprecated NSUserNotification) can't report clicks on macOS, and clicking should open the conversation. Each notification's identifier carries its thread's surrogate ID; a delegate turns a click into `NotificationOpenedEvent`. macOS throws if the notification center is used outside an app bundle, so a bare `cargo run` falls back to the plugin (the dev build is bundled by `scripts/dev-run.sh`). The plugin stays for Windows. macOS asks for notification permission once more, as this is a different API. |
 | 2026-10-24 | Codex stays one process per request (`codex exec`), not a kept `codex app-server`; Claude and Codex are stopped at their answer's last line | Measured: app-server reuse saves ~0.5s, but it has no `--ignore-user-config`, so it loads the owner's Codex MCP servers and plugins on every request and leaves them running; only a separate `CODEX_HOME` (a second sign-in) avoids that. Stopping at the last line (`result` for Claude, `turn.completed` for Codex) instead of waiting for exit saves ~0.6s with no new risk. Details in the roadmap (AI Spike 2). |
+| 2026-10-24 | Rewrite sends only the selected text, at the quick level (Haiku / ChatGPT's fast model), not the writing quality from Settings | It's a small edit where waiting matters, and the result is shown in the editor to keep or undo. Sending only the selection keeps the rest of the draft and the conversation off a cloud provider for a one-sentence edit. Choices, placement and level are defaults to try (AI Spike 2). |

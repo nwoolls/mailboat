@@ -94,8 +94,17 @@ export function EditorBody({
   return <EditorContent editor={editor} className={className} style={style} />;
 }
 
-/** Gmail's formatting bar: font, size, bold/italic/underline, colour, alignment, lists, quote, link. */
-export function FormatBar({ editor }: { editor: Editor | null }) {
+/**
+ * Gmail's formatting bar: font, size, bold/italic/underline, colour,
+ * alignment, lists, quote, link, then `children` (Rewrite).
+ */
+export function FormatBar({
+  editor,
+  children,
+}: {
+  editor: Editor | null;
+  children?: React.ReactNode;
+}) {
   const [linking, setLinking] = useState<string | null>(null);
   const state = useEditorState({
     editor,
@@ -248,6 +257,8 @@ export function FormatBar({ editor }: { editor: Editor | null }) {
           label="Remove formatting"
           run={() => chain().unsetAllMarks().clearNodes().run()}
         />
+        {children && <Sep />}
+        {children}
       </div>
       <LinkBubble
         editor={editor}
