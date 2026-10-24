@@ -126,6 +126,11 @@ export const commands = {
 	messageOriginalSave: (messageId: MessageId) => typedError<string, AppError>(__TAURI_INVOKE("message_original_save", { messageId })),
 	cacheSize: () => typedError<CacheSize, AppError>(__TAURI_INVOKE("cache_size")),
 	/**
+	 *  What the settings would be with every one back at its default (AI
+	 *  connections kept); the window saves them with `settings_set`.
+	 */
+	settingsDefaults: () => typedError<AppSettings_Serialize, AppError>(__TAURI_INVOKE("settings_defaults")),
+	/**
 	 *  Forgets all cached mail and downloaded files, then syncs every account
 	 *  again from scratch, as when it was added. Accounts, settings, rules and
 	 *  per-sender choices stay; nothing changes in Gmail.

@@ -19,12 +19,17 @@ export function localStore<T>(key: string, parse: (raw: string | null) => T) {
       listeners.delete(listener);
     };
   };
+  const set = (next: T) => {
+    current = next;
+    localStorage.setItem(key, JSON.stringify(next));
+    for (const listener of listeners) listener();
+  };
   return {
     get,
-    set(next: T) {
-      current = next;
-      localStorage.setItem(key, JSON.stringify(next));
-      for (const listener of listeners) listener();
+    set,
+    /** Back to its default (what an empty store reads as). */
+    reset() {
+      set(parse(null));
     },
     use(): T {
       return useSyncExternalStore(subscribe, get);

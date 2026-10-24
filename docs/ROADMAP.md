@@ -1480,11 +1480,14 @@ each is ticked once the owner has tried it.*
       syncs each again from scratch, as when it was added; accounts,
       settings, rules and per-sender choices stay, nothing changes in
       Gmail. Diagnostics: Sync log → Show in Finder.*
-      *Not built, to ask the owner: what "reset" should be. Either
-      "Restore default settings" (every setting back, accounts and mail
-      kept) or "Reset Mailboat" (remove every account and all data, as
-      Mimestream's). Clearing the cache already covers "start the mail
-      over"*
+      *Reset, owner's choice (2026-10-24): "Restore default settings".
+      Built, waiting for the owner to try it: Advanced → Settings →
+      Restore defaults… (confirmed first) puts every setting back as it
+      started, in Rust's settings and the window's own. Kept: accounts and
+      mail, what's in Gmail (signatures, rules, vacation responder),
+      connected AI providers (a sign-in, not a preference), choices made
+      for senders, recent searches, pane sizes and which panels show. No
+      "Reset Mailboat" (removing everything)*
 - [ ] Show original (the raw message and its headers)
       *Built (2026-10-24), waiting for the owner to try it: Message → Show
       original (⌥⌘U, Mail's Raw Source key), also in ⌘K, the right-click

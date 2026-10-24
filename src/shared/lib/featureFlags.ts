@@ -57,6 +57,11 @@ export function setFeatureFlag(id: FeatureFlagId, on: boolean) {
   store.set({ ...store.get(), [id]: on });
 }
 
+/** Every switch back to its default. */
+export function resetFeatureFlags() {
+  store.reset();
+}
+
 /** The flags, re-rendering when one changes. */
 export function useFeatureFlags(): FeatureFlags {
   return store.use();

@@ -9,6 +9,7 @@ import { unwrap } from "../../../platform/tauri/ipc";
 import { showToast } from "../../../shared/lib/toast";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { formatSize } from "../../reader/model/attachments";
+import { restoreWindowDefaults } from "./restoreDefaults";
 import {
   useAppInfo,
   useAccounts,
@@ -1004,6 +1005,19 @@ export function AdvancedSection() {
   const size = useCacheSize().data;
   const clear = useClearCache();
   const [confirming, setConfirming] = useState(false);
+  const save = useSaveAppSettings();
+  const [restoring, setRestoring] = useState(false);
+  const restore = () =>
+    unwrap(commands.settingsDefaults())
+      .then((defaults) => save.mutateAsync(defaults))
+      .then(() => {
+        restoreWindowDefaults();
+        setRestoring(false);
+        showToast({ message: "Settings restored to their defaults" });
+      })
+      .catch((e: unknown) =>
+        showToast({ tone: "error", message: `Couldn’t restore settings: ${errorText(e)}` }),
+      );
   return (
     <>
       <Group title="Cache">
@@ -1018,6 +1032,14 @@ export function AdvancedSection() {
           <Button onClick={() => setConfirming(true)} disabled={clear.isPending}>
             {clear.isPending ? "Clearing…" : "Clear and download again"}
           </Button>
+        </Row>
+      </Group>
+      <Group title="Settings">
+        <Row
+          label="Restore default settings"
+          description="Every setting in Mailboat back to how it started. Your accounts, mail, signatures, rules and connected AI stay."
+        >
+          <Button onClick={() => setRestoring(true)}>Restore defaults…</Button>
         </Row>
       </Group>
       <Group title="Diagnostics">
@@ -1036,6 +1058,24 @@ export function AdvancedSection() {
           </Button>
         </Row>
       </Group>
+      {restoring && (
+        <ConfirmDialog
+          title="Restore default settings?"
+          confirmLabel="Restore defaults"
+          busy={save.isPending}
+          onCancel={() => setRestoring(false)}
+          onConfirm={() => void restore()}
+        >
+          <p>
+            Every choice in Settings goes back to how it started: appearance, notifications,
+            viewing, the list, composing, AI choices and the Toybox.
+          </p>
+          <p>
+            Kept: your accounts and mail, signatures, rules and the vacation responder (they’re in
+            Gmail), connected AI, choices made for senders, and recent searches.
+          </p>
+        </ConfirmDialog>
+      )}
       {confirming && (
         <ConfirmDialog
           title="Clear the cache?"

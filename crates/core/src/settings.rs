@@ -183,6 +183,18 @@ impl Default for AppSettings {
     }
 }
 
+/// Every setting back to its default ("Restore default settings"), except
+/// which AI providers are connected: that's a sign-in, not a preference.
+pub fn defaults_from(current: &AppSettings) -> AppSettings {
+    AppSettings {
+        ai: AiSettings {
+            connected: current.ai.connected.clone(),
+            ..AiSettings::default()
+        },
+        ..AppSettings::default()
+    }
+}
+
 /// The saved settings, or the defaults if none were saved (or they can't
 /// be read, which shouldn't happen: they're only written by `save`).
 pub fn load(conn: &Connection) -> Result<AppSettings> {
@@ -268,6 +280,33 @@ mod tests {
         assert_eq!(loaded.ai.list_summaries, Some(AiProvider::Apple));
         assert_eq!(loaded.notify_for, NotifyFor::Inbox);
         assert!(!loaded.quiet_hours.on);
+    }
+
+    #[test]
+    fn restoring_defaults_keeps_ai_connections_only() {
+        let changed = AppSettings {
+            new_mail_notifications: false,
+            theme: Theme::Dark,
+            dock_badge: DockBadge::Off,
+            ai: AiSettings {
+                connected: vec![AiProvider::Claude],
+                writing_provider: AiProvider::Claude,
+                ..AiSettings::default()
+            },
+            ..AppSettings::default()
+        };
+        let restored = defaults_from(&changed);
+        assert_eq!(restored.ai.connected, vec![AiProvider::Claude]);
+        assert_eq!(
+            restored,
+            AppSettings {
+                ai: AiSettings {
+                    connected: vec![AiProvider::Claude],
+                    ..AiSettings::default()
+                },
+                ..AppSettings::default()
+            }
+        );
     }
 
     #[test]

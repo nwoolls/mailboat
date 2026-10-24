@@ -1024,6 +1024,15 @@ pub fn settings_set(
     Ok(())
 }
 
+/// What the settings would be with every one back at its default (AI
+/// connections kept); the window saves them with `settings_set`.
+#[tauri::command]
+#[specta::specta]
+pub fn settings_defaults(state: State<'_, AppState>) -> CmdResult<AppSettings> {
+    let current = settings::load(&state.db.conn())?;
+    Ok(settings::defaults_from(&current))
+}
+
 /// Marks an account's rows with another colour from `AppInfo::account_colors`.
 #[tauri::command]
 #[specta::specta]
