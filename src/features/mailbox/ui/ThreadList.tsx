@@ -9,6 +9,7 @@ import { aiChoices, isReady } from "../../ai/model/providers";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { formatListDate, senderParts } from "../model/format";
 import { swipeActions, swipePose } from "../model/swipe";
+import { rowStep as listRowStep } from "../model/listPrefs";
 import { listPrefs } from "./listPrefs";
 import type { ThreadAction } from "../model/threadActions";
 import { SwipeBack, SwipeButton } from "./SwipeLayers";
@@ -16,7 +17,6 @@ import type { OlderStatus } from "./useOlderMail";
 import { useSwipe } from "./useSwipe";
 import { useTextZoom } from "../../settings/ui/textSize";
 
-const ROW_HEIGHT = 72;
 /** Room before the row's text for the account ring and star (12px + gap). */
 const ICON_COLUMN = 18;
 /** The line under the last row while older mail loads (or failed to). */
@@ -102,10 +102,12 @@ export function ThreadList({
   }, [listEl]);
   const { swipe, commit } = useSwipe(listEl, threads, onSwipe);
   const swipePrefs = listPrefs.use();
+  const { previewLines, density } = swipePrefs;
   // Settings → Appearance → Text size: rows grow with their text, which
   // zooms inside them, so positions and swipes stay in whole rows.
   const zoom = useTextZoom();
-  const rowStep = Math.round(ROW_HEIGHT * zoom);
+  // Settings → List: density and preview lines set the row's height.
+  const rowStep = Math.round(listRowStep(swipePrefs) * zoom);
   const virtualizer = useVirtualizer({
     count: threads.length,
     getScrollElement: () => scrollRef.current,
@@ -268,7 +270,10 @@ export function ThreadList({
                   column (ICON_COLUMN): the account ring sits in it on the
                   first line and the star under it on the second, so icons
                   line up with icons and text with text on every row. */}
-                <div className="flex min-w-0 flex-col gap-0.5" style={{ zoom }}>
+                <div
+                  className={`flex min-w-0 flex-col ${density === "compact" ? "" : "gap-0.5"}`}
+                  style={{ zoom }}
+                >
                   <div
                     className="relative flex items-center gap-2"
                     style={{ paddingLeft: ICON_COLUMN }}
@@ -351,26 +356,28 @@ export function ThreadList({
                     <span className="truncate">{t.subject || "(no subject)"}</span>
                     {t.signInCode && <CodePill code={t.signInCode} />}
                   </div>
-                  <div
-                    className="relative truncate text-xs font-medium text-content/40"
-                    style={{ paddingLeft: ICON_COLUMN }}
-                  >
-                    {summarize && lines.get(t.id) ? (
-                      // Hovering shows the email's own first words. The
-                      // sparkle sits in the icon column, under the star.
-                      <span title={t.snippet}>
-                        <AiIcon
-                          size={10}
-                          strokeWidth={2}
-                          className="absolute top-1/2 left-px -translate-y-1/2 text-accent/70"
-                          aria-label="Summary"
-                        />
-                        {lines.get(t.id)}
-                      </span>
-                    ) : (
-                      t.snippet
-                    )}
-                  </div>
+                  {previewLines > 0 && (
+                    <div
+                      className={`relative text-xs font-medium text-content/40 ${previewLines === 2 ? "line-clamp-2" : "truncate"}`}
+                      style={{ paddingLeft: ICON_COLUMN }}
+                    >
+                      {summarize && lines.get(t.id) ? (
+                        // Hovering shows the email's own first words. The
+                        // sparkle sits in the icon column, under the star.
+                        <span title={t.snippet}>
+                          <AiIcon
+                            size={10}
+                            strokeWidth={2}
+                            className="absolute top-1/2 left-px -translate-y-1/2 text-accent/70"
+                            aria-label="Summary"
+                          />
+                          {lines.get(t.id)}
+                        </span>
+                      ) : (
+                        t.snippet
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               {swiped && pose && swipeAction && !out && !back && (

@@ -225,7 +225,7 @@ export function swipeAction(choice: SwipeChoice, t: SwipeRow): ThreadAction | nu
 /** What each side does, as chosen in Settings → List. */
 export function swipeActions(
   t: SwipeRow,
-  prefs: ListPrefs = DEFAULT_LIST_PREFS,
+  prefs: Pick<ListPrefs, "swipeLeft" | "swipeRight"> = DEFAULT_LIST_PREFS,
 ): Record<SwipeSide, ThreadAction | null> {
   return { left: swipeAction(prefs.swipeLeft, t), right: swipeAction(prefs.swipeRight, t) };
 }

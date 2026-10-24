@@ -56,7 +56,7 @@ import { screensaverPrefs } from "../../screensaver/ui/prefs";
 import type { AfterRemoval } from "../../mailbox/model/threadActions";
 import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import { listPrefs } from "../../mailbox/ui/listPrefs";
-import { SWIPE_CHOICES, type SwipeChoice } from "../../mailbox/model/listPrefs";
+import { type Density, SWIPE_CHOICES, type SwipeChoice } from "../../mailbox/model/listPrefs";
 import {
   MARK_READ_DELAY_MS,
   type MarkRead,
@@ -471,7 +471,19 @@ const SWIPE_LABELS: Record<SwipeChoice, string> = {
   none: "Nothing",
 };
 
-/** Settings → List: what the list's swipes do. */
+const DENSITIES: { value: Density; label: string }[] = [
+  { value: "compact", label: "Compact" },
+  { value: "default", label: "Default" },
+  { value: "roomy", label: "Roomy" },
+];
+
+const PREVIEW_LINES: { value: string; label: string }[] = [
+  { value: "0", label: "None" },
+  { value: "1", label: "1 line" },
+  { value: "2", label: "2 lines" },
+];
+
+/** Settings → List: how rows look, and what the list's swipes do. */
 export function ListSection() {
   const prefs = listPrefs.use();
   const choice = (side: "swipeLeft" | "swipeRight", label: string, description: string) => (
@@ -491,18 +503,43 @@ export function ListSection() {
     </Row>
   );
   return (
-    <Group title="Swipes">
-      {choice(
-        "swipeLeft",
-        "Swipe left",
-        "Two fingers to the left on a conversation. Archive moves to Trash where there’s no Inbox to leave.",
-      )}
-      {choice(
-        "swipeRight",
-        "Swipe right",
-        "Two fingers to the right. Each choice undoes itself where it’s already done (Restore in Trash, Not spam in Spam).",
-      )}
-    </Group>
+    <>
+      <Group title="Rows">
+        <Row label="Density" description="How much room each conversation has.">
+          <Segmented
+            label="Density"
+            value={prefs.density}
+            options={DENSITIES}
+            onChange={(density) => listPrefs.set({ ...prefs, density })}
+          />
+        </Row>
+        <Row
+          label="Preview"
+          description="Lines of each conversation’s first words (or its AI summary) under the subject."
+        >
+          <Segmented
+            label="Preview"
+            value={String(prefs.previewLines)}
+            options={PREVIEW_LINES}
+            onChange={(v) =>
+              listPrefs.set({ ...prefs, previewLines: v === "0" ? 0 : v === "2" ? 2 : 1 })
+            }
+          />
+        </Row>
+      </Group>
+      <Group title="Swipes">
+        {choice(
+          "swipeLeft",
+          "Swipe left",
+          "Two fingers to the left on a conversation. Archive moves to Trash where there’s no Inbox to leave.",
+        )}
+        {choice(
+          "swipeRight",
+          "Swipe right",
+          "Two fingers to the right. Each choice undoes itself where it’s already done (Restore in Trash, Not spam in Spam).",
+        )}
+      </Group>
+    </>
   );
 }
 

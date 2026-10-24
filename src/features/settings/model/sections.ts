@@ -38,7 +38,11 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     description: "New-mail alerts, and the unread count on the Dock.",
   },
   { id: "appearance", label: "Appearance", description: "How Mailboat looks." },
-  { id: "list", label: "List", description: "The list of conversations: what swipes do." },
+  {
+    id: "list",
+    label: "List",
+    description: "The list of conversations: how rows look, and what swipes do.",
+  },
   {
     id: "viewing",
     label: "Viewing",

@@ -8,6 +8,7 @@ import { pageReader, stepEmail } from "../../src/features/reader/ui/readerKeys";
 import { Menu, MenuItem } from "../../src/shared/ui/Menu";
 import { ShortcutsHelp } from "../../src/features/mailbox/ui/ShortcutsHelp";
 import { ShowOriginalDialog } from "../../src/features/reader/ui/ShowOriginalDialog";
+import { ThreadList } from "../../src/features/mailbox/ui/ThreadList";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import {
   setCardSpot,
@@ -51,6 +52,41 @@ export function Harness({
   }, [mode]);
 
   if (mode === "shortcuts") return <ShortcutsHelp onClose={() => {}} />;
+  if (mode === "list")
+    return (
+      <div style={{ height: 600, width: 420, display: "flex", flexDirection: "column" }}>
+        <ThreadList
+          viewKey="harness"
+          placeholder={false}
+          threads={[1, 2, 3, 4, 5].map((i) =>
+            Object.assign(structuredClone(detail.thread), {
+              id: i,
+              unread: i % 2 === 1,
+              starred: i === 2,
+              hasAttachments: i === 3,
+              subject: `Quarterly review, part ${i}: the numbers, the plan and what comes next`,
+              snippet: "Can you bring the budget numbers? ".repeat(8),
+            }),
+          )}
+          accounts={new Map([[account.id, account]])}
+          showAccount
+          selectedId={null}
+          cursorId={null}
+          keepInView={null}
+          checked={new Set()}
+          onSelect={() => {}}
+          onClearSelection={() => {}}
+          onRowMenu={() => {}}
+          menuRowId={null}
+          hasMore={false}
+          loadMore={() => {}}
+          loading={false}
+          older={{ status: "idle", busy: false, retry: () => {} }}
+          empty={null}
+          onSwipe={() => {}}
+        />
+      </div>
+    );
   if (mode === "original")
     return <ShowOriginalDialog threadId={detail.thread.id} onClose={() => {}} />;
   // A menu with one very long item (Bug Spike 2: it stretched the menu).

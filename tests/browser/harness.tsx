@@ -14,6 +14,8 @@
  *                                 scrolled reader with mail above it
  *   ?mode=original                Show original for a conversation of
  *                                 five emails, each with a long source
+ *   ?mode=list&density=…&lines=…  the conversation list, with Settings →
+ *                                 List's density and preview lines
  */
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -175,6 +177,18 @@ mockIPC((cmd, args) => {
       return null;
   }
 });
+
+// Settings → List for the list mode, saved before the app first reads it.
+if (harnessMode === "list") {
+  const params = new URLSearchParams(location.search);
+  localStorage.setItem(
+    "mailboat.list",
+    JSON.stringify({
+      density: params.get("density") ?? "default",
+      previewLines: Number(params.get("lines") ?? 1),
+    }),
+  );
+}
 
 // Imported after the mock, so the app sees a Tauri window (IS_TAURI).
 const { Harness } = await import("./HarnessApp");

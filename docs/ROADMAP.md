@@ -1439,6 +1439,13 @@ each is ticked once the owner has tried it.*
       (Delete in Trash does nothing rather than restoring). The `?` sheet
       lists it. ⌘⌫ stays unused (in a text field it deletes the line)*
 - [ ] List density and preview lines (also a UX Spike 1 deferred idea)
+      *Built (2026-10-24), waiting for the owner to try it (a feel
+      thing, so worth a look at each): Settings → List → Rows. Density:
+      Compact (the lines sit together, 8px shorter), Default (as
+      before), Roomy (12px taller). Preview: None, 1 line (as before) or
+      2 lines of the email's first words or its AI summary. Text size
+      still scales rows on top. A browser test checks every combination
+      keeps the text inside its row, with the lines chosen*
 - [ ] Include Trash and Spam in search (in the Settings plan)
       *Built (2026-10-24), waiting for the owner to try it: Settings →
       Viewing → Search → Include Spam and Trash (off, as Gmail). On, both
