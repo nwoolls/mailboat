@@ -34,6 +34,24 @@ export function selectedInMessage(): { messageId: MessageId; text: string } | nu
   return text.trim() && messageId ? { messageId, text } : null;
 }
 
+/**
+ * How tall an email's content is. A document's `scrollHeight` is never
+ * less than its frame, so measured at the frame's current height an email
+ * could grow but never shrink back: once measured tall (the reader briefly
+ * narrower, say), it kept that height, with blank space under it. So it's
+ * measured with the frame collapsed for that moment. Both changes happen
+ * before anything is drawn, so nothing flickers.
+ */
+function contentHeight(frame: HTMLIFrameElement): number {
+  const doc = frame.contentDocument;
+  if (!doc?.documentElement) return 0;
+  const kept = frame.style.height;
+  frame.style.height = "0px";
+  const height = doc.documentElement.scrollHeight;
+  frame.style.height = kept;
+  return Math.max(60, height);
+}
+
 export function MessageFrame({ messageId }: { messageId: MessageId }) {
   const qc = useQueryClient();
   const message = useOpenedMessage(messageId);
@@ -112,17 +130,19 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
   const zoomRef = useRef(zoom);
   useEffect(() => {
     zoomRef.current = zoom;
-    const doc = frameRef.current?.contentDocument;
-    if (!doc?.documentElement) return;
+    const frame = frameRef.current;
+    const doc = frame?.contentDocument;
+    if (!frame || !doc?.documentElement) return;
     doc.documentElement.style.setProperty("zoom", String(zoom));
-    setHeight(Math.max(60, doc.documentElement.scrollHeight));
+    setHeight(contentHeight(frame));
   }, [zoom]);
 
   const onLoad = useCallback(() => {
-    const doc = frameRef.current?.contentDocument;
-    if (!doc) return;
+    const frame = frameRef.current;
+    const doc = frame?.contentDocument;
+    if (!frame || !doc) return;
     doc.documentElement.style.setProperty("zoom", String(zoomRef.current));
-    const measure = () => setHeight(Math.max(60, doc.documentElement.scrollHeight));
+    const measure = () => setHeight(contentHeight(frame));
     measure();
     setReady(true);
     for (const img of Array.from(doc.images)) img.addEventListener("load", measure);

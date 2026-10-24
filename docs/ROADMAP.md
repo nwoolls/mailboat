@@ -1698,6 +1698,14 @@ at a time; each is ticked once the owner has tried it.*
       the content itself (the body's own height), not the frame's
       document, and add a browser test that narrows then widens the
       reader
+      *Built (2026-10-24), waiting for the owner to try it: cause
+      confirmed. Each email is now measured with its frame collapsed for
+      that instant (before anything is drawn), so the reading is the
+      email's own height and the frame shrinks as well as grows. A
+      browser test narrows then widens the reader: the old code stayed at
+      3374px against 2115px before. To try: open a long email, dock the
+      sidebar or open the AI panel and close it again, or resize the
+      window; no blank space should be left under the email*
 - [ ] Opening a conversation should land on the first unread email
       *(owner request, 2026-10-22, filed as a bug)*: read emails
       collapsed, unread ones expanded, and the reader scrolled so the
