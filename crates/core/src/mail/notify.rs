@@ -4,13 +4,16 @@
 use rusqlite::{params, Connection};
 
 use crate::error::Result;
-use crate::model::{AccountId, MessageId};
+use crate::model::{AccountId, MessageId, ThreadId};
 
 /// One notification to show.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Notice {
     pub title: String,
     pub body: String,
+    /// The conversation it's about, which clicking it opens; `None` for
+    /// the "N new messages" summary.
+    pub thread: Option<ThreadId>,
 }
 
 /// Beyond this many at once, one summary instead of one each.
@@ -29,18 +32,19 @@ pub fn notices(
         return Ok(vec![Notice {
             title: format!("{} new messages", messages.len()),
             body: account_label.unwrap_or("Inbox").to_string(),
+            thread: None,
         }]);
     }
     let mut out = Vec::new();
     for &m in messages {
-        let row: Option<(Option<String>, String, String, String)> = conn
+        let row: Option<(Option<String>, String, String, String, ThreadId)> = conn
             .query_row(
-                "SELECT from_name, from_email, subject, snippet FROM messages WHERE id = ?1 AND account_id = ?2",
+                "SELECT from_name, from_email, subject, snippet, thread_id FROM messages WHERE id = ?1 AND account_id = ?2",
                 params![m, account],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
             )
             .ok();
-        if let Some((name, email, subject, snippet)) = row {
+        if let Some((name, email, subject, snippet, thread)) = row {
             let who = name.filter(|n| !n.trim().is_empty()).unwrap_or(email);
             let subject = if subject.trim().is_empty() {
                 "(no subject)".to_string()
@@ -52,10 +56,12 @@ pub fn notices(
                 Some(code) => Notice {
                     title: format!("{code} · {who}"),
                     body: format!("Sign-in code · {subject}{suffix}"),
+                    thread: Some(thread),
                 },
                 None => Notice {
                     title: who,
                     body: format!("{subject}{suffix}"),
+                    thread: Some(thread),
                 },
             };
             out.push(notice);
@@ -123,16 +129,25 @@ mod tests {
     fn a_few_messages_get_one_notice_each() {
         let (db, a, ids) = setup(2);
         let n = notices(&db.conn(), a, &ids, Some("a@x.com")).unwrap();
+        let thread_of = |m: MessageId| -> ThreadId {
+            db.conn()
+                .query_row("SELECT thread_id FROM messages WHERE id = ?1", [m], |r| {
+                    r.get(0)
+                })
+                .unwrap()
+        };
         assert_eq!(
             n,
             vec![
                 Notice {
                     title: "p0@y.com".into(),
-                    body: "(no subject) · a@x.com".into()
+                    body: "(no subject) · a@x.com".into(),
+                    thread: Some(thread_of(ids[0])),
                 },
                 Notice {
                     title: "Jane Doe".into(),
-                    body: "Hello 1 · a@x.com".into()
+                    body: "Hello 1 · a@x.com".into(),
+                    thread: Some(thread_of(ids[1])),
                 },
             ]
         );
@@ -146,7 +161,8 @@ mod tests {
             n,
             vec![Notice {
                 title: "5 new messages".into(),
-                body: "Inbox".into()
+                body: "Inbox".into(),
+                thread: None,
             }]
         );
     }
@@ -179,6 +195,7 @@ mod tests {
         let n = notices(&db.conn(), a, &[id], None).unwrap();
         assert_eq!(n[0].title, "346625 · Spotify");
         assert_eq!(n[0].body, "Sign-in code · Your Spotify login code");
+        assert_eq!(n[0].thread, Some(thread));
         let (found, needs_body) = super::super::codes::in_messages(&db.conn(), &[id]).unwrap();
         assert!(needs_body.is_empty());
         assert_eq!(found[0].code, "346625");

@@ -1504,6 +1504,13 @@ each is ticked once the owner has tried it.*
 - [ ] Clicking a new-mail notification selects that email and shows it
       in the reader *(owner request, 2026-10-21; today it only brings
       Mailboat forward, see Milestone 5 → Notifications)*
+      *Built (2026-10-24), to try together with the owner (owner's
+      choice): on macOS notifications now come from the system's own
+      notification center, which says when one is clicked. The click
+      brings Mailboat forward and opens that conversation: in the list if
+      it's showing, otherwise from the Inbox (Settings makes way). The
+      "N new messages" summary only brings Mailboat forward. macOS asks for
+      permission once more (it's a different API). Not seen working yet*
 - [ ] Research other "empty state" designs and build a few to try
       *(owner request, 2026-10-21)*: what an empty list (Inbox zero, an
       empty label or search) shows, alongside today's icon and words with

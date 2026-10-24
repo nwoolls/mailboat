@@ -40,3 +40,7 @@ objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "N
 objc2-foundation = { version = "0.3", features = ["NSData", "NSBundle", "NSURL", "NSString", "NSError", "NSArray", "NSGeometry"] }
 # The trackpad monitor's handler (src/trackpad.rs); same version as Tauri's.
 block2 = "0.6"
+# New-mail notifications through macOS's own notification center, so a
+# click can open its conversation (src/notifications.rs); the notification
+# plugin can't report clicks on macOS. Same family and version as above.
+objc2-user-notifications = { version = "0.3", default-features = false, features = ["std", "bitflags", "block2", "UNUserNotificationCenter", "UNNotification", "UNNotificationContent", "UNNotificationRequest", "UNNotificationResponse", "UNNotificationSound", "UNNotificationTrigger"] }

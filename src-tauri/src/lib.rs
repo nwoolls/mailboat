@@ -11,6 +11,7 @@ mod files;
 mod links;
 mod mail_handler;
 mod menu;
+mod notifications;
 mod state;
 mod sync_log;
 mod theme;
@@ -134,6 +135,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             AccountsChangedEvent,
             MailtoEvent,
             MenuCommandEvent,
+            notifications::NotificationOpenedEvent,
             trackpad::TrackpadEvent,
             email_menu::EmailMenuEvent,
             codes::SignInCodeEvent,
@@ -186,6 +188,7 @@ pub fn run() {
             menu::install(app.handle())?;
             trackpad::watch(app.handle());
             email_menu::install(app.handle());
+            notifications::install(app.handle());
             let data_dir = app.path().app_data_dir()?;
             let config_dir = app.path().app_config_dir()?;
             let db = Arc::new(Db::open(&data_dir.join("mailboat.sqlite3"))?);

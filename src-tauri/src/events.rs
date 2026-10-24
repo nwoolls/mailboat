@@ -65,7 +65,6 @@ impl SyncEvents for TauriSyncEvents {
         all: &[mailboat_core::model::MessageId],
     ) {
         use mailboat_core::settings::NotifyFor;
-        use tauri_plugin_notification::NotificationExt;
         // Sign-in codes go to the window whether or not notifications are on.
         if !inbox.is_empty() {
             crate::codes::arrived(&self.app, &self.db, inbox);
@@ -98,15 +97,7 @@ impl SyncEvents for TauriSyncEvents {
             mailboat_core::mail::notify::notices(&conn, account, messages, label.as_deref())
                 .unwrap_or_default()
         };
-        for n in notices {
-            let _ = self
-                .app
-                .notification()
-                .builder()
-                .title(n.title)
-                .body(n.body)
-                .show();
-        }
+        crate::notifications::show(&self.app, notices);
     }
     fn identities_changed(&self, account_id: AccountId) {
         let _ = IdentitiesChangedEvent { account_id }.emit(&self.app);

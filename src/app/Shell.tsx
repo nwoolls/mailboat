@@ -458,6 +458,28 @@ export function Shell() {
     const unlisten = events.mailtoEvent.listen(take);
     return () => void unlisten.then((fn) => fn());
   }, [mailtoAccount, startFromMailto]);
+  // A clicked new-mail notification opens its conversation, as in Mail:
+  // in the list if it's there, otherwise from the Inbox (Settings, if
+  // open, makes way). Read through a ref so the listener stays put.
+  const openNotified = useRef<(id: ThreadId) => void>(() => {});
+  useEffect(() => {
+    openNotified.current = (id) => {
+      setSettings(null);
+      if (!threads.some((t) => t.id === id))
+        goTo(onlyAccount ? systemSelection("inbox", onlyAccount.id) : ALL_INBOXES);
+      setChecked(NONE);
+      setSelectedId(id);
+      setCursorId(id);
+      setReaderOpen(true);
+    };
+  });
+  useEffect(() => {
+    if (!IS_TAURI) return;
+    const unlisten = events.notificationOpenedEvent.listen(({ payload }) => {
+      if (payload.threadId !== null) openNotified.current(payload.threadId);
+    });
+    return () => void unlisten.then((fn) => fn());
+  }, []);
   const [panesRef, panesWidth] = useElementWidth<HTMLDivElement>();
   const resizeSidebar = (w: number) =>
     saveLayout({ ...layout, sidebarWidth: clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max) });

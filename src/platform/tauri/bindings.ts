@@ -341,6 +341,7 @@ export const events = {
 	mailChangedEvent: makeEvent<MailChangedEvent>("mail-changed-event"),
 	mailtoEvent: makeEvent<MailtoEvent>("mailto-event"),
 	menuCommandEvent: makeEvent<MenuCommandEvent>("menu-command-event"),
+	notificationOpenedEvent: makeEvent<NotificationOpenedEvent>("notification-opened-event"),
 	openSettingsEvent: makeEvent<OpenSettingsEvent>("open-settings-event"),
 	signInCodeEvent: makeEvent<SignInCodeEvent>("sign-in-code-event"),
 	syncProgressEvent: makeEvent<SyncProgressEvent>("sync-progress-event"),
@@ -935,6 +936,14 @@ export type Moment =
  *  (e.g. Outlook's "Eastern Standard Time"), or none (floating).
  */
 { kind: "local"; time: string; zone: string | null };
+
+/**
+ *  A new-mail notification was clicked: show this conversation (`None`:
+ *  the "N new messages" summary, which only brings Mailboat forward).
+ */
+export type NotificationOpenedEvent = {
+	threadId: ThreadId | null,
+};
 
 /**
  *  Which new mail notifies: what arrives in an Inbox (the default), or
