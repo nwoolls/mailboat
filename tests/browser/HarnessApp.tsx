@@ -11,6 +11,7 @@ import { ShowOriginalDialog } from "../../src/features/reader/ui/ShowOriginalDia
 import { ThreadList } from "../../src/features/mailbox/ui/ThreadList";
 import { EmptyState } from "../../src/features/mailbox/ui/EmptyState";
 import { CommandPalette } from "../../src/features/palette/ui/CommandPalette";
+import { TitleSearch } from "../../src/app/TitleSearch";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import {
   setCardSpot,
@@ -55,6 +56,7 @@ export function Harness({
 
   if (mode === "shortcuts") return <ShortcutsHelp onClose={() => {}} />;
   if (mode === "palette") return <PaletteOverSearch />;
+  if (mode === "search") return <SearchBar />;
   // The list card: a title row, then the empty view under it.
   if (mode === "empty")
     return (
@@ -173,6 +175,21 @@ function PaletteOverSearch() {
           ]}
         />
       )}
+    </div>
+  );
+}
+
+/** The title bar's search over a panel, as in the app. */
+function SearchBar() {
+  const [text, setText] = useState("");
+  return (
+    <div style={{ width: 900 }}>
+      <header className="relative h-10">
+        <TitleSearch value={text} onChange={setText} />
+      </header>
+      <div className="panel" style={{ position: "relative", height: 400 }}>
+        <output aria-label="Searching for">{text}</output>
+      </div>
     </div>
   );
 }

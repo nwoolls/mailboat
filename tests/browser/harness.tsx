@@ -18,6 +18,8 @@
  *                                 List's density and preview lines
  *   ?mode=empty&toy=…             an empty Inbox with a Toybox toy
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
+ *   ?mode=search                  the title bar's search, with three recent
+ *                                 searches saved
  */
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -192,6 +194,11 @@ if (harnessMode === "list") {
   );
 }
 
+if (harnessMode === "search")
+  localStorage.setItem(
+    "mailboat.searchHistory",
+    JSON.stringify(["invoice march", "from:sam", "Invoice"]),
+  );
 if (harnessMode === "empty") {
   const toy = new URLSearchParams(location.search).get("toy") ?? "none";
   localStorage.setItem("mailboat.emptyToy", JSON.stringify(toy));

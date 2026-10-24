@@ -1530,6 +1530,23 @@ each is ticked once the owner has tried it.*
       plays. Browser tests check each draws and answers clicks. Not found
       on X or Dribbble by search (neither is searchable from here); the
       owner's own finds there would be good next ideas*
+- [ ] Search history *(owner request, 2026-10-19; moved here from Later,
+      owner, 2026-10-24: "use sane defaults, add settings if you must,
+      otherwise keep it in the dropdown")*: recent searches
+      offered when the search box opens, picked with ↑/↓ and Return.
+      Kept locally (searches can be private, so never synced), with a way
+      to remove one or clear them all. To agree: how many to keep, whether
+      they show in ⌘K too, and whether a search can be pinned (saved
+      searches)
+      *Built (2026-10-24), waiting for the owner to try it. No settings:
+      the last 10 searches, kept on this Mac only. A search is saved when
+      Return is pressed in the box or a conversation is opened from its
+      results (not every half-typed word). Focusing the box shows them
+      under it; typing narrows them; ↑/↓ and Return or a click pick one;
+      Esc puts the list away (a second Esc leaves the box); × removes one,
+      and "Clear recent searches" removes all. Not in ⌘K and no pinning,
+      as agreed. A browser test covers it, and caught the list drawing
+      under the panels below (fixed)*
 - [ ] Empty Spam *(owner request, 2026-10-21)*: one button at the top of
       Spam, as in Gmail ("Delete all spam messages now"), with a
       confirmation; per account in the unified view, split per account
@@ -1730,14 +1747,19 @@ at a time; each is ticked once the owner has tried it.*
       *Owner (2026-10-24): a click bringing the reader back should be
       remembered too: what's remembered is whether the reader shows.
       Built: it's saved whenever it changes, whatever changed it*
-- [ ] Search mail in ⌘K doesn't focus the search box *(owner report,
+- [x] Search mail in ⌘K doesn't focus the search box *(owner report,
       2026-10-24)*. The palette ran the chosen action while its modal
       dialog was still open, when nothing outside it can take focus, and
       closing the dialog then put focus back where it had been.
       *Fixed (2026-10-24), waiting for the owner to try it: the action now
       runs once the palette has closed, which helps any action that moves
       focus. A browser test checks Search mail by Return and by click (both
-      failed before)*
+      failed before). Owner confirmed it works (2026-10-24)*
+- [ ] The browser test for n / p (`reader-keys.spec.ts`) fails about
+      one run in ten *(found 2026-10-24 while checking search history)*:
+      after `n`, the reader sometimes rests on the email before the one
+      asked for. Either the test reads too early or `n` can land short in
+      the app too; to look into
 - [ ] Rethink where the "Original colors" button sits *(owner report with
       a screenshot, 2026-10-21)*: it floats over the top right of the
       email, so it covers the first line when that line runs to the edge
@@ -2075,12 +2097,7 @@ here is done.*
       through with the owner one at a time, not as fixes made straight
       away. Scope and timing to agree first (whole app, or a milestone's
       work at a time)
-- [ ] Search history *(owner request, 2026-10-19)*: recent searches
-      offered when the search box opens, picked with ↑/↓ and Return.
-      Kept locally (searches can be private, so never synced), with a way
-      to remove one or clear them all. To agree: how many to keep, whether
-      they show in ⌘K too, and whether a search can be pinned (saved
-      searches)
+- Search history: moved to Milestone 8 (owner, 2026-10-24)
 - [x] Look through GotEmail and bytemail for features and enhancements
       worth borrowing *(owner request, 2026-10-19; researched
       2026-10-20 from their websites, marketing claims unverified)*.

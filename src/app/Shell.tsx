@@ -112,6 +112,7 @@ import {
 } from "../features/compose/ui/useCompose";
 import { useFeatureFlags } from "../shared/lib/featureFlags";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
+import { rememberSearch } from "../features/search/ui/history";
 import { LABEL_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
 import {
   useAccounts,
@@ -1038,6 +1039,8 @@ export function Shell() {
                   setSelectedId(id);
                   // Clicking the open conversation again also brings it back.
                   setReaderOpen(true);
+                  // Opening one of its results means the search was used.
+                  if (search.trim()) rememberSearch(search);
                 }}
                 // Nothing selected also slides the reader closed.
                 onClearSelection={() => {
