@@ -40,8 +40,10 @@ type Props = {
   /** Show each row's account marker (views that mix accounts). */
   showAccount: boolean;
   selectedId: ThreadId | null;
-  /** The row a conversation was just closed from (Esc): shaded, not open. */
+  /** The row selected without being previewed: shaded like the open one. */
   cursorId: ThreadId | null;
+  /** The row the keyboard last moved to, scrolled into view. */
+  keepInView: ThreadId | null;
   /** Conversations picked with ⌘/⇧-click or `x`. */
   checked: ReadonlySet<ThreadId>;
   /** A click: open it, or with ⌘ toggle it, or with ⇧ pick a range. */
@@ -72,6 +74,7 @@ export function ThreadList({
   showAccount,
   selectedId,
   cursorId,
+  keepInView,
   checked,
   onSelect,
   onClearSelection,
@@ -139,12 +142,11 @@ export function ThreadList({
     virtualizer.scrollToOffset(scrollPositions.get(viewKey) ?? 0);
   }, [viewKey, placeholder, virtualizer]);
 
-  // Keep the keyboard selection visible, previewed or not.
-  const keyboardId = selectedId ?? cursorId;
+  // Keep the keyboard's row visible (the selection, or a range's end).
   useEffect(() => {
-    const index = threads.findIndex((t) => t.id === keyboardId);
+    const index = threads.findIndex((t) => t.id === keepInView);
     if (index >= 0) virtualizer.scrollToIndex(index, { align: "auto" });
-  }, [keyboardId, threads, virtualizer]);
+  }, [keepInView, threads, virtualizer]);
 
   // Nothing yet, but Gmail is being asked (or failed): show that line
   // rather than "nothing here".

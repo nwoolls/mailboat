@@ -4,7 +4,9 @@ import type { Spot } from "../../src/features/compose/model/snap";
 import { ComposeCard } from "../../src/features/compose/ui/ComposeCard";
 import { ReplyArea } from "../../src/features/compose/ui/ReplyArea";
 import { ThreadReader } from "../../src/features/reader/ui/ThreadReader";
+import { pageReader, stepEmail } from "../../src/features/reader/ui/readerKeys";
 import { Menu, MenuItem } from "../../src/shared/ui/Menu";
+import { ShortcutsHelp } from "../../src/features/mailbox/ui/ShortcutsHelp";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import {
   setCardSpot,
@@ -36,7 +38,18 @@ export function Harness({
     void actions.startNew(account.id);
   }, [mode, actions, account.id]);
   const card = compose.cards.find((c) => !c.minimized);
+  // The reader's own keys, as Shell passes them on (it isn't mounted here).
+  useEffect(() => {
+    if (mode !== "unread") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "n" || e.key === "p") stepEmail(e.key === "n" ? "next" : "prev");
+      else if (e.key === " " && pageReader(e.shiftKey ? -1 : 1)) e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode]);
 
+  if (mode === "shortcuts") return <ShortcutsHelp onClose={() => {}} />;
   // A menu with one very long item (Bug Spike 2: it stretched the menu).
   if (mode === "menu")
     return (

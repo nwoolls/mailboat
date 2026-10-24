@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moveKeyboard, moveSelection, navKeyFor } from "./listNavigation";
+import { moveKeyboard, moveSelection, navKeyFor, rangeKeyFor } from "./listNavigation";
 
 const threads = [{ id: 10 }, { id: 20 }, { id: 30 }];
 const key = (k: string, mods: Partial<KeyboardEvent> = {}) => ({
@@ -55,5 +55,22 @@ describe("moveKeyboard", () => {
     expect(moveKeyboard(list, { previewed: 2, selected: null, previewing: false }, "prev")).toEqual(
       { previewed: null, selected: 1 },
     );
+  });
+});
+
+describe("pages and ranges", () => {
+  const many = Array.from({ length: 30 }, (_, i) => ({ id: i + 1 }));
+  it("moves a page at a time, within bounds", () => {
+    expect(moveSelection(many, 1, "pageNext", 10)).toBe(11);
+    expect(moveSelection(many, 25, "pageNext", 10)).toBe(30);
+    expect(moveSelection(many, 5, "pagePrev", 10)).toBe(1);
+    expect(navKeyFor(key("PageDown"), false)).toBe("pageNext");
+  });
+  it("leaves ⇧-arrows to range picking", () => {
+    expect(navKeyFor(key("ArrowDown", { shiftKey: true }), false)).toBeNull();
+    expect(rangeKeyFor({ ...key("ArrowDown", { shiftKey: true }), shiftKey: true }, false)).toBe(
+      "next",
+    );
+    expect(rangeKeyFor({ ...key("ArrowUp"), shiftKey: false }, false)).toBeNull();
   });
 });

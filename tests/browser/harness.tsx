@@ -8,6 +8,7 @@
  *   &colors=1                     (reader modes) the email's colors can be
  *                                 switched, and its images were shown
  *   &colors=2                     the same, with no images
+ *   ?mode=shortcuts               the `?` keyboard shortcuts sheet
  *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a
  *                                 scrolled reader with mail above it

@@ -1619,6 +1619,20 @@ at a time; each is ticked once the owner has tried it.*
       With a preview showing, j/k preview the next one as before
       *Built (2026-10-24), waiting for the owner to try it. Also covers
       the reader hidden with its toolbar button: j/k then just select*
+- [ ] More conventional keyboard reading *(owner, 2026-10-24, from a
+      list of suggestions)*: Space / ⇧Space scroll the open conversation
+      a screenful; n / p go to the next or previous email in it (to the
+      top of the reader, opened if folded); ⇧↓ / ⇧↑ pick a range from the
+      selected conversation, as in Mail; PgDn / PgUp move a page in the
+      list. The `?` sheet lists them, with a new Reading group, and says
+      j/k only preview when a preview shows. Not taken up: a different
+      look for selected-but-not-previewed rows (owner: the row is
+      focused either way), and making Esc and the reader button leave
+      the same state (minor: after Esc, the reader button needs two
+      clicks to show the preview again)
+      *Built (2026-10-24), waiting for the owner to try it. Browser tests
+      cover n / p and Space on the real reader; the range and page logic
+      has unit tests*
 - [ ] Rethink where the "Original colors" button sits *(owner report with
       a screenshot, 2026-10-21)*: it floats over the top right of the
       email, so it covers the first line when that line runs to the edge

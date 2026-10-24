@@ -35,6 +35,21 @@ export function rangeChecked(
   return next;
 }
 
+/**
+ * ⇧↓ / ⇧↑: exactly the rows from `from` to `to` (as in Mail, the range
+ * replaces earlier picks). Empty if either has left the list.
+ */
+export function rangeBetween(
+  threads: Pick<ThreadSummary, "id">[],
+  from: ThreadId,
+  to: ThreadId,
+): Checked {
+  const a = threads.findIndex((t) => t.id === from);
+  const b = threads.findIndex((t) => t.id === to);
+  if (a < 0 || b < 0) return NONE;
+  return new Set(threads.slice(Math.min(a, b), Math.max(a, b) + 1).map((t) => t.id));
+}
+
 /** Which conversations an action applies to: the picked ones, else the open one. */
 export function actionTargets<T extends Pick<ThreadSummary, "id">>(
   threads: T[],

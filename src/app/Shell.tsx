@@ -21,13 +21,20 @@ import { Splitter } from "../features/layout/ui/Splitter";
 import { useElementWidth } from "../features/layout/ui/useElementWidth";
 import { panels, setSavedReaderOpen, setSidebarOpen } from "../features/layout/ui/panels";
 import { Welcome } from "../features/accounts/ui/Welcome";
-import { moveKeyboard, navKeyFor } from "../features/mailbox/model/listNavigation";
+import {
+  moveKeyboard,
+  moveSelection,
+  navKeyFor,
+  rangeKeyFor,
+} from "../features/mailbox/model/listNavigation";
+import { pageReader, stepEmail } from "../features/reader/ui/readerKeys";
 import {
   actionTargets,
   type Checked,
   NONE,
   prune,
   menuTargets,
+  rangeBetween,
   rangeChecked,
   toggleChecked,
 } from "../features/mailbox/model/multiSelect";
@@ -146,6 +153,15 @@ function useSettled<T>(value: T, ms: number): T {
   return settled;
 }
 
+/** PageDown / PageUp: how many rows a screenful of the list is (less one, to keep context). */
+function listPageRows(): number {
+  const list = document.querySelector<HTMLElement>('[role=listbox][aria-label="Conversations"]');
+  const row = list?.querySelector<HTMLElement>("[role=option]");
+  // Rows are 4px apart.
+  if (!list || !row) return 10;
+  return Math.max(1, Math.floor(list.clientHeight / (row.offsetHeight + 4)) - 1);
+}
+
 function isEditable(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
@@ -215,6 +231,7 @@ export function Shell() {
   const cursorId = threads.some((t) => t.id === cursorState) ? cursorState : null;
   // The conversation the buttons and keys act on: previewed or not.
   const chosenId = selectedId ?? cursorId;
+
   // The open conversation as of the last render, for actions to remember
   // what was open when they ran (Undo goes back to it).
   const openNow = useRef<ThreadId | null>(null);
@@ -229,6 +246,8 @@ export function Shell() {
   // during render, rather than in an effect.
   const [checkedState, setChecked] = useState<Checked>(NONE);
   const checked = prune(checkedState, threads);
+  const [rangeEndState, setRangeEnd] = useState<ThreadId | null>(null);
+  const rangeEnd = rangeEndState !== null && checked.has(rangeEndState) ? rangeEndState : null;
   const targets = actionTargets(threads, checked, chosenId);
   const toast = useToast();
   const [labelAnchor, setLabelAnchor] = useState<MenuAnchor | null>(null);
@@ -710,6 +729,37 @@ export function Shell() {
         setReaderOpen(true);
         return;
       }
+      const previewing = readerOpen && selectedId !== null;
+      // Space / ⇧Space: the open email a screenful down or up (not on a
+      // focused button, which Space presses).
+      if (
+        plain &&
+        e.key === " " &&
+        previewing &&
+        !(e.target instanceof Element && e.target.closest("button, a"))
+      ) {
+        if (pageReader(e.shiftKey ? -1 : 1)) e.preventDefault();
+        return;
+      }
+      // n / p: the next or previous email in the open conversation.
+      if (plain && !e.shiftKey && (e.key === "n" || e.key === "p") && previewing) {
+        if (stepEmail(e.key === "n" ? "next" : "prev")) e.preventDefault();
+        return;
+      }
+      // ⇧↓ / ⇧↑: pick the rows from the selected one to here, as in Mail.
+      const grow = rangeKeyFor(e, isEditable(e.target));
+      if (grow) {
+        e.preventDefault();
+        if (chosenId === null) {
+          setCursorId(moveSelection(threads, null, grow));
+          return;
+        }
+        const end = moveSelection(threads, rangeEnd ?? chosenId, grow);
+        if (end === null) return;
+        setChecked(rangeBetween(threads, chosenId, end));
+        setRangeEnd(end);
+        return;
+      }
       const nav = navKeyFor(e, isEditable(e.target));
       if (!nav) return;
       e.preventDefault();
@@ -719,6 +769,7 @@ export function Shell() {
         threads,
         { previewed: selectedId, selected: cursorId, previewing: readerOpen },
         nav,
+        listPageRows(),
       );
       setSelectedId(moved.previewed);
       setCursorId(moved.selected);
@@ -730,6 +781,7 @@ export function Shell() {
     selectedId,
     cursorId,
     chosenId,
+    rangeEnd,
     readerOpen,
     checked,
     targets,
@@ -937,6 +989,7 @@ export function Shell() {
                 showAccount={showAccount}
                 selectedId={selectedId}
                 cursorId={cursorId}
+                keepInView={rangeEnd ?? chosenId}
                 checked={checked}
                 onSelect={(id, how) => {
                   // ⌘-click picks or unpicks one; ⇧-click picks a range.

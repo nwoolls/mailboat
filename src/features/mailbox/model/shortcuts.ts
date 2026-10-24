@@ -28,8 +28,13 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
   {
     group: "Move around",
     keys: [
+      // Previewed if a preview shows; otherwise only selected.
       ["j / k", "Next / previous conversation"],
-      ["Esc", "Clear picks, then close the conversation"],
+      ["↓ / ↑", "The same"],
+      ["PgDn / PgUp", "A page down / up the list"],
+      ["Home / End", "First / last conversation"],
+      ["↩ or o", "Preview the selected one"],
+      ["Esc", "Clear picks, then the preview"],
       ["/", "Search"],
       ["⌘K", "Command palette"],
       ["g then i", "Go to Inbox"],
@@ -42,6 +47,14 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
     ],
   },
   {
+    group: "Reading",
+    keys: [
+      ["Space", "Scroll down"],
+      ["⇧Space", "Scroll up"],
+      ["n / p", "Next / previous email"],
+    ],
+  },
+  {
     group: "Conversations",
     keys: [
       ["e", "Archive / Move to Inbox"],
@@ -50,7 +63,8 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
       ["s", "Star / Unstar"],
       ["!", "Report spam / Not spam"],
       ["l", "Labels"],
-      ["x", "Pick the open conversation"],
+      ["x", "Pick the selected conversation"],
+      ["⇧↓ / ⇧↑", "Pick a range"],
       ["z or ⌘Z", "Undo"],
     ],
   },

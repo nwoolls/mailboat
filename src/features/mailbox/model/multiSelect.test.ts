@@ -6,6 +6,7 @@ import {
   prune,
   rangeChecked,
   toggleChecked,
+  rangeBetween,
 } from "./multiSelect";
 
 const list = [1, 2, 3, 4, 5].map((id) => ({ id }));
@@ -45,4 +46,16 @@ it("a right-click menu acts on the clicked row, or all picks if it's one", () =>
   expect(menuTargets(rows, new Set([1, 3]), 3).map((t) => t.id)).toEqual([1, 3]);
   expect(menuTargets(rows, new Set([1, 3]), 2).map((t) => t.id)).toEqual([2]);
   expect(menuTargets(rows, new Set(), 9)).toEqual([]);
+});
+
+describe("rangeBetween", () => {
+  const rows = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
+  it("picks exactly the rows between, either way", () => {
+    expect([...rangeBetween(rows, 2, 4)]).toEqual([2, 3, 4]);
+    expect([...rangeBetween(rows, 3, 1)]).toEqual([1, 2, 3]);
+    expect([...rangeBetween(rows, 2, 2)]).toEqual([2]);
+  });
+  it("is empty when a row has left the list", () => {
+    expect(rangeBetween(rows, 2, 9).size).toBe(0);
+  });
 });
