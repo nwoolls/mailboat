@@ -219,6 +219,19 @@ fn fts_query(text: &str) -> Option<String> {
     }
 }
 
+/// Whether a conversation is in All Mail: at least one of its messages
+/// is outside Spam and Trash.
+pub fn in_all_mail(conn: &Connection, id: ThreadId) -> Result<bool> {
+    Ok(conn
+        .query_row(
+            &format!("SELECT {IN_ALL_MAIL} FROM threads t WHERE t.id = ?1"),
+            [id],
+            |r| r.get(0),
+        )
+        .optional()?
+        .unwrap_or(false))
+}
+
 pub fn thread_summary(conn: &Connection, id: ThreadId) -> Result<ThreadSummary> {
     conn.query_row(
         &format!("SELECT {THREAD_COLUMNS} FROM threads t WHERE t.id = ?1"),

@@ -369,3 +369,20 @@ CREATE TABLE sender_color_prefs (
   updated_at INTEGER NOT NULL
 );
 "#;
+
+/// What AI apps asked of the MCP server (AI Spike 2): which tool, for
+/// which account and conversation, and a line about it (the search words,
+/// how many results), never email content. Kept 30 days (`mcp::log`).
+pub const MIGRATION_V18: &str = r#"
+CREATE TABLE mcp_log (
+  id INTEGER PRIMARY KEY,
+  at INTEGER NOT NULL,
+  client TEXT NOT NULL,
+  tool TEXT NOT NULL,
+  account_id INTEGER REFERENCES accounts (id) ON DELETE CASCADE,
+  thread_id INTEGER,
+  detail TEXT NOT NULL,
+  ok INTEGER NOT NULL
+);
+CREATE INDEX mcp_log_by_time ON mcp_log (at);
+"#;

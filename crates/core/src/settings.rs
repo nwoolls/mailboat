@@ -12,6 +12,7 @@ use specta::Type;
 use crate::ai::{AiProvider, Quality};
 use crate::error::{CoreError, Result};
 use crate::mail::images::RemoteImages;
+use crate::model::AccountId;
 
 const KEY: &str = "app";
 
@@ -116,6 +117,29 @@ pub struct AppSettings {
     pub image_cache_mb: u32,
     /// Summaries and writing help (Settings → AI).
     pub ai: AiSettings,
+    /// What AI apps (Claude Desktop, Claude Code) may do with each
+    /// account's mail through Mailboat's MCP server. Nothing by default.
+    pub mcp: McpSettings,
+}
+
+/// Which accounts AI apps may use through the MCP server (`crate::mcp`),
+/// by surrogate ID. Reading and creating drafts are separate choices;
+/// drafts need reading too. Nothing is ever sent.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase", default)]
+pub struct McpSettings {
+    pub read: Vec<AccountId>,
+    pub drafts: Vec<AccountId>,
+}
+
+impl McpSettings {
+    pub fn can_read(&self, account: AccountId) -> bool {
+        self.read.contains(&account)
+    }
+
+    pub fn can_draft(&self, account: AccountId) -> bool {
+        self.can_read(account) && self.drafts.contains(&account)
+    }
 }
 
 /// When the summary above an opened conversation appears.
@@ -179,6 +203,7 @@ impl Default for AppSettings {
             image_prefetch: true,
             image_cache_mb: 500,
             ai: AiSettings::default(),
+            mcp: McpSettings::default(),
         }
     }
 }
@@ -254,6 +279,10 @@ mod tests {
                 writing_provider: AiProvider::ChatGpt,
                 writing_quality: Quality::Strongest,
                 chatgpt_model: Some("gpt-6-astra".into()),
+            },
+            mcp: McpSettings {
+                read: vec![AccountId(1), AccountId(2)],
+                drafts: vec![AccountId(2)],
             },
         };
         save(&conn, &off).unwrap();

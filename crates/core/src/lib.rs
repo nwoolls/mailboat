@@ -14,6 +14,7 @@ pub mod error;
 pub mod gmail;
 pub mod labels;
 pub mod mail;
+pub mod mcp;
 pub mod model;
 pub mod rules;
 pub mod settings;
