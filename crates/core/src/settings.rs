@@ -39,11 +39,66 @@ pub enum DockBadge {
     Off,
 }
 
+/// Which new mail notifies: what arrives in an Inbox (the default), or
+/// anything new except Spam and Trash (mail a rule skipped the Inbox for).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum NotifyFor {
+    #[default]
+    Inbox,
+    AllNew,
+}
+
+/// A stretch of each day without notifications, in minutes after local
+/// midnight. `start` after `end` runs overnight (22:00 to 07:00).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase", default)]
+pub struct QuietHours {
+    pub on: bool,
+    pub start: u16,
+    pub end: u16,
+}
+
+impl Default for QuietHours {
+    fn default() -> Self {
+        Self {
+            on: false,
+            start: 22 * 60,
+            end: 7 * 60,
+        }
+    }
+}
+
+impl QuietHours {
+    /// Whether `minute` (after local midnight) is inside them.
+    pub fn covers(&self, minute: u16) -> bool {
+        if !self.on || self.start == self.end {
+            return false;
+        }
+        if self.start < self.end {
+            (self.start..self.end).contains(&minute)
+        } else {
+            minute >= self.start || minute < self.end
+        }
+    }
+
+    /// Whether it's quiet now, by this Mac's clock.
+    pub fn covers_now(&self) -> bool {
+        use chrono::Timelike;
+        let now = chrono::Local::now();
+        self.covers((now.hour() * 60 + now.minute()) as u16)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AppSettings {
     /// Show a macOS notification when new mail arrives in an Inbox.
     pub new_mail_notifications: bool,
+    /// Which new mail notifies.
+    pub notify_for: NotifyFor,
+    /// When notifications stay quiet.
+    pub quiet_hours: QuietHours,
     /// Set on the window from Rust, so the glass, the page and emails'
     /// own dark styles all follow it, from the first paint.
     pub theme: Theme,
@@ -115,6 +170,8 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             new_mail_notifications: true,
+            notify_for: NotifyFor::Inbox,
+            quiet_hours: QuietHours::default(),
             theme: Theme::System,
             app_icon: None,
             dock_badge: DockBadge::Inbox,
@@ -165,6 +222,12 @@ mod tests {
         assert!(load(&conn).unwrap().new_mail_notifications);
         let off = AppSettings {
             new_mail_notifications: false,
+            notify_for: NotifyFor::AllNew,
+            quiet_hours: QuietHours {
+                on: true,
+                start: 60,
+                end: 120,
+            },
             theme: Theme::Dark,
             app_icon: Some("C10-orange".into()),
             dock_badge: DockBadge::Off,
@@ -203,6 +266,35 @@ mod tests {
         assert!(loaded.image_prefetch);
         assert_eq!(loaded.image_cache_mb, 500);
         assert_eq!(loaded.ai.list_summaries, Some(AiProvider::Apple));
+        assert_eq!(loaded.notify_for, NotifyFor::Inbox);
+        assert!(!loaded.quiet_hours.on);
+    }
+
+    #[test]
+    fn quiet_hours_within_a_day_and_overnight() {
+        let day = QuietHours {
+            on: true,
+            start: 9 * 60,
+            end: 17 * 60,
+        };
+        assert!(!day.covers(9 * 60 - 1));
+        assert!(day.covers(9 * 60));
+        assert!(day.covers(16 * 60 + 59));
+        assert!(!day.covers(17 * 60));
+        let night = QuietHours::default();
+        assert!(!night.covers(23 * 60), "off until switched on");
+        let night = QuietHours { on: true, ..night };
+        assert!(night.covers(23 * 60));
+        assert!(night.covers(0));
+        assert!(night.covers(6 * 60 + 59));
+        assert!(!night.covers(7 * 60));
+        assert!(!night.covers(12 * 60));
+        let empty = QuietHours {
+            on: true,
+            start: 600,
+            end: 600,
+        };
+        assert!(!empty.covers(600));
     }
 
     #[test]

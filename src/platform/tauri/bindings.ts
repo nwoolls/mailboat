@@ -450,6 +450,10 @@ export type AppSettings = AppSettings_Serialize | AppSettings_Deserialize;
 export type AppSettings_Deserialize = {
 	/**  Show a macOS notification when new mail arrives in an Inbox. */
 	newMailNotifications?: boolean,
+	/**  Which new mail notifies. */
+	notifyFor?: NotifyFor,
+	/**  When notifications stay quiet. */
+	quietHours?: QuietHours,
 	/**
 	 *  Set on the window from Rust, so the glass, the page and emails'
 	 *  own dark styles all follow it, from the first paint.
@@ -478,6 +482,10 @@ export type AppSettings_Deserialize = {
 export type AppSettings_Serialize = {
 	/**  Show a macOS notification when new mail arrives in an Inbox. */
 	newMailNotifications: boolean,
+	/**  Which new mail notifies. */
+	notifyFor: NotifyFor,
+	/**  When notifications stay quiet. */
+	quietHours: QuietHours,
 	/**
 	 *  Set on the window from Rust, so the glass, the page and emails'
 	 *  own dark styles all follow it, from the first paint.
@@ -890,6 +898,12 @@ export type Moment =
  */
 { kind: "local"; time: string; zone: string | null };
 
+/**
+ *  Which new mail notifies: what arrives in an Inbox (the default), or
+ *  anything new except Spam and Trash (mail a rule skipped the Inbox for).
+ */
+export type NotifyFor = "inbox" | "allNew";
+
 export type OAuthSetup = {
 	/**  True if a Google OAuth client is available (file or env vars). */
 	configured: boolean,
@@ -1059,6 +1073,16 @@ export type ProviderUsage = {
  *  medium, high. Apple has one model.
  */
 export type Quality = "fast" | "best" | "strongest";
+
+/**
+ *  A stretch of each day without notifications, in minutes after local
+ *  midnight. `start` after `end` runs overnight (22:00 to 07:00).
+ */
+export type QuietHours = {
+	on?: boolean,
+	start?: number,
+	end?: number,
+};
 
 /**  When the summary above an opened conversation appears. */
 export type ReaderSummary = "off" | 

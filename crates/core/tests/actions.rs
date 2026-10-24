@@ -444,6 +444,55 @@ fn only_unread_inbox_mail_from_others_counts_as_new() {
         .is_empty());
 }
 
+#[test]
+fn all_new_mail_includes_archived_but_not_spam_or_trash() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    load_t1(&db, a);
+    let ids = ["m1".to_string(), "m2".to_string()];
+    let m2: MessageId = db
+        .conn()
+        .query_row(
+            "SELECT id FROM messages WHERE gmail_message_id = 'm2'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    // Skipped the Inbox (a rule archived it): new, but not new in the Inbox.
+    db.conn()
+        .execute(
+            "DELETE FROM message_labels WHERE message_id = ?1 AND label_id IN
+               (SELECT id FROM labels WHERE gmail_label_id = 'INBOX')",
+            [m2],
+        )
+        .unwrap();
+    assert!(store::new_inbox_messages(&db.conn(), a, &ids)
+        .unwrap()
+        .is_empty());
+    assert_eq!(
+        store::new_unread_messages(&db.conn(), a, &ids).unwrap(),
+        vec![m2]
+    );
+    // In Spam: never.
+    db.conn()
+        .execute(
+            "INSERT OR IGNORE INTO labels (account_id, gmail_label_id, name, kind)
+             VALUES (?1, 'SPAM', 'SPAM', 'system')",
+            [a],
+        )
+        .unwrap();
+    db.conn()
+        .execute(
+            "INSERT INTO message_labels (account_id, message_id, label_id)
+             SELECT ?1, ?2, id FROM labels WHERE account_id = ?1 AND gmail_label_id = 'SPAM'",
+            rusqlite::params![a, m2],
+        )
+        .unwrap();
+    assert!(store::new_unread_messages(&db.conn(), a, &ids)
+        .unwrap()
+        .is_empty());
+}
+
 #[tokio::test]
 async fn senders_say_who_has_unread_mail_and_follow_read_changes() {
     let server = MockServer::start().await;

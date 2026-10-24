@@ -25,7 +25,13 @@ import { AccountAvatar } from "../../accounts/ui/AccountAvatar";
 import { RemoveAccountDialog } from "../../accounts/ui/RemoveAccountDialog";
 import { useSignIn } from "../../accounts/ui/useSignIn";
 import { SHORTCUTS } from "../../mailbox/model/shortcuts";
-import type { AppSettings, DockBadge, RemoteImages, Theme } from "../../../platform/tauri/bindings";
+import type {
+  AppSettings,
+  DockBadge,
+  NotifyFor,
+  RemoteImages,
+  Theme,
+} from "../../../platform/tauri/bindings";
 import {
   ACCENTS,
   DEFAULT_APPEARANCE,
@@ -56,6 +62,7 @@ import { FONTS, SIZES } from "../../compose/model/fonts";
 import { sameEmail } from "../../compose/model/addresses";
 import { composingPrefs } from "../../compose/ui/composingPrefs";
 import { TEXT_SIZES } from "../model/textSize";
+import { minutesOf, timeValue } from "../model/quietHours";
 import { textSize } from "./textSize";
 import { FEATURE_FLAGS, setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { useAppearance } from "./useAppearance";
@@ -307,12 +314,22 @@ function Tag({ children }: { children: React.ReactNode }) {
 export function NotificationsSection() {
   const settings = useAppSettings().data;
   const save = useSaveAppSettings();
+  // As Rust fills in any part not saved yet.
+  const quiet = { on: false, start: 22 * 60, end: 7 * 60, ...settings?.quietHours };
+  const update = (change: Partial<AppSettings>) =>
+    settings &&
+    save.mutate(
+      { ...settings, ...change },
+      {
+        onError: (e) => showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
+      },
+    );
   return (
     <>
       <Group title="New mail">
         <Row
           label="Notify me about new mail"
-          description="When new mail arrives in an Inbox. Not your own messages or drafts, and not while an account first syncs."
+          description="When new mail arrives. Not your own messages or drafts, and not while an account first syncs."
         >
           <Toggle
             label="Notify me about new mail"
@@ -329,6 +346,56 @@ export function NotificationsSection() {
               )
             }
           />
+        </Row>
+        <Row
+          label="Notify about"
+          description="Mail in an Inbox, or anything new except Spam and Trash (such as mail a rule skipped the Inbox for)."
+        >
+          <Segmented
+            label="Notify about"
+            value={settings?.notifyFor ?? "inbox"}
+            options={NOTIFY_FOR}
+            disabled={!settings || !settings.newMailNotifications}
+            onChange={(notifyFor) => update({ notifyFor })}
+          />
+        </Row>
+        <Row
+          label="Quiet hours"
+          description="No notifications between these times, every day. Mail still arrives."
+        >
+          <div className="flex items-center gap-2 text-[12px] text-content/60">
+            {settings && quiet.on && (
+              <>
+                <input
+                  type="time"
+                  aria-label="Quiet from"
+                  value={timeValue(quiet.start)}
+                  onChange={(e) => {
+                    const start = minutesOf(e.target.value);
+                    if (start !== null) update({ quietHours: { ...quiet, start } });
+                  }}
+                  className={TIME_CLASS}
+                />
+                <span>to</span>
+                <input
+                  type="time"
+                  aria-label="Quiet until"
+                  value={timeValue(quiet.end)}
+                  onChange={(e) => {
+                    const end = minutesOf(e.target.value);
+                    if (end !== null) update({ quietHours: { ...quiet, end } });
+                  }}
+                  className={TIME_CLASS}
+                />
+              </>
+            )}
+            <Toggle
+              label="Quiet hours"
+              on={quiet.on}
+              disabled={!settings || !settings.newMailNotifications}
+              onChange={(on) => update({ quietHours: { ...quiet, on } })}
+            />
+          </div>
         </Row>
         <Row
           label="Style and sound"
@@ -374,6 +441,14 @@ export function NotificationsSection() {
     </>
   );
 }
+
+const NOTIFY_FOR: { value: NotifyFor; label: string }[] = [
+  { value: "inbox", label: "Inbox" },
+  { value: "allNew", label: "All new mail" },
+];
+
+const TIME_CLASS =
+  "h-7 rounded-md border border-content/10 bg-transparent px-1.5 text-[12px] text-content/80 tabular-nums";
 
 const DOCK_BADGES: { value: DockBadge; label: string }[] = [
   { value: "inbox", label: "Inbox" },

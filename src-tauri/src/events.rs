@@ -58,16 +58,31 @@ impl SyncEvents for TauriSyncEvents {
     fn log(&self, account: AccountId, line: &str) {
         self.log.write(account, line);
     }
-    fn new_mail(&self, account: AccountId, messages: &[mailboat_core::model::MessageId]) {
+    fn new_mail(
+        &self,
+        account: AccountId,
+        inbox: &[mailboat_core::model::MessageId],
+        all: &[mailboat_core::model::MessageId],
+    ) {
+        use mailboat_core::settings::NotifyFor;
         use tauri_plugin_notification::NotificationExt;
         // Sign-in codes go to the window whether or not notifications are on.
-        crate::codes::arrived(&self.app, &self.db, messages);
-        // Turned off in Settings → Notifications.
-        let enabled = {
+        if !inbox.is_empty() {
+            crate::codes::arrived(&self.app, &self.db, inbox);
+        }
+        // Settings → Notifications: on or off, which mail, quiet hours.
+        let settings = {
             let conn = self.db.conn();
-            mailboat_core::settings::load(&conn).map_or(true, |s| s.new_mail_notifications)
+            mailboat_core::settings::load(&conn).unwrap_or_default()
         };
-        if !enabled {
+        if !settings.new_mail_notifications || settings.quiet_hours.covers_now() {
+            return;
+        }
+        let messages = match settings.notify_for {
+            NotifyFor::Inbox => inbox,
+            NotifyFor::AllNew => all,
+        };
+        if messages.is_empty() {
             return;
         }
         // The account's address, when there's more than one to tell apart.

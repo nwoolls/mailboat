@@ -96,6 +96,9 @@ pub struct SyncOutcome {
     /// Messages that just arrived unread in the Inbox (not on a full sync),
     /// for notifications.
     pub new_inbox: Vec<MessageId>,
+    /// Messages that just arrived unread anywhere but Spam and Trash (a
+    /// superset of `new_inbox`), for "notify about all new mail".
+    pub new_unread: Vec<MessageId>,
 }
 
 /// Threads fetched per write, so progress updates and DB locks stay short.
@@ -129,6 +132,7 @@ impl SyncEngine<'_> {
                 kind: SyncKind::Widened,
                 changed_threads: outcome.changed_threads + added,
                 new_inbox: outcome.new_inbox,
+                new_unread: outcome.new_unread,
             };
         }
         let attachments = store::attachments_version(&self.db.conn(), self.account)?;
@@ -218,6 +222,7 @@ impl SyncEngine<'_> {
             kind: SyncKind::Full,
             changed_threads: ids.len() + stale.len(),
             new_inbox: Vec::new(),
+            new_unread: Vec::new(),
         })
     }
 
@@ -313,10 +318,12 @@ impl SyncEngine<'_> {
         self.fetch_threads(&ids).await?;
         store::set_history_id(&self.db.conn(), self.account, Some(latest), false)?;
         let new_inbox = store::new_inbox_messages(&self.db.conn(), self.account, &added)?;
+        let new_unread = store::new_unread_messages(&self.db.conn(), self.account, &added)?;
         Ok(SyncOutcome {
             kind: SyncKind::Incremental,
             changed_threads: ids.len(),
             new_inbox,
+            new_unread,
         })
     }
 

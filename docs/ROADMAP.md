@@ -1433,6 +1433,14 @@ each is ticked once the owner has tried it.*
       would in Spam or Trash (Not spam, Restore)*
 - [ ] Which mail notifies (Inbox only / all; already in the Settings
       plan) and quiet hours
+      *Built (2026-10-24), waiting for the owner to try it: Settings →
+      Notifications → Notify about: Inbox (as before) or All new mail
+      (anything new and unread except Spam and Trash, so mail a rule
+      skipped the Inbox for notifies too; never your own or drafts).
+      Quiet hours: off by default; on, pick from and to times (22:00 to
+      07:00 to start; overnight works), and no notification shows then,
+      by this Mac's clock. Mail still syncs, the Dock count still moves,
+      and sign-in codes still show in the window*
 - [ ] Sounds for new mail and for actions, if wanted
 - [ ] Duplicate a rule
       *Built (2026-10-24), waiting for the owner to try it: Settings →

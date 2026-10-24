@@ -24,8 +24,15 @@ pub trait SyncEvents: Send + Sync {
     fn log(&self, _account: AccountId, _line: &str) {}
     /// The account's From addresses (Gmail "Send mail as") were refreshed.
     fn identities_changed(&self, _account: AccountId) {}
-    /// New unread mail arrived in the account's Inbox (for notifications).
-    fn new_mail(&self, _account: AccountId, _messages: &[crate::model::MessageId]) {}
+    /// New unread mail arrived (for notifications): `inbox` in the
+    /// account's Inbox, `all` anywhere but Spam and Trash (Inbox included).
+    fn new_mail(
+        &self,
+        _account: AccountId,
+        _inbox: &[crate::model::MessageId],
+        _all: &[crate::model::MessageId],
+    ) {
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -194,8 +201,8 @@ async fn run_worker(
                 if outcome.changed_threads > 0 {
                     events.mail_changed(account);
                 }
-                if !outcome.new_inbox.is_empty() {
-                    events.new_mail(account, &outcome.new_inbox);
+                if !outcome.new_unread.is_empty() {
+                    events.new_mail(account, &outcome.new_inbox, &outcome.new_unread);
                 }
                 // Images of mail that just arrived, so opening it later
                 // doesn't tell the sender when. A failure only costs the
