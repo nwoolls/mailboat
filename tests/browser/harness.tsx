@@ -9,6 +9,7 @@
  */
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/styles/index.css";
 
@@ -136,7 +137,10 @@ mockIPC((cmd) => {
 const { Harness } = await import("./HarnessApp");
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={client}>
-    <Harness account={account as never} identity={identity as never} detail={detail as never} />
-  </QueryClientProvider>,
+  // As in the app (src/main.tsx), so effects run twice on mount here too.
+  <StrictMode>
+    <QueryClientProvider client={client}>
+      <Harness account={account as never} identity={identity as never} detail={detail as never} />
+    </QueryClientProvider>
+  </StrictMode>,
 );

@@ -132,10 +132,12 @@ export function AssistantPanel({
       : (ideas.data ?? null);
   // Opened (✦ or ⌘J): ready to type. After the click that opened it has
   // finished, and again once the provider's status is known (the box is
-  // disabled until then, and a disabled box can't take focus).
+  // disabled until then, and a disabled box can't take focus). Without
+  // scrolling: in WebKit that cut short the reply's own smooth scroll into
+  // view, leaving Reply with AI stopped partway down the email above.
   useEffect(() => {
     if (!ready) return;
-    const frame = requestAnimationFrame(() => field.current?.focus());
+    const frame = requestAnimationFrame(() => field.current?.focus({ preventScroll: true }));
     return () => cancelAnimationFrame(frame);
   }, [ready]);
 

@@ -105,7 +105,8 @@ export function ComposeForm({
   // a conversation already being answered.
   // The whole reply is scrolled into view, its header to its Send button,
   // and kept there while it finishes laying out (the signature loads a
-  // moment later), not just the line being typed on.
+  // moment later, an email above it is measured taller), not just the
+  // line being typed on.
   // A reply that opens with the writing assistant ("Reply with AI") leaves
   // the cursor in the assistant's box instead. Read through a ref, so
   // opening or closing the assistant later doesn't move the cursor here.
@@ -125,6 +126,9 @@ export function ComposeForm({
     show();
     const growing = new ResizeObserver(show);
     growing.observe(whole);
+    // Inline, the reader's content too: whatever grows above moves it.
+    const content = whole.closest(".reader-scroll")?.firstElementChild;
+    if (content) growing.observe(content);
     const settled = window.setTimeout(() => growing.disconnect(), 1500);
     return () => {
       growing.disconnect();

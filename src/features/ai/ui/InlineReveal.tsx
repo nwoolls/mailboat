@@ -8,6 +8,10 @@ import { useLayoutEffect, useRef } from "react";
  * is pushed below the fold. Measured against the reply itself, not added
  * up from size changes, which drifted (the browser also scrolls on its
  * own when content shrinks at the bottom).
+ *
+ * Only while the reply is on screen. Opening together with the reply
+ * (Reply with AI), the reply is still below the fold being scrolled into
+ * view, and holding it there pinned it out of sight.
  */
 export function InlineReveal({ open, children }: { open: boolean; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -16,6 +20,9 @@ export function InlineReveal({ open, children }: { open: boolean; children: Reac
     const scroller = el?.closest(".reader-scroll");
     const reply = el?.nextElementSibling;
     if (!el || !scroller || !reply) return;
+    const view = scroller.getBoundingClientRect();
+    const top = reply.getBoundingClientRect().top;
+    if (top < view.top || top > view.bottom) return;
     // Opening, where it was before the panel took any room (in case the
     // panel already has some height by now).
     const where =

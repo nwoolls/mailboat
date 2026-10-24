@@ -1685,6 +1685,16 @@ at a time; each is ticked once the owner has tried it.*
       tall) moves the target. Fix: scroll once the reply area is laid
       out, and again if it moves while opening; a browser test with
       the real reader can check it ends fully in view
+      *Built (2026-10-24), waiting for the owner to try it: a
+      different cause from the blank space. Opening the AI panel holds
+      the reply still on screen (so toggling it doesn't push the reply
+      down), and with Reply with AI that hold pinned the reply below the
+      fold while it was being scrolled to. The hold now applies only
+      while the reply is on screen. The reply also follows anything above
+      it that grows, and the chat box takes focus without scrolling. A
+      browser test clicks Reply and Reply with AI and checks the whole
+      reply ends in view (before: its bottom was 1850px below). To try:
+      open a long email and click Reply with AI*
 - [ ] Blank space below the end of an email *(owner report with a
       screenshot, 2026-10-22; frequent, no reliable steps)*: a corporate email
       ended with most of the reader's height empty below it. Likely
