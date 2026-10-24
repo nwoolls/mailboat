@@ -1378,6 +1378,30 @@ pub async fn cache_clear(app: AppHandle, state: State<'_, AppState>) -> CmdResul
     Ok(())
 }
 
+/// Empties Spam into Trash for the accounts in the view (all, or some),
+/// each with its own credentials; see `actions::empty_spam`.
+#[tauri::command]
+#[specta::specta]
+pub async fn spam_empty(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    accounts: AccountFilter,
+) -> CmdResult<mailboat_core::actions::EmptiedSpam> {
+    let ids: Vec<AccountId> = match accounts {
+        AccountFilter::All => accounts::list(&state.db.conn())?
+            .into_iter()
+            .map(|a| a.id)
+            .collect(),
+        AccountFilter::Only(ids) => ids,
+    };
+    let done = mailboat_core::actions::empty_spam(&state.db, |account| state.gmail_for(account), &ids)
+        .await?;
+    for account_id in ids {
+        let _ = MailChangedEvent { account_id }.emit(&app);
+    }
+    Ok(done)
+}
+
 /// Shows the sync log in Finder.
 #[tauri::command]
 #[specta::specta]

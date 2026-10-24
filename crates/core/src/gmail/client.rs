@@ -294,6 +294,26 @@ impl GmailClient {
             .await
     }
 
+    /// `messages.list` for one label, Spam and Trash included (IDs only).
+    pub async fn label_message_ids(
+        &self,
+        label: &str,
+        page_token: Option<&str>,
+        max_results: u32,
+    ) -> Result<MessageList> {
+        let max = max_results.to_string();
+        let mut query = vec![
+            ("labelIds", label),
+            ("includeSpamTrash", "true"),
+            ("maxResults", max.as_str()),
+        ];
+        if let Some(token) = page_token {
+            query.push(("pageToken", token));
+        }
+        self.get_json(&self.url("messages"), &query, cost::MESSAGES_LIST)
+            .await
+    }
+
     /// `threads.get` with `format=metadata`. `Ok(None)` if the thread is gone.
     pub async fn thread_metadata(&self, id: &str) -> Result<Option<Thread>> {
         let mut query = vec![("format", "metadata")];

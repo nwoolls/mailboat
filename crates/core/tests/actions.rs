@@ -558,3 +558,106 @@ async fn senders_say_who_has_unread_mail_and_follow_read_changes() {
         .unwrap();
     assert!(who(&db).iter().all(|(_, unread)| !unread));
 }
+
+#[tokio::test]
+async fn emptying_spam_moves_every_spam_message_to_trash_per_account() {
+    let server = MockServer::start().await;
+    // Gmail's Spam over two pages, more than the cache holds.
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages"))
+        .and(wiremock::matchers::query_param("labelIds", "SPAM"))
+        .and(wiremock::matchers::query_param("includeSpamTrash", "true"))
+        .and(wiremock::matchers::query_param_is_missing("pageToken"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "messages": [{ "id": "m2", "threadId": "t1" }, { "id": "x1", "threadId": "x" }],
+            "nextPageToken": "p2"
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages"))
+        .and(wiremock::matchers::query_param("pageToken", "p2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "messages": [{ "id": "x2", "threadId": "y" }]
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/gmail/v1/users/me/messages/batchModify"))
+        .and(body_json(serde_json::json!({
+            "ids": ["m2", "x1", "x2"],
+            "addLabelIds": ["TRASH"],
+            "removeLabelIds": ["SPAM"],
+        })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    let t1 = load_t1(&db, a);
+    // m2 of t1 is spam in the cache; m1 isn't.
+    db.conn()
+        .execute(
+            "INSERT OR IGNORE INTO labels (account_id, gmail_label_id, name, kind)
+             VALUES (?1, 'SPAM', 'SPAM', 'system')",
+            [a],
+        )
+        .unwrap();
+    db.conn()
+        .execute(
+            "INSERT INTO message_labels (account_id, message_id, label_id)
+             SELECT ?1, m.id, l.id FROM messages m, labels l
+             WHERE m.account_id = ?1 AND m.gmail_message_id = 'm2'
+               AND l.account_id = ?1 AND l.gmail_label_id = 'SPAM'",
+            [a],
+        )
+        .unwrap();
+    let has = |gmail_msg: &str, label: &str| -> bool {
+        db.conn()
+            .query_row(
+                "SELECT EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                   JOIN messages m ON m.id = ml.message_id
+                   WHERE m.account_id = ?1 AND m.gmail_message_id = ?2 AND l.gmail_label_id = ?3)",
+                rusqlite::params![a, gmail_msg, label],
+                |r| r.get(0),
+            )
+            .unwrap()
+    };
+
+    // B can't be reached; A is emptied all the same.
+    let uri = server.uri();
+    let gmail_for = |acct: AccountId| {
+        if acct == a {
+            Ok(client(&uri).0)
+        } else {
+            Err(CoreError::Auth("signed out".into()))
+        }
+    };
+    let done = actions::empty_spam(&db, gmail_for, &[a, b]).await.unwrap();
+    assert_eq!(
+        done,
+        actions::EmptiedSpam {
+            moved: 3,
+            failed: 1
+        }
+    );
+    assert!(has("m2", "TRASH") && !has("m2", "SPAM"));
+    assert!(
+        !has("m1", "TRASH"),
+        "only the spam email of the conversation"
+    );
+    let _ = t1;
+}
+
+#[tokio::test]
+async fn emptying_spam_fails_only_if_every_account_does() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let gmail_for = |_: AccountId| Err::<GmailClient, _>(CoreError::Auth("signed out".into()));
+    assert!(actions::empty_spam(&db, gmail_for, &[a]).await.is_err());
+}

@@ -71,6 +71,7 @@ import {
 } from "../features/mailbox/model/views";
 import { emptyStateFor, emptyStateKey } from "../features/mailbox/model/emptyState";
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
+import { EmptySpamButton } from "../features/mailbox/ui/EmptySpamButton";
 import { SCREENSAVER_EVENT, SCREENSAVERS } from "../features/screensaver/model/catalog";
 import { viewingPrefs } from "../features/mailbox/ui/viewingPrefs";
 import { ThreadList } from "../features/mailbox/ui/ThreadList";
@@ -989,6 +990,10 @@ export function Shell() {
                 <h2 className="truncate text-sm font-semibold">
                   {selectionTitle(selection, accountList, labels)}
                 </h2>
+                {checked.size === 0 &&
+                  selection.view.kind === "system" &&
+                  selection.view.label === "spam" &&
+                  threads.length > 0 && <EmptySpamButton accounts={selection.accounts} />}
                 {checked.size > 0 && (
                   <span className="ml-auto flex shrink-0 items-center gap-2 text-xs text-content/55">
                     {checked.size} selected

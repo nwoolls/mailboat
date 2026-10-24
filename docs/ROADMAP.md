@@ -1558,6 +1558,14 @@ each is ticked once the owner has tried it.*
       Spam to Trash, which Gmail deletes after 30 days. Adding the scope
       means every account signs in again and a scarier consent screen.
       Empty Trash has the same catch and would come with it
+      *Owner's choice (2026-10-24): move to Trash, no new scope. Built,
+      waiting for the owner to try it: "Empty Spam…" at the top right of
+      Spam (when it has mail and nothing is picked) asks first, then moves
+      every message in Gmail's Spam to Trash (including spam not yet
+      downloaded), each account with its own sign-in; one account failing
+      doesn't stop the others and the notice says so. Gmail deletes Trash
+      after 30 days. Empty Trash isn't offered: deleting needs the scope
+      not taken*
 
 ## Milestone 9: Writing
 

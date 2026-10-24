@@ -992,6 +992,36 @@ pub fn label_snapshot(
 }
 
 /// Adds or removes a Gmail label on every message of a thread, locally.
+/// Moves an account's cached Spam messages to Trash, as "Empty Spam" did
+/// in Gmail: per message (spam is), then each touched thread's labels.
+pub fn spam_to_trash(conn: &mut Connection, account: AccountId) -> Result<()> {
+    let tx = conn.transaction()?;
+    let spam = label_id(&tx, account, "SPAM")?;
+    let trash = label_id(&tx, account, "TRASH")?;
+    let threads: Vec<ThreadId> = {
+        let mut stmt = tx.prepare(
+            "SELECT DISTINCT m.thread_id FROM messages m JOIN message_labels ml ON ml.message_id = m.id
+             WHERE ml.account_id = ?1 AND ml.label_id = ?2",
+        )?;
+        let rows = stmt.query_map(params![account, spam], |r| r.get(0))?;
+        rows.collect::<rusqlite::Result<_>>()?
+    };
+    tx.execute(
+        "INSERT OR IGNORE INTO message_labels (account_id, message_id, label_id)
+         SELECT ?1, message_id, ?3 FROM message_labels WHERE account_id = ?1 AND label_id = ?2",
+        params![account, spam, trash],
+    )?;
+    tx.execute(
+        "DELETE FROM message_labels WHERE account_id = ?1 AND label_id = ?2",
+        params![account, spam],
+    )?;
+    for thread in threads {
+        refresh_thread(&tx, account, thread)?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
 pub fn set_thread_label(
     conn: &mut Connection,
     thread: ThreadId,

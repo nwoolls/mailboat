@@ -248,6 +248,77 @@ pub async fn change_labels(
     apply(db, gmail_for, plans, Remote::Modify).await
 }
 
+/// What "Empty Spam" did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EmptiedSpam {
+    /// Messages moved from Spam to Trash, every account.
+    pub moved: u32,
+    /// Accounts that couldn't be emptied (signed out, offline…).
+    pub failed: u32,
+}
+
+/// Gmail's limit for `messages.batchModify`.
+const BATCH_MODIFY_MAX: usize = 1000;
+
+/// Empties each account's Spam into Trash (Gmail deletes Trash after 30
+/// days). Mailboat has `gmail.modify`, which can't delete for good. Every
+/// message in Gmail's Spam goes, not only those cached. Each account is
+/// done with its own client; one failing doesn't stop the others, and the
+/// error comes back only if every account failed.
+pub async fn empty_spam(
+    db: &Db,
+    gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
+    accounts: &[AccountId],
+) -> Result<EmptiedSpam> {
+    let mut done = EmptiedSpam {
+        moved: 0,
+        failed: 0,
+    };
+    let mut first_error = None;
+    for &account in accounts {
+        match empty_account_spam(db, &gmail_for, account).await {
+            Ok(n) => done.moved += n,
+            Err(e) => {
+                done.failed += 1;
+                first_error.get_or_insert(e);
+            }
+        }
+    }
+    match first_error {
+        Some(e) if done.failed as usize == accounts.len() => Err(e),
+        _ => Ok(done),
+    }
+}
+
+async fn empty_account_spam(
+    db: &Db,
+    gmail_for: &impl Fn(AccountId) -> Result<GmailClient>,
+    account: AccountId,
+) -> Result<u32> {
+    let gmail = gmail_for(account)?.interactive();
+    let mut ids: Vec<String> = Vec::new();
+    let mut page_token: Option<String> = None;
+    loop {
+        let page = gmail
+            .label_message_ids(SPAM, page_token.as_deref(), 500)
+            .await?;
+        ids.extend(page.messages.into_iter().map(|m| m.id));
+        page_token = page.next_page_token;
+        if page_token.is_none() {
+            break;
+        }
+    }
+    for chunk in ids.chunks(BATCH_MODIFY_MAX) {
+        gmail
+            .batch_modify_messages(chunk, &[TRASH.to_string()], &[SPAM.to_string()])
+            .await?;
+    }
+    // The cache follows at once (sync would catch up anyway).
+    store::spam_to_trash(&mut db.conn(), account)?;
+    Ok(u32::try_from(ids.len()).unwrap_or(u32::MAX))
+}
+
 /// Reports threads as spam (out of the Inbox, into Spam, as Gmail does) or
 /// as not spam (back to the Inbox). Routed per account like the others.
 pub async fn set_spam(

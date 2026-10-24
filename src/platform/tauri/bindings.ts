@@ -136,6 +136,11 @@ export const commands = {
 	 *  per-sender choices stay; nothing changes in Gmail.
 	 */
 	cacheClear: () => typedError<null, AppError>(__TAURI_INVOKE("cache_clear")),
+	/**
+	 *  Empties Spam into Trash for the accounts in the view (all, or some),
+	 *  each with its own credentials; see `actions::empty_spam`.
+	 */
+	spamEmpty: (accounts: AccountFilter) => typedError<EmptiedSpam, AppError>(__TAURI_INVOKE("spam_empty", { accounts })),
 	/**  Shows the sync log in Finder. */
 	syncLogReveal: () => typedError<null, AppError>(__TAURI_INVOKE("sync_log_reveal")),
 	/**
@@ -696,6 +701,14 @@ export type EmailMenuEvent = {
 	y: number | null,
 	image: boolean,
 	link: boolean,
+};
+
+/**  What "Empty Spam" did. */
+export type EmptiedSpam = {
+	/**  Messages moved from Spam to Trash, every account. */
+	moved: number,
+	/**  Accounts that couldn't be emptied (signed out, offline…). */
+	failed: number,
 };
 
 /**  An account's From addresses (Gmail "Send mail as") changed. */

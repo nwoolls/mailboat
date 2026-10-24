@@ -74,6 +74,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::cache_size,
             commands::settings_defaults,
             commands::cache_clear,
+            commands::spam_empty,
             commands::sync_log_reveal,
             commands::identities_list,
             commands::contacts_list,
