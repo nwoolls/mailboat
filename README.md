@@ -66,6 +66,16 @@ using it; the tool stays signed in.
 To check all three from Terminal after building once:
 `cargo test -p mailboat-core --test ai_live -- --ignored --nocapture`.
 
+### AI apps (Claude Desktop, Claude Code)
+
+Mailboat can let AI apps search and read your mail (and save drafts) over
+MCP, while Mailboat is open. In Settings → AI → AI apps, turn on the
+accounts to share (all are off to begin with), then press Connect for
+Claude Code or Claude Desktop (quit and reopen Claude Desktop after).
+Any other MCP app can run `<Mailboat's program> --mcp`; Settings shows the
+exact command. Spam and Trash are never shared, nothing is ever sent,
+and Settings lists what was asked for.
+
 ## Run
 
 ```sh
@@ -97,3 +107,5 @@ bunx playwright install webkit
 | Sign-in tokens | macOS Keychain, service `com.nwoolls.mailboat` |
 | Sync log | `~/Library/Logs/com.nwoolls.mailboat/sync.log` |
 | AI summaries and usage | In the mail cache (`ai_summaries`, `ai_usage`: sizes only, never content) |
+| AI apps' socket | `~/Library/Application Support/com.nwoolls.mailboat/mcp.sock` (while Mailboat runs) |
+| AI apps' requests | In the mail cache (`mcp_log`: what was asked, never content; 30 days) |

@@ -1995,7 +1995,7 @@ mail goes to a cloud model only when the owner chose that provider for
 the feature, AI output is never sent without the owner seeing it in the
 editor, and prompts and answers are never logged.*
 
-- [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
+- [x] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
       Mailboat's mail *(owner request, 2026-10-16; moved
       here from Later, 2026-10-24)*. Worth it because Mailboat
       already has every account's mail in one local, searchable cache
@@ -2026,6 +2026,17 @@ editor, and prompts and answers are never logged.*
         each with its own per-account switch. Never sends
       - **Spam and Trash are hidden** from AI apps entirely
       - **The log keeps 30 days**, shown in Settings → AI
+      *Built 2026-10-24* (`mailboat_core::mcp`, Settings → AI → AI apps):
+      tools `list_accounts`, `search_mail`, `list_conversations`,
+      `read_conversation`, `list_labels` and `create_draft` (listed only
+      while an account allows drafts). AI apps start `mailboat --mcp` (the
+      app's own program); Settings connects Claude Code and Claude
+      Desktop with a button, or shows the command for other apps. Not
+      yet: label and archive (opt-in, as agreed: next), a draft's
+      signature (drafts are saved without one; the owner adds it when
+      sending), and Windows (needs a named pipe, Milestone 10). Tested
+      through a real MCP client and the built binary; not yet tried
+      from Claude itself
 - [x] AI actions in ⌘K *(moved from Later, 2026-10-24)*: Summarize and
       Reply with AI as palette commands, for the open conversation, from
       the shared command list (`features/commands`) so they also reach

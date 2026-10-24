@@ -346,6 +346,35 @@ export function usePrefetchAiReplyIdeas() {
   };
 }
 
+/** How AI apps connect to Mailboat, and whether Claude's are (Settings → AI). */
+export function useMcpSetup() {
+  return useQuery({
+    queryKey: ["mcpSetup"],
+    queryFn: () => unwrap(commands.mcpSetup()),
+    enabled: IS_TAURI,
+  });
+}
+
+/** What AI apps asked for lately, kept fresh while Settings shows it. */
+export function useMcpLog() {
+  return useQuery({
+    queryKey: ["mcpLog"],
+    queryFn: () => unwrap(commands.mcpLog(50)),
+    enabled: IS_TAURI,
+    refetchInterval: 5_000,
+  });
+}
+
+/** Connects Claude Code or Claude Desktop to Mailboat. */
+export function useMcpConnect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (app: "code" | "desktop") =>
+      unwrap(app === "code" ? commands.mcpConnectClaudeCode() : commands.mcpConnectClaudeDesktop()),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["mcpSetup"] }),
+  });
+}
+
 /** The ChatGPT models Codex offers (Settings → AI). */
 export function useChatgptModels(enabled: boolean) {
   return useQuery({

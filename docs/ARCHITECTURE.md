@@ -452,6 +452,43 @@ flowchart LR
   `ai/ui/summaryRequests` (a count per conversation the summary card
   reads), since the card owns its request.
 
+## AI apps (MCP)
+
+AI apps (Claude Desktop, Claude Code) can search and read mail, and save
+drafts, through Mailboat over the Model Context Protocol. Logic in
+`mailboat_core::mcp`; the app side is `src-tauri/src/mcp.rs`; Settings →
+AI → AI apps is `src/features/mcp`.
+
+```mermaid
+flowchart LR
+  C["Claude Desktop / Code"] -->|"starts, stdio"| P["mailboat --mcp (proxy)"]
+  P -->|"mcp.sock, user only"| S["MailServer in the app"]
+  S --> Q["query layer: shared accounts, no Spam or Trash"]
+  S --> L[("mcp_log")]
+  S -->|"bodies not cached, drafts"| G["Gmail, owning account"]
+```
+
+- **One program.** The AI app starts Mailboat's own binary with `--mcp`;
+  `main` checks for it before anything else, so it's a small proxy with
+  only MCP on stdout. It connects to the running app's socket when a
+  request comes and again after the app restarts. With Mailboat closed the
+  tools are still listed and each answers "open Mailboat".
+- **The app answers** (`MailServer`, rmcp): one per connection. Every
+  request reads `AppSettings.mcp` afresh: only accounts turned on are
+  visible (all off by default), Spam and Trash never are, and a hidden
+  conversation answers "not found". Lists go through the one query
+  layer; reading uses the AI context reader (quoted history cut, bodies
+  fetched with the owning account's client). Conversation IDs are the
+  surrogate thread IDs.
+- **Drafts only**, per account, saved with the composer's own code;
+  the tool isn't even listed until an account allows it. Nothing sends.
+- **Logged** in `mcp_log`: tool, account, conversation, and a line such
+  as the AI's search words and the count. Never email content; the
+  subject is looked up when Settings shows it. Kept 30 days.
+- **Connecting:** Claude Code with its own `claude mcp add --scope user`;
+  Claude Desktop by adding Mailboat to its config file (other entries kept,
+  old file copied beside it, a file Mailboat can't read left alone).
+
 ## Decisions
 
 | Date | Decision | Why |
@@ -558,3 +595,7 @@ flowchart LR
 | 2026-10-24 | New-mail notifications on macOS go through `UNUserNotificationCenter` directly (`objc2-user-notifications`, `src-tauri/src/notifications.rs`), not the notification plugin | The plugin (notify-rust, on the deprecated NSUserNotification) can't report clicks on macOS, and clicking should open the conversation. Each notification's identifier carries its thread's surrogate ID; a delegate turns a click into `NotificationOpenedEvent`. macOS throws if the notification center is used outside an app bundle, so a bare `cargo run` falls back to the plugin (the dev build is bundled by `scripts/dev-run.sh`). The plugin stays for Windows. macOS asks for notification permission once more, as this is a different API. |
 | 2026-10-24 | Codex stays one process per request (`codex exec`), not a kept `codex app-server`; Claude and Codex are stopped at their answer's last line | Measured: app-server reuse saves ~0.5s, but it has no `--ignore-user-config`, so it loads the owner's Codex MCP servers and plugins on every request and leaves them running; only a separate `CODEX_HOME` (a second sign-in) avoids that. Stopping at the last line (`result` for Claude, `turn.completed` for Codex) instead of waiting for exit saves ~0.6s with no new risk. Details in the roadmap (AI Spike 2). |
 | 2026-10-24 | Rewrite sends only the selected text, at the quick level (Haiku / ChatGPT's fast model), not the writing quality from Settings | It's a small edit where waiting matters, and the result is shown in the editor to keep or undo. Sending only the selection keeps the rest of the draft and the conversation off a cloud provider for a one-sentence edit. Choices, placement and level are defaults to try (AI Spike 2). |
+| 2026-10-24 | MCP server with the official Rust SDK (`rmcp` 3.7) | The protocol's own SDK, maintained by its authors; it gives the tool router, JSON Schemas for the tools, and both ends (the proxy is a client of the app). Writing JSON-RPC by hand would mean tracking the spec ourselves. |
+| 2026-10-24 | AI apps reach Mailboat through `mailboat --mcp`, a proxy to a Unix socket (mode 0600) in the app's data folder, not a localhost port | The owner chose "Mailboat must be open". A socket in the user's own folder can only be opened by the user's processes, so it needs no token (the same processes could read the database anyway), and nothing listens on the network. The proxy is the app's own binary, so there's nothing extra to install or sign. Windows will need a named pipe. |
+| 2026-10-24 | The MCP log keeps the AI's search words | They're what the AI asked, not email content, and they're what the owner needs to see what it looked for. Subjects aren't stored, only looked up for display. |
+| 2026-10-24 | Restore default settings turns AI-app access off | Sharing mail is an explicit choice (`CLAUDE.md`); a reset shouldn't keep it, unlike connected providers, which are sign-ins. |

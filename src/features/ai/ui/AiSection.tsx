@@ -30,6 +30,7 @@ import {
   statusOf,
 } from "../model/providers";
 import { describeLimit, describeTotals, startOfToday } from "../model/usage";
+import { AiAppsGroups } from "../../mcp/ui/AiAppsGroups";
 import { clearLineSummaries } from "./lineSummaries";
 
 const SELECT_CLASS =
@@ -187,6 +188,7 @@ export function AiSection() {
           />
         )}
       </Group>
+      <AiAppsGroups />
       <UsageGroup />
     </>
   );

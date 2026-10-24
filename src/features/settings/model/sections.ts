@@ -52,7 +52,8 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   {
     id: "ai",
     label: "AI",
-    description: "Summaries and help writing, with Apple Intelligence, ChatGPT or Claude.",
+    description:
+      "Summaries and help writing, with Apple Intelligence, ChatGPT or Claude, and AI apps that can read your mail.",
   },
   {
     id: "signatures",

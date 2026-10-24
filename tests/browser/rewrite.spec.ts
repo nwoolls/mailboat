@@ -19,8 +19,12 @@ test("rewrites only the selected words, in place, and undoes", async ({ page }) 
 
   // Select "send the report by fri" (22 characters, before ". Thanks").
   await page.keyboard.press("End");
-  for (let i = 0; i < ". Thanks".length; i++) await page.keyboard.press("ArrowLeft");
+  // One key after another, on purpose.
+  for (let i = 0; i < ". Thanks".length; i++)
+    // oxlint-disable-next-line no-await-in-loop
+    await page.keyboard.press("ArrowLeft");
   for (let i = 0; i < "send the report by fri".length; i++)
+    // oxlint-disable-next-line no-await-in-loop
     await page.keyboard.press("Shift+ArrowLeft");
   await expect(button).toBeEnabled();
 
