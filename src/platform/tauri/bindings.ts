@@ -317,6 +317,13 @@ export const commands = {
 	 *  streamed as `AiTextEvent`s. Only the selection is sent.
 	 */
 	aiRewrite: (text: string, style: RewriteStyle, requestId: number) => typedError<RewriteAnswer, AppError>(__TAURI_INVOKE("ai_rewrite", { text, style, requestId })),
+	mcpSetup: () => typedError<McpSetup, AppError>(__TAURI_INVOKE("mcp_setup")),
+	/**  Adds Mailboat to Claude Code for every project (`claude mcp add`). */
+	mcpConnectClaudeCode: () => typedError<null, AppError>(__TAURI_INVOKE("mcp_connect_claude_code")),
+	/**  Adds Mailboat to Claude Desktop's config (it needs restarting to see it). */
+	mcpConnectClaudeDesktop: () => typedError<null, AppError>(__TAURI_INVOKE("mcp_connect_claude_desktop")),
+	/**  What AI apps asked for, newest first. */
+	mcpLog: (limit: number) => typedError<McpLogEntry[], AppError>(__TAURI_INVOKE("mcp_log", { limit })),
 	/**
 	 *  Suggestions for the writing assistant's chips, from the conversation
 	 *  being answered or forwarded (with the writing provider).
@@ -502,6 +509,11 @@ export type AppSettings_Deserialize = {
 	imageCacheMb?: number,
 	/**  Summaries and writing help (Settings → AI). */
 	ai?: AiSettings,
+	/**
+	 *  What AI apps (Claude Desktop, Claude Code) may do with each
+	 *  account's mail through Mailboat's MCP server. Nothing by default.
+	 */
+	mcp?: McpSettings,
 };
 
 export type AppSettings_Serialize = {
@@ -534,6 +546,11 @@ export type AppSettings_Serialize = {
 	imageCacheMb: number,
 	/**  Summaries and writing help (Settings → AI). */
 	ai: AiSettings,
+	/**
+	 *  What AI apps (Claude Desktop, Claude Code) may do with each
+	 *  account's mail through Mailboat's MCP server. Nothing by default.
+	 */
+	mcp: McpSettings,
 };
 
 /**  What applying a rule to mail already received changed. */
@@ -882,6 +899,49 @@ export type MatchCount = {
 	conversations: number,
 	/**  More than `conversations` match (only the first page is counted). */
 	more: boolean,
+};
+
+/**  One request, as Settings lists it. */
+export type McpLogEntry = {
+	id: number,
+	/**  Unix milliseconds. */
+	at: number,
+	/**  The AI app, as it names itself ("claude-ai", "claude-code"). */
+	client: string,
+	tool: string,
+	accountId: AccountId | null,
+	threadId: ThreadId | null,
+	/**
+	 *  The conversation's subject, looked up now from the cache for
+	 *  showing (it isn't stored in the log).
+	 */
+	subject: string | null,
+	detail: string,
+	ok: boolean,
+};
+
+/**
+ *  Which accounts AI apps may use through the MCP server (`crate::mcp`),
+ *  by surrogate ID. Reading and creating drafts are separate choices;
+ *  drafts need reading too. Nothing is ever sent.
+ */
+export type McpSettings = {
+	read?: AccountId[],
+	drafts?: AccountId[],
+};
+
+/**  How AI apps connect, for Settings. */
+export type McpSetup = {
+	/**  What AI apps start (this app, with `--mcp`). */
+	program: string,
+	/**  The same as a command for Terminal (Claude Code). */
+	claudeCodeCommand: string,
+	/**  Claude Code is installed (its `claude` command was found). */
+	claudeCodeInstalled: boolean,
+	/**  Claude Code already starts Mailboat. */
+	claudeCodeConnected: boolean,
+	/**  Claude Desktop's config already starts Mailboat. */
+	claudeDesktopConnected: boolean,
 };
 
 /**  A command chosen in the menu bar, by its ID (`features/commands`). */

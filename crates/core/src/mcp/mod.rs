@@ -11,6 +11,7 @@
 pub mod log;
 pub mod proxy;
 mod server;
+pub mod setup;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

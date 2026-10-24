@@ -10,6 +10,7 @@ mod events;
 mod files;
 mod links;
 mod mail_handler;
+mod mcp;
 mod menu;
 mod notifications;
 mod state;
@@ -120,6 +121,10 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             ai::ai_list_summaries,
             ai::ai_write,
             ai::ai_rewrite,
+            mcp::mcp_setup,
+            mcp::mcp_connect_claude_code,
+            mcp::mcp_connect_claude_desktop,
+            mcp::mcp_log,
             ai::ai_reply_ideas,
             ai::ai_chatgpt_models,
             ai::ai_cancel,
@@ -155,6 +160,11 @@ pub fn export_bindings(path: &std::path::Path) {
             path,
         )
         .expect("failed to export TypeScript bindings");
+}
+
+/// `mailboat --mcp` (see `mcp::run_proxy`); returns the exit code.
+pub fn run_mcp_proxy() -> i32 {
+    mcp::run_proxy()
 }
 
 pub fn run() {
@@ -237,6 +247,7 @@ pub fn run() {
             theme::apply(app.handle(), saved.theme);
             state.resume_all_accounts()?;
             app.manage(state);
+            mcp::start(app.handle().clone(), db.clone());
             ai::run_line_queue(app.handle().clone());
             watch_other_copies(app.handle().clone(), db.clone());
             badge::watch(app.handle().clone(), db.clone());
