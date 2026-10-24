@@ -12,6 +12,7 @@ import {
   ComposingSection,
   GeneralSection,
   KeyboardSection,
+  ListSection,
   NotificationsSection,
   ToyboxSection,
   AdvancedSection,
@@ -90,6 +91,7 @@ export function SettingsPage({
           )}
           {section === "general" && <GeneralSection />}
           {section === "notifications" && <NotificationsSection />}
+          {section === "list" && <ListSection />}
           {section === "viewing" && <ViewingSection />}
           {section === "composing" && <ComposingSection />}
           {section === "ai" && <AiSection />}

@@ -55,6 +55,8 @@ import {
 import { screensaverPrefs } from "../../screensaver/ui/prefs";
 import type { AfterRemoval } from "../../mailbox/model/threadActions";
 import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
+import { listPrefs } from "../../mailbox/ui/listPrefs";
+import { SWIPE_CHOICES, type SwipeChoice } from "../../mailbox/model/listPrefs";
 import {
   MARK_READ_DELAY_MS,
   type MarkRead,
@@ -459,6 +461,50 @@ const DOCK_BADGES: { value: DockBadge; label: string }[] = [
   { value: "unread", label: "Unread" },
   { value: "off", label: "Off" },
 ];
+
+const SWIPE_LABELS: Record<SwipeChoice, string> = {
+  archive: "Archive",
+  trash: "Move to Trash",
+  read: "Mark as read / unread",
+  star: "Star / Unstar",
+  spam: "Report spam",
+  none: "Nothing",
+};
+
+/** Settings → List: what the list's swipes do. */
+export function ListSection() {
+  const prefs = listPrefs.use();
+  const choice = (side: "swipeLeft" | "swipeRight", label: string, description: string) => (
+    <Row label={label} description={description}>
+      <select
+        aria-label={label}
+        value={prefs[side]}
+        onChange={(e) => listPrefs.set({ ...prefs, [side]: e.target.value as SwipeChoice })}
+        className={SELECT_CLASS}
+      >
+        {SWIPE_CHOICES.map((c) => (
+          <option key={c} value={c}>
+            {SWIPE_LABELS[c]}
+          </option>
+        ))}
+      </select>
+    </Row>
+  );
+  return (
+    <Group title="Swipes">
+      {choice(
+        "swipeLeft",
+        "Swipe left",
+        "Two fingers to the left on a conversation. Archive moves to Trash where there’s no Inbox to leave.",
+      )}
+      {choice(
+        "swipeRight",
+        "Swipe right",
+        "Two fingers to the right. Each choice undoes itself where it’s already done (Restore in Trash, Not spam in Spam).",
+      )}
+    </Group>
+  );
+}
 
 export function ViewingSection() {
   const prefs = viewingPrefs.use();

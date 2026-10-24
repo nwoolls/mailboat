@@ -15,6 +15,7 @@ import {
   type WheelGesture,
 } from "../model/swipe";
 import type { ThreadAction } from "../model/threadActions";
+import { listPrefs } from "./listPrefs";
 
 /** The row being swiped (or left open), and how far. */
 export type SwipeState = {
@@ -41,7 +42,15 @@ export type SwipeState = {
 
 function actionOf(threads: ThreadSummary[], s: SwipeState): ThreadAction | null {
   const t = threads.find((x) => x.id === s.id);
-  return t ? swipeActions(t)[s.side] : null;
+  return t ? swipeActions(t, listPrefs.get())[s.side] : null;
+}
+
+/**
+ * Archive, Trash and Spam (and their undoing) usually take the row out of
+ * the view, so it slides out; read and star leave it, so it springs back.
+ */
+function movesAway(action: ThreadAction): boolean {
+  return action.kind === "archive" || action.kind === "trash" || action.kind === "spam";
 }
 
 /** How long a committed archive slides out before it's done. */
@@ -107,7 +116,7 @@ export function useSwipe(
       const to = s.bare ? "close" : releaseTo(s.d, undefined, s.from ?? null);
       const action = actionOf(live.current.threads, s);
       if (to === "commit" && action) {
-        if (s.side === "left") {
+        if (movesAway(action)) {
           // Slides on out, then goes (the row leaves the list).
           setSwipe({ ...s, mode: "out" });
           window.setTimeout(() => {
@@ -235,7 +244,7 @@ export function useSwipe(
         return;
       }
       const t = live.current.threads.find((x) => x.id === row);
-      const can = t ? swipeActions(t)[side] !== null : false;
+      const can = t ? swipeActions(t, listPrefs.get())[side] !== null : false;
       // A side with nothing to do barely gives.
       const d = can ? signed : Math.min(12, signed * 0.15);
       setSwipe({ id: row, side, d, mode: "drag", from: resumedFrom });

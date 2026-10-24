@@ -1417,6 +1417,20 @@ each is ticked once the owner has tried it.*
       percent from each area's default for the current light or dark
       look, and both ends are reachable in either
 - [ ] Choose what each swipe does, plus a second swipe each way
+      *First half built (2026-10-24), waiting for the owner to try it:
+      Settings → List (a new section, the settings plan's "Sidebar &
+      List" until the sidebar has settings) → Swipes: Swipe left and
+      Swipe right each pick Archive (as before on the left; Trash where
+      there's no Inbox to leave), Move to Trash, Mark as read / unread
+      (as before on the right), Star / Unstar, Report spam, or Nothing.
+      Each undoes itself where already done (Restore in Trash, Not spam
+      in Spam), with its own icon and word on the button. Archive,
+      Trash and Spam slide the row out whichever side they're on; read
+      and star spring back.*
+      *Not built: the second swipe each way (a longer swipe doing a
+      second action). It changes the feel of the owner's swipe design
+      (where the ring fills, what a long pull means), so it waits to be
+      worked out with the owner*
 - [ ] Delete key: Trash or Archive (in the Settings plan)
       *Built (2026-10-24), waiting for the owner to try it. Mailboat had no
       Delete key; now ⌫ (and the forward delete key) moves the selected

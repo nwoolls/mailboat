@@ -1,5 +1,6 @@
 import type { ThreadSummary } from "../../../platform/tauri/bindings";
-import type { ThreadAction } from "./threadActions";
+import { DEFAULT_LIST_PREFS, type ListPrefs, type SwipeChoice } from "./listPrefs";
+import { type ThreadAction, toggleFor } from "./threadActions";
 
 /**
  * Swiping a conversation with two fingers on the trackpad (owner's design,
@@ -199,22 +200,34 @@ export function isCoasting(recent: number[]): boolean {
   return true;
 }
 
+type SwipeRow = Pick<ThreadSummary, "unread" | "inInbox" | "inTrash" | "starred" | "inSpam">;
+
 /**
- * What each side does to a conversation: left archives (or, where
- * archiving doesn't apply, trashes); right toggles read. Nothing to the
- * left in Trash.
+ * What a swipe choice does to a conversation. Archive archives from the
+ * Inbox and trashes elsewhere (nothing in Trash); the others toggle, as
+ * their keys do (Restore in Trash, Not spam in Spam, Unstar if starred).
  */
+export function swipeAction(choice: SwipeChoice, t: SwipeRow): ThreadAction | null {
+  switch (choice) {
+    case "archive":
+      return t.inInbox
+        ? { kind: "archive", archived: true }
+        : t.inTrash
+          ? null
+          : { kind: "trash", trashed: true };
+    case "none":
+      return null;
+    default:
+      return toggleFor(choice, [t]);
+  }
+}
+
+/** What each side does, as chosen in Settings → List. */
 export function swipeActions(
-  t: Pick<ThreadSummary, "unread" | "inInbox" | "inTrash">,
+  t: SwipeRow,
+  prefs: ListPrefs = DEFAULT_LIST_PREFS,
 ): Record<SwipeSide, ThreadAction | null> {
-  return {
-    left: t.inInbox
-      ? { kind: "archive", archived: true }
-      : t.inTrash
-        ? null
-        : { kind: "trash", trashed: true },
-    right: { kind: "read", read: t.unread },
-  };
+  return { left: swipeAction(prefs.swipeLeft, t), right: swipeAction(prefs.swipeRight, t) };
 }
 
 /** The button's word: short, to fit the capsule. */
@@ -226,6 +239,10 @@ export function swipeLabel(action: ThreadAction): string {
       return action.trashed ? "Trash" : "Restore";
     case "read":
       return action.read ? "Read" : "Unread";
+    case "star":
+      return action.starred ? "Star" : "Unstar";
+    case "spam":
+      return action.spam ? "Spam" : "Not spam";
     default:
       return "";
   }

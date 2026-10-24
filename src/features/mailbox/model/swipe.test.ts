@@ -112,7 +112,7 @@ describe("reading the trackpad", () => {
 
 describe("what each side does", () => {
   it("archives from the Inbox, trashes elsewhere, nothing in Trash", () => {
-    const inbox = { unread: true, inInbox: true, inTrash: false };
+    const inbox = { unread: true, inInbox: true, inTrash: false, starred: false, inSpam: false };
     expect(swipeActions(inbox)).toEqual({
       left: { kind: "archive", archived: true },
       right: { kind: "read", read: true },
@@ -124,10 +124,24 @@ describe("what each side does", () => {
     expect(swipeActions({ ...inbox, inInbox: false, inTrash: true }).left).toBeNull();
     expect(swipeActions({ ...inbox, unread: false }).right).toEqual({ kind: "read", read: false });
   });
+
+  it("does what each side was set to, toggling like its key", () => {
+    const row = { unread: false, inInbox: true, inTrash: true, starred: true, inSpam: true };
+    expect(swipeActions(row, { swipeLeft: "star", swipeRight: "none" })).toEqual({
+      left: { kind: "star", starred: false },
+      right: null,
+    });
+    expect(swipeActions(row, { swipeLeft: "trash", swipeRight: "spam" })).toEqual({
+      left: { kind: "trash", trashed: false },
+      right: { kind: "spam", spam: false },
+    });
+  });
 });
 
 it("labels each button in a word", () => {
   expect(swipeLabel({ kind: "archive", archived: true })).toBe("Archive");
   expect(swipeLabel({ kind: "trash", trashed: true })).toBe("Trash");
   expect(swipeLabel({ kind: "read", read: false })).toBe("Unread");
+  expect(swipeLabel({ kind: "spam", spam: false })).toBe("Not spam");
+  expect(swipeLabel({ kind: "star", starred: true })).toBe("Star");
 });

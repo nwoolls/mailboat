@@ -9,6 +9,7 @@ import { aiChoices, isReady } from "../../ai/model/providers";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { formatListDate, senderParts } from "../model/format";
 import { swipeActions, swipePose } from "../model/swipe";
+import { listPrefs } from "./listPrefs";
 import type { ThreadAction } from "../model/threadActions";
 import { SwipeBack, SwipeButton } from "./SwipeLayers";
 import type { OlderStatus } from "./useOlderMail";
@@ -100,6 +101,7 @@ export function ThreadList({
     return () => observer.disconnect();
   }, [listEl]);
   const { swipe, commit } = useSwipe(listEl, threads, onSwipe);
+  const swipePrefs = listPrefs.use();
   // Settings → Appearance → Text size: rows grow with their text, which
   // zooms inside them, so positions and swipes stay in whole rows.
   const zoom = useTextZoom();
@@ -193,7 +195,7 @@ export function ThreadList({
               : raw;
           // Pulled the other way past closed: the row moves, no button.
           const bare = swiped?.bare === true;
-          const swipeAction = swiped && !bare ? swipeActions(t)[swiped.side] : null;
+          const swipeAction = swiped && !bare ? swipeActions(t, swipePrefs)[swiped.side] : null;
           const rowHeight = rowStep - 4;
           // Sliding out, or out and waiting for the list to drop it.
           const out = swiped?.mode === "out" || swiped?.mode === "gone";

@@ -1,14 +1,14 @@
 /**
  * The Settings page's sections, in the order decided in the roadmap
- * (Milestone 5). Only sections with something in them are listed; the
- * others (Sidebar & List) join as their features arrive, in their place
- * in that order.
+ * (Milestone 5). Only sections with something in them are listed. The
+ * plan's "Sidebar & List" is "List" until the sidebar has settings.
  */
 export type SettingsSectionId =
   | "general"
   | "accounts"
   | "notifications"
   | "appearance"
+  | "list"
   | "viewing"
   | "composing"
   | "ai"
@@ -38,6 +38,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     description: "New-mail alerts, and the unread count on the Dock.",
   },
   { id: "appearance", label: "Appearance", description: "How Mailboat looks." },
+  { id: "list", label: "List", description: "The list of conversations: what swipes do." },
   {
     id: "viewing",
     label: "Viewing",

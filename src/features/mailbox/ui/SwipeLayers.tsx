@@ -1,5 +1,13 @@
 import { useId } from "react";
-import { ArchiveIcon, MarkUnreadIcon, TrashIcon, UnreadIcon } from "../../../shared/ui/icons";
+import {
+  ArchiveIcon,
+  MarkUnreadIcon,
+  RestoreIcon,
+  SpamIcon,
+  StarIcon,
+  TrashIcon,
+  UnreadIcon,
+} from "../../../shared/ui/icons";
 import { SWIPE, type SwipePose, type SwipeSide, swipeLabel } from "../model/swipe";
 import type { ThreadAction } from "../model/threadActions";
 
@@ -191,7 +199,10 @@ export function SwipeButton({
 
 function ActionIcon({ action }: { action: ThreadAction }) {
   if (action.kind === "archive") return <ArchiveIcon size={13} />;
-  if (action.kind === "trash") return <TrashIcon size={13} />;
+  if (action.kind === "trash")
+    return action.trashed ? <TrashIcon size={13} /> : <RestoreIcon size={13} />;
+  if (action.kind === "star") return <StarIcon size={13} />;
+  if (action.kind === "spam") return <SpamIcon size={13} />;
   return action.kind === "read" && action.read ? (
     <MarkUnreadIcon size={13} />
   ) : (
