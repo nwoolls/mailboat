@@ -1499,18 +1499,8 @@ each is ticked once the owner has tried it.*
       source shows (big attachments); the download is always whole. A
       browser test checks the dialog stays in the window with a long
       source scrolling inside it*
-- [ ] Mute a conversation *(owner request, 2026-10-21)*: later replies
-      skip the Inbox and don't notify, as Gmail's Mute does
-      *Tried with the owner (2026-10-24, `examples/try_mute`, on a test
-      email in the personal account): Gmail's API refuses the label
-      (`400 Invalid label: MUTED`), and `labels.list` has no MUTED. So
-      Mailboat can't set Gmail's own Mute. Muted in Gmail's web app, the
-      conversation only lost INBOX (and IMPORTANT) through the API, with
-      no label Mailboat can see, so a Gmail-muted conversation looks archived
-      and Mailboat can't tell. A reply from the owner's other address, sent
-      to them alone, came back to the Inbox, as Google's help says it
-      does when you're the only recipient or in To/Cc. So Mute would have
-      to be Mailboat's own; to agree with the owner how*
+- Mute a conversation: moved to Later (owner, 2026-10-24: "leave it
+  for now"), after finding Gmail's API can't set or see Gmail's Mute
 - [ ] Clicking a new-mail notification selects that email and shows it
       in the reader *(owner request, 2026-10-21; today it only brings
       Mailboat forward, see Milestone 5 → Notifications)*
@@ -2076,6 +2066,21 @@ here is done.*
 
 ## Later / unscheduled
 
+- [ ] Mute a conversation *(owner request, 2026-10-21; moved here from Milestone 8, owner,
+      2026-10-24: "leave it for now")*: later replies
+      skip the Inbox and don't notify, as Gmail's Mute does
+      *Tried with the owner (2026-10-24, `examples/try_mute`, on a test
+      email in the personal account): Gmail's API refuses the label
+      (`400 Invalid label: MUTED`), and `labels.list` has no MUTED. So
+      Mailboat can't set Gmail's own Mute. Muted in Gmail's web app, the
+      conversation only lost INBOX (and IMPORTANT) through the API, with
+      no label Mailboat can see, so a Gmail-muted conversation looks archived
+      and Mailboat can't tell. A reply from the owner's other address, sent
+      to them alone, came back to the Inbox, as Google's help says it
+      does when you're the only recipient or in To/Cc. So Mute would have
+      to be Mailboat's own: a "Muted" label it adds, with later replies
+      archived and kept quiet as they sync (only while Mailboat runs; the
+      Gmail phone app would still notify). Offered, not chosen yet*
 ### From the AI Spike (moved unbuilt when it closed, 2026-10-21)
 
 - [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
