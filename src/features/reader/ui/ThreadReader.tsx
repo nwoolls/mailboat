@@ -35,6 +35,18 @@ export function initiallyExpanded(
   return open;
 }
 
+/**
+ * Unread messages that weren't in the conversation when last looked at:
+ * a reply that arrived while it was open. Pressing `u` changes no message
+ * IDs, so it never counts as an arrival.
+ */
+export function unreadArrivals(
+  seen: ReadonlySet<MessageId>,
+  messages: Pick<MessageMeta, "id" | "unread" | "draft">[],
+): MessageId[] {
+  return messages.filter((m) => m.unread && !m.draft && !seen.has(m.id)).map((m) => m.id);
+}
+
 export function ThreadReader({
   threadId,
   accounts,
@@ -83,20 +95,33 @@ function ThreadBody({
   const [opened, setOpened] = useState<Set<MessageId>>(expanded);
   if ([...expanded].some((id) => !opened.has(id))) setOpened(new Set([...opened, ...expanded]));
   // Opening a conversation marks it read, once (pressing `u` afterwards
-  // leaves it unread). Remembered at open so later updates don't re-trigger.
+  // leaves it unread), and so does each unread reply that arrives while
+  // it's open, which also opens that reply. Counted rather than read from
+  // the thread's unread flag, so a later `u` doesn't re-trigger it.
   // Settings → Viewing: at once, after a few seconds (moving on sooner
   // leaves it unread), or never. Also the order of the messages.
-  const [unreadWhenOpened] = useState(data.thread.unread);
+  const [seen, setSeen] = useState<ReadonlySet<MessageId>>(
+    () => new Set(data.messages.map((m) => m.id)),
+  );
+  const [readRequests, setReadRequests] = useState(data.thread.unread ? 1 : 0);
+  if (data.messages.some((m) => !seen.has(m.id))) {
+    const arrived = unreadArrivals(seen, data.messages);
+    setSeen(new Set(data.messages.map((m) => m.id)));
+    if (arrived.length > 0) {
+      setReadRequests(readRequests + 1);
+      setExpanded(new Set([...expanded, ...arrived]));
+    }
+  }
   const { markRead, order } = viewingPrefs.use();
   const threadId = data.thread.id;
   const { mutate: act } = useThreadAction();
   useEffect(() => {
-    if (!unreadWhenOpened || markRead === "never") return;
+    if (readRequests === 0 || markRead === "never") return;
     const read = () => act({ ids: [threadId], action: { kind: "read", read: true } });
     if (markRead === "open") return read();
     const timer = window.setTimeout(read, MARK_READ_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [threadId, unreadWhenOpened, markRead, act]);
+  }, [threadId, readRequests, markRead, act]);
   // A draft reply opens as the reply being written at the foot (as in
   // Gmail), so it isn't listed as a message too. A conversation that's
   // only a draft still shows it.

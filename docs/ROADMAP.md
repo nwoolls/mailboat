@@ -1598,6 +1598,9 @@ it starts. Each says how it was found and whether it has been seen for
 real. Connect from a signed-out CLI is only to watch: it ticks once
 seen working.*
 
+*Under way (2026-10-24, owner: "start the bug fix spike"). Built one item
+at a time; each is ticked once the owner has tried it.*
+
 - [ ] Menus grow as wide as their longest item *(owner report with a
       screenshot, 2026-10-21)*: "Block <address>" in the list's context
       menu stretched the menu across most of the window for a very long
@@ -1650,6 +1653,12 @@ seen working.*
       and makes it unread again, nothing marks it read. Fix: also mark
       read when a new unread message arrives in the conversation being
       shown (after the same delay), while still respecting a manual `u`
+      *Built (2026-10-24), waiting for the owner to try it: a reply
+      that arrives unread while its conversation is open now opens in
+      the reader and is marked read after the same delay (Settings →
+      Viewing). Pressing `u` still sticks, since it brings no new email.
+      To try: leave a conversation open, reply to it from another
+      account or your phone, and wait for it to arrive*
 - [ ] Reply with AI doesn't scroll the reply into view *(owner report
       with a screenshot, 2026-10-22)*: the reader stopped partway down the
       last email, with the reply form (and the AI chat) still below. May
