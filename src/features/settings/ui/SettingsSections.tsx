@@ -7,10 +7,14 @@ import {
 } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { showToast } from "../../../shared/lib/toast";
+import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
+import { formatSize } from "../../reader/model/attachments";
 import {
   useAppInfo,
   useAccounts,
   useAppSettings,
+  useCacheSize,
+  useClearCache,
   useClearImageCache,
   useDefaultMailApp,
   useImageCacheSize,
@@ -902,6 +906,77 @@ export function KeyboardSection() {
           ))}
         </Group>
       ))}
+    </>
+  );
+}
+
+/**
+ * Settings → Advanced: for when something goes wrong. The sync log (what
+ * sync did, never mail content) and the cache, which can be cleared to
+ * download every account's mail again.
+ */
+export function AdvancedSection() {
+  const size = useCacheSize().data;
+  const clear = useClearCache();
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <>
+      <Group title="Cache">
+        <Row
+          label="Mail on this Mac"
+          description={
+            size
+              ? `${formatSize(size.mailKilobytes * 1024)} of mail and its search index, and ${formatSize(size.filesKilobytes * 1024)} of opened attachments and downloaded images.`
+              : "Working out its size…"
+          }
+        >
+          <Button onClick={() => setConfirming(true)} disabled={clear.isPending}>
+            {clear.isPending ? "Clearing…" : "Clear and download again"}
+          </Button>
+        </Row>
+      </Group>
+      <Group title="Diagnostics">
+        <Row
+          label="Sync log"
+          description="What syncing did, and why it waited or failed: useful when mail is missing or late. It never holds email content or passwords."
+        >
+          <Button
+            onClick={() =>
+              void unwrap(commands.syncLogReveal()).catch((e: unknown) =>
+                showToast({ tone: "error", message: `Couldn’t show the log: ${errorText(e)}` }),
+              )
+            }
+          >
+            Show in Finder
+          </Button>
+        </Row>
+      </Group>
+      {confirming && (
+        <ConfirmDialog
+          title="Clear the cache?"
+          confirmLabel="Clear and download again"
+          busy={clear.isPending}
+          error={clear.error?.message}
+          onCancel={() => {
+            clear.reset();
+            setConfirming(false);
+          }}
+          onConfirm={() =>
+            clear.mutate(undefined, {
+              onSuccess: () => {
+                setConfirming(false);
+                showToast({ message: "Cache cleared. Downloading your mail again…" });
+              },
+            })
+          }
+        >
+          <p>
+            Mailboat forgets the mail it has stored and downloads each account’s again, as when it was
+            added. That can take a while, and searches find less until it’s done.
+          </p>
+          <p>Nothing changes in Gmail. Accounts, settings and rules stay.</p>
+        </ConfirmDialog>
+      )}
     </>
   );
 }

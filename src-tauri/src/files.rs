@@ -55,6 +55,21 @@ pub fn quick_look(path: &Path) -> Result<(), CoreError> {
 }
 
 /// Shows the file selected in Finder (or Explorer).
+/// The bytes taken by the files under `dir` (0 if it doesn't exist).
+pub fn dir_size(dir: &Path) -> u64 {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    entries
+        .flatten()
+        .map(|e| match e.file_type() {
+            Ok(t) if t.is_dir() => dir_size(&e.path()),
+            Ok(_) => e.metadata().map_or(0, |m| m.len()),
+            Err(_) => 0,
+        })
+        .sum()
+}
+
 pub fn reveal(path: &Path) -> Result<(), CoreError> {
     #[cfg(target_os = "macos")]
     return spawn(Command::new("open").arg("-R").arg(path));

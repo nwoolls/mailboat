@@ -1308,6 +1308,74 @@ pub fn image_cache_size(state: State<'_, AppState>) -> CmdResult<ImageCacheSize>
     })
 }
 
+/// What Mailboat keeps on this Mac, for Settings → Advanced.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CacheSize {
+    /// The database: cached mail, its search index, and settings. Whole
+    /// kilobytes, as `ImageCacheSize`.
+    pub mail_kilobytes: u32,
+    /// Opened attachments and downloaded images.
+    pub files_kilobytes: u32,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn cache_size(state: State<'_, AppState>) -> CmdResult<CacheSize> {
+    let db_bytes: i64 = state
+        .db
+        .conn()
+        .query_row(
+            "SELECT page_count * page_size FROM pragma_page_count(), pragma_page_size()",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(CoreError::from)?;
+    let files = files::dir_size(&state.attachments_dir) + files::dir_size(&state.images_dir);
+    let kb = |bytes: u64| u32::try_from(bytes / 1024).unwrap_or(u32::MAX);
+    Ok(CacheSize {
+        mail_kilobytes: kb(db_bytes.max(0) as u64),
+        files_kilobytes: kb(files),
+    })
+}
+
+/// Forgets all cached mail and downloaded files, then syncs every account
+/// again from scratch, as when it was added. Accounts, settings, rules and
+/// per-sender choices stay; nothing changes in Gmail.
+#[tauri::command]
+#[specta::specta]
+pub async fn cache_clear(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
+    let all = accounts::list(&state.db.conn())?;
+    for account in &all {
+        // A sync in flight mustn't write into what's being cleared.
+        state.supervisor.stop_and_wait(account.id).await;
+        state.forget_account(account.id);
+        store::clear_mail(&mut state.db.conn(), account.id)?;
+    }
+    prefetch::clear(&state.db.conn(), &state.images_dir)?;
+    // Hand the freed space back to the disk.
+    state
+        .db
+        .conn()
+        .execute_batch("VACUUM")
+        .map_err(CoreError::from)?;
+    state.resume_all_accounts()?;
+    for account in &all {
+        let _ = MailChangedEvent {
+            account_id: account.id,
+        }
+        .emit(&app);
+    }
+    Ok(())
+}
+
+/// Shows the sync log in Finder.
+#[tauri::command]
+#[specta::specta]
+pub fn sync_log_reveal(state: State<'_, AppState>) -> CmdResult<()> {
+    Ok(files::reveal(state.sync_log.path())?)
+}
+
 /// Deletes every downloaded image; emails load theirs live until new mail
 /// fills the cache again.
 #[tauri::command]

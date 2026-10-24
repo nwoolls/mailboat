@@ -1451,6 +1451,19 @@ each is ticked once the owner has tried it.*
       account in a new rule cleared every label)*
 - [ ] Advanced section: clear the cache, reset, the sync log (in the
       Settings plan)
+      *Built (2026-10-24), waiting for the owner to try it: Settings →
+      Advanced (last, with a wrench). Cache: how much mail (the database,
+      with its search index) and files (opened attachments, downloaded
+      images) are kept, and "Clear and download again" (after a
+      confirmation) forgets every account's cached mail and files and
+      syncs each again from scratch, as when it was added; accounts,
+      settings, rules and per-sender choices stay, nothing changes in
+      Gmail. Diagnostics: Sync log → Show in Finder.*
+      *Not built, to ask the owner: what "reset" should be. Either
+      "Restore default settings" (every setting back, accounts and mail
+      kept) or "Reset Mailboat" (remove every account and all data, as
+      Mimestream's). Clearing the cache already covers "start the mail
+      over"*
 - [ ] Show original (the raw message and its headers)
       *Built (2026-10-24), waiting for the owner to try it: Message → Show
       original (⌥⌘U, Mail's Raw Source key), also in ⌘K, the right-click

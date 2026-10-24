@@ -734,6 +734,22 @@ pub fn new_unread_messages(
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
+/// Forgets everything cached from an account's mail (conversations,
+/// bodies, attachments' records, drafts, search hits, AI summaries) and
+/// its sync progress, so its next sync starts from scratch, as when it was
+/// added. The account, its labels and settings stay. Stop its worker first.
+pub fn clear_mail(conn: &mut Connection, account: AccountId) -> Result<()> {
+    let tx = conn.transaction()?;
+    tx.execute("DELETE FROM drafts WHERE account_id = ?1", [account])?;
+    // Messages, their labels, bodies, attachments, search hits and AI
+    // summaries go with their conversations (ON DELETE CASCADE).
+    tx.execute("DELETE FROM threads WHERE account_id = ?1", [account])?;
+    tx.execute("DELETE FROM sync_state WHERE account_id = ?1", [account])?;
+    tx.execute("INSERT INTO sync_state (account_id) VALUES (?1)", [account])?;
+    tx.commit()?;
+    Ok(())
+}
+
 // ---- Sync state ----
 
 pub fn history_id(conn: &Connection, account: AccountId) -> Result<Option<u64>> {

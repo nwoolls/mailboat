@@ -1,6 +1,7 @@
 import { HugeiconsIcon, type HugeiconsIconProps, type IconSvgElement } from "@hugeicons/react";
 import Add01 from "@hugeicons/core-free-icons/Add01Icon";
 import SourceCode from "@hugeicons/core-free-icons/SourceCodeIcon";
+import Wrench01 from "@hugeicons/core-free-icons/Wrench01Icon";
 import AlertCircle from "@hugeicons/core-free-icons/AlertCircleIcon";
 import Archive02 from "@hugeicons/core-free-icons/Archive02Icon";
 import BookOpen01 from "@hugeicons/core-free-icons/BookOpen01Icon";
@@ -138,6 +139,7 @@ export const AppearanceIcon = wrap(Palette);
 export const KeyboardIcon = wrap(Keyboard);
 export const RulesIcon = wrap(Filter);
 export const ToyboxIcon = wrap(Pacman01);
+export const AdvancedIcon = wrap(Wrench01);
 export const SignatureIcon = wrap(Signature);
 export const VacationIcon = wrap(Beach);
 export const ViewingIcon = wrap(BookOpen01);

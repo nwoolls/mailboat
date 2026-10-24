@@ -44,6 +44,7 @@ export const keys = {
   defaultMailApp: ["defaultMailApp"] as const,
   appSettings: ["appSettings"] as const,
   imageCache: ["imageCache"] as const,
+  cacheSize: ["cacheSize"] as const,
   invite: (id: MessageId) => ["invite", id] as const,
   rules: ["rules"] as const,
   vacations: ["vacations"] as const,
@@ -223,6 +224,24 @@ export function useClearImageCache() {
   return useMutation({
     mutationFn: () => unwrap(commands.imageCacheClear()),
     onSettled: () => qc.invalidateQueries({ queryKey: keys.imageCache }),
+  });
+}
+
+/** The cached mail and files (Settings → Advanced). */
+export function useCacheSize() {
+  return useQuery({
+    queryKey: keys.cacheSize,
+    queryFn: () => unwrap(commands.cacheSize()),
+    enabled: IS_TAURI,
+  });
+}
+
+/** Forgets the cache and syncs every account again; every query refetches. */
+export function useClearCache() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(commands.cacheClear()),
+    onSettled: () => qc.invalidateQueries(),
   });
 }
 

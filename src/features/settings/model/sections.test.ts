@@ -16,6 +16,7 @@ describe("settings sections", () => {
       "vacation",
       "keyboard",
       "toybox",
+      "advanced",
     ]);
   });
 

@@ -445,6 +445,38 @@ fn only_unread_inbox_mail_from_others_counts_as_new() {
 }
 
 #[test]
+fn clearing_an_accounts_mail_leaves_the_other_account_and_starts_sync_over() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    load_t1(&db, a);
+    load_t1(&db, b);
+    store::set_history_id(&db.conn(), a, Some(42), false).unwrap();
+    let count = |table: &str, account: AccountId| -> i64 {
+        db.conn()
+            .query_row(
+                &format!("SELECT COUNT(*) FROM {table} WHERE account_id = ?1"),
+                [account],
+                |r| r.get(0),
+            )
+            .unwrap()
+    };
+    assert!(count("messages", a) > 0);
+    store::clear_mail(&mut db.conn(), a).unwrap();
+    for table in ["threads", "messages", "message_labels", "thread_labels"] {
+        assert_eq!(count(table, a), 0, "{table} of a");
+        assert!(count(table, b) > 0, "{table} of b");
+    }
+    assert_eq!(store::history_id(&db.conn(), a).unwrap(), None);
+    assert!(count("labels", a) > 0, "labels stay");
+    let fts: i64 = db
+        .conn()
+        .query_row("SELECT COUNT(*) FROM messages_fts", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(fts, count("messages", b), "search index follows");
+}
+
+#[test]
 fn all_new_mail_includes_archived_but_not_spam_or_trash() {
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "a");

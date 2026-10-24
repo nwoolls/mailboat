@@ -14,6 +14,7 @@ import {
   KeyboardSection,
   NotificationsSection,
   ToyboxSection,
+  AdvancedSection,
   ViewingSection,
 } from "./SettingsSections";
 
@@ -96,6 +97,7 @@ export function SettingsPage({
           {section === "vacation" && <VacationSection accounts={accounts} />}
           {section === "keyboard" && <KeyboardSection />}
           {section === "toybox" && <ToyboxSection />}
+          {section === "advanced" && <AdvancedSection />}
         </div>
       </div>
     </section>

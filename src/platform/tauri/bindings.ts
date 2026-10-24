@@ -124,6 +124,15 @@ export const commands = {
 	 *  its subject, and returns the file name it got.
 	 */
 	messageOriginalSave: (messageId: MessageId) => typedError<string, AppError>(__TAURI_INVOKE("message_original_save", { messageId })),
+	cacheSize: () => typedError<CacheSize, AppError>(__TAURI_INVOKE("cache_size")),
+	/**
+	 *  Forgets all cached mail and downloaded files, then syncs every account
+	 *  again from scratch, as when it was added. Accounts, settings, rules and
+	 *  per-sender choices stay; nothing changes in Gmail.
+	 */
+	cacheClear: () => typedError<null, AppError>(__TAURI_INVOKE("cache_clear")),
+	/**  Shows the sync log in Finder. */
+	syncLogReveal: () => typedError<null, AppError>(__TAURI_INVOKE("sync_log_reveal")),
 	/**
 	 *  Every address mail can be sent from: each account and its Gmail "Send
 	 *  mail as" aliases (read by sync; `IdentitiesChangedEvent` says when).
@@ -555,6 +564,17 @@ export type AuthCheck = {
 	 *  domain, or the From domain.
 	 */
 	detail: string | null,
+};
+
+/**  What Mailboat keeps on this Mac, for Settings → Advanced. */
+export type CacheSize = {
+	/**
+	 *  The database: cached mail, its search index, and settings. Whole
+	 *  kilobytes, as `ImageCacheSize`.
+	 */
+	mailKilobytes: number,
+	/**  Opened attachments and downloaded images. */
+	filesKilobytes: number,
 };
 
 /**  What Calendar says about the invitation. */

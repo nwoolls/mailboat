@@ -4,7 +4,7 @@
 
 use std::fs::{File, OpenOptions};
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use mailboat_core::model::AccountId;
@@ -13,6 +13,7 @@ const MAX_BYTES: u64 = 5 * 1024 * 1024;
 
 pub struct SyncLog {
     file: Mutex<Option<File>>,
+    path: PathBuf,
 }
 
 impl SyncLog {
@@ -30,7 +31,13 @@ impl SyncLog {
             .ok();
         Self {
             file: Mutex::new(file),
+            path,
         }
+    }
+
+    /// Where the log is, for Settings → Advanced.
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
     pub fn write(&self, account: AccountId, line: &str) {
