@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Account, Identity, ThreadDetail } from "../../src/platform/tauri/bindings";
 import type { Spot } from "../../src/features/compose/model/snap";
 import { ComposeCard } from "../../src/features/compose/ui/ComposeCard";
@@ -10,6 +10,7 @@ import { ShortcutsHelp } from "../../src/features/mailbox/ui/ShortcutsHelp";
 import { ShowOriginalDialog } from "../../src/features/reader/ui/ShowOriginalDialog";
 import { ThreadList } from "../../src/features/mailbox/ui/ThreadList";
 import { EmptyState } from "../../src/features/mailbox/ui/EmptyState";
+import { CommandPalette } from "../../src/features/palette/ui/CommandPalette";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import {
   setCardSpot,
@@ -53,6 +54,7 @@ export function Harness({
   }, [mode]);
 
   if (mode === "shortcuts") return <ShortcutsHelp onClose={() => {}} />;
+  if (mode === "palette") return <PaletteOverSearch />;
   // The list card: a title row, then the empty view under it.
   if (mode === "empty")
     return (
@@ -148,6 +150,29 @@ export function Harness({
           />
         )}
       />
+    </div>
+  );
+}
+
+/** ⌘K open over a search box, as in the app; "Search mail" focuses the box. */
+function PaletteOverSearch() {
+  const [open, setOpen] = useState(true);
+  return (
+    <div>
+      <input id="search" aria-label="Search" />
+      {open && (
+        <CommandPalette
+          onClose={() => setOpen(false)}
+          items={[
+            {
+              id: "search",
+              group: "Actions",
+              title: "Search mail",
+              run: () => document.getElementById("search")?.focus(),
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }

@@ -17,6 +17,7 @@
  *   ?mode=list&density=…&lines=…  the conversation list, with Settings →
  *                                 List's density and preview lines
  *   ?mode=empty&toy=…             an empty Inbox with a Toybox toy
+ *   ?mode=palette                 ⌘K over a search box, with "Search mail"
  */
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

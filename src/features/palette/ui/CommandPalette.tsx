@@ -30,13 +30,21 @@ export function CommandPalette({ items, onClose }: { items: PaletteItem[]; onClo
   const ref = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const pointer = useRef<{ x: number; y: number } | null>(null);
+  // The chosen item's action, run once the palette has closed: while the
+  // modal dialog is open everything outside it is inert, and closing it
+  // hands focus back to where it was, so an action that moves focus (Search
+  // mail focusing the search box) would otherwise be undone.
+  const chosen = useRef<(() => void) | null>(null);
   useEffect(() => {
     const el = ref.current;
     el?.showModal();
     // Opening the dialog moves focus to the dialog itself (React's
     // autoFocus ran before it was open), so put it in the field after.
     input.current?.focus();
-    return () => el?.close();
+    return () => {
+      el?.close();
+      chosen.current?.();
+    };
   }, []);
   const groups = [...new Set(items.map((i) => i.group))];
 
@@ -82,8 +90,8 @@ export function CommandPalette({ items, onClose }: { items: PaletteItem[]; onClo
                     key={item.id}
                     value={`${item.title} ${item.detail ?? ""} ${item.id}`}
                     onSelect={() => {
+                      chosen.current = item.run;
                       onClose();
-                      item.run();
                     }}
                     className="flex h-8 cursor-default items-center gap-2.5 rounded-md px-2.5 data-[selected=true]:bg-selection-strong"
                   >

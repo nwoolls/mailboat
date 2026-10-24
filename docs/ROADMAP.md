@@ -1730,6 +1730,14 @@ at a time; each is ticked once the owner has tried it.*
       *Owner (2026-10-24): a click bringing the reader back should be
       remembered too: what's remembered is whether the reader shows.
       Built: it's saved whenever it changes, whatever changed it*
+- [ ] Search mail in ⌘K doesn't focus the search box *(owner report,
+      2026-10-24)*. The palette ran the chosen action while its modal
+      dialog was still open, when nothing outside it can take focus, and
+      closing the dialog then put focus back where it had been.
+      *Fixed (2026-10-24), waiting for the owner to try it: the action now
+      runs once the palette has closed, which helps any action that moves
+      focus. A browser test checks Search mail by Return and by click (both
+      failed before)*
 - [ ] Rethink where the "Original colors" button sits *(owner report with
       a screenshot, 2026-10-21)*: it floats over the top right of the
       email, so it covers the first line when that line runs to the edge
