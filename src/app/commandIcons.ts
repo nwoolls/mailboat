@@ -1,5 +1,6 @@
 import type { CommandId } from "../features/commands/model/commands";
 import {
+  AiIcon,
   ArchiveIcon,
   BlockIcon,
   ComposeIcon,
@@ -25,6 +26,8 @@ export const COMMAND_ICONS: Partial<Record<CommandId, (props: IconProps) => Reac
   reply: ReplyIcon,
   replyAll: ReplyAllIcon,
   forward: ForwardIcon,
+  replyAi: AiIcon,
+  summarize: AiIcon,
   archive: ArchiveIcon,
   trash: TrashIcon,
   read: MarkUnreadIcon,

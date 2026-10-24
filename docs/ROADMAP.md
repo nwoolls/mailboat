@@ -2015,11 +2015,18 @@ editor, and prompts and answers are never logged.*
         (`rmcp`), recorded in ARCHITECTURE when chosen
       - Every request logged (what was read, never the content), so the
         owner can see what an AI looked at
-- [ ] AI actions in ⌘K *(moved from Later, 2026-10-24)*: Summarize and
+- [x] AI actions in ⌘K *(moved from Later, 2026-10-24)*: Summarize and
       Reply with AI as palette commands, for the open conversation, from
       the shared command list (`features/commands`) so they also reach
       the menu bar and right-click menu. Today they're buttons in the
-      reader and on the reply
+      reader and on the reply. *Built 2026-10-24:* both in ⌘K (an "AI"
+      group), Message menu and right-click menu, for one conversation,
+      on only while their provider is ready (Settings → AI; Summarize is
+      off when reader summaries are). Run on a conversation that isn't
+      open, they open it first. Summarize shows the summary card (again,
+      if it was hidden) and scrolls to it; Reply with AI does what the
+      button does. No keyboard shortcuts: none of Gmail's or Mail's fit,
+      to add if wanted
 - [ ] Keep Codex running between requests *(moved from Later,
       2026-10-24)*: Codex takes about 3s to start on every request, most
       of what's left of ChatGPT's wait. Keep one Codex process alive and

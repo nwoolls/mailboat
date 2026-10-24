@@ -1,5 +1,10 @@
 import type { MailView } from "../../../platform/tauri/bindings";
-import { accelLabel, appCommands, conversationCommands } from "../../commands/model/commands";
+import {
+  accelLabel,
+  appCommands,
+  conversationCommands,
+  NO_CONVERSATION,
+} from "../../commands/model/commands";
 
 /**
  * Gmail's "go to" keys: `g` then a letter, within a moment. They keep the
@@ -95,7 +100,7 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
     // typing too, so the ones that change a conversation are off then.
     group: "Menu bar",
     keys: [
-      ...conversationCommands([], { editing: false, canFilter: false, blockEmail: null }),
+      ...conversationCommands([], NO_CONVERSATION),
       ...appCommands({ sidebarOpen: true, readerOpen: true, hasConversation: true }),
     ]
       .filter((c) => c.accel && c.key !== accelLabel(c.accel))

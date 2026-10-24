@@ -29,6 +29,8 @@ export type ConversationCommandId =
   | "reply"
   | "replyAll"
   | "forward"
+  | "replyAi"
+  | "summarize"
   | ToggleKind
   | "labels"
   | "filterLike"
@@ -67,11 +69,17 @@ const TOGGLES: { kind: ToggleKind; key: string; accel?: string; idle: string }[]
  * What can be done to `rows` (the open or picked conversations, or a
  * right-clicked one). Names follow the rows ("Move to Inbox" once all are
  * archived). While typing in a field (`editing`), the actions that change
- * them are off, so a menu shortcut can't archive mid-sentence.
+ * them are off, so a menu shortcut can't archive mid-sentence. The AI ones
+ * are on while their provider is ready (Settings → AI).
  */
 export function conversationCommands(
   rows: Rows,
-  o: { editing: boolean; canFilter: boolean; blockEmail: string | null },
+  o: {
+    editing: boolean;
+    canFilter: boolean;
+    blockEmail: string | null;
+    ai: { summarize: boolean; write: boolean };
+  },
 ): Command[] {
   const one = rows.length === 1 && !rows[0]!.onlyDraft;
   const some = rows.length > 0 && !o.editing;
@@ -79,6 +87,7 @@ export function conversationCommands(
     { id: "reply", title: "Reply", key: "r", accel: "Cmd+R", enabled: one },
     { id: "replyAll", title: "Reply all", key: "a", accel: "Shift+Cmd+R", enabled: one },
     { id: "forward", title: "Forward", key: "f", accel: "Shift+Cmd+F", enabled: one },
+    { id: "replyAi", title: "Reply with AI", enabled: one && o.ai.write },
   ];
   for (const t of TOGGLES) {
     const action = toggleFor(t.kind, rows) ?? undefined;
@@ -106,6 +115,7 @@ export function conversationCommands(
     // Mail's View → Message → Raw Source key. Only looks, so it works
     // while typing too.
     { id: "original", title: "Show original", accel: "Alt+Cmd+U", enabled: rows.length === 1 },
+    { id: "summarize", title: "Summarize", enabled: one && o.ai.summarize },
   );
   return commands;
 }
@@ -182,6 +192,7 @@ export const MENU_BAR: MenuSpec[] = [
       "reply",
       "replyAll",
       "forward",
+      "replyAi",
       "-",
       "archive",
       "trash",
@@ -194,13 +205,22 @@ export const MENU_BAR: MenuSpec[] = [
       "block",
       "-",
       "original",
+      "summarize",
     ],
   },
 ];
 
+/** What a list of every command (shortcuts, IDs) passes for no conversation. */
+export const NO_CONVERSATION = {
+  editing: false,
+  canFilter: false,
+  blockEmail: null,
+  ai: { summarize: false, write: false },
+};
+
 const ALL_IDS = new Set<string>(
   [
-    ...conversationCommands([], { editing: false, canFilter: false, blockEmail: null }),
+    ...conversationCommands([], NO_CONVERSATION),
     ...appCommands({ sidebarOpen: true, readerOpen: true, hasConversation: true }),
   ].map((c) => c.id),
 );

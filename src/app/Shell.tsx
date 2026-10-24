@@ -117,13 +117,19 @@ import { rememberSearch } from "../features/search/ui/history";
 import { LABEL_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
 import {
   useAccounts,
+  useAiStatus,
+  useAppSettings,
   useIdentities,
   useLabels,
   useMailEvents,
   useOAuthSetup,
+  usePrefetchAiReplyIdeas,
   useSyncStates,
   useThreads,
 } from "../shared/lib/queries";
+import { aiChoices, canSummarize, canWrite } from "../features/ai/model/providers";
+import { openAssistantForNextReply } from "../features/ai/ui/assistantOpen";
+import { requestSummary } from "../features/ai/ui/summaryRequests";
 
 /**
  * A file dropped outside a composer does nothing. (With Tauri's own file
@@ -504,12 +510,16 @@ export function Shell() {
   // ⌘K and the toolbar (`features/commands`).
   const selfEmailsOf = (account: AccountId) =>
     identities.filter((i) => i.accountId === account).map((i) => i.email);
+  const ai = aiChoices(useAppSettings().data);
+  const aiStatus = useAiStatus().data;
+  const prefetchIdeas = usePrefetchAiReplyIdeas();
   const commandsFor = (rows: ThreadSummary[]) =>
     conversationCommands(rows, {
       // The palette's own search box doesn't count as typing.
       editing: (editing && !paletteOpen) || settings !== null,
       canFilter: criteriaLikeThreads(rows, selfEmailsOf) !== null,
       blockEmail: senderToBlock(rows, selfEmailsOf)?.email ?? null,
+      ai: { summarize: canSummarize(ai, aiStatus), write: canWrite(ai, aiStatus) },
     });
   const conversationList = commandsFor(targets);
   const appList = appCommands({ sidebarOpen, readerOpen, hasConversation: chosenId !== null });
@@ -527,16 +537,29 @@ export function Shell() {
     switch (id) {
       case "reply":
       case "replyAll":
-      case "forward": {
+      case "forward":
+      case "replyAi":
+      case "summarize": {
         const row = rows[0];
         if (!row) return;
-        // Writing a reply happens in the conversation, so that one opens.
+        // Writing a reply happens in the conversation, so that one opens;
+        // so does a summary, which shows above it.
         if (row.id !== selectedId) {
           setChecked(NONE);
           setSelectedId(row.id);
         }
         setReaderOpen(true);
-        void compose.startReply(id, row.id);
+        if (id === "summarize") {
+          requestSummary(row.id);
+          return;
+        }
+        if (id === "replyAi") {
+          // As the reader's Reply with AI button: a plain Reply with the
+          // writing assistant open, its chips started while it loads.
+          openAssistantForNextReply(row.id);
+          prefetchIdeas(row.id, ai.writingProvider);
+        }
+        void compose.startReply(id === "replyAi" ? "reply" : id, row.id);
         return;
       }
       case "archive":
@@ -1204,8 +1227,9 @@ export function Shell() {
           {commandsFor(menuRows).map((c, _i, list) => {
             // Replies only for one conversation; a line after them, and
             // before the rules (where Gmail and Mail draw one too).
-            if ((c.id === "reply" || c.id === "replyAll" || c.id === "forward") && !c.enabled)
-              return null;
+            // The AI ones too, while AI isn't set up (Settings → AI).
+            const reply = ["reply", "replyAll", "forward", "replyAi", "summarize"];
+            if (reply.includes(c.id) && !c.enabled) return null;
             const line =
               (c.id === "archive" && list[0]?.enabled) ||
               c.id === "filterLike" ||

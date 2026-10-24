@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { commands, type ThreadDetail, type ThreadId } from "../../../platform/tauri/bindings";
 import { IS_TAURI, unwrap } from "../../../platform/tauri/ipc";
 import { useAiStatus, useAppSettings } from "../../../shared/lib/queries";
 import { AiIcon, ClearIcon, SyncIcon } from "../../../shared/ui/icons";
-import { aiChoices, isReady, PROVIDER_NAMES } from "../model/providers";
+import { aiChoices, canSummarize, PROVIDER_NAMES } from "../model/providers";
 import { summaryPoints } from "../model/summary";
 import { dropText, newRequestId, useStreamedText } from "./stream";
+import { useSummaryRequests } from "./summaryRequests";
 
 /** Conversations whose next summary request should skip the cache. */
 const askAgain = new Set<ThreadId>();
@@ -14,21 +15,24 @@ const askAgain = new Set<ThreadId>();
 /**
  * The AI summary above an opened conversation (Settings → AI): written
  * by itself for long conversations, or when Summarize is pressed. Leaving
- * the conversation while it's being written stops it.
+ * the conversation while it's being written stops it. Summarize from ⌘K
+ * or a menu (`summaryRequests`) asks as the button does, and shows the
+ * card again if it was hidden.
  */
 export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom: number }) {
   const ai = aiChoices(useAppSettings().data);
   const status = useAiStatus().data;
   const provider = ai.readerProvider;
-  const usable =
-    ai.readerSummary !== "off" &&
-    isReady(status, provider) &&
-    (provider === "apple" || ai.connected.includes(provider));
+  const usable = canSummarize(ai, status);
   const threadId = detail.thread.id;
+  const requests = useSummaryRequests(threadId);
   // A summary covers the conversation up to its newest message.
   const newest = detail.messages.findLast((m) => !m.draft)?.id ?? 0;
-  const [asked, setAsked] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  const [pressed, setPressed] = useState(false);
+  const asked = pressed || requests > 0;
+  // Hidden until the next request from a menu.
+  const [hiddenAt, setHiddenAt] = useState<number | null>(null);
+  const hidden = hiddenAt === requests;
   const [requestId, setRequestId] = useState<number | null>(null);
   const automatic = !asked;
   const query = useQuery({
@@ -50,6 +54,15 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
     retry: false,
   });
   const streamed = useStreamedText(query.isFetching ? requestId : null);
+  // A request from a menu brings the card into view (the email may be
+  // scrolled well past it).
+  const card = useRef<HTMLElement>(null);
+  const seen = useRef(requests);
+  useEffect(() => {
+    if (requests === seen.current) return;
+    seen.current = requests;
+    card.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [requests]);
   if (!usable || hidden) return null;
 
   if (ai.readerSummary === "button" && !asked)
@@ -57,7 +70,7 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
       <div className="px-4 pb-2" style={{ zoom }}>
         <button
           type="button"
-          onClick={() => setAsked(true)}
+          onClick={() => setPressed(true)}
           title={`Summarize with ${PROVIDER_NAMES[provider]}`}
           className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs text-content/60 ring-1 ring-stroke ring-inset hover:bg-selection hover:text-content"
         >
@@ -74,6 +87,7 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
 
   return (
     <section
+      ref={card}
       aria-label="Summary"
       aria-busy={query.isFetching}
       className="message-card mb-2 rounded-[10px] px-4 pt-2.5 pb-3 ring-1 ring-stroke ring-inset"
@@ -96,7 +110,7 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
                 // Asked for now: a new request (its own query) if the
                 // first was automatic, else this one again.
                 if (asked) void query.refetch();
-                else setAsked(true);
+                else setPressed(true);
               }}
               className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-selection hover:text-content"
             >
@@ -107,7 +121,7 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
             type="button"
             aria-label="Hide summary"
             title="Hide"
-            onClick={() => setHidden(true)}
+            onClick={() => setHiddenAt(requests)}
             className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-selection hover:text-content"
           >
             <ClearIcon size={13} />

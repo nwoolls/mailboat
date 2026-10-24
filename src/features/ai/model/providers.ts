@@ -59,6 +59,21 @@ export function isReady(statuses: ProviderStatus[] | undefined, provider: AiProv
   return statusOf(statuses, provider)?.state === "ready";
 }
 
+/** Whether a provider can take a request: set up and connected (Apple needs no connecting). */
+function usable(ai: AiChoices, statuses: ProviderStatus[] | undefined, provider: AiProvider) {
+  return isReady(statuses, provider) && (provider === "apple" || ai.connected.includes(provider));
+}
+
+/** Whether an opened conversation can be summarized (Settings → AI, not turned off). */
+export function canSummarize(ai: AiChoices, statuses: ProviderStatus[] | undefined): boolean {
+  return ai.readerSummary !== "off" && usable(ai, statuses, ai.readerProvider);
+}
+
+/** Whether the writing assistant (Reply with AI) can be offered. */
+export function canWrite(ai: AiChoices, statuses: ProviderStatus[] | undefined): boolean {
+  return usable(ai, statuses, ai.writingProvider);
+}
+
 /**
  * The providers a feature can use: Apple Intelligence (built in), then
  * whichever of ChatGPT and Claude were connected.

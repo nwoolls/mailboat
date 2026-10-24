@@ -440,6 +440,11 @@ flowchart LR
 - **Settings** live in `AppSettings.ai` (Rust acts on them): connected
   providers, and which provider each feature uses. Apple Intelligence is
   the default for everything.
+- **Commands:** Summarize and Reply with AI are also in the shared
+  command list (`features/commands`), so ⌘K, the menu bar and the
+  right-click menu offer them. A summary asked for that way goes through
+  `ai/ui/summaryRequests` (a count per conversation the summary card
+  reads), since the card owns its request.
 
 ## Decisions
 

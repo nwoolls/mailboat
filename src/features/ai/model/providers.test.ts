@@ -3,6 +3,8 @@ import type { ProviderStatus } from "../../../platform/tauri/bindings";
 import {
   type AiChoices,
   aiChoices,
+  canSummarize,
+  canWrite,
   isReady,
   leavesMac,
   offered,
@@ -60,5 +62,23 @@ describe("providers", () => {
     expect(leavesMac("claude")).toBe(true);
     expect(isReady([{ provider: "apple", state: "ready", account: null }], "apple")).toBe(true);
     expect(isReady([], "apple")).toBe(false);
+  });
+});
+
+const ready = (provider: ProviderStatus["provider"]): ProviderStatus =>
+  ({ provider, state: "ready" }) as ProviderStatus;
+
+describe("what can run", () => {
+  it("summarizes with a ready provider unless summaries are off", () => {
+    expect(canSummarize(ai, [ready("apple")])).toBe(true);
+    expect(canSummarize({ ...ai, readerSummary: "off" }, [ready("apple")])).toBe(false);
+    expect(canSummarize(ai, [])).toBe(false);
+  });
+
+  it("needs a cloud provider connected as well as ready", () => {
+    const claude = { ...ai, writingProvider: "claude" as const, readerProvider: "claude" as const };
+    expect(canWrite(claude, [ready("claude")])).toBe(false);
+    expect(canWrite({ ...claude, connected: ["claude"] }, [ready("claude")])).toBe(true);
+    expect(canSummarize({ ...claude, connected: ["claude"] }, [ready("claude")])).toBe(true);
   });
 });

@@ -13,7 +13,7 @@ import { ComposeForm, KIND_LABELS, type ReplyKind } from "./ComposeForm";
 import { usePresence } from "../../../shared/ui/usePresence";
 import { REVEAL_MS } from "../../ai/ui/InlineReveal";
 import { openAssistantForNextReply, useAssistantOpen } from "../../ai/ui/assistantOpen";
-import { aiChoices, isReady } from "../../ai/model/providers";
+import { aiChoices, canWrite } from "../../ai/model/providers";
 import { useAiStatus, useAppSettings, usePrefetchAiReplyIdeas } from "../../../shared/lib/queries";
 import { useEffect, useRef, useState } from "react";
 import { useStuck } from "../../../shared/ui/useStuck";
@@ -146,9 +146,7 @@ export function ReplyArea({
     return <div className="px-4 pt-3 pb-4 text-xs text-content/45">Opening your draft…</div>;
   // Offered while the writing provider (Settings → AI) is ready.
   const writing = aiChoices(settings).writingProvider;
-  const aiReady =
-    isReady(aiStatus, writing) &&
-    (writing === "apple" || aiChoices(settings).connected.includes(writing));
+  const aiReady = canWrite(aiChoices(settings), aiStatus);
   // Reply all only when there's someone else to include.
   const last = detail.messages.findLast((m) => !m.draft);
   const several = last ? last.to.length + last.cc.length > 1 : false;

@@ -19,7 +19,12 @@ const row = (over: Partial<Parameters<typeof conversationCommands>[0][number]> =
   onlyDraft: false,
   ...over,
 });
-const none = { editing: false, canFilter: true, blockEmail: "x@y.com" };
+const none = {
+  editing: false,
+  canFilter: true,
+  blockEmail: "x@y.com",
+  ai: { summarize: true, write: true },
+};
 
 describe("conversationCommands", () => {
   it("names actions after what they'll do", () => {
@@ -46,6 +51,30 @@ describe("conversationCommands", () => {
     expect(typing.find((c) => c.id === "archive")?.enabled).toBe(false);
     expect(typing.find((c) => c.id === "labels")?.enabled).toBe(false);
     expect(typing.find((c) => c.id === "reply")?.enabled).toBe(true);
+  });
+});
+
+const byId = (rows: ReturnType<typeof row>[], o = none) =>
+  new Map(conversationCommands(rows, o).map((c) => [c.id, c]));
+
+describe("AI commands", () => {
+  it("summarize and reply with AI for one conversation while AI is ready", () => {
+    expect(byId([row()]).get("summarize")?.enabled).toBe(true);
+    expect(byId([row()]).get("replyAi")?.enabled).toBe(true);
+    expect(byId([row(), row()]).get("summarize")?.enabled).toBe(false);
+    expect(byId([row({ onlyDraft: true })]).get("replyAi")?.enabled).toBe(false);
+  });
+
+  it("are off when their provider isn't ready, each on its own", () => {
+    const writeOnly = byId([row()], { ...none, ai: { summarize: false, write: true } });
+    expect(writeOnly.get("summarize")?.enabled).toBe(false);
+    expect(writeOnly.get("replyAi")?.enabled).toBe(true);
+  });
+
+  it("work while typing, as Reply does", () => {
+    const typing = byId([row()], { ...none, editing: true });
+    expect(typing.get("summarize")?.enabled).toBe(true);
+    expect(typing.get("replyAi")?.enabled).toBe(true);
   });
 });
 

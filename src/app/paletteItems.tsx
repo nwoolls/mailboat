@@ -13,6 +13,8 @@ const GROUPS: Partial<Record<CommandId, string>> = {
   sidebar: "View",
   reader: "View",
   shortcuts: "View",
+  summarize: "AI",
+  replyAi: "AI",
 };
 
 /**
