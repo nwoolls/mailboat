@@ -271,6 +271,7 @@ async fn searching_gmail_shows_what_it_matched_in_the_search_view() {
     cache(&db, a, "thread_t1.json");
     let view = MailView::Search {
         text: "Zebra".into(),
+        with_spam_trash: false,
     };
     let list = |db: &Db| {
         query::list_threads(
@@ -300,4 +301,37 @@ async fn searching_gmail_shows_what_it_matched_in_the_search_view() {
         "both Gmail matches show, whatever the case typed"
     );
     assert!(cursor.exhausted);
+}
+
+#[tokio::test]
+async fn searching_spam_and_trash_asks_gmail_for_them() {
+    let server = MockServer::start().await;
+    Mock::given(path("/gmail/v1/users/me/threads"))
+        .and(query_param("q", "invoice"))
+        .and(query_param("includeSpamTrash", "true"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/threads"))
+        .and(query_param("q", "invoice"))
+        .and(query_param_is_missing("includeSpamTrash"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let (gmail, _) = client(&server.uri());
+    for with_spam_trash in [true, false] {
+        let view = MailView::Search {
+            text: "invoice".into(),
+            with_spam_trash,
+        };
+        let mut cursor = OlderCursor::default();
+        load_older(&db, &gmail, a, &view, 25, &mut cursor, &|| {})
+            .await
+            .unwrap();
+        assert!(cursor.exhausted);
+    }
 }

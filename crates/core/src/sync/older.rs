@@ -62,7 +62,7 @@ pub fn gmail_filter(
         MailView::Archive => Some((None, Some("-in:inbox".into()))),
         // Gmail's own search, with the text as typed (its operators, like
         // `from:` or `has:attachment`, work too).
-        MailView::Search { text } => Some((None, Some(text.clone()))),
+        MailView::Search { text, .. } => Some((None, Some(text.clone()))),
     })
 }
 
@@ -85,7 +85,7 @@ pub async fn load_older(
     };
     let cached = store::thread_ids_for_account(&db.conn(), account)?;
     let hit_key = match view {
-        MailView::Search { text } => Some(crate::db::query::search_key(text)),
+        MailView::Search { text, .. } => Some(crate::db::query::search_key(text)),
         _ => None,
     };
 
@@ -109,6 +109,13 @@ pub async fn load_older(
             .search_threads(
                 label.as_deref(),
                 q.as_deref(),
+                matches!(
+                    view,
+                    MailView::Search {
+                        with_spam_trash: true,
+                        ..
+                    }
+                ),
                 cursor.page_token.as_deref(),
                 LIST_PAGE,
             )

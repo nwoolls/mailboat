@@ -143,8 +143,13 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
             clauses.push(IN_ALL_MAIL.into());
             clauses.push(format!("NOT {IN_INBOX}"));
         }
-        MailView::Search { text } => {
-            clauses.push(IN_ALL_MAIL.into());
+        MailView::Search {
+            text,
+            with_spam_trash,
+        } => {
+            if !with_spam_trash {
+                clauses.push(IN_ALL_MAIL.into());
+            }
             // Matches in the cache, plus what Gmail's own search found for
             // the same text (`search_hits`, filled when Gmail is asked).
             let hits = "t.id IN (SELECT h.thread_id FROM search_hits h WHERE h.query = ?)";

@@ -440,6 +440,18 @@ export function ViewingSection() {
           />
         </Row>
       </Group>
+      <Group title="Search">
+        <Row
+          label="Include Spam and Trash"
+          description="Searches look in Spam and Trash too. Gmail leaves them out."
+        >
+          <Toggle
+            label="Include Spam and Trash"
+            on={prefs.searchSpamTrash}
+            onChange={(searchSpamTrash) => viewingPrefs.set({ ...prefs, searchSpamTrash })}
+          />
+        </Row>
+      </Group>
       <Group title="Privacy">
         <Row
           label="Remote images"

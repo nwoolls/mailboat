@@ -1426,6 +1426,11 @@ each is ticked once the owner has tried it.*
       lists it. ⌘⌫ stays unused (in a text field it deletes the line)*
 - [ ] List density and preview lines (also a UX Spike 1 deferred idea)
 - [ ] Include Trash and Spam in search (in the Settings plan)
+      *Built (2026-10-24), waiting for the owner to try it: Settings →
+      Viewing → Search → Include Spam and Trash (off, as Gmail). On, both
+      the cache search and Gmail's own search (`includeSpamTrash`) look
+      there too, in every account searched; rows found there act as they
+      would in Spam or Trash (Not spam, Restore)*
 - [ ] Which mail notifies (Inbox only / all; already in the Settings
       plan) and quiet hours
 - [ ] Sounds for new mail and for actions, if wanted

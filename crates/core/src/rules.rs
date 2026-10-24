@@ -623,7 +623,7 @@ pub async fn match_count(
     }
     let q = search_query(&criteria);
     let page = gmail
-        .search_threads(None, Some(&q), None, COUNT_PAGE)
+        .search_threads(None, Some(&q), false, None, COUNT_PAGE)
         .await
         .map_err(friendly)?;
     Ok(Some(MatchCount {

@@ -803,8 +803,11 @@ export type MailView =
  *  just means not in INBOX.
  */
 { kind: "archive" } | 
-/**  Local full-text search (Spam and Trash excluded, as in Gmail). */
-{ kind: "search"; text: string };
+/**
+ *  Full-text search, of the cache and Gmail. Spam and Trash are left
+ *  out, as in Gmail, unless `with_spam_trash` (Settings → Viewing).
+ */
+{ kind: "search"; text: string; withSpamTrash?: boolean };
 
 /**
  *  What a `mailto:` link fills in. Recipients are kept as written (a

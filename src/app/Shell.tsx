@@ -212,8 +212,12 @@ export function Shell() {
   const baseSelection =
     chosen ?? (onlyAccount ? systemSelection("inbox", onlyAccount.id) : ALL_INBOXES);
   const [search, setSearch] = useState("");
+  const { searchSpamTrash } = viewingPrefs.use();
   const selection: Selection = search.trim()
-    ? { accounts: baseSelection.accounts, view: { kind: "search", text: search.trim() } }
+    ? {
+        accounts: baseSelection.accounts,
+        view: { kind: "search", text: search.trim(), withSpamTrash: searchSpamTrash },
+      }
     : baseSelection;
 
   const showAccount = spansAccounts(selection, accountList.length);

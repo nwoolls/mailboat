@@ -199,7 +199,16 @@ fn two_accounts_with_overlapping_gmail_ids() {
     .is_empty());
 
     // Local search covers all accounts, and respects the account filter.
-    let search = |filter, text: &str| list(&db, filter, MailView::Search { text: text.into() });
+    let search = |filter, text: &str| {
+        list(
+            &db,
+            filter,
+            MailView::Search {
+                text: text.into(),
+                with_spam_trash: false,
+            },
+        )
+    };
     assert_eq!(search(AccountFilter::All, "snippet").len(), 3);
     assert_eq!(search(AccountFilter::All, "bob").len(), 1);
     assert_eq!(search(AccountFilter::Only(vec![a.id]), "bob").len(), 0);
@@ -238,7 +247,8 @@ fn two_accounts_with_overlapping_gmail_ids() {
             &db,
             AccountFilter::All,
             MailView::Search {
-                text: "snippet".into()
+                text: "snippet".into(),
+                with_spam_trash: false
             }
         )
         .len(),
@@ -452,7 +462,8 @@ fn all_mail_and_archive_views_across_accounts() {
         subjects(
             AccountFilter::All,
             MailView::Search {
-                text: "spam".into()
+                text: "spam".into(),
+                with_spam_trash: false
             }
         ),
         Vec::<String>::new()
@@ -461,10 +472,28 @@ fn all_mail_and_archive_views_across_accounts() {
         subjects(
             AccountFilter::All,
             MailView::Search {
-                text: "archived".into()
+                text: "archived".into(),
+                with_spam_trash: false
             }
         ),
         vec!["B archived", "A archived"]
+    );
+    // Unless asked to look there too (Settings → Viewing), in every account.
+    let everywhere = |text: &str| MailView::Search {
+        text: text.into(),
+        with_spam_trash: true,
+    };
+    assert_eq!(
+        subjects(AccountFilter::All, everywhere("spam")),
+        vec!["A spam"]
+    );
+    assert_eq!(
+        subjects(AccountFilter::All, everywhere("trash")),
+        vec!["B trash"]
+    );
+    assert_eq!(
+        subjects(AccountFilter::Only(vec![a.id]), everywhere("trash")),
+        Vec::<String>::new()
     );
 }
 

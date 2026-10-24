@@ -245,15 +245,18 @@ impl GmailClient {
         page_token: Option<&str>,
         max_results: u32,
     ) -> Result<ThreadList> {
-        self.search_threads(label, None, page_token, max_results)
+        self.search_threads(label, None, false, page_token, max_results)
             .await
     }
 
     /// `threads.list` with an optional Gmail search (`q`), newest first.
+    /// Spam and Trash are left out unless `spam_trash` (or the label is
+    /// one of them).
     pub async fn search_threads(
         &self,
         label: Option<&str>,
         q: Option<&str>,
+        spam_trash: bool,
         page_token: Option<&str>,
         max_results: u32,
     ) -> Result<ThreadList> {
@@ -264,9 +267,9 @@ impl GmailClient {
         }
         if let Some(label) = label {
             query.push(("labelIds", label));
-            if matches!(label, "SPAM" | "TRASH") {
-                query.push(("includeSpamTrash", "true"));
-            }
+        }
+        if spam_trash || matches!(label, Some("SPAM" | "TRASH")) {
+            query.push(("includeSpamTrash", "true"));
         }
         if let Some(token) = page_token {
             query.push(("pageToken", token));

@@ -15,6 +15,8 @@ export type ViewingPrefs = {
   markRead: MarkRead;
   order: MessageOrder;
   deleteKey: DeleteKey;
+  /** Searches look in Spam and Trash too (Gmail leaves them out). */
+  searchSpamTrash: boolean;
 };
 
 export const VIEWING_PREFS_KEY = "mailboat.viewing";
@@ -27,6 +29,7 @@ export const DEFAULT_VIEWING_PREFS: ViewingPrefs = {
   markRead: "open",
   order: "oldestFirst",
   deleteKey: "trash",
+  searchSpamTrash: false,
 };
 
 function oneOf<T extends string>(choices: readonly T[], value: unknown, fallback: T): T {
@@ -48,6 +51,8 @@ export function parseViewingPrefs(raw: string | null): ViewingPrefs {
     markRead: oneOf(["open", "delay", "never"], saved.markRead, d.markRead),
     order: oneOf(["oldestFirst", "newestFirst"], saved.order, d.order),
     deleteKey: oneOf(["trash", "archive"], saved.deleteKey, d.deleteKey),
+    searchSpamTrash:
+      typeof saved.searchSpamTrash === "boolean" ? saved.searchSpamTrash : d.searchSpamTrash,
   };
 }
 

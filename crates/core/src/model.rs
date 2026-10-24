@@ -180,8 +180,14 @@ pub enum MailView {
     /// All Mail minus the Inbox. Gmail has no "archived" label: archived
     /// just means not in INBOX.
     Archive,
-    /// Local full-text search (Spam and Trash excluded, as in Gmail).
-    Search { text: String },
+    /// Full-text search, of the cache and Gmail. Spam and Trash are left
+    /// out, as in Gmail, unless `with_spam_trash` (Settings → Viewing).
+    #[serde(rename_all = "camelCase")]
+    Search {
+        text: String,
+        #[serde(default)]
+        with_spam_trash: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]

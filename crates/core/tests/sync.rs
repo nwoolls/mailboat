@@ -161,6 +161,7 @@ async fn incremental_sync_applies_history() {
             accounts: AccountFilter::All,
             view: MailView::Search {
                 text: "lunch".into(),
+                with_spam_trash: false,
             },
             cursor: None,
             limit: 10,
@@ -257,6 +258,7 @@ async fn fetch_body_downloads_once_then_uses_cache() {
             accounts: AccountFilter::All,
             view: MailView::Search {
                 text: "vendor.com/pay".into(),
+                with_spam_trash: false,
             },
             cursor: None,
             limit: 10,
@@ -501,7 +503,10 @@ async fn full_sync_includes_archived_mail_and_records_scope() {
         &db.conn(),
         &ListQuery {
             accounts: AccountFilter::All,
-            view: MailView::Search { text: "oil".into() },
+            view: MailView::Search {
+                text: "oil".into(),
+                with_spam_trash: false,
+            },
             cursor: None,
             limit: 10,
         },

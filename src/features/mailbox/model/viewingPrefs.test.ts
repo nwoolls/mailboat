@@ -20,6 +20,9 @@ describe("parseViewingPrefs", () => {
     expect(all.deleteKey).toBe("trash");
     expect(parseViewingPrefs('{"deleteKey":"archive"}').deleteKey).toBe("archive");
     expect(parseViewingPrefs('{"deleteKey":"shred"}').deleteKey).toBe("trash");
+    expect(all.searchSpamTrash).toBe(false);
+    expect(parseViewingPrefs('{"searchSpamTrash":true}').searchSpamTrash).toBe(true);
+    expect(parseViewingPrefs('{"searchSpamTrash":"yes"}').searchSpamTrash).toBe(false);
   });
 });
 
