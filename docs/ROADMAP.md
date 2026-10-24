@@ -1655,6 +1655,12 @@ at a time; each is ticked once the owner has tried it.*
       the editor a reasonable minimum height, and lay the attachments
       out more compactly: chips in columns (wrapping side by side), then
       a capped height that scrolls, or a "+N more" that expands
+      *Built (2026-10-24), waiting for the owner to try it: chips
+      already sat side by side; past two rows they now scroll, with the
+      third row peeking out, and the writing area keeps at least about
+      seven lines. A browser test attaches 30 files and checks both (the
+      old chips took 1022px). To try: attach a dozen or more files to a
+      new message*
 - [ ] An open conversation stayed unread *(owner report with a
       screenshot, 2026-10-22)*: a thread showing in the reader, newest reply expanded, still unread after
       several seconds until marked read by hand. Likely cause, from the

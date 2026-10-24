@@ -264,7 +264,9 @@ export function ComposeForm({
             className="h-9 border-b border-stroke bg-transparent outline-none placeholder:text-content/45 focus-visible:outline-none"
           />
         )}
-        <div className={inline ? "" : "min-h-0 flex-1 overflow-y-auto"}>
+        {/* Never squeezed below a few lines by what's under it (a long
+          list of attachments, say); that scrolls instead. */}
+        <div className={inline ? "" : "min-h-28 flex-1 overflow-y-auto"}>
           <EditorBody
             editor={editor}
             className={draft.quote || draft.signature ? "" : "min-h-40"}
@@ -601,10 +603,17 @@ function AttachButton({
 
 type Chip = { key: string; name: string; size: number; remove: () => void };
 
-/** Files going with the message: new ones and a forward's originals. */
+/**
+ * Files going with the message: new ones and a forward's originals. Side
+ * by side, wrapping; past two rows they scroll (the third peeks out, so
+ * it's clear there are more) rather than taking the writing area's room.
+ */
 function AttachmentChips({ files }: { files: Chip[] }) {
   return (
-    <ul className="flex flex-wrap gap-1.5 px-4 pb-2" aria-label="Attachments">
+    <ul
+      className="flex max-h-20 shrink-0 flex-wrap gap-1.5 overflow-y-auto px-4 pb-2"
+      aria-label="Attachments"
+    >
       {files.map((f) => (
         <li
           key={f.key}
