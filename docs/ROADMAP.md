@@ -2015,6 +2015,17 @@ editor, and prompts and answers are never logged.*
         (`rmcp`), recorded in ARCHITECTURE when chosen
       - Every request logged (what was read, never the content), so the
         owner can see what an AI looked at
+      *Agreed with the owner, 2026-10-24:*
+      - **Connects through a `mailboat-mcp` command** that Claude starts and
+        that talks to the running app; Mailboat must be open (Claude is told
+        to open it otherwise). Not a direct read of the cache
+      - **On/off per account**, all off by default; no extra "allow this
+        app?" prompt: the Settings switch is the choice
+      - **Read-only tools first** (search, list a view, read a
+        conversation, list labels), **then drafts**, built in this spike,
+        each with its own per-account switch. Never sends
+      - **Spam and Trash are hidden** from AI apps entirely
+      - **The log keeps 30 days**, shown in Settings → AI
 - [x] AI actions in ⌘K *(moved from Later, 2026-10-24)*: Summarize and
       Reply with AI as palette commands, for the open conversation, from
       the shared command list (`features/commands`) so they also reach
@@ -2063,7 +2074,8 @@ editor, and prompts and answers are never logged.*
       Intelligence by default). The rewrite shows in the editor for the
       owner to keep or undo; nothing is sent. Which choices to offer, and
       where (a menu on the selection, ⌘K, or both), to agree.
-      *Built to try, 2026-10-24, with defaults for the owner to change:*
+      *Built to try, 2026-10-24, with defaults for the owner to change
+      (the wand in the formatting bar is fine, owner 2026-10-24):*
       - **Where:** a wand button at the end of the formatting bar, shown
         while the writing provider is ready, on once text is selected. Not
         in ⌘K yet, and no floating menu on the selection
@@ -2086,7 +2098,12 @@ editor, and prompts and answers are never logged.*
       changing the email; in the composer it replaces the selection, to
       keep or undo. Which provider (Apple's on-device translation, or
       the writing provider), the language (to the Mac's own by default,
-      to choose when writing) and where it's offered, to agree
+      to choose when writing) and where it's offered, to agree.
+      *Agreed with the owner, 2026-10-24:* Apple's on-device translation,
+      with the writing provider as the fallback for languages Apple
+      can't do. In an email, into the Mac's language; when writing, into
+      the language of the email being answered, with a menu to choose
+      another. Where it's offered is the agent's pick
 
 ## Milestone 10: Windows
 
