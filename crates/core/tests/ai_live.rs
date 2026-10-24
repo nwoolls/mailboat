@@ -31,12 +31,16 @@ async fn check(provider: AiProvider) {
         quality: Quality::Fast,
         max_tokens: Some(60),
     };
+    let started = std::time::Instant::now();
     let answer = ai::ask(&programs, provider, &prompt, &|_| {})
         .await
         .unwrap();
     println!(
-        "{provider:?} said {:?} ({:?}, limits {:?})",
-        answer.text, answer.usage, answer.limits
+        "{provider:?} said {:?} in {:.2}s ({:?}, limits {:?})",
+        answer.text,
+        started.elapsed().as_secs_f64(),
+        answer.usage,
+        answer.limits
     );
     assert!(!answer.text.is_empty());
 }

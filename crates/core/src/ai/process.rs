@@ -1,6 +1,7 @@
 //! Running a provider's program: find it, hand it the request on stdin,
 //! read its answer line by line from stdout.
 
+use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
@@ -66,12 +67,15 @@ pub struct Exit {
 
 /// Runs `program` in an empty folder, writes `stdin`, and calls `on_line`
 /// for each line it prints. An error from `on_line` stops the program.
-/// The program is killed if this future is dropped (cancelled).
+/// So does `Break`, for the line that ends the answer: Claude and Codex
+/// take another half second or so to exit after it, which would otherwise
+/// be waited out (measured 2026-10-24). The program is killed if this
+/// future is dropped (cancelled).
 pub async fn run_lines(
     program: &Path,
     args: &[String],
     stdin: &str,
-    mut on_line: impl FnMut(&str) -> Result<()>,
+    mut on_line: impl FnMut(&str) -> Result<ControlFlow<()>>,
 ) -> Result<Exit> {
     let work = tokio::time::timeout(TIMEOUT, async {
         let dir = scratch_dir()?;
@@ -105,8 +109,18 @@ pub async fn run_lines(
             .await
             .map_err(|e| CoreError::Ai(format!("reading the answer: {e}")))?
         {
-            if !line.trim().is_empty() {
-                on_line(&line)?;
+            if !line.trim().is_empty() && on_line(&line)?.is_break() {
+                // The answer is in: stop the program rather than wait for
+                // it to exit, and reap it so it doesn't linger.
+                let _ = child.start_kill();
+                let _ = child.wait().await;
+                writer.abort();
+                stderr.abort();
+                let _ = std::fs::remove_dir(&dir);
+                return Ok(Exit {
+                    success: true,
+                    stderr: String::new(),
+                });
             }
         }
         let status = child
@@ -198,7 +212,7 @@ mod tests {
             "one\ntwo\n",
             |line| {
                 seen.push(line.to_string());
-                Ok(())
+                Ok(ControlFlow::Continue(()))
             },
         )
         .await
@@ -218,6 +232,33 @@ mod tests {
         )
         .await;
         assert!(matches!(result, Err(CoreError::Ai(m)) if m == "stop"));
+    }
+
+    #[tokio::test]
+    async fn the_last_line_stops_the_program_without_waiting_for_it() {
+        let started = std::time::Instant::now();
+        let mut seen = Vec::new();
+        let exit = run_lines(
+            Path::new("/bin/sh"),
+            &[
+                "-c".into(),
+                "echo answer; echo done; sleep 30; echo late".into(),
+            ],
+            "",
+            |line| {
+                seen.push(line.to_string());
+                Ok(if line == "done" {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                })
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(seen, ["answer", "done"]);
+        assert!(exit.success);
+        assert!(started.elapsed() < Duration::from_secs(5));
     }
 
     #[test]

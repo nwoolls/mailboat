@@ -5,6 +5,7 @@
 //! answer included, so its prompts get a smaller share of the email
 //! (`context::Budget`).
 
+use std::ops::ControlFlow;
 use std::path::Path;
 
 use serde::Deserialize;
@@ -47,7 +48,7 @@ pub async fn status(helper: &Path) -> ProviderState {
                 }
             };
         }
-        Ok(())
+        Ok(ControlFlow::Continue(()))
     })
     .await;
     match ran {
@@ -96,7 +97,7 @@ pub async fn ask(
             }
             _ => {}
         }
-        Ok(())
+        Ok(ControlFlow::Continue(()))
     })
     .await?;
     if let Some(e) = failure {

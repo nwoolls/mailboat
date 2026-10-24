@@ -2032,7 +2032,30 @@ editor, and prompts and answers are never logged.*
       of what's left of ChatGPT's wait. Keep one Codex process alive and
       reuse it (still with every tool off), stopping it when idle or
       when Mailboat quits. To check first: whether Codex can take more than
-      one request per process, and what it costs to leave running
+      one request per process, and what it costs to leave running.
+      *Checked 2026-10-24 (Codex 0.163), for the owner to decide:*
+      - **It can:** `codex app-server` is a long-running process that
+        takes request after request (JSON over stdin/stdout, as Codex's
+        VS Code extension uses), and streams the answer as it's written,
+        which `codex exec` doesn't
+      - **But the start-up was never the 3s.** Most of the wait is the
+        model itself: ~2.2–2.5s to answer "reply with 1" even in a warm
+        app-server, against ~2.4–2.8s for `codex exec`. A kept process
+        saves about 0.5s a request
+      - **And it can't ignore the owner's Codex settings.** `codex exec`
+        has `--ignore-user-config`; app-server doesn't. In the probe it
+        started the other MCP servers configured for Codex on every request, never stopped them, and the model tried to call one when asked to list the home folder (refused only because approvals were "never"). Overriding `mcp_servers` with
+        `-c` didn't remove them. Fixable only with a separate
+        `CODEX_HOME` for Mailboat, which then needs its own `codex login`
+      - **Done instead (2026-10-24):** Mailboat used to wait for Codex and
+        Claude to exit after their last line, another ~0.6s. It now
+        stops them there. Live runs, median of three: ChatGPT 3.5s →
+        2.8s, Claude 2.2s → 1.9s
+      - **Recommendation:** don't keep Codex running for now; the ~0.5s
+        left isn't worth a second sign-in or the risk of the owner's
+        MCP servers. Revisit if app-server gains `--ignore-user-config`.
+        Streaming ChatGPT's text (so long drafts appear as they're
+        written) would be the better reason to adopt it
 - [ ] Rewrite selected text *(from the GotEmail / bytemail review,
       bytemail's idea; owner, 2026-10-24)*: select words in the composer
       and have them shortened, softened, made more formal and so on,

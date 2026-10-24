@@ -6,6 +6,7 @@
 //! and skill turned off, so the model can only answer with text, and with
 //! `stream-json` output so the answer arrives as it's written.
 
+use std::ops::ControlFlow;
 use std::path::Path;
 
 use serde_json::Value;
@@ -73,6 +74,8 @@ pub struct Reader {
     pub answer: Answer,
     streamed: String,
     error: Option<String>,
+    /// The answer is complete; what's left is Claude exiting.
+    pub done: bool,
 }
 
 impl Reader {
@@ -103,6 +106,8 @@ impl Reader {
                 }
             }
             "result" => {
+                // The last line: what's left is Claude exiting.
+                self.done = true;
                 let u = &v["usage"];
                 let n = |k: &str| u[k].as_u64().unwrap_or(0);
                 self.answer.usage = Usage {
@@ -167,7 +172,11 @@ pub async fn ask(
         if let Some(text) = reader.line(line) {
             on_text(text);
         }
-        Ok(())
+        Ok(if reader.done {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        })
     })
     .await?;
     reader.finish(exit)
@@ -193,6 +202,8 @@ mod tests {
             }
         }
         assert_eq!(partials, ["Hello there", "Hello there, friend"]);
+        // The result line ends it, so Mailboat stops waiting there.
+        assert!(r.done);
         let a = r
             .finish(process::Exit {
                 success: true,

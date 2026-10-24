@@ -12,6 +12,7 @@
 //! fast model with no reasoning, faster as the default model
 //! with the same results in testing; writing uses the owner's choice.
 
+use std::ops::ControlFlow;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -153,6 +154,8 @@ pub const LOGIN_ARGS: &[&str] = &["login"];
 pub struct Reader {
     pub answer: Answer,
     error: Option<String>,
+    /// The turn is over; what's left is Codex exiting.
+    pub done: bool,
 }
 
 impl Reader {
@@ -169,6 +172,7 @@ impl Reader {
                 }
             }
             "turn.completed" => {
+                self.done = true;
                 let u = &v["usage"];
                 self.answer.usage = Usage {
                     input_tokens: u["input_tokens"].as_u64().unwrap_or(0),
@@ -227,7 +231,11 @@ async fn run(program: &Path, prompt: &Prompt, chosen: &Choice) -> Result<Answer>
     let mut reader = Reader::default();
     let exit = process::run_lines(program, &args(chosen), &stdin(prompt), |line| {
         reader.line(line);
-        Ok(())
+        Ok(if reader.done {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        })
     })
     .await?;
     reader.finish(exit)
@@ -308,6 +316,7 @@ mod tests {
     fn the_last_message_is_the_answer() {
         let mut r = Reader::default();
         RUN.lines().for_each(|l| r.line(l));
+        assert!(r.done);
         let a = r
             .finish(process::Exit {
                 success: true,
@@ -323,6 +332,8 @@ mod tests {
     fn a_failed_turn_is_an_error() {
         let mut r = Reader::default();
         r.line(r#"{"type":"turn.failed","error":{"message":"401 Unauthorized"}}"#);
+        // Not done: Codex may say more about the failure before it exits.
+        assert!(!r.done);
         let e = r
             .finish(process::Exit {
                 success: false,
