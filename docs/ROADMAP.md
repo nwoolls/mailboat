@@ -1615,6 +1615,14 @@ at a time; each is ticked once the owner has tried it.*
       email *(owner report, 2026-10-21)*. Esc should only close the
       preview; it likely also reaches the list's own Esc handling
       (clear selection), so the list falls back to its first row
+      *Owner clarified (2026-10-24): it's Esc with an email open in the
+      reader, not an image. Esc closed the conversation and cleared the
+      selection, so j/k started again from the first row. Owner chose:
+      close the reader but keep the row. Built, waiting for the owner to
+      try it: after Esc the row stays highlighted, j/k move on from it,
+      and `o` (or Enter) opens it again. Clicking the list's empty area
+      or changing view drops it. Keys like `e` still act only on an open
+      or picked conversation; say if they should act on that row too*
 - [x] A conversation's summary missed its newest reply *(owner report, 2026-10-21)*: a summary still described a thread as waiting on an answer after a one-line reply had arrived. Cause: Apple's small on-device model gave a one-line reply too little weight after a longer email. Fixed: the newest email is headed "Newest message" in what the model reads, and the summary is told to start with where things stand by it, even when it is one line. The list's one-line summaries are told the same. To try: press "Summarize again" (saved summaries stay until then or until a new reply)
 - [ ] The floating composer flashes see-through just after its bounce
       *(owner report, 2026-10-21; likely since the whole-card bounce,

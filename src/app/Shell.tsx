@@ -206,6 +206,12 @@ export function Shell() {
     [threadsQuery.data],
   );
   const [selectedId, setSelectedId] = useState<ThreadId | null>(null);
+  // The row a conversation was closed from with Esc: it stays highlighted,
+  // j/k carry on from it, and Enter or `o` opens it again. Opening any
+  // conversation (or leaving the view) drops it.
+  const [cursorState, setCursorId] = useState<ThreadId | null>(null);
+  if (selectedId !== null && cursorState !== null) setCursorId(null);
+  const cursorId = threads.some((t) => t.id === cursorState) ? cursorState : null;
   // The open conversation as of the last render, for actions to remember
   // what was open when they ran (Undo goes back to it).
   const openNow = useRef<ThreadId | null>(null);
@@ -259,6 +265,7 @@ export function Shell() {
     setChosen(s);
     setSearch("");
     setSelectedId(null);
+    setCursorId(null);
   }, []);
   const { mutate: mutateThreads } = useThreadAction();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
@@ -600,6 +607,7 @@ export function Shell() {
       }
       if (e.key === "Escape" && selectedId !== null) {
         e.preventDefault();
+        setCursorId(selectedId);
         setSelectedId(null);
         return;
       }
@@ -684,16 +692,27 @@ export function Shell() {
         setChecked(toggleChecked(checked, selectedId, selectedId));
         return;
       }
+      if (
+        plain &&
+        (e.key === "o" || (e.key === "Enter" && e.target === document.body)) &&
+        selectedId === null &&
+        cursorId
+      ) {
+        e.preventDefault();
+        setSelectedId(cursorId);
+        return;
+      }
       const nav = navKeyFor(e, isEditable(e.target));
       if (!nav) return;
       e.preventDefault();
-      setSelectedId((current) => moveSelection(threads, current, nav));
+      setSelectedId((current) => moveSelection(threads, current ?? cursorId, nav));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [
     threads,
     selectedId,
+    cursorId,
     checked,
     targets,
     act,
@@ -899,6 +918,7 @@ export function Shell() {
                 accounts={accounts}
                 showAccount={showAccount}
                 selectedId={selectedId}
+                cursorId={cursorId}
                 checked={checked}
                 onSelect={(id, how) => {
                   // ⌘-click picks or unpicks one; ⇧-click picks a range.
@@ -926,6 +946,7 @@ export function Shell() {
                 onClearSelection={() => {
                   setChecked(NONE);
                   setSelectedId(null);
+                  setCursorId(null);
                 }}
                 // The menu is about the clicked row (or all picks, if it's
                 // one); nothing opens, and the reader stays as it is.

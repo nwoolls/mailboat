@@ -40,6 +40,8 @@ type Props = {
   /** Show each row's account marker (views that mix accounts). */
   showAccount: boolean;
   selectedId: ThreadId | null;
+  /** The row a conversation was just closed from (Esc): shaded, not open. */
+  cursorId: ThreadId | null;
   /** Conversations picked with ⌘/⇧-click or `x`. */
   checked: ReadonlySet<ThreadId>;
   /** A click: open it, or with ⌘ toggle it, or with ⇧ pick a range. */
@@ -69,6 +71,7 @@ export function ThreadList({
   accounts,
   showAccount,
   selectedId,
+  cursorId,
   checked,
   onSelect,
   onClearSelection,
@@ -240,7 +243,7 @@ export function ThreadList({
                     ? ""
                     : picked
                       ? "bg-accent/18 ring-1 ring-accent/35 ring-inset"
-                      : selected
+                      : selected || t.id === cursorId
                         ? "bg-selection-strong"
                         : "hover:bg-selection-subtle"
                 } ${
