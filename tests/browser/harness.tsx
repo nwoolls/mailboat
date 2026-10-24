@@ -5,6 +5,9 @@
  *   ?mode=card&spot=bottom-left   a new message in the floating card
  *   ?mode=unread                  a conversation of five emails, the last
  *                                 two unread, in the reader
+ *   &colors=1                     (reader modes) the email's colors can be
+ *                                 switched, and its images were shown
+ *   &colors=2                     the same, with no images
  *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a
  *                                 scrolled reader with mail above it
@@ -69,6 +72,7 @@ const thread = {
   signInCode: null,
 };
 const unreadMode = new URLSearchParams(location.search).get("mode") === "unread";
+const colorsMode = new URLSearchParams(location.search).get("colors");
 const detail = unreadMode
   ? {
       thread: { ...thread, unread: true, messageCount: 5 },
@@ -138,10 +142,10 @@ mockIPC((cmd) => {
         originalColors: false,
         document: `<!doctype html><html><body style="margin:0;font:14px/1.5 sans-serif">${"<p>Can you bring the budget numbers to the quarterly review?</p>".repeat(60)}</body></html>`,
         blockedImages: 0,
-        loadedImages: 0,
+        loadedImages: colorsMode === "1" ? 2 : 0,
         trackersRemoved: 0,
         adaptive: true,
-        recolorable: false,
+        recolorable: colorsMode !== null,
       };
     default:
       return null;

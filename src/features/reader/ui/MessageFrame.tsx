@@ -168,12 +168,30 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
   const m = message.data;
   const notice = imageNotice(m);
   const original = m.originalColors;
+  // For emails the dark-mode remap gets wrong: their own colors on a white
+  // card, or back. In the line above the email, never over it (floating on
+  // the email, it hid the end of the first line: owner, 2026-10-24).
+  const colors = m.recolorable && (
+    <button
+      type="button"
+      disabled={senderColors.isPending}
+      onClick={() => senderColors.mutate({ email: m.senderEmail, original: !original })}
+      title={
+        original
+          ? `Show emails from ${m.senderEmail} on the glass, with colors adjusted for dark mode`
+          : `Always show emails from ${m.senderEmail} on a white card, with their own colors`
+      }
+      className="shrink-0 hover:text-content hover:underline disabled:opacity-50"
+    >
+      {original ? "Adapted colors" : "Original colors"}
+    </button>
+  );
 
   return (
     // Takes the focus back from the frame (see above); never shows a ring.
     <div ref={holderRef} tabIndex={-1} className="outline-none">
       <InviteCard messageId={m.messageId} accountId={m.accountId} />
-      {notice && (
+      {notice ? (
         <div
           // A lighter layer inside the message card, always one line.
           className={`mb-3 flex items-center gap-3 rounded-lg px-3 py-1.5 text-xs ${
@@ -183,44 +201,39 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
           }`}
         >
           <span className="min-w-0 truncate">{notice.text}</span>
-          {notice.action && (
-            <button
-              type="button"
-              title={notice.action.hint}
-              className={`ml-auto shrink-0 disabled:opacity-50 ${
-                notice.quiet ? "hover:text-content hover:underline" : "text-accent hover:underline"
-              }`}
-              disabled={senderImages.isPending}
-              onClick={() =>
-                senderImages.mutate({ email: m.senderEmail, allow: notice.action!.allow })
-              }
-            >
-              {notice.action.label}
-            </button>
-          )}
+          <span className="ml-auto flex shrink-0 items-center gap-3">
+            {notice.action && (
+              <button
+                type="button"
+                title={notice.action.hint}
+                className={`shrink-0 disabled:opacity-50 ${
+                  notice.quiet
+                    ? "hover:text-content hover:underline"
+                    : "text-accent hover:underline"
+                }`}
+                disabled={senderImages.isPending}
+                onClick={() =>
+                  senderImages.mutate({ email: m.senderEmail, allow: notice.action!.allow })
+                }
+              >
+                {notice.action.label}
+              </button>
+            )}
+            {colors && (
+              <span className="text-content/50">
+                {notice.action && <span className="mr-3 text-content/25">·</span>}
+                {colors}
+              </span>
+            )}
+          </span>
         </div>
+      ) : (
+        colors && (
+          // No notice: just the switch, quietly, at the right.
+          <div className="mb-1.5 flex justify-end px-3 text-xs text-content/45">{colors}</div>
+        )
       )}
-      {/* Hovering an email that sits on the glass offers its own colors on
-        the white card, for emails the dark-mode remap gets wrong; once
-        switched, the way back stays in view. */}
-      <div className="group relative">
-        {m.recolorable && (
-          <button
-            type="button"
-            disabled={senderColors.isPending}
-            onClick={() => senderColors.mutate({ email: m.senderEmail, original: !original })}
-            title={
-              original
-                ? `Show emails from ${m.senderEmail} on the glass, with colors adjusted for dark mode`
-                : `Always show emails from ${m.senderEmail} on a white card, with their own colors`
-            }
-            className={`email-colors-switch absolute top-1.5 right-1.5 z-10 rounded-full px-2 py-px text-[11px] text-content/55 transition-opacity duration-150 hover:text-content/90 focus-visible:opacity-100 ${
-              original ? "opacity-60 group-hover:opacity-100" : "opacity-0 group-hover:opacity-100"
-            }`}
-          >
-            {original ? "Adapted colors" : "Original colors"}
-          </button>
-        )}
+      <div>
         <iframe
           ref={frameRef}
           title="Message content"

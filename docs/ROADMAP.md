@@ -1615,6 +1615,13 @@ at a time; each is ticked once the owner has tried it.*
       email, so it covers the first line when that line runs to the edge
       (the end of a long first line hidden under it). Options: the message header
       row (by the time), the "…" menu, or showing it only on hover
+      *Owner (2026-10-24, with a screenshot of it hiding text):
+      "obscuring email text isn't an option", try something. Built,
+      waiting for the owner to try it: it's now in the line above the
+      email, at the right of "Images shown · Block images" when that
+      line shows, otherwise on a quiet line of its own. Always shown (no
+      longer only on hover). A browser test checks it ends above the
+      email in both cases*
 - [ ] Esc while previewing an image moves the selection to the top
       email *(owner report, 2026-10-21)*. Esc should only close the
       preview; it likely also reaches the list's own Esc handling
