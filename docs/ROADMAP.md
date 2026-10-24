@@ -1713,6 +1713,15 @@ at a time; each is ticked once the owner has tried it.*
       browser test clicks Reply and Reply with AI and checks the whole
       reply ends in view (before: its bottom was 1850px below). To try:
       open a long email and click Reply with AI*
+      *Owner tried it (2026-10-24), two problems, both fixed and
+      waiting to be tried again: (1) after Reply with AI, discarding the
+      draft and clicking plain Reply opened the AI chat again. The "open
+      with AI" wish stayed on the conversation until the panel was
+      toggled; the reply that opens with it now uses it up. (2) Only the
+      AI chat scrolled into view, not the reply: together they were
+      taller than the reader, and "nearest" scrolling shows the top. A
+      reply taller than the reader now scrolls so its end (Send) shows.
+      The browser test now also runs with a short reader*
 - [ ] Blank space below the end of an email *(owner report with a
       screenshot, 2026-10-22; frequent, no reliable steps)*: a corporate email
       ended with most of the reader's height empty below it. Likely

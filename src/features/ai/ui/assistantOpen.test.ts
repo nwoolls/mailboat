@@ -28,4 +28,15 @@ describe("assistant open state", () => {
     // Used up: the reply after this one starts closed.
     expect(assistantOpen({ id: 104, kind: "reply", threadId: 7 })).toBe(false);
   });
+
+  it("doesn't carry over to the next reply when the first is discarded", () => {
+    openAssistantForNextReply(9);
+    const reply = { id: 105, kind: "reply" as const, threadId: 9 };
+    expect(assistantOpen(reply)).toBe(true);
+    // Asked again while it's open (each render): still open.
+    expect(assistantOpen(reply)).toBe(true);
+    // Discarded (`forgetChat` doesn't know the conversation).
+    forgetAssistant({ id: 105, threadId: null });
+    expect(assistantOpen({ id: 106, kind: "reply", threadId: 9 })).toBe(false);
+  });
 });

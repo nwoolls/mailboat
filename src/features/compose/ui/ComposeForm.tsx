@@ -122,12 +122,20 @@ export function ComposeForm({
       editor.commands.focus(entry.focusKey === 0 ? "start" : undefined);
     const whole = formRef.current?.closest("section") ?? formRef.current;
     if (!whole) return;
-    const show = () => whole.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    // Taller than the reader (the AI chat above it, say), its end shows:
+    // "nearest" showed its top, the chat, with the reply out of sight.
+    const scroller = whole.closest(".reader-scroll");
+    const show = () => {
+      const taller =
+        scroller !== null &&
+        whole.getBoundingClientRect().height > scroller.getBoundingClientRect().height;
+      whole.scrollIntoView({ block: taller ? "end" : "nearest", behavior: "smooth" });
+    };
     show();
     const growing = new ResizeObserver(show);
     growing.observe(whole);
     // Inline, the reader's content too: whatever grows above moves it.
-    const content = whole.closest(".reader-scroll")?.firstElementChild;
+    const content = scroller?.firstElementChild;
     if (content) growing.observe(content);
     const settled = window.setTimeout(() => growing.disconnect(), 1500);
     return () => {

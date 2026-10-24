@@ -18,10 +18,19 @@ function changed() {
   for (const s of subscribers) s();
 }
 
+/**
+ * Whether a message's assistant is open. The first reply to ask after
+ * "Reply with AI" takes the wish for itself, so it doesn't outlive that
+ * reply: discarded, the next plain Reply opened with the chat (owner
+ * report, 2026-10-24). Nothing else's answer changes, so no one is told.
+ */
 export function assistantOpen(draft: Pick<Draft, "id" | "kind" | "threadId">): boolean {
   const chosen = open.get(draft.id);
   if (chosen !== undefined) return chosen;
-  return draft.kind !== "new" && draft.threadId !== null && wanted.has(draft.threadId);
+  if (draft.kind === "new" || draft.threadId === null || !wanted.has(draft.threadId)) return false;
+  wanted.delete(draft.threadId);
+  open.set(draft.id, true);
+  return true;
 }
 
 export function setAssistantOpen(draft: Pick<Draft, "id" | "threadId">, value: boolean) {
