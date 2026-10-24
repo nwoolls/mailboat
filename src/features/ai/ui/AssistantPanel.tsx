@@ -206,15 +206,22 @@ export function AssistantPanel({
                 ? "Say what the email should say. You can refine it after."
                 : "Say how to reply. It reads the conversation; refine the draft after."}
             </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
+            <div
+              // Ideas written from the email usually take two rows, and
+              // arrive a few seconds after the reply has scrolled into
+              // view: the space is kept for two rows from the start, so
+              // they don't push the reply down (owner, 2026-10-24).
+              className={`mt-2 flex flex-wrap content-start gap-1.5 ${ideasFor === null ? "" : "min-h-[3.375rem]"}`}
+            >
               {chips === null &&
-                // Being written from the email: faint stand-ins meanwhile.
-                [56, 88, 72].map((w) => (
+                // Being written from the email: faint stand-ins meanwhile,
+                // as shares of the width so they always fill two rows.
+                ["55%", "35%", "45%"].map((w) => (
                   <span
                     key={w}
                     aria-hidden
                     className="h-6 animate-pulse rounded-full bg-selection"
-                    style={{ width: w }}
+                    style={{ width: `calc(${w} - 0.375rem)` }}
                   />
                 ))}
               {chips?.map((s) => (

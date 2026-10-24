@@ -100,7 +100,8 @@ mockIPC((cmd) => {
     case "ai_status":
       return [{ provider: "apple", state: "ready", account: null }];
     case "ai_reply_ideas":
-      return ["Say yes", "Ask for details"];
+      // A moment later, as from a model, so the stand-ins show first.
+      return new Promise((done) => setTimeout(() => done(["Say yes", "Ask for details"]), 800));
     case "thread_get":
       return detail;
     case "reply_source":

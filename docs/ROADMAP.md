@@ -1737,6 +1737,13 @@ at a time; each is ticked once the owner has tried it.*
       taller than the reader, and "nearest" scrolling shows the top. A
       reply taller than the reader now scrolls so its end (Send) shows.
       The browser test now also runs with a short reader*
+      *Owner (2026-10-24): now in view, but the reply ideas arrive a few
+      seconds later, usually in two rows, while their stand-ins took
+      one, so the reply was pushed down. Built, waiting to be tried: the
+      stand-ins are sized as shares of the width so they always take two
+      rows, and the ideas' space stays two rows tall, so one or two rows
+      of ideas don't move anything (three still would). A browser test
+      checks it at two widths*
 - [ ] Blank space below the end of an email *(owner report with a
       screenshot, 2026-10-22; frequent, no reliable steps)*: a corporate email
       ended with most of the reader's height empty below it. Likely
