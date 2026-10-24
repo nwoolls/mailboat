@@ -1724,10 +1724,13 @@ it starts. Each says how it was found and whether it has been seen for
 real. Connect from a signed-out CLI is only to watch: it ticks once
 seen working.*
 
-*Under way (2026-10-24, owner: "start the bug fix spike"). Built one item
-at a time; each is ticked once the owner has tried it.*
+**Closed (owner, 2026-10-24: "All of those look good to me, I'll
+re-open if / when needed").** Every item approved by the owner, the
+open choices kept as built: no keyboard focus on the first unread email,
+the summary sparkle in the icon column, the bigger envelope flock. The
+flaky n / p browser test, found later, moved to the Bug backlog.*
 
-- [ ] Menus grow as wide as their longest item *(owner report with a
+- [x] Menus grow as wide as their longest item *(owner report with a
       screenshot, 2026-10-21)*: "Block <address>" in the list's context
       menu stretched the menu across most of the window for a very long
       sender address. Cap the menu's width and cut long items off with
@@ -1736,7 +1739,7 @@ at a time; each is ticked once the owner has tried it.*
       is now at most 320px wide; a longer item ends in "…" and shows
       in full on hover. A browser test checks it (the old menu measured
       933px). To try: right-click a conversation from a long address*
-- [ ] Moving with j/k doesn't preview when no preview shows *(owner
+- [x] Moving with j/k doesn't preview when no preview shows *(owner
       request, 2026-10-24, building on the Esc item)*. Without a preview,
       j/k and the arrows only move the selection; Enter or `o` previews,
       a click still previews, Esc hides the preview. The buttons and
@@ -1745,7 +1748,7 @@ at a time; each is ticked once the owner has tried it.*
       With a preview showing, j/k preview the next one as before
       *Built (2026-10-24), waiting for the owner to try it. Also covers
       the reader hidden with its toolbar button: j/k then just select*
-- [ ] More conventional keyboard reading *(owner, 2026-10-24, from a
+- [x] More conventional keyboard reading *(owner, 2026-10-24, from a
       list of suggestions)*: Space / ⇧Space scroll the open conversation
       a screenful; n / p go to the next or previous email in it (to the
       top of the reader, opened if folded); ⇧↓ / ⇧↑ pick a range from the
@@ -1773,12 +1776,7 @@ at a time; each is ticked once the owner has tried it.*
       runs once the palette has closed, which helps any action that moves
       focus. A browser test checks Search mail by Return and by click (both
       failed before). Owner confirmed it works (2026-10-24)*
-- [ ] The browser test for n / p (`reader-keys.spec.ts`) fails about
-      one run in ten *(found 2026-10-24 while checking search history)*:
-      after `n`, the reader sometimes rests on the email before the one
-      asked for. Either the test reads too early or `n` can land short in
-      the app too; to look into
-- [ ] Rethink where the "Original colors" button sits *(owner report with
+- [x] Rethink where the "Original colors" button sits *(owner report with
       a screenshot, 2026-10-21)*: it floats over the top right of the
       email, so it covers the first line when that line runs to the edge
       (the end of a long first line hidden under it). Options: the message header
@@ -1790,7 +1788,7 @@ at a time; each is ticked once the owner has tried it.*
       line shows, otherwise on a quiet line of its own. Always shown (no
       longer only on hover). A browser test checks it ends above the
       email in both cases*
-- [ ] Esc while previewing an image moves the selection to the top
+- [x] Esc while previewing an image moves the selection to the top
       email *(owner report, 2026-10-21)*. Esc should only close the
       preview; it likely also reaches the list's own Esc handling
       (clear selection), so the list falls back to its first row
@@ -1804,7 +1802,7 @@ at a time; each is ticked once the owner has tried it.*
       or picked conversation; say if they should act on that row too*
       *Owner (2026-10-24): yes, they should; see the next item*
 - [x] A conversation's summary missed its newest reply *(owner report, 2026-10-21)*: a summary still described a thread as waiting on an answer after a one-line reply had arrived. Cause: Apple's small on-device model gave a one-line reply too little weight after a longer email. Fixed: the newest email is headed "Newest message" in what the model reads, and the summary is told to start with where things stand by it, even when it is one line. The list's one-line summaries are told the same. To try: press "Summarize again" (saved summaries stay until then or until a new reply)
-- [ ] The floating composer flashes see-through just after its bounce
+- [x] The floating composer flashes see-through just after its bounce
       *(owner report, 2026-10-21; likely since the whole-card bounce,
       commits 25c03a7 / 3429692)*: opening or closing the AI panel, right
       after the bounce settles, the content behind the window shows
@@ -1832,7 +1830,7 @@ at a time; each is ticked once the owner has tried it.*
       animation list, so it isn't restarted; the layer change was undone.
       A browser test samples the card's opacity every frame across two
       toggles (it reached 0 before the fix)*
-- [ ] The envelope flock screensaver looks jumpy and low-res *(owner
+- [x] The envelope flock screensaver looks jumpy and low-res *(owner
       report, 2026-10-21)*; experiment with larger envelopes. Why it
       looks that way: every screensaver draws on a grid of 3px cells
       (`SCENE_CELL_PX`) and an envelope is a 7×5-cell sprite
@@ -1851,7 +1849,7 @@ at a time; each is ticked once the owner has tried it.*
       keeps its own steady beat (3 a second). To try: open an empty view
       (an empty label, say), press ⌘K and start "Envelope flock". Bigger
       still, slower, fewer, or back?*
-- [ ] Many attachments squeeze the composer's writing area *(owner
+- [x] Many attachments squeeze the composer's writing area *(owner
       report, 2026-10-22)*: each attachment chip takes a row, so with
       enough of them the editable area shrinks to almost nothing. Give
       the editor a reasonable minimum height, and lay the attachments
@@ -1863,7 +1861,7 @@ at a time; each is ticked once the owner has tried it.*
       seven lines. A browser test attaches 30 files and checks both (the
       old chips took 1022px). To try: attach a dozen or more files to a
       new message*
-- [ ] An open conversation stayed unread *(owner report with a
+- [x] An open conversation stayed unread *(owner report with a
       screenshot, 2026-10-22)*: a thread showing in the reader, newest reply expanded, still unread after
       several seconds until marked read by hand. Likely cause, from the
       code: the reader decides whether to mark read once, when the
@@ -1879,7 +1877,7 @@ at a time; each is ticked once the owner has tried it.*
       Viewing). Pressing `u` still sticks, since it brings no new email.
       To try: leave a conversation open, reply to it from another
       account or your phone, and wait for it to arrive*
-- [ ] Reply with AI doesn't scroll the reply into view *(owner report
+- [x] Reply with AI doesn't scroll the reply into view *(owner report
       with a screenshot, 2026-10-22)*: the reader stopped partway down the
       last email, with the reply form (and the AI chat) still below. May
       share a cause with the next item: it scrolls to where the end was
@@ -1913,7 +1911,7 @@ at a time; each is ticked once the owner has tried it.*
       rows, and the ideas' space stays two rows tall, so one or two rows
       of ideas don't move anything (three still would). A browser test
       checks it at two widths*
-- [ ] Blank space below the end of an email *(owner report with a
+- [x] Blank space below the end of an email *(owner report with a
       screenshot, 2026-10-22; frequent, no reliable steps)*: a corporate email
       ended with most of the reader's height empty below it. Likely
       cause, from the code: each email's frame is sized from
@@ -1934,7 +1932,7 @@ at a time; each is ticked once the owner has tried it.*
       3374px against 2115px before. To try: open a long email, dock the
       sidebar or open the AI panel and close it again, or resize the
       window; no blank space should be left under the email*
-- [ ] Opening a conversation should land on the first unread email
+- [x] Opening a conversation should land on the first unread email
       *(owner request, 2026-10-22, filed as a bug)*: read emails
       collapsed, unread ones expanded, and the reader scrolled so the
       first unread one is at the top (focused for the keyboard). Today
@@ -1955,7 +1953,7 @@ at a time; each is ticked once the owner has tried it.*
       A browser test opens five emails, the last two unread (without the
       fix the card sat 213px down). To try: open a conversation with an
       unread reply after a few read emails*
-- [ ] Try the AI summary's sparkle icon in the list's left gutter
+- [x] Try the AI summary's sparkle icon in the list's left gutter
       *(owner request with a screenshot, 2026-10-23: "looks a bit off";
       worth a try)*: on a row's third line the sparkle sits just before
       the summary text, indented with it, while the unread dot,
@@ -1967,7 +1965,7 @@ at a time; each is ticked once the owner has tried it.*
       under it), on the third line; the summary text hasn't moved. The
       other option is the outer gutter, under the unread dot and
       paperclip. Keep, move to the outer gutter, or go back?*
-- [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
+- [x] Connect a signed-out Claude Code or Codex from Settings → AI *(from
       the AI Spike when it closed, 2026-10-21; never tried for real: both
       were already signed in on the owner's Mac)*. Connect runs `claude
       auth login` / `codex login`, which should open the browser, and
@@ -2036,9 +2034,15 @@ it will ever be distributed (2026-10-19), so this comes last.*
 
 *Bugs found in passing (started 2026-10-19 at the owner's request).
 Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
-(2026-10-21); new bugs go to Bug Spike 2 while it is open. What stays
-here is done.*
+(2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
+again until the next spike.*
 
+- [ ] The browser test for n / p (`reader-keys.spec.ts`) fails about
+      one run in ten *(found 2026-10-24 while checking search history; moved from Bug
+      Spike 2 when it closed)*:
+      after `n`, the reader sometimes rests on the email before the one
+      asked for. Either the test reads too early or `n` can land short in
+      the app too; to look into
 - [x] Emails mangled in dark mode *(owner report with screenshots,
       2026-10-20: a news site, a notice, a bank)*. Rendered outside the app
       (`examples/render_email`, headless Chrome in dark mode) to find
