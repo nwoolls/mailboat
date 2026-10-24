@@ -12,8 +12,8 @@ use super::batch;
 use super::pacer::{cost, QuotaPacer};
 use super::types::{
     AttachmentBody, DraftList, DraftRef, ErrorEnvelope, Filter, FilterList, HistoryList, LabelList,
-    Message, MessageList, MessageRef, PeoplePage, Profile, SendAs, SendAsList, Thread, ThreadList,
-    Vacation,
+    Message, MessageList, MessageRef, PeoplePage, Profile, RawMessage, SendAs, SendAsList, Thread,
+    ThreadList, Vacation,
 };
 use crate::error::{CoreError, Result};
 
@@ -316,6 +316,19 @@ impl GmailClient {
             cost::MESSAGES_GET,
         )
         .await
+    }
+
+    /// `messages.get` with `format=raw`: the email exactly as it arrived.
+    pub async fn message_raw(&self, id: &str) -> Result<Vec<u8>> {
+        let message: RawMessage = self
+            .get_json(
+                &self.url(&format!("messages/{id}")),
+                &[("format", "raw")],
+                cost::MESSAGES_GET,
+            )
+            .await?;
+        super::parse::decode_base64url(&message.raw)
+            .ok_or_else(|| CoreError::Other("the original email was not valid base64".into()))
     }
 
     /// `messages.get` with `format=metadata`: one message's headers.

@@ -7,6 +7,7 @@ import { ThreadReader } from "../../src/features/reader/ui/ThreadReader";
 import { pageReader, stepEmail } from "../../src/features/reader/ui/readerKeys";
 import { Menu, MenuItem } from "../../src/shared/ui/Menu";
 import { ShortcutsHelp } from "../../src/features/mailbox/ui/ShortcutsHelp";
+import { ShowOriginalDialog } from "../../src/features/reader/ui/ShowOriginalDialog";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import {
   setCardSpot,
@@ -50,6 +51,8 @@ export function Harness({
   }, [mode]);
 
   if (mode === "shortcuts") return <ShortcutsHelp onClose={() => {}} />;
+  if (mode === "original")
+    return <ShowOriginalDialog threadId={detail.thread.id} onClose={() => {}} />;
   // A menu with one very long item (Bug Spike 2: it stretched the menu).
   if (mode === "menu")
     return (

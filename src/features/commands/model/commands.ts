@@ -32,7 +32,8 @@ export type ConversationCommandId =
   | ToggleKind
   | "labels"
   | "filterLike"
-  | "block";
+  | "block"
+  | "original";
 
 export type AppCommandId =
   | "new"
@@ -102,6 +103,9 @@ export function conversationCommands(
       title: o.blockEmail ? `Block ${o.blockEmail}…` : "Block sender…",
       enabled: some && o.blockEmail !== null,
     },
+    // Mail's View → Message → Raw Source key. Only looks, so it works
+    // while typing too.
+    { id: "original", title: "Show original", accel: "Alt+Cmd+U", enabled: rows.length === 1 },
   );
   return commands;
 }
@@ -188,6 +192,8 @@ export const MENU_BAR: MenuSpec[] = [
       "-",
       "filterLike",
       "block",
+      "-",
+      "original",
     ],
   },
 ];

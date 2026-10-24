@@ -12,6 +12,8 @@
  *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a
  *                                 scrolled reader with mail above it
+ *   ?mode=original                Show original for a conversation of
+ *                                 five emails, each with a long source
  */
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -72,7 +74,8 @@ const thread = {
   inSpam: false,
   signInCode: null,
 };
-const unreadMode = new URLSearchParams(location.search).get("mode") === "unread";
+const harnessMode = new URLSearchParams(location.search).get("mode");
+const unreadMode = harnessMode === "unread" || harnessMode === "original";
 const colorsMode = new URLSearchParams(location.search).get("colors");
 const detail = unreadMode
   ? {
@@ -88,7 +91,7 @@ const detail = unreadMode
     }
   : { thread, messages: [message], labels: [] };
 
-mockIPC((cmd) => {
+mockIPC((cmd, args) => {
   switch (cmd) {
     case "identities_list":
       return [identity];
@@ -132,6 +135,25 @@ mockIPC((cmd) => {
       };
     case "draft_save":
       return 1;
+    case "message_original": {
+      // Which email was asked for shows in its subject.
+      const id = (args as { messageId: number }).messageId;
+      return {
+        messageId: `<m${id}@example.com>`,
+        date: message.internalDate,
+        from: "Sam <sam@example.com>",
+        to: "me@example.com",
+        cc: null,
+        subject: `Email ${id}`,
+        checks: [
+          { method: "SPF", result: "pass", detail: "example.com" },
+          { method: "DMARC", result: "fail", detail: "example.com" },
+        ],
+        source: `Subject: Email ${id}\r\n\r\n${"A long line of the email's source. ".repeat(4000)}`,
+        truncated: false,
+        size: 140_000,
+      };
+    }
     case "message_open":
       // A long plain email, so the reader scrolls as with real mail.
       return {

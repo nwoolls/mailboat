@@ -117,6 +117,13 @@ export const commands = {
 	emailLinkCopy: (link: string) => typedError<null, AppError>(__TAURI_INVOKE("email_link_copy", { link })),
 	/**  Shows a file saved to Downloads (by `email_image_save`) in Finder. */
 	downloadReveal: (fileName: string) => typedError<null, AppError>(__TAURI_INVOKE("download_reveal", { fileName })),
+	/**  An email's original: its source and a summary of its headers. */
+	messageOriginal: (messageId: MessageId) => typedError<Original, AppError>(__TAURI_INVOKE("message_original", { messageId })),
+	/**
+	 *  Saves an email's original to Downloads as an `.eml` file named after
+	 *  its subject, and returns the file name it got.
+	 */
+	messageOriginalSave: (messageId: MessageId) => typedError<string, AppError>(__TAURI_INVOKE("message_original_save", { messageId })),
 	/**
 	 *  Every address mail can be sent from: each account and its Gmail "Send
 	 *  mail as" aliases (read by sync; `IdentitiesChangedEvent` says when).
@@ -529,6 +536,19 @@ export type Attachment = {
 
 export type AttachmentId = number;
 
+/**  One of the checks Gmail ran on the email as it arrived. */
+export type AuthCheck = {
+	/**  "SPF", "DKIM" or "DMARC". */
+	method: string,
+	/**  As Gmail wrote it: "pass", "fail", "softfail", "neutral", "none"… */
+	result: string,
+	/**
+	 *  What it vouches for: the domain signed for, the sending server's
+	 *  domain, or the From domain.
+	 */
+	detail: string | null,
+};
+
 /**  What Calendar says about the invitation. */
 export type CalendarState = 
 /**  The account signed in before Mailboat asked for Calendar. */
@@ -927,6 +947,23 @@ export type OpenedMessage = {
 	 */
 	originalColors: boolean,
 } & SafeMessage;
+
+export type Original = {
+	messageId: string | null,
+	/**  When it was written (its Date header), in ms since 1970. */
+	date: number | null,
+	from: string | null,
+	to: string | null,
+	cc: string | null,
+	subject: string | null,
+	checks: AuthCheck[],
+	/**  The raw message, as text, cut off at `SHOWN_BYTES`. */
+	source: string,
+	/**  Whether `source` stops short of the whole message. */
+	truncated: boolean,
+	/**  The whole message's size in bytes. */
+	size: number,
+};
 
 /**  A file attached to a message being sent. */
 export type OutgoingAttachment = {

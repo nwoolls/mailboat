@@ -1439,6 +1439,17 @@ each is ticked once the owner has tried it.*
 - [ ] Advanced section: clear the cache, reset, the sync log (in the
       Settings plan)
 - [ ] Show original (the raw message and its headers)
+      *Built (2026-10-24), waiting for the owner to try it: Message → Show
+      original (⌥⌘U, Mail's Raw Source key), also in ⌘K, the right-click
+      menu and the toolbar's More menu. A dialog shows the newest email
+      of the conversation (any other can be picked) as Gmail's page does:
+      Message ID, when it was written, From, To, Subject, and the SPF,
+      DKIM and DMARC results Gmail recorded (anything but a pass in red),
+      then the source itself. Copy puts the source on the clipboard;
+      Download saves it to Downloads as "<subject>.eml". At most 1 MB of
+      source shows (big attachments); the download is always whole. A
+      browser test checks the dialog stays in the window with a long
+      source scrolling inside it*
 - [ ] Mute a conversation *(owner request, 2026-10-21)*: later replies
       skip the Inbox and don't notify, as Gmail's Mute does
 - [ ] Clicking a new-mail notification selects that email and shows it

@@ -7,6 +7,7 @@ pub mod invite;
 pub mod links;
 pub mod mailto;
 pub mod notify;
+pub mod original;
 pub mod prefetch;
 pub mod sanitize;
 pub mod saved_image;

@@ -69,6 +69,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::email_link_open,
             commands::email_link_copy,
             commands::download_reveal,
+            commands::message_original,
+            commands::message_original_save,
             commands::identities_list,
             commands::contacts_list,
             commands::reply_source,

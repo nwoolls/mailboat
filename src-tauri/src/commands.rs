@@ -684,6 +684,51 @@ pub async fn email_image_save(state: State<'_, AppState>, src: String) -> CmdRes
         .unwrap_or(image.filename))
 }
 
+/// The raw email as it arrived ("Show original"), fetched with its
+/// account's credentials. Never cached or logged.
+async fn raw_message(state: &AppState, message_id: MessageId) -> CmdResult<Vec<u8>> {
+    let (account, gmail_id) = store::message_gmail_ref(&state.db.conn(), message_id)?;
+    let gmail = state.gmail_for(account)?.interactive();
+    Ok(gmail.message_raw(&gmail_id).await?)
+}
+
+/// An email's original: its source and a summary of its headers.
+#[tauri::command]
+#[specta::specta]
+pub async fn message_original(
+    state: State<'_, AppState>,
+    message_id: MessageId,
+) -> CmdResult<mail::original::Original> {
+    Ok(mail::original::read(
+        &raw_message(&state, message_id).await?,
+    ))
+}
+
+/// Saves an email's original to Downloads as an `.eml` file named after
+/// its subject, and returns the file name it got.
+#[tauri::command]
+#[specta::specta]
+pub async fn message_original_save(
+    state: State<'_, AppState>,
+    message_id: MessageId,
+) -> CmdResult<String> {
+    let downloads = state
+        .downloads_dir
+        .clone()
+        .ok_or_else(|| CoreError::Config("couldn't find the Downloads folder".into()))?;
+    let raw = raw_message(&state, message_id).await?;
+    let subject = mail::original::read(&raw).subject;
+    let filename = attachments::safe_filename(&mail::original::file_name(subject.as_deref()));
+    let target = attachments::unique_path(&downloads, &filename);
+    std::fs::write(&target, &raw)
+        .map_err(|e| CoreError::Other(format!("could not save to Downloads: {e}")))?;
+    files::quarantine(&target);
+    Ok(target
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or(filename))
+}
+
 /// Shows a file saved to Downloads (by `email_image_save`) in Finder.
 #[tauri::command]
 #[specta::specta]

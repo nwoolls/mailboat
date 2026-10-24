@@ -125,6 +125,14 @@ pub struct MessageList {
     pub next_page_token: Option<String>,
 }
 
+/// `messages.get` with `format=raw`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct RawMessage {
+    /// base64url-encoded RFC 5322 message.
+    #[serde(default)]
+    pub raw: String,
+}
+
 /// `messages.attachments.get` response.
 #[derive(Debug, Clone, Deserialize)]
 pub struct AttachmentBody {

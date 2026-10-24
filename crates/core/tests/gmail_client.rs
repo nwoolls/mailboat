@@ -241,3 +241,21 @@ fn extracts_bodies_and_attachments_from_full_message() {
     assert!(body.text.as_deref().unwrap().starts_with("Hi there,"));
     assert!(parse::message_to_incoming(&msg).has_attachments);
 }
+
+#[tokio::test]
+async fn reads_a_message_as_it_arrived() {
+    let server = MockServer::start().await;
+    let raw = "Subject: Hi\r\nFrom: a@x.com\r\n\r\nHello\r\n";
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m1"))
+        .and(query_param("format", "raw"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "m1",
+            "raw": parse::encode_base64url(raw.as_bytes()),
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let (gmail, _) = client(&server.uri());
+    assert_eq!(gmail.message_raw("m1").await.unwrap(), raw.as_bytes());
+}

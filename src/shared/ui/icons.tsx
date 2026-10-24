@@ -1,5 +1,6 @@
 import { HugeiconsIcon, type HugeiconsIconProps, type IconSvgElement } from "@hugeicons/react";
 import Add01 from "@hugeicons/core-free-icons/Add01Icon";
+import SourceCode from "@hugeicons/core-free-icons/SourceCodeIcon";
 import AlertCircle from "@hugeicons/core-free-icons/AlertCircleIcon";
 import Archive02 from "@hugeicons/core-free-icons/Archive02Icon";
 import BookOpen01 from "@hugeicons/core-free-icons/BookOpen01Icon";
@@ -142,6 +143,8 @@ export const VacationIcon = wrap(Beach);
 export const ViewingIcon = wrap(BookOpen01);
 export const ComposingIcon = wrap(PencilEdit02);
 export const BlockIcon = wrap(UserBlock01);
+/** Show original: the email's raw source. */
+export const SourceIcon = wrap(SourceCode);
 export const CheckIcon = wrap(Tick02);
 export const CalendarIcon = wrap(Calendar03);
 /** AI: summaries and writing help. */

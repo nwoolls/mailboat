@@ -37,6 +37,7 @@ export const keys = {
   threads: (s: Selection) => ["threads", selectionKey(s), s.view] as const,
   thread: (id: ThreadId) => ["thread", id] as const,
   message: (id: MessageId) => ["message", id] as const,
+  original: (id: MessageId) => ["original", id] as const,
   identities: ["identities"] as const,
   contacts: ["contacts"] as const,
   appInfo: ["appInfo"] as const,
@@ -135,6 +136,20 @@ export function useOpenedMessage(id: MessageId) {
     enabled: IS_TAURI,
     staleTime: Infinity,
     placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * An email as it arrived ("Show original"). Not kept once the dialog
+ * closes: it can be megabytes, and is only looked at now and then.
+ */
+export function useOriginal(id: MessageId | null) {
+  return useQuery({
+    queryKey: keys.original(id ?? -1),
+    queryFn: () => unwrap(commands.messageOriginal(id!)),
+    enabled: IS_TAURI && id !== null,
+    staleTime: Infinity,
+    gcTime: 0,
   });
 }
 

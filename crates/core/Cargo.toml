@@ -33,6 +33,7 @@ mail-builder = { version = "1", default-features = false }
 icalendar = { version = "0.17", default-features = false, features = ["parser"] }
 chrono-tz = "0.10"
 chrono = "0.4"
+mail-parser = "1.0.0"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

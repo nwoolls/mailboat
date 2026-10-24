@@ -91,6 +91,7 @@ import {
 import { criteriaLikeThreads, senderToBlock } from "../features/rules/model/likeThis";
 import { BlockSenderDialog } from "../features/rules/ui/BlockSenderDialog";
 import { RuleEditor, type RuleEditorTarget } from "../features/rules/ui/RuleEditor";
+import { ShowOriginalDialog } from "../features/reader/ui/ShowOriginalDialog";
 import { VacationBanner } from "../features/vacation/ui/VacationBanner";
 import type { SettingsSectionId } from "../features/settings/model/sections";
 import { SettingsNav } from "../features/settings/ui/SettingsNav";
@@ -262,6 +263,7 @@ export function Shell() {
   const [moreAnchor, setMoreAnchor] = useState<MenuAnchor | null>(null);
   // A rule being made from mail ("Filter messages like these").
   const [ruleEditor, setRuleEditor] = useState<RuleEditorTarget | null>(null);
+  const [originalFor, setOriginalFor] = useState<ThreadId | null>(null);
   // A sender about to be blocked (a rule sending their mail to the Trash).
   const [blocking, setBlocking] = useState<{ accountId: AccountId; email: string } | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -535,6 +537,9 @@ export function Shell() {
           });
         return;
       }
+      case "original":
+        setOriginalFor(ids[0] ?? null);
+        return;
       case "block": {
         const who = senderToBlock(rows, selfEmailsOf);
         if (who) setBlocking(who);
@@ -1167,7 +1172,10 @@ export function Shell() {
             // before the rules (where Gmail and Mail draw one too).
             if ((c.id === "reply" || c.id === "replyAll" || c.id === "forward") && !c.enabled)
               return null;
-            const line = (c.id === "archive" && list[0]?.enabled) || c.id === "filterLike";
+            const line =
+              (c.id === "archive" && list[0]?.enabled) ||
+              c.id === "filterLike" ||
+              c.id === "original";
             return (
               <Fragment key={c.id}>
                 {line && <MenuSeparator />}
@@ -1191,7 +1199,7 @@ export function Shell() {
       {moreAnchor && targets.length > 0 && (
         <Menu anchor={moreAnchor} onClose={() => setMoreAnchor(null)} label="More">
           {conversationList
-            .filter((c) => c.id === "filterLike" || c.id === "block")
+            .filter((c) => c.id === "filterLike" || c.id === "block" || c.id === "original")
             .map((c) => (
               <MenuItem
                 key={c.id}
@@ -1213,6 +1221,9 @@ export function Shell() {
           email={blocking.email}
           onClose={() => setBlocking(null)}
         />
+      )}
+      {originalFor !== null && (
+        <ShowOriginalDialog threadId={originalFor} onClose={() => setOriginalFor(null)} />
       )}
       {ruleEditor && (
         <RuleEditor
