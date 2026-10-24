@@ -586,13 +586,6 @@ html.resizing .panel-slide {
   /* "backwards", not "both": a transform kept after the animation would
      make the card the frame for anything fixed-positioned inside it. */
   animation: toast-in 180ms var(--motion-ease-out) backwards;
-  /* Its own compositing layer all the time, not only while it bounces
-     (`.nudge-*`): when a bounce ended, WebKit rebuilt the layer and drew
-     a frame without the backdrop blur, so the card flashed see-through.
-     This also makes the card the frame for fixed-positioned content, but
-     everything that floats from it (menus, address suggestions) is a
-     popover in the top layer, which that doesn't affect. */
-  will-change: translate;
 }
 @media (prefers-reduced-motion: reduce) {
   .compose-card {
@@ -612,7 +605,10 @@ html.resizing .panel-slide {
 /* The writing assistant opening or closing: the edge and width ease into
    place (no spring, so the form stays put) while the whole card nudges
    the way it's growing or shrinking and settles, the same bounce on
-   either side of the form. Two copies of each so a new toggle restarts it. */
+   either side of the form. Two copies of each so a new toggle restarts it.
+   Each keeps the card's opening fade (toast-in) in its list: replacing
+   it, the fade played again when the bounce ended and its class went,
+   from fully see-through, a flash. Still listed, it isn't restarted. */
 .compose-snap.assistant-moving {
   transition:
     left 300ms var(--motion-ease-out),
@@ -620,16 +616,24 @@ html.resizing .panel-slide {
     width 300ms var(--motion-ease-out);
 }
 .nudge-left-0 {
-  animation: nudge-left-0 420ms var(--motion-ease-out);
+  animation:
+    toast-in 180ms var(--motion-ease-out) backwards,
+    nudge-left-0 420ms var(--motion-ease-out);
 }
 .nudge-left-1 {
-  animation: nudge-left-1 420ms var(--motion-ease-out);
+  animation:
+    toast-in 180ms var(--motion-ease-out) backwards,
+    nudge-left-1 420ms var(--motion-ease-out);
 }
 .nudge-right-0 {
-  animation: nudge-right-0 420ms var(--motion-ease-out);
+  animation:
+    toast-in 180ms var(--motion-ease-out) backwards,
+    nudge-right-0 420ms var(--motion-ease-out);
 }
 .nudge-right-1 {
-  animation: nudge-right-1 420ms var(--motion-ease-out);
+  animation:
+    toast-in 180ms var(--motion-ease-out) backwards,
+    nudge-right-1 420ms var(--motion-ease-out);
 }
 @keyframes nudge-left-0 {
   40% {

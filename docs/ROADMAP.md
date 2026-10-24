@@ -1648,6 +1648,14 @@ at a time; each is ticked once the owner has tried it.*
       isn't affected. To try: open a new message and toggle the AI panel
       (⌘J) several times, watching just after each bounce settles. If it
       still flashes, the next try is bouncing an inner element*
+      *Owner (2026-10-24): still flashes. Real cause found and fixed,
+      waiting to be tried again: the bounce's animation took the place of
+      the card's opening fade (`toast-in`, from opacity 0), so when the
+      bounce ended the fade played again: the card went fully see-through
+      and faded back in over 180ms. Each bounce now keeps the fade in its
+      animation list, so it isn't restarted; the layer change was undone.
+      A browser test samples the card's opacity every frame across two
+      toggles (it reached 0 before the fix)*
 - [ ] The envelope flock screensaver looks jumpy and low-res *(owner
       report, 2026-10-21)*; experiment with larger envelopes. Why it
       looks that way: every screensaver draws on a grid of 3px cells
