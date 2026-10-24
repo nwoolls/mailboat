@@ -9,6 +9,7 @@ import { Menu, MenuItem } from "../../src/shared/ui/Menu";
 import { ShortcutsHelp } from "../../src/features/mailbox/ui/ShortcutsHelp";
 import { ShowOriginalDialog } from "../../src/features/reader/ui/ShowOriginalDialog";
 import { ThreadList } from "../../src/features/mailbox/ui/ThreadList";
+import { EmptyState } from "../../src/features/mailbox/ui/EmptyState";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import {
   setCardSpot,
@@ -52,6 +53,25 @@ export function Harness({
   }, [mode]);
 
   if (mode === "shortcuts") return <ShortcutsHelp onClose={() => {}} />;
+  // The list card: a title row, then the empty view under it.
+  if (mode === "empty")
+    return (
+      <div
+        className="panel"
+        style={{
+          position: "relative",
+          height: 600,
+          width: 480,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <button type="button" style={{ height: 40 }}>
+          Inbox
+        </button>
+        <EmptyState state={{ icon: "caughtUp", title: "All caught up" }} swapKey="inbox" />
+      </div>
+    );
   if (mode === "list")
     return (
       <div style={{ height: 600, width: 420, display: "flex", flexDirection: "column" }}>

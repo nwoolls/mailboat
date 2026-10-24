@@ -56,6 +56,8 @@ import { screensaverPrefs } from "../../screensaver/ui/prefs";
 import type { AfterRemoval } from "../../mailbox/model/threadActions";
 import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import { listPrefs } from "../../mailbox/ui/listPrefs";
+import { TOYS } from "../../emptyToys/model/toys";
+import { emptyToy } from "../../emptyToys/ui/prefs";
 import { type Density, SWIPE_CHOICES, type SwipeChoice } from "../../mailbox/model/listPrefs";
 import {
   MARK_READ_DELAY_MS,
@@ -1068,6 +1070,8 @@ export function AdvancedSection() {
 export function ToyboxSection() {
   const flags = useFeatureFlags();
   const prefs = screensaverPrefs.use();
+  const toy = emptyToy.use();
+  const toyInfo = TOYS.find((t) => t.id === toy);
   return (
     <>
       <Group
@@ -1083,6 +1087,24 @@ export function ToyboxSection() {
             />
           </Row>
         ))}
+      </Group>
+      <Group
+        title="Something to play with"
+        description="In any view with no mail, behind the icon and words. Put away while a screensaver plays."
+      >
+        <div className="px-4 py-3.5">
+          <ChoiceGrid
+            label="Something to play with"
+            value={toy}
+            options={TOYS.map((t) => ({ value: t.id, label: t.label }))}
+            onChange={(id) => emptyToy.set(id)}
+          />
+          {toyInfo && (
+            <p className="mt-2 text-[12px] leading-relaxed text-content/45">
+              {toyInfo.description}
+            </p>
+          )}
+        </div>
       </Group>
       {flags.screensavers && (
         <Group

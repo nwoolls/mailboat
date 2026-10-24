@@ -22,6 +22,8 @@ import {
 import { useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { ScreensaverCanvas, useScreensaver } from "../../screensaver/ui/ScreensaverCanvas";
 import { screensaverPrefs } from "../../screensaver/ui/prefs";
+import { EmptyToy } from "../../emptyToys/ui/EmptyToy";
+import { emptyToy } from "../../emptyToys/ui/prefs";
 
 const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
   caughtUp: ThumbsUpIcon,
@@ -62,6 +64,7 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
   const wordsRef = useRef<HTMLDivElement>(null);
   const { phase: screensaver, scene } = useScreensaver(flags.screensavers);
   const { palette } = screensaverPrefs.use();
+  const toy = emptyToy.use();
   const [shrugs, setShrugs] = useState(0);
   const shrug = useCallback(() => setShrugs((n) => n + 1), []);
   const iconMotion =
@@ -80,6 +83,9 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
           <div ref={glowRef} className="empty-glow" />
         </div>
       )}
+      {/* Settings → Toybox: something to play with, put away while a
+          screensaver plays. */}
+      <EmptyToy toy={screensaver === "off" ? toy : "none"} areaRef={anchorRef} />
       {screensaver !== "off" && (
         <ScreensaverCanvas
           sceneId={scene}

@@ -1513,6 +1513,23 @@ each is ticked once the owner has tried it.*
       calendar apps (Notion Mail, Superhuman, Spark, Apple Mail, Things).
       Then try the best few behind a feature flag, as with the
       screensavers
+      *Researched and built (2026-10-24), waiting for the owner to try
+      them. What turned up: playable empty states are rare (no mail app
+      found with one); the best known is Superhuman's Inbox Zero reward
+      pictures, a new image only seen at zero (and a Gmail extension
+      copying it with a daily photo); design guides (Pencil & Paper,
+      Eleken, Mobbin's glossary) say an empty state should hold one idea
+      and celebrate the person, not the product. So three quiet, optional
+      toys, in Settings → Toybox → Something to play with (None by
+      default): Pond (a click drops rings that spread and fade, in the
+      accent colour), Bubble wrap (a sheet of bubbles, a click pops one;
+      all popped, a fresh sheet), and Sky (a soft sky behind the view
+      following the time of day, sun or moon on its way across, in the
+      spirit of Superhuman's reward). Each stays in the empty area (never
+      over the title row or its clicks) and goes away while a screensaver
+      plays. Browser tests check each draws and answers clicks. Not found
+      on X or Dribbble by search (neither is searchable from here); the
+      owner's own finds there would be good next ideas*
 - [ ] Empty Spam *(owner request, 2026-10-21)*: one button at the top of
       Spam, as in Gmail ("Delete all spam messages now"), with a
       confirmation; per account in the unified view, split per account
