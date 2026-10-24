@@ -1372,9 +1372,10 @@ settled with the owner one at a time, as in the earlier spikes.*
 wrong (Advanced and Show original, moved here from the Release Spike
 idea because they're useful without distributing).*
 
-*Under way (2026-10-24, owner: "start in on the next milestone", away
-meanwhile). Items that need no decision from the owner are built first;
-each is ticked once the owner has tried it.*
+**Closed (owner, 2026-10-24: "LGTM").** Every item built and approved
+by the owner. Moved out or dropped on the owner's word: Mute (to Later,
+since Gmail's API can't set or see Gmail's Mute), sounds (not wanted),
+and the second swipe each way (no second button).
 
 - [x] The AI panel opens and closes smoothly *(owner request,
       2026-10-21)*. Floating card: the form no longer moves; the panel
@@ -1416,7 +1417,7 @@ each is ticked once the owner has tried it.*
       settings keep their value; the sliders now work in see-through
       percent from each area's default for the current light or dark
       look, and both ends are reachable in either
-- [ ] Choose what each swipe does, plus a second swipe each way
+- [x] Choose what each swipe does, plus a second swipe each way
       *First half built (2026-10-24), waiting for the owner to try it:
       Settings → List (a new section, the settings plan's "Sidebar &
       List" until the sidebar has settings) → Swipes: Swipe left and
@@ -1429,14 +1430,14 @@ each is ticked once the owner has tried it.*
       and star spring back.*
       *Second swipe each way: dropped (owner, 2026-10-24: "no second
       button"). One choosable action per side*
-- [ ] Delete key: Trash or Archive (in the Settings plan)
+- [x] Delete key: Trash or Archive (in the Settings plan)
       *Built (2026-10-24), waiting for the owner to try it. Mailboat had no
       Delete key; now ⌫ (and the forward delete key) moves the selected
       or picked conversations to Trash, as in Mail, or archives them:
       Settings → Viewing → Delete key. Unlike `#` and `e` it never undoes
       (Delete in Trash does nothing rather than restoring). The `?` sheet
       lists it. ⌘⌫ stays unused (in a text field it deletes the line)*
-- [ ] List density and preview lines (also a UX Spike 1 deferred idea)
+- [x] List density and preview lines (also a UX Spike 1 deferred idea)
       *Built (2026-10-24), waiting for the owner to try it (a feel
       thing, so worth a look at each): Settings → List → Rows. Density:
       Compact (the lines sit together, 8px shorter), Default (as
@@ -1444,13 +1445,13 @@ each is ticked once the owner has tried it.*
       2 lines of the email's first words or its AI summary. Text size
       still scales rows on top. A browser test checks every combination
       keeps the text inside its row, with the lines chosen*
-- [ ] Include Trash and Spam in search (in the Settings plan)
+- [x] Include Trash and Spam in search (in the Settings plan)
       *Built (2026-10-24), waiting for the owner to try it: Settings →
       Viewing → Search → Include Spam and Trash (off, as Gmail). On, both
       the cache search and Gmail's own search (`includeSpamTrash`) look
       there too, in every account searched; rows found there act as they
       would in Spam or Trash (Not spam, Restore)*
-- [ ] Which mail notifies (Inbox only / all; already in the Settings
+- [x] Which mail notifies (Inbox only / all; already in the Settings
       plan) and quiet hours
       *Built (2026-10-24), waiting for the owner to try it: Settings →
       Notifications → Notify about: Inbox (as before) or All new mail
@@ -1462,14 +1463,14 @@ each is ticked once the owner has tried it.*
       and sign-in codes still show in the window*
 - Sounds for new mail and for actions: not wanted (owner, 2026-10-24),
   moved to "Considered, not planned"
-- [ ] Duplicate a rule
+- [x] Duplicate a rule
       *Built (2026-10-24), waiting for the owner to try it: Settings →
       Rules → Duplicate, by Edit, opens "Duplicate rule" filled in from
       that rule, saved as a new one. The account can be changed (to copy
       a rule to another account); its labels then become that account's
       labels of the same name, where it has them (before, changing the
       account in a new rule cleared every label)*
-- [ ] Advanced section: clear the cache, reset, the sync log (in the
+- [x] Advanced section: clear the cache, reset, the sync log (in the
       Settings plan)
       *Built (2026-10-24), waiting for the owner to try it: Settings →
       Advanced (last, with a wrench). Cache: how much mail (the database,
@@ -1487,7 +1488,7 @@ each is ticked once the owner has tried it.*
       connected AI providers (a sign-in, not a preference), choices made
       for senders, recent searches, pane sizes and which panels show. No
       "Reset Mailboat" (removing everything)*
-- [ ] Show original (the raw message and its headers)
+- [x] Show original (the raw message and its headers)
       *Built (2026-10-24), waiting for the owner to try it: Message → Show
       original (⌥⌘U, Mail's Raw Source key), also in ⌘K, the right-click
       menu and the toolbar's More menu. A dialog shows the newest email
@@ -1501,7 +1502,7 @@ each is ticked once the owner has tried it.*
       source scrolling inside it*
 - Mute a conversation: moved to Later (owner, 2026-10-24: "leave it
   for now"), after finding Gmail's API can't set or see Gmail's Mute
-- [ ] Clicking a new-mail notification selects that email and shows it
+- [x] Clicking a new-mail notification selects that email and shows it
       in the reader *(owner request, 2026-10-21; today it only brings
       Mailboat forward, see Milestone 5 → Notifications)*
       *Built (2026-10-24), to try together with the owner (owner's
@@ -1511,7 +1512,7 @@ each is ticked once the owner has tried it.*
       it's showing, otherwise from the Inbox (Settings makes way). The
       "N new messages" summary only brings Mailboat forward. macOS asks for
       permission once more (it's a different API). Not seen working yet*
-- [ ] Research other "empty state" designs and build a few to try
+- [x] Research other "empty state" designs and build a few to try
       *(owner request, 2026-10-21)*: what an empty list (Inbox zero, an
       empty label or search) shows, alongside today's icon and words with
       the pointer-following glow and the idle screensavers. Look well
@@ -1539,7 +1540,7 @@ each is ticked once the owner has tried it.*
       plays. Browser tests check each draws and answers clicks. Not found
       on X or Dribbble by search (neither is searchable from here); the
       owner's own finds there would be good next ideas*
-- [ ] Search history *(owner request, 2026-10-19; moved here from Later,
+- [x] Search history *(owner request, 2026-10-19; moved here from Later,
       owner, 2026-10-24: "use sane defaults, add settings if you must,
       otherwise keep it in the dropdown")*: recent searches
       offered when the search box opens, picked with ↑/↓ and Return.
@@ -1556,7 +1557,7 @@ each is ticked once the owner has tried it.*
       and "Clear recent searches" removes all. Not in ⌘K and no pinning,
       as agreed. A browser test covers it, and caught the list drawing
       under the panels below (fixed)*
-- [ ] Empty Spam *(owner request, 2026-10-21)*: one button at the top of
+- [x] Empty Spam *(owner request, 2026-10-21)*: one button at the top of
       Spam, as in Gmail ("Delete all spam messages now"), with a
       confirmation; per account in the unified view, split per account
       (rule 5). Catch to decide first: deleting for good needs Gmail's
