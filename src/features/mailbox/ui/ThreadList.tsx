@@ -347,16 +347,17 @@ export function ThreadList({
                     {t.signInCode && <CodePill code={t.signInCode} />}
                   </div>
                   <div
-                    className="truncate text-xs font-medium text-content/40"
+                    className="relative truncate text-xs font-medium text-content/40"
                     style={{ paddingLeft: ICON_COLUMN }}
                   >
                     {summarize && lines.get(t.id) ? (
-                      // Hovering shows the email's own first words.
+                      // Hovering shows the email's own first words. The
+                      // sparkle sits in the icon column, under the star.
                       <span title={t.snippet}>
                         <AiIcon
                           size={10}
                           strokeWidth={2}
-                          className="mr-1 inline align-[-1px] text-accent/70"
+                          className="absolute top-1/2 left-px -translate-y-1/2 text-accent/70"
                           aria-label="Summary"
                         />
                         {lines.get(t.id)}

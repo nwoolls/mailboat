@@ -1744,6 +1744,11 @@ at a time; each is ticked once the owner has tried it.*
       paperclip and star line up in the gutter column on the left. Move
       it into that column under them (the summary text stays where it
       is), and compare in the app before keeping it
+      *Built to try (2026-10-24): the sparkle now sits in the icon
+      column the account ring and star use (the star's column, centred
+      under it), on the third line; the summary text hasn't moved. The
+      other option is the outer gutter, under the unread dot and
+      paperclip. Keep, move to the outer gutter, or go back?*
 - [ ] Connect a signed-out Claude Code or Codex from Settings → AI *(from
       the AI Spike when it closed, 2026-10-21; never tried for real: both
       were already signed in on the owner's Mac)*. Connect runs `claude
