@@ -1627,12 +1627,15 @@ at a time; each is ticked once the owner has tried it.*
       list. The `?` sheet lists them, with a new Reading group, and says
       j/k only preview when a preview shows. Not taken up: a different
       look for selected-but-not-previewed rows (owner: the row is
-      focused either way), and making Esc and the reader button leave
-      the same state (minor: after Esc, the reader button needs two
-      clicks to show the preview again)
+      focused either way)
       *Built (2026-10-24), waiting for the owner to try it. Browser tests
       cover n / p and Space on the real reader; the range and page logic
       has unit tests*
+      *Owner (2026-10-24): Esc should hide the reader just as its button
+      does (it closed the conversation instead, so the button then needed
+      two clicks to bring the preview back). Built, waiting to be tried:
+      Esc hides the reader and remembers it, the conversation stays
+      selected, and Return or `o` shows it again (remembered too)*
 - [ ] Rethink where the "Original colors" button sits *(owner report with
       a screenshot, 2026-10-21)*: it floats over the top right of the
       email, so it covers the first line when that line runs to the edge

@@ -34,7 +34,7 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
       ["PgDn / PgUp", "A page down / up the list"],
       ["Home / End", "First / last conversation"],
       ["↩ or o", "Preview the selected one"],
-      ["Esc", "Clear picks, then the preview"],
+      ["Esc", "Clear picks, then hide the reader"],
       ["/", "Search"],
       ["⌘K", "Command palette"],
       ["g then i", "Go to Inbox"],

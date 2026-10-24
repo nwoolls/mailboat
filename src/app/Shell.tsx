@@ -628,10 +628,12 @@ export function Shell() {
         setChecked(NONE);
         return;
       }
-      if (e.key === "Escape" && selectedId !== null) {
+      // Then hides the reader, exactly as its toolbar button does (and
+      // remembered the same way); the conversation stays selected.
+      if (e.key === "Escape" && selectedId !== null && readerOpen) {
         e.preventDefault();
-        setCursorId(selectedId);
-        setSelectedId(null);
+        setReaderOpen(false);
+        setSavedReaderOpen(false);
         return;
       }
       // Undo the last archive, trash or label change: z (as in Gmail) or ⌘Z.
@@ -717,7 +719,8 @@ export function Shell() {
         setChecked(toggleChecked(checked, chosenId, chosenId));
         return;
       }
-      // Enter or `o` previews the selected row (or shows the reader again).
+      // Enter or `o` previews the selected row, showing the reader again
+      // as its toolbar button does.
       if (
         plain &&
         (e.key === "o" || (e.key === "Enter" && e.target === document.body)) &&
@@ -727,6 +730,7 @@ export function Shell() {
         e.preventDefault();
         setSelectedId(chosenId);
         setReaderOpen(true);
+        setSavedReaderOpen(true);
         return;
       }
       const previewing = readerOpen && selectedId !== null;
