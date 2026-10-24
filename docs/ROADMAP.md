@@ -1372,6 +1372,10 @@ settled with the owner one at a time, as in the earlier spikes.*
 wrong (Advanced and Show original, moved here from the Release Spike
 idea because they're useful without distributing).*
 
+*Under way (2026-10-24, owner: "start in on the next milestone", away
+meanwhile). Items that need no decision from the owner are built first;
+each is ticked once the owner has tried it.*
+
 - [x] The AI panel opens and closes smoothly *(owner request,
       2026-10-21)*. Floating card: the form no longer moves; the panel
       springs open on the side with room (left at the card's home, the
@@ -1414,6 +1418,12 @@ idea because they're useful without distributing).*
       look, and both ends are reachable in either
 - [ ] Choose what each swipe does, plus a second swipe each way
 - [ ] Delete key: Trash or Archive (in the Settings plan)
+      *Built (2026-10-24), waiting for the owner to try it. Mailboat had no
+      Delete key; now ⌫ (and the forward delete key) moves the selected
+      or picked conversations to Trash, as in Mail, or archives them:
+      Settings → Viewing → Delete key. Unlike `#` and `e` it never undoes
+      (Delete in Trash does nothing rather than restoring). The `?` sheet
+      lists it. ⌘⌫ stays unused (in a text field it deletes the line)*
 - [ ] List density and preview lines (also a UX Spike 1 deferred idea)
 - [ ] Include Trash and Spam in search (in the Settings plan)
 - [ ] Which mail notifies (Inbox only / all; already in the Settings

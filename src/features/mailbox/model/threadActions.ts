@@ -62,6 +62,20 @@ export function toggleFor(
   }
 }
 
+/**
+ * What the Delete key does, chosen in Settings → Viewing. Unlike `#` and
+ * `e` it never undoes: Delete on conversations already in Trash (or
+ * already archived) does nothing rather than bringing them back.
+ */
+export function deleteKeyAction(
+  choice: "trash" | "archive",
+  threads: Flags[],
+): ThreadAction | null {
+  if (choice === "trash")
+    return threads.some((t) => !t.inTrash) ? { kind: "trash", trashed: true } : null;
+  return threads.some((t) => t.inInbox) ? { kind: "archive", archived: true } : null;
+}
+
 /** Does a conversation drop out of this view after the action? */
 export function leavesView(action: ThreadAction, view: MailView): boolean {
   const system = view.kind === "system" ? view.label : null;

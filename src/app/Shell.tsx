@@ -47,6 +47,7 @@ import {
   nextAfterRemoval,
   selectionAfterUndo,
   type ThreadAction,
+  deleteKeyAction,
   toggleFor,
 } from "../features/mailbox/model/threadActions";
 import { LabelPicker } from "../features/mailbox/ui/LabelPicker";
@@ -681,6 +682,19 @@ export function Shell() {
       const kind = plain ? toggles[e.key] : undefined;
       if (kind) {
         const action = toggleFor(kind, targets);
+        if (action) {
+          e.preventDefault();
+          act(
+            action,
+            targets.map((t) => t.id),
+          );
+        }
+        return;
+      }
+      // Delete (⌫, or the forward delete key): Move to Trash or Archive,
+      // as chosen in Settings → Viewing.
+      if (plain && !e.shiftKey && (e.key === "Backspace" || e.key === "Delete")) {
+        const action = deleteKeyAction(viewingPrefs.get().deleteKey, targets);
         if (action) {
           e.preventDefault();
           act(

@@ -17,6 +17,9 @@ describe("parseViewingPrefs", () => {
     const all = parseViewingPrefs('{"markRead":"never","order":"newestFirst"}');
     expect(all.markRead).toBe("never");
     expect(all.order).toBe("newestFirst");
+    expect(all.deleteKey).toBe("trash");
+    expect(parseViewingPrefs('{"deleteKey":"archive"}').deleteKey).toBe("archive");
+    expect(parseViewingPrefs('{"deleteKey":"shred"}').deleteKey).toBe("trash");
   });
 });
 

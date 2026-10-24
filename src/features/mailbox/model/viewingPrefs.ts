@@ -6,11 +6,15 @@ export type MarkRead = "open" | "delay" | "never";
 /** Messages in a conversation: oldest at the top (as Gmail), or newest. */
 export type MessageOrder = "oldestFirst" | "newestFirst";
 
+/** What the Delete key does: Mail's Move to Trash, or Archive. */
+export type DeleteKey = "trash" | "archive";
+
 /** Settings → Viewing; window-only, kept in the web view's storage. */
 export type ViewingPrefs = {
   afterRemoval: AfterRemoval;
   markRead: MarkRead;
   order: MessageOrder;
+  deleteKey: DeleteKey;
 };
 
 export const VIEWING_PREFS_KEY = "mailboat.viewing";
@@ -22,6 +26,7 @@ export const DEFAULT_VIEWING_PREFS: ViewingPrefs = {
   afterRemoval: "below",
   markRead: "open",
   order: "oldestFirst",
+  deleteKey: "trash",
 };
 
 function oneOf<T extends string>(choices: readonly T[], value: unknown, fallback: T): T {
@@ -42,6 +47,7 @@ export function parseViewingPrefs(raw: string | null): ViewingPrefs {
     afterRemoval: oneOf(["below", "above", "none"], saved.afterRemoval, d.afterRemoval),
     markRead: oneOf(["open", "delay", "never"], saved.markRead, d.markRead),
     order: oneOf(["oldestFirst", "newestFirst"], saved.order, d.order),
+    deleteKey: oneOf(["trash", "archive"], saved.deleteKey, d.deleteKey),
   };
 }
 

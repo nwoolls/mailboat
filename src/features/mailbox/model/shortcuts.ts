@@ -59,6 +59,7 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
     keys: [
       ["e", "Archive / Move to Inbox"],
       ["#", "Move to Trash / Restore"],
+      ["⌫", "Move to Trash (or Archive, in Settings)"],
       ["u", "Mark as read / unread"],
       ["s", "Star / Unstar"],
       ["!", "Report spam / Not spam"],

@@ -8,6 +8,7 @@ import type {
 import {
   actionLabel,
   actionMessage,
+  deleteKeyAction,
   inverse,
   labelState,
   labelToggle,
@@ -72,6 +73,16 @@ describe("toggleFor", () => {
       trashed: false,
     });
     expect(toggleFor("trash", [])).toBeNull();
+  });
+});
+
+describe("deleteKeyAction", () => {
+  it("trashes or archives, and never brings conversations back", () => {
+    expect(deleteKeyAction("trash", [thread(1)])).toEqual({ kind: "trash", trashed: true });
+    expect(deleteKeyAction("trash", [thread(1, { inTrash: true })])).toBeNull();
+    expect(deleteKeyAction("archive", [thread(1)])).toEqual({ kind: "archive", archived: true });
+    expect(deleteKeyAction("archive", [thread(1, { inInbox: false })])).toBeNull();
+    expect(deleteKeyAction("trash", [])).toBeNull();
   });
 });
 

@@ -48,6 +48,7 @@ import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import {
   MARK_READ_DELAY_MS,
   type MarkRead,
+  type DeleteKey,
   type MessageOrder,
 } from "../../mailbox/model/viewingPrefs";
 import { UNDO_SEND_CHOICES } from "../../compose/model/composingPrefs";
@@ -419,6 +420,17 @@ export function ViewingSection() {
             onChange={(markRead) => viewingPrefs.set({ ...prefs, markRead })}
           />
         </Row>
+        <Row
+          label="Delete key"
+          description="What Delete does to the selected conversations. # and e still trash and archive."
+        >
+          <Segmented
+            label="Delete key"
+            value={prefs.deleteKey}
+            options={DELETE_KEYS}
+            onChange={(deleteKey) => viewingPrefs.set({ ...prefs, deleteKey })}
+          />
+        </Row>
         <Row label="Message order" description="Within a conversation.">
           <Segmented
             label="Message order"
@@ -627,6 +639,11 @@ const MARK_READ: { value: MarkRead; label: string }[] = [
 const ORDERS: { value: MessageOrder; label: string }[] = [
   { value: "oldestFirst", label: "Oldest first" },
   { value: "newestFirst", label: "Newest first" },
+];
+
+const DELETE_KEYS: { value: DeleteKey; label: string }[] = [
+  { value: "trash", label: "Move to Trash" },
+  { value: "archive", label: "Archive" },
 ];
 
 const AFTER_REMOVAL: { value: AfterRemoval; label: string }[] = [
