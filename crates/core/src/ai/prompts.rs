@@ -22,7 +22,8 @@ pub fn list_line(thread: &ThreadText, provider: AiProvider) -> Prompt {
     Prompt {
         instructions: format!(
             "You write the one-line summary shown for an email conversation in an inbox list. \
-Say what it's about and what, if anything, is asked of the reader, in at most 14 words. \
+Say what it's about, where it stands now (going by the newest message, however short), and what, \
+if anything, is asked of the reader, in at most 14 words. \
 Plain text, one line, no quotation marks, no preamble like \"This email\". \
 Write it as a headline-style phrase, e.g. \"Review moved to Thu 3pm, bring budget numbers\". \
 {UNTRUSTED}"
@@ -38,8 +39,10 @@ pub fn thread_summary(thread: &ThreadText, provider: AiProvider) -> Prompt {
     Prompt {
         instructions: format!(
             "You summarize email conversations for the person reading them (marked \"(me)\" when they wrote a message). \
-Write 1 to 4 short bullet points, each starting with \"- \": the key points, decisions, dates and \
-anything the reader is asked to do. For a long conversation, say where it stands now. \
+Write 1 to 4 short bullet points, each starting with \"- \". Start with where the conversation \
+stands now, going by the newest message (marked \"Newest message\"), even when it's only a line \
+like \"Sounds good.\": it can settle what the earlier messages asked. Then the key points, decisions, \
+dates and anything the reader is asked to do. \
 Plain text, no headings, no preamble. Under 90 words. {UNTRUSTED}"
         ),
         input: context::render(thread, context::budget(provider)),

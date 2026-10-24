@@ -199,14 +199,19 @@ fn when(millis: i64) -> String {
 
 /// The conversation as text within `budget` characters. The newest
 /// message gets the most room; older ones are shortened, then left out
-/// (oldest first), with a note saying how many.
+/// (oldest first), with a note saying how many. In a conversation, the
+/// newest is marked as such: Apple's small model summarized a one-line
+/// "Sounds good." as if the long email before it were still where things
+/// stood.
 pub fn render(thread: &ThreadText, budget: usize) -> String {
     let mut parts: Vec<String> = Vec::new();
     let mut left = budget.saturating_sub(thread.subject.len() + 20);
     let mut dropped = 0;
     for (n, m) in thread.messages.iter().rev().enumerate() {
+        let newest = n == 0 && thread.messages.len() > 1;
         let header = format!(
-            "From: {}\nTo: {}\nDate: {}\n\n",
+            "{}From: {}\nTo: {}\nDate: {}\n\n",
+            if newest { "Newest message:\n" } else { "" },
             person(&m.from, m.mine),
             m.to.iter()
                 .map(|a| person(a, false))
@@ -305,6 +310,15 @@ mod tests {
         assert!(first < second);
         assert!(out.contains("Sam <sam@x.com> (me)"), "{out}");
         assert!(out.contains("Date: 2026-"));
+        // The newest is marked, and only it.
+        assert_eq!(out.matches("Newest message:").count(), 1);
+        assert!(out.find("Newest message:").unwrap() > first);
+        assert!(out.find("Newest message:").unwrap() < second);
+        let alone = ThreadText {
+            messages: vec![msg(1, "Lunch Thursday?")],
+            ..t
+        };
+        assert!(!render(&alone, 10_000).contains("Newest message:"));
     }
 
     #[test]
