@@ -4,6 +4,8 @@ import type { Spot } from "../../src/features/compose/model/snap";
 import { ComposeCard } from "../../src/features/compose/ui/ComposeCard";
 import { ReplyArea } from "../../src/features/compose/ui/ReplyArea";
 import { ThreadReader } from "../../src/features/reader/ui/ThreadReader";
+import { Menu, MenuItem } from "../../src/shared/ui/Menu";
+import { ArchiveIcon } from "../../src/shared/ui/icons";
 import {
   setCardSpot,
   useComposeActions,
@@ -35,6 +37,18 @@ export function Harness({
   }, [mode, actions, account.id]);
   const card = compose.cards.find((c) => !c.minimized);
 
+  // A menu with one very long item (Bug Spike 2: it stretched the menu).
+  if (mode === "menu")
+    return (
+      <Menu anchor={{ x: 100, y: 100 }} onClose={() => {}} label="Conversation">
+        <MenuItem icon={ArchiveIcon} hint="e" onSelect={() => {}}>
+          Archive
+        </MenuItem>
+        <MenuItem icon={ArchiveIcon} onSelect={() => {}}>
+          {`Block ${"someone.with.a.very.long.name".repeat(4)}@example.com`}
+        </MenuItem>
+      </Menu>
+    );
   if (mode === "card")
     return card ? (
       <ComposeCard

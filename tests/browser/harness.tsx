@@ -3,6 +3,7 @@
  * with the Rust side faked by Tauri's own `mockIPC`. Picked by the URL:
  *
  *   ?mode=card&spot=bottom-left   a new message in the floating card
+ *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a
  *                                 scrolled reader with mail above it
  */

@@ -105,7 +105,9 @@ export function Menu({
         if (item && item !== document.activeElement) item.focus();
       }}
       onPointerLeave={() => ref.current?.focus()}
-      className="menu fixed m-0 min-w-52 rounded-lg p-1 text-[13px] font-normal text-content outline-none"
+      // Capped, so a long item ("Block <a very long address>") is cut off
+      // with "…" rather than stretching the menu across the window.
+      className="menu fixed m-0 max-w-80 min-w-52 rounded-lg p-1 text-[13px] font-normal text-content outline-none"
       style={{ inset: "auto", left: anchor.x, top: anchor.y }}
     >
       {children}
@@ -139,16 +141,31 @@ export function MenuItem({
         danger ? "text-danger" : ""
       }`}
     >
-      <Icon size={15} className={danger ? "" : "text-content/60"} />
-      {children}
-      {hint && <kbd className="ml-auto pl-4 font-sans text-xs text-content/40">{hint}</kbd>}
+      <Icon size={15} className={`shrink-0 ${danger ? "" : "text-content/60"}`} />
+      {/* Cut off with "…" when too long; the whole text shows on hover. */}
+      <span
+        className="min-w-0 truncate"
+        title={typeof children === "string" ? children : undefined}
+      >
+        {children}
+      </span>
+      {hint && (
+        <kbd className="ml-auto shrink-0 pl-4 font-sans text-xs text-content/40">{hint}</kbd>
+      )}
     </button>
   );
 }
 
 /** Non-interactive text at the top of a menu (e.g. whose menu it is). */
 export function MenuHeader({ children }: { children: React.ReactNode }) {
-  return <div className="px-2 pt-1 pb-1.5 text-xs text-content/55">{children}</div>;
+  return (
+    <div
+      className="truncate px-2 pt-1 pb-1.5 text-xs text-content/55"
+      title={typeof children === "string" ? children : undefined}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function MenuSeparator() {

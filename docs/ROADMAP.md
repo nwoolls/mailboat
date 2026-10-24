@@ -1606,6 +1606,10 @@ at a time; each is ticked once the owner has tried it.*
       menu stretched the menu across most of the window for a very long
       sender address. Cap the menu's width and cut long items off with
       "…", with the full text in a tooltip
+      *Built (2026-10-24), waiting for the owner to try it: every menu
+      is now at most 320px wide; a longer item ends in "…" and shows
+      in full on hover. A browser test checks it (the old menu measured
+      933px). To try: right-click a conversation from a long address*
 - [ ] Rethink where the "Original colors" button sits *(owner report with
       a screenshot, 2026-10-21)*: it floats over the top right of the
       email, so it covers the first line when that line runs to the edge
