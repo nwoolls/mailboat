@@ -1610,6 +1610,15 @@ at a time; each is ticked once the owner has tried it.*
       is now at most 320px wide; a longer item ends in "…" and shows
       in full on hover. A browser test checks it (the old menu measured
       933px). To try: right-click a conversation from a long address*
+- [ ] Moving with j/k doesn't preview when no preview shows *(owner
+      request, 2026-10-24, building on the Esc item)*. Without a preview,
+      j/k and the arrows only move the selection; Enter or `o` previews,
+      a click still previews, Esc hides the preview. The buttons and
+      keys for a conversation (archive, star, reply, …) work on the
+      selected row whether or not it's previewed; reply previews it.
+      With a preview showing, j/k preview the next one as before
+      *Built (2026-10-24), waiting for the owner to try it. Also covers
+      the reader hidden with its toolbar button: j/k then just select*
 - [ ] Rethink where the "Original colors" button sits *(owner report with
       a screenshot, 2026-10-21)*: it floats over the top right of the
       email, so it covers the first line when that line runs to the edge
@@ -1634,6 +1643,7 @@ at a time; each is ticked once the owner has tried it.*
       and `o` (or Enter) opens it again. Clicking the list's empty area
       or changing view drops it. Keys like `e` still act only on an open
       or picked conversation; say if they should act on that row too*
+      *Owner (2026-10-24): yes, they should; see the next item*
 - [x] A conversation's summary missed its newest reply *(owner report, 2026-10-21)*: a summary still described a thread as waiting on an answer after a one-line reply had arrived. Cause: Apple's small on-device model gave a one-line reply too little weight after a longer email. Fixed: the newest email is headed "Newest message" in what the model reads, and the summary is told to start with where things stand by it, even when it is one line. The list's one-line summaries are told the same. To try: press "Summarize again" (saved summaries stay until then or until a new reply)
 - [ ] The floating composer flashes see-through just after its bounce
       *(owner report, 2026-10-21; likely since the whole-card bounce,

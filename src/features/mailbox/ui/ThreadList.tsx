@@ -139,11 +139,12 @@ export function ThreadList({
     virtualizer.scrollToOffset(scrollPositions.get(viewKey) ?? 0);
   }, [viewKey, placeholder, virtualizer]);
 
-  // Keep the keyboard selection visible.
+  // Keep the keyboard selection visible, previewed or not.
+  const keyboardId = selectedId ?? cursorId;
   useEffect(() => {
-    const index = threads.findIndex((t) => t.id === selectedId);
+    const index = threads.findIndex((t) => t.id === keyboardId);
     if (index >= 0) virtualizer.scrollToIndex(index, { align: "auto" });
-  }, [selectedId, threads, virtualizer]);
+  }, [keyboardId, threads, virtualizer]);
 
   // Nothing yet, but Gmail is being asked (or failed): show that line
   // rather than "nothing here".

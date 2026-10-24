@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { moveSelection, navKeyFor } from "./listNavigation";
+import { moveKeyboard, moveSelection, navKeyFor } from "./listNavigation";
 
 const threads = [{ id: 10 }, { id: 20 }, { id: 30 }];
 const key = (k: string, mods: Partial<KeyboardEvent> = {}) => ({
@@ -30,5 +30,30 @@ describe("list navigation", () => {
 
   it("restarts at the top if the selected thread left the list", () => {
     expect(moveSelection(threads, 99, "next")).toBe(10);
+  });
+});
+
+describe("moveKeyboard", () => {
+  const list = [{ id: 1 }, { id: 2 }, { id: 3 }];
+  it("previews the next one while a preview shows", () => {
+    expect(moveKeyboard(list, { previewed: 1, selected: null, previewing: true }, "next")).toEqual({
+      previewed: 2,
+      selected: null,
+    });
+  });
+  it("only moves the selection without a preview", () => {
+    // Nothing chosen yet: the first row is selected, not opened.
+    expect(
+      moveKeyboard(list, { previewed: null, selected: null, previewing: true }, "next"),
+    ).toEqual({ previewed: null, selected: 1 });
+    // Carries on from the selected row.
+    expect(moveKeyboard(list, { previewed: null, selected: 2, previewing: true }, "next")).toEqual({
+      previewed: null,
+      selected: 3,
+    });
+    // The reader hidden with a conversation chosen: it moves on unopened.
+    expect(moveKeyboard(list, { previewed: 2, selected: null, previewing: false }, "prev")).toEqual(
+      { previewed: null, selected: 1 },
+    );
   });
 });

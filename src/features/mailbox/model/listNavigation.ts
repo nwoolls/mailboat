@@ -46,3 +46,18 @@ export function moveSelection(
   }
   return threads[next]?.id ?? null;
 }
+
+/**
+ * j/k (or the arrows): with a preview showing, the next conversation is
+ * previewed; without, only the selection moves, and nothing opens until
+ * Enter, `o` or a click (owner, 2026-10-24).
+ */
+export function moveKeyboard(
+  threads: Pick<ThreadSummary, "id">[],
+  at: { previewed: ThreadId | null; selected: ThreadId | null; previewing: boolean },
+  key: NavKey,
+): { previewed: ThreadId | null; selected: ThreadId | null } {
+  if (at.previewing && at.previewed !== null)
+    return { previewed: moveSelection(threads, at.previewed, key), selected: null };
+  return { previewed: null, selected: moveSelection(threads, at.previewed ?? at.selected, key) };
+}

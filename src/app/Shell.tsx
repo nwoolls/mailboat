@@ -21,7 +21,7 @@ import { Splitter } from "../features/layout/ui/Splitter";
 import { useElementWidth } from "../features/layout/ui/useElementWidth";
 import { panels, setSavedReaderOpen, setSidebarOpen } from "../features/layout/ui/panels";
 import { Welcome } from "../features/accounts/ui/Welcome";
-import { moveSelection, navKeyFor } from "../features/mailbox/model/listNavigation";
+import { moveKeyboard, navKeyFor } from "../features/mailbox/model/listNavigation";
 import {
   actionTargets,
   type Checked,
@@ -206,12 +206,15 @@ export function Shell() {
     [threadsQuery.data],
   );
   const [selectedId, setSelectedId] = useState<ThreadId | null>(null);
-  // The row a conversation was closed from with Esc: it stays highlighted,
-  // j/k carry on from it, and Enter or `o` opens it again. Opening any
+  // The row selected without being previewed: closed with Esc, or moved
+  // to with j/k while no preview shows. It stays highlighted, the buttons
+  // and keys act on it, and Enter or `o` previews it. Previewing any
   // conversation (or leaving the view) drops it.
   const [cursorState, setCursorId] = useState<ThreadId | null>(null);
   if (selectedId !== null && cursorState !== null) setCursorId(null);
   const cursorId = threads.some((t) => t.id === cursorState) ? cursorState : null;
+  // The conversation the buttons and keys act on: previewed or not.
+  const chosenId = selectedId ?? cursorId;
   // The open conversation as of the last render, for actions to remember
   // what was open when they ran (Undo goes back to it).
   const openNow = useRef<ThreadId | null>(null);
@@ -226,7 +229,7 @@ export function Shell() {
   // during render, rather than in an effect.
   const [checkedState, setChecked] = useState<Checked>(NONE);
   const checked = prune(checkedState, threads);
-  const targets = actionTargets(threads, checked, selectedId);
+  const targets = actionTargets(threads, checked, chosenId);
   const toast = useToast();
   const [labelAnchor, setLabelAnchor] = useState<MenuAnchor | null>(null);
   // A conversation's right-click menu, at the pointer.
@@ -363,6 +366,7 @@ export function Shell() {
         const removed = new Set(ids);
         const { afterRemoval } = viewingPrefs.get();
         setSelectedId((current) => nextAfterRemoval(threads, removed, current, afterRemoval));
+        setCursorId((current) => nextAfterRemoval(threads, removed, current, afterRemoval));
         setChecked(NONE);
       }
       const message = actionMessage(action, ids.length);
@@ -410,7 +414,7 @@ export function Shell() {
   // accounts have loaded, so one that launched the app isn't lost.
   const { startFromMailto } = compose;
   const mailtoAccount =
-    threads.find((t) => t.id === selectedId)?.accountId ??
+    threads.find((t) => t.id === chosenId)?.accountId ??
     accountForNew(
       baseSelection.accounts,
       accountList.map((a) => a.id),
@@ -457,7 +461,7 @@ export function Shell() {
       blockEmail: senderToBlock(rows, selfEmailsOf)?.email ?? null,
     });
   const conversationList = commandsFor(targets);
-  const appList = appCommands({ sidebarOpen, readerOpen, hasConversation: selectedId !== null });
+  const appList = appCommands({ sidebarOpen, readerOpen, hasConversation: chosenId !== null });
   const allCommands = [...conversationList, ...appList];
 
   /**
@@ -681,31 +685,43 @@ export function Shell() {
       }
       const replyKinds = { r: "reply", a: "replyAll", f: "forward" } as const;
       const replyKind = plain ? replyKinds[e.key as keyof typeof replyKinds] : undefined;
-      if (replyKind && selectedId !== null) {
+      // Writing a reply happens in the conversation, so it's previewed.
+      if (replyKind && chosenId !== null) {
         e.preventDefault();
+        setSelectedId(chosenId);
         setReaderOpen(true);
-        void compose.startReply(replyKind, selectedId);
+        void compose.startReply(replyKind, chosenId);
         return;
       }
-      if (plain && e.key === "x" && selectedId !== null) {
+      if (plain && e.key === "x" && chosenId !== null) {
         e.preventDefault();
-        setChecked(toggleChecked(checked, selectedId, selectedId));
+        setChecked(toggleChecked(checked, chosenId, chosenId));
         return;
       }
+      // Enter or `o` previews the selected row (or shows the reader again).
       if (
         plain &&
         (e.key === "o" || (e.key === "Enter" && e.target === document.body)) &&
-        selectedId === null &&
-        cursorId
+        chosenId !== null &&
+        !(readerOpen && selectedId !== null)
       ) {
         e.preventDefault();
-        setSelectedId(cursorId);
+        setSelectedId(chosenId);
+        setReaderOpen(true);
         return;
       }
       const nav = navKeyFor(e, isEditable(e.target));
       if (!nav) return;
       e.preventDefault();
-      setSelectedId((current) => moveSelection(threads, current ?? cursorId, nav));
+      // With a preview showing, j/k preview the next one; without, they
+      // only move the selection (owner, 2026-10-24).
+      const moved = moveKeyboard(
+        threads,
+        { previewed: selectedId, selected: cursorId, previewing: readerOpen },
+        nav,
+      );
+      setSelectedId(moved.previewed);
+      setCursorId(moved.selected);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -713,6 +729,8 @@ export function Shell() {
     threads,
     selectedId,
     cursorId,
+    chosenId,
+    readerOpen,
     checked,
     targets,
     act,
@@ -785,7 +803,7 @@ export function Shell() {
           sidebarOpen={sidebarOpen}
           syncAttention={syncAttention(syncStates)}
           readerOpen={readerOpen}
-          hasSelection={selectedId !== null}
+          hasSelection={chosenId !== null}
           count={targets.length}
           names={Object.fromEntries(allCommands.map((c) => [c.id, c.title]))}
           onToggleSidebar={toggleSidebar}
