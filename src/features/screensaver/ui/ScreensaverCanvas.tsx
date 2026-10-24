@@ -1,5 +1,6 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import {
+  cellPxOf,
   isSceneId,
   makeScene,
   pickScene,
@@ -9,7 +10,7 @@ import {
   type SceneId,
 } from "../model/catalog";
 import { colorTable, type PaletteId, paletteColors, parseColor } from "../model/palettes";
-import { type Pointer, type Rect, type Scene, SCENE_CELL_PX } from "../model/scene";
+import type { Pointer, Rect, Scene } from "../model/scene";
 import { isRealMove } from "../../../shared/lib/pointer";
 import { screensaverPrefs } from "./prefs";
 
@@ -153,6 +154,7 @@ export function ScreensaverCanvas({
     const ctx = canvas?.getContext("2d");
     if (!area || !canvas || !card || !ctx) return;
 
+    const px = cellPxOf(sceneId);
     let scene: Scene | null = null;
     let image: ImageData | null = null;
     let pixels: Uint32Array | null = null;
@@ -165,26 +167,26 @@ export function ScreensaverCanvas({
     const layout = () => {
       const a = area.getBoundingClientRect();
       const c = card.getBoundingClientRect();
-      const cols = Math.max(1, Math.floor(a.width / SCENE_CELL_PX));
-      const rows = Math.max(1, Math.floor(a.height / SCENE_CELL_PX));
+      const cols = Math.max(1, Math.floor(a.width / px));
+      const rows = Math.max(1, Math.floor(a.height / px));
       Object.assign(canvas.style, {
         left: `${a.left - c.left}px`,
         top: `${a.top - c.top}px`,
-        width: `${cols * SCENE_CELL_PX}px`,
-        height: `${rows * SCENE_CELL_PX}px`,
+        width: `${cols * px}px`,
+        height: `${rows * px}px`,
       });
       canvas.width = cols;
       canvas.height = rows;
       image = ctx.createImageData(cols, rows);
       pixels = new Uint32Array(image.data.buffer);
       cells = new Uint8Array(cols * rows);
-      const { solid, letters } = solidMask(a, cols, rows, iconRef.current, wordsRef.current);
+      const { solid, letters } = solidMask(a, cols, rows, px, iconRef.current, wordsRef.current);
       scene = makeScene(sceneId, {
         cols,
         rows,
         solid,
         letters,
-        icon: rectOf(iconRef.current, a, cols, rows),
+        icon: rectOf(iconRef.current, a, cols, rows, px),
         // The words' box is wider than the text; use the letters' extent.
         words: boundsOf(letters, cols),
         rng: Math.random,
@@ -221,9 +223,7 @@ export function ScreensaverCanvas({
       const a = area.getBoundingClientRect();
       const inside =
         e.clientX >= a.left && e.clientX < a.right && e.clientY >= a.top && e.clientY < a.bottom;
-      pointer = inside
-        ? { x: (e.clientX - a.left) / SCENE_CELL_PX, y: (e.clientY - a.top) / SCENE_CELL_PX }
-        : null;
+      pointer = inside ? { x: (e.clientX - a.left) / px, y: (e.clientY - a.top) / px } : null;
     };
     const onLeave = () => {
       pointer = null;
@@ -283,20 +283,26 @@ function boundsOf(mask: Uint8Array, cols: number): Rect | null {
 }
 
 /** A distance in pixels as a cell index, kept on the grid. */
-function cell(v: number, max: number): number {
-  return Math.max(0, Math.min(max - 1, Math.floor(v / SCENE_CELL_PX)));
+function cell(v: number, max: number, px: number): number {
+  return Math.max(0, Math.min(max - 1, Math.floor(v / px)));
 }
 
 /** An element's box in cells of the area, or null if it isn't there. */
-function rectOf(el: HTMLElement | null, area: DOMRect, cols: number, rows: number): Rect | null {
+function rectOf(
+  el: HTMLElement | null,
+  area: DOMRect,
+  cols: number,
+  rows: number,
+  px: number,
+): Rect | null {
   if (!el) return null;
   const r = el.getBoundingClientRect();
   if (!r.width || !r.height) return null;
   return {
-    x0: cell(r.left - area.left, cols),
-    y0: cell(r.top - area.top, rows),
-    x1: cell(r.right - area.left - 1, cols),
-    y1: cell(r.bottom - area.top - 1, rows),
+    x0: cell(r.left - area.left, cols, px),
+    y0: cell(r.top - area.top, rows, px),
+    x1: cell(r.right - area.left - 1, cols, px),
+    y1: cell(r.bottom - area.top - 1, rows, px),
   };
 }
 
@@ -309,11 +315,12 @@ function solidMask(
   area: DOMRect,
   cols: number,
   rows: number,
+  px: number,
   icon: HTMLElement | null,
   words: HTMLElement | null,
 ): { solid: Uint8Array; letters: Uint8Array } {
-  const width = cols * SCENE_CELL_PX;
-  const height = rows * SCENE_CELL_PX;
+  const width = cols * px;
+  const height = rows * px;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -341,7 +348,7 @@ function solidMask(
       ctx.fillText(chars[i]!, r.left - area.left, baseline - area.top);
     }
   }
-  const letters = toCells(ctx, cols, rows);
+  const letters = toCells(ctx, cols, rows, px);
 
   if (icon) {
     const r = icon.getBoundingClientRect();
@@ -350,20 +357,25 @@ function solidMask(
     ctx.roundRect(r.left - area.left, r.top - area.top, r.width, r.height, radius);
     ctx.fill();
   }
-  return { solid: toCells(ctx, cols, rows), letters };
+  return { solid: toCells(ctx, cols, rows, px), letters };
 }
 
 /** Reduces what's drawn to cells: a cell counts if any pixel in it is inked. */
-function toCells(ctx: CanvasRenderingContext2D, cols: number, rows: number): Uint8Array {
-  const width = cols * SCENE_CELL_PX;
-  const data = ctx.getImageData(0, 0, width, rows * SCENE_CELL_PX).data;
+function toCells(
+  ctx: CanvasRenderingContext2D,
+  cols: number,
+  rows: number,
+  px: number,
+): Uint8Array {
+  const width = cols * px;
+  const data = ctx.getImageData(0, 0, width, rows * px).data;
   const mask = new Uint8Array(cols * rows);
   for (let cy = 0; cy < rows; cy++)
     for (let cx = 0; cx < cols; cx++) {
       let inked = false;
-      for (let y = 0; y < SCENE_CELL_PX && !inked; y++)
-        for (let x = 0; x < SCENE_CELL_PX && !inked; x++)
-          inked = data[((cy * SCENE_CELL_PX + y) * width + cx * SCENE_CELL_PX + x) * 4 + 3]! > 110;
+      for (let y = 0; y < px && !inked; y++)
+        for (let x = 0; x < px && !inked; x++)
+          inked = data[((cy * px + y) * width + cx * px + x) * 4 + 3]! > 110;
       if (inked) mask[cy * cols + cx] = 1;
     }
   return mask;

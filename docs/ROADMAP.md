@@ -1657,6 +1657,16 @@ at a time; each is ticked once the owner has tried it.*
       (say 11×8 or 14×10), fewer envelopes, and finer movement for this
       scene only (a smaller cell, or drawing the sprites at their exact
       position rather than snapped to the grid)
+      *Built to try (2026-10-24): this scene alone now draws on 2px
+      cells (the others keep 3px), so envelopes move in 2px steps; the
+      envelope is 13×9 cells (26×18px, was 21×15) with a deeper fold,
+      and the paper plane 12×6; 10 envelopes instead of 14, with speeds
+      and distances scaled so the flock covers the screen as before.
+      Also a cause of the jumpiness: the wingbeat went by each
+      envelope's position, so it flickered unevenly as it moved; each now
+      keeps its own steady beat (3 a second). To try: open an empty view
+      (an empty label, say), press ⌘K and start "Envelope flock". Bigger
+      still, slower, fewer, or back?*
 - [ ] Many attachments squeeze the composer's writing area *(owner
       report, 2026-10-22)*: each attachment chip takes a row, so with
       enough of them the editable area shrinks to almost nothing. Give

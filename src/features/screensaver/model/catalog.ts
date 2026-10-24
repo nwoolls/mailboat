@@ -6,23 +6,40 @@ import { LifeScene } from "./life";
 import { DEFAULT_PALETTE, type PaletteId, paletteFor } from "./palettes";
 import { RainScene } from "./rain";
 import { SandscapeScene } from "./sand";
-import type { Rng, Scene, SceneSetup } from "./scene";
+import { type Rng, type Scene, SCENE_CELL_PX, type SceneSetup } from "./scene";
 
 /** The screensavers, in the order Settings and the palette list them. */
 export const SCREENSAVERS = [
   { id: "sandscape", label: "Sandscape", make: (s: SceneSetup) => new SandscapeScene(s) },
-  { id: "envelopes", label: "Envelope flock", make: (s: SceneSetup) => new EnvelopeScene(s) },
+  {
+    id: "envelopes",
+    label: "Envelope flock",
+    make: (s: SceneSetup) => new EnvelopeScene(s),
+    // Finer than the rest: at 3px the flock moved in visible steps.
+    cellPx: 2,
+  },
   { id: "life", label: "Life", make: (s: SceneSetup) => new LifeScene(s) },
   { id: "rain", label: "Rain on glass", make: (s: SceneSetup) => new RainScene(s) },
   { id: "koi", label: "Koi pond", make: (s: SceneSetup) => new KoiScene(s) },
   { id: "fireflies", label: "Fireflies", make: (s: SceneSetup) => new FireflyScene(s) },
   { id: "lava", label: "Lava lamp", make: (s: SceneSetup) => new LavaScene(s) },
-] as const satisfies readonly { id: string; label: string; make: (s: SceneSetup) => Scene }[];
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  make: (s: SceneSetup) => Scene;
+  cellPx?: number;
+}[];
 
 export type SceneId = (typeof SCREENSAVERS)[number]["id"];
 
 export function makeScene(id: SceneId, setup: SceneSetup): Scene {
   return SCREENSAVERS.find((s) => s.id === id)!.make(setup);
+}
+
+/** Screen pixels per cell for a scene: SCENE_CELL_PX unless it asks for finer. */
+export function cellPxOf(id: SceneId): number {
+  const entry = SCREENSAVERS.find((s) => s.id === id)!;
+  return "cellPx" in entry ? entry.cellPx : SCENE_CELL_PX;
 }
 
 /** How long without input before the screensaver starts. */

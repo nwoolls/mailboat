@@ -6,7 +6,7 @@
  * (`ScreensaverCanvas`) supplies the empty state's shapes and the pointer.
  */
 
-/** Screen pixels per cell: chunky enough to read as pixel art. */
+/** Screen pixels per cell: chunky enough to read as pixel art (a scene may ask for finer, `cellPx` in the catalog). */
 export const SCENE_CELL_PX = 3;
 
 export type Rng = () => number;
