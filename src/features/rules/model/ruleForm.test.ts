@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { LabelId, Rule } from "../../../platform/tauri/bindings";
-import { emptyForm, formFromRule, formProblem, sizeParts, toActions, toCriteria } from "./ruleForm";
+import type { AccountId, LabelId, Rule } from "../../../platform/tauri/bindings";
+import {
+  emptyForm,
+  formFromRule,
+  formProblem,
+  labelsForAccount,
+  sizeParts,
+  toActions,
+  toCriteria,
+} from "./ruleForm";
 
 const rule: Rule = {
   accountId: 1,
@@ -68,5 +76,31 @@ describe("rule form", () => {
     const form = emptyForm({ from: "news@x.com" });
     expect(form.from).toBe("news@x.com");
     expect(form.applyToExisting).toBe(false);
+  });
+});
+
+const labelOf = (
+  id: number,
+  accountId: number,
+  name: string,
+  kind: "user" | "system" = "user",
+) => ({
+  id: id as LabelId,
+  accountId: accountId as AccountId,
+  name,
+  kind,
+});
+
+describe("labelsForAccount", () => {
+  const labels = [
+    labelOf(1, 1, "Receipts"),
+    labelOf(2, 1, "Travel"),
+    labelOf(3, 2, "Receipts"),
+    labelOf(4, 2, "Travel", "system"),
+  ];
+  it("swaps each label for the other account's of the same name, dropping the rest", () => {
+    expect(labelsForAccount([1, 2] as LabelId[], labels, 2 as AccountId)).toEqual([3]);
+    expect(labelsForAccount([1, 2] as LabelId[], labels, 1 as AccountId)).toEqual([1, 2]);
+    expect(labelsForAccount([99] as LabelId[], labels, 2 as AccountId)).toEqual([]);
   });
 });

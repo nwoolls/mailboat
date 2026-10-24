@@ -57,6 +57,7 @@ export function RulesSection({
           labelName={labelName}
           onNew={() => setEditing({ kind: "new", accountId: account.id })}
           onEdit={(rule) => setEditing({ kind: "edit", rule })}
+          onDuplicate={(rule) => setEditing({ kind: "copy", rule })}
           onDelete={setDeleting}
           onSignIn={() => signIn.start(account.email)}
           signingIn={signIn.pending}
@@ -101,6 +102,7 @@ function AccountRulesGroup({
   labelName,
   onNew,
   onEdit,
+  onDuplicate,
   onDelete,
   onSignIn,
   signingIn,
@@ -112,6 +114,7 @@ function AccountRulesGroup({
   labelName: (id: LabelId) => string | undefined;
   onNew: () => void;
   onEdit: (rule: Rule) => void;
+  onDuplicate: (rule: Rule) => void;
   onDelete: (rule: Rule) => void;
   onSignIn: () => void;
   signingIn: boolean;
@@ -171,6 +174,7 @@ function AccountRulesGroup({
               description={describeActions(rule.actions, labelName)}
             >
               <Button onClick={() => onEdit(rule)}>Edit</Button>
+              <Button onClick={() => onDuplicate(rule)}>Duplicate</Button>
               <Button danger onClick={() => onDelete(rule)}>
                 Delete
               </Button>

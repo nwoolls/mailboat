@@ -1,6 +1,8 @@
 import type {
+  AccountId,
   Category,
   Importance,
+  Label,
   LabelId,
   Rule,
   RuleActions,
@@ -162,4 +164,23 @@ export function formProblem(form: RuleForm): string | null {
     return "Say which mail the rule is for: fill in From, To, Subject, the words, or a size.";
   if (!hasAction(form)) return "Choose at least one thing the rule does.";
   return null;
+}
+
+/**
+ * A rule's labels when its account changes (a copy made for another
+ * account): each becomes that account's label of the same name, if it
+ * has one. Labels stay per account; only the name carries over.
+ */
+export function labelsForAccount(
+  ids: LabelId[],
+  labels: Pick<Label, "id" | "accountId" | "name" | "kind">[],
+  accountId: AccountId,
+): LabelId[] {
+  return ids.flatMap((id) => {
+    const name = labels.find((l) => l.id === id)?.name;
+    const match = labels.find(
+      (l) => l.accountId === accountId && l.kind === "user" && l.name === name,
+    );
+    return match ? [match.id] : [];
+  });
 }

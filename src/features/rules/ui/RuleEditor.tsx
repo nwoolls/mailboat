@@ -22,6 +22,7 @@ import {
   emptyForm,
   formFromRule,
   formProblem,
+  labelsForAccount,
   hasCriteria,
   type RuleForm,
   type SizeUnit,
@@ -39,7 +40,9 @@ export type RuleEditorTarget =
       /** Opened from mail ("Filter messages like these"): the account is fixed. */
       fromMail?: boolean;
     }
-  | { kind: "edit"; rule: Rule };
+  | { kind: "edit"; rule: Rule }
+  /** A new rule starting as a copy of this one, for any account. */
+  | { kind: "copy"; rule: Rule };
 
 /** Waits for typing to pause before passing a value on. */
 function useSettled(value: string, ms: number): string {
@@ -70,15 +73,16 @@ export function RuleEditor({
 }) {
   const editing = target.kind === "edit";
   const [accountId, setAccountId] = useState<AccountId>(
-    target.kind === "edit" ? target.rule.accountId : target.accountId,
+    target.kind === "new" ? target.accountId : target.rule.accountId,
   );
   const [form, setForm] = useState<RuleForm>(() =>
-    target.kind === "edit" ? formFromRule(target.rule) : emptyForm(target.criteria),
+    target.kind === "new" ? emptyForm(target.criteria) : formFromRule(target.rule),
   );
   const set = <K extends keyof RuleForm>(key: K, value: RuleForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
   const account = accounts.find((a) => a.id === accountId);
   const labels = useLabels({ kind: "only", ids: [accountId] }).data ?? [];
+  const allLabels = useLabels({ kind: "all" }).data ?? [];
   const userLabels = labels.filter((l) => l.kind === "user");
   const [labelAnchor, setLabelAnchor] = useState<MenuAnchor | null>(null);
 
@@ -165,7 +169,7 @@ export function RuleEditor({
     >
       <header className="mb-4 flex items-center gap-3">
         <h2 id="rule-editor-title" className="flex-1 text-sm font-semibold">
-          {editing ? "Edit rule" : "New rule"}
+          {editing ? "Edit rule" : target.kind === "copy" ? "Duplicate rule" : "New rule"}
         </h2>
         {fixedAccount ? (
           accounts.length > 1 && (
@@ -179,9 +183,10 @@ export function RuleEditor({
             aria-label="Account"
             value={accountId}
             onChange={(e) => {
-              setAccountId(Number(e.target.value) as AccountId);
-              // Labels belong to one account.
-              set("labels", []);
+              const next = Number(e.target.value) as AccountId;
+              setAccountId(next);
+              // Labels belong to one account: keep those it has by name.
+              set("labels", labelsForAccount(form.labels, allLabels, next));
             }}
             className="max-w-[16rem] truncate rounded-md bg-selection-subtle px-1.5 py-1 text-xs outline-none"
           >

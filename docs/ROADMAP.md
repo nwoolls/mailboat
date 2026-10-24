@@ -1430,6 +1430,12 @@ each is ticked once the owner has tried it.*
       plan) and quiet hours
 - [ ] Sounds for new mail and for actions, if wanted
 - [ ] Duplicate a rule
+      *Built (2026-10-24), waiting for the owner to try it: Settings →
+      Rules → Duplicate, by Edit, opens "Duplicate rule" filled in from
+      that rule, saved as a new one. The account can be changed (to copy
+      a rule to another account); its labels then become that account's
+      labels of the same name, where it has them (before, changing the
+      account in a new rule cleared every label)*
 - [ ] Advanced section: clear the cache, reset, the sync log (in the
       Settings plan)
 - [ ] Show original (the raw message and its headers)
