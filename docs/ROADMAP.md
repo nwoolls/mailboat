@@ -1504,8 +1504,13 @@ each is ticked once the owner has tried it.*
       *Tried with the owner (2026-10-24, `examples/try_mute`, on a test
       email in the personal account): Gmail's API refuses the label
       (`400 Invalid label: MUTED`), and `labels.list` has no MUTED. So
-      Mailboat can't set Gmail's own Mute; next, whether a conversation
-      muted in Gmail's web app shows any label through the API*
+      Mailboat can't set Gmail's own Mute. Muted in Gmail's web app, the
+      conversation only lost INBOX (and IMPORTANT) through the API, with
+      no label Mailboat can see, so a Gmail-muted conversation looks archived
+      and Mailboat can't tell. A reply from the owner's other address, sent
+      to them alone, came back to the Inbox, as Google's help says it
+      does when you're the only recipient or in To/Cc. So Mute would have
+      to be Mailboat's own; to agree with the owner how*
 - [ ] Clicking a new-mail notification selects that email and shows it
       in the reader *(owner request, 2026-10-21; today it only brings
       Mailboat forward, see Milestone 5 → Notifications)*
