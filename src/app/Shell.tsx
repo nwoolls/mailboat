@@ -317,12 +317,14 @@ export function Shell() {
   const sidebarWidth = layout.sidebarWidth;
   // Either side panel can be hidden, down to just the list; remembered
   // between launches.
-  // The reader's own state: opening a conversation brings it back (set
-  // during render below), which only the user's toggle remembers.
+  // The reader's own state: whether it shows is remembered however it
+  // changed (its button, Esc, Return, or a click bringing it back; owner,
+  // 2026-10-24), so the next launch starts the way it was left.
   const sidebarOpen = panels.use().sidebarOpen;
   const [readerOpen, setReaderOpen] = useState(() => panels.get().readerOpen);
-  // Opening a different conversation (click or j/k) brings a hidden reader
-  // back. Adjusted during render rather than in an effect.
+  useEffect(() => setSavedReaderOpen(readerOpen), [readerOpen]);
+  // Opening a different conversation (a click, or j/k while it shows)
+  // brings a hidden reader back. Adjusted during render, not in an effect.
   if (selectedId !== null && selectedId !== shownId) {
     setShownId(selectedId);
     setReaderOpen(true);
@@ -369,7 +371,6 @@ export function Shell() {
   }, []);
   const toggleReader = useCallback(() => {
     setReaderOpen(!readerOpen);
-    setSavedReaderOpen(!readerOpen);
   }, [readerOpen]);
   /**
    * Runs an action on the chosen conversations (or `ids`). If they leave
@@ -628,12 +629,11 @@ export function Shell() {
         setChecked(NONE);
         return;
       }
-      // Then hides the reader, exactly as its toolbar button does (and
-      // remembered the same way); the conversation stays selected.
+      // Then hides the reader, exactly as its toolbar button does; the
+      // conversation stays selected.
       if (e.key === "Escape" && selectedId !== null && readerOpen) {
         e.preventDefault();
         setReaderOpen(false);
-        setSavedReaderOpen(false);
         return;
       }
       // Undo the last archive, trash or label change: z (as in Gmail) or ⌘Z.
@@ -730,7 +730,6 @@ export function Shell() {
         e.preventDefault();
         setSelectedId(chosenId);
         setReaderOpen(true);
-        setSavedReaderOpen(true);
         return;
       }
       const previewing = readerOpen && selectedId !== null;

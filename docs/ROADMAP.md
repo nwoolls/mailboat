@@ -1636,6 +1636,9 @@ at a time; each is ticked once the owner has tried it.*
       two clicks to bring the preview back). Built, waiting to be tried:
       Esc hides the reader and remembers it, the conversation stays
       selected, and Return or `o` shows it again (remembered too)*
+      *Owner (2026-10-24): a click bringing the reader back should be
+      remembered too: what's remembered is whether the reader shows.
+      Built: it's saved whenever it changes, whatever changed it*
 - [ ] Rethink where the "Original colors" button sits *(owner report with
       a screenshot, 2026-10-21)*: it floats over the top right of the
       email, so it covers the first line when that line runs to the edge
