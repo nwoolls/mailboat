@@ -1985,6 +1985,63 @@ flaky n / p browser test, found later, moved to the Bug backlog.*
       the same fix covers it. Owner (2026-10-21): not seen since
       the fix
 
+## AI Spike 2
+
+*Set up 2026-10-24 at the owner's request, from what the first AI Spike
+left unbuilt and two ideas from the GotEmail / bytemail review. Not
+started; where it falls against Milestone 9 is to agree. The first
+spike's rules hold for all of it: every request runs with all tools off,
+mail goes to a cloud model only when the owner chose that provider for
+the feature, AI output is never sent without the owner seeing it in the
+editor, and prompts and answers are never logged.*
+
+- [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
+      Mailboat's mail *(owner request, 2026-10-16; moved
+      here from Later, 2026-10-24)*. Worth it because Mailboat
+      already has every account's mail in one local, searchable cache
+      and their sign-ins: one connection covers all accounts, with no
+      extra Google setup. Design to agree before building:
+      - **Off by default;** turned on in Settings, per account. Turning it
+        on is the explicit choice `CLAUDE.md` requires before any email
+        reaches a model
+      - **Read-only first:** search (local, all accounts), list a view,
+        read a conversation, list labels. Then, each opt-in: label,
+        archive, create drafts. **Never send:** drafts only, the owner
+        sends from Mailboat
+      - **How it connects:** the running app serves MCP on localhost
+        (with an access token), or a small `mailboat-mcp` command that
+        Claude starts and that talks to the app. Either way sync, quota
+        and tokens stay in the app. Likely the official Rust MCP SDK
+        (`rmcp`), recorded in ARCHITECTURE when chosen
+      - Every request logged (what was read, never the content), so the
+        owner can see what an AI looked at
+- [ ] AI actions in ⌘K *(moved from Later, 2026-10-24)*: Summarize and
+      Reply with AI as palette commands, for the open conversation, from
+      the shared command list (`features/commands`) so they also reach
+      the menu bar and right-click menu. Today they're buttons in the
+      reader and on the reply
+- [ ] Keep Codex running between requests *(moved from Later,
+      2026-10-24)*: Codex takes about 3s to start on every request, most
+      of what's left of ChatGPT's wait. Keep one Codex process alive and
+      reuse it (still with every tool off), stopping it when idle or
+      when Mailboat quits. To check first: whether Codex can take more than
+      one request per process, and what it costs to leave running
+- [ ] Rewrite selected text *(from the GotEmail / bytemail review,
+      bytemail's idea; owner, 2026-10-24)*: select words in the composer
+      and have them shortened, softened, made more formal and so on,
+      with the writing provider chosen in Settings → AI (Apple
+      Intelligence by default). The rewrite shows in the editor for the
+      owner to keep or undo; nothing is sent. Which choices to offer, and
+      where (a menu on the selection, ⌘K, or both), to agree
+- [ ] Translate selected text *(from the GotEmail / bytemail review,
+      GotEmail's idea, narrowed to selected text; owner, 2026-10-24)*:
+      select text in an email or the composer and translate it. In an
+      email, the translation shows beside or under the text without
+      changing the email; in the composer it replaces the selection, to
+      keep or undo. Which provider (Apple's on-device translation, or
+      the writing provider), the language (to the Mac's own by default,
+      to choose when writing) and where it's offered, to agree
+
 ## Milestone 10: Windows
 
 - [ ] Windows build and testing; Linux nice-to-have
@@ -2088,32 +2145,11 @@ again until the next spike.*
       Gmail phone app would still notify). Offered, not chosen yet*
 ### From the AI Spike (moved unbuilt when it closed, 2026-10-21)
 
-- [ ] MCP server, so AI apps (Claude Desktop, Claude Code) can work with
-      Mailboat's mail *(owner request, 2026-10-16)*. Worth it because Mailboat
-      already has every account's mail in one local, searchable cache
-      and their sign-ins: one connection covers all accounts, with no
-      extra Google setup. Design to agree before building:
-      - **Off by default;** turned on in Settings, per account. Turning it
-        on is the explicit choice `CLAUDE.md` requires before any email
-        reaches a model
-      - **Read-only first:** search (local, all accounts), list a view,
-        read a conversation, list labels. Then, each opt-in: label,
-        archive, create drafts. **Never send:** drafts only, the owner
-        sends from Mailboat
-      - **How it connects:** the running app serves MCP on localhost
-        (with an access token), or a small `mailboat-mcp` command that
-        Claude starts and that talks to the app. Either way sync, quota
-        and tokens stay in the app. Likely the official Rust MCP SDK
-        (`rmcp`), recorded in ARCHITECTURE when chosen
-      - Every request logged (what was read, never the content), so the
-        owner can see what an AI looked at
-- [ ] AI ideas not built during the spike: AI actions in ⌘K (Summarize,
-      Reply with AI); AI search ("find the invoice from…"; owner: only if
-      small, and it isn't: it needs its own design in the search box);
-      keeping Codex running between requests (its ~3s start on every
-      request is most of what's left of ChatGPT's wait)
-
-
+- MCP server: moved to AI Spike 2 (owner, 2026-10-24)
+- [ ] AI search ("find the invoice from…"; owner: only if small, and it
+      isn't: it needs its own design in the search box). Not built
+      during the AI Spike; the other ideas with it (AI actions in ⌘K,
+      keeping Codex running) moved to AI Spike 2 (owner, 2026-10-24)
 - [ ] Offline mode *(moved from Milestone 5; owner, 2026-10-17: likes all
       three ideas, but lowest priority: almost never offline, and doesn't
       expect to send while offline)*. Today reading cached mail and local
@@ -2156,9 +2192,11 @@ again until the next spike.*
       - **Strip tracking codes from links** (bytemail): utm_ and the like,
         alongside the tracking pixels Mailboat already removes
       - **Translate** (GotEmail): Apple's on-device translation of an
-        email, with Show original
+        email, with Show original. *Translating selected text moved to
+        AI Spike 2 (owner, 2026-10-24)*
       - **Rewrite selected text** (bytemail): shorten, soften or translate
-        what's written, with Apple Intelligence
+        what's written, with Apple Intelligence. *Moved to AI Spike 2
+        (owner, 2026-10-24)*
       - **Sender logos** in the list (GotEmail)
       - **Contacts view** (GotEmail): everyone you write to, with recent
         mail both ways
