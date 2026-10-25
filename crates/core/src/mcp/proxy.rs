@@ -72,7 +72,33 @@ async fn connect(socket: &PathBuf, client: &str) -> Result<Upstream> {
     .map_err(|e| CoreError::Other(format!("connect to Mailboat: {e}")))
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+async fn connect(socket: &PathBuf, client: &str) -> Result<Upstream> {
+    use tokio::net::windows::named_pipe::ClientOptions;
+    let err = |e: &dyn std::fmt::Display| CoreError::Other(format!("connect to Mailboat: {e}"));
+    // Busy means the app is between handing one connection over and
+    // opening the pipe for the next: a moment later it's free.
+    let mut tries = 0;
+    let stream = loop {
+        match ClientOptions::new().open(socket) {
+            Ok(stream) => break stream,
+            Err(e) if e.raw_os_error() == Some(231) && tries < 20 => {
+                tries += 1;
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            }
+            Err(e) => return Err(err(&e)),
+        }
+    };
+    ClientConfig::new(
+        ClientCapabilities::default(),
+        Implementation::new(client, env!("CARGO_PKG_VERSION")),
+    )
+    .serve(stream)
+    .await
+    .map_err(|e| err(&e))
+}
+
+#[cfg(not(any(unix, windows)))]
 async fn connect(_socket: &PathBuf, _client: &str) -> Result<Upstream> {
     Err(CoreError::Other("not on this system yet".into()))
 }

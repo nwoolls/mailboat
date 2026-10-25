@@ -35,10 +35,52 @@ pub fn socket_path() -> Option<PathBuf> {
                 .join("mcp.sock"),
         )
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(windows)]
     {
-        // Windows (Milestone 9) will need a named pipe instead.
+        // Windows has no socket files: a named pipe, one per user. Pipe
+        // names can't hold a backslash, so anything odd becomes `_`.
+        let user: String = std::env::var("USERNAME")
+            .unwrap_or_default()
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect();
+        Some(PathBuf::from(format!(
+            r"\\.\pipe\com.nwoolls.mailboat-mcp-{user}"
+        )))
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
+    {
         None
+    }
+}
+
+/// Serves AI apps' proxies on the named pipe `socket` until the app quits:
+/// one `MailServer` per connection. Only this user (and administrators)
+/// can write to a pipe they created, so other accounts on the PC can't
+/// send it requests; remote clients are refused. If something else
+/// already made the pipe (a second copy of Mailboat), this one gives up.
+#[cfg(windows)]
+pub async fn listen(socket: &Path, db: Arc<Db>, host: Arc<dyn Host>) -> Result<()> {
+    use tokio::net::windows::named_pipe::ServerOptions;
+    let io = |e: std::io::Error| CoreError::Other(format!("MCP pipe: {e}"));
+    let mut next = ServerOptions::new()
+        .first_pipe_instance(true)
+        .reject_remote_clients(true)
+        .create(socket)
+        .map_err(io)?;
+    loop {
+        next.connect().await.map_err(io)?;
+        let stream = next;
+        next = ServerOptions::new()
+            .reject_remote_clients(true)
+            .create(socket)
+            .map_err(io)?;
+        let server = MailServer::new(db.clone(), host.clone());
+        tokio::spawn(async move {
+            if let Ok(running) = server.serve(stream).await {
+                let _ = running.waiting().await;
+            }
+        });
     }
 }
 

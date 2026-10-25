@@ -2132,6 +2132,9 @@ then the Release Spike. It was Milestone 10, after Writing.*
 - [ ] First run in the owner's Windows VM: installs, opens, signs in to
       Google (the token goes to Windows' Credential Manager), syncs, reads
       and sends
+- [x] AI apps (MCP) on Windows *(2026-10-25)*: a named pipe per user in
+      place of the Mac's socket file. Compiles for Windows and the Mac test
+      still passes; the pipe itself is untested until it runs in the VM
 - [ ] Keyboard: Ctrl where the Mac uses ⌘, in shortcuts and in the
       labels that show them (26 files show "⌘"). On the Mac many ⌘
       shortcuts (⌘R reply, ⌘N new…) come from the menu bar, which Windows

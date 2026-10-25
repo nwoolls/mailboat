@@ -395,7 +395,11 @@ async fn through_the_proxy_with_mailboat_closed_then_open() {
     let m = mail();
     share(&m.db, &[m.a], &[]);
     let dir = std::env::temp_dir().join(format!("mailboat-mcp-{}", std::process::id()));
+    #[cfg(unix)]
     let socket = dir.join("mcp.sock");
+    #[cfg(windows)]
+    let socket =
+        std::path::PathBuf::from(format!(r"\\.\pipe\mailboat-mcp-test-{}", std::process::id()));
     let _ = std::fs::remove_file(&socket);
 
     let (proxy_side, client_side) = tokio::io::duplex(1 << 16);
@@ -426,16 +430,22 @@ async fn through_the_proxy_with_mailboat_closed_then_open() {
     let db = m.db.clone();
     let path = socket.clone();
     let app = tokio::spawn(async move { listen(&path, db, host(None)).await });
+    // Retried until the app is listening (a pipe isn't a file to wait for).
+    let mut r = call(&c, "search_mail", json!({ "query": "lunch" })).await;
     for _ in 0..100 {
-        if socket.exists() {
+        if r.is_error != Some(true) {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        r = call(&c, "search_mail", json!({ "query": "lunch" })).await;
     }
-    use std::os::unix::fs::PermissionsExt;
-    let mode = std::fs::metadata(&socket).unwrap().permissions().mode() & 0o777;
-    assert_eq!(mode, 0o600, "only the user may connect");
-    let found = ok(&call(&c, "search_mail", json!({ "query": "lunch" })).await);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = std::fs::metadata(&socket).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "only the user may connect");
+    }
+    let found = ok(&r);
     assert_eq!(found["conversations"][0]["conversation_id"], m.a_thread.0);
     // The log names the AI app, not the proxy.
     let entries = log::recent(&m.db.conn(), 1).unwrap();
