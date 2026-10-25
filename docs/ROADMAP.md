@@ -2138,6 +2138,11 @@ then the Release Spike. It was Milestone 10, after Writing.*
 - [x] Find Claude Code and Codex in Windows' folders (`.exe`, and npm's
       `.cmd` launchers in `%APPDATA%\npm`), and Claude Desktop's settings
       in `%APPDATA%\Claude` *(2026-10-25; untested on Windows)*
+- [ ] Window look: Windows 11's Mica backdrop in place of macOS's glass
+      (set, `tauri.windows.conf.json`), with Windows' own title bar for
+      now. To check in the VM: whether the glass tints read well over
+      Mica, and the empty space the toolbar leaves for macOS's window
+      buttons, which Windows doesn't need
 - [ ] Keyboard: Ctrl where the Mac uses ⌘, in shortcuts and in the
       labels that show them (26 files show "⌘"). On the Mac many ⌘
       shortcuts (⌘R reply, ⌘N new…) come from the menu bar, which Windows
