@@ -18,6 +18,10 @@ Agents write all the code, so:
 - `docs/ARCHITECTURE.md`: how the app works, plus a dated decisions table.
   Add a row when you make a choice a future agent might second-guess
   (a library, a limit, a security trade-off).
+- `docs/RELEASE.md`: the release plans (closed and paid, open source,
+  hybrid), each plan's steps until the owner chooses one, and the
+  research behind them. Once a plan is chosen, its steps move to the
+  roadmap's Release Spike.
 - `README.md`: setup and run instructions for people.
 
 ## Conventions
