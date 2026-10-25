@@ -114,6 +114,14 @@ mockIPC((cmd, args) => {
       const text = (args as { text: string }).text.toUpperCase();
       return new Promise((done) => setTimeout(() => done({ text, html: `<p>${text}</p>` }), 300));
     }
+    case "ai_translate": {
+      // Marks the text with the language asked for.
+      const { text, target } = args as { text: string; target: string };
+      const out = `[${target}] ${text}`;
+      return { text: out, html: `<p>${out}</p>`, source: "en", by: "Apple Translation" };
+    }
+    case "ai_translation_languages":
+      return ["de", "fr", "fr-CA"];
     case "ai_reply_ideas":
       // A moment later, as from a model, so the stand-ins show first.
       return new Promise((done) => setTimeout(() => done(["Say yes", "Ask for details"]), 800));

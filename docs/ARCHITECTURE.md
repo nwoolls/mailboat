@@ -446,6 +446,13 @@ flowchart LR
   `prompts::rewrite`), with a size cap for Apple's small model. The
   answer replaces the selection in one undo step (`applyRewrite`): one
   line as plain text so it stays inside its paragraph, more as HTML.
+- **Translate** (`tasks::translate`, `ai_translate`): Apple's Translation
+  framework in the helper first, which works without a window only for
+  languages already downloaded; then the writing provider, if set up,
+  with only the text. The language of a conversation is told on the Mac
+  (NaturalLanguage, `ai_conversation_language`). In an email the
+  translation shows in a card under it (`TranslationCard`); in the
+  composer it replaces the selection like a rewrite.
 - **Commands:** Summarize and Reply with AI are also in the shared
   command list (`features/commands`), so ⌘K, the menu bar and the
   right-click menu offer them. A summary asked for that way goes through
@@ -599,3 +606,5 @@ flowchart LR
 | 2026-10-24 | AI apps reach Mailboat through `mailboat --mcp`, a proxy to a Unix socket (mode 0600) in the app's data folder, not a localhost port | The owner chose "Mailboat must be open". A socket in the user's own folder can only be opened by the user's processes, so it needs no token (the same processes could read the database anyway), and nothing listens on the network. The proxy is the app's own binary, so there's nothing extra to install or sign. Windows will need a named pipe. |
 | 2026-10-24 | The MCP log keeps the AI's search words | They're what the AI asked, not email content, and they're what the owner needs to see what it looked for. Subjects aren't stored, only looked up for display. |
 | 2026-10-24 | Restore default settings turns AI-app access off | Sharing mail is an explicit choice (`CLAUDE.md`); a reset shouldn't keep it, unlike connected providers, which are sign-ins. |
+| 2026-10-24 | Translation in an email shows in a card under the email, not inside it | The email's frame runs no scripts, not even the app's listeners, so the app can't follow a selection there or safely add to its page; a card under it leaves the email untouched. The selection is read when asked (as ⌘C does), from the right-click menu (added to WebKit's text menu, like the image and link menus), the menu bar (⌃⌘T) or ⌘K. |
+| 2026-10-24 | Apple's translation only for downloaded languages, the writing provider otherwise | `TranslationSession(installedSource:)` runs headless; downloading a language needs a window to ask in, which the helper doesn't have. The owner chose the writing provider as the fallback; it's only used if it's set up in Settings → AI. |

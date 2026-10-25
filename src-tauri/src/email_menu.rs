@@ -8,7 +8,9 @@
 //! withEvent:`, the documented way to change a WKWebView's menu): when
 //! WebKit built it for an image or a link, it's emptied (an empty menu
 //! doesn't show) and the page is told where the click was, so it shows
-//! Mailboat's menu instead. Over text the system menu stays (Copy, Look Up…).
+//! Mailboat's menu instead. Over text the system menu stays (Copy, Look Up…),
+//! with Mailboat's "Translate selection" added at the top while text is
+//! selected; choosing it runs the same command as the menu bar's.
 //!
 //! Also the clipboard, for the menu's Copy Image and Copy Link.
 
@@ -45,6 +47,8 @@ mod mac {
         "WKMenuItemIdentifierDownloadImage",
         "WKMenuItemIdentifierOpenImageInNewWindow",
     ];
+    /// WebKit's Copy, there when text is selected.
+    const COPY_ITEM: &str = "WKMenuItemIdentifierCopy";
     const LINK_ITEMS: [&str; 4] = [
         "WKMenuItemIdentifierOpenLink",
         "WKMenuItemIdentifierOpenLinkInNewWindow",
@@ -77,6 +81,9 @@ mod mac {
         let image = ids.iter().any(|id| IMAGE_ITEMS.contains(&id.as_str()));
         let link = ids.iter().any(|id| LINK_ITEMS.contains(&id.as_str()));
         if !image && !link {
+            if ids.iter().any(|id| id == COPY_ITEM) {
+                add_translate(this, menu);
+            }
             return;
         }
         menu.removeAllItems();
@@ -97,6 +104,42 @@ mod mac {
                 link,
             }
             .emit(app);
+        }
+    }
+
+    /// "Translate selection" at the top of the text menu, then a line.
+    fn add_translate(view: &AnyObject, menu: &NSMenu) {
+        use objc2::MainThreadOnly;
+        use objc2_app_kit::NSMenuItem;
+        use objc2_foundation::{MainThreadMarker, NSString};
+        let Some(mtm) = MainThreadMarker::new() else {
+            return;
+        };
+        // SAFETY: `mailboatTranslate:` is added to the web view's class in
+        // `install`, with the signature AppKit calls actions with.
+        let item = unsafe {
+            NSMenuItem::initWithTitle_action_keyEquivalent(
+                NSMenuItem::alloc(mtm),
+                &NSString::from_str("Translate selection"),
+                Some(sel!(mailboatTranslate:)),
+                &NSString::from_str(""),
+            )
+        };
+        // SAFETY: the web view outlives the menu it's showing.
+        unsafe { item.setTarget(Some(view)) };
+        menu.insertItem_atIndex(&NSMenuItem::separatorItem(mtm), 0);
+        menu.insertItem_atIndex(&item, 0);
+    }
+
+    type Action = unsafe extern "C-unwind" fn(&AnyObject, Sel, *const AnyObject);
+
+    unsafe extern "C-unwind" fn translate_action(
+        _this: &AnyObject,
+        _cmd: Sel,
+        _sender: *const AnyObject,
+    ) {
+        if let Some(app) = APP.get() {
+            let _ = crate::events::MenuCommandEvent("translate".into()).emit(app);
         }
     }
 
@@ -130,6 +173,12 @@ mod mac {
             if !added.as_bool() {
                 unsafe { ffi::method_setImplementation(method, ours) };
             }
+            // The action "Translate selection" sends to the web view.
+            // SAFETY: as above; `translate_action` matches "v@:@".
+            let action: Imp = unsafe { std::mem::transmute(translate_action as Action) };
+            unsafe {
+                ffi::class_addMethod(class_ptr, sel!(mailboatTranslate:), action, c"v@:@".as_ptr())
+            };
         });
     }
 

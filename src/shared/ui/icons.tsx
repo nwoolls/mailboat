@@ -72,6 +72,7 @@ import ArrowShrink02 from "@hugeicons/core-free-icons/ArrowShrink02Icon";
 import Smile from "@hugeicons/core-free-icons/SmileIcon";
 import Tie from "@hugeicons/core-free-icons/TieIcon";
 import SpellCheck from "@hugeicons/core-free-icons/SpellCheckIcon";
+import Translate from "@hugeicons/core-free-icons/TranslateIcon";
 import ArrowUp02 from "@hugeicons/core-free-icons/ArrowUp02Icon";
 import Stop from "@hugeicons/core-free-icons/StopIcon";
 
@@ -164,5 +165,6 @@ export const ShorterIcon = wrap(ArrowShrink02);
 export const FriendlierIcon = wrap(Smile);
 export const FormalIcon = wrap(Tie);
 export const SpellCheckIcon = wrap(SpellCheck);
+export const TranslateIcon = wrap(Translate);
 export const AskIcon = wrap(ArrowUp02);
 export const StopIcon = wrap(Stop);

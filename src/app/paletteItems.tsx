@@ -15,6 +15,7 @@ const GROUPS: Partial<Record<CommandId, string>> = {
   shortcuts: "View",
   summarize: "AI",
   replyAi: "AI",
+  translate: "AI",
 };
 
 /**

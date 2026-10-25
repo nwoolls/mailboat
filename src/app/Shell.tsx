@@ -130,6 +130,8 @@ import {
 import { aiChoices, canSummarize, canWrite } from "../features/ai/model/providers";
 import { openAssistantForNextReply } from "../features/ai/ui/assistantOpen";
 import { requestSummary } from "../features/ai/ui/summaryRequests";
+import { translateInMessage } from "../features/ai/ui/translations";
+import { selectedInMessage } from "../features/reader/ui/MessageFrame";
 
 /**
  * A file dropped outside a composer does nothing. (With Tauri's own file
@@ -591,6 +593,13 @@ export function Shell() {
       case "original":
         setOriginalFor(ids[0] ?? null);
         return;
+      case "translate": {
+        // What's selected in an email; the translation shows under it.
+        const selected = selectedInMessage();
+        if (selected) void translateInMessage(selected.messageId, selected.text);
+        else showToast({ message: "Select text in an email to translate it." });
+        return;
+      }
       case "block": {
         const who = senderToBlock(rows, selfEmailsOf);
         if (who) setBlocking(who);
@@ -1230,6 +1239,8 @@ export function Shell() {
             // The AI ones too, while AI isn't set up (Settings → AI).
             const reply = ["reply", "replyAll", "forward", "replyAi", "summarize"];
             if (reply.includes(c.id) && !c.enabled) return null;
+            // About text selected in an email, not the row.
+            if (c.id === "translate") return null;
             const line =
               (c.id === "archive" && list[0]?.enabled) ||
               c.id === "filterLike" ||

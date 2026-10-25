@@ -37,3 +37,20 @@ test("rewrites only the selected words, in place, and undoes", async ({ page }) 
   await page.keyboard.press("Meta+z");
   await expect(editor).toHaveText("Hi Sam, send the report by fri. Thanks");
 });
+
+test("translates the selection into a chosen language", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=card");
+  const editor = page.getByRole("textbox", { name: "Message" });
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.type("See you soon");
+  await page.keyboard.press("Meta+a");
+
+  await page.getByRole("button", { name: /^Rewrite or translate/ }).click();
+  await page.getByRole("menuitem", { name: "Translate into…" }).click();
+  // Apple's list, one entry per language (fr and fr-CA are one).
+  const languages = page.getByRole("menu", { name: "Translate into" });
+  await expect(languages.getByRole("menuitem")).toHaveText(["French", "German"]);
+  await languages.getByRole("menuitem", { name: "French" }).click();
+  await expect(editor).toHaveText("[fr] See you soon");
+});

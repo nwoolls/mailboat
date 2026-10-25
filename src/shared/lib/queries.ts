@@ -346,6 +346,26 @@ export function usePrefetchAiReplyIdeas() {
   };
 }
 
+/** The language a conversation is in ("fr"), told on the Mac; null if unknown. */
+export function useConversationLanguage(thread: ThreadId | null) {
+  return useQuery({
+    queryKey: ["conversationLanguage", thread],
+    queryFn: () => unwrap(commands.aiConversationLanguage(thread!)),
+    enabled: IS_TAURI && thread !== null,
+    staleTime: Infinity,
+  });
+}
+
+/** The languages Apple's translation offers on this Mac. */
+export function useTranslationLanguages(enabled: boolean) {
+  return useQuery({
+    queryKey: ["translationLanguages"],
+    queryFn: () => unwrap(commands.aiTranslationLanguages()),
+    enabled: IS_TAURI && enabled,
+    staleTime: Infinity,
+  });
+}
+
 /** How AI apps connect to Mailboat, and whether Claude's are (Settings → AI). */
 export function useMcpSetup() {
   return useQuery({

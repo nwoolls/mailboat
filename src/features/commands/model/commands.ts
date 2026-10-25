@@ -31,6 +31,7 @@ export type ConversationCommandId =
   | "forward"
   | "replyAi"
   | "summarize"
+  | "translate"
   | ToggleKind
   | "labels"
   | "filterLike"
@@ -116,6 +117,13 @@ export function conversationCommands(
     // while typing too.
     { id: "original", title: "Show original", accel: "Alt+Cmd+U", enabled: rows.length === 1 },
     { id: "summarize", title: "Summarize", enabled: one && o.ai.summarize },
+    // Text selected in an email; says so if there's none. Only looks.
+    {
+      id: "translate",
+      title: "Translate selection",
+      accel: "Ctrl+Cmd+T",
+      enabled: rows.length === 1,
+    },
   );
   return commands;
 }
@@ -206,6 +214,7 @@ export const MENU_BAR: MenuSpec[] = [
       "-",
       "original",
       "summarize",
+      "translate",
     ],
   },
 ];

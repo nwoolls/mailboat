@@ -1,8 +1,18 @@
 import { type Editor, useEditorState } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
-import { commands, type RewriteAnswer, type RewriteStyle } from "../../../platform/tauri/bindings";
+import {
+  commands,
+  type RewriteAnswer,
+  type RewriteStyle,
+  type ThreadId,
+} from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
-import { useAiStatus, useAppSettings } from "../../../shared/lib/queries";
+import {
+  useAiStatus,
+  useAppSettings,
+  useConversationLanguage,
+  useTranslationLanguages,
+} from "../../../shared/lib/queries";
 import { showToast } from "../../../shared/lib/toast";
 import {
   FormalIcon,
@@ -11,10 +21,12 @@ import {
   RewriteIcon,
   ShorterIcon,
   SpellCheckIcon,
+  TranslateIcon,
 } from "../../../shared/ui/icons";
-import { Menu, type MenuAnchor, MenuItem } from "../../../shared/ui/Menu";
+import { Menu, type MenuAnchor, MenuItem, MenuSeparator } from "../../../shared/ui/Menu";
 import { aiChoices, canWrite, PROVIDER_NAMES } from "../model/providers";
 import { BLOCK_SEPARATOR, REWRITE_STYLES, rewriteContent } from "../model/rewrite";
+import { languageLabel, languageName, pickerLanguages, sameLanguage } from "../model/translate";
 import { dropText, newRequestId } from "./stream";
 
 /**
@@ -43,21 +55,25 @@ const ICONS: Record<RewriteStyle, (props: IconProps) => React.ReactNode> = {
 };
 
 /**
- * Rewrite in the formatting bar: the selected text made shorter,
- * friendlier, more formal or correct, by the writing provider (Settings
- * → AI). Only the selection is sent. The rewrite replaces it in the
- * editor, selected, for the owner to keep, rewrite again, or undo (⌘Z,
- * or Undo on the toast); nothing is sent by it.
+ * The wand in the formatting bar: the selected text made shorter,
+ * friendlier, more formal or correct by the writing provider (Settings →
+ * AI), or translated (Apple's translation on the Mac, else the writing
+ * provider): into the language of the email being answered when it isn't
+ * the Mac's, or any other. Only the selection is sent. The result
+ * replaces it in the editor, selected, for the owner to keep, change
+ * again, or undo (⌘Z, or Undo on the toast); nothing is sent by it.
  */
-export function RewriteButton({ editor }: { editor: Editor }) {
+export function RewriteButton({ editor, threadId }: { editor: Editor; threadId: ThreadId | null }) {
   const ai = aiChoices(useAppSettings().data);
   const status = useAiStatus().data;
   const selected = useEditorState({
     editor,
     selector: ({ editor: e }) => !e.state.selection.empty,
   });
-  const [menu, setMenu] = useState<MenuAnchor | null>(null);
+  const [menu, setMenu] = useState<{ at: MenuAnchor; languages: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
+  const replyLanguage = useConversationLanguage(threadId).data ?? null;
+  const languages = useTranslationLanguages(menu?.languages ?? false).data ?? [];
   // The request in flight, stopped if the message closes first.
   const running = useRef<number | null>(null);
   useEffect(
@@ -66,28 +82,35 @@ export function RewriteButton({ editor }: { editor: Editor }) {
     },
     [],
   );
-  if (!canWrite(ai, status)) return null;
+  const write = canWrite(ai, status);
   const provider = PROVIDER_NAMES[ai.writingProvider];
+  const mac = navigator.language;
+  // Offered by name when the email being answered is in another language.
+  const answerIn = replyLanguage && !sameLanguage(replyLanguage, mac) ? replyLanguage : null;
 
-  const rewrite = async (style: RewriteStyle) => {
+  const change = async (
+    ask: (original: string, id: number) => Promise<RewriteAnswer & { by?: string }>,
+    done: string,
+    failed: string,
+  ) => {
     const { from, to } = editor.state.selection;
     const original = editor.state.doc.textBetween(from, to, BLOCK_SEPARATOR);
     const id = newRequestId();
     running.current = id;
     setBusy(true);
     try {
-      const answer = await unwrap(commands.aiRewrite(original, style, id));
+      const answer = await ask(original, id);
       if (editor.isDestroyed) return;
       if (!applyRewrite(editor, { from, to, original }, answer)) {
         showToast({
           tone: "error",
-          message: "The text changed while it was being rewritten, so it was left as it is.",
+          message: "The text changed meanwhile, so it was left as it is.",
         });
         return;
       }
       const after = editor.state.doc;
       showToast({
-        message: `Rewritten with ${provider}`,
+        message: `${done} with ${answer.by ?? provider}`,
         action: {
           label: "Undo",
           run: () => {
@@ -98,19 +121,33 @@ export function RewriteButton({ editor }: { editor: Editor }) {
         },
       });
     } catch (e) {
-      showToast({ tone: "error", message: `Couldn’t rewrite: ${(e as Error).message}` });
+      showToast({ tone: "error", message: `${failed}: ${(e as Error).message}` });
     } finally {
       dropText(id);
       running.current = null;
       setBusy(false);
     }
   };
+  const rewrite = (style: RewriteStyle) =>
+    change(
+      (original, id) => unwrap(commands.aiRewrite(original, style, id)),
+      "Rewritten",
+      "Couldn’t rewrite",
+    );
+  const translate = (code: string) =>
+    change(
+      (original, id) => unwrap(commands.aiTranslate(original, code, languageLabel(code), id)),
+      `Translated into ${languageName(code)}`,
+      "Couldn’t translate",
+    );
 
   const label = busy
-    ? `Rewriting with ${provider}…`
+    ? "Working on the selected text…"
     : selected
-      ? `Rewrite with ${provider}`
-      : "Rewrite: select text first";
+      ? write
+        ? `Rewrite or translate with ${provider}`
+        : "Translate"
+      : "Rewrite or translate: select text first";
   return (
     <>
       <button
@@ -124,26 +161,60 @@ export function RewriteButton({ editor }: { editor: Editor }) {
         onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
-          setMenu({ x: r.left, y: r.bottom + 4 });
+          setMenu({ at: { x: r.left, y: r.bottom + 4 }, languages: false });
         }}
         className="flex h-7 w-7 items-center justify-center rounded-md text-content/70 hover:bg-selection hover:text-content disabled:opacity-35 disabled:hover:bg-transparent"
       >
         <RewriteIcon size={15} className={busy ? "animate-pulse text-accent" : ""} />
       </button>
-      {menu && (
-        <Menu anchor={menu} onClose={() => setMenu(null)} label="Rewrite">
-          {REWRITE_STYLES.map(({ style, title }) => (
+      {menu && !menu.languages && (
+        <Menu anchor={menu.at} onClose={() => setMenu(null)} label="Rewrite or translate">
+          {write &&
+            REWRITE_STYLES.map(({ style, title }) => (
+              <MenuItem
+                key={style}
+                icon={ICONS[style]}
+                onSelect={() => {
+                  setMenu(null);
+                  void rewrite(style);
+                }}
+              >
+                {title}
+              </MenuItem>
+            ))}
+          {write && <MenuSeparator />}
+          {answerIn && (
             <MenuItem
-              key={style}
-              icon={ICONS[style]}
+              icon={TranslateIcon}
               onSelect={() => {
                 setMenu(null);
-                void rewrite(style);
+                void translate(answerIn);
               }}
             >
-              {title}
+              Translate into {languageName(answerIn)}
             </MenuItem>
-          ))}
+          )}
+          <MenuItem icon={TranslateIcon} onSelect={() => setMenu({ at: menu.at, languages: true })}>
+            Translate into…
+          </MenuItem>
+        </Menu>
+      )}
+      {menu?.languages && (
+        <Menu anchor={menu.at} onClose={() => setMenu(null)} label="Translate into">
+          <div className="max-h-72 overflow-y-auto">
+            {pickerLanguages(languages, mac).map(({ code, name }) => (
+              <MenuItem
+                key={code}
+                icon={TranslateIcon}
+                onSelect={() => {
+                  setMenu(null);
+                  void translate(code);
+                }}
+              >
+                {name}
+              </MenuItem>
+            ))}
+          </div>
         </Menu>
       )}
     </>

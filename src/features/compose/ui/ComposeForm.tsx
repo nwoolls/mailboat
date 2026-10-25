@@ -328,7 +328,9 @@ export function ComposeForm({
         className={inline ? "reader-foot reader-foot-in-card pt-2" : ""}
         data-stuck={(inline && footStuck) || undefined}
       >
-        <FormatBar editor={editor}>{editor && <RewriteButton editor={editor} />}</FormatBar>
+        <FormatBar editor={editor}>
+          {editor && <RewriteButton editor={editor} threadId={draft.threadId} />}
+        </FormatBar>
         <div className="flex shrink-0 items-center gap-3 px-4 pt-1 pb-3">
           <button
             type="submit"
