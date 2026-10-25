@@ -317,6 +317,16 @@ export const commands = {
 	 *  streamed as `AiTextEvent`s. Only the selection is sent.
 	 */
 	aiRewrite: (text: string, style: RewriteStyle, requestId: number) => typedError<RewriteAnswer, AppError>(__TAURI_INVOKE("ai_rewrite", { text, style, requestId })),
+	/**
+	 *  Translates text into `target` ("en-US"; `language` names it for a
+	 *  model, "English (en-US)"): Apple's translation on the Mac first, the
+	 *  writing provider when Apple can't. Only the text is sent.
+	 */
+	aiTranslate: (text: string, target: string, language: string, requestId: number) => typedError<TranslateAnswer, AppError>(__TAURI_INVOKE("ai_translate", { text, target, language, requestId })),
+	/**  The language a conversation is written in ("fr"), told on the Mac. */
+	aiConversationLanguage: (threadId: ThreadId) => typedError<string | null, AppError>(__TAURI_INVOKE("ai_conversation_language", { threadId })),
+	/**  The languages Apple's translation offers on this Mac (codes). */
+	aiTranslationLanguages: () => typedError<string[], AppError>(__TAURI_INVOKE("ai_translation_languages")),
 	mcpSetup: () => typedError<McpSetup, AppError>(__TAURI_INVOKE("mcp_setup")),
 	/**  Adds Mailboat to Claude Code for every project (`claude mcp add`). */
 	mcpConnectClaudeCode: () => typedError<null, AppError>(__TAURI_INVOKE("mcp_connect_claude_code")),
@@ -1435,6 +1445,17 @@ export type ThreadSummary = {
  */
 export type TrackpadEvent = {
 	touching: boolean,
+};
+
+/**  A translation, and who made it. */
+export type TranslateAnswer = {
+	text: string,
+	/**  The same as the composer's HTML. */
+	html: string,
+	/**  The language it was in ("fr"), when known. */
+	source: string | null,
+	/**  Who translated it: "Apple Translation", or the writing provider's name. */
+	by: string,
 };
 
 export type UsageTotals = {

@@ -19,6 +19,8 @@ pub enum Purpose {
     ReplyIdeas,
     /// Rewriting text selected in the composer.
     Rewrite,
+    /// Translating, when Apple's translation couldn't.
+    Translate,
 }
 
 impl Purpose {
@@ -29,6 +31,7 @@ impl Purpose {
             Purpose::Writing => "writing",
             Purpose::ReplyIdeas => "replyIdeas",
             Purpose::Rewrite => "rewrite",
+            Purpose::Translate => "translate",
         }
     }
 }

@@ -12,7 +12,7 @@ use mailboat_core::ai::codex::CodexModel;
 use mailboat_core::ai::prompts::RewriteStyle;
 use mailboat_core::ai::summaries::{self, Summary, SummaryKind};
 use mailboat_core::ai::tasks::{
-    self, RewriteAnswer, Summarized, SummaryRequest, WriteAnswer, WriteRequest,
+    self, RewriteAnswer, Summarized, SummaryRequest, TranslateAnswer, WriteAnswer, WriteRequest,
 };
 use mailboat_core::ai::usage::{self, ProviderUsage};
 use mailboat_core::ai::{
@@ -436,6 +436,58 @@ pub async fn ai_rewrite(
     .await?;
     ai.note(&raw);
     Ok(answer)
+}
+
+/// Translates text into `target` ("en-US"; `language` names it for a
+/// model, "English (en-US)"): Apple's translation on the Mac first, the
+/// writing provider when Apple can't. Only the text is sent.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_translate(
+    state: State<'_, AppState>,
+    ai: State<'_, AiState>,
+    text: String,
+    target: String,
+    language: String,
+    request_id: u32,
+) -> CmdResult<TranslateAnswer> {
+    let saved = load_settings(&state)?;
+    let provider = saved.ai.writing_provider;
+    let fallback = check_usable(&saved, provider).is_ok().then_some(provider);
+    let db = state.db.clone();
+    let programs = ai.programs_for(&saved).await;
+    cancellable(&ai, request_id, async move {
+        tasks::translate(&db, &programs, fallback, &text, &target, &language).await
+    })
+    .await
+}
+
+/// The language a conversation is written in ("fr"), told on the Mac.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_conversation_language(
+    state: State<'_, AppState>,
+    ai: State<'_, AiState>,
+    thread_id: ThreadId,
+) -> CmdResult<Option<String>> {
+    let saved = load_settings(&state)?;
+    let programs = ai.programs_for(&saved).await;
+    Ok(tasks::conversation_language(&state.db, &programs, thread_id).await?)
+}
+
+/// The languages Apple's translation offers on this Mac (codes).
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_translation_languages(
+    state: State<'_, AppState>,
+    ai: State<'_, AiState>,
+) -> CmdResult<Vec<String>> {
+    let saved = load_settings(&state)?;
+    let programs = ai.programs_for(&saved).await;
+    Ok(match &programs.apple {
+        Some(helper) => mailboat_core::ai::apple::languages(helper).await,
+        None => Vec::new(),
+    })
 }
 
 /// Suggestions for the writing assistant's chips, from the conversation

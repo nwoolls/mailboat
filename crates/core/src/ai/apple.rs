@@ -28,6 +28,17 @@ enum Line {
     Done {
         text: String,
     },
+    Translated {
+        text: String,
+        source: String,
+        target: String,
+    },
+    Language {
+        code: Option<String>,
+    },
+    Languages {
+        codes: Vec<String>,
+    },
     Error {
         kind: String,
         message: String,
@@ -190,5 +201,82 @@ mod tests {
     fn make_executable(path: &Path) {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+}
+
+/// Apple's on-device translation of a text.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Translated {
+    pub text: String,
+    /// The language it was in, and is now in (e.g. "fr", "en").
+    pub source: String,
+    pub target: String,
+}
+
+/// The helper's one answer to a quick request (translation, languages).
+async fn one_answer(
+    helper: &Path,
+    request: &str,
+) -> Result<std::result::Result<Line, (String, String)>> {
+    let mut answer = None;
+    let exit = process::run_lines(helper, &[], request, |line| {
+        match serde_json::from_str::<Line>(line) {
+            Ok(Line::Error { kind, message }) => answer = Some(Err((kind, message))),
+            Ok(other) => answer = Some(Ok(other)),
+            Err(_) => return Ok(ControlFlow::Continue(())),
+        }
+        Ok(ControlFlow::Break(()))
+    })
+    .await?;
+    answer.ok_or_else(|| {
+        CoreError::Ai(format!(
+            "Apple's translation didn't answer: {}",
+            exit.stderr
+        ))
+    })
+}
+
+/// Translates `text` into `target` (a language code such as "en-US") on
+/// the Mac. `Ok(None)` when Apple can't do it here (the language isn't
+/// downloaded or offered, or it can't tell which language the text is),
+/// so someone else can try.
+pub async fn translate(helper: &Path, text: &str, target: &str) -> Result<Option<Translated>> {
+    let request = json!({ "op": "translate", "prompt": text, "target": target }).to_string();
+    match one_answer(helper, &request).await? {
+        Ok(Line::Translated {
+            text,
+            source,
+            target,
+        }) => Ok(Some(Translated {
+            text,
+            source,
+            target,
+        })),
+        Err((kind, message)) => match kind.as_str() {
+            "notInstalled" | "unsupported" | "unknownLanguage" => Ok(None),
+            "sameLanguage" => Err(CoreError::Invalid(
+                "That text is already in that language.".into(),
+            )),
+            _ => Err(CoreError::Ai(message)),
+        },
+        Ok(_) => Err(CoreError::Ai("Apple's translation answered oddly.".into())),
+    }
+}
+
+/// The language a text is written in ("fr"), if the Mac can tell.
+pub async fn detect(helper: &Path, text: &str) -> Option<String> {
+    let request = json!({ "op": "detect", "prompt": text }).to_string();
+    match one_answer(helper, &request).await {
+        Ok(Ok(Line::Language { code })) => code,
+        _ => None,
+    }
+}
+
+/// The languages Apple's translation offers (codes, some regional).
+pub async fn languages(helper: &Path) -> Vec<String> {
+    let request = json!({ "op": "languages" }).to_string();
+    match one_answer(helper, &request).await {
+        Ok(Ok(Line::Languages { codes })) => codes,
+        _ => Vec::new(),
     }
 }

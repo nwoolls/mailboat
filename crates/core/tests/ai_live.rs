@@ -222,3 +222,31 @@ async fn claude_rewrites() {
 async fn chatgpt_rewrites() {
     rewrite_with(AiProvider::ChatGpt).await;
 }
+
+/// Apple's translation on the Mac (needs the language downloaded), then
+/// the writing provider when Apple's helper isn't there.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore]
+async fn translates_with_apple_then_the_writing_provider() {
+    use mailboat_core::ai::tasks;
+    let db = mailboat_core::db::Db::open_in_memory().unwrap();
+    let text = "Bonjour Sam, pouvez-vous m'envoyer les chiffres du budget avant vendredi ?";
+    let mut programs = programs();
+    for provider in [None, Some(AiProvider::Claude), Some(AiProvider::ChatGpt)] {
+        if provider.is_some() {
+            programs.apple = None;
+        }
+        let started = std::time::Instant::now();
+        let t = tasks::translate(&db, &programs, provider, text, "en-US", "English (en-US)")
+            .await
+            .unwrap();
+        println!(
+            "--- {} ({:.1}s, from {:?}): {}",
+            t.by,
+            started.elapsed().as_secs_f64(),
+            t.source,
+            t.text
+        );
+        assert!(t.text.to_lowercase().contains("friday"), "{}", t.text);
+    }
+}

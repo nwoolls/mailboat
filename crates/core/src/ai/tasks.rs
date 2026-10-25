@@ -249,6 +249,106 @@ pub async fn rewrite(
     Ok((RewriteAnswer { text, html }, answer))
 }
 
+/// A translation, and who made it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TranslateAnswer {
+    pub text: String,
+    /// The same as the composer's HTML.
+    pub html: String,
+    /// The language it was in ("fr"), when known.
+    pub source: Option<String>,
+    /// Who translated it: "Apple Translation", or the writing provider's name.
+    pub by: String,
+}
+
+/// The most text translated at once.
+pub const TRANSLATE_LIMIT: usize = 20_000;
+
+/// Translates text into `target` (a code such as "en-US"; `language` is
+/// its name, "English (en-US)", for a model). Apple's on-device
+/// translation first; when it can't (the language isn't downloaded or
+/// offered), the writing provider, as the owner chose (`None`: it isn't
+/// set up, so there's no one to ask). Only the text is sent.
+pub async fn translate(
+    db: &Db,
+    programs: &Programs,
+    provider: Option<AiProvider>,
+    text: &str,
+    target: &str,
+    language: &str,
+) -> Result<TranslateAnswer> {
+    if text.trim().is_empty() {
+        return Err(CoreError::Invalid("Select some text to translate.".into()));
+    }
+    if text.chars().count() > TRANSLATE_LIMIT {
+        return Err(CoreError::Invalid(
+            "That's too much text to translate at once; select less.".into(),
+        ));
+    }
+    let answer = |text: String, source: Option<String>, by: &str| TranslateAnswer {
+        html: super::format::markdown_to_html(&text),
+        text,
+        source,
+        by: by.into(),
+    };
+    if let Some(helper) = &programs.apple {
+        if let Some(t) = super::apple::translate(helper, text, target).await? {
+            return Ok(answer(t.text, Some(t.source), "Apple Translation"));
+        }
+    }
+    let Some(provider) = provider else {
+        return Err(CoreError::Ai(
+            "Apple's translation can't do that language on this Mac. Download it in System \
+Settings → General → Language & Region → Translation Languages."
+                .into(),
+        ));
+    };
+    if text.chars().count() > prompts::rewrite_limit(provider) {
+        return Err(CoreError::Ai(format!(
+            "That's too much text for {} to translate at once; select a paragraph or two.",
+            super::display_name(provider)
+        )));
+    }
+    let source = match &programs.apple {
+        Some(helper) => super::apple::detect(helper, text).await,
+        None => None,
+    };
+    let prompt = prompts::translate(text, language);
+    let asked = ask_recorded(db, programs, provider, Purpose::Translate, &prompt, &|_| {}).await?;
+    let translated = prompts::clean_rewrite(&asked.text);
+    if translated.is_empty() {
+        return Err(CoreError::Ai(
+            "The AI didn't translate anything; try again.".into(),
+        ));
+    }
+    Ok(answer(translated, source, super::display_name(provider)))
+}
+
+/// The language a conversation is written in ("fr"): its newest email
+/// from someone else, read on the Mac (nothing is sent). `None` without
+/// Apple's helper, or when it can't tell.
+pub async fn conversation_language(
+    db: &Db,
+    programs: &Programs,
+    thread: ThreadId,
+) -> Result<Option<String>> {
+    let Some(helper) = &programs.apple else {
+        return Ok(None);
+    };
+    let text = thread_text(&db.conn(), thread)?;
+    let newest = text
+        .messages
+        .iter()
+        .rev()
+        .find(|m| !m.mine && !m.text.trim().is_empty())
+        .or_else(|| text.messages.last());
+    Ok(match newest {
+        Some(m) => super::apple::detect(helper, &super::context::shorten(&m.text, 2_000)).await,
+        None => None,
+    })
+}
+
 /// Suggestions for the writing assistant's chips, from the conversation
 /// being answered (or forwarded).
 pub async fn reply_ideas(
