@@ -54,6 +54,11 @@ export type Draft = {
   /** The draft message it was reopened from (shown in a conversation). */
   resumedFrom: MessageId | null;
   /**
+   * A reopened draft's people, subject and files as it was opened
+   * (`fieldsKey`), so opening and closing it doesn't count as a change.
+   */
+  opened?: string;
+  /**
    * The text selected in the original when the reply started, which is
    * all it quotes (kept so switching to Forward or Reply all still
    * quotes just that).
@@ -393,6 +398,7 @@ export function resumedDraft(opened: OpenedDraft, from: MessageId): Draft {
     signature: "",
     savedId: opened.draft,
     resumedFrom: from,
+    opened: fieldsKey({ ...opened, attachments: opened.files }),
     // Its saved files, as plain attachments (sent and saved again as is).
     attachments: opened.files,
     forwarded: [],
@@ -491,8 +497,32 @@ export function sendProblem(draft: Draft): string | null {
 }
 
 /** Something was written that closing would lose. */
+const emails = (list: Address[]) => list.map((a) => a.email.toLowerCase());
+
+/** What a draft holds besides its text, for telling whether it changed. */
+export function fieldsKey(
+  d: Pick<Draft, "from" | "to" | "cc" | "bcc" | "subject" | "attachments">,
+): string {
+  return JSON.stringify([
+    d.from.email.toLowerCase(),
+    emails(d.to),
+    emails(d.cc),
+    emails(d.bcc),
+    d.subject,
+    d.attachments.map((a) => [a.filename, a.data.length]),
+  ]);
+}
+
+/**
+ * Whether there's something to save. A reopened draft only once it's
+ * edited or its people, subject or files change: it used to be saved
+ * again just for being opened, and Gmail replaces a draft's message on
+ * every save (owner report, 2026-10-25).
+ */
 export function hasChanges(draft: Draft): boolean {
-  if (draft.edited || draft.attachments.length > 0) return true;
+  if (draft.edited) return true;
+  if (draft.opened !== undefined) return fieldsKey(draft) !== draft.opened;
+  if (draft.attachments.length > 0) return true;
   if (draft.kind !== "new") return false;
   return draft.to.length + draft.cc.length + draft.bcc.length > 0 || draft.subject.trim() !== "";
 }

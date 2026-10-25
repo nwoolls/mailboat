@@ -417,6 +417,10 @@ pub async fn save_draft_with_files(
     if let Some((id, (account, gmail_id))) = saved {
         if account == msg.account_id {
             let gmail = gmail_for(account)?;
+            // Gmail replaces a draft's message on every save; the old one
+            // has to leave the cache too, or it showed as a second copy
+            // of the draft until the next sync (owner report, 2026-10-25).
+            let replaced = cached_message(db, id)?;
             let saved = gmail
                 .update_draft(&gmail_id, &raw, thread.as_deref())
                 .await?;
@@ -425,6 +429,9 @@ pub async fn save_draft_with_files(
                 params![id, now_millis()],
             )?;
             cache_draft(db, &gmail, account, id, &saved).await;
+            if let Some(old) = replaced.filter(|old| *old != saved.message.id) {
+                store::delete_messages(&mut db.conn(), account, &[old])?;
+            }
             return Ok(id);
         }
         // From changed account: the draft moves with it.
@@ -468,6 +475,19 @@ async fn cache_draft(
     }
 }
 
+/// The Gmail ID of the message a draft is cached as, if it's linked.
+fn cached_message(db: &Db, id: DraftId) -> Result<Option<String>> {
+    Ok(db
+        .conn()
+        .query_row(
+            "SELECT m.gmail_message_id FROM drafts d JOIN messages m ON m.id = d.message_id
+             WHERE d.id = ?1",
+            [id],
+            |r| r.get(0),
+        )
+        .optional()?)
+}
+
 fn draft_row(db: &Db, id: DraftId) -> Result<Option<(AccountId, String)>> {
     Ok(db
         .conn()
@@ -493,15 +513,7 @@ pub async fn delete_draft(
         return Ok(None);
     };
     gmail_for(account)?.delete_draft(&gmail_id).await?;
-    let cached: Option<String> = db
-        .conn()
-        .query_row(
-            "SELECT m.gmail_message_id FROM drafts d JOIN messages m ON m.id = d.message_id
-             WHERE d.id = ?1",
-            [id],
-            |r| r.get(0),
-        )
-        .optional()?;
+    let cached = cached_message(db, id)?;
     let mut conn = db.conn();
     if let Some(message) = cached {
         store::delete_messages(&mut conn, account, &[message])?;

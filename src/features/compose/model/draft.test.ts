@@ -299,6 +299,32 @@ describe("drafts", () => {
     expect(hasChanges({ ...reply, edited: true })).toBe(true);
   });
 
+  it("a reopened draft isn't changed by opening it, only by editing", () => {
+    const file = { filename: "a.txt", mimeType: "text/plain", data: "aGVsbG8=" };
+    const d = resumedDraft(
+      {
+        draft: 9,
+        accountId: ME,
+        from: { name: null, email: "me@x.com" },
+        to: [{ name: "Jordan", email: "jordan@x.com" }],
+        cc: [],
+        bcc: [],
+        subject: "What's up?",
+        html: "<p>Hey</p>",
+        text: "Hey",
+        files: [file],
+        replyingTo: null,
+        threadId: 3,
+      },
+      44,
+    );
+    expect(hasChanges(d)).toBe(false);
+    expect(hasChanges({ ...d, edited: true })).toBe(true);
+    expect(hasChanges({ ...d, subject: "Hi" })).toBe(true);
+    expect(hasChanges({ ...d, to: [] })).toBe(true);
+    expect(hasChanges({ ...d, attachments: [] })).toBe(true);
+  });
+
   it("choosing another account's address moves the draft to that account", () => {
     const d = withIdentity(newDraft(identities, ME, "me@x.com"), identities[2]!);
     expect(d.accountId).toBe(OTHER);

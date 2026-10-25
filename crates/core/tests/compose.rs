@@ -5,7 +5,7 @@ mod common;
 
 use common::*;
 use mailboat_core::compose::{self, identities, OutgoingMessage};
-use mailboat_core::db::{accounts, store, Db};
+use mailboat_core::db::{accounts, query, store, Db};
 use mailboat_core::gmail::parse;
 use mailboat_core::gmail::types::{SendAs, Thread};
 use mailboat_core::model::*;
@@ -612,6 +612,75 @@ async fn a_saved_draft_is_cached_at_once() {
         )
         .unwrap();
     assert!(linked.is_some(), "the draft's message is cached and linked");
+}
+
+/// Gmail replaces a draft's message on each save (here in a new thread,
+/// as for a new email). The old one leaves the cache at once: it showed as
+/// a second copy in Drafts until the next sync (owner report, 2026-10-25).
+#[tokio::test]
+async fn saving_a_draft_again_leaves_one_copy() {
+    let server = MockServer::start().await;
+    let reply = |message: &str, thread: &str| {
+        ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "d1", "message": { "id": message, "threadId": thread }
+        }))
+    };
+    Mock::given(method("POST"))
+        .and(path("/upload/gmail/v1/users/me/drafts"))
+        .respond_with(reply("dm1", "dt1"))
+        .mount(&server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path("/upload/gmail/v1/users/me/drafts/d1"))
+        .respond_with(reply("dm2", "dt2"))
+        .mount(&server)
+        .await;
+    for (thread, message) in [("dt1", "dm1"), ("dt2", "dm2")] {
+        Mock::given(method("GET"))
+            .and(path(format!("/gmail/v1/users/me/threads/{thread}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": thread,
+                "messages": [{ "id": message, "threadId": thread, "labelIds": ["DRAFT"],
+                               "internalDate": "5", "payload": { "headers": [] } }]
+            })))
+            .mount(&server)
+            .await;
+    }
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let uri = server.uri();
+    let gmail_for = |_| Ok(client(&uri).0);
+    let msg = outgoing(a, "a@x.com", None);
+    let id = compose::save_draft(&db, gmail_for, None, &msg)
+        .await
+        .unwrap();
+    compose::save_draft(&db, gmail_for, Some(id), &msg)
+        .await
+        .unwrap();
+
+    let drafts = query::list_threads(
+        &db.conn(),
+        &ListQuery {
+            accounts: AccountFilter::All,
+            view: MailView::System {
+                label: SystemLabel::Draft,
+            },
+            cursor: None,
+            limit: 50,
+        },
+    )
+    .unwrap()
+    .threads;
+    assert_eq!(drafts.len(), 1, "one draft, not the replaced copy too");
+    let left: Vec<String> = db
+        .conn()
+        .prepare("SELECT gmail_message_id FROM messages")
+        .unwrap()
+        .query_map([], |r| r.get(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert_eq!(left, ["dm2"]);
 }
 
 #[tokio::test]

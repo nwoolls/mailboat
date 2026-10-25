@@ -2541,6 +2541,15 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [x] Opening a draft made a second copy of it in Drafts, which went
+      away at the next sync *(owner report with screenshots,
+      2026-10-25)*. Two causes: a reopened new-message draft counted as
+      changed just for having a recipient or subject (and one with files
+      always did), so opening and closing it saved it again; and Gmail
+      replaces a draft's message on every save, but only the new one
+      was added to the cache, the old one staying until sync. Now a
+      reopened draft is saved only once edited or its people, subject
+      or files change, and saving removes the replaced message at once
 - [ ] The browser test for n / p (`reader-keys.spec.ts`) fails about
       one run in ten *(found 2026-10-24 while checking search history; moved from Bug
       Spike 2 when it closed)*:
