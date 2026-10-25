@@ -2308,8 +2308,13 @@ so problems are fixed before anyone can read the code.*
 ## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an
-open-source licence, with nothing personal in it, and every push is
-checked by GitHub Actions.*
+open-source licence, with nothing personal in it; the README makes
+people want to try it; and every change reaches `main` through a pull
+request that GitHub Actions, code scanning and an AI reviewer have
+checked. Owner request (2026-10-25): "a dope README and pipelines",
+Copilot reviews, "and whatever other GitHub bells and whistles".*
+
+### Publishing
 
 - [ ] Owner: choose the licence. GPL-3.0 suggested (nobody can sell a
       closed copy; respected by a technical audience); MIT and the
@@ -2318,23 +2323,96 @@ checked by GitHub Actions.*
 - [ ] Scrub before publishing: no real mail in fixtures, examples or
       `design/`; no personal details in the docs; nothing from the owner's machine (paths, certificates)
       that matters. Search for personal details.
+- [ ] Dependency licences checked with `cargo-deny` (and the same for
+      the JavaScript packages): every crate and package must be allowed
+      in the chosen licence (GPL-3.0 can't include some licences).
+      Kept as a CI check afterwards
 - [ ] Publish a fresh history: a new public repository on the owner's
       GitHub starting from one commit of today's tree, which becomes
       the working repository. This one is kept private as an archive. Commit hashes quoted in the docs then
       point into the archive; say so in the README
-- [ ] README for people: what the alternative name is, screenshots (from Demo mode),
-      install, the credentials setup, building from source, the privacy
-      promise (mail stays on your device; what AI and AI apps send, and
-      only when you choose)
+
+### The README
+
+- [ ] A README that sells it, written for people, not agents:
+      - A hero image or short GIF of the alternative name at work (from Demo mode,
+        or a cut of the trailer once it exists), in light and dark
+        (GitHub shows the one matching the reader's theme)
+      - One line on what it is, then badges: build status, licence,
+        latest release, downloads
+      - Download buttons for Mac and Windows, then the credentials
+        setup in short, linking to the full guide
+      - A feature tour with screenshots or GIFs: unified inbox across
+        accounts, keyboard-first, AI (on-device, or your own Claude or
+        ChatGPT subscription), AI apps over MCP, sign-in codes,
+        meeting invitations, rules
+      - The privacy promise in plain words: mail stays on your device;
+        what AI and AI apps send, and only when you choose; no
+        tracking, no servers of ours
+      - A keyboard shortcut table, and how the alternative name compares with Gmail
+        on the web and with Mimestream
+      - How it's built (Tauri, Rust, React), with the architecture
+        diagram (GitHub draws Mermaid), and building from source
+      - FAQ: why your own Google credentials, is it safe, Windows,
+        Linux, what's next (link to the roadmap)
+- [ ] Repository dressing: description, website link, topics (gmail,
+      email-client, tauri, rust, mcp…), a social preview image (what
+      shows when the link is shared), pinned on the owner's profile
+
+### Pipelines (GitHub Actions, free for public repositories)
+
+- [ ] Checks on every pull request and push to `main`: `bun run check`
+      (format, lint, types, Vitest, Rust format, clippy, tests,
+      bindings up to date) on macOS and Windows runners, plus the
+      Playwright browser tests (WebKit) on macOS
+- [ ] Unsigned test builds attached to each pull request, so a change
+      can be tried before it's merged
+- [ ] `cargo-deny` (licences, known vulnerable crates) and
+      `bun audit` for the JavaScript packages
+- [ ] Actions pinned to exact versions, with the least permissions
+      each needs (a public repository's workflows are an attack target)
+- [ ] The release pipeline itself is Milestone 15
+
+### Reviews and protection
+
+- [ ] Work moves to pull requests: agents push a branch and open a
+      pull request instead of committing to `main`; it merges once the
+      checks pass and the review comments are dealt with. CLAUDE.md
+      gets the new workflow
+- [ ] A ruleset on `main`: pull request and passing checks required, no
+      force pushes; the owner can bypass in an emergency
+- [ ] Copilot code review on every pull request, requested
+      automatically by the ruleset. Likely needs a paid Copilot plan
+      (Pro, about a monthly price) with a monthly review allowance; to
+      confirm when setting up. Optionally Claude's GitHub Action as a
+      second reviewer, on the owner's Claude subscription
+- [ ] Code scanning with CodeQL (Rust and TypeScript), with Copilot
+      Autofix suggestions for what it finds
+- [ ] Secret scanning with push protection (blocks a commit that
+      contains a key or token)
+- [ ] Dependabot: security alerts and fixes, and weekly grouped
+      version updates for Cargo, Bun and GitHub Actions (grouped, so
+      it's one pull request a week, not dozens)
+- [ ] OpenSSF Scorecard: a security health score for the repository,
+      shown as a badge
+
+### Community (kept small, so it never becomes a job)
+
 - [ ] `CONTRIBUTING.md`: bug reports and ideas welcome; outside code
       not accepted (an email client is an attractive target for a
       malicious change, and it keeps the copyright with the owner so
-      the licence can change later). Issue templates for bugs and ideas
-- [ ] `SECURITY.md`: report problems privately to the domain's email,
-      not in public issues
-- [ ] GitHub Actions runs `bun run check` on every push (free and
-      unlimited for public repositories, Mac runners included)
-- [ ] Optional: GitHub Sponsors on the owner's account
+      the licence can change later)
+- [ ] Issue forms for bugs (version, Mac or Windows, steps) and ideas;
+      labels; a pull request template for the owner's own PRs
+- [ ] `SECURITY.md` with GitHub's private vulnerability reporting
+      turned on, and the domain's email as a fallback
+- [ ] GitHub Discussions for questions and ideas, so users can help
+      each other and issues stay for bugs (optional; can be switched
+      off if it becomes a chore)
+- [ ] Release notes generated from merged pull requests, grouped by
+      label (new, fixed, changed); used by Milestone 15
+- [ ] Optional: GitHub Sponsors on the owner's account, with a
+      `FUNDING.yml` so a Sponsor button shows on the repository
 
 ## Milestone 15: Signed builds and automatic updates
 
@@ -2361,6 +2439,10 @@ themselves.*
       and publishes both platforms and the update file. Signing keys
       stay in the Mac's keychain or in encrypted GitHub secrets, never
       in the repository
+- [ ] Build provenance: GitHub attests each installer was built by
+      this repository's release pipeline from a given commit (free for
+      public repositories), so anyone can check a download wasn't
+      tampered with
 - [ ] Settings → About: version, "Check for updates", and the update
       channel (stable, or early builds) if wanted
 - [ ] Optional: a Homebrew tap of the owner's own (the main Homebrew
