@@ -2168,9 +2168,12 @@ then the Release Spike. It was Milestone 10, after Writing.*
 *Making Mailboat installable by other people. The owner was unsure whether
 it would ever be distributed (2026-10-19); on 2026-10-25 they decided to
 sell it as a subscription, on Mac and Windows, and agreed the plan
-below. Decisions are in ARCHITECTURE (2026-10-25 rows). Google's review
-takes longest (weeks to months), so it starts as soon as the website and
-privacy policy are up, and the other phases run while it waits.*
+below. Decisions are in ARCHITECTURE (2026-10-25 rows). The owner sees
+it as an experience and a side project, not a full-time job (no daily
+social media), so money and effort are spent only after a checkpoint
+shows people want it (owner, 2026-10-25). Google's review takes longest
+(weeks to months): its free preparation starts with the website, but
+submitting waits for the first checkpoint.*
 
 Agreed with the owner, 2026-10-25:
 - Name: **the alternative name**.
@@ -2193,10 +2196,13 @@ Agreed with the owner, 2026-10-25:
 ```mermaid
 flowchart LR
   P0["Phase 0: Groundwork"] --> P1["Phase 1: Private beta"]
-  P0 --> G["Google verification"]
-  P1 --> P2["Phase 2: Paid launch"]
-  G --> P2
-  P2 --> P3["Phase 3: Ongoing"]
+  P1 --> C1{"Checkpoint 1: used daily?"}
+  C1 -->|"No"| K["Keep as the owner's own app"]
+  C1 -->|"Yes"| G["Google verification"]
+  G --> P2["Phase 2: Paid launch"]
+  P2 --> C2{"Checkpoint 2: covering costs at 6 months?"}
+  C2 -->|"No"| W["Wind down gently"]
+  C2 -->|"Yes"| P3["Phase 3: Ongoing"]
 ```
 
 ### Phase 0: Groundwork
@@ -2227,7 +2233,7 @@ flowchart LR
       (which may already cover drafts and sending) and drop any scope
       that isn't; Google asks for a reason for each one
 
-### Google verification (starts in Phase 0, gates Phase 2)
+### Google verification (prepared in Phase 0, submitted after Checkpoint 1, gates Phase 2)
 
 the alternative name asks for restricted scopes (`gmail.modify`; `gmail.compose`
 and `gmail.settings.basic` are believed restricted, to confirm on
@@ -2307,7 +2313,24 @@ paperwork and waiting.
       track). Check Remotion's licence (free for individuals and small
       companies) when starting, and record it in ARCHITECTURE
 
+### Checkpoint 1: is it worth Google's review? (end of the beta)
+
+- [ ] Launch the beta once where the right people are: r/macapps, Show
+      HN, Claude and MCP communities (the AI and AI-apps features are
+      the pitch for a technical audience), "Mimestream, but on Windows
+      too" for Windows users
+- [ ] After about 2 weeks, with the owner: did the beta places fill,
+      and do people still use it daily (ask them; there are no
+      analytics)? Would they pay a monthly price? If not, stop here: the alternative name
+      stays the owner's own app and nothing more is spent (no
+      verification, no assessment, no signing subscriptions). If yes,
+      submit Google verification
+
 ### Phase 2: Paid launch (after Google approves)
+
+- [ ] Website and terms say how a wind-down would go before anyone pays:
+      notice by email, refunds for unused time, and the app keeps
+      working with mail already downloaded
 
 - [ ] Polar store: one product, a subscription, 14-day trial
       with a card up front, a license key benefit limited to 2 device
@@ -2326,6 +2349,14 @@ paperwork and waiting.
 - [ ] Website: pricing and checkout links, download page, "what's
       new"; make the case for the price (Windows, AI,
       AI apps)
+
+### Checkpoint 2: six months after the paid launch
+
+- [ ] With the owner: does it cover its costs (Apple, Windows signing,
+      domains, and the security assessment if Google required it), and
+      is support still a few emails a week rather than a job? If not,
+      wind down as promised on the website. If yes, carry on with
+      Phase 3 at the owner's pace
 
 ### Phase 3: Ongoing
 
