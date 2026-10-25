@@ -9,12 +9,12 @@ Plan 2), and a paid no-setup option later only if people want it
 (Stage B). For the open-source stage the owner may use their personal
 accounts (GitHub, social media, Apple).
 
-- The work is in `docs/ROADMAP.md`, Milestones 10–16 (Release: the road
+- The work is in `docs/ROADMAP.md`, Milestones 10–18 (Release: the road
   to an open-source the alternative name). Tasks are tracked there, not here.
 - This document keeps the plans and research behind them. The lists
   under each plan are reference, not a checklist. Plans 1 and 2 were not
   chosen as such, but Plan 2 is Stage A, and Plan 1's Google and Polar
-  steps are what Stage B (Milestone 16) would follow.
+  steps are what Stage B (Milestone 18) would follow.
 - Choices a future agent might second-guess are in `docs/ARCHITECTURE.md`
   → Decisions (2026-10-25 rows).
 

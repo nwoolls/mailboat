@@ -2121,7 +2121,7 @@ editor, and prompts and answers are never logged.*
 
 *Moved up (owner, 2026-10-24): after AI Spike 2, Windows comes next,
 then the Release Spike. It was Milestone 10, after Writing. The Release
-Spike became Milestones 10–16, 2026-10-25.*
+Spike became Milestones 10–18, 2026-10-25.*
 
 - [ ] Windows build and testing; Linux nice-to-have. Broken into the
       items below *(started 2026-10-25)*
@@ -2176,20 +2176,31 @@ source release the owner may use their personal accounts (GitHub,
 social media, Apple), so the brand-identity steps of the paid plan are
 dropped. Background and research: `docs/RELEASE.md`.*
 
+*Order (owner, 2026-10-25): AI Spike 2 and Milestone 9 (Windows) are
+finished first. Then the rename, Demo mode, and onboarding with the
+credentials setup, so every feature is in before an independent code
+review, which comes before the code is made public.*
+
 ```mermaid
 flowchart LR
-  M10["10: the alternative name"] --> M11["11: Own-credentials setup"]
-  M11 --> M12["12: Open the code"]
-  M12 --> M13["13: Signed builds and updates"]
-  M13 --> M14["14: Website"]
-  M14 --> M15["15: Launch"]
-  M15 -.->|"only if people want it"| M16["16: Paid option"]
+  AI["AI Spike 2"] --> W["9: Windows"]
+  W --> M10["10: the alternative name"]
+  M10 --> M11["11: Demo mode"]
+  M11 --> M12["12: Onboarding and own credentials"]
+  M12 --> M13["13: Code review"]
+  M13 --> M14["14: Open the code"]
+  M14 --> M15["15: Signed builds and updates"]
+  M15 --> M16["16: Website"]
+  M16 --> M17["17: Launch"]
+  M17 -.->|"only if people want it"| M18["18: Paid option"]
 ```
 
 ## Milestone 10: the alternative name
 
 *Done when: the app is called the alternative name everywhere a person can see it, the
-domains are the owner's, and the owner's own setup has moved over.*
+domains are the owner's, and the owner's own setup has moved over.
+First of the release milestones, so the onboarding text, demo data and
+screenshots that follow carry the new name from the start.*
 
 - [ ] Owner: search "the alternative name" for software at tmsearch.uspto.gov
 - [ ] Owner: register `altname` and `altname.example` at Cloudflare
@@ -2211,7 +2222,27 @@ domains are the owner's, and the owner's own setup has moved over.*
       shouldn't be a public GitHub issue (Cloudflare Email Routing,
       free, forwarding to the owner)
 
-## Milestone 11: Bring your own Google credentials
+## Milestone 11: Demo mode
+
+*Done when: the alternative name can be started full of made-up mail, with no Google
+connection, for screenshots, videos and trying things safely. Comes
+before onboarding because its separate data folder is also the easy way
+to test a first launch over and over.*
+
+- [ ] Demo mode *(owner, 2026-10-22; moved from the Release Spike)*:
+      the real app started with its own data folder (e.g. an env var or
+      launch flag), filled with made-up accounts, conversations,
+      labels, summaries and sign-in codes, and no Google connection, so
+      none of the owner's mail can show. Sending is faked (it lands in
+      Sent, and a scripted reply can arrive). For screenshots, the
+      README, the website, and the trailer (Milestone 16). The fake
+      data is shared with the trailer and the browser tests' harness
+- [ ] A clean-start option alongside it: the app started with an empty
+      data folder of its own (no accounts, nothing in the keychain
+      under that name), so a first launch can be tried without touching
+      the owner's setup
+
+## Milestone 12: Onboarding and bring your own Google credentials
 
 *Done when: someone who has never used Google Cloud can install the alternative name
 and, inside the app, get from nothing to their mail in about 15
@@ -2248,11 +2279,33 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
 - [ ] Scopes: check whether `gmail.compose` is needed beside
       `gmail.modify` (which may already cover drafts and sending) and
       drop any scope that isn't. Fewer scopes means fewer APIs to turn
-      on now and less to justify to Google in Milestone 16
+      on now and less to justify to Google in Milestone 18
 - [ ] Tried with the owner on a fresh Google account, following only
-      what the app says
+      what the app says (using Milestone 11's clean start)
 
-## Milestone 12: Open the code
+## Milestone 13: Independent code review
+
+*Done when: a fresh agent has reviewed the whole app, and the owner has
+gone through every finding (fixed, or consciously left). After all the
+features above, so nothing goes public unreviewed; before Milestone 14,
+so problems are fixed before anyone can read the code.*
+
+- [ ] Independent code review by an agent *(owner request, 2026-10-19;
+      moved here from Later, 2026-10-25)*: a fresh agent, with none of
+      the context of the agents that wrote the code, reviews the whole
+      codebase for bugs, security problems (sanitizing, tokens,
+      capabilities), the multi-account rules and code that has grown
+      messy. Findings come back as a list to go through with the owner
+      one at a time, not as fixes made straight away. Timing agreed by
+      the owner (2026-10-25): after every feature above, before the code
+      goes public. Scope: the whole app is suggested, to confirm when it
+      starts
+- [ ] Also in scope, as the code is about to be public: secrets or
+      personal details anywhere in the tree, the AI and AI-apps (MCP)
+      paths that can send mail out, and the new credentials handling
+- [ ] Fixes for the findings the owner chooses, each in its own commit
+
+## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an
 open-source licence, with nothing personal in it, and every push is
@@ -2269,10 +2322,10 @@ checked by GitHub Actions.*
       GitHub starting from one commit of today's tree, which becomes
       the working repository. This one is kept private as an archive. Commit hashes quoted in the docs then
       point into the archive; say so in the README
-- [ ] README for people: what the alternative name is, screenshots, install, the
-      credentials setup, building from source, the privacy promise
-      (mail stays on your device; what AI and AI apps send, and only
-      when you choose)
+- [ ] README for people: what the alternative name is, screenshots (from Demo mode),
+      install, the credentials setup, building from source, the privacy
+      promise (mail stays on your device; what AI and AI apps send, and
+      only when you choose)
 - [ ] `CONTRIBUTING.md`: bug reports and ideas welcome; outside code
       not accepted (an email client is an attractive target for a
       malicious change, and it keeps the copyright with the owner so
@@ -2283,7 +2336,7 @@ checked by GitHub Actions.*
       unlimited for public repositories, Mac runners included)
 - [ ] Optional: GitHub Sponsors on the owner's account
 
-## Milestone 13: Signed builds and automatic updates
+## Milestone 15: Signed builds and automatic updates
 
 *Done when: a person can download the alternative name for Mac or Windows from GitHub,
 open it without security warnings, and later receive updates by
@@ -2313,26 +2366,18 @@ themselves.*
 - [ ] Optional: a Homebrew tap of the owner's own (the main Homebrew
       list needs an app to be popular first) and `winget` for Windows
 
-## Milestone 14: Website
+## Milestone 16: Website
 
 *Done when: `altname` explains the alternative name, shows it, and lets people
 download it and follow the setup guide.*
 
-- [ ] Demo mode *(owner, 2026-10-22; moved from the Release Spike)*:
-      the real app started with its own data folder (e.g. an env var or
-      launch flag), filled with made-up accounts, conversations,
-      labels, summaries and sign-in codes, and no Google connection, so
-      none of the owner's mail can show. Sending is faked (it lands in
-      Sent, and a scripted reply can arrive). For screenshots, the
-      README, the website, and the trailer below. The fake data is
-      shared with the trailer and the browser tests' harness
 - [ ] Website: plain HTML/CSS/JS on GitHub Pages (free; Cloudflare
-      Pages if needed later), on `altname`: home with screenshots,
-      download (latest release), the credentials setup guide with a
-      short screen recording, privacy policy (what Google data the alternative name
-      uses; it stays on the device), terms of use (limits liability,
-      as there's no company), link to GitHub. Also serves the update
-      file (Milestone 13)
+      Pages if needed later), on `altname`: home with screenshots
+      from Demo mode, download (latest release), the credentials setup
+      guide with a short screen recording, privacy policy (what Google
+      data the alternative name uses; it stays on the device), terms of use (limits
+      liability, as there's no company), link to GitHub. Also serves
+      the update file (Milestone 15)
 - [ ] Teaser trailer *(owner, 2026-10-22; moved from the Release
       Spike)*: a short video made in code with Remotion (videos written
       in React), drawing the alternative name's real components with the demo data, as
@@ -2346,10 +2391,10 @@ download it and follow the setup guide.*
       licence (free for individuals and small companies) when starting,
       and record it in ARCHITECTURE
 
-## Milestone 15: Launch
+## Milestone 17: Launch
 
 *Done when: the alternative name has been announced once in the right places, and the
-owner has decided, from what happened, whether Milestone 16 is worth
+owner has decided, from what happened, whether Milestone 18 is worth
 starting.*
 
 - [ ] Social accounts: the owner's personal ones are fine for an open
@@ -2365,9 +2410,9 @@ starting.*
 - [ ] Checkpoint, about a month later, with the owner: downloads
       (GitHub counts them), stars, issues from people who finished the
       setup, and whether people say they'd pay to skip it. Decide:
-      the alternative name stays free and open source, or Milestone 16 begins
+      the alternative name stays free and open source, or Milestone 18 begins
 
-## Milestone 16: Paid option (only if the Milestone 15 checkpoint says yes)
+## Milestone 18: Paid option (only if the Milestone 17 checkpoint says yes)
 
 *Done when: people can subscribe to sign in with the alternative name's own
 Google-verified credentials and no setup, in the same app as the free
@@ -2493,14 +2538,8 @@ niche or extra", so Windows and the Release Spike come first)
         online
       - Download recent message bodies ahead (say 30 days) so any recent
         mail opens offline; costs disk space and Gmail quota
-- [ ] Independent code review by an agent *(owner request, 2026-10-19)*:
-      a fresh agent, with none of the context of the agents that wrote the
-      code, reviews the whole codebase for bugs, security problems
-      (sanitizing, tokens, capabilities), the multi-account rules and
-      code that has grown messy. Findings come back as a list to go
-      through with the owner one at a time, not as fixes made straight
-      away. Scope and timing to agree first (whole app, or a milestone's
-      work at a time)
+- Independent code review by an agent: moved to Milestone 13, before
+  the code is made public (owner, 2026-10-25)
 - Search history: moved to Milestone 8 (owner, 2026-10-24)
 - [x] Look through GotEmail and bytemail for features and enhancements
       worth borrowing *(owner request, 2026-10-19; researched
