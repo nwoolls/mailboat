@@ -37,7 +37,7 @@ pub fn socket_path() -> Option<PathBuf> {
     }
     #[cfg(not(target_os = "macos"))]
     {
-        // Windows (Milestone 10) will need a named pipe instead.
+        // Windows (Milestone 9) will need a named pipe instead.
         None
     }
 }

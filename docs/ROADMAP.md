@@ -1575,23 +1575,6 @@ and the second swipe each way (no second button).
       after 30 days. Empty Trash isn't offered: deleting needs the scope
       not taken*
 
-## Milestone 9: Writing
-
-- [ ] Templates: saved replies to insert while writing (Gmail's own
-      templates aren't in its API, so these would be Mailboat's)
-- [ ] Warn about outside recipients (addresses not ending with chosen
-      domains are marked while writing)
-- [ ] Remove an address from compose suggestions
-- [ ] Images inline in the email being written, as Gmail does *(owner
-      request, 2026-10-22)*: dropping (or pasting) an image into the
-      composer puts it in the body where it lands, while other files
-      (documents, PDFs…) still become attachments. Today every dropped
-      file is an attachment. Sent as inline parts with Content-IDs
-      (`cid:`), the same way forwards already carry the original's
-      embedded images; to decide: resizing in the editor (Gmail offers
-      small / best fit / original), and a large image's share of
-      Gmail's 25 MB limit
-
 ## AI Spike
 
 **Closed (owner, 2026-10-21).** Everything built was tried and approved
@@ -1989,7 +1972,7 @@ flaky n / p browser test, found later, moved to the Bug backlog.*
 
 *Set up 2026-10-24 at the owner's request, from what the first AI Spike
 left unbuilt and two ideas from the GotEmail / bytemail review. Not
-started; where it falls against Milestone 9 is to agree. The first
+started; it comes before Windows (owner, 2026-10-24). The first
 spike's rules hold for all of it: every request runs with all tools off,
 mail goes to a cloud model only when the owner chose that provider for
 the feature, AI output is never sent without the owner seeing it in the
@@ -2034,7 +2017,7 @@ editor, and prompts and answers are never logged.*
       Desktop with a button, or shows the command for other apps. Not
       yet: label and archive (opt-in, as agreed: next), a draft's
       signature (drafts are saved without one; the owner adds it when
-      sending), and Windows (needs a named pipe, Milestone 10). Tested
+      sending), and Windows (needs a named pipe, Milestone 9). Tested
       through a real MCP client and the built binary; not yet tried
       from Claude itself
 - [x] AI actions in ⌘K *(moved from Later, 2026-10-24)*: Summarize and
@@ -2134,7 +2117,10 @@ editor, and prompts and answers are never logged.*
         composer and the card in tests. The right-click item couldn't be
         tried here (it needs a real right-click): for the owner to check
 
-## Milestone 10: Windows
+## Milestone 9: Windows
+
+*Moved up (owner, 2026-10-24): after AI Spike 2, Windows comes next,
+then the Release Spike. It was Milestone 10, after Writing.*
 
 - [ ] Windows build and testing; Linux nice-to-have
 - [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
@@ -2235,6 +2221,25 @@ again until the next spike.*
       to be Mailboat's own: a "Muted" label it adds, with later replies
       archived and kept quiet as they sync (only while Mailboat runs; the
       Gmail phone app would still notify). Offered, not chosen yet*
+
+### Writing (was Milestone 9; moved here, owner, 2026-10-24: "fairly
+niche or extra", so Windows and the Release Spike come first)
+
+- [ ] Templates: saved replies to insert while writing (Gmail's own
+      templates aren't in its API, so these would be Mailboat's)
+- [ ] Warn about outside recipients (addresses not ending with chosen
+      domains are marked while writing)
+- [ ] Remove an address from compose suggestions
+- [ ] Images inline in the email being written, as Gmail does *(owner
+      request, 2026-10-22)*: dropping (or pasting) an image into the
+      composer puts it in the body where it lands, while other files
+      (documents, PDFs…) still become attachments. Today every dropped
+      file is an attachment. Sent as inline parts with Content-IDs
+      (`cid:`), the same way forwards already carry the original's
+      embedded images; to decide: resizing in the editor (Gmail offers
+      small / best fit / original), and a large image's share of
+      Gmail's 25 MB limit
+
 ### From the AI Spike (moved unbuilt when it closed, 2026-10-21)
 
 - MCP server: moved to AI Spike 2 (owner, 2026-10-24)
