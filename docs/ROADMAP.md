@@ -1970,9 +1970,16 @@ flaky n / p browser test, found later, moved to the Bug backlog.*
 
 ## AI Spike 2
 
+**Closed (owner, 2026-10-25).** Every item tried and approved by the
+owner: the MCP server from Claude Desktop and Claude Code, AI actions
+in ⌘K, Rewrite, and Translate (including the email's right-click menu).
+Keeping Codex running was decided against (no action, owner). Left for
+Later, as the owner chose: AI apps labelling and archiving, and a
+signature on drafts they save.
+
 *Set up 2026-10-24 at the owner's request, from what the first AI Spike
-left unbuilt and two ideas from the GotEmail / bytemail review. Not
-started; it comes before Windows (owner, 2026-10-24). The first
+left unbuilt and two ideas from the GotEmail / bytemail review. It came
+before Windows (owner, 2026-10-24). The first
 spike's rules hold for all of it: every request runs with all tools off,
 mail goes to a cloud model only when the owner chose that provider for
 the feature, AI output is never sent without the owner seeing it in the
@@ -2017,7 +2024,8 @@ editor, and prompts and answers are never logged.*
       Desktop with a button, or shows the command for other apps. Not
       yet: label and archive (opt-in, as agreed: next), a draft's
       signature (drafts are saved without one; the owner adds it when
-      sending), and Windows (needs a named pipe, Milestone 9). Tested
+      sending), and Windows (needs a named pipe, Milestone 9); the first
+      two moved to Later when the spike closed. Tested
       through a real MCP client and the built binary; not yet tried
       from Claude itself. *Owner, 2026-10-25:* works from Claude Desktop
       and Claude Code (Desktop needed a full quit and reopen; Claude Code
@@ -2036,7 +2044,10 @@ editor, and prompts and answers are never logged.*
       if it was hidden) and scrolls to it; Reply with AI does what the
       button does. No keyboard shortcuts: none of Gmail's or Mail's fit,
       to add if wanted
-- [ ] Keep Codex running between requests *(moved from Later,
+- [x] ~~Keep Codex running between requests~~ *Decided against (owner,
+      2026-10-25: "no action"), for the reasons below; revisit if
+      `codex app-server` gains a way to ignore the owner's Codex
+      settings.* *(moved from Later,
       2026-10-24)*: Codex takes about 3s to start on every request, most
       of what's left of ChatGPT's wait. Keep one Codex process alive and
       reuse it (still with every tool off), stopping it when idle or
@@ -2583,6 +2594,13 @@ again until the next spike.*
       Adapted colors forgets it. It was per message, until the app quit
 
 ## Later / unscheduled
+
+- [ ] AI apps can label and archive conversations through the MCP server
+      *(moved from AI Spike 2 when it closed, owner, 2026-10-25)*: each
+      its own per-account switch, like drafts, in Settings → AI → AI apps
+- [ ] A signature on drafts AI apps save *(moved from AI Spike 2 when it
+      closed, owner, 2026-10-25)*: today they're saved without one, and
+      the owner adds it before sending
 
 - [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
       *(moved here from the Release Spike, 2026-10-25: not needed for
