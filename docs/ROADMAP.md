@@ -2202,11 +2202,13 @@ domains are the owner's, and the owner's own setup has moved over.
 First of the release milestones, so the onboarding text, demo data and
 screenshots that follow carry the new name from the start.*
 
+- [ ] Owner, first: register `altname` and `altname.example` at
+      Cloudflare Registrar (a yearly fee; owner details hidden in
+      public records), so nobody else can take them once the name
+      starts to appear. Cheap to drop if the trademark search below
+      turns something up. Name checks already done are in
+      `docs/RELEASE.md` → Name checks
 - [ ] Owner: search "the alternative name" for software at tmsearch.uspto.gov
-- [ ] Owner: register `altname` and `altname.example` at Cloudflare
-      Registrar (a yearly fee; owner details hidden in public
-      records), before the name is used anywhere public. Name checks
-      already done are in `docs/RELEASE.md` → Name checks
 - [ ] Rename to the alternative name: window title, menus, Welcome and Settings text,
       icon names, README, CLAUDE.md, the bundle ID (`com.nwoolls.mailboat`
       to `com.nwoolls.altname`, which names the data folders, the
