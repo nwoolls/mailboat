@@ -2196,6 +2196,10 @@ Spike became Milestones 10–18, 2026-10-25.*
       from the app's (dark). Adaptive emails now declare `light dark`.
       Shown in Chromium and WebKit with a test page; built, to try in
       the VM
+- [ ] Dropdown lists in Settings showed some choices as pale grey on
+      white on Windows (WebView2 draws the list with the select's faded
+      text color) *(owner's screenshot, 2026-10-25)*: solid theme colors
+      for the choices there. Built; to try in the VM
 
 ## Release: the road to an open-source the alternative name
 

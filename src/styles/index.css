@@ -439,6 +439,14 @@ html[data-platform="windows"] ::-webkit-scrollbar-thumb:hover {
   background-color: color-mix(in srgb, var(--color-content) 45%, transparent);
 }
 
+/* WebView2 draws a select's list itself, with the select's own (often
+   faded) text color on a white list, so in dark mode some choices were
+   near-invisible. Solid theme colors there; macOS draws its own menu. */
+html[data-platform="windows"] option {
+  background-color: var(--color-background-raised);
+  color: var(--color-content);
+}
+
 /* WebView2 bounces the page and lists past their ends on a touchpad,
    which Windows apps don't do. */
 html[data-platform="windows"],
