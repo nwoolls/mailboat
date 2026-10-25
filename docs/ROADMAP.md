@@ -2122,7 +2122,21 @@ editor, and prompts and answers are never logged.*
 *Moved up (owner, 2026-10-24): after AI Spike 2, Windows comes next,
 then the Release Spike. It was Milestone 10, after Writing.*
 
-- [ ] Windows build and testing; Linux nice-to-have
+- [ ] Windows build and testing; Linux nice-to-have. Broken into the
+      items below *(started 2026-10-25)*
+- [x] Build for Windows from the Mac *(2026-10-25)*: `scripts/windows.sh
+      check` (lints the whole workspace for Windows) and `build` (the
+      `.exe` installer, Windows on ARM by default for the owner's VM on
+      Apple silicon). Cross-compiled with `cargo-xwin`; only the NSIS
+      installer can be made on a Mac (the `.msi` needs WiX on Windows)
+- [ ] First run in the owner's Windows VM: installs, opens, signs in to
+      Google (the token goes to Windows' Credential Manager), syncs, reads
+      and sends
+- [ ] Keyboard: Ctrl where the Mac uses ⌘, in shortcuts and in the
+      labels that show them (26 files show "⌘"). On the Mac many ⌘
+      shortcuts (⌘R reply, ⌘N new…) come from the menu bar, which Windows
+      doesn't have, so the window has to handle them itself there, or
+      Windows gets a menu bar. To decide with the owner
 - [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
       ones that hide when not scrolling); check they look right on
       Windows, and style them there only if needed

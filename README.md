@@ -86,6 +86,30 @@ bun tauri dev
 The first sync of an account takes a while (Gmail's per-user quota limits
 the pace); the inbox fills in first. Later syncs only fetch changes.
 
+## Windows (built on the Mac)
+
+Mailboat for Windows is built on the Mac and tried in a Windows VM. One-time
+setup:
+
+```sh
+rustup target add aarch64-pc-windows-msvc x86_64-pc-windows-msvc
+brew install llvm lld nsis
+cargo install cargo-xwin --locked
+```
+
+Then:
+
+```sh
+scripts/windows.sh check   # does it compile for Windows, with no lint warnings
+scripts/windows.sh build   # makes the installer (.exe)
+```
+
+The installer lands in `target/aarch64-pc-windows-msvc/release/bundle/nsis/`.
+Copy it into the VM and run it. It's for Windows on ARM (a VM on an Apple
+silicon Mac); for an Intel/AMD PC, set
+`MAILBOAT_WINDOWS_TARGET=x86_64-pc-windows-msvc` first. The Google client file
+goes in `%APPDATA%\com.nwoolls.mailboat\google-oauth-client.json`.
+
 ## Check
 
 ```sh

@@ -50,8 +50,10 @@ pub struct MenuItemState {
     pub enabled: bool,
 }
 
-/// The window's menu items, by command ID, for updates.
+/// The window's menu items, by command ID, for updates (macOS only:
+/// elsewhere there's no menu bar).
 #[derive(Default)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub struct MenuItems(Mutex<HashMap<String, MenuItem<tauri::Wry>>>);
 
 /// Sets the standard menu bar (with Settings…) until the window sends its
