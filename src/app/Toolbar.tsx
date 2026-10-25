@@ -16,10 +16,11 @@ import {
   TrashIcon,
 } from "../shared/ui/icons";
 import { TitleSearch } from "./TitleSearch";
-import { accelLabel } from "../shared/lib/platform";
+import { accelLabel, IS_MAC } from "../shared/lib/platform";
 
-/** Room for the macOS traffic lights at the left of the toolbar. */
-const TRAFFIC_LIGHTS_WIDTH = 80;
+/** Room for the macOS traffic lights at the left of the toolbar (Windows
+ * keeps its window buttons in its own title bar). */
+const TRAFFIC_LIGHTS_WIDTH = IS_MAC ? 80 : 8;
 
 /** The Label button, which `l` also opens the picker under. */
 export const LABEL_BUTTON_ID = "toolbar-label";

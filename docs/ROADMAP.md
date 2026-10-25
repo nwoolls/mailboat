@@ -2138,19 +2138,27 @@ then the Release Spike. It was Milestone 10, after Writing.*
       `.cmd` launchers in `%APPDATA%\npm`), and Claude Desktop's settings
       in `%APPDATA%\Claude` *(2026-10-25; untested on Windows)*
 - [ ] Window look: Windows 11's Mica backdrop in place of macOS's glass
-      (set, `tauri.windows.conf.json`), with Windows' own title bar for
-      now. To check in the VM: whether the glass tints read well over
-      Mica, and the empty space the toolbar leaves for macOS's window
-      buttons, which Windows doesn't need
+      (`tauri.windows.conf.json`), with Windows' own title bar. Owner's
+      first look (2026-10-25, screenshot): fine, but the toolbar left
+      room for macOS's window buttons; now only on the Mac. To check:
+      the new build
 - [ ] Keyboard *(owner request, 2026-10-25)*: Ctrl where the Mac uses ⌘
       and Ctrl+Alt for the Mac's ⌃⌘ (⌃⌘S is Ctrl+Alt+S), in shortcuts and
       every label that shows one (`shared/lib/platform`). Windows has no
       menu bar, so the window matches the menu's shortcuts itself there
       (Ctrl+R reply, Ctrl+N new, Ctrl+1–7 views, Ctrl+, Settings…), the
       `?` sheet lists them as "With Ctrl". Built; to try in the VM
-- [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
-      ones that hide when not scrolling); check they look right on
-      Windows, and style them there only if needed
+- [ ] Windows: scrollbars *(owner report, 2026-10-25, screenshot)*:
+      Windows showed its classic always-on scrollbars, and a sideways
+      one under the sidebar (its rows were a few pixels too wide). Now
+      thin rounded bars that only show with the pointer over what they
+      scroll, and no sideways scrolling in the sidebar or list. Built;
+      to try in the VM
+- [ ] "It sort of bounces" *(owner report, 2026-10-25)*: WebView2
+      bounces lists past their ends on a touchpad, which Windows apps
+      don't; turned off on Windows. Also possible: the sidebar's sideways
+      scrolling (fixed above) or a swipe springing back. To check with
+      the owner whether it's gone
 - [ ] AI on Windows: Apple Intelligence is Mac-only, and every AI
       feature defaults to it. Options researched for the owner
       (2026-10-25); to decide

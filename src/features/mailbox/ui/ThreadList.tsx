@@ -174,7 +174,7 @@ export function ThreadList({
         if (shownKey.current !== null)
           scrollPositions.set(shownKey.current, e.currentTarget.scrollTop);
       }}
-      className="flex-1 overflow-y-auto"
+      className="flex-1 overflow-x-hidden overflow-y-auto"
     >
       <div
         style={{

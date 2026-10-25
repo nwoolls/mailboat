@@ -411,6 +411,41 @@ html.resizing .panel-slide {
    color-scheme, and honour System Settings > Appearance > Show scroll
    bars. Any ::-webkit-scrollbar rule would make them always visible. */
 
+/* Windows (WebView2) draws classic scrollbars: always on, wide, with arrow
+   buttons. There, thin rounded bars without arrows that only show while
+   the pointer is over what they scroll, as close to macOS's as Windows'
+   web view allows. Scoped to Windows so the Mac keeps its own (above).
+   No scrollbar-width / scrollbar-color anywhere: in Chromium they turn
+   these ::-webkit-scrollbar rules off. */
+html[data-platform="windows"] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background: transparent;
+}
+html[data-platform="windows"] ::-webkit-scrollbar-button,
+html[data-platform="windows"] ::-webkit-scrollbar-corner {
+  display: none;
+}
+html[data-platform="windows"] ::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+  background-color: transparent;
+}
+html[data-platform="windows"] :hover::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--color-content) 28%, transparent);
+}
+html[data-platform="windows"] ::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--color-content) 45%, transparent);
+}
+
+/* WebView2 bounces the page and lists past their ends on a touchpad,
+   which Windows apps don't do. */
+html[data-platform="windows"],
+html[data-platform="windows"] * {
+  overscroll-behavior: none;
+}
+
 /* Pop-up surfaces (account menu, confirmation dialog): solid enough to
    read over anything, with a hairline edge and a soft shadow, as macOS
    menus have. */

@@ -52,7 +52,7 @@ export function SettingsNav({
 }) {
   return (
     <nav aria-label="Settings" className="flex h-full shrink-0 flex-col" style={{ width }}>
-      <div className="flex-1 overflow-y-auto pb-4 pl-2">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto pb-4 pl-2">
         <div className="mt-2 mb-1 flex h-7 items-center pl-2 text-[11px] font-medium tracking-wide text-content/45">
           Settings
         </div>

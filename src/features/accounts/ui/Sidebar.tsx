@@ -57,7 +57,7 @@ export function Sidebar({
     <nav className="flex h-full shrink-0 flex-col" style={{ width }}>
       {/* No right padding: the 8px splitter gap is the space before the list,
           the same as between the list and the reader. */}
-      <div className="flex-1 overflow-y-auto pb-4 pl-2">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto pb-4 pl-2">
         <SidebarSections
           accounts={accounts}
           labels={labels}

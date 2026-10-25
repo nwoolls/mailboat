@@ -1,7 +1,8 @@
 import { sectionFor, type SettingsSectionId } from "../model/sections";
+import { IS_MAC } from "../../../shared/lib/platform";
 
 /** Room for the macOS traffic lights, as in the mail toolbar. */
-const TRAFFIC_LIGHTS_WIDTH = 80;
+const TRAFFIC_LIGHTS_WIDTH = IS_MAC ? 80 : 8;
 
 /** The title bar while Settings is open: drags the window and says where you are. */
 export function SettingsTitleBar({ section }: { section: SettingsSectionId }) {
