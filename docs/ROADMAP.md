@@ -2163,14 +2163,120 @@ then the Release Spike. It was Milestone 10, after Writing.*
       feature defaults to it. Options researched for the owner
       (2026-10-25); to decide
 
-## Release Spike (last; only if Mailboat is distributed)
+## Release Spike (after Windows)
 
-*Making Mailboat installable by other people. The owner is unsure whether
-it will ever be distributed (2026-10-19), so this comes last.*
+*Making Mailboat installable by other people. The owner was unsure whether
+it would ever be distributed (2026-10-19); on 2026-10-25 they decided to
+sell it as a subscription, on Mac and Windows, and agreed the plan
+below. Decisions are in ARCHITECTURE (2026-10-25 rows). Google's review
+takes longest (weeks to months), so it starts as soon as the website and
+privacy policy are up, and the other phases run while it waits.*
+
+Agreed with the owner, 2026-10-25:
+- Name: **the alternative name**.
+  "Mailboat" collides with Mailboat, Inc. (mailboat.com), which sells software
+  and has a "Mailboat Photos" app on Apple's store. Checked for the alternative name on
+  2026-10-25: `altname`, `altname.example`, `altname` free; no Mac
+  App Store app of that name; US trademarks for "the alternative name" only dead ones
+  or other trades (leather, T-shirts, a restaurant); the alternative name XG is museum
+  software, a different market. `altname` is taken on GitHub and Bluesky
+  (`altname` free on GitHub). Kept the M icon
+- No company (LLC) for now: the owner's name shows as the Windows
+  publisher and in the Mac signature; it can move to a company later
+- Price: a subscription, per person (not per Gmail account),
+  up to 2 devices. Mimestream is its yearly price, Mac only
+- Trial: 14 days, card up front, run by the payment provider, so there
+  is no trial server to write
+- Hosting on Cloudflare; payments and license keys with Polar; release
+  builds made on the Mac by a script first, CI later
+
+```mermaid
+flowchart LR
+  P0["Phase 0: Groundwork"] --> P1["Phase 1: Private beta"]
+  P0 --> G["Google verification"]
+  P1 --> P2["Phase 2: Paid launch"]
+  G --> P2
+  P2 --> P3["Phase 3: Ongoing"]
+```
+
+### Phase 0: Groundwork
+
+- [ ] Owner: search "the alternative name" for software at tmsearch.uspto.gov, then
+      register `altname` and `altname.example` at Cloudflare Registrar
+      (owner details hidden in public records), before the name is
+      used anywhere public
+- [ ] Rename to the alternative name: window title, menus, Welcome and Settings text,
+      icon names, README, CLAUDE.md, the bundle ID (`com.nwoolls.mailboat`
+      to `com.nwoolls.altname`, which names the data folders, the
+      keychain entries, the MCP socket and pipe, and the sync log
+      folder) and the OAuth client file's folder. Move the owner's own
+      data and keychain sign-ins over once (nobody else has installed
+      it). Code names (`mailboat_core`, crate and module names) stay
+- [ ] Brand email on the domain (Cloudflare Email Routing, free), used
+      for every account below and as Google's support email
+- [ ] Owner: Apple Developer Program (the annual developer fee). The free Apple
+      Development certificate can't notarize, and macOS blocks apps
+      that aren't notarized
+- [ ] Website on Cloudflare Pages: plain HTML/CSS/JS, marketing only.
+      Home, pricing, download, privacy policy, terms of use (limits
+      liability, as there's no company), support. The privacy policy
+      must say what Google data the app uses, that it stays on the
+      user's device, and that the app follows Google's Limited Use
+      rules. Screenshots from Demo mode (below)
+- [ ] Check whether `gmail.compose` is needed beside `gmail.modify`
+      (which may already cover drafts and sending) and drop any scope
+      that isn't; Google asks for a reason for each one
+
+### Google verification (starts in Phase 0, gates Phase 2)
+
+the alternative name asks for restricted scopes (`gmail.modify`; `gmail.compose`
+and `gmail.settings.basic` are believed restricted, to confirm on
+Google's list) and sensitive ones (contacts, calendar), so it needs
+Google's restricted-scope verification. An individual can do it; it is
+paperwork and waiting.
+
+- [ ] New production OAuth client in a Cloud project named for the alternative name
+      (the current one stays for development). Each account records
+      its client (`accounts.oauth_client`), so both can coexist
+- [ ] Verify the domain in Google Search Console
+- [ ] Consent screen: name, logo, home page, privacy policy, terms,
+      brand support email
+- [ ] Demo video, unlisted on YouTube: the sign-in, the consent screen
+      with the client ID in the address bar, and each scope in use
+- [ ] A written reason for each scope
+- [ ] Security assessment (CASA): Google requires it when restricted
+      data is stored on or sent to servers. the alternative name keeps mail on the
+      device, and AI and MCP only send it where the user chooses, so
+      ask to be exempt. If Google insists, it is yearly and costs
+      a paid assessment.
+      Rule from here on: no server we run ever receives Gmail data
+- [ ] Until approved, the current "unverified, in production" client
+      allows 100 users in total (every account that ever signs in
+      counts, and the count can't be reset): enough for the beta
+
+### Phase 1: Private beta (up to 100 users, free)
 
 - [ ] Release signing and packaging, with automatic software updates
       (Mimestream has an update channel setting) *(updates added
-      2026-10-19, settings comparison)*
+      2026-10-19, settings comparison)*. Planned 2026-10-25:
+      - Mac: Developer ID signing and notarization
+      - Windows: Azure Artifact Signing (about a monthly signing fee, open to
+        individuals in the US and Canada), so SmartScreen doesn't
+        warn. Signing from the Mac (e.g. `jsign`) to be confirmed
+      - Updates: Tauri's updater plugin with its own signing key; the
+        app reads `latest.json` from Cloudflare R2, which also holds
+        the installers (free up to 10 GB, no download fees)
+      - One script on the Mac builds, signs and uploads both
+        platforms. Signing keys stay in the Mac's keychain
+      - The Google client ID and secret go into the app at build time
+        (never committed). A desktop app can't keep them secret, and
+        Google says so; PKCE and the verified consent screen are the
+        protection. The file and environment-variable override stays
+        for development
+      - GitHub (free private repo) with Actions later; Mac builds
+        are costly on a private repository
+*Also in Phase 1, from before the plan:*
+
 - [ ] Onboarding *(owner request, 2026-10-17)*: a first-launch flow
       instead of today's single Welcome screen. At least: add one or
       more accounts (each shown as it signs in, with its first sync
@@ -2200,6 +2306,40 @@ it will ever be distributed (2026-10-19), so this comes last.*
       a voiceover come from the owner (cuts can be timed to a chosen
       track). Check Remotion's licence (free for individuals and small
       companies) when starting, and record it in ARCHITECTURE
+
+### Phase 2: Paid launch (after Google approves)
+
+- [ ] Polar store: one product, a subscription, 14-day trial
+      with a card up front, a license key benefit limited to 2 device
+      activations. First, a sandbox purchase to confirm the key works
+      during the trial and is revoked when the trial is cancelled or a
+      payment fails (Polar's docs say so for subscriptions in general,
+      not trials specifically)
+- [ ] In the app: enter the license key (or open a link from the
+      checkout page), activate it with Polar's public API (made for
+      desktop apps; no server of ours), check it again now and then
+      with a few days' grace offline, and lock to a "Subscribe" screen
+      when it's revoked. Settings shows the plan and a "Deactivate this
+      device" button; customers can also free devices in Polar's
+      customer page. A determined person can patch any native app; the
+      aim is that paying is the easy route
+- [ ] Website: pricing and checkout links, download page, "what's
+      new"; make the case for the price (Windows, AI,
+      AI apps)
+
+### Phase 3: Ongoing
+
+- [ ] Social accounts, all with the brand email, started weeks before
+      launch: X, Reddit (new accounts with no history get filtered;
+      take part before posting; r/macapps allows app posts under its
+      rules), Bluesky (`altname` taken), YouTube (also hosts Google's
+      demo video), Product Hunt; one Show HN at launch
+- [ ] Google re-verification every 12 months (and the security
+      assessment, if Google required it)
+- [ ] Move release builds to GitHub Actions if building on the Mac
+      becomes a chore
+- [ ] Revisit a company (LLC) once there's revenue: it would hide the
+      owner's name and limit personal liability
 
 ## Bug backlog
 
