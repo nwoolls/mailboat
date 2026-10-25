@@ -2164,23 +2164,23 @@ Spike became Milestones 10–18, 2026-10-25.*
 - [x] Find Claude Code and Codex in Windows' folders (`.exe`, and npm's
       `.cmd` launchers in `%APPDATA%\npm`), and Claude Desktop's settings
       in `%APPDATA%\Claude` *(2026-10-25; untested on Windows)*
-- [ ] Window look: Windows 11's Mica backdrop in place of macOS's glass
+- [x] Window look: Windows 11's Mica backdrop in place of macOS's glass
       (`tauri.windows.conf.json`), with Windows' own title bar. Owner's
       first look (2026-10-25, screenshot): fine, but the toolbar left
-      room for macOS's window buttons; now only on the Mac. To check:
-      the new build
+      room for macOS's window buttons; now only on the Mac. *Owner,
+      2026-10-25: "the space in the toolbar seems fixed"*
 - [ ] Keyboard *(owner request, 2026-10-25)*: Ctrl where the Mac uses ⌘
       and Ctrl+Alt for the Mac's ⌃⌘ (⌃⌘S is Ctrl+Alt+S), in shortcuts and
       every label that shows one (`shared/lib/platform`). Windows has no
       menu bar, so the window matches the menu's shortcuts itself there
       (Ctrl+R reply, Ctrl+N new, Ctrl+1–7 views, Ctrl+, Settings…), the
       `?` sheet lists them as "With Ctrl". Built; to try in the VM
-- [ ] Windows: scrollbars *(owner report, 2026-10-25, screenshot)*:
+- [x] Windows: scrollbars *(owner report, 2026-10-25, screenshot)*:
       Windows showed its classic always-on scrollbars, and a sideways
       one under the sidebar (its rows were a few pixels too wide). Now
       thin rounded bars that only show with the pointer over what they
-      scroll, and no sideways scrolling in the sidebar or list. Built;
-      to try in the VM
+      scroll, and no sideways scrolling in the sidebar or list. *Owner,
+      2026-10-25: "the scrollbar issue seems fixed"*
 - [ ] "It sort of bounces" *(owner report, 2026-10-25)*: WebView2
       bounces lists past their ends on a touchpad, which Windows apps
       don't; turned off on Windows. Also possible: the sidebar's sideways
@@ -2189,6 +2189,13 @@ Spike became Milestones 10–18, 2026-10-25.*
 - [ ] AI on Windows: Apple Intelligence is Mac-only, and every AI
       feature defaults to it. Options researched for the owner
       (2026-10-25); to decide
+- [ ] Emails colored for dark mode showed on a white card on Windows,
+      with their light text barely readable *(owner report with a
+      screenshot, 2026-10-25)*: Chromium (WebView2) paints a see-through
+      frame white when its page's color scheme (none, so light) differs
+      from the app's (dark). Adaptive emails now declare `light dark`.
+      Shown in Chromium and WebKit with a test page; built, to try in
+      the VM
 
 ## Release: the road to an open-source the alternative name
 

@@ -764,8 +764,11 @@ fn wrap_document(
     sheet_rules: &str,
 ) -> String {
     let page = if adaptive {
+        // `light dark`: the page follows the app's scheme. Without it the
+        // page is light, and in a dark app Chromium (Windows' WebView2)
+        // paints a light frame's see-through background white.
         pinned_rules.to_string()
-            + "html,body{margin:0;padding:0;background:transparent;color:#1f1f1f}\nbody{padding:0 0 4px}\n@media (prefers-color-scheme:dark){body{color:#e4e4e7}a{color:#8ab4f8}img[data-mailboat-blocked],img[data-mailboat-inline]{background:rgba(255,255,255,.08)!important}"
+            + "html{color-scheme:light dark}\nhtml,body{margin:0;padding:0;background:transparent;color:#1f1f1f}\nbody{padding:0 0 4px}\n@media (prefers-color-scheme:dark){body{color:#e4e4e7}a{color:#8ab4f8}img[data-mailboat-blocked],img[data-mailboat-inline]{background:rgba(255,255,255,.08)!important}"
             + dark_rules
             + "}"
     } else {
@@ -974,6 +977,10 @@ mod tests {
         assert!(
             doc.contains("background:transparent"),
             "the glass shows through"
+        );
+        assert!(
+            doc.contains("html{color-scheme:light dark}"),
+            "else WebView2 paints the frame white in dark mode"
         );
         assert!(doc.contains("prefers-color-scheme:dark"));
         // White table and light grey cell: see-through in dark mode.
