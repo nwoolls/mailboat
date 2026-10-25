@@ -1974,8 +1974,9 @@ flaky n / p browser test, found later, moved to the Bug backlog.*
 owner: the MCP server from Claude Desktop and Claude Code, AI actions
 in ⌘K, Rewrite, and Translate (including the email's right-click menu).
 Keeping Codex running was decided against (no action, owner). Left for
-Later, as the owner chose: AI apps labelling and archiving, and a
-signature on drafts they save.
+Later, as the owner chose: AI apps labelling and archiving. A signature
+on drafts they save, first left for Later too, was built after closing
+(owner, 2026-10-25: "seems odd to leave it out").
 
 *Set up 2026-10-24 at the owner's request, from what the first AI Spike
 left unbuilt and two ideas from the GotEmail / bytemail review. It came
@@ -2024,8 +2025,12 @@ editor, and prompts and answers are never logged.*
       Desktop with a button, or shows the command for other apps. Not
       yet: label and archive (opt-in, as agreed: next), a draft's
       signature (drafts are saved without one; the owner adds it when
-      sending), and Windows (needs a named pipe, Milestone 9); the first
-      two moved to Later when the spike closed. Tested
+      sending), and Windows (needs a named pipe, Milestone 9); label and
+      archive moved to Later when the spike closed. *Signatures built
+      2026-10-25:* a draft from an AI app is from the account's default
+      address, signed with its Gmail signature as a draft started in
+      Mailboat is, and the AI is told so (to close with "Thanks," and no
+      name). Tested
       through a real MCP client and the built binary; not yet tried
       from Claude itself. *Owner, 2026-10-25:* works from Claude Desktop
       and Claude Code (Desktop needed a full quit and reopen; Claude Code
@@ -2598,9 +2603,6 @@ again until the next spike.*
 - [ ] AI apps can label and archive conversations through the MCP server
       *(moved from AI Spike 2 when it closed, owner, 2026-10-25)*: each
       its own per-account switch, like drafts, in Settings → AI → AI apps
-- [ ] A signature on drafts AI apps save *(moved from AI Spike 2 when it
-      closed, owner, 2026-10-25)*: today they're saved without one, and
-      the owner adds it before sending
 
 - [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
       *(moved here from the Release Spike, 2026-10-25: not needed for

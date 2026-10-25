@@ -304,7 +304,8 @@ async fn only_shared_accounts_and_never_spam() {
 }
 
 /// A new email may be saved before anyone is chosen to send it to, as in
-/// Gmail (owner report, 2026-10-25); the user adds them in Mailboat.
+/// Gmail (owner report, 2026-10-25); the user adds them in Mailboat. It's
+/// signed with the From address's Gmail signature.
 #[tokio::test]
 async fn a_new_draft_needs_no_recipient_yet() {
     let server = MockServer::start().await;
@@ -316,6 +317,19 @@ async fn a_new_draft_needs_no_recipient_yet() {
         .await;
     let m = mail();
     share(&m.db, &[m.a], &[m.a]);
+    // The account's address has a signature in Gmail.
+    mailboat_core::compose::identities::store(
+        &mut m.db.conn(),
+        m.a,
+        &[serde_json::from_value(json!({
+            "sendAsEmail": "me@gmail.com",
+            "signature": "<div>Jordan Lee</div><br><br>",
+            "isPrimary": true,
+            "isDefault": true
+        }))
+        .unwrap()],
+    )
+    .unwrap();
     let c = connect(m.db.clone(), host(Some(server.uri()))).await;
     let saved = ok(&call(
         &c,
@@ -325,6 +339,12 @@ async fn a_new_draft_needs_no_recipient_yet() {
     .await);
     assert_eq!(saved["to"], json!([]));
     assert_eq!(saved["account"], "me@gmail.com");
+
+    // Signed as a draft written in Mailboat is (owner, 2026-10-25).
+    let requests = server.received_requests().await.unwrap();
+    let raw = String::from_utf8_lossy(&requests[0].body).to_string();
+    assert!(raw.contains("gmail_signature"), "{raw}");
+    assert!(raw.contains("Jordan Lee"), "{raw}");
 }
 
 #[tokio::test]

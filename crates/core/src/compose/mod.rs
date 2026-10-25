@@ -522,6 +522,66 @@ pub async fn delete_draft(
     Ok(Some(account))
 }
 
+/// Drops empty lines from the end of a signature (Gmail signatures often
+/// end with several): breaks, spaces and empty paragraphs. As the
+/// composer's `trimSignature`.
+pub fn trim_signature(html: &str) -> String {
+    fn empty_inside(inner: &str) -> bool {
+        let rest = inner
+            .replace("&nbsp;", "")
+            .replace("<br>", "")
+            .replace("<br/>", "")
+            .replace("<br />", "");
+        rest.trim().is_empty()
+    }
+    let mut s = html.trim().to_string();
+    loop {
+        let before = s.len();
+        s = s.trim_end().to_string();
+        let lower = s.to_lowercase();
+        if let Some(cut) = ["<br>", "<br/>", "<br />"]
+            .iter()
+            .find(|br| lower.ends_with(*br))
+            .map(|br| s.len() - br.len())
+        {
+            s.truncate(cut);
+        } else if let Some(tag) = ["p", "div"]
+            .iter()
+            .find(|t| lower.ends_with(&format!("</{t}>")))
+        {
+            let close = format!("</{tag}>").len();
+            let open = lower[..lower.len() - close].rfind(&format!("<{tag}"));
+            match open.and_then(|o| lower[o..].find('>').map(|e| (o, o + e + 1))) {
+                Some((start, inner)) if empty_inside(&s[inner..s.len() - close]) => {
+                    s.truncate(start)
+                }
+                _ => break,
+            }
+        }
+        if s.len() == before {
+            break;
+        }
+    }
+    s
+}
+
+/// A message's text and HTML with the From address's signature below a
+/// blank line, in Gmail's wrapper, as the composer saves and sends them.
+pub fn with_signature(text: &str, html: &str, signature: Option<&str>) -> (String, String) {
+    let signature = trim_signature(signature.unwrap_or_default());
+    if signature.is_empty() {
+        return (text.to_string(), html.to_string());
+    }
+    (
+        format!(
+            "{}\n\n{}",
+            text.trim_end(),
+            parse::html_to_text(&signature).trim()
+        ),
+        format!("{html}<div><br></div><div class=\"gmail_signature\">{signature}</div>"),
+    )
+}
+
 /// Cleans an original for quoting in mail we send: scripts, forms,
 /// frames and event handlers go, but its look stays: `<style>` blocks,
 /// inline styles and table layout attributes, as Gmail keeps when it
@@ -554,6 +614,36 @@ pub fn quote_clean(html: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::{trim_signature, with_signature};
+
+    #[test]
+    fn signatures_lose_their_empty_tail_lines() {
+        assert_eq!(trim_signature("Jordan<br><br> "), "Jordan");
+        assert_eq!(
+            trim_signature("<div>Jordan</div><div><br></div><p>&nbsp;</p>"),
+            "<div>Jordan</div>"
+        );
+        assert_eq!(
+            trim_signature("<div>Jordan <b>W</b></div>"),
+            "<div>Jordan <b>W</b></div>"
+        );
+        assert_eq!(trim_signature("  <br>  "), "");
+    }
+
+    #[test]
+    fn a_signature_goes_under_a_blank_line_in_gmails_wrapper() {
+        let (text, html) = with_signature("Hi Sam", "<p>Hi Sam</p>", Some("<div>Jordan</div><br>"));
+        assert_eq!(text, "Hi Sam\n\nJordan");
+        assert_eq!(
+            html,
+            "<p>Hi Sam</p><div><br></div><div class=\"gmail_signature\"><div>Jordan</div></div>"
+        );
+        assert_eq!(
+            with_signature("Hi", "<p>Hi</p>", None),
+            ("Hi".to_string(), "<p>Hi</p>".to_string())
+        );
+    }
+
     use super::*;
 
     #[test]

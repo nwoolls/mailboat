@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use super::log::{self, Request};
 use crate::ai::context::shorten;
 use crate::ai::tasks::read_thread;
-use crate::compose::{self, mime::valid_email, OutgoingMessage};
+use crate::compose::{self, identities, mime::valid_email, OutgoingMessage};
 use crate::db::{accounts, query, store, Db};
 use crate::error::{CoreError, Result};
 use crate::gmail::GmailClient;
@@ -145,7 +145,9 @@ pub struct DraftParams {
     /// For a new email. A reply keeps the conversation's ("Re: …").
     #[serde(default)]
     pub subject: Option<String>,
-    /// The email's text. Markdown lists, **bold** and *italic* are kept as formatting.
+    /// The email's text. Markdown lists, **bold** and *italic* are kept as
+    /// formatting. The user's signature (with their name) is added below
+    /// it, so end with a closing such as "Thanks," and no name.
     pub body: String,
 }
 
@@ -582,18 +584,36 @@ impl MailServer {
             .iter()
             .find(|a| a.id == account)
             .ok_or("That account isn't shared.")?;
-        let message = OutgoingMessage {
-            account_id: account,
-            from: Address {
+        // From the account's default address, with its Gmail signature, as
+        // a draft started in Mailboat is.
+        let identity = identities::list(&self.db.conn())
+            .map_err(fail)?
+            .into_iter()
+            .find(|i| i.account_id == account);
+        let from = match &identity {
+            Some(i) => Address {
+                name: i.name.clone(),
+                email: i.email.clone(),
+            },
+            None => Address {
                 name: owner.display_name.clone(),
                 email: owner.email.clone(),
             },
+        };
+        let (text, html) = compose::with_signature(
+            &p.body,
+            &crate::ai::format::markdown_to_html(&p.body),
+            identity.as_ref().and_then(|i| i.signature.as_deref()),
+        );
+        let message = OutgoingMessage {
+            account_id: account,
+            from,
             to: to.clone(),
             cc,
             bcc: Vec::new(),
             subject: subject.clone(),
-            text: p.body.clone(),
-            html: Some(crate::ai::format::markdown_to_html(&p.body)),
+            text,
+            html: Some(html),
             attachments: Vec::new(),
             draft: None,
             forwarded: Vec::new(),
