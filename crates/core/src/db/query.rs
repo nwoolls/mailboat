@@ -335,7 +335,8 @@ pub fn user_labels(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<La
 /// Unread conversations per label, for sidebar counts. A label's count is
 /// per account; unified counts (All Inboxes) are sums of these. Like the
 /// views, every label but Spam and Trash leaves out trashed and spam
-/// conversations.
+/// conversations. Drafts is the exception: its count is how many drafts
+/// are saved (as Gmail shows it), unread or not, leaving out trashed ones.
 pub fn unread_counts(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<LabelUnread>> {
     let (filter, values): (String, Vec<Value>) = match accounts {
         AccountFilter::All => (String::new(), vec![]),
@@ -348,15 +349,27 @@ pub fn unread_counts(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<
             },
         ),
     };
+    // The filter's values are bound once per half of the query.
+    let values: Vec<Value> = values.iter().chain(values.iter()).cloned().collect();
     let sql = format!(
-        "SELECT l.id, l.account_id, l.gmail_label_id, COUNT(*)
-         FROM labels l
-         JOIN thread_labels tl ON tl.label_id = l.id AND tl.account_id = l.account_id
-         JOIN threads t ON t.id = tl.thread_id AND t.account_id = l.account_id
-         WHERE t.unread_count > 0 {filter}
-           AND (l.gmail_label_id IN ('SPAM', 'TRASH') OR {IN_ALL_MAIL})
-         GROUP BY l.id
-         ORDER BY l.account_id, l.id"
+        "SELECT * FROM (
+           SELECT l.id, l.account_id, l.gmail_label_id, COUNT(*)
+           FROM labels l
+           JOIN thread_labels tl ON tl.label_id = l.id AND tl.account_id = l.account_id
+           JOIN threads t ON t.id = tl.thread_id AND t.account_id = l.account_id
+           WHERE t.unread_count > 0 {filter}
+             AND NOT (l.kind = 'system' AND l.gmail_label_id = 'DRAFT')
+             AND (l.gmail_label_id IN ('SPAM', 'TRASH') OR {IN_ALL_MAIL})
+           GROUP BY l.id
+           UNION ALL
+           SELECT l.id, l.account_id, l.gmail_label_id, COUNT(*)
+           FROM labels l
+           JOIN message_labels ml ON ml.label_id = l.id AND ml.account_id = l.account_id
+           WHERE l.kind = 'system' AND l.gmail_label_id = 'DRAFT' {filter}
+             AND NOT EXISTS (SELECT 1 FROM message_labels mt JOIN labels lt ON lt.id = mt.label_id
+                             WHERE mt.message_id = ml.message_id AND lt.gmail_label_id = 'TRASH')
+           GROUP BY l.id
+         ) ORDER BY 2, 1"
     );
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map(params_from_iter(values), |r| {

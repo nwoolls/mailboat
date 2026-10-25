@@ -587,6 +587,43 @@ fn unread_counts_stay_per_account() {
 }
 
 #[test]
+fn drafts_count_saved_drafts_per_account() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "sub-a", "me@gmail.com");
+    let b = add_account(&db, "sub-b", "me@example.com");
+    // A: two drafts (one read, one in a thread with unread mail) and one
+    // in Trash. B: one, with the same Gmail IDs as A's.
+    for (account, t, m, labels) in [
+        (a.id, "t1", "m1", vec!["DRAFT"]),
+        (a.id, "t2", "m2", vec!["DRAFT", "UNREAD"]),
+        (a.id, "t3", "m3", vec!["DRAFT", "TRASH"]),
+        (b.id, "t1", "m1", vec!["DRAFT"]),
+    ] {
+        store::upsert_thread(
+            &mut db.conn(),
+            account,
+            &thread(t, m, "me@x.com", "Draft", 1_000, &labels),
+        )
+        .unwrap();
+    }
+    let all = query::unread_counts(&db.conn(), &AccountFilter::All).unwrap();
+    let drafts = |account: AccountId| {
+        all.iter()
+            .find(|c| c.account_id == account && c.gmail_label_id == "DRAFT")
+            .map(|c| c.unread)
+    };
+    assert_eq!(drafts(a.id), Some(2), "trashed drafts don't count");
+    assert_eq!(drafts(b.id), Some(1));
+    assert_eq!(
+        all.iter().filter(|c| c.gmail_label_id == "DRAFT").count(),
+        2,
+        "one row per account's Drafts"
+    );
+    let only_a = query::unread_counts(&db.conn(), &AccountFilter::Only(vec![a.id])).unwrap();
+    assert!(only_a.iter().all(|c| c.account_id == a.id));
+}
+
+#[test]
 fn dock_badge_counts_unread_in_every_account() {
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "sub-a", "me@gmail.com");

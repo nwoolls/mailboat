@@ -8,10 +8,12 @@ const counts: LabelUnread[] = [
   { labelId: 3, accountId: 1, gmailLabelId: "Label_1", unread: 1 },
   { labelId: 4, accountId: 1, gmailLabelId: "STARRED", unread: 1 },
   { labelId: 11, accountId: 2, gmailLabelId: "INBOX", unread: 3 },
+  { labelId: 5, accountId: 1, gmailLabelId: "DRAFT", unread: 2 },
+  { labelId: 15, accountId: 2, gmailLabelId: "DRAFT", unread: 1 },
   { labelId: 13, accountId: 2, gmailLabelId: "Label_1", unread: 4 },
 ];
 const ALL = { kind: "all" } as const;
-const system = (label: "inbox" | "unread" | "starred" | "sent"): MailView => ({
+const system = (label: "inbox" | "unread" | "starred" | "sent" | "draft"): MailView => ({
   kind: "system",
   label,
 });
@@ -33,6 +35,11 @@ describe("sidebar unread counts", () => {
     expect(viewUnread(counts, system("unread"), ALL)).toBe(0);
     expect(viewUnread(counts, system("sent"), ALL)).toBe(0);
     expect(viewUnread(counts, { kind: "archive" }, ALL)).toBe(0);
+  });
+
+  it("counts saved drafts, per account or all together", () => {
+    expect(viewUnread(counts, system("draft"), ALL)).toBe(3);
+    expect(viewUnread(counts, system("draft"), { kind: "only", ids: [2] })).toBe(1);
   });
 
   it("formats counts quietly", () => {
