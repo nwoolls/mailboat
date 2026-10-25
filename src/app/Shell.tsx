@@ -112,6 +112,7 @@ import {
   minimizeOpenCard,
 } from "../features/compose/ui/useCompose";
 import { useFeatureFlags } from "../shared/lib/featureFlags";
+import { accelMatches, IS_MAC, primaryKey } from "../shared/lib/platform";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
 import { rememberSearch } from "../features/search/ui/history";
 import { LABEL_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
@@ -636,8 +637,10 @@ export function Shell() {
   // The menu bar: built once with the commands, then kept up to date with
   // their names and on/off states. Its clicks come back as events.
   const runRef = useRef(runCommand);
+  const commandsRef = useRef(allCommands);
   useEffect(() => {
     runRef.current = runCommand;
+    commandsRef.current = allCommands;
   });
   const menuStatesKey = JSON.stringify(menuStates(allCommands));
   const menuBuilt = useRef(false);
@@ -666,6 +669,28 @@ export function Shell() {
       // A menu or dialog handles its own keys.
       if (e.target instanceof Element && e.target.closest("[role=menu], [role=dialog], dialog"))
         return;
+      // Windows has no menu bar: its shortcuts are matched here instead
+      // (Ctrl for ⌘). The panels and the palette have their own below.
+      if (!IS_MAC) {
+        if (accelMatches(e, "Cmd+,")) {
+          e.preventDefault();
+          openSettings();
+          return;
+        }
+        const command = commandsRef.current.find(
+          (c) =>
+            c.accel &&
+            c.id !== "sidebar" &&
+            c.id !== "reader" &&
+            c.id !== "palette" &&
+            accelMatches(e, c.accel),
+        );
+        if (command) {
+          e.preventDefault();
+          if (command.enabled) runRef.current(command.id);
+          return;
+        }
+      }
       const panel = panelToggleFor(e);
       if (panel) {
         e.preventDefault();
@@ -673,8 +698,8 @@ export function Shell() {
         else toggleReader();
         return;
       }
-      // ⌘K: the command palette (inside the editor, ⌘K adds a link).
-      if (e.key === "k" && e.metaKey && !e.ctrlKey && !e.altKey && !isEditable(e.target)) {
+      // ⌘K (Ctrl+K): the command palette (inside the editor, ⌘K adds a link).
+      if (accelMatches(e, "Cmd+K") && !isEditable(e.target)) {
         e.preventDefault();
         setPaletteOpen(true);
         return;
@@ -707,7 +732,7 @@ export function Shell() {
         !isEditable(e.target) &&
         lastUndo &&
         ((e.key === "z" && !e.metaKey && !e.ctrlKey && !e.altKey) ||
-          (e.key === "z" && e.metaKey && !e.shiftKey))
+          (e.key === "z" && primaryKey(e) && !e.shiftKey))
       ) {
         e.preventDefault();
         lastUndo.run();
@@ -876,6 +901,9 @@ export function Shell() {
     goTo,
     baseSelection.accounts,
     settings,
+    openSettings,
+    commandsRef,
+    runRef,
   ]);
 
   if (accountsQuery.isPending) return null;

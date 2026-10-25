@@ -30,6 +30,7 @@ import {
   toCriteria,
 } from "../model/ruleForm";
 import { applyText, CATEGORY_NAMES, matchText, savedMessage } from "../model/summary";
+import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 
 /** What the editor opens on: a new rule (maybe filled in from mail) or one to change. */
 export type RuleEditorTarget =
@@ -160,7 +161,7 @@ export function RuleEditor({
         else if (!save.isPending) onClose();
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter" && e.metaKey) {
+        if (e.key === "Enter" && primaryKey(e)) {
           e.preventDefault();
           submit();
         }
@@ -382,7 +383,7 @@ export function RuleEditor({
           </button>
           <button
             type="button"
-            title="⌘↩"
+            title={accelLabel("Cmd+Enter")}
             disabled={problem !== null || save.isPending}
             onClick={submit}
             className="h-7 rounded-md bg-accent px-3 font-medium text-white hover:brightness-110 disabled:opacity-50"

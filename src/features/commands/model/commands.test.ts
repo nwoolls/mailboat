@@ -92,8 +92,8 @@ describe("menu bar", () => {
   });
 
   it("shows shortcuts as macOS does", () => {
-    expect(accelLabel("Shift+Cmd+R")).toBe("⇧⌘R");
-    expect(accelLabel("Ctrl+Cmd+A")).toBe("⌃⌘A");
+    expect(accelLabel("Shift+Cmd+R", true)).toBe("⇧⌘R");
+    expect(accelLabel("Ctrl+Cmd+A", true)).toBe("⌃⌘A");
   });
 
   it("gives no two commands the same menu shortcut", () => {

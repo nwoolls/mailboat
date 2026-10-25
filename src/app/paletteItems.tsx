@@ -4,6 +4,7 @@ import type { Destination } from "../features/palette/model/destinations";
 import type { PaletteItem } from "../features/palette/ui/CommandPalette";
 import { InboxIcon, LabelIcon, SettingsIcon } from "../shared/ui/icons";
 import { COMMAND_ICONS } from "./commandIcons";
+import { accelLabel } from "../shared/lib/platform";
 
 /** Where each command sits in the palette. */
 const GROUPS: Partial<Record<CommandId, string>> = {
@@ -65,7 +66,7 @@ export function paletteItems(p: {
     id: "settings",
     group: "View",
     title: "Settings",
-    shortcut: "⌘,",
+    shortcut: accelLabel("Cmd+,"),
     icon: SettingsIcon,
     run: p.openSettings,
   });

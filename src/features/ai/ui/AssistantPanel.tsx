@@ -13,6 +13,7 @@ import { type Draft, textToHtml } from "../../compose/model/draft";
 import { type ChatMessage, chatMessage, suggestions, writeRequest } from "../model/chat";
 import { aiChoices, offered, PROVIDER_NAMES, statusLine, statusOf } from "../model/providers";
 import { dropText, newRequestId, useStreamedText } from "./stream";
+import { primaryKey } from "../../../shared/lib/platform";
 
 /** Insert: at the cursor, keeping what's written. Replace: instead of it. */
 export type UseMode = "insert" | "replace";
@@ -286,7 +287,7 @@ export function AssistantPanel({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             // Return asks; ⇧Return is a new line. ⌘Return stays the message's Send.
-            if (e.key === "Enter" && !e.shiftKey && !e.metaKey) {
+            if (e.key === "Enter" && !e.shiftKey && !primaryKey(e)) {
               e.preventDefault();
               e.stopPropagation();
               send(input);

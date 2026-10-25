@@ -77,20 +77,27 @@ describe("parseLayout", () => {
 
 /** A ⌃⌘ key press, with modifiers overridable. */
 function key(code: string, mods: Partial<KeyboardEvent> = {}) {
-  return { code, metaKey: true, ctrlKey: true, altKey: false, shiftKey: false, ...mods };
+  return { key: "", code, metaKey: true, ctrlKey: true, altKey: false, shiftKey: false, ...mods };
 }
 
 describe("panelToggleFor", () => {
   it("maps ⌃⌘S to the sidebar and ⌃⌘R to the reader", () => {
-    expect(panelToggleFor(key("KeyS"))).toBe("sidebar");
-    expect(panelToggleFor(key("KeyR"))).toBe("reader");
+    expect(panelToggleFor(key("KeyS"), true)).toBe("sidebar");
+    expect(panelToggleFor(key("KeyR"), true)).toBe("reader");
   });
 
   it("ignores other keys and modifier combinations", () => {
-    expect(panelToggleFor(key("KeyB"))).toBeNull();
-    expect(panelToggleFor(key("KeyS", { ctrlKey: false }))).toBeNull();
-    expect(panelToggleFor(key("KeyR", { metaKey: false }))).toBeNull();
-    expect(panelToggleFor(key("KeyS", { shiftKey: true }))).toBeNull();
+    expect(panelToggleFor(key("KeyB"), true)).toBeNull();
+    expect(panelToggleFor(key("KeyS", { ctrlKey: false }), true)).toBeNull();
+    expect(panelToggleFor(key("KeyR", { metaKey: false }), true)).toBeNull();
+    expect(panelToggleFor(key("KeyS", { shiftKey: true }), true)).toBeNull();
+  });
+
+  it("uses Ctrl+Alt on Windows, where ⌘ is the Windows key", () => {
+    const win = { metaKey: false, ctrlKey: true, altKey: true };
+    expect(panelToggleFor(key("KeyS", win), false)).toBe("sidebar");
+    expect(panelToggleFor(key("KeyR", win), false)).toBe("reader");
+    expect(panelToggleFor(key("KeyS"), false)).toBeNull();
   });
 });
 

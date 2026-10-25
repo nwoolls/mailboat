@@ -25,6 +25,7 @@ import {
   UnderlineIcon,
 } from "../../../shared/ui/icons";
 import { FONTS, SIZES } from "../model/fonts";
+import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 
 export type EditorChange = { html: string; text: string; edited: boolean };
 
@@ -70,7 +71,7 @@ export function useRichEditor(
       },
       // ⌘↩ sends (the form handles it); the editor mustn't also insert a
       // line break, which is what it would otherwise do.
-      handleKeyDown: (_view, event) => event.key === "Enter" && event.metaKey,
+      handleKeyDown: (_view, event) => event.key === "Enter" && primaryKey(event),
       ...(clear > 0 && {
         scrollThreshold: { top: 0, left: 0, right: 0, bottom: clear },
         scrollMargin: { top: 5, left: 5, right: 5, bottom: clear },
@@ -133,7 +134,7 @@ export function FormatBar({
     const dom = editor?.view.dom;
     if (!dom) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "k" && e.metaKey) {
+      if (e.key === "k" && primaryKey(e)) {
         e.preventDefault();
         setLinking((editor.getAttributes("link").href as string | undefined) ?? "");
       }
@@ -188,19 +189,19 @@ export function FormatBar({
         <Sep />
         <Btn
           icon={BoldIcon}
-          label="Bold (⌘B)"
+          label={`Bold (${accelLabel("Cmd+B")})`}
           on={state.bold}
           run={() => chain().toggleBold().run()}
         />
         <Btn
           icon={ItalicIcon}
-          label="Italic (⌘I)"
+          label={`Italic (${accelLabel("Cmd+I")})`}
           on={state.italic}
           run={() => chain().toggleItalic().run()}
         />
         <Btn
           icon={UnderlineIcon}
-          label="Underline (⌘U)"
+          label={`Underline (${accelLabel("Cmd+U")})`}
           on={state.underline}
           run={() => chain().toggleUnderline().run()}
         />
@@ -251,7 +252,12 @@ export function FormatBar({
           on={state.quote}
           run={() => chain().toggleBlockquote().run()}
         />
-        <Btn icon={LinkIcon} label="Link (⌘K)" on={state.link} run={startLink} />
+        <Btn
+          icon={LinkIcon}
+          label={`Link (${accelLabel("Cmd+K")})`}
+          on={state.link}
+          run={startLink}
+        />
         <Btn
           icon={ClearFormattingIcon}
           label="Remove formatting"

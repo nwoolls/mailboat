@@ -3,6 +3,7 @@ import type {
   MenuSpec as MenuBarSpec,
   ThreadSummary,
 } from "../../../platform/tauri/bindings";
+import { accelLabel } from "../../../shared/lib/platform";
 import { actionLabel, type ThreadAction, toggleFor } from "../../mailbox/model/threadActions";
 
 /**
@@ -12,6 +13,8 @@ import { actionLabel, type ThreadAction, toggleFor } from "../../mailbox/model/t
  *
  * `key` is Mailboat's own keyboard shortcut (Gmail's single keys); `accel`
  * is the menu bar's (Mail's ⌘ shortcuts, in Tauri's accelerator form).
+ * Windows has no menu bar: the window matches `accel` itself there, with
+ * Ctrl for ⌘ (`shared/lib/platform`).
  */
 export type Command = {
   id: CommandId;
@@ -157,18 +160,24 @@ export function appCommands(o: {
     {
       id: "sidebar",
       title: o.sidebarOpen ? "Hide sidebar" : "Show sidebar",
-      key: "⌃⌘S",
+      key: accelLabel("Ctrl+Cmd+S"),
       accel: "Ctrl+Cmd+S",
       enabled: true,
     },
     {
       id: "reader",
       title: o.readerOpen && o.hasConversation ? "Hide reader" : "Show reader",
-      key: "⌃⌘R",
+      key: accelLabel("Ctrl+Cmd+R"),
       accel: "Ctrl+Cmd+R",
       enabled: o.hasConversation,
     },
-    { id: "palette", title: "Command palette", key: "⌘K", accel: "Cmd+K", enabled: true },
+    {
+      id: "palette",
+      title: "Command palette",
+      key: accelLabel("Cmd+K"),
+      accel: "Cmd+K",
+      enabled: true,
+    },
     { id: "shortcuts", title: "Keyboard shortcuts", key: "?", enabled: true },
     ...GO_TO.map(({ id, title }, i) => ({
       id,
@@ -264,12 +273,5 @@ export function menuBarSpecs(layout: MenuSpec[], states: MenuState[]): MenuBarSp
   }));
 }
 
-/** How a menu shortcut reads on screen: "Shift+Cmd+R" is ⇧⌘R. */
-export function accelLabel(accel: string): string {
-  const symbols: Record<string, string> = { Ctrl: "⌃", Alt: "⌥", Shift: "⇧", Cmd: "⌘" };
-  const parts = accel.split("+");
-  const key = parts.pop() ?? "";
-  const order = ["Ctrl", "Alt", "Shift", "Cmd"];
-  const mods = order.filter((m) => parts.includes(m)).map((m) => symbols[m]);
-  return mods.join("") + key.toUpperCase();
-}
+/** How a menu shortcut reads on screen (`shared/lib/platform`). */
+export { accelLabel };

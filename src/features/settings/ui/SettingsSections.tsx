@@ -1149,7 +1149,7 @@ export function ToyboxSection() {
       {flags.screensavers && (
         <Group
           title="Screensaver"
-          description="Plays at Inbox Zero. To try one now, open a view with no mail and use “Start screensaver” in ⌘K."
+          description="Plays at Inbox Zero. To try one now, open a view with no mail and use “Start screensaver” in the command palette."
         >
           <div className="px-4 py-3.5">
             <ChoiceGrid

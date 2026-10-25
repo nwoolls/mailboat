@@ -8,6 +8,7 @@ import { HtmlPreview } from "../../compose/ui/HtmlPreview";
 import { EditorBody, FormatBar, useRichEditor } from "../../compose/ui/RichEditor";
 import { Button, Group, Row } from "../../settings/ui/controls";
 import { editorWouldSimplify, signatureToSave } from "../model/signature";
+import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 
 /**
  * Settings → Signatures: each address's Gmail signature, shown as compose
@@ -131,7 +132,7 @@ function SignatureEditor({ identity, onClose }: { identity: Identity; onClose: (
         if (!save.isPending) onClose();
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter" && e.metaKey && !save.isPending) {
+        if (e.key === "Enter" && primaryKey(e) && !save.isPending) {
           e.preventDefault();
           saveEdits();
         }
@@ -181,7 +182,7 @@ function SignatureEditor({ identity, onClose }: { identity: Identity; onClose: (
         </button>
         <button
           type="button"
-          title="⌘↩"
+          title={accelLabel("Cmd+Enter")}
           disabled={save.isPending}
           onClick={saveEdits}
           className="h-7 rounded-md bg-accent px-3 font-medium text-white hover:brightness-110 disabled:opacity-50"

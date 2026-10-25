@@ -2129,9 +2129,8 @@ then the Release Spike. It was Milestone 10, after Writing.*
       `.exe` installer, Windows on ARM by default for the owner's VM on
       Apple silicon). Cross-compiled with `cargo-xwin`; only the NSIS
       installer can be made on a Mac (the `.msi` needs WiX on Windows)
-- [ ] First run in the owner's Windows VM: installs, opens, signs in to
-      Google (the token goes to Windows' Credential Manager), syncs, reads
-      and sends
+- [x] First run in the owner's Windows VM *(2026-10-25, owner: "smoke
+      tests work")*: installs, opens, signs in to Google, syncs and reads
 - [x] AI apps (MCP) on Windows *(2026-10-25)*: a named pipe per user in
       place of the Mac's socket file. Compiles for Windows and the Mac test
       still passes; the pipe itself is untested until it runs in the VM
@@ -2143,14 +2142,18 @@ then the Release Spike. It was Milestone 10, after Writing.*
       now. To check in the VM: whether the glass tints read well over
       Mica, and the empty space the toolbar leaves for macOS's window
       buttons, which Windows doesn't need
-- [ ] Keyboard: Ctrl where the Mac uses ⌘, in shortcuts and in the
-      labels that show them (26 files show "⌘"). On the Mac many ⌘
-      shortcuts (⌘R reply, ⌘N new…) come from the menu bar, which Windows
-      doesn't have, so the window has to handle them itself there, or
-      Windows gets a menu bar. To decide with the owner
+- [ ] Keyboard *(owner request, 2026-10-25)*: Ctrl where the Mac uses ⌘
+      and Ctrl+Alt for the Mac's ⌃⌘ (⌃⌘S is Ctrl+Alt+S), in shortcuts and
+      every label that shows one (`shared/lib/platform`). Windows has no
+      menu bar, so the window matches the menu's shortcuts itself there
+      (Ctrl+R reply, Ctrl+N new, Ctrl+1–7 views, Ctrl+, Settings…), the
+      `?` sheet lists them as "With Ctrl". Built; to try in the VM
 - [ ] Windows: scrollbars. The app uses the system's own (macOS overlay
       ones that hide when not scrolling); check they look right on
       Windows, and style them there only if needed
+- [ ] AI on Windows: Apple Intelligence is Mac-only, and every AI
+      feature defaults to it. Options researched for the owner
+      (2026-10-25); to decide
 
 ## Release Spike (last; only if Mailboat is distributed)
 

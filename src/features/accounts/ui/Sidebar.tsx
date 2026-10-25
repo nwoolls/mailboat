@@ -9,6 +9,7 @@ import { AccountMenu, type AccountMenuTarget } from "./AccountMenu";
 import { LabelMenu, type LabelMenuTarget } from "./LabelMenu";
 import { SidebarSections } from "./SidebarSections";
 import { useSignIn } from "./useSignIn";
+import { accelLabel } from "../../../shared/lib/platform";
 
 type Props = {
   accounts: Account[];
@@ -90,7 +91,7 @@ export function Sidebar({
         )}
         <button
           type="button"
-          title="Settings (⌘,)"
+          title={`Settings (${accelLabel("Cmd+,")})`}
           aria-label="Settings"
           className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-content/60 transition-colors duration-[120ms] hover:bg-selection hover:text-content"
           onClick={onOpenSettings}

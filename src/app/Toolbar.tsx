@@ -16,6 +16,7 @@ import {
   TrashIcon,
 } from "../shared/ui/icons";
 import { TitleSearch } from "./TitleSearch";
+import { accelLabel } from "../shared/lib/platform";
 
 /** Room for the macOS traffic lights at the left of the toolbar. */
 const TRAFFIC_LIGHTS_WIDTH = 80;
@@ -99,7 +100,7 @@ export function Toolbar({
       <ToolButton
         icon={SidebarToggleIcon}
         label={names.sidebar ?? ""}
-        shortcut="⌃⌘S"
+        shortcut={accelLabel("Ctrl+Cmd+S")}
         onClick={onToggleSidebar}
         onHover={onSidebarHover}
         pressed={sidebarOpen}
@@ -166,7 +167,7 @@ export function Toolbar({
       <ToolButton
         icon={ReaderToggleIcon}
         label={!hasSelection ? "Reader opens with a conversation" : (names.reader ?? "")}
-        shortcut="⌃⌘R"
+        shortcut={accelLabel("Ctrl+Cmd+R")}
         onClick={onToggleReader}
         disabled={!hasSelection}
         pressed={readerOpen}

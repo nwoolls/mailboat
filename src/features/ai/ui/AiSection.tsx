@@ -32,6 +32,7 @@ import {
 import { describeLimit, describeTotals, startOfToday } from "../model/usage";
 import { AiAppsGroups } from "../../mcp/ui/AiAppsGroups";
 import { clearLineSummaries } from "./lineSummaries";
+import { accelLabel } from "../../../shared/lib/platform";
 
 const SELECT_CLASS =
   "h-7 max-w-64 rounded-md border border-content/10 bg-transparent px-1.5 text-[12px] text-content/80 hover:bg-selection";
@@ -150,9 +151,9 @@ export function AiSection() {
           label="Help writing with"
           description={
             <>
-              In a reply or new message, ⌘J (or the ✦ button) opens a chat beside it: ask for a
-              draft, refine it, then Insert or Replace. It reads the conversation you’re answering.
-              Nothing is sent until you ask.
+              In a reply or new message, {accelLabel("Cmd+J")} (or the ✦ button) opens a chat beside
+              it: ask for a draft, refine it, then Insert or Replace. It reads the conversation
+              you’re answering. Nothing is sent until you ask.
               {leavesMac(ai.writingProvider) &&
                 ` Your request and the conversation go to ${PROVIDER_NAMES[ai.writingProvider]}.`}
             </>

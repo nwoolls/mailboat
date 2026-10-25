@@ -27,7 +27,7 @@ export const FEATURE_FLAGS: readonly { id: FeatureFlagId; label: string; descrip
     id: "screensavers",
     label: "Screensavers",
     description:
-      "After a minute without input, a pixel-art scene plays over the empty view. Also in ⌘K as “Start screensaver”.",
+      "After a minute without input, a pixel-art scene plays over the empty view. Also in the command palette as “Start screensaver”.",
   },
 ];
 

@@ -1,3 +1,5 @@
+import { accelMatches, IS_MAC } from "../../../shared/lib/platform";
+
 /** Pane widths in CSS pixels. The sidebar keeps its width when the window resizes. */
 export const SIDEBAR_WIDTH = { initial: 224, min: 180, max: 360 };
 export const LIST_WIDTH = { min: 260 };
@@ -68,15 +70,15 @@ export type SidePanel = "sidebar" | "reader";
 
 /**
  * ⌃⌘S toggles the sidebar (the macOS "Show Sidebar" key in Finder, Mail and
- * Notes); ⌃⌘R toggles the reader. Matched on the physical key so other
- * keyboard layouts still work.
+ * Notes); ⌃⌘R toggles the reader. Ctrl+Alt+S and Ctrl+Alt+R on Windows.
+ * Matched on the physical key so other keyboard layouts still work.
  */
 export function panelToggleFor(
-  e: Pick<KeyboardEvent, "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">,
+  e: Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">,
+  mac = IS_MAC,
 ): SidePanel | null {
-  if (!e.metaKey || !e.ctrlKey || e.altKey || e.shiftKey) return null;
-  if (e.code === "KeyS") return "sidebar";
-  if (e.code === "KeyR") return "reader";
+  if (accelMatches(e, "Ctrl+Cmd+S", mac)) return "sidebar";
+  if (accelMatches(e, "Ctrl+Cmd+R", mac)) return "reader";
   return null;
 }
 

@@ -1,4 +1,5 @@
 import type { MailView } from "../../../platform/tauri/bindings";
+import { IS_MAC } from "../../../shared/lib/platform";
 import {
   accelLabel,
   appCommands,
@@ -41,7 +42,7 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
       ["↩ or o", "Preview the selected one"],
       ["Esc", "Clear picks, then hide the reader"],
       ["/", "Search"],
-      ["⌘K", "Command palette"],
+      [accelLabel("Cmd+K"), "Command palette"],
       ["g then i", "Go to Inbox"],
       ["g then u", "Go to Unread"],
       ["g then s", "Go to Starred"],
@@ -55,7 +56,7 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
     group: "Reading",
     keys: [
       ["Space", "Scroll down"],
-      ["⇧Space", "Scroll up"],
+      [accelLabel("Shift+Space"), "Scroll up"],
       ["n / p", "Next / previous email"],
     ],
   },
@@ -64,14 +65,14 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
     keys: [
       ["e", "Archive / Move to Inbox"],
       ["#", "Move to Trash / Restore"],
-      ["⌫", "Move to Trash (or Archive, in Settings)"],
+      [IS_MAC ? "⌫" : "Delete", "Move to Trash (or Archive, in Settings)"],
       ["u", "Mark as read / unread"],
       ["s", "Star / Unstar"],
       ["!", "Report spam / Not spam"],
       ["l", "Labels"],
       ["x", "Pick the selected conversation"],
-      ["⇧↓ / ⇧↑", "Pick a range"],
-      ["z or ⌘Z", "Undo"],
+      [IS_MAC ? "⇧↓ / ⇧↑" : "Shift+↓ / Shift+↑", "Pick a range"],
+      [`z or ${accelLabel("Cmd+Z")}`, "Undo"],
     ],
   },
   {
@@ -81,24 +82,25 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
       ["r", "Reply"],
       ["a", "Reply all"],
       ["f", "Forward"],
-      ["⌘↩", "Send"],
+      [accelLabel("Cmd+Enter"), "Send"],
       ["Esc", "Minimise the message"],
-      ["⌘K", "Link (in the message)"],
+      [accelLabel("Cmd+K"), "Link (in the message)"],
     ],
   },
   {
     group: "Window",
     keys: [
-      ["⌃⌘S", "Show / hide the sidebar"],
-      ["⌃⌘R", "Show / hide the reader"],
+      [accelLabel("Ctrl+Cmd+S"), "Show / hide the sidebar"],
+      [accelLabel("Ctrl+Cmd+R"), "Show / hide the reader"],
       ["?", "These shortcuts"],
-      ["⌘,", "Settings"],
+      [accelLabel("Cmd+,"), "Settings"],
     ],
   },
   {
     // As in Mail, from the menu bar (`features/commands`); they work while
     // typing too, so the ones that change a conversation are off then.
-    group: "Menu bar",
+    // Windows has no menu bar, but the same keys (with Ctrl) work there.
+    group: IS_MAC ? "Menu bar" : "With Ctrl",
     keys: [
       ...conversationCommands([], NO_CONVERSATION),
       ...appCommands({ sidebarOpen: true, readerOpen: true, hasConversation: true }),

@@ -31,6 +31,7 @@ import { HtmlPreview } from "./HtmlPreview";
 import { EditorBody, FormatBar, useRichEditor } from "./RichEditor";
 import { composingPrefs } from "./composingPrefs";
 import { useStuck } from "../../../shared/ui/useStuck";
+import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 
 export type ReplyKind = Exclude<ComposeKind, "new">;
 
@@ -219,11 +220,11 @@ export function ComposeForm({
         trySend();
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter" && e.metaKey) {
+        if (e.key === "Enter" && primaryKey(e)) {
           e.preventDefault();
           trySend();
         }
-        if (e.key === "j" && e.metaKey && assistant) {
+        if (e.key === "j" && primaryKey(e) && assistant) {
           e.preventDefault();
           assistant.onToggle(!assistant.open);
         }
@@ -335,7 +336,7 @@ export function ComposeForm({
           <button
             type="submit"
             disabled={sending}
-            title="Send (⌘↩)"
+            title={`Send (${accelLabel("Cmd+Enter")})`}
             className="h-7 rounded-md bg-accent px-3.5 font-medium text-white hover:brightness-110 disabled:opacity-60"
           >
             {sending ? "Sending…" : "Send"}
@@ -363,7 +364,7 @@ export function ComposeForm({
               type="button"
               aria-label="Write with AI"
               aria-pressed={assistant.open}
-              title="Write with AI (⌘J)"
+              title={`Write with AI (${accelLabel("Cmd+J")})`}
               disabled={sending}
               onClick={() => assistant.onToggle(!assistant.open)}
               className={`ml-auto flex h-7 w-7 items-center justify-center rounded-md hover:bg-selection hover:text-content disabled:opacity-35 ${
