@@ -52,7 +52,8 @@ export function AssistantPanel({
   const save = useSaveAppSettings();
   const ai = aiChoices(settings);
   const provider = ai.writingProvider;
-  const status = statusOf(useAiStatus().data, provider);
+  const statuses = useAiStatus().data;
+  const status = statusOf(statuses, provider);
   const [messages, setMessagesState] = useState<ChatMessage[]>(() => chats.get(draft.id) ?? []);
   const setMessages = (change: (m: ChatMessage[]) => ChatMessage[]) =>
     setMessagesState((prev) => {
@@ -122,7 +123,7 @@ export function AssistantPanel({
   };
 
   const ready = status?.state === "ready";
-  const choices = offered(ai);
+  const choices = offered(ai, statuses);
   // Chips for a reply or forward come from the email itself; new mail (and
   // a failed or impossible request) gets the general ones.
   const ideasFor = draft.kind !== "new" && ready && messages.length === 0 ? draft.threadId : null;

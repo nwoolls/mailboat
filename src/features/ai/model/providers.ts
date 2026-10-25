@@ -5,13 +5,17 @@ import type {
   ProviderStatus,
   Quality,
 } from "../../../platform/tauri/bindings";
+import { IS_MAC } from "../../../shared/lib/platform";
 
-/** The AI settings with Rust's defaults filled in (Apple for everything). */
+/**
+ * The AI settings with Rust's defaults filled in (Apple for everything;
+ * without it, list summaries off).
+ */
 export type AiChoices = Required<AiSettings>;
 
 export const AI_DEFAULTS: AiChoices = {
   connected: [],
-  listSummaries: "apple",
+  listSummaries: IS_MAC ? "apple" : null,
   readerSummary: "auto",
   readerProvider: "apple",
   writingProvider: "apple",
@@ -75,11 +79,26 @@ export function canWrite(ai: AiChoices, statuses: ProviderStatus[] | undefined):
 }
 
 /**
- * The providers a feature can use: Apple Intelligence (built in), then
- * whichever of ChatGPT and Claude were connected.
+ * Whether Apple Intelligence could run here at all: not on Windows, nor
+ * on a Mac that can't run it. Before its status is known, by platform.
  */
-export function offered(ai: AiChoices): AiProvider[] {
-  return PROVIDERS.filter((p) => p === "apple" || ai.connected.includes(p));
+export function appleSupported(statuses: ProviderStatus[] | undefined, mac = IS_MAC): boolean {
+  const apple = statusOf(statuses, "apple");
+  return apple ? apple.state !== "unsupported" : mac;
+}
+
+/**
+ * The providers a feature can use: Apple Intelligence (built in, where it
+ * can run), then whichever of ChatGPT and Claude were connected.
+ */
+export function offered(
+  ai: AiChoices,
+  statuses: ProviderStatus[] | undefined,
+  mac = IS_MAC,
+): AiProvider[] {
+  return PROVIDERS.filter((p) =>
+    p === "apple" ? appleSupported(statuses, mac) : ai.connected.includes(p),
+  );
 }
 
 /** A provider row's status line in Settings → AI. */
@@ -97,6 +116,7 @@ export function statusLine(status: ProviderStatus | undefined, connected: boolea
         ? "Needs macOS 26 or later."
         : `Needs ${PROVIDER_TOOLS[status.provider]?.name ?? "its app"}, which isn’t installed.`;
     case "unavailable":
+    case "unsupported":
       return status.reason;
   }
 }

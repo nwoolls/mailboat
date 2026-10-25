@@ -287,7 +287,8 @@ export const commands = {
 	aiConnectCancel: () => __TAURI_INVOKE<void>("ai_connect_cancel"),
 	/**
 	 *  Stops using a provider in Mailboat. Its tool stays signed in (Claude Code
-	 *  and Codex have other uses). Features that used it go back to Apple.
+	 *  and Codex have other uses). Features that used it go back to Apple
+	 *  (where there is none, list summaries turn off).
 	 */
 	aiDisconnect: (provider: AiProvider) => typedError<AppSettings_Serialize, AppError>(__TAURI_INVOKE("ai_disconnect", { provider })),
 	/**
@@ -1175,8 +1176,13 @@ account: string | null } |
 { state: "notInstalled" } | 
 /**  Installed but not signed in. */
 { state: "signedOut" } | 
-/**  Apple Intelligence is off, still downloading, or not supported here. */
-{ state: "unavailable"; reason: string };
+/**  Apple Intelligence is off or still downloading. */
+{ state: "unavailable"; reason: string } | 
+/**
+ *  Apple Intelligence can never run on this computer: it isn't a Mac,
+ *  or the Mac can't run it. Settings hides it rather than offer it.
+ */
+{ state: "unsupported"; reason: string };
 
 export type ProviderStatus = {
 	provider: AiProvider,

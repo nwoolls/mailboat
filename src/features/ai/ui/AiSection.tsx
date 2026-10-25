@@ -20,6 +20,7 @@ import { Button, Group, Row, Segmented } from "../../settings/ui/controls";
 import {
   type AiChoices,
   aiChoices,
+  appleSupported,
   leavesMac,
   offered,
   PROVIDER_NAMES,
@@ -55,14 +56,17 @@ export function AiSection() {
     save.mutate({ ...settings, ai: { ...ai, ...change } } satisfies AppSettings, {
       onError: (e) => showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
     });
-  const choices = offered(ai);
+  const statuses = useAiStatus().data;
+  const choices = offered(ai, statuses);
+  // Windows, or a Mac that can't run it: not offered anywhere.
+  const apple = appleSupported(statuses);
   return (
     <>
       <Group
         title="Providers"
-        description="Apple Intelligence runs on this Mac. ChatGPT and Claude use your own subscription: connecting signs in through their apps in the browser, with no API key."
+        description={`${apple ? "Apple Intelligence runs on this Mac. " : ""}ChatGPT and Claude use your own subscription: connecting signs in through their apps in the browser, with no API key.`}
       >
-        {PROVIDERS.map((p) => (
+        {PROVIDERS.filter((p) => p !== "apple" || apple).map((p) => (
           <ProviderRow key={p} provider={p} connected={p === "apple" || ai.connected.includes(p)} />
         ))}
       </Group>
@@ -110,11 +114,13 @@ export function AiSection() {
           <Row
             label="Summarize with"
             description={
-              leavesMac(ai.readerProvider)
-                ? `Conversations you open are sent to ${PROVIDER_NAMES[ai.readerProvider]}${
-                    ai.readerSummary === "auto" ? " automatically" : " when you ask"
-                  }.`
-                : "Stays on this Mac."
+              ai.readerProvider === "apple" && !apple
+                ? "Choose a provider to have conversations summarized."
+                : leavesMac(ai.readerProvider)
+                  ? `Conversations you open are sent to ${PROVIDER_NAMES[ai.readerProvider]}${
+                      ai.readerSummary === "auto" ? " automatically" : " when you ask"
+                    }.`
+                  : "Stays on this Mac."
             }
           >
             <ProviderSelect
@@ -259,17 +265,25 @@ function ProviderSelect({
   disabled?: boolean;
   onChange: (p: AiProvider | null) => void;
 }) {
+  // Apple Intelligence where it can't run (Windows) counts as not chosen.
+  const unchosen = value === "apple" && !options.includes("apple");
   // A provider chosen before it was disconnected still shows as chosen.
-  const shown = value && !options.includes(value) ? [...options, value] : options;
+  const shown = value && !unchosen && !options.includes(value) ? [...options, value] : options;
+  const current = unchosen ? (allowOff ? "off" : "") : (value ?? "off");
   return (
     <select
       aria-label={label}
-      value={value ?? "off"}
-      disabled={disabled}
+      value={current}
+      disabled={disabled || shown.length === 0}
       onChange={(e) => onChange(e.target.value === "off" ? null : (e.target.value as AiProvider))}
       className={SELECT_CLASS}
     >
       {allowOff && <option value="off">Off</option>}
+      {current === "" && (
+        <option value="" disabled>
+          {shown.length === 0 ? "Connect one above" : "Choose…"}
+        </option>
+      )}
       {shown.map((p) => (
         <option key={p} value={p}>
           {PROVIDER_NAMES[p]}

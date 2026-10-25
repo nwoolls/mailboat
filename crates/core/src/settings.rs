@@ -177,10 +177,12 @@ pub struct AiSettings {
 
 impl Default for AiSettings {
     /// Apple Intelligence for everything, as it keeps mail on the Mac.
+    /// Elsewhere list summaries start off: they'd send every conversation
+    /// scrolled past to a cloud provider, which has to be chosen.
     fn default() -> Self {
         Self {
             connected: Vec::new(),
-            list_summaries: Some(AiProvider::Apple),
+            list_summaries: cfg!(target_os = "macos").then_some(AiProvider::Apple),
             reader_summary: ReaderSummary::Auto,
             reader_provider: AiProvider::Apple,
             writing_provider: AiProvider::Apple,

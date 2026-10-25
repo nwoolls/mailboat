@@ -165,10 +165,18 @@ pub enum ProviderState {
     NotInstalled,
     /// Installed but not signed in.
     SignedOut,
-    /// Apple Intelligence is off, still downloading, or not supported here.
+    /// Apple Intelligence is off or still downloading.
     #[serde(rename_all = "camelCase")]
     Unavailable { reason: String },
+    /// Apple Intelligence can never run on this computer: it isn't a Mac,
+    /// or the Mac can't run it. Settings hides it rather than offer it.
+    #[serde(rename_all = "camelCase")]
+    Unsupported { reason: String },
 }
+
+/// Whether Apple Intelligence can exist here at all (Mailboat's helper for it
+/// is only built for macOS).
+pub const APPLE_ON_THIS_SYSTEM: bool = cfg!(target_os = "macos");
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -181,6 +189,11 @@ pub struct ProviderStatus {
 /// Checks whether a provider is ready to use.
 pub async fn status(programs: &Programs, provider: AiProvider) -> ProviderStatus {
     let state = match programs.path(provider) {
+        None if provider == AiProvider::Apple && !APPLE_ON_THIS_SYSTEM => {
+            ProviderState::Unsupported {
+                reason: "Apple Intelligence is only on Macs.".into(),
+            }
+        }
         None => ProviderState::NotInstalled,
         Some(path) => match provider {
             AiProvider::Apple => apple::status(path).await,
@@ -246,6 +259,34 @@ mod tests {
         }
         assert!(AiProvider::Apple.on_device());
         assert!(!AiProvider::Claude.on_device());
+    }
+
+    /// Off macOS there's no Apple Intelligence to install: Settings hides
+    /// it. On a Mac a missing helper is still "not installed".
+    #[tokio::test]
+    async fn apple_without_its_helper() {
+        let programs = Programs {
+            apple: None,
+            claude: None,
+            codex: None,
+            codex_models: codex::Models::default(),
+        };
+        let state = status(&programs, AiProvider::Apple).await.state;
+        if APPLE_ON_THIS_SYSTEM {
+            assert_eq!(state, ProviderState::NotInstalled);
+        } else {
+            assert!(matches!(state, ProviderState::Unsupported { .. }));
+        }
+        assert_eq!(
+            status(&programs, AiProvider::Claude).await.state,
+            ProviderState::NotInstalled
+        );
+        let json = serde_json::to_value(ProviderStatus {
+            provider: AiProvider::Apple,
+            state: ProviderState::Unsupported { reason: "x".into() },
+        })
+        .unwrap();
+        assert_eq!(json["state"], "unsupported");
     }
 
     #[test]

@@ -2186,9 +2186,17 @@ Spike became Milestones 10–18, 2026-10-25.*
       don't; turned off on Windows. Also possible: the sidebar's sideways
       scrolling (fixed above) or a swipe springing back. To check with
       the owner whether it's gone
-- [ ] AI on Windows: Apple Intelligence is Mac-only, and every AI
-      feature defaults to it. Options researched for the owner
-      (2026-10-25); to decide
+- [ ] AI on Windows *(owner, 2026-10-25: hide Apple Intelligence where
+      it can't run, on Windows or a Mac that can't run it, and offer the
+      other providers for every feature)*: a new "unsupported" provider
+      state hides it from Settings → AI, a feature still set to it reads
+      as Off or "Choose…", and Rust won't send it requests off macOS. On
+      Windows list summaries start off; every feature can use Claude or
+      ChatGPT once connected (it always could: only connected providers
+      are offered, and none were). Copilot has no API for other apps;
+      Windows' own on-device model (Phi Silica) needs a Copilot+ PC and
+      Microsoft's approval; Foundry Local (any PC) is a possible later
+      on-device provider. Built; to try in the VM
 - [ ] Emails colored for dark mode showed on a white card on Windows,
       with their light text barely readable *(owner report with a
       screenshot, 2026-10-25)*: Chromium (WebView2) paints a see-through

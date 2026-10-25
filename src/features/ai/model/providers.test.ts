@@ -24,12 +24,25 @@ const ai: AiChoices = {
 
 describe("providers", () => {
   it("offers Apple plus whatever was connected, in a fixed order", () => {
-    expect(offered(ai)).toEqual(["apple", "chatgpt"]);
-    expect(offered({ ...ai, connected: ["chatgpt", "claude"] })).toEqual([
+    expect(offered(ai, undefined, true)).toEqual(["apple", "chatgpt"]);
+    expect(offered({ ...ai, connected: ["chatgpt", "claude"] }, undefined, true)).toEqual([
       "apple",
       "chatgpt",
       "claude",
     ]);
+  });
+
+  it("leaves Apple out where it can't run", () => {
+    // Windows, before the status is in: by platform.
+    expect(offered(ai, undefined, false)).toEqual(["chatgpt"]);
+    // Windows, or a Mac that can't run it: Rust says so.
+    const unsupported = [
+      { provider: "apple" as const, state: "unsupported" as const, reason: "x" },
+    ];
+    expect(offered(ai, unsupported, true)).toEqual(["chatgpt"]);
+    // Only turned off in System Settings: still offered, to turn on.
+    const off = [{ provider: "apple" as const, state: "unavailable" as const, reason: "x" }];
+    expect(offered(ai, off, true)).toEqual(["apple", "chatgpt"]);
   });
 
   it("fills in Rust's defaults, keeping an explicit off", () => {

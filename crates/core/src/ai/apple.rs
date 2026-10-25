@@ -53,6 +53,10 @@ pub async fn status(helper: &Path) -> ProviderState {
         if let Ok(Line::Status { available, reason }) = serde_json::from_str(line) {
             state = if available {
                 ProviderState::Ready { account: None }
+            } else if reason.as_deref() == Some("deviceNotEligible") {
+                ProviderState::Unsupported {
+                    reason: unavailable_text("deviceNotEligible"),
+                }
             } else {
                 ProviderState::Unavailable {
                     reason: unavailable_text(reason.as_deref().unwrap_or("unknown")),

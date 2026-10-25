@@ -122,7 +122,18 @@ fn load_settings(state: &AppState) -> CmdResult<AppSettings> {
 /// The provider is one the owner set up: Apple needs nothing; Claude and
 /// ChatGPT must have been connected in Settings → AI.
 fn check_usable(settings: &AppSettings, provider: AiProvider) -> CmdResult<()> {
-    if provider == AiProvider::Apple || settings.ai.connected.contains(&provider) {
+    if provider == AiProvider::Apple {
+        if ai::APPLE_ON_THIS_SYSTEM {
+            return Ok(());
+        }
+        return Err(AppError {
+            kind: "ai".into(),
+            message:
+                "Apple Intelligence is only on Macs. Choose Claude or ChatGPT in Settings → AI."
+                    .into(),
+        });
+    }
+    if settings.ai.connected.contains(&provider) {
         return Ok(());
     }
     Err(AppError {
@@ -187,7 +198,7 @@ pub async fn ai_connect(
                 message: format!("{} isn't installed.", tool_name(provider)),
             })
         }
-        ProviderState::Unavailable { reason } => {
+        ProviderState::Unavailable { reason } | ProviderState::Unsupported { reason } => {
             return Err(AppError {
                 kind: "ai".into(),
                 message: reason,
@@ -261,14 +272,20 @@ pub fn ai_connect_cancel(ai: State<'_, AiState>) {
 }
 
 /// Stops using a provider in Mailboat. Its tool stays signed in (Claude Code
-/// and Codex have other uses). Features that used it go back to Apple.
+/// and Codex have other uses). Features that used it go back to Apple
+/// (where there is none, list summaries turn off).
 #[tauri::command]
 #[specta::specta]
 pub fn ai_disconnect(state: State<'_, AppState>, provider: AiProvider) -> CmdResult<AppSettings> {
     let mut saved = load_settings(&state)?;
     saved.ai.connected.retain(|p| *p != provider);
     let fallback = |p: AiProvider| if p == provider { AiProvider::Apple } else { p };
-    saved.ai.list_summaries = saved.ai.list_summaries.map(fallback);
+    // Without Apple Intelligence (Windows), list summaries turn off instead.
+    saved.ai.list_summaries = saved
+        .ai
+        .list_summaries
+        .map(fallback)
+        .filter(|p| *p != AiProvider::Apple || ai::APPLE_ON_THIS_SYSTEM);
     saved.ai.reader_provider = fallback(saved.ai.reader_provider);
     saved.ai.writing_provider = fallback(saved.ai.writing_provider);
     settings::save(&state.db.conn(), &saved)?;
