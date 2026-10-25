@@ -136,7 +136,8 @@ pub struct DraftParams {
     #[serde(default)]
     pub account: Option<String>,
     /// Addresses, "Name <name@example.com>" or "name@example.com". A
-    /// reply goes to the person who wrote last when left out.
+    /// reply goes to the person who wrote last when left out; a new email
+    /// may have none yet (the user adds them in Mailboat).
     #[serde(default)]
     pub to: Vec<String>,
     #[serde(default)]
@@ -575,9 +576,6 @@ impl MailServer {
                 "Drafts aren't allowed for {}. The user can allow them in Mailboat → Settings → AI → AI apps.",
                 scope.email(account)
             ));
-        }
-        if to.is_empty() {
-            return Err("Who is it to? (`to`)".into());
         }
         let owner = scope
             .accounts

@@ -303,6 +303,30 @@ async fn only_shared_accounts_and_never_spam() {
     let _ = m.b;
 }
 
+/// A new email may be saved before anyone is chosen to send it to, as in
+/// Gmail (owner report, 2026-10-25); the user adds them in Mailboat.
+#[tokio::test]
+async fn a_new_draft_needs_no_recipient_yet() {
+    let server = MockServer::start().await;
+    let draft = json!({ "id": "d2", "message": { "id": "dm2", "threadId": "t9" } });
+    Mock::given(method("POST"))
+        .and(path("/upload/gmail/v1/users/me/drafts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(draft))
+        .mount(&server)
+        .await;
+    let m = mail();
+    share(&m.db, &[m.a], &[m.a]);
+    let c = connect(m.db.clone(), host(Some(server.uri()))).await;
+    let saved = ok(&call(
+        &c,
+        "create_draft",
+        json!({ "subject": "Ideas", "body": "Notes" }),
+    )
+    .await);
+    assert_eq!(saved["to"], json!([]));
+    assert_eq!(saved["account"], "me@gmail.com");
+}
+
 #[tokio::test]
 async fn drafts_only_where_allowed_and_never_sent() {
     let server = MockServer::start().await;
