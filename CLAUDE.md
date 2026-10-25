@@ -19,9 +19,8 @@ Agents write all the code, so:
   Add a row when you make a choice a future agent might second-guess
   (a library, a limit, a security trade-off).
 - `docs/RELEASE.md`: the release plans (closed and paid, open source,
-  hybrid), each plan's steps until the owner chooses one, and the
-  research behind them. Once a plan is chosen, its steps move to the
-  roadmap's Release Spike.
+  hybrid) and the research behind them. The owner chose the hybrid
+  (2026-10-25); its work is tracked in the roadmap, Milestones 10–16.
 - `README.md`: setup and run instructions for people.
 
 ## Conventions

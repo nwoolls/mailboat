@@ -2120,7 +2120,8 @@ editor, and prompts and answers are never logged.*
 ## Milestone 9: Windows
 
 *Moved up (owner, 2026-10-24): after AI Spike 2, Windows comes next,
-then the Release Spike. It was Milestone 10, after Writing.*
+then the Release Spike. It was Milestone 10, after Writing. The Release
+Spike became Milestones 10–16, 2026-10-25.*
 
 - [ ] Windows build and testing; Linux nice-to-have. Broken into the
       items below *(started 2026-10-25)*
@@ -2163,97 +2164,236 @@ then the Release Spike. It was Milestone 10, after Writing.*
       feature defaults to it. Options researched for the owner
       (2026-10-25); to decide
 
-## Release Spike (after Windows)
+## Release: the road to an open-source the alternative name
 
-*Making Mailboat installable by other people. The owner was unsure whether
-it would ever be distributed (2026-10-19). On 2026-10-25 they worked out
-three plans, now in `docs/RELEASE.md`: closed source and paid; open
-source with each user's own Google credentials; or a hybrid that starts
-open source and adds a paid option later (the owner's likely choice).
-The steps below are shared by every plan. Each plan's own steps (Google
-verification, Polar, the credentials walkthrough, publishing the code)
-moved to `docs/RELEASE.md` on 2026-10-25 and come back here once a plan
-is chosen. The owner sees this as an experience and a possible side project, not a full-time job, so money and effort are spent only after a checkpoint
-shows people want it.*
+*The owner chose Plan 3 of `docs/RELEASE.md` on 2026-10-25: release as
+open source first, with each user bringing their own Google
+credentials, and add a paid no-setup option later only if people want
+it. The milestones below replace the Release Spike (its shared steps
+moved into them, the same day). Each one stands on its own: it ends
+with something finished and usable, and the next can wait. For the open
+source release the owner may use their personal accounts (GitHub,
+social media, Apple), so the brand-identity steps of the paid plan are
+dropped. Background and research: `docs/RELEASE.md`.*
 
-Agreed with the owner, 2026-10-25 (details and checks in
-`docs/RELEASE.md`):
-- Name: **the alternative name**.
-  "Mailboat" collides with Mailboat, Inc. (mailboat.com), which sells software
-  and has an app on Apple's store
-- No company (LLC) for now; Mac and Windows
+```mermaid
+flowchart LR
+  M10["10: the alternative name"] --> M11["11: Own-credentials setup"]
+  M11 --> M12["12: Open the code"]
+  M12 --> M13["13: Signed builds and updates"]
+  M13 --> M14["14: Website"]
+  M14 --> M15["15: Launch"]
+  M15 -.->|"only if people want it"| M16["16: Paid option"]
+```
 
-- [ ] Choose a plan with the owner (`docs/RELEASE.md`), then move its
-      steps here
-- [ ] Owner: search "the alternative name" for software at tmsearch.uspto.gov, then
-      register `altname` and `altname.example` at Cloudflare Registrar
-      (owner details hidden in public records), before the name is
-      used anywhere public
+## Milestone 10: the alternative name
+
+*Done when: the app is called the alternative name everywhere a person can see it, the
+domains are the owner's, and the owner's own setup has moved over.*
+
+- [ ] Owner: search "the alternative name" for software at tmsearch.uspto.gov
+- [ ] Owner: register `altname` and `altname.example` at Cloudflare
+      Registrar (a yearly fee; owner details hidden in public
+      records), before the name is used anywhere public. Name checks
+      already done are in `docs/RELEASE.md` → Name checks
 - [ ] Rename to the alternative name: window title, menus, Welcome and Settings text,
       icon names, README, CLAUDE.md, the bundle ID (`com.nwoolls.mailboat`
       to `com.nwoolls.altname`, which names the data folders, the
       keychain entries, the MCP socket and pipe, and the sync log
-      folder) and the OAuth client file's folder. Move the owner's own
-      data and keychain sign-ins over once (nobody else has installed
-      it). Code names (`mailboat_core`, crate and module names) stay
-- [ ] Brand email on the domain (Cloudflare Email Routing, free), for
-      the website, store and social accounts
-- [ ] Owner: Apple Developer Program (the annual developer fee). The free Apple
-      Development certificate can't notarize, and macOS blocks apps
-      that aren't notarized
-- [ ] Website: plain HTML/CSS/JS, marketing only, on `altname`: home,
-      download, privacy policy, terms of use (limits liability, as
-      there's no company), support; pricing or setup guide per plan.
-      Screenshots from Demo mode (below)
-- [ ] Release signing and packaging, with automatic software updates
-      (Mimestream has an update channel setting) *(updates added
-      2026-10-19, settings comparison)*. Planned 2026-10-25:
-      - Mac: Developer ID signing and notarization
-      - Windows: Azure Artifact Signing (about a monthly signing fee, open to
-        individuals in the US and Canada), so SmartScreen doesn't
-        warn. Signing from the Mac (e.g. `jsign`) to be confirmed
-      - Updates: Tauri's updater plugin with its own signing key. The
-        update address built into the app is on `altname`, so where
-        the files live (Cloudflare R2 or GitHub Releases) can change
-      - One script on the Mac builds, signs and uploads both
-        platforms. Signing keys stay in the Mac's keychain; GitHub
-        Actions later
-- [ ] Onboarding *(owner request, 2026-10-17)*: a first-launch flow
-      instead of today's single Welcome screen. At least: add one or
-      more accounts (each shown as it signs in, with its first sync
+      folder), the OAuth client file's folder and the
+      `MAILBOAT_GOOGLE_*` variables. Code names (`mailboat_core`, crate and
+      module names) stay
+- [ ] Move the owner's data, settings and keychain sign-ins to the new
+      ID once, on the first launch after the rename, so nothing has to
+      be signed in again (nobody else has installed it). Tested on a
+      copy before it runs for real
+- [ ] Email on the domain for security reports and anything that
+      shouldn't be a public GitHub issue (Cloudflare Email Routing,
+      free, forwarding to the owner)
+
+## Milestone 11: Bring your own Google credentials
+
+*Done when: someone who has never used Google Cloud can install the alternative name
+and, inside the app, get from nothing to their mail in about 15
+minutes. Details: `docs/RELEASE.md` → Plan 2.*
+
+- [ ] Onboarding *(owner request, 2026-10-17; moved from the Release
+      Spike)*: a first-launch flow instead of today's single Welcome
+      screen. At least: set up Google credentials (below), then add one
+      or more accounts (each shown as it signs in, with its first sync
       under way). Maybe also: choose the theme and the app icon, allow
       notifications. Steps after accounts can be skipped, and all of it
       is in Settings afterwards. To design with the owner before
-      building. Today's Welcome screen also needs its Google setup steps
-      brought up to date: it names only the Gmail API, but the README
-      now lists the People and Google Calendar APIs too. In Plans 2 and
-      3 it holds the credentials walkthrough (`docs/RELEASE.md`)
-- [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
-- [ ] Demo mode *(owner, 2026-10-22, after asking about a trailer)*:
+      building. Replaces today's Welcome screen, whose Google steps are
+      out of date (it names only the Gmail API, not People and Calendar)
+- [ ] Credentials walkthrough in the app: one card per step (create a
+      project; turn on the Gmail, People and Calendar APIs; consent
+      screen, External; **Publish app**; create a Desktop client and
+      download its JSON), each with a button that opens the exact Google
+      Console page, a short explanation and a "Done" tick. It shows
+      Google's "hasn't verified this app" screen in advance so it
+      doesn't alarm anyone. Console addresses checked when building, as
+      Google moves them
+- [ ] Optional fast path for people with Google's `gcloud` tool: one
+      copy-paste command that creates the project and turns on the
+      APIs (the consent screen and the client stay manual)
+- [ ] Drop the JSON on the window, or choose it. The app checks it is a
+      Desktop client with an ID and secret and says plainly what's
+      wrong if not (e.g. a Web client). Ends with a test sign-in
+- [ ] If Google refuses a sign-in about 7 days later (`invalid_grant`),
+      the app explains the project is probably still in "Testing" and
+      links to "Publish app"
+- [ ] Settings → Accounts shows which credentials each account uses and
+      lets the user replace the JSON
+- [ ] Scopes: check whether `gmail.compose` is needed beside
+      `gmail.modify` (which may already cover drafts and sending) and
+      drop any scope that isn't. Fewer scopes means fewer APIs to turn
+      on now and less to justify to Google in Milestone 16
+- [ ] Tried with the owner on a fresh Google account, following only
+      what the app says
+
+## Milestone 12: Open the code
+
+*Done when: the code is public on the owner's GitHub under an
+open-source licence, with nothing personal in it, and every push is
+checked by GitHub Actions.*
+
+- [ ] Owner: choose the licence. GPL-3.0 suggested (nobody can sell a
+      closed copy; respected by a technical audience); MIT and the
+      Functional Source License compared in `docs/RELEASE.md` →
+      Choices that keep the doors open
+- [ ] Scrub before publishing: no real mail in fixtures, examples or
+      `design/`; no personal details in the docs; nothing from the owner's machine (paths, certificates)
+      that matters. Search for personal details.
+- [ ] Publish a fresh history: a new public repository on the owner's
+      GitHub starting from one commit of today's tree, which becomes
+      the working repository. This one is kept private as an archive. Commit hashes quoted in the docs then
+      point into the archive; say so in the README
+- [ ] README for people: what the alternative name is, screenshots, install, the
+      credentials setup, building from source, the privacy promise
+      (mail stays on your device; what AI and AI apps send, and only
+      when you choose)
+- [ ] `CONTRIBUTING.md`: bug reports and ideas welcome; outside code
+      not accepted (an email client is an attractive target for a
+      malicious change, and it keeps the copyright with the owner so
+      the licence can change later). Issue templates for bugs and ideas
+- [ ] `SECURITY.md`: report problems privately to the domain's email,
+      not in public issues
+- [ ] GitHub Actions runs `bun run check` on every push (free and
+      unlimited for public repositories, Mac runners included)
+- [ ] Optional: GitHub Sponsors on the owner's account
+
+## Milestone 13: Signed builds and automatic updates
+
+*Done when: a person can download the alternative name for Mac or Windows from GitHub,
+open it without security warnings, and later receive updates by
+themselves.*
+
+- [ ] Owner: Apple Developer Program (the annual developer fee, personal name is fine).
+      The free Apple Development certificate can't notarize, and macOS
+      (and Homebrew, since September 2026) refuse apps that aren't
+      notarized
+- [ ] Mac: Developer ID signing and notarization
+- [ ] Windows: Azure Artifact Signing (about a monthly signing fee, open to
+      individuals in the US and Canada), so SmartScreen doesn't warn.
+      Signing from the Mac (e.g. `jsign`) or in GitHub Actions, to be
+      confirmed
+- [ ] Automatic updates *(added 2026-10-19, settings comparison;
+      Mimestream has an update channel setting)*: Tauri's updater plugin
+      with its own signing key. The address built into the app is on
+      `altname` (e.g. `https://altname/updates/latest.json`), never
+      a GitHub address, so hosting can change without stranding anyone.
+      Installers live on GitHub Releases
+- [ ] One release script (on the Mac, or GitHub Actions) builds, signs
+      and publishes both platforms and the update file. Signing keys
+      stay in the Mac's keychain or in encrypted GitHub secrets, never
+      in the repository
+- [ ] Settings → About: version, "Check for updates", and the update
+      channel (stable, or early builds) if wanted
+- [ ] Optional: a Homebrew tap of the owner's own (the main Homebrew
+      list needs an app to be popular first) and `winget` for Windows
+
+## Milestone 14: Website
+
+*Done when: `altname` explains the alternative name, shows it, and lets people
+download it and follow the setup guide.*
+
+- [ ] Demo mode *(owner, 2026-10-22; moved from the Release Spike)*:
       the real app started with its own data folder (e.g. an env var or
       launch flag), filled with made-up accounts, conversations,
       labels, summaries and sign-in codes, and no Google connection, so
       none of the owner's mail can show. Sending is faked (it lands in
       Sent, and a scripted reply can arrive). For screenshots, the
-      README or a website, and the trailer below. The fake data is
+      README, the website, and the trailer below. The fake data is
       shared with the trailer and the browser tests' harness
-- [ ] Teaser trailer *(owner, 2026-10-22)*: a short video made in code
-      with Remotion (videos written in React), drawing Mailboat's real
-      components with the demo data, as the browser tests do. Scripted
-      camera moves, a gliding cursor, typing, the AI panel opening, mail
-      arriving; rendered to MP4 at 16:9, square and vertical. Not
-      AI-generated video: it garbles text and invents UI that isn't
-      Mailboat's. Limits: it renders in Chromium, so the window's glass is
-      imitated over a chosen wallpaper rather than macOS's own; music or
-      a voiceover come from the owner (cuts can be timed to a chosen
-      track). Check Remotion's licence (free for individuals and small
-      companies) when starting, and record it in ARCHITECTURE
-- [ ] Social accounts with the brand email, started weeks before any
-      launch: X, Reddit (new accounts with no history get filtered;
-      take part before posting; r/macapps allows app posts under its
-      rules), Bluesky (`altname` taken), YouTube, Product Hunt
-- [ ] Revisit a company (LLC) if there's revenue: it would hide the
+- [ ] Website: plain HTML/CSS/JS on GitHub Pages (free; Cloudflare
+      Pages if needed later), on `altname`: home with screenshots,
+      download (latest release), the credentials setup guide with a
+      short screen recording, privacy policy (what Google data the alternative name
+      uses; it stays on the device), terms of use (limits liability,
+      as there's no company), link to GitHub. Also serves the update
+      file (Milestone 13)
+- [ ] Teaser trailer *(owner, 2026-10-22; moved from the Release
+      Spike)*: a short video made in code with Remotion (videos written
+      in React), drawing the alternative name's real components with the demo data, as
+      the browser tests do. Scripted camera moves, a gliding cursor,
+      typing, the AI panel opening, mail arriving; rendered to MP4 at
+      16:9, square and vertical. Not AI-generated video: it garbles text
+      and invents UI that isn't the alternative name's. Limits: it renders in
+      Chromium, so the window's glass is imitated over a chosen
+      wallpaper rather than macOS's own; music or a voiceover come from
+      the owner (cuts can be timed to a chosen track). Check Remotion's
+      licence (free for individuals and small companies) when starting,
+      and record it in ARCHITECTURE
+
+## Milestone 15: Launch
+
+*Done when: the alternative name has been announced once in the right places, and the
+owner has decided, from what happened, whether Milestone 16 is worth
+starting.*
+
+- [ ] Social accounts: the owner's personal ones are fine for an open
+      source launch. Optionally reserve `altname` on X, Bluesky and
+      GitHub anyway, so the name is there if a paid version comes.
+      Reddit filters new accounts with no history: take part in a few
+      communities for some weeks before posting
+- [ ] Launch posts, once: Show HN; r/macapps (app posts allowed under
+      its rules); Claude and MCP communities (the AI and AI-apps
+      features are the pitch for a technical audience); "Mimestream,
+      but on Windows too" for Windows users. Each post links to the
+      website and GitHub
+- [ ] Checkpoint, about a month later, with the owner: downloads
+      (GitHub counts them), stars, issues from people who finished the
+      setup, and whether people say they'd pay to skip it. Decide:
+      the alternative name stays free and open source, or Milestone 16 begins
+
+## Milestone 16: Paid option (only if the Milestone 15 checkpoint says yes)
+
+*Done when: people can subscribe to sign in with the alternative name's own
+Google-verified credentials and no setup, in the same app as the free
+route. Plan 3, Stage B, in `docs/RELEASE.md`; its Google and Polar
+steps are those of Plan 1 there.*
+
+- [ ] Google verification for the alternative name's own OAuth client: domain verified
+      in Search Console, consent screen (name, logo, home page, privacy
+      policy, terms), demo video, a reason for each scope, and the case
+      for no security assessment (mail stays on the device). If Google
+      requires the assessment anyway: yearly, a paid assessment. Re-verified every 12 months
+- [ ] The client's ID and secret only in official builds, added when
+      building; never in the public code
+- [ ] Polar store and licence keys (up to 2 devices), with a sandbox
+      purchase first; price decided then (it buys setup-free sign-in,
+      not features, so it may be below Plan 1's the yearly price)
+- [ ] First launch offers both: "Use your own Google credentials
+      (free)" or "Subscribe: no setup". Users can switch either way by
+      signing each account in again
+- [ ] Wind-down promise on the website before anyone pays: notice,
+      refunds for unused time, and subscribers can switch to their own
+      credentials and carry on
+- [ ] Revisit a company (LLC) once there's revenue: it would hide the
       owner's name and limit personal liability
+- [ ] Promotion if wanted: options and costs in `docs/RELEASE.md` →
+      Promotion
 
 ## Bug backlog
 
@@ -2296,6 +2436,10 @@ again until the next spike.*
 
 ## Later / unscheduled
 
+- [ ] Replace hand-built Gmail fixtures with scrubbed real recordings
+      *(moved here from the Release Spike, 2026-10-25: not needed for
+      the open-source release, and real mail, however scrubbed, is a
+      leak risk in a public repository)*
 - [ ] Mute a conversation *(owner request, 2026-10-21; moved here from Milestone 8, owner,
       2026-10-24: "leave it for now")*: later replies
       skip the Inbox and don't notify, as Gmail's Mute does

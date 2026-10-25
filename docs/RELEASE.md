@@ -1,14 +1,20 @@
 # Releasing the alternative name
 
 How Mailboat (to be renamed **the alternative name**) could reach other people. Three plans,
-worked out with the owner on 2026-10-25. **No plan is chosen yet**; the
-owner leans towards Plan 3 (hybrid).
+worked out with the owner on 2026-10-25.
 
-- The steps every plan shares (rename, signing, updates, onboarding, demo
-  mode, website) are in `docs/ROADMAP.md` → Release Spike.
-- The steps of each plan live here until the owner chooses one. Then that
-  plan's steps move into the roadmap, and this document records the
-  choice.
+**Chosen (owner, 2026-10-25): Plan 3, the hybrid.** Open source first,
+with each user bringing their own Google credentials (Stage A, which is
+Plan 2), and a paid no-setup option later only if people want it
+(Stage B). For the open-source stage the owner may use their personal
+accounts (GitHub, social media, Apple).
+
+- The work is in `docs/ROADMAP.md`, Milestones 10–16 (Release: the road
+  to an open-source the alternative name). Tasks are tracked there, not here.
+- This document keeps the plans and research behind them. The lists
+  under each plan are reference, not a checklist. Plans 1 and 2 were not
+  chosen as such, but Plan 2 is Stage A, and Plan 1's Google and Polar
+  steps are what Stage B (Milestone 16) would follow.
 - Choices a future agent might second-guess are in `docs/ARCHITECTURE.md`
   → Decisions (2026-10-25 rows).
 
@@ -23,7 +29,7 @@ owner leans towards Plan 3 (hybrid).
 
 ## The three plans at a glance
 
-| | 1. Closed source, paid | 2. Open source, bring your own Google credentials | 3. Hybrid: open source first, paid later |
+| | 1. Closed source, paid | 2. Open source, bring your own Google credentials | 3. Hybrid: open source first, paid later (chosen) |
 |---|---|---|---|
 | Setup for a user | None | 10–15 min, guided in the app | Free: guided. Paid: none |
 | Google verification and security assessment | Required (yearly) | **None** | Only when the paid version starts |
@@ -76,12 +82,12 @@ flowchart LR
 
 ### Groundwork
 
-- [ ] Website on Cloudflare Pages: home, pricing, download, privacy
+- Website on Cloudflare Pages: home, pricing, download, privacy
       policy, terms of use (limits liability, as there's no company),
       support. The privacy policy says what Google data the app uses,
       that it stays on the user's device, and that the app follows
       Google's Limited Use rules
-- [ ] Check whether `gmail.compose` is needed beside `gmail.modify`
+- Check whether `gmail.compose` is needed beside `gmail.modify`
       (which may already cover drafts and sending), and drop any scope
       that isn't; Google asks for a reason for each one
 
@@ -92,71 +98,71 @@ the alternative name asks for restricted scopes (`gmail.modify`; `gmail.compose`
 list) and sensitive ones (contacts, calendar). An individual can get
 verified; it's paperwork and waiting (weeks to months).
 
-- [ ] New production OAuth client in a Cloud project named for the alternative name
+- New production OAuth client in a Cloud project named for the alternative name
       (the current one stays for development). Each account records its
       client (`accounts.oauth_client`), so both can coexist
-- [ ] Verify the domain in Google Search Console
-- [ ] Consent screen: name, logo, home page, privacy policy, terms, brand
+- Verify the domain in Google Search Console
+- Consent screen: name, logo, home page, privacy policy, terms, brand
       support email
-- [ ] Demo video, unlisted on YouTube: the sign-in, the consent screen
+- Demo video, unlisted on YouTube: the sign-in, the consent screen
       with the client ID in the address bar, each scope in use
-- [ ] A written reason for each scope
-- [ ] Security assessment (CASA): Google requires it when restricted data
+- A written reason for each scope
+- Security assessment (CASA): Google requires it when restricted data
       is stored on or sent to servers. the alternative name keeps mail on the device,
       and AI and MCP only send it where the user chooses, so ask to be
       exempt. If Google insists: yearly, a paid assessment
-- [ ] Until approved, the current "unverified, in production" client
+- Until approved, the current "unverified, in production" client
       allows 100 users in total (every account that ever signs in counts;
       the count can't be reset): enough for the beta
 
 ### Private beta (up to 100 users, free)
 
-- [ ] Updates read from Cloudflare R2, which also holds the installers
+- Updates read from Cloudflare R2, which also holds the installers
       (free up to 10 GB, no download fees)
-- [ ] The Google client ID and secret go into release builds at build
+- The Google client ID and secret go into release builds at build
       time, never committed. A desktop app can't keep them secret, and
       Google says so; PKCE and the verified consent screen are the
       protection
 
 ### Checkpoint 1 (end of the beta)
 
-- [ ] Launch the beta once where the right people are: r/macapps, Show
+- Launch the beta once where the right people are: r/macapps, Show
       HN, Claude and MCP communities (the AI and AI-apps features are the
       pitch), "Mimestream, but on Windows too" for Windows users
-- [ ] After about 2 weeks, with the owner: did the places fill, do people
+- After about 2 weeks, with the owner: did the places fill, do people
       still use it daily (ask them; there are no analytics), would they
       pay a monthly price? If not, stop: nothing more is spent. If yes, submit
       Google verification
 
 ### Paid launch (after Google approves)
 
-- [ ] Website and terms say how a wind-down would go, before anyone pays:
+- Website and terms say how a wind-down would go, before anyone pays:
       notice by email, refunds for unused time, and the app keeps working
       with mail already downloaded
-- [ ] Polar store: one product, a subscription, 14-day trial with
+- Polar store: one product, a subscription, 14-day trial with
       a card, a licence-key benefit limited to 2 device activations.
       First a sandbox purchase, to confirm the key works during the trial
       and is revoked when it's cancelled or a payment fails (Polar's docs
       say so for subscriptions, not trials specifically)
-- [ ] In the app: enter the licence key (or open a link from checkout),
+- In the app: enter the licence key (or open a link from checkout),
       activate it with Polar's public API (made for desktop apps; no
       server of ours), check again now and then with a few days' grace
       offline, lock to a "Subscribe" screen when revoked. Settings shows
       the plan and "Deactivate this device"
-- [ ] Website: pricing, checkout links, "what's new"; make the case for
+- Website: pricing, checkout links, "what's new"; make the case for
       the price (Windows, AI, AI apps)
 
 ### Checkpoint 2 (six months after the paid launch)
 
-- [ ] With the owner: does it cover its costs, and is support still a few
+- With the owner: does it cover its costs, and is support still a few
       emails a week? If not, wind down as promised. If yes, carry on at
       the owner's pace
 
 ### Ongoing
 
-- [ ] Google re-verification every 12 months (and the assessment, if
+- Google re-verification every 12 months (and the assessment, if
       required)
-- [ ] Promotion, if the owner wants more than costs covered (see
+- Promotion, if the owner wants more than costs covered (see
       "Promotion" below)
 
 ---
@@ -196,56 +202,56 @@ flowchart LR
 
 A setup screen in the app (part of Onboarding), not just a web page:
 
-- [ ] One card per step, each with a button that opens the exact Google
+- One card per step, each with a button that opens the exact Google
       Console page (passing the project ID once known), a short
       explanation, and a "Done" tick. Exact Console addresses to be
       checked when building, as Google moves them
-- [ ] Optional fast path for people with Google's `gcloud` tool: one
+- Optional fast path for people with Google's `gcloud` tool: one
       copy-paste command that creates the project and turns on the three
       APIs. The consent screen and the Desktop client stay manual
       (`gcloud` can't make that kind of client)
-- [ ] Drop the JSON on the window, or choose it. The app checks it (a
+- Drop the JSON on the window, or choose it. The app checks it (a
       "Desktop" client with an ID and secret) and says plainly what's
       wrong if not (e.g. a "Web" client was made)
-- [ ] A test sign-in at the end. If Google later refuses a sign-in about
+- A test sign-in at the end. If Google later refuses a sign-in about
       7 days on (`invalid_grant`), the app explains that the project is
       probably still in "Testing" and links to "Publish app"
-- [ ] The same steps as a page on the website, and a short screen
+- The same steps as a page on the website, and a short screen
       recording, for people deciding whether to install
-- [ ] Settings → Accounts shows which client each account uses, and lets
+- Settings → Accounts shows which client each account uses, and lets
       the user replace the JSON
 
 ### Making the code public
 
-- [ ] Publish a **fresh history** (one starting commit), not this repository's: it stays as a private archive. Check first that fixtures and examples hold no real
+- Publish a **fresh history** (one starting commit), not this repository's: it stays as a private archive. Check first that fixtures and examples hold no real
       mail, and that nothing personal is left in docs
-- [ ] Licence: see "Choices that keep the doors open". GPL-3.0 suggested
-- [ ] Contributions: bug reports and ideas welcome; outside code not
+- Licence: see "Choices that keep the doors open". GPL-3.0 suggested
+- Contributions: bug reports and ideas welcome; outside code not
       accepted. An email client is an attractive target for a malicious
       change, and every change would need careful review. Say so in `CONTRIBUTING.md`
-- [ ] Hosting on GitHub, all free for a public repo: Pages (website; or
+- Hosting on GitHub, all free for a public repo: Pages (website; or
       keep Cloudflare), Releases (installers and the update file),
       Actions (unlimited minutes, Mac builds included). The domain and
       update address stay on `altname` either way
-- [ ] Signing: still advised (the signing fees). Unsigned, Mac users must
+- Signing: still advised (the signing fees). Unsigned, Mac users must
       allow the app in System Settings, Windows shows a SmartScreen
       warning, and Homebrew announced it would drop casks that aren't
       signed and notarized from September 2026
-- [ ] Tips: GitHub Sponsors
-- [ ] Privacy policy and terms still on the website (no Google
+- Tips: GitHub Sponsors
+- Privacy policy and terms still on the website (no Google
       requirement here, but users should know where their mail goes)
 
 ### Checkpoint
 
-- [ ] After about a month, with the owner: GitHub's download counts and
+- After about a month, with the owner: GitHub's download counts and
       stars, issues from people who finished setup, and whether people
       say they'd pay to skip it. This is the evidence Plan 3 needs
 
 ---
 
-## Plan 3: Hybrid, open source first, paid later
+## Plan 3: Hybrid, open source first, paid later (chosen)
 
-The owner's likely direction. Start exactly as Plan 2. If people want it,
+Chosen by the owner, 2026-10-25. Start exactly as Plan 2. If people want it,
 add a paid option whose value is **convenience**: the alternative name's own
 Google-verified credentials, so no setup at all. Same app, same features
 for everyone.
@@ -284,12 +290,12 @@ Plan 2, in full.
 
 ### Stage B (only if Stage A's checkpoint says yes)
 
-- [ ] Plan 1's Google verification (all of it), for the alternative name's own client
-- [ ] Plan 1's Polar store and in-app licence, used only when the user
+- Plan 1's Google verification (all of it), for the alternative name's own client
+- Plan 1's Polar store and in-app licence, used only when the user
       picks "Subscribe"
-- [ ] Price to decide then: the paid option buys setup-free sign-in, not
+- Price to decide then: the paid option buys setup-free sign-in, not
       features, so it may need to be lower than Plan 1's the yearly price
-- [ ] Plan 1's wind-down promise; plus, if paid ends, subscribers can
+- Plan 1's wind-down promise; plus, if paid ends, subscribers can
       switch to their own credentials and keep going
 
 ---
