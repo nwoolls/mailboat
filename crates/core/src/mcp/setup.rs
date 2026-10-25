@@ -30,8 +30,19 @@ pub fn claude_code_args(program: &str) -> Vec<String> {
 
 /// Claude Desktop's config file.
 pub fn claude_desktop_config() -> Option<PathBuf> {
-    let home = std::env::var_os("HOME")?;
-    Some(PathBuf::from(home).join("Library/Application Support/Claude/claude_desktop_config.json"))
+    #[cfg(windows)]
+    {
+        let appdata = std::env::var_os("APPDATA")?;
+        Some(PathBuf::from(appdata).join(r"Claude\claude_desktop_config.json"))
+    }
+    #[cfg(not(windows))]
+    {
+        let home = std::env::var_os("HOME")?;
+        Some(
+            PathBuf::from(home)
+                .join("Library/Application Support/Claude/claude_desktop_config.json"),
+        )
+    }
 }
 
 /// The config with Mailboat added (or brought up to date), everything else

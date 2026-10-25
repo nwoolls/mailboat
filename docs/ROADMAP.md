@@ -2135,6 +2135,9 @@ then the Release Spike. It was Milestone 10, after Writing.*
 - [x] AI apps (MCP) on Windows *(2026-10-25)*: a named pipe per user in
       place of the Mac's socket file. Compiles for Windows and the Mac test
       still passes; the pipe itself is untested until it runs in the VM
+- [x] Find Claude Code and Codex in Windows' folders (`.exe`, and npm's
+      `.cmd` launchers in `%APPDATA%\npm`), and Claude Desktop's settings
+      in `%APPDATA%\Claude` *(2026-10-25; untested on Windows)*
 - [ ] Keyboard: Ctrl where the Mac uses ⌘, in shortcuts and in the
       labels that show them (26 files show "⌘"). On the Mac many ⌘
       shortcuts (⌘R reply, ⌘N new…) come from the menu bar, which Windows

@@ -21,7 +21,8 @@ fn search_dirs() -> Vec<PathBuf> {
     let mut dirs: Vec<PathBuf> = std::env::var_os("PATH")
         .map(|p| std::env::split_paths(&p).collect())
         .unwrap_or_default();
-    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+    let home_var = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
+    if let Some(home) = std::env::var_os(home_var).map(PathBuf::from) {
         for rel in [
             ".local/bin",
             ".claude/local",
@@ -33,16 +34,37 @@ fn search_dirs() -> Vec<PathBuf> {
             dirs.push(home.join(rel));
         }
     }
-    dirs.push("/opt/homebrew/bin".into());
-    dirs.push("/usr/local/bin".into());
+    if cfg!(windows) {
+        // Where `npm install -g` puts its `.cmd` launchers.
+        if let Some(appdata) = std::env::var_os("APPDATA").map(PathBuf::from) {
+            dirs.push(appdata.join("npm"));
+        }
+    } else {
+        dirs.push("/opt/homebrew/bin".into());
+        dirs.push("/usr/local/bin".into());
+    }
     dirs
+}
+
+/// The names a program's file can have: on Windows `claude.exe` or (from
+/// npm) `codex.cmd`, elsewhere just the name.
+fn file_names(name: &str) -> Vec<String> {
+    if cfg!(windows) {
+        ["exe", "cmd"]
+            .iter()
+            .map(|ext| format!("{name}.{ext}"))
+            .collect()
+    } else {
+        vec![name.to_string()]
+    }
 }
 
 /// The program's full path, if it's installed in one of the usual places.
 pub fn find_program(name: &str) -> Option<PathBuf> {
+    let names = file_names(name);
     search_dirs()
         .into_iter()
-        .map(|d| d.join(name))
+        .flat_map(|d| names.iter().map(move |n| d.join(n)))
         .find(|p| p.is_file())
 }
 
