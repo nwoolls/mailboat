@@ -2456,8 +2456,9 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
 - [ ] GitHub Discussions for questions and ideas, so users can help
       each other and issues stay for bugs (optional; can be switched
       off if it becomes a chore)
-- [ ] Release notes generated from merged pull requests, grouped by
-      label (new, fixed, changed); used by Milestone 15
+- [ ] Release notes: from the changesets chosen in Milestone 15
+      (Version numbers and changelog), or failing that generated from
+      merged pull requests, grouped by label (new, fixed, changed)
 - [ ] Optional: GitHub Sponsors on the owner's account, with a
       `FUNDING.yml` so a Sponsor button shows on the repository
 
@@ -2482,6 +2483,33 @@ themselves.*
       `altname` (e.g. `https://altname/updates/latest.json`), never
       a GitHub address, so hosting can change without stranding anyone.
       Installers live on GitHub Releases
+- [ ] Version numbers and changelog *(owner, 2026-10-25: semversioner
+      if that's the usual thing, or the option and alternatives)*.
+      Semantic versioning (1.4.2: big, feature, fix) is the convention,
+      and Tauri's updater requires it. Today the version is written in
+      three places (`package.json`, `tauri.conf.json`, the workspace
+      `Cargo.toml`); make `package.json` the only one (Tauri's config
+      can point its version at it; the Rust crates aren't published, so
+      theirs doesn't matter). Each pull request then carries a small
+      "changeset" file: the kind of change and a line for people, which
+      agents can write in plain language. At release they become the
+      new version number and the changelog. Tools, to choose when
+      building:
+      - **Changesets** (suggested): the most widely used tool of this
+        kind, runs with Bun, bumps `package.json`, and has a GitHub
+        Action that keeps a "release" pull request up to date
+      - **semversioner**: the same idea (JSON files in
+        `.semversioner/next-release`, a Jinja changelog template), but
+        less widely used and written in Python, which this Bun-only
+        project doesn't otherwise need
+      - **covector**: Tauri's own tool for Tauri's releases, same idea;
+        check how well it fits an app rather than a library
+      - **release-please** or **semantic-release**: work out the
+        version from commit messages, which would mean switching to
+        "Conventional Commits" (`feat:`, `fix:`) instead of today's
+        plain sentences
+      - **git-cliff**: a changelog from commit history only, with the
+        version bumped by hand
 - [ ] One release script (on the Mac, or GitHub Actions) builds, signs
       and publishes both platforms and the update file. Signing keys
       stay in the Mac's keychain or in encrypted GitHub secrets, never
