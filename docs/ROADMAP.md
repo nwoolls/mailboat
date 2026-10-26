@@ -2342,8 +2342,10 @@ screenshots that follow carry the new name from the start.*
         when the window starts (`shared/lib/carryOver.ts`). Nothing is
         renamed or removed yet: the installed `/Applications/Mailboat.app`
         shares the data folder and may have the database open. The
-        bundle-ID move below does the renaming. The owner tries the app
-        on their own data afterwards
+        bundle-ID move below does the renaming. Tried by the owner on
+        their own data, on macOS and Windows, after the last step:
+        mail, settings, AI summaries, email links and the Dock icon all
+        as before (2026-10-26)
   - [x] Text from the brand: UI strings, errors, the sign-in page, the
         MCP server's name, Windows' registration, the
         `<PREFIX>_GOOGLE_*` variables, the user agent; comments say
