@@ -2214,6 +2214,13 @@ Spike became Milestones 10–18, 2026-10-25.*
       windowed app its own console unless asked not to. Codex and Claude
       Code now start with none (`CREATE_NO_WINDOW`). Built; to try in
       the VM
+- [ ] Claude said to get Claude Code though the Claude app was
+      installed *(owner report, 2026-10-25)*: Mailboat talks to Claude
+      Code, the command-line tool, which the Claude app doesn't put
+      where other programs find it. The message now says so; Claude
+      Code's own installer puts it in `%USERPROFILE%\.local\bin`, which
+      Mailboat already searches. Whether to also use the copy inside the
+      Claude app is to look into with the owner
 
 ## Release: the road to an open-source the alternative name
 

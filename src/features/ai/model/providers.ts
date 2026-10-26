@@ -112,9 +112,11 @@ export function statusLine(status: ProviderStatus | undefined, connected: boolea
     case "signedOut":
       return connected ? "Signed out. Connect again to sign in." : "Not connected.";
     case "notInstalled":
-      return status.provider === "apple"
-        ? "Needs macOS 26 or later."
-        : `Needs ${PROVIDER_TOOLS[status.provider]?.name ?? "its app"}, which isn’t installed.`;
+      if (status.provider === "apple") return "Needs macOS 26 or later.";
+      // Claude's desktop app isn't enough: Mailboat talks to the command-line tool.
+      if (status.provider === "claude")
+        return "Needs Claude Code, the command-line tool (the Claude app alone isn’t enough), which isn’t installed.";
+      return `Needs ${PROVIDER_TOOLS[status.provider]?.name ?? "its app"}, which isn’t installed.`;
     case "unavailable":
     case "unsupported":
       return status.reason;
