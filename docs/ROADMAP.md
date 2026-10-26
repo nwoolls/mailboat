@@ -2670,6 +2670,14 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [x] The koi pond's koi crowded the middle of the screen *(owner
+      report with a screenshot, 2026-10-26)*. Every koi near an edge
+      turned toward the exact center, and between nibbles they swam
+      straight, so they kept crossing the middle together (70–87% of the
+      time, measured). Now they wander from spot to nearby spot, off the
+      icon and words, turn back toward their own spot at an edge, and
+      one at a time visits the letters (about 24% in the middle now;
+      `screensaver/model/koi.test.ts`). Confirmed in the app by the owner
 - [x] Opening a draft made a second copy of it in Drafts, which went
       away at the next sync *(owner report with screenshots,
       2026-10-25)*. Two causes: a reopened new-message draft counted as

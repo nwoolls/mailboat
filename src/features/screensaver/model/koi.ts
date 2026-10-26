@@ -23,6 +23,8 @@ type Fish = {
   turn: number;
   body: Slot;
   spots: Slot;
+  /** Where it wanders between nibbles: a nearby spot off the words. */
+  goal: { x: number; y: number };
   /** A letter or icon cell it's heading for, and how long it nibbles. */
   target: { x: number; y: number; icon: boolean } | null;
   nibble: number;
@@ -74,13 +76,14 @@ export class KoiScene implements Scene {
           y: y - Math.sin(heading) * k * GAP,
         })),
         heading,
+        goal: this.nearby(x, y),
         speed: 9 + rng() * 5,
         turn: 0,
         body,
         spots,
         target: null,
         nibble: 0,
-        rest: 4 + rng() * 10,
+        rest: 6 + rng() * 14,
       });
     }
   }
@@ -105,7 +108,12 @@ export class KoiScene implements Scene {
 
     for (const f of this.fish) {
       const head = f.spine[0]!;
-      let want = f.heading + f.turn;
+      // Between nibbles, wander from spot to nearby spot. Swimming straight,
+      // wall to wall, or between random spots anywhere, they kept crossing
+      // the middle together (owner, 2026-10-26).
+      if (Math.hypot(f.goal.x - head.x, f.goal.y - head.y) < 8)
+        f.goal = this.nearby(head.x, head.y);
+      let want = Math.atan2(f.goal.y - head.y, f.goal.x - head.x) + f.turn;
       f.turn += (rng() - 0.5) * dt * 2;
       f.turn *= 0.97;
       let speed = f.speed;
@@ -115,8 +123,8 @@ export class KoiScene implements Scene {
         want = f.heading + Math.sin(this.t * 14) * 0.3;
         if (f.nibble <= 0) {
           f.target = null;
-          f.rest = 6 + rng() * 12;
-          f.turn = (rng() < 0.5 ? -1 : 1) * 1.2;
+          f.rest = 10 + rng() * 20;
+          f.goal = this.nearby(head.x, head.y);
         }
       } else if (f.target) {
         const dx = f.target.x - head.x;
@@ -131,10 +139,11 @@ export class KoiScene implements Scene {
           }
         }
       } else if ((f.rest -= dt) <= 0) this.pickTarget(f);
-      // Keep off the edges.
+      // Keep off the edges, turning back toward its own spot (always inside),
+      // not the middle, where every koi met.
       const m = 8;
       if (head.x < m || head.x > cols - m || head.y < m || head.y > rows - m)
-        want = Math.atan2(rows / 2 - head.y, cols / 2 - head.x);
+        want = Math.atan2(f.goal.y - head.y, f.goal.x - head.x);
       if (pointer) {
         const dx = head.x - pointer.x;
         const dy = head.y - pointer.y;
@@ -170,8 +179,37 @@ export class KoiScene implements Scene {
     return { nod };
   }
 
+  /**
+   * A random spot within reach of (x, y), clear of the edges and, if it
+   * can be, of the icon and words, so the koi spread over the whole pond.
+   */
+  private nearby(x: number, y: number) {
+    const { cols, rows, rng, icon, words } = this.s;
+    const m = 14;
+    const reach = Math.max(40, cols * 0.3);
+    const pad = 12;
+    const onWords = (p: { x: number; y: number }) =>
+      [icon, words].some(
+        (r) => r && p.x > r.x0 - pad && p.x < r.x1 + pad && p.y > r.y0 - pad && p.y < r.y1 + pad,
+      );
+    let p = { x, y };
+    for (let i = 0; i < 8; i++) {
+      p = {
+        x: Math.min(cols - m, Math.max(m, x + (rng() * 2 - 1) * reach)),
+        y: Math.min(rows - m, Math.max(m, y + (rng() * 2 - 1) * reach)),
+      };
+      if (!onWords(p)) break;
+    }
+    return p;
+  }
+
   private pickTarget(f: Fish) {
     const { s } = this;
+    // One koi at the letters at a time; the others wait their turn.
+    if (this.fish.some((o) => o !== f && (o.target || o.nibble > 0))) {
+      f.rest = 3 + s.rng() * 6;
+      return;
+    }
     const toIcon = s.icon && (s.rng() < 0.25 || !this.letterCells.length);
     if (toIcon && s.icon) {
       const top = s.rng() < 0.5;
