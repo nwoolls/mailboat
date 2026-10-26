@@ -93,7 +93,7 @@ export function AiAppsGroups() {
             setup?.claudeCodeConnected
               ? "Connected: new Claude Code sessions can use Mailboat."
               : setup?.claudeCodeInstalled === false
-                ? "Not installed on this Mac."
+                ? "Not installed."
                 : "Adds Mailboat to Claude Code for every project."
           }
         >

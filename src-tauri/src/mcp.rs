@@ -103,8 +103,10 @@ pub struct McpSetup {
     pub claude_desktop_connected: bool,
 }
 
+/// Claude Code: installed on its own, or the copy inside the Claude app
+/// (as for Claude as an AI provider, `ai::apps`).
 fn claude() -> Option<PathBuf> {
-    process::find_program("claude")
+    process::find_program("claude").or_else(mailboat_core::ai::apps::claude)
 }
 
 #[tauri::command]

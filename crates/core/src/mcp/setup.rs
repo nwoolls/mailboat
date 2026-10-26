@@ -28,10 +28,28 @@ pub fn claude_code_args(program: &str) -> Vec<String> {
     .collect()
 }
 
-/// Claude Desktop's config file.
+/// Claude Desktop's config file. On Windows the Microsoft Store-style
+/// install (the owner's, 2026-10-25) reads its own private copy of
+/// `%APPDATA%`, inside `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming`,
+/// so Mailboat writing to the usual place went unseen; that copy is used
+/// when the app is installed that way.
 pub fn claude_desktop_config() -> Option<PathBuf> {
     #[cfg(windows)]
     {
+        let packaged = std::env::var_os("LOCALAPPDATA").and_then(|local| {
+            std::fs::read_dir(PathBuf::from(local).join("Packages"))
+                .ok()?
+                .flatten()
+                .map(|e| e.path())
+                .find(|p| {
+                    p.file_name()
+                        .and_then(|n| n.to_str())
+                        .is_some_and(|n| n.starts_with("Claude_"))
+                })
+        });
+        if let Some(package) = packaged {
+            return Some(package.join(r"LocalCache\Roaming\Claude\claude_desktop_config.json"));
+        }
         let appdata = std::env::var_os("APPDATA")?;
         Some(PathBuf::from(appdata).join(r"Claude\claude_desktop_config.json"))
     }

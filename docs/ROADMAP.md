@@ -2244,6 +2244,15 @@ Spike became Milestones 10–18, 2026-10-25.*
       the Start menu shortcut's icon there, which notifications need
       Mailboat to have). Owner: "if we can't get that part working, let's
       just hide the feature". Hidden on Windows
+- [ ] AI apps (MCP) on Windows, first try *(owner report with
+      screenshots, 2026-10-25)*: Claude Desktop said "Connected" but
+      Mailboat didn't show in it, and Claude Code read "Not installed on this
+      Mac". The Claude app is the Microsoft Store-style install, which
+      reads a private copy of its settings (`Packages\Claude_*\LocalCache\
+      Roaming\Claude`), so Mailboat now writes there when that's the
+      install; Claude Code is also found inside the Claude app, and the
+      line no longer says Mac. To try in the VM (Connect again, then
+      quit and reopen Claude)
 - [x] No count next to Starred *(owner, 2026-10-25, while trying the
       Windows build: Gmail shows none and it's not actionable)*. Inbox,
       Drafts and labels keep theirs
