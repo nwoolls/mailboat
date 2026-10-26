@@ -2216,11 +2216,15 @@ Spike became Milestones 10–18, 2026-10-25.*
       the VM
 - [ ] Claude said to get Claude Code though the Claude app was
       installed *(owner report, 2026-10-25)*: Mailboat talks to Claude
-      Code, the command-line tool, which the Claude app doesn't put
-      where other programs find it. The message now says so; Claude
-      Code's own installer puts it in `%USERPROFILE%\.local\bin`, which
-      Mailboat already searches. Whether to also use the copy inside the
-      Claude app is to look into with the owner
+      Code, which the Claude app carries but keeps where other programs
+      don't look. Owner's direction: as simple as MonoCode's Connect (a
+      browser sign-in), installing nothing for the user, working with the
+      desktop apps or the command-line tools. MonoCode turned out to need
+      the command-line tools too, and apps may not sign in to Claude
+      subscriptions themselves (Anthropic's terms), so the tools stay;
+      Mailboat now also finds the copies inside the Claude and ChatGPT apps
+      (`ai::apps`, places found on the owner's Mac and Windows VM), and
+      asks for the app when there's neither. Built; to try in the VM
 - [ ] Emails didn't scroll on Windows, though the list and Settings did
       *(owner report, 2026-10-25)*: the "no bounce" rule above, on every
       element, also caught boxes that clip the email (they count as scroll

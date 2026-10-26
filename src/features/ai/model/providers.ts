@@ -45,12 +45,17 @@ export const PROVIDER_NAMES: Record<AiProvider, string> = {
   chatgpt: "ChatGPT",
 };
 
-/** The program each one is reached through, for set-up help. */
-export const PROVIDER_TOOLS: Record<AiProvider, { name: string; url: string } | null> = {
-  apple: null,
-  claude: { name: "Claude Code", url: "https://claude.com/product/claude-code" },
-  chatgpt: { name: "Codex", url: "https://developers.openai.com/codex/cli" },
-};
+/**
+ * The program each one is reached through, and the desktop app to get
+ * when there's none: the apps carry a copy Mailboat finds (`ai::apps` in
+ * Rust), and they're what most people would install anyway.
+ */
+export const PROVIDER_TOOLS: Record<AiProvider, { name: string; app: string; url: string } | null> =
+  {
+    apple: null,
+    claude: { name: "Claude Code", app: "the Claude app", url: "https://claude.com/download" },
+    chatgpt: { name: "Codex", app: "the ChatGPT app", url: "https://chatgpt.com/download" },
+  };
 
 export function statusOf(
   statuses: ProviderStatus[] | undefined,
@@ -113,10 +118,7 @@ export function statusLine(status: ProviderStatus | undefined, connected: boolea
       return connected ? "Signed out. Connect again to sign in." : "Not connected.";
     case "notInstalled":
       if (status.provider === "apple") return "Needs macOS 26 or later.";
-      // Claude's desktop app isn't enough: Mailboat talks to the command-line tool.
-      if (status.provider === "claude")
-        return "Needs Claude Code, the command-line tool (the Claude app alone isn’t enough), which isn’t installed.";
-      return `Needs ${PROVIDER_TOOLS[status.provider]?.name ?? "its app"}, which isn’t installed.`;
+      return `Needs ${PROVIDER_TOOLS[status.provider]?.app ?? "its app"} (or ${PROVIDER_TOOLS[status.provider]?.name ?? "its tool"}), which isn’t installed.`;
     case "unavailable":
     case "unsupported":
       return status.reason;

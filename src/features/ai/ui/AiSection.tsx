@@ -325,7 +325,7 @@ function ProviderRow({ provider, connected }: { provider: AiProvider; connected:
           )
         }
       >
-        Get {tool.name}
+        Get {tool.app.replace(/^the /, "")}
       </Button>
     );
   } else if (waiting) {

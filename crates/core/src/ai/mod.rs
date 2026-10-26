@@ -16,6 +16,7 @@
 //! answer is plain text, shown as text, never as HTML.
 
 pub mod apple;
+pub mod apps;
 pub mod claude;
 pub mod codex;
 pub mod context;
@@ -133,12 +134,13 @@ pub struct Programs {
 
 impl Programs {
     /// Finds the command-line tools where their installers put them (a
-    /// Mac app doesn't get the shell's PATH).
+    /// Mac app doesn't get the shell's PATH), or else the copies inside
+    /// the Claude and ChatGPT apps (`apps`).
     pub fn find(apple_helper: Option<PathBuf>) -> Self {
         Self {
             apple: apple_helper.filter(|p| p.is_file()),
-            claude: process::find_program("claude"),
-            codex: process::find_program("codex"),
+            claude: process::find_program("claude").or_else(apps::claude),
+            codex: process::find_program("codex").or_else(apps::codex),
             codex_models: codex::Models::default(),
         }
     }

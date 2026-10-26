@@ -56,6 +56,10 @@ describe("providers", () => {
     expect(statusLine(claude, true)).toBe("Connected as n@x.com.");
     expect(statusLine(claude, false)).toBe("Signed in, not used by Mailboat yet.");
     expect(statusLine({ provider: "chatgpt", state: "notInstalled" }, false)).toContain("Codex");
+    // The desktop app is enough: Mailboat uses the copy inside it.
+    expect(statusLine({ provider: "claude", state: "notInstalled" }, false)).toContain(
+      "the Claude app",
+    );
     expect(
       statusLine({ provider: "apple", state: "unavailable", reason: "Turn it on." }, false),
     ).toBe("Turn it on.");

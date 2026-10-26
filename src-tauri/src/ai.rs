@@ -195,7 +195,11 @@ pub async fn ai_connect(
         ProviderState::NotInstalled => {
             return Err(AppError {
                 kind: "ai_not_installed".into(),
-                message: format!("{} isn't installed.", tool_name(provider)),
+                message: match provider {
+                    AiProvider::Claude => "Install the Claude app (or Claude Code) first.".into(),
+                    AiProvider::ChatGpt => "Install the ChatGPT app (or Codex) first.".into(),
+                    AiProvider::Apple => format!("{} isn't installed.", tool_name(provider)),
+                },
             })
         }
         ProviderState::Unavailable { reason } | ProviderState::Unsupported { reason } => {
