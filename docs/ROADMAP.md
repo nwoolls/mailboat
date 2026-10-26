@@ -2186,7 +2186,7 @@ Spike became Milestones 10–18, 2026-10-25.*
       don't; turned off on Windows. Also possible: the sidebar's sideways
       scrolling (fixed above) or a swipe springing back. To check with
       the owner whether it's gone
-- [ ] AI on Windows *(owner, 2026-10-25: hide Apple Intelligence where
+- [x] AI on Windows *(owner, 2026-10-25: hide Apple Intelligence where
       it can't run, on Windows or a Mac that can't run it, and offer the
       other providers for every feature)*: a new "unsupported" provider
       state hides it from Settings → AI, a feature still set to it reads
@@ -2196,7 +2196,7 @@ Spike became Milestones 10–18, 2026-10-25.*
       are offered, and none were). Copilot has no API for other apps;
       Windows' own on-device model (Phi Silica) needs a Copilot+ PC and
       Microsoft's approval; Foundry Local (any PC) is a possible later
-      on-device provider. Built; to try in the VM
+      on-device provider. *Owner, 2026-10-25: connecting worked*
 - [ ] Emails colored for dark mode showed on a white card on Windows,
       with their light text barely readable *(owner report with a
       screenshot, 2026-10-25)*: Chromium (WebView2) paints a see-through
@@ -2214,7 +2214,7 @@ Spike became Milestones 10–18, 2026-10-25.*
       windowed app its own console unless asked not to. Codex and Claude
       Code now start with none (`CREATE_NO_WINDOW`). Built; to try in
       the VM
-- [ ] Claude said to get Claude Code though the Claude app was
+- [x] Claude said to get Claude Code though the Claude app was
       installed *(owner report, 2026-10-25)*: Mailboat talks to Claude
       Code, which the Claude app carries but keeps where other programs
       don't look. Owner's direction: as simple as MonoCode's Connect (a
@@ -2224,21 +2224,20 @@ Spike became Milestones 10–18, 2026-10-25.*
       subscriptions themselves (Anthropic's terms), so the tools stay;
       Mailboat now also finds the copies inside the Claude and ChatGPT apps
       (`ai::apps`, places found on the owner's Mac and Windows VM), and
-      asks for the app when there's neither. Built; to try in the VM
-- [ ] Emails didn't scroll on Windows, though the list and Settings did
+      asks for the app when there's neither. *Owner, 2026-10-25, with the command-line tools hidden: "that worked"*
+- [x] Emails didn't scroll on Windows, though the list and Settings did
       *(owner report, 2026-10-25)*: the "no bounce" rule above, on every
       element, also caught boxes that clip the email (they count as scroll
       containers), which stopped the wheel reaching the reader. Now only
       on what scrolls. A Chromium browser test (`windows-scroll.spec.ts`)
-      failed before and passes now. Built; to try in the VM
-- [ ] The icon looked shrunk on Windows *(owner report, 2026-10-25)*:
+      failed before and passes now. *Owner, 2026-10-25: "as did the scrolling emails"*
+- [x] The icon looked shrunk on Windows *(owner report, 2026-10-25)*:
       the Mac art keeps Apple's margin around the tile, but Windows draws
       icons edge to edge. `icon.ico` now comes from a cropped copy,
       `design/icon/mailboat-icon-windows.svg`. *Owner, 2026-10-25: still
       small in the taskbar.* The installed program carries the new icon
       (checked byte for byte), and the taskbar showed the old one's size:
-      Windows' icon cache, which reinstalling doesn't refresh. To check
-      after clearing the cache
+      Windows' icon cache, which reinstalling doesn't refresh. *After clearing the cache: 47 px against Claude's 48 px in the taskbar; owner, 2026-10-25: "an optical illusion" (the near-black tile fades into the dark taskbar)*
 - [x] The app icon chosen in Settings → Appearance did nothing on
       Windows *(owner question, 2026-10-25)*. Tried setting it on the
       window: the title bar changed, the taskbar didn't (Windows shows
