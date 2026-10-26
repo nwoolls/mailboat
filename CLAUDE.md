@@ -182,6 +182,9 @@ these rules. Keep it passing.
   painted: sample in a `ResizeObserver` created after the component's,
   not at the start of a frame. Before trusting a new test, put the old
   behaviour back and see it fail. One-time setup: `bunx playwright install webkit`.
+- Windows-only behaviour: `tests/browser/windows-*.spec.ts` run in Chromium
+  (WebView2's engine) with `data-platform="windows"` set; the rest stay in
+  WebKit. One-time setup: `bunx playwright install chromium`.
 
 ## Future direction (don't build yet)
 

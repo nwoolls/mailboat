@@ -2221,6 +2221,12 @@ Spike became Milestones 10–18, 2026-10-25.*
       Code's own installer puts it in `%USERPROFILE%\.local\bin`, which
       Mailboat already searches. Whether to also use the copy inside the
       Claude app is to look into with the owner
+- [ ] Emails didn't scroll on Windows, though the list and Settings did
+      *(owner report, 2026-10-25)*: the "no bounce" rule above, on every
+      element, also caught boxes that clip the email (they count as scroll
+      containers), which stopped the wheel reaching the reader. Now only
+      on what scrolls. A Chromium browser test (`windows-scroll.spec.ts`)
+      failed before and passes now. Built; to try in the VM
 - [x] No count next to Starred *(owner, 2026-10-25, while trying the
       Windows build: Gmail shows none and it's not actionable)*. Inbox,
       Drafts and labels keep theirs

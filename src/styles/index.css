@@ -448,9 +448,15 @@ html[data-platform="windows"] option {
 }
 
 /* WebView2 bounces the page and lists past their ends on a touchpad,
-   which Windows apps don't do. */
+   which Windows apps don't do. Only on what scrolls (the page, Tailwind's
+   overflow-*-auto): on every element it also caught clipping boxes
+   (overflow: hidden counts as a scroll container), which stopped the
+   wheel over an email reaching the reader, so emails didn't scroll
+   (owner report, 2026-10-25; tests/browser/windows-scroll). */
 html[data-platform="windows"],
-html[data-platform="windows"] * {
+html[data-platform="windows"] [class*="overflow-auto"],
+html[data-platform="windows"] [class*="overflow-y-auto"],
+html[data-platform="windows"] [class*="overflow-x-auto"] {
   overscroll-behavior: none;
 }
 
