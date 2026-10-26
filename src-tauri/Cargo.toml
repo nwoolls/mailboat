@@ -25,6 +25,9 @@ open = "5"
 time = { version = "0.3.55", features = ["formatting"] }
 tauri-plugin-window-state = "2"
 tauri-plugin-notification = "2"
+# Reads the chosen app icon's PNG to crop it for Windows' window icon
+# (src/dock.rs). Same version Tauri already uses.
+png = "0.18"
 
 # Already part of the build through Tauri; declared to set the Dock picture
 # (src/dock.rs) and to read trackpad phases (src/trackpad.rs).

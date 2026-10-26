@@ -275,7 +275,10 @@ pub fn run() {
                     .try_state::<AppState>()
                     .and_then(|state| mailboat_core::settings::load(&state.db.conn()).ok())
                     .and_then(|s| s.app_icon);
+                #[cfg(target_os = "macos")]
                 dock::show_at_launch(app_icon::png(choice.as_deref()));
+                #[cfg(not(target_os = "macos"))]
+                dock::set_icon(app, app_icon::png(choice.as_deref()));
             }
         });
 }
