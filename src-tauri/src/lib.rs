@@ -23,6 +23,7 @@ mod window_place;
 use std::sync::Arc;
 
 use mail_core::db::Db;
+use mail_core::demo::FakeGoogle;
 use mail_core::sync::{Supervisor, SyncConfig, WorkerTiming};
 use tauri::Manager;
 use tauri_specta::{collect_commands, collect_events, Builder, Event};
@@ -239,8 +240,14 @@ pub fn run() {
                     mail_core::brand::NAME,
                     env!("CARGO_PKG_VERSION")
                 ))
-                .timeout(std::time::Duration::from_secs(60))
-                .build()?;
+                .timeout(std::time::Duration::from_secs(60));
+            // The demo's made-up Google is on this computer: no proxy.
+            let http = if mode == mode::Mode::Demo {
+                http.no_proxy()
+            } else {
+                http
+            }
+            .build()?;
             let sync_log = Arc::new(sync_log::SyncLog::open(&dirs.logs));
             let supervisor = Supervisor::new(
                 tauri::async_runtime::handle().inner().clone(),
@@ -261,7 +268,7 @@ pub fn run() {
             let state = AppState::new(
                 db.clone(),
                 http,
-                Arc::new(mode.secrets()),
+                mode.secrets(),
                 supervisor,
                 AppDirs {
                     config: dirs.config,
@@ -276,11 +283,18 @@ pub fn run() {
                     }
                 }),
             );
+            let state = if mode == mode::Mode::Demo {
+                let google = start_demo(&db, &state.http)?;
+                state.with_demo(google)
+            } else {
+                state
+            };
             // Before the window first paints, so it opens in the chosen theme.
             let saved = mail_core::settings::load(&db.conn()).unwrap_or_default();
             theme::apply(app.handle(), saved.theme);
             state.resume_all_accounts()?;
             app.manage(state);
+            sync_demo_changes(app.handle());
             open_window(app, mode)?;
             // AI apps reach the app through a socket in the normal data
             // folder; another mode's copy leaves it to the normal one.
@@ -314,6 +328,36 @@ pub fn run() {
                 dock::show_at_launch(app_icon::png(choice.as_deref()));
             }
         });
+}
+
+/// Starts demo mode's made-up Google and fills the (fresh) database from
+/// it before the window opens, so it opens full of mail.
+fn start_demo(db: &Db, http: &mail_core::reqwest::Client) -> mail_core::Result<FakeGoogle> {
+    let data = mail_core::demo::DemoData::builtin();
+    tauri::async_runtime::block_on(async {
+        let google = FakeGoogle::start(data.clone(), mail_core::demo::Timing::default()).await?;
+        mail_core::demo::prepare(db, http, &google, &data).await?;
+        Ok(google)
+    })
+}
+
+/// Mail the demo's made-up Google sends (answers, scheduled mail) syncs
+/// at once rather than at the next scheduled pass.
+fn sync_demo_changes(app: &tauri::AppHandle) {
+    let Some(google) = app.state::<AppState>().demo.clone() else {
+        return;
+    };
+    let app = app.clone();
+    google.on_change(Arc::new(move |email: &str| {
+        let state = app.state::<AppState>();
+        let all = mail_core::db::accounts::list(&state.db.conn()).unwrap_or_default();
+        let changed: Vec<_> = all
+            .iter()
+            .filter(|a| a.email == email)
+            .map(|a| a.id)
+            .collect();
+        state.supervisor.sync_now(Some(&changed));
+    }));
 }
 
 /// The main window, from the config file (where it isn't created by

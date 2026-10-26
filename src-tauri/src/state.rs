@@ -50,6 +50,8 @@ pub struct AppState {
     /// Tells the window an account changed (e.g. the permissions its
     /// sign-in carries), so it re-reads the account list.
     accounts_changed: Arc<dyn Fn() + Send + Sync>,
+    /// Demo mode's made-up Google, which every account talks to instead.
+    pub demo: Option<mail_core::demo::FakeGoogle>,
 }
 
 impl AppState {
@@ -78,7 +80,14 @@ impl AppState {
             sign_in_cancel: tokio::sync::Notify::new(),
             older: Mutex::new(HashMap::new()),
             accounts_changed,
+            demo: None,
         }
+    }
+
+    /// Every account talks to this made-up Google (demo mode).
+    pub fn with_demo(mut self, google: mail_core::demo::FakeGoogle) -> Self {
+        self.demo = Some(google);
+        self
     }
 
     /// Records the permissions each new access token carries, so features
@@ -108,6 +117,11 @@ impl AppState {
         if let Some(client) = cached {
             return Ok(client);
         }
+        if let Some(google) = &self.demo {
+            let email = accounts::get(&self.db.conn(), account)?.email;
+            let client = mail_core::demo::client(self.http.clone(), google, &email);
+            return Ok(self.keep_client(account, client));
+        }
         let sub = accounts::google_sub(&self.db.conn(), account)?;
         let tokens = Arc::new(
             AccountTokens::new(
@@ -123,9 +137,12 @@ impl AppState {
 
     /// Installs fresh credentials for an account (after signing in).
     pub fn set_tokens(&self, account: AccountId, tokens: Arc<AccountTokens>) -> GmailClient {
+        self.keep_client(account, GmailClient::new(self.http.clone(), tokens))
+    }
+
+    fn keep_client(&self, account: AccountId, client: GmailClient) -> GmailClient {
         let log = self.sync_log.clone();
-        let client = GmailClient::new(self.http.clone(), tokens)
-            .with_logger(Arc::new(move |line: &str| log.write(account, line)));
+        let client = client.with_logger(Arc::new(move |line: &str| log.write(account, line)));
         self.clients.lock().unwrap().insert(account, client.clone());
         client
     }

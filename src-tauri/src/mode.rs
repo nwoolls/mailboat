@@ -1,28 +1,34 @@
-//! How the app was started: normally, or as a clean start
-//! (`--clean-start`), a first launch that keeps away from the owner's own
-//! accounts, mail and settings. It gets a folder of its own next to the
-//! normal one, its own keychain name, and a web view whose storage is
-//! thrown away when it quits; all of it is emptied at every launch, so a
-//! first launch can be tried over and over.
+//! How the app was started: normally, as a clean start (`--clean-start`,
+//! a first launch) or in demo mode (`--demo`, full of made-up mail from a
+//! made-up Google, `mail_core::demo`). The other modes keep away from the
+//! owner's own accounts, mail and settings: each gets a folder of its own
+//! next to the normal one, its own keychain name (the demo uses none),
+//! and a web view whose storage is thrown away when it quits. All of it
+//! is emptied at every launch, so each run starts the same.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use mail_core::auth::{tokens, KeyringStore, SecretStore};
+use mail_core::auth::{tokens, KeyringStore, MemoryStore, SecretStore};
 use mail_core::db::{accounts, Db};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Normal,
     CleanStart,
+    Demo,
 }
 
 impl Mode {
-    /// From the program's arguments (`--clean-start`). Anything else is
-    /// left to the code that reads them (Windows passes mailto: links).
+    /// From the program's arguments (`--clean-start`, `--demo`). Anything
+    /// else is left to the code that reads them (Windows passes mailto:
+    /// links).
     pub fn from_args<S: AsRef<str>>(args: impl IntoIterator<Item = S>) -> Self {
         for arg in args {
-            if arg.as_ref() == "--clean-start" {
-                return Mode::CleanStart;
+            match arg.as_ref() {
+                "--clean-start" => return Mode::CleanStart,
+                "--demo" => return Mode::Demo,
+                _ => {}
             }
         }
         Mode::Normal
@@ -37,6 +43,7 @@ impl Mode {
         match self {
             Mode::Normal => None,
             Mode::CleanStart => Some("clean-start"),
+            Mode::Demo => Some("demo"),
         }
     }
 
@@ -49,11 +56,13 @@ impl Mode {
         }
     }
 
-    /// The keychain, under this mode's own name.
-    pub fn secrets(self) -> KeyringStore {
-        match self.suffix() {
-            None => KeyringStore::default(),
-            Some(suffix) => KeyringStore::with_service(&keychain_service(suffix)),
+    /// The keychain, under this mode's own name. The demo signs nobody
+    /// in, so it keeps nothing there.
+    pub fn secrets(self) -> Arc<dyn SecretStore> {
+        match (self, self.suffix()) {
+            (Mode::Demo, _) => Arc::new(MemoryStore::default()),
+            (_, None) => Arc::new(KeyringStore::default()),
+            (_, Some(suffix)) => Arc::new(KeyringStore::with_service(&keychain_service(suffix))),
         }
     }
 }
@@ -91,7 +100,7 @@ pub fn prepare(mode: Mode, normal: Dirs) -> std::io::Result<Dirs> {
     };
     let name = format!("{}.{suffix}", mail_core::brand::ID);
     let root = normal.data.with_file_name(name);
-    forget_keychain(&root, &mode.secrets());
+    forget_keychain(&root, mode.secrets().as_ref());
     match std::fs::remove_dir_all(&root) {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
         _ => {}
@@ -126,6 +135,7 @@ mod tests {
         assert_eq!(Mode::from_args(Vec::<String>::new()), Mode::Normal);
         assert_eq!(Mode::from_args(["mailto:sam@example.com"]), Mode::Normal);
         assert_eq!(Mode::from_args(["--clean-start"]), Mode::CleanStart);
+        assert_eq!(Mode::from_args(["--demo"]), Mode::Demo);
     }
 
     #[test]
@@ -145,6 +155,11 @@ mod tests {
         );
         assert_eq!(Mode::Normal.window_state_file(), ".window-state.json");
         assert_ne!(Mode::CleanStart.window_state_file(), ".window-state.json");
+        let demo = prepare(Mode::Demo, Dirs::all_in(PathBuf::from("/data/x"))).unwrap();
+        assert_eq!(
+            demo.data,
+            PathBuf::from(format!("/data/{}.demo", mail_core::brand::ID))
+        );
     }
 
     #[test]

@@ -528,7 +528,8 @@ flowchart LR
 
 ## Launch modes
 
-`src-tauri/src/mode.rs` reads how the app was started. Normally it uses the
+`src-tauri/src/mode.rs` reads how the app was started (`--clean-start`,
+`--demo`). Normally it uses the
 bundle ID's folders and keychain name. `--clean-start` gives it one folder
 of its own next to the normal one (`<bundle ID>.clean-start`, holding the
 database, config, cache and logs), keychain entries under
@@ -541,6 +542,22 @@ lives in the normal folder, and AI apps should keep reaching the normal
 copy). The main window is created in code (`create: false` in the config
 files) so the web view's storage can be chosen, after the app state is in
 place.
+
+**Demo mode** (`--demo`) works like the clean start, plus a made-up Google
+(`mail_core::demo`): a small HTTP server on 127.0.0.1 that answers the
+Gmail, People and Calendar requests the app makes, holding the mail of
+`demo/mail.json` as real RFC 5322 messages (built with `mail-builder`,
+read back with `mail-parser` into Gmail's JSON). Every demo account's
+Gmail client points at it (`AppState::gmail_for`), with the account's
+address as its access token, so sync, history, actions, search (a subset
+of Gmail's language), drafts, sending, rules, signatures, the vacation
+responder, contacts and invitations all run the real code. At launch
+`demo::prepare` adds the accounts, syncs them and stores the list
+summaries, so the window opens full. Sent mail gets the conversation's
+scripted answer (or a general one) a few seconds later, and scheduled
+conversations arrive on time; the server then asks the account's worker
+to sync at once. Secrets are kept in memory only, and the HTTP client
+skips proxies.
 
 ## Decisions
 
@@ -679,3 +696,4 @@ place.
 | 2026-10-26 | The translation card moved above the email, below the images line (replaces "under the email" from 2026-10-24) | Under a long email the card landed out of sight. Still outside the email's frame, which runs no scripts, so the email itself stays untouched. The owner tried it in the app and chose it. |
 | 2026-10-26 | The brand in one file (`brand.json`), every other name neutral (`mail-core`, `desktop`, `ai-helper`, `email-link:`, `mail.sqlite3`, `prefs.*`), guarded by `check:brand` | The owner hasn't settled on a name. With this, a new name is `brand.json`, `tauri.conf.json` (test-checked), the icons, the docs and the bundle-ID migration. Constants that need the name use `concat!(env!("BRAND_NAME"), …)`, since `concat!` takes only literals. Existing installs keep their old database file and settings names until that migration, because the installed app shares the data folder. The local folder stays: renaming it would cut Claude Code off from this project's memory. |
 | 2026-10-26 | Clean start (`--clean-start`): a sibling folder `<bundle ID>.clean-start`, its own keychain name, an incognito web view, all emptied at every launch | Milestone 11. A sibling folder rather than one inside the normal folder, so nothing that walks or migrates the normal folder trips over it. The keychain can't list entries, so the previous run's accounts are read from its database to delete their tokens. Incognito (WKWebView's non-persistent store, WebView2's InPrivate) rather than a separate store, since it should be fresh each time anyway. |
+| 2026-10-26 | Demo mode runs the real app against a made-up Google on 127.0.0.1 (`mail_core::demo`), not a database filled directly | Milestone 11. Every feature (sync, actions, sending, drafts, rules, invitations) then works in the demo through the same code as with Google, and new features need nothing extra unless they call a new Google endpoint (add it to `demo/server.rs`). A hand-written HTTP/1.1 server (one request per connection) instead of a server crate: tokio is already there and the client is our own. Mail is stored as RFC 5322 and turned into Gmail's JSON with `mail-parser`, so seeded and sent mail take one path and Show original works. Addresses use the reserved `.example` domain so no real person is named. The demo restarts fresh at every launch, dated relative to now, so screenshots look current and repeatable. |

@@ -90,6 +90,12 @@ pub async fn account_add(
             break guard;
         }
     };
+    if state.demo.is_some() {
+        return Err(CoreError::Invalid(
+            "The demo has no Google connection, so it can't add accounts.".into(),
+        )
+        .into());
+    }
     let config = state.oauth_config()?;
     let signed_in = oauth::sign_in(
         &state.http,

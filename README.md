@@ -86,6 +86,24 @@ bun tauri dev
 The first sync of an account takes a while (Gmail's per-user quota limits
 the pace); the inbox fills in first. Later syncs only fetch changes.
 
+### Demo mode
+
+```sh
+bun run demo
+```
+
+Starts the app full of made-up mail, with no Google connection: two
+accounts (personal and work), about 25 conversations with attachments,
+labels, a meeting invitation, a draft, spam, trash and list summaries.
+None of your own mail can show. Archiving, labels, rules and the rest all
+work. Sending is faked: the message lands in Sent and the person answers
+about 8 seconds later. A sign-in code arrives 45 seconds after launch.
+
+The made-up mail lives in `demo/mail.json` (reserved `.example` addresses
+only). Like the clean start below, the demo keeps to its own folder
+(`com.nwoolls.mailboat.demo`) and starts over at every launch, dated
+relative to now. It takes the flag `--demo` in the same ways.
+
 ### A first launch, again and again (clean start)
 
 ```sh

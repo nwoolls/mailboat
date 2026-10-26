@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "clean-start": "tauri dev -- -- --clean-start",
+    "demo": "tauri dev -- -- --demo",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:browser": "playwright test",

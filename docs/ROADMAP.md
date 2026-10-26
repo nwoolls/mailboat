@@ -2382,14 +2382,23 @@ connection, for screenshots, videos and trying things safely. Comes
 before onboarding because its separate data folder is also the easy way
 to test a first launch over and over.*
 
-- [ ] Demo mode *(owner, 2026-10-22; moved from the Release Spike)*:
-      the real app started with its own data folder (e.g. an env var or
-      launch flag), filled with made-up accounts, conversations,
-      labels, summaries and sign-in codes, and no Google connection, so
-      none of the owner's mail can show. Sending is faked (it lands in
-      Sent, and a scripted reply can arrive). For screenshots, the
-      README, the website, and the trailer (Milestone 16). The fake
-      data is shared with the trailer and the browser tests' harness
+- [x] Demo mode *(owner, 2026-10-22; moved from the Release Spike;
+      built 2026-10-26)*: the real app started with its own data folder
+      (`bun run demo`, or `--demo` on any copy), filled with made-up
+      accounts, conversations, labels, summaries and sign-in codes, and
+      no Google connection, so none of the owner's mail can show.
+      Sending is faked (it lands in Sent, and a scripted reply
+      arrives). For screenshots, the README, the website, and the
+      trailer (Milestone 16). The app talks to a made-up Google on this
+      computer (`mail_core::demo`), so every feature runs its real code;
+      the mail is `demo/mail.json`: two accounts, 24 conversations
+      (attachments, an invitation, a draft, spam, trash, a sign-in code
+      arriving 45 s in). Tried here: it opens with both accounts synced
+      and summaries in place, in its own folder. *Owner to try: it
+      looks right, and replying to Maya's "Lisbon in May?" brings her
+      answer*
+  - [ ] The browser tests' harness reads `demo/mail.json` too (it still
+        has its own made-up data); the trailer (Milestone 16) will
 - [x] A clean-start option alongside it *(2026-10-26)*: the app started
       with an empty data folder of its own (no accounts, nothing in the
       keychain under that name), so a first launch can be tried without
