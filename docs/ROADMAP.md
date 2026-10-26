@@ -2778,6 +2778,15 @@ again until the next spike.*
         colors" is the way out
       Owner confirmed the fixes (2026-10-20)
 
+- [x] A vendor's order email unreadable in dark mode *(owner report with
+      screenshots, 2026-10-26)*: its white boxes are `bgcolor="ffffff"`,
+      hex without the `#`. Browsers paint that white, but the app's color
+      reader skipped it, so the boxes stayed white while their text was
+      turned light. HTML color attributes now take hex without `#` too
+      (a small share of cached HTML emails have one). Checked on the email
+      itself: before, the grey page and some white boxes were left out of the dark colors; now all the colored boxes adapt. *Owner to try:
+      reopen it with Adapted colors*
+
 - [x] "Original colors" is remembered per sender *(owner, 2026-10-20:
       "yes", after a bank's logo, which no remap can fix)*. Switching an
       email to Original colors now applies to every email from that

@@ -561,10 +561,10 @@ impl DarkRules {
     ) -> Result<(), lol_html::errors::AttributeNameError> {
         let mut text = el
             .get_attribute("color")
-            .and_then(|c| colors::parse_color(&c));
+            .and_then(|c| colors::parse_attribute_color(&c));
         let mut background = el
             .get_attribute("bgcolor")
-            .and_then(|c| colors::parse_color(&c));
+            .and_then(|c| colors::parse_attribute_color(&c));
         let mut border = None;
         if let Some(style) = el.get_attribute("style") {
             for decl in style.split(';') {
@@ -988,6 +988,22 @@ mod tests {
         assert!(doc.contains(r##"style="background-color:#b8aef2;color:#fff">"##));
         // Light mode keeps the email's own colors inline.
         assert!(doc.contains("color:#24292f"));
+    }
+
+    /// A vendor's order emails: white boxes as `bgcolor="ffffff"`, no `#`.
+    /// Browsers paint them white, so dark mode must clear them too, or the
+    /// lightened text sits on white (owner's screenshot, 2026-10-26).
+    #[test]
+    fn a_bgcolor_without_its_hash_still_adapts() {
+        let out = sanitize_html(
+            r##"<table bgcolor="ffffff"><tr><td><h2 style="color:#000000 !important">Thanks</h2></td></tr></table>"##,
+            false,
+        );
+        assert!(out.adaptive);
+        assert!(
+            out.document.contains(r##"bgcolor="ffffff" data-mb="##),
+            "the white box is remapped with the text"
+        );
     }
 
     #[test]

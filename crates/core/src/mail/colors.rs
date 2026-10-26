@@ -43,6 +43,18 @@ pub fn parse_color(value: &str) -> Option<Rgb> {
     }
 }
 
+/// A color in an HTML attribute (`bgcolor`, `<font color>`), where
+/// browsers also take hex without its `#` (`bgcolor="ffffff"`, as Apple's
+/// order emails write it).
+pub fn parse_attribute_color(value: &str) -> Option<Rgb> {
+    let v = value.trim();
+    let bare_hex = matches!(v.len(), 3 | 6) && v.chars().all(|c| c.is_ascii_hexdigit());
+    if bare_hex {
+        return parse_color(&format!("#{v}"));
+    }
+    parse_color(v)
+}
+
 /// What a CSS color value is, as far as remapping goes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColorRead {
@@ -248,6 +260,18 @@ fn chroma(Rgb(r, g, b): Rgb) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn attribute_colors_may_leave_out_the_hash() {
+        assert_eq!(parse_attribute_color("ffffff"), Some(Rgb(255, 255, 255)));
+        assert_eq!(parse_attribute_color(" ECECEC "), Some(Rgb(236, 236, 236)));
+        assert_eq!(parse_attribute_color("fff"), Some(Rgb(255, 255, 255)));
+        assert_eq!(parse_attribute_color("#000"), Some(Rgb(0, 0, 0)));
+        assert_eq!(parse_attribute_color("white"), Some(Rgb(255, 255, 255)));
+        // A word made of hex letters is still a word: CSS names win.
+        assert_eq!(parse_attribute_color("red"), Some(Rgb(255, 0, 0)));
+        assert_eq!(parse_attribute_color("ffff"), None);
+    }
 
     #[test]
     fn parses_the_forms_emails_use() {
