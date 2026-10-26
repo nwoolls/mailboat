@@ -5,15 +5,15 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use mailboat_core::auth::tokens::ScopeHook;
-use mailboat_core::auth::{AccountTokens, OAuthClientConfig, SecretStore};
-use mailboat_core::db::{accounts, Db};
-use mailboat_core::gmail::GmailClient;
-use mailboat_core::model::MailView;
-use mailboat_core::model::{AccountId, AttachmentId};
-use mailboat_core::reqwest;
-use mailboat_core::sync::{OlderCursor, Supervisor};
-use mailboat_core::Result;
+use mail_core::auth::tokens::ScopeHook;
+use mail_core::auth::{AccountTokens, OAuthClientConfig, SecretStore};
+use mail_core::db::{accounts, Db};
+use mail_core::gmail::GmailClient;
+use mail_core::model::MailView;
+use mail_core::model::{AccountId, AttachmentId};
+use mail_core::reqwest;
+use mail_core::sync::{OlderCursor, Supervisor};
+use mail_core::Result;
 
 /// Folders the app uses, from Tauri's path resolver.
 pub struct AppDirs {
@@ -134,7 +134,7 @@ impl AppState {
         self.clients.lock().unwrap().remove(&account);
         self.older.lock().unwrap().retain(|(a, _), _| *a != account);
         // Its downloaded attachments go too (saved copies in Downloads stay).
-        let dir = mailboat_core::attachments::account_dir(&self.attachments_dir, account);
+        let dir = mail_core::attachments::account_dir(&self.attachments_dir, account);
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -179,9 +179,9 @@ impl AppState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mailboat_core::auth::MemoryStore;
-    use mailboat_core::model::{AccountId, AccountSyncState};
-    use mailboat_core::sync::{SyncConfig, SyncEvents, SyncProgress, WorkerTiming};
+    use mail_core::auth::MemoryStore;
+    use mail_core::model::{AccountId, AccountSyncState};
+    use mail_core::sync::{SyncConfig, SyncEvents, SyncProgress, WorkerTiming};
     use std::time::Duration;
 
     struct NoEvents;

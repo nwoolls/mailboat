@@ -6,12 +6,12 @@ mod common;
 use std::collections::HashMap;
 
 use common::*;
-use mailboat_core::actions;
-use mailboat_core::db::{accounts, query, store, Db};
-use mailboat_core::gmail::types::Thread;
-use mailboat_core::gmail::{parse, GmailClient};
-use mailboat_core::model::*;
-use mailboat_core::CoreError;
+use mail_core::actions;
+use mail_core::db::{accounts, query, store, Db};
+use mail_core::gmail::types::Thread;
+use mail_core::gmail::{parse, GmailClient};
+use mail_core::model::*;
+use mail_core::CoreError;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 

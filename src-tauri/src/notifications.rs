@@ -5,8 +5,8 @@
 //! Elsewhere, and when Mailboat isn't running from an app bundle (macOS
 //! refuses the notification center then), the plugin shows them as before.
 
-use mailboat_core::mail::notify::Notice;
-use mailboat_core::model::ThreadId;
+use mail_core::mail::notify::Notice;
+use mail_core::model::ThreadId;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::AppHandle;
@@ -72,7 +72,7 @@ mod mac {
     use std::sync::OnceLock;
 
     use block2::{DynBlock, RcBlock};
-    use mailboat_core::mail::notify::Notice;
+    use mail_core::mail::notify::Notice;
     use objc2::rc::Retained;
     use objc2::runtime::{Bool, NSObject, NSObjectProtocol, ProtocolObject};
     use objc2::{define_class, msg_send, ClassType};

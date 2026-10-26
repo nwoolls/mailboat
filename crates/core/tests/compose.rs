@@ -4,12 +4,12 @@
 mod common;
 
 use common::*;
-use mailboat_core::compose::{self, identities, OutgoingMessage};
-use mailboat_core::db::{accounts, query, store, Db};
-use mailboat_core::gmail::parse;
-use mailboat_core::gmail::types::{SendAs, Thread};
-use mailboat_core::model::*;
-use mailboat_core::CoreError;
+use mail_core::compose::{self, identities, OutgoingMessage};
+use mail_core::db::{accounts, query, store, Db};
+use mail_core::gmail::parse;
+use mail_core::gmail::types::{SendAs, Thread};
+use mail_core::model::*;
+use mail_core::CoreError;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, Request, ResponseTemplate};
 
@@ -530,7 +530,7 @@ async fn deleting_a_draft_takes_it_out_of_its_conversation_at_once() {
     load_t1(&db, a);
     // A saved draft reply, cached as m2 in its conversation.
     let m2 = message_id(&db, a, "m2");
-    let id: mailboat_core::model::DraftId = db
+    let id: mail_core::model::DraftId = db
         .conn()
         .query_row(
             "INSERT INTO drafts (account_id, gmail_draft_id, message_id, updated_at)
@@ -558,8 +558,8 @@ async fn deleting_a_draft_takes_it_out_of_its_conversation_at_once() {
 
 #[tokio::test]
 async fn conversations_that_are_only_a_draft_say_so() {
-    use mailboat_core::db::query;
-    use mailboat_core::db::store::{IncomingMessage, IncomingThread};
+    use mail_core::db::query;
+    use mail_core::db::store::{IncomingMessage, IncomingThread};
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "a");
     let t1 = load_t1(&db, a);
@@ -685,7 +685,7 @@ async fn saving_a_draft_again_leaves_one_copy() {
 
 #[tokio::test]
 async fn google_contacts_are_fetched_from_both_lists() {
-    use mailboat_core::compose::contacts;
+    use mail_core::compose::contacts;
     let server = MockServer::start().await;
     Mock::given(path("/v1/people/me/connections"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -716,7 +716,7 @@ async fn google_contacts_are_fetched_from_both_lists() {
 
 #[tokio::test]
 async fn an_account_without_the_contacts_permission_is_refused_not_broken() {
-    use mailboat_core::compose::contacts;
+    use mail_core::compose::contacts;
     let server = MockServer::start().await;
     Mock::given(path("/v1/people/me/connections"))
         .respond_with(ResponseTemplate::new(403).set_body_json(serde_json::json!({

@@ -6,8 +6,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use mailboat_core::gmail::{GmailClient, QuotaPacer, RetryPolicy, TokenSource};
-use mailboat_core::Result;
+use mail_core::gmail::{GmailClient, QuotaPacer, RetryPolicy, TokenSource};
+use mail_core::Result;
 
 pub fn fixture(name: &str) -> String {
     let path = format!("{}/tests/fixtures/gmail/{name}", env!("CARGO_MANIFEST_DIR"));

@@ -4,12 +4,12 @@
 mod common;
 
 use common::*;
-use mailboat_core::db::{accounts, query, store, Db};
-use mailboat_core::gmail::parse;
-use mailboat_core::gmail::types::Thread;
-use mailboat_core::labels;
-use mailboat_core::model::*;
-use mailboat_core::CoreError;
+use mail_core::db::{accounts, query, store, Db};
+use mail_core::gmail::parse;
+use mail_core::gmail::types::Thread;
+use mail_core::labels;
+use mail_core::model::*;
+use mail_core::CoreError;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 

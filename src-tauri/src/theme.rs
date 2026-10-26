@@ -3,7 +3,7 @@
 //! `prefers-color-scheme` follows, so the page's styles and the dark
 //! styles emails bring all agree.
 
-use mailboat_core::settings::Theme;
+use mail_core::settings::Theme;
 use tauri::AppHandle;
 
 pub fn apply(app: &AppHandle, theme: Theme) {

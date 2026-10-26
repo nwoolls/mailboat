@@ -1,7 +1,7 @@
 //! Events pushed from Rust to the window. Types are exported to TS.
 
-use mailboat_core::model::{AccountId, AccountSyncState};
-use mailboat_core::sync::{SyncEvents, SyncProgress};
+use mail_core::model::{AccountId, AccountSyncState};
+use mail_core::sync::{SyncEvents, SyncProgress};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::AppHandle;
@@ -42,7 +42,7 @@ pub struct TauriSyncEvents {
     pub app: AppHandle,
     pub log: std::sync::Arc<crate::sync_log::SyncLog>,
     /// For reading what new mail notifications say.
-    pub db: std::sync::Arc<mailboat_core::db::Db>,
+    pub db: std::sync::Arc<mail_core::db::Db>,
 }
 
 impl SyncEvents for TauriSyncEvents {
@@ -61,10 +61,10 @@ impl SyncEvents for TauriSyncEvents {
     fn new_mail(
         &self,
         account: AccountId,
-        inbox: &[mailboat_core::model::MessageId],
-        all: &[mailboat_core::model::MessageId],
+        inbox: &[mail_core::model::MessageId],
+        all: &[mail_core::model::MessageId],
     ) {
-        use mailboat_core::settings::NotifyFor;
+        use mail_core::settings::NotifyFor;
         // Sign-in codes go to the window whether or not notifications are on.
         if !inbox.is_empty() {
             crate::codes::arrived(&self.app, &self.db, inbox);
@@ -72,7 +72,7 @@ impl SyncEvents for TauriSyncEvents {
         // Settings → Notifications: on or off, which mail, quiet hours.
         let settings = {
             let conn = self.db.conn();
-            mailboat_core::settings::load(&conn).unwrap_or_default()
+            mail_core::settings::load(&conn).unwrap_or_default()
         };
         if !settings.new_mail_notifications || settings.quiet_hours.covers_now() {
             return;
@@ -87,14 +87,14 @@ impl SyncEvents for TauriSyncEvents {
         // The account's address, when there's more than one to tell apart.
         let label = {
             let conn = self.db.conn();
-            let all = mailboat_core::db::accounts::list(&conn).unwrap_or_default();
+            let all = mail_core::db::accounts::list(&conn).unwrap_or_default();
             (all.len() > 1)
                 .then(|| all.into_iter().find(|a| a.id == account).map(|a| a.email))
                 .flatten()
         };
         let notices = {
             let conn = self.db.conn();
-            mailboat_core::mail::notify::notices(&conn, account, messages, label.as_deref())
+            mail_core::mail::notify::notices(&conn, account, messages, label.as_deref())
                 .unwrap_or_default()
         };
         crate::notifications::show(&self.app, notices);

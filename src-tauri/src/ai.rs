@@ -1,5 +1,5 @@
 //! AI commands and the background queue that writes the list's one-line
-//! summaries. The logic lives in `mailboat_core::ai`; this is the glue:
+//! summaries. The logic lives in `mail_core::ai`; this is the glue:
 //! which provider each feature uses (Settings → AI), signing in to Claude
 //! and ChatGPT, streaming answers to the window, and cancelling.
 
@@ -8,20 +8,18 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use mailboat_core::ai::codex::CodexModel;
-use mailboat_core::ai::prompts::RewriteStyle;
-use mailboat_core::ai::summaries::{self, Summary, SummaryKind};
-use mailboat_core::ai::tasks::{
+use mail_core::ai::codex::CodexModel;
+use mail_core::ai::prompts::RewriteStyle;
+use mail_core::ai::summaries::{self, Summary, SummaryKind};
+use mail_core::ai::tasks::{
     self, RewriteAnswer, Summarized, SummaryRequest, TranslateAnswer, WriteAnswer, WriteRequest,
 };
-use mailboat_core::ai::usage::{self, ProviderUsage};
-use mailboat_core::ai::{
-    self, AiProvider, Answer, PlanLimit, Programs, ProviderState, ProviderStatus,
-};
-use mailboat_core::db::store;
-use mailboat_core::model::ThreadId;
-use mailboat_core::settings::{self, AppSettings};
-use mailboat_core::CoreError;
+use mail_core::ai::usage::{self, ProviderUsage};
+use mail_core::ai::{self, AiProvider, Answer, PlanLimit, Programs, ProviderState, ProviderStatus};
+use mail_core::db::store;
+use mail_core::model::ThreadId;
+use mail_core::settings::{self, AppSettings};
+use mail_core::CoreError;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager, State};
@@ -149,7 +147,7 @@ fn check_usable(settings: &AppSettings, provider: AiProvider) -> CmdResult<()> {
 async fn cancellable<T: Send + 'static>(
     ai: &AiState,
     request_id: u32,
-    work: impl std::future::Future<Output = mailboat_core::Result<T>> + Send + 'static,
+    work: impl std::future::Future<Output = mail_core::Result<T>> + Send + 'static,
 ) -> CmdResult<T> {
     let (tx, rx) = tokio::sync::oneshot::channel();
     let handle = tauri::async_runtime::spawn(async move {
@@ -506,7 +504,7 @@ pub async fn ai_translation_languages(
     let saved = load_settings(&state)?;
     let programs = ai.programs_for(&saved).await;
     Ok(match &programs.apple {
-        Some(helper) => mailboat_core::ai::apple::languages(helper).await,
+        Some(helper) => mail_core::ai::apple::languages(helper).await,
         None => Vec::new(),
     })
 }

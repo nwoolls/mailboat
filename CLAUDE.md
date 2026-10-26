@@ -29,7 +29,7 @@ Agents write all the code, so:
 ## Conventions
 
 Rust:
-- Errors are `mailboat_core::CoreError`; commands convert them to `AppError`
+- Errors are `mail_core::CoreError`; commands convert them to `AppError`
   (`kind` + `message`). No `unwrap()` outside tests except on mutex locks.
 - Never hold the database lock (`db.conn()`) across an `.await`, and never
   take it inside a `for`, `match` or `if let` header: bind the result to a
@@ -65,7 +65,7 @@ Commits: one topic each, imperative subject, a body that explains why.
 | Frontend tests only | `bun run test` |
 | Browser tests (Playwright, WebKit) | `bun run test:browser` |
 | Format TS | `bun run fmt` |
-| Regenerate TS bindings | `cargo test -p mailboat bindings` |
+| Regenerate TS bindings | `cargo test -p desktop bindings` |
 | Regenerate app icons (needs Xcode) | `scripts/build-app-icon.sh` |
 
 ### macOS keychain prompts in dev
@@ -121,7 +121,7 @@ When unsure how to do something, do what these do, and say which you followed:
    integer `id` plus `UNIQUE(account_id, gmail_*_id)`. No table, map, cache or
    frontend store is keyed by a Gmail ID alone; the frontend uses surrogate IDs.
 2. The unified inbox is a query, not a copy. Every list view goes through one
-   query layer (`mailboat_core::db::query`) that takes an account filter
+   query layer (`mail_core::db::query`) that takes an account filter
    (all / some / one).
 3. System labels (INBOX, UNREAD, STARRED, IMPORTANT, SENT, DRAFT, SPAM, TRASH)
    unify across accounts. User labels stay per account, even with equal names.
@@ -160,7 +160,7 @@ these rules. Keep it passing.
 
 ## Security
 
-- Email HTML is sanitized in Rust (`mailboat_core::mail::sanitize`), then shown
+- Email HTML is sanitized in Rust (`mail_core::mail::sanitize`), then shown
   in an `<iframe sandbox>` without `allow-scripts`, with a per-message CSP.
 - Remote images load by default (owner's decision, 2026-10-15; Settings →
   Viewing can make it "people you've written to" or "blocked"), except in
@@ -168,7 +168,7 @@ these rules. Keep it passing.
   the sender is allowed). A per-sender "load" or "block" choice is
   remembered by address (global, not per account) and wins outside Spam.
   Known tracking pixels are always removed. The rule lives in
-  `mailboat_core::mail::images`. Images of new mail that the rule would load
+  `mail_core::mail::images`. Images of new mail that the rule would load
   are downloaded as mail arrives (`mail::prefetch`, on by default, like
   Apple Mail), so opening an email makes no request.
 - Tauri capabilities stay as narrow as possible. Do not add plugins or

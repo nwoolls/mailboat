@@ -2,9 +2,9 @@
 //! thread, message and label IDs collide must never bleed into each other,
 //! and unified views must show both.
 
-use mailboat_core::db::store::{self, IncomingLabel, IncomingMessage, IncomingThread};
-use mailboat_core::db::{accounts, query, Db};
-use mailboat_core::model::*;
+use mail_core::db::store::{self, IncomingLabel, IncomingMessage, IncomingThread};
+use mail_core::db::{accounts, query, Db};
+use mail_core::model::*;
 
 fn add_account(db: &Db, sub: &str, email: &str) -> Account {
     accounts::upsert(

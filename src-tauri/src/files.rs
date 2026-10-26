@@ -5,7 +5,7 @@
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use mailboat_core::CoreError;
+use mail_core::CoreError;
 
 fn spawn(cmd: &mut Command) -> Result<(), CoreError> {
     cmd.stdin(Stdio::null())

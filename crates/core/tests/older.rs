@@ -7,10 +7,10 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use common::*;
-use mailboat_core::db::{accounts, store, Db};
-use mailboat_core::gmail::{parse, types::Thread};
-use mailboat_core::model::*;
-use mailboat_core::sync::{load_older, OlderCursor};
+use mail_core::db::{accounts, store, Db};
+use mail_core::gmail::{parse, types::Thread};
+use mail_core::model::*;
+use mail_core::sync::{load_older, OlderCursor};
 use wiremock::matchers::{method, path, query_param, query_param_is_missing};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -192,8 +192,7 @@ async fn other_accounts_labels_load_nothing() {
         }],
     )
     .unwrap();
-    let b_label =
-        mailboat_core::db::query::user_labels(&db.conn(), &AccountFilter::All).unwrap()[0].id;
+    let b_label = mail_core::db::query::user_labels(&db.conn(), &AccountFilter::All).unwrap()[0].id;
     let (gmail, _) = client(&server.uri());
 
     // (Search asks Gmail since Milestone 5: see the search test below.)
@@ -250,7 +249,7 @@ async fn a_failed_fetch_is_retried_next_time() {
 
 #[tokio::test]
 async fn searching_gmail_shows_what_it_matched_in_the_search_view() {
-    use mailboat_core::db::query;
+    use mail_core::db::query;
     let server = MockServer::start().await;
     // Gmail's search for "zebra" matches t1 (cached, but on a word only in
     // its body) and t2 (not cached yet).

@@ -1,9 +1,9 @@
 [package]
-name = "mailboat-core"
+name = "mail-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Mailboat's sync, storage, auth and mail logic. No Tauri dependency, so it tests fast."
+description = "The app's sync, storage, auth and mail logic. No Tauri dependency, so it tests fast."
 
 [lib]
 # No doc examples to test; skipping the search keeps `cargo test` fast.
@@ -42,7 +42,7 @@ chrono-tz = "0.10"
 chrono = "0.4"
 mail-parser = "1.0.0"
 # The MCP server for AI apps (`mcp`): the official Rust SDK. Client too,
-# for the `mailboat --mcp` proxy that forwards to the running app.
+# for the app's `--mcp` proxy that forwards to the running app.
 rmcp = { version = "3.7", features = ["server", "client", "macros", "schemars", "transport-io", "transport-async-rw"] }
 schemars = "1.1"
 

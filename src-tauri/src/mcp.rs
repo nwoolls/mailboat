@@ -1,15 +1,15 @@
-//! The app's side of the MCP server for AI apps (`mailboat_core::mcp`):
+//! The app's side of the MCP server for AI apps (`mail_core::mcp`):
 //! listening while Mailboat runs, the `--mcp` proxy mode, and Settings →
 //! AI → AI apps (connecting Claude, the request log).
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use mailboat_core::ai::process;
-use mailboat_core::db::Db;
-use mailboat_core::gmail::GmailClient;
-use mailboat_core::mcp::{self, log::McpLogEntry, setup, Host};
-use mailboat_core::model::AccountId;
+use mail_core::ai::process;
+use mail_core::db::Db;
+use mail_core::gmail::GmailClient;
+use mail_core::mcp::{self, log::McpLogEntry, setup, Host};
+use mail_core::model::AccountId;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager, State};
@@ -24,7 +24,7 @@ struct AppHost {
 }
 
 impl Host for AppHost {
-    fn gmail(&self, account: AccountId) -> mailboat_core::error::Result<GmailClient> {
+    fn gmail(&self, account: AccountId) -> mail_core::error::Result<GmailClient> {
         self.app.state::<AppState>().gmail_for(account)
     }
 
@@ -79,7 +79,7 @@ pub fn run_proxy() -> i32 {
 }
 
 fn fail(message: impl Into<String>) -> AppError {
-    mailboat_core::CoreError::Other(message.into()).into()
+    mail_core::CoreError::Other(message.into()).into()
 }
 
 fn program() -> CmdResult<String> {
@@ -106,7 +106,7 @@ pub struct McpSetup {
 /// Claude Code: installed on its own, or the copy inside the Claude app
 /// (as for Claude as an AI provider, `ai::apps`).
 fn claude() -> Option<PathBuf> {
-    process::find_program("claude").or_else(mailboat_core::ai::apps::claude)
+    process::find_program("claude").or_else(mail_core::ai::apps::claude)
 }
 
 #[tauri::command]

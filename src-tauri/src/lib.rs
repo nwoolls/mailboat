@@ -21,8 +21,8 @@ mod window_place;
 
 use std::sync::Arc;
 
-use mailboat_core::db::Db;
-use mailboat_core::sync::{Supervisor, SyncConfig, WorkerTiming};
+use mail_core::db::Db;
+use mail_core::sync::{Supervisor, SyncConfig, WorkerTiming};
 use tauri::Manager;
 use tauri_specta::{collect_commands, collect_events, Builder, Event};
 
@@ -202,7 +202,7 @@ pub fn run() {
         .manage(mail_handler::MailtoQueue::default())
         .manage(menu::MenuItems::default())
         .manage(ai::AiState::new())
-        .register_uri_scheme_protocol(mailboat_core::mail::links::SCHEME, |ctx, request| {
+        .register_uri_scheme_protocol(mail_core::mail::links::SCHEME, |ctx, request| {
             links::handle(ctx.app_handle(), &request)
         })
         .invoke_handler(builder.invoke_handler())
@@ -218,7 +218,7 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             let config_dir = app.path().app_config_dir()?;
             let db = Arc::new(Db::open(&data_dir.join("mailboat.sqlite3"))?);
-            let http = mailboat_core::reqwest::Client::builder()
+            let http = mail_core::reqwest::Client::builder()
                 .user_agent(concat!("Mailboat/", env!("CARGO_PKG_VERSION")))
                 .timeout(std::time::Duration::from_secs(60))
                 .build()?;
@@ -232,7 +232,7 @@ pub fn run() {
                     db: db.clone(),
                 }),
                 SyncConfig {
-                    images: Some(mailboat_core::mail::prefetch::Prefetch::new(
+                    images: Some(mail_core::mail::prefetch::Prefetch::new(
                         app.path().app_cache_dir()?.join("images"),
                     )?),
                     ..SyncConfig::default()
@@ -242,7 +242,7 @@ pub fn run() {
             let state = AppState::new(
                 db.clone(),
                 http,
-                Arc::new(mailboat_core::auth::KeyringStore),
+                Arc::new(mail_core::auth::KeyringStore),
                 supervisor,
                 AppDirs {
                     config: config_dir,
@@ -258,7 +258,7 @@ pub fn run() {
                 }),
             );
             // Before the window first paints, so it opens in the chosen theme.
-            let saved = mailboat_core::settings::load(&db.conn()).unwrap_or_default();
+            let saved = mail_core::settings::load(&db.conn()).unwrap_or_default();
             theme::apply(app.handle(), saved.theme);
             state.resume_all_accounts()?;
             app.manage(state);
@@ -285,7 +285,7 @@ pub fn run() {
             if let tauri::RunEvent::Ready = event {
                 let choice = app
                     .try_state::<AppState>()
-                    .and_then(|state| mailboat_core::settings::load(&state.db.conn()).ok())
+                    .and_then(|state| mail_core::settings::load(&state.db.conn()).ok())
                     .and_then(|s| s.app_icon);
                 dock::show_at_launch(app_icon::png(choice.as_deref()));
             }
@@ -304,7 +304,7 @@ fn watch_other_copies(app: tauri::AppHandle, db: Arc<Db>) {
             if !db.changed_elsewhere().unwrap_or(false) {
                 continue;
             }
-            let accounts = mailboat_core::db::accounts::list(&db.conn()).unwrap_or_default();
+            let accounts = mail_core::db::accounts::list(&db.conn()).unwrap_or_default();
             for account in accounts {
                 let _ = MailChangedEvent {
                     account_id: account.id,
@@ -338,7 +338,7 @@ mod tests {
     /// `brand.json`, so they're checked to match it.
     #[test]
     fn tauri_config_matches_the_brand() {
-        use mailboat_core::brand;
+        use mail_core::brand;
         let read = |file: &str| -> serde_json::Value {
             let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(file);
             serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()

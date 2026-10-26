@@ -2,10 +2,10 @@
 
 use std::sync::Arc;
 
-use mailboat_core::auth::tokens::refresh_token_key;
-use mailboat_core::auth::{AccountTokens, MemoryStore, OAuthClientConfig, SecretStore};
-use mailboat_core::gmail::TokenSource;
-use mailboat_core::CoreError;
+use mail_core::auth::tokens::refresh_token_key;
+use mail_core::auth::{AccountTokens, MemoryStore, OAuthClientConfig, SecretStore};
+use mail_core::gmail::TokenSource;
+use mail_core::CoreError;
 use wiremock::matchers::{body_string_contains, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -93,7 +93,7 @@ async fn code_exchange_sends_pkce_verifier_and_secret() {
         })))
         .mount(&server)
         .await;
-    let t = mailboat_core::auth::oauth::exchange_code(
+    let t = mail_core::auth::oauth::exchange_code(
         &reqwest::Client::new(),
         &config(&server),
         "code",
@@ -113,14 +113,14 @@ struct CountingStore {
 }
 
 impl SecretStore for CountingStore {
-    fn get(&self, key: &str) -> mailboat_core::Result<Option<String>> {
+    fn get(&self, key: &str) -> mail_core::Result<Option<String>> {
         self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         self.inner.get(key)
     }
-    fn set(&self, key: &str, value: &str) -> mailboat_core::Result<()> {
+    fn set(&self, key: &str, value: &str) -> mail_core::Result<()> {
         self.inner.set(key, value)
     }
-    fn delete(&self, key: &str) -> mailboat_core::Result<()> {
+    fn delete(&self, key: &str) -> mail_core::Result<()> {
         self.inner.delete(key)
     }
 }

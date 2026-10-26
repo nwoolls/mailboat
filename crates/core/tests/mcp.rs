@@ -8,13 +8,13 @@ mod common;
 use std::sync::{Arc, Mutex};
 
 use common::client;
-use mailboat_core::db::store::{self, IncomingLabel, IncomingMessage, IncomingThread, StoredBody};
-use mailboat_core::db::{accounts, Db};
-use mailboat_core::gmail::GmailClient;
-use mailboat_core::mcp::{log, Host, MailServer};
-use mailboat_core::model::*;
-use mailboat_core::settings::{self, McpSettings};
-use mailboat_core::CoreError;
+use mail_core::db::store::{self, IncomingLabel, IncomingMessage, IncomingThread, StoredBody};
+use mail_core::db::{accounts, Db};
+use mail_core::gmail::GmailClient;
+use mail_core::mcp::{log, Host, MailServer};
+use mail_core::model::*;
+use mail_core::settings::{self, McpSettings};
+use mail_core::CoreError;
 use rmcp::model::{
     CallToolRequestParams, CallToolResult, ClientCapabilities, ClientConfig, Implementation,
 };
@@ -30,7 +30,7 @@ struct FakeHost {
 }
 
 impl Host for FakeHost {
-    fn gmail(&self, _account: AccountId) -> mailboat_core::error::Result<GmailClient> {
+    fn gmail(&self, _account: AccountId) -> mail_core::error::Result<GmailClient> {
         match &self.gmail_uri {
             Some(uri) => Ok(client(uri).0),
             None => Err(CoreError::Other("offline".into())),
@@ -318,7 +318,7 @@ async fn a_new_draft_needs_no_recipient_yet() {
     let m = mail();
     share(&m.db, &[m.a], &[m.a]);
     // The account's address has a signature in Gmail.
-    mailboat_core::compose::identities::store(
+    mail_core::compose::identities::store(
         &mut m.db.conn(),
         m.a,
         &[serde_json::from_value(json!({
@@ -435,7 +435,7 @@ async fn every_request_is_logged_without_content() {
 /// the next call goes through without restarting the proxy.
 #[tokio::test]
 async fn through_the_proxy_with_mailboat_closed_then_open() {
-    use mailboat_core::mcp::{listen, proxy::Proxy, proxy::NOT_RUNNING};
+    use mail_core::mcp::{listen, proxy::Proxy, proxy::NOT_RUNNING};
     let m = mail();
     share(&m.db, &[m.a], &[]);
     let dir = std::env::temp_dir().join(format!("mailboat-mcp-{}", std::process::id()));

@@ -1016,6 +1016,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "desktop"
+version = "0.1.0"
+dependencies = [
+ "block2",
+ "mail-core",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-user-notifications",
+ "open",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-notification",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-window-state",
+ "tauri-specta",
+ "time",
+ "tokio",
+ "windows-registry",
+]
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2621,6 +2647,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ccbc27cb02a58a311a404769a22f5abf63fe3173b290d80be7c534f9c7023151"
 
 [[package]]
+name = "mail-core"
+version = "0.1.0"
+dependencies = [
+ "ammonia",
+ "async-trait",
+ "base64 0.23.1",
+ "chrono",
+ "chrono-tz",
+ "cssparser 0.38.0",
+ "encoding_rs",
+ "fastrand",
+ "icalendar",
+ "keyring",
+ "lol_html",
+ "mail-builder",
+ "mail-parser",
+ "oauth2",
+ "percent-encoding",
+ "pulldown-cmark",
+ "reqwest",
+ "rmcp",
+ "rusqlite",
+ "schemars 1.2.3",
+ "serde",
+ "serde_json",
+ "specta",
+ "thiserror 2.0.21",
+ "tokio",
+ "url",
+ "wiremock",
+]
+
+[[package]]
 name = "mail-parser"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2680,65 +2739,6 @@ name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
-
-[[package]]
-name = "mailboat"
-version = "0.1.0"
-dependencies = [
- "block2",
- "mailboat-core",
- "objc2",
- "objc2-app-kit",
- "objc2-foundation",
- "objc2-user-notifications",
- "open",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "tauri",
- "tauri-build",
- "tauri-plugin-notification",
- "tauri-plugin-single-instance",
- "tauri-plugin-window-state",
- "tauri-specta",
- "time",
- "tokio",
- "windows-registry",
-]
-
-[[package]]
-name = "mailboat-core"
-version = "0.1.0"
-dependencies = [
- "ammonia",
- "async-trait",
- "base64 0.23.1",
- "chrono",
- "chrono-tz",
- "cssparser 0.38.0",
- "encoding_rs",
- "fastrand",
- "icalendar",
- "keyring",
- "lol_html",
- "mail-builder",
- "mail-parser",
- "oauth2",
- "percent-encoding",
- "pulldown-cmark",
- "reqwest",
- "rmcp",
- "rusqlite",
- "schemars 1.2.3",
- "serde",
- "serde_json",
- "specta",
- "thiserror 2.0.21",
- "tokio",
- "url",
- "wiremock",
-]
 
 [[package]]
 name = "miniz_oxide"

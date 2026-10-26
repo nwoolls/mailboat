@@ -34,8 +34,8 @@ if $rust; then
   echo "check:quick: rust"
   cargo fmt --all --check
   cargo clippy --workspace --all-targets -- -D warnings
-  cargo test -p mailboat-core --lib --test two_accounts
-  cargo test -p mailboat --lib
+  cargo test -p mail-core --lib --test two_accounts
+  cargo test -p desktop --lib
 fi
 if ! $web && ! $rust; then
   echo "check:quick: nothing to check in the changed files (docs only?)"

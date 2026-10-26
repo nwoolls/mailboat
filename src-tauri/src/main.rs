@@ -5,7 +5,7 @@ fn main() {
     // Started by an AI app (Claude) as its MCP server: pass its requests
     // to the running Mailboat, and nothing else.
     if std::env::args().skip(1).any(|a| a == "--mcp") {
-        std::process::exit(mailboat_lib::run_mcp_proxy());
+        std::process::exit(desktop_lib::run_mcp_proxy());
     }
-    mailboat_lib::run()
+    desktop_lib::run()
 }

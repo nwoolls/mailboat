@@ -1,11 +1,12 @@
 #!/bin/sh
 # Cargo runner (see .cargo/config.toml) for macOS dev builds. Test binaries
-# run untouched; the app binary (`mailboat`) is launched from a real .app:
+# run untouched; the app binary (the `desktop` package) is launched from a
+# real .app named after brand.json:
 #
 # 1. Dock icon. `tauri dev` runs a bare binary, and macOS only draws an
 #    app's icon properly (the Liquid Glass rim and depth, from
 #    src-tauri/macos/Assets.car) for a bundle. So the binary is copied into
-#    target/<profile>/Mailboat.app with an Info.plist and the icons, as
+#    target/<profile>/<name>.app with an Info.plist and the icons, as
 #    MonoCode does. (The app also clears the flat picture Tauri sets on the
 #    Dock in dev; see src-tauri/src/dock.rs.)
 #
@@ -23,15 +24,21 @@ set -e
 bin="$1"
 shift
 
-if [ "$(basename "$bin")" != "mailboat" ]; then
-  exec "$bin" "$@"
-fi
-
 root="$(cd "$(dirname "$0")/.." && pwd)"
+brand() { sed -n "s/^ *\"$1\": *\"\([^\"]*\)\".*/\1/p" "$root/brand.json" | head -n 1; }
+name="$(brand name)"
+short="$(brand shortName)"
+id="$(brand id)"
+
+case "$(basename "$bin")" in
+  desktop | "$short") ;;
+  *) exec "$bin" "$@" ;;
+esac
+
 version="$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$root/src-tauri/tauri.conf.json" | head -n 1)"
-app="$(dirname "$bin")/Mailboat.app"
+app="$(dirname "$bin")/$name.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-cp "$bin" "$app/Contents/MacOS/mailboat"
+cp "$bin" "$app/Contents/MacOS/$short"
 # The Apple Intelligence helper, which Tauri copies next to the binary.
 [ -f "$(dirname "$bin")/mailboat-ai" ] && cp "$(dirname "$bin")/mailboat-ai" "$app/Contents/MacOS/mailboat-ai" || true
 cp "$root/src-tauri/icons/icon.icns" "$app/Contents/Resources/AppIcon.icns"
@@ -44,19 +51,19 @@ cat > "$app/Contents/Info.plist" <<PLIST
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Mailboat</string>
+	<string>$name</string>
 	<key>CFBundleExecutable</key>
-	<string>mailboat</string>
+	<string>$short</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.nwoolls.mailboat</string>
+	<string>$id</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Mailboat</string>
+	<string>$name</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -87,8 +94,8 @@ identity="${MAILBOAT_DEV_SIGNING_IDENTITY:-$(security find-identity -v -p codesi
 if [ -n "$identity" ]; then
   # Nested code is signed first, or signing the app fails.
   [ -f "$app/Contents/MacOS/mailboat-ai" ] && codesign --force --sign "$identity" \
-    --identifier com.nwoolls.mailboat.ai "$app/Contents/MacOS/mailboat-ai" 2>/dev/null || true
-  codesign --force --sign "$identity" --identifier com.nwoolls.mailboat "$app" 2>/dev/null \
+    --identifier "$id.ai" "$app/Contents/MacOS/mailboat-ai" 2>/dev/null || true
+  codesign --force --sign "$identity" --identifier "$id" "$app" 2>/dev/null \
     || echo "dev-run: signing with \"$identity\" failed; continuing unsigned" >&2
 else
   echo "dev-run: no Apple Development certificate found; macOS will ask for keychain access after each rebuild (see CLAUDE.md)" >&2
@@ -97,4 +104,4 @@ fi
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 [ -x "$lsregister" ] && "$lsregister" -f "$app" >/dev/null 2>&1 || true
 
-exec "$app/Contents/MacOS/mailboat" "$@"
+exec "$app/Contents/MacOS/$short" "$@"

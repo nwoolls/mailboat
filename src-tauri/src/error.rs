@@ -1,4 +1,4 @@
-use mailboat_core::CoreError;
+use mail_core::CoreError;
 use serde::Serialize;
 use specta::Type;
 

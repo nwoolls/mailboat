@@ -9,7 +9,7 @@ How Mailboat is put together and why. For what is left to build, see
 ```mermaid
 flowchart LR
   UI["React UI (src/)"] -->|"typed commands"| CMD["Tauri commands (src-tauri/)"]
-  CMD --> CORE["mailboat-core (crates/core/)"]
+  CMD --> CORE["mail-core (crates/core/)"]
   CORE --> DB[("SQLite + FTS5")]
   CORE --> KC["OS keychain"]
   CORE -->|"paced HTTPS"| G["Gmail REST API"]
@@ -56,7 +56,7 @@ erDiagram
 
 ## One query layer
 
-`mailboat_core::db::query::list_threads` serves every list view. It takes an
+`mail_core::db::query::list_threads` serves every list view. It takes an
 account filter (all, or a list of IDs) and a view (system label, user
 label, or search). "All Inboxes" is the INBOX view with the "all" filter; a
 single account's inbox is the same query filtered to one ID. System labels
@@ -152,7 +152,7 @@ Apple Development certificate so keychain approval survives rebuilds.
 
 ## Actions
 
-`mailboat_core::actions`: read/unread, archive (remove INBOX) and move to
+`mail_core::actions`: read/unread, archive (remove INBOX) and move to
 Inbox, star/unstar, user labels, trash and restore. Each is a label plan
 (labels to add and remove, per account) run by one routine: it groups the
 chosen threads by owning account, applies the change to the local cache
@@ -168,7 +168,7 @@ and rolls back on error (`features/mailbox/ui/useSetRead.ts`).
 
 ## Attachments
 
-`mailboat_core::attachments`. Parts with a file name, or a Content-ID, are
+`mail_core::attachments`. Parts with a file name, or a Content-ID, are
 attachments; ones the HTML shows as `cid:` are `inline` and aren't listed.
 Files download on first use (open, Quick Look, save) with the owning
 account's client into `<app cache>/attachments/<account id>/<attachment
@@ -203,7 +203,7 @@ fresh one; small parts come with the message and have no ID at all.
 
 ## Compose
 
-`mailboat_core::compose` (Milestone 4).
+`mail_core::compose` (Milestone 4).
 
 - **Sending** builds an RFC 5322 message with `mail-builder` and sends it
   with `messages.send`, using the From account's own client. A reply or
@@ -253,7 +253,7 @@ fresh one; small parts come with the message and have no ID at all.
   dev build both present it chooses the copy (the installed one).
   macOS hands links over as Tauri's `RunEvent::Opened`; links clicked in
   an email arrive through the `mailboat-link:` handler. Rust parses them
-  (`mailboat_core::mail::mailto`, RFC 6068) and queues them, then emits
+  (`mail_core::mail::mailto`, RFC 6068) and queues them, then emits
   `MailtoEvent`; the window takes the queue (`mailto_take`) once accounts
   have loaded, so a link that launched the app isn't lost. Each opens a
   new message from the open conversation's account, else the usual one.
@@ -303,7 +303,7 @@ foot bar, the ⌘K palette, and Mailboat → Settings… (⌘,), a macOS menu it
 
 Settings are stored in one of three places:
 
-- **Rust acts on it** (new-mail notifications on/off): `mailboat_core::settings`,
+- **Rust acts on it** (new-mail notifications on/off): `mail_core::settings`,
   one JSON value in the `app_settings` table. A setting missing from it
   takes its default, so adding one needs no migration.
 - **Only the window uses it** (transparency, accent colour, text size,
@@ -391,13 +391,13 @@ replying right now (`active`), which the mail view shows as a banner.
 
 Summaries (one line in the list, a few points above an opened
 conversation) and a writing assistant in the composer. The logic is in
-`mailboat_core::ai`; `src-tauri/src/ai.rs` is the glue; the UI is
+`mail_core::ai`; `src-tauri/src/ai.rs` is the glue; the UI is
 `src/features/ai`.
 
 ```mermaid
 flowchart LR
   UI["List / reader / composer"] -->|"ai_* commands"| T["src-tauri ai.rs"]
-  T --> C["mailboat_core::ai"]
+  T --> C["mail_core::ai"]
   C -->|"stdin JSON"| A["mailboat-ai (Swift, Foundation Models)"]
   C -->|"claude -p, no tools"| CL["Claude Code CLI"]
   C -->|"codex exec, no tools"| CX["Codex CLI"]
@@ -465,7 +465,7 @@ flowchart LR
 
 AI apps (Claude Desktop, Claude Code) can search and read mail, and save
 drafts, through Mailboat over the Model Context Protocol. Logic in
-`mailboat_core::mcp`; the app side is `src-tauri/src/mcp.rs`; Settings →
+`mail_core::mcp`; the app side is `src-tauri/src/mcp.rs`; Settings →
 AI → AI apps is `src/features/mcp`.
 
 ```mermaid

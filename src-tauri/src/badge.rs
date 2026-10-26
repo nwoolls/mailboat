@@ -9,8 +9,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use mailboat_core::db::{query, Db};
-use mailboat_core::settings::{self, DockBadge};
+use mail_core::db::{query, Db};
+use mail_core::settings::{self, DockBadge};
 use tauri::{AppHandle, Manager};
 
 pub fn watch(app: AppHandle, db: Arc<Db>) {
@@ -44,14 +44,14 @@ pub fn watch(app: AppHandle, db: Arc<Db>) {
 
 /// Moves whenever this copy (`total_changes`) or another copy
 /// (`data_version`) writes to the database.
-fn write_version(db: &Db) -> mailboat_core::Result<(u64, i64)> {
+fn write_version(db: &Db) -> mail_core::Result<(u64, i64)> {
     let conn = db.conn();
     let elsewhere: i64 = conn.query_row("PRAGMA data_version", [], |r| r.get(0))?;
     Ok((conn.total_changes(), elsewhere))
 }
 
 /// The number to show, or `None` for no badge (nothing unread, or off).
-fn badge(db: &Db) -> mailboat_core::Result<Option<i64>> {
+fn badge(db: &Db) -> mail_core::Result<Option<i64>> {
     let conn = db.conn();
     let which = settings::load(&conn)?.dock_badge;
     let unread = match which {

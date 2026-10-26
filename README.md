@@ -64,7 +64,7 @@ Terminal once, then press Connect again. Disconnecting only stops Mailboat
 using it; the tool stays signed in.
 
 To check all three from Terminal after building once:
-`cargo test -p mailboat-core --test ai_live -- --ignored --nocapture`.
+`cargo test -p mail-core --test ai_live -- --ignored --nocapture`.
 
 ### AI apps (Claude Desktop, Claude Code)
 

@@ -1,11 +1,11 @@
 //! Sign-in codes in new mail, for the window's top-right notice
-//! (`mailboat_core::mail::codes` finds them).
+//! (`mail_core::mail::codes` finds them).
 
 use std::sync::Arc;
 
-use mailboat_core::db::Db;
-use mailboat_core::mail::codes::{self, ArrivedCode};
-use mailboat_core::model::MessageId;
+use mail_core::db::Db;
+use mail_core::mail::codes::{self, ArrivedCode};
+use mail_core::model::MessageId;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager};
@@ -38,13 +38,13 @@ pub fn arrived(app: &AppHandle, db: &Arc<Db>, messages: &[MessageId]) {
             return;
         };
         for m in needs_body {
-            let account = mailboat_core::db::store::message_gmail_ref(&db.conn(), m);
+            let account = mail_core::db::store::message_gmail_ref(&db.conn(), m);
             let Ok((account, _)) = account else { continue };
             let Ok(gmail) = state.gmail_for(account) else {
                 continue;
             };
             // The owner is likely waiting on this code: ahead of sync.
-            if mailboat_core::sync::fetch_body(&db, &gmail.interactive(), m)
+            if mail_core::sync::fetch_body(&db, &gmail.interactive(), m)
                 .await
                 .is_err()
             {

@@ -1,31 +1,31 @@
-//! Commands the UI can call. Each is a thin wrapper over `mailboat_core`;
+//! Commands the UI can call. Each is a thin wrapper over `mail_core`;
 //! logic and tests live there.
 
 use std::sync::Arc;
 use std::time::Duration;
 
-use mailboat_core::attachments;
-use mailboat_core::auth::{config, oauth, tokens, AccountTokens};
-use mailboat_core::calendar::{self, InviteCard};
-use mailboat_core::compose::contacts::Contact;
-use mailboat_core::compose::identities::{self, Identity};
-use mailboat_core::compose::{self, OpenedDraft, OutgoingMessage, ReplySource};
-use mailboat_core::db::{accounts, query, store};
-use mailboat_core::mail::images::{self, ImagePolicy};
-use mailboat_core::mail::invite::Answer;
-use mailboat_core::mail::mailto::Mailto;
-use mailboat_core::mail::{self, prefetch, SafeMessage};
-use mailboat_core::model::{
+use mail_core::attachments;
+use mail_core::auth::{config, oauth, tokens, AccountTokens};
+use mail_core::calendar::{self, InviteCard};
+use mail_core::compose::contacts::Contact;
+use mail_core::compose::identities::{self, Identity};
+use mail_core::compose::{self, OpenedDraft, OutgoingMessage, ReplySource};
+use mail_core::db::{accounts, query, store};
+use mail_core::mail::images::{self, ImagePolicy};
+use mail_core::mail::invite::Answer;
+use mail_core::mail::mailto::Mailto;
+use mail_core::mail::{self, prefetch, SafeMessage};
+use mail_core::model::{
     Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, DraftId, Label,
     LabelId, LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
 };
-use mailboat_core::rules::{
+use mail_core::rules::{
     self, AccountRules, MatchCount, RuleActions, RuleCriteria, RulesState, SavedRule,
 };
-use mailboat_core::settings::{self, AppSettings};
-use mailboat_core::sync::{fetch_body, load_older, OLDER_BATCH};
-use mailboat_core::vacation::{self, AccountVacation, VacationSettings, VacationState};
-use mailboat_core::CoreError;
+use mail_core::settings::{self, AppSettings};
+use mail_core::sync::{fetch_body, load_older, OLDER_BATCH};
+use mail_core::vacation::{self, AccountVacation, VacationSettings, VacationState};
+use mail_core::CoreError;
 use serde::Serialize;
 use specta::Type;
 use tauri::{AppHandle, State};
@@ -282,7 +282,7 @@ pub async fn threads_load_older(
 }
 
 enum OlderCursorResult {
-    Done(mailboat_core::sync::OlderCursor, mailboat_core::Result<usize>),
+    Done(mail_core::sync::OlderCursor, mail_core::Result<usize>),
     Failed(CoreError),
 }
 
@@ -424,7 +424,7 @@ pub async fn threads_set_read(
     thread_ids: Vec<ThreadId>,
     read: bool,
 ) -> CmdResult<()> {
-    mailboat_core::actions::set_read(
+    mail_core::actions::set_read(
         &state.db,
         |account| state.gmail_for(account),
         &thread_ids,
@@ -443,7 +443,7 @@ pub async fn threads_set_archived(
     thread_ids: Vec<ThreadId>,
     archived: bool,
 ) -> CmdResult<()> {
-    mailboat_core::actions::set_archived(
+    mail_core::actions::set_archived(
         &state.db,
         |account| state.gmail_for(account),
         &thread_ids,
@@ -461,7 +461,7 @@ pub async fn threads_set_starred(
     thread_ids: Vec<ThreadId>,
     starred: bool,
 ) -> CmdResult<()> {
-    mailboat_core::actions::set_starred(
+    mail_core::actions::set_starred(
         &state.db,
         |account| state.gmail_for(account),
         &thread_ids,
@@ -480,7 +480,7 @@ pub async fn threads_set_trashed(
     thread_ids: Vec<ThreadId>,
     trashed: bool,
 ) -> CmdResult<()> {
-    mailboat_core::actions::set_trashed(
+    mail_core::actions::set_trashed(
         &state.db,
         |account| state.gmail_for(account),
         &thread_ids,
@@ -500,7 +500,7 @@ pub async fn label_create(
     name: String,
 ) -> CmdResult<Label> {
     let gmail = state.gmail_for(account_id)?.interactive();
-    let label = mailboat_core::labels::create(&state.db, &gmail, account_id, &name).await?;
+    let label = mail_core::labels::create(&state.db, &gmail, account_id, &name).await?;
     let _ = MailChangedEvent { account_id }.emit(&app);
     Ok(label)
 }
@@ -515,7 +515,7 @@ pub async fn label_rename(
     name: String,
 ) -> CmdResult<()> {
     let (account, _, _) = store::label_ref(&state.db.conn(), label_id)?;
-    mailboat_core::labels::rename(
+    mail_core::labels::rename(
         &state.db,
         |a| Ok(state.gmail_for(a)?.interactive()),
         label_id,
@@ -538,7 +538,7 @@ pub async fn label_delete(
     label_id: LabelId,
 ) -> CmdResult<()> {
     let (account, _, _) = store::label_ref(&state.db.conn(), label_id)?;
-    mailboat_core::labels::delete(
+    mail_core::labels::delete(
         &state.db,
         |a| Ok(state.gmail_for(a)?.interactive()),
         label_id,
@@ -560,7 +560,7 @@ pub async fn threads_set_spam(
     thread_ids: Vec<ThreadId>,
     spam: bool,
 ) -> CmdResult<()> {
-    mailboat_core::actions::set_spam(
+    mail_core::actions::set_spam(
         &state.db,
         |account| state.gmail_for(account),
         &thread_ids,
@@ -580,7 +580,7 @@ pub async fn threads_change_labels(
     add: Vec<LabelId>,
     remove: Vec<LabelId>,
 ) -> CmdResult<()> {
-    mailboat_core::actions::change_labels(
+    mail_core::actions::change_labels(
         &state.db,
         |account| state.gmail_for(account),
         &thread_ids,
@@ -673,7 +673,7 @@ pub async fn email_image_save(state: State<'_, AppState>, src: String) -> CmdRes
         .downloads_dir
         .clone()
         .ok_or_else(|| CoreError::Config("couldn't find the Downloads folder".into()))?;
-    let image = mailboat_core::mail::saved_image::load(&state.http, &src).await?;
+    let image = mail_core::mail::saved_image::load(&state.http, &src).await?;
     let target = attachments::unique_path(&downloads, &image.filename);
     std::fs::write(&target, &image.bytes)
         .map_err(|e| CoreError::Other(format!("could not save to Downloads: {e}")))?;
@@ -746,7 +746,7 @@ pub fn download_reveal(state: State<'_, AppState>, file_name: String) -> CmdResu
 #[tauri::command]
 #[specta::specta]
 pub async fn email_image_copy(state: State<'_, AppState>, src: String) -> CmdResult<()> {
-    let image = mailboat_core::mail::saved_image::load(&state.http, &src).await?;
+    let image = mail_core::mail::saved_image::load(&state.http, &src).await?;
     Ok(crate::email_menu::copy_image(&image.bytes).map_err(CoreError::Other)?)
 }
 
@@ -755,7 +755,7 @@ pub async fn email_image_copy(state: State<'_, AppState>, src: String) -> CmdRes
 #[tauri::command]
 #[specta::specta]
 pub fn email_link_open(app: AppHandle, link: String) -> CmdResult<()> {
-    let url = mailboat_core::mail::links::unwrap(&link)
+    let url = mail_core::mail::links::unwrap(&link)
         .ok_or_else(|| CoreError::Invalid("not a link Mailboat can open".into()))?;
     crate::links::open(&app, &url)
         .map_err(|e| CoreError::Other(format!("could not open the link: {e}")))?;
@@ -766,7 +766,7 @@ pub fn email_link_open(app: AppHandle, link: String) -> CmdResult<()> {
 #[tauri::command]
 #[specta::specta]
 pub fn email_link_copy(link: String) -> CmdResult<()> {
-    let url = mailboat_core::mail::links::unwrap(&link)
+    let url = mail_core::mail::links::unwrap(&link)
         .ok_or_else(|| CoreError::Invalid("not a link Mailboat can copy".into()))?;
     Ok(crate::email_menu::copy_text(&url).map_err(CoreError::Other)?)
 }
@@ -1386,7 +1386,7 @@ pub async fn spam_empty(
     app: AppHandle,
     state: State<'_, AppState>,
     accounts: AccountFilter,
-) -> CmdResult<mailboat_core::actions::EmptiedSpam> {
+) -> CmdResult<mail_core::actions::EmptiedSpam> {
     let ids: Vec<AccountId> = match accounts {
         AccountFilter::All => accounts::list(&state.db.conn())?
             .into_iter()
@@ -1394,8 +1394,8 @@ pub async fn spam_empty(
             .collect(),
         AccountFilter::Only(ids) => ids,
     };
-    let done = mailboat_core::actions::empty_spam(&state.db, |account| state.gmail_for(account), &ids)
-        .await?;
+    let done =
+        mail_core::actions::empty_spam(&state.db, |account| state.gmail_for(account), &ids).await?;
     for account_id in ids {
         let _ = MailChangedEvent { account_id }.emit(&app);
     }

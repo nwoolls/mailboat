@@ -5,8 +5,8 @@ mod common;
 use std::sync::atomic::Ordering;
 
 use common::*;
-use mailboat_core::gmail::parse;
-use mailboat_core::CoreError;
+use mail_core::gmail::parse;
+use mail_core::CoreError;
 use wiremock::matchers::{header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -214,7 +214,7 @@ async fn batch_fetches_threads_and_retries_rate_limited_parts() {
 
 #[test]
 fn parses_thread_metadata_into_store_input() {
-    let thread: mailboat_core::gmail::types::Thread =
+    let thread: mail_core::gmail::types::Thread =
         serde_json::from_str(&fixture("thread_t1.json")).unwrap();
     let incoming = parse::thread_to_incoming(&thread);
     assert_eq!(incoming.messages.len(), 2);
@@ -233,7 +233,7 @@ fn parses_thread_metadata_into_store_input() {
 
 #[test]
 fn extracts_bodies_and_attachments_from_full_message() {
-    let msg: mailboat_core::gmail::types::Message =
+    let msg: mail_core::gmail::types::Message =
         serde_json::from_str(&fixture("message_m3_full.json")).unwrap();
     let payload = msg.payload.as_ref().unwrap();
     let body = parse::extract_body(payload);

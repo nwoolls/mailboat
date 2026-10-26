@@ -1,12 +1,12 @@
 [package]
-name = "mailboat"
+name = "desktop"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Mailboat — a fast, keyboard-first Gmail client"
+description = "A fast, keyboard-first Gmail client: the desktop app (Tauri)"
 
 [lib]
-name = "mailboat_lib"
+name = "desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 # No doc examples to test, and looking for them rebuilt the whole app
 # (about 90 s of every `cargo test`).
@@ -16,7 +16,7 @@ doctest = false
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-mailboat-core = { path = "../crates/core" }
+mail-core = { path = "../crates/core" }
 tauri = { version = "2", features = ["macos-private-api"] }
 serde.workspace = true
 serde_json.workspace = true

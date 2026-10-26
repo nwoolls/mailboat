@@ -4,11 +4,11 @@
 mod common;
 
 use common::*;
-use mailboat_core::auth::oauth::GMAIL_SETTINGS_SCOPE;
-use mailboat_core::db::{accounts, Db};
-use mailboat_core::model::*;
-use mailboat_core::rules::{self, Importance, RuleActions, RuleCriteria, RulesState};
-use mailboat_core::CoreError;
+use mail_core::auth::oauth::GMAIL_SETTINGS_SCOPE;
+use mail_core::db::{accounts, Db};
+use mail_core::model::*;
+use mail_core::rules::{self, Importance, RuleActions, RuleCriteria, RulesState};
+use mail_core::CoreError;
 use serde_json::json;
 use wiremock::matchers::{body_json, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};

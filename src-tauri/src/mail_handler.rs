@@ -16,7 +16,7 @@
 
 use std::sync::Mutex;
 
-use mailboat_core::mail::mailto::{self, Mailto};
+use mail_core::mail::mailto::{self, Mailto};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::{AppHandle, Manager};

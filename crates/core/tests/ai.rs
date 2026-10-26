@@ -3,13 +3,13 @@
 //! accounts with the same Gmail IDs keep their own.
 #![cfg(unix)]
 
-use mailboat_core::ai::summaries::{self, SummaryKind};
-use mailboat_core::ai::tasks::{self, Summarized, SummaryRequest};
-use mailboat_core::ai::usage;
-use mailboat_core::ai::{AiProvider, Programs};
-use mailboat_core::db::store::{self, IncomingLabel, IncomingMessage, IncomingThread, StoredBody};
-use mailboat_core::db::{accounts, Db};
-use mailboat_core::model::*;
+use mail_core::ai::summaries::{self, SummaryKind};
+use mail_core::ai::tasks::{self, Summarized, SummaryRequest};
+use mail_core::ai::usage;
+use mail_core::ai::{AiProvider, Programs};
+use mail_core::db::store::{self, IncomingLabel, IncomingMessage, IncomingThread, StoredBody};
+use mail_core::db::{accounts, Db};
+use mail_core::model::*;
 
 fn add_account(db: &Db, sub: &str, email: &str) -> AccountId {
     let id = accounts::upsert(

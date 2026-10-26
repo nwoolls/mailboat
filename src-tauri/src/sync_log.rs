@@ -7,7 +7,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use mailboat_core::model::AccountId;
+use mail_core::model::AccountId;
 
 const MAX_BYTES: u64 = 5 * 1024 * 1024;
 

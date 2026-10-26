@@ -5,14 +5,14 @@
 mod common;
 
 use common::*;
-use mailboat_core::auth::oauth::{CALENDAR_SCOPE, SCOPES};
-use mailboat_core::calendar::{self, CalendarState};
-use mailboat_core::db::{accounts, store, Db};
-use mailboat_core::gmail::parse;
-use mailboat_core::gmail::types::Thread;
-use mailboat_core::mail::invite::{Answer, InviteKind, Moment};
-use mailboat_core::model::*;
-use mailboat_core::sync::fetch_body;
+use mail_core::auth::oauth::{CALENDAR_SCOPE, SCOPES};
+use mail_core::calendar::{self, CalendarState};
+use mail_core::db::{accounts, store, Db};
+use mail_core::gmail::parse;
+use mail_core::gmail::types::Thread;
+use mail_core::mail::invite::{Answer, InviteKind, Moment};
+use mail_core::model::*;
+use mail_core::sync::fetch_body;
 use wiremock::matchers::{body_json, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 

@@ -2,7 +2,7 @@
 // macOS 26+) and Apple's on-device translation (the Translation framework). Apple's model is only reachable from Swift, so Mailboat runs
 // this small program the way it runs the Claude and Codex command-line
 // tools: one JSON request on stdin, JSON lines on stdout. Built by
-// src-tauri/build.rs; the protocol is read in mailboat_core::ai::apple.
+// src-tauri/build.rs; the protocol is read in mail_core::ai::apple.
 //
 // Requests:  {"op":"status"}
 //            {"op":"respond","instructions":"…","prompt":"…","maxTokens":300}

@@ -8,9 +8,9 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use common::*;
-use mailboat_core::db::{accounts, query, store, Db};
-use mailboat_core::model::*;
-use mailboat_core::sync::*;
+use mail_core::db::{accounts, query, store, Db};
+use mail_core::model::*;
+use mail_core::sync::*;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -52,7 +52,7 @@ fn inbox(db: &Db, accounts: AccountFilter) -> Vec<ThreadSummary> {
     .threads
 }
 
-async fn run(db: &Db, server: &MockServer, account: AccountId) -> mailboat_core::Result<SyncOutcome> {
+async fn run(db: &Db, server: &MockServer, account: AccountId) -> mail_core::Result<SyncOutcome> {
     let (gmail, _) = client(&server.uri());
     let cfg = config();
     let progress = |_: SyncProgress| {};
@@ -434,18 +434,18 @@ async fn interrupted_full_sync_resumes_without_refetching() {
     let account = add_account(&db, "a");
     // Simulate t1 having been fetched by the interrupted attempt.
     store::begin_full_sync(&db.conn(), account, 9000).unwrap();
-    let t1: mailboat_core::gmail::types::Thread =
+    let t1: mail_core::gmail::types::Thread =
         serde_json::from_str(&fixture("thread_t1.json")).unwrap();
     store::upsert_thread(
         &mut db.conn(),
         account,
-        &mailboat_core::gmail::parse::thread_to_incoming(&t1),
+        &mail_core::gmail::parse::thread_to_incoming(&t1),
     )
     .unwrap();
 
     assert!(matches!(
         run(&db, &server, account).await,
-        Err(mailboat_core::CoreError::RateLimited(_))
+        Err(mail_core::CoreError::RateLimited(_))
     ));
     assert_eq!(
         store::history_id(&db.conn(), account).unwrap(),
@@ -537,12 +537,12 @@ async fn account_synced_under_old_scope_is_widened_without_refetching() {
     let db = Db::open_in_memory().unwrap();
     let account = add_account(&db, "a");
     // As if synced by the old INBOX/STARRED/SENT scope: t1 cached, cursor set.
-    let t1: mailboat_core::gmail::types::Thread =
+    let t1: mail_core::gmail::types::Thread =
         serde_json::from_str(&fixture("thread_t1.json")).unwrap();
     store::upsert_thread(
         &mut db.conn(),
         account,
-        &mailboat_core::gmail::parse::thread_to_incoming(&t1),
+        &mail_core::gmail::parse::thread_to_incoming(&t1),
     )
     .unwrap();
     store::set_history_id(&db.conn(), account, Some(9000), true).unwrap();

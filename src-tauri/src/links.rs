@@ -1,5 +1,5 @@
 //! Handles clicks on links inside emails (`mailboat-link:` scheme; see
-//! `mailboat_core::mail::links`). Follows MonoCode's `artifacts::serve_html`
+//! `mail_core::mail::links`). Follows MonoCode's `artifacts::serve_html`
 //! custom-scheme pattern.
 
 use tauri::http::{Request, Response};
@@ -9,7 +9,7 @@ use tauri::AppHandle;
 /// new message here) and answers 204 No Content, which tells the web view
 /// to keep showing the email.
 pub fn handle(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
-    let status = match mailboat_core::mail::links::unwrap(&request.uri().to_string()) {
+    let status = match mail_core::mail::links::unwrap(&request.uri().to_string()) {
         Some(url) => match open(app, &url) {
             Ok(()) => 204,
             Err(e) => {

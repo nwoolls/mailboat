@@ -4,13 +4,13 @@
 mod common;
 
 use common::*;
-use mailboat_core::attachments;
-use mailboat_core::db::{accounts, store, Db};
-use mailboat_core::gmail::parse;
-use mailboat_core::gmail::types::Thread;
-use mailboat_core::mail;
-use mailboat_core::model::*;
-use mailboat_core::sync::fetch_body;
+use mail_core::attachments;
+use mail_core::db::{accounts, store, Db};
+use mail_core::gmail::parse;
+use mail_core::gmail::types::Thread;
+use mail_core::mail;
+use mail_core::model::*;
+use mail_core::sync::fetch_body;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -89,7 +89,7 @@ async fn fetching_a_body_records_its_attachments_but_lists_only_files() {
     let gmail = client(&server.uri()).0;
 
     let thread = thread_of(&db, m2);
-    let summary = |db: &Db| mailboat_core::db::query::thread_summary(&db.conn(), thread);
+    let summary = |db: &Db| mail_core::db::query::thread_summary(&db.conn(), thread);
     assert!(!summary(&db).unwrap().has_attachments);
     fetch_body(&db, &gmail, m2).await.unwrap();
     // The fetched body is the real answer for the paperclip.
