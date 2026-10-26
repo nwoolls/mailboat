@@ -117,7 +117,8 @@ Settings → General → Email links opens that page).
 ## Check
 
 ```sh
-bun run check   # format, lint, type check, Vitest, clippy, cargo test, Playwright
+bun run check:quick   # while working: only what changed, fast tests only
+bun run check         # everything (format, lint, types, Vitest, clippy, cargo test, Playwright); before committing
 ```
 
 The browser tests (`tests/browser`, Playwright in WebKit) need WebKit once:

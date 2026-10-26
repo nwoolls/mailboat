@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 description = "Mailboat's sync, storage, auth and mail logic. No Tauri dependency, so it tests fast."
 
+[lib]
+# No doc examples to test; skipping the search keeps `cargo test` fast.
+doctest = false
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true

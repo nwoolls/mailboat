@@ -8,6 +8,9 @@ Agents write all the code, so:
 
 - Make work checkable: tests, type checks and the linter must pass, and you
   report their real output. Never claim something works without running it.
+- While iterating, run `bun run check:quick` (seconds to about a minute).
+  Run the full `bun run check` once, before committing. Never commit
+  without it passing.
 - Explain decisions in plain language. Never leave the owner to debug by hand.
 
 ## Docs to keep current
@@ -54,7 +57,8 @@ Commits: one topic each, imperative subject, a body that explains why.
 |---|---|
 | Install JS deps | `bun install` |
 | Run the app | `bun tauri dev` |
-| Everything (run before calling work done) | `bun run check` |
+| Quick checks while working (what changed, fast tests only) | `bun run check:quick` |
+| Everything (run before every commit) | `bun run check` |
 | Web checks only (format, lint, types, Vitest) | `bun run check:web` |
 | Rust checks only (fmt, clippy, cargo test) | `bun run check:rust` |
 | Rust tests only | `cargo test --workspace` |

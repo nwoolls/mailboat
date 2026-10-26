@@ -8,6 +8,9 @@ description = "Mailboat — a fast, keyboard-first Gmail client"
 [lib]
 name = "mailboat_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+# No doc examples to test, and looking for them rebuilt the whole app
+# (about 90 s of every `cargo test`).
+doctest = false
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

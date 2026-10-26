@@ -16,6 +16,7 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "check": "bun run check:web && bun run check:rust && bun run test:browser",
+    "check:quick": "scripts/check-quick.sh",
     "check:web": "bun run fmt:check && bun run lint && bun run typecheck && bun run test",
     "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace"
   },
