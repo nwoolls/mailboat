@@ -2149,7 +2149,11 @@ editor, and prompts and answers are never logged.*
 then the Release Spike. It was Milestone 10, after Writing. The Release
 Spike became Milestones 10–18, 2026-10-25.*
 
-- [ ] Windows build and testing; Linux nice-to-have. Broken into the
+**Closed (owner, 2026-10-25: "all approved").** Everything below was
+tried in the owner's Windows 11 VM (ARM). Linux, never started, moved to
+Later.
+
+- [x] Windows build and testing (Linux moved to Later). Broken into the
       items below *(started 2026-10-25)*
 - [x] Build for Windows from the Mac *(2026-10-25)*: `scripts/windows.sh
       check` (lints the whole workspace for Windows) and `build` (the
@@ -2169,23 +2173,22 @@ Spike became Milestones 10–18, 2026-10-25.*
       first look (2026-10-25, screenshot): fine, but the toolbar left
       room for macOS's window buttons; now only on the Mac. *Owner,
       2026-10-25: "the space in the toolbar seems fixed"*
-- [ ] Keyboard *(owner request, 2026-10-25)*: Ctrl where the Mac uses ⌘
+- [x] Keyboard *(owner request, 2026-10-25)*: Ctrl where the Mac uses ⌘
       and Ctrl+Alt for the Mac's ⌃⌘ (⌃⌘S is Ctrl+Alt+S), in shortcuts and
       every label that shows one (`shared/lib/platform`). Windows has no
       menu bar, so the window matches the menu's shortcuts itself there
       (Ctrl+R reply, Ctrl+N new, Ctrl+1–7 views, Ctrl+, Settings…), the
-      `?` sheet lists them as "With Ctrl". Built; to try in the VM
+      `?` sheet lists them as "With Ctrl". *Owner, 2026-10-25: "everything but MCP looks good"*
 - [x] Windows: scrollbars *(owner report, 2026-10-25, screenshot)*:
       Windows showed its classic always-on scrollbars, and a sideways
       one under the sidebar (its rows were a few pixels too wide). Now
       thin rounded bars that only show with the pointer over what they
       scroll, and no sideways scrolling in the sidebar or list. *Owner,
       2026-10-25: "the scrollbar issue seems fixed"*
-- [ ] "It sort of bounces" *(owner report, 2026-10-25)*: WebView2
+- [x] "It sort of bounces" *(owner report, 2026-10-25)*: WebView2
       bounces lists past their ends on a touchpad, which Windows apps
       don't; turned off on Windows. Also possible: the sidebar's sideways
-      scrolling (fixed above) or a swipe springing back. To check with
-      the owner whether it's gone
+      scrolling (fixed above) or a swipe springing back. *Owner, 2026-10-25: "everything but MCP looks good"*
 - [x] AI on Windows *(owner, 2026-10-25: hide Apple Intelligence where
       it can't run, on Windows or a Mac that can't run it, and offer the
       other providers for every feature)*: a new "unsupported" provider
@@ -2197,23 +2200,22 @@ Spike became Milestones 10–18, 2026-10-25.*
       Windows' own on-device model (Phi Silica) needs a Copilot+ PC and
       Microsoft's approval; Foundry Local (any PC) is a possible later
       on-device provider. *Owner, 2026-10-25: connecting worked*
-- [ ] Emails colored for dark mode showed on a white card on Windows,
+- [x] Emails colored for dark mode showed on a white card on Windows,
       with their light text barely readable *(owner report with a
       screenshot, 2026-10-25)*: Chromium (WebView2) paints a see-through
       frame white when its page's color scheme (none, so light) differs
       from the app's (dark). Adaptive emails now declare `light dark`.
       Shown in Chromium and WebKit with a test page; built, to try in
-      the VM
-- [ ] Dropdown lists in Settings showed some choices as pale grey on
+      the VM *Owner, 2026-10-25: "everything but MCP looks good"*
+- [x] Dropdown lists in Settings showed some choices as pale grey on
       white on Windows (WebView2 draws the list with the select's faded
       text color) *(owner's screenshot, 2026-10-25)*: solid theme colors
-      for the choices there. Built; to try in the VM
-- [ ] A console window flashed up for a few seconds whenever ChatGPT
+      for the choices there. *Owner, 2026-10-25: "everything but MCP looks good"*
+- [x] A console window flashed up for a few seconds whenever ChatGPT
       was used (choosing it in Settings → AI checks it) *(owner report,
       2026-10-25)*: Windows gives a command-line tool started by a
       windowed app its own console unless asked not to. Codex and Claude
-      Code now start with none (`CREATE_NO_WINDOW`). Built; to try in
-      the VM
+      Code now start with none (`CREATE_NO_WINDOW`). *Owner, 2026-10-25: "everything but MCP looks good"*
 - [x] Claude said to get Claude Code though the Claude app was
       installed *(owner report, 2026-10-25)*: Mailboat talks to Claude
       Code, which the Claude app carries but keeps where other programs
@@ -2244,15 +2246,15 @@ Spike became Milestones 10–18, 2026-10-25.*
       the Start menu shortcut's icon there, which notifications need
       Mailboat to have). Owner: "if we can't get that part working, let's
       just hide the feature". Hidden on Windows
-- [ ] AI apps (MCP) on Windows, first try *(owner report with
+- [x] AI apps (MCP) on Windows, first try *(owner report with
       screenshots, 2026-10-25)*: Claude Desktop said "Connected" but
       Mailboat didn't show in it, and Claude Code read "Not installed on this
       Mac". The Claude app is the Microsoft Store-style install, which
       reads a private copy of its settings (`Packages\Claude_*\LocalCache\
       Roaming\Claude`), so Mailboat now writes there when that's the
       install; Claude Code is also found inside the Claude app, and the
-      line no longer says Mac. To try in the VM (Connect again, then
-      quit and reopen Claude)
+      line no longer says Mac. *Owner, 2026-10-25: works once
+      connected ("all approved")*
 - [x] Email links (`mailto:`) on Windows *(owner, 2026-10-25: "do it now
       so we can consider Windows truly done")*: the installer registers
       Mailboat as an email app (`src-tauri/windows/installer.nsh`, per user;
@@ -2706,6 +2708,11 @@ again until the next spike.*
       Adapted colors forgets it. It was per message, until the app quit
 
 ## Later / unscheduled
+
+- [ ] Linux *(moved from Milestone 9 when it closed, 2026-10-25; it was
+      a "nice-to-have" there, never started)*: Tauri builds for Linux,
+      but nothing has been tried; the Windows work (`shared/lib/platform`,
+      Ctrl shortcuts, the named-pipe MCP) would mostly carry over
 
 - [ ] AI apps can label and archive conversations through the MCP server
       *(moved from AI Spike 2 when it closed, owner, 2026-10-25)*: each
