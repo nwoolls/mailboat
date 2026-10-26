@@ -2390,10 +2390,15 @@ to test a first launch over and over.*
       Sent, and a scripted reply can arrive). For screenshots, the
       README, the website, and the trailer (Milestone 16). The fake
       data is shared with the trailer and the browser tests' harness
-- [ ] A clean-start option alongside it: the app started with an empty
-      data folder of its own (no accounts, nothing in the keychain
-      under that name), so a first launch can be tried without touching
-      the owner's setup
+- [x] A clean-start option alongside it *(2026-10-26)*: the app started
+      with an empty data folder of its own (no accounts, nothing in the
+      keychain under that name), so a first launch can be tried without
+      touching the owner's setup. `bun run clean-start` (or
+      `--clean-start` on any copy): folder `<bundle ID>.clean-start`, its
+      own keychain name, web storage gone when it quits, all emptied at
+      every launch; no MCP server. Tried here: it opens and fills only
+      its own folder. *Owner to try: it opens at the "add an account"
+      screen and your own app is unchanged*
 
 ## Milestone 12: Onboarding and bring your own Google credentials
 

@@ -526,6 +526,22 @@ flowchart LR
   Claude Desktop by adding Mailboat to its config file (other entries kept,
   old file copied beside it, a file Mailboat can't read left alone).
 
+## Launch modes
+
+`src-tauri/src/mode.rs` reads how the app was started. Normally it uses the
+bundle ID's folders and keychain name. `--clean-start` gives it one folder
+of its own next to the normal one (`<bundle ID>.clean-start`, holding the
+database, config, cache and logs), keychain entries under
+`<bundle ID>.clean-start`, and an incognito web view (its saved settings
+and recent searches vanish when it quits). The folder and the keychain
+entries its accounts left are emptied at every clean start. Outside the
+normal mode the window remembers its place in its own file, Windows'
+single-copy handover is off, and the MCP server isn't started (its socket
+lives in the normal folder, and AI apps should keep reaching the normal
+copy). The main window is created in code (`create: false` in the config
+files) so the web view's storage can be chosen, after the app state is in
+place.
+
 ## Decisions
 
 | Date | Decision | Why |
@@ -662,3 +678,4 @@ flowchart LR
 | 2026-10-26 | Two levels of checks: `bun run check:quick` while working, `bun run check` (everything) before each commit; Rust doc-tests turned off (`doctest = false`) | The full run had grown to about 7 minutes and was run after every change. Of that, about 90 s was rustdoc rebuilding the whole app to look for doc examples, and there are none. The quick check covers only what the uncommitted changes touch and skips the Gmail tests in `crates/core/tests` and the browser tests, so a change takes 10 s (web) to about 75 s (a Rust edit). Nothing gets committed without the full run. Turn doc-tests back on if a doc example is ever added. |
 | 2026-10-26 | The translation card moved above the email, below the images line (replaces "under the email" from 2026-10-24) | Under a long email the card landed out of sight. Still outside the email's frame, which runs no scripts, so the email itself stays untouched. The owner tried it in the app and chose it. |
 | 2026-10-26 | The brand in one file (`brand.json`), every other name neutral (`mail-core`, `desktop`, `ai-helper`, `email-link:`, `mail.sqlite3`, `prefs.*`), guarded by `check:brand` | The owner hasn't settled on a name. With this, a new name is `brand.json`, `tauri.conf.json` (test-checked), the icons, the docs and the bundle-ID migration. Constants that need the name use `concat!(env!("BRAND_NAME"), …)`, since `concat!` takes only literals. Existing installs keep their old database file and settings names until that migration, because the installed app shares the data folder. The local folder stays: renaming it would cut Claude Code off from this project's memory. |
+| 2026-10-26 | Clean start (`--clean-start`): a sibling folder `<bundle ID>.clean-start`, its own keychain name, an incognito web view, all emptied at every launch | Milestone 11. A sibling folder rather than one inside the normal folder, so nothing that walks or migrates the normal folder trips over it. The keychain can't list entries, so the previous run's accounts are read from its database to delete their tokens. Incognito (WKWebView's non-persistent store, WebView2's InPrivate) rather than a separate store, since it should be fresh each time anyway. |

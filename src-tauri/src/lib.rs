@@ -12,6 +12,7 @@ mod links;
 mod mail_handler;
 mod mcp;
 mod menu;
+mod mode;
 mod notifications;
 mod state;
 mod sync_log;
@@ -175,15 +176,21 @@ pub fn run() {
     #[cfg(debug_assertions)]
     export_bindings(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(BINDINGS_PATH));
 
+    let mode = mode::Mode::from_args(std::env::args().skip(1));
     let app = tauri::Builder::default();
     // Windows starts a second copy for a mailto: link clicked while the app
     // is open: it hands the link over and quits (must be the first
     // plugin). Not on the Mac, where macOS hands links to the running
-    // copy itself and a dev build may run next to the installed one.
+    // copy itself and a dev build may run next to the installed one. A
+    // clean start runs next to the normal copy, so it doesn't hand over.
     #[cfg(windows)]
-    let app = app.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-        mail_handler::open_args(app, argv.into_iter().skip(1));
-    }));
+    let app = if mode.is_normal() {
+        app.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            mail_handler::open_args(app, argv.into_iter().skip(1));
+        }))
+    } else {
+        app
+    };
     app
         // Remembers the window's position, size and maximized/full-screen
         // state between launches (Rust only: no web permission).
@@ -195,6 +202,7 @@ pub fn run() {
                         | tauri_plugin_window_state::StateFlags::MAXIMIZED
                         | tauri_plugin_window_state::StateFlags::FULLSCREEN,
                 )
+                .with_filename(mode.window_state_file())
                 .build(),
         )
         // New-mail notifications, shown from Rust (no web permission).
@@ -215,9 +223,16 @@ pub fn run() {
             trackpad::watch(app.handle());
             email_menu::install(app.handle());
             notifications::install(app.handle());
-            let data_dir = app.path().app_data_dir()?;
-            let config_dir = app.path().app_config_dir()?;
-            let db = Arc::new(Db::open(&mail_core::db::path_in(&data_dir))?);
+            let dirs = mode::prepare(
+                mode,
+                mode::Dirs {
+                    data: app.path().app_data_dir()?,
+                    config: app.path().app_config_dir()?,
+                    cache: app.path().app_cache_dir()?,
+                    logs: app.path().app_log_dir()?,
+                },
+            )?;
+            let db = Arc::new(Db::open(&mail_core::db::path_in(&dirs.data))?);
             let http = mail_core::reqwest::Client::builder()
                 .user_agent(format!(
                     "{}/{}",
@@ -226,7 +241,7 @@ pub fn run() {
                 ))
                 .timeout(std::time::Duration::from_secs(60))
                 .build()?;
-            let sync_log = Arc::new(sync_log::SyncLog::open(&app.path().app_log_dir()?));
+            let sync_log = Arc::new(sync_log::SyncLog::open(&dirs.logs));
             let supervisor = Supervisor::new(
                 tauri::async_runtime::handle().inner().clone(),
                 db.clone(),
@@ -237,7 +252,7 @@ pub fn run() {
                 }),
                 SyncConfig {
                     images: Some(mail_core::mail::prefetch::Prefetch::new(
-                        app.path().app_cache_dir()?.join("images"),
+                        dirs.cache.join("images"),
                     )?),
                     ..SyncConfig::default()
                 },
@@ -246,11 +261,11 @@ pub fn run() {
             let state = AppState::new(
                 db.clone(),
                 http,
-                Arc::new(mail_core::auth::KeyringStore),
+                Arc::new(mode.secrets()),
                 supervisor,
                 AppDirs {
-                    config: config_dir,
-                    cache: app.path().app_cache_dir()?,
+                    config: dirs.config,
+                    cache: dirs.cache,
                     downloads: app.path().download_dir().ok(),
                 },
                 sync_log,
@@ -266,7 +281,12 @@ pub fn run() {
             theme::apply(app.handle(), saved.theme);
             state.resume_all_accounts()?;
             app.manage(state);
-            mcp::start(app.handle().clone(), db.clone());
+            open_window(app, mode)?;
+            // AI apps reach the app through a socket in the normal data
+            // folder; another mode's copy leaves it to the normal one.
+            if mode.is_normal() {
+                mcp::start(app.handle().clone(), db.clone());
+            }
             ai::run_line_queue(app.handle().clone());
             watch_other_copies(app.handle().clone(), db.clone());
             badge::watch(app.handle().clone(), db.clone());
@@ -294,6 +314,25 @@ pub fn run() {
                 dock::show_at_launch(app_icon::png(choice.as_deref()));
             }
         });
+}
+
+/// The main window, from the config file (where it isn't created by
+/// itself, so it opens after the state its first requests need). Outside
+/// the normal mode its web storage (saved settings, recent searches) is
+/// its own and gone when it quits.
+fn open_window(app: &tauri::App, mode: mode::Mode) -> tauri::Result<()> {
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|w| w.label == "main")
+        .cloned()
+        .ok_or_else(|| tauri::Error::WindowNotFound)?;
+    tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?
+        .incognito(!mode.is_normal())
+        .build()?;
+    Ok(())
 }
 
 /// Another copy of the app (say a dev build next to the installed app)

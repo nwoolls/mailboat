@@ -86,6 +86,26 @@ bun tauri dev
 The first sync of an account takes a while (Gmail's per-user quota limits
 the pace); the inbox fills in first. Later syncs only fetch changes.
 
+### A first launch, again and again (clean start)
+
+```sh
+bun run clean-start
+```
+
+Starts the app as if it had never run: no accounts, no settings, no OAuth
+client file. It keeps to a folder of its own
+(`~/Library/Application Support/com.nwoolls.mailboat.clean-start`), its own
+keychain name (`com.nwoolls.mailboat.clean-start`) and web storage that's
+gone when it quits, and all of it is emptied at the next clean start.
+Your own accounts, mail and settings aren't touched, and the AI apps
+connection (MCP) stays with the normal copy.
+
+`bun run clean-start` starts its own dev server, so stop `bun tauri dev`
+first, or start the built dev copy next to it:
+`target/debug/Mailboat.app/Contents/MacOS/mailboat --clean-start`. An installed
+copy takes the same flag: `open -n -a Mailboat --args --clean-start` on the
+Mac, `Mailboat.exe --clean-start` on Windows.
+
 ## Windows (built on the Mac)
 
 Mailboat for Windows is built on the Mac and tried in a Windows VM. One-time

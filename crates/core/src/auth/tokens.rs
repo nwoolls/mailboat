@@ -27,11 +27,29 @@ pub trait SecretStore: Send + Sync {
 }
 
 /// macOS Keychain / Windows Credential Manager / Linux Secret Service.
-pub struct KeyringStore;
+/// Entries are filed under a service name: the bundle ID, or another one
+/// for a copy of the app that must not see the owner's (the clean start).
+pub struct KeyringStore {
+    service: String,
+}
+
+impl Default for KeyringStore {
+    fn default() -> Self {
+        Self::with_service(KEYCHAIN_SERVICE)
+    }
+}
+
+impl KeyringStore {
+    pub fn with_service(service: &str) -> Self {
+        Self {
+            service: service.to_string(),
+        }
+    }
+}
 
 impl SecretStore for KeyringStore {
     fn get(&self, key: &str) -> Result<Option<String>> {
-        let entry = keyring::Entry::new(KEYCHAIN_SERVICE, key).map_err(keychain_err)?;
+        let entry = keyring::Entry::new(&self.service, key).map_err(keychain_err)?;
         match entry.get_password() {
             Ok(v) => Ok(Some(v)),
             Err(keyring::Error::NoEntry) => Ok(None),
@@ -40,13 +58,13 @@ impl SecretStore for KeyringStore {
     }
 
     fn set(&self, key: &str, value: &str) -> Result<()> {
-        keyring::Entry::new(KEYCHAIN_SERVICE, key)
+        keyring::Entry::new(&self.service, key)
             .and_then(|e| e.set_password(value))
             .map_err(keychain_err)
     }
 
     fn delete(&self, key: &str) -> Result<()> {
-        let entry = keyring::Entry::new(KEYCHAIN_SERVICE, key).map_err(keychain_err)?;
+        let entry = keyring::Entry::new(&self.service, key).map_err(keychain_err)?;
         match entry.delete_credential() {
             Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
             Err(e) => Err(keychain_err(e)),

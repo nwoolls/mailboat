@@ -4,6 +4,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "dragDropEnabled": false,
         "title": "Mailboat",
         "width": 1280,
