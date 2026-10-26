@@ -8,6 +8,7 @@ import { imageNotice } from "../model/imageNotice";
 import { InviteCard } from "./InviteCard";
 import { AttachmentList } from "./AttachmentList";
 import { useTextZoom } from "../../settings/ui/textSize";
+import { TranslationCard } from "../../ai/ui/TranslationCard";
 
 /**
  * Shows one message's sanitized HTML.
@@ -233,6 +234,9 @@ export function MessageFrame({ messageId }: { messageId: MessageId }) {
           <div className="mb-1.5 flex justify-end px-3 text-xs text-content/45">{colors}</div>
         )
       )}
+      {/* Above the email, not under it, where a long email hid it (owner,
+          2026-10-26). */}
+      <TranslationCard messageId={messageId} />
       <div>
         <iframe
           ref={frameRef}

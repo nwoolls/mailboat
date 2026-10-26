@@ -5,7 +5,7 @@ import { languageLabel } from "../model/translate";
 import { newRequestId } from "./stream";
 
 /**
- * Translations of text selected in emails, shown under each email
+ * Translations of text selected in emails, shown above each email
  * (`TranslationCard`) without changing it, one per email, kept while
  * Mailboat runs.
  */

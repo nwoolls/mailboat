@@ -17,7 +17,6 @@ import { useTextZoom } from "../../settings/ui/textSize";
 import { EmailContextMenu } from "./EmailContextMenu";
 import { ThreadSummaryCard } from "../../ai/ui/ThreadSummaryCard";
 import { MessageFrame } from "./MessageFrame";
-import { TranslationCard } from "../../ai/ui/TranslationCard";
 
 /**
  * Messages expanded when a thread opens: unread ones plus the newest.
@@ -268,7 +267,6 @@ function ThreadBody({
                   {opened.has(m.id) && (
                     <div className="px-4 pb-4">
                       <MessageFrame messageId={m.id} />
-                      <TranslationCard messageId={m.id} />
                     </div>
                   )}
                 </Fold>

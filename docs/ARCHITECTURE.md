@@ -451,8 +451,10 @@ flowchart LR
   languages already downloaded; then the writing provider, if set up,
   with only the text. The language of a conversation is told on the Mac
   (NaturalLanguage, `ai_conversation_language`). In an email the
-  translation shows in a card under it (`TranslationCard`); in the
-  composer it replaces the selection like a rewrite.
+  translation shows in a card above it, below the images line
+  (`TranslationCard`), kept in memory only, so a restart loses it (a
+  known limitation, in the roadmap's Later); in the composer it replaces
+  the selection like a rewrite.
 - **Commands:** Summarize and Reply with AI are also in the shared
   command list (`features/commands`), so ⌘K, the menu bar and the
   right-click menu offer them. A summary asked for that way goes through
@@ -630,3 +632,4 @@ flowchart LR
 | 2026-10-25 | Three release plans kept side by side in `docs/RELEASE.md` (closed and paid; open source with each user's own Google credentials; hybrid, open source first with a paid no-setup option later); none chosen yet, the owner leans hybrid. The Polar, trial, price and Cloudflare rows above apply to the paid parts | Each user's own credentials avoid Google's verification, security assessment and 100-user limit entirely, at the cost of a 10–15 minute setup, so they make a free first stage that costs nothing and shows whether people care. The hybrid keeps one app and one bundle ID for both ways of signing in (each account already records its OAuth client), puts no features behind payment, and keeps the update address on the owned domain and the copyright with the owner, so neither direction is closed off. |
 | 2026-10-25 | Release Plan 3 chosen (open source first with each user's own Google credentials, paid no-setup option only if wanted); the Release Spike became Milestones 10–18 | The owner's choice. Each milestone ends with something usable on its own (rename, Demo mode, onboarding with the credentials setup, an independent code review, public code, signed builds and updates, website, launch, then the optional paid option; AI Spike 2 and Windows are finished first), so work can stop after any of them. The public repository starts from a cleaned history; the original private repository is kept offline as an archive. Personal accounts are fine for the open-source stage, so the paid plan's brand-identity steps were dropped; scrubbed real-mail fixtures moved to Later as a leak risk in a public repository. |
 | 2026-10-26 | Two levels of checks: `bun run check:quick` while working, `bun run check` (everything) before each commit; Rust doc-tests turned off (`doctest = false`) | The full run had grown to about 7 minutes and was run after every change. Of that, about 90 s was rustdoc rebuilding the whole app to look for doc examples, and there are none. The quick check covers only what the uncommitted changes touch and skips the Gmail tests in `crates/core/tests` and the browser tests, so a change takes 10 s (web) to about 75 s (a Rust edit). Nothing gets committed without the full run. Turn doc-tests back on if a doc example is ever added. |
+| 2026-10-26 | The translation card moved above the email, below the images line (replaces "under the email" from 2026-10-24) | Under a long email the card landed out of sight. Still outside the email's frame, which runs no scripts, so the email itself stays untouched. The owner tried it in the app and chose it. |

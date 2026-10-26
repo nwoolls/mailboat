@@ -5,7 +5,7 @@ import { closeTranslation, useTranslation } from "./translations";
 
 /**
  * The translation of text selected in this email (Translate selection),
- * under it, leaving the email itself as it was.
+ * above it (below the images line), leaving the email itself as it was.
  */
 export function TranslationCard({ messageId }: { messageId: MessageId }) {
   const t = useTranslation(messageId);
@@ -15,7 +15,7 @@ export function TranslationCard({ messageId }: { messageId: MessageId }) {
     <section
       aria-label="Translation"
       aria-busy={t.state === "working"}
-      className="mt-2 rounded-[10px] px-3.5 pt-2 pb-2.5 ring-1 ring-stroke ring-inset"
+      className="mb-3 rounded-[10px] px-3.5 pt-2 pb-2.5 ring-1 ring-stroke ring-inset"
     >
       <header className="flex h-6 items-center gap-1.5 text-xs text-content/50">
         <TranslateIcon

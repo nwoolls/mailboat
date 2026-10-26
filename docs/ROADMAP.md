@@ -2330,9 +2330,10 @@ screenshots that follow carry the new name from the start.*
 - [ ] Email on the domain for security reports and anything that
       shouldn't be a public GitHub issue (Cloudflare Email Routing,
       free, forwarding to the owner)
-- [ ] Move the translation card *(owner, 2026-10-26)*: today it shows
-      under the email; probably above the message instead, below the
-      line with "Images shown". Where exactly is to discuss with the owner
+- [x] Move the translation card *(owner, 2026-10-26)*: it showed
+      under the email, where a long email pushed it out of sight. Now
+      above the message, below the line with "Images shown" (inside
+      `MessageFrame`). Confirmed in the app by the owner, 2026-10-26
 
 ## Milestone 11: Demo mode
 
