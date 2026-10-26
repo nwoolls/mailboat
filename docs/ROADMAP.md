@@ -2231,6 +2231,10 @@ Spike became Milestones 10–18, 2026-10-25.*
       containers), which stopped the wheel reaching the reader. Now only
       on what scrolls. A Chromium browser test (`windows-scroll.spec.ts`)
       failed before and passes now. Built; to try in the VM
+- [ ] The icon looked shrunk on Windows *(owner report, 2026-10-25)*:
+      the Mac art keeps Apple's margin around the tile, but Windows draws
+      icons edge to edge. `icon.ico` now comes from a cropped copy,
+      `design/icon/mailboat-icon-windows.svg`. To try in the VM
 - [x] No count next to Starred *(owner, 2026-10-25, while trying the
       Windows build: Gmail shows none and it's not actionable)*. Inbox,
       Drafts and labels keep theirs
