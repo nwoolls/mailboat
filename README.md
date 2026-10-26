@@ -131,7 +131,7 @@ bunx playwright install webkit
 
 | What | Where |
 |---|---|
-| Mail cache (SQLite) | `~/Library/Application Support/com.nwoolls.mailboat/mailboat.sqlite3` |
+| Mail cache (SQLite) | `~/Library/Application Support/com.nwoolls.mailboat/mail.sqlite3` (`mailboat.sqlite3` in installs from before 2026-10-26) |
 | OAuth client file | `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json` |
 | Sign-in tokens | macOS Keychain, service `com.nwoolls.mailboat` |
 | Sync log | `~/Library/Logs/com.nwoolls.mailboat/sync.log` |

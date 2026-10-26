@@ -48,6 +48,14 @@ TypeScript:
 - Derive state during render instead of setting state in effects (the
   linter enforces this).
 
+Brand: the app's name isn't settled, so only `brand.json` (plus Tauri's
+config files, the docs and the artwork) names it. Rust takes it from
+`mail_core::brand` (`NAME`, `SHORT_NAME`, `ID`, `ENV_PREFIX`;
+`env!("BRAND_NAME")` inside `concat!` for constants), the UI from
+`APP_NAME` (`src/shared/lib/brand.ts`), and comments say "the app".
+Every other name is neutral. `bun run check:brand` (part of every check)
+fails otherwise.
+
 Commits: one topic each, imperative subject, a body that explains why.
 - Make small, focused commits with clear messages.
 
@@ -59,7 +67,8 @@ Commits: one topic each, imperative subject, a body that explains why.
 | Run the app | `bun tauri dev` |
 | Quick checks while working (what changed, fast tests only) | `bun run check:quick` |
 | Everything (run before every commit) | `bun run check` |
-| Web checks only (format, lint, types, Vitest) | `bun run check:web` |
+| Web checks only (format, lint, types, brand, Vitest) | `bun run check:web` |
+| The app's name only in `brand.json` | `bun run check:brand` |
 | Rust checks only (fmt, clippy, cargo test) | `bun run check:rust` |
 | Rust tests only | `cargo test --workspace` |
 | Frontend tests only | `bun run test` |

@@ -3,6 +3,7 @@
 # uncommitted changes touch, and only the fast tests. `bun run check` runs
 # everything and stays the rule before every commit.
 #
+# Always: the app's name only in brand.json (scripts/check-brand.ts).
 # Web changes: format, lint, types, Vitest (seconds).
 # Rust changes: format, clippy, the core unit tests, the multi-account
 # guard test and the app layer's tests (which include the bindings check).
@@ -16,6 +17,9 @@ if [ -z "$changed" ]; then
   echo "check:quick: no uncommitted changes"
   exit 0
 fi
+
+# Fast, and any change can bring the app's name back.
+bun run check:brand
 
 web=false
 rust=false

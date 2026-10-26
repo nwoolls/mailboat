@@ -2316,7 +2316,7 @@ screenshots that follow carry the new name from the start.*
       turns something up. Name checks already done are in
       `docs/RELEASE.md` → Name checks
 - [ ] Owner: search "the alternative name" for software at tmsearch.uspto.gov
-- [ ] Neutral code names, one brand file *(owner, 2026-10-26: the name
+- [x] Neutral code names, one brand file *(owner, 2026-10-26: the name
       isn't settled yet, so the code shouldn't depend on it)*. Every
       name that isn't branding becomes neutral, and everything that is
       comes from one `brand.json` (name, short name, bundle ID,
@@ -2348,7 +2348,7 @@ screenshots that follow carry the new name from the start.*
         MCP server's name, Windows' registration, the
         `<PREFIX>_GOOGLE_*` variables, the user agent; comments say
         "the app"
-  - [ ] Docs: README, CLAUDE.md and ARCHITECTURE describe the brand
+  - [x] Docs: README, CLAUDE.md and ARCHITECTURE describe the brand
         file. Dated history in ROADMAP and ARCHITECTURE stays as
         written. The local folder stays (renaming
         it would cut Claude Code off from this project's memory)
