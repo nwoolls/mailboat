@@ -2253,7 +2253,7 @@ Spike became Milestones 10–18, 2026-10-25.*
       install; Claude Code is also found inside the Claude app, and the
       line no longer says Mac. To try in the VM (Connect again, then
       quit and reopen Claude)
-- [ ] Email links (`mailto:`) on Windows *(owner, 2026-10-25: "do it now
+- [x] Email links (`mailto:`) on Windows *(owner, 2026-10-25: "do it now
       so we can consider Windows truly done")*: the installer registers
       Mailboat as an email app (`src-tauri/windows/installer.nsh`, per user;
       the uninstaller removes it), so it's offered in Settings → Apps →
@@ -2262,7 +2262,9 @@ Spike became Milestones 10–18, 2026-10-25.*
       Windows Settings") and says which app has links now. A link
       starts Mailboat with it as an argument; with Mailboat already open, the
       new copy hands it over and quits (single-instance plugin, Windows
-      only). To try in the VM
+      only). *Owner, 2026-10-25: picked Mailboat in Default apps (under
+      MAILTO, clicking Outlook to change it) and a link opened a new
+      message*
 - [x] No count next to Starred *(owner, 2026-10-25, while trying the
       Windows build: Gmail shows none and it's not actionable)*. Inbox,
       Drafts and labels keep theirs
