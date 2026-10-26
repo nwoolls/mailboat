@@ -333,4 +333,32 @@ mod tests {
             "src/platform/tauri/bindings.ts was out of date and has been regenerated; commit the new file"
         );
     }
+
+    /// Tauri reads the app's name and ID from its own config files, not
+    /// `brand.json`, so they're checked to match it.
+    #[test]
+    fn tauri_config_matches_the_brand() {
+        use mailboat_core::brand;
+        let read = |file: &str| -> serde_json::Value {
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(file);
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+        };
+        let conf = read("tauri.conf.json");
+        assert_eq!(
+            conf["productName"],
+            brand::NAME,
+            "tauri.conf.json productName"
+        );
+        assert_eq!(conf["identifier"], brand::ID, "tauri.conf.json identifier");
+        assert_eq!(
+            conf["mainBinaryName"],
+            brand::SHORT_NAME,
+            "tauri.conf.json mainBinaryName"
+        );
+        for file in ["tauri.conf.json", "tauri.windows.conf.json"] {
+            for window in read(file)["app"]["windows"].as_array().unwrap() {
+                assert_eq!(window["title"], brand::NAME, "{file} window title");
+            }
+        }
+    }
 }

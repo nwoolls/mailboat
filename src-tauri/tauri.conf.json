@@ -3,6 +3,7 @@
   "productName": "Mailboat",
   "version": "0.1.0",
   "identifier": "com.nwoolls.mailboat",
+  "mainBinaryName": "mailboat",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",

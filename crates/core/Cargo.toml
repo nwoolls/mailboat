@@ -9,6 +9,9 @@ description = "Mailboat's sync, storage, auth and mail logic. No Tauri dependenc
 # No doc examples to test; skipping the search keeps `cargo test` fast.
 doctest = false
 
+[build-dependencies]
+serde_json.workspace = true
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true

@@ -7,6 +7,7 @@ pub mod actions;
 pub mod ai;
 pub mod attachments;
 pub mod auth;
+pub mod brand;
 pub mod calendar;
 pub mod compose;
 pub mod db;

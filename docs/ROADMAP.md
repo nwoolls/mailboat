@@ -2322,7 +2322,7 @@ screenshots that follow carry the new name from the start.*
       comes from one `brand.json` (name, short name, bundle ID,
       environment prefix), so picking a name is one file, the icons and
       the migration below. Six commits, each passing the full check:
-  - [ ] `brand.json`, read by Rust when it builds and by the UI; a test
+  - [x] `brand.json`, read by Rust when it builds and by the UI; a test
         that `src-tauri/tauri.conf.json` (name, ID, program name, which
         Tauri can't read from elsewhere) matches it; a check that fails
         if the brand name shows up anywhere else

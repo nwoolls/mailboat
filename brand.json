@@ -1,0 +1,6 @@
+{
+  "name": "Mailboat",
+  "shortName": "mailboat",
+  "id": "com.nwoolls.mailboat",
+  "envPrefix": "MAILBOAT"
+}
