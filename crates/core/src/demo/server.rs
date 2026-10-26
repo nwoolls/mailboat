@@ -14,12 +14,23 @@ use tokio::net::{TcpListener, TcpStream};
 
 use super::data::{self, AttachmentData, Conversation, DemoData, Person};
 use super::mailbox::Mailbox;
+use crate::ai::summaries::SummaryKind;
 use crate::db::now_millis;
 use crate::error::{CoreError, Result};
 use crate::gmail::types::{Filter, Vacation};
 
 /// Told which account (by address) has new mail, so the app syncs it now
 /// rather than at its next scheduled pass.
+/// A conversation's ready-made summary.
+#[derive(Debug, Clone)]
+pub struct Summary {
+    pub account: String,
+    /// Its Gmail thread ID.
+    pub thread: String,
+    pub kind: SummaryKind,
+    pub text: String,
+}
+
 pub type OnChange = Arc<dyn Fn(&str) + Send + Sync>;
 
 #[derive(Debug, Clone)]
@@ -44,8 +55,7 @@ struct State {
     mailboxes: HashMap<String, Mailbox>,
     /// (account, thread) → what the other person answers.
     replies: HashMap<(String, String), String>,
-    /// (account, thread, one-line summary).
-    summaries: Vec<(String, String, String)>,
+    summaries: Vec<Summary>,
 }
 
 #[derive(Clone)]
@@ -145,9 +155,8 @@ impl FakeGoogle {
         }
     }
 
-    /// The conversations' one-line summaries: (account, Gmail thread
-    /// ID, summary).
-    pub fn summaries(&self) -> Vec<(String, String, String)> {
+    /// The conversations' summaries, for the list and the reader.
+    pub fn summaries(&self) -> Vec<Summary> {
         self.state.lock().unwrap().summaries.clone()
     }
 
@@ -676,9 +685,25 @@ impl State {
             thread = Some(thread_id);
             references.push(message_id);
         }
-        if let (Some(summary), Some(thread)) = (&c.summary, &thread) {
-            self.summaries
-                .push((email.to_string(), thread.clone(), summary.clone()));
+        if let Some(thread) = &thread {
+            let brief: Vec<String> = c.brief.iter().map(|p| format!("- {p}")).collect();
+            let kinds = [
+                (SummaryKind::Line, c.summary.clone()),
+                (
+                    SummaryKind::Full,
+                    (!brief.is_empty()).then(|| brief.join("\n")),
+                ),
+            ];
+            for (kind, text) in kinds {
+                if let Some(text) = text {
+                    self.summaries.push(Summary {
+                        account: email.to_string(),
+                        thread: thread.clone(),
+                        kind,
+                        text,
+                    });
+                }
+            }
         }
         if let (Some(reply), Some(thread)) = (&c.reply, thread) {
             self.replies

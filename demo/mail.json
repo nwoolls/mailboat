@@ -101,6 +101,11 @@
         {
           "labels": ["INBOX", "STARRED", "IMPORTANT", "Travel"],
           "summary": "Maya found flights for 16–23 May and wants to book the Alfama apartment by Friday.",
+          "brief": [
+            "Maya wants to book Casa Azul in Alfama for 16–23 May, and asks you to confirm.",
+            "Book by Friday: the host says someone else asked about those dates.",
+            "Flights for the week of 16 May are cheap; her draft itinerary is attached."
+          ],
           "reply": "Perfect, that works for me! I'll book the apartment tonight and send you the details. 🎉",
           "messages": [
             {
@@ -137,6 +142,11 @@
         {
           "labels": ["INBOX", "Travel"],
           "summary": "Tomás confirmed Casa Azul for 16–23 May; check-in from 3 pm, guide attached.",
+          "brief": [
+            "Casa Azul is available 16–23 May.",
+            "Check-in from 3 pm; Tomás meets you with the keys.",
+            "A neighbourhood guide (bakeries, viewpoint, fado) is attached."
+          ],
           "reply": "Obrigado, Alex! See you in May. Tomás",
           "messages": [
             {
@@ -182,6 +192,10 @@
         {
           "labels": ["INBOX"],
           "summary": "Mom asks if you can come to Sunday dinner at 6 and bring dessert.",
+          "brief": [
+            "Mom invites you to dinner on Sunday around 6; your aunt is visiting.",
+            "She asks you to bring a dessert."
+          ],
           "reply": "Wonderful! See you Sunday. Love, Mom",
           "messages": [
             {
@@ -352,6 +366,11 @@
         {
           "labels": ["INBOX", "IMPORTANT"],
           "summary": "Priya invites you to quarterly planning tomorrow, 10–11:30, at the studio.",
+          "brief": [
+            "Quarterly planning is tomorrow, 10:00–11:30, at the studio's big table.",
+            "Agenda: next quarter's goals, the client pipeline and the studio move.",
+            "Bring one idea you'd like the team to try."
+          ],
           "messages": [
             {
               "from": "priya",
@@ -373,6 +392,12 @@
         {
           "labels": ["INBOX", "STARRED", "IMPORTANT", "Clients/Fernhill"],
           "summary": "Lena loves direction B, wants a warmer green and the logo tested on cups by Thursday.",
+          "brief": [
+            "Lena now also wants the leaf on its own, as a stamp for paper bags; Thursday still works.",
+            "Fernhill chose direction B, the hand-drawn leaf.",
+            "Their notes: a warmer green, more letter spacing, mock-ups on cups, bags and the sign.",
+            "You agreed to deliver; Jordan is copied for the timeline."
+          ],
           "reply": "Thanks Alex, that's great. Looking forward to Thursday! Lena",
           "messages": [
             {
@@ -405,6 +430,10 @@
         {
           "labels": ["INBOX"],
           "summary": "Jordan wants your eyes on the new onboarding flow before Wednesday's client call.",
+          "brief": [
+            "Jordan asks you to review the Fernhill app's onboarding flow before Wednesday's call.",
+            "The worry is the second screen, which may ask for too much too soon."
+          ],
           "reply": "Thank you! I'll fold your notes in before Wednesday. J.",
           "messages": [
             {

@@ -2396,7 +2396,12 @@ to test a first launch over and over.*
       arriving 45 s in). Tried here: it opens with both accounts synced
       and summaries in place, in its own folder. *Owner to try: it
       looks right, and replying to Maya's "Lisbon in May?" brings her
-      answer*
+      answer* *Owner, 2026-10-26: "replying worked, and I got a reply
+      back"; but no summary appeared above an opened email: the reader
+      summary only comes by itself for conversations over 700
+      characters, and the demo's are shorter. The main six now bring
+      their own (`brief` in `demo/mail.json`). List summaries didn't
+      show either: under investigation (the app did ask for them)*
   - [ ] The browser tests' harness reads `demo/mail.json` too (it still
         has its own made-up data); the trailer (Milestone 16) will
 - [x] A clean-start option alongside it *(2026-10-26)*: the app started

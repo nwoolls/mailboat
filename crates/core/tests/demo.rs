@@ -347,4 +347,12 @@ async fn prepare_adds_the_accounts_synced_with_their_summaries() {
     let lines = mail_core::ai::summaries::current_lines(&db.conn(), &[lisbon]).unwrap();
     assert_eq!(lines.len(), 1);
     assert!(lines[0].text.starts_with("Maya found flights"));
+    let reader = mail_core::ai::summaries::current(
+        &db.conn(),
+        lisbon,
+        mail_core::ai::summaries::SummaryKind::Full,
+    )
+    .unwrap()
+    .unwrap();
+    assert!(reader.text.starts_with("- Maya wants to book"));
 }

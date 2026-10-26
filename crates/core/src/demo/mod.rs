@@ -15,7 +15,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 pub use data::DemoData;
-pub use server::{FakeGoogle, OnChange, Timing};
+pub use server::{FakeGoogle, OnChange, Summary, Timing};
 
 use crate::gmail::{GmailClient, QuotaPacer, TokenSource};
 use crate::Result;
@@ -44,7 +44,7 @@ pub fn client(http: reqwest::Client, google: &FakeGoogle, email: &str) -> GmailC
 
 /// Gets a fresh database ready for the demo: adds its accounts (with
 /// every permission, in their colors), syncs each once so the window
-/// opens full, and stores the conversations' one-line summaries.
+/// opens full, and stores the conversations' summaries.
 /// Returns the accounts by address.
 pub async fn prepare(
     db: &crate::db::Db,
@@ -52,7 +52,7 @@ pub async fn prepare(
     google: &FakeGoogle,
     data: &DemoData,
 ) -> Result<Vec<(crate::model::AccountId, String)>> {
-    use crate::ai::summaries::{self, SummaryKind};
+    use crate::ai::summaries;
     use crate::db::accounts;
     use crate::sync::{SyncConfig, SyncEngine, SyncProgress};
 
@@ -98,15 +98,15 @@ pub async fn prepare(
         .ai
         .list_summaries
         .unwrap_or(crate::ai::AiProvider::Apple);
-    for (email, gmail_thread, text) in google.summaries() {
-        let Some((account, _)) = added.iter().find(|(_, e)| *e == email) else {
+    for s in google.summaries() {
+        let Some((account, _)) = added.iter().find(|(_, e)| *e == s.account) else {
             continue;
         };
         let conn = db.conn();
-        let thread = crate::db::store::thread_id_for(&conn, *account, &gmail_thread)?;
+        let thread = crate::db::store::thread_id_for(&conn, *account, &s.thread)?;
         let Some(thread) = thread else { continue };
         if let Some(newest) = summaries::newest_message(&conn, thread)? {
-            summaries::store(&conn, thread, SummaryKind::Line, provider, newest, &text)?;
+            summaries::store(&conn, thread, s.kind, provider, newest, &s.text)?;
         }
     }
     Ok(added)

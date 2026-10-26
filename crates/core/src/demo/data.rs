@@ -72,6 +72,10 @@ pub struct Conversation {
     /// The one-line summary shown in the list.
     #[serde(default)]
     pub summary: Option<String>,
+    /// The points of the summary above the opened conversation. Short
+    /// conversations get none by themselves, so the demo brings its own.
+    #[serde(default)]
+    pub brief: Vec<String>,
     /// What the other person answers when you reply.
     #[serde(default)]
     pub reply: Option<String>,
