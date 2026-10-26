@@ -13,6 +13,7 @@ import { AccountDot } from "../../../shared/ui/AccountDot";
 import { formatListDate } from "../../mailbox/model/format";
 import { Button, Group, Row, Toggle } from "../../settings/ui/controls";
 import { clientName, describeRequest, mcpAccess, setAccess } from "../model/access";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -43,8 +44,8 @@ export function AiAppsGroups() {
         showToast({
           message:
             app === "code"
-              ? "Claude Code can use Mailboat now (in new sessions)."
-              : "Added to Claude Desktop. Quit and reopen Claude to see Mailboat.",
+              ? `Claude Code can use ${APP_NAME} now (in new sessions).`
+              : `Added to Claude Desktop. Quit and reopen Claude to see ${APP_NAME}.`,
         }),
       onError: (e) => showToast({ tone: "error", message: errorText(e) }),
     });
@@ -54,7 +55,7 @@ export function AiAppsGroups() {
     <>
       <Group
         title="AI apps"
-        description="Let Claude Desktop, Claude Code or another MCP app search and read your mail through Mailboat, while Mailboat is open. Off for every account until you turn it on. Spam and Trash are never shared, and nothing is ever sent: drafts wait in Drafts for you."
+        description={`Let Claude Desktop, Claude Code or another MCP app search and read your mail through ${APP_NAME}, while ${APP_NAME} is open. Off for every account until you turn it on. Spam and Trash are never shared, and nothing is ever sent: drafts wait in Drafts for you.`}
       >
         {accounts.map((a) => (
           <Row
@@ -91,10 +92,10 @@ export function AiAppsGroups() {
           label="Claude Code"
           description={
             setup?.claudeCodeConnected
-              ? "Connected: new Claude Code sessions can use Mailboat."
+              ? `Connected: new Claude Code sessions can use ${APP_NAME}.`
               : setup?.claudeCodeInstalled === false
                 ? "Not installed."
-                : "Adds Mailboat to Claude Code for every project."
+                : `Adds ${APP_NAME} to Claude Code for every project.`
           }
         >
           {setup?.claudeCodeInstalled && (
@@ -107,8 +108,8 @@ export function AiAppsGroups() {
           label="Claude Desktop"
           description={
             setup?.claudeDesktopConnected
-              ? "Connected. If Mailboat’s tools don’t show, quit and reopen Claude."
-              : "Adds Mailboat to Claude Desktop’s settings (a copy of the old file is kept)."
+              ? `Connected. If ${APP_NAME}’s tools don’t show, quit and reopen Claude.`
+              : `Adds ${APP_NAME} to Claude Desktop’s settings (a copy of the old file is kept).`
           }
         >
           <Button disabled={connect.isPending} onClick={() => connectApp("desktop")}>

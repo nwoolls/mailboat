@@ -1,4 +1,5 @@
 import type { Permission } from "../../../platform/tauri/bindings";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 const FEATURES: Record<Permission, string> = {
   contacts: "suggest addresses from Google Contacts",
@@ -18,5 +19,5 @@ export function signInAgainReason(missing: readonly Permission[]): string | null
     features.length === 1
       ? features[0]
       : `${features.slice(0, -1).join(", ")} and ${features[features.length - 1]}`;
-  return `Sign in again so Mailboat can ${list}.`;
+  return `Sign in again so ${APP_NAME} can ${list}.`;
 }

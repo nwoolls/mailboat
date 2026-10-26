@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { signInAgainReason } from "./permissions";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 describe("signInAgainReason", () => {
   it("says nothing when the sign-in covers everything", () => {
@@ -8,10 +9,10 @@ describe("signInAgainReason", () => {
 
   it("names what's missing", () => {
     expect(signInAgainReason(["calendar"])).toBe(
-      "Sign in again so Mailboat can answer meeting invitations.",
+      `Sign in again so ${APP_NAME} can answer meeting invitations.`,
     );
     expect(signInAgainReason(["contacts", "calendar", "gmailSettings"])).toBe(
-      "Sign in again so Mailboat can suggest addresses from Google Contacts, answer meeting invitations and manage rules and signatures.",
+      `Sign in again so ${APP_NAME} can suggest addresses from Google Contacts, answer meeting invitations and manage rules and signatures.`,
     );
   });
 });

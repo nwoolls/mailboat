@@ -1,8 +1,8 @@
 //! New-mail notifications. On macOS they go through the system's own
 //! notification center (`UNUserNotificationCenter`) rather than the
-//! notification plugin, because only that tells Mailboat when one is clicked:
+//! notification plugin, because only that tells the app when one is clicked:
 //! the click then opens its conversation (`NotificationOpenedEvent`).
-//! Elsewhere, and when Mailboat isn't running from an app bundle (macOS
+//! Elsewhere, and when the app isn't running from an app bundle (macOS
 //! refuses the notification center then), the plugin shows them as before.
 
 use mail_core::mail::notify::Notice;
@@ -13,7 +13,7 @@ use tauri::AppHandle;
 use tauri_specta::Event;
 
 /// A new-mail notification was clicked: show this conversation (`None`:
-/// the "N new messages" summary, which only brings Mailboat forward).
+/// the "N new messages" summary, which only brings the app forward).
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationOpenedEvent {
@@ -101,7 +101,7 @@ mod mac {
         unsafe impl NSObjectProtocol for Delegate {}
 
         unsafe impl UNUserNotificationCenterDelegate for Delegate {
-            /// Show it even while Mailboat is in front, as Mail does.
+            /// Show it even while the app is in front, as Mail does.
             #[unsafe(method(userNotificationCenter:willPresentNotification:withCompletionHandler:))]
             fn will_present(
                 &self,
@@ -114,7 +114,7 @@ mod mac {
                     | UNNotificationPresentationOptions::Sound,));
             }
 
-            /// Clicked: bring Mailboat forward and open the conversation.
+            /// Clicked: bring the app forward and open the conversation.
             #[unsafe(method(userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:))]
             fn did_receive(
                 &self,

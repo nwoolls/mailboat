@@ -1,5 +1,5 @@
 /**
- * Mounts real Mailboat components in a browser for Playwright (tests/browser),
+ * Mounts real the app components in a browser for Playwright (tests/browser),
  * with the Rust side faked by Tauri's own `mockIPC`. Picked by the URL:
  *
  *   ?mode=card&spot=bottom-left   a new message in the floating card

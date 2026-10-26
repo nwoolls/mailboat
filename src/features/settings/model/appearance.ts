@@ -19,7 +19,7 @@ export type Appearance = {
 
 /**
  * Accent colours, as macOS offers (no yellow: white text and icons sit on
- * the accent, and wouldn't read on it). Blue is Mailboat's own.
+ * the accent, and wouldn't read on it). Blue is the app's own.
  */
 export const ACCENTS = [
   { id: "blue", label: "Blue", color: "hsl(217 85% 62%)" },

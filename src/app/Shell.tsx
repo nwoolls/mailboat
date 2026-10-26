@@ -287,7 +287,7 @@ export function Shell() {
   // underneath (hidden), so closing returns to it exactly as it was.
   const [settings, setSettings] = useState<SettingsSectionId | null>(null);
   const openSettings = useCallback(() => setSettings((open) => open ?? "general"), []);
-  // Mailboat → Settings… (⌘,) in the menu bar.
+  // The app → Settings… (⌘,) in the menu bar.
   useEffect(() => {
     if (!IS_TAURI) return;
     const unlisten = events.openSettingsEvent.listen(openSettings);
@@ -446,7 +446,7 @@ export function Shell() {
     );
     if (account !== undefined) void openNew(account);
   }, [openNew, baseSelection.accounts, accountList]);
-  // `mailto:` links (another app's, with Mailboat the default email reader,
+  // `mailto:` links (another app's, with the app the default email reader,
   // or one clicked in an email) open a new message, from the open
   // conversation's account if there is one. Links wait in Rust until the
   // accounts have loaded, so one that launched the app isn't lost.

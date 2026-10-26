@@ -2,7 +2,7 @@
 //!
 //! With no choice, macOS draws the built-in icon (the Icon Composer icon in
 //! `macos/Assets.car`, with its glass rim). Dev builds launch from a real
-//! `Mailboat.app` (`scripts/dev-run.sh`) for that, but Tauri paints its flat
+//! `the app.app` (`scripts/dev-run.sh`) for that, but Tauri paints its flat
 //! embedded icon over it when the app is ready (after MonoCode's
 //! `prefer_bundle_dock_icon`), so dev builds clear that again.
 

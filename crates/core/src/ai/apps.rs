@@ -1,7 +1,7 @@
 //! The copies of Claude Code and Codex inside the Claude and ChatGPT
 //! desktop apps. Neither app puts its copy where other programs look, so
 //! someone with only the app (no command-line install) would otherwise be
-//! told to install a tool they in effect already have. Mailboat installs
+//! told to install a tool they in effect already have. The app installs
 //! nothing itself (owner, 2026-10-25): it uses what's there.
 //!
 //! These places aren't documented and move with app updates, so they're

@@ -1,4 +1,4 @@
-//! Mailboat's own right-click menu over images and links inside emails.
+//! The app's own right-click menu over images and links inside emails.
 //!
 //! An email sits in a sandboxed frame where nothing runs, not even the
 //! app's own listeners, so the page never hears the right-click. The web
@@ -8,8 +8,8 @@
 //! withEvent:`, the documented way to change a WKWebView's menu): when
 //! WebKit built it for an image or a link, it's emptied (an empty menu
 //! doesn't show) and the page is told where the click was, so it shows
-//! Mailboat's menu instead. Over text the system menu stays (Copy, Look Up…),
-//! with Mailboat's "Translate selection" added at the top while text is
+//! the app's menu instead. Over text the system menu stays (Copy, Look Up…),
+//! with the app's "Translate selection" added at the top while text is
 //! selected; choosing it runs the same command as the menu bar's.
 //!
 //! Also the clipboard, for the menu's Copy Image and Copy Link.

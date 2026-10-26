@@ -190,7 +190,7 @@ pub async fn set_starred(
 
 /// Moves threads to the Trash, or takes them out. Gmail empties the Trash
 /// itself after 30 days; deleting forever needs a broader scope than
-/// Mailboat asks for.
+/// the app asks for.
 pub async fn set_trashed(
     db: &Db,
     gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
@@ -262,7 +262,7 @@ pub struct EmptiedSpam {
 const BATCH_MODIFY_MAX: usize = 1000;
 
 /// Empties each account's Spam into Trash (Gmail deletes Trash after 30
-/// days). Mailboat has `gmail.modify`, which can't delete for good. Every
+/// days). The app has `gmail.modify`, which can't delete for good. Every
 /// message in Gmail's Spam goes, not only those cached. Each account is
 /// done with its own client; one failing doesn't stop the others, and the
 /// error comes back only if every account failed.

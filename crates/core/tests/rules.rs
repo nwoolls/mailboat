@@ -125,7 +125,7 @@ async fn an_account_without_the_permission_asks_to_sign_in_again() {
         .await;
     let (db, a, _) = setup();
     let (gmail, _) = client(&server.uri());
-    // Google says so even though Mailboat thought the sign-in covered it.
+    // Google says so even though the app thought the sign-in covered it.
     let listed = rules::list(&db, &gmail, a).await.unwrap();
     assert_eq!(listed.state, RulesState::NeedsSignIn);
     // Recorded as missing: Gmail isn't asked at all.

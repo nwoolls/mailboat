@@ -21,7 +21,7 @@ use crate::gmail::GmailClient;
 use crate::mail::invite::{self, Answer, Invite, InviteKind, Moment};
 use crate::model::{MessageId, Permission};
 
-// ---- Calendar API types (only the fields Mailboat uses) ----
+// ---- Calendar API types (only the fields the app uses) ----
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -274,7 +274,7 @@ pub struct Clash {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum CalendarState {
-    /// The account signed in before Mailboat asked for Calendar.
+    /// The account signed in before the app asked for Calendar.
     NeedsSignIn,
     /// Someone's answer to your invitation: nothing to look up.
     NotNeeded,
@@ -429,9 +429,12 @@ fn unavailable(e: CoreError) -> CalendarState {
         CoreError::Api {
             status: 403,
             message,
-        } if message.contains("has not been used") || message.contains("disabled") => {
-            "The Google Calendar API isn't turned on in Mailboat's Google Cloud project.".into()
-        }
+        } if message.contains("has not been used") || message.contains("disabled") => concat!(
+            "The Google Calendar API isn't turned on in ",
+            env!("BRAND_NAME"),
+            "'s Google Cloud project."
+        )
+        .into(),
         CoreError::Api {
             status: 403,
             message,

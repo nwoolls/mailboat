@@ -330,7 +330,7 @@ async fn reply_source_fetches_reply_to_once_when_unknown() {
     let a = add_account(&db, "a");
     load_t1(&db, a);
     let m2 = message_id(&db, a, "m2");
-    // As if synced before Mailboat asked for Reply-To.
+    // As if synced before the app asked for Reply-To.
     db.conn()
         .execute("UPDATE messages SET reply_to_json = NULL", [])
         .unwrap();

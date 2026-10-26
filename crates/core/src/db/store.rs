@@ -430,7 +430,7 @@ pub fn get_body(conn: &Connection, message: MessageId) -> Result<Option<StoredBo
 
 /// A message's calendar part: `Some(None)` if its body was read and has
 /// none, `None` if it hasn't been looked for (not fetched, or cached
-/// before Mailboat kept calendar parts).
+/// before the app kept calendar parts).
 pub fn calendar(conn: &Connection, message: MessageId) -> Result<Option<Option<String>>> {
     Ok(conn
         .query_row(

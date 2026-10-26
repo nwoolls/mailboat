@@ -76,7 +76,7 @@ impl Db {
 }
 
 impl Db {
-    /// Whether another process (a second copy of Mailboat, e.g. a dev build
+    /// Whether another process (a second copy of the app, e.g. a dev build
     /// next to the installed app) wrote to the database since the last
     /// call. SQLite's `data_version` only moves for other connections'
     /// commits, so this process's own writes don't count.

@@ -2344,7 +2344,7 @@ screenshots that follow carry the new name from the start.*
         shares the data folder and may have the database open. The
         bundle-ID move below does the renaming. The owner tries the app
         on their own data afterwards
-  - [ ] Text from the brand: UI strings, errors, the sign-in page, the
+  - [x] Text from the brand: UI strings, errors, the sign-in page, the
         MCP server's name, Windows' registration, the
         `<PREFIX>_GOOGLE_*` variables, the user agent; comments say
         "the app"

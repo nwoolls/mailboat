@@ -1,7 +1,7 @@
 //! The unread count on the Dock icon, across every account. What it
 //! counts is a setting (`AppSettings::dock_badge`).
 //!
-//! Mail changes in many places (sync, actions, another copy of Mailboat), so
+//! Mail changes in many places (sync, actions, another copy of the app), so
 //! rather than hook each one, a watcher checks once a second whether the
 //! database was written to (two cheap SQLite counters) and recounts only
 //! then. Saving the setting is a write too, so it shows within a second.

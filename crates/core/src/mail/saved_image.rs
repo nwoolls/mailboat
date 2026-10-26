@@ -8,7 +8,7 @@ use base64::Engine;
 use crate::gmail::client::net_error;
 use crate::{CoreError, Result};
 
-/// The largest image Mailboat will save or copy (an email image is rarely
+/// The largest image the app will save or copy (an email image is rarely
 /// over a few MB; this stops a link to something huge filling memory).
 pub const MAX_IMAGE_BYTES: usize = 25 * 1024 * 1024;
 
@@ -84,7 +84,7 @@ pub async fn fetch_web_image(
 }
 
 fn not_an_image() -> CoreError {
-    CoreError::Invalid("that isn't an image Mailboat can save".into())
+    CoreError::Invalid(concat!("that isn't an image ", env!("BRAND_NAME"), " can save").into())
 }
 
 /// `data:image/png;base64,iVBOR…` (or a percent-encoded `data:` URL, as

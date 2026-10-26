@@ -4,7 +4,7 @@ import { type ThreadAction, toggleFor } from "./threadActions";
 
 /**
  * Swiping a conversation with two fingers on the trackpad (owner's design,
- * 2026-10-17, after iOS 26 notification swipes, in Mailboat's own style):
+ * 2026-10-17, after iOS 26 notification swipes, in the app's own style):
  *
  * 0. A little resistance first: the first few pixels barely give.
  * 1. Stretch: the row follows the fingers one to one, uncovering a button

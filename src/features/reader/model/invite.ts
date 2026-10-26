@@ -23,7 +23,7 @@ function localDate(date: string): Date {
 /**
  * When the event is, in your time zone: "Tue, Oct 20 · 2:00 – 2:30 PM",
  * "Sun, Nov 1 · all day", or across days "Tue, Oct 20, 11:00 PM – Wed,
- * Oct 21, 1:00 AM". A time in a zone Mailboat can't place is shown as written,
+ * Oct 21, 1:00 AM". A time in a zone the app can't place is shown as written,
  * with the zone's name.
  */
 export function whenText(start: Moment, end: Moment | null, locale?: string): string {

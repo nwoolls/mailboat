@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Builds or checks Mailboat for Windows from this Mac (cross-compiling).
+# Builds or checks the app for Windows from this Mac (cross-compiling).
 #
 #   scripts/windows.sh check   clippy for Windows: does it compile, no warnings
-#   scripts/windows.sh build   the installer, Mailboat_<version>_arm64-setup.exe
+#   scripts/windows.sh build   the installer, <product name>_<version>_arm64-setup.exe
 #
 # The target defaults to Windows on ARM (a VM on Apple silicon); set
 # WINDOWS_TARGET=x86_64-pc-windows-msvc for Intel/AMD PCs.

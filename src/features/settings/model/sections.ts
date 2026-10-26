@@ -1,3 +1,4 @@
+import { APP_NAME } from "../../../shared/lib/brand";
 /**
  * The Settings page's sections, in the order decided in the roadmap
  * (Milestone 5). Only sections with something in them are listed. The
@@ -25,7 +26,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   {
     id: "general",
     label: "General",
-    description: "Email links, and which version of Mailboat this is.",
+    description: `Email links, and which version of ${APP_NAME} this is.`,
   },
   {
     id: "accounts",
@@ -37,7 +38,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     label: "Notifications",
     description: "New-mail alerts, and the unread count on the Dock.",
   },
-  { id: "appearance", label: "Appearance", description: "How Mailboat looks." },
+  { id: "appearance", label: "Appearance", description: `How ${APP_NAME} looks.` },
   {
     id: "list",
     label: "List",
@@ -63,12 +64,12 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   {
     id: "rules",
     label: "Rules",
-    description: "Gmail filters: what happens to mail as it arrives, even when Mailboat is closed.",
+    description: `Gmail filters: what happens to mail as it arrives, even when ${APP_NAME} is closed.`,
   },
   {
     id: "vacation",
     label: "Vacation responder",
-    description: "Gmail's automatic reply while you're away, sent even when Mailboat is closed.",
+    description: `Gmail's automatic reply while you're away, sent even when ${APP_NAME} is closed.`,
   },
   { id: "keyboard", label: "Keyboard", description: "Every keyboard shortcut." },
   {

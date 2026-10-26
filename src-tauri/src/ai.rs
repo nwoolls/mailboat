@@ -273,7 +273,7 @@ pub fn ai_connect_cancel(ai: State<'_, AiState>) {
     ai.connect_cancel.notify_waiters();
 }
 
-/// Stops using a provider in Mailboat. Its tool stays signed in (Claude Code
+/// Stops using a provider in the app. Its tool stays signed in (Claude Code
 /// and Codex have other uses). Features that used it go back to Apple
 /// (where there is none, list summaries turn off).
 #[tauri::command]

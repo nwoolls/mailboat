@@ -201,7 +201,7 @@ export function useDefaultMailApp() {
 }
 
 /**
- * Asks macOS to make Mailboat the default email reader (macOS confirms); on
+ * Asks macOS to make the app the default email reader (macOS confirms); on
  * Windows, opens Windows' Default apps page instead.
  */
 export function useMakeDefaultMailApp() {
@@ -369,7 +369,7 @@ export function useTranslationLanguages(enabled: boolean) {
   });
 }
 
-/** How AI apps connect to Mailboat, and whether Claude's are (Settings → AI). */
+/** How AI apps connect to the app, and whether Claude's are (Settings → AI). */
 export function useMcpSetup() {
   return useQuery({
     queryKey: ["mcpSetup"],
@@ -388,7 +388,7 @@ export function useMcpLog() {
   });
 }
 
-/** Connects Claude Code or Claude Desktop to Mailboat. */
+/** Connects Claude Code or Claude Desktop to the app. */
 export function useMcpConnect() {
   const qc = useQueryClient();
   return useMutation({

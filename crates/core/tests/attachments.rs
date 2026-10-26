@@ -118,7 +118,7 @@ async fn a_body_cached_before_attachments_were_recorded_is_fetched_again_once() 
     let server = MockServer::start().await;
     serve_message(&server, "message_m2_attachments.json", 1).await;
     let (db, _, m2) = setup();
-    // As an older version of Mailboat stored it.
+    // As an older version of the app stored it.
     db.conn()
         .execute(
             "INSERT INTO message_bodies (message_id, account_id, html, text, fetched_at) VALUES (?1, 1, '<p>old</p>', 'old', 0)",

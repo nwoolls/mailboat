@@ -12,7 +12,7 @@ use super::oauth;
 use crate::error::{CoreError, Result};
 use crate::gmail::TokenSource;
 
-pub const KEYCHAIN_SERVICE: &str = "com.nwoolls.mailboat";
+pub const KEYCHAIN_SERVICE: &str = crate::brand::ID;
 
 /// Keychain key for an account's refresh token. Keyed by Google's stable
 /// account ID (`sub`), not the email address, which can change.

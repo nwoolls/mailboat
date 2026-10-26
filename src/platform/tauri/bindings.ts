@@ -210,7 +210,7 @@ export const commands = {
 	/**  Marks an account's rows with another colour from `AppInfo::account_colors`. */
 	accountSetColor: (accountId: AccountId, color: string) => typedError<Account, AppError>(__TAURI_INVOKE("account_set_color", { accountId, color })),
 	/**
-	 *  Opens Mailboat's page in System Settings → Notifications, where macOS
+	 *  Opens the app's page in System Settings → Notifications, where macOS
 	 *  keeps whether notifications may show and in what style.
 	 */
 	notificationSettingsOpen: () => typedError<null, AppError>(__TAURI_INVOKE("notification_settings_open")),
@@ -268,7 +268,7 @@ export const commands = {
 	/**  Which app opens `mailto:` links (Settings → General). */
 	mailAppDefault: () => __TAURI_INVOKE<DefaultMailApp>("mail_app_default"),
 	/**
-	 *  Asks macOS to make this copy of Mailboat the default email reader; macOS
+	 *  Asks macOS to make this copy of the app the default email reader; macOS
 	 *  asks the user to confirm.
 	 */
 	mailAppMakeDefault: () => typedError<null, AppError>(__TAURI_INVOKE("mail_app_make_default")),
@@ -286,7 +286,7 @@ export const commands = {
 	aiConnect: (provider: AiProvider) => typedError<AppSettings_Serialize, AppError>(__TAURI_INVOKE("ai_connect", { provider })),
 	aiConnectCancel: () => __TAURI_INVOKE<void>("ai_connect_cancel"),
 	/**
-	 *  Stops using a provider in Mailboat. Its tool stays signed in (Claude Code
+	 *  Stops using a provider in the app. Its tool stays signed in (Claude Code
 	 *  and Codex have other uses). Features that used it go back to Apple
 	 *  (where there is none, list summaries turn off).
 	 */
@@ -329,9 +329,9 @@ export const commands = {
 	/**  The languages Apple's translation offers on this Mac (codes). */
 	aiTranslationLanguages: () => typedError<string[], AppError>(__TAURI_INVOKE("ai_translation_languages")),
 	mcpSetup: () => typedError<McpSetup, AppError>(__TAURI_INVOKE("mcp_setup")),
-	/**  Adds Mailboat to Claude Code for every project (`claude mcp add`). */
+	/**  Adds the app to Claude Code for every project (`claude mcp add`). */
 	mcpConnectClaudeCode: () => typedError<null, AppError>(__TAURI_INVOKE("mcp_connect_claude_code")),
-	/**  Adds Mailboat to Claude Desktop's config (it needs restarting to see it). */
+	/**  Adds the app to Claude Desktop's config (it needs restarting to see it). */
 	mcpConnectClaudeDesktop: () => typedError<null, AppError>(__TAURI_INVOKE("mcp_connect_claude_desktop")),
 	/**  What AI apps asked for, newest first. */
 	mcpLog: (limit: number) => typedError<McpLogEntry[], AppError>(__TAURI_INVOKE("mcp_log", { limit })),
@@ -384,7 +384,7 @@ export type Account = {
 	oauthClient: string,
 	/**
 	 *  Features this account's sign-in doesn't cover yet (it signed in
-	 *  before Mailboat asked for them); signing in again adds them.
+	 *  before the app asked for them); signing in again adds them.
 	 */
 	missingPermissions: Permission[],
 };
@@ -504,7 +504,7 @@ export type AppSettings_Deserialize = {
 	theme?: Theme,
 	/**
 	 *  Which of the app icon choices shows in the Dock, by name (e.g.
-	 *  "C10-orange"); `None` is the icon Mailboat is built with.
+	 *  "C10-orange"); `None` is the icon the app is built with.
 	 */
 	appIcon?: string | null,
 	/**  The unread count on the Dock icon, across every account. */
@@ -522,7 +522,7 @@ export type AppSettings_Deserialize = {
 	ai?: AiSettings,
 	/**
 	 *  What AI apps (Claude Desktop, Claude Code) may do with each
-	 *  account's mail through Mailboat's MCP server. Nothing by default.
+	 *  account's mail through the app's MCP server. Nothing by default.
 	 */
 	mcp?: McpSettings,
 };
@@ -541,7 +541,7 @@ export type AppSettings_Serialize = {
 	theme: Theme,
 	/**
 	 *  Which of the app icon choices shows in the Dock, by name (e.g.
-	 *  "C10-orange"); `None` is the icon Mailboat is built with.
+	 *  "C10-orange"); `None` is the icon the app is built with.
 	 */
 	appIcon: string | null,
 	/**  The unread count on the Dock icon, across every account. */
@@ -559,7 +559,7 @@ export type AppSettings_Serialize = {
 	ai: AiSettings,
 	/**
 	 *  What AI apps (Claude Desktop, Claude Code) may do with each
-	 *  account's mail through Mailboat's MCP server. Nothing by default.
+	 *  account's mail through the app's MCP server. Nothing by default.
 	 */
 	mcp: McpSettings,
 };
@@ -610,7 +610,7 @@ export type AuthCheck = {
 	detail: string | null,
 };
 
-/**  What Mailboat keeps on this Mac, for Settings → Advanced. */
+/**  What the app keeps on this Mac, for Settings → Advanced. */
 export type CacheSize = {
 	/**
 	 *  The database: cached mail, its search index, and settings. Whole
@@ -623,7 +623,7 @@ export type CacheSize = {
 
 /**  What Calendar says about the invitation. */
 export type CalendarState = 
-/**  The account signed in before Mailboat asked for Calendar. */
+/**  The account signed in before the app asked for Calendar. */
 { kind: "needsSignIn" } | 
 /**  Someone's answer to your invitation: nothing to look up. */
 { kind: "notNeeded" } | { kind: "notOnCalendar" } | { kind: "onCalendar"; eventId: string; yourAnswer: Answer | null; cancelled: boolean; clashes: Clash[]; 
@@ -681,10 +681,10 @@ export type Contact = {
 
 /**  Which app opens `mailto:` links. */
 export type DefaultMailApp = 
-/**  This copy of Mailboat. */
+/**  This copy of the app. */
 { kind: "this" } | 
 /**
- *  Mailboat, but macOS sends links to another copy, at `path`. The
+ *  The app, but macOS sends links to another copy, at `path`. The
  *  default is kept by bundle ID, which the dev build and the installed
  *  app share, so macOS picks the copy (usually the one in
  *  /Applications); no button here can change that.
@@ -954,9 +954,9 @@ export type McpSetup = {
 	claudeCodeCommand: string,
 	/**  Claude Code is installed (its `claude` command was found). */
 	claudeCodeInstalled: boolean,
-	/**  Claude Code already starts Mailboat. */
+	/**  Claude Code already starts the app. */
 	claudeCodeConnected: boolean,
-	/**  Claude Desktop's config already starts Mailboat. */
+	/**  Claude Desktop's config already starts the app. */
 	claudeDesktopConnected: boolean,
 };
 
@@ -1020,7 +1020,7 @@ export type Moment =
 
 /**
  *  A new-mail notification was clicked: show this conversation (`None`:
- *  the "N new messages" summary, which only brings Mailboat forward).
+ *  the "N new messages" summary, which only brings the app forward).
  */
 export type NotificationOpenedEvent = {
 	threadId: ThreadId | null,
@@ -1054,7 +1054,7 @@ export type OlderLoaded = {
 	failed: number,
 };
 
-/**  Mailboat → Settings… (⌘,) in the menu bar: open the Settings page. */
+/**  The app → Settings… (⌘,) in the menu bar: open the Settings page. */
 export type OpenSettingsEvent = null;
 
 /**  A saved draft opened for editing: what compose needs to resume it. */
@@ -1323,7 +1323,7 @@ export type RuleCriteria = {
 
 /**  One account's rules, or why they can't be shown. */
 export type RulesState = { kind: "ready"; rules: Rule[] } | 
-/**  The account signed in before Mailboat asked for Gmail's settings. */
+/**  The account signed in before the app asked for Gmail's settings. */
 { kind: "needsSignIn" } | { kind: "unavailable"; message: string };
 
 export type SafeMessage = {

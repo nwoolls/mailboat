@@ -1,6 +1,6 @@
 //! The vacation responder (Gmail's automatic reply), per account, through
 //! `settings.getVacation` / `updateVacation`. Gmail sends the replies, so
-//! they go out whether or not Mailboat is open.
+//! they go out whether or not the app is open.
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -126,8 +126,12 @@ fn to_gmail(s: &VacationSettings, can_limit_to_domain: bool) -> Result<Vacation>
 fn friendly(e: CoreError) -> CoreError {
     if e.is_missing_scope() {
         CoreError::Invalid(
-            "Sign in to this account again (Settings → Accounts) so Mailboat can change its vacation responder."
-                .into(),
+            concat!(
+                "Sign in to this account again (Settings → Accounts) so ",
+                env!("BRAND_NAME"),
+                " can change its vacation responder."
+            )
+            .into(),
         )
     } else {
         e

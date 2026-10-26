@@ -7,7 +7,7 @@ import { newRequestId } from "./stream";
 /**
  * Translations of text selected in emails, shown above each email
  * (`TranslationCard`) without changing it, one per email, kept while
- * Mailboat runs.
+ * the app runs.
  */
 export type Translation =
   | { state: "working"; original: string }

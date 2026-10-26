@@ -2,7 +2,7 @@
 //!
 //! The email is shown in a sandboxed iframe where nothing can run, and the
 //! macOS web view doesn't let the app catch clicks inside it. So the
-//! sanitizer rewrites each web/mail link to Mailboat's own `email-link:`
+//! sanitizer rewrites each web/mail link to the app's own `email-link:`
 //! scheme. Clicking one makes the iframe request that URL; the app's scheme
 //! handler opens the real link in the default browser and answers
 //! "204 No Content", so the email stays on screen.

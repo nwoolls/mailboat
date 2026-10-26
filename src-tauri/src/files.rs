@@ -30,7 +30,7 @@ pub fn quarantine(path: &Path) {
             .args([
                 "-w",
                 "com.apple.quarantine",
-                &format!("0081;{secs:x};Mailboat;"),
+                &format!("0081;{secs:x};{};", mail_core::brand::NAME),
             ])
             .arg(path)
             .stdout(Stdio::null())

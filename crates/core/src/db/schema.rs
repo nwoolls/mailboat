@@ -234,7 +234,7 @@ CREATE TABLE google_contacts (
 
 /// Conversations Gmail's own search matched (`q=`), per account and search
 /// text, so the Search view shows them even when the match was in a part
-/// Mailboat hasn't downloaded (like the body).
+/// the app hasn't downloaded (like the body).
 pub const MIGRATION_V9: &str = r#"
 CREATE TABLE search_hits (
   id INTEGER PRIMARY KEY,

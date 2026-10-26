@@ -1,4 +1,4 @@
-//! Append-only sync diagnostics at `~/Library/Logs/com.nwoolls.mailboat/sync.log`
+//! Append-only sync diagnostics at `~/Library/Logs/<bundle id>/sync.log`
 //! (macOS). Holds rate-limit details, retries and pass results; never email
 //! content or tokens.
 

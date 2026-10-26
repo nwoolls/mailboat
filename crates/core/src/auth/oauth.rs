@@ -24,7 +24,7 @@ use crate::error::{CoreError, Result};
 
 // The OAuth protocol itself (PKCE, consent URL, code exchange, refresh) comes
 // from the `oauth2` crate. This file adds the loopback listener, Google's
-// user-info call and the mapping of failures onto Mailboat's errors.
+// user-info call and the mapping of failures onto the app's errors.
 
 pub const SCOPES: [&str; 9] = [
     "openid",
@@ -171,7 +171,7 @@ fn convert(token: oauth2::basic::BasicTokenResponse) -> TokenResponse {
     }
 }
 
-/// Maps token-endpoint failures onto Mailboat's error kinds.
+/// Maps token-endpoint failures onto the app's error kinds.
 fn token_error(e: RequestTokenError<HttpError, oauth2::basic::BasicErrorResponse>) -> CoreError {
     match e {
         RequestTokenError::ServerResponse(resp) => {
@@ -283,13 +283,22 @@ impl Loopback {
                 let request = String::from_utf8_lossy(&buf[..n]);
                 let outcome = parse_callback(&request, expected_state);
                 let page = match &outcome {
-                    Some(Ok(_)) => "You're signed in. You can close this tab and return to Mailboat.",
-                    Some(Err(_)) => "Sign-in did not complete. You can close this tab and try again in Mailboat.",
+                    Some(Ok(_)) => concat!(
+                        "You're signed in. You can close this tab and return to ",
+                        env!("BRAND_NAME"),
+                        "."
+                    ),
+                    Some(Err(_)) => concat!(
+                        "Sign-in did not complete. You can close this tab and try again in ",
+                        env!("BRAND_NAME"),
+                        "."
+                    ),
                     None => "",
                 };
                 let status = if outcome.is_some() { "200 OK" } else { "404 Not Found" };
                 let html = format!(
-                    "<!doctype html><meta charset=utf-8><title>Mailboat</title><body style=\"font-family:system-ui;margin:4rem;color:#333\"><p>{page}</p>"
+                    "<!doctype html><meta charset=utf-8><title>{}</title><body style=\"font-family:system-ui;margin:4rem;color:#333\"><p>{page}</p>",
+                    crate::brand::NAME
                 );
                 let response = format!(
                     "HTTP/1.1 {status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{html}",

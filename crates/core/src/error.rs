@@ -57,7 +57,7 @@ impl CoreError {
     }
 
     /// Google refused because the account's sign-in lacks a permission
-    /// (it signed in before Mailboat asked for it).
+    /// (it signed in before the app asked for it).
     pub fn is_missing_scope(&self) -> bool {
         matches!(self, CoreError::Api { status: 403, message } if message.contains("insufficient"))
     }

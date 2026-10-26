@@ -1,6 +1,6 @@
 /**
  * Which system the window runs on, and the keyboard differences that
- * follow. Mailboat was built on the Mac; on Windows (and Linux) Ctrl takes
+ * follow. The app was built on the Mac; on Windows (and Linux) Ctrl takes
  * the place of ⌘, and the Mac's ⌃ in a two-modifier shortcut (⌃⌘S)
  * becomes Alt (Ctrl+Alt+S), as Windows apps pair them.
  */

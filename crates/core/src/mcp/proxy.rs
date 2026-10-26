@@ -1,8 +1,8 @@
-//! `mailboat --mcp`: what an AI app starts. It speaks MCP on stdin/stdout
+//! `<app> --mcp`: what an AI app starts. It speaks MCP on stdin/stdout
 //! and passes each request on to the running app over its socket,
-//! connecting when needed, so Mailboat can be opened or quit at any time.
-//! With Mailboat closed, the tools are still listed and each says to open
-//! Mailboat. It holds no mail, settings or tokens itself.
+//! connecting when needed, so the app can be opened or quit at any time.
+//! With the app closed, the tools are still listed and each says to open
+//! the app. It holds no mail, settings or tokens itself.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -18,7 +18,12 @@ use tokio::sync::Mutex;
 use super::MailServer;
 use crate::error::{CoreError, Result};
 
-pub const NOT_RUNNING: &str = "Mailboat isn't open. Ask the user to open Mailboat, then try again.";
+pub const NOT_RUNNING: &str = concat!(
+    env!("BRAND_NAME"),
+    " isn't open. Ask the user to open ",
+    env!("BRAND_NAME"),
+    ", then try again."
+);
 
 type Upstream = RunningService<RoleClient, ClientConfig>;
 
@@ -62,20 +67,22 @@ impl Proxy {
 async fn connect(socket: &PathBuf, client: &str) -> Result<Upstream> {
     let stream = tokio::net::UnixStream::connect(socket)
         .await
-        .map_err(|e| CoreError::Other(format!("connect to Mailboat: {e}")))?;
+        .map_err(|e| CoreError::Other(format!("connect to {}: {e}", crate::brand::NAME)))?;
     ClientConfig::new(
         ClientCapabilities::default(),
         Implementation::new(client, env!("CARGO_PKG_VERSION")),
     )
     .serve(stream)
     .await
-    .map_err(|e| CoreError::Other(format!("connect to Mailboat: {e}")))
+    .map_err(|e| CoreError::Other(format!("connect to {}: {e}", crate::brand::NAME)))
 }
 
 #[cfg(windows)]
 async fn connect(socket: &PathBuf, client: &str) -> Result<Upstream> {
     use tokio::net::windows::named_pipe::ClientOptions;
-    let err = |e: &dyn std::fmt::Display| CoreError::Other(format!("connect to Mailboat: {e}"));
+    let err = |e: &dyn std::fmt::Display| {
+        CoreError::Other(format!("connect to {}: {e}", crate::brand::NAME))
+    };
     // Busy means the app is between handing one connection over and
     // opening the pipe for the next: a moment later it's free.
     let mut tries = 0;

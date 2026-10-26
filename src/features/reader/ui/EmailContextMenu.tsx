@@ -24,7 +24,7 @@ function targetAt(x: number, y: number): EmailMenuTarget | null {
 }
 
 /**
- * Mailboat's right-click menu over an image or link in an email: Save Image
+ * The app's right-click menu over an image or link in an email: Save Image
  * (to Downloads), Copy Image, Open Link, Copy Link. Rust empties WebKit's
  * own menu there and says where the click was (`email_menu.rs`); over
  * text, the system menu stays.

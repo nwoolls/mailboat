@@ -1,12 +1,12 @@
 //! Rules: Gmail's filters (`settings.filters`). Gmail runs them on its
-//! servers as mail arrives, so they work whether or not Mailboat is open.
-//! Mailboat shows them in a simpler shape (`Rule`, close to Gmail's own
+//! servers as mail arrives, so they work whether or not the app is open.
+//! The app shows them in a simpler shape (`Rule`, close to Gmail's own
 //! filter form) and saves them with the owning account's sign-in.
 //!
 //! Gmail can't change a filter in place, so editing one creates the new
-//! version, then deletes the old. Whatever Mailboat can't show or edit
+//! version, then deletes the old. Whatever the app can't show or edit
 //! (forwarding, which needs a more sensitive permission; "exclude chats";
-//! labels Mailboat doesn't know) is kept as it was.
+//! labels the app doesn't know) is kept as it was.
 
 use std::collections::HashMap;
 
@@ -127,7 +127,7 @@ pub enum RulesState {
     Ready {
         rules: Vec<Rule>,
     },
-    /// The account signed in before Mailboat asked for Gmail's settings.
+    /// The account signed in before the app asked for Gmail's settings.
     NeedsSignIn,
     Unavailable {
         message: String,
@@ -234,7 +234,7 @@ fn criteria_from_gmail(c: &FilterCriteria) -> RuleCriteria {
     }
 }
 
-/// A Gmail filter as a rule. The flag says it adds a label Mailboat doesn't
+/// A Gmail filter as a rule. The flag says it adds a label the app doesn't
 /// know yet (created since labels last synced).
 fn from_gmail(account: AccountId, filter: &Filter, labels: &LabelMap) -> (Rule, bool) {
     let add = &filter.action.add_label_ids;
@@ -313,7 +313,7 @@ fn has_criteria(c: &FilterCriteria) -> bool {
         || c.size.is_some()
 }
 
-/// A rule as a Gmail filter. `kept` is the filter being edited: what Mailboat
+/// A rule as a Gmail filter. `kept` is the filter being edited: what the app
 /// doesn't show (forwarding, unknown labels, "exclude chats") carries over.
 fn to_gmail(
     criteria: &RuleCriteria,
@@ -469,8 +469,12 @@ pub fn search_query(c: &FilterCriteria) -> String {
 fn friendly(e: CoreError) -> CoreError {
     match e {
         e if e.is_missing_scope() => CoreError::Invalid(
-            "Sign in to this account again (Settings → Accounts) so Mailboat can change its rules."
-                .into(),
+            concat!(
+                "Sign in to this account again (Settings → Accounts) so ",
+                env!("BRAND_NAME"),
+                " can change its rules."
+            )
+            .into(),
         ),
         CoreError::Api {
             status: 400,
@@ -508,7 +512,7 @@ pub async fn list(db: &Db, gmail: &GmailClient, account: AccountId) -> Result<Ac
     })
 }
 
-/// Converts filters, refreshing labels once if one is new to Mailboat.
+/// Converts filters, refreshing labels once if one is new to the app.
 async fn rules_from(
     db: &Db,
     gmail: &GmailClient,
@@ -715,7 +719,7 @@ mod tests {
             f.action.remove_label_ids,
             ["IMPORTANT", "INBOX", "SPAM", "UNREAD"]
         );
-        // Forwarding can't be set from Mailboat.
+        // Forwarding can't be set from the app.
         assert_eq!(f.action.forward, None);
     }
 

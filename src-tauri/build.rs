@@ -27,7 +27,7 @@ fn build_ai_helper() {
     let status = std::process::Command::new("xcrun")
         .args(["swiftc", "-parse-as-library", "-O", "-target"])
         // Foundation Models arrived in macOS 26; on older systems the helper
-        // won't start and Mailboat shows Apple Intelligence as unavailable.
+        // won't start and the app shows Apple Intelligence as unavailable.
         .arg(format!("{arch}-apple-macos26.0"))
         .arg("macos/ai-helper.swift")
         .arg("-o")

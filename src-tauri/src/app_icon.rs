@@ -1,6 +1,6 @@
 //! Settings → Appearance → App icon. The choices are the icons in
 //! `design/icon/choices/`, rendered to PNG by `scripts/build-icon-choices.sh`
-//! and built into the app. A choice shows in the Dock while Mailboat runs
+//! and built into the app. A choice shows in the Dock while the app runs
 //! (`dock::set_icon`); Finder and a quit app keep the built-in icon, since
 //! changing the app's own files would break its code signature.
 

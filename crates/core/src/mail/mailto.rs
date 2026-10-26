@@ -1,4 +1,4 @@
-//! `mailto:` links (RFC 6068): from another app when Mailboat is the default
+//! `mailto:` links (RFC 6068): from another app when the app is the default
 //! email reader, or clicked inside an email. Each becomes a new message.
 
 use percent_encoding::percent_decode_str;

@@ -5,7 +5,7 @@
 //! remote content "in the background when you receive a message" rather
 //! than when you view it (Apple's Mail User Guide, "Protect email
 //! privacy"). Unlike Apple's, the downloads come straight from this Mac:
-//! Mailboat has no relay servers, so senders still see your IP address and
+//! The app has no relay servers, so senders still see your IP address and
 //! that the mail arrived, just not when (or whether) it was opened.
 //!
 //! Only images the image rule would load anyway are downloaded (never

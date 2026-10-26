@@ -67,8 +67,8 @@ impl OAuthClientConfig {
     pub fn load(config_dir: &Path) -> Result<Self> {
         let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
         if let (Some(id), Some(secret)) = (
-            env("MAILBOAT_GOOGLE_CLIENT_ID"),
-            env("MAILBOAT_GOOGLE_CLIENT_SECRET"),
+            env(concat!(env!("BRAND_ENV_PREFIX"), "_GOOGLE_CLIENT_ID")),
+            env(concat!(env!("BRAND_ENV_PREFIX"), "_GOOGLE_CLIENT_SECRET")),
         ) {
             return Ok(Self::google(id, secret));
         }

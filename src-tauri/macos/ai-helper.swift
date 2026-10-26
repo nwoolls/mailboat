@@ -1,5 +1,5 @@
-// Mailboat's bridge to Apple Intelligence (the Foundation Models framework,
-// macOS 26+) and Apple's on-device translation (the Translation framework). Apple's model is only reachable from Swift, so Mailboat runs
+// The app's bridge to Apple Intelligence (the Foundation Models framework,
+// macOS 26+) and Apple's on-device translation (the Translation framework). Apple's model is only reachable from Swift, so the app runs
 // this small program the way it runs the Claude and Codex command-line
 // tools: one JSON request on stdin, JSON lines on stdout. Built by
 // src-tauri/build.rs; the protocol is read in mail_core::ai::apple.
@@ -21,7 +21,7 @@
 // Translation runs only for languages already downloaded on the Mac
 // (System Settings → General → Language & Region → Translation
 // Languages): a download needs a window to ask in. Otherwise it fails
-// with kind "notInstalled" or "unsupported", and Mailboat asks the writing
+// with kind "notInstalled" or "unsupported", and the app asks the writing
 // provider instead.
 
 import Foundation

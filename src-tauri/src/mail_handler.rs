@@ -1,4 +1,4 @@
-//! Mailboat as the default email reader: `mailto:` links from other apps
+//! The app as the default email reader: `mailto:` links from other apps
 //! (and clicked inside emails) open a new message here.
 //!
 //! The bundle's Info.plist claims the `mailto` scheme (`Info.plist`, and
@@ -7,10 +7,10 @@
 //! listening (it launched the app), so links wait in a queue the window
 //! drains: at start and on each `MailtoEvent`.
 //!
-//! On Windows the installer registers Mailboat as an email app
-//! (`windows/installer.nsh`: the `Mailboat.mailto` ProgID and Default apps
-//! entry), Windows starts Mailboat with the link as an argument, and a copy
-//! started while Mailboat is open hands its link to the running one
+//! On Windows the installer registers the app as an email app
+//! (`windows/installer.nsh`: the `the app.mailto` ProgID and Default apps
+//! entry), Windows starts the app with the link as an argument, and a copy
+//! started while the app is open hands its link to the running one
 //! (single-instance plugin, `lib.rs`). Windows doesn't let an app make
 //! itself the default: Settings opens Windows' Default apps page instead.
 
@@ -74,9 +74,9 @@ fn program_in_command(command: &str) -> Option<&str> {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase", tag = "kind")]
 pub enum DefaultMailApp {
-    /// This copy of Mailboat.
+    /// This copy of the app.
     This,
-    /// Mailboat, but macOS sends links to another copy, at `path`. The
+    /// The app, but macOS sends links to another copy, at `path`. The
     /// default is kept by bundle ID, which the dev build and the installed
     /// app share, so macOS picks the copy (usually the one in
     /// /Applications); no button here can change that.
@@ -123,9 +123,13 @@ pub fn default_app() -> DefaultMailApp {
     DefaultMailApp::Other { name }
 }
 
-/// The ProgID the installer registers for `mailto:` (`windows/installer.nsh`).
+/// The ProgID the installer registers for `mailto:` (`windows/installer.nsh`:
+/// `${MAINBINARYNAME}.mailto`). Registry names ignore case, so compare
+/// without it.
 #[cfg(windows)]
-const PROG_ID: &str = "Mailboat.mailto";
+fn prog_id() -> String {
+    format!("{}.mailto", mail_core::brand::SHORT_NAME)
+}
 
 #[cfg(windows)]
 pub fn default_app() -> DefaultMailApp {
@@ -134,10 +138,10 @@ pub fn default_app() -> DefaultMailApp {
     let read = |key: &windows_registry::Key, path: &str, name: &str| {
         key.open(path).and_then(|k| k.get_string(name)).ok()
     };
-    // Which copy of Mailboat the registration starts.
+    // Which copy of the app the registration starts.
     let Some(registered) = read(
         CURRENT_USER,
-        &format!(r"Software\Classes\{PROG_ID}\shell\open\command"),
+        &format!(r"Software\Classes\{}\shell\open\command", prog_id()),
         "",
     ) else {
         return DefaultMailApp::NotInstalled;
@@ -159,7 +163,7 @@ pub fn default_app() -> DefaultMailApp {
     let Some(chosen) = chosen.filter(|p| !p.is_empty()) else {
         return DefaultMailApp::None;
     };
-    if chosen == PROG_ID {
+    if chosen.eq_ignore_ascii_case(&prog_id()) {
         let ours = std::env::current_exe().ok();
         let theirs = program_in_command(&registered).map(std::path::PathBuf::from);
         let same = match (&ours, &theirs) {
@@ -229,11 +233,14 @@ pub async fn make_default(app: &AppHandle) -> Result<(), String> {
 }
 
 /// Windows doesn't let an app make itself the default: this opens
-/// Settings → Default apps at Mailboat's entry, where the owner picks it.
+/// Settings → Default apps at the app's entry, where the owner picks it.
 #[cfg(windows)]
 pub async fn make_default(_app: &AppHandle) -> Result<(), String> {
-    open::that_detached("ms-settings:defaultapps?registeredAppUser=Mailboat")
-        .map_err(|e| format!("couldn't open Windows Settings: {e}"))
+    open::that_detached(format!(
+        "ms-settings:defaultapps?registeredAppUser={}",
+        mail_core::brand::NAME
+    ))
+    .map_err(|e| format!("couldn't open Windows Settings: {e}"))
 }
 
 #[cfg(not(any(target_os = "macos", windows)))]

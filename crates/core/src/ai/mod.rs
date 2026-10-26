@@ -1,9 +1,9 @@
 //! AI features: summaries and help writing replies.
 //!
 //! Three providers, each reached through a program on this Mac rather than
-//! an API key Mailboat would have to keep:
+//! an API key the app would have to keep:
 //!
-//! - **Apple Intelligence** (on-device; the default): Mailboat's own helper,
+//! - **Apple Intelligence** (on-device; the default): the app's own helper,
 //!   `ai-helper`, built from `src-tauri/macos/ai-helper.swift`. Mail never
 //!   leaves the Mac.
 //! - **Claude**: the `claude` command-line tool (Claude Code), signed in
@@ -123,7 +123,7 @@ pub struct Answer {
 /// Where each provider's program is, once found.
 #[derive(Debug, Clone, Default)]
 pub struct Programs {
-    /// Mailboat's helper, next to the app's own binary.
+    /// The app's helper, next to the app's own binary.
     pub apple: Option<PathBuf>,
     pub claude: Option<PathBuf>,
     pub codex: Option<PathBuf>,
@@ -176,7 +176,7 @@ pub enum ProviderState {
     Unsupported { reason: String },
 }
 
-/// Whether Apple Intelligence can exist here at all (Mailboat's helper for it
+/// Whether Apple Intelligence can exist here at all (the app's helper for it
 /// is only built for macOS).
 pub const APPLE_ON_THIS_SYSTEM: bool = cfg!(target_os = "macos");
 

@@ -313,7 +313,7 @@ export function forwardText(source: Original, formatDate = defaultFormatDate): s
 /**
  * The original cut down to the text selected in it, so a reply or forward
  * quotes just that (as Mail and Gmail do). Plain text: the HTML on screen
- * carries Mailboat's own link addresses, which mustn't go out in mail. No
+ * carries the app's own link addresses, which mustn't go out in mail. No
  * embedded images either, since the text has none.
  */
 export function withSelection(source: ReplySource, selected: string): ReplySource {

@@ -1,5 +1,5 @@
 //! The app's side of the MCP server for AI apps (`mail_core::mcp`):
-//! listening while Mailboat runs, the `--mcp` proxy mode, and Settings →
+//! listening while the app runs, the `--mcp` proxy mode, and Settings →
 //! AI → AI apps (connecting Claude, the request log).
 
 use std::path::PathBuf;
@@ -36,7 +36,7 @@ impl Host for AppHost {
     }
 }
 
-/// Serves AI apps for as long as Mailboat runs. Only answers for accounts
+/// Serves AI apps for as long as the app runs. Only answers for accounts
 /// turned on in Settings; with none, every request says so.
 pub fn start(app: AppHandle, db: Arc<Db>) {
     let Some(socket) = mcp::socket_path() else {
@@ -52,11 +52,14 @@ pub fn start(app: AppHandle, db: Arc<Db>) {
     });
 }
 
-/// `mailboat --mcp`, started by an AI app: passes its requests to the
-/// running Mailboat. Nothing but MCP may go to stdout.
+/// `<app> --mcp`, started by an AI app: passes its requests to the
+/// running the app. Nothing but MCP may go to stdout.
 pub fn run_proxy() -> i32 {
     let Some(socket) = mcp::socket_path() else {
-        eprintln!("Mailboat's MCP server isn't available on this system yet.");
+        eprintln!(
+            "{}'s MCP server isn't available on this system yet.",
+            mail_core::brand::NAME
+        );
         return 1;
     };
     let runtime = match tokio::runtime::Builder::new_current_thread()
@@ -65,14 +68,14 @@ pub fn run_proxy() -> i32 {
     {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("mailboat --mcp: {e}");
+            eprintln!("--mcp: {e}");
             return 1;
         }
     };
     match runtime.block_on(mcp::proxy::run(socket)) {
         Ok(()) => 0,
         Err(e) => {
-            eprintln!("mailboat --mcp: {e}");
+            eprintln!("--mcp: {e}");
             1
         }
     }
@@ -97,9 +100,9 @@ pub struct McpSetup {
     pub claude_code_command: String,
     /// Claude Code is installed (its `claude` command was found).
     pub claude_code_installed: bool,
-    /// Claude Code already starts Mailboat.
+    /// Claude Code already starts the app.
     pub claude_code_connected: bool,
-    /// Claude Desktop's config already starts Mailboat.
+    /// Claude Desktop's config already starts the app.
     pub claude_desktop_connected: bool,
 }
 
@@ -131,13 +134,13 @@ pub async fn mcp_setup() -> CmdResult<McpSetup> {
     })
 }
 
-/// Adds Mailboat to Claude Code for every project (`claude mcp add`).
+/// Adds the app to Claude Code for every project (`claude mcp add`).
 #[tauri::command]
 #[specta::specta]
 pub async fn mcp_connect_claude_code() -> CmdResult<()> {
     let program = program()?;
     let claude = claude().ok_or_else(|| fail("Claude Code isn't installed."))?;
-    // An older entry (another build of Mailboat) is replaced.
+    // An older entry (another build of the app) is replaced.
     let _ = process::run_quick(
         &claude,
         &["mcp", "remove", "--scope", "user", setup::SERVER_NAME],
@@ -159,7 +162,7 @@ pub async fn mcp_connect_claude_code() -> CmdResult<()> {
     Ok(())
 }
 
-/// Adds Mailboat to Claude Desktop's config (it needs restarting to see it).
+/// Adds the app to Claude Desktop's config (it needs restarting to see it).
 #[tauri::command]
 #[specta::specta]
 pub fn mcp_connect_claude_desktop() -> CmdResult<()> {

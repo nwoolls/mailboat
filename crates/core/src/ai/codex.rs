@@ -1,5 +1,5 @@
 //! ChatGPT, through OpenAI's `codex` command-line tool, signed in with the
-//! owner's ChatGPT account (`codex login`). Mailboat never sees a token.
+//! owner's ChatGPT account (`codex login`). The app never sees a token.
 //!
 //! Codex is a coding agent, so each request turns its tools off (shell,
 //! web search, plugins, browser…) through `-c features.…=false`, which
@@ -50,7 +50,7 @@ pub struct Choice {
     pub effort: &'static str,
 }
 
-/// The models Mailboat uses: the fast one for quick requests (from the
+/// The models the app uses: the fast one for quick requests (from the
 /// catalog) and the owner's choice for writing (Settings → AI).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Models {

@@ -34,7 +34,7 @@ const MAX_CONTACT_PAGES: usize = 20;
 
 /// Replaces an account's Google contacts with what the People API has:
 /// saved contacts and Gmail's automatic "other contacts". An account that
-/// signed in before Mailboat asked for contacts gets a 403; the caller logs
+/// signed in before the app asked for contacts gets a 403; the caller logs
 /// it and carries on (suggestions still come from mail).
 pub async fn refresh_google(db: &Db, gmail: &GmailClient, account: AccountId) -> Result<usize> {
     let mut rows: Vec<(String, Option<String>, &str)> = Vec::new();

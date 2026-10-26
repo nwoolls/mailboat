@@ -80,6 +80,7 @@ import { IS_MAC } from "../../../shared/lib/platform";
 import { iconSetting, shownIcon } from "../model/appIcon";
 import { defaultMailAppRow } from "../model/mailApp";
 import { describeImageCache, IMAGE_CACHE_SIZES } from "../model/imageCache";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -91,13 +92,13 @@ export function GeneralSection() {
     <>
       <DefaultMailAppGroup />
       <Group title="About">
-        <Row label="Mailboat" description={info ? `Version ${info.version}` : undefined} />
+        <Row label={`${APP_NAME}`} description={info ? `Version ${info.version}` : undefined} />
       </Group>
     </>
   );
 }
 
-/** Whether `mailto:` links open in Mailboat, and a button to make them. */
+/** Whether `mailto:` links open in the app, and a button to make them. */
 function DefaultMailAppGroup() {
   const current = useDefaultMailApp().data;
   const makeDefault = useMakeDefaultMailApp();
@@ -114,7 +115,7 @@ function DefaultMailAppGroup() {
                 onError: (e) =>
                   showToast({
                     tone: "error",
-                    message: `Mailboat isn’t the default: ${errorText(e)}`,
+                    message: `${APP_NAME} isn’t the default: ${errorText(e)}`,
                   }),
               })
             }
@@ -254,7 +255,7 @@ function AccountGroup({
           ) : reason ? (
             <span className="text-warn">{reason}</span>
           ) : (
-            "If Google asks you to, or to give Mailboat new permissions."
+            `If Google asks you to, or to give ${APP_NAME} new permissions.`
           )
         }
       >
@@ -428,7 +429,7 @@ export function NotificationsSection() {
       <Group title="Dock">
         <Row
           label="Unread count"
-          description="On Mailboat’s Dock icon: unread conversations in Inbox or in Unread (every account’s), as the sidebar counts them."
+          description={`On ${APP_NAME}’s Dock icon: unread conversations in Inbox or in Unread (every account’s), as the sidebar counts them.`}
         >
           <Segmented
             label="Unread count on the Dock"
@@ -934,7 +935,7 @@ export function AppearanceSection({
       {IS_MAC && (
         <Group
           title="App icon"
-          description="Shows in the Dock while Mailboat is open. Finder, and the Dock once Mailboat quits, keep the built-in icon."
+          description={`Shows in the Dock while ${APP_NAME} is open. Finder, and the Dock once ${APP_NAME} quits, keep the built-in icon.`}
         >
           <div className="px-4 pt-0.5 pb-3.5">
             <AppIconPicker
@@ -1042,7 +1043,7 @@ export function AdvancedSection() {
       <Group title="Settings">
         <Row
           label="Restore default settings"
-          description="Every setting in Mailboat back to how it started. Your accounts, mail, signatures, rules and connected AI stay."
+          description={`Every setting in ${APP_NAME} back to how it started. Your accounts, mail, signatures, rules and connected AI stay.`}
         >
           <Button onClick={() => setRestoring(true)}>Restore defaults…</Button>
         </Row>
@@ -1101,8 +1102,8 @@ export function AdvancedSection() {
           }
         >
           <p>
-            Mailboat forgets the mail it has stored and downloads each account’s again, as when it was
-            added. That can take a while, and searches find less until it’s done.
+            {APP_NAME} forgets the mail it has stored and downloads each account’s again, as when it
+            was added. That can take a while, and searches find less until it’s done.
           </p>
           <p>Nothing changes in Gmail. Accounts, settings and rules stay.</p>
         </ConfirmDialog>

@@ -1,7 +1,7 @@
-//! Mailboat's mail for AI apps (Claude Desktop, Claude Code) over the Model
+//! The app's mail for AI apps (Claude Desktop, Claude Code) over the Model
 //! Context Protocol, with the official Rust SDK (`rmcp`).
 //!
-//! The AI app starts `mailboat --mcp` (`proxy`), which speaks MCP on its
+//! The AI app starts `<app> --mcp` (`proxy`), which speaks MCP on its
 //! stdin/stdout and passes each request to the running app over a local
 //! socket only the user can open (`socket_path`). The app answers with
 //! `MailServer`: shared accounts only (Settings → AI), never Spam or
@@ -28,12 +28,7 @@ use crate::error::{CoreError, Result};
 pub fn socket_path() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
-        let home = std::env::var_os("HOME")?;
-        Some(
-            PathBuf::from(home)
-                .join("Library/Application Support/com.nwoolls.mailboat")
-                .join("mcp.sock"),
-        )
+        Some(crate::brand::data_dir()?.join("mcp.sock"))
     }
     #[cfg(windows)]
     {
@@ -45,7 +40,8 @@ pub fn socket_path() -> Option<PathBuf> {
             .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
             .collect();
         Some(PathBuf::from(format!(
-            r"\\.\pipe\com.nwoolls.mailboat-mcp-{user}"
+            r"\\.\pipe\{}-mcp-{user}",
+            crate::brand::ID
         )))
     }
     #[cfg(not(any(target_os = "macos", windows)))]
@@ -58,7 +54,7 @@ pub fn socket_path() -> Option<PathBuf> {
 /// one `MailServer` per connection. Only this user (and administrators)
 /// can write to a pipe they created, so other accounts on the PC can't
 /// send it requests; remote clients are refused. If something else
-/// already made the pipe (a second copy of Mailboat), this one gives up.
+/// already made the pipe (a second copy of the app), this one gives up.
 #[cfg(windows)]
 pub async fn listen(socket: &Path, db: Arc<Db>, host: Arc<dyn Host>) -> Result<()> {
     use tokio::net::windows::named_pipe::ServerOptions;

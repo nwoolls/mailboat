@@ -34,7 +34,7 @@ pub struct IdentitiesChangedEvent {
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct AccountsChangedEvent;
 
-/// Mailboat → Settings… (⌘,) in the menu bar: open the Settings page.
+/// The app → Settings… (⌘,) in the menu bar: open the Settings page.
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct OpenSettingsEvent;
 

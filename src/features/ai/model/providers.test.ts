@@ -11,6 +11,7 @@ import {
   qualityChoices,
   statusLine,
 } from "./providers";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 const ai: AiChoices = {
   connected: ["chatgpt"],
@@ -54,9 +55,9 @@ describe("providers", () => {
   it("describes each state in plain words", () => {
     const claude: ProviderStatus = { provider: "claude", state: "ready", account: "n@x.com" };
     expect(statusLine(claude, true)).toBe("Connected as n@x.com.");
-    expect(statusLine(claude, false)).toBe("Signed in, not used by Mailboat yet.");
+    expect(statusLine(claude, false)).toBe(`Signed in, not used by ${APP_NAME} yet.`);
     expect(statusLine({ provider: "chatgpt", state: "notInstalled" }, false)).toContain("Codex");
-    // The desktop app is enough: Mailboat uses the copy inside it.
+    // The desktop app is enough: the app uses the copy inside it.
     expect(statusLine({ provider: "claude", state: "notInstalled" }, false)).toContain(
       "the Claude app",
     );

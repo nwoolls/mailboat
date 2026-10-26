@@ -14,6 +14,7 @@ import {
   headline,
   whenText,
 } from "../model/invite";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 const ANSWERS: { answer: Answer; label: string }[] = [
   { answer: "yes", label: "Yes" },
@@ -71,7 +72,7 @@ export function InviteCard({
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-content/60">
               {signIn.pending
                 ? "Waiting for you to finish in the browser."
-                : "Sign in to this account again to answer from Mailboat."}
+                : `Sign in to this account again to answer from ${APP_NAME}.`}
               {/* Never disabled: a closed browser tab can't be detected,
                   so starting again (replacing the waiting sign-in) or
                   cancelling stays possible, as with "+". */}

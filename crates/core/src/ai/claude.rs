@@ -1,5 +1,5 @@
 //! Claude, through the `claude` command-line tool (Claude Code), signed in
-//! with the owner's Claude account. Mailboat never sees a token: the tool
+//! with the owner's Claude account. The app never sees a token: the tool
 //! keeps its own sign-in.
 //!
 //! Each request is `claude -p` with every tool, setting file, MCP server
@@ -202,7 +202,7 @@ mod tests {
             }
         }
         assert_eq!(partials, ["Hello there", "Hello there, friend"]);
-        // The result line ends it, so Mailboat stops waiting there.
+        // The result line ends it, so the app stops waiting there.
         assert!(r.done);
         let a = r
             .finish(process::Exit {

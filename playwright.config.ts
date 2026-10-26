@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 /**
  * Browser tests of UI behaviour that unit tests can't see (animations,
- * layout, scrolling), in WebKit: the engine of the macOS web view Mailboat
+ * layout, scrolling), in WebKit: the engine of the macOS web view the app
  * runs in (and Chromium for Windows' web view, `windows-*.spec.ts`). Real components, a faked Rust side (tests/browser/harness.tsx).
  * As MonoCode's playwright.config.ts.
  */

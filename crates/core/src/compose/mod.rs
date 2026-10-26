@@ -207,7 +207,7 @@ fn original(db: &Db, message: MessageId) -> Result<Original> {
 }
 
 /// Gathers what a reply or forward needs: the original's people, subject,
-/// date and text. Messages synced before Mailboat read Reply-To have it
+/// date and text. Messages synced before the app read Reply-To have it
 /// fetched now (and remembered); the body is fetched if it isn't cached.
 pub async fn reply_source(db: &Db, gmail: &GmailClient, message: MessageId) -> Result<ReplySource> {
     let o = original(db, message)?;

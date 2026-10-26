@@ -104,7 +104,7 @@ pub struct AppSettings {
     /// own dark styles all follow it, from the first paint.
     pub theme: Theme,
     /// Which of the app icon choices shows in the Dock, by name (e.g.
-    /// "C10-orange"); `None` is the icon Mailboat is built with.
+    /// "C10-orange"); `None` is the icon the app is built with.
     pub app_icon: Option<String>,
     /// The unread count on the Dock icon, across every account.
     pub dock_badge: DockBadge,
@@ -118,7 +118,7 @@ pub struct AppSettings {
     /// Summaries and writing help (Settings → AI).
     pub ai: AiSettings,
     /// What AI apps (Claude Desktop, Claude Code) may do with each
-    /// account's mail through Mailboat's MCP server. Nothing by default.
+    /// account's mail through the app's MCP server. Nothing by default.
     pub mcp: McpSettings,
 }
 

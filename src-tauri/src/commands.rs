@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use mail_core::attachments;
 use mail_core::auth::{config, oauth, tokens, AccountTokens};
+use mail_core::brand;
 use mail_core::calendar::{self, InviteCard};
 use mail_core::compose::contacts::Contact;
 use mail_core::compose::identities::{self, Identity};
@@ -756,7 +757,7 @@ pub async fn email_image_copy(state: State<'_, AppState>, src: String) -> CmdRes
 #[specta::specta]
 pub fn email_link_open(app: AppHandle, link: String) -> CmdResult<()> {
     let url = mail_core::mail::links::unwrap(&link)
-        .ok_or_else(|| CoreError::Invalid("not a link Mailboat can open".into()))?;
+        .ok_or_else(|| CoreError::Invalid(format!("not a link {} can open", brand::NAME)))?;
     crate::links::open(&app, &url)
         .map_err(|e| CoreError::Other(format!("could not open the link: {e}")))?;
     Ok(())
@@ -767,7 +768,7 @@ pub fn email_link_open(app: AppHandle, link: String) -> CmdResult<()> {
 #[specta::specta]
 pub fn email_link_copy(link: String) -> CmdResult<()> {
     let url = mail_core::mail::links::unwrap(&link)
-        .ok_or_else(|| CoreError::Invalid("not a link Mailboat can copy".into()))?;
+        .ok_or_else(|| CoreError::Invalid(format!("not a link {} can copy", brand::NAME)))?;
     Ok(crate::email_menu::copy_text(&url).map_err(CoreError::Other)?)
 }
 
@@ -1044,7 +1045,7 @@ pub fn account_set_color(
     Ok(accounts::set_color(&state.db.conn(), account_id, &color)?)
 }
 
-/// Opens Mailboat's page in System Settings → Notifications, where macOS
+/// Opens the app's page in System Settings → Notifications, where macOS
 /// keeps whether notifications may show and in what style.
 #[tauri::command]
 #[specta::specta]
@@ -1265,7 +1266,7 @@ pub fn mail_app_default() -> crate::mail_handler::DefaultMailApp {
     crate::mail_handler::default_app()
 }
 
-/// Asks macOS to make this copy of Mailboat the default email reader; macOS
+/// Asks macOS to make this copy of the app the default email reader; macOS
 /// asks the user to confirm.
 #[tauri::command]
 #[specta::specta]
@@ -1317,7 +1318,7 @@ pub fn image_cache_size(state: State<'_, AppState>) -> CmdResult<ImageCacheSize>
     })
 }
 
-/// What Mailboat keeps on this Mac, for Settings → Advanced.
+/// What the app keeps on this Mac, for Settings → Advanced.
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheSize {

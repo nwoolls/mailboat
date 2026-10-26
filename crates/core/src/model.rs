@@ -47,7 +47,7 @@ pub struct Account {
     /// Which OAuth client config this account signed in with.
     pub oauth_client: String,
     /// Features this account's sign-in doesn't cover yet (it signed in
-    /// before Mailboat asked for them); signing in again adds them.
+    /// before the app asked for them); signing in again adds them.
     pub missing_permissions: Vec<Permission>,
 }
 

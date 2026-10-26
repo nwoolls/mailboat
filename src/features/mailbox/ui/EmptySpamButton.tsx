@@ -5,10 +5,11 @@ import { commands } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { showToast } from "../../../shared/lib/toast";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 /**
  * "Empty Spam" at the top of Spam, as Gmail's "Delete all spam messages
- * now". Mailboat can't delete for good (it has `gmail.modify`, not full
+ * now". The app can't delete for good (it has `gmail.modify`, not full
  * access), so it moves everything in Spam to Trash, which Gmail empties
  * after 30 days. Covers every account the view shows, each separately.
  */
@@ -65,7 +66,7 @@ export function EmptySpamButton({ accounts }: { accounts: AccountFilter }) {
         >
           <p>
             Everything in Spam goes to Trash
-            {accounts.kind === "all" ? ", in every account" : ""}, including spam Mailboat hasn’t
+            {accounts.kind === "all" ? ", in every account" : ""}, including spam {APP_NAME} hasn’t
             downloaded yet.
           </p>
           <p>Gmail deletes mail in Trash for good after 30 days.</p>

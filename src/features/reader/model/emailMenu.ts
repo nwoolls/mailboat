@@ -6,7 +6,7 @@ export type EmailMenuTarget = {
   link: string | null;
 };
 
-/** Images whose address Mailboat can save or copy. */
+/** Images whose address the app can save or copy. */
 const SAVABLE = /^(data:image\/|https?:)/i;
 
 /**

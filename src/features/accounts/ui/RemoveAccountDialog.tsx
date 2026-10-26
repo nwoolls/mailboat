@@ -1,6 +1,7 @@
 import type { Account, AccountId } from "../../../platform/tauri/bindings";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 import { useRemoveAccount } from "./useRemoveAccount";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 /** Asks before removing an account (from its menu or from Settings). */
 export function RemoveAccountDialog({
@@ -23,7 +24,9 @@ export function RemoveAccountDialog({
       onConfirm={() => remove.mutate(account.id)}
       onCancel={onCancel}
     >
-      <p>Mailboat stops syncing it, deletes its mail saved on this Mac and forgets its sign-in.</p>
+      <p>
+        {APP_NAME} stops syncing it, deletes its mail saved on this Mac and forgets its sign-in.
+      </p>
       <p>Nothing changes in Gmail. You can add the account again at any time.</p>
     </ConfirmDialog>
   );

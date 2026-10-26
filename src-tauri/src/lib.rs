@@ -165,7 +165,7 @@ pub fn export_bindings(path: &std::path::Path) {
         .expect("failed to export TypeScript bindings");
 }
 
-/// `mailboat --mcp` (see `mcp::run_proxy`); returns the exit code.
+/// `<app> --mcp` (see `mcp::run_proxy`); returns the exit code.
 pub fn run_mcp_proxy() -> i32 {
     mcp::run_proxy()
 }
@@ -176,7 +176,7 @@ pub fn run() {
     export_bindings(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(BINDINGS_PATH));
 
     let app = tauri::Builder::default();
-    // Windows starts a second copy for a mailto: link clicked while Mailboat
+    // Windows starts a second copy for a mailto: link clicked while the app
     // is open: it hands the link over and quits (must be the first
     // plugin). Not on the Mac, where macOS hands links to the running
     // copy itself and a dev build may run next to the installed one.
@@ -208,7 +208,7 @@ pub fn run() {
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
-            // Windows passes a mailto: link that launched Mailboat as an argument.
+            // Windows passes a mailto: link that launched the app as an argument.
             #[cfg(windows)]
             mail_handler::open_args(app.handle(), std::env::args().skip(1));
             menu::install(app.handle())?;
@@ -219,7 +219,11 @@ pub fn run() {
             let config_dir = app.path().app_config_dir()?;
             let db = Arc::new(Db::open(&mail_core::db::path_in(&data_dir))?);
             let http = mail_core::reqwest::Client::builder()
-                .user_agent(concat!("Mailboat/", env!("CARGO_PKG_VERSION")))
+                .user_agent(format!(
+                    "{}/{}",
+                    mail_core::brand::NAME,
+                    env!("CARGO_PKG_VERSION")
+                ))
                 .timeout(std::time::Duration::from_secs(60))
                 .build()?;
             let sync_log = Arc::new(sync_log::SyncLog::open(&app.path().app_log_dir()?));
@@ -273,9 +277,9 @@ pub fn run() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("error while building Mailboat")
+        .expect("error while building the app")
         .run(|app, event| {
-            // macOS hands over links Mailboat is the default app for.
+            // macOS hands over links the app is the default app for.
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Opened { urls } = &event {
                 for url in urls {
@@ -292,7 +296,7 @@ pub fn run() {
         });
 }
 
-/// Another copy of Mailboat (say a dev build next to the installed app)
+/// Another copy of the app (say a dev build next to the installed app)
 /// shares this database and syncs too. Every 2 seconds, if it wrote
 /// something, the window refreshes as if this copy had: one cheap SQLite
 /// pragma, no file watching.

@@ -32,7 +32,7 @@ tauri-plugin-notification = "2"
 # Already part of the build through Tauri; declared to set the Dock picture
 # (src/dock.rs) and to read trackpad phases (src/trackpad.rs).
 # Same versions as Tauri and MonoCode.
-# Windows: a mailto: link clicked while Mailboat is open starts a second copy,
+# Windows: a mailto: link clicked while the app is open starts a second copy,
 # which hands the link to the running one and quits (src/lib.rs).
 [target.'cfg(windows)'.dependencies]
 tauri-plugin-single-instance = "2"
@@ -42,8 +42,8 @@ windows-registry = "0.6"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
-# NSWorkspace: which app opens mailto: links, and making Mailboat it (src/mail_handler.rs).
-# NSMenu, NSMenuItem, NSView and NSPasteboard: Mailboat's own menu over
+# NSWorkspace: which app opens mailto: links, and making the app it (src/mail_handler.rs).
+# NSMenu, NSMenuItem, NSView and NSPasteboard: the app's own menu over
 # images and links in emails, and its Copy Image / Copy Link (src/email_menu.rs).
 objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "NSImage", "NSResponder", "NSEvent", "NSWorkspace", "NSMenu", "NSMenuItem", "NSView", "NSPasteboard", "NSUserInterfaceItemIdentification", "block2"] }
 # NSData, to turn a chosen app icon's PNG into an NSImage (src/dock.rs);

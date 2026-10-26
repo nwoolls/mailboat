@@ -13,11 +13,12 @@ import {
   vacationProblem,
   vacationStatus,
 } from "../model/vacationForm";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 /**
  * Settings → Vacation responder: Gmail's automatic reply, per account.
  * Gmail sends the replies (once per sender every few days), whether or
- * not Mailboat is open.
+ * not the app is open.
  */
 export function VacationSection({ accounts }: { accounts: Account[] }) {
   const vacations = useVacations();
@@ -51,7 +52,7 @@ export function VacationSection({ accounts }: { accounts: Account[] }) {
                 label="Sign in again"
                 description={
                   <span className="text-warn">
-                    Mailboat needs permission to see and change this account’s vacation responder.
+                    {APP_NAME} needs permission to see and change this account’s vacation responder.
                   </span>
                 }
               >

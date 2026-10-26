@@ -1,4 +1,4 @@
-//! The macOS menu bar: Tauri's standard menu plus Mailboat → Settings… (⌘,),
+//! The macOS menu bar: Tauri's standard menu plus the app → Settings… (⌘,),
 //! as in MonoCode's `menu.rs` and every Mac app, and the app's own
 //! commands. The window decides those (`features/commands`: one list for
 //! the menu bar, the right-click menu and ⌘K) and sends them here with
@@ -80,7 +80,7 @@ fn standard_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>
     use tauri::menu::{Menu, MenuItemBuilder, MenuItemKind, PredefinedMenuItem};
 
     let menu = Menu::default(app)?;
-    // The app menu comes first: About Mailboat, a separator, then Services…
+    // The app menu comes first: About the app, a separator, then Services…
     // Settings goes after the separator, with its own below it.
     if let Some(MenuItemKind::Submenu(app_menu)) = menu.items()?.into_iter().next() {
         let settings = MenuItemBuilder::with_id(OPEN_SETTINGS, "Settings…")

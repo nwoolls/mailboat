@@ -11,7 +11,7 @@ import { actionLabel, type ThreadAction, toggleFor } from "../../mailbox/model/t
  * the menu bar, the right-click menu, ⌘K and the toolbar's tooltips all
  * read them from here, so they can't drift apart.
  *
- * `key` is Mailboat's own keyboard shortcut (Gmail's single keys); `accel`
+ * `key` is the app's own keyboard shortcut (Gmail's single keys); `accel`
  * is the menu bar's (Mail's ⌘ shortcuts, in Tauri's accelerator form).
  * Windows has no menu bar: the window matches `accel` itself there, with
  * Ctrl for ⌘ (`shared/lib/platform`).
@@ -134,7 +134,7 @@ export function conversationCommands(
 /**
  * The views to go to, in the sidebar's order, numbered ⌘1 to ⌘7 in the
  * menu bar as Mail numbers its favourite mailboxes. Keyed by Gmail's
- * `g then …` letters (`u` and `e` are Mailboat's: Gmail has no Unread or
+ * `g then …` letters (`u` and `e` are the app's: Gmail has no Unread or
  * Archive view).
  */
 const GO_TO: { id: GoToId; title: string }[] = [
@@ -194,7 +194,7 @@ export type MenuSpec = { title: string; items: (CommandId | "-")[] };
 
 /**
  * The menu bar, as Mail lays it out. File and View join macOS's own
- * (Close Window, Enter Full Screen); Mailbox and Message are Mailboat's.
+ * (Close Window, Enter Full Screen); Mailbox and Message are the app's.
  */
 export const MENU_BAR: MenuSpec[] = [
   { title: "File", items: ["new"] },

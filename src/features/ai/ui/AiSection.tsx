@@ -34,6 +34,7 @@ import { describeLimit, describeTotals, startOfToday } from "../model/usage";
 import { AiAppsGroups } from "../../mcp/ui/AiAppsGroups";
 import { clearLineSummaries } from "./lineSummaries";
 import { accelLabel } from "../../../shared/lib/platform";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 const SELECT_CLASS =
   "h-7 max-w-64 rounded-md border border-content/10 bg-transparent px-1.5 text-[12px] text-content/80 hover:bg-selection";
@@ -394,7 +395,7 @@ function UsageGroup() {
   return (
     <Group
       title="Usage"
-      description="Requests made from Mailboat, and the tokens and cost they reported (Claude reports an API-price estimate; a subscription isn’t billed it). What was sent is never recorded."
+      description={`Requests made from ${APP_NAME}, and the tokens and cost they reported (Claude reports an API-price estimate; a subscription isn’t billed it). What was sent is never recorded.`}
     >
       {!used || used.length === 0 ? (
         <Row label="Nothing yet" description="Summaries and writing help will show here." />

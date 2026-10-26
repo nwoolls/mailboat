@@ -101,7 +101,7 @@ pub fn parse(ics: &str, mine: &[&str]) -> Option<Invite> {
     {
         Some("CANCEL") => InviteKind::Cancel,
         Some("REPLY") => InviteKind::Reply,
-        // PUBLISH and no method are shown as invitations too: Mailboat only
+        // PUBLISH and no method are shown as invitations too: the app only
         // looks at calendar parts that came by email.
         _ => InviteKind::Request,
     };

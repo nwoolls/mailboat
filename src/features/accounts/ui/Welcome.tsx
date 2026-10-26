@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { OAuthSetup } from "../../../platform/tauri/bindings";
 import { keys } from "../../../shared/lib/queries";
 import { useSignIn } from "./useSignIn";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 /** First-run screen: explains OAuth setup if needed, then offers sign-in. */
 export function Welcome({ setup }: { setup: OAuthSetup | undefined }) {
@@ -13,10 +14,10 @@ export function Welcome({ setup }: { setup: OAuthSetup | undefined }) {
       <div data-tauri-drag-region className="h-11 shrink-0" />
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="max-w-md">
-          <h1 className="text-2xl font-semibold">Welcome to Mailboat</h1>
+          <h1 className="text-2xl font-semibold">Welcome to {APP_NAME}</h1>
           {setup && !setup.configured ? (
             <div className="mt-4 space-y-3 text-content/70">
-              <p>Mailboat needs a Google OAuth client before you can sign in.</p>
+              <p>{APP_NAME} needs a Google OAuth client before you can sign in.</p>
               <ol className="list-decimal space-y-1 pl-5">
                 <li>
                   In Google Cloud Console, create an OAuth client of type “Desktop app” and enable
@@ -39,7 +40,8 @@ export function Welcome({ setup }: { setup: OAuthSetup | undefined }) {
           ) : (
             <div className="mt-4 space-y-4 text-content/70">
               <p>
-                Connect a Gmail or Google Workspace account. Sign-in happens in your browser; Mailboat
+                Connect a Gmail or Google Workspace account. Sign-in happens in your browser;{" "}
+                {APP_NAME}
                 never sees your password.
               </p>
               {signIn.pending ? (

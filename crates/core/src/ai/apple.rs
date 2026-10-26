@@ -1,4 +1,4 @@
-//! Apple Intelligence, through Mailboat's helper (`ai-helper`, built from
+//! Apple Intelligence, through the app's helper (`ai-helper`, built from
 //! `src-tauri/macos/ai-helper.swift`). The protocol is described there.
 //!
 //! Apple's on-device model reads about 4,000 tokens, instructions and

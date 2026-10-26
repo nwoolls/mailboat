@@ -152,8 +152,12 @@ pub async fn set_signature(
     let saved = gmail.set_signature(email, html).await.map_err(|e| {
         if e.is_missing_scope() {
             CoreError::Invalid(
-                "Sign in to this account again (Settings → Accounts) so Mailboat can change its signatures."
-                    .into(),
+                concat!(
+                    "Sign in to this account again (Settings → Accounts) so ",
+                    env!("BRAND_NAME"),
+                    " can change its signatures."
+                )
+                .into(),
             )
         } else {
             e

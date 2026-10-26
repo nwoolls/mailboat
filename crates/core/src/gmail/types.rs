@@ -1,4 +1,4 @@
-//! Gmail REST API response shapes (only the fields Mailboat uses).
+//! Gmail REST API response shapes (only the fields the app uses).
 //! Reference: https://developers.google.com/gmail/api/reference/rest
 
 use serde::{Deserialize, Deserializer, Serialize};
@@ -280,7 +280,7 @@ pub struct FilterList {
     pub filter: Vec<Filter>,
 }
 
-/// A Gmail filter (what Mailboat calls a rule). Sent back to Gmail as well,
+/// A Gmail filter (what the app calls a rule). Sent back to Gmail as well,
 /// so empty fields are left out.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

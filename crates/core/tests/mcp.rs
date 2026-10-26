@@ -304,7 +304,7 @@ async fn only_shared_accounts_and_never_spam() {
 }
 
 /// A new email may be saved before anyone is chosen to send it to, as in
-/// Gmail (owner report, 2026-10-25); the user adds them in Mailboat. It's
+/// Gmail (owner report, 2026-10-25); the user adds them in the app. It's
 /// signed with the From address's Gmail signature.
 #[tokio::test]
 async fn a_new_draft_needs_no_recipient_yet() {
@@ -340,7 +340,7 @@ async fn a_new_draft_needs_no_recipient_yet() {
     assert_eq!(saved["to"], json!([]));
     assert_eq!(saved["account"], "me@gmail.com");
 
-    // Signed as a draft written in Mailboat is (owner, 2026-10-25).
+    // Signed as a draft written in the app is (owner, 2026-10-25).
     let requests = server.received_requests().await.unwrap();
     let raw = String::from_utf8_lossy(&requests[0].body).to_string();
     assert!(raw.contains("gmail_signature"), "{raw}");
@@ -377,7 +377,7 @@ async fn drafts_only_where_allowed_and_never_sent() {
     assert_eq!(*h.changed.lock().unwrap(), [m.a]);
 
     // A draft, not a send: one draft created, then the conversation
-    // refreshed (so it shows in Mailboat), and nothing else.
+    // refreshed (so it shows in the app), and nothing else.
     let requests = server.received_requests().await.unwrap();
     let made: Vec<String> = requests
         .iter()
@@ -429,9 +429,9 @@ async fn every_request_is_logged_without_content() {
     assert!(entries.iter().all(|e| !e.detail.contains("Friday")));
 }
 
-/// The way an AI app really connects: it starts `mailboat --mcp` (the proxy),
+/// The way an AI app really connects: it starts `<app> --mcp` (the proxy),
 /// which passes requests to the app's socket. With the app closed, the
-/// tools are still listed and each says to open Mailboat; once it's open,
+/// tools are still listed and each says to open the app; once it's open,
 /// the next call goes through without restarting the proxy.
 #[tokio::test]
 async fn through_the_proxy_with_server_closed_then_open() {
@@ -461,7 +461,7 @@ async fn through_the_proxy_with_server_closed_then_open() {
     .await
     .unwrap();
 
-    // Closed: listed anyway, and every call says to open Mailboat.
+    // Closed: listed anyway, and every call says to open the app.
     let tools = c.list_all_tools().await.unwrap();
     assert!(tools.iter().any(|t| t.name == "search_mail"));
     let r = call(&c, "search_mail", json!({ "query": "lunch" })).await;

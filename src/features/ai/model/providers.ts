@@ -6,6 +6,7 @@ import type {
   Quality,
 } from "../../../platform/tauri/bindings";
 import { IS_MAC } from "../../../shared/lib/platform";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 /**
  * The AI settings with Rust's defaults filled in (Apple for everything;
@@ -47,7 +48,7 @@ export const PROVIDER_NAMES: Record<AiProvider, string> = {
 
 /**
  * The program each one is reached through, and the desktop app to get
- * when there's none: the apps carry a copy Mailboat finds (`ai::apps` in
+ * when there's none: the apps carry a copy the app finds (`ai::apps` in
  * Rust), and they're what most people would install anyway.
  */
 export const PROVIDER_TOOLS: Record<AiProvider, { name: string; app: string; url: string } | null> =
@@ -112,7 +113,7 @@ export function statusLine(status: ProviderStatus | undefined, connected: boolea
   switch (status.state) {
     case "ready":
       if (status.provider === "apple") return "Ready. Runs on this Mac: mail never leaves it.";
-      if (!connected) return "Signed in, not used by Mailboat yet.";
+      if (!connected) return `Signed in, not used by ${APP_NAME} yet.`;
       return status.account ? `Connected as ${status.account}.` : "Connected.";
     case "signedOut":
       return connected ? "Signed out. Connect again to sign in." : "Not connected.";
@@ -125,7 +126,7 @@ export function statusLine(status: ProviderStatus | undefined, connected: boolea
   }
 }
 
-/** Whether Mailboat sends mail off the Mac when using it. */
+/** Whether the app sends mail off the Mac when using it. */
 export function leavesMac(provider: AiProvider): boolean {
   return provider !== "apple";
 }

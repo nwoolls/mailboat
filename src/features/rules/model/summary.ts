@@ -6,6 +6,7 @@ import type {
   RuleCriteria,
 } from "../../../platform/tauri/bindings";
 import { sizeParts } from "./ruleForm";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 export const CATEGORY_NAMES: Record<Category, string> = {
   primary: "Primary",
@@ -74,7 +75,7 @@ export function describeActions(
   if (a.neverSpam) parts.push("never send to Spam");
   if (a.trash) parts.push("delete");
   if (a.forwardTo) parts.push(`forward to ${a.forwardTo}`);
-  return parts.length ? sentence(parts) : "Nothing Mailboat can show";
+  return parts.length ? sentence(parts) : `Nothing ${APP_NAME} can show`;
 }
 
 /** Whether a rule mentions the search text (in what it matches or does). */

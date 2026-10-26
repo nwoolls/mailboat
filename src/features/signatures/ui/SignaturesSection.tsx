@@ -9,6 +9,7 @@ import { EditorBody, FormatBar, useRichEditor } from "../../compose/ui/RichEdito
 import { Button, Group, Row } from "../../settings/ui/controls";
 import { editorWouldSimplify, signatureToSave } from "../model/signature";
 import { accelLabel, primaryKey } from "../../../shared/lib/platform";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 /**
  * Settings → Signatures: each address's Gmail signature, shown as compose
@@ -43,7 +44,7 @@ export function SignaturesSection({ accounts }: { accounts: Account[] }) {
                 label="Sign in again"
                 description={
                   <span className="text-warn">
-                    Mailboat needs permission to change this account’s signatures.
+                    {APP_NAME} needs permission to change this account’s signatures.
                   </span>
                 }
               >
@@ -143,7 +144,8 @@ function SignatureEditor({ identity, onClose }: { identity: Identity; onClose: (
         Signature
       </h2>
       <p className="mb-3 text-xs text-content/50">
-        For {identity.email}. Used for new mail and replies from this address, in Mailboat and Gmail.
+        For {identity.email}. Used for new mail and replies from this address, in {APP_NAME} and
+        Gmail.
       </p>
       {simplifies && (
         <p className="mb-3 rounded-md bg-warn/10 px-3 py-2 text-xs text-warn">

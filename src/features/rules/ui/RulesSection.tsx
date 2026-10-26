@@ -9,6 +9,7 @@ import { Button, Group, Row } from "../../settings/ui/controls";
 import { pageOf } from "../model/paging";
 import { describeActions, describeCriteria, ruleMatchesSearch } from "../model/summary";
 import { RuleEditor, type RuleEditorTarget } from "./RuleEditor";
+import { APP_NAME } from "../../../shared/lib/brand";
 
 /**
  * Settings → Rules: each account's Gmail filters, to add, change and
@@ -145,7 +146,7 @@ function AccountRulesGroup({
           label="Sign in again"
           description={
             <span className="text-warn">
-              Mailboat needs permission to see and change this account’s rules.
+              {APP_NAME} needs permission to see and change this account’s rules.
             </span>
           }
         >
@@ -161,7 +162,7 @@ function AccountRulesGroup({
       ) : state.rules.length === 0 ? (
         <Row
           label="No rules yet"
-          description="Rules sort mail as it arrives, in Gmail, even when Mailboat is closed. Make one here, or from a message with “Filter messages like this”."
+          description={`Rules sort mail as it arrives, in Gmail, even when ${APP_NAME} is closed. Make one here, or from a message with “Filter messages like this”.`}
         />
       ) : shown.length === 0 ? (
         <Row label="No rules match the search" />

@@ -14,7 +14,7 @@ vi.mock("../../../shared/lib/queries", () => ({
   }),
   useMcpSetup: () => ({
     data: {
-      program: "/Applications/Mailboat.app/Contents/MacOS/mailboat",
+      program: "/Applications/App.app/Contents/MacOS/app",
       claudeCodeCommand: "",
       claudeCodeInstalled: true,
       claudeCodeConnected: false,
