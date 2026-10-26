@@ -2692,7 +2692,6 @@ dependencies = [
  "objc2-foundation",
  "objc2-user-notifications",
  "open",
- "png 0.18.1",
  "serde",
  "serde_json",
  "specta",

@@ -2234,13 +2234,17 @@ Spike became Milestones 10–18, 2026-10-25.*
 - [ ] The icon looked shrunk on Windows *(owner report, 2026-10-25)*:
       the Mac art keeps Apple's margin around the tile, but Windows draws
       icons edge to edge. `icon.ico` now comes from a cropped copy,
-      `design/icon/mailboat-icon-windows.svg`. To try in the VM
-- [ ] The app icon chosen in Settings → Appearance did nothing on
-      Windows *(owner question, 2026-10-25; option 1 of two, the other
-      hiding the setting there)*: it now goes on the window, which the
-      taskbar shows while Mailboat runs, cropped to fill the square like
-      `icon.ico`. The pinned shortcut and Start menu keep the default
-      (Windows doesn't let an app change them). To try in the VM
+      `design/icon/mailboat-icon-windows.svg`. *Owner, 2026-10-25: still
+      small in the taskbar.* The installed program carries the new icon
+      (checked byte for byte), and the taskbar showed the old one's size:
+      Windows' icon cache, which reinstalling doesn't refresh. To check
+      after clearing the cache
+- [x] The app icon chosen in Settings → Appearance did nothing on
+      Windows *(owner question, 2026-10-25)*. Tried setting it on the
+      window: the title bar changed, the taskbar didn't (Windows shows
+      the Start menu shortcut's icon there, which notifications need
+      Mailboat to have). Owner: "if we can't get that part working, let's
+      just hide the feature". Hidden on Windows
 - [x] No count next to Starred *(owner, 2026-10-25, while trying the
       Windows build: Gmail shows none and it's not actionable)*. Inbox,
       Drafts and labels keep theirs

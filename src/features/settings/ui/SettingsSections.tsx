@@ -76,6 +76,7 @@ import { textSize } from "./textSize";
 import { FEATURE_FLAGS, setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
+import { IS_MAC } from "../../../shared/lib/platform";
 import { iconSetting, shownIcon } from "../model/appIcon";
 import { defaultMailAppRow } from "../model/mailApp";
 import { describeImageCache, IMAGE_CACHE_SIZES } from "../model/imageCache";
@@ -928,19 +929,23 @@ export function AppearanceSection({
           <Segmented label="Text size" value={size} options={TEXT_SIZES} onChange={textSize.set} />
         </Row>
       </Group>
-      <Group
-        title="App icon"
-        description="Shows in the Dock while Mailboat is open. Finder, and the Dock once Mailboat quits, keep the built-in icon."
-      >
-        <div className="px-4 pt-0.5 pb-3.5">
-          <AppIconPicker
-            choices={iconChoices}
-            value={icon}
-            onChange={(choice) => change({ appIcon: iconSetting(choice) })}
-            disabled={!settings}
-          />
-        </div>
-      </Group>
+      {/* Mac only: Windows shows the Start menu shortcut's icon in the
+          taskbar, whatever the window sets (tried 2026-10-25). */}
+      {IS_MAC && (
+        <Group
+          title="App icon"
+          description="Shows in the Dock while Mailboat is open. Finder, and the Dock once Mailboat quits, keep the built-in icon."
+        >
+          <div className="px-4 pt-0.5 pb-3.5">
+            <AppIconPicker
+              choices={iconChoices}
+              value={icon}
+              onChange={(choice) => change({ appIcon: iconSetting(choice) })}
+              disabled={!settings}
+            />
+          </div>
+        </Group>
+      )}
       <Group
         title="Transparency"
         description="How much of what’s behind the window shows through. More see-through looks lighter; less is easier to read."
