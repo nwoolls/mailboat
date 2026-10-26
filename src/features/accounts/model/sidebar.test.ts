@@ -29,9 +29,9 @@ describe("sidebar unread counts", () => {
     expect(viewUnread(counts, { kind: "userLabel", labelId: 13 }, ALL)).toBe(4);
   });
 
-  it("counts only where unread is actionable: Inbox, Starred and labels", () => {
+  it("counts only where unread is actionable: Inbox and labels, not Starred", () => {
     expect(viewUnread(counts, system("inbox"), ALL)).toBe(5);
-    expect(viewUnread(counts, system("starred"), ALL)).toBe(1);
+    expect(viewUnread(counts, system("starred"), ALL)).toBe(0);
     expect(viewUnread(counts, system("unread"), ALL)).toBe(0);
     expect(viewUnread(counts, system("sent"), ALL)).toBe(0);
     expect(viewUnread(counts, { kind: "archive" }, ALL)).toBe(0);

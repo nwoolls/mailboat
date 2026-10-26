@@ -2221,6 +2221,9 @@ Spike became Milestones 10–18, 2026-10-25.*
       Code's own installer puts it in `%USERPROFILE%\.local\bin`, which
       Mailboat already searches. Whether to also use the copy inside the
       Claude app is to look into with the owner
+- [x] No count next to Starred *(owner, 2026-10-25, while trying the
+      Windows build: Gmail shows none and it's not actionable)*. Inbox,
+      Drafts and labels keep theirs
 
 ## Release: the road to an open-source the alternative name
 

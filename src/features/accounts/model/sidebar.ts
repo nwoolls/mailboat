@@ -13,10 +13,11 @@ export function unreadIn(counts: LabelUnread[], gmailLabelId: string, accounts: 
 
 /**
  * The count a sidebar row shows, only where unread means something is
- * waiting: Inbox, Starred (flagged conversations with new replies) and
- * labels (the only signal for mail a filter keeps out of the Inbox).
- * Unread, Archive and All Mail are always full of old unread mail, so a
- * count there is noise; Sent, Spam and Trash never need one. Drafts shows
+ * waiting: Inbox and labels (the only signal for mail a filter keeps out
+ * of the Inbox). Starred shows none, as in Gmail (owner, 2026-10-25: "not
+ * actionable"). Unread, Archive and All Mail are always full of old
+ * unread mail, so a count there is noise; Sent, Spam and Trash never
+ * need one. Drafts shows
  * how many are saved, as Gmail does (owner request, 2026-10-25): Rust
  * counts drafts, not unread, for its row.
  */
@@ -24,7 +25,6 @@ export function viewUnread(counts: LabelUnread[], view: MailView, accounts: Acco
   switch (view.kind) {
     case "system":
       if (view.label === "inbox") return unreadIn(counts, "INBOX", accounts);
-      if (view.label === "starred") return unreadIn(counts, "STARRED", accounts);
       if (view.label === "draft") return unreadIn(counts, "DRAFT", accounts);
       return 0;
     case "userLabel":
