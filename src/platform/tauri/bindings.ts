@@ -694,6 +694,11 @@ export type DefaultMailApp =
 { kind: "other"; name: string } | 
 /**  Nothing claims mailto links. */
 { kind: "none" } | 
+/**
+ *  This copy isn't registered as an email app (Windows: a build run
+ *  without its installer), so Windows can't offer it.
+ */
+{ kind: "notInstalled" } | 
 /**  Not on this platform yet. */
 { kind: "unsupported" };
 

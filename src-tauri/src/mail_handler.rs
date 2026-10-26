@@ -6,6 +6,13 @@
 //! Tauri's `RunEvent::Opened`. A link can arrive before the window is
 //! listening (it launched the app), so links wait in a queue the window
 //! drains: at start and on each `MailtoEvent`.
+//!
+//! On Windows the installer registers Mailboat as an email app
+//! (`windows/installer.nsh`: the `Mailboat.mailto` ProgID and Default apps
+//! entry), Windows starts Mailboat with the link as an argument, and a copy
+//! started while Mailboat is open hands its link to the running one
+//! (single-instance plugin, `lib.rs`). Windows doesn't let an app make
+//! itself the default: Settings opens Windows' Default apps page instead.
 
 use std::sync::Mutex;
 
@@ -43,6 +50,26 @@ pub fn open(app: &AppHandle, link: &str) -> bool {
     true
 }
 
+/// Opens any `mailto:` link among a launch's arguments (Windows).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn open_args(app: &AppHandle, args: impl IntoIterator<Item = String>) {
+    for arg in args {
+        open(app, &arg);
+    }
+}
+
+/// The program in a registry command line: `"C:\…\mailboat.exe" "%1"` gives
+/// `C:\…\mailboat.exe`.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn program_in_command(command: &str) -> Option<&str> {
+    let command = command.trim();
+    match command.strip_prefix('"') {
+        Some(rest) => rest.split('"').next(),
+        None => command.split_whitespace().next(),
+    }
+    .filter(|p| !p.is_empty())
+}
+
 /// Which app opens `mailto:` links.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase", tag = "kind")]
@@ -58,6 +85,9 @@ pub enum DefaultMailApp {
     Other { name: String },
     /// Nothing claims mailto links.
     None,
+    /// This copy isn't registered as an email app (Windows: a build run
+    /// without its installer), so Windows can't offer it.
+    NotInstalled,
     /// Not on this platform yet.
     Unsupported,
 }
@@ -93,7 +123,73 @@ pub fn default_app() -> DefaultMailApp {
     DefaultMailApp::Other { name }
 }
 
-#[cfg(not(target_os = "macos"))]
+/// The ProgID the installer registers for `mailto:` (`windows/installer.nsh`).
+#[cfg(windows)]
+const PROG_ID: &str = "Mailboat.mailto";
+
+#[cfg(windows)]
+pub fn default_app() -> DefaultMailApp {
+    use windows_registry::{CLASSES_ROOT, CURRENT_USER};
+
+    let read = |key: &windows_registry::Key, path: &str, name: &str| {
+        key.open(path).and_then(|k| k.get_string(name)).ok()
+    };
+    // Which copy of Mailboat the registration starts.
+    let Some(registered) = read(
+        CURRENT_USER,
+        &format!(r"Software\Classes\{PROG_ID}\shell\open\command"),
+        "",
+    ) else {
+        return DefaultMailApp::NotInstalled;
+    };
+    let associations = r"Software\Microsoft\Windows\Shell\Associations\UrlAssociations\mailto";
+    // Newer Windows 11 builds keep the choice in `UserChoiceLatest`.
+    let chosen = read(
+        CURRENT_USER,
+        &format!(r"{associations}\UserChoiceLatest"),
+        "ProgId",
+    )
+    .or_else(|| {
+        read(
+            CURRENT_USER,
+            &format!(r"{associations}\UserChoice"),
+            "ProgId",
+        )
+    });
+    let Some(chosen) = chosen.filter(|p| !p.is_empty()) else {
+        return DefaultMailApp::None;
+    };
+    if chosen == PROG_ID {
+        let ours = std::env::current_exe().ok();
+        let theirs = program_in_command(&registered).map(std::path::PathBuf::from);
+        let same = match (&ours, &theirs) {
+            (Some(a), Some(b)) => a
+                .to_string_lossy()
+                .eq_ignore_ascii_case(&b.to_string_lossy()),
+            _ => true,
+        };
+        return if same {
+            DefaultMailApp::This
+        } else {
+            DefaultMailApp::OtherCopy {
+                path: theirs.map(|p| p.display().to_string()).unwrap_or_default(),
+            }
+        };
+    }
+    // Another app's name, where its registration gives a readable one
+    // (Store apps give a resource reference, starting "@").
+    let name = read(
+        CLASSES_ROOT,
+        &format!(r"{chosen}\Application"),
+        "ApplicationName",
+    )
+    .or_else(|| read(CLASSES_ROOT, &chosen, ""))
+    .filter(|n| !n.is_empty() && !n.starts_with('@'))
+    .unwrap_or_else(|| "Another app".into());
+    DefaultMailApp::Other { name }
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn default_app() -> DefaultMailApp {
     DefaultMailApp::Unsupported
 }
@@ -132,7 +228,33 @@ pub async fn make_default(app: &AppHandle) -> Result<(), String> {
     rx.await.map_err(|_| "macOS didn't answer".to_string())?
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Windows doesn't let an app make itself the default: this opens
+/// Settings → Default apps at Mailboat's entry, where the owner picks it.
+#[cfg(windows)]
+pub async fn make_default(_app: &AppHandle) -> Result<(), String> {
+    open::that_detached("ms-settings:defaultapps?registeredAppUser=Mailboat")
+        .map_err(|e| format!("couldn't open Windows Settings: {e}"))
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub async fn make_default(_app: &AppHandle) -> Result<(), String> {
     Err("Not available on this platform yet".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::program_in_command;
+
+    #[test]
+    fn reads_the_program_out_of_a_registry_command() {
+        assert_eq!(
+            program_in_command(r#""C:\Users\me\AppData\Local\Mailboat\mailboat.exe" "%1""#),
+            Some(r"C:\Users\me\AppData\Local\Mailboat\mailboat.exe")
+        );
+        assert_eq!(
+            program_in_command(r"C:\mailboat.exe %1"),
+            Some(r"C:\mailboat.exe")
+        );
+        assert_eq!(program_in_command("  "), None);
+    }
 }

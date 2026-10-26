@@ -29,6 +29,14 @@ tauri-plugin-notification = "2"
 # Already part of the build through Tauri; declared to set the Dock picture
 # (src/dock.rs) and to read trackpad phases (src/trackpad.rs).
 # Same versions as Tauri and MonoCode.
+# Windows: a mailto: link clicked while Mailboat is open starts a second copy,
+# which hands the link to the running one and quits (src/lib.rs).
+[target.'cfg(windows)'.dependencies]
+tauri-plugin-single-instance = "2"
+# Which app Windows sends mailto: links to (src/mail_handler.rs). Microsoft's
+# crate, already in the build through Tauri.
+windows-registry = "0.6"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 # NSWorkspace: which app opens mailto: links, and making Mailboat it (src/mail_handler.rs).

@@ -175,7 +175,16 @@ pub fn run() {
     #[cfg(debug_assertions)]
     export_bindings(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(BINDINGS_PATH));
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default();
+    // Windows starts a second copy for a mailto: link clicked while Mailboat
+    // is open: it hands the link over and quits (must be the first
+    // plugin). Not on the Mac, where macOS hands links to the running
+    // copy itself and a dev build may run next to the installed one.
+    #[cfg(windows)]
+    let app = app.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+        mail_handler::open_args(app, argv.into_iter().skip(1));
+    }));
+    app
         // Remembers the window's position, size and maximized/full-screen
         // state between launches (Rust only: no web permission).
         .plugin(
@@ -199,6 +208,9 @@ pub fn run() {
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
+            // Windows passes a mailto: link that launched Mailboat as an argument.
+            #[cfg(windows)]
+            mail_handler::open_args(app.handle(), std::env::args().skip(1));
             menu::install(app.handle())?;
             trackpad::watch(app.handle());
             email_menu::install(app.handle());

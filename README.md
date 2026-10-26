@@ -110,6 +110,10 @@ silicon Mac); for an Intel/AMD PC, set
 `MAILBOAT_WINDOWS_TARGET=x86_64-pc-windows-msvc` first. The Google client file
 goes in `%APPDATA%\com.nwoolls.mailboat\google-oauth-client.json`.
 
+The installer registers Mailboat as an email app. To have email links open
+it, choose Mailboat for `MAILTO` in Settings → Apps → Default apps (Mailboat's
+Settings → General → Email links opens that page).
+
 ## Check
 
 ```sh

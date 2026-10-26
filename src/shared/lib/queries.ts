@@ -200,7 +200,10 @@ export function useDefaultMailApp() {
   });
 }
 
-/** Asks macOS to make Mailboat the default email reader (macOS confirms). */
+/**
+ * Asks macOS to make Mailboat the default email reader (macOS confirms); on
+ * Windows, opens Windows' Default apps page instead.
+ */
 export function useMakeDefaultMailApp() {
   const qc = useQueryClient();
   return useMutation({

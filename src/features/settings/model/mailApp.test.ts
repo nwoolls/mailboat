@@ -7,13 +7,20 @@ describe("defaultMailAppRow", () => {
   });
 
   it("names the app that opens email links today", () => {
-    const row = defaultMailAppRow({ kind: "other", name: "Mail" });
+    const row = defaultMailAppRow({ kind: "other", name: "Mail" }, true);
     expect(row.description).toBe("Mail opens email links.");
     expect(row.action).toBe("Make Mailboat the default");
   });
 
+  it("sends Windows users to Windows Settings, which picks the default", () => {
+    const row = defaultMailAppRow({ kind: "other", name: "Outlook" }, false);
+    expect(row.action).toBe("Choose in Windows Settings");
+    // A build run without its installer isn't registered: nothing to pick.
+    expect(defaultMailAppRow({ kind: "notInstalled" }, false).action).toBeUndefined();
+  });
+
   it("says which copy gets links, with no button that couldn't change it", () => {
-    const row = defaultMailAppRow({ kind: "otherCopy", path: "/Applications/Mailboat.app" });
+    const row = defaultMailAppRow({ kind: "otherCopy", path: "/Applications/Mailboat.app" }, true);
     expect(row.description).toContain("/Applications/Mailboat.app");
     expect(row.action).toBeUndefined();
   });
