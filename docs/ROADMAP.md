@@ -2717,6 +2717,14 @@ again until the next spike.*
       but nothing has been tried; the Windows work (`shared/lib/platform`,
       Ctrl shortcuts, the named-pipe MCP) would mostly carry over
 
+- [ ] Keep translations after Mailboat quits *(known limitation, owner,
+      2026-10-26: "for later")*: a translation in an email lives only in
+      memory, so it's gone after a restart, while summaries are saved.
+      The idea: a table (the email's surrogate ID, the selected text, the
+      translation, the provider) shown again when the email opens, and
+      deleted when the card is closed. Stores translated mail text on
+      disk, as summaries already do
+
 - [ ] AI apps can label and archive conversations through the MCP server
       *(moved from AI Spike 2 when it closed, owner, 2026-10-25)*: each
       its own per-account switch, like drafts, in Settings → AI → AI apps
