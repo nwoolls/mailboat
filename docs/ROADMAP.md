@@ -2336,10 +2336,14 @@ screenshots that follow carry the new name from the start.*
         …; `MailboatNotificationDelegate` to `AppNotificationDelegate`;
         notification IDs `mailboat:` to `thread:`; dev-script variables
         without the prefix; test names and design files neutral
-  - [ ] Stored names, without losing anything: `mailboat.sqlite3` to
-        `mail.sqlite3` (renamed once at startup); saved settings
-        `mailboat.*` to `prefs.*` (the old key read once). The owner tries
-        the app on their own data afterwards
+  - [x] Stored names, without losing anything: new installs get
+        `mail.sqlite3`, and an existing `mailboat.sqlite3` keeps being used
+        (`db::path_in`); saved settings `mailboat.*` are copied to `prefs.*`
+        when the window starts (`shared/lib/carryOver.ts`). Nothing is
+        renamed or removed yet: the installed `/Applications/Mailboat.app`
+        shares the data folder and may have the database open. The
+        bundle-ID move below does the renaming. The owner tries the app
+        on their own data afterwards
   - [ ] Text from the brand: UI strings, errors, the sign-in page, the
         MCP server's name, Windows' registration, the
         `<PREFIX>_GOOGLE_*` variables, the user agent; comments say
@@ -2357,7 +2361,8 @@ screenshots that follow carry the new name from the start.*
       variables
 - [ ] Move the owner's data, settings (including the web view's saved
       settings, which live under the bundle ID too) and keychain
-      sign-ins to the new ID once, on the first launch after the rename, so nothing has to
+      sign-ins to the new ID once, renaming `mailboat.sqlite3` to
+      `mail.sqlite3` and dropping the old `mailboat.*` settings on the way, on the first launch after the rename, so nothing has to
       be signed in again (nobody else has installed it). Tested on a
       copy before it runs for real
 - [ ] Email on the domain for security reports and anything that

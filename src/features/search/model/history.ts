@@ -2,7 +2,7 @@
  * Recent searches, offered under the search box. Kept in this window's
  * storage only: searches can be private, so they never leave the Mac.
  */
-export const HISTORY_KEY = "mailboat.searchHistory";
+export const HISTORY_KEY = "prefs.searchHistory";
 
 /** How many are kept (Mail and Gmail show about this many). */
 export const MAX_HISTORY = 10;

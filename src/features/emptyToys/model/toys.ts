@@ -25,7 +25,7 @@ export const TOYS: readonly { id: ToyId; label: string; description: string }[] 
   },
 ];
 
-export const TOY_PREFS_KEY = "mailboat.emptyToy";
+export const TOY_PREFS_KEY = "prefs.emptyToy";
 
 /** The saved toy, or none. */
 export function parseToy(raw: string | null): ToyId {

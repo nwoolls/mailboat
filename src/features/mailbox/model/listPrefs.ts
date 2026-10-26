@@ -26,7 +26,7 @@ export type ListPrefs = {
   swipeRight: SwipeChoice;
 };
 
-export const LIST_PREFS_KEY = "mailboat.list";
+export const LIST_PREFS_KEY = "prefs.list";
 
 /** As before there was a choice: left archives, right toggles read. */
 export const DEFAULT_LIST_PREFS: ListPrefs = {

@@ -18,7 +18,7 @@ export type UndoSendSeconds = 5 | 10 | 20 | 30;
 
 export const UNDO_SEND_CHOICES: readonly UndoSendSeconds[] = [5, 10, 20, 30];
 
-export const COMPOSING_PREFS_KEY = "mailboat.composing";
+export const COMPOSING_PREFS_KEY = "prefs.composing";
 
 /** 5 seconds (Gmail's default), From the viewed account, no font set: as before. */
 export const DEFAULT_COMPOSING_PREFS: ComposingPrefs = {

@@ -19,7 +19,7 @@ export type ViewingPrefs = {
   searchSpamTrash: boolean;
 };
 
-export const VIEWING_PREFS_KEY = "mailboat.viewing";
+export const VIEWING_PREFS_KEY = "prefs.viewing";
 
 /** With "delay": read once it has stayed open this long. */
 export const MARK_READ_DELAY_MS = 3000;

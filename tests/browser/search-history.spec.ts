@@ -51,5 +51,5 @@ test("recent searches are offered, picked, saved and removed", async ({ page }) 
   await page.getByRole("button", { name: "Clear recent searches" }).click();
   await expect(list).toBeHidden();
   // Gone for good, not just from the list on screen.
-  expect(await page.evaluate(() => localStorage.getItem("mailboat.searchHistory"))).toBe("[]");
+  expect(await page.evaluate(() => localStorage.getItem("prefs.searchHistory"))).toBe("[]");
 });

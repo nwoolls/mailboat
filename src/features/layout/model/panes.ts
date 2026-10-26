@@ -38,7 +38,7 @@ export const DEFAULT_LAYOUT: SavedLayout = {
   sidebarWidth: SIDEBAR_WIDTH.initial,
   listShare: LIST_SHARE.initial,
 };
-export const LAYOUT_STORAGE_KEY = "mailboat.layout";
+export const LAYOUT_STORAGE_KEY = "prefs.layout";
 
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
@@ -88,7 +88,7 @@ export function panelToggleFor(
  */
 export type SavedPanels = { sidebarOpen: boolean; readerOpen: boolean; folds: string[] };
 export const DEFAULT_PANELS: SavedPanels = { sidebarOpen: true, readerOpen: true, folds: [] };
-export const PANELS_STORAGE_KEY = "mailboat.panels";
+export const PANELS_STORAGE_KEY = "prefs.panels";
 
 const flag = (v: unknown, fallback: boolean) => (typeof v === "boolean" ? v : fallback);
 

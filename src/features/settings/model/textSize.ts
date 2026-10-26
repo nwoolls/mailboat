@@ -14,7 +14,7 @@ export const TEXT_SIZES: readonly { value: TextSize; label: string; zoom: number
   { value: "larger", label: "Larger", zoom: 1.3 },
 ];
 
-export const TEXT_SIZE_STORAGE_KEY = "mailboat.textSize";
+export const TEXT_SIZE_STORAGE_KEY = "prefs.textSize";
 
 /** What was saved, or the default if nothing (or nonsense) was. */
 export function parseTextSize(raw: string | null): TextSize {

@@ -33,7 +33,7 @@ export const ACCENTS = [
 
 export type AccentId = (typeof ACCENTS)[number]["id"];
 
-export const APPEARANCE_STORAGE_KEY = "mailboat.appearance";
+export const APPEARANCE_STORAGE_KEY = "prefs.appearance";
 
 export const DEFAULT_APPEARANCE: Appearance = { sidebarTint: 0, listTint: 0, accent: "blue" };
 

@@ -12,6 +12,19 @@ pub const ID: &str = env!("BRAND_ID");
 /// Starts the environment variables people can set (`<PREFIX>_GOOGLE_…`).
 pub const ENV_PREFIX: &str = env!("BRAND_ENV_PREFIX");
 
+/// The app's data folder, as Tauri names it (`app_data_dir`), for code
+/// that runs without Tauri: the MCP proxy and the dev examples.
+pub fn data_dir() -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "macos")]
+    let base = std::env::var_os("HOME")
+        .map(|home| std::path::PathBuf::from(home).join("Library/Application Support"));
+    #[cfg(windows)]
+    let base = std::env::var_os("APPDATA").map(std::path::PathBuf::from);
+    #[cfg(not(any(target_os = "macos", windows)))]
+    let base: Option<std::path::PathBuf> = None;
+    base.map(|b| b.join(ID))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

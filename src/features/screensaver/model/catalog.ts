@@ -58,7 +58,7 @@ export const DEFAULT_SCREENSAVER_PREFS: ScreensaverPrefs = {
   choice: "random",
   palette: DEFAULT_PALETTE,
 };
-export const SCREENSAVER_PREFS_KEY = "mailboat.screensaver";
+export const SCREENSAVER_PREFS_KEY = "prefs.screensaver";
 
 /** Saved preferences; anything missing or unknown is the default. */
 export function parsePrefs(raw: string | null): ScreensaverPrefs {

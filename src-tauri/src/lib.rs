@@ -217,7 +217,7 @@ pub fn run() {
             notifications::install(app.handle());
             let data_dir = app.path().app_data_dir()?;
             let config_dir = app.path().app_config_dir()?;
-            let db = Arc::new(Db::open(&data_dir.join("mailboat.sqlite3"))?);
+            let db = Arc::new(Db::open(&mail_core::db::path_in(&data_dir))?);
             let http = mail_core::reqwest::Client::builder()
                 .user_agent(concat!("Mailboat/", env!("CARGO_PKG_VERSION")))
                 .timeout(std::time::Duration::from_secs(60))

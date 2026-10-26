@@ -33,7 +33,7 @@ export const FEATURE_FLAGS: readonly { id: FeatureFlagId; label: string; descrip
 
 export const DEFAULT_FLAGS: FeatureFlags = { emptyGlow: true, screensavers: true };
 
-export const FLAGS_STORAGE_KEY = "mailboat.featureFlags";
+export const FLAGS_STORAGE_KEY = "prefs.featureFlags";
 
 /** Saved flags; anything missing or unreadable is its default. */
 export function parseFlags(raw: string | null): FeatureFlags {

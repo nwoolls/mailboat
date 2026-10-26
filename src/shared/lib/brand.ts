@@ -6,3 +6,5 @@ import brand from "../../../brand.json";
  * else in the code is named after it.
  */
 export const APP_NAME: string = brand.name;
+/** Lowercase; saved settings were named after it before they were neutral. */
+export const SHORT_NAME: string = brand.shortName;

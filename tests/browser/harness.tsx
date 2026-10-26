@@ -199,7 +199,7 @@ mockIPC((cmd, args) => {
 if (harnessMode === "list") {
   const params = new URLSearchParams(location.search);
   localStorage.setItem(
-    "mailboat.list",
+    "prefs.list",
     JSON.stringify({
       density: params.get("density") ?? "default",
       previewLines: Number(params.get("lines") ?? 1),
@@ -209,15 +209,15 @@ if (harnessMode === "list") {
 
 if (harnessMode === "search")
   localStorage.setItem(
-    "mailboat.searchHistory",
+    "prefs.searchHistory",
     JSON.stringify(["invoice march", "from:sam", "Invoice"]),
   );
 if (harnessMode === "empty") {
   const toy = new URLSearchParams(location.search).get("toy") ?? "none";
-  localStorage.setItem("mailboat.emptyToy", JSON.stringify(toy));
+  localStorage.setItem("prefs.emptyToy", JSON.stringify(toy));
   // No glow or screensaver: only the toy is under test.
   localStorage.setItem(
-    "mailboat.featureFlags",
+    "prefs.featureFlags",
     JSON.stringify({ emptyGlow: false, screensavers: false }),
   );
 }
