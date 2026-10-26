@@ -1,9 +1,9 @@
 # App icon
 
-- `mailboat-icon.svg` is the current icon, tile included: round three's N7,
+- `app-icon.svg` is the current icon, tile included: round three's N7,
   the M's V folding over the front of the sides like an envelope's flap. The classic icons in
   `src-tauri/icons/` (Windows, older macOS, the fallback) come from it.
-- `mailboat-icon-layer.svg` is the same M without the tile, on Icon Composer's
+- `app-icon-layer.svg` is the same M without the tile, on Icon Composer's
   1024px canvas. It is the artwork layer of `src-tauri/macos/AppIcon.icon`
   (whose fill is the tile colour), compiled to `src-tauri/macos/Assets.car`.
   On macOS 26+ the system draws that with its glass rim and depth.

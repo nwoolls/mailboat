@@ -2,21 +2,21 @@
 //!
 //! The email is shown in a sandboxed iframe where nothing can run, and the
 //! macOS web view doesn't let the app catch clicks inside it. So the
-//! sanitizer rewrites each web/mail link to Mailboat's own `mailboat-link:`
+//! sanitizer rewrites each web/mail link to Mailboat's own `email-link:`
 //! scheme. Clicking one makes the iframe request that URL; the app's scheme
 //! handler opens the real link in the default browser and answers
 //! "204 No Content", so the email stays on screen.
 
 /// The custom scheme registered by the Tauri app.
-pub const SCHEME: &str = "mailboat-link";
+pub const SCHEME: &str = "email-link";
 
 /// Where link clicks go. Windows' web view exposes custom schemes as
 /// `http://<scheme>.localhost`.
 pub fn link_base() -> &'static str {
     if cfg!(windows) {
-        "http://mailboat-link.localhost/open"
+        "http://email-link.localhost/open"
     } else {
-        "mailboat-link://localhost/open"
+        "email-link://localhost/open"
     }
 }
 
@@ -25,7 +25,7 @@ fn is_openable(url: &url::Url) -> bool {
     matches!(url.scheme(), "http" | "https" | "mailto")
 }
 
-/// The `mailboat-link:` URL for an email link, or `None` if the link shouldn't
+/// The `email-link:` URL for an email link, or `None` if the link shouldn't
 /// be clickable at all (scripts, files, relative paths...).
 pub fn wrap(href: &str) -> Option<String> {
     let target = url::Url::parse(href.trim()).ok().filter(is_openable)?;
@@ -34,7 +34,7 @@ pub fn wrap(href: &str) -> Option<String> {
     Some(format!("{}?u={encoded}", link_base()))
 }
 
-/// The real link carried by a `mailboat-link:` request, if it's safe to open.
+/// The real link carried by a `email-link:` request, if it's safe to open.
 pub fn unwrap(request_uri: &str) -> Option<String> {
     let uri = url::Url::parse(request_uri).ok()?;
     let (_, target) = uri.query_pairs().find(|(k, _)| k == "u")?;
@@ -79,13 +79,13 @@ mod tests {
     #[test]
     fn handler_refuses_crafted_requests() {
         assert_eq!(
-            unwrap("mailboat-link://localhost/open?u=javascript%3Aalert(1)"),
+            unwrap("email-link://localhost/open?u=javascript%3Aalert(1)"),
             None
         );
         assert_eq!(
-            unwrap("mailboat-link://localhost/open?u=file%3A%2F%2F%2Fetc%2Fpasswd"),
+            unwrap("email-link://localhost/open?u=file%3A%2F%2F%2Fetc%2Fpasswd"),
             None
         );
-        assert_eq!(unwrap("mailboat-link://localhost/open"), None);
+        assert_eq!(unwrap("email-link://localhost/open"), None);
     }
 }

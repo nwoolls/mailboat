@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn finds_the_newest_version_that_has_the_binary() {
-        let root = std::env::temp_dir().join(format!("mailboat-apps-{}", fastrand::u64(..)));
+        let root = std::env::temp_dir().join(format!("ai-apps-test-{}", fastrand::u64(..)));
         let make = |rel: &str| {
             let path = root.join(rel);
             std::fs::create_dir_all(path.parent().unwrap()).unwrap();

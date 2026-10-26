@@ -158,9 +158,9 @@ fn bare_id(id: &str) -> String {
 }
 
 fn new_message_id(from_email: &str) -> String {
-    let domain = from_email.rsplit_once('@').map_or("mailboat", |(_, d)| d);
+    let domain = from_email.rsplit_once('@').map_or("localhost", |(_, d)| d);
     format!(
-        "mailboat.{:016x}{:016x}@{domain}",
+        "m.{:016x}{:016x}@{domain}",
         fastrand::u64(..),
         fastrand::u64(..)
     )
@@ -202,7 +202,7 @@ mod tests {
         assert!(raw.contains("Cc: <c@y.com>"), "{raw}");
         assert!(raw.contains("Bcc: <secret@y.com>"), "{raw}");
         assert!(raw.contains("Subject: Hello"), "{raw}");
-        assert!(raw.contains("Message-ID: <mailboat."), "{raw}");
+        assert!(raw.contains("Message-ID: <m."), "{raw}");
         assert!(raw.contains("@x.com>"), "{raw}");
         assert!(raw.contains("Line one\r\nLine two"), "{raw}");
         assert!(!raw.contains("In-Reply-To"), "{raw}");

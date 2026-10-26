@@ -4,7 +4,7 @@
 //! an API key Mailboat would have to keep:
 //!
 //! - **Apple Intelligence** (on-device; the default): Mailboat's own helper,
-//!   `mailboat-ai`, built from `src-tauri/macos/ai-helper.swift`. Mail never
+//!   `ai-helper`, built from `src-tauri/macos/ai-helper.swift`. Mail never
 //!   leaves the Mac.
 //! - **Claude**: the `claude` command-line tool (Claude Code), signed in
 //!   with the owner's Claude account.

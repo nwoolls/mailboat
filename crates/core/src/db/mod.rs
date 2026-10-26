@@ -191,7 +191,7 @@ mod changed_elsewhere_tests {
 
     #[test]
     fn notices_another_process_writing_but_not_its_own_writes() {
-        let dir = std::env::temp_dir().join(format!("mailboat-dv-{}", fastrand::u64(..)));
+        let dir = std::env::temp_dir().join(format!("db-version-test-{}", fastrand::u64(..)));
         let path = dir.join("db.sqlite3");
         let mine = Db::open(&path).unwrap();
         let other = Db::open(&path).unwrap();

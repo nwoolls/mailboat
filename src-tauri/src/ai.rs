@@ -41,7 +41,7 @@ pub struct AiTextEvent {
 pub struct AiLineSummaryEvent(pub Summary);
 
 pub struct AiState {
-    /// `mailboat-ai`, next to the app's binary (Tauri puts sidecars there).
+    /// `ai-helper`, next to the app's binary (Tauri puts sidecars there).
     helper: Option<PathBuf>,
     programs: Mutex<Programs>,
     /// Requests that can be cancelled, by the window's request ID.
@@ -59,7 +59,7 @@ impl AiState {
     pub fn new() -> Self {
         let helper = std::env::current_exe()
             .ok()
-            .and_then(|exe| exe.parent().map(|d| d.join("mailboat-ai")));
+            .and_then(|exe| exe.parent().map(|d| d.join("ai-helper")));
         Self {
             programs: Mutex::new(Programs::find(helper.clone())),
             helper,

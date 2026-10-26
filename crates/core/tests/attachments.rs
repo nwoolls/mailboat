@@ -52,7 +52,7 @@ fn thread_of(db: &Db, message: MessageId) -> ThreadId {
 }
 
 fn temp_cache() -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("mailboat-attachments-{}", fastrand::u64(..)));
+    let dir = std::env::temp_dir().join(format!("attachments-test-{}", fastrand::u64(..)));
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }

@@ -126,7 +126,7 @@ pub async fn mcp_setup() -> CmdResult<McpSetup> {
         claude_code_command: format!("claude {}", setup::claude_code_args(&program).join(" ")),
         claude_code_installed: claude.is_some(),
         claude_code_connected,
-        claude_desktop_connected: setup::has_mailboat(desktop.as_deref(), &program),
+        claude_desktop_connected: setup::has_server(desktop.as_deref(), &program),
         program,
     })
 }

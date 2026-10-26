@@ -214,7 +214,7 @@ fn command(program: &Path) -> Command {
 /// An empty folder to run in, so the tools find no project files
 /// (`CLAUDE.md`, `AGENTS.md`) to read.
 fn scratch_dir() -> Result<PathBuf> {
-    let dir = std::env::temp_dir().join(format!("mailboat-ai-{}", fastrand::u64(..)));
+    let dir = std::env::temp_dir().join(format!("ai-helper-{}", fastrand::u64(..)));
     std::fs::create_dir_all(&dir)
         .map_err(|e| CoreError::Ai(format!("couldn't make a working folder: {e}")))?;
     Ok(dir)

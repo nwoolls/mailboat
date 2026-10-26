@@ -1,7 +1,7 @@
 <!-- Mailboat app icon (UX Spike 1, owner picked variant A3): a sky-blue M
      drawn as an envelope's sides and flap, on a frosted glass card over
      the app's glow, in a macOS rounded square. Regenerate every size with
-     `bun tauri icon design/icon/mailboat-icon.svg`. -->
+     `bun tauri icon design/icon/app-icon.svg`. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
 <defs>
   <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">

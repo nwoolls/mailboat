@@ -1,4 +1,4 @@
-//! Apple Intelligence, through Mailboat's helper (`mailboat-ai`, built from
+//! Apple Intelligence, through Mailboat's helper (`ai-helper`, built from
 //! `src-tauri/macos/ai-helper.swift`). The protocol is described there.
 //!
 //! Apple's on-device model reads about 4,000 tokens, instructions and
@@ -175,9 +175,9 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn streams_then_returns_the_whole_answer() {
-        let dir = std::env::temp_dir().join(format!("mailboat-apple-{}", fastrand::u64(..)));
+        let dir = std::env::temp_dir().join(format!("ai-apple-test-{}", fastrand::u64(..)));
         std::fs::create_dir_all(&dir).unwrap();
-        let helper = dir.join("mailboat-ai");
+        let helper = dir.join("ai-helper");
         std::fs::write(
             &helper,
             "#!/bin/sh\ncat >/dev/null\necho '{\"type\":\"text\",\"text\":\"Hel\"}'\necho '{\"type\":\"done\",\"text\":\"Hello\"}'\n",

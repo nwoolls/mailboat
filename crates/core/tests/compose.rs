@@ -741,7 +741,7 @@ async fn a_forward_carries_the_originals_attachments() {
     load_t1(&db, a);
     let m2 = message_id(&db, a, "m2");
     // The original's attachment, already downloaded to the cache.
-    let cache = std::env::temp_dir().join(format!("mailboat-fwd-{}", std::process::id()));
+    let cache = std::env::temp_dir().join(format!("compose-fwd-test-{}", std::process::id()));
     let file = cache.join("plan.pdf");
     std::fs::create_dir_all(&cache).unwrap();
     std::fs::write(&file, b"%PDF-plan").unwrap();
@@ -836,7 +836,7 @@ async fn a_quote_carries_the_originals_embedded_images() {
     let a = add_account(&db, "a");
     load_t1(&db, a);
     let m2 = message_id(&db, a, "m2");
-    let cache = std::env::temp_dir().join(format!("mailboat-cid-{}", std::process::id()));
+    let cache = std::env::temp_dir().join(format!("compose-cid-test-{}", std::process::id()));
     let file = cache.join("logo.png");
     std::fs::create_dir_all(&cache).unwrap();
     std::fs::write(&file, [137u8, 80, 78, 71]).unwrap();

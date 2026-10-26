@@ -217,9 +217,9 @@ mod tests {
             SyncConfig::default(),
             WorkerTiming::default(),
         );
-        let config_dir = std::env::temp_dir().join("mailboat-test-no-oauth-client");
+        let config_dir = std::env::temp_dir().join("desktop-test-no-oauth-client");
         let log = Arc::new(crate::sync_log::SyncLog::open(
-            &std::env::temp_dir().join("mailboat-test-logs"),
+            &std::env::temp_dir().join("desktop-test-logs"),
         ));
         let state = AppState::new(
             db,
@@ -228,7 +228,7 @@ mod tests {
             supervisor,
             AppDirs {
                 config: config_dir,
-                cache: std::env::temp_dir().join("mailboat-test-cache"),
+                cache: std::env::temp_dir().join("desktop-test-cache"),
                 downloads: None,
             },
             log,

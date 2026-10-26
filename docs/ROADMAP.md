@@ -2330,7 +2330,7 @@ screenshots that follow carry the new name from the start.*
         `mail_core` (folder `crates/core` stays); `mailboat`/`mailboat_lib`
         to `desktop`/`desktop_lib`, the installed program keeping the
         brand name through Tauri's `mainBinaryName`
-  - [ ] Internal names: the AI helper `mailboat-ai` to `ai-helper`;
+  - [x] Internal names: the AI helper `mailboat-ai` to `ai-helper`;
         `mailboat-link:` to `email-link:`; the sanitizer's marks
         (`data-mailboat-*`, `mailboat-none`, …) to `data-safe-*`, `safe-none`,
         …; `MailboatNotificationDelegate` to `AppNotificationDelegate`;

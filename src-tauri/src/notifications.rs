@@ -21,18 +21,18 @@ pub struct NotificationOpenedEvent {
 }
 
 /// Each notification's identifier carries its conversation, so a click
-/// can find it again: `mailboat:<n>:<thread id or "-">`. macOS only: the
+/// can find it again: `thread:<n>:<thread id or "-">`. macOS only: the
 /// notification plugin used elsewhere can't report clicks.
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 fn identifier(seq: u64, thread: Option<ThreadId>) -> String {
     let thread = thread.map_or("-".to_string(), |t| t.0.to_string());
-    format!("mailboat:{seq}:{thread}")
+    format!("thread:{seq}:{thread}")
 }
 
 #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 fn thread_of(identifier: &str) -> Option<ThreadId> {
     let mut parts = identifier.split(':');
-    (parts.next() == Some("mailboat"))
+    (parts.next() == Some("thread"))
         .then(|| parts.nth(1)?.parse().ok().map(ThreadId))
         .flatten()
 }
@@ -95,7 +95,7 @@ mod mac {
         // SAFETY: NSObject has no subclassing requirements, and the class
         // keeps no state of its own.
         #[unsafe(super(NSObject))]
-        #[name = "MailboatNotificationDelegate"]
+        #[name = "AppNotificationDelegate"]
         struct Delegate;
 
         unsafe impl NSObjectProtocol for Delegate {}

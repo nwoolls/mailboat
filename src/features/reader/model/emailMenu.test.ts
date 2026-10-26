@@ -6,7 +6,7 @@ function el(html: string, selector: string): Element {
   return doc.querySelector(selector)!;
 }
 
-const LINK = "mailboat-link://localhost/open?u=https%3A%2F%2Fx.com";
+const LINK = "email-link://localhost/open?u=https%3A%2F%2Fx.com";
 
 describe("emailMenuTarget", () => {
   it("finds an image, and the link around it", () => {
@@ -27,7 +27,7 @@ describe("emailMenuTarget", () => {
     expect(emailMenuTarget(null)).toEqual({ image: null, link: null });
   });
   it("accepts Windows' link address too", () => {
-    const href = "http://mailboat-link.localhost/open?u=x";
+    const href = "http://email-link.localhost/open?u=x";
     expect(emailMenuTarget(el(`<a href="${href}">x</a>`, "a")).link).toBe(href);
   });
 });

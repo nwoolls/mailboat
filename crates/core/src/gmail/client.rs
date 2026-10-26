@@ -571,7 +571,7 @@ impl GmailClient {
             "{}/upload/gmail/v1/users/me/{path}?uploadType=multipart",
             self.base_url
         );
-        let boundary = format!("mailboat_upload_{:016x}", fastrand::u64(..));
+        let boundary = format!("upload_boundary_{:016x}", fastrand::u64(..));
         let mut body = format!(
             "--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{metadata}\r\n--{boundary}\r\nContent-Type: message/rfc822\r\n\r\n"
         )
@@ -722,7 +722,7 @@ impl GmailClient {
     async fn send_batch(&self, paths: &[String]) -> Result<Vec<batch::BatchPart>> {
         // Google charges each request inside a batch separately.
         self.spend(cost::THREADS_GET * paths.len() as u32).await;
-        let boundary = format!("mailboat_batch_{}", fastrand::u64(..));
+        let boundary = format!("batch_boundary_{}", fastrand::u64(..));
         let body = batch::build_request(&boundary, paths);
         let url = format!("{}/batch/gmail/v1", self.base_url);
         let response = self

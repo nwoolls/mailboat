@@ -5,7 +5,7 @@
 #   scripts/windows.sh build   the installer, Mailboat_<version>_arm64-setup.exe
 #
 # The target defaults to Windows on ARM (a VM on Apple silicon); set
-# MAILBOAT_WINDOWS_TARGET=x86_64-pc-windows-msvc for Intel/AMD PCs.
+# WINDOWS_TARGET=x86_64-pc-windows-msvc for Intel/AMD PCs.
 #
 # One-time setup:
 #   rustup target add aarch64-pc-windows-msvc x86_64-pc-windows-msvc
@@ -18,7 +18,7 @@
 # which runs on Windows only.
 set -euo pipefail
 
-target="${MAILBOAT_WINDOWS_TARGET:-aarch64-pc-windows-msvc}"
+target="${WINDOWS_TARGET:-aarch64-pc-windows-msvc}"
 # Homebrew keeps LLVM and LLD off PATH so they don't shadow Xcode's clang.
 export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/opt/lld/bin:$PATH"
 

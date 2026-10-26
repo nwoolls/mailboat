@@ -109,7 +109,7 @@ export const commands = {
 	/**  Puts an image from an email on the clipboard. */
 	emailImageCopy: (src: string) => typedError<null, AppError>(__TAURI_INVOKE("email_image_copy", { src })),
 	/**
-	 *  Opens a link from an email (its `mailboat-link:` address, as the email
+	 *  Opens a link from an email (its `email-link:` address, as the email
 	 *  shows it), as clicking it would.
 	 */
 	emailLinkOpen: (link: string) => typedError<null, AppError>(__TAURI_INVOKE("email_link_open", { link })),

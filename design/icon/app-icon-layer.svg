@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
 <defs><filter id="fold" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#000" flood-opacity="0.5"/></filter></defs>
-<!-- The folded M from design/icon/mailboat-icon.svg, scaled from its 824px
+<!-- The folded M from design/icon/app-icon.svg, scaled from its 824px
      tile to Icon Composer's full 1024px canvas. -->
 <g transform="scale(1.24272) translate(-100 -100)">
 <path d="M 210.0 717.0 L 210.0 307.0 L 314.0 307.0 L 314.0 717.0 Z" fill="#086acc"/>

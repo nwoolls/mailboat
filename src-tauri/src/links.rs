@@ -1,4 +1,4 @@
-//! Handles clicks on links inside emails (`mailboat-link:` scheme; see
+//! Handles clicks on links inside emails (`email-link:` scheme; see
 //! `mail_core::mail::links`). Follows MonoCode's `artifacts::serve_html`
 //! custom-scheme pattern.
 

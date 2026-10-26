@@ -244,7 +244,7 @@ fresh one; small parts come with the message and have no ID at all.
 - **Quoting a selection** (Milestone 7): text selected in a message (the
   frame last clicked into, `selectedInMessage` in `MessageFrame`) makes a
   reply or forward answer that message and quote just that text
-  (`withSelection`), as plain text: the displayed HTML has `mailboat-link:`
+  (`withSelection`), as plain text: the displayed HTML has `email-link:`
   addresses and display-only attributes that mustn't be sent.
 - **`mailto:` links** (Milestone 7): the bundle's Info.plist claims the
   `mailto` scheme, so Mailboat can be the default email reader (Settings →
@@ -252,7 +252,7 @@ fresh one; small parts come with the message and have no ID at all.
   macOS keeps the default by bundle ID, so with the installed app and a
   dev build both present it chooses the copy (the installed one).
   macOS hands links over as Tauri's `RunEvent::Opened`; links clicked in
-  an email arrive through the `mailboat-link:` handler. Rust parses them
+  an email arrive through the `email-link:` handler. Rust parses them
   (`mail_core::mail::mailto`, RFC 6068) and queues them, then emits
   `MailtoEvent`; the window takes the queue (`mailto_take`) once accounts
   have loaded, so a link that launched the app isn't lost. Each opens a
@@ -285,7 +285,7 @@ fresh one; small parts come with the message and have no ID at all.
    "Original colors" asks for the same email on the white card instead
    (`message_open(…, original_colors)`).
 4. Links (http, https, mailto only) are rewritten to Mailboat's own
-   `mailboat-link:` scheme. A click makes the frame request that URL; the app
+   `email-link:` scheme. A click makes the frame request that URL; the app
    opens the real link in the default browser and answers 204 No Content,
    so the email stays put. A `mailto:` link opens a new message in Mailboat
    instead (see Compose). Other links are made inert.
@@ -398,7 +398,7 @@ conversation) and a writing assistant in the composer. The logic is in
 flowchart LR
   UI["List / reader / composer"] -->|"ai_* commands"| T["src-tauri ai.rs"]
   T --> C["mail_core::ai"]
-  C -->|"stdin JSON"| A["mailboat-ai (Swift, Foundation Models)"]
+  C -->|"stdin JSON"| A["ai-helper (Swift, Foundation Models)"]
   C -->|"claude -p, no tools"| CL["Claude Code CLI"]
   C -->|"codex exec, no tools"| CX["Codex CLI"]
   C --> DB[("ai_summaries, ai_usage")]
@@ -406,7 +406,7 @@ flowchart LR
 ```
 
 - **Providers are programs, not keys.** Apple Intelligence through
-  `mailboat-ai`, a small Swift helper (`src-tauri/macos/ai-helper.swift`,
+  `ai-helper`, a small Swift helper (`src-tauri/macos/ai-helper.swift`,
   built by `build.rs`, a Tauri sidecar), because Foundation Models is
   Swift-only. Claude and ChatGPT through the `claude` and `codex`
   command-line tools, signed in with the owner's subscriptions; Mailboat

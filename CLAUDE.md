@@ -77,7 +77,7 @@ in `target/debug/Mailboat.app` (so the Dock shows the real macOS icon) and signs
 it with the owner's Apple Development certificate (free Apple ID: Xcode →
 Settings → Accounts → Manage Certificates → + Apple Development). With it,
 "Always Allow" persists across rebuilds. Without it, the script prints a
-note and runs unsigned. Override the identity with `MAILBOAT_DEV_SIGNING_IDENTITY`.
+note and runs unsigned. Override the identity with `DEV_SIGNING_IDENTITY`.
 
 Bun is the only package manager. Never run npm, yarn or pnpm, and never create
 a second lockfile. Bun is installed with Homebrew (`brew install oven-sh/bun/bun`);

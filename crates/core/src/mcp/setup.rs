@@ -66,7 +66,7 @@ pub fn claude_desktop_config() -> Option<PathBuf> {
 /// The config with Mailboat added (or brought up to date), everything else
 /// in it kept. A file that isn't a JSON object is refused rather than
 /// overwritten.
-pub fn with_mailboat(config: Option<&str>, program: &str) -> Result<String> {
+pub fn with_server(config: Option<&str>, program: &str) -> Result<String> {
     let mut root: Value = match config.map(str::trim).filter(|c| !c.is_empty()) {
         Some(text) => serde_json::from_str(text).map_err(|_| {
             CoreError::Invalid(
@@ -96,7 +96,7 @@ pub fn with_mailboat(config: Option<&str>, program: &str) -> Result<String> {
 }
 
 /// Whether the config already starts this program for Mailboat.
-pub fn has_mailboat(config: Option<&str>, program: &str) -> bool {
+pub fn has_server(config: Option<&str>, program: &str) -> bool {
     config
         .and_then(|c| serde_json::from_str::<Value>(c).ok())
         .is_some_and(|v| {
@@ -114,7 +114,7 @@ pub fn add_to_claude_desktop(config: &Path, program: &str) -> Result<()> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
         Err(e) => return Err(io(e)),
     };
-    let new = with_mailboat(old.as_deref(), program)?;
+    let new = with_server(old.as_deref(), program)?;
     if let Some(dir) = config.parent() {
         std::fs::create_dir_all(dir).map_err(io)?;
     }
@@ -131,26 +131,26 @@ mod tests {
     const PROGRAM: &str = "/Applications/Mailboat.app/Contents/MacOS/mailboat";
 
     #[test]
-    fn adds_mailboat_and_keeps_everything_else() {
+    fn adds_the_server_and_keeps_everything_else() {
         let before = r#"{"mcpServers":{"other":{"command":"x"}},"globalShortcut":"Alt+Space"}"#;
         let after: Value =
-            serde_json::from_str(&with_mailboat(Some(before), PROGRAM).unwrap()).unwrap();
+            serde_json::from_str(&with_server(Some(before), PROGRAM).unwrap()).unwrap();
         assert_eq!(after["mcpServers"]["other"]["command"], "x");
         assert_eq!(after["globalShortcut"], "Alt+Space");
         assert_eq!(after["mcpServers"]["mailboat"]["command"], PROGRAM);
-        assert!(has_mailboat(Some(&after.to_string()), PROGRAM));
-        assert!(!has_mailboat(Some(before), PROGRAM));
+        assert!(has_server(Some(&after.to_string()), PROGRAM));
+        assert!(!has_server(Some(before), PROGRAM));
     }
 
     #[test]
     fn starts_a_new_file_and_refuses_a_broken_one() {
-        assert!(has_mailboat(
-            Some(&with_mailboat(None, PROGRAM).unwrap()),
+        assert!(has_server(
+            Some(&with_server(None, PROGRAM).unwrap()),
             PROGRAM
         ));
-        assert!(with_mailboat(Some("{ not json"), PROGRAM).is_err());
-        assert!(with_mailboat(Some("[1, 2]"), PROGRAM).is_err());
-        assert!(with_mailboat(Some(r#"{"mcpServers": 3}"#), PROGRAM).is_err());
+        assert!(with_server(Some("{ not json"), PROGRAM).is_err());
+        assert!(with_server(Some("[1, 2]"), PROGRAM).is_err());
+        assert!(with_server(Some(r#"{"mcpServers": 3}"#), PROGRAM).is_err());
     }
 
     #[test]
@@ -162,12 +162,12 @@ mod tests {
 
     #[test]
     fn writes_the_file_with_a_copy_of_the_old_one() {
-        let dir = std::env::temp_dir().join(format!("mailboat-setup-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("mcp-setup-test-{}", std::process::id()));
         let file = dir.join("claude_desktop_config.json");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(&file, r#"{"theme":"dark"}"#).unwrap();
         add_to_claude_desktop(&file, PROGRAM).unwrap();
-        assert!(has_mailboat(
+        assert!(has_server(
             std::fs::read_to_string(&file).ok().as_deref(),
             PROGRAM
         ));

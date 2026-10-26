@@ -89,9 +89,9 @@ fn put_thread(db: &Db, account: AccountId, messages: Vec<IncomingMessage>, body:
 
 /// Answers "Alpha summary" or "Beta summary" depending on the email it's given.
 fn fake_apple() -> (Programs, std::path::PathBuf) {
-    let dir = std::env::temp_dir().join(format!("mailboat-ai-test-{}", fastrand::u64(..)));
+    let dir = std::env::temp_dir().join(format!("ai-helper-test-{}", fastrand::u64(..)));
     std::fs::create_dir_all(&dir).unwrap();
-    let helper = dir.join("mailboat-ai");
+    let helper = dir.join("ai-helper");
     std::fs::write(
         &helper,
         "#!/bin/sh\nif grep -q alpha; then w=Alpha; else w=Beta; fi\n\

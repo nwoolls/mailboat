@@ -115,13 +115,13 @@ mod mac {
         let Some(mtm) = MainThreadMarker::new() else {
             return;
         };
-        // SAFETY: `mailboatTranslate:` is added to the web view's class in
+        // SAFETY: `appTranslate:` is added to the web view's class in
         // `install`, with the signature AppKit calls actions with.
         let item = unsafe {
             NSMenuItem::initWithTitle_action_keyEquivalent(
                 NSMenuItem::alloc(mtm),
                 &NSString::from_str("Translate selection"),
-                Some(sel!(mailboatTranslate:)),
+                Some(sel!(appTranslate:)),
                 &NSString::from_str(""),
             )
         };
@@ -177,7 +177,7 @@ mod mac {
             // SAFETY: as above; `translate_action` matches "v@:@".
             let action: Imp = unsafe { std::mem::transmute(translate_action as Action) };
             unsafe {
-                ffi::class_addMethod(class_ptr, sel!(mailboatTranslate:), action, c"v@:@".as_ptr())
+                ffi::class_addMethod(class_ptr, sel!(appTranslate:), action, c"v@:@".as_ptr())
             };
         });
     }

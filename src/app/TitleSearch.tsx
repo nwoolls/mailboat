@@ -4,7 +4,7 @@ import { rememberSearch, searchHistory } from "../features/search/ui/history";
 import { ClearIcon, SearchIcon } from "../shared/ui/icons";
 
 /** The search box's DOM id; `/` focuses it from anywhere. */
-export const SEARCH_INPUT_ID = "mailboat-search";
+export const SEARCH_INPUT_ID = "title-search";
 
 /**
  * Search, centered in the title bar as in VS Code. It searches the view
@@ -175,4 +175,4 @@ export function TitleSearch({
   );
 }
 
-const HISTORY_ID = "mailboat-search-history";
+const HISTORY_ID = "search-history";

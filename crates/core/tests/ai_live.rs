@@ -1,14 +1,14 @@
 //! Asks the real providers on this Mac (Apple's helper, `claude`, `codex`).
 //! Ignored by default: they need sign-ins and the network. Run with
 //! `cargo test -p mail-core --test ai_live -- --ignored --nocapture`
-//! after building the app once (for `target/debug/mailboat-ai`).
+//! after building the app once (for `target/debug/ai-helper`).
 
 use mail_core::ai::{self, AiProvider, Programs, Prompt, Quality};
 
 /// As the app sets them up: Codex's fast model from its own catalog.
 fn programs() -> Programs {
     let helper =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/debug/mailboat-ai");
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/debug/ai-helper");
     let mut programs = Programs::find(Some(helper));
     if let Some(codex) = programs.codex.clone() {
         let catalog = tokio::task::block_in_place(|| {

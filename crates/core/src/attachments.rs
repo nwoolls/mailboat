@@ -204,7 +204,8 @@ mod tests {
 
     #[test]
     fn repeated_downloads_get_numbered_names() {
-        let dir = std::env::temp_dir().join(format!("mailboat-unique-{}", fastrand::u64(..)));
+        let dir =
+            std::env::temp_dir().join(format!("attachments-unique-test-{}", fastrand::u64(..)));
         std::fs::create_dir_all(&dir).unwrap();
         assert_eq!(unique_path(&dir, "a.pdf"), dir.join("a.pdf"));
         std::fs::write(dir.join("a.pdf"), b"1").unwrap();

@@ -434,16 +434,16 @@ async fn every_request_is_logged_without_content() {
 /// tools are still listed and each says to open Mailboat; once it's open,
 /// the next call goes through without restarting the proxy.
 #[tokio::test]
-async fn through_the_proxy_with_mailboat_closed_then_open() {
+async fn through_the_proxy_with_server_closed_then_open() {
     use mail_core::mcp::{listen, proxy::Proxy, proxy::NOT_RUNNING};
     let m = mail();
     share(&m.db, &[m.a], &[]);
-    let dir = std::env::temp_dir().join(format!("mailboat-mcp-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("mcp-test-{}", std::process::id()));
     #[cfg(unix)]
     let socket = dir.join("mcp.sock");
     #[cfg(windows)]
     let socket =
-        std::path::PathBuf::from(format!(r"\\.\pipe\mailboat-mcp-test-{}", std::process::id()));
+        std::path::PathBuf::from(format!(r"\\.\pipe\mcp-pipe-test-{}", std::process::id()));
     let _ = std::fs::remove_file(&socket);
 
     let (proxy_side, client_side) = tokio::io::duplex(1 << 16);

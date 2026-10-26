@@ -750,7 +750,7 @@ pub async fn email_image_copy(state: State<'_, AppState>, src: String) -> CmdRes
     Ok(crate::email_menu::copy_image(&image.bytes).map_err(CoreError::Other)?)
 }
 
-/// Opens a link from an email (its `mailboat-link:` address, as the email
+/// Opens a link from an email (its `email-link:` address, as the email
 /// shows it), as clicking it would.
 #[tauri::command]
 #[specta::specta]

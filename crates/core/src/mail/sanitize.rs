@@ -326,7 +326,7 @@ pub fn sanitize_html_colors(
                     el.remove();
                 } else if is_remote(&src) && !allow_images {
                     blocked.set(blocked.get() + 1);
-                    el.set_attribute("data-mailboat-blocked", "")?;
+                    el.set_attribute("data-safe-blocked", "")?;
                     make_placeholder(el)?;
                 } else if is_remote(&src) {
                     loaded.set(loaded.get() + 1);
@@ -338,7 +338,7 @@ pub fn sanitize_html_colors(
                         .and_then(|w| w.trim().trim_end_matches("px").parse::<u32>().ok())
                         .is_some_and(|w| w <= 64)
                     {
-                        el.set_attribute("data-mailboat-fixed", "")?;
+                        el.set_attribute("data-safe-fixed", "")?;
                     }
                     let url = remote_image_url(&src);
                     if let Some(data_url) = cached_images.get(&url) {
@@ -360,13 +360,13 @@ pub fn sanitize_html_colors(
                     match inline_images.get(&percent_decode(cid).trim().to_ascii_lowercase()) {
                         Some(data_url) => el.set_attribute("src", data_url)?,
                         None => {
-                            el.set_attribute("data-mailboat-inline", "")?;
+                            el.set_attribute("data-safe-inline", "")?;
                             make_placeholder(el)?;
                         }
                     }
                 } else if !src.trim().to_ascii_lowercase().starts_with("data:") {
                     // Anything else (relative paths, file:) can't load.
-                    el.set_attribute("data-mailboat-inline", "")?;
+                    el.set_attribute("data-safe-inline", "")?;
                     make_placeholder(el)?;
                 }
                 Ok(())
@@ -466,7 +466,7 @@ fn light_only_style_sheets(html: &str) -> String {
                 let value = skip_space(i + 1);
                 if lower[value..end].starts_with("dark") {
                     out.push_str(&html[copied..value]);
-                    out.push_str("mailboat-light-only");
+                    out.push_str("safe-light-only");
                     copied = value + "dark".len();
                 }
             }
@@ -716,14 +716,14 @@ impl DarkRules {
 }
 
 /// See `DarkRules::css`.
-const BOOST: &str = ":not(#mailboat-none):not(#mailboat-none)";
+const BOOST: &str = ":not(#safe-none):not(#safe-none)";
 /// See `DarkRules::pin_important`: above the email's sheets, below `BOOST`.
-const PIN: &str = ":not(#mailboat-none)";
+const PIN: &str = ":not(#safe-none)";
 
 /// Plain-text messages are escaped and shown with preserved line breaks.
 pub fn text_document(text: &str) -> SafeMessage {
     let escaped = ammonia::clean_text(text);
-    let body = format!("<div class=\"mailboat-plain\">{escaped}</div>");
+    let body = format!("<div class=\"safe-plain\">{escaped}</div>");
     SafeMessage {
         document: wrap_document(&body, false, true, "", "", ""),
         blocked_images: 0,
@@ -768,7 +768,7 @@ fn wrap_document(
         // page is light, and in a dark app Chromium (Windows' WebView2)
         // paints a light frame's see-through background white.
         pinned_rules.to_string()
-            + "html{color-scheme:light dark}\nhtml,body{margin:0;padding:0;background:transparent;color:#1f1f1f}\nbody{padding:0 0 4px}\n@media (prefers-color-scheme:dark){body{color:#e4e4e7}a{color:#8ab4f8}img[data-mailboat-blocked],img[data-mailboat-inline]{background:rgba(255,255,255,.08)!important}"
+            + "html{color-scheme:light dark}\nhtml,body{margin:0;padding:0;background:transparent;color:#1f1f1f}\nbody{padding:0 0 4px}\n@media (prefers-color-scheme:dark){body{color:#e4e4e7}a{color:#8ab4f8}img[data-safe-blocked],img[data-safe-inline]{background:rgba(255,255,255,.08)!important}"
             + dark_rules
             + "}"
     } else {
@@ -782,9 +782,9 @@ fn wrap_document(
 html{{overflow-y:hidden;overflow-x:auto}}
 body{{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;overflow-wrap:break-word}}
 img{{max-width:100%;height:auto}}
-img[data-mailboat-fixed]{{max-width:none}}
-img[data-mailboat-blocked],img[data-mailboat-inline]{{display:inline-block;min-width:24px;min-height:24px;background:#f1f1f3;border-radius:4px}}
-.mailboat-plain{{white-space:pre-wrap;font-family:inherit}}
+img[data-safe-fixed]{{max-width:none}}
+img[data-safe-blocked],img[data-safe-inline]{{display:inline-block;min-width:24px;min-height:24px;background:#f1f1f3;border-radius:4px}}
+.safe-plain{{white-space:pre-wrap;font-family:inherit}}
 a{{color:#2f6fde}}
 {page}
 </style></head><body>{body}{sheet}</body></html>"#,
@@ -859,14 +859,10 @@ mod tests {
             "{}",
             out.document
         );
-        assert!(
-            out.document.contains("data-mailboat-fixed"),
-            "{}",
-            out.document
-        );
+        assert!(out.document.contains("data-safe-fixed"), "{}", out.document);
         assert!(out
             .document
-            .contains("img[data-mailboat-fixed]{max-width:none}"));
+            .contains("img[data-safe-fixed]{max-width:none}"));
     }
 
     #[test]
@@ -877,7 +873,7 @@ mod tests {
         assert_eq!(out.loaded_images, 0);
         assert!(!out.document.contains("cdn.vendor.com"));
         assert!(!out.document.contains("track.example.net"));
-        assert!(out.document.contains("data-mailboat-blocked"));
+        assert!(out.document.contains("data-safe-blocked"));
         assert!(
             out.document.contains("img-src data:;"),
             "CSP forbids remote images"
@@ -1025,7 +1021,7 @@ mod tests {
         let doc = &out.document;
         assert!(!doc.contains("prefers-color-scheme: dark)"));
         assert!(!doc.contains("PREFERS-COLOR-SCHEME:dark)"));
-        assert_eq!(doc.matches("mailboat-light-only").count(), 2);
+        assert_eq!(doc.matches("safe-light-only").count(), 2);
         // Light rules and the email's text are untouched.
         assert!(doc.contains("(prefers-color-scheme: light)"));
         assert!(doc.contains("Talk about prefers-color-scheme: dark here"));
@@ -1052,7 +1048,7 @@ mod tests {
         assert!(doc.contains(r##"bgcolor="#ffffff" data-mb="##));
         assert!(doc.contains("background-color:rgba(0,0,0,0.22)!important}"));
         // Inline remaps outrank the sheet's.
-        assert!(doc.contains(r#"[data-mc="0"]:not(#mailboat-none):not(#mailboat-none){"#));
+        assert!(doc.contains(r#"[data-mc="0"]:not(#safe-none):not(#safe-none){"#));
     }
 
     #[test]
@@ -1069,7 +1065,7 @@ mod tests {
         assert!(out.adaptive);
         let doc = &out.document;
         assert!(doc.contains("(prefers-color-scheme: dark) { .white-color"));
-        assert!(!doc.contains("mailboat-light-only"));
+        assert!(!doc.contains("safe-light-only"));
         assert!(doc.contains("background-color:transparent!important"));
         // Its own dark text color wins: `.white-color`'s text isn't
         // remapped, which leaves nothing for the sheet's dark block.
@@ -1220,13 +1216,11 @@ mod tests {
         // …for a rule of its own, above the email's sheet (one id) but
         // below the dark remap (two ids).
         assert!(
-            doc.contains(r#"[data-mp="0"]:not(#mailboat-none){background:#ffffff !important}"#),
+            doc.contains(r#"[data-mp="0"]:not(#safe-none){background:#ffffff !important}"#),
             "{doc}"
         );
         assert!(doc.contains(r#"data-mp="0""#));
-        assert!(
-            doc.contains(r#"[data-mb="0"]:not(#mailboat-none):not(#mailboat-none){background-color:"#)
-        );
+        assert!(doc.contains(r#"[data-mb="0"]:not(#safe-none):not(#safe-none){background-color:"#));
         // Not adapted (original colors): the email is left exactly as it was.
         let original = sanitize_html_colors(
             r#"<table><tr><td style="background:#ffffff !important">Hello</td></tr></table>"#,

@@ -107,7 +107,7 @@ scripts/windows.sh build   # makes the installer (.exe)
 The installer lands in `target/aarch64-pc-windows-msvc/release/bundle/nsis/`.
 Copy it into the VM and run it. It's for Windows on ARM (a VM on an Apple
 silicon Mac); for an Intel/AMD PC, set
-`MAILBOAT_WINDOWS_TARGET=x86_64-pc-windows-msvc` first. The Google client file
+`WINDOWS_TARGET=x86_64-pc-windows-msvc` first. The Google client file
 goes in `%APPDATA%\com.nwoolls.mailboat\google-oauth-client.json`.
 
 The installer registers Mailboat as an email app. To have email links open

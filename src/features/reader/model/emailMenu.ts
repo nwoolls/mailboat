@@ -2,7 +2,7 @@
 export type EmailMenuTarget = {
   /** The image's address as the email shows it (`data:` or web). */
   image: string | null;
-  /** The link's `mailboat-link:` address (Rust opens or copies the real one). */
+  /** The link's `email-link:` address (Rust opens or copies the real one). */
   link: string | null;
 };
 
@@ -21,7 +21,7 @@ export function emailMenuTarget(el: Element | null): EmailMenuTarget {
   const href = a?.getAttribute("href") ?? "";
   return {
     image: SAVABLE.test(src) ? src : null,
-    link: /^(mailboat-link:|http:\/\/mailboat-link\.localhost\/)/i.test(href) ? href : null,
+    link: /^(email-link:|http:\/\/email-link\.localhost\/)/i.test(href) ? href : null,
   };
 }
 

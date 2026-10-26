@@ -50,7 +50,7 @@ export const SCREENSAVER_ROTATE_MINUTES = 60;
  * Window event that starts the screensaver now (the palette's commands).
  * Its `detail` may name a scene; otherwise the chosen one plays.
  */
-export const SCREENSAVER_EVENT = "mailboat:screensaver";
+export const SCREENSAVER_EVENT = "app:screensaver";
 
 /** Which screensaver plays, and in which colours (Settings → Toybox). */
 export type ScreensaverPrefs = { choice: SceneId | "random"; palette: PaletteId };

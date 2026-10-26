@@ -58,8 +58,8 @@ pub fn open_args(app: &AppHandle, args: impl IntoIterator<Item = String>) {
     }
 }
 
-/// The program in a registry command line: `"C:\…\mailboat.exe" "%1"` gives
-/// `C:\…\mailboat.exe`.
+/// The program in a registry command line: `"C:\…\app.exe" "%1"` gives
+/// `C:\…\app.exe`.
 #[cfg_attr(not(windows), allow(dead_code))]
 fn program_in_command(command: &str) -> Option<&str> {
     let command = command.trim();
@@ -248,13 +248,10 @@ mod tests {
     #[test]
     fn reads_the_program_out_of_a_registry_command() {
         assert_eq!(
-            program_in_command(r#""C:\Users\me\AppData\Local\Mailboat\mailboat.exe" "%1""#),
-            Some(r"C:\Users\me\AppData\Local\Mailboat\mailboat.exe")
+            program_in_command(r#""C:\Users\me\AppData\Local\App\app.exe" "%1""#),
+            Some(r"C:\Users\me\AppData\Local\App\app.exe")
         );
-        assert_eq!(
-            program_in_command(r"C:\mailboat.exe %1"),
-            Some(r"C:\mailboat.exe")
-        );
+        assert_eq!(program_in_command(r"C:\app.exe %1"), Some(r"C:\app.exe"));
         assert_eq!(program_in_command("  "), None);
     }
 }

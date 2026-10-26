@@ -16,7 +16,7 @@ import { TranslationCard } from "../../ai/ui/TranslationCard";
  * Security: the document was sanitized in Rust and carries its own CSP. The
  * iframe is sandboxed WITHOUT `allow-scripts`, so nothing in the email can
  * run. `allow-same-origin` only lets this component (not the email) measure
- * the content height. Links were rewritten in Rust to `mailboat-link:` URLs,
+ * the content height. Links were rewritten in Rust to `email-link:` URLs,
  * which the app opens in the default browser (see `mail/links.rs`).
  */
 /** The message frame last clicked into, whose selection ⌘C copies. */

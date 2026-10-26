@@ -1,10 +1,10 @@
 #!/bin/sh
 # Regenerates every app icon from design/icon/:
-#   mailboat-icon.svg        -> src-tauri/icons/* (classic icons: older macOS,
+#   app-icon.svg        -> src-tauri/icons/* (classic icons: older macOS,
 #                            and the fallback inside the macOS app)
-#   mailboat-icon-windows.svg -> src-tauri/icons/icon.ico (the same art cropped to
+#   app-icon-windows.svg -> src-tauri/icons/icon.ico (the same art cropped to
 #                            fill its square, as Windows draws icons)
-#   mailboat-icon-layer.svg  -> the artwork layer of src-tauri/macos/AppIcon.icon,
+#   app-icon-layer.svg  -> the artwork layer of src-tauri/macos/AppIcon.icon,
 #                            compiled with Xcode's actool into
 #                            src-tauri/macos/Assets.car (macOS 26+: the system
 #                            draws the tile with its glass rim and depth)
@@ -13,17 +13,17 @@ set -e
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-bun tauri icon design/icon/mailboat-icon.svg
+bun tauri icon design/icon/app-icon.svg
 rm -rf src-tauri/icons/android src-tauri/icons/ios
 
 # Windows draws icons edge to edge; the Mac art sits inside a margin and
 # looked shrunk there.
-bun tauri icon design/icon/mailboat-icon-windows.svg -o "$tmp/windows" >/dev/null
+bun tauri icon design/icon/app-icon-windows.svg -o "$tmp/windows" >/dev/null
 cp "$tmp/windows/icon.ico" src-tauri/icons/icon.ico
 
 # Icon Composer ignores SVG filters, so render the layer (with its fold
 # shadows) to a PNG first.
-bun tauri icon design/icon/mailboat-icon-layer.svg -o "$tmp/layer" --png 1024 >/dev/null
+bun tauri icon design/icon/app-icon-layer.svg -o "$tmp/layer" --png 1024 >/dev/null
 cp "$tmp/layer/1024x1024.png" src-tauri/macos/AppIcon.icon/Assets/m.png
 
 mkdir -p "$tmp/car"

@@ -756,7 +756,7 @@ mod tests {
     }
 
     #[test]
-    fn editing_keeps_what_mailboat_cannot_show() {
+    fn editing_keeps_what_the_app_cannot_show() {
         let old = Filter {
             id: Some("f1".into()),
             criteria: FilterCriteria {

@@ -14,7 +14,7 @@
 #    builds change on every rebuild, so the "allow keychain access" prompt
 #    came back after every Rust change. Signing with your Apple Development
 #    certificate gives every build the same identity, so "Always Allow"
-#    sticks. Override the certificate with MAILBOAT_DEV_SIGNING_IDENTITY if you
+#    sticks. Override the certificate with DEV_SIGNING_IDENTITY if you
 #    have several.
 #
 # 3. mailto: links. The Info.plist claims the mailto scheme, and the bundle
@@ -40,7 +40,7 @@ app="$(dirname "$bin")/$name.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$bin" "$app/Contents/MacOS/$short"
 # The Apple Intelligence helper, which Tauri copies next to the binary.
-[ -f "$(dirname "$bin")/mailboat-ai" ] && cp "$(dirname "$bin")/mailboat-ai" "$app/Contents/MacOS/mailboat-ai" || true
+[ -f "$(dirname "$bin")/ai-helper" ] && cp "$(dirname "$bin")/ai-helper" "$app/Contents/MacOS/ai-helper" || true
 cp "$root/src-tauri/icons/icon.icns" "$app/Contents/Resources/AppIcon.icns"
 cp "$root/src-tauri/macos/Assets.car" "$app/Contents/Resources/Assets.car"
 cat > "$app/Contents/Info.plist" <<PLIST
@@ -89,12 +89,12 @@ PLIST
 # Tells the Dock and Finder the icon may have changed.
 touch "$app"
 
-identity="${MAILBOAT_DEV_SIGNING_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null \
+identity="${DEV_SIGNING_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null \
   | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -n 1)}"
 if [ -n "$identity" ]; then
   # Nested code is signed first, or signing the app fails.
-  [ -f "$app/Contents/MacOS/mailboat-ai" ] && codesign --force --sign "$identity" \
-    --identifier "$id.ai" "$app/Contents/MacOS/mailboat-ai" 2>/dev/null || true
+  [ -f "$app/Contents/MacOS/ai-helper" ] && codesign --force --sign "$identity" \
+    --identifier "$id.ai" "$app/Contents/MacOS/ai-helper" 2>/dev/null || true
   codesign --force --sign "$identity" --identifier "$id" "$app" 2>/dev/null \
     || echo "dev-run: signing with \"$identity\" failed; continuing unsigned" >&2
 else

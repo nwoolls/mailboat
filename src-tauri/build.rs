@@ -7,7 +7,7 @@ fn main() {
 }
 
 /// Compiles the Apple Intelligence helper (`macos/ai-helper.swift`) to
-/// `binaries/mailboat-ai-<target>`, where Tauri picks it up as a sidecar
+/// `binaries/ai-helper-<target>`, where Tauri picks it up as a sidecar
 /// (`tauri.macos.conf.json`) and copies it next to the app's binary.
 /// Needs Xcode's Swift compiler, as the app icons do.
 fn build_ai_helper() {
@@ -23,7 +23,7 @@ fn build_ai_helper() {
     };
     let out_dir = std::path::Path::new("binaries");
     std::fs::create_dir_all(out_dir).expect("create src-tauri/binaries");
-    let out = out_dir.join(format!("mailboat-ai-{target}"));
+    let out = out_dir.join(format!("ai-helper-{target}"));
     let status = std::process::Command::new("xcrun")
         .args(["swiftc", "-parse-as-library", "-O", "-target"])
         // Foundation Models arrived in macOS 26; on older systems the helper

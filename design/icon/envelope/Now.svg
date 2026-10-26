@@ -2,7 +2,7 @@
      each corner (after VS Code's logo), on a flat near-black tile. Fold
      style S4, colour C17 (Apple's system blue, matching Mail);
      a copy of design/icon/choices/C17-system-blue.svg.
-     Regenerate every size with `bun tauri icon design/icon/mailboat-icon.svg`
+     Regenerate every size with `bun tauri icon design/icon/app-icon.svg`
      (then delete src-tauri/icons/android and ios). -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
 <defs>

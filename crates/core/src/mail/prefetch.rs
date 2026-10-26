@@ -441,7 +441,7 @@ mod tests {
 
     fn tempdir() -> PathBuf {
         let dir = std::env::temp_dir().join(format!(
-            "mailboat-prefetch-{}-{}",
+            "prefetch-test-{}-{}",
             std::process::id(),
             fastrand::u64(..)
         ));
