@@ -11,6 +11,7 @@ pub mod brand;
 pub mod calendar;
 pub mod compose;
 pub mod db;
+pub mod demo;
 pub mod error;
 pub mod gmail;
 pub mod labels;

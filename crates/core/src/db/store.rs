@@ -359,6 +359,21 @@ pub fn delete_thread(conn: &Connection, account: AccountId, gmail_thread_id: &st
     Ok(())
 }
 
+/// The cached thread with this Gmail ID in this account, if any.
+pub fn thread_id_for(
+    conn: &Connection,
+    account: AccountId,
+    gmail_thread_id: &str,
+) -> Result<Option<ThreadId>> {
+    Ok(conn
+        .query_row(
+            "SELECT id FROM threads WHERE account_id = ?1 AND gmail_thread_id = ?2",
+            params![account, gmail_thread_id],
+            |r| r.get(0),
+        )
+        .optional()?)
+}
+
 /// Removes every cached thread of an account (before a full resync).
 pub fn clear_account_mail(conn: &Connection, account: AccountId) -> Result<()> {
     conn.execute("DELETE FROM threads WHERE account_id = ?1", [account])?;

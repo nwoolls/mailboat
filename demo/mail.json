@@ -1,0 +1,505 @@
+{
+  "people": {
+    "maya": {
+      "name": "Maya Chen",
+      "email": "maya@chen.example"
+    },
+    "sam": {
+      "name": "Sam Okafor",
+      "email": "sam@okafor.example"
+    },
+    "ana": {
+      "name": "Ana Rivera",
+      "email": "ana@rivera.example"
+    },
+    "tomas": {
+      "name": "Tomás Silva",
+      "email": "tomas@casa-azul.example"
+    },
+    "ternair": {
+      "name": "Tern Air",
+      "email": "bookings@ternair.example"
+    },
+    "bank": {
+      "name": "Harbor Bank",
+      "email": "no-reply@harborbank.example"
+    },
+    "dental": {
+      "name": "Brightside Dental",
+      "email": "appointments@brightside.example"
+    },
+    "slowweb": {
+      "name": "The Slow Web",
+      "email": "letters@slowweb.example"
+    },
+    "hardware": {
+      "name": "Corner Hardware",
+      "email": "orders@cornerhardware.example"
+    },
+    "library": {
+      "name": "City Library",
+      "email": "notices@library.example"
+    },
+    "runclub": {
+      "name": "Riverside Run Club",
+      "email": "hello@riversiderun.example"
+    },
+    "prize": {
+      "name": "Prize Desk",
+      "email": "winner@prize-desk.example"
+    },
+    "shop": {
+      "name": "Paperleaf Stationery",
+      "email": "news@paperleaf.example"
+    },
+    "priya": {
+      "name": "Priya Raman",
+      "email": "priya@northwind.example"
+    },
+    "jordan": {
+      "name": "Jordan Park",
+      "email": "jordan@northwind.example"
+    },
+    "ben": {
+      "name": "Ben Adler",
+      "email": "ben@northwind.example"
+    },
+    "people": {
+      "name": "Northwind People Team",
+      "email": "people@northwind.example"
+    },
+    "lena": {
+      "name": "Lena Fischer",
+      "email": "lena@fernhill.example"
+    },
+    "trellis": {
+      "name": "Trellis",
+      "email": "notifications@trellis.example"
+    }
+  },
+  "defaultReply": "Thanks, {name}! Got it, I'll take a look and get back to you.",
+  "accounts": [
+    {
+      "email": "alex@rivera.example",
+      "name": "Alex Rivera",
+      "color": "#5b8def",
+      "signature": "<div>Alex</div>",
+      "labels": [
+        {
+          "name": "Travel",
+          "background": "#a4c2f4",
+          "text": "#1c4587"
+        },
+        {
+          "name": "Receipts",
+          "background": "#b3efd3",
+          "text": "#0b4f30"
+        }
+      ],
+      "contacts": ["maya", "sam", "ana", "tomas"],
+      "conversations": [
+        {
+          "labels": ["INBOX", "STARRED", "IMPORTANT", "Travel"],
+          "summary": "Maya found flights for 16–23 May and wants to book the Alfama apartment by Friday.",
+          "reply": "Perfect, that works for me! I'll book the apartment tonight and send you the details. 🎉",
+          "messages": [
+            {
+              "from": "maya",
+              "ago": "2d",
+              "subject": "Lisbon in May?",
+              "text": "Hi Alex,\n\nRemember how we said we'd finally do Lisbon? I looked at flights and the week of 16 May is surprisingly cheap.\n\nAre you in?\n\nMaya"
+            },
+            {
+              "from": "me",
+              "ago": "2d",
+              "text": "I'm so in. Let's do it.\n\nShould we stay in Alfama? I'd love to be able to walk everywhere.\n\nAlex"
+            },
+            {
+              "from": "maya",
+              "ago": "1d",
+              "text": "Alfama it is. I found a small apartment with a terrace (Casa Azul). The host, Tomás, says it's free 16–23 May.\n\nShall I book it?"
+            },
+            {
+              "from": "maya",
+              "ago": "40m",
+              "unread": true,
+              "text": "Quick nudge: Tomás says someone else asked about those dates, so we should book by Friday.\n\nI attached the itinerary I've sketched so far. Tell me what you think!\n\nM.",
+              "attachments": [
+                {
+                  "name": "Lisbon itinerary.pdf",
+                  "type": "application/pdf",
+                  "text": "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 489 >>\nstream\nBT\n/F1 20 Tf\n56 760 Td\n(Lisbon, 16-23 May) Tj\n/F1 11 Tf\n0 -30 Td\n(Fri 16  Fly SFO to LIS \\(Tern Air TRN7QX\\)) Tj\n0 -16 Td\n(Sat 17  Arrive 14:45, check in at Casa Azul, dinner in Alfama) Tj\n0 -16 Td\n(Sun 18  Tram 28, Castelo de Sao Jorge, miradouros) Tj\n0 -16 Td\n(Mon 19  Day trip to Sintra) Tj\n0 -16 Td\n(Tue 20  Belem: tower, monastery, pasteis) Tj\n0 -16 Td\n(Wed 21  LX Factory, sunset at the river) Tj\n0 -16 Td\n(Thu 22  Cascais and the beach) Tj\n0 -16 Td\n(Fri 23  Fly home) Tj\n0 -16 Td\nET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000241 00000 n \n0000000781 00000 n \ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n851\n%%EOF\n"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX", "Travel"],
+          "summary": "Tomás confirmed Casa Azul for 16–23 May; check-in from 3 pm, guide attached.",
+          "reply": "Obrigado, Alex! See you in May. Tomás",
+          "messages": [
+            {
+              "from": "tomas",
+              "ago": "5h",
+              "subject": "Your stay at Casa Azul",
+              "text": "Olá Alex,\n\nThank you for your interest in Casa Azul! The apartment is available 16–23 May. Check-in is from 3 pm; I'll meet you at the door with the keys.\n\nI attached a short guide to the neighbourhood: bakeries, the best viewpoint, and where to hear fado.\n\nAté breve,\nTomás",
+              "attachments": [
+                {
+                  "name": "Casa Azul guide.pdf",
+                  "type": "application/pdf",
+                  "text": "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 361 >>\nstream\nBT\n/F1 20 Tf\n56 760 Td\n(Casa Azul - a short guide) Tj\n/F1 11 Tf\n0 -30 Td\n(Check-in from 15:00, check-out by 11:00) Tj\n0 -16 Td\n(Wi-Fi: CasaAzul / see the card by the door) Tj\n0 -16 Td\n(Bakery: Padaria Sao Miguel, 2 minutes downhill) Tj\n0 -16 Td\n(Best view: Miradouro de Santa Luzia at sunset) Tj\n0 -16 Td\n(Fado: small taverns on Rua de Sao Pedro) Tj\n0 -16 Td\nET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000241 00000 n \n0000000653 00000 n \ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n723\n%%EOF\n"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "labels": ["Travel", "Receipts"],
+          "messages": [
+            {
+              "from": "ternair",
+              "ago": "3d",
+              "subject": "Booking confirmed: SFO → LIS, 16 May",
+              "text": "You're all set, Alex. Booking reference TRN7QX. SFO to LIS, Fri 16 May 19:40, arriving Sat 17 May 14:45. Seat 23A, 1 checked bag.",
+              "html": "<div style=\"font-family:Helvetica,Arial,sans-serif;background:#eef3f8;padding:28px 0;color:#14202b\">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\">\n<table role=\"presentation\" width=\"540\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:10px;overflow:hidden\">\n<tr><td style=\"background:#1f4e79;color:#ffffff;padding:20px 28px;font-size:20px;font-weight:bold\">Tern Air</td></tr>\n<tr><td style=\"padding:24px 28px 8px;font-size:22px\">You're all set, Alex.</td></tr>\n<tr><td style=\"padding:0 28px;font-size:15px;color:#4a5866\">Booking reference <b style=\"color:#14202b\">TRN7QX</b></td></tr>\n<tr><td style=\"padding:20px 28px\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border:1px solid #dde5ee;border-radius:8px\">\n<tr><td style=\"padding:16px;font-size:28px;font-weight:bold\">SFO</td><td style=\"padding:16px;text-align:center;color:#7a8896\">→ 11h 05m →</td><td style=\"padding:16px;font-size:28px;font-weight:bold;text-align:right\">LIS</td></tr>\n<tr><td style=\"padding:0 16px 16px;color:#4a5866;font-size:13px\">Fri 16 May, 19:40</td><td></td><td style=\"padding:0 16px 16px;color:#4a5866;font-size:13px;text-align:right\">Sat 17 May, 14:45</td></tr>\n</table></td></tr>\n<tr><td style=\"padding:0 28px 8px;font-size:14px;color:#4a5866\">Seat 23A · 1 checked bag · Economy</td></tr>\n<tr><td style=\"padding:16px 28px 28px\"><a href=\"https://ternair.example/trips/TRN7QX\" style=\"background:#1f4e79;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:6px;font-size:14px\">Manage booking</a></td></tr>\n</table></td></tr></table></div>"
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX"],
+          "arriveAfterSeconds": 45,
+          "messages": [
+            {
+              "from": "bank",
+              "ago": "0m",
+              "unread": true,
+              "subject": "Your Harbor Bank sign-in code",
+              "text": "Your sign-in code is 482913.\n\nIt expires in 10 minutes. If you didn't try to sign in, you can ignore this email.\n\nHarbor Bank"
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX"],
+          "summary": "Mom asks if you can come to Sunday dinner at 6 and bring dessert.",
+          "reply": "Wonderful! See you Sunday. Love, Mom",
+          "messages": [
+            {
+              "from": "ana",
+              "ago": "3h",
+              "unread": true,
+              "subject": "Sunday dinner",
+              "text": "Hi sweetheart,\n\nAre you free for dinner on Sunday around 6? Your aunt is visiting. Could you bring a dessert?\n\nLove,\nMom"
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX"],
+          "reply": "Great, see you at 7! I'll grab us a rope.",
+          "messages": [
+            {
+              "from": "sam",
+              "ago": "1d",
+              "subject": "Climbing Thursday?",
+              "text": "Gym on Thursday after work? They reset the overhang wall."
+            },
+            {
+              "from": "me",
+              "ago": "1d",
+              "text": "Yes! 7 pm?"
+            },
+            {
+              "from": "sam",
+              "ago": "20h",
+              "text": "7 works. Bring the chalk you borrowed in August 😄"
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX"],
+          "messages": [
+            {
+              "from": "dental",
+              "ago": "6h",
+              "subject": "Reminder: your cleaning on Thursday",
+              "text": "Hi Alex, this is a reminder of your appointment with Dr. Novak on Thursday at 9:30 am. Reply C to confirm or call us to reschedule. Brightside Dental"
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX", "CATEGORY_UPDATES"],
+          "summary": "Issue 48: one inbox for many accounts, shortcuts as a language, small tools.",
+          "messages": [
+            {
+              "from": "slowweb",
+              "ago": "9h",
+              "unread": true,
+              "subject": "Fewer tabs, better afternoons",
+              "text": "The Slow Web, Issue 48. This week: why a single, quiet inbox beats five noisy ones, a short essay on keyboard shortcuts as a kind of fluency, and three small tools that do one thing well.",
+              "html": "<div style=\"background:#f6f3ee;padding:32px 0;font-family:Georgia,serif;color:#2b2925\">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\">\n<table role=\"presentation\" width=\"560\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:12px;padding:36px\">\n<tr><td style=\"font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#9a8f80\">The Slow Web · Issue 48</td></tr>\n<tr><td style=\"padding-top:12px;font-size:28px;line-height:1.25\">Fewer tabs, better afternoons</td></tr>\n<tr><td style=\"padding-top:16px;font-size:16px;line-height:1.6\">This week: why a single, quiet inbox beats five noisy ones, a short essay on keyboard shortcuts as a kind of fluency, and three small tools that do one thing well.</td></tr>\n<tr><td style=\"padding-top:24px\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"border-top:1px solid #ece6dc\">\n<tr><td style=\"padding:16px 0 4px;font-size:18px\">1. One inbox, many accounts</td></tr>\n<tr><td style=\"font-size:15px;line-height:1.6;color:#5c554b\">Reading everything in one place, with a quiet color for each account, removes a surprising amount of friction.</td></tr>\n<tr><td style=\"padding:16px 0 4px;font-size:18px\">2. Shortcuts are a language</td></tr>\n<tr><td style=\"font-size:15px;line-height:1.6;color:#5c554b\">Learn three a week. By spring you will not reach for the mouse.</td></tr>\n<tr><td style=\"padding:16px 0 4px;font-size:18px\">3. Small tools</td></tr>\n<tr><td style=\"font-size:15px;line-height:1.6;color:#5c554b\">A timer, a notebook, and a calendar that stays out of the way.</td></tr>\n</table></td></tr>\n<tr><td style=\"padding-top:28px\"><a href=\"https://slowweb.example/48\" style=\"background:#2b2925;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-family:Helvetica,Arial,sans-serif;font-size:14px\">Read the full issue</a></td></tr>\n<tr><td style=\"padding-top:28px;font-size:12px;color:#9a8f80;font-family:Helvetica,Arial,sans-serif\">You subscribed at slowweb.example. <a href=\"https://slowweb.example/unsubscribe\" style=\"color:#9a8f80\">Unsubscribe</a></td></tr>\n</table></td></tr></table></div>"
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX", "CATEGORY_UPDATES"],
+          "messages": [
+            {
+              "from": "runclub",
+              "ago": "1d",
+              "subject": "Saturday: river loop, 8 am",
+              "text": "Morning runners! This Saturday we're doing the 8 km river loop, starting at the boathouse at 8 am. Coffee after, as always."
+            }
+          ]
+        },
+        {
+          "labels": ["Receipts"],
+          "messages": [
+            {
+              "from": "hardware",
+              "ago": "4d",
+              "subject": "Your Corner Hardware receipt",
+              "text": "Thanks for shopping with us! Order 10482: picture hooks, wood glue, 2 m of jute twine. Total $23.85.",
+              "attachments": [
+                {
+                  "name": "Receipt 10482.pdf",
+                  "type": "application/pdf",
+                  "text": "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 342 >>\nstream\nBT\n/F1 20 Tf\n56 760 Td\n(Corner Hardware - Receipt 10482) Tj\n/F1 11 Tf\n0 -30 Td\n(Picture hooks \\(pack of 20\\)     $6.49) Tj\n0 -16 Td\n(Wood glue, 250 ml               $8.99) Tj\n0 -16 Td\n(Jute twine, 2 m                 $4.20) Tj\n0 -16 Td\n(Tax                             $4.17) Tj\n0 -16 Td\n(Total                          $23.85) Tj\n0 -16 Td\nET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000241 00000 n \n0000000634 00000 n \ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n704\n%%EOF\n"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "labels": [],
+          "messages": [
+            {
+              "from": "library",
+              "ago": "6d",
+              "subject": "Your hold is ready: \"A Pattern Language\"",
+              "text": "Good news! \"A Pattern Language\" is waiting for you at the Central branch until next Tuesday."
+            }
+          ]
+        },
+        {
+          "labels": [],
+          "messages": [
+            {
+              "from": "me",
+              "to": ["sam"],
+              "ago": "5d",
+              "subject": "That book I mentioned",
+              "text": "Hey Sam,\n\nThe book I was talking about is \"The Design of Everyday Things\". You can borrow mine.\n\nAlex"
+            }
+          ]
+        },
+        {
+          "labels": [],
+          "messages": [
+            {
+              "from": "me",
+              "to": ["maya"],
+              "ago": "30m",
+              "draft": true,
+              "subject": "Packing list",
+              "text": "Things to bring:\n- adapters\n- comfy shoes for the hills\n- "
+            }
+          ]
+        },
+        {
+          "labels": ["SPAM"],
+          "messages": [
+            {
+              "from": "prize",
+              "ago": "2d",
+              "subject": "You've been selected!!! Claim your prize now",
+              "text": "Congratulations!!! You are our lucky winner. Click now to claim your prize before it expires."
+            }
+          ]
+        },
+        {
+          "labels": ["TRASH"],
+          "messages": [
+            {
+              "from": "shop",
+              "ago": "5d",
+              "subject": "Autumn notebooks are here",
+              "text": "Dot grid, lined and blank, in four new cover colors. Members get 15% off this week.",
+              "html": "<div style=\"font-family:Helvetica,Arial,sans-serif;color:#333;padding:24px\">\n<h2 style=\"font-weight:normal;margin:0 0 12px\">Autumn notebooks are here</h2>\n<p style=\"line-height:1.6\">Dot grid, lined and blank, in four new cover colors. Members get 15% off this week.</p>\n<p><a href=\"https://paperleaf.example/autumn\" style=\"color:#7a4b2a\">Browse the collection</a></p></div>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "email": "alex@northwind.example",
+      "name": "Alex Rivera",
+      "color": "#e0795b",
+      "signature": "<div>Alex Rivera<br>Designer, Northwind Studio</div>",
+      "labels": [
+        {
+          "name": "Clients/Fernhill",
+          "background": "#fdedc1",
+          "text": "#684e07"
+        },
+        {
+          "name": "1:1s",
+          "background": "#e4d7f5",
+          "text": "#41236d"
+        }
+      ],
+      "contacts": ["priya", "jordan", "ben", "lena"],
+      "conversations": [
+        {
+          "labels": ["INBOX", "IMPORTANT"],
+          "summary": "Priya invites you to quarterly planning tomorrow, 10–11:30, at the studio.",
+          "messages": [
+            {
+              "from": "priya",
+              "to": ["me", "jordan", "ben"],
+              "ago": "2h",
+              "unread": true,
+              "subject": "Invitation: Quarterly planning",
+              "text": "Quarterly planning\nTomorrow, 10:00–11:30\nStudio, the big table\n\nGoals for next quarter, client pipeline, and the studio move. Please bring one idea you'd like us to try.\n\nPriya",
+              "attachments": [
+                {
+                  "name": "invite.ics",
+                  "type": "text/calendar",
+                  "text": "BEGIN:VCALENDAR\r\nPRODID:-//Demo//Demo Calendar//EN\r\nVERSION:2.0\r\nCALSCALE:GREGORIAN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:quarterly-planning-demo@northwind.example\r\nDTSTAMP:{{ics:+0d 08:00}}\r\nDTSTART:{{ics:+1d 10:00}}\r\nDTEND:{{ics:+1d 11:30}}\r\nSUMMARY:Quarterly planning\r\nLOCATION:Studio, the big table\r\nDESCRIPTION:Goals for next quarter, client pipeline, and the studio move.\r\nORGANIZER;CN=Priya Raman:mailto:priya@northwind.example\r\nATTENDEE;CN=Alex Rivera;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:alex@northwind.example\r\nATTENDEE;CN=Jordan Park;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED:mailto:jordan@northwind.example\r\nATTENDEE;CN=Ben Adler;ROLE=REQ-PARTICIPANT;PARTSTAT=TENTATIVE:mailto:ben@northwind.example\r\nSEQUENCE:0\r\nSTATUS:CONFIRMED\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX", "STARRED", "IMPORTANT", "Clients/Fernhill"],
+          "summary": "Lena loves direction B, wants a warmer green and the logo tested on cups by Thursday.",
+          "reply": "Thanks Alex, that's great. Looking forward to Thursday! Lena",
+          "messages": [
+            {
+              "from": "lena",
+              "ago": "3d",
+              "subject": "Fernhill rebrand: round 2 feedback",
+              "text": "Hi Alex,\n\nThanks for the new directions! The whole team met yesterday and we keep coming back to direction B: the hand-drawn leaf feels like us.\n\nNotes attached. Mostly small things.\n\nLena",
+              "attachments": [
+                {
+                  "name": "Fernhill feedback, round 2.pdf",
+                  "type": "application/pdf",
+                  "text": "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 384 >>\nstream\nBT\n/F1 20 Tf\n56 760 Td\n(Fernhill rebrand - round 2 notes) Tj\n/F1 11 Tf\n0 -30 Td\n(Direction B is the one. Keep the hand-drawn leaf.) Tj\n0 -16 Td\n(Green: a little warmer, closer to our olive tins.) Tj\n0 -16 Td\n(Wordmark: try a touch more letter spacing.) Tj\n0 -16 Td\n(Please show it on cups, bags and the shop sign.) Tj\n0 -16 Td\n(Timeline: could we see this by Thursday?) Tj\n0 -16 Td\nET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000241 00000 n \n0000000676 00000 n \ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n746\n%%EOF\n"
+                }
+              ]
+            },
+            {
+              "from": "me",
+              "cc": ["jordan"],
+              "ago": "2d",
+              "text": "Hi Lena,\n\nWonderful, B is my favourite too. I'll warm up the green and mock it up on cups, bags and the sign.\n\nJordan is copied in for the timeline.\n\nAlex"
+            },
+            {
+              "from": "lena",
+              "ago": "1h",
+              "unread": true,
+              "text": "Perfect. One more thing: could we also see the leaf on its own, as a stamp for the paper bags? Thursday still works for us.\n\nLena"
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX"],
+          "summary": "Jordan wants your eyes on the new onboarding flow before Wednesday's client call.",
+          "reply": "Thank you! I'll fold your notes in before Wednesday. J.",
+          "messages": [
+            {
+              "from": "jordan",
+              "ago": "4h",
+              "unread": true,
+              "subject": "Can you review the onboarding flow?",
+              "text": "Hey Alex,\n\nI put the new onboarding flow for the Fernhill app in the shared folder. Could you take a look before Wednesday's call? Mostly worried about the second screen; it might be asking for too much too soon.\n\nThanks!\nJordan"
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX", "CATEGORY_UPDATES"],
+          "messages": [
+            {
+              "from": "trellis",
+              "ago": "50m",
+              "subject": "Ben moved \"Menu cards\" to Done",
+              "text": "Ben Adler moved the card \"Menu cards\" from Review to Done on the Fernhill board."
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX", "Clients/Fernhill"],
+          "messages": [
+            {
+              "from": "ben",
+              "ago": "7h",
+              "subject": "Type specimen for Fernhill",
+              "text": "Alex, here's the type specimen with the slightly wider spacing Lena asked for. I think it breathes much better.\n\nBen",
+              "attachments": [
+                {
+                  "name": "Fernhill type specimen.pdf",
+                  "type": "application/pdf",
+                  "text": "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 267 >>\nstream\nBT\n/F1 20 Tf\n56 760 Td\n(Fernhill - type specimen) Tj\n/F1 11 Tf\n0 -30 Td\n(FERNHILL COFFEE) Tj\n0 -16 Td\n(Fernhill Coffee Roasters) Tj\n0 -16 Td\n(Fresh from the hill, every morning.) Tj\n0 -16 Td\n(Wordmark tracking: +40) Tj\n0 -16 Td\n(Body: 11/16, warm grey) Tj\n0 -16 Td\nET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000241 00000 n \n0000000559 00000 n \ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n629\n%%EOF\n"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX"],
+          "messages": [
+            {
+              "from": "people",
+              "ago": "1d",
+              "subject": "Benefits enrollment closes Friday",
+              "text": "Hi everyone, a reminder that benefits enrollment for next year closes this Friday. If you don't change anything, your current choices carry over.\n\nThe People Team"
+            }
+          ]
+        },
+        {
+          "labels": ["INBOX"],
+          "reply": "Noodles it is. Meet you downstairs at 12:30!",
+          "messages": [
+            {
+              "from": "jordan",
+              "ago": "25m",
+              "unread": true,
+              "subject": "Lunch?",
+              "text": "Noodles at 12:30?"
+            }
+          ]
+        },
+        {
+          "labels": ["1:1s"],
+          "messages": [
+            {
+              "from": "priya",
+              "ago": "1w",
+              "subject": "1:1 notes",
+              "text": "Thanks for today, Alex. Notes:\n\n- You'll lead the Fernhill rebrand through launch\n- Let's find you a conference talk for spring\n- Next 1:1 in two weeks\n\nPriya"
+            }
+          ]
+        },
+        {
+          "labels": ["Clients/Fernhill"],
+          "messages": [
+            {
+              "from": "me",
+              "to": ["lena"],
+              "ago": "6d",
+              "subject": "Invoice 2041: Fernhill rebrand, phase 1",
+              "text": "Hi Lena,\n\nAttached is the invoice for phase 1 of the rebrand. Thank you, it's been a joy so far.\n\nAlex",
+              "attachments": [
+                {
+                  "name": "Invoice 2041.pdf",
+                  "type": "application/pdf",
+                  "text": "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 241 >>\nstream\nBT\n/F1 20 Tf\n56 760 Td\n(Northwind Studio - Invoice 2041) Tj\n/F1 11 Tf\n0 -30 Td\n(Client: Fernhill Coffee) Tj\n0 -16 Td\n(Phase 1: research and three directions) Tj\n0 -16 Td\n(Amount due: $4,800.00) Tj\n0 -16 Td\n(Due within 30 days) Tj\n0 -16 Td\nET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000241 00000 n \n0000000533 00000 n \ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n603\n%%EOF\n"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
