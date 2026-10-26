@@ -2316,15 +2316,48 @@ screenshots that follow carry the new name from the start.*
       turns something up. Name checks already done are in
       `docs/RELEASE.md` → Name checks
 - [ ] Owner: search "the alternative name" for software at tmsearch.uspto.gov
-- [ ] Rename to the alternative name: window title, menus, Welcome and Settings text,
-      icon names, README, CLAUDE.md, the bundle ID (`com.nwoolls.mailboat`
-      to `com.nwoolls.altname`, which names the data folders, the
-      keychain entries, the MCP socket and pipe, and the sync log
-      folder), the OAuth client file's folder and the
-      `MAILBOAT_GOOGLE_*` variables. Code names (`mailboat_core`, crate and
-      module names) stay
-- [ ] Move the owner's data, settings and keychain sign-ins to the new
-      ID once, on the first launch after the rename, so nothing has to
+- [ ] Neutral code names, one brand file *(owner, 2026-10-26: the name
+      isn't settled yet, so the code shouldn't depend on it)*. Every
+      name that isn't branding becomes neutral, and everything that is
+      comes from one `brand.json` (name, short name, bundle ID,
+      environment prefix), so picking a name is one file, the icons and
+      the migration below. Six commits, each passing the full check:
+  - [ ] `brand.json`, read by Rust when it builds and by the UI; a test
+        that `src-tauri/tauri.conf.json` (name, ID, program name, which
+        Tauri can't read from elsewhere) matches it; a check that fails
+        if the brand name shows up anywhere else
+  - [ ] Rust packages: `mailboat-core`/`mailboat_core` to `mail-core`/
+        `mail_core` (folder `crates/core` stays); `mailboat`/`mailboat_lib`
+        to `desktop`/`desktop_lib`, the installed program keeping the
+        brand name through Tauri's `mainBinaryName`
+  - [ ] Internal names: the AI helper `mailboat-ai` to `ai-helper`;
+        `mailboat-link:` to `email-link:`; the sanitizer's marks
+        (`data-mailboat-*`, `mailboat-none`, …) to `data-safe-*`, `safe-none`,
+        …; `MailboatNotificationDelegate` to `AppNotificationDelegate`;
+        notification IDs `mailboat:` to `thread:`; dev-script variables
+        without the prefix; test names and design files neutral
+  - [ ] Stored names, without losing anything: `mailboat.sqlite3` to
+        `mail.sqlite3` (renamed once at startup); saved settings
+        `mailboat.*` to `prefs.*` (the old key read once). The owner tries
+        the app on their own data afterwards
+  - [ ] Text from the brand: UI strings, errors, the sign-in page, the
+        MCP server's name, Windows' registration, the
+        `<PREFIX>_GOOGLE_*` variables, the user agent; comments say
+        "the app"
+  - [ ] Docs: README, CLAUDE.md and ARCHITECTURE describe the brand
+        file. Dated history in ROADMAP and ARCHITECTURE stays as
+        written. The local folder stays (renaming
+        it would cut Claude Code off from this project's memory)
+- [ ] Rename to the chosen name (the alternative name, unless the owner picks
+      another): `brand.json`, `tauri.conf.json`, the icons and the
+      README/CLAUDE.md text. Changes the bundle ID (`com.nwoolls.mailboat`
+      to e.g. `com.nwoolls.altname`, which names the data folders, the
+      keychain entries, the MCP socket and pipe, the sync log folder and
+      the OAuth client file's folder) and the `MAILBOAT_GOOGLE_*`
+      variables
+- [ ] Move the owner's data, settings (including the web view's saved
+      settings, which live under the bundle ID too) and keychain
+      sign-ins to the new ID once, on the first launch after the rename, so nothing has to
       be signed in again (nobody else has installed it). Tested on a
       copy before it runs for real
 - [ ] Email on the domain for security reports and anything that
