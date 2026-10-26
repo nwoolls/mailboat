@@ -2208,6 +2208,12 @@ Spike became Milestones 10–18, 2026-10-25.*
       white on Windows (WebView2 draws the list with the select's faded
       text color) *(owner's screenshot, 2026-10-25)*: solid theme colors
       for the choices there. Built; to try in the VM
+- [ ] A console window flashed up for a few seconds whenever ChatGPT
+      was used (choosing it in Settings → AI checks it) *(owner report,
+      2026-10-25)*: Windows gives a command-line tool started by a
+      windowed app its own console unless asked not to. Codex and Claude
+      Code now start with none (`CREATE_NO_WINDOW`). Built; to try in
+      the VM
 
 ## Release: the road to an open-source the alternative name
 

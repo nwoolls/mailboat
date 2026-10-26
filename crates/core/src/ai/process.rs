@@ -101,7 +101,7 @@ pub async fn run_lines(
 ) -> Result<Exit> {
     let work = tokio::time::timeout(TIMEOUT, async {
         let dir = scratch_dir()?;
-        let mut child = Command::new(program)
+        let mut child = command(program)
             .args(args)
             .current_dir(&dir)
             .env("PATH", child_path(program))
@@ -166,7 +166,7 @@ pub async fn run_lines(
 pub async fn run_quick(program: &Path, args: &[&str]) -> Result<(bool, String, String)> {
     let out = tokio::time::timeout(
         Duration::from_secs(15),
-        Command::new(program)
+        command(program)
             .args(args)
             .env("PATH", child_path(program))
             .stdin(Stdio::null())
@@ -186,7 +186,7 @@ pub async fn run_quick(program: &Path, args: &[&str]) -> Result<(bool, String, S
 /// Starts a sign-in command (it opens the browser) and returns the
 /// running process; dropping it stops the sign-in.
 pub fn spawn_login(program: &Path, args: &[&str]) -> Result<tokio::process::Child> {
-    Command::new(program)
+    command(program)
         .args(args)
         .env("PATH", child_path(program))
         .stdin(Stdio::null())
@@ -195,6 +195,20 @@ pub fn spawn_login(program: &Path, args: &[&str]) -> Result<tokio::process::Chil
         .kill_on_drop(true)
         .spawn()
         .map_err(|e| CoreError::Ai(format!("couldn't start {}: {e}", program.display())))
+}
+
+/// A command for `program` that, on Windows, opens no console window: a
+/// windowed app starting a command-line tool otherwise gets one flashing
+/// up for every request.
+fn command(program: &Path) -> Command {
+    #[allow(unused_mut)]
+    let mut cmd = Command::new(program);
+    #[cfg(windows)]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
 }
 
 /// An empty folder to run in, so the tools find no project files
