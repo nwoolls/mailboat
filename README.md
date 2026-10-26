@@ -97,7 +97,7 @@ accounts (personal and work), about 25 conversations with attachments,
 labels, a meeting invitation, a draft, spam, trash and list summaries.
 None of your own mail can show. Archiving, labels, rules and the rest all
 work. Sending is faked: the message lands in Sent and the person answers
-about 8 seconds later. A sign-in code arrives 45 seconds after launch.
+about 8 seconds later. A sign-in code arrives 45 seconds after the window opens.
 
 The made-up mail lives in `demo/mail.json` (reserved `.example` addresses
 only). Like the clean start below, the demo keeps to its own folder

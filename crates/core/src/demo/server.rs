@@ -56,6 +56,9 @@ struct State {
     /// (account, thread) → what the other person answers.
     replies: HashMap<(String, String), String>,
     summaries: Vec<Summary>,
+    /// Conversations still to arrive (account, conversation, seconds),
+    /// once the clock starts.
+    pending: Vec<(String, Conversation, u64)>,
 }
 
 #[derive(Clone)]
@@ -64,6 +67,8 @@ pub struct FakeGoogle {
     on_change: Arc<Mutex<Option<OnChange>>>,
     timing: Timing,
     base_url: String,
+    /// Where scheduled mail waits (the clock may start outside it).
+    runtime: tokio::runtime::Handle,
 }
 
 impl FakeGoogle {
@@ -76,8 +81,8 @@ impl FakeGoogle {
             mailboxes: HashMap::new(),
             replies: HashMap::new(),
             summaries: Vec::new(),
+            pending: Vec::new(),
         };
-        let mut arrivals = Vec::new();
         for (n, account) in data.accounts.iter().enumerate() {
             let mut mailbox = Mailbox::new(&account.email, &account.name, n as u64);
             for l in &account.labels {
@@ -92,7 +97,9 @@ impl FakeGoogle {
             state.mailboxes.insert(account.email.clone(), mailbox);
             for c in &account.conversations {
                 match c.arrive_after_seconds {
-                    Some(after) => arrivals.push((account.email.clone(), c.clone(), after)),
+                    Some(after) => state
+                        .pending
+                        .push((account.email.clone(), c.clone(), after)),
                     None => state.add_conversation(&account.email, c, now)?,
                 }
             }
@@ -109,6 +116,7 @@ impl FakeGoogle {
             on_change: Arc::new(Mutex::new(None)),
             timing,
             base_url: format!("http://127.0.0.1:{port}"),
+            runtime: tokio::runtime::Handle::current(),
         };
         let serving = google.clone();
         tokio::spawn(async move {
@@ -119,10 +127,18 @@ impl FakeGoogle {
                 });
             }
         });
-        for (email, conversation, after) in arrivals {
-            let google = google.clone();
+        Ok(google)
+    }
+
+    /// Starts the clock for scheduled mail (`arriveAfterSeconds`): when
+    /// the window has loaded, so nothing arrives before anyone can see it.
+    /// Only the first call counts.
+    pub fn start_clock(&self) {
+        let pending = std::mem::take(&mut self.state.lock().unwrap().pending);
+        for (email, conversation, after) in pending {
+            let google = self.clone();
             let wait = Duration::from_secs_f64(after as f64 * google.timing.arrivals);
-            tokio::spawn(async move {
+            self.runtime.spawn(async move {
                 tokio::time::sleep(wait).await;
                 let now = now_millis() as u64;
                 let added =
@@ -136,7 +152,6 @@ impl FakeGoogle {
                 }
             });
         }
-        Ok(google)
     }
 
     /// Where the app's Gmail client should send its requests.

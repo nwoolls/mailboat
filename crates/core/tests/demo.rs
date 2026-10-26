@@ -246,13 +246,18 @@ async fn scheduled_mail_arrives_later() {
     let email = &data.accounts[0].email;
     let id = add_account(&db, email);
     let gmail = demo::client(reqwest::Client::new(), &google, email);
-    // The sign-in code is due 45 s in, scaled to 90 ms here.
+    // The sign-in code is due 45 s after the clock starts (the window
+    // has loaded), scaled to 90 ms here.
     let arrived = |db: &Db| {
         inbox(db)
             .iter()
             .any(|t| t.subject == "Your Harbor Bank sign-in code")
     };
     sync(&db, &gmail, id).await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    sync(&db, &gmail, id).await;
+    assert!(!arrived(&db), "nothing arrives before the clock starts");
+    google.start_clock();
     tokio::time::sleep(Duration::from_millis(300)).await;
     let outcome = sync(&db, &gmail, id).await;
     assert!(arrived(&db));

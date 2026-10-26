@@ -2393,7 +2393,7 @@ to test a first launch over and over.*
       computer (`mail_core::demo`), so every feature runs its real code;
       the mail is `demo/mail.json`: two accounts, 24 conversations
       (attachments, an invitation, a draft, spam, trash, a sign-in code
-      arriving 45 s in). Tried here: it opens with both accounts synced
+      arriving 45 s after the window opens). Tried here: it opens with both accounts synced
       and summaries in place, in its own folder. *Owner to try: it
       looks right, and replying to Maya's "Lisbon in May?" brings her
       answer* *Owner, 2026-10-26: "replying worked, and I got a reply
@@ -2401,7 +2401,13 @@ to test a first launch over and over.*
       summary only comes by itself for conversations over 700
       characters, and the demo's are shorter. The main six now bring
       their own (`brief` in `demo/mail.json`). List summaries didn't
-      show either: under investigation (the app did ask for them)*
+      show in one run (they did in the runs before and after; a probe
+      showed the window had them all). The sign-in code's notice was
+      missed: the code came 45 s after the app started, and the dev
+      window took longer than that to load; it now counts from when the
+      window has loaded. Owner, 2026-10-26: "both are looking good now,
+      I see the AI in the list, in the previews, and I see the sign-in
+      code card"*
   - [ ] The browser tests' harness reads `demo/mail.json` too (it still
         has its own made-up data); the trailer (Milestone 16) will
 - [x] A clean-start option alongside it *(2026-10-26)*: the app started

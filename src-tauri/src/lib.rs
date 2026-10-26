@@ -375,6 +375,14 @@ fn open_window(app: &tauri::App, mode: mode::Mode) -> tauri::Result<()> {
         .ok_or_else(|| tauri::Error::WindowNotFound)?;
     tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?
         .incognito(!mode.is_normal())
+        // The demo's scheduled mail counts from when the window is up.
+        .on_page_load(|webview, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Finished {
+                if let Some(google) = webview.state::<AppState>().demo.as_ref() {
+                    google.start_clock();
+                }
+            }
+        })
         .build()?;
     Ok(())
 }
