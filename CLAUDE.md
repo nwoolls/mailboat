@@ -10,7 +10,9 @@ Agents write all the code, so:
   report their real output. Never claim something works without running it.
 - While iterating, run `bun run check:quick` (seconds to about a minute).
   Run the full `bun run check` once, before committing. Never commit
-  without it passing.
+  code without it passing. A commit with no code in it (only docs such
+  as `docs/`, `README.md` or this file) needs no checks: commit it
+  straight away.
 - Explain decisions in plain language. Never leave the owner to debug by hand.
 
 ## Docs to keep current
