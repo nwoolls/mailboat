@@ -5,12 +5,17 @@ import { LavaScene } from "./lava";
 import { LifeScene } from "./life";
 import { DEFAULT_PALETTE, type PaletteId, paletteFor } from "./palettes";
 import { RainScene } from "./rain";
-import { SandscapeScene } from "./sand";
+import { SAND_CELL_PX, SandscapeScene } from "./sand";
 import { type Rng, type Scene, SCENE_CELL_PX, type SceneSetup } from "./scene";
 
 /** The screensavers, in the order Settings and the palette list them. */
 export const SCREENSAVERS = [
-  { id: "sandscape", label: "Sandscape", make: (s: SceneSetup) => new SandscapeScene(s) },
+  {
+    id: "sandscape",
+    label: "Sandscape",
+    make: (s: SceneSetup) => new SandscapeScene(s),
+    cellPx: SAND_CELL_PX,
+  },
   {
     id: "envelopes",
     label: "Envelope flock",
@@ -18,7 +23,13 @@ export const SCREENSAVERS = [
     // Finer than the rest: at 3px the flock moved in visible steps.
     cellPx: 2,
   },
-  { id: "life", label: "Life", make: (s: SceneSetup) => new LifeScene(s) },
+  {
+    id: "life",
+    label: "Life",
+    make: (s: SceneSetup) => new LifeScene(s),
+    // Screen-pixel cells, so each Life cell can be a tile with a gap (UX Spike 4).
+    cellPx: 1,
+  },
   {
     id: "rain",
     label: "Rain on glass",

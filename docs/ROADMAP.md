@@ -2512,6 +2512,28 @@ one at a time.*
             looked odd, a rectangle sticking out the top with no V
             opening: the letter now stays seated inside the V. "That's
             better, I'll take it"*
+      - [x] Life *(2026-10-27)*: drawn as a mosaic (after the owner's
+            daoho.dev reference) on 1px cells, each living cell a 4×4
+            tile with a 1px gap and soft corners; cells swell in when
+            born and fade out when they die, so generations flow; colour
+            by age from the accent through pale grey to a deeper grey
+            (through white they vanished on a light background). A Life
+            cell is 5px, coarser than the 3px before: 3px tiles looked
+            like tiny plus signs. *Owner, 2026-10-27: "I dig it"*
+      - [x] Sandscape *(2026-10-27)*: 2px grains (the leaks pour
+            proportionally more, so a cycle takes about as long, roughly
+            2 min 20 s); hills lit (tops catch the light, left-facing
+            slopes brighter, right-facing darker), each grain's shade
+            giving the layers texture, falling and flung grains a little
+            see-through. *Owner, 2026-10-27: it didn't turn over, and
+            sand below a line drawn through the ceiling kept hanging.*
+            Both fixed: the ceiling hangs from the top edge, so ceiling
+            sand below a gap the pointer cuts falls; and sand piled on a
+            pointer resting under the ceiling held its last grains up so
+            they never counted as loose and the frame never turned over
+            (most resting spots near the top did this, before this
+            spike too), so after 3 s of the leaks freeing nothing the
+            rest of the ceiling lets go. *Owner: "LGTM"*
 - [ ] And likely the toys too *(owner, 2026-10-26: "likely even the
       'games'")*: Pond, Bubble wrap, Sky
 - [ ] Maybe: a switch between pixel art and ASCII art for the
