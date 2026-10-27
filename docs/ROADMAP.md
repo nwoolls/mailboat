@@ -2382,6 +2382,8 @@ connection, for screenshots, videos and trying things safely. Comes
 before onboarding because its separate data folder is also the easy way
 to test a first launch over and over.*
 
+**Closed (owner, 2026-10-26).** Both items tried by the owner.
+
 - [x] Demo mode *(owner, 2026-10-22; moved from the Release Spike;
       built 2026-10-26)*: the real app started with its own data folder
       (`bun run demo`, or `--demo` on any copy), filled with made-up
@@ -2421,8 +2423,9 @@ to test a first launch over and over.*
       `--clean-start` on any copy): folder `<bundle ID>.clean-start`, its
       own keychain name, web storage gone when it quits, all emptied at
       every launch; no MCP server. Tried here: it opens and fills only
-      its own folder. *Owner to try: it opens at the "add an account"
-      screen and your own app is unchanged*
+      its own folder. *Owner, 2026-10-26, with a screenshot: "Clean
+      start seems to work": it opens at the welcome screen asking for the
+      OAuth client file, in `com.nwoolls.mailboat.clean-start`*
 
 ## Milestone 12: Onboarding and bring your own Google credentials
 
