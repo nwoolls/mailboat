@@ -2932,6 +2932,12 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [ ] Periodically refresh each account's Google profile image *(owner
+      request, 2026-10-27; for the next bug spike)*. Today the profile
+      URL is saved only at sign-in; background sync never refreshes it.
+      Recheck each account's profile on a throttled schedule, persist
+      changes and update its avatar without requiring another sign-in.
+      Keep the last image if a refresh fails
 - [x] The koi pond's koi crowded the middle of the screen *(owner
       report with a screenshot, 2026-10-26)*. Every koi near an edge
       turned toward the exact center, and between nibbles they swam
