@@ -368,6 +368,26 @@ confirm). Free: `mailboatapp.com`, `usemailboat.com`,
 handles not checked yet. The owner registered `getmailboat.app` (the
 main domain), `mailboat.dev` and `mailboat.software` the same day.
 
+Trademark search (2026-10-27, by an agent, through Trademarkia's copy
+of the USPTO records; USPTO's own search can't be scripted). All seven
+US records for MAILBOAT belong to **an unrelated music business** (an unrelated music business):
+
+| Serial | Class | Goods or services | Status |
+|---|---|---|---|
+
+None covers software, email or computer services. Class 9 is software's
+class too, but trademarks protect the goods named, and music
+recordings are far from an email app; still, the label is well known
+and keeps its marks up with lawyers, so it is the one owner who could
+object. "MAIL BOAT" and "MAILBOATS" turn up no other owner. Not legal
+advice: an attorney's clearance would be the step before filing a mark
+of our own. No App Store or Mac App Store app is called Mailboat.
+GitHub: the `mailboat` account is taken, `mailboatapp` free; a few
+small repositories use the name (0–4 stars), one a bulk-email desktop
+app. The owner's view: a trademark doesn't affect Google's approval of
+the consent screen.
+
+
 ## Sources
 
 - [Google: restricted scope verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification)
