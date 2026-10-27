@@ -2309,18 +2309,17 @@ domains are the owner's, and the owner's own setup has moved over.
 First of the release milestones, so the onboarding text, demo data and
 screenshots that follow carry the new name from the start.*
 
-*Owner, 2026-10-27: the name is **Mailboat** (not the alternative name). `<domain>`
-below and in the later milestones stands for the domain still to be
-chosen: `mailboat.app` and `mailboat.com` are taken (see
-`docs/RELEASE.md` → Name checks → Mailboat).*
+*Owner, 2026-10-27: the name is **Mailboat** (not the alternative name), and the
+domains are `getmailboat.app` (the main one: website, update address,
+security email), `mailboat.dev` and `mailboat.software`.
+`mailboat.app` and `mailboat.com` were taken (see `docs/RELEASE.md` →
+Name checks → Mailboat).*
 
-- [ ] Owner, first: choose and register the domains at Cloudflare
-      Registrar (a yearly fee; owner details hidden in public
-      records), so nobody else can take them once the name starts to
-      appear. `getmailboat.com` was registered at Cloudflare on
-      2026-09-30 (the owner's?); `mailboatapp.com`, `usemailboat.com`
-      and `trymailboat.com` were free on 2026-10-27. Cheap to drop if
-      the trademark search below turns something up
+- [x] Owner, first: register the domains at Cloudflare Registrar, so
+      nobody else can take them once the name starts to appear:
+      `getmailboat.app`, `mailboat.dev` and `mailboat.software`
+      *(2026-10-27, owner's screenshot: all three active)*. Cheap to
+      drop if the trademark search below turns something up
 - [ ] Owner: search "Mailboat" for software at tmsearch.uspto.gov
 - [x] Neutral code names, one brand file *(owner, 2026-10-26: the name
       isn't settled yet, so the code shouldn't depend on it)*. Every
@@ -2825,7 +2824,7 @@ themselves.*
 - [ ] Automatic updates *(added 2026-10-19, settings comparison;
       Mimestream has an update channel setting)*: Tauri's updater plugin
       with its own signing key. The address built into the app is on
-      `<domain>` (e.g. `https://<domain>/updates/latest.json`), never
+      `getmailboat.app` (e.g. `https://getmailboat.app/updates/latest.json`), never
       a GitHub address, so hosting can change without stranding anyone.
       Installers live on GitHub Releases
 - [ ] Version numbers and changelog *(owner, 2026-10-25: semversioner
@@ -2870,11 +2869,11 @@ themselves.*
 
 ## Milestone 16: Website
 
-*Done when: `<domain>` explains Mailboat, shows it, and lets people
+*Done when: `getmailboat.app` explains Mailboat, shows it, and lets people
 download it and follow the setup guide.*
 
 - [ ] Website: plain HTML/CSS/JS on GitHub Pages (free; Cloudflare
-      Pages if needed later), on `<domain>`: home with screenshots
+      Pages if needed later), on `getmailboat.app`: home with screenshots
       from Demo mode, download (latest release), the credentials setup
       guide with a short screen recording, privacy policy (what Google
       data Mailboat uses; it stays on the device), terms of use (limits

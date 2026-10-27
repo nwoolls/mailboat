@@ -232,7 +232,7 @@ A setup screen in the app (part of Onboarding), not just a web page:
 - Hosting on GitHub, all free for a public repo: Pages (website; or
       keep Cloudflare), Releases (installers and the update file),
       Actions (unlimited minutes, Mac builds included). The domain and
-      update address stay on `<domain>` either way
+      update address stay on `getmailboat.app` either way
 - Signing: still advised (the signing fees). Unsigned, Mac users must
       allow the app in System Settings, Windows shows a SmartScreen
       warning, and Homebrew announced it would drop casks that aren't
@@ -305,7 +305,7 @@ Plan 2, in full.
 Decide these before the first public release, whatever the plan:
 
 - **Own the domain and point everything at it.** The update address
-  baked into every installed app should be `https://<domain>/…`, not a
+  baked into every installed app should be `https://getmailboat.app/…`, not a
   GitHub or Cloudflare address, so hosting can change without stranding
   users.
 - **Keep the copyright in one pair of hands.** If only the owner's
@@ -365,7 +365,8 @@ The owner chose **Mailboat** over the alternative name. Domains checked that day
 registered 2026-09-30 at Cloudflare (the owner's, or someone else's: to
 confirm). Free: `mailboatapp.com`, `usemailboat.com`,
 `trymailboat.com`. Trademarks, the Mac App Store, GitHub and social
-handles not checked yet.
+handles not checked yet. The owner registered `getmailboat.app` (the
+main domain), `mailboat.dev` and `mailboat.software` the same day.
 
 ## Sources
 
