@@ -125,6 +125,11 @@
               "text": "Alfama it is. I found a small apartment with a terrace (Casa Azul). The host, Tomás, says it's free 16–23 May.\n\nShall I book it?"
             },
             {
+              "from": "me",
+              "ago": "20h",
+              "text": "It looks lovely! Let me check that week with work and I'll get back to you by tomorrow.\n\nAlex"
+            },
+            {
               "from": "maya",
               "ago": "40m",
               "unread": true,

@@ -2408,9 +2408,12 @@ to test a first launch over and over.*
       window has loaded. Owner, 2026-10-26: "both are looking good now,
       I see the AI in the list, in the previews, and I see the sign-in
       code card"*
-  - [ ] The browser tests' harness reads `demo/mail.json` too (it still
-        has its own made-up data); the trailer (Milestone 16) will use
-        it too
+  - [x] The browser tests' harness reads `demo/mail.json` too
+        *(2026-10-26)*: `tests/browser/demoMail.ts` turns it into what
+        the window gets from Rust, so the tests show Maya's "Lisbon in
+        May?" (now five emails, for the reader-keys test) and the demo's
+        Inbox instead of their own made-up mail. The trailer (Milestone
+        16) will use it too
 - [x] A clean-start option alongside it *(2026-10-26)*: the app started
       with an empty data folder of its own (no accounts, nothing in the
       keychain under that name), so a first launch can be tried without

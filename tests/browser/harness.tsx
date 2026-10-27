@@ -1,10 +1,12 @@
 /**
  * Mounts real the app components in a browser for Playwright (tests/browser),
- * with the Rust side faked by Tauri's own `mockIPC`. Picked by the URL:
+ * with the Rust side faked by Tauri's own `mockIPC`, answering with demo
+ * mode's made-up mail (`demo/mail.json`, through `demoMail.ts`). Picked by
+ * the URL:
  *
  *   ?mode=card&spot=bottom-left   a new message in the floating card
- *   ?mode=unread                  a conversation of five emails, the last
- *                                 two unread, in the reader
+ *   ?mode=unread                  Maya's "Lisbon in May?", five emails,
+ *                                 the last two unread, in the reader
  *   &colors=1                     (reader modes) the email's colors can be
  *                                 switched, and its images were shown
  *   &colors=2                     the same, with no images
@@ -14,7 +16,7 @@
  *                                 scrolled reader with mail above it
  *   ?mode=original                Show original for a conversation of
  *                                 five emails, each with a long source
- *   ?mode=list&density=…&lines=…  the conversation list, with Settings →
+ *   ?mode=list&density=…&lines=…  the demo's Inbox, with Settings →
  *                                 List's density and preview lines
  *   ?mode=empty&toy=…             an empty Inbox with a Toybox toy
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
@@ -27,58 +29,30 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "../../src/styles/index.css";
 
-const account = {
-  id: 1,
-  email: "me@example.com",
-  displayName: "Me",
-  avatarUrl: null,
-  color: "#3b82f6",
-  oauthClient: "default",
-  missingPermissions: [],
-};
-const me = { name: "Me", email: "me@example.com" };
-const sam = { name: "Sam", email: "sam@example.com" };
-const identity = {
-  accountId: 1,
-  email: "me@example.com",
-  name: "Me",
-  replyTo: null,
-  isPrimary: true,
-  isDefault: true,
-  signature: null,
-};
-const message = {
-  id: 10,
-  accountId: 1,
-  threadId: 7,
-  from: sam,
-  to: [me],
-  cc: [],
-  subject: "Quarterly review",
-  snippet: "Can you bring the budget numbers?",
-  internalDate: 1_792_000_000_000,
-  unread: false,
-  starred: false,
-  hasAttachments: false,
-  draft: false,
-};
-const thread = {
-  id: 7,
-  accountId: 1,
-  subject: "Quarterly review",
-  snippet: message.snippet,
-  senders: [{ ...sam, unread: false }],
-  lastMessageAt: message.internalDate,
-  messageCount: 1,
-  unread: false,
-  starred: false,
-  hasAttachments: false,
-  inInbox: true,
-  inTrash: false,
-  labelIds: [],
-  onlyDraft: false,
-  inSpam: false,
-  signInCode: null,
+import {
+  account,
+  conversation,
+  identity as demoIdentity,
+  me,
+  messagesOf,
+  threadOf,
+} from "./demoMail";
+
+// Demo mode's made-up mail (`demo/mail.json`): Maya's "Lisbon in May?",
+// five emails, as conversation 7 with emails 10 to 14.
+const lisbon = conversation("Lisbon in May?");
+const emails = messagesOf(lisbon, 7, 10);
+if (emails.length !== 5) throw new Error("the harness expects five emails in Lisbon in May?");
+const newest = emails.at(-1)!;
+const maya = newest.from;
+// No signature: tests check the editors' exact text.
+const identity = { ...demoIdentity, signature: null };
+const thread = { ...threadOf(lisbon, 7), unread: false, messageCount: 1 };
+const message = { ...newest, unread: false };
+/** An email's text as paragraphs, repeated so the reader scrolls as with long mail. */
+const longBody = (text: string) => {
+  const paragraphs = text.split(/\n\s*\n/).map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`);
+  return Array.from({ length: 60 }, (_, i) => paragraphs[i % paragraphs.length]).join("");
 };
 const harnessMode = new URLSearchParams(location.search).get("mode");
 const unreadMode = harnessMode === "unread" || harnessMode === "original";
@@ -86,13 +60,8 @@ const colorsMode = new URLSearchParams(location.search).get("colors");
 const detail = unreadMode
   ? {
       thread: { ...thread, unread: true, messageCount: 5 },
-      messages: [10, 11, 12, 13, 14].map((id, i) =>
-        Object.assign(structuredClone(message), {
-          id,
-          internalDate: message.internalDate + i * 60_000,
-          unread: i >= 3,
-        }),
-      ),
+      // The first three read (and folded), the last two not.
+      messages: emails.map((m, i) => ({ ...m, unread: i >= 3 })),
       labels: [],
     }
   : { thread, messages: [message], labels: [] };
@@ -129,16 +98,16 @@ mockIPC((cmd, args) => {
       return detail;
     case "reply_source":
       return {
-        messageId: 10,
+        messageId: message.id,
         accountId: 1,
         threadId: 7,
-        from: sam,
+        from: maya,
         to: [me],
         cc: [],
         replyTo: [],
-        subject: "Quarterly review",
+        subject: message.subject,
         date: message.internalDate,
-        text: "Can you bring the budget numbers?",
+        text: lisbon.messages.at(-1)!.text ?? "",
         html: null,
         attachments: [],
         inlineImages: [],
@@ -160,8 +129,8 @@ mockIPC((cmd, args) => {
       return {
         messageId: `<m${id}@example.com>`,
         date: message.internalDate,
-        from: "Sam <sam@example.com>",
-        to: "me@example.com",
+        from: `${maya.name} <${maya.email}>`,
+        to: me.email,
         cc: null,
         subject: `Email ${id}`,
         checks: [
@@ -173,23 +142,26 @@ mockIPC((cmd, args) => {
         size: 140_000,
       };
     }
-    case "message_open":
-      // A long plain email, so the reader scrolls as with real mail.
+    case "message_open": {
+      // The email's own text, made long, so the reader scrolls as with real mail.
+      const id = (args as { messageId: number }).messageId;
+      const text = lisbon.messages[id - 10]?.text ?? "";
       return {
-        messageId: 10,
+        messageId: id,
         accountId: 1,
-        senderEmail: sam.email,
+        senderEmail: emails[id - 10]?.from.email ?? maya.email,
         imagesAllowed: true,
         imagePolicy: "loadedByDefault",
         attachments: [],
         originalColors: false,
-        document: `<!doctype html><html><body style="margin:0;font:14px/1.5 sans-serif">${"<p>Can you bring the budget numbers to the quarterly review?</p>".repeat(60)}</body></html>`,
+        document: `<!doctype html><html><body style="margin:0;font:14px/1.5 sans-serif">${longBody(text)}</body></html>`,
         blockedImages: 0,
         loadedImages: colorsMode === "1" ? 2 : 0,
         trackersRemoved: 0,
         adaptive: true,
         recolorable: colorsMode !== null,
       };
+    }
     default:
       return null;
   }

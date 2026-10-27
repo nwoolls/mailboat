@@ -191,7 +191,8 @@ these rules. Keep it passing.
 - UI behaviour unit tests can't see (animation, layout, scrolling):
   Playwright in WebKit (the macOS web view's engine), `tests/browser/`.
   `harness.tsx` mounts real components with the Rust side faked by
-  Tauri's `mockIPC`; pick the setup by URL (`?mode=…`). Measure what's
+  Tauri's `mockIPC`, answering with demo mode's mail (`demo/mail.json`,
+  via `tests/browser/demoMail.ts`); pick the setup by URL (`?mode=…`). Measure what's
   painted: sample in a `ResizeObserver` created after the component's,
   not at the start of a frame. Before trusting a new test, put the old
   behaviour back and see it fail. One-time setup: `bunx playwright install webkit`.

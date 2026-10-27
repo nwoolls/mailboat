@@ -557,7 +557,9 @@ summaries, so the window opens full. Sent mail gets the conversation's
 scripted answer (or a general one) a few seconds later, and scheduled
 conversations arrive on time; the server then asks the account's worker
 to sync at once. Secrets are kept in memory only, and the HTTP client
-skips proxies.
+skips proxies. The browser tests' harness reads the same file
+(`tests/browser/demoMail.ts`), so tests and screenshots show the same
+made-up mail.
 
 ## Decisions
 

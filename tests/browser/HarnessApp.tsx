@@ -13,6 +13,7 @@ import { EmptyState } from "../../src/features/mailbox/ui/EmptyState";
 import { CommandPalette } from "../../src/features/palette/ui/CommandPalette";
 import { TitleSearch } from "../../src/app/TitleSearch";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
+import { inbox } from "./demoMail";
 import {
   setCardSpot,
   useComposeActions,
@@ -20,6 +21,12 @@ import {
 } from "../../src/features/compose/ui/useCompose";
 
 const params = new URLSearchParams(location.search);
+
+// The demo's Inbox (demo/mail.json), the rows whose first words fill two
+// preview lines, so every preview-lines choice can be measured.
+const listRows = inbox()
+  .filter((t) => t.snippet.length >= 140)
+  .slice(0, 5);
 
 /** The components under test (harness.tsx sets up the fake Rust side). */
 export function Harness({
@@ -82,16 +89,7 @@ export function Harness({
         <ThreadList
           viewKey="harness"
           placeholder={false}
-          threads={[1, 2, 3, 4, 5].map((i) =>
-            Object.assign(structuredClone(detail.thread), {
-              id: i,
-              unread: i % 2 === 1,
-              starred: i === 2,
-              hasAttachments: i === 3,
-              subject: `Quarterly review, part ${i}: the numbers, the plan and what comes next`,
-              snippet: "Can you bring the budget numbers? ".repeat(8),
-            }),
-          )}
+          threads={listRows as never}
           accounts={new Map([[account.id, account]])}
           showAccount
           selectedId={null}

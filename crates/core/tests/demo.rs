@@ -104,7 +104,7 @@ async fn both_demo_accounts_sync_into_a_unified_inbox() {
     assert_eq!(accounts.len(), 2, "mail from both accounts");
 
     let lisbon = subject_in(&inbox, "Lisbon in May?");
-    assert_eq!(lisbon.message_count, 4);
+    assert_eq!(lisbon.message_count, 5);
     assert!(lisbon.unread && lisbon.starred && lisbon.has_attachments);
     assert_eq!(lisbon.label_ids.len(), 1, "Travel");
     let names: Vec<_> = lisbon.senders.iter().map(|s| s.name.clone()).collect();
@@ -221,7 +221,7 @@ async fn sending_lands_in_sent_and_the_other_person_answers() {
     assert_eq!(outcome.kind, SyncKind::Incremental);
     let after = subject_in(&inbox(&db), "Lisbon in May?").clone();
     assert_eq!(
-        after.message_count, 5,
+        after.message_count, 6,
         "the sent reply joins the conversation"
     );
 
@@ -233,7 +233,7 @@ async fn sending_lands_in_sent_and_the_other_person_answers() {
         "Maya's answer arrives as new mail"
     );
     let after = subject_in(&inbox(&db), "Lisbon in May?").clone();
-    assert_eq!(after.message_count, 6);
+    assert_eq!(after.message_count, 7);
     assert!(after.unread);
     let body = fetch_body(&db, &gmail, outcome.new_inbox[0]).await.unwrap();
     assert!(body.text.unwrap().contains("book the apartment tonight"));
