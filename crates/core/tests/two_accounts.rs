@@ -1,4 +1,4 @@
-//! Proves the multi-account rules in CLAUDE.md: two accounts whose Gmail
+//! Proves the multi-account rules in AGENTS.md: two accounts whose Gmail
 //! thread, message and label IDs collide must never bleed into each other,
 //! and unified views must show both.
 

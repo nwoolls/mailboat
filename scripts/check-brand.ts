@@ -12,6 +12,7 @@ const ALLOWED = [
   "src-tauri/tauri.windows.conf.json",
   // Prose and artwork, updated with the name by hand.
   "README.md",
+  "AGENTS.md",
   "CLAUDE.md",
   "docs/",
   "design/",

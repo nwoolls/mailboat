@@ -98,7 +98,7 @@ if [ -n "$identity" ]; then
   codesign --force --sign "$identity" --identifier "$id" "$app" 2>/dev/null \
     || echo "dev-run: signing with \"$identity\" failed; continuing unsigned" >&2
 else
-  echo "dev-run: no Apple Development certificate found; macOS will ask for keychain access after each rebuild (see CLAUDE.md)" >&2
+  echo "dev-run: no Apple Development certificate found; macOS will ask for keychain access after each rebuild (see AGENTS.md)" >&2
 fi
 
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
