@@ -13,9 +13,9 @@ function seeded(seed: number) {
 }
 
 describe("EnvelopeScene", () => {
-  it("draws on a finer grid than the other scenes", () => {
+  it("draws on 2px cells, finer than the scenes' 3px default", () => {
     expect(cellPxOf("envelopes")).toBe(2);
-    expect(cellPxOf("sandscape")).toBe(SCENE_CELL_PX);
+    expect(cellPxOf("envelopes")).toBeLessThan(SCENE_CELL_PX);
   });
 
   it("flies, lands on the icon and words, and draws its envelopes", () => {

@@ -12,16 +12,22 @@
  */
 
 import {
+  blend,
   type FrameResult,
   ink,
   type Pointer,
   type Rng,
   type Scene,
-  SCENE_CELL_PX,
   type SceneSetup,
   SLOT,
   type Slot,
 } from "./scene";
+
+/**
+ * Screen pixels per grain: finer than the 3px it began with (UX Spike 4).
+ * The leaks pour proportionally more, so a cycle takes about as long.
+ */
+export const SAND_CELL_PX = 2;
 
 /**
  * The sands. Heavier ones sink faster through the liquid (`fall` is the
@@ -40,6 +46,8 @@ export const SAND_SHADES = 4;
 export const REST_SECONDS = 12;
 /** How long the turn takes. */
 export const FLIP_SECONDS = 1.8;
+/** How long the leaks may free nothing before the rest of the ceiling lets go. */
+const STUCK_SECONDS = 3;
 
 export const EMPTY = 0;
 /** The icon and words: sand rests on them. */
@@ -58,7 +66,7 @@ const DRAG = 0.92;
 const ROLL_FRAMES = 3;
 const LEAKS = 3;
 /** How far either side of a gap the ceiling gives way, in cells. */
-const LEAK_REACH = 3;
+const LEAK_REACH = 4;
 
 export function grainValue(kind: number, shade: number): number {
   return GRAIN + (kind % SAND_KINDS.length) * SAND_SHADES + (shade % SAND_SHADES);
@@ -318,17 +326,51 @@ export class SandBox {
     const mvy = prev ? Math.max(-4, Math.min(4, at.y - prev.y)) : 0;
     const tx = Math.round(at.x);
     const ty = Math.round(at.y);
+    const cut = new Set<number>();
     for (const [dx, dy] of shape) {
       const x = tx + dx;
       const y = ty + dy;
       if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
       const i = y * cols + x;
       if (cells[i] === SOLID) continue;
-      if (cells[i]! >= GRAIN)
+      if (cells[i]! >= GRAIN) {
+        if (cells[i]! & HELD) cut.add(x);
         this.launch(i, mvx * 0.8 + (rng() - 0.5), Math.min(mvy * 0.8, 0) - 0.6 - rng() * 0.8);
+      }
       cells[i] = CURSOR;
       this.cursor.push(i);
     }
+    for (const x of cut) this.dropBelowGap(x);
+  }
+
+  /**
+   * The ceiling hangs from the top edge, so in column x every ceiling
+   * grain below the first gap has nothing holding it up: it lets go and
+   * falls. (Cut by the pointer, the sand below used to hang on until a
+   * leak let it go; owner, 2026-10-27.)
+   */
+  private dropBelowGap(x: number) {
+    const { cols, rows, cells } = this;
+    const hanging = (v: number) => v >= GRAIN && (v & HELD) !== 0;
+    let y = 0;
+    while (y < rows && hanging(cells[y * cols + x]!)) y++;
+    for (; y < rows; y++) {
+      const i = y * cols + x;
+      if (!hanging(cells[i]!)) continue;
+      cells[i] = cells[i]! & ~HELD;
+      this.held--;
+    }
+  }
+
+  /**
+   * Every ceiling grain left becomes ordinary sand: what's free falls,
+   * what sits on a pile stays. For when the leaks can't free any more.
+   */
+  letGo() {
+    const { cells } = this;
+    for (let i = 0; i < cells.length; i++)
+      if (cells[i]! >= GRAIN && cells[i]! & HELD) cells[i] = cells[i]! & ~HELD;
+    this.held = 0;
   }
 
   /** How many grains lie in the `depth` rows just above `top`, across x0..x1. */
@@ -418,6 +460,8 @@ export class SandShow {
   private quiet = 0;
   private restLeft = 0;
   private lastShrug = -Infinity;
+  /** Seconds the leaks have freed nothing while the ceiling still hangs. */
+  private stuck = 0;
   private readonly leaks: Leak[] = [];
   /** The sand falling now, and for how much longer, so curtains lay down layers. */
   private layer = { kind: 0, left: 0 };
@@ -445,6 +489,7 @@ export class SandShow {
         this.phase = "falling";
         this.turn = 0;
         this.quiet = 0;
+        this.stuck = 0;
         this.leaks.length = 0;
       }
       return false;
@@ -475,6 +520,7 @@ export class SandShow {
     if (box.held === 0) return;
     if ((this.layer.left -= dt) <= 0) this.layer = nextLayer(this.layer.kind, rng);
     while (this.leaks.length < LEAKS) this.leaks.push(this.newLeak());
+    let freed = false;
     for (const leak of this.leaks) {
       leak.life -= dt;
       leak.owed += leak.rate * dt;
@@ -487,8 +533,17 @@ export class SandShow {
           leak.life = Math.min(leak.life, 0.5);
           break;
         }
+        freed = true;
       }
       if (leak.life <= 0) Object.assign(leak, this.newLeak());
+    }
+    // The last of the ceiling can end up propped on sand piled on the
+    // pointer, so it never counts as loose and the frame never turned
+    // over (owner, 2026-10-27). After a while freeing nothing, let it go.
+    this.stuck = freed ? 0 : this.stuck + dt;
+    if (this.stuck > STUCK_SECONDS) {
+      box.letGo();
+      this.stuck = 0;
     }
   }
 
@@ -499,10 +554,10 @@ export class SandShow {
     for (let k = 0; k < 12 && !(box.cells[x]! & HELD); k++) x = Math.floor(rng() * box.cols);
     return {
       x,
-      rate: 25 + rng() * 20,
+      rate: 55 + rng() * 45,
       life: 6 + rng() * 8,
       owed: 0,
-      drift: (rng() - 0.5) * 3,
+      drift: (rng() - 0.5) * 4.5,
     };
   }
 }
@@ -586,7 +641,7 @@ export function arrowCells(cellPx: number): [number, number][] {
 /** The sandscape as a scene: the show, the pointer's arrow, and drawing. */
 export class SandscapeScene implements Scene {
   private readonly show: SandShow;
-  private readonly arrow = arrowCells(SCENE_CELL_PX);
+  private readonly arrow = arrowCells(SAND_CELL_PX);
   private readonly icon?: { x0: number; x1: number; top: number };
 
   constructor(setup: SceneSetup) {
@@ -605,18 +660,57 @@ export class SandscapeScene implements Scene {
     return { nod, turn: show.phase === "turning" ? eased * 180 : 0 };
   }
 
-  draw(out: Uint8Array) {
+  /**
+   * The grains, lit: on top of a hill they catch the light, on a slope
+   * facing left they're a little brighter and facing right a little
+   * darker, so the hills read as dunes; inside, each grain's own shade
+   * gives the layers a sandy texture. Grains falling through the liquid
+   * are a little see-through, so the curtains look fine and soft.
+   */
+  draw(out: Uint8Array, opacity: Uint8Array) {
     const { cells, particles, cols, rows } = this.show.box;
+    const open = (i: number) => {
+      const v = cells[i]!;
+      return v === EMPTY || v === CURSOR;
+    };
     for (let i = 0; i < cells.length; i++) {
       const v = cells[i]!;
-      out[i] = v >= GRAIN ? grainInk(v) : 0;
+      if (v < GRAIN) {
+        out[i] = 0;
+        continue;
+      }
+      const x = i % cols;
+      const y = (i - x) / cols;
+      const held = (v & HELD) !== 0;
+      const g = (v & ~HELD) - GRAIN;
+      const slot = SAND_KINDS[Math.floor(g / SAND_SHADES)]!.slot;
+      const shade = g % SAND_SHADES;
+      const top = y > 0 && open(i - cols);
+      const falling = !held && y < rows - 1 && open(i + cols);
+      if (top && !held) out[i] = lit(slot, 0.32);
+      else if (x > 0 && open(i - 1)) out[i] = lit(slot, 0.16);
+      else if (x < cols - 1 && open(i + 1)) out[i] = shaded(slot, 0.22);
+      else out[i] = shade < 2 ? shaded(slot, (2 - shade) * 0.09) : lit(slot, (shade - 1) * 0.07);
+      if (falling) opacity[i] = 190;
     }
     for (const p of particles) {
       const x = Math.round(p.x);
       const y = Math.round(p.y);
-      if (x >= 0 && x < cols && y >= 0 && y < rows) out[y * cols + x] = grainInk(p.v);
+      if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
+      out[y * cols + x] = grainInk(p.v);
+      opacity[y * cols + x] = 210;
     }
   }
+}
+
+/** A sand's colour lightened `t` of the way towards the palette's bright. */
+function lit(slot: Slot, t: number): number {
+  return slot === SLOT.bright ? ink(slot, 3) : blend(slot, SLOT.bright, t);
+}
+
+/** A sand's colour darkened `t` of the way towards the palette's dark. */
+function shaded(slot: Slot, t: number): number {
+  return slot === SLOT.dark ? ink(slot, t > 0.15 ? 0 : 1) : blend(slot, SLOT.dark, t);
 }
 
 function grainInk(v: number): number {

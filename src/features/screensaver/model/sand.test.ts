@@ -89,6 +89,22 @@ describe("SandBox", () => {
     expect(box.release(1)).toBe(false); // no such column
   });
 
+  it("drops the ceiling below where the pointer cuts through it", () => {
+    // Owner, 2026-10-27: drawing a line through the ceiling left the sand
+    // below the gap hanging until a leak let it go.
+    const box = new SandBox(1, 12, seeded());
+    for (let y = 0; y < 6; y++) box.hang(0, y, grain);
+    box.setCursor({ x: 0, y: 2 }, [[0, 0]]);
+    // Above the cut it still hangs; the grain in the pointer's way is
+    // flung, and the three below have nothing holding them up.
+    expect(countHeld(box)).toBe(2);
+    expect(box.held).toBe(2);
+    box.setCursor(null, []);
+    run(box, 90);
+    expect(at(box, 0, 11)).toBe(grain);
+    expect(at(box, 0, 0)).toBe(grain | HELD);
+  });
+
   it("releases from the deepest loose column within reach, as the given sand", () => {
     const box = new SandBox(7, 10, seeded());
     for (let x = 0; x < 7; x++) box.hang(x, 0, grain);
@@ -215,6 +231,19 @@ describe("grains", () => {
   });
 });
 
+describe("SandscapeScene turning over", () => {
+  it("still turns over when the pointer rests under the last of the ceiling", () => {
+    // Owner, 2026-10-27: it didn't turn over. Sand piled on a pointer
+    // resting under the ceiling held it up, so it never counted as loose
+    // and the ceiling never emptied.
+    const scene = new SandscapeScene(testSetup(60, 60, seeded(2)));
+    let turned = false;
+    for (let i = 0; i < 60 * 240 && !turned; i++)
+      turned = (scene.frame(1 / 60, { x: 25, y: 9 }).turn ?? 0) > 0;
+    expect(turned).toBe(true);
+  });
+});
+
 describe("arrowCells", () => {
   it("covers the pointer's tip and stays within its size", () => {
     const cells = arrowCells(3);
@@ -231,7 +260,7 @@ describe("SandscapeScene", () => {
   it("draws its ceiling and turns the canvas when it flips", () => {
     const scene = new SandscapeScene(testSetup(60, 60, seeded()));
     const out = new Uint8Array(60 * 60);
-    scene.draw(out);
+    scene.draw(out, new Uint8Array(out.length).fill(255));
     expect(out.some((v) => v > 0)).toBe(true);
     let turned = false;
     for (let i = 0; i < 60 * 180 && !turned; i++)
