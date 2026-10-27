@@ -387,6 +387,21 @@ small repositories use the name (0–4 stars), one a bulk-email desktop
 app. The owner's view: a trademark doesn't affect Google's approval of
 the consent screen.
 
+A second agent confirmed this the same day: the seven records, their
+owner and status; no live or pending US mark for MAILBOAT or close
+spellings in software or email; nothing in the EU (TMview); no app of
+that name in the Apple, Mac, Microsoft or Google Play stores. Its main
+concern is a desktop app already called Mailboat:
+`an unrelated project`, a small Windows tool
+for bulk outreach email (SMTP and the Gmail API, several accounts,
+scheduled sends), with paid quotas through WeChat Pay. Checked on
+GitHub: created 2026-09-07, three commits, last pushed 2026-09-08, no
+stars, forks or licence. Other small email projects use the name too
+(a mail server, an email toolkit, a former email-marketing service).
+Its conclusion: the registrations look favourable, but "no conflict"
+is too strong while another email app carries the name, open source or
+not; unregistered rights from use in the US were not established.
+
 
 ## Sources
 

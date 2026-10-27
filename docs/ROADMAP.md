@@ -2320,12 +2320,13 @@ Name checks → Mailboat).*
       `getmailboat.app`, `mailboat.dev` and `mailboat.software`
       *(2026-10-27, owner's screenshot: all three active)*. Cheap to
       drop if the trademark search below turns something up
-- [ ] Trademark search for "Mailboat" *(owner, 2026-10-27: an agent
-      does it, and a second agent confirms)*. First pass done
+- [x] Trademark search for "Mailboat" *(owner, 2026-10-27: an agent
+      does it, and a second agent confirms)*. Done and confirmed
       (2026-10-27): no software mark; the seven US unrelated music records are
-      an unrelated music business's, for music, five live (Class 9 and 41).
-      Details in `docs/RELEASE.md` → Name checks → Mailboat. Waiting on
-      the second agent's confirmation
+      an unrelated music business's, for music, five live (Class 9 and 41);
+      nothing in the EU. One caution: a tiny Windows bulk-email app on
+      GitHub (small, a month old, no stars) is also called
+      Mailboat. Details in `docs/RELEASE.md` → Name checks → Mailboat
 - [x] Neutral code names, one brand file *(owner, 2026-10-26: the name
       isn't settled yet, so the code shouldn't depend on it)*. Every
       name that isn't branding becomes neutral, and everything that is
