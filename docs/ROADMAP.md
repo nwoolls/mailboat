@@ -2375,20 +2375,27 @@ Name checks → Mailboat).*
         boats (sheet 12 in `design/icon/sheets/`), 2026-10-27.
         The fireflies and fireworks screensavers now gather into the
         boat, not the M (owner report, same day)
-  - [ ] The short name, bundle ID and environment prefix (`mailboat`,
+  - [x] The short name, bundle ID and environment prefix (`mailboat`,
         `com.nwoolls.mailboat`, `MAILBOAT_GOOGLE_*` to `mailboat`,
         `com.nwoolls.mailboat`, `MAILBOAT_GOOGLE_*`), together with the
-        move below: they name the data folders, the keychain entries,
-        the MCP socket and pipe, the sync log folder, the OAuth client
-        file's folder, and the old database and settings names the app
-        still looks for, so changing them alone would start the app
-        empty
-- [ ] Move the owner's data, settings (including the web view's saved
-      settings, which live under the bundle ID too) and keychain
-      sign-ins to the new ID once, renaming `mailboat.sqlite3` to
-      `mail.sqlite3` and dropping the old `mailboat.*` settings on the way, on the first launch after the rename, so nothing has to
-      be signed in again (nobody else has installed it). Tested on a
-      copy before it runs for real
+        move below *(2026-10-27)*. `brand.json` keeps the previous short
+        name and ID (`previous`) for the move
+- [ ] Move the owner's data, settings and keychain sign-ins to the new
+      ID once, on the first launch after the rename, so nothing has to
+      be signed in again (nobody else has installed it). Built
+      *(2026-10-27)*: `mail_core::carry_over` **copies** rather than
+      moves, so the old Mailboat keeps working as a way back: the data,
+      cache (images, attachments) and log folders, the web view's saved
+      settings (`~/Library/WebKit/<ID>`; on Windows inside the local
+      data folder), the database through SQLite's backup (a consistent
+      copy even if the old app is open, written as `mail.sqlite3`
+      under a temporary name until complete), then each account's
+      sign-in from the old keychain name to the new. The web side moves
+      the old `mailboat.*` settings to `prefs.*` and drops them. Connecting
+      Claude Code or Claude Desktop again replaces the old `mailboat` entry.
+      Rehearsed on a copy of the owner's real data (2026-10-27): quick;
+      the same accounts, emails, conversations and labels in both; integrity check ok; every file, none missed; both web
+      views' settings present. Waiting on the owner's first launch
 - [ ] Email on the domain for security reports and anything that
       shouldn't be a public GitHub issue (Cloudflare Email Routing,
       free, forwarding to the owner)

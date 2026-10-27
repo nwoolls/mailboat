@@ -140,12 +140,11 @@ pub async fn mcp_setup() -> CmdResult<McpSetup> {
 pub async fn mcp_connect_claude_code() -> CmdResult<()> {
     let program = program()?;
     let claude = claude().ok_or_else(|| fail("Claude Code isn't installed."))?;
-    // An older entry (another build of the app) is replaced.
-    let _ = process::run_quick(
-        &claude,
-        &["mcp", "remove", "--scope", "user", setup::SERVER_NAME],
-    )
-    .await;
+    // An older entry (another build of the app, or the app under its
+    // name before the rename) is replaced.
+    for name in [setup::SERVER_NAME, setup::PREVIOUS_SERVER_NAME] {
+        let _ = process::run_quick(&claude, &["mcp", "remove", "--scope", "user", name]).await;
+    }
     let args = setup::claude_code_args(&program);
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
     let (ok, out, err) = process::run_quick(&claude, &args).await?;

@@ -2,5 +2,9 @@
   "name": "Mailboat",
   "shortName": "mailboat",
   "id": "com.nwoolls.mailboat",
-  "envPrefix": "MAILBOAT"
+  "envPrefix": "MAILBOAT",
+  "previous": {
+    "shortName": "mailboat",
+    "id": "com.nwoolls.mailboat"
+  }
 }

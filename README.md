@@ -169,10 +169,15 @@ bunx playwright install webkit
 
 | What | Where |
 |---|---|
-| Mail cache (SQLite) | `~/Library/Application Support/com.nwoolls.mailboat/mail.sqlite3` (`mailboat.sqlite3` in installs from before 2026-10-26) |
+| Mail cache (SQLite) | `~/Library/Application Support/com.nwoolls.mailboat/mail.sqlite3` |
 | OAuth client file | `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json` |
 | Sign-in tokens | macOS Keychain, service `com.nwoolls.mailboat` |
 | Sync log | `~/Library/Logs/com.nwoolls.mailboat/sync.log` |
 | AI summaries and usage | In the mail cache (`ai_summaries`, `ai_usage`: sizes only, never content) |
 | AI apps' socket | `~/Library/Application Support/com.nwoolls.mailboat/mcp.sock` (while Mailboat runs) |
 | AI apps' requests | In the mail cache (`mcp_log`: what was asked, never content; 30 days) |
+
+Until 2026-10-27 the app was Mailboat (`com.nwoolls.mailboat`). The first
+launch under the new name copies the old folders, the database and the
+keychain sign-ins over (`mail_core::carry_over`) and leaves the old ones
+alone; delete them once the new copy is working.

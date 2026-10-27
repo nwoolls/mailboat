@@ -14,10 +14,16 @@ fn main() {
         ("shortName", "BRAND_SHORT_NAME"),
         ("id", "BRAND_ID"),
         ("envPrefix", "BRAND_ENV_PREFIX"),
+        ("/previous/shortName", "BRAND_PREVIOUS_SHORT_NAME"),
+        ("/previous/id", "BRAND_PREVIOUS_ID"),
     ] {
-        let value = brand[key]
-            .as_str()
-            .unwrap_or_else(|| panic!("brand.json needs \"{key}\""));
+        let value = if key.starts_with('/') {
+            brand.pointer(key)
+        } else {
+            brand.get(key)
+        }
+        .and_then(|v| v.as_str())
+        .unwrap_or_else(|| panic!("brand.json needs \"{key}\""));
         println!("cargo:rustc-env={var}={value}");
     }
 }

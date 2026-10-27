@@ -24,18 +24,11 @@ pub struct Db {
 /// The database's file name in the app's data folder.
 pub const FILE_NAME: &str = "mail.sqlite3";
 
-/// The database file in `dir`: `mail.sqlite3`, or the file from before the
-/// name was neutral (`<short name>.sqlite3`) while that's the one there.
-/// That file isn't renamed here: an installed copy of the app may have it
-/// open. The move to a new bundle ID renames it.
+/// The database file in `dir`. (Before the names were neutral it was
+/// `<short name>.sqlite3`; the move to a new bundle ID, `carry_over`,
+/// renames it.)
 pub fn path_in(dir: &Path) -> std::path::PathBuf {
-    let current = dir.join(FILE_NAME);
-    let before = dir.join(format!("{}.sqlite3", crate::brand::SHORT_NAME));
-    if !current.exists() && before.exists() {
-        before
-    } else {
-        current
-    }
+    dir.join(FILE_NAME)
 }
 
 impl Db {
@@ -152,19 +145,6 @@ pub(crate) fn placeholders(n: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn keeps_using_the_old_file_until_there_is_a_new_one() {
-        let dir = std::env::temp_dir().join(format!("db-path-test-{}", fastrand::u64(..)));
-        std::fs::create_dir_all(&dir).unwrap();
-        assert_eq!(path_in(&dir), dir.join(FILE_NAME), "a new install");
-        let before = dir.join(format!("{}.sqlite3", crate::brand::SHORT_NAME));
-        std::fs::write(&before, "").unwrap();
-        assert_eq!(path_in(&dir), before, "an existing install keeps its file");
-        std::fs::write(dir.join(FILE_NAME), "").unwrap();
-        assert_eq!(path_in(&dir), dir.join(FILE_NAME));
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
 
     #[test]
     fn migrations_apply_once_and_fts5_is_available() {

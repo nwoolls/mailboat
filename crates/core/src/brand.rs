@@ -11,6 +11,12 @@ pub const SHORT_NAME: &str = env!("BRAND_SHORT_NAME");
 pub const ID: &str = env!("BRAND_ID");
 /// Starts the environment variables people can set (`<PREFIX>_GOOGLE_…`).
 pub const ENV_PREFIX: &str = env!("BRAND_ENV_PREFIX");
+/// The short name before the last rename: the old database file
+/// (`<short name>.sqlite3`) and the AI apps' old entry were named after it.
+pub const PREVIOUS_SHORT_NAME: &str = env!("BRAND_PREVIOUS_SHORT_NAME");
+/// The bundle ID before the last rename, whose folders and keychain
+/// entries the first launch copies over (`carry_over`).
+pub const PREVIOUS_ID: &str = env!("BRAND_PREVIOUS_ID");
 
 /// The app's data folder, as Tauri names it (`app_data_dir`), for code
 /// that runs without Tauri: the MCP proxy and the dev examples.
@@ -38,6 +44,7 @@ mod tests {
         assert!(ENV_PREFIX
             .chars()
             .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_'));
+        assert_ne!(ID, PREVIOUS_ID);
         let parts: Vec<_> = ID.split('.').collect();
         assert!(
             parts.len() >= 3,

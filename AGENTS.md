@@ -55,6 +55,8 @@ config files, the docs and the artwork) names it. Rust takes it from
 `mail_core::brand` (`NAME`, `SHORT_NAME`, `ID`, `ENV_PREFIX`;
 `env!("BRAND_NAME")` inside `concat!` for constants), the UI from
 `APP_NAME` (`src/shared/lib/brand.ts`), and comments say "the app".
+`brand.json`'s `previous` holds the short name and bundle ID before the
+last rename, for the one-time copy of the old data (`carry_over`).
 Every other name is neutral. `bun run check:brand` (part of every check)
 fails otherwise.
 

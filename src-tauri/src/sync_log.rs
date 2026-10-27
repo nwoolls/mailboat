@@ -41,10 +41,19 @@ impl SyncLog {
     }
 
     pub fn write(&self, account: AccountId, line: &str) {
+        self.append(&format!("account={} {line}", account.0));
+    }
+
+    /// A line about the app rather than one account.
+    pub fn note(&self, line: &str) {
+        self.append(line);
+    }
+
+    fn append(&self, line: &str) {
         let now = time::OffsetDateTime::now_utc()
             .format(&time::format_description::well_known::Rfc3339)
             .unwrap_or_default();
-        let entry = format!("{now} account={} {line}\n", account.0);
+        let entry = format!("{now} {line}\n");
         eprint!("{entry}");
         if let Some(file) = self.file.lock().unwrap().as_mut() {
             let _ = file.write_all(entry.as_bytes());

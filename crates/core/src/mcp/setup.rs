@@ -10,6 +10,8 @@ use crate::error::{CoreError, Result};
 
 /// The name AI apps list the app's tools under.
 pub const SERVER_NAME: &str = crate::brand::SHORT_NAME;
+/// The name it had before the app was renamed; connecting again replaces it.
+pub const PREVIOUS_SERVER_NAME: &str = crate::brand::PREVIOUS_SHORT_NAME;
 
 /// `claude mcp add` for every project (user scope), starting `program --mcp`.
 pub fn claude_code_args(program: &str) -> Vec<String> {
@@ -96,6 +98,13 @@ pub fn with_server(config: Option<&str>, program: &str) -> Result<String> {
             .into(),
         ));
     };
+    // The entry from before the app was renamed, if it's the app's own.
+    if servers
+        .get(PREVIOUS_SERVER_NAME)
+        .is_some_and(|old| old["args"] == json!(["--mcp"]))
+    {
+        servers.remove(PREVIOUS_SERVER_NAME);
+    }
     servers.insert(
         SERVER_NAME.into(),
         json!({ "command": program, "args": ["--mcp"] }),
@@ -152,6 +161,26 @@ mod tests {
         assert_eq!(after["mcpServers"][SERVER_NAME]["command"], PROGRAM);
         assert!(has_server(Some(&after.to_string()), PROGRAM));
         assert!(!has_server(Some(before), PROGRAM));
+    }
+
+    #[test]
+    fn replaces_the_entry_from_before_the_rename_but_not_a_strangers() {
+        let ours = format!(
+            r#"{{"mcpServers":{{"{PREVIOUS_SERVER_NAME}":{{"command":"/old","args":["--mcp"]}}}}}}"#
+        );
+        let after: Value =
+            serde_json::from_str(&with_server(Some(&ours), PROGRAM).unwrap()).unwrap();
+        assert!(after["mcpServers"][PREVIOUS_SERVER_NAME].is_null());
+        assert_eq!(after["mcpServers"][SERVER_NAME]["command"], PROGRAM);
+        let theirs = format!(
+            r#"{{"mcpServers":{{"{PREVIOUS_SERVER_NAME}":{{"command":"/other","args":["serve"]}}}}}}"#
+        );
+        let after: Value =
+            serde_json::from_str(&with_server(Some(&theirs), PROGRAM).unwrap()).unwrap();
+        assert_eq!(
+            after["mcpServers"][PREVIOUS_SERVER_NAME]["command"],
+            "/other"
+        );
     }
 
     #[test]

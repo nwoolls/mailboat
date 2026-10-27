@@ -18,7 +18,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 specta.workspace = true
-rusqlite = { version = "0.40.2", features = ["bundled"] }
+rusqlite = { version = "0.40.2", features = ["bundled", "backup"] }
 reqwest = { version = "0.13", features = ["json", "form", "query", "gzip"] }
 async-trait = "0.1.92"
 fastrand = "2.5.0"
