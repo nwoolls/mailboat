@@ -19,7 +19,13 @@ export const SCREENSAVERS = [
     cellPx: 2,
   },
   { id: "life", label: "Life", make: (s: SceneSetup) => new LifeScene(s) },
-  { id: "rain", label: "Rain on glass", make: (s: SceneSetup) => new RainScene(s) },
+  {
+    id: "rain",
+    label: "Rain on glass",
+    make: (s: SceneSetup) => new RainScene(s),
+    // Finer, so drops can be drawn as lenses (UX Spike 4).
+    cellPx: 2,
+  },
   {
     id: "koi",
     label: "Koi pond",

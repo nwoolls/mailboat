@@ -2469,6 +2469,17 @@ one at a time.*
       *(owner, 2026-10-26)*: finer cells, real shapes, blended shading,
       see-through where it fits. Sandscape, Envelope flock, Life, Rain
       on glass, Fireflies, Lava lamp
+      - [x] Rain on glass *(2026-10-26)*: 2px cells; drops of any size
+            drawn as lenses (dark rim, a glint at the top left, light
+            gathered at the bottom with a touch of accent, see-through
+            between), stretching into teardrops as they slide, growing
+            as they swallow beads and smaller drops, shrinking as they
+            leave water behind, and now and then leaving a bead in the
+            trail. A faint, uneven fog covers the pane; sliding drops
+            clear trails through it (with a faint wet sheen) and the
+            pointer wipes a clear streak, both fogging over again.
+            Condensation beads are faint. *Owner, 2026-10-26: "I dig it
+            very much"*
 - [ ] And likely the toys too *(owner, 2026-10-26: "likely even the
       'games'")*: Pond, Bubble wrap, Sky
 - [ ] Maybe: a switch between pixel art and ASCII art for the
