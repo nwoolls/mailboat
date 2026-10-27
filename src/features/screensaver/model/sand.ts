@@ -68,6 +68,9 @@ const LEAKS = 3;
 /** How far either side of a gap the ceiling gives way, in cells. */
 const LEAK_REACH = 4;
 
+/** Whether a cell holds a ceiling grain. */
+const hanging = (v: number) => v >= GRAIN && (v & HELD) !== 0;
+
 export function grainValue(kind: number, shade: number): number {
   return GRAIN + (kind % SAND_KINDS.length) * SAND_SHADES + (shade % SAND_SHADES);
 }
@@ -351,7 +354,6 @@ export class SandBox {
    */
   private dropBelowGap(x: number) {
     const { cols, rows, cells } = this;
-    const hanging = (v: number) => v >= GRAIN && (v & HELD) !== 0;
     let y = 0;
     while (y < rows && hanging(cells[y * cols + x]!)) y++;
     for (; y < rows; y++) {

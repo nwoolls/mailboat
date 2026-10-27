@@ -411,17 +411,6 @@ export class EnvelopeScene implements Scene {
     const top = { x: 0, y: 0 };
     const crease = { x: L * 0.2, y: H * 0.55 };
     const keel = { x: L * 0.14, y: H };
-    const inside = (
-      p: { x: number; y: number },
-      a: { x: number; y: number },
-      c: { x: number; y: number },
-      d: { x: number; y: number },
-    ) => {
-      const s1 = (c.x - a.x) * (p.y - a.y) - (c.y - a.y) * (p.x - a.x);
-      const s2 = (d.x - c.x) * (p.y - c.y) - (d.y - c.y) * (p.x - c.x);
-      const s3 = (a.x - d.x) * (p.y - d.y) - (a.y - d.y) * (p.x - d.x);
-      return (s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0);
-    };
     const ox = Math.round(b.x - (dir * L) / 2);
     const oy = Math.round(b.y - H);
     const shape = new Int32Array((L + 1) * (H + 1));
@@ -451,4 +440,14 @@ export class EnvelopeScene implements Scene {
         this.put(out, opacity, ox + dir * x, oy + y, rim ? ink(SLOT.mid) : v, alpha);
       }
   }
+}
+
+type Pt = { x: number; y: number };
+
+/** Whether p is inside the triangle a, c, d. */
+function inside(p: Pt, a: Pt, c: Pt, d: Pt): boolean {
+  const s1 = (c.x - a.x) * (p.y - a.y) - (c.y - a.y) * (p.x - a.x);
+  const s2 = (d.x - c.x) * (p.y - c.y) - (d.y - c.y) * (p.x - c.x);
+  const s3 = (a.x - d.x) * (p.y - d.y) - (a.y - d.y) * (p.x - d.x);
+  return (s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0);
 }

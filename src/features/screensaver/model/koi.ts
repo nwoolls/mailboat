@@ -331,7 +331,7 @@ export class KoiScene implements Scene {
     // Deepest first, so the koi nearer the surface swim over them.
     const order = this.fish
       .map((_, n) => n)
-      .sort((a, b) => this.fish[b]!.depth - this.fish[a]!.depth);
+      .toSorted((a, b) => this.fish[b]!.depth - this.fish[a]!.depth);
     for (const n of order) drawKoi(out, opacity, cols, rows, this.fish[n]!, n);
   }
 
