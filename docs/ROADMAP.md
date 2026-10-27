@@ -2304,6 +2304,9 @@ flowchart LR
 
 ## Milestone 10: Mailboat
 
+**Closed (owner, 2026-10-27).** Renamed, icon chosen, domains and
+security email set up, the owner's data moved on macOS and Windows.
+
 *Done when: the app is called Mailboat everywhere a person can see it, the
 domains are the owner's, and the owner's own setup has moved over.
 First of the release milestones, so the onboarding text, demo data and
@@ -2404,11 +2407,14 @@ Name checks → Mailboat).*
       else ever installed Mailboat, so it would only be dead code in the
       code review. Both web views already had every old setting under
       `prefs.*`
-- [ ] Owner: delete the old copies once happy with Mailboat: the
+- [x] Owner: delete the old copies once happy with Mailboat: the
       `com.nwoolls.mailboat` folders in `~/Library` (Application Support,
       Caches, Logs, WebKit), the `com.nwoolls.mailboat` keychain
       entries, `target/debug/Mailboat.app`, and on Windows the Mailboat install
-      and its `com.nwoolls.mailboat` folders
+      and its `com.nwoolls.mailboat` folders *(owner, 2026-10-27, Mac checked:
+      no folders or keychain entries left; the stale `mailboat` entries in
+      Claude Code and Claude Desktop removed too, Desktop's config backed
+      up beside it)*
 - [x] Email on the domain for security reports and anything that
       shouldn't be a public GitHub issue: `security@getmailboat.app`,
       through Cloudflare Email Routing, forwarding to the owner
