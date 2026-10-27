@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { KoiScene } from "./koi";
+import { bodyWidth, KoiScene } from "./koi";
 import { seeded, testSetup } from "./scene";
 
 describe("KoiScene", () => {
@@ -39,5 +39,27 @@ describe("KoiScene", () => {
     }
     // They still come to nibble, often.
     expect(visits).toBeGreaterThan(10);
+  });
+
+  it("draws each koi as a solid shape with fins, patches and shading", () => {
+    const cols = 460;
+    const rows = 260;
+    const scene = new KoiScene(testSetup(cols, rows, seeded(3)));
+    for (let i = 0; i < 60; i++) scene.frame(1 / 60, null);
+    const out = new Uint8Array(cols * rows);
+    scene.draw(out);
+    const inked = out.filter((v) => v > 0).length;
+    // Five koi of roughly 48 x 13 cells, plus fins and tails: thousands of
+    // cells, not the few hundred dots of the old pixel koi.
+    expect(inked).toBeGreaterThan(5 * 300);
+    // Several slots (body, patches, fins) in several shades.
+    expect(new Set(out).size).toBeGreaterThan(8);
+  });
+
+  it("is round at the nose, widest a quarter back and thin at the tail", () => {
+    expect(bodyWidth(0)).toBeGreaterThan(0.2);
+    expect(bodyWidth(0)).toBeLessThan(0.5);
+    expect(bodyWidth(0.28)).toBe(1);
+    expect(bodyWidth(1)).toBeCloseTo(0.2);
   });
 });

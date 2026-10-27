@@ -2427,6 +2427,35 @@ to test a first launch over and over.*
       start seems to work": it opens at the welcome screen asking for the
       OAuth client file, in `com.nwoolls.mailboat.clean-start`*
 
+## UX Spike 4: Toybox
+
+*Started by the owner, 2026-10-26, between Milestones 11 and 12: the
+screensavers, beginning with the koi pond. The owner's reference is
+daoho.dev's pond (screenshots; videos to follow). As with the earlier
+spikes, each item is built to try in the app and settled with the owner
+one at a time.*
+
+- [ ] A higher-resolution koi pond *(owner, 2026-10-26: "start by making
+      the koi pond essentially higher res")*. Built to try: the pond's
+      cells are 2px instead of 3px, and each koi is drawn as a shape
+      instead of a row of dots: about 48 cells (96px) long, round at the
+      nose and thinning to the tail, darker at its sides so it looks
+      round, a dark line for the dorsal fin, eyes, flapping pectoral and
+      pelvic fins and a forked tail fan that swings further than the
+      body bends. Five traditional looks in the palette's slots (white
+      with accent patches, the same with dark specks, dark with accent
+      and white, a plain light one, an accent one with white patches);
+      the patches move with the body. The koi swim with a slight
+      side-to-side wave, turn in wide arcs (each joint of the spine
+      bends only so far, so they no longer fold in two), and turn
+      quickly only when the pointer startles them. Smaller in a small
+      pond. Behaviour otherwise as before (nibbling, ripples, one koi at
+      the letters at a time). *Owner to try: Toybox → Screensavers →
+      Koi pond, or "Koi pond" in ⌘K*
+- [ ] Maybe: a switch between pixel art and ASCII art for the
+      screensavers *(owner, 2026-10-26: "we may also do a toggle")*.
+      Not started; to agree once the koi look right
+
 ## Milestone 12: Onboarding and bring your own Google credentials
 
 *Done when: someone who has never used Google Cloud can install the alternative name

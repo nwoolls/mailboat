@@ -20,7 +20,14 @@ export const SCREENSAVERS = [
   },
   { id: "life", label: "Life", make: (s: SceneSetup) => new LifeScene(s) },
   { id: "rain", label: "Rain on glass", make: (s: SceneSetup) => new RainScene(s) },
-  { id: "koi", label: "Koi pond", make: (s: SceneSetup) => new KoiScene(s) },
+  {
+    id: "koi",
+    label: "Koi pond",
+    make: (s: SceneSetup) => new KoiScene(s),
+    // Finer, so each koi can be drawn with shading, patches and fins
+    // (owner, 2026-10-26: "make the koi pond higher res").
+    cellPx: 2,
+  },
   { id: "fireflies", label: "Fireflies", make: (s: SceneSetup) => new FireflyScene(s) },
   { id: "lava", label: "Lava lamp", make: (s: SceneSetup) => new LavaScene(s) },
 ] as const satisfies readonly {

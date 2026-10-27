@@ -1,4 +1,5 @@
 import {
+  clamp,
   type FrameResult,
   ink,
   plot,
@@ -13,7 +14,17 @@ import {
  * A koi pond under the words. A few koi glide and turn; now and then one
  * swims up to a letter (or the icon box, which nods) and nibbles at it.
  * The pointer sends out ripples, and the koi dart away from it.
+ *
+ * Drawn finer than the other scenes (2px cells, see the catalog), and each
+ * koi as a shape rather than a row of dots: a body that is round at the
+ * nose and thins to the tail, shaded darker at its sides, patches that
+ * move with it, flapping fins, a forked tail and eyes. It swims with a
+ * slight side-to-side wave that runs down the body.
  */
+
+/** A patch on a koi, in its own frame: along (0 nose, 1 tail), across (-1..1), size in cells. */
+type Blob = { u: number; v: number; r: number };
+type Look = { body: Slot; patch: Slot | null; speck: Slot | null; fin: Slot };
 
 type Fish = {
   /** Spine points, head first. */
@@ -21,8 +32,14 @@ type Fish = {
   heading: number;
   speed: number;
   turn: number;
-  body: Slot;
-  spots: Slot;
+  /** Scales the whole koi (and its spine spacing). */
+  size: number;
+  /** The swimming wave's phase, and each fin's flap. */
+  wave: number;
+  flap: number;
+  look: Look;
+  patches: Blob[];
+  specks: Blob[];
   /** Where it wanders between nibbles: a nearby spot off the words. */
   goal: { x: number; y: number };
   /** A letter or icon cell it's heading for, and how long it nibbles. */
@@ -33,25 +50,32 @@ type Fish = {
 type Ripple = { x: number; y: number; r: number; life: number };
 
 const COUNT = 5;
-const SEGMENTS = 11;
-const GAP = 2;
-/** Half-widths along the body, head to tail. */
-const WIDTH = [2, 2.8, 3.2, 3.2, 3, 2.6, 2.1, 1.6, 1.1, 0.7, 0.5];
-/** Which segments carry each fish's patches. */
-const SPOTS = [
-  [1, 2, 6],
-  [3, 4],
-  [2, 5, 6, 7],
-  [1, 4, 5],
-  [2, 3, 7],
+const SEGMENTS = 17;
+/** Spine spacing at size 1, in cells: a koi is about 48 cells (96px) long. */
+const GAP = 3;
+/** Half the body's widest width at size 1, in cells. */
+const BODY_W = 6.5;
+/** Tail and fin lengths at size 1, in cells. */
+const TAIL = 11;
+const FIN = 6.5;
+/** How far each joint of the spine may bend, so a koi arcs rather than folds. */
+const MAX_BEND = 0.17;
+
+/** Traditional koi, in palette slots: kohaku, sanke, showa, ogon, and an orange one. */
+const LOOKS: Look[] = [
+  { body: SLOT.bright, patch: SLOT.accent, speck: null, fin: SLOT.light },
+  { body: SLOT.bright, patch: SLOT.accent, speck: SLOT.dark, fin: SLOT.light },
+  { body: SLOT.dark, patch: SLOT.accent, speck: SLOT.bright, fin: SLOT.mid },
+  { body: SLOT.light, patch: null, speck: null, fin: SLOT.mid },
+  { body: SLOT.accent, patch: SLOT.bright, speck: null, fin: SLOT.light },
 ];
-const LOOKS: [Slot, Slot][] = [
-  [SLOT.bright, SLOT.accent],
-  [SLOT.accent, SLOT.bright],
-  [SLOT.light, SLOT.dark],
-  [SLOT.bright, SLOT.dark],
-  [SLOT.mid, SLOT.bright],
-];
+
+/** The body's half-width at `u` (0 nose, 1 tail), as a share of its widest. */
+export function bodyWidth(u: number): number {
+  const front = u < 0.28 ? Math.sqrt(Math.max(0, 1 - ((0.28 - u) / 0.31) ** 2)) : 1;
+  const back = u > 0.28 ? 1 - 0.8 * ((u - 0.28) / 0.72) ** 1.3 : 1;
+  return front * back;
+}
 
 export class KoiScene implements Scene {
   readonly fish: Fish[] = [];
@@ -65,27 +89,36 @@ export class KoiScene implements Scene {
   constructor(private readonly s: SceneSetup) {
     const { cols, rows, rng } = s;
     s.letters.forEach((v, i) => v && this.letterCells.push(i));
+    // Smaller in a small pond, so a narrow list still has room to swim.
+    const scale = clamp(Math.min(cols, rows) / 200, 0.55, 1);
     for (let i = 0; i < COUNT; i++) {
       const x = cols * (0.15 + rng() * 0.7);
       const y = rows * (0.15 + rng() * 0.7);
       const heading = rng() * Math.PI * 2;
-      const [body, spots] = LOOKS[i % LOOKS.length]!;
+      const size = scale * (0.8 + rng() * 0.35);
+      const look = LOOKS[i % LOOKS.length]!;
       this.fish.push({
         spine: Array.from({ length: SEGMENTS }, (_, k) => ({
-          x: x - Math.cos(heading) * k * GAP,
-          y: y - Math.sin(heading) * k * GAP,
+          x: x - Math.cos(heading) * k * GAP * size,
+          y: y - Math.sin(heading) * k * GAP * size,
         })),
         heading,
         goal: this.nearby(x, y),
-        speed: 9 + rng() * 5,
+        speed: (13 + rng() * 7) * size,
         turn: 0,
-        body,
-        spots,
+        size,
+        wave: rng() * Math.PI * 2,
+        flap: rng() * Math.PI * 2,
+        look,
+        patches: look.patch ? blobs(rng, 2 + Math.floor(rng() * 3), 3, 7) : [],
+        specks: look.speck ? blobs(rng, 3 + Math.floor(rng() * 4), 1.2, 2.4) : [],
         target: null,
         nibble: 0,
         rest: 6 + rng() * 14,
       });
     }
+    // Smaller koi first, so the bigger ones swim over them.
+    this.fish.sort((a, b) => a.size - b.size);
   }
 
   frame(dt: number, pointer: Pointer): FrameResult {
@@ -111,15 +144,17 @@ export class KoiScene implements Scene {
       // Between nibbles, wander from spot to nearby spot. Swimming straight,
       // wall to wall, or between random spots anywhere, they kept crossing
       // the middle together (owner, 2026-10-26).
-      if (Math.hypot(f.goal.x - head.x, f.goal.y - head.y) < 8)
+      if (Math.hypot(f.goal.x - head.x, f.goal.y - head.y) < 12)
         f.goal = this.nearby(head.x, head.y);
       let want = Math.atan2(f.goal.y - head.y, f.goal.x - head.x) + f.turn;
       f.turn += (rng() - 0.5) * dt * 2;
       f.turn *= 0.97;
       let speed = f.speed;
+      // Unhurried koi turn in wide arcs; a startled one turns fast.
+      let turnRate = 1.5;
       if (f.nibble > 0) {
         f.nibble -= dt;
-        speed = 1.5;
+        speed = 2;
         want = f.heading + Math.sin(this.t * 14) * 0.3;
         if (f.nibble <= 0) {
           f.target = null;
@@ -129,8 +164,11 @@ export class KoiScene implements Scene {
       } else if (f.target) {
         const dx = f.target.x - head.x;
         const dy = f.target.y - head.y;
+        const d = Math.hypot(dx, dy);
         want = Math.atan2(dy, dx);
-        if (Math.hypot(dx, dy) < 2) {
+        // Slows as it comes close, so it doesn't circle the letter.
+        speed = Math.min(speed, 3 + d * 0.8);
+        if (d < 3) {
           f.nibble = 1.6;
           this.ripples.push({ x: head.x, y: head.y, r: 1, life: 0.7 });
           if (f.target.icon && this.t - this.lastNod > 4) {
@@ -141,15 +179,16 @@ export class KoiScene implements Scene {
       } else if ((f.rest -= dt) <= 0) this.pickTarget(f);
       // Keep off the edges, turning back toward its own spot (always inside),
       // not the middle, where every koi met.
-      const m = 8;
+      const m = 12;
       if (head.x < m || head.x > cols - m || head.y < m || head.y > rows - m)
         want = Math.atan2(f.goal.y - head.y, f.goal.x - head.x);
       if (pointer) {
         const dx = head.x - pointer.x;
         const dy = head.y - pointer.y;
-        if (Math.hypot(dx, dy) < 18) {
+        if (Math.hypot(dx, dy) < 28) {
           want = Math.atan2(dy, dx);
           speed = f.speed * 2.6;
+          turnRate = 3;
           f.target = null;
           f.nibble = 0;
         }
@@ -157,20 +196,31 @@ export class KoiScene implements Scene {
       let diff = want - f.heading;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      f.heading += Math.max(-2.5 * dt, Math.min(2.5 * dt, diff));
-      head.x += Math.cos(f.heading) * speed * dt;
-      head.y += Math.sin(f.heading) * speed * dt;
-      // The rest of the body follows at a fixed spacing.
+      f.heading += clamp(diff, -turnRate * dt, turnRate * dt);
+      // The head sways a little either side of its heading, faster when it
+      // hurries; the body following it carries the sway down to the tail.
+      f.wave += dt * (2 + speed / f.size / 6);
+      f.flap += dt * (1.5 + speed / f.size / 10);
+      const sway = f.heading + Math.sin(f.wave) * 0.28;
+      head.x += Math.cos(sway) * speed * dt;
+      head.y += Math.sin(sway) * speed * dt;
+      // The rest of the body follows at a fixed spacing, each joint bending
+      // only so far from the one in front.
+      const gap = GAP * f.size;
+      let ahead = sway;
       for (let k = 1; k < f.spine.length; k++) {
         const a = f.spine[k - 1]!;
         const b = f.spine[k]!;
-        const d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-        b.x = a.x + ((b.x - a.x) / d) * GAP;
-        b.y = a.y + ((b.y - a.y) / d) * GAP;
+        let bend = Math.atan2(a.y - b.y, a.x - b.x) - ahead;
+        bend = Math.atan2(Math.sin(bend), Math.cos(bend));
+        const angle = ahead + clamp(bend, -MAX_BEND, MAX_BEND);
+        b.x = a.x - Math.cos(angle) * gap;
+        b.y = a.y - Math.sin(angle) * gap;
+        ahead = angle;
       }
     }
     for (const r of this.ripples) {
-      r.r += dt * 11;
+      r.r += dt * 16;
       r.life -= dt * 0.7;
     }
     const kept = this.ripples.filter((r) => r.life > 0);
@@ -185,9 +235,9 @@ export class KoiScene implements Scene {
    */
   private nearby(x: number, y: number) {
     const { cols, rows, rng, icon, words } = this.s;
-    const m = 14;
-    const reach = Math.max(40, cols * 0.3);
-    const pad = 12;
+    const m = 22;
+    const reach = Math.max(60, cols * 0.3);
+    const pad = 18;
     const onWords = (p: { x: number; y: number }) =>
       [icon, words].some(
         (r) => r && p.x > r.x0 - pad && p.x < r.x1 + pad && p.y > r.y0 - pad && p.y < r.y1 + pad,
@@ -229,56 +279,189 @@ export class KoiScene implements Scene {
     const { cols, rows } = this.s;
     for (const r of this.ripples) {
       const shade = r.life > 0.6 ? 2 : r.life > 0.3 ? 1 : 0;
-      const steps = Math.max(8, Math.ceil(r.r * 6));
-      for (let k = 0; k < steps; k++) {
-        const a = (k / steps) * Math.PI * 2;
-        plot(
-          out,
-          cols,
-          rows,
-          r.x + Math.cos(a) * r.r,
-          r.y + Math.sin(a) * r.r,
-          ink(SLOT.mid, shade),
-        );
-      }
-    }
-    this.fish.forEach((f, n) => {
-      f.spine.forEach((p, k) => {
-        const w = WIDTH[k] ?? 0.3;
-        const spot = SPOTS[n % SPOTS.length]!.includes(k);
-        const v = ink(spot ? f.spots : f.body, k === 0 ? 3 : 2);
-        for (let dy = -Math.ceil(w); dy <= Math.ceil(w); dy++)
-          for (let dx = -Math.ceil(w); dx <= Math.ceil(w); dx++)
-            if (dx * dx + dy * dy <= w * w + 0.3) plot(out, cols, rows, p.x + dx, p.y + dy, v);
-      });
-      // Fins behind the head, and a forked tail.
-      const [a, b] = [f.spine[2]!, f.spine[3]!];
-      const nx = -(a.y - b.y);
-      const ny = a.x - b.x;
-      const len = Math.hypot(nx, ny) || 1;
-      for (const side of [-1, 1])
-        plot(
-          out,
-          cols,
-          rows,
-          a.x + (nx / len) * 3.2 * side,
-          a.y + (ny / len) * 3.2 * side,
-          ink(f.body, 1),
-        );
-      const tail = f.spine[SEGMENTS - 1]!;
-      const pre = f.spine[SEGMENTS - 2]!;
-      const tx = tail.x - pre.x;
-      const ty = tail.y - pre.y;
-      for (const side of [-1, 1])
-        for (const k of [1, 1.6])
+      // A wider ring has a fainter one inside it.
+      const rings = r.r > 8 ? [r.r, r.r * 0.62] : [r.r];
+      rings.forEach((radius, i) => {
+        const steps = Math.max(8, Math.ceil(radius * 7));
+        for (let k = 0; k < steps; k++) {
+          const a = (k / steps) * Math.PI * 2;
           plot(
             out,
             cols,
             rows,
-            tail.x + (tx - ty * side) * k,
-            tail.y + (ty + tx * side) * k,
-            ink(f.body, 1),
+            r.x + Math.cos(a) * radius,
+            r.y + Math.sin(a) * radius,
+            ink(SLOT.mid, Math.max(0, shade - i)),
           );
-    });
+        }
+      });
+    }
+    this.fish.forEach((f, n) => drawKoi(out, cols, rows, f, n));
   }
+}
+
+/** `count` patches with radii between `lo` and `hi` cells, on the body's front 85%. */
+function blobs(rng: () => number, count: number, lo: number, hi: number): Blob[] {
+  return Array.from({ length: count }, () => ({
+    u: 0.05 + rng() * 0.75,
+    v: (rng() * 2 - 1) * 0.7,
+    r: lo + rng() * (hi - lo),
+  }));
+}
+
+/** A steady pseudo-random number in [0, 1) for a few integers. */
+function hash(a: number, b: number, c: number): number {
+  let h = (a * 374761393 + b * 668265263 + c * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/** Whether a cell at (u, v) of a koi `len` cells long and `w` half-wide falls in one of `bs`. */
+function inBlob(bs: Blob[], u: number, v: number, len: number, w: number, size: number, n: number) {
+  // Ragged edges, fixed to the body so they don't flicker as it swims.
+  const jitter = (hash(n, Math.round(u * len), Math.round(v * w)) - 0.5) * 1.6;
+  return bs.some((b) => {
+    const du = (u - b.u) * len;
+    const dv = (v - b.v) * w;
+    const r = b.r * size + jitter;
+    return du * du + dv * dv < r * r;
+  });
+}
+
+/** The unit vector from `b` to `a`. */
+function dir(a: { x: number; y: number }, b: { x: number; y: number }) {
+  const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+  return { x: (a.x - b.x) / d, y: (a.y - b.y) / d };
+}
+
+/**
+ * Paints one koi: for every cell near it, the nearest point of its spine
+ * says how far along and across the body the cell is; that picks body,
+ * patch, fin or tail, and how dark (the sides are darker, so it looks round).
+ */
+function drawKoi(out: Uint8Array, cols: number, rows: number, f: Fish, n: number) {
+  const sp = f.spine;
+  const segs = sp.length - 1;
+  const len = segs * GAP * f.size;
+  const W = BODY_W * f.size;
+
+  // Fins: pectoral (big, near the head) and pelvic (small, mid-body), each
+  // side, swept back and flapping.
+  const fins: { x: number; y: number; dx: number; dy: number; len: number; w: number }[] = [];
+  for (const [u, l, wide, beat] of [
+    [0.22, FIN, 2.3, 0],
+    [0.5, FIN * 0.55, 1.4, 1.3],
+  ] as const) {
+    const k = Math.round(u * segs);
+    const p = sp[k]!;
+    const fwd = dir(sp[k - 1]!, sp[k + 1]!);
+    for (const side of [-1, 1]) {
+      const nx = -fwd.y * side;
+      const ny = fwd.x * side;
+      const a = 0.95 + Math.sin(f.flap + beat + (side > 0 ? 0 : 0.6)) * 0.3;
+      const edge = bodyWidth(u) * W * 0.7;
+      fins.push({
+        x: p.x + nx * edge,
+        y: p.y + ny * edge,
+        dx: -fwd.x * Math.cos(a) + nx * Math.sin(a),
+        dy: -fwd.y * Math.cos(a) + ny * Math.sin(a),
+        len: l * f.size,
+        w: wide * f.size,
+      });
+    }
+  }
+  // The tail swings further than the body bends, like a trailing veil.
+  const tip = sp[segs]!;
+  const back = dir(tip, sp[segs - 2]!);
+  const before = dir(sp[segs - 2]!, sp[segs - 5]!);
+  const bend = Math.atan2(back.y, back.x) - Math.atan2(before.y, before.x);
+  const swing = Math.atan2(back.y, back.x) + Math.atan2(Math.sin(bend), Math.cos(bend)) * 0.9;
+  const tail = { x: Math.cos(swing), y: Math.sin(swing), len: TAIL * f.size };
+
+  const pad = W + FIN * f.size + tail.len;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const p of sp) {
+    x0 = Math.min(x0, p.x);
+    y0 = Math.min(y0, p.y);
+    x1 = Math.max(x1, p.x);
+    y1 = Math.max(y1, p.y);
+  }
+  const cx0 = Math.max(0, Math.floor(x0 - pad));
+  const cy0 = Math.max(0, Math.floor(y0 - pad));
+  const cx1 = Math.min(cols - 1, Math.ceil(x1 + pad));
+  const cy1 = Math.min(rows - 1, Math.ceil(y1 + pad));
+  const { body, patch, speck, fin } = f.look;
+
+  for (let cy = cy0; cy <= cy1; cy++)
+    for (let cx = cx0; cx <= cx1; cx++) {
+      let best = Infinity;
+      let u = 0;
+      let side = 1;
+      for (let k = 0; k < segs; k++) {
+        const a = sp[k]!;
+        const b = sp[k + 1]!;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const t = clamp(((cx - a.x) * dx + (cy - a.y) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+        const ex = cx - (a.x + dx * t);
+        const ey = cy - (a.y + dy * t);
+        const d2 = ex * ex + ey * ey;
+        if (d2 < best) {
+          best = d2;
+          u = (k + t) / segs;
+          side = dx * ey - dy * ex >= 0 ? 1 : -1;
+        }
+      }
+      const d = Math.sqrt(best);
+      const w = bodyWidth(u) * W;
+      let value = 0;
+      if (d <= w) {
+        const v = d / w;
+        let slot = body;
+        if (speck !== null && inBlob(f.specks, u, side * v, len, w, f.size, n * 7 + 3))
+          slot = speck;
+        else if (patch !== null && inBlob(f.patches, u, side * v, len, w, f.size, n * 7))
+          slot = patch;
+        // Lighter down the back, darker towards the sides.
+        const shade = v > 0.82 ? 0 : v > 0.5 ? 1 : v < 0.22 ? 3 : 2;
+        // The dorsal fin: a dark line down the middle of the back.
+        const dorsal = v < 0.13 && u > 0.32 && u < 0.62;
+        value = dorsal ? ink(slot, 0) : ink(slot, shade);
+      } else {
+        // The tail: a fan behind the last spine point, forked in the middle.
+        const tx = cx - tip.x;
+        const ty = cy - tip.y;
+        const s = tx * tail.x + ty * tail.y;
+        const q = Math.abs(ty * tail.x - tx * tail.y);
+        if (s > -1 && q <= 1 + Math.max(0, s) * 1.05) {
+          const reach = tail.len * (0.6 + 0.4 * Math.min(1, q / (tail.len * 0.6)));
+          if (s <= reach) value = ink(fin, s > reach - 2 ? 0 : 1);
+        }
+        if (!value)
+          for (const fn of fins) {
+            const px = cx - fn.x;
+            const py = cy - fn.y;
+            const along = px * fn.dx + py * fn.dy;
+            if (along < 0 || along > fn.len) continue;
+            const across = Math.abs(py * fn.dx - px * fn.dy);
+            const r = along / fn.len;
+            if (across <= fn.w * Math.sqrt(r) * (1 - r ** 3) + 0.5) {
+              value = ink(fin, r > 0.75 ? 0 : 1);
+              break;
+            }
+          }
+      }
+      if (value) out[cy * cols + cx] = value;
+    }
+
+  // Eyes, either side of the head.
+  const k = Math.max(1, Math.round(0.07 * segs));
+  const fwd = dir(sp[k - 1]!, sp[k + 1]!);
+  const e = bodyWidth(0.07) * W * 0.62;
+  const eye = body === SLOT.dark ? ink(SLOT.light, 0) : ink(SLOT.dark, 0);
+  for (const side of [-1, 1])
+    plot(out, cols, rows, sp[k]!.x - fwd.y * side * e, sp[k]!.y + fwd.x * side * e, eye);
 }
