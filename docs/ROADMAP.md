@@ -2409,9 +2409,11 @@ Name checks → Mailboat).*
       Caches, Logs, WebKit), the `com.nwoolls.mailboat` keychain
       entries, `target/debug/Mailboat.app`, and on Windows the Mailboat install
       and its `com.nwoolls.mailboat` folders
-- [ ] Email on the domain for security reports and anything that
-      shouldn't be a public GitHub issue (Cloudflare Email Routing,
-      free, forwarding to the owner)
+- [x] Email on the domain for security reports and anything that
+      shouldn't be a public GitHub issue: `security@getmailboat.app`,
+      through Cloudflare Email Routing, forwarding to the owner
+      *(owner, 2026-10-27; MX and SPF records checked the same day. No
+      DMARC record yet: optional while the domain only receives)*
 - [x] Move the translation card *(owner, 2026-10-26)*: it showed
       under the email, where a long email pushed it out of sight. Now
       above the message, below the line with "Images shown" (inside
