@@ -2435,7 +2435,7 @@ daoho.dev's pond (screenshots; videos to follow). As with the earlier
 spikes, each item is built to try in the app and settled with the owner
 one at a time.*
 
-- [ ] A higher-resolution koi pond *(owner, 2026-10-26: "start by making
+- [x] A higher-resolution koi pond *(owner, 2026-10-26: "start by making
       the koi pond essentially higher res")*. Built to try: the pond's
       cells are 2px instead of 3px, and each koi is drawn as a shape
       instead of a row of dots: about 48 cells (96px) long, round at the
@@ -2450,8 +2450,27 @@ one at a time.*
       bends only so far, so they no longer fold in two), and turn
       quickly only when the pointer startles them. Smaller in a small
       pond. Behaviour otherwise as before (nibbling, ripples, one koi at
-      the letters at a time). *Owner to try: Toybox → Screensavers →
-      Koi pond, or "Koi pond" in ⌘K*
+      the letters at a time). *Owner (2026-10-26) asked whether only the
+      palette's colours were used:* they were, in four close shades each.
+      Now a scene can also blend between two palette colours
+      (`blend`, eight steps), so the koi shade into a darker palette
+      colour at their sides, are lit down the back, and have fins that
+      turn from the body's colour into the fin's, with faint rays. *Owner:
+      more fidelity for the ripples too.* Each ripple is now three
+      spreading waves (a light crest, a faint dark trough), fading into
+      the water as it spreads and ages, adding up where ripples cross;
+      a scene can now set how see-through each cell is for that.
+      *Owner: deeper koi should look deeper.* Each koi swims at a depth
+      that drifts every few seconds; deeper ones are see-through (a
+      third as solid at the bottom) and drawn under shallower ones. It
+      comes up to nibble and dives when startled. *Owner, 2026-10-26:
+      approved ("let's commit these changes")*
+- [ ] The same treatment for the other screensavers, one at a time
+      *(owner, 2026-10-26)*: finer cells, real shapes, blended shading,
+      see-through where it fits. Sandscape, Envelope flock, Life, Rain
+      on glass, Fireflies, Lava lamp
+- [ ] And likely the toys too *(owner, 2026-10-26: "likely even the
+      'games'")*: Pond, Bubble wrap, Sky
 - [ ] Maybe: a switch between pixel art and ASCII art for the
       screensavers *(owner, 2026-10-26: "we may also do a toggle")*.
       Not started; to agree once the koi look right

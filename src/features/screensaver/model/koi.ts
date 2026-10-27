@@ -1,8 +1,8 @@
 import {
+  blend,
   clamp,
   type FrameResult,
   ink,
-  plot,
   type Pointer,
   type Scene,
   type SceneSetup,
@@ -34,6 +34,12 @@ type Fish = {
   turn: number;
   /** Scales the whole koi (and its spine spacing). */
   size: number;
+  /**
+   * How deep it swims, 0 at the surface to 1 at the bottom, and the depth
+   * it's heading for: deeper koi show more of the pond through them.
+   */
+  depth: number;
+  dive: number;
   /** The swimming wave's phase, and each fin's flap. */
   wave: number;
   flap: number;
@@ -47,7 +53,8 @@ type Fish = {
   nibble: number;
   rest: number;
 };
-type Ripple = { x: number; y: number; r: number; life: number };
+/** A ripple: its centre, how far its front has spread, how much is left of it (1 to 0), and how strong it started. */
+type Ripple = { x: number; y: number; r: number; life: number; strength: number };
 
 const COUNT = 5;
 const SEGMENTS = 17;
@@ -70,6 +77,39 @@ const LOOKS: Look[] = [
   { body: SLOT.accent, patch: SLOT.bright, speck: null, fin: SLOT.light },
 ];
 
+/**
+ * Shading by blending palette colours, by slot (dark, mid, light, bright,
+ * accent): what each darkens towards at the body's sides and how far, and
+ * what it lightens towards down the back and how far.
+ */
+const SHADOW: readonly Slot[] = [SLOT.dark, SLOT.dark, SLOT.dark, SLOT.mid, SLOT.dark];
+const SHADOW_BY = [0, 0.6, 0.55, 0.6, 0.5];
+const HIGHLIGHT: readonly Slot[] = [SLOT.mid, SLOT.bright, SLOT.bright, SLOT.bright, SLOT.bright];
+const HIGHLIGHT_BY = [0.4, 0.3, 0.35, 0, 0.3];
+
+/**
+ * A body cell's colour `v` of the way from the spine (0) to the edge (1):
+ * lit down the back, darkening ever faster towards the sides, as a rounded
+ * body would. A dark body, with nothing darker to go to, gets a darker shade
+ * at its very edge instead.
+ */
+function tone(slot: Slot, v: number): number {
+  if (v < 0.3) return blend(slot, HIGHLIGHT[slot]!, ((0.3 - v) / 0.3) * HIGHLIGHT_BY[slot]!);
+  if (slot === SLOT.dark) return ink(slot, v > 0.8 ? 0 : 2);
+  const round = 1 - Math.sqrt(1 - v * v);
+  return blend(slot, SHADOW[slot]!, round * SHADOW_BY[slot]!);
+}
+
+/**
+ * A fin or tail cell: the body's colour at the base turning to the fin's,
+ * every other ray a little darker, and a darker edge.
+ */
+function finTone(fin: Slot, body: Slot, r: number, ray: boolean, edge: boolean): number {
+  if (edge) return blend(fin, SHADOW[fin]!, 0.45);
+  if (r < 0.3) return blend(body, fin, r / 0.3);
+  return blend(fin, SHADOW[fin]!, ray ? 0.25 : 0);
+}
+
 /** The body's half-width at `u` (0 nose, 1 tail), as a share of its widest. */
 export function bodyWidth(u: number): number {
   const front = u < 0.28 ? Math.sqrt(Math.max(0, 1 - ((0.28 - u) / 0.31) ** 2)) : 1;
@@ -84,6 +124,8 @@ export class KoiScene implements Scene {
   private sinceRipple = 0;
   private t = 0;
   private lastNod = -Infinity;
+  /** Scratch for the ripples' waves, one per cell. */
+  private wave = new Float32Array(0);
   private readonly letterCells: number[] = [];
 
   constructor(private readonly s: SceneSetup) {
@@ -112,13 +154,13 @@ export class KoiScene implements Scene {
         look,
         patches: look.patch ? blobs(rng, 2 + Math.floor(rng() * 3), 3, 7) : [],
         specks: look.speck ? blobs(rng, 3 + Math.floor(rng() * 4), 1.2, 2.4) : [],
+        depth: rng(),
+        dive: rng(),
         target: null,
         nibble: 0,
         rest: 6 + rng() * 14,
       });
     }
-    // Smaller koi first, so the bigger ones swim over them.
-    this.fish.sort((a, b) => a.size - b.size);
   }
 
   frame(dt: number, pointer: Pointer): FrameResult {
@@ -134,7 +176,7 @@ export class KoiScene implements Scene {
       this.sinceRipple += dt;
       if (this.sinceRipple > 0.25) {
         this.sinceRipple = 0;
-        this.ripples.push({ x: pointer.x, y: pointer.y, r: 1, life: 1 });
+        this.ripples.push({ x: pointer.x, y: pointer.y, r: 0, life: 1, strength: 1 });
       }
     }
     this.last = pointer;
@@ -170,13 +212,17 @@ export class KoiScene implements Scene {
         speed = Math.min(speed, 3 + d * 0.8);
         if (d < 3) {
           f.nibble = 1.6;
-          this.ripples.push({ x: head.x, y: head.y, r: 1, life: 0.7 });
+          this.ripples.push({ x: head.x, y: head.y, r: 0, life: 1, strength: 0.6 });
           if (f.target.icon && this.t - this.lastNod > 4) {
             this.lastNod = this.t;
             nod = true;
           }
         }
       } else if ((f.rest -= dt) <= 0) this.pickTarget(f);
+      // Now and then it rises or sinks a little; it comes up to nibble.
+      if (f.target || f.nibble > 0) f.dive = 0;
+      else if (rng() < dt / 9) f.dive = rng();
+      let sink = 0.12;
       // Keep off the edges, turning back toward its own spot (always inside),
       // not the middle, where every koi met.
       const m = 12;
@@ -189,10 +235,14 @@ export class KoiScene implements Scene {
           want = Math.atan2(dy, dx);
           speed = f.speed * 2.6;
           turnRate = 3;
+          // A startled koi dives.
+          f.dive = 1;
+          sink = 0.6;
           f.target = null;
           f.nibble = 0;
         }
       }
+      f.depth += clamp(f.dive - f.depth, -sink * dt, sink * dt);
       let diff = want - f.heading;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
@@ -220,8 +270,8 @@ export class KoiScene implements Scene {
       }
     }
     for (const r of this.ripples) {
-      r.r += dt * 16;
-      r.life -= dt * 0.7;
+      r.r += dt * 13;
+      r.life -= dt * 0.45;
     }
     const kept = this.ripples.filter((r) => r.life > 0);
     this.ripples.length = 0;
@@ -274,31 +324,63 @@ export class KoiScene implements Scene {
     }
   }
 
-  draw(out: Uint8Array) {
+  draw(out: Uint8Array, opacity: Uint8Array) {
     out.fill(0);
     const { cols, rows } = this.s;
+    this.drawRipples(out, opacity);
+    // Deepest first, so the koi nearer the surface swim over them.
+    const order = this.fish
+      .map((_, n) => n)
+      .sort((a, b) => this.fish[b]!.depth - this.fish[a]!.depth);
+    for (const n of order) drawKoi(out, opacity, cols, rows, this.fish[n]!, n);
+  }
+
+  /**
+   * Each ripple is a train of three waves spreading out, the first the
+   * strongest: a light crest with a faint dark trough behind it, weaker as
+   * it spreads and as it ages. Where ripples cross, their waves add up.
+   */
+  private drawRipples(out: Uint8Array, opacity: Uint8Array) {
+    const { cols, rows } = this.s;
+    if (!this.ripples.length) return;
+    if (this.wave.length !== cols * rows) this.wave = new Float32Array(cols * rows);
+    const wave = this.wave;
+    wave.fill(0);
     for (const r of this.ripples) {
-      const shade = r.life > 0.6 ? 2 : r.life > 0.3 ? 1 : 0;
-      // A wider ring has a fainter one inside it.
-      const rings = r.r > 8 ? [r.r, r.r * 0.62] : [r.r];
-      rings.forEach((radius, i) => {
-        const steps = Math.max(8, Math.ceil(radius * 7));
-        for (let k = 0; k < steps; k++) {
-          const a = (k / steps) * Math.PI * 2;
-          plot(
-            out,
-            cols,
-            rows,
-            r.x + Math.cos(a) * radius,
-            r.y + Math.sin(a) * radius,
-            ink(SLOT.mid, Math.max(0, shade - i)),
-          );
+      const amp = r.strength * r.life * r.life * (1 / Math.sqrt(1 + r.r / 12));
+      const x0 = Math.max(0, Math.floor(r.x - r.r - 2));
+      const x1 = Math.min(cols - 1, Math.ceil(r.x + r.r + 2));
+      const y0 = Math.max(0, Math.floor(r.y - r.r - 2));
+      const y1 = Math.min(rows - 1, Math.ceil(r.y + r.r + 2));
+      for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++) {
+          const d = Math.hypot(x - r.x, y - r.y);
+          let h = 0;
+          for (const [behind, share] of WAVES) {
+            const front = r.r - behind;
+            if (front <= 0) continue;
+            const crest = d - front;
+            const trough = d - (front - 1.8);
+            h += share * (Math.exp(-crest * crest * 1.4) - 0.55 * Math.exp(-trough * trough * 0.9));
+          }
+          wave[y * cols + x]! += h * amp;
         }
-      });
     }
-    this.fish.forEach((f, n) => drawKoi(out, cols, rows, f, n));
+    for (let i = 0; i < wave.length; i++) {
+      const h = wave[i]!;
+      if (Math.abs(h) < 0.04) continue;
+      out[i] = h > 0 ? ink(SLOT.light) : ink(SLOT.dark);
+      opacity[i] = Math.round(Math.min(1, Math.abs(h) * 0.9) * 255);
+    }
   }
 }
+
+/** A ripple's waves: how far each trails the front, and its share of the strength. */
+const WAVES: readonly (readonly [number, number])[] = [
+  [0, 1],
+  [4.5, 0.55],
+  [9, 0.25],
+];
 
 /** `count` patches with radii between `lo` and `hi` cells, on the body's front 85%. */
 function blobs(rng: () => number, count: number, lo: number, hi: number): Blob[] {
@@ -339,7 +421,16 @@ function dir(a: { x: number; y: number }, b: { x: number; y: number }) {
  * says how far along and across the body the cell is; that picks body,
  * patch, fin or tail, and how dark (the sides are darker, so it looks round).
  */
-function drawKoi(out: Uint8Array, cols: number, rows: number, f: Fish, n: number) {
+function drawKoi(
+  out: Uint8Array,
+  opacity: Uint8Array,
+  cols: number,
+  rows: number,
+  f: Fish,
+  n: number,
+) {
+  // At the bottom a koi is a third as solid as at the surface.
+  const alpha = Math.round(255 * (1 - f.depth * 0.68));
   const sp = f.spine;
   const segs = sp.length - 1;
   const len = segs * GAP * f.size;
@@ -425,11 +516,9 @@ function drawKoi(out: Uint8Array, cols: number, rows: number, f: Fish, n: number
           slot = speck;
         else if (patch !== null && inBlob(f.patches, u, side * v, len, w, f.size, n * 7))
           slot = patch;
-        // Lighter down the back, darker towards the sides.
-        const shade = v > 0.82 ? 0 : v > 0.5 ? 1 : v < 0.22 ? 3 : 2;
-        // The dorsal fin: a dark line down the middle of the back.
-        const dorsal = v < 0.13 && u > 0.32 && u < 0.62;
-        value = dorsal ? ink(slot, 0) : ink(slot, shade);
+        // The dorsal fin: a darker line down the middle of the back.
+        const dorsal = v < 0.12 && u > 0.32 && u < 0.62;
+        value = dorsal ? blend(slot, SHADOW[slot]!, 0.35) : tone(slot, v);
       } else {
         // The tail: a fan behind the last spine point, forked in the middle.
         const tx = cx - tip.x;
@@ -438,7 +527,10 @@ function drawKoi(out: Uint8Array, cols: number, rows: number, f: Fish, n: number
         const q = Math.abs(ty * tail.x - tx * tail.y);
         if (s > -1 && q <= 1 + Math.max(0, s) * 1.05) {
           const reach = tail.len * (0.6 + 0.4 * Math.min(1, q / (tail.len * 0.6)));
-          if (s <= reach) value = ink(fin, s > reach - 2 ? 0 : 1);
+          if (s <= reach) {
+            const ray = Math.floor(Math.atan2(q, Math.max(0.5, s)) * 9) % 2 === 1;
+            value = finTone(fin, body, Math.max(0, s) / tail.len, ray, s > reach - 1.5);
+          }
         }
         if (!value)
           for (const fn of fins) {
@@ -448,13 +540,18 @@ function drawKoi(out: Uint8Array, cols: number, rows: number, f: Fish, n: number
             if (along < 0 || along > fn.len) continue;
             const across = Math.abs(py * fn.dx - px * fn.dy);
             const r = along / fn.len;
-            if (across <= fn.w * Math.sqrt(r) * (1 - r ** 3) + 0.5) {
-              value = ink(fin, r > 0.75 ? 0 : 1);
+            const half = fn.w * Math.sqrt(r) * (1 - r ** 3) + 0.5;
+            if (across <= half) {
+              const ray = Math.floor((across / half) * 3) % 2 === 1;
+              value = finTone(fin, body, r, ray, r > 0.85 || across > half - 0.8);
               break;
             }
           }
       }
-      if (value) out[cy * cols + cx] = value;
+      if (value) {
+        out[cy * cols + cx] = value;
+        opacity[cy * cols + cx] = alpha;
+      }
     }
 
   // Eyes, either side of the head.
@@ -462,6 +559,11 @@ function drawKoi(out: Uint8Array, cols: number, rows: number, f: Fish, n: number
   const fwd = dir(sp[k - 1]!, sp[k + 1]!);
   const e = bodyWidth(0.07) * W * 0.62;
   const eye = body === SLOT.dark ? ink(SLOT.light, 0) : ink(SLOT.dark, 0);
-  for (const side of [-1, 1])
-    plot(out, cols, rows, sp[k]!.x - fwd.y * side * e, sp[k]!.y + fwd.x * side * e, eye);
+  for (const side of [-1, 1]) {
+    const x = Math.round(sp[k]!.x - fwd.y * side * e);
+    const y = Math.round(sp[k]!.y + fwd.x * side * e);
+    if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
+    out[y * cols + x] = eye;
+    opacity[y * cols + x] = alpha;
+  }
 }

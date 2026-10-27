@@ -44,8 +44,12 @@ export type FrameResult = {
 
 export interface Scene {
   frame(dt: number, pointer: Pointer): FrameResult;
-  /** Paints every cell of `out` (0 is clear) with `ink(...)` values. */
-  draw(out: Uint8Array): void;
+  /**
+   * Paints every cell of `out` (0 is clear) with `ink(...)` values. A scene
+   * may also set how solid each cell is in `opacity` (255 solid, 0 clear;
+   * every cell is 255 before each draw), to let the background through.
+   */
+  draw(out: Uint8Array, opacity: Uint8Array): void;
 }
 
 /** Palette slots, darkest to lightest, then the accent. */
@@ -58,6 +62,24 @@ export const SHADES = 4;
 /** The value `draw` writes for a slot in one of its shades. */
 export function ink(slot: Slot, shade = 2): number {
   return 1 + slot * SHADES + Math.max(0, Math.min(SHADES - 1, shade));
+}
+
+/** Steps from one slot's colour to another's in `blend`. */
+export const BLEND_STEPS = 8;
+const BLEND_BASE = 1 + SLOT_COUNT * SHADES;
+/** How many values `draw` can write, clear included. */
+export const INK_COUNT = BLEND_BASE + SLOT_COUNT * SLOT_COUNT * (BLEND_STEPS - 1);
+
+/**
+ * The value for a colour `t` of the way from one slot's colour to
+ * another's (in BLEND_STEPS steps), for shading finer than `ink`'s shades
+ * while staying inside the palette.
+ */
+export function blend(from: Slot, to: Slot, t: number): number {
+  const k = Math.round(clamp(t, 0, 1) * BLEND_STEPS);
+  if (k === 0 || from === to) return ink(from);
+  if (k === BLEND_STEPS) return ink(to);
+  return BLEND_BASE + (from * SLOT_COUNT + to) * (BLEND_STEPS - 1) + (k - 1);
 }
 
 /** Writes `v` at (x, y) if that's inside the grid. */

@@ -47,7 +47,7 @@ describe("KoiScene", () => {
     const scene = new KoiScene(testSetup(cols, rows, seeded(3)));
     for (let i = 0; i < 60; i++) scene.frame(1 / 60, null);
     const out = new Uint8Array(cols * rows);
-    scene.draw(out);
+    scene.draw(out, new Uint8Array(out.length).fill(255));
     const inked = out.filter((v) => v > 0).length;
     // Five koi of roughly 48 x 13 cells, plus fins and tails: thousands of
     // cells, not the few hundred dots of the old pixel koi.
@@ -61,5 +61,30 @@ describe("KoiScene", () => {
     expect(bodyWidth(0)).toBeLessThan(0.5);
     expect(bodyWidth(0.28)).toBe(1);
     expect(bodyWidth(1)).toBeCloseTo(0.2);
+  });
+
+  it("lets the pond show through deeper koi, and draws them under shallower ones", () => {
+    const cols = 460;
+    const rows = 260;
+    const scene = new KoiScene(testSetup(cols, rows, seeded(4)));
+    const [deep, shallow] = [scene.fish[0]!, scene.fish[1]!];
+    // Put both in the same place, one at the bottom, one at the surface.
+    shallow.spine.forEach((p, k) => Object.assign(p, deep.spine[k]));
+    deep.depth = 1;
+    shallow.depth = 0;
+    for (const f of scene.fish.slice(2))
+      f.spine.forEach((p) => Object.assign(p, { x: -500, y: -500 }));
+    const out = new Uint8Array(cols * rows);
+    const opacity = new Uint8Array(cols * rows).fill(255);
+    scene.draw(out, opacity);
+    const body = deep.spine[3]!;
+    const i = Math.round(body.y) * cols + Math.round(body.x);
+    // The shallow koi covers the deep one, and is solid.
+    expect(opacity[i]).toBe(255);
+    shallow.spine.forEach((p) => Object.assign(p, { x: -500, y: -500 }));
+    opacity.fill(255);
+    scene.draw(out, opacity);
+    expect(out[i]).toBeGreaterThan(0);
+    expect(opacity[i]).toBeLessThan(110);
   });
 });

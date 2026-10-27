@@ -159,6 +159,7 @@ export function ScreensaverCanvas({
     let image: ImageData | null = null;
     let pixels: Uint32Array | null = null;
     let cells: Uint8Array | null = null;
+    let opacity: Uint8Array | null = null;
     let pointer: Pointer = null;
     let frame = 0;
     let last = 0;
@@ -180,6 +181,7 @@ export function ScreensaverCanvas({
       image = ctx.createImageData(cols, rows);
       pixels = new Uint32Array(image.data.buffer);
       cells = new Uint8Array(cols * rows);
+      opacity = new Uint8Array(cols * rows);
       const { solid, letters } = solidMask(a, cols, rows, px, iconRef.current, wordsRef.current);
       scene = makeScene(sceneId, {
         cols,
@@ -196,15 +198,21 @@ export function ScreensaverCanvas({
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
-      if (scene && image && pixels && cells) {
+      if (scene && image && pixels && cells && opacity) {
         const result = scene.frame(dt, pointer);
         if (result.nod) nodRef.current();
         if (result.hideWords !== undefined) setWordsHidden(wordsRef.current, result.hideWords);
         // The sandscape's turn: the canvas rotates, then the grid is turned.
         canvas.style.transform = result.turn ? `rotate(${result.turn}deg)` : "";
-        scene.draw(cells);
+        opacity.fill(255);
+        scene.draw(cells, opacity);
         const colors = colorsRef.current;
-        for (let i = 0; i < cells.length; i++) pixels[i] = colors[cells[i]!] ?? 0;
+        for (let i = 0; i < cells.length; i++) {
+          const c = colors[cells[i]!] ?? 0;
+          const a = opacity[i]!;
+          // The colours are solid; a see-through cell scales the alpha byte.
+          pixels[i] = a === 255 ? c : ((c & 0xffffff) | (((a * (c >>> 24)) / 255) << 24)) >>> 0;
+        }
         ctx.putImageData(image, 0, 0);
       }
       frame = requestAnimationFrame(tick);

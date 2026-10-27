@@ -6,7 +6,7 @@ import {
   pickScene,
   SCREENSAVERS,
 } from "./catalog";
-import { SHADES, SLOT_COUNT, seeded, testSetup } from "./scene";
+import { INK_COUNT, seeded, testSetup } from "./scene";
 
 describe("screensaver prefs", () => {
   it("defaults anything missing or unknown", () => {
@@ -42,9 +42,9 @@ describe("every scene", () => {
         const pointer = i % 600 < 300 ? null : { x: 20 + (i % 50), y: 30 + ((i / 7) % 20) };
         scene.frame(1 / 60, pointer);
         if (i % 120 === 0) {
-          scene.draw(out);
+          scene.draw(out, new Uint8Array(out.length).fill(255));
           drew ||= out.some((v) => v > 0);
-          for (const v of out) expect(v).toBeLessThanOrEqual(SLOT_COUNT * SHADES);
+          for (const v of out) expect(v).toBeLessThan(INK_COUNT);
         }
       }
       expect(drew).toBe(true);

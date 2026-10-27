@@ -1,4 +1,4 @@
-import { SHADES, SLOT_COUNT } from "./scene";
+import { BLEND_STEPS, INK_COUNT, SHADES, SLOT_COUNT } from "./scene";
 
 /**
  * Screensaver palettes: five colours each, filling the scene slots dark,
@@ -83,15 +83,21 @@ export function paletteColors(id: PaletteId, accent: Rgb | null): Rgb[] {
  * for an ImageData buffer: index 0 is clear, then each slot's shades.
  */
 export function colorTable(colors: readonly Rgb[]): Uint32Array {
-  const out = new Uint32Array(1 + SLOT_COUNT * SHADES);
-  for (let slot = 0; slot < SLOT_COUNT; slot++) {
-    const c = colors[slot] ?? FALLBACK_ACCENT;
+  const out = new Uint32Array(INK_COUNT);
+  const word = ([r, g, b]: Rgb) => ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0;
+  const of = (slot: number) => colors[slot] ?? FALLBACK_ACCENT;
+  for (let slot = 0; slot < SLOT_COUNT; slot++)
     for (let s = 0; s < SHADES; s++) {
       const k = 0.86 + (s / (SHADES - 1)) * 0.24;
-      const [r, g, b] = c.map((v) => Math.min(255, Math.round(v * k)));
-      out[1 + slot * SHADES + s] = ((255 << 24) | (b! << 16) | (g! << 8) | r!) >>> 0;
+      out[1 + slot * SHADES + s] = word(
+        of(slot).map((v) => Math.min(255, Math.round(v * k))) as unknown as Rgb,
+      );
     }
-  }
+  // Then `blend`'s steps between every two slots.
+  let i = 1 + SLOT_COUNT * SHADES;
+  for (let from = 0; from < SLOT_COUNT; from++)
+    for (let to = 0; to < SLOT_COUNT; to++)
+      for (let k = 1; k < BLEND_STEPS; k++) out[i++] = word(mix(of(from), of(to), k / BLEND_STEPS));
   return out;
 }
 
