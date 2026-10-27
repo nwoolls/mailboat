@@ -185,12 +185,14 @@ if (harnessMode === "search")
     JSON.stringify(["invoice march", "from:sam", "Invoice"]),
   );
 if (harnessMode === "empty") {
-  const toy = new URLSearchParams(location.search).get("toy") ?? "none";
+  const params = new URLSearchParams(location.search);
+  const toy = params.get("toy") ?? "none";
   localStorage.setItem("prefs.emptyToy", JSON.stringify(toy));
-  // No glow or screensaver: only the toy is under test.
+  // No glow, and no screensaver unless asked for (`&screensaver`): only
+  // the toy or the screensaver is under test.
   localStorage.setItem(
     "prefs.featureFlags",
-    JSON.stringify({ emptyGlow: false, screensavers: false }),
+    JSON.stringify({ emptyGlow: false, screensavers: params.has("screensaver") }),
   );
 }
 

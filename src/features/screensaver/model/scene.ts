@@ -50,6 +50,12 @@ export interface Scene {
    * every cell is 255 before each draw), to let the background through.
    */
   draw(out: Uint8Array, opacity: Uint8Array): void;
+  /**
+   * Wants a night sky behind it on a light page (the starfield, the
+   * fireworks: light on white vanishes). The canvas paints one in the
+   * palette's darkest colour and lays the scene over it.
+   */
+  readonly night?: boolean;
 }
 
 /** Palette slots, darkest to lightest, then the accent. */

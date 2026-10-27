@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { ACCENTS } from "../../settings/model/appearance";
-import { colorTable, mix, PALETTES, paletteColors, paletteFor, parseColor } from "./palettes";
+import {
+  colorTable,
+  mix,
+  PALETTES,
+  paintOverSky,
+  paletteColors,
+  paletteFor,
+  parseColor,
+  SKY_ALPHA,
+} from "./palettes";
 import { ink, SLOT } from "./scene";
+
+/** An RGBA word for a colour, and back. */
+const word = (r: number, g: number, b: number) => ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0;
+const rgb = (w: number) => [w & 255, (w >>> 8) & 255, (w >>> 16) & 255];
 
 describe("palettes", () => {
   it("reads hex colours and every Appearance accent", () => {
@@ -34,5 +47,20 @@ describe("palettes", () => {
       expect(table[ink(SLOT.accent, 3)]! >>> 24).toBe(255);
     }
     expect(paletteFor("nope")).toBe("mono");
+  });
+
+  it("lays a frame over a night sky by each cell's opacity", () => {
+    const colors = new Uint32Array([0, word(200, 100, 0)]);
+    const sky = word(0, 0, 100);
+    // Three cells in a row: clear, half see-through, solid.
+    const cells = new Uint8Array([0, 1, 1]);
+    const opacity = new Uint8Array([255, 128, 255]);
+    const pixels = new Uint32Array(3);
+    paintOverSky(pixels, cells, opacity, colors, 3, sky, sky);
+    expect(rgb(pixels[0]!)).toEqual([0, 0, 100]);
+    expect(rgb(pixels[1]!)).toEqual([100, 50, 50]);
+    expect(rgb(pixels[2]!)).toEqual([200, 100, 0]);
+    // As solid as the sky everywhere.
+    for (const p of pixels) expect(p >>> 24).toBe(SKY_ALPHA);
   });
 });

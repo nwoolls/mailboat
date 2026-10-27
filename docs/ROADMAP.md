@@ -2465,7 +2465,7 @@ one at a time.*
       third as solid at the bottom) and drawn under shallower ones. It
       comes up to nibble and dives when startled. *Owner, 2026-10-26:
       approved ("let's commit these changes")*
-- [ ] The same treatment for the other screensavers, one at a time
+- [x] The same treatment for the other screensavers, one at a time
       *(owner, 2026-10-26)*: finer cells, real shapes, blended shading,
       see-through where it fits. Sandscape, Envelope flock, Life, Rain
       on glass, Fireflies, Lava lamp
@@ -2534,6 +2534,52 @@ one at a time.*
             (most resting spots near the top did this, before this
             spike too), so after 3 s of the leaks freeing nothing the
             rest of the ceiling lets go. *Owner: "LGTM"*
+- [x] Jellyfish, a new screensaver *(owner, 2026-10-27, with
+      screenshots of an ASCII-art jellyfish video: "swimming jellyfish
+      with depth")*. Built in our pixel art (an ASCII look would come with
+      the pixel/ASCII switch below): five jellies at different depths,
+      the farther smaller, fainter and slower, behind the nearer. Each
+      pulses (the bell contracts quickly, narrower and taller, pushing
+      it up, then relaxes and drifts), swimming up with a slow sway and
+      coming back in from below. Translucent bell with a scalloped rim,
+      brighter at its edge, a curved highlight and a soft glow inside;
+      long tentacles trailing with a wave down them; frilly arms. The
+      pointer startles one into a pulse away; they steer round the icon
+      and words, and one bumping the icon makes it nod. A first try had
+      rings and a glint inside the bell that read as a face, and short
+      crumpled tentacles. *Owner, 2026-10-27: "LGTM"*
+- [x] Starfield, a new screensaver *(owner, 2026-10-27: "add a starfield
+      next … take your best shot", built overnight without the owner)*.
+      Flying through space: stars stream out from a vanishing point
+      behind the icon, growing and brightening as they near, the nearest
+      glowing and streaking; far behind, faint dust twinkles in place and
+      three very faint nebula clouds (two in the accent) drift. Every
+      35–60 s it goes to warp for about 6 s (long streaks, the icon nods
+      as it starts). The pointer pulls the vanishing point towards it,
+      like steering. On a light page it brings its own night sky (below).
+      *Owner, 2026-10-27: "they look good to me"*
+- [x] Fireworks, a new screensaver *(owner, 2026-10-27, as above)*.
+      Rockets climb trailing golden sparks and burst at the top as a
+      peony (a sphere seen from the front, denser at the rim), a
+      chrysanthemum (sparks drawing trails), a tilted ring, a willow (long
+      drooping golden trails) or a crackle (sparks popping into tiny
+      flashes); now and then a salvo of three. Sparks start white-hot,
+      cool to the shell's colours (mostly the accent) and fade, the old
+      ones glittering; each burst lights a soft flash and leaves faint
+      smoke drifting up. Farther shells are smaller and dimmer, behind.
+      Every 45 s a shell bursts into the app's M above the icon, which
+      nods; moving the pointer aims the next rocket at it. Night sky on
+      a light page. *Owner, 2026-10-27: "they look good to me"*
+- [x] A night sky for the starfield and fireworks on a light page
+      *(2026-10-27, found while building them)*: white stars and sparks
+      vanished on a light background. A scene can ask for one (`night`);
+      on a light page the canvas paints a gradient in the palette's
+      darkest colour (grey for Mono, deep blue for Ocean, purple for
+      Dusk), drawn solid rather than at the glass's see-through-ness
+      (which washed it out to pale grey), and the empty state's icon and
+      words switch to light text so they still read. Dark pages are
+      unchanged. Checked in WebKit (`tests/browser/screensaver-night.spec.ts`).
+      *Owner, 2026-10-27: approved with the two scenes*
 - [ ] And likely the toys too *(owner, 2026-10-26: "likely even the
       'games'")*: Pond, Bubble wrap, Sky
 - [ ] Maybe: a switch between pixel art and ASCII art for the

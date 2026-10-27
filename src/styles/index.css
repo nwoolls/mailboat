@@ -354,8 +354,23 @@ html.resizing .panel-slide {
   animation: empty-swap 600ms ease-out both;
   transition: opacity 450ms ease-out;
 }
+/* A night sky (light page, starfield or fireworks) is drawn solid: at the
+   glass's see-through-ness it washed out to a pale grey. The sky itself
+   lets a little of the glass through. */
+.screensaver[data-scene-night] {
+  opacity: 1;
+}
 .screensaver[data-closing] {
   opacity: 0;
+}
+/* On a scene's night sky (light page), the icon and words take the dark
+   theme's light text so they still read. */
+[data-scene-night] {
+  --color-content: hsl(var(--theme-hue) var(--theme-saturation) 92%);
+  --color-stroke: color-mix(in srgb, var(--color-content) 8%, transparent);
+  --color-selection-subtle: color-mix(in srgb, var(--color-content) 4%, transparent);
+  color: var(--color-content);
+  transition: color 0.6s ease-out;
 }
 /* A scene can fade the words out (Life turns them into cells). */
 .empty-words p {

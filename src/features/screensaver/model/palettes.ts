@@ -104,3 +104,38 @@ export function colorTable(colors: readonly Rgb[]): Uint32Array {
 export function paletteFor(id: unknown): PaletteId {
   return PALETTES.find((p) => p.id === id)?.id ?? DEFAULT_PALETTE;
 }
+
+/** Channel `k` (0 red, 1 green, 2 blue, 3 alpha) of an RGBA word. */
+const ch = (w: number, k: number) => (w >>> (k * 8)) & 255;
+
+/** How solid the night sky is (0 to 255): the glass shows through a little. */
+export const SKY_ALPHA = 235;
+
+/**
+ * Turns a drawn frame into pixels over a night sky, for scenes that want
+ * one on a light page (`Scene.night`): each row of sky runs from `top` to
+ * `bottom` (RGBA words, as from `colorTable`), and each cell's colour is
+ * laid over it by its opacity. The result is as solid as the sky.
+ */
+export function paintOverSky(
+  pixels: Uint32Array,
+  cells: Uint8Array,
+  opacity: Uint8Array,
+  colors: Uint32Array,
+  cols: number,
+  top: number,
+  bottom: number,
+) {
+  const rows = Math.max(1, Math.floor(cells.length / cols));
+  for (let y = 0; y < rows; y++) {
+    const t = rows > 1 ? y / (rows - 1) : 0;
+    const sky = [0, 1, 2].map((k) => ch(top, k) + (ch(bottom, k) - ch(top, k)) * t);
+    for (let x = 0; x < cols; x++) {
+      const i = y * cols + x;
+      const c = cells[i] ? (colors[cells[i]!] ?? 0) : 0;
+      const a = cells[i] ? ((opacity[i]! / 255) * ch(c, 3)) / 255 : 0;
+      const [r, g, b] = [0, 1, 2].map((k) => Math.round(ch(c, k) * a + sky[k]! * (1 - a)));
+      pixels[i] = ((SKY_ALPHA << 24) | (b! << 16) | (g! << 8) | r!) >>> 0;
+    }
+  }
+}

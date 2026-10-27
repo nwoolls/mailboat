@@ -9,8 +9,14 @@ import {
   SCREENSAVER_ROTATE_MINUTES,
   type SceneId,
 } from "../model/catalog";
-import { colorTable, type PaletteId, paletteColors, parseColor } from "../model/palettes";
-import type { Pointer, Rect, Scene } from "../model/scene";
+import {
+  colorTable,
+  type PaletteId,
+  paintOverSky,
+  paletteColors,
+  parseColor,
+} from "../model/palettes";
+import { blend, ink, type Pointer, type Rect, type Scene, SLOT } from "../model/scene";
 import { isRealMove } from "../../../shared/lib/pointer";
 import { screensaverPrefs } from "./prefs";
 
@@ -162,6 +168,10 @@ export function ScreensaverCanvas({
     let opacity: Uint8Array | null = null;
     let pointer: Pointer = null;
     let frame = 0;
+    // Whether the page is light now (Settings → Appearance → Theme).
+    const light = window.matchMedia("(prefers-color-scheme: light)");
+    // Whether the icon and words are switched to light text for a night sky.
+    let nightShown = false;
     let last = 0;
 
     // (Re)starts the scene to fit the area, with the icon and words in it.
@@ -207,12 +217,23 @@ export function ScreensaverCanvas({
         opacity.fill(255);
         scene.draw(cells, opacity);
         const colors = colorsRef.current;
-        for (let i = 0; i < cells.length; i++) {
-          const c = colors[cells[i]!] ?? 0;
-          const a = opacity[i]!;
-          // The colours are solid; a see-through cell scales the alpha byte.
-          pixels[i] = a === 255 ? c : ((c & 0xffffff) | (((a * (c >>> 24)) / 255) << 24)) >>> 0;
+        const night = !!scene.night && light.matches;
+        if (night !== nightShown) {
+          nightShown = night;
+          setNight([iconRef.current, wordsRef.current, canvas], night);
         }
+        if (night) {
+          // A night sky in the palette's darkest colour, a little lighter low down.
+          const top = colors[ink(SLOT.dark, 0)] ?? 0;
+          const bottom = colors[blend(SLOT.dark, SLOT.mid, 0.25)] ?? top;
+          paintOverSky(pixels, cells, opacity, colors, image.width, top, bottom);
+        } else
+          for (let i = 0; i < cells.length; i++) {
+            const c = colors[cells[i]!] ?? 0;
+            const a = opacity[i]!;
+            // The colours are solid; a see-through cell scales the alpha byte.
+            pixels[i] = a === 255 ? c : ((c & 0xffffff) | (((a * (c >>> 24)) / 255) << 24)) >>> 0;
+          }
         ctx.putImageData(image, 0, 0);
       }
       frame = requestAnimationFrame(tick);
@@ -246,6 +267,7 @@ export function ScreensaverCanvas({
     card.addEventListener("pointerleave", onLeave);
     document.addEventListener("visibilitychange", onVisibility);
     const words = wordsRef.current;
+    const icon = iconRef.current;
     return () => {
       pause();
       resize.disconnect();
@@ -253,6 +275,7 @@ export function ScreensaverCanvas({
       card.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("visibilitychange", onVisibility);
       setWordsHidden(words, false);
+      setNight([icon, words, canvas], false);
     };
   }, [sceneId, areaRef, iconRef, wordsRef]);
 
@@ -264,6 +287,18 @@ export function ScreensaverCanvas({
       data-closing={closing || undefined}
     />
   );
+}
+
+/**
+ * On a night sky the icon and words (dark on a light page) switch to light
+ * text so they still read, and the canvas is drawn solid (see the CSS).
+ */
+function setNight(els: (HTMLElement | null)[], night: boolean) {
+  for (const el of els) {
+    if (!el) continue;
+    if (night) el.dataset.sceneNight = "";
+    else delete el.dataset.sceneNight;
+  }
 }
 
 /** Fades the words out (Life plays with them) or back in. */

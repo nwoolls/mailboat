@@ -1,11 +1,14 @@
 import { EnvelopeScene } from "./envelopes";
 import { FireflyScene } from "./fireflies";
+import { FireworksScene } from "./fireworks";
+import { JellyfishScene } from "./jellyfish";
 import { KoiScene } from "./koi";
 import { LavaScene } from "./lava";
 import { LifeScene } from "./life";
 import { DEFAULT_PALETTE, type PaletteId, paletteFor } from "./palettes";
 import { RainScene } from "./rain";
 import { SAND_CELL_PX, SandscapeScene } from "./sand";
+import { StarfieldScene } from "./starfield";
 import { type Rng, type Scene, SCENE_CELL_PX, type SceneSetup } from "./scene";
 
 /** The screensavers, in the order Settings and the palette list them. */
@@ -57,6 +60,25 @@ export const SCREENSAVERS = [
     label: "Lava lamp",
     make: (s: SceneSetup) => new LavaScene(s),
     // Finer, so the wax can be shaded round (UX Spike 4).
+    cellPx: 2,
+  },
+  {
+    id: "jellyfish",
+    label: "Jellyfish",
+    make: (s: SceneSetup) => new JellyfishScene(s),
+    // Fine enough for translucent bells and thin tentacles.
+    cellPx: 2,
+  },
+  {
+    id: "starfield",
+    label: "Starfield",
+    make: (s: SceneSetup) => new StarfieldScene(s),
+    cellPx: 2,
+  },
+  {
+    id: "fireworks",
+    label: "Fireworks",
+    make: (s: SceneSetup) => new FireworksScene(s),
     cellPx: 2,
   },
 ] as const satisfies readonly {
