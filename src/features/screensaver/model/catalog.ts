@@ -41,7 +41,13 @@ export const SCREENSAVERS = [
     // Finer, so each flash can glow softly (UX Spike 4).
     cellPx: 2,
   },
-  { id: "lava", label: "Lava lamp", make: (s: SceneSetup) => new LavaScene(s) },
+  {
+    id: "lava",
+    label: "Lava lamp",
+    make: (s: SceneSetup) => new LavaScene(s),
+    // Finer, so the wax can be shaded round (UX Spike 4).
+    cellPx: 2,
+  },
 ] as const satisfies readonly {
   id: string;
   label: string;

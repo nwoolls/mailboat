@@ -1,10 +1,23 @@
-import { type FrameResult, ink, type Pointer, type Scene, type SceneSetup, SLOT } from "./scene";
+import {
+  blend,
+  type FrameResult,
+  ink,
+  type Pointer,
+  type Scene,
+  type SceneSetup,
+  SLOT,
+} from "./scene";
 
 /**
  * A lava lamp: slow blobs of wax rise and sink, merging and splitting
  * where they meet. They flow around the icon box and the words, and the
- * pointer pushes them aside. Drawn as a field with ordered dithering at
- * its edges, so it stays pixel art.
+ * pointer pushes them aside.
+ *
+ * Drawn on 2px cells (see the catalog) as rounded wax: the field's slope
+ * gives each cell a surface facing, lit from the upper left, so the wax
+ * is darker underneath with a soft highlight, and a faint warm glow
+ * around it fades into the background. A fine ordered dither hides the
+ * steps between shades, so it keeps a pixel-art grain.
  */
 
 type Blob = {
@@ -20,13 +33,19 @@ type Blob = {
 };
 
 const COUNT = 6;
-/** A 4×4 ordered-dither matrix, for the soft edge between bands. */
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(
-  (v) => (v / 16 - 0.5) * 0.35,
-);
+/** A 4×4 ordered-dither matrix, -0.5 to 0.5, to hide steps between shades. */
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => v / 16 - 0.5);
+/** Where the light comes from: up and to the left, and towards the viewer. */
+const LIGHT = (() => {
+  const [x, y, z] = [-0.55, -0.65, 0.9];
+  const l = Math.hypot(x, y, z);
+  return { x: x / l, y: y / l, z: z / l };
+})();
 
 export class LavaScene implements Scene {
   readonly blobs: Blob[] = [];
+  /** Scratch for the field, one value per cell. */
+  private fieldMap = new Float32Array(0);
 
   constructor(private readonly s: SceneSetup) {
     const { cols, rows, rng } = s;
@@ -60,7 +79,7 @@ export class LavaScene implements Scene {
         const dx = b.x - nx;
         const dy = b.y - ny;
         const d = Math.hypot(dx, dy);
-        const reach = b.r + 3;
+        const reach = b.r + 4.5;
         if (d < reach) {
           const ux = d > 0.01 ? dx / d : b.x < (box.x0 + box.x1) / 2 ? -1 : 1;
           const uy = d > 0.01 ? dy / d : 0;
@@ -72,9 +91,9 @@ export class LavaScene implements Scene {
         const dx = b.x - pointer.x;
         const dy = b.y - pointer.y;
         const d = Math.hypot(dx, dy);
-        if (d < b.r + 12 && d > 0.01) {
-          ax += (dx / d) * 40;
-          ay += (dy / d) * 40;
+        if (d < b.r + 18 && d > 0.01) {
+          ax += (dx / d) * 60;
+          ay += (dy / d) * 60;
         }
       }
       b.vx += ax * dt;
@@ -96,21 +115,51 @@ export class LavaScene implements Scene {
     return f;
   }
 
-  draw(out: Uint8Array) {
+  draw(out: Uint8Array, opacity: Uint8Array) {
     const { cols, rows } = this.s;
+    if (this.fieldMap.length !== cols * rows) this.fieldMap = new Float32Array(cols * rows);
+    const f = this.fieldMap;
+    for (let y = 0; y < rows; y++)
+      for (let x = 0; x < cols; x++) f[y * cols + x] = this.field(x, y);
     for (let y = 0; y < rows; y++)
       for (let x = 0; x < cols; x++) {
-        const f = this.field(x, y) + BAYER[(y % 4) * 4 + (x % 4)]!;
-        out[y * cols + x] =
-          f < 1
-            ? 0
-            : f < 1.25
-              ? ink(SLOT.mid, 1)
-              : f < 2.2
-                ? ink(SLOT.accent, 1)
-                : f < 4
-                  ? ink(SLOT.accent, 2)
-                  : ink(SLOT.accent, 3);
+        const i = y * cols + x;
+        const v = f[i]!;
+        const dither = BAYER[(y % 4) * 4 + (x % 4)]!;
+        if (v < 1) {
+          // The lamp's warm glow just outside the wax.
+          const g = (v - 0.55) / 0.45;
+          if (g <= 0) {
+            out[i] = 0;
+            continue;
+          }
+          out[i] = ink(SLOT.accent);
+          opacity[i] = Math.round(g * g * 0.28 * 255);
+          continue;
+        }
+        // The surface's height: 0 at the wax's edge, levelling off smoothly
+        // towards 1 inside (a hard cap left flat discs in each blob). Its
+        // slope tilts the facing away from the viewer towards the edges.
+        const h = (xx: number, yy: number) => {
+          const at =
+            f[Math.min(rows - 1, Math.max(0, yy)) * cols + Math.min(cols - 1, Math.max(0, xx))]!;
+          return Math.sqrt(Math.max(0, 1 - 1 / Math.max(at, 0.5)));
+        };
+        const nx = -(h(x + 1, y) - h(x - 1, y)) * 6;
+        const ny = -(h(x, y + 1) - h(x, y - 1)) * 6;
+        const nz = 1;
+        const len = Math.hypot(nx, ny, nz);
+        const lit = (nx * LIGHT.x + ny * LIGHT.y + nz * LIGHT.z) / len;
+        // A thin, darker rim where the wax meets the glow.
+        if (v < 1.12) {
+          out[i] = blend(SLOT.accent, SLOT.dark, 0.4);
+          continue;
+        }
+        const t = lit + dither * 0.08;
+        out[i] =
+          t > 0.55
+            ? blend(SLOT.accent, SLOT.bright, Math.min(0.7, (t - 0.55) * 1.6))
+            : blend(SLOT.accent, SLOT.dark, Math.min(0.6, (0.55 - t) * 0.75));
       }
   }
 }

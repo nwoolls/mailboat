@@ -2487,6 +2487,13 @@ one at a time.*
             add up, so the gathered M glows as one shape. Farther flies
             glow smaller and dimmer; between flashes a fly is a faint
             speck. *Owner, 2026-10-26: "a marked improvement"*
+      - [x] Lava lamp *(2026-10-26)*: 2px cells; the wax is shaded as
+            domes (lit from the upper left, darker underneath, the accent
+            blended towards bright and dark), with soft bumps where blobs
+            merge, a thin darker rim and a faint warm glow fading into the
+            background; a fine dither hides the steps between shades. A
+            first try capped the wax's height and left a flat disc in each
+            blob. *Owner, 2026-10-26: "very nice, I approve"*
 - [ ] And likely the toys too *(owner, 2026-10-26: "likely even the
       'games'")*: Pond, Bubble wrap, Sky
 - [ ] Maybe: a switch between pixel art and ASCII art for the
