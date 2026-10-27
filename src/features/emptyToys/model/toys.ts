@@ -15,13 +15,14 @@ export const TOYS: readonly { id: ToyId; label: string; description: string }[] 
   {
     id: "bubbles",
     label: "Bubble wrap",
-    description: "A sheet of bubbles to pop, one click each. Pop them all and a fresh sheet comes.",
+    description:
+      "A sheet of bubbles to pop, one click each, or hold and drag across a row. Pop them all and a fresh sheet comes.",
   },
   {
     id: "sky",
     label: "Sky",
     description:
-      "A quiet sky behind the view that follows the time of day: dawn, noon, dusk and night, with the sun or moon on its way across.",
+      "A quiet sky behind the view that follows the time of day: dawn, noon, dusk and night, with the sun or tonight's moon on its way across. Click for a shooting star, or a cloud by day.",
   },
 ];
 

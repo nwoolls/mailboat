@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { sheetFor } from "../../src/features/emptyToys/model/bubbles";
+import { POP_MS, sheetFor } from "../../src/features/emptyToys/model/bubbles";
 
 /**
  * Settings → Toybox → Something to play with (Milestone 8, empty states):
@@ -46,10 +46,13 @@ test("bubble wrap pops the bubble clicked, and only it", async ({ page }) => {
   const box = (await layer(page).boundingBox())!;
   const first = sheetFor(box.width, box.height).centres[0]!;
   await page.mouse.click(box.x + first.x, box.y + first.y);
+  // Past the pop's burst.
+  await page.waitForTimeout(POP_MS + 100);
   const once = await inked(page);
   expect(once).toBeLessThan(before);
   // Clicking it again finds nothing left to pop.
   await page.mouse.click(box.x + first.x, box.y + first.y);
+  await page.waitForTimeout(POP_MS + 100);
   expect(await inked(page)).toBe(once);
 });
 

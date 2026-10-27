@@ -85,7 +85,13 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
       )}
       {/* Settings → Toybox: something to play with, put away while a
           screensaver plays. */}
-      <EmptyToy toy={screensaver === "off" ? toy : "none"} areaRef={anchorRef} />
+      <EmptyToy
+        toy={screensaver === "off" ? toy : "none"}
+        areaRef={anchorRef}
+        iconRef={iconRef}
+        wordsRef={wordsRef}
+        palette={palette}
+      />
       {screensaver !== "off" && (
         <ScreensaverCanvas
           sceneId={scene}

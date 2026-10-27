@@ -2580,11 +2580,42 @@ one at a time.*
       words switch to light text so they still read. Dark pages are
       unchanged. Checked in WebKit (`tests/browser/screensaver-night.spec.ts`).
       *Owner, 2026-10-27: approved with the two scenes*
-- [ ] And likely the toys too *(owner, 2026-10-26: "likely even the
-      'games'")*: Pond, Bubble wrap, Sky
-- [ ] Maybe: a switch between pixel art and ASCII art for the
-      screensavers *(owner, 2026-10-26: "we may also do a toggle")*.
-      Not started; to agree once the koi look right
+- [x] The toys too *(owner, 2026-10-26: "likely even the 'games'")*:
+      Pond, Bubble wrap, Sky *(2026-10-27)*
+      - [x] Pond: the water is simulated (the wave equation on a grid of
+            2px cells, coloured by the Toybox palette), so the rings
+            reflect off the edges of the area and off the icon and each
+            line of the words, bend round them and add up where they
+            cross *(owner: "have the ripples interact with the edges of
+            the area realistically, and maybe with the icon and text")*.
+            A stone throws up a crown of droplets that each ripple where
+            they land; crests catch the light from the top left; rings
+            are flattened, as water seen at an angle; calm within about
+            3 s. *Owner, with a screenshot: the water stopped at a box
+            much wider than the words.* The words are now measured line
+            by line round the letters themselves (they have no
+            background of their own), and re-measured once the icon and
+            words finish rising in, without stilling the water
+      - [x] Bubble wrap: each bubble a dome lit from the top left, with
+            a glint, a soft shadow and slightly different sizes; a pop
+            bursts (the dome snaps flat as slivers fly out) and leaves
+            crumpled film; holding the button and dragging pops a row
+            (without selecting the words); the sheet leaves room round
+            the icon and words. *Owner: bubbles 1.5× bigger* (radius
+            16.5px, 45px apart)
+      - [x] Sky: the moon shows tonight's real phase with its dark side
+            faintly visible; stars fade in through dusk and twinkle;
+            slow clouds drift by day; the sun warms and its glow spreads
+            near the horizon. A click sends a shooting star at night or
+            leaves a small cloud drifting by day. *Owner, with a
+            screenshot: a stray purple line beside a cloud*: a WebKit
+            glitch with a blurred element on the move; clouds are now
+            softened with gradients instead of a blur
+- Moved to Later when the spike closed (2026-10-27): a switch between
+  pixel art and ASCII art for the screensavers *(owner, 2026-10-26: "we
+  may also do a toggle")*; never started
+
+*Closed 2026-10-27 (owner: "let's close this spike out").*
 
 ## Milestone 12: Onboarding and bring your own Google credentials
 
@@ -2960,6 +2991,10 @@ again until the next spike.*
       Adapted colors forgets it. It was per message, until the app quit
 
 ## Later / unscheduled
+
+- [ ] A switch between pixel art and ASCII art for the screensavers
+      *(owner, 2026-10-26: "we may also do a toggle"; moved from UX
+      Spike 4 when it closed, 2026-10-27, never started)*
 
 - [ ] Linux *(moved from Milestone 9 when it closed, 2026-10-25; it was
       a "nice-to-have" there, never started)*: Tauri builds for Linux,
