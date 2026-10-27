@@ -38,7 +38,7 @@ describe("EnvelopeScene", () => {
     }
     expect(mostPerched).toBeGreaterThan(0);
     const out = new Uint8Array(cols * rows);
-    scene.draw(out);
+    scene.draw(out, new Uint8Array(out.length).fill(255));
     expect(out.some((v) => v > 0)).toBe(true);
   });
 });

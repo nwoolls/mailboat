@@ -1,8 +1,8 @@
 import {
+  blend,
   clamp,
   type FrameResult,
   ink,
-  plot,
   type Pointer,
   type Scene,
   type SceneSetup,
@@ -17,9 +17,16 @@ import {
  * come back as an envelope later.
  *
  * Drawn on a finer grid than the other scenes (2px cells, `cellPx` in the
- * catalog) with bigger sprites: at 3px cells and 7×5 envelopes the owner
- * found it jumpy and low-res (2026-10-21). Distances and speeds below are
- * in cells, so they're 1.5× what they were at 3px.
+ * catalog): at 3px cells and 7×5 envelopes the owner found it jumpy and
+ * low-res (2026-10-21). Distances and speeds below are in cells, so
+ * they're 1.5× what they were at 3px.
+ *
+ * Each envelope is drawn, not a fixed picture (UX Spike 4): shaded paper
+ * with its back seams, a flap that opens and closes smoothly with each
+ * wingbeat, a wax seal on the accent ones, and a soft shadow below.
+ * Envelopes farther back are smaller and see-through; one coming in to
+ * land moves to the front. A paper plane has a lit and a shaded wing and
+ * leaves a fading trail.
  */
 
 type Mode = "fly" | "land" | "perched" | "plane" | "away";
@@ -35,49 +42,27 @@ type Bird = {
   accent: boolean;
   /** Where in its wingbeat it is, so each keeps its own steady rhythm. */
   phase: number;
+  /** How far back it flies (0 front, 1 back), and how far it is now: it comes to the front to land. */
+  far: number;
+  depth: number;
 };
 
-const COUNT = 10;
+const COUNT = 8;
 const SPEED = 39;
 const NEAR = 40;
 /** Wider than an envelope, so they don't overlap. */
-const APART = 16;
-const SCARE = 24;
+const APART = 30;
+const SCARE = 32;
 /** Wingbeats (flap down and up) per second. */
 const FLAPS = 3;
-/** Envelope sprite, 13×9: X edge, F flap, . paper. Anchored bottom-centre. */
-const ENVELOPE = [
-  "XXXXXXXXXXXXX",
-  "XF.........FX",
-  "X.F.......F.X",
-  "X..F.....F..X",
-  "X...F...F...X",
-  "X....F.F....X",
-  "X.....F.....X",
-  "X...........X",
-  "XXXXXXXXXXXXX",
-];
-/** Mid-beat: the flap lifted, its fold higher and shallower. */
-const ENVELOPE_FLAP = [
-  "XXXXXXXXXXXXX",
-  "XFF.......FFX",
-  "X..FF...FF..X",
-  "X....F.F....X",
-  "X.....F.....X",
-  "X...........X",
-  "X...........X",
-  "X...........X",
-  "XXXXXXXXXXXXX",
-];
-/** Paper plane facing right, 12×6. */
-const PLANE = [
-  "X...........",
-  "XXX.........",
-  "XXXXXX......",
-  ".XXXXXXXXXXX",
-  "..XXXXX.....",
-  "...XX.......",
-];
+/** An envelope's size in cells at the front of the flock. */
+const ENV_W = 27;
+const ENV_H = 18;
+/** How far down the envelope the side flaps' V reaches, as a share of its height. */
+const V_DEPTH = 0.55;
+/** A paper plane's length and height in cells. */
+const PLANE_L = 28;
+const PLANE_H = 13;
 
 export class EnvelopeScene implements Scene {
   private readonly birds: Bird[] = [];
@@ -92,7 +77,7 @@ export class EnvelopeScene implements Scene {
       [s.words, false],
     ] as const) {
       if (!r) continue;
-      for (let x = r.x0 + 6; x <= r.x1 - 6; x += 15)
+      for (let x = r.x0 + 12; x <= r.x1 - 12; x += 29)
         this.perches.push({ x, y: r.y0 - 1, onIcon, taken: -1 });
     }
     for (let i = 0; i < COUNT; i++) {
@@ -107,6 +92,8 @@ export class EnvelopeScene implements Scene {
         perch: -1,
         accent: i % 5 === 0,
         phase: rng(),
+        far: rng(),
+        depth: 0,
       });
     }
   }
@@ -117,7 +104,10 @@ export class EnvelopeScene implements Scene {
     this.t += dt;
     for (let i = 0; i < this.birds.length; i++) {
       const b = this.birds[i]!;
-      const scared = pointer !== null && Math.hypot(b.x - pointer.x, b.y - 4 - pointer.y) < SCARE;
+      const towards = b.mode === "land" || b.mode === "perched" ? 0 : b.far;
+      b.depth += (towards - b.depth) * Math.min(1, dt * 1.5);
+      const scared =
+        pointer !== null && Math.hypot(b.x - pointer.x, b.y - ENV_H / 2 - pointer.y) < SCARE;
       if (b.mode === "perched") {
         b.wait -= dt;
         if (b.wait <= 0 || scared) this.takeOff(b, rng);
@@ -126,7 +116,11 @@ export class EnvelopeScene implements Scene {
       if (b.mode === "away") {
         if ((b.wait -= dt) <= 0) {
           const left = rng() < 0.5;
-          Object.assign(b, { mode: "fly", x: left ? -8 : cols + 8, y: rows * (0.1 + rng() * 0.4) });
+          Object.assign(b, {
+            mode: "fly",
+            x: left ? -ENV_W : cols + ENV_W,
+            y: rows * (0.1 + rng() * 0.4),
+          });
           b.vx = left ? SPEED : -SPEED;
           b.vy = 0;
         }
@@ -135,7 +129,7 @@ export class EnvelopeScene implements Scene {
       if (b.mode === "plane") {
         b.x += b.vx * dt;
         b.y += b.vy * dt;
-        if (b.x < -18 || b.x > cols + 18 || b.y > rows + 9) {
+        if (b.x < -PLANE_L * 1.5 || b.x > cols + PLANE_L * 1.5 || b.y > rows + PLANE_H) {
           b.mode = "away";
           b.wait = 4 + rng() * 6;
         }
@@ -257,33 +251,204 @@ export class EnvelopeScene implements Scene {
     return this.birds.filter((b) => b.mode === "perched").length;
   }
 
-  draw(out: Uint8Array) {
+  draw(out: Uint8Array, opacity: Uint8Array) {
     out.fill(0);
-    const { cols, rows } = this.s;
-    for (const b of this.birds) {
-      if (b.mode === "away") continue;
-      if (b.mode === "plane") {
-        const right = b.vx >= 0;
-        PLANE.forEach((row, dy) =>
-          [...row].forEach((c, dx) => {
-            if (c === ".") return;
-            const x = right ? b.x - 6 + dx : b.x + 5 - dx;
-            plot(out, cols, rows, x, b.y - 5 + dy, ink(dy === 3 ? SLOT.bright : SLOT.light));
-          }),
-        );
-        continue;
-      }
-      // Its own steady beat. (It went by position before, so it flickered
-      // unevenly as the envelope moved.)
-      const flapping = b.mode !== "perched" && Math.floor((this.t * FLAPS + b.phase) * 2) % 2 === 1;
-      const sprite = flapping ? ENVELOPE_FLAP : ENVELOPE;
-      const edge = ink(b.accent ? SLOT.accent : SLOT.mid);
-      sprite.forEach((row, dy) =>
-        [...row].forEach((c, dx) => {
-          const v = c === "." ? ink(SLOT.bright) : c === "F" ? ink(SLOT.mid, 1) : edge;
-          plot(out, cols, rows, b.x - 6 + dx, b.y - 8 + dy, v);
-        }),
-      );
+    const shown = this.birds.filter((b) => b.mode !== "away");
+    // Shadows first, under everything, then the farthest envelopes first.
+    for (const b of shown) if (b.mode !== "plane") this.drawShadow(out, opacity, b);
+    shown.sort((a, b) => b.depth - a.depth);
+    for (const b of shown) {
+      if (b.mode === "plane") this.drawPlane(out, opacity, b);
+      else this.drawEnvelope(out, opacity, b);
     }
+  }
+
+  /** How big (1 at the front) and how solid (0 to 255) a bird is at its depth. */
+  private look(b: Bird) {
+    return { scale: 1 - b.depth * 0.32, alpha: Math.round(255 * (1 - b.depth * 0.5)) };
+  }
+
+  private put(out: Uint8Array, opacity: Uint8Array, x: number, y: number, v: number, a: number) {
+    const { cols, rows } = this.s;
+    if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+    out[y * cols + x] = v;
+    opacity[y * cols + x] = a;
+  }
+
+  /** A soft shadow, down and to the right; farther when flying than perched. */
+  private drawShadow(out: Uint8Array, opacity: Uint8Array, b: Bird) {
+    const { scale, alpha } = this.look(b);
+    const w = Math.round(ENV_W * scale);
+    const h = Math.round(ENV_H * scale);
+    const lift = b.mode === "perched" ? 1 : 4;
+    const x0 = Math.round(b.x - w / 2) + lift;
+    const y0 = Math.round(b.y) - h + 1 + lift;
+    for (let y = -1; y <= h; y++)
+      for (let x = -1; x <= w; x++) {
+        // Softer at its edge.
+        const edge = x < 0 || y < 0 || x === w || y === h;
+        this.put(
+          out,
+          opacity,
+          x0 + x,
+          y0 + y,
+          ink(SLOT.dark),
+          Math.round(alpha * (edge ? 0.07 : 0.15)),
+        );
+      }
+  }
+
+  private drawEnvelope(out: Uint8Array, opacity: Uint8Array, b: Bird) {
+    const { scale, alpha } = this.look(b);
+    const w = Math.round(ENV_W * scale);
+    const h = Math.round(ENV_H * scale);
+    const x0 = Math.round(b.x - w / 2);
+    const y0 = Math.round(b.y) - h + 1;
+    const mid = (w - 1) / 2;
+    // The flap is its wing: its tip swings from folded down over the back
+    // (closed, as when perched) to standing up above the envelope (open).
+    const beat =
+      b.mode === "perched" ? 1 : 0.5 + 0.5 * Math.cos((this.t * FLAPS + b.phase) * Math.PI * 2);
+    const tip = -h * 0.75 + beat * h * 1.33;
+    const edge = b.accent ? SLOT.accent : SLOT.mid;
+    const corner = (x: number, y: number) => (x === 0 || x === w - 1) && (y === 0 || y === h - 1);
+
+    // Open: the flap's inside, standing above the envelope.
+    if (tip < 0) {
+      for (let y = Math.floor(tip); y < 0; y++)
+        for (let x = 0; x < w; x++) {
+          const across = Math.abs(x - mid) / mid;
+          const top = tip * (1 - across);
+          if (y < top) continue;
+          const rim = y < top + 1 || x === 0 || x === w - 1;
+          this.put(
+            out,
+            opacity,
+            x0 + x,
+            y0 + y,
+            rim ? ink(edge) : blend(SLOT.light, SLOT.mid, 0.3),
+            alpha,
+          );
+        }
+    }
+
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        if (corner(x, y)) continue;
+        const across = Math.abs(x - mid) / mid; // 0 centre, 1 sides
+        const flapAt = Math.max(0, tip) * (1 - across); // the flap's lower edge, while it covers the back
+        // The side flaps rise from the top corners to meet in a V; above it
+        // is the opening, which the flap covers when closed. The bottom
+        // flap's seams rise from the bottom corners.
+        const vAt = V_DEPTH * h * (1 - across);
+        const seamAt = h - 1 - (1 - across) * h * 0.45;
+        // Paper lit from the left, a little darker to the right and down.
+        const paper = (x / w) * 0.18 + (y / h) * 0.14;
+        let v: number;
+        if (x === 0 || x === w - 1 || y === h - 1 || (y === 0 && tip > 0))
+          v = y === h - 1 || x === w - 1 ? blend(edge, SLOT.dark, 0.35) : ink(edge);
+        else if (tip > 0 && Math.abs(y - flapAt) < 0.6) v = blend(SLOT.mid, SLOT.dark, 0.2);
+        else if (tip > 0 && y < flapAt) v = blend(SLOT.bright, SLOT.light, 0.12 + paper);
+        // The V's edge, where the side flaps' paper ends.
+        else if (Math.abs(y - vAt) < 0.6)
+          v = tip > 0 && flapAt >= vAt ? blend(SLOT.bright, SLOT.mid, 0.3) : ink(edge);
+        else if (y < vAt) {
+          // The opening: the letter seated inside, its top two rows down,
+          // with a line of writing; above it, the pocket in shade.
+          const inLetter = y >= 2 && x >= 3 && x <= w - 4;
+          const writing = y === 4 && x >= 7 && x <= w - 10;
+          v = inLetter
+            ? writing
+              ? ink(SLOT.light)
+              : ink(SLOT.bright, 3)
+            : blend(SLOT.light, SLOT.mid, 0.35);
+        }
+        // Just under the flap's edge, its thickness casts a faint shadow.
+        else if (tip > 0 && y > flapAt && y < flapAt + 1.6) v = blend(SLOT.bright, SLOT.light, 0.7);
+        else if (Math.abs(y - seamAt) < 0.55) v = blend(SLOT.bright, SLOT.mid, 0.35);
+        else v = blend(SLOT.bright, SLOT.light, 0.25 + paper);
+        this.put(out, opacity, x0 + x, y0 + y, v, alpha);
+      }
+
+    // A wax seal at the closed flap's tip, or where it meets the back.
+    if (b.accent) {
+      const sx = Math.round(x0 + mid);
+      const sy = Math.round(y0 + Math.max(1.5, tip));
+      for (let dy = -2; dy <= 1; dy++)
+        for (let dx = -2; dx <= 1; dx++) {
+          if ((dx === -2 || dx === 1) && (dy === -2 || dy === 1)) continue;
+          const lit = dx < 0 && dy < 0;
+          this.put(
+            out,
+            opacity,
+            sx + dx,
+            sy + dy,
+            lit
+              ? blend(SLOT.accent, SLOT.bright, 0.35)
+              : dy === 1
+                ? blend(SLOT.accent, SLOT.dark, 0.3)
+                : ink(SLOT.accent),
+            alpha,
+          );
+        }
+    }
+  }
+
+  /** A paper plane: the upper wing lit, the lower in shade, a bright crease, a fading trail. */
+  private drawPlane(out: Uint8Array, opacity: Uint8Array, b: Bird) {
+    const { alpha } = this.look(b);
+    const dir = b.vx >= 0 ? 1 : -1;
+    const speed = Math.hypot(b.vx, b.vy) || 1;
+    for (let k = 1; k <= 18; k++) {
+      const x = Math.round(b.x - (b.vx / speed) * (PLANE_L * 0.5 + k * 1.8));
+      const y = Math.round(b.y - PLANE_H / 2 - (b.vy / speed) * (PLANE_L * 0.5 + k * 1.8));
+      this.put(out, opacity, x, y, ink(SLOT.light), Math.round(alpha * 0.32 * (1 - k / 19)));
+    }
+    // In the plane's own frame, facing right, from the tail's top corner.
+    const L = PLANE_L;
+    const H = PLANE_H;
+    const nose = { x: L, y: H * 0.45 };
+    const top = { x: 0, y: 0 };
+    const crease = { x: L * 0.2, y: H * 0.55 };
+    const keel = { x: L * 0.14, y: H };
+    const inside = (
+      p: { x: number; y: number },
+      a: { x: number; y: number },
+      c: { x: number; y: number },
+      d: { x: number; y: number },
+    ) => {
+      const s1 = (c.x - a.x) * (p.y - a.y) - (c.y - a.y) * (p.x - a.x);
+      const s2 = (d.x - c.x) * (p.y - c.y) - (d.y - c.y) * (p.x - c.x);
+      const s3 = (a.x - d.x) * (p.y - d.y) - (a.y - d.y) * (p.x - d.x);
+      return (s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0);
+    };
+    const ox = Math.round(b.x - (dir * L) / 2);
+    const oy = Math.round(b.y - H);
+    const shape = new Int32Array((L + 1) * (H + 1));
+    for (let y = 0; y <= H; y++)
+      for (let x = 0; x <= L; x++) {
+        const p = { x: x + 0.5, y: y + 0.5 };
+        let v = 0;
+        // The crease: the line from the tail to the nose between the wings.
+        const t = (p.x - crease.x) / (nose.x - crease.x);
+        const onCrease =
+          t >= 0 && t <= 1 && Math.abs(p.y - (crease.y + (nose.y - crease.y) * t)) < 0.6;
+        if (onCrease) v = ink(SLOT.bright, 3);
+        else if (inside(p, top, nose, crease))
+          v = blend(SLOT.bright, SLOT.light, 0.15 + (x / L) * 0.2);
+        else if (inside(p, crease, nose, keel))
+          v = blend(SLOT.light, SLOT.mid, 0.4 + (y / H) * 0.25);
+        shape[y * (L + 1) + x] = v;
+      }
+    // A darker edge all round, so it shows on a light background too.
+    const at = (x: number, y: number) =>
+      x < 0 || x > L || y < 0 || y > H ? 0 : shape[y * (L + 1) + x]!;
+    for (let y = 0; y <= H; y++)
+      for (let x = 0; x <= L; x++) {
+        const v = at(x, y);
+        if (!v) continue;
+        const rim = !at(x - 1, y) || !at(x + 1, y) || !at(x, y - 1) || !at(x, y + 1);
+        this.put(out, opacity, ox + dir * x, oy + y, rim ? ink(SLOT.mid) : v, alpha);
+      }
   }
 }

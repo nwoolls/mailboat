@@ -2494,6 +2494,24 @@ one at a time.*
             background; a fine dither hides the steps between shades. A
             first try capped the wax's height and left a flat disc in each
             blob. *Owner, 2026-10-26: "very nice, I approve"*
+      - [x] Envelope flock *(2026-10-27)*: envelopes drawn rather than
+            two fixed pictures, nearly twice the size (27×18 cells, about
+            54×36px), with rounded corners, paper lit from the left, the
+            back's seams, a soft shadow below (farther while flying), and
+            a raised wax seal on the accent ones. The flap is its wing: it
+            swings smoothly from standing open above the envelope to
+            folded shut over the side flaps' V-shaped opening, where the
+            pocket shows in shade with a letter seated inside. Envelopes
+            farther back are smaller and see-through; one coming in to
+            land moves to the front. The paper plane is drawn as a lit and
+            a shaded wing with a bright crease and an outline, leaving a
+            fading trail. Perches and flocking distances widened for the
+            size; eight envelopes instead of ten. *Owner, 2026-10-27: the
+            first version didn't show the same improvement as the others
+            ("maybe make the envelopes larger?"); then the open envelope
+            looked odd, a rectangle sticking out the top with no V
+            opening: the letter now stays seated inside the V. "That's
+            better, I'll take it"*
 - [ ] And likely the toys too *(owner, 2026-10-26: "likely even the
       'games'")*: Pond, Bubble wrap, Sky
 - [ ] Maybe: a switch between pixel art and ASCII art for the
