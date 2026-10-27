@@ -67,6 +67,39 @@ pub fn oauth_setup(state: State<'_, AppState>) -> OAuthSetup {
     }
 }
 
+/// Checks a Google client file given during setup (dropped, chosen, or
+/// built from a pasted ID and secret) and saves it as the app's client.
+/// Says plainly what's wrong with any other file.
+#[tauri::command]
+#[specta::specta]
+pub fn oauth_client_save(
+    state: State<'_, AppState>,
+    text: String,
+) -> CmdResult<config::CheckedClient> {
+    Ok(config::save(&state.config_dir, &text)?)
+}
+
+/// Looks in Downloads for the client file Google's console just
+/// downloaded (in the last hour) and saves it if found. Asked for only
+/// when the user chooses "Watch my Downloads" (macOS asks once to allow
+/// it).
+#[tauri::command]
+#[specta::specta]
+pub fn oauth_client_from_downloads(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> CmdResult<Option<config::CheckedClient>> {
+    use tauri::Manager;
+    let Ok(dir) = app.path().download_dir() else {
+        return Ok(None);
+    };
+    let Some(path) = config::find_download(&dir, Duration::from_secs(60 * 60)) else {
+        return Ok(None);
+    };
+    let text = config::read_download(&path)?;
+    Ok(Some(config::save(&state.config_dir, &text)?))
+}
+
 /// Opens Google sign-in in the browser and adds (or re-authorizes) the
 /// account that signs in. Signing in again with a connected account
 /// refreshes it instead of creating a duplicate. A second call cancels a

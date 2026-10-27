@@ -20,6 +20,8 @@
  *                                 List's density and preview lines
  *   ?mode=empty&toy=…             an empty Inbox with a Toybox toy
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
+ *   ?mode=onboarding&stage=…     first-launch onboarding at a stage
+ *     &path=…&done=a,b&accounts=0|1&configured=1
  *   ?mode=search                  the title bar's search, with three recent
  *                                 searches saved
  */
@@ -66,14 +68,41 @@ const detail = unreadMode
     }
   : { thread, messages: [message], labels: [] };
 
+const onboardingParams = new URLSearchParams(location.search);
+const onboardingAccounts =
+  harnessMode === "onboarding" ? Number(onboardingParams.get("accounts") ?? 0) : 1;
+
 mockIPC((cmd, args) => {
   switch (cmd) {
+    case "oauth_setup":
+      return {
+        configured: onboardingParams.has("configured"),
+        clientFilePath: "/Users/you/Library/Application Support/app/google-oauth-client.json",
+        problem: null,
+      };
+    case "oauth_client_save":
+      // As Rust's check: a Web client is refused, with the reason.
+      if (String((args as { text: string }).text).includes('"web"'))
+        throw { kind: "invalid", message: 'invalid input: This is a "Web application" client.' };
+      return { clientId: "1234-abc.apps.googleusercontent.com", projectId: "mail-k3x9qa" };
+    case "sync_status_list":
+      return [
+        {
+          accountId: account.id,
+          status: "syncing",
+          errorKind: null,
+          errorMessage: null,
+          lastSyncAt: null,
+        },
+      ];
+    case "app_info":
+      return { iconChoices: [] };
     case "identities_list":
       return [identity];
     case "contacts_list":
       return [];
     case "accounts_list":
-      return [account];
+      return onboardingAccounts ? [account] : [];
     case "settings_get":
       return { ai: { writingProvider: "apple" } };
     case "ai_status":
@@ -175,6 +204,19 @@ if (harnessMode === "list") {
     JSON.stringify({
       density: params.get("density") ?? "default",
       previewLines: Number(params.get("lines") ?? 1),
+    }),
+  );
+}
+
+if (harnessMode === "onboarding") {
+  const done = onboardingParams.get("done");
+  localStorage.setItem(
+    "onboarding",
+    JSON.stringify({
+      stage: onboardingParams.get("stage") ?? "welcome",
+      path: onboardingParams.get("path"),
+      done: done ? done.split(",") : [],
+      projectId: "mail-k3x9qa",
     }),
   );
 }

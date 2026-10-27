@@ -14,6 +14,8 @@ import { CommandPalette } from "../../src/features/palette/ui/CommandPalette";
 import { TitleSearch } from "../../src/app/TitleSearch";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import { inbox } from "./demoMail";
+import { Onboarding } from "../../src/features/onboarding/ui/Onboarding";
+import { useAccounts, useOAuthSetup } from "../../src/shared/lib/queries";
 import {
   setCardSpot,
   useComposeActions,
@@ -61,6 +63,7 @@ export function Harness({
     return () => window.removeEventListener("keydown", onKey);
   }, [mode]);
 
+  if (mode === "onboarding") return <OnboardingHarness />;
   if (mode === "shortcuts") return <ShortcutsHelp onClose={() => {}} />;
   if (mode === "palette") return <PaletteOverSearch />;
   if (mode === "search") return <SearchBar />;
@@ -188,6 +191,17 @@ function SearchBar() {
       <div className="panel" style={{ position: "relative", height: 400 }}>
         <output aria-label="Searching for">{text}</output>
       </div>
+    </div>
+  );
+}
+
+/** Onboarding as Shell shows it, the account list and setup from the fake Rust. */
+function OnboardingHarness() {
+  const setup = useOAuthSetup().data;
+  const accounts = useAccounts().data ?? [];
+  return (
+    <div style={{ height: "100vh" }}>
+      <Onboarding setup={setup} accounts={accounts} />
     </div>
   );
 }

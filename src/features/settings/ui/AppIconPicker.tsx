@@ -7,7 +7,8 @@ const PREVIEWS = import.meta.glob<string>("../../../../design/icon/choices/*.svg
   eager: true,
 });
 
-function previewFor(choice: string): string | undefined {
+/** The picture of an app icon choice, as a URL. */
+export function previewFor(choice: string): string | undefined {
   return Object.entries(PREVIEWS).find(([path]) => path.endsWith(`/${choice}.svg`))?.[1];
 }
 

@@ -2682,6 +2682,20 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       is in Settings afterwards. To design with the owner before
       building. Replaces today's Welcome screen, whose Google steps are
       out of date (it names only the Gmail API, not People and Calendar)
+      *Designed with the owner, 2026-10-27 (ideas shown first; owner:
+      "all sounds good, lets try it"). Built 2026-10-27
+      (`features/onboarding`): a welcome over the koi pond, then a rail
+      of three stages, one at a time: Connect to Google, Add accounts
+      (Google's warning and tick boxes drawn in advance; each account
+      then shows with its sync progress; "Add another"), Make it yours
+      (theme, accent, notifications, app icon; skippable with "Open").
+      Progress is saved, so quitting halfway resumes. Sign-in and first
+      sync failures are explained in terms of the Google steps (a
+      deleted client, still Internal, still Testing, the Gmail API off,
+      a box left unticked), with a way back. Tried here in WebKit
+      (`tests/browser/onboarding.spec.ts`). Notifications: macOS still
+      asks at the first launch, not from this stage. Owner to try with
+      `bun run clean-start`*
 - [ ] Credentials walkthrough in the app: one card per step (create a
       project; turn on the Gmail, People and Calendar APIs; consent
       screen, External; **Publish app**; create a Desktop client and
@@ -2689,13 +2703,27 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       Console page, a short explanation and a "Done" tick. It shows
       Google's "hasn't verified this app" screen in advance so it
       doesn't alarm anyone. Console addresses checked when building, as
-      Google moves them
+      Google moves them *Built 2026-10-27: five cards, each with a drawn
+      sketch of the Google page (the button to press glowing, not
+      screenshots, which go stale), copy buttons for every value Google
+      asks for, and "Open in Google Cloud". One page turns on all three
+      APIs at once. The Console addresses (`consoleUrl`) are Google's
+      current ones as far as could be checked without signing in; the
+      owner's trial confirms them*
 - [ ] Optional fast path for people with Google's `gcloud` tool: one
       copy-paste command that creates the project and turns on the
-      APIs (the consent screen and the client stay manual)
+      APIs (the consent screen and the client stay manual) *Built
+      2026-10-27: "I use gcloud" makes up a project ID, shows the one
+      command, and leaves three cards that open on that project*
 - [ ] Drop the JSON on the window, or choose it. The app checks it is a
       Desktop client with an ID and secret and says plainly what's
       wrong if not (e.g. a Web client). Ends with a test sign-in
+      *Built 2026-10-27 (`auth::config::check`): drop anywhere on the
+      window, choose it, "Watch my Downloads" (the owner's choice: a
+      button, as macOS asks once), or paste the ID and secret. A Web
+      client, a service-account key, a missing secret or a wrong ID
+      each get their own message. The test sign-in is the first
+      account's sign-in*
 - [ ] If Google refuses a sign-in about 7 days later (`invalid_grant`),
       the app explains the project is probably still in "Testing" and
       links to "Publish app"

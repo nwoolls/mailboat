@@ -21,6 +21,9 @@ for how it is built.
 ## Google setup (once)
 
 Mailboat uses your own Google OAuth client, so no app review is needed.
+On first launch the app walks you through it: one card per step, each
+with a button that opens the right Google Cloud page, then you drop the
+downloaded file on the window. In short:
 
 1. In [Google Cloud Console](https://console.cloud.google.com), create a
    project and enable the **Gmail API**, the **People API** (address
@@ -30,7 +33,7 @@ Mailboat uses your own Google OAuth client, so no app review is needed.
 2. Configure the OAuth consent screen as **External** and set it to
    **In production** (Testing mode expires sign-ins every 7 days).
 3. Create an OAuth client ID of type **Desktop app** and download its JSON.
-4. Save the file as
+4. Give the file to the app (drop it on the window), or save it yourself as
    `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`.
    It is never committed. Alternatively set `MAILBOAT_GOOGLE_CLIENT_ID` and
    `MAILBOAT_GOOGLE_CLIENT_SECRET`.

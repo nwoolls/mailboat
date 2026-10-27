@@ -20,7 +20,9 @@ import {
 import { Splitter } from "../features/layout/ui/Splitter";
 import { useElementWidth } from "../features/layout/ui/useElementWidth";
 import { panels, setSavedReaderOpen, setSidebarOpen } from "../features/layout/ui/panels";
-import { Welcome } from "../features/accounts/ui/Welcome";
+import { Onboarding } from "../features/onboarding/ui/Onboarding";
+import { onboarding } from "../features/onboarding/ui/progress";
+import { showOnboarding } from "../features/onboarding/model/onboarding";
 import {
   moveKeyboard,
   moveSelection,
@@ -205,6 +207,7 @@ export function Shell() {
   useIgnoreStrayDrops();
   const accountsQuery = useAccounts();
   const setup = useOAuthSetup();
+  const onboardingProgress = onboarding.use();
   const syncStates = useSyncStates().data ?? [];
   const labels = useLabels({ kind: "all" }).data ?? [];
   const flags = useFeatureFlags();
@@ -907,7 +910,8 @@ export function Shell() {
   ]);
 
   if (accountsQuery.isPending) return null;
-  if (accountList.length === 0) return <Welcome setup={setup.data} />;
+  if (showOnboarding(accountList.length, onboardingProgress))
+    return <Onboarding setup={setup.data} accounts={accountList} />;
 
   // Settings shows its sections in the sidebar, so the sidebar shows too.
   const sidebarShown = sidebarOpen || settings !== null;

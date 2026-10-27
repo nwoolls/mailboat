@@ -984,3 +984,67 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
     transition: none;
   }
 }
+
+/* Onboarding (features/onboarding). Each stage slides in from the side
+   it comes from; a step's card rises; the button to press on a drawn
+   Google page glows; a finished step's tick pops. */
+.onb-stage {
+  animation: onb-stage 420ms var(--motion-ease-out) both;
+}
+.onb-stage[data-back] {
+  animation-name: onb-stage-back;
+}
+@keyframes onb-stage {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes onb-stage-back {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+.onb-rise {
+  animation: empty-rise 360ms var(--motion-ease-out) both;
+}
+.onb-glow {
+  position: relative;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent);
+  animation: onb-glow 1.8s ease-out infinite;
+}
+@keyframes onb-glow {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+.onb-tick {
+  animation: onb-tick 420ms var(--motion-ease-out) both;
+}
+@keyframes onb-tick {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+  }
+}
+/* A file dragged over the window. */
+.onb-drop[data-over] {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .onb-stage,
+  .onb-rise,
+  .onb-glow,
+  .onb-tick {
+    animation: none;
+  }
+}

@@ -1,0 +1,239 @@
+/**
+ * The first-launch flow (Milestone 12): welcome, connect to Google (the
+ * user's own OAuth client), add accounts, make it yours. Pure logic here;
+ * the screens are in `../ui`.
+ */
+
+/** The flow's stages, in order; the rail on the left lists them. */
+export const STAGES = ["welcome", "google", "accounts", "yours"] as const;
+export type Stage = (typeof STAGES)[number];
+
+/** How the user sets up Google: guided cards, `gcloud`, or a file they have. */
+export type GooglePath = "guide" | "gcloud" | "have";
+
+/** Progress, kept in the web view's storage so quitting halfway resumes. */
+export type Progress = {
+  stage: Stage;
+  /** Chosen on the Google stage; null until then. */
+  path: GooglePath | null;
+  /** The guided steps ticked "Done". */
+  done: GuideStepId[];
+  /** The `gcloud` path's project ID, made up once so the command is stable. */
+  projectId: string | null;
+  /** Finished (or skipped to the end): the inbox shows from now on. */
+  finished: boolean;
+  /**
+   * Whether anything was saved yet. Only onboarding saves progress, so
+   * someone who had accounts before it existed never sees it.
+   */
+  started: boolean;
+};
+
+export const ONBOARDING_KEY = "onboarding";
+
+export const FRESH: Progress = {
+  stage: "welcome",
+  path: null,
+  done: [],
+  projectId: null,
+  finished: false,
+  started: false,
+};
+
+/** Saved progress; anything missing or unknown is a fresh start. */
+export function parseProgress(raw: string | null): Progress {
+  let saved: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = raw ? JSON.parse(raw) : {};
+    if (parsed && typeof parsed === "object") saved = parsed as Record<string, unknown>;
+  } catch {
+    // A broken value starts over.
+  }
+  const stage = STAGES.find((s) => s === saved.stage) ?? FRESH.stage;
+  const path = (["guide", "gcloud", "have"] as const).find((p) => p === saved.path) ?? null;
+  const done = Array.isArray(saved.done)
+    ? GUIDE_STEP_IDS.filter((id) => (saved.done as unknown[]).includes(id))
+    : [];
+  const projectId =
+    typeof saved.projectId === "string" && PROJECT_ID.test(saved.projectId)
+      ? saved.projectId
+      : null;
+  return {
+    stage,
+    path,
+    done,
+    projectId,
+    finished: saved.finished === true,
+    started: raw !== null,
+  };
+}
+
+/**
+ * Whether the window shows onboarding instead of the mail: always with no
+ * accounts, and after the first sign-in until the flow is finished.
+ */
+export function showOnboarding(accountCount: number, progress: Progress): boolean {
+  if (accountCount === 0) return true;
+  return progress.started && !progress.finished;
+}
+
+/**
+ * The stage after `stage`, or null at the end. Past Google when a client
+ * is already set up (signing in again after removing every account, or
+ * the env-var client), unless the user went there on purpose.
+ */
+export function nextStage(stage: Stage, configured: boolean): Stage | null {
+  if (stage === "welcome" && configured) return "accounts";
+  return STAGES[STAGES.indexOf(stage) + 1] ?? null;
+}
+
+// --- Google Cloud --------------------------------------------------------
+
+/** The guided steps, one card each, in order. */
+export const GUIDE_STEP_IDS = ["project", "apis", "branding", "publish", "client"] as const;
+export type GuideStepId = (typeof GUIDE_STEP_IDS)[number];
+
+/** The APIs the app uses: mail, address suggestions, invitations. */
+export const APIS = [
+  "gmail.googleapis.com",
+  "people.googleapis.com",
+  "calendar-json.googleapis.com",
+] as const;
+
+const CONSOLE = "https://console.cloud.google.com";
+
+/**
+ * The Google Cloud console page for a step. With a project ID (the `gcloud`
+ * path knows it) the page opens on that project; without one, the console
+ * stays on the project last opened, which is the one just created.
+ */
+export function consoleUrl(step: GuideStepId, projectId: string | null): string {
+  const path = {
+    project: "/projectcreate",
+    apis: `/flows/enableapi?apiid=${APIS.join(",")}`,
+    branding: "/auth/overview",
+    publish: "/auth/audience",
+    client: "/auth/clients/create",
+  }[step];
+  if (!projectId || step === "project") return CONSOLE + path;
+  return `${CONSOLE}${path}${path.includes("?") ? "&" : "?"}project=${projectId}`;
+}
+
+/** The first step not yet ticked, or null when all are. */
+export function currentStep(done: readonly GuideStepId[], path: GooglePath | null) {
+  const skipped = path === "gcloud" ? ["project", "apis"] : [];
+  return GUIDE_STEP_IDS.find((id) => !done.includes(id) && !skipped.includes(id)) ?? null;
+}
+
+/** The steps the chosen path shows (`gcloud` does the first two itself). */
+export function stepsFor(path: GooglePath | null): GuideStepId[] {
+  return path === "gcloud"
+    ? GUIDE_STEP_IDS.filter((id) => id !== "project" && id !== "apis")
+    : [...GUIDE_STEP_IDS];
+}
+
+/** Ticks (or unticks) a step. */
+export function toggleStep(done: readonly GuideStepId[], step: GuideStepId): GuideStepId[] {
+  return done.includes(step)
+    ? done.filter((id) => id !== step)
+    : GUIDE_STEP_IDS.filter((id) => id === step || done.includes(id));
+}
+
+// Google: 6 to 30 lowercase letters, digits or hyphens, starting with a
+// letter and not ending with a hyphen.
+const PROJECT_ID = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
+
+/** A project ID for the `gcloud` path: the app's name and a random tail. */
+export function makeProjectId(appName: string, random: () => number): string {
+  const base =
+    appName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .replace(/^[^a-z]+/, "")
+      .slice(0, 20) || "mail";
+  let tail = "";
+  while (tail.length < 6) tail += Math.floor(random() * 36).toString(36);
+  return `${base}-${tail}`;
+}
+
+/** The one command that creates the project and turns on the APIs. */
+export function gcloudCommand(projectId: string, appName: string): string {
+  return (
+    `gcloud projects create ${projectId} --name="${appName.replace(/["\\$`]/g, "")}" && ` +
+    `gcloud services enable ${APIS.join(" ")} --project=${projectId}`
+  );
+}
+
+/**
+ * A client file from a pasted client ID and secret (Google's "client
+ * created" popup shows both), in the shape Google downloads, for Rust to
+ * check like any other.
+ */
+export function clientFileFromPaste(clientId: string, clientSecret: string): string {
+  return JSON.stringify({
+    installed: {
+      client_id: clientId.trim(),
+      client_secret: clientSecret.trim(),
+      redirect_uris: ["http://localhost"],
+    },
+  });
+}
+
+// --- Messages --------------------------------------------------------------
+
+/** An error's message without Rust's category prefix ("invalid input: …"). */
+export function plainError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/^(invalid input|sign-in required|configuration error): /, "");
+}
+
+/** Which stage fixes a sign-in or sync problem, with what to tell the user. */
+export type Advice = { message: string; fix: "client" | "apis" | "publish" | null };
+
+/**
+ * A sign-in that failed during onboarding, explained in terms of the
+ * Google steps. Google's error codes are in the message.
+ */
+export function explainSignInError(message: string): Advice {
+  if (/invalid_client|unauthorized_client|deleted_client/.test(message))
+    return {
+      message:
+        "Google didn’t recognise the client in your file. It may have been deleted, or the file is from another project. Create a new Desktop client and give its file here.",
+      fix: "client",
+    };
+  if (/org_internal/.test(message))
+    return {
+      message:
+        "The app’s audience is set to Internal, which only lets in accounts from your Google Workspace organisation. Change it to External on the Audience page.",
+      fix: "publish",
+    };
+  if (/access_denied/.test(message))
+    return {
+      message:
+        "Google said no. If it mentioned test users, the app is still in Testing: publish it on the Audience page. If you pressed Cancel, just sign in again.",
+      fix: "publish",
+    };
+  return { message, fix: null };
+}
+
+/**
+ * An account's first sync that failed, explained when it's something the
+ * Google steps cover. Null when it's anything else (shown as it is).
+ */
+export function explainSyncError(message: string | null): Advice | null {
+  if (!message) return null;
+  if (/has not been used|is disabled|SERVICE_DISABLED|accessNotConfigured/.test(message))
+    return {
+      message:
+        "Google says the Gmail API isn’t turned on in your project. Turn on the APIs, wait a minute, and it will sync by itself.",
+      fix: "apis",
+    };
+  if (/insufficient|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(message))
+    return {
+      message:
+        "This sign-in didn’t allow reading mail: a box was left unticked on Google’s screen. Sign in again and tick them all.",
+      fix: null,
+    };
+  return null;
+}

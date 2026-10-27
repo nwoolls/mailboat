@@ -43,6 +43,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         .commands(collect_commands![
             commands::accounts_list,
             commands::oauth_setup,
+            commands::oauth_client_save,
+            commands::oauth_client_from_downloads,
             commands::account_add,
             commands::account_add_cancel,
             commands::account_remove,

@@ -9,6 +9,23 @@ export const commands = {
 	accountsList: () => typedError<Account[], AppError>(__TAURI_INVOKE("accounts_list")),
 	oauthSetup: () => __TAURI_INVOKE<OAuthSetup>("oauth_setup"),
 	/**
+	 *  Checks a Google client file given during setup (dropped, chosen, or
+	 *  built from a pasted ID and secret) and saves it as the app's client.
+	 *  Says plainly what's wrong with any other file.
+	 */
+	oauthClientSave: (text: string) => typedError<CheckedClient, AppError>(__TAURI_INVOKE("oauth_client_save", { text })),
+	/**
+	 *  Looks in Downloads for the client file Google's console just
+	 *  downloaded (in the last hour) and saves it if found. Asked for only
+	 *  when the user chooses "Watch my Downloads" (macOS asks once to allow
+	 *  it).
+	 */
+	oauthClientFromDownloads: () => typedError<{
+	clientId: string,
+	/**  The Google Cloud project it belongs to, when the file names it. */
+	projectId: string | null,
+} | null, AppError>(__TAURI_INVOKE("oauth_client_from_downloads")),
+	/**
 	 *  Opens Google sign-in in the browser and adds (or re-authorizes) the
 	 *  account that signs in. Signing in again with a connected account
 	 *  refreshes it instead of creating a duplicate. A second call cancels a
@@ -649,6 +666,16 @@ export type ChatRole =
 export type ChatTurn = {
 	role: ChatRole,
 	text: string,
+};
+
+/**
+ *  A client file that passed `check`: what the setup screen shows of it.
+ *  Never the secret.
+ */
+export type CheckedClient = {
+	clientId: string,
+	/**  The Google Cloud project it belongs to, when the file names it. */
+	projectId: string | null,
 };
 
 /**  Something on your calendar at the same time. */
