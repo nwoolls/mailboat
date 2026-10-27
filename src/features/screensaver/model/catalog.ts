@@ -34,7 +34,13 @@ export const SCREENSAVERS = [
     // (owner, 2026-10-26: "make the koi pond higher res").
     cellPx: 2,
   },
-  { id: "fireflies", label: "Fireflies", make: (s: SceneSetup) => new FireflyScene(s) },
+  {
+    id: "fireflies",
+    label: "Fireflies",
+    make: (s: SceneSetup) => new FireflyScene(s),
+    // Finer, so each flash can glow softly (UX Spike 4).
+    cellPx: 2,
+  },
   { id: "lava", label: "Lava lamp", make: (s: SceneSetup) => new LavaScene(s) },
 ] as const satisfies readonly {
   id: string;

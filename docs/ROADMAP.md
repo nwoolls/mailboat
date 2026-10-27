@@ -2480,6 +2480,13 @@ one at a time.*
             pointer wipes a clear streak, both fogging over again.
             Condensation beads are faint. *Owner, 2026-10-26: "I dig it
             very much"*
+      - [x] Fireflies *(2026-10-26)*: 2px cells; each flash is a soft
+            round glow fading into the background, accent at its rim to
+            a pale accent at its heart (never white, which vanished on a
+            light background), swelling quickly and fading; nearby glows
+            add up, so the gathered M glows as one shape. Farther flies
+            glow smaller and dimmer; between flashes a fly is a faint
+            speck. *Owner, 2026-10-26: "a marked improvement"*
 - [ ] And likely the toys too *(owner, 2026-10-26: "likely even the
       'games'")*: Pond, Bubble wrap, Sky
 - [ ] Maybe: a switch between pixel art and ASCII art for the
