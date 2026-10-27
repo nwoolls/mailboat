@@ -24,9 +24,7 @@ pub struct Db {
 /// The database's file name in the app's data folder.
 pub const FILE_NAME: &str = "mail.sqlite3";
 
-/// The database file in `dir`. (Before the names were neutral it was
-/// `<short name>.sqlite3`; the move to a new bundle ID, `carry_over`,
-/// renames it.)
+/// The database file in `dir`.
 pub fn path_in(dir: &Path) -> std::path::PathBuf {
     dir.join(FILE_NAME)
 }

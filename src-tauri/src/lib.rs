@@ -1,7 +1,6 @@
 mod ai;
 mod app_icon;
 mod badge;
-mod carry_over;
 mod codes;
 mod commands;
 mod dock;
@@ -234,13 +233,6 @@ pub fn run() {
                     logs: app.path().app_log_dir()?,
                 },
             )?;
-            // The first launch after a rename copies the previous bundle
-            // ID's mail, settings and sign-ins over.
-            let carried = if mode.is_normal() {
-                carry_over::run(app.handle(), mode.secrets().as_ref())?
-            } else {
-                None
-            };
             let db = Arc::new(Db::open(&mail_core::db::path_in(&dirs.data))?);
             let http = mail_core::reqwest::Client::builder()
                 .user_agent(format!(
@@ -257,9 +249,6 @@ pub fn run() {
             }
             .build()?;
             let sync_log = Arc::new(sync_log::SyncLog::open(&dirs.logs));
-            if let Some(line) = carried {
-                sync_log.note(&line);
-            }
             let supervisor = Supervisor::new(
                 tauri::async_runtime::handle().inner().clone(),
                 db.clone(),

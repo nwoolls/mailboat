@@ -9,7 +9,6 @@ pub mod attachments;
 pub mod auth;
 pub mod brand;
 pub mod calendar;
-pub mod carry_over;
 pub mod compose;
 pub mod db;
 pub mod demo;

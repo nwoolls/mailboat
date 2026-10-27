@@ -2365,7 +2365,7 @@ Name checks → Mailboat).*
         file. Dated history in ROADMAP and ARCHITECTURE stays as
         written. The local folder stays (renaming
         it would cut Claude Code off from this project's memory)
-- [ ] Rename to Mailboat *(started 2026-10-27)*:
+- [x] Rename to Mailboat *(started and finished 2026-10-27)*:
   - [x] The name people see: `brand.json`'s `name`, `tauri.conf.json`
         (product name, window titles), README and AGENTS.md. The app,
         its windows, menus, the dev build's `Mailboat.app` and the
@@ -2380,7 +2380,7 @@ Name checks → Mailboat).*
         `com.nwoolls.mailboat`, `MAILBOAT_GOOGLE_*`), together with the
         move below *(2026-10-27)*. `brand.json` keeps the previous short
         name and ID (`previous`) for the move
-- [ ] Move the owner's data, settings and keychain sign-ins to the new
+- [x] Move the owner's data, settings and keychain sign-ins to the new
       ID once, on the first launch after the rename, so nothing has to
       be signed in again (nobody else has installed it). Built
       *(2026-10-27)*: `mail_core::carry_over` **copies** rather than
@@ -2395,7 +2395,20 @@ Name checks → Mailboat).*
       Claude Code or Claude Desktop again replaces the old `mailboat` entry.
       Rehearsed on a copy of the owner's real data (2026-10-27): quick;
       the same accounts, emails, conversations and labels in both; integrity check ok; every file, none missed; both web
-      views' settings present. Waiting on the owner's first launch
+      views' settings present. *Owner, 2026-10-27: ran Mailboat on
+      macOS and Windows and sees the old data; the Mac's log: every file and its sign-ins carried over, none missed*
+- [x] Remove the move's code once both machines had moved *(2026-10-27)*:
+      `carry_over` (core and app), its rehearsal example, the settings
+      carry-over (`carryOver.ts`), replacing the old AI apps entry,
+      `brand.json`'s `previous`, and rusqlite's backup feature. Nobody
+      else ever installed Mailboat, so it would only be dead code in the
+      code review. Both web views already had every old setting under
+      `prefs.*`
+- [ ] Owner: delete the old copies once happy with Mailboat: the
+      `com.nwoolls.mailboat` folders in `~/Library` (Application Support,
+      Caches, Logs, WebKit), the `com.nwoolls.mailboat` keychain
+      entries, `target/debug/Mailboat.app`, and on Windows the Mailboat install
+      and its `com.nwoolls.mailboat` folders
 - [ ] Email on the domain for security reports and anything that
       shouldn't be a public GitHub issue (Cloudflare Email Routing,
       free, forwarding to the owner)

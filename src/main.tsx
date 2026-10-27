@@ -1,5 +1,3 @@
-// First, so settings saved under their old names are there to read.
-import "./shared/lib/carryOver";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
