@@ -2409,7 +2409,8 @@ to test a first launch over and over.*
       I see the AI in the list, in the previews, and I see the sign-in
       code card"*
   - [ ] The browser tests' harness reads `demo/mail.json` too (it still
-        has its own made-up data); the trailer (Milestone 16) will
+        has its own made-up data); the trailer (Milestone 16) will use
+        it too
 - [x] A clean-start option alongside it *(2026-10-26)*: the app started
       with an empty data folder of its own (no accounts, nothing in the
       keychain under that name), so a first launch can be tried without
