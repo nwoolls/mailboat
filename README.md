@@ -122,7 +122,7 @@ connection (MCP) stays with the normal copy.
 first, or start the built dev copy next to it:
 `target/debug/Mailboat.app/Contents/MacOS/mailboat --clean-start`. An installed
 copy takes the same flag: `open -n -a Mailboat --args --clean-start` on the
-Mac, `Mailboat.exe --clean-start` on Windows.
+Mac, `mailboat.exe --clean-start` on Windows.
 
 ## Windows (built on the Mac)
 

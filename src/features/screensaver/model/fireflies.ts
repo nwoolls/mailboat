@@ -12,7 +12,7 @@ import {
 /**
  * Fireflies at dusk. They drift and blink, and nudge each other's timing
  * whenever one flashes, so the swarm slowly falls into step. They drift
- * towards the pointer. Every so often they gather into the app's M above
+ * towards the pointer. Every so often they gather into the app icon's boat above
  * the icon, glow there a few seconds (the icon nods), and scatter again.
  */
 
@@ -40,7 +40,7 @@ export class FireflyScene implements Scene {
   private nodded = false;
   /** Scratch for the glows' light, one per cell. */
   private light = new Float32Array(0);
-  /** Points of the M, one per fly, while they gather. */
+  /** Points of the boat, one per fly, while they gather. */
   private targets: { x: number; y: number }[] | null = null;
 
   constructor(private readonly s: SceneSetup) {
@@ -67,7 +67,7 @@ export class FireflyScene implements Scene {
     this.t += dt;
     let nod = false;
     if (!this.targets && this.t >= this.gatherAt) {
-      this.targets = mPoints(s, COUNT);
+      this.targets = logoPoints(s, COUNT);
       this.nodded = false;
     } else if (this.targets && this.t >= this.gatherAt + GATHER_SECONDS) {
       this.targets = null;
@@ -130,7 +130,7 @@ export class FireflyScene implements Scene {
 
   /**
    * How bright a fly is now, 0 to 1: a flash that swells quickly and fades,
-   * then dark. Gathered in the M, they glow steadily, shimmering a little.
+   * then dark. Gathered in the boat, they glow steadily, shimmering a little.
    */
   private glow(f: Fly): number {
     if (this.targets) return 0.75 + 0.25 * Math.sin(this.t * 3 + f.x);
@@ -182,29 +182,36 @@ export class FireflyScene implements Scene {
 }
 
 /**
- * `n` points evenly along the app icon's M (two sides and the V between),
- * centred above the icon box, or high in the area without one.
+ * `n` points evenly around the app icon's paper boat (the hull and the
+ * sail rising from it), centred above the icon box, or high in the area
+ * without one.
  */
-export function mPoints(s: SceneSetup, n: number): { x: number; y: number }[] {
+export function logoPoints(s: SceneSetup, n: number): { x: number; y: number }[] {
   const w = Math.min(66, s.cols * 0.5);
   const h = w * 0.8;
   const cx = s.icon ? (s.icon.x0 + s.icon.x1) / 2 : s.cols / 2;
   const bottom = s.icon ? s.icon.y0 - 12 : s.rows * 0.4;
   const top = Math.max(3, bottom - h);
-  const l = cx - w / 2;
-  const r = cx + w / 2;
+  // The outline in the icon's own units (design/icon/app-icon.svg, the
+  // boat 684 wide and 468 high), scaled into the box.
+  const at = (x: number, y: number) =>
+    [cx - w / 2 + ((x - 170) / 684) * w, top + ((y - 282) / 468) * (bottom - top)] as const;
   const path = [
-    [l, bottom],
-    [l, top],
-    [cx, top + h * 0.55],
-    [r, top],
-    [r, bottom],
+    at(170, 570),
+    at(360.5, 570),
+    at(512, 282),
+    at(663.5, 570),
+    at(854, 570),
+    at(709, 750),
+    at(315, 750),
+    at(170, 570),
   ] as const;
   const lengths = path.slice(1).map((p, i) => Math.hypot(p[0] - path[i]![0], p[1] - path[i]![1]));
   const total = lengths.reduce((a, b) => a + b, 0);
   const out: { x: number; y: number }[] = [];
   for (let k = 0; k < n; k++) {
-    let d = (k / (n - 1)) * total;
+    // A closed outline: spread around it, so the last point isn't the first.
+    let d = (k / n) * total;
     let seg = 0;
     while (seg < lengths.length - 1 && d > lengths[seg]!) d -= lengths[seg++]!;
     const a = path[seg]!;

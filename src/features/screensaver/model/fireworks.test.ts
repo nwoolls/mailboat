@@ -14,13 +14,13 @@ describe("FireworksScene", () => {
     expect(most).toBeGreaterThan(100);
     // Left alone with no more launches, every spark goes out.
     for (const r of scene.rockets) r.vy = 0;
-    (scene as unknown as { nextLaunch: number; nextM: number }).nextLaunch = Infinity;
-    (scene as unknown as { nextLaunch: number; nextM: number }).nextM = Infinity;
+    (scene as unknown as { nextLaunch: number; nextLogo: number }).nextLaunch = Infinity;
+    (scene as unknown as { nextLaunch: number; nextLogo: number }).nextLogo = Infinity;
     for (let i = 0; i < 60 * 8; i++) scene.frame(1 / 60, null);
     expect(scene.sparks.length).toBe(0);
   });
 
-  it("bursts into the app's M now and then, and the icon nods", () => {
+  it("bursts into the app icon's boat now and then, and the icon nods", () => {
     const scene = new FireworksScene(testSetup(450, 300, seeded(2)));
     let nodded = false;
     for (let i = 0; i < 60 * 40 && !nodded; i++) nodded = !!scene.frame(1 / 60, null).nod;

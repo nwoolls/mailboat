@@ -1,6 +1,6 @@
-# Releasing the alternative name
+# Releasing Mailboat
 
-How Mailboat (to be renamed **the alternative name**) could reach other people. Three plans,
+How Mailboat (named Mailboat until 2026-10-27, then briefly to be Mailboat) could reach other people. Three plans,
 worked out with the owner on 2026-10-25.
 
 **Chosen (owner, 2026-10-25): Plan 3, the hybrid.** Open source first,
@@ -10,7 +10,7 @@ Plan 2), and a paid no-setup option later only if people want it
 accounts (GitHub, social media, Apple).
 
 - The work is in `docs/ROADMAP.md`, Milestones 10–18 (Release: the road
-  to an open-source the alternative name). Tasks are tracked there, not here.
+  to an open-source Mailboat). Tasks are tracked there, not here.
 - This document keeps the plans and research behind them. The lists
   under each plan are reference, not a checklist. Plans 1 and 2 were not
   chosen as such, but Plan 2 is Stage A, and Plan 1's Google and Polar
@@ -93,12 +93,12 @@ flowchart LR
 
 ### Google verification (prepared in groundwork, submitted after Checkpoint 1)
 
-the alternative name asks for restricted scopes (`gmail.modify`; `gmail.compose` and
+Mailboat asks for restricted scopes (`gmail.modify`; `gmail.compose` and
 `gmail.settings.basic` are believed restricted, to confirm on Google's
 list) and sensitive ones (contacts, calendar). An individual can get
 verified; it's paperwork and waiting (weeks to months).
 
-- New production OAuth client in a Cloud project named for the alternative name
+- New production OAuth client in a Cloud project named for Mailboat
       (the current one stays for development). Each account records its
       client (`accounts.oauth_client`), so both can coexist
 - Verify the domain in Google Search Console
@@ -108,7 +108,7 @@ verified; it's paperwork and waiting (weeks to months).
       with the client ID in the address bar, each scope in use
 - A written reason for each scope
 - Security assessment (CASA): Google requires it when restricted data
-      is stored on or sent to servers. the alternative name keeps mail on the device,
+      is stored on or sent to servers. Mailboat keeps mail on the device,
       and AI and MCP only send it where the user chooses, so ask to be
       exempt. If Google insists: yearly, a paid assessment
 - Until approved, the current "unverified, in production" client
@@ -170,7 +170,7 @@ verified; it's paperwork and waiting (weeks to months).
 ## Plan 2: Open source, bring your own Google credentials
 
 Each user makes their own Google OAuth client and gives its JSON file to
-the alternative name, which the app already supports (it's how the owner runs it today).
+Mailboat, which the app already supports (it's how the owner runs it today).
 Each user is then their own "developer" under Google's personal-use
 rules, so **there is no Google verification, no security assessment and
 no user limit**, and nothing to sell.
@@ -183,7 +183,7 @@ flowchart LR
   B --> C["Consent screen: name, External"]
   C --> D["Publish app"]
   D --> E["Create a Desktop client, download JSON"]
-  E --> F["Give the JSON to the alternative name, sign in, click past the warning"]
+  E --> F["Give the JSON to Mailboat, sign in, click past the warning"]
 ```
 
 - About 10–15 minutes in a console made for developers, and Google
@@ -232,7 +232,7 @@ A setup screen in the app (part of Onboarding), not just a web page:
 - Hosting on GitHub, all free for a public repo: Pages (website; or
       keep Cloudflare), Releases (installers and the update file),
       Actions (unlimited minutes, Mac builds included). The domain and
-      update address stay on `altname` either way
+      update address stay on `<domain>` either way
 - Signing: still advised (the signing fees). Unsigned, Mac users must
       allow the app in System Settings, Windows shows a SmartScreen
       warning, and Homebrew announced it would drop casks that aren't
@@ -252,7 +252,7 @@ A setup screen in the app (part of Onboarding), not just a web page:
 ## Plan 3: Hybrid, open source first, paid later (chosen)
 
 Chosen by the owner, 2026-10-25. Start exactly as Plan 2. If people want it,
-add a paid option whose value is **convenience**: the alternative name's own
+add a paid option whose value is **convenience**: Mailboat's own
 Google-verified credentials, so no setup at all. Same app, same features
 for everyone.
 
@@ -260,7 +260,7 @@ for everyone.
 flowchart LR
   A["Stage A: Plan 2, open source"] --> C{"Do people want it?"}
   C -->|"No"| K["Stays a free open-source app"]
-  C -->|"Yes"| G["Google verification for the alternative name's own client"]
+  C -->|"Yes"| G["Google verification for Mailboat's own client"]
   G --> B["Stage B: optional subscription for no-setup sign-in"]
 ```
 
@@ -276,7 +276,7 @@ flowchart LR
 - **Each account already records its OAuth client**
   (`accounts.oauth_client`), so one app can hold accounts signed in
   both ways.
-- **the alternative name's own client ID and secret only go into official builds**, at
+- **Mailboat's own client ID and secret only go into official builds**, at
   build time. The public code has none. Someone could pull them out of an
   official build and use them in their own, as with any desktop app;
   that breaks Google's terms, and it's accepted as rare.
@@ -290,7 +290,7 @@ Plan 2, in full.
 
 ### Stage B (only if Stage A's checkpoint says yes)
 
-- Plan 1's Google verification (all of it), for the alternative name's own client
+- Plan 1's Google verification (all of it), for Mailboat's own client
 - Plan 1's Polar store and in-app licence, used only when the user
       picks "Subscribe"
 - Price to decide then: the paid option buys setup-free sign-in, not
@@ -305,7 +305,7 @@ Plan 2, in full.
 Decide these before the first public release, whatever the plan:
 
 - **Own the domain and point everything at it.** The update address
-  baked into every installed app should be `https://altname/…`, not a
+  baked into every installed app should be `https://<domain>/…`, not a
   GitHub or Cloudflare address, so hosting can change without stranding
   users.
 - **Keep the copyright in one pair of hands.** If only the owner's
@@ -356,6 +356,16 @@ has an app on Apple's store. "the alternative name": `altname`, `altname.example
 other trades; the alternative name XG is museum software. `altname` taken on GitHub and
 Bluesky; `altname` free on both. "another candidate" was rejected: a registered US
 trademark for software (another company, No. 4956463).
+
+### Mailboat (2026-10-27)
+
+The owner chose **Mailboat** over the alternative name. Domains checked that day
+(whois and RDAP): `mailboat.com` taken since 1996, `mailboat.app` taken
+(registered 2026-04-12, on Cloudflare's name servers), `getmailboat.com`
+registered 2026-09-30 at Cloudflare (the owner's, or someone else's: to
+confirm). Free: `mailboatapp.com`, `usemailboat.com`,
+`trymailboat.com`. Trademarks, the Mac App Store, GitHub and social
+handles not checked yet.
 
 ## Sources
 

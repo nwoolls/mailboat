@@ -1,9 +1,11 @@
 # App icon
 
-- `app-icon.svg` is the current icon, tile included: round three's N7,
-  the M's V folding over the front of the sides like an envelope's flap. The classic icons in
+- `app-icon.svg` is the current icon, tile included: round 12's P1, a
+  paper boat for the name Mailboat (owner's pick, 2026-10-27), the
+  sail's two halves behind the hull. Before it, the M of the app's old
+  name (round three's N7). The classic icons in
   `src-tauri/icons/` (Windows, older macOS, the fallback) come from it.
-- `app-icon-layer.svg` is the same M without the tile, on Icon Composer's
+- `app-icon-layer.svg` is the same boat without the tile, on Icon Composer's
   1024px canvas. It is the artwork layer of `src-tauri/macos/AppIcon.icon`
   (whose fill is the tile colour), compiled to `src-tauri/macos/Assets.car`.
   On macOS 26+ the system draws that with its glass rim and depth.
@@ -12,9 +14,9 @@
 - `choices/` holds the icons offered in Settings → Appearance → App icon
   (run `scripts/build-icon-choices.sh` after changing one, to re-render the
   PNGs the Dock uses; the order Settings shows them in is set in
-  `src-tauri/src/app_icon.rs`): the envelope-fold M (N7, round three;
-  fold style S4 before) in 17 colours on a flat
-  near-black tile. The earlier glass icon (`glass-midnight.svg`, now in
+  `src-tauri/src/app_icon.rs`): the paper boat (P1, round 12; the
+  envelope-fold M, N7, before) in 17 colours on a flat near-black tile.
+  The sail's near half is the colour 20% toward black, its far half 40%. The earlier glass icon (`glass-midnight.svg`, now in
   this folder) was offered too, until the owner dropped it as the odd one
   out (2026-10-17). The
   current icon is `C17-system-blue` (tried before: `C13-green`, `C04-cobalt`,
@@ -59,3 +61,13 @@
      The owner picked N7 from sheet 10 (2026-10-18): every choice, the
      built-in icon and the glass layer now use it, each colour keeping its
      darker shade for the sides
+  12. Mailboat (2026-10-27): the app is renamed Mailboat,
+     so the icon becomes a boat in the same ribbon style and system blue,
+     on the same tile. Front pieces bright, pieces behind 20% darker (40%
+     for the furthest), the fold shadow where one lies over another. T1
+     a tug (raked stack, wheelhouse with a window, raised bow); T2 the
+     fewest pieces; T3 T1 with an envelope for a wheelhouse; T4 T1 on a
+     ribbon wave; P1 a paper boat; P2 a paper boat folded from an
+     envelope (the M's V across the hull); S1 a ship with an envelope
+     for a sail. Sources in `boat/`. The owner picked P1 (2026-10-27):
+     every choice, the built-in icon and the glass layer now use it

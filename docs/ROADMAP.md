@@ -2271,7 +2271,7 @@ Later.
       Windows build: Gmail shows none and it's not actionable)*. Inbox,
       Drafts and labels keep theirs
 
-## Release: the road to an open-source the alternative name
+## Release: the road to an open-source Mailboat
 
 *The owner chose Plan 3 of `docs/RELEASE.md` on 2026-10-25: release as
 open source first, with each user bringing their own Google
@@ -2291,7 +2291,7 @@ review, which comes before the code is made public.*
 ```mermaid
 flowchart LR
   AI["AI Spike 2"] --> W["9: Windows"]
-  W --> M10["10: the alternative name"]
+  W --> M10["10: Mailboat"]
   M10 --> M11["11: Demo mode"]
   M11 --> M12["12: Onboarding and own credentials"]
   M12 --> M13["13: Code review"]
@@ -2302,20 +2302,26 @@ flowchart LR
   M17 -.->|"only if people want it"| M18["18: Paid option"]
 ```
 
-## Milestone 10: the alternative name
+## Milestone 10: Mailboat
 
-*Done when: the app is called the alternative name everywhere a person can see it, the
+*Done when: the app is called Mailboat everywhere a person can see it, the
 domains are the owner's, and the owner's own setup has moved over.
 First of the release milestones, so the onboarding text, demo data and
 screenshots that follow carry the new name from the start.*
 
-- [ ] Owner, first: register `altname` and `altname.example` at
-      Cloudflare Registrar (a yearly fee; owner details hidden in
-      public records), so nobody else can take them once the name
-      starts to appear. Cheap to drop if the trademark search below
-      turns something up. Name checks already done are in
-      `docs/RELEASE.md` → Name checks
-- [ ] Owner: search "the alternative name" for software at tmsearch.uspto.gov
+*Owner, 2026-10-27: the name is **Mailboat** (not the alternative name). `<domain>`
+below and in the later milestones stands for the domain still to be
+chosen: `mailboat.app` and `mailboat.com` are taken (see
+`docs/RELEASE.md` → Name checks → Mailboat).*
+
+- [ ] Owner, first: choose and register the domains at Cloudflare
+      Registrar (a yearly fee; owner details hidden in public
+      records), so nobody else can take them once the name starts to
+      appear. `getmailboat.com` was registered at Cloudflare on
+      2026-09-30 (the owner's?); `mailboatapp.com`, `usemailboat.com`
+      and `trymailboat.com` were free on 2026-10-27. Cheap to drop if
+      the trademark search below turns something up
+- [ ] Owner: search "Mailboat" for software at tmsearch.uspto.gov
 - [x] Neutral code names, one brand file *(owner, 2026-10-26: the name
       isn't settled yet, so the code shouldn't depend on it)*. Every
       name that isn't branding becomes neutral, and everything that is
@@ -2354,13 +2360,24 @@ screenshots that follow carry the new name from the start.*
         file. Dated history in ROADMAP and ARCHITECTURE stays as
         written. The local folder stays (renaming
         it would cut Claude Code off from this project's memory)
-- [ ] Rename to the chosen name (the alternative name, unless the owner picks
-      another): `brand.json`, `tauri.conf.json`, the icons and the
-      README/CLAUDE.md text. Changes the bundle ID (`com.nwoolls.mailboat`
-      to e.g. `com.nwoolls.altname`, which names the data folders, the
-      keychain entries, the MCP socket and pipe, the sync log folder and
-      the OAuth client file's folder) and the `MAILBOAT_GOOGLE_*`
-      variables
+- [ ] Rename to Mailboat *(started 2026-10-27)*:
+  - [x] The name people see: `brand.json`'s `name`, `tauri.conf.json`
+        (product name, window titles), README and AGENTS.md. The app,
+        its windows, menus, the dev build's `Mailboat.app` and the
+        Windows installer now say Mailboat
+  - [x] The icon: a paper boat in the ribbon style, in all 17 current
+        colours, system blue built in. The owner picked P1 from seven
+        boats (sheet 12 in `design/icon/sheets/`), 2026-10-27.
+        The fireflies and fireworks screensavers now gather into the
+        boat, not the M (owner report, same day)
+  - [ ] The short name, bundle ID and environment prefix (`mailboat`,
+        `com.nwoolls.mailboat`, `MAILBOAT_GOOGLE_*` to `mailboat`,
+        `com.nwoolls.mailboat`, `MAILBOAT_GOOGLE_*`), together with the
+        move below: they name the data folders, the keychain entries,
+        the MCP socket and pipe, the sync log folder, the OAuth client
+        file's folder, and the old database and settings names the app
+        still looks for, so changing them alone would start the app
+        empty
 - [ ] Move the owner's data, settings (including the web view's saved
       settings, which live under the bundle ID too) and keychain
       sign-ins to the new ID once, renaming `mailboat.sqlite3` to
@@ -2377,7 +2394,7 @@ screenshots that follow carry the new name from the start.*
 
 ## Milestone 11: Demo mode
 
-*Done when: the alternative name can be started full of made-up mail, with no Google
+*Done when: Mailboat can be started full of made-up mail, with no Google
 connection, for screenshots, videos and trying things safely. Comes
 before onboarding because its separate data folder is also the easy way
 to test a first launch over and over.*
@@ -2619,7 +2636,7 @@ one at a time.*
 
 ## Milestone 12: Onboarding and bring your own Google credentials
 
-*Done when: someone who has never used Google Cloud can install the alternative name
+*Done when: someone who has never used Google Cloud can install Mailboat
 and, inside the app, get from nothing to their mail in about 15
 minutes. Details: `docs/RELEASE.md` → Plan 2.*
 
@@ -2710,7 +2727,7 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
 ### The README
 
 - [ ] A README that sells it, written for people, not agents:
-      - A hero image or short GIF of the alternative name at work (from Demo mode,
+      - A hero image or short GIF of Mailboat at work (from Demo mode,
         or a cut of the trailer once it exists), in light and dark
         (GitHub shows the one matching the reader's theme)
       - One line on what it is, then badges: build status, licence,
@@ -2724,7 +2741,7 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       - The privacy promise in plain words: mail stays on your device;
         what AI and AI apps send, and only when you choose; no
         tracking, no servers of ours
-      - A keyboard shortcut table, and how the alternative name compares with Gmail
+      - A keyboard shortcut table, and how Mailboat compares with Gmail
         on the web and with Mimestream
       - How it's built (Tauri, Rust, React), with the architecture
         diagram (GitHub draws Mermaid), and building from source
@@ -2792,7 +2809,7 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
 
 ## Milestone 15: Signed builds and automatic updates
 
-*Done when: a person can download the alternative name for Mac or Windows from GitHub,
+*Done when: a person can download Mailboat for Mac or Windows from GitHub,
 open it without security warnings, and later receive updates by
 themselves.*
 
@@ -2808,7 +2825,7 @@ themselves.*
 - [ ] Automatic updates *(added 2026-10-19, settings comparison;
       Mimestream has an update channel setting)*: Tauri's updater plugin
       with its own signing key. The address built into the app is on
-      `altname` (e.g. `https://altname/updates/latest.json`), never
+      `<domain>` (e.g. `https://<domain>/updates/latest.json`), never
       a GitHub address, so hosting can change without stranding anyone.
       Installers live on GitHub Releases
 - [ ] Version numbers and changelog *(owner, 2026-10-25: semversioner
@@ -2853,23 +2870,23 @@ themselves.*
 
 ## Milestone 16: Website
 
-*Done when: `altname` explains the alternative name, shows it, and lets people
+*Done when: `<domain>` explains Mailboat, shows it, and lets people
 download it and follow the setup guide.*
 
 - [ ] Website: plain HTML/CSS/JS on GitHub Pages (free; Cloudflare
-      Pages if needed later), on `altname`: home with screenshots
+      Pages if needed later), on `<domain>`: home with screenshots
       from Demo mode, download (latest release), the credentials setup
       guide with a short screen recording, privacy policy (what Google
-      data the alternative name uses; it stays on the device), terms of use (limits
+      data Mailboat uses; it stays on the device), terms of use (limits
       liability, as there's no company), link to GitHub. Also serves
       the update file (Milestone 15)
 - [ ] Teaser trailer *(owner, 2026-10-22; moved from the Release
       Spike)*: a short video made in code with Remotion (videos written
-      in React), drawing the alternative name's real components with the demo data, as
+      in React), drawing Mailboat's real components with the demo data, as
       the browser tests do. Scripted camera moves, a gliding cursor,
       typing, the AI panel opening, mail arriving; rendered to MP4 at
       16:9, square and vertical. Not AI-generated video: it garbles text
-      and invents UI that isn't the alternative name's. Limits: it renders in
+      and invents UI that isn't Mailboat's. Limits: it renders in
       Chromium, so the window's glass is imitated over a chosen
       wallpaper rather than macOS's own; music or a voiceover come from
       the owner (cuts can be timed to a chosen track). Check Remotion's
@@ -2878,12 +2895,12 @@ download it and follow the setup guide.*
 
 ## Milestone 17: Launch
 
-*Done when: the alternative name has been announced once in the right places, and the
+*Done when: Mailboat has been announced once in the right places, and the
 owner has decided, from what happened, whether Milestone 18 is worth
 starting.*
 
 - [ ] Social accounts: the owner's personal ones are fine for an open
-      source launch. Optionally reserve `altname` on X, Bluesky and
+      source launch. Optionally reserve `mailboatapp` on X, Bluesky and
       GitHub anyway, so the name is there if a paid version comes.
       Reddit filters new accounts with no history: take part in a few
       communities for some weeks before posting
@@ -2895,16 +2912,16 @@ starting.*
 - [ ] Checkpoint, about a month later, with the owner: downloads
       (GitHub counts them), stars, issues from people who finished the
       setup, and whether people say they'd pay to skip it. Decide:
-      the alternative name stays free and open source, or Milestone 18 begins
+      Mailboat stays free and open source, or Milestone 18 begins
 
 ## Milestone 18: Paid option (only if the Milestone 17 checkpoint says yes)
 
-*Done when: people can subscribe to sign in with the alternative name's own
+*Done when: people can subscribe to sign in with Mailboat's own
 Google-verified credentials and no setup, in the same app as the free
 route. Plan 3, Stage B, in `docs/RELEASE.md`; its Google and Polar
 steps are those of Plan 1 there.*
 
-- [ ] Google verification for the alternative name's own OAuth client: domain verified
+- [ ] Google verification for Mailboat's own OAuth client: domain verified
       in Search Console, consent screen (name, logo, home page, privacy
       policy, terms), demo video, a reason for each scope, and the case
       for no security assessment (mail stays on the device). If Google

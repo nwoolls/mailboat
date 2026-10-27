@@ -1,4 +1,4 @@
-import { mPoints } from "./fireflies";
+import { logoPoints } from "./fireflies";
 import {
   blend,
   clamp,
@@ -20,13 +20,13 @@ import {
  * start white-hot, cool to the shell's colour and fade; each burst lights
  * a brief soft flash and leaves faint smoke drifting up. Farther shells are
  * smaller and dimmer, behind the nearer ones. Now and then one bursts into
- * the app's M above the icon, which nods. Moving the pointer aims the next
+ * the app icon's boat above the icon, which nods. Moving the pointer aims the next
  * rocket at it. On a light page it asks for a night sky (`night`).
  *
  * Drawn on 2px cells (see the catalog). Distances are in cells.
  */
 
-type Shell = "peony" | "chrysanthemum" | "ring" | "willow" | "crackle" | "m";
+type Shell = "peony" | "chrysanthemum" | "ring" | "willow" | "crackle" | "logo";
 type Spark = {
   x: number;
   y: number;
@@ -46,7 +46,7 @@ type Spark = {
   depth: number;
   /** It pops into tiny flashes as it dies. */
   crackle: boolean;
-  /** For the M: where it settles, while it holds the shape. */
+  /** For the boat: where it settles, while it holds the shape. */
   to?: { x: number; y: number };
   /** A tiny flash or rocket trail: no glow, quick. */
   small: boolean;
@@ -84,8 +84,8 @@ const COLOURS: [Slot, Slot][] = [
   [SLOT.accent, SLOT.bright],
   [SLOT.bright, SLOT.bright],
 ];
-/** Seconds between the app's M bursts. */
-const M_EVERY = 45;
+/** Seconds between the app icon's boat bursts. */
+const LOGO_EVERY = 45;
 
 export class FireworksScene implements Scene {
   readonly night = true;
@@ -94,10 +94,10 @@ export class FireworksScene implements Scene {
   private readonly puffs: Puff[] = [];
   private t = 0;
   private nextLaunch = 0.4;
-  private nextM = M_EVERY * 0.5;
+  private nextLogo = LOGO_EVERY * 0.5;
   private lastAimed = -Infinity;
   private last: Pointer = null;
-  private mFormed = false;
+  private logoFormed = false;
   /** Bursts so far (for tests). */
   bursts = 0;
 
@@ -137,12 +137,12 @@ export class FireworksScene implements Scene {
       this.lastAimed = this.t;
       this.launch(pointer.x, pointer.y, SHELLS[Math.floor(rng() * SHELLS.length)]!, 0);
     }
-    if (this.t >= this.nextM) {
-      this.nextM = this.t + M_EVERY;
-      const at = mPoints(this.s, 40);
+    if (this.t >= this.nextLogo) {
+      this.nextLogo = this.t + LOGO_EVERY;
+      const at = logoPoints(this.s, 40);
       const cx = at.reduce((n, p) => n + p.x, 0) / at.length;
       const cy = at.reduce((n, p) => n + p.y, 0) / at.length;
-      this.launch(cx, cy, "m", 0);
+      this.launch(cx, cy, "logo", 0);
     } else if (this.t >= this.nextLaunch) {
       // Mostly one at a time; now and then a salvo of three.
       const salvo = rng() < 0.15 ? 3 : 1;
@@ -188,7 +188,7 @@ export class FireworksScene implements Scene {
       p.trail.unshift({ x: p.x, y: p.y });
       if (p.trail.length > p.tail) p.trail.length = p.tail;
       if (p.to && p.life > 1.2) {
-        // The M: glide into place and hold.
+        // The boat: glide into place and hold.
         const k = Math.min(1, dt * 4);
         p.x += (p.to.x - p.x) * k;
         p.y += (p.to.y - p.y) * k;
@@ -214,8 +214,8 @@ export class FireworksScene implements Scene {
             ),
           );
     }
-    if (!this.mFormed && this.sparks.some((p) => p.to && p.life < 2.6)) {
-      this.mFormed = true;
+    if (!this.logoFormed && this.sparks.some((p) => p.to && p.life < 2.6)) {
+      this.logoFormed = true;
       nod = true;
     }
     for (const f of this.puffs) {
@@ -291,9 +291,9 @@ export class FireworksScene implements Scene {
         smoke: true,
         depth: r.depth,
       });
-    if (r.shell === "m") {
-      this.mFormed = false;
-      for (const p of mPoints(this.s, 64))
+    if (r.shell === "logo") {
+      this.logoFormed = false;
+      for (const p of logoPoints(this.s, 64))
         add(0, 0, rng() < 0.5 ? a : b, { to: p, life: 3.4 + rng() * 0.4, max: 3.8, tail: 4 });
       return;
     }
