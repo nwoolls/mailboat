@@ -1066,6 +1066,8 @@ export type OAuthSetup = {
 	clientFilePath: string,
 	/**  Why loading failed, if it did. */
 	problem: string | null,
+	/**  The Google Cloud project of the client in use, when its file says. */
+	projectId: string | null,
 };
 
 export type OlderLoaded = {

@@ -12,6 +12,7 @@ import {
   parseProgress,
   plainError,
   showOnboarding,
+  stepLinkLabel,
   stepsFor,
   toggleStep,
 } from "./onboarding";
@@ -27,7 +28,7 @@ describe("parseProgress", () => {
       JSON.stringify({
         stage: "accounts",
         path: "gcloud",
-        done: ["publish", "nonsense", "branding"],
+        done: ["users", "publish", "nonsense", "branding"],
         projectId: "mail-abc123",
         finished: false,
       }),
@@ -35,7 +36,7 @@ describe("parseProgress", () => {
     expect(p).toEqual({
       stage: "accounts",
       path: "gcloud",
-      done: ["branding", "publish"],
+      done: ["branding", "users"],
       projectId: "mail-abc123",
       finished: false,
       started: true,
@@ -75,8 +76,8 @@ describe("guided steps", () => {
     expect(currentStep([], "guide")).toBe("project");
     expect(currentStep(["project"], "guide")).toBe("apis");
     expect(currentStep([], "gcloud")).toBe("branding");
-    expect(currentStep(["project", "apis", "branding", "publish", "client"], "guide")).toBeNull();
-    expect(stepsFor("gcloud")).toEqual(["branding", "publish", "client"]);
+    expect(currentStep(["project", "apis", "branding", "users", "client"], "guide")).toBeNull();
+    expect(stepsFor("gcloud")).toEqual(["branding", "users", "client"]);
     expect(stepsFor("guide")).toHaveLength(5);
   });
 
@@ -95,9 +96,16 @@ describe("guided steps", () => {
     expect(consoleUrl("apis", "p-123456")).toMatch(
       /calendar-json\.googleapis\.com&project=p-123456$/,
     );
-    expect(consoleUrl("publish", "p-123456")).toBe(
+    expect(consoleUrl("users", "p-123456")).toBe(
       "https://console.cloud.google.com/auth/audience?project=p-123456",
     );
+  });
+});
+
+describe("stepLinkLabel", () => {
+  it("names the page each step opens", () => {
+    expect(stepLinkLabel("users")).toBe("Open Test users");
+    expect(stepLinkLabel("client")).toBe("Open Clients");
   });
 });
 
@@ -138,18 +146,32 @@ describe("messages", () => {
   });
 
   it("explains sign-in failures in terms of the Google steps", () => {
-    expect(explainSignInError("token error: invalid_client: Unauthorized").fix).toBe("client");
-    expect(explainSignInError("Google returned: access_denied").fix).toBe("publish");
+    expect(explainSignInError("token error: invalid_client: Unauthorized").step).toBe("client");
     expect(explainSignInError("Google returned: org_internal").message).toMatch(/External/);
-    expect(explainSignInError("timed out")).toEqual({ message: "timed out", fix: null });
+    // A cancelled sign-in, and "Access blocked" (which only ever shows as the wait
+    // running out): both point at Test users, never at publishing.
+    for (const message of [
+      "Google returned: access_denied",
+      "sign-in required: sign-in timed out",
+    ]) {
+      const advice = explainSignInError(message);
+      expect(advice.step).toBe("users");
+      expect(advice.message).toMatch(/Test users/);
+      expect(advice.message).not.toMatch(/publish/i);
+    }
+    // Rust's own plain message (a missing mail permission) is shown as it is.
+    expect(explainSignInError("The app wasn't given permission to read your mail.")).toEqual({
+      message: "The app wasn't given permission to read your mail.",
+      step: null,
+    });
   });
 
   it("explains a first sync the APIs or tick boxes stopped", () => {
     expect(
-      explainSyncError("Google API error 403: Gmail API has not been used in project 1")?.fix,
+      explainSyncError("Google API error 403: Gmail API has not been used in project 1")?.step,
     ).toBe("apis");
     expect(explainSyncError("Request had insufficient authentication scopes.")?.message).toMatch(
-      /unticked/,
+      /Select all/,
     );
     expect(explainSyncError("network error: offline")).toBeNull();
     expect(explainSyncError(null)).toBeNull();

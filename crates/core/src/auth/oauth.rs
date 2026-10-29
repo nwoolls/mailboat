@@ -26,12 +26,14 @@ use crate::error::{CoreError, Result};
 // from the `oauth2` crate. This file adds the loopback listener, Google's
 // user-info call and the mapping of failures onto the app's errors.
 
-pub const SCOPES: [&str; 9] = [
+pub const SCOPES: [&str; 8] = [
     "openid",
     "email",
     "profile",
-    "https://www.googleapis.com/auth/gmail.modify",
-    "https://www.googleapis.com/auth/gmail.compose",
+    // Reads, labels, drafts and sends. It already covers everything
+    // `gmail.compose` would (drafts, sending), so that one isn't asked for:
+    // one box fewer on Google's permissions screen.
+    GMAIL_MODIFY_SCOPE,
     // Address suggestions from Google Contacts (saved and "other"
     // contacts), read-only. Accounts that signed in before these were
     // asked for simply go without until they sign in again.
@@ -46,6 +48,7 @@ pub const SCOPES: [&str; 9] = [
     GMAIL_SETTINGS_SCOPE,
 ];
 
+pub const GMAIL_MODIFY_SCOPE: &str = "https://www.googleapis.com/auth/gmail.modify";
 pub const CALENDAR_SCOPE: &str = "https://www.googleapis.com/auth/calendar.events";
 pub const GMAIL_SETTINGS_SCOPE: &str = "https://www.googleapis.com/auth/gmail.settings.basic";
 pub const CONTACTS_SCOPE: &str = "https://www.googleapis.com/auth/contacts.readonly";
@@ -341,6 +344,26 @@ fn parse_callback(request: &str, expected_state: &str) -> Option<Result<String>>
     Some(get("code").ok_or_else(|| CoreError::Auth("no authorization code".into())))
 }
 
+/// Google's permissions screen starts with every box empty and lets a
+/// person press Continue that way, which signs in an account that can't
+/// read mail (it then fails with a raw "insufficient authentication
+/// scopes"). Refuses such a sign-in, in plain words. The other
+/// permissions (contacts, calendar, settings) are optional: an account
+/// without them works, and says what it's missing. When Google doesn't
+/// report the permissions at all, the sync finds out.
+pub fn require_mail_permission(scopes: Option<&[String]>) -> Result<()> {
+    match scopes {
+        Some(granted) if !granted.iter().any(|s| s == GMAIL_MODIFY_SCOPE) => {
+            Err(CoreError::MissingMailPermission(format!(
+                "{} wasn't given permission to read your mail. Sign in again, and tick \
+                 \"Select all\" on Google's permissions screen.",
+                crate::brand::NAME
+            )))
+        }
+        _ => Ok(()),
+    }
+}
+
 /// Result of a completed sign-in.
 pub struct SignedIn {
     pub user: UserInfo,
@@ -388,6 +411,8 @@ async fn sign_in_inner(
         .wait_for_code(state.secret(), SIGN_IN_TIMEOUT)
         .await?;
     let tokens = exchange_code(http, config, &code, verifier, &redirect_uri).await?;
+    // Before anything is saved: no half-added account that can't sync.
+    require_mail_permission(tokens.scopes.as_deref())?;
     let refresh_token = tokens
         .refresh_token
         .clone()
@@ -416,6 +441,27 @@ mod tests {
             "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
         );
         assert_eq!(challenge.method().as_str(), "S256");
+    }
+
+    #[test]
+    fn a_sign_in_without_the_mail_permission_is_refused_plainly() {
+        let basic: Vec<String> = ["openid", "email", "profile"].map(String::from).to_vec();
+        let err = require_mail_permission(Some(&basic)).unwrap_err();
+        assert_eq!(err.kind(), "missing_mail_permission");
+        assert!(err.to_string().contains("Select all"));
+        assert!(require_mail_permission(Some(&[])).is_err());
+        let mut with_mail = basic.clone();
+        with_mail.push(GMAIL_MODIFY_SCOPE.into());
+        assert!(require_mail_permission(Some(&with_mail)).is_ok());
+        // Contacts, calendar and settings are optional.
+        assert!(require_mail_permission(None).is_ok());
+    }
+
+    #[test]
+    fn compose_is_not_asked_for_because_modify_covers_it() {
+        assert!(SCOPES.contains(&GMAIL_MODIFY_SCOPE));
+        assert!(!SCOPES.iter().any(|s| s.ends_with("gmail.compose")));
+        assert_eq!(SCOPES.len(), 8);
     }
 
     #[test]

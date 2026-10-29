@@ -21,6 +21,9 @@ pub struct OAuthClientConfig {
     pub auth_uri: String,
     pub token_uri: String,
     pub userinfo_uri: String,
+    /// The Google Cloud project it belongs to, when the file names it:
+    /// lets the app open Google Cloud pages on the right project.
+    pub project_id: Option<String>,
 }
 
 // Never print the secret.
@@ -44,6 +47,7 @@ struct DownloadedFile {
 struct DownloadedClient {
     client_id: String,
     client_secret: String,
+    project_id: Option<String>,
     auth_uri: Option<String>,
     token_uri: Option<String>,
 }
@@ -200,6 +204,7 @@ impl OAuthClientConfig {
             auth_uri: GOOGLE_AUTH_URI.into(),
             token_uri: GOOGLE_TOKEN_URI.into(),
             userinfo_uri: GOOGLE_USERINFO_URI.into(),
+            project_id: None,
         }
     }
 
@@ -232,6 +237,7 @@ impl OAuthClientConfig {
             .or(file.web)
             .ok_or("expected an \"installed\" (Desktop app) client")?;
         let mut config = Self::google(client.client_id, client.client_secret);
+        config.project_id = client.project_id.filter(|p| !p.trim().is_empty());
         if let Some(uri) = client.auth_uri {
             // Google's file lists the v1 endpoint; v2 is the current one.
             if !uri.contains("accounts.google.com") {
@@ -268,6 +274,7 @@ mod tests {
         let c = OAuthClientConfig::from_json(json).unwrap();
         assert_eq!(c.client_id, "123.apps.googleusercontent.com");
         assert_eq!(c.client_secret, "shh");
+        assert_eq!(c.project_id.as_deref(), Some("p"));
         assert_eq!(c.auth_uri, GOOGLE_AUTH_URI);
         assert!(
             !format!("{c:?}").contains("shh"),

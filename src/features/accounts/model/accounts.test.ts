@@ -17,7 +17,10 @@ describe("accounts", () => {
   });
 
   it("an auth error asks the user to sign in again", () => {
-    expect(syncBadge(state(1, "authError"))).toEqual({ tone: "error", label: "Sign in again" });
+    expect(syncBadge(state(1, "authError"))).toEqual({
+      tone: "error",
+      label: "Google signed you out · sign in again",
+    });
     expect(syncBadge(undefined).tone).toBe("ok");
     expect(syncBadge({ ...state(1, "backoff"), errorKind: "rate_limited" }).label).toMatch(
       /slow down/,
@@ -29,7 +32,7 @@ describe("accounts", () => {
     const synced = { ...state(1, "idle"), lastSyncAt: new Date(2026, 9, 15, 15, 12).getTime() };
     expect(syncHint(synced, "en-US")).toBe("Up to date · last synced Oct 15, 3:12 PM");
     expect(syncHint(state(1, "idle"))).toBe("Up to date");
-    expect(syncHint(state(1, "authError"))).toBe("Sign in again");
+    expect(syncHint(state(1, "authError"))).toBe("Google signed you out · sign in again");
   });
 
   it("only retries and errors call for attention, errors first", () => {

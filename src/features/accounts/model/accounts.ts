@@ -30,7 +30,7 @@ export function syncBadge(state: AccountSyncState | undefined): SyncBadge {
             : "Retrying soon",
       };
     case "authError":
-      return { tone: "error", label: "Sign in again" };
+      return { tone: "error", label: "Google signed you out · sign in again" };
     case "error":
       return { tone: "error", label: state.errorMessage ?? "Sync error" };
   }

@@ -89,12 +89,14 @@ flowchart LR
       Google's Limited Use rules
 - Check whether `gmail.compose` is needed beside `gmail.modify`
       (which may already cover drafts and sending), and drop any scope
-      that isn't; Google asks for a reason for each one
+      that isn't; Google asks for a reason for each one *(done
+      2026-10-29: `gmail.modify` covers drafts and sending, so
+      `gmail.compose` is no longer asked for)*
 
 ### Google verification (prepared in groundwork, submitted after Checkpoint 1)
 
-Mailboat asks for restricted scopes (`gmail.modify`; `gmail.compose` and
-`gmail.settings.basic` are believed restricted, to confirm on Google's
+Mailboat asks for restricted scopes (`gmail.modify`; `gmail.settings.basic`
+is believed restricted, to confirm on Google's
 list) and sensitive ones (contacts, calendar). An individual can get
 verified; it's paperwork and waiting (weeks to months).
 
@@ -111,7 +113,7 @@ verified; it's paperwork and waiting (weeks to months).
       is stored on or sent to servers. Mailboat keeps mail on the device,
       and AI and MCP only send it where the user chooses, so ask to be
       exempt. If Google insists: yearly, a paid assessment
-- Until approved, the current "unverified, in production" client
+- Until approved, an unverified client (in Testing or in production)
       allows 100 users in total (every account that ever signs in counts;
       the count can't be reset): enough for the beta
 
@@ -181,21 +183,31 @@ no user limit**, and nothing to sell.
 flowchart LR
   A["Create a Google Cloud project"] --> B["Turn on Gmail, People, Calendar APIs"]
   B --> C["Consent screen: name, External"]
-  C --> D["Publish app"]
+  C --> D["Add your addresses as test users"]
   D --> E["Create a Desktop client, download JSON"]
-  E --> F["Give the JSON to Mailboat, sign in, click past the warning"]
+  E --> F["Give the JSON to Mailboat, sign in, press Continue past the warning"]
 ```
 
 - About 10–15 minutes in a console made for developers, and Google
   redesigns those screens often, so screenshots go stale.
-- **"Publish app" is the step people miss.** In "Testing", Google expires
-  sign-ins after 7 days for everything beyond name and email, so the app
-  would sign them out every week. Publishing ("In production", still
-  unverified) stops that, and means no account has to be added as a test
-  user.
-- Users still see "Google hasn't verified this app" for their own app,
-  and click Advanced to continue. The walkthrough should show this
-  screen in advance so it doesn't alarm them.
+- **The project stays in "Testing"; the user adds their addresses as test
+  users** (decided with the owner after a trial on Windows, 2026-10-29).
+  Publishing ("In production") was tried and rejected: Google won't
+  publish until the Branding page has a homepage URL and a privacy policy
+  URL (with that domain listed as authorized; Google accepted a domain
+  that wasn't the user's), and it then shows scarier screens (Advanced →
+  "Go to … (unsafe)", an amber banner saying access may be lost), counts
+  toward a 100-users-per-project cap that can't be reset, and blocked a
+  Google Workspace account. Testing needs only an app name and the user's
+  email, shows one mild warning (Continue), and let the Workspace account
+  in as a test user. The cost: Google's documents say sign-ins in
+  Testing expire after 7 days (checked on 2026-11-01), and each new
+  address needs a visit to Google Cloud first. "Publish app" remains
+  possible later, and "Back to testing" undoes it.
+- Users still see "Google hasn't verified this app" for their own
+  project, and press Continue. The walkthrough shows this screen in
+  advance so it doesn't alarm them, and the permissions screen after it,
+  whose boxes start empty (tick "Select all").
 - One client serves all of a user's Gmail accounts.
 
 ### The interactive walkthrough
@@ -213,9 +225,9 @@ A setup screen in the app (part of Onboarding), not just a web page:
 - Drop the JSON on the window, or choose it. The app checks it (a
       "Desktop" client with an ID and secret) and says plainly what's
       wrong if not (e.g. a "Web" client was made)
-- A test sign-in at the end. If Google later refuses a sign-in about
-      7 days on (`invalid_grant`), the app explains that the project is
-      probably still in "Testing" and links to "Publish app"
+- A test sign-in at the end. If Google later signs an account out about
+      7 days on (`invalid_grant`), the app says so and offers one-click
+      sign-in again; this is expected while the project is in "Testing"
 - The same steps as a page on the website, and a short screen
       recording, for people deciding whether to install
 - Settings → Accounts shows which client each account uses, and lets

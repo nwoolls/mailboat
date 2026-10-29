@@ -30,16 +30,20 @@ downloaded file on the window. In short:
    suggestions from Google Contacts; Mailboat works without it, suggesting
    only from mail) and the **Google Calendar API** (answering meeting
    invitations; not "CalDAV API" or the MCP ones).
-2. Configure the OAuth consent screen as **External** and set it to
-   **In production** (Testing mode expires sign-ins every 7 days).
+2. Set up the sign-in screen (Google Auth Platform → Get started): an app
+   name, your own email, and **External**. Leave it in **Testing**, and under
+   **Audience → Test users** add each Gmail address you'll use in Mailboat
+   (work and school accounts work too). Google can sign accounts out about
+   once a week while a project is in Testing; signing in again takes a click.
 3. Create an OAuth client ID of type **Desktop app** and download its JSON.
 4. Give the file to the app (drop it on the window), or save it yourself as
    `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`.
    It is never committed. Alternatively set `MAILBOAT_GOOGLE_CLIENT_ID` and
    `MAILBOAT_GOOGLE_CLIENT_SECRET`.
 
-When you sign in, Google warns that the app isn't verified. Click
-**Advanced → Go to Mailboat**. This happens once per account.
+When you sign in, Google warns that the app isn't verified. Press
+**Continue**: it's your own private project. On the permissions screen the
+boxes start empty, so tick **Select all**. This happens once per account.
 
 Accounts added before Mailboat asked for a permission (Google Contacts,
 Calendar events for invitations, Gmail settings for rules and

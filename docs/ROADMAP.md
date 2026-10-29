@@ -2695,11 +2695,21 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       a box left unticked), with a way back. Tried here in WebKit
       (`tests/browser/onboarding.spec.ts`). Notifications: macOS still
       asks at the first launch, not from this stage. Owner to try with
-      `bun run clean-start`*
+      `bun run clean-start`.
+      **Reworked 2026-10-29 after the owner tried it on Windows** (his
+      notes on the wording, the publishing step and the sign-in
+      screens; a session of screenshots of Google's real screens): the
+      stages are now Google Cloud, Gmail accounts, Make it yours, and
+      the screens say "your own Google Cloud project" instead of
+      "Connect to Google"; the welcome's privacy line no longer ties
+      "no servers" to the setup; "gcloud" is explained as Google's
+      command-line tool. The project now stays in **Testing** with
+      the user's addresses as test users (no publishing), see the
+      Architecture decisions. Owner to try again from a fresh project*
 - [ ] Credentials walkthrough in the app: one card per step (create a
       project; turn on the Gmail, People and Calendar APIs; consent
-      screen, External; **Publish app**; create a Desktop client and
-      download its JSON), each with a button that opens the exact Google
+      screen, External; add your addresses as test users; create a
+      Desktop client and download its JSON), each with a button that opens the exact Google
       Console page, a short explanation and a "Done" tick. It shows
       Google's "hasn't verified this app" screen in advance so it
       doesn't alarm anyone. Console addresses checked when building, as
@@ -2709,12 +2719,24 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       asks for, and "Open in Google Cloud". One page turns on all three
       APIs at once. The Console addresses (`consoleUrl`) are Google's
       current ones as far as could be checked without signing in; the
-      owner's trial confirms them*
+      owner's trial confirms them. **2026-10-29:** the owner's Windows
+      trial showed the publish card couldn't be done as written
+      (publishing needs a homepage and privacy URL on the Branding page,
+      then shows scarier screens and blocked a Workspace account), so
+      it is now "Add your Gmail addresses as test users" and the
+      sign-in drawings show Google's real Testing screens (Continue,
+      permissions that start empty with Select all). The Console
+      addresses (project, APIs, Audience, Clients) were opened by the
+      owner and work*
 - [ ] Optional fast path for people with Google's `gcloud` tool: one
       copy-paste command that creates the project and turns on the
       APIs (the consent screen and the client stay manual) *Built
       2026-10-27: "I use gcloud" makes up a project ID, shows the one
-      command, and leaves three cards that open on that project*
+      command, and leaves three cards that open on that project
+      (since 2026-10-29: sign-in screen, test users, Desktop client).
+      Named "Use Google's command-line tool", marked Advanced, with
+      where to run it (Terminal or PowerShell), as the owner pointed
+      out that "gcloud" means nothing to most people*
 - [ ] Drop the JSON on the window, or choose it. The app checks it is a
       Desktop client with an ID and secret and says plainly what's
       wrong if not (e.g. a Web client). Ends with a test sign-in
@@ -2724,17 +2746,38 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       client, a service-account key, a missing secret or a wrong ID
       each get their own message. The test sign-in is the first
       account's sign-in*
-- [ ] If Google refuses a sign-in about 7 days later (`invalid_grant`),
-      the app explains the project is probably still in "Testing" and
-      links to "Publish app"
+- [ ] If Google signs an account out about 7 days later
+      (`invalid_grant`; what Google's documents say happens to projects
+      in Testing), the app says so and offers one-click sign-in again
+      *Reworked 2026-10-29: the project stays in Testing, so this is
+      expected, not a mistake to fix. The sidebar line now reads "Google
+      signed you out · sign in again", and Settings → Accounts says it
+      can happen about weekly in Testing. The owner's Mac accounts were
+      signed in again, so if the rule applies they are refused again within a week
+      (sync log: `invalid_grant`): that confirms it, and the wording
+      ("about once a week" or "rarely") is then settled*
 - [ ] Settings → Accounts shows which credentials each account uses and
       lets the user replace the JSON
-- [ ] Scopes: check whether `gmail.compose` is needed beside
+- [x] Scopes: check whether `gmail.compose` is needed beside
       `gmail.modify` (which may already cover drafts and sending) and
       drop any scope that isn't. Fewer scopes means fewer APIs to turn
-      on now and less to justify to Google in Milestone 18
+      on now and less to justify to Google in Milestone 18 *(2026-10-29:
+      every Gmail call the app makes (drafts, sending, labels, threads,
+      history, profile) is covered by `gmail.modify`, so `gmail.compose`
+      is no longer asked for: one box fewer on Google's screen. The
+      others are all used: contacts and other contacts, calendar events,
+      Gmail settings (rules, signatures, vacation). Sending and drafts
+      to be tried with the owner on a fresh sign-in)*
+- [ ] A sign-in that lacks the mail permission is refused at once, in
+      plain words *(owner's trial, 2026-10-29: Google's permissions
+      start with every box empty and Continue works with none ticked, so
+      the account was added and then failed with a raw 403. Built
+      2026-10-29: the app checks which permissions Google granted
+      before saving anything, and says to tick "Select all")*
 - [ ] Tried with the owner on a fresh Google account, following only
-      what the app says (using Milestone 11's clean start)
+      what the app says (using Milestone 11's clean start) *(first
+      trial 2026-10-29 on Windows, which led to the changes above; to
+      repeat from a fresh project)*
 
 ## Milestone 13: Independent code review
 

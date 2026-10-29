@@ -153,11 +153,15 @@ these rules. Keep it passing.
 
 - Gmail REST API only (no IMAP). Initial full sync, then `history.list`.
   An expired historyId (404) triggers a full resync.
-- OAuth: desktop loopback redirect + PKCE. Scopes: `gmail.modify`,
-  `gmail.compose`, `openid email profile`.
-- The OAuth client is an External app "In production", unverified (personal
-  use, <100 users). Each account clicks through Google's unverified-app
-  warning once. Each account records which OAuth client it used
+- OAuth: desktop loopback redirect + PKCE. Scopes: `SCOPES` in
+  `crates/core/src/auth/oauth.rs` (`gmail.modify` already covers drafts and
+  sending, so `gmail.compose` is not asked for).
+- The OAuth client is an External app left in **Testing**, with each
+  account's address added as a test user (decided with the owner,
+  2026-10-29; see the Architecture decisions: publishing needs a homepage
+  and privacy URL and shows scarier screens). Each account clicks Continue
+  past Google's "hasn't verified this app" warning once, and Google can
+  sign accounts out about weekly while in Testing. Each account records which OAuth client it used
   (`accounts.oauth_client`) so a second, Internal client can be added later.
 - Credentials are never committed. The app reads Google's downloaded client
   JSON from `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`

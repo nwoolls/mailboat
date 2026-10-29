@@ -7,8 +7,8 @@ import { ScreensaverCanvas } from "../../screensaver/ui/ScreensaverCanvas";
 
 /**
  * The first screen: the app's icon and name over the koi pond (the
- * Toybox's screensaver; the fish swim round the words), one line on why
- * setup brings your own Google client, and one button.
+ * Toybox's screensaver; the fish swim round the words), one line on
+ * privacy, and one button.
  */
 export function WelcomeStage({ onNext }: { onNext: () => void }) {
   const areaRef = useRef<HTMLDivElement>(null);
@@ -55,8 +55,7 @@ export function WelcomeStage({ onNext }: { onNext: () => void }) {
           </button>
           <p className="flex max-w-sm items-start gap-2 text-left text-[12px] text-content/55">
             <LockIcon size={14} className="mt-px shrink-0" />
-            Your mail goes only between this computer and Google. {APP_NAME} has no server in the
-            middle, so you’ll connect it to Google yourself, once.
+            {APP_NAME} talks to Google directly. It has no servers of its own.
           </p>
         </div>
       </div>

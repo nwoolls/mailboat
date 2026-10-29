@@ -1,14 +1,15 @@
 /**
- * The first-launch flow (Milestone 12): welcome, connect to Google (the
- * user's own OAuth client), add accounts, make it yours. Pure logic here;
- * the screens are in `../ui`.
+ * The first-launch flow (Milestone 12): welcome, set up the user's own
+ * Google Cloud project (a private OAuth client that stays in Testing),
+ * add Gmail accounts, make it yours. Pure logic here; the screens are in
+ * `../ui`.
  */
 
 /** The flow's stages, in order; the rail on the left lists them. */
 export const STAGES = ["welcome", "google", "accounts", "yours"] as const;
 export type Stage = (typeof STAGES)[number];
 
-/** How the user sets up Google: guided cards, `gcloud`, or a file they have. */
+/** How the user sets up Google Cloud: guided cards, Google's command-line tool, or a file they have. */
 export type GooglePath = "guide" | "gcloud" | "have";
 
 /** Progress, kept in the web view's storage so quitting halfway resumes. */
@@ -90,7 +91,7 @@ export function nextStage(stage: Stage, configured: boolean): Stage | null {
 // --- Google Cloud --------------------------------------------------------
 
 /** The guided steps, one card each, in order. */
-export const GUIDE_STEP_IDS = ["project", "apis", "branding", "publish", "client"] as const;
+export const GUIDE_STEP_IDS = ["project", "apis", "branding", "users", "client"] as const;
 export type GuideStepId = (typeof GUIDE_STEP_IDS)[number];
 
 /** The APIs the app uses: mail, address suggestions, invitations. */
@@ -112,7 +113,8 @@ export function consoleUrl(step: GuideStepId, projectId: string | null): string 
     project: "/projectcreate",
     apis: `/flows/enableapi?apiid=${APIS.join(",")}`,
     branding: "/auth/overview",
-    publish: "/auth/audience",
+    // The Audience page: test users, and the publishing status that stays "Testing".
+    users: "/auth/audience",
     client: "/auth/clients/create",
   }[step];
   if (!projectId || step === "project") return CONSOLE + path;
@@ -130,6 +132,17 @@ export function stepsFor(path: GooglePath | null): GuideStepId[] {
   return path === "gcloud"
     ? GUIDE_STEP_IDS.filter((id) => id !== "project" && id !== "apis")
     : [...GUIDE_STEP_IDS];
+}
+
+/** What the button to a step's Google Cloud page says. */
+export function stepLinkLabel(step: GuideStepId): string {
+  return {
+    project: "Open Google Cloud",
+    apis: "Open the APIs page",
+    branding: "Open the sign-in screen settings",
+    users: "Open Test users",
+    client: "Open Clients",
+  }[step];
 }
 
 /** Ticks (or unticks) a step. */
@@ -188,38 +201,52 @@ export function plainError(error: unknown): string {
   return message.replace(/^(invalid input|sign-in required|configuration error): /, "");
 }
 
-/** Which stage fixes a sign-in or sync problem, with what to tell the user. */
-export type Advice = { message: string; fix: "client" | "apis" | "publish" | null };
+/**
+ * What to tell the user about a problem, and the Google Cloud page that
+ * fixes it (opened with `consoleUrl`), when there is one.
+ */
+export type Advice = { message: string; step: GuideStepId | null };
+
+/** How long a sign-in waits before the screen mentions Google's "Access blocked". */
+export const BLOCKED_HINT_MS = 20_000;
 
 /**
- * A sign-in that failed during onboarding, explained in terms of the
- * Google steps. Google's error codes are in the message.
+ * A sign-in that failed, explained in terms of the Google Cloud steps.
+ * Google's error codes are in the message. Google's "Access blocked" page
+ * (an address that isn't a test user) never comes back to the app, so that
+ * one shows up here only as the wait running out.
  */
 export function explainSignInError(message: string): Advice {
   if (/invalid_client|unauthorized_client|deleted_client/.test(message))
     return {
       message:
         "Google didn’t recognise the client in your file. It may have been deleted, or the file is from another project. Create a new Desktop client and give its file here.",
-      fix: "client",
+      step: "client",
     };
   if (/org_internal/.test(message))
     return {
       message:
-        "The app’s audience is set to Internal, which only lets in accounts from your Google Workspace organisation. Change it to External on the Audience page.",
-      fix: "publish",
+        "The project’s audience is set to Internal, which only lets in accounts from your own Google Workspace organisation. Change it to External on the Audience page.",
+      step: "users",
     };
   if (/access_denied/.test(message))
     return {
       message:
-        "Google said no. If it mentioned test users, the app is still in Testing: publish it on the Audience page. If you pressed Cancel, just sign in again.",
-      fix: "publish",
+        "Google said no. That’s what pressing Cancel does: sign in again and press Continue. If Google showed “Access blocked” instead, add this address under Test users first.",
+      step: "users",
     };
-  return { message, fix: null };
+  if (/timed out/.test(message))
+    return {
+      message:
+        "Sign-in wasn’t finished in time. If Google showed “Access blocked”, add this address under Test users, then try again.",
+      step: "users",
+    };
+  return { message, step: null };
 }
 
 /**
  * An account's first sync that failed, explained when it's something the
- * Google steps cover. Null when it's anything else (shown as it is).
+ * Google Cloud steps cover. Null when it's anything else (shown as it is).
  */
 export function explainSyncError(message: string | null): Advice | null {
   if (!message) return null;
@@ -227,13 +254,13 @@ export function explainSyncError(message: string | null): Advice | null {
     return {
       message:
         "Google says the Gmail API isn’t turned on in your project. Turn on the APIs, wait a minute, and it will sync by itself.",
-      fix: "apis",
+      step: "apis",
     };
   if (/insufficient|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(message))
     return {
       message:
-        "This sign-in didn’t allow reading mail: a box was left unticked on Google’s screen. Sign in again and tick them all.",
-      fix: null,
+        "Google didn’t allow reading this account’s mail: a permission box was left empty. Sign in again and tick “Select all”.",
+      step: null,
     };
   return null;
 }

@@ -66,13 +66,14 @@ const STEPS: Record<GuideStepId, StepText> = {
       ["Audience", "External"],
     ],
   },
-  publish: {
-    title: "Publish the app",
+  users: {
+    title: "Add your Gmail addresses as test users",
     body: (
       <>
-        Press <b>Publish app</b>, then <b>Confirm</b>. This is the step people miss: while it says
-        “Testing”, Google signs you out every 7 days. Publishing doesn’t list it anywhere or send it
-        to Google for review; it only works with your file.
+        Open <b>Audience</b>, scroll to <b>Test users</b>, press <b>Add users</b> and enter each
+        Gmail address you’ll use in {APP_NAME}. Work and school accounts work too. Leave “Publishing
+        status” as <b>Testing</b>: that’s right, and it keeps Google’s sign-in screens simple.
+        Google can ask you to sign in again about once a week.
       </>
     ),
   },
@@ -93,16 +94,20 @@ const STEPS: Record<GuideStepId, StepText> = {
 };
 
 /**
- * Connect to Google: the user's own OAuth client, by guided steps, by
- * `gcloud`, or from a file they already have. Ends when Rust has a client.
+ * Set up the user's own Google Cloud project: its OAuth client, by guided
+ * steps, by Google's command-line tool, or from a file they already have.
+ * Ends when Rust has a client.
  */
 export function GoogleStage({
   progress,
   configured,
+  projectId,
   onNext,
 }: {
   progress: Progress;
   configured: boolean;
+  /** The project of the client already in use, when its file says. */
+  projectId: string | null;
   onNext: () => void;
 }) {
   const qc = useQueryClient();
@@ -118,7 +123,7 @@ export function GoogleStage({
   if (client || (configured && !replacing))
     return (
       <Connected
-        client={client}
+        project={client?.projectId ?? projectId}
         onNext={onNext}
         onReplace={() => {
           setClient(null);
@@ -135,7 +140,9 @@ export function GoogleStage({
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-[22px] font-semibold tracking-tight">Connect to Google</h1>
+        <h1 className="text-[22px] font-semibold tracking-tight">
+          Set up your Google Cloud project
+        </h1>
         <p className="mt-1 text-content/60">
           {path === "have"
             ? "Give the Desktop client file you downloaded from Google Cloud."
@@ -185,38 +192,48 @@ function ChoosePath() {
       path,
       ...(path === "gcloud" ? { projectId: makeProjectId(APP_NAME, Math.random) } : {}),
     });
-  const options: { path: GooglePath; icon: typeof FileIcon; title: string; detail: string }[] = [
+  const options: {
+    path: GooglePath;
+    icon: typeof FileIcon;
+    title: string;
+    detail: string;
+    tag?: string;
+  }[] = [
     {
       path: "guide",
       icon: ViewingIcon,
       title: "Guide me",
       detail: "Five short steps in Google Cloud, each with a button to the right page.",
+      tag: "Recommended",
     },
     {
       path: "gcloud",
       icon: TerminalIcon,
-      title: "I use gcloud",
-      detail: "One command creates the project and turns on the APIs. Three steps are left.",
+      title: "Use Google’s command-line tool",
+      detail: "For people who already have gcloud installed. One command does the first two steps.",
+      tag: "Advanced",
     },
     {
       path: "have",
       icon: FileIcon,
-      title: "I have the file",
-      detail: "You already made a Desktop client and downloaded its JSON.",
+      title: "I already have the file",
+      detail: "You made a Desktop client in Google Cloud and downloaded its JSON.",
     },
   ];
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-[22px] font-semibold tracking-tight">Connect to Google</h1>
+        <h1 className="text-[22px] font-semibold tracking-tight">
+          Set up your Google Cloud project
+        </h1>
         <p className="mt-1 max-w-lg text-content/60">
-          {APP_NAME} signs in with a Google client that belongs to you, so your mail goes only
-          between this computer and Google. Setting it up takes about 10 minutes, once, and covers
-          all your accounts.
+          {APP_NAME} signs in through a small project in your own Google Cloud account. It’s private
+          to you, free (no card needed), and takes about 10 minutes, once. It covers all your Gmail
+          accounts, work or personal.
         </p>
       </header>
       <div className="grid gap-2">
-        {options.map(({ path, icon: Icon, title, detail }, i) => (
+        {options.map(({ path, icon: Icon, title, detail, tag }, i) => (
           <button
             key={path}
             type="button"
@@ -230,7 +247,13 @@ function ChoosePath() {
             <span>
               <span className="block font-medium">
                 {title}
-                {i === 0 && <span className="ml-2 text-[11px] text-accent">Recommended</span>}
+                {tag && (
+                  <span
+                    className={`ml-2 text-[11px] ${i === 0 ? "text-accent" : "text-content/45"}`}
+                  >
+                    {tag}
+                  </span>
+                )}
               </span>
               <span className="block text-[12px] text-content/55">{detail}</span>
             </span>
@@ -327,8 +350,9 @@ function GcloudCard({ progress }: { progress: Progress }) {
   return (
     <div className="space-y-2 rounded-xl bg-selection-subtle p-4 ring-1 ring-stroke">
       <p className="text-[13px] text-content/70">
-        Run this in Terminal (signed in with <code>gcloud auth login</code>). It creates the project{" "}
-        <code>{projectId}</code> and turns on the Gmail, People and Calendar APIs.
+        Open Terminal (Mac) or PowerShell (Windows) and run this, once you’ve signed in with{" "}
+        <code>gcloud auth login</code>. It creates the project <code>{projectId}</code> and turns on
+        the Gmail, People and Calendar APIs.
       </p>
       <div className="flex items-start gap-2 rounded-lg bg-background-base/60 p-2.5">
         <code className="selectable flex-1 font-mono text-[11px] leading-relaxed break-all">
@@ -337,8 +361,8 @@ function GcloudCard({ progress }: { progress: Progress }) {
         <CopyButton value={command} label="Copy command" />
       </div>
       <p className="text-[12px] text-content/50">
-        Google’s tool can’t make the sign-in screen or a Desktop client, so those are below, each
-        opening on this project.
+        Google’s tool can’t make the sign-in screen, add test users or create a Desktop client, so
+        those are below, each opening on this project.
       </p>
     </div>
   );
@@ -382,11 +406,11 @@ function copy(value: string) {
 }
 
 function Connected({
-  client,
+  project,
   onNext,
   onReplace,
 }: {
-  client: CheckedClient | null;
+  project: string | null;
   onNext: () => void;
   onReplace: () => void;
 }) {
@@ -395,11 +419,11 @@ function Connected({
       <span className="onb-tick flex size-14 items-center justify-center rounded-full bg-accent text-white">
         <CheckIcon size={28} strokeWidth={2.5} />
       </span>
-      <h1 className="mt-5 text-[22px] font-semibold tracking-tight">Connected to Google</h1>
+      <h1 className="mt-5 text-[22px] font-semibold tracking-tight">Google Cloud is set up</h1>
       <p className="mt-1 text-content/60">
-        {client?.projectId
-          ? `${APP_NAME} will sign in through your project “${client.projectId}”.`
-          : `${APP_NAME} has your Google client.`}
+        {project
+          ? `${APP_NAME} will sign in through your project “${project}”.`
+          : `${APP_NAME} has your Google Cloud client.`}
       </p>
       <div className="mt-6 flex items-center gap-2">
         <button
@@ -408,7 +432,7 @@ function Connected({
           onClick={onNext}
           className="rounded-md bg-accent px-4 py-2 font-medium text-white"
         >
-          Add your accounts
+          Add your Gmail accounts
         </button>
         <button
           type="button"

@@ -6,12 +6,16 @@ import type { GuideStepId } from "../model/onboarding";
  * A drawing of a Google page, with the thing to press glowing. Drawn, not
  * screenshotted: Google redesigns these pages often, and a sketch of the
  * shape (a field, a choice, a button) stays true for longer and matches
- * the app's look.
+ * the app's look. The wording on them is Google's own, as it appears for a
+ * project in Testing (checked on Windows, 2026-10-29).
  */
 type Part =
   | { kind: "field"; label: string; value: string }
   | { kind: "choice"; label: string; options: string[]; chosen: string }
   | { kind: "list"; items: string[] }
+  /** Boxes, ticked or empty; the first can glow ("Select all"). */
+  | { kind: "checks"; items: string[]; ticked: boolean; glowFirst?: boolean }
+  | { kind: "rows"; items: string[] }
   | { kind: "status"; label: string; value: string }
   | { kind: "note"; text: string }
   | { kind: "button"; label: string; glow?: boolean; quiet?: boolean };
@@ -41,11 +45,13 @@ const SKETCHES: Record<GuideStepId, { title: string; parts: Part[] }> = {
       { kind: "button", label: "Create", glow: true },
     ],
   },
-  publish: {
+  users: {
     title: "Audience",
     parts: [
       { kind: "status", label: "Publishing status", value: "Testing" },
-      { kind: "button", label: "Publish app", glow: true },
+      { kind: "note", text: "Test users" },
+      { kind: "button", label: "+ Add users", glow: true },
+      { kind: "rows", items: ["you@gmail.com", "you@your-work.com"] },
     ],
   },
   client: {
@@ -65,8 +71,9 @@ export function ConsoleSketch({ step }: { step: GuideStepId }) {
 }
 
 /**
- * What Google shows at the first sign-in, drawn in advance: its warning
- * about an unverified app (your own), and the boxes to tick.
+ * What Google shows at a first sign-in to a project in Testing, drawn in
+ * advance: the warning (which is expected: it's the person's own private
+ * project) and the permissions, which start with every box empty.
  */
 export function SignInSketches() {
   return (
@@ -74,16 +81,24 @@ export function SignInSketches() {
       <SketchWindow
         title="Google hasn’t verified this app"
         parts={[
-          { kind: "note", text: "The app is requesting access to sensitive info…" },
+          {
+            kind: "note",
+            text: "You’ve been given access to an app that’s currently being tested.",
+          },
+          { kind: "button", label: "Continue", glow: true },
           { kind: "button", label: "Back to safety", quiet: true },
-          { kind: "button", label: `Advanced → Go to ${APP_NAME} (unsafe)`, glow: true },
         ]}
       />
       <SketchWindow
         title={`${APP_NAME} wants access`}
         parts={[
-          { kind: "list", items: ["Select all", "Read, compose and send email", "Contacts"] },
-          { kind: "button", label: "Continue", glow: true },
+          {
+            kind: "checks",
+            items: ["Select all", "Contacts, calendars", "Gmail: settings, mail"],
+            ticked: false,
+            glowFirst: true,
+          },
+          { kind: "button", label: "Continue" },
         ]}
       />
     </div>
@@ -148,6 +163,33 @@ function SketchPart({ part }: { part: Part }) {
               <span className="flex size-3 items-center justify-center rounded-[3px] bg-accent text-white">
                 <CheckIcon size={9} strokeWidth={3} />
               </span>
+              {item}
+            </li>
+          ))}
+        </ul>
+      );
+    case "checks":
+      return (
+        <ul className="space-y-1">
+          {part.items.map((item, i) => (
+            <li key={item} className="flex items-center gap-1.5 text-content/75">
+              <span
+                className={`flex size-3 items-center justify-center rounded-[3px] ${
+                  part.ticked ? "bg-accent text-white" : "border border-content/35"
+                } ${part.glowFirst && i === 0 ? "onb-glow" : ""}`}
+              >
+                {part.ticked && <CheckIcon size={9} strokeWidth={3} />}
+              </span>
+              {item}
+            </li>
+          ))}
+        </ul>
+      );
+    case "rows":
+      return (
+        <ul className="divide-y divide-stroke rounded border border-content/12">
+          {part.items.map((item) => (
+            <li key={item} className="truncate px-1.5 py-1 text-content/70">
               {item}
             </li>
           ))}

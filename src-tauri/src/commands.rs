@@ -52,6 +52,8 @@ pub struct OAuthSetup {
     pub client_file_path: String,
     /// Why loading failed, if it did.
     pub problem: Option<String>,
+    /// The Google Cloud project of the client in use, when its file says.
+    pub project_id: Option<String>,
 }
 
 #[tauri::command]
@@ -59,6 +61,7 @@ pub struct OAuthSetup {
 pub fn oauth_setup(state: State<'_, AppState>) -> OAuthSetup {
     let result = state.oauth_config();
     OAuthSetup {
+        project_id: result.as_ref().ok().and_then(|c| c.project_id.clone()),
         configured: result.is_ok(),
         client_file_path: config::client_file_path(&state.config_dir)
             .display()

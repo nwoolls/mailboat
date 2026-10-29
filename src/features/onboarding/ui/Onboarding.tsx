@@ -10,8 +10,8 @@ import { WelcomeStage } from "./WelcomeStage";
 import { YoursStage } from "./YoursStage";
 
 const RAIL: { stage: Stage; label: string }[] = [
-  { stage: "google", label: "Connect to Google" },
-  { stage: "accounts", label: "Add accounts" },
+  { stage: "google", label: "Google Cloud" },
+  { stage: "accounts", label: "Gmail accounts" },
   { stage: "yours", label: "Make it yours" },
 ];
 
@@ -29,6 +29,8 @@ export function Onboarding({
 }) {
   const progress = onboarding.use();
   const configured = setup?.configured ?? false;
+  // The project in use: the client file's, or the one made by the command.
+  const projectId = setup?.projectId ?? progress.projectId;
   // Whether the last move went back, so the stage slides in from the left.
   const [back, setBack] = useState(false);
   const stage = progress.stage;
@@ -111,10 +113,20 @@ export function Onboarding({
             className="onb-stage mx-auto max-w-[44rem] pt-6"
           >
             {stage === "google" && (
-              <GoogleStage progress={progress} configured={configured} onNext={next} />
+              <GoogleStage
+                progress={progress}
+                configured={configured}
+                projectId={setup?.projectId ?? null}
+                onNext={next}
+              />
             )}
             {stage === "accounts" && (
-              <AccountsStage accounts={accounts} onNext={next} onFix={() => go("google")} />
+              <AccountsStage
+                accounts={accounts}
+                projectId={projectId}
+                onNext={next}
+                onFix={() => go("google")}
+              />
             )}
             {stage === "yours" && <YoursStage onFinish={next} />}
           </div>

@@ -3,32 +3,46 @@ import {
   type Account,
   type AccountId,
   type AccountSyncState,
+  commands,
   events,
   type SyncProgress,
 } from "../../../platform/tauri/bindings";
-import { IS_TAURI } from "../../../platform/tauri/ipc";
+import { IS_TAURI, unwrap } from "../../../platform/tauri/ipc";
 import { APP_NAME } from "../../../shared/lib/brand";
 import { useSyncStates } from "../../../shared/lib/queries";
-import { AddIcon, CheckIcon, LockIcon } from "../../../shared/ui/icons";
+import { useTrueAfter } from "../../../shared/lib/useTrueAfter";
+import { AddIcon, CheckIcon, ExternalIcon, LockIcon } from "../../../shared/ui/icons";
 import { signInAgainReason } from "../../accounts/model/permissions";
 import { useSignIn } from "../../accounts/ui/useSignIn";
-import { type Advice, explainSignInError, explainSyncError } from "../model/onboarding";
+import {
+  type Advice,
+  BLOCKED_HINT_MS,
+  consoleUrl,
+  explainSignInError,
+  explainSyncError,
+  type GuideStepId,
+  stepLinkLabel,
+} from "../model/onboarding";
 import { SignInSketches } from "./ConsoleSketch";
 
 /**
- * Add accounts: the first sign-in also proves the Google setup works.
- * Before it, what Google will show (its unverified-app warning, the boxes
- * to tick) is drawn so it doesn't alarm anyone. Each account then shows
- * with its first sync under way.
+ * Add Gmail accounts: the first sign-in also proves the Google Cloud setup
+ * works. Before it, what Google will show (its warning about an app still
+ * being tested, and the permission boxes, which start empty) is drawn so it
+ * doesn't alarm anyone. Each account then shows with its first sync under
+ * way.
  */
 export function AccountsStage({
   accounts,
+  projectId,
   onNext,
   onFix,
 }: {
   accounts: Account[];
+  /** The Google Cloud project in use, to open its pages. */
+  projectId: string | null;
   onNext: () => void;
-  /** Back to the Google stage, to fix what a failed sign-in points at. */
+  /** Back to the Google Cloud stage, to fix what a failed sign-in points at. */
   onFix: () => void;
 }) {
   const signIn = useSignIn();
@@ -36,12 +50,16 @@ export function AccountsStage({
   const progress = useSyncProgress();
   const advice: Advice | null = signIn.error ? explainSignInError(signIn.error) : null;
   const first = accounts.length === 0;
+  // Google's "Access blocked" page never comes back to the app, so after a
+  // wait the screen says what it means.
+  const stuck = useTrueAfter(signIn.pending, BLOCKED_HINT_MS);
+  const open = (step: GuideStepId) => void unwrap(commands.linkOpen(consoleUrl(step, projectId)));
 
   return (
     <div className="space-y-5">
       <header>
         <h1 className="text-[22px] font-semibold tracking-tight">
-          {first ? "Add your first account" : "Your accounts"}
+          {first ? "Add your first Gmail account" : "Your Gmail accounts"}
         </h1>
         <p className="mt-1 max-w-lg text-content/60">
           Sign-in happens in your browser; {APP_NAME} never sees your password. Gmail and Google
@@ -56,11 +74,21 @@ export function AccountsStage({
             Two things Google will show you
           </h2>
           <p className="text-[13px] leading-relaxed text-content/65">
-            First a warning that Google hasn’t verified the app. That’s expected: it’s your own app,
-            which only you use. Press <b>Advanced</b>, then <b>Go to {APP_NAME}</b>. Then a list of
-            what {APP_NAME} may do: tick <b>Select all</b>, or some features won’t work.
+            First a warning that Google hasn’t verified the app. That’s expected: it’s your own
+            private project. Press <b>Continue</b>. Then the permissions, which start empty: tick{" "}
+            <b>Select all</b>, or {APP_NAME} can’t read your mail.
           </p>
           <SignInSketches />
+          <p className="text-[12px] text-content/55">
+            Google says “Access blocked” instead? That address isn’t a test user yet.{" "}
+            <button
+              type="button"
+              className="text-accent hover:underline"
+              onClick={() => open("users")}
+            >
+              Open Test users
+            </button>
+          </p>
         </section>
       )}
 
@@ -115,17 +143,38 @@ export function AccountsStage({
         )}
       </div>
 
+      {stuck && (
+        <p className="onb-rise text-[13px] text-content/65">
+          Google showing “Access blocked”? That address isn’t a test user yet: add it under Test
+          users, then sign in again.{" "}
+          <button
+            type="button"
+            className="text-accent hover:underline"
+            onClick={() => open("users")}
+          >
+            Open Test users
+          </button>
+        </p>
+      )}
+
       {advice && (
         <div role="alert" className="onb-rise space-y-2">
           <p className="selectable text-[13px] text-danger">{advice.message}</p>
-          {advice.fix && (
-            <button
-              type="button"
-              className="text-[13px] text-accent hover:underline"
-              onClick={onFix}
-            >
-              Back to Connect to Google
-            </button>
+          {advice.step && (
+            <div className="flex items-center gap-4 text-[13px]">
+              <button
+                type="button"
+                className="flex items-center gap-1 text-accent hover:underline"
+                onClick={() => open(advice.step!)}
+              >
+                {stepLinkLabel(advice.step)} <ExternalIcon size={12} />
+              </button>
+              {(advice.step === "client" || advice.step === "apis") && (
+                <button type="button" className="text-accent hover:underline" onClick={onFix}>
+                  Back to the Google Cloud setup
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}

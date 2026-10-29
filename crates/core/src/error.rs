@@ -30,6 +30,11 @@ pub enum CoreError {
     /// The user cancelled (e.g. closed sign-in). Not shown as an error.
     #[error("cancelled")]
     Cancelled,
+    /// A sign-in that Google completed without the permission to read mail
+    /// (its boxes start empty, and Continue works with none ticked). The
+    /// message says what to do, for people.
+    #[error("{0}")]
+    MissingMailPermission(String),
     /// An AI provider failed or refused; the message says why, for people.
     #[error("{0}")]
     Ai(String),
@@ -51,6 +56,7 @@ impl CoreError {
             CoreError::Config(_) => "config",
             CoreError::Keychain(_) => "keychain",
             CoreError::Cancelled => "cancelled",
+            CoreError::MissingMailPermission(_) => "missing_mail_permission",
             CoreError::Ai(_) => "ai",
             CoreError::Other(_) => "other",
         }

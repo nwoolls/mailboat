@@ -29,6 +29,7 @@ import { signInAgainReason } from "../../accounts/model/permissions";
 import { AccountAvatar } from "../../accounts/ui/AccountAvatar";
 import { RemoveAccountDialog } from "../../accounts/ui/RemoveAccountDialog";
 import { useSignIn } from "../../accounts/ui/useSignIn";
+import { explainSignInError } from "../../onboarding/model/onboarding";
 import { SHORTCUTS } from "../../mailbox/model/shortcuts";
 import type {
   AppSettings,
@@ -165,7 +166,11 @@ export function AccountsSection({
           <Button onClick={() => start(null)}>Add account</Button>
         ),
       )}
-      {signIn.error && <p className="selectable pb-4 text-[12px] text-danger">{signIn.error}</p>}
+      {signIn.error && (
+        <p className="selectable pb-4 text-[12px] text-danger">
+          {explainSignInError(signIn.error).message}
+        </p>
+      )}
       {accounts.map((account) => (
         <AccountGroup
           key={account.id}
@@ -251,11 +256,11 @@ function AccountGroup({
         label="Sign in again"
         description={
           waiting ? (
-            "Waiting for you to finish in the browser. Closed it? Start again."
+            "Waiting for you to finish in the browser. Google showing “Access blocked”? Add this address under Test users in Google Cloud, then start again."
           ) : reason ? (
             <span className="text-warn">{reason}</span>
           ) : (
-            `If Google asks you to, or to give ${APP_NAME} new permissions.`
+            `If Google signed this account out (it can, about once a week, while your Google Cloud project is in Testing), or to give ${APP_NAME} new permissions.`
           )
         }
       >
