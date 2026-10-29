@@ -2774,6 +2774,17 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       the account was added and then failed with a raw 403. Built
       2026-10-29: the app checks which permissions Google granted
       before saving anything, and says to tick "Select all")*
+- [ ] A more conventional app icon on Windows *(owner request,
+      2026-10-29; after the onboarding feedback is dealt with)*: today's
+      Windows icon is the Mac one (a dark rounded square with the boat
+      on it, only cropped to fill its square: `design/icon/app-icon-windows.svg`
+      into `icon.ico`). Windows apps usually show the mark itself, with
+      no tile. The owner will supply a screenshot of VS Code's icon on
+      Windows to compare against (taskbar, Start menu, title bar, the
+      installer); then redraw the Windows icon from the boat alone, in
+      `scripts/build-app-icon.sh`. The Dock icon choices in Settings
+      stay Mac only. First impression for new users, so it belongs with
+      onboarding
 - [ ] Tried with the owner on a fresh Google account, following only
       what the app says (using Milestone 11's clean start) *(first
       trial 2026-10-29 on Windows, which led to the changes above; to
