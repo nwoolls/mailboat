@@ -235,8 +235,27 @@ A setup screen in the app (part of Onboarding), not just a web page:
 
 ### Making the code public
 
-- Publish a **fresh history** (one starting commit), not this repository's: it stays as a private archive. Check first that fixtures and examples hold no real
-      mail, and that nothing personal is left in docs
+- Publish a **clean history**, not this repository's as it stands. Two
+      ways, to decide with the owner when the milestone starts (talked
+      through 2026-10-29; the rewrite is preferred):
+  - **Rewrite** (preferred): keeps the commit messages (they explain the why, so they are documentation), blame and dates; then everything is verified: a secrets scanner, every image looked at, and `bun run check`. The risk is something missed living in public history for good
+  - **A single starting commit** (fallback, and what the plan assumed
+        until now): no risk of old content, but loses the messages,
+        blame and dates. Common for projects that started private. Use
+        it if the checks above can't clear something
+  - **The size is not a reason.** The history is small, and only `main` is ever pushed
+  - Either way: this repository stays private as the archive, only
+        `main` (and tags) go public, and commit hashes quoted in the
+        docs then point into the archive (say so in the README)
+- **Personal details must appear nowhere** (owner's
+      requirement, 2026-10-29): not in commit authors or committers, files,
+      history, docs or examples. Today it is only in made-up addresses in
+      three test files at the tip (swap them for an `example` domain in a
+      normal commit before publishing) and in the commit authorship above.
+      The repository's git identity is already the personal address, so
+      new commits are fine
+- Check first that fixtures and examples hold no real mail, and that
+      nothing personal is left in docs
 - Licence: see "Choices that keep the doors open". GPL-3.0 suggested
 - Contributions: bug reports and ideas welcome; outside code not
       accepted. An email client is an attractive target for a malicious

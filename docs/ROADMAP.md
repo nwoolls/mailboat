@@ -2834,13 +2834,7 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       the JavaScript packages): every crate and package must be allowed
       in the chosen licence (GPL-3.0 can't include some licences).
       Kept as a CI check afterwards
-- [ ] Publish a fresh history: a new public repository on the owner's
-      GitHub starting from one commit of today's tree, which becomes
-      the working repository. This one is kept private as an archive. Commit hashes quoted in the docs then
-      point into the archive; say so in the README
-
-### The README
-
+- [ ] Publish a clean history: a new public repository on the owner's GitHub, which becomes the working repository. The original private repository is kept offline as the archive. The README says that commit hashes quoted in older docs come from it
 - [ ] A README that sells it, written for people, not agents:
       - A hero image or short GIF of Mailboat at work (from Demo mode,
         or a cut of the trailer once it exists), in light and dark
