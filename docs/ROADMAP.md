@@ -3113,7 +3113,7 @@ again until the next spike.*
       headings and choices get the same colours; it fails without the
       fix. Owner to try on Windows)*
 
-- [ ] The compose window's AI button shows even when no AI is set up
+- [x] The compose window's AI button shows even when no AI is set up
       *(owner report, 2026-10-29, with a screenshot)*: on Windows with
       nothing configured, "Reply with AI" is hidden but the AI button in
       a new message is not, and it opens "Write with" with an Apple
@@ -3121,6 +3121,11 @@ again until the next spike.*
       empty list to choose from. Hide the button the same way "Reply with
       AI" is hidden. Also check what the writing provider is set to by
       default on Windows, since Apple Intelligence can't be there
+      *(fixed 2026-10-29: a new message's and an inline reply's AI button
+      (and ⌘J) now show only while a writing provider is ready, using the
+      same check as "Reply with AI". Browser tests, with a new "no AI set
+      up" setting in the harness, fail without the change. Not looked at:
+      the default writing provider on Windows. Owner to try on Windows)*
 
 - [ ] Email images show larger than in Gmail *(owner report, 2026-10-29)*:
       the same email in Gmail and in Mailboat: the logo and the illustration are wider in Mailboat. Likely the sizes the sender sets (width and height

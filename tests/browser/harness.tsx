@@ -20,6 +20,7 @@
  *                                 List's density and preview lines
  *   ?mode=empty&toy=…             an empty Inbox with a Toybox toy
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
+ *   &ai=none                      (card, inline) no AI set up
  *   ?mode=onboarding&stage=…     first-launch onboarding at a stage
  *     &path=…&done=a,b&accounts=0|1&configured=1
  *   ?mode=search                  the title bar's search, with three recent
@@ -106,7 +107,15 @@ mockIPC((cmd, args) => {
     case "settings_get":
       return { ai: { writingProvider: "apple" } };
     case "ai_status":
-      return [{ provider: "apple", state: "ready", account: null }];
+      // `&ai=none`: Windows with no AI set up (Apple Intelligence can't be there).
+      return [
+        {
+          provider: "apple",
+          state:
+            new URLSearchParams(location.search).get("ai") === "none" ? "unsupported" : "ready",
+          account: null,
+        },
+      ];
     case "ai_rewrite": {
       // Shouts the selection back, so a test can see what was sent.
       const text = (args as { text: string }).text.toUpperCase();

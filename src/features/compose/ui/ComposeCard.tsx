@@ -5,6 +5,8 @@ import { canSwitchKind, editorKey, hasChanges } from "../model/draft";
 import type { ComposeEntry } from "../model/composeState";
 import { ComposeForm, type ReplyKind } from "./ComposeForm";
 import { useAssistantOpen } from "../../ai/ui/assistantOpen";
+import { aiChoices, canWrite } from "../../ai/model/providers";
+import { useAiStatus, useAppSettings } from "../../../shared/lib/queries";
 import { assistantLayout, cardSize, nearestSpot, type Point, spotPosition } from "../model/snap";
 import { usePresence } from "../../../shared/ui/usePresence";
 
@@ -48,6 +50,12 @@ export function ComposeCard({
   // The writing assistant (⌘J) opens beside the form, widening the card.
   // Kept per message, so it's still open after minimising and restoring.
   const [assistant, setAssistant] = useAssistantOpen(draft);
+  // The AI button (and ⌘J) only while a writing provider is ready, as
+  // "Reply with AI" is: with none set up it opened a panel with an error
+  // and an empty list (owner report, 2026-10-29).
+  const settings = useAppSettings().data;
+  const aiStatus = useAiStatus().data;
+  const aiReady = canWrite(aiChoices(settings), aiStatus);
   // Drawn while it closes too, so it collapses rather than vanishing.
   const assistantShown = usePresence(assistant, ASSISTANT_SPRING_MS);
   // Positions are the form's: it rests at its spot (or follows the pointer)
@@ -171,13 +179,17 @@ export function ComposeCard({
         onDiscard={() => closeDraft(draft.id)}
         // Reply / Reply all / Forward, as inline; not for new mail.
         onSwitchKind={canSwitchKind(draft) ? (kind) => onSwitch(draft.id, kind) : undefined}
-        assistant={{
-          open: assistant,
-          shown: assistantShown,
-          side: layout.side,
-          formWidth: size.width,
-          onToggle: setAssistant,
-        }}
+        assistant={
+          aiReady
+            ? {
+                open: assistant,
+                shown: assistantShown,
+                side: layout.side,
+                formWidth: size.width,
+                onToggle: setAssistant,
+              }
+            : undefined
+        }
       />
     </section>
   );

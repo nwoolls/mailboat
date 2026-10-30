@@ -76,6 +76,8 @@ export function ReplyArea({
   const [failed, setFailed] = useState<MessageId | null>(null);
   const settings = useAppSettings().data;
   const aiStatus = useAiStatus().data;
+  // Offered while the writing provider (Settings → AI) is ready.
+  const aiReady = canWrite(aiChoices(settings), aiStatus);
   const prefetchIdeas = usePrefetchAiReplyIdeas();
   // The writing assistant (⌘J), above the reply; kept per message, so it
   // stays open when the reply pops out into the card and back.
@@ -123,7 +125,9 @@ export function ReplyArea({
           onSwitchKind={canSwitchKind(draft) ? (kind) => onSwitch(draft.id, kind) : undefined}
           onSend={() => onSend(reply)}
           onDiscard={() => closeDraft(draft.id)}
-          assistant={{ open: assistant, shown: assistantShown, onToggle: setAssistant }}
+          assistant={
+            aiReady ? { open: assistant, shown: assistantShown, onToggle: setAssistant } : undefined
+          }
         />
       </section>
     );
@@ -144,9 +148,7 @@ export function ReplyArea({
     );
   if (resumeId !== null && failed !== resumeId)
     return <div className="px-4 pt-3 pb-4 text-xs text-content/45">Opening your draft…</div>;
-  // Offered while the writing provider (Settings → AI) is ready.
   const writing = aiChoices(settings).writingProvider;
-  const aiReady = canWrite(aiChoices(settings), aiStatus);
   // Reply all only when there's someone else to include.
   const last = detail.messages.findLast((m) => !m.draft);
   const several = last ? last.to.length + last.cc.length > 1 : false;
