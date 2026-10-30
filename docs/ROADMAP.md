@@ -2953,6 +2953,9 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
 
 ### Publishing
 
+- [ ] Remove remaining references to Mailboat throughout the repository,
+      including the README and other docs, before publishing *(owner
+      request, 2026-10-30)*
 - [ ] Owner: choose the licence. GPL-3.0 suggested (nobody can sell a
       closed copy; respected by a technical audience); MIT and the
       Functional Source License compared in `docs/RELEASE.md` →
