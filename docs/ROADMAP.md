@@ -2919,6 +2919,10 @@ fixes. At most 10 rounds.
 
 Round 1 (2026-10-30), all seven findings confirmed and fixed:
 
+- [x] R1-01: a removed account's ID went to the next account added, with
+      AI apps' access to it. IDs are never reused now (`account_id_seq`),
+      removing an account takes its access back in the same transaction,
+      and access left by accounts already removed is dropped on update
 - [x] R1-02: a client file's `token_uri` was used as given, so a crafted
       file could have refresh tokens sent elsewhere. Google's endpoints
       are fixed now; the file only gives the ID, secret and project

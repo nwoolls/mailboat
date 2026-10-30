@@ -113,6 +113,7 @@ fn migrate(conn: &mut Connection) -> Result<()> {
         (16, schema::MIGRATION_V16),
         (17, schema::MIGRATION_V17),
         (18, schema::MIGRATION_V18),
+        (19, schema::MIGRATION_V19),
     ];
     for (version, sql) in steps {
         if current < *version {
@@ -152,12 +153,39 @@ mod tests {
         let versions: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(versions, 18);
+        assert_eq!(versions, 19);
         conn.execute(
             "INSERT INTO messages_fts (rowid, subject, sender, recipients, snippet, body) VALUES (1, 'hello', '', '', '', '')",
             [],
         )
         .unwrap();
+    }
+
+    /// `MIGRATION_V19` on a database from before it: access granted to
+    /// accounts already removed is dropped, the rest kept, and IDs count on
+    /// from the highest in use (a removed ID above it may be given out once
+    /// more, but nothing is left keyed by it).
+    #[test]
+    fn upgrading_drops_access_left_by_removed_accounts() {
+        let db = Db::open_in_memory().unwrap();
+        let mut conn = db.conn();
+        conn.execute_batch(
+            "DROP TABLE account_id_seq; DELETE FROM schema_migrations WHERE version = 19;
+             INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at)
+               VALUES (1, 's1', 'a@example.com', '#5b8def', 'default', 0);
+             INSERT INTO app_settings (key, value)
+               VALUES ('app', '{\"theme\":\"dark\",\"mcp\":{\"read\":[1,2],\"drafts\":[2]}}');",
+        )
+        .unwrap();
+        migrate(&mut conn).unwrap();
+        let s = crate::settings::load(&conn).unwrap();
+        assert_eq!(s.mcp.read, [crate::model::AccountId(1)]);
+        assert!(s.mcp.drafts.is_empty());
+        assert_eq!(s.theme, crate::settings::Theme::Dark, "the rest is kept");
+        let next: i64 = conn
+            .query_row("SELECT last FROM account_id_seq", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(next, 1);
     }
 
     #[test]

@@ -87,9 +87,17 @@ pub fn upsert(conn: &Connection, new: &NewAccount<'_>) -> Result<Account> {
                 [],
                 |r| r.get(0),
             )?;
+            // Never a removed account's ID (see `MIGRATION_V19`).
+            let id: AccountId = conn.query_row(
+                "UPDATE account_id_seq
+                 SET last = MAX(last, (SELECT COALESCE(MAX(id), 0) FROM accounts)) + 1
+                 RETURNING last",
+                [],
+                |r| r.get(0),
+            )?;
             conn.execute(
-                "INSERT INTO accounts (google_sub, email, display_name, avatar_url, color, oauth_client, sort_order, created_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                "INSERT INTO accounts (id, google_sub, email, display_name, avatar_url, color, oauth_client, sort_order, created_at)
+                 VALUES (?9, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 params![
                     new.google_sub,
                     new.email,
@@ -98,10 +106,10 @@ pub fn upsert(conn: &Connection, new: &NewAccount<'_>) -> Result<Account> {
                     color,
                     new.oauth_client,
                     sort_order,
-                    now_millis()
+                    now_millis(),
+                    id
                 ],
             )?;
-            let id = AccountId(conn.last_insert_rowid());
             conn.execute("INSERT INTO sync_state (account_id) VALUES (?1)", [id])?;
             id
         }
@@ -170,9 +178,19 @@ pub fn set_color(conn: &Connection, id: AccountId, color: &str) -> Result<Accoun
 }
 
 /// Removes an account and, through cascading foreign keys, all of its cached
-/// mail. The caller is responsible for deleting its keychain entry.
+/// mail, and takes back AI apps' access to it, in one transaction. The
+/// caller is responsible for deleting its keychain entry.
 pub fn remove(conn: &Connection, id: AccountId) -> Result<()> {
-    conn.execute("DELETE FROM accounts WHERE id = ?1", [id])?;
+    let tx = conn.unchecked_transaction()?;
+    tx.execute("DELETE FROM accounts WHERE id = ?1", [id])?;
+    let mut settings = crate::settings::load(&tx)?;
+    let before = settings.mcp.clone();
+    settings.mcp.read.retain(|a| *a != id);
+    settings.mcp.drafts.retain(|a| *a != id);
+    if settings.mcp != before {
+        crate::settings::save(&tx, &settings)?;
+    }
+    tx.commit()?;
     Ok(())
 }
 
@@ -189,6 +207,30 @@ mod tests {
             avatar_url: None,
             oauth_client: "default",
         }
+    }
+
+    /// Regression: SQLite gave a removed account's ID to the next account
+    /// added, and AI apps' access, kept by ID, carried over to it.
+    #[test]
+    fn a_new_account_never_inherits_a_removed_accounts_id_or_access() {
+        use crate::settings::{self, McpSettings};
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        let a = upsert(&conn, &new("sub-a", "a@example.com")).unwrap();
+        let mut s = settings::load(&conn).unwrap();
+        s.mcp = McpSettings {
+            read: vec![a.id],
+            drafts: vec![a.id],
+        };
+        settings::save(&conn, &s).unwrap();
+
+        remove(&conn, a.id).unwrap();
+        assert_eq!(settings::load(&conn).unwrap().mcp, McpSettings::default());
+
+        let b = upsert(&conn, &new("sub-b", "b@example.com")).unwrap();
+        assert_ne!(a.id, b.id);
+        let mcp = settings::load(&conn).unwrap().mcp;
+        assert!(!mcp.can_read(b.id) && !mcp.can_draft(b.id));
     }
 
     #[test]

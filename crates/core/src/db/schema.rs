@@ -386,3 +386,20 @@ CREATE TABLE mcp_log (
 );
 CREATE INDEX mcp_log_by_time ON mcp_log (at);
 "#;
+
+/// Account IDs are never reused. `accounts.id` alone hands a removed
+/// account's ID to the next one added, and anything still keyed by it
+/// (AI apps' access in the settings, say) would quietly apply to a
+/// different mailbox. `account_id_seq` holds the highest ID ever given out
+/// (`accounts::upsert`). Grants for accounts already removed are dropped,
+/// so none can carry over.
+pub const MIGRATION_V19: &str = r#"
+CREATE TABLE account_id_seq (last INTEGER NOT NULL);
+INSERT INTO account_id_seq (last) SELECT COALESCE(MAX(id), 0) FROM accounts;
+UPDATE app_settings SET value = json_set(value,
+  '$.mcp.read', json((SELECT json_group_array(j.value) FROM json_each(app_settings.value, '$.mcp.read') j
+                      WHERE j.value IN (SELECT id FROM accounts))),
+  '$.mcp.drafts', json((SELECT json_group_array(j.value) FROM json_each(app_settings.value, '$.mcp.drafts') j
+                        WHERE j.value IN (SELECT id FROM accounts))))
+WHERE key = 'app' AND json_valid(value) AND json_type(value, '$.mcp') = 'object';
+"#;
