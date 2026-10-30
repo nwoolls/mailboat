@@ -2,6 +2,7 @@
 //! historyId expired) or an incremental `history.list` sync.
 
 use std::collections::{BTreeSet, HashSet};
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -41,6 +42,10 @@ pub struct SyncConfig {
     /// Downloads new mail's remote images after each pass (Settings can
     /// turn it off); `None` never does (tests).
     pub images: Option<crate::mail::prefetch::Prefetch>,
+    /// How often a long first sync stops to pick up mail that arrived since
+    /// it began, so new mail shows within minutes instead of after
+    /// thousands of old conversations.
+    pub catch_up_every: Duration,
 }
 
 impl Default for SyncConfig {
@@ -59,6 +64,7 @@ impl Default for SyncConfig {
             ],
             body_prefetch: 25,
             images: None,
+            catch_up_every: Duration::from_secs(120),
         }
     }
 }
@@ -120,10 +126,10 @@ impl SyncEngine<'_> {
         let cursor = store::history_id(&self.db.conn(), self.account)?;
         let mut outcome = match cursor {
             Some(start) => match self.incremental(start).await {
-                Err(CoreError::HistoryExpired) => self.full().await,
+                Err(CoreError::HistoryExpired) => self.full_then_catch_up().await,
                 other => other,
             },
-            None => self.full().await,
+            None => self.full_then_catch_up().await,
         }?;
         let scope = store::scope_version(&self.db.conn(), self.account)?;
         if outcome.kind == SyncKind::Incremental && scope < SCOPE_VERSION {
@@ -140,6 +146,30 @@ impl SyncEngine<'_> {
             self.mark_attachments().await?;
         }
         self.prefetch_bodies().await?;
+        Ok(outcome)
+    }
+
+    /// A full sync, then at once what arrived while it ran. A full sync
+    /// notes where Gmail's history stood when it began and stores that as
+    /// the cursor, so replaying from there finds the mail that came since
+    /// (and notifies about it): without this it waited for the next pass,
+    /// after the body prefetch and the poll interval.
+    async fn full_then_catch_up(&self) -> Result<SyncOutcome> {
+        let mut outcome = self.full().await?;
+        let cursor = store::history_id(&self.db.conn(), self.account)?;
+        let Some(start) = cursor else {
+            return Ok(outcome);
+        };
+        match self.incremental(start).await {
+            Ok(after) => {
+                outcome.changed_threads += after.changed_threads;
+                outcome.new_inbox = after.new_inbox;
+                outcome.new_unread = after.new_unread;
+            }
+            // Gmail kept no history that old: nothing to catch up on.
+            Err(CoreError::HistoryExpired) => {}
+            Err(e) => return Err(e),
+        }
         Ok(outcome)
     }
 
@@ -213,7 +243,8 @@ impl SyncEngine<'_> {
             .filter(|id| !done.contains(*id))
             .cloned()
             .collect();
-        self.fetch_threads(&todo).await?;
+        self.fetch_chunks(&todo, Some(start_history_id), false)
+            .await?;
         store::set_history_id(&self.db.conn(), self.account, Some(start_history_id), true)?;
         store::set_scope_version(&self.db.conn(), self.account, SCOPE_VERSION)?;
         // Threads fetched now carry sync's own attachment guess.
@@ -271,6 +302,16 @@ impl SyncEngine<'_> {
     }
 
     pub async fn incremental(&self, start: u64) -> Result<SyncOutcome> {
+        Ok(self.replay(start, true).await?.0)
+    }
+
+    /// Applies what Gmail's history says changed since `start`, and returns
+    /// the history ID it reached. `commit` makes it a real pass: it stores
+    /// where it reached and works out which messages are new mail. Without
+    /// it (a long first sync catching up part-way) only the cache changes
+    /// and nothing is reported, so the first sync's progress keeps counting
+    /// its long fetch; the real pass at the end replays it all again.
+    async fn replay(&self, start: u64, commit: bool) -> Result<(SyncOutcome, u64)> {
         let mut changed: BTreeSet<String> = BTreeSet::new();
         let mut deleted: Vec<String> = Vec::new();
         let mut added: Vec<String> = Vec::new();
@@ -315,16 +356,23 @@ impl SyncEngine<'_> {
             store::delete_messages(&mut self.db.conn(), self.account, &deleted)?;
         }
         let ids: Vec<String> = changed.into_iter().collect();
-        self.fetch_threads(&ids).await?;
-        store::set_history_id(&self.db.conn(), self.account, Some(latest), false)?;
-        let new_inbox = store::new_inbox_messages(&self.db.conn(), self.account, &added)?;
-        let new_unread = store::new_unread_messages(&self.db.conn(), self.account, &added)?;
-        Ok(SyncOutcome {
+        self.fetch_chunks(&ids, None, !commit).await?;
+        let (new_inbox, new_unread) = if commit {
+            store::set_history_id(&self.db.conn(), self.account, Some(latest), false)?;
+            // One lock at a time: two in one expression would wait on each other.
+            let new_inbox = store::new_inbox_messages(&self.db.conn(), self.account, &added)?;
+            let new_unread = store::new_unread_messages(&self.db.conn(), self.account, &added)?;
+            (new_inbox, new_unread)
+        } else {
+            (Vec::new(), Vec::new())
+        };
+        let outcome = SyncOutcome {
             kind: SyncKind::Incremental,
             changed_threads: ids.len(),
             new_inbox,
             new_unread,
-        })
+        };
+        Ok((outcome, latest))
     }
 
     async fn sync_labels(&self) -> Result<()> {
@@ -333,29 +381,60 @@ impl SyncEngine<'_> {
 
     /// Fetches threads by Gmail ID and writes them (or deletes vanished ones).
     async fn fetch_threads(&self, ids: &[String]) -> Result<()> {
+        self.fetch_chunks(ids, None, false).await
+    }
+
+    /// `fetch_threads`, chunk by chunk. `catch_up` is a first sync's
+    /// starting history point: every `catch_up_every` it stops to pick up
+    /// what changed since (mail that arrived meanwhile), which is why a
+    /// long first sync shows new mail as it comes. `quiet` reports no
+    /// progress.
+    async fn fetch_chunks(&self, ids: &[String], catch_up: Option<u64>, quiet: bool) -> Result<()> {
         let total = ids.len();
-        self.report(SyncPhase::Fetching, 0, total);
+        let report = |done: usize| {
+            if !quiet {
+                self.report(SyncPhase::Fetching, done, total);
+            }
+        };
+        report(0);
+        let mut catch_up_from = catch_up;
+        let mut last_catch_up = Instant::now();
         for (n, chunk) in ids.chunks(FETCH_CHUNK).enumerate() {
             let threads = self.gmail.batch_thread_metadata(chunk).await?;
-            let mut conn = self.db.conn();
-            for (id, thread) in chunk.iter().zip(threads) {
-                match thread {
-                    Some(t) => {
-                        store::upsert_thread(
-                            &mut conn,
-                            self.account,
-                            &parse::thread_to_incoming(&t),
-                        )?;
+            // The lock ends with this block: nothing awaits while holding it.
+            {
+                let mut conn = self.db.conn();
+                for (id, thread) in chunk.iter().zip(threads) {
+                    match thread {
+                        Some(t) => {
+                            store::upsert_thread(
+                                &mut conn,
+                                self.account,
+                                &parse::thread_to_incoming(&t),
+                            )?;
+                        }
+                        None => store::delete_thread(&conn, self.account, id)?,
                     }
-                    None => store::delete_thread(&conn, self.account, id)?,
                 }
             }
-            drop(conn);
-            self.report(
-                SyncPhase::Fetching,
-                (n * FETCH_CHUNK + chunk.len()).min(total),
-                total,
-            );
+            let done = (n * FETCH_CHUNK + chunk.len()).min(total);
+            report(done);
+            let Some(from) = catch_up_from else { continue };
+            if last_catch_up.elapsed() < self.config.catch_up_every {
+                continue;
+            }
+            // Boxed: replay fetches threads in its turn.
+            match Box::pin(self.replay(from, false)).await {
+                // Next time, only what changed since this.
+                Ok((_, reached)) => catch_up_from = Some(reached),
+                // Too old to replay: the full sync is rebuilding it all anyway.
+                Err(CoreError::HistoryExpired) => catch_up_from = None,
+                Err(e) => return Err(e),
+            }
+            last_catch_up = Instant::now();
+            // Shows what it found (the window refreshes on this report) and
+            // puts the count back.
+            report(done);
         }
         Ok(())
     }

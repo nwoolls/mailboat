@@ -662,3 +662,122 @@ impl wiremock::Respond for SlowBatch {
         self.0.respond(request).set_delay(self.1)
     }
 }
+
+/// Batch answers for the standard mailbox plus the thread that history.json
+/// says arrives during the sync (t3).
+fn batch_with_arrival() -> BatchResponder {
+    BatchResponder(HashMap::from([
+        ("t1", "thread_t1.json"),
+        ("t2", "thread_t2.json"),
+        ("t4", "thread_t4.json"),
+        ("t3", "thread_t3.json"),
+    ]))
+}
+
+/// Mail that arrives while a first sync runs is picked up the moment the
+/// sync ends, not a poll interval and a body prefetch later (found
+/// 2026-10-29: a test message to an account still on its first sync hadn't
+/// appeared). The sync reads where Gmail's history stood when it began, so
+/// it replays everything since, and notifies about the new mail.
+#[tokio::test]
+async fn mail_that_arrived_during_a_first_sync_is_caught_up_when_it_ends() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(batch_with_arrival())
+        .mount(&server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/history"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(fixture("history.json"), "application/json"),
+        )
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let account = add_account(&db, "a");
+
+    let outcome = run(&db, &server, account).await.unwrap();
+
+    assert_eq!(outcome.kind, SyncKind::Full);
+    // t3 wasn't in the listing: it arrived afterwards, and is here now.
+    assert!(inbox(&db, AccountFilter::All)
+        .iter()
+        .any(|t| t.subject == "Hello there"));
+    assert_eq!(outcome.new_inbox.len(), 1, "its arrival is notified");
+    // The cursor is where the catch-up reached, so the next pass starts there.
+    assert_eq!(store::history_id(&db.conn(), account).unwrap(), Some(9005));
+}
+
+/// A long first sync catches up as it goes, so new mail shows within
+/// minutes, not after thousands of old conversations. `catch_up_every` is
+/// zero here, so it catches up after every chunk of the fetch.
+#[tokio::test]
+async fn mail_that_arrives_during_a_long_first_sync_shows_before_it_ends() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    // 130 more conversations in the Inbox: two chunks of fetching. Gmail
+    // has none of them when asked (404), which the sync treats as deleted.
+    let many: Vec<serde_json::Value> = (1..=130)
+        .map(|i| serde_json::json!({ "id": format!("x{i}"), "threadId": format!("x{i}") }))
+        .collect();
+    use wiremock::matchers::{query_param, query_param_is_missing};
+    Mock::given(path("/gmail/v1/users/me/threads"))
+        .and(query_param("labelIds", "INBOX"))
+        .and(query_param_is_missing("pageToken"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "threads": many, "resultSizeEstimate": 130
+        })))
+        .with_priority(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(batch_with_arrival())
+        .mount(&server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/history"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(fixture("history.json"), "application/json"),
+        )
+        .mount(&server)
+        .await;
+    let db = Arc::new(Db::open_in_memory().unwrap());
+    let account = add_account(&db, "a");
+
+    // At the last report of the fetch: is the new thread already here, with
+    // the first sync still unfinished (it records its cursor only at the end)?
+    let seen: Arc<Mutex<Option<(bool, bool)>>> = Arc::new(Mutex::new(None));
+    let progress = {
+        let (db, seen) = (db.clone(), seen.clone());
+        move |p: SyncProgress| {
+            // The first time only: the catch-up at the end fetches too.
+            if p.phase == SyncPhase::Fetching
+                && p.total > 0
+                && p.done == p.total
+                && seen.lock().unwrap().is_none()
+            {
+                let ids = store::thread_ids_for_account(&db.conn(), account).unwrap();
+                let unfinished = store::history_id(&db.conn(), account).unwrap().is_none();
+                *seen.lock().unwrap() = Some((ids.contains("t3"), unfinished));
+            }
+        }
+    };
+    let (gmail, _) = client(&server.uri());
+    let cfg = SyncConfig {
+        catch_up_every: Duration::ZERO,
+        ..config()
+    };
+    SyncEngine {
+        db: &db,
+        gmail: &gmail,
+        account,
+        config: &cfg,
+        progress: &progress,
+    }
+    .run()
+    .await
+    .unwrap();
+
+    assert_eq!(*seen.lock().unwrap(), Some((true, true)));
+}

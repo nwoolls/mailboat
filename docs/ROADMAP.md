@@ -2826,7 +2826,7 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       serves the mail slowly and checks the signature is stored within a
       second, while the account is still syncing; it fails without the
       change. Owner to try: add an account and write a message at once)*
-- [ ] Mail that arrives during a first sync shows only after it ends
+- [x] Mail that arrives during a first sync shows only after it ends
       *(found 2026-10-29: a test message to the account that was still
       syncing hadn't appeared)*: a first sync notes where Gmail's history
       stood when it began, lists and fetches every conversation, and
@@ -2834,7 +2834,17 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       pass, which only runs after the first has finished and the poll
       interval has passed. Catch up at once when the first pass ends, and
       better, also every few minutes during a long one, so new mail never
-      waits for thousands of old conversations
+      waits for thousands of old conversations *(built 2026-10-29: a
+      first sync now catches up at once when its fetch ends (before the
+      body prefetch and the poll interval), notifying about the mail it
+      finds, and a long one stops every two minutes
+      (`SyncConfig::catch_up_every`) to pick up what changed since, from
+      where its last catch-up reached, so a busy account isn't refetched
+      each time. Those mid-way catch-ups change only the cache and report
+      no progress, so the "x of N" count isn't disturbed. Tests in
+      `tests/sync.rs` for both; they fail on the old engine. Also found
+      and fixed on the way: two database locks in one expression waited
+      on each other (the rule in `AGENTS.md`)*
 - [ ] Sending while an account is still syncing: check, and prove with a
       test *(owner, 2026-10-29: "allow sending while syncing if we don't
       currently")*. Reading the code, it already does: a send uses the
