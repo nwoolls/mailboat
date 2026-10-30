@@ -594,3 +594,71 @@ async fn account_synced_under_old_scope_is_widened_without_refetching() {
         SyncKind::Incremental
     );
 }
+
+/// A new account's From addresses (which carry its signatures) are read
+/// before its first sync pass, not after it (owner, 2026-10-29: a message
+/// written during a first sync had no signature, and Settings → Signatures
+/// was empty). Gmail answers the mail slowly here, as for an account with
+/// thousands of conversations; the addresses must arrive long before.
+#[tokio::test]
+async fn a_new_accounts_signatures_arrive_before_its_first_sync_finishes() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch_slowly(Duration::from_millis(1500)))
+        .mount(&server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/settings/sendAs"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "sendAs": [{ "sendAsEmail": "a@x.com", "isPrimary": true, "signature": "<b>Sig</b>" }]
+        })))
+        .mount(&server)
+        .await;
+
+    let db = Arc::new(Db::open_in_memory().unwrap());
+    let account = add_account(&db, "a");
+    let events = Arc::new(Recorder::default());
+    let supervisor = Supervisor::new(
+        tokio::runtime::Handle::current(),
+        db.clone(),
+        events.clone(),
+        config(),
+        WorkerTiming {
+            poll_interval: Duration::from_secs(3600),
+            ..WorkerTiming::default()
+        },
+    );
+    supervisor.start(account, client(&server.uri()).0);
+
+    // Within a second, while the mail is still being fetched (it takes
+    // 1.5s): the signature is stored, and the account is still syncing.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(1);
+    let signature = loop {
+        let found = mail_core::compose::identities::list(&db.conn())
+            .unwrap()
+            .into_iter()
+            .find(|i| i.account_id == account)
+            .and_then(|i| i.signature);
+        if found.is_some() || tokio::time::Instant::now() >= deadline {
+            break found;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    };
+    assert_eq!(signature.as_deref(), Some("<b>Sig</b>"));
+    assert_eq!(events.last_status(account), Some(SyncStatus::Syncing));
+    assert!(inbox(&db, AccountFilter::Only(vec![account])).is_empty());
+}
+
+/// The standard batch answers, after a delay.
+fn initial_batch_slowly(delay: Duration) -> SlowBatch {
+    SlowBatch(initial_batch(), delay)
+}
+
+struct SlowBatch(BatchResponder, Duration);
+
+impl wiremock::Respond for SlowBatch {
+    fn respond(&self, request: &wiremock::Request) -> ResponseTemplate {
+        self.0.respond(request).set_delay(self.1)
+    }
+}

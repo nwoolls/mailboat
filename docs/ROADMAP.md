@@ -2803,7 +2803,7 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       narrower. The corners are now squared off a little (42 units), so
       the row is the full 24px (100% at 32 and 48px). Owner to try after
       a rebuild and a cleared icon cache)*
-- [ ] Front-load the quick things in an account's first sync, so a new
+- [x] Front-load the quick things in an account's first sync, so a new
       account is usable at once *(owner, 2026-10-29: "I consider these
       bugs", found when a message written during the first sync had no
       signature and Settings → Signatures was empty)*: the Send mail as
@@ -2816,6 +2816,16 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       cheap and visible (the account's name and picture, rules and the
       vacation responder if the permission is there) belongs in the same
       front-loaded step, and the sidebar should show what has arrived
+      *(built 2026-10-29: the worker reads the Send mail as addresses and
+      Google contacts before the first pass, not after it; a failure that
+      may pass (offline, Gmail busy) is tried again after the pass, as
+      before. Labels were already first. The account's name and picture
+      come at sign-in, and rules and the vacation responder are read
+      from Gmail when their Settings pages open, by a path that goes
+      ahead of sync, so they never waited. A test in `tests/sync.rs`
+      serves the mail slowly and checks the signature is stored within a
+      second, while the account is still syncing; it fails without the
+      change. Owner to try: add an account and write a message at once)*
 - [ ] Mail that arrives during a first sync shows only after it ends
       *(found 2026-10-29: a test message to the account that was still
       syncing hadn't appeared)*: a first sync notes where Gmail's history

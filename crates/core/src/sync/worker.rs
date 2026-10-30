@@ -162,12 +162,24 @@ async fn run_worker(
     wake: Arc<Notify>,
 ) {
     let mut failures: u32 = 0;
-    // From addresses are fetched once per worker (each launch, or after
-    // signing in again), after a pass shows Gmail is reachable.
+    // From addresses (and the signatures they carry) and Google contacts
+    // are fetched once per worker (each launch, or after signing in
+    // again): before the first pass, so a new account is usable while its
+    // mail is still coming in, and again after a pass if that attempt
+    // failed for a reason that may pass (offline, Gmail busy).
     let mut identities_fresh = false;
     let mut contacts_fresh = false;
     loop {
         set_status(&db, &*events, account, SyncStatus::Syncing, None);
+        // The quick things first (owner, 2026-10-29: a message written
+        // during a first sync had no signature). A few small requests that
+        // don't depend on the mail; labels are already first in a full sync.
+        if !identities_fresh {
+            identities_fresh = load_identities(&db, &gmail, &*events, account).await;
+        }
+        if !contacts_fresh {
+            contacts_fresh = load_contacts(&db, &gmail, &*events, account).await;
+        }
         let progress_events = events.clone();
         let progress = move |p: SyncProgress| {
             // Each fetched chunk is already saved; let the UI show it now
@@ -223,36 +235,12 @@ async fn run_worker(
                         ),
                     }
                 }
+                // Whatever the attempt before the pass couldn't do.
                 if !contacts_fresh {
-                    // Once per launch, like aliases. An account without the
-                    // contacts permission (signed in before it was asked
-                    // for) is noted in the log and carries on.
-                    contacts_fresh = true;
-                    match crate::compose::contacts::refresh_google(&db, &gmail, account).await {
-                        Ok(n) => {
-                            events.log(account, &format!("Google contacts: {n} addresses"));
-                            events.mail_changed(account);
-                        }
-                        Err(e) => events.log(
-                            account,
-                            &format!(
-                                "Google contacts unavailable ({}): {e}; sign in again to allow them",
-                                e.kind()
-                            ),
-                        ),
-                    }
+                    contacts_fresh = load_contacts(&db, &gmail, &*events, account).await;
                 }
                 if !identities_fresh {
-                    match crate::compose::identities::refresh(&db, &gmail, account).await {
-                        Ok(()) => {
-                            identities_fresh = true;
-                            events.identities_changed(account);
-                        }
-                        Err(e) => events.log(
-                            account,
-                            &format!("could not read Send mail as addresses ({}): {e}", e.kind()),
-                        ),
-                    }
+                    identities_fresh = load_identities(&db, &gmail, &*events, account).await;
                 }
                 Some(timing.poll_interval)
             }
@@ -296,6 +284,60 @@ async fn run_worker(
                 }
             }
             None => wake.notified().await,
+        }
+    }
+}
+
+/// Fetches the account's From addresses ("Send mail as") and their
+/// signatures. Returns whether it is done with them: false after a failure,
+/// so the next chance tries again.
+async fn load_identities(
+    db: &Db,
+    gmail: &GmailClient,
+    events: &dyn SyncEvents,
+    account: AccountId,
+) -> bool {
+    match crate::compose::identities::refresh(db, gmail, account).await {
+        Ok(()) => {
+            events.identities_changed(account);
+            true
+        }
+        Err(e) => {
+            events.log(
+                account,
+                &format!("could not read Send mail as addresses ({}): {e}", e.kind()),
+            );
+            false
+        }
+    }
+}
+
+/// Fetches Google contacts for address suggestions. An account without the
+/// contacts permission (signed in before it was asked for) is noted in the
+/// log and carries on, and isn't asked again until the next launch.
+/// Returns whether it is done: false only after a failure that may pass
+/// (offline, Gmail busy), so the next chance tries again.
+async fn load_contacts(
+    db: &Db,
+    gmail: &GmailClient,
+    events: &dyn SyncEvents,
+    account: AccountId,
+) -> bool {
+    match crate::compose::contacts::refresh_google(db, gmail, account).await {
+        Ok(n) => {
+            events.log(account, &format!("Google contacts: {n} addresses"));
+            events.mail_changed(account);
+            true
+        }
+        Err(e) => {
+            events.log(
+                account,
+                &format!(
+                    "Google contacts unavailable ({}): {e}; sign in again to allow them",
+                    e.kind()
+                ),
+            );
+            !e.is_transient()
         }
     }
 }
