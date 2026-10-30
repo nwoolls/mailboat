@@ -38,7 +38,7 @@ export function WelcomeStage({ onNext }: { onNext: () => void }) {
         <div ref={wordsRef} className="onb-rise mt-6" style={{ animationDelay: "120ms" }}>
           <h1 className="text-[32px] font-semibold tracking-tight">Welcome to {APP_NAME}</h1>
           <p className="mt-2 text-[15px] text-content/65">
-            A calm, keyboard-first home for all your Gmail.
+            All your Gmail accounts, in one calm inbox.
           </p>
         </div>
         <div
@@ -55,7 +55,7 @@ export function WelcomeStage({ onNext }: { onNext: () => void }) {
           </button>
           <p className="flex max-w-sm items-start gap-2 text-left text-[12px] text-content/55">
             <LockIcon size={14} className="mt-px shrink-0" />
-            {APP_NAME} talks to Google directly. It has no servers of its own.
+            Straight from Google to your computer. Nothing in between.
           </p>
         </div>
       </div>

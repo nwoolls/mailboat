@@ -1,3 +1,5 @@
+import type { AccountSyncState } from "../../../platform/tauri/bindings";
+
 /**
  * The first-launch flow (Milestone 12): welcome, set up the user's own
  * Google Cloud project (a private OAuth client that stays in Testing),
@@ -76,6 +78,28 @@ export function parseProgress(raw: string | null): Progress {
 export function showOnboarding(accountCount: number, progress: Progress): boolean {
   if (accountCount === 0) return true;
   return progress.started && !progress.finished;
+}
+
+/**
+ * Whether an account's mail is still coming in: nothing known yet, a sync
+ * under way or retrying, or its first pass not finished. A failed account
+ * isn't syncing: it needs the person, not time.
+ */
+export function isSyncing(state: AccountSyncState | undefined): boolean {
+  if (!state) return true;
+  if (state.status === "error" || state.status === "authError") return false;
+  return state.status !== "idle" || state.lastSyncAt == null;
+}
+
+/**
+ * Whether to tell the person they needn't wait: some account is still
+ * syncing, and syncing carries on after they continue.
+ */
+export function showContinueNote(
+  accounts: readonly { id: number }[],
+  states: readonly AccountSyncState[],
+): boolean {
+  return accounts.some((a) => isSyncing(states.find((s) => s.accountId === a.id)));
 }
 
 /**

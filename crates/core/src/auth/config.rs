@@ -71,23 +71,23 @@ const MAX_CLIENT_FILE: usize = 64 * 1024;
 /// what's wrong if it isn't a Desktop client. Stricter than `from_json`,
 /// which still reads files saved before this check existed.
 pub fn check(text: &str) -> std::result::Result<CheckedClient, String> {
-    const NOT_A_CLIENT: &str = "This isn't a Google client file. Use the JSON you downloaded \
-        after creating the Desktop client (its name starts with \"client_secret_\").";
+    const NOT_A_CLIENT: &str = "This isn't a Google credentials file. Use the one you downloaded \
+        after creating a Desktop app OAuth client (its name starts with \"client_secret_\").";
     if text.len() > MAX_CLIENT_FILE {
         return Err(NOT_A_CLIENT.into());
     }
     let value: serde_json::Value = serde_json::from_str(text).map_err(|_| NOT_A_CLIENT)?;
     if value.get("web").is_some() {
         return Err(
-            "This is a \"Web application\" client. Create another client in Google \
-            Cloud with Application type \"Desktop app\", and download that one."
+            "This is a \"Web application\" client. Create another OAuth client in Google \
+            Cloud with Application type \"Desktop app\", and download its credentials."
                 .into(),
         );
     }
     if value.get("type").and_then(|t| t.as_str()) == Some("service_account") {
         return Err(
             "This is a service account key, not an OAuth client. Create an OAuth \
-            client with Application type \"Desktop app\", and download that one."
+            client with Application type \"Desktop app\", and download its credentials."
                 .into(),
         );
     }
@@ -103,7 +103,7 @@ pub fn check(text: &str) -> std::result::Result<CheckedClient, String> {
     };
     let client_id = field("client_id").ok_or(
         "This file has no client ID. Download the \
-        Desktop client's JSON again from Google Cloud.",
+        Desktop app credentials again from Google Cloud.",
     )?;
     if !client_id.ends_with(".apps.googleusercontent.com") {
         return Err(format!(
@@ -114,8 +114,8 @@ pub fn check(text: &str) -> std::result::Result<CheckedClient, String> {
     if field("client_secret").is_none() {
         return Err(
             "This file has no client secret. Google shows the secret only once, \
-            when the client is created: create a new Desktop client and download its JSON \
-            straight away."
+            when the client is created: create a new Desktop app OAuth client and download its \
+            credentials straight away."
                 .into(),
         );
     }
@@ -300,10 +300,10 @@ mod tests {
         assert!(check(key).unwrap_err().contains("service account"));
         assert!(check("not json")
             .unwrap_err()
-            .contains("isn't a Google client file"));
+            .contains("isn't a Google credentials file"));
         assert!(check(r#"{"other":1}"#)
             .unwrap_err()
-            .contains("isn't a Google client file"));
+            .contains("isn't a Google credentials file"));
         let no_secret = r#"{"installed":{"client_id":"1.apps.googleusercontent.com"}}"#;
         assert!(check(no_secret).unwrap_err().contains("only once"));
         let bad_id = r#"{"installed":{"client_id":"hello","client_secret":"s"}}"#;

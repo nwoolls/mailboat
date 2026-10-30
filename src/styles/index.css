@@ -986,8 +986,7 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
 }
 
 /* Onboarding (features/onboarding). Each stage slides in from the side
-   it comes from; a step's card rises; the button to press on a drawn
-   Google page glows; a finished step's tick pops. */
+   it comes from; a step's card rises; a finished step's tick pops. */
 .onb-stage {
   animation: onb-stage 420ms var(--motion-ease-out) both;
 }
@@ -1009,20 +1008,6 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
 .onb-rise {
   animation: empty-rise 360ms var(--motion-ease-out) both;
 }
-.onb-glow {
-  position: relative;
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent);
-  animation: onb-glow 1.8s ease-out infinite;
-}
-@keyframes onb-glow {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 55%, transparent);
-  }
-  70%,
-  100% {
-    box-shadow: 0 0 0 7px transparent;
-  }
-}
 .onb-tick {
   animation: onb-tick 420ms var(--motion-ease-out) both;
 }
@@ -1043,7 +1028,6 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
 @media (prefers-reduced-motion: reduce) {
   .onb-stage,
   .onb-rise,
-  .onb-glow,
   .onb-tick {
     animation: none;
   }

@@ -7,10 +7,12 @@ import {
   explainSyncError,
   FRESH,
   gcloudCommand,
+  isSyncing,
   makeProjectId,
   nextStage,
   parseProgress,
   plainError,
+  showContinueNote,
   showOnboarding,
   stepLinkLabel,
   stepsFor,
@@ -58,6 +60,31 @@ describe("showOnboarding", () => {
 
   it("never shows to someone who had accounts before it existed", () => {
     expect(showOnboarding(2, FRESH)).toBe(false);
+  });
+});
+
+describe("the note that says you can continue", () => {
+  const state = (accountId: number, status: string, lastSyncAt: number | null) =>
+    ({ accountId, status, errorKind: null, errorMessage: null, lastSyncAt }) as never;
+
+  it("counts an account as syncing until its first pass has finished", () => {
+    expect(isSyncing(undefined)).toBe(true);
+    expect(isSyncing(state(1, "syncing", null))).toBe(true);
+    expect(isSyncing(state(1, "idle", null))).toBe(true);
+    expect(isSyncing(state(1, "backoff", 5))).toBe(true);
+    expect(isSyncing(state(1, "idle", 5))).toBe(false);
+  });
+
+  it("doesn't call a failed account syncing: it needs the person, not time", () => {
+    expect(isSyncing(state(1, "error", null))).toBe(false);
+    expect(isSyncing(state(1, "authError", null))).toBe(false);
+  });
+
+  it("shows while any account is still syncing, and goes once all are done", () => {
+    const accounts = [{ id: 1 }, { id: 2 }];
+    expect(showContinueNote(accounts, [state(1, "idle", 5), state(2, "syncing", null)])).toBe(true);
+    expect(showContinueNote(accounts, [state(1, "idle", 5), state(2, "idle", 6)])).toBe(false);
+    expect(showContinueNote([], [])).toBe(false);
   });
 });
 

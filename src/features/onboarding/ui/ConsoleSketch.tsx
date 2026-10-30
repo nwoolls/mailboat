@@ -1,224 +1,352 @@
 import { APP_NAME } from "../../../shared/lib/brand";
-import { CheckIcon } from "../../../shared/ui/icons";
 import type { GuideStepId } from "../model/onboarding";
 
 /**
- * A drawing of a Google page, with the thing to press glowing. Drawn, not
- * screenshotted: Google redesigns these pages often, and a sketch of the
- * shape (a field, a choice, a button) stays true for longer and matches
- * the app's look. The wording on them is Google's own, as it appears for a
- * project in Testing (checked on Windows, 2026-10-29).
+ * Small pictures of Google's pages, drawn as SVG in Google's Material
+ * style and set in a browser frame with the page's address, so they read
+ * as a screenshot and not as part of the app: our own buttons are the only
+ * solid blue in the window. Drawn, not screenshotted, because Google
+ * redesigns these pages and a drawing is easy to redraw, and it has no
+ * logos. The wording on them is Google's own, as it appears for a project
+ * in Testing (checked on Windows, 2026-10-29). Pictures are decorative: the
+ * text beside them says what to do.
  */
-type Part =
-  | { kind: "field"; label: string; value: string }
-  | { kind: "choice"; label: string; options: string[]; chosen: string }
-  | { kind: "list"; items: string[] }
-  /** Boxes, ticked or empty; the first can glow ("Select all"). */
-  | { kind: "checks"; items: string[]; ticked: boolean; glowFirst?: boolean }
-  | { kind: "rows"; items: string[] }
-  | { kind: "status"; label: string; value: string }
-  | { kind: "note"; text: string }
-  | { kind: "button"; label: string; glow?: boolean; quiet?: boolean };
 
-const SKETCHES: Record<GuideStepId, { title: string; parts: Part[] }> = {
-  project: {
-    title: "New project",
-    parts: [
-      { kind: "field", label: "Project name", value: APP_NAME },
-      { kind: "field", label: "Location", value: "No organisation" },
-      { kind: "button", label: "Create", glow: true },
-    ],
-  },
-  apis: {
-    title: "Enable access to APIs",
-    parts: [
-      { kind: "list", items: ["Gmail API", "People API", "Google Calendar API"] },
-      { kind: "button", label: "Enable", glow: true },
-    ],
-  },
-  branding: {
-    title: "Google Auth Platform · Get started",
-    parts: [
-      { kind: "field", label: "App name", value: APP_NAME },
-      { kind: "field", label: "User support email", value: "you@gmail.com" },
-      { kind: "choice", label: "Audience", options: ["Internal", "External"], chosen: "External" },
-      { kind: "button", label: "Create", glow: true },
-    ],
-  },
-  users: {
-    title: "Audience",
-    parts: [
-      { kind: "status", label: "Publishing status", value: "Testing" },
-      { kind: "note", text: "Test users" },
-      { kind: "button", label: "+ Add users", glow: true },
-      { kind: "rows", items: ["you@gmail.com", "you@your-work.com"] },
-    ],
-  },
-  client: {
-    title: "Create OAuth client ID",
-    parts: [
-      { kind: "field", label: "Application type", value: "Desktop app" },
-      { kind: "field", label: "Name", value: APP_NAME },
-      { kind: "note", text: "OAuth client created" },
-      { kind: "button", label: "Download JSON", glow: true },
-    ],
-  },
+const FONT = "'Google Sans','Product Sans',Roboto,Arial,sans-serif";
+const WIDTH = 440;
+const BLUE = "#1a73e8";
+const INK = "#202124";
+const GREY = "#5f6368";
+const LINE = "#dadce0";
+
+/** The browser frame: chrome, address bar and a white page. */
+function Page({
+  url,
+  height,
+  children,
+}: {
+  url: string;
+  height: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <svg
+      viewBox={`0 0 ${WIDTH} ${height}`}
+      aria-hidden
+      className="block w-full"
+      fontFamily={FONT}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect
+        x="1"
+        y="1"
+        width="438"
+        height={height - 2}
+        rx="12"
+        fill="#fff"
+        stroke={LINE}
+        strokeWidth="2"
+      />
+      <path d="M1 13a12 12 0 0 1 12-12h414a12 12 0 0 1 12 12v26H1z" fill="#f1f3f4" />
+      {[22, 40, 58].map((cx) => (
+        <circle key={cx} cx={cx} cy="20" r="5" fill={LINE} />
+      ))}
+      <rect x="84" y="9" width="330" height="22" rx="11" fill="#fff" stroke={LINE} />
+      <text x="100" y="24.5" fontSize="12" fill={GREY}>
+        {url}
+      </text>
+      {children}
+    </svg>
+  );
+}
+
+/** A Material outlined text field with its label on the border. */
+function Field({
+  y,
+  label,
+  value,
+  caret = false,
+}: {
+  y: number;
+  label: string;
+  value: string;
+  caret?: boolean;
+}) {
+  return (
+    <g>
+      <rect
+        x="24"
+        y={y}
+        width="392"
+        height="46"
+        rx="4"
+        fill="#fff"
+        stroke="#80868b"
+        strokeWidth="1.5"
+      />
+      <rect x="34" y={y - 8} width={label.length * 6.4 + 8} height="16" fill="#fff" />
+      <text x="38" y={y + 5} fontSize="11.5" fill={GREY}>
+        {label}
+      </text>
+      <text x="36" y={y + 29} fontSize="15" fill={INK}>
+        {value}
+      </text>
+      {caret && <path d={`M390 ${y + 20}l6 6 6-6`} fill="none" stroke={GREY} strokeWidth="2" />}
+    </g>
+  );
+}
+
+function FilledButton({ x, y, w, label }: { x: number; y: number; w: number; label: string }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height="36" rx="18" fill={BLUE} />
+      <text x={x + w / 2} y={y + 23} fontSize="14" fill="#fff" fontWeight="500" textAnchor="middle">
+        {label}
+      </text>
+    </g>
+  );
+}
+
+function OutlinedButton({ x, y, w, label }: { x: number; y: number; w: number; label: string }) {
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={w}
+        height="32"
+        rx="16"
+        fill="none"
+        stroke="#747775"
+        strokeWidth="1.5"
+      />
+      <text
+        x={x + w / 2}
+        y={y + 21}
+        fontSize="14"
+        fill="#0b57d0"
+        fontWeight="500"
+        textAnchor="middle"
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
+function TextButton({ x, y, label }: { x: number; y: number; label: string }) {
+  return (
+    <text x={x} y={y} fontSize="14" fill={BLUE} fontWeight="500">
+      {label}
+    </text>
+  );
+}
+
+function Heading({ y, size = 24, children }: { y: number; size?: number; children: string }) {
+  return (
+    <text x="24" y={y} fontSize={size} fill={INK}>
+      {children}
+    </text>
+  );
+}
+
+const PROJECT_ID = `${APP_NAME.toLowerCase()}-8f3k2q`;
+
+const PICTURES: Record<GuideStepId, () => React.ReactNode> = {
+  project: () => (
+    <Page url="console.cloud.google.com/projectcreate" height={340}>
+      <text x="24" y="70" fontSize="13" fill={GREY}>
+        Google Cloud
+      </text>
+      <Heading y={108}>New Project</Heading>
+      <Field y={130} label="Project name *" value={APP_NAME} />
+      <text x="24" y="192" fontSize="11" fill={GREY}>
+        {`Project ID: ${PROJECT_ID}. It cannot be changed later.`}
+      </text>
+      <Field y={206} label="Location *" value="No organisation" />
+      <text x="340" y="234" fontSize="12.5" fill={BLUE} fontWeight="500">
+        BROWSE
+      </text>
+      <TextButton x={248} y={294} label="Cancel" />
+      <FilledButton x={316} y={272} w={100} label="Create" />
+    </Page>
+  ),
+  apis: () => (
+    <Page url="console.cloud.google.com/apis/library" height={340}>
+      <Heading y={86} size={22}>
+        Enable access to APIs
+      </Heading>
+      <text x="24" y="112" fontSize="12.5" fill={GREY}>
+        {`These APIs will be enabled for project ${APP_NAME}`}
+      </text>
+      {["Gmail API", "People API", "Google Calendar API"].map((name, i) => (
+        <g key={name}>
+          <circle cx="40" cy={158 + i * 40} r="11" fill="#e6f4ea" />
+          <path d={`M34 ${158 + i * 40}l4 4 8-8`} fill="none" stroke="#188038" strokeWidth="2.2" />
+          <text x="62" y={163 + i * 40} fontSize="15" fill={INK}>
+            {name}
+          </text>
+          <line x1="24" y1={178 + i * 40} x2="416" y2={178 + i * 40} stroke={LINE} />
+        </g>
+      ))}
+      <TextButton x={248} y={294} label="Cancel" />
+      <FilledButton x={316} y={272} w={100} label="Enable" />
+    </Page>
+  ),
+  branding: () => (
+    <Page url="console.cloud.google.com/auth/overview" height={352}>
+      <Heading y={82}>Get started</Heading>
+      <text x="24" y="112" fontSize="14" fill={GREY}>
+        App Information
+      </text>
+      <Field y={134} label="App name *" value={APP_NAME} />
+      <Field y={198} label="User support email *" value="you@gmail.com" caret />
+      <text x="24" y="276" fontSize="13" fill={GREY}>
+        Audience
+      </text>
+      <circle cx="34" cy="296" r="7" fill="none" stroke={GREY} strokeWidth="2" />
+      <text x="50" y="301" fontSize="14" fill={INK}>
+        Internal
+      </text>
+      <circle cx="170" cy="296" r="7" fill="none" stroke={BLUE} strokeWidth="2" />
+      <circle cx="170" cy="296" r="3.5" fill={BLUE} />
+      <text x="186" y="301" fontSize="14" fill={INK}>
+        External
+      </text>
+      <FilledButton x={316} y={308} w={100} label="Next" />
+    </Page>
+  ),
+  users: () => (
+    <Page url="console.cloud.google.com/auth/audience" height={300}>
+      <Heading y={82} size={22}>
+        Audience
+      </Heading>
+      <text x="24" y="116" fontSize="13" fill={GREY}>
+        Publishing status
+      </text>
+      <text x="24" y="140" fontSize="16" fill={INK} fontWeight="500">
+        Testing
+      </text>
+      <line x1="24" y1="162" x2="416" y2="162" stroke={LINE} />
+      <text x="24" y="190" fontSize="16" fill={INK}>
+        Test users
+      </text>
+      <OutlinedButton x={24} y={202} w={124} label="+ Add users" />
+      <line x1="24" y1="252" x2="416" y2="252" stroke={LINE} />
+      <text x="34" y="274" fontSize="14" fill={INK}>
+        you@gmail.com
+      </text>
+      <line x1="24" y1="286" x2="416" y2="286" stroke={LINE} />
+    </Page>
+  ),
+  client: () => (
+    <Page url="console.cloud.google.com/auth/clients/create" height={340}>
+      <Heading y={84} size={22}>
+        Create OAuth client ID
+      </Heading>
+      <Field y={116} label="Application type *" value="Desktop app" caret />
+      <Field y={186} label="Name *" value={APP_NAME} />
+      <text x="24" y="250" fontSize="11" fill={GREY}>
+        The name is only shown in the Console, not to people signing in.
+      </text>
+      <TextButton x={248} y={312} label="Cancel" />
+      <FilledButton x={316} y={290} w={100} label="Create" />
+    </Page>
+  ),
 };
 
 export function ConsoleSketch({ step }: { step: GuideStepId }) {
-  const sketch = SKETCHES[step];
-  return <SketchWindow title={sketch.title} parts={sketch.parts} />;
+  return <>{PICTURES[step]()}</>;
 }
 
 /**
- * What Google shows at a first sign-in to a project in Testing, drawn in
- * advance: the warning (which is expected: it's the person's own private
+ * What Google shows at a first sign-in to a project in Testing, in the
+ * order it shows it: the warning (expected: it's the person's own private
  * project) and the permissions, which start with every box empty.
  */
 export function SignInSketches() {
   return (
     <div className="grid grid-cols-2 gap-3">
-      <SketchWindow
-        title="Google hasn’t verified this app"
-        parts={[
-          {
-            kind: "note",
-            text: "You’ve been given access to an app that’s currently being tested.",
-          },
-          { kind: "button", label: "Continue", glow: true },
-          { kind: "button", label: "Back to safety", quiet: true },
-        ]}
-      />
-      <SketchWindow
-        title={`${APP_NAME} wants access`}
-        parts={[
-          {
-            kind: "checks",
-            items: ["Select all", "Contacts, calendars", "Gmail: settings, mail"],
-            ticked: false,
-            glowFirst: true,
-          },
-          { kind: "button", label: "Continue" },
-        ]}
-      />
+      <figure>
+        <Page url="accounts.google.com" height={300}>
+          <text x="28" y="92" fontSize="25" fill={INK}>
+            Google hasn’t verified
+          </text>
+          <text x="28" y="122" fontSize="25" fill={INK}>
+            this app
+          </text>
+          <text x="28" y="156" fontSize="13.5" fill="#3c4043">
+            You’ve been given access to an app that’s
+          </text>
+          <text x="28" y="176" fontSize="13.5" fill="#3c4043">
+            currently being tested. You should only
+          </text>
+          <text x="28" y="196" fontSize="13.5" fill="#3c4043">
+            continue if you know the developer.
+          </text>
+          <text x="150" y="262" fontSize="15" fill="#0b57d0" fontWeight="500" textAnchor="middle">
+            Continue
+          </text>
+          <rect x="230" y="240" width="140" height="36" rx="18" fill="#d3e3fd" />
+          <text x="300" y="263" fontSize="14.5" fill="#041e49" fontWeight="500" textAnchor="middle">
+            Back to safety
+          </text>
+        </Page>
+        <figcaption className="mt-1 text-center text-[10.5px] text-content/55">
+          1 · The warning
+        </figcaption>
+      </figure>
+      <figure>
+        <Page url="accounts.google.com" height={300}>
+          <text x="28" y="76" fontSize="20" fill={INK}>
+            {`${APP_NAME} wants access to`}
+          </text>
+          <text x="28" y="100" fontSize="20" fill={INK}>
+            your Google Account
+          </text>
+          <text x="28" y="136" fontSize="13" fill="#3c4043">
+            {`Select what ${APP_NAME} can access`}
+          </text>
+          {[
+            ["Select all", 164],
+            ["Contacts and calendars", 206],
+            ["Gmail: read, compose, settings", 236],
+          ].map(([label, y]) => (
+            <g key={label}>
+              <rect
+                x="28"
+                y={Number(y) - 14}
+                width="18"
+                height="18"
+                rx="3"
+                fill="#fff"
+                stroke={GREY}
+                strokeWidth="2"
+              />
+              <text x="58" y={y} fontSize="14" fill={INK}>
+                {label}
+              </text>
+            </g>
+          ))}
+          <line x1="28" y1="180" x2="372" y2="180" stroke={LINE} />
+          <rect
+            x="262"
+            y="258"
+            width="108"
+            height="30"
+            rx="15"
+            fill="none"
+            stroke="#747775"
+            strokeWidth="1.5"
+          />
+          <text x="316" y="278" fontSize="14" fill="#0b57d0" fontWeight="500" textAnchor="middle">
+            Continue
+          </text>
+        </Page>
+        <figcaption className="mt-1 text-center text-[10.5px] text-content/55">
+          2 · The permissions (they start empty)
+        </figcaption>
+      </figure>
     </div>
   );
-}
-
-function SketchWindow({ title, parts }: { title: string; parts: Part[] }) {
-  return (
-    <div
-      aria-hidden
-      className="overflow-hidden rounded-lg bg-background-raised text-[11px] ring-1 ring-stroke select-none"
-    >
-      <div className="flex items-center gap-1.5 border-b border-stroke px-2.5 py-1.5">
-        <span className="size-1.5 rounded-full bg-content/20" />
-        <span className="size-1.5 rounded-full bg-content/20" />
-        <span className="size-1.5 rounded-full bg-content/20" />
-        <span className="ml-1.5 truncate text-content/50">{title}</span>
-      </div>
-      <div className="space-y-2 p-3">
-        {parts.map((part, i) => (
-          <SketchPart key={i} part={part} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SketchPart({ part }: { part: Part }) {
-  switch (part.kind) {
-    case "field":
-      return (
-        <div>
-          <div className="text-[10px] text-content/45">{part.label}</div>
-          <div className="mt-0.5 truncate rounded border border-content/12 px-1.5 py-1 text-content/80">
-            {part.value}
-          </div>
-        </div>
-      );
-    case "choice":
-      return (
-        <div>
-          <div className="text-[10px] text-content/45">{part.label}</div>
-          <div className="mt-1 flex gap-3">
-            {part.options.map((o) => (
-              <span key={o} className="flex items-center gap-1 text-content/70">
-                <span
-                  className={`size-2.5 rounded-full border ${
-                    o === part.chosen ? "border-accent bg-accent" : "border-content/30"
-                  }`}
-                />
-                {o}
-              </span>
-            ))}
-          </div>
-        </div>
-      );
-    case "list":
-      return (
-        <ul className="space-y-1">
-          {part.items.map((item) => (
-            <li key={item} className="flex items-center gap-1.5 text-content/75">
-              <span className="flex size-3 items-center justify-center rounded-[3px] bg-accent text-white">
-                <CheckIcon size={9} strokeWidth={3} />
-              </span>
-              {item}
-            </li>
-          ))}
-        </ul>
-      );
-    case "checks":
-      return (
-        <ul className="space-y-1">
-          {part.items.map((item, i) => (
-            <li key={item} className="flex items-center gap-1.5 text-content/75">
-              <span
-                className={`flex size-3 items-center justify-center rounded-[3px] ${
-                  part.ticked ? "bg-accent text-white" : "border border-content/35"
-                } ${part.glowFirst && i === 0 ? "onb-glow" : ""}`}
-              >
-                {part.ticked && <CheckIcon size={9} strokeWidth={3} />}
-              </span>
-              {item}
-            </li>
-          ))}
-        </ul>
-      );
-    case "rows":
-      return (
-        <ul className="divide-y divide-stroke rounded border border-content/12">
-          {part.items.map((item) => (
-            <li key={item} className="truncate px-1.5 py-1 text-content/70">
-              {item}
-            </li>
-          ))}
-        </ul>
-      );
-    case "status":
-      return (
-        <div className="flex items-center justify-between">
-          <span className="text-content/55">{part.label}</span>
-          <span className="rounded-full bg-warn/15 px-1.5 py-0.5 text-[10px] text-warn">
-            {part.value}
-          </span>
-        </div>
-      );
-    case "note":
-      return <div className="text-content/55">{part.text}</div>;
-    case "button":
-      return (
-        <div className="flex justify-end">
-          <span
-            className={`rounded px-2 py-1 ${
-              part.quiet
-                ? "text-content/45"
-                : `bg-accent font-medium text-white ${part.glow ? "onb-glow" : ""}`
-            }`}
-          >
-            {part.label}
-          </span>
-        </div>
-      );
-  }
 }

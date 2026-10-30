@@ -21,6 +21,7 @@ import {
   explainSignInError,
   explainSyncError,
   type GuideStepId,
+  showContinueNote,
   stepLinkLabel,
 } from "../model/onboarding";
 import { SignInSketches } from "./ConsoleSketch";
@@ -61,7 +62,7 @@ export function AccountsStage({
         <h1 className="text-[22px] font-semibold tracking-tight">
           {first ? "Add your first Gmail account" : "Your Gmail accounts"}
         </h1>
-        <p className="mt-1 max-w-lg text-content/60">
+        <p className="mt-1 text-content/60">
           Sign-in happens in your browser; {APP_NAME} never sees your password. Gmail and Google
           Workspace accounts both work, as many as you like.
         </p>
@@ -103,6 +104,13 @@ export function AccountsStage({
             />
           ))}
         </ul>
+      )}
+
+      {accounts.length > 0 && showContinueNote(accounts, states) && (
+        <p className="text-[13px] text-content/60">
+          You can continue now. Syncing carries on in the background, and your mail appears as it
+          arrives.
+        </p>
       )}
 
       <div className="flex items-center gap-3">

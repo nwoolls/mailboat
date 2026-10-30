@@ -100,9 +100,6 @@ export function Onboarding({
             );
           })}
         </ol>
-        <div className="mt-auto p-5 text-[11px] leading-relaxed text-content/40">
-          Everything here is in Settings afterwards.
-        </div>
       </nav>
       <main className="flex min-w-0 flex-1 flex-col">
         <div data-tauri-drag-region className="h-11 shrink-0" />

@@ -107,7 +107,7 @@ export function ClientDrop({ onSaved }: { onSaved: (client: CheckedClient) => vo
         className="onb-drop flex flex-col items-center gap-2 rounded-xl border border-dashed border-content/20 px-6 py-7 text-center transition-colors duration-150"
       >
         <FileUploadIcon size={26} strokeWidth={1.5} className="text-content/50" />
-        <p className="font-medium">Drop the downloaded file here</p>
+        <p className="font-medium">Drop your credentials file here</p>
         <p className="text-[12px] text-content/55">
           Anywhere on the window. It’s named <code>client_secret_….json</code>.
         </p>

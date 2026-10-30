@@ -43,7 +43,7 @@ const STEPS: Record<GuideStepId, StepText> = {
     copy: [["Project name", APP_NAME]],
   },
   apis: {
-    title: "Turn on Gmail, People and Calendar",
+    title: "Turn on the Gmail, People and Calendar APIs",
     body: (
       <>
         These let {APP_NAME} read and send your mail, suggest addresses from your contacts and
@@ -53,7 +53,7 @@ const STEPS: Record<GuideStepId, StepText> = {
     ),
   },
   branding: {
-    title: "Name the sign-in screen",
+    title: "Set up the sign-in screen",
     body: (
       <>
         Press <b>Get started</b>. Give the app a name, pick your own email for support and contact,
@@ -70,15 +70,14 @@ const STEPS: Record<GuideStepId, StepText> = {
     title: "Add your Gmail addresses as test users",
     body: (
       <>
-        Open <b>Audience</b>, scroll to <b>Test users</b>, press <b>Add users</b> and enter each
-        Gmail address you’ll use in {APP_NAME}. Work and school accounts work too. Leave “Publishing
-        status” as <b>Testing</b>: that’s right, and it keeps Google’s sign-in screens simple.
-        Google can ask you to sign in again about once a week.
+        Open <b>Audience</b>. Under <b>Test users</b>, press <b>Add users</b> and enter each Gmail
+        address you’ll use in {APP_NAME}. Leave <b>Publishing status</b> on <b>Testing</b>, since
+        publishing isn’t needed here. Google may ask you to sign in again about once a week.
       </>
     ),
   },
   client: {
-    title: "Create a Desktop client and download it",
+    title: "Create and download OAuth credentials",
     body: (
       <>
         Choose <b>Desktop app</b> as the application type, name it and press <b>Create</b>. Then
@@ -145,7 +144,7 @@ export function GoogleStage({
         </h1>
         <p className="mt-1 text-content/60">
           {path === "have"
-            ? "Give the Desktop client file you downloaded from Google Cloud."
+            ? "Give the credentials file you downloaded from Google Cloud."
             : "About 10 minutes in Google Cloud, once. Each button opens the right page."}{" "}
           <button
             type="button"
@@ -176,7 +175,7 @@ export function GoogleStage({
         <section className="onb-rise">
           {path !== "have" && (
             <h2 className="mb-2 text-[13px] font-medium text-content/70">
-              Last, give the file to {APP_NAME}
+              Last, give the credentials to {APP_NAME}
             </h2>
           )}
           <ClientDrop onSaved={saved} />
@@ -216,8 +215,9 @@ function ChoosePath() {
     {
       path: "have",
       icon: FileIcon,
-      title: "I already have the file",
-      detail: "You made a Desktop client in Google Cloud and downloaded its JSON.",
+      title: "I already have my OAuth credentials",
+      detail:
+        "You created a Desktop app OAuth client in Google Cloud and downloaded its credentials file.",
     },
   ];
   return (
@@ -226,7 +226,7 @@ function ChoosePath() {
         <h1 className="text-[22px] font-semibold tracking-tight">
           Set up your Google Cloud project
         </h1>
-        <p className="mt-1 max-w-lg text-content/60">
+        <p className="mt-1 text-content/60">
           {APP_NAME} signs in through a small project in your own Google Cloud account. It’s private
           to you, free (no card needed), and takes about 10 minutes, once. It covers all your Gmail
           accounts, work or personal.
@@ -306,7 +306,7 @@ function StepCard({
         </span>
       </button>
       {shown && (
-        <div className="onb-rise grid grid-cols-[1fr_15rem] gap-5 px-4 pt-1 pb-4 pl-13">
+        <div className="onb-rise grid grid-cols-[1fr_18rem] gap-5 px-4 pt-1 pb-4 pl-13">
           <div className="space-y-3">
             <p className="text-[13px] leading-relaxed text-content/70">{text.body}</p>
             {text.copy && (
@@ -423,7 +423,7 @@ function Connected({
       <p className="mt-1 text-content/60">
         {project
           ? `${APP_NAME} will sign in through your project “${project}”.`
-          : `${APP_NAME} has your Google Cloud client.`}
+          : `${APP_NAME} has your Google Cloud credentials.`}
       </p>
       <div className="mt-6 flex items-center gap-2">
         <button
@@ -439,7 +439,7 @@ function Connected({
           onClick={onReplace}
           className="rounded-md px-3 py-2 text-content/60 hover:bg-selection"
         >
-          Use another file
+          Use a different file
         </button>
       </div>
     </div>
