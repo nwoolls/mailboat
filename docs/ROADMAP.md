@@ -2705,7 +2705,15 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       "no servers" to the setup; "gcloud" is explained as Google's
       command-line tool. The project now stays in **Testing** with
       the user's addresses as test users (no publishing), see the
-      Architecture decisions. Owner to try again from a fresh project*
+      Architecture decisions. A second pass the same evening, screen by screen with the owner:
+      the tagline is "All your Gmail accounts, in one calm inbox."
+      (not "keyboard-first"), plainer step titles ("Create and download
+      OAuth credentials", a "credentials file" throughout), pictures of
+      Google's pages redrawn as framed Material-style drawings with no
+      glow (they looked clickable), intro paragraphs as wide as the cards
+      under them, and "You can continue now. Syncing carries on in the
+      background…" while mail is still syncing. Owner to try again from a
+      fresh project*
 - [ ] Credentials walkthrough in the app: one card per step (create a
       project; turn on the Gmail, People and Calendar APIs; consent
       screen, External; add your addresses as test users; create a
@@ -2756,8 +2764,6 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       signed in again, so if the rule applies they are refused again within a week
       (sync log: `invalid_grant`): that confirms it, and the wording
       ("about once a week" or "rarely") is then settled*
-- [ ] Settings → Accounts shows which credentials each account uses and
-      lets the user replace the JSON
 - [x] Scopes: check whether `gmail.compose` is needed beside
       `gmail.modify` (which may already cover drafts and sending) and
       drop any scope that isn't. Fewer scopes means fewer APIs to turn
@@ -3058,6 +3064,13 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [ ] Email images show larger than in Gmail *(owner report, 2026-10-29)*:
+      the same email in Gmail and in Mailboat: the logo and the illustration are wider in Mailboat. Likely the sizes the sender sets (width and height
+      attributes, or styles, often for images made at twice the size)
+      aren't honoured, or images are stretched to the column. Compare how
+      Gmail sizes them and match it, checking this email and a few other
+      newsletters. Not investigated yet
+
 - [ ] Periodically refresh each account's Google profile image *(owner
       request, 2026-10-27; for the next bug spike)*. Today the profile
       URL is saved only at sign-in; background sync never refreshes it.
@@ -3123,6 +3136,39 @@ again until the next spike.*
       Adapted colors forgets it. It was per message, until the app quit
 
 ## Later / unscheduled
+
+- [ ] Task-app integrations: "add to Todoist and archive" *(owner idea,
+      2026-10-29; wanted soon after the first release, he'd use it
+      often)*: one way he keeps an empty inbox is turning an email that
+      needs action into a task in Todoist, then archiving it. A button on
+      an email creates the task and archives the email. With AI on, the
+      task's title and description are derived from the email (shown to
+      the owner first, like all AI output); without AI it takes the
+      subject and a link or snippet, because it must work for people who
+      don't use AI (so not only through the AI-apps server). Settings gets
+      an Integrations page, split by type, Tasks first, so Todoist and
+      other apps can be connected. Ways to connect, simplest first, to
+      weigh when it starts: (1) email-in: many task apps give a private
+      address that makes a task from an email, and the app can send
+      through its existing send path, no new client or keys (it lands in
+      Sent, and only apps with such an address work); (2) the app's own
+      command-line tool where there is one (the person installs it and
+      signs in; fixed arguments, never a shell, as the AI CLIs are run);
+      (3) a small REST client per app, token in the keychain, the most
+      capable (project, priority, due date) and last. Google Keep
+      probably has no public API for ordinary accounts (to check); Google
+      Tasks has one but would add a Google permission. Open: what goes to
+      the AI provider (only if the owner chose it for the feature), undo
+      for the archive
+
+- [ ] Settings → Accounts shows which Google Cloud credentials each
+      account uses and lets the user replace the file *(moved from
+      Milestone 12, 2026-10-29: the owner doesn't want Google Cloud
+      configuration in Settings until it's required)*. Until then, after
+      onboarding there is no screen to give a new credentials file, and
+      the sign-in message for a deleted OAuth client says only that a new
+      one is needed. One idea if it comes up: "Run setup again" in
+      Settings → Advanced, reopening the Google Cloud stage
 
 - [ ] A switch between pixel art and ASCII art for the screensavers
       *(owner, 2026-10-26: "we may also do a toggle"; moved from UX

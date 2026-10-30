@@ -1,8 +1,8 @@
 # Mailboat — agent instructions
 
-Mailboat is a cross-platform desktop Gmail client (macOS first, then Windows).
-It uses the Gmail REST API directly and is keyboard-first, with a calm,
-minimal look (MonoCode × Notion Mail).
+Mailboat is a cross-platform desktop Gmail client (macOS and Windows, Linux to
+follow). It uses the Gmail REST API directly, with a calm, minimal look
+(MonoCode × Notion Mail).
 
 Agents write all the code, so:
 

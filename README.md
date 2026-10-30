@@ -1,8 +1,11 @@
 # Mailboat
 
-A fast, keyboard-first desktop Gmail client for macOS (Windows later). It
-talks to the Gmail API directly, keeps a local cache for instant browsing and
-search, and supports several Google accounts with a unified inbox.
+All your Gmail accounts, in one calm inbox.
+
+Mailboat is a desktop Gmail client for macOS and Windows, with Linux to
+follow. It talks to the Gmail API directly, keeps a local cache for instant
+browsing and search, and brings several Google accounts together in one
+unified inbox.
 
 Status: early development. See [docs/ROADMAP.md](docs/ROADMAP.md) for what
 works today and what is next, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
