@@ -898,6 +898,34 @@ fn api_error(status: u16, body: &str) -> CoreError {
     }
 }
 
+/// A request that didn't get an answer, without its address: request URLs
+/// carry Gmail IDs and search words, and this text reaches the sync log.
 pub(crate) fn net_error(e: reqwest::Error) -> CoreError {
-    CoreError::Network(e.to_string())
+    CoreError::Network(e.without_url().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression: a request that failed kept its URL in the error text,
+    /// so the sync log recorded Gmail message IDs.
+    #[tokio::test]
+    async fn network_errors_leave_the_address_out() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let url =
+            format!("http://127.0.0.1:{port}/gmail/v1/users/me/messages/msgid123?q=secretword");
+        let err = reqwest::Client::new().get(&url).send().await.unwrap_err();
+        assert!(
+            err.to_string().contains("msgid123"),
+            "reqwest's own text has it"
+        );
+        let text = net_error(err).to_string();
+        assert!(
+            !text.contains("msgid123") && !text.contains("secretword"),
+            "{text}"
+        );
+    }
 }

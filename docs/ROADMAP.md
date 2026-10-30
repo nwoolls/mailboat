@@ -2933,6 +2933,8 @@ Round 1 (2026-10-30), all seven findings confirmed and fixed:
 - [x] R1-05: changing From to another account deleted the draft before
       the new account saved it, so a failed save lost it. It's saved in
       the new account first now
+- [x] R1-06: network errors kept the request's URL (Gmail message IDs,
+      search words), which reached the sync log. They leave it out now
 - [x] R1-07: a sent message whose conversation couldn't be cached was
       reported "Couldn't send", inviting a second send. A send that Gmail
       accepted is reported as sent now

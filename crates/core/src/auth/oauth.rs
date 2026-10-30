@@ -21,6 +21,7 @@ use tokio::net::TcpListener;
 
 use super::config::OAuthClientConfig;
 use crate::error::{CoreError, Result};
+use crate::gmail::client::net_error;
 
 // The OAuth protocol itself (PKCE, consent URL, code exchange, refresh) comes
 // from the `oauth2` crate. This file adds the loopback listener, Google's
@@ -147,7 +148,7 @@ fn send_with(http: &reqwest::Client) -> impl Fn(oauth2::HttpRequest) -> HttpFutu
             let response = http
                 .execute(request)
                 .await
-                .map_err(|e| HttpError(e.to_string()))?;
+                .map_err(|e| HttpError(e.without_url().to_string()))?;
             let mut builder = oauth2::http::Response::builder().status(response.status());
             for (name, value) in response.headers() {
                 builder = builder.header(name, value);
@@ -155,7 +156,7 @@ fn send_with(http: &reqwest::Client) -> impl Fn(oauth2::HttpRequest) -> HttpFutu
             let body = response
                 .bytes()
                 .await
-                .map_err(|e| HttpError(e.to_string()))?;
+                .map_err(|e| HttpError(e.without_url().to_string()))?;
             builder
                 .body(body.to_vec())
                 .map_err(|e| HttpError(e.to_string()))
@@ -237,17 +238,14 @@ pub async fn user_info(
         .bearer_auth(access_token)
         .send()
         .await
-        .map_err(|e| CoreError::Network(e.to_string()))?;
+        .map_err(net_error)?;
     if !response.status().is_success() {
         return Err(CoreError::Api {
             status: response.status().as_u16(),
             message: "could not read Google profile".into(),
         });
     }
-    response
-        .json()
-        .await
-        .map_err(|e| CoreError::Network(e.to_string()))
+    response.json().await.map_err(net_error)
 }
 
 /// A started loopback listener, waiting for Google's redirect.
