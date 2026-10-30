@@ -2845,13 +2845,20 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       `tests/sync.rs` for both; they fail on the old engine. Also found
       and fixed on the way: two database locks in one expression waited
       on each other (the rule in `AGENTS.md`)*
-- [ ] Sending while an account is still syncing: check, and prove with a
+- [x] Sending while an account is still syncing: check, and prove with a
       test *(owner, 2026-10-29: "allow sending while syncing if we don't
       currently")*. Reading the code, it already does: a send uses the
       interactive client, which goes ahead of background sync and of its
       rate-limit pauses, and saves the sent message locally at once. Add
       a test that sends during a full sync that has the quota pacer
       saturated, so it can't regress, and check the Sent view shows it
+      *(done 2026-10-29: sending already worked during a sync. A test in
+      `tests/sync.rs` starts a first sync on a nearly empty quota, so it
+      waits for tens of seconds, and sends a message on the interactive
+      path the app uses: it goes out within 3 seconds and is saved
+      locally, with the sync still waiting. It fails if the send used the
+      background path. It checks the thread is cached, not the Sent view
+      itself)*
 - [ ] Tried with the owner on a fresh Google account, following only
       what the app says (using Milestone 11's clean start) *(first
       trial 2026-10-29 on Windows, which led to the changes above; to

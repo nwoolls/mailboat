@@ -781,3 +781,98 @@ async fn mail_that_arrives_during_a_long_first_sync_shows_before_it_ends() {
 
     assert_eq!(*seen.lock().unwrap(), Some((true, true)));
 }
+
+/// Sending isn't held up by a first sync (owner, 2026-10-29: "allow sending
+/// while syncing if we don't currently"). Both draw on the account's quota,
+/// but a send goes ahead of background sync, so a sync that is waiting on a
+/// used-up quota doesn't delay it. The quota here is nearly nothing: the
+/// sync's first requests use it up and then wait for tens of seconds.
+#[tokio::test]
+async fn sending_goes_ahead_while_a_first_sync_waits_on_its_quota() {
+    use mail_core::compose::{self, OutgoingMessage};
+    use mail_core::gmail::{GmailClient, QuotaPacer};
+
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch())
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/upload/gmail/v1/users/me/messages/send"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(
+            serde_json::json!({ "id": "sent1", "threadId": "t1", "labelIds": ["SENT"] }),
+        ))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/threads/t1"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(fixture("thread_t1.json"), "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let db = Arc::new(Db::open_in_memory().unwrap());
+    let account = add_account(&db, "a");
+    let tokens = Arc::new(FakeTokens::default());
+    let gmail = GmailClient::with_base_url(reqwest::Client::new(), tokens, &server.uri())
+        .with_retry(fast_retry())
+        .with_pacer(QuotaPacer::new(0.5, 6.0));
+
+    // The first sync starts and soon runs out of quota.
+    let sync = {
+        let (db, gmail) = (db.clone(), gmail.clone());
+        tokio::spawn(async move {
+            let cfg = config();
+            let progress = |_: SyncProgress| {};
+            SyncEngine {
+                db: &db,
+                gmail: &gmail,
+                account,
+                config: &cfg,
+                progress: &progress,
+            }
+            .run()
+            .await
+        })
+    };
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(!sync.is_finished(), "the sync should be waiting on quota");
+
+    let message = OutgoingMessage {
+        account_id: account,
+        from: Address {
+            name: None,
+            email: "a@x.com".into(),
+        },
+        to: vec![Address {
+            name: None,
+            email: "bob@example.com".into(),
+        }],
+        cc: vec![],
+        bcc: vec![],
+        subject: "Hello".into(),
+        text: "Sent while the first sync was still going".into(),
+        html: None,
+        attachments: vec![],
+        draft: None,
+        forwarded: vec![],
+        inline_images: vec![],
+        replying_to: None,
+    };
+    // As the app sends: on the interactive path.
+    let sent = tokio::time::timeout(
+        Duration::from_secs(3),
+        compose::send(&db, &gmail.interactive(), &message),
+    )
+    .await
+    .expect("the send waited for the sync's quota")
+    .unwrap();
+
+    // It went out, was saved locally at once, and the sync is still waiting.
+    assert!(sent.is_some());
+    assert!(!sync.is_finished());
+    sync.abort();
+}
