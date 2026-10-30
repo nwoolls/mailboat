@@ -169,6 +169,26 @@ async fn a_reply_from_another_account_starts_its_own_thread() {
     assert_eq!(owner, b);
 }
 
+/// Regression: once Gmail had sent the mail, failing to cache its
+/// conversation reported "Couldn't send", which invited sending it twice.
+#[tokio::test]
+async fn a_sent_message_is_sent_even_if_caching_it_fails() {
+    let server = MockServer::start().await;
+    mount_send(&server, "t1").await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    db.conn()
+        .execute_batch(
+            "CREATE TRIGGER no_threads BEFORE INSERT ON threads
+             BEGIN SELECT RAISE(ABORT, 'disk full'); END;",
+        )
+        .unwrap();
+
+    let (gmail, _) = client(&server.uri());
+    let thread = compose::send(&db, &gmail, &outgoing(a, "a@x.com", None)).await;
+    assert_eq!(thread.unwrap(), None, "sent; sync brings it in later");
+}
+
 #[tokio::test]
 async fn a_server_error_while_sending_is_not_retried() {
     // The mail may already have gone: sending again could deliver it twice.

@@ -298,16 +298,18 @@ pub async fn send_with_files(
     validate(db, msg)?;
     let (raw, thread) = prepare(db, msg, &msg.to, &msg.cc, &msg.bcc, carried)?;
     let sent = gmail.send_message(&raw, thread.as_deref()).await?;
-    // The mail is gone; failing to cache it now only delays it until sync.
-    let fetched = gmail.thread_metadata(&sent.thread_id).await;
-    Ok(match fetched {
-        Ok(Some(t)) => Some(store::upsert_thread(
-            &mut db.conn(),
-            msg.account_id,
-            &parse::thread_to_incoming(&t),
-        )?),
-        _ => None,
-    })
+    // The mail is gone: from here nothing may report a failure (that
+    // invited sending it again). Failing to cache it only delays it until
+    // sync.
+    let Ok(Some(t)) = gmail.thread_metadata(&sent.thread_id).await else {
+        return Ok(None);
+    };
+    let cached = store::upsert_thread(
+        &mut db.conn(),
+        msg.account_id,
+        &parse::thread_to_incoming(&t),
+    );
+    Ok(cached.ok())
 }
 
 /// The RFC 5322 message, and the Gmail thread it joins: a reply joins the
