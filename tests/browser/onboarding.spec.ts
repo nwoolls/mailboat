@@ -95,3 +95,27 @@ test("the rail doesn't promise that everything is in Settings", async ({ page })
   await open(page, "stage=google");
   await expect(page.getByText(/in Settings afterwards/)).toHaveCount(0);
 });
+
+test("the last step's card ends with the place to drop the file, and has no Done", async ({
+  page,
+}) => {
+  await open(page, "stage=google&path=guide&done=project,apis,branding,users");
+  const card = page.locator("li", { hasText: "Create and download OAuth credentials" });
+  // Shown as soon as the step opens, inside its card: the file is what finishes it.
+  await expect(card.getByText("Drop your credentials file here")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Done$|Not done yet/ })).toHaveCount(0);
+  await expect(page.getByText(/Last, give the credentials/)).toHaveCount(0);
+});
+
+test("the drop zone isn't there while an earlier step is still open", async ({ page }) => {
+  await open(page, "stage=google&path=guide&done=project");
+  await expect(page.getByText("Turn on the Gmail, People and Calendar APIs")).toBeVisible();
+  await expect(page.getByText("Drop your credentials file here")).toHaveCount(0);
+});
+
+test("a file dropped on the last step's card connects", async ({ page }) => {
+  await open(page, "stage=google&path=guide&done=project,apis,branding,users");
+  await expect(page.getByText("Drop your credentials file here")).toBeVisible();
+  await dropFile(page, "client_secret_1.json", '{"installed":{}}');
+  await expect(page.getByRole("heading", { name: "Google Cloud is set up" })).toBeVisible();
+});

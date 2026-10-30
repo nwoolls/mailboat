@@ -2712,8 +2712,13 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       Google's pages redrawn as framed Material-style drawings with no
       glow (they looked clickable), intro paragraphs as wide as the cards
       under them, and "You can continue now. Syncing carries on in the
-      background…" while mail is still syncing. Owner to try again from a
-      fresh project*
+      background…" while mail is still syncing. A third pass: the place to
+      drop the credentials file is now inside step 5's card, with no Done
+      on that step (the file arriving finishes it; the owner thought it
+      odd for it to sit below the list, and asked whether it should wait
+      for Done: it doesn't, because Done would be a click with no meaning
+      and "Watch my Downloads" works best armed while the file is being
+      made). Owner to try again from a fresh project*
 - [ ] Credentials walkthrough in the app: one card per step (create a
       project; turn on the Gmail, People and Calendar APIs; consent
       screen, External; add your addresses as test users; create a
@@ -2772,8 +2777,8 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       history, profile) is covered by `gmail.modify`, so `gmail.compose`
       is no longer asked for: one box fewer on Google's screen. The
       others are all used: contacts and other contacts, calendar events,
-      Gmail settings (rules, signatures, vacation). Sending and drafts
-      to be tried with the owner on a fresh sign-in)*
+      Gmail settings (rules, signatures, vacation). Tried by the owner on
+      Windows on a fresh sign-in, 2026-10-29: sending and drafts both work)*
 - [ ] A sign-in that lacks the mail permission is refused at once, in
       plain words *(owner's trial, 2026-10-29: Google's permissions
       start with every box empty and Continue works with none ticked, so

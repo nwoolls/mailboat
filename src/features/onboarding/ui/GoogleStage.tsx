@@ -82,7 +82,7 @@ const STEPS: Record<GuideStepId, StepText> = {
       <>
         Choose <b>Desktop app</b> as the application type, name it and press <b>Create</b>. Then
         press <b>Download JSON</b> in the box that appears, straight away: Google shows the secret
-        only this once.
+        only this once. When it’s downloaded, drop the file below.
       </>
     ),
     copy: [
@@ -158,26 +158,29 @@ export function GoogleStage({
       {path === "gcloud" && <GcloudCard progress={progress} />}
       {steps.length > 0 && (
         <ol className="space-y-2">
-          {steps.map((step, i) => (
-            <StepCard
-              key={step}
-              step={step}
-              number={i + 1}
-              open={step === current}
-              done={progress.done.includes(step)}
-              projectId={path === "gcloud" ? progress.projectId : null}
-              onToggle={() => updateProgress({ done: toggleStep(progress.done, step) })}
-            />
-          ))}
+          {steps.map((step, i) => {
+            // The last step has no Done: the file arriving is what finishes it,
+            // so its card ends with the place to drop it.
+            const last = step === "client";
+            return (
+              <StepCard
+                key={step}
+                step={step}
+                number={i + 1}
+                open={step === current || (last && current === null)}
+                done={!last && progress.done.includes(step)}
+                projectId={path === "gcloud" ? progress.projectId : null}
+                onToggle={
+                  last ? undefined : () => updateProgress({ done: toggleStep(progress.done, step) })
+                }
+                extra={last ? <ClientDrop onSaved={saved} /> : undefined}
+              />
+            );
+          })}
         </ol>
       )}
-      {(path === "have" || current === null || current === "client") && (
+      {path === "have" && (
         <section className="onb-rise">
-          {path !== "have" && (
-            <h2 className="mb-2 text-[13px] font-medium text-content/70">
-              Last, give the credentials to {APP_NAME}
-            </h2>
-          )}
           <ClientDrop onSaved={saved} />
         </section>
       )}
@@ -271,13 +274,17 @@ function StepCard({
   done,
   projectId,
   onToggle,
+  extra,
 }: {
   step: GuideStepId;
   number: number;
   open: boolean;
   done: boolean;
   projectId: string | null;
-  onToggle: () => void;
+  /** Ticks the step; none for a step that finishes by itself. */
+  onToggle?: () => void;
+  /** Shown under the step's text and picture. */
+  extra?: React.ReactNode;
 }) {
   const text = STEPS[step];
   const [peek, setPeek] = useState(false);
@@ -324,21 +331,24 @@ function StepCard({
               >
                 Open in Google Cloud <ExternalIcon size={13} />
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPeek(false);
-                  onToggle();
-                }}
-                className="rounded-md px-3 py-1.5 text-[12px] text-content/70 hover:bg-selection"
-              >
-                {done ? "Not done yet" : "Done"}
-              </button>
+              {onToggle && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPeek(false);
+                    onToggle();
+                  }}
+                  className="rounded-md px-3 py-1.5 text-[12px] text-content/70 hover:bg-selection"
+                >
+                  {done ? "Not done yet" : "Done"}
+                </button>
+              )}
             </div>
           </div>
           <ConsoleSketch step={step} />
         </div>
       )}
+      {shown && extra && <div className="onb-rise px-4 pb-4 pl-13">{extra}</div>}
     </li>
   );
 }
