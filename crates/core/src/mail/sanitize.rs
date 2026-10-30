@@ -17,10 +17,11 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use lol_html::{element, rewrite_str, RewriteStrSettings};
+use lol_html::html_content::ContentType;
+use lol_html::{element, rewrite_str, text, RewriteStrSettings};
 
 use super::colors::{self, DarkBackground};
-use super::stylesheet;
+use super::stylesheet::{self, CssUrl};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -97,31 +98,87 @@ pub fn remote_image_url(src: &str) -> String {
 }
 
 /// The remote images an email would load (trackers left out), as
-/// `remote_image_url` gives them, for downloading ahead of time.
+/// `remote_image_url` gives them, for downloading ahead of time: `<img>`
+/// sources, `background` attributes and CSS images, the same set
+/// `sanitize_html_colors` loads.
 pub fn remote_image_urls(html: &str) -> Vec<String> {
     let cleaned = ammonia_builder().clean(html).to_string();
     let urls = RefCell::new(Vec::<String>::new());
+    let add = |src: &str| {
+        if is_remote(src) && !looks_like_tracker(src, None, None, None) {
+            let url = remote_image_url(src);
+            if !urls.borrow().contains(&url) {
+                urls.borrow_mut().push(url);
+            }
+        }
+    };
+    let in_css = |css: &str| {
+        stylesheet::rewrite_urls(css, |url| {
+            add(url);
+            CssUrl::Keep
+        });
+    };
+    let sheet = RefCell::new(String::new());
     let _ = rewrite_str(
         &cleaned,
-        RewriteStrSettings::new().append_element_content_handler(element!("img", |el| {
-            let src = attr(el, "src").unwrap_or_default();
-            if is_remote(&src)
-                && !looks_like_tracker(
+        RewriteStrSettings::new()
+            .append_element_content_handler(element!("img", |el| {
+                let src = attr(el, "src").unwrap_or_default();
+                if !looks_like_tracker(
                     &src,
                     el.get_attribute("width"),
                     el.get_attribute("height"),
                     el.get_attribute("style"),
-                )
-            {
-                let url = remote_image_url(&src);
-                if !urls.borrow().contains(&url) {
-                    urls.borrow_mut().push(url);
+                ) {
+                    add(&src);
                 }
-            }
-            Ok(())
-        })),
+                Ok(())
+            }))
+            .append_element_content_handler(element!("[background]", |el| {
+                add(&attr(el, "background").unwrap_or_default());
+                Ok(())
+            }))
+            .append_element_content_handler(element!("[style]", |el| {
+                in_css(&attr(el, "style").unwrap_or_default());
+                Ok(())
+            }))
+            .append_element_content_handler(text!("style", |t| {
+                sheet.borrow_mut().push_str(t.as_str());
+                if t.last_in_text_node() {
+                    in_css(&std::mem::take(&mut *sheet.borrow_mut()));
+                }
+                Ok(())
+            })),
     );
     urls.into_inner()
+}
+
+/// The rule for a remote image outside `<img>` (a CSS image or a
+/// `background` attribute), the same as `<img>`'s: known trackers are
+/// removed, held-back images too, and the rest load from their downloaded
+/// copy or over HTTPS. Anything else is left to the CSP, which refuses it.
+fn css_image_rule(
+    url: &str,
+    allow_images: bool,
+    cached_images: &HashMap<String, String>,
+    counts: (&Cell<u32>, &Cell<u32>, &Cell<u32>),
+) -> CssUrl {
+    let (trackers, blocked, loaded) = counts;
+    if !is_remote(url) {
+        return CssUrl::Keep;
+    }
+    let bump = |c: &Cell<u32>| c.set(c.get() + 1);
+    if looks_like_tracker(url, None, None, None) {
+        bump(trackers);
+        CssUrl::Remove
+    } else if !allow_images {
+        bump(blocked);
+        CssUrl::Remove
+    } else {
+        bump(loaded);
+        let url = remote_image_url(url);
+        CssUrl::Replace(cached_images.get(&url).cloned().unwrap_or(url))
+    }
 }
 
 fn looks_like_tracker(
@@ -302,6 +359,8 @@ pub fn sanitize_html_colors(
     let blocked = Cell::new(0u32);
     let loaded = Cell::new(0u32);
     let trackers = Cell::new(0u32);
+    let counts = (&trackers, &blocked, &loaded);
+    let sheet_text = RefCell::new(String::new());
     let dark = RefCell::new(DarkRules::default());
     // A grey page set in the style sheet holds everything, as far as the
     // white boxes inside it are concerned.
@@ -385,6 +444,31 @@ pub fn sanitize_html_colors(
                 }
                 Ok(())
             }))
+            .append_element_content_handler(element!("[style]", |el| {
+                let style = attr(el, "style").unwrap_or_default();
+                let rewritten = stylesheet::rewrite_urls(&style, |url| {
+                    css_image_rule(url, allow_images, cached_images, counts)
+                });
+                if rewritten != style {
+                    set_attr(el, "style", &rewritten)?;
+                }
+                Ok(())
+            }))
+            .append_element_content_handler(text!("style", |t| {
+                sheet_text.borrow_mut().push_str(t.as_str());
+                if t.last_in_text_node() {
+                    let css = std::mem::take(&mut *sheet_text.borrow_mut());
+                    let rewritten = stylesheet::rewrite_urls(&css, |url| {
+                        css_image_rule(url, allow_images, cached_images, counts)
+                    });
+                    // Raw: a style sheet isn't HTML-escaped (`rewrite_urls`
+                    // escapes `<` in what it writes).
+                    t.replace(&rewritten, ContentType::Html);
+                } else {
+                    t.remove();
+                }
+                Ok(())
+            }))
             .append_element_content_handler(element!("[style], [bgcolor], font[color]", |el| {
                 if adaptive {
                     dark.borrow_mut().mark(el)?;
@@ -392,16 +476,17 @@ pub fn sanitize_html_colors(
                 Ok(())
             }))
             .append_element_content_handler(element!("[background]", |el| {
-                let remote = el
-                    .get_attribute("background")
-                    .is_some_and(|b| is_remote(&b));
-                if !allow_images {
-                    if remote {
-                        blocked.set(blocked.get() + 1);
+                let background = attr(el, "background").unwrap_or_default();
+                if !is_remote(&background) {
+                    if !allow_images {
+                        el.remove_attribute("background");
                     }
-                    el.remove_attribute("background");
-                } else if remote {
-                    loaded.set(loaded.get() + 1);
+                    return Ok(());
+                }
+                match css_image_rule(&background, allow_images, cached_images, counts) {
+                    CssUrl::Replace(url) => set_attr(el, "background", &url)?,
+                    CssUrl::Remove => el.remove_attribute("background"),
+                    CssUrl::Keep => {}
                 }
                 Ok(())
             })),
@@ -959,6 +1044,83 @@ mod tests {
         assert!(out.document.contains("https://cdn.vendor.com/logo.png"));
         assert!(!out.document.contains("mailtrack.io"));
         assert!(out.document.contains("img-src data: https:"));
+    }
+
+    /// Regression: images in CSS and `background` attributes skipped the
+    /// tracker check and prefetch, so a tracker in a `background-image`
+    /// was requested on opening even though trackers are always removed.
+    const CSS_IMAGES: &str = r#"<style>.hero{background:#fff url(https://cdn.vendor.com/hero.png) no-repeat}
+.t{background-image:url("https://mailtrack.io/trace/css.png")}
+.s{background-image:image-set("http://cdn.vendor.com/set.png" 1x)}
+@import url(https://cdn.vendor.com/x.css);</style>
+<div style="background-image:url('https://mailtrack.io/trace/inline.png')">a</div>
+<div style="background:url(//cdn.vendor.com/inline.png)">b</div>
+<table background="https://mailtrack.io/trace/bg.png"><tr><td>c</td></tr></table>"#;
+
+    #[test]
+    fn css_and_background_trackers_are_removed_even_when_images_load() {
+        let out = sanitize_html(CSS_IMAGES, true);
+        assert!(!out.document.contains("mailtrack.io"), "{}", out.document);
+        assert_eq!(out.trackers_removed, 3);
+        assert_eq!(out.loaded_images, 3, "hero, image-set, inline");
+        assert!(out
+            .document
+            .contains(r#"url("https://cdn.vendor.com/hero.png") no-repeat"#));
+        assert!(out
+            .document
+            .contains(r#"image-set("https://cdn.vendor.com/set.png" 1x)"#));
+        assert!(out.document.contains("https://cdn.vendor.com/inline.png"));
+        assert!(
+            out.document
+                .contains("@import url(https://cdn.vendor.com/x.css)"),
+            "left to the CSP, which refuses style sheets from anywhere"
+        );
+    }
+
+    #[test]
+    fn css_images_are_held_back_with_the_rest() {
+        let out = sanitize_html(CSS_IMAGES, false);
+        assert_eq!(out.blocked_images, 3);
+        assert_eq!(out.loaded_images, 0);
+        for gone in ["hero.png", "set.png", "inline.png", "mailtrack.io"] {
+            assert!(!out.document.contains(gone), "{gone}: {}", out.document);
+        }
+    }
+
+    #[test]
+    fn css_images_are_prefetched_and_shown_from_their_copy() {
+        assert_eq!(
+            remote_image_urls(CSS_IMAGES),
+            [
+                "https://cdn.vendor.com/hero.png",
+                "https://cdn.vendor.com/set.png",
+                "https://cdn.vendor.com/inline.png",
+            ]
+        );
+        let cached = HashMap::from([(
+            "https://cdn.vendor.com/hero.png".to_string(),
+            "data:image/png;base64,AAAA".to_string(),
+        )]);
+        let out = sanitize_html_colors(CSS_IMAGES, true, &HashMap::new(), &cached, false);
+        assert!(out
+            .document
+            .contains(r#"url("data:image/png;base64,AAAA")"#));
+        assert!(!out.document.contains("hero.png"));
+    }
+
+    #[test]
+    fn a_css_address_cannot_end_the_style_element() {
+        let out = sanitize_html(
+            r#"<div style="background:url('https://x.com/a&quot;)}&lt;/style&gt;&lt;b&gt;.png')">x</div>"#,
+            true,
+        );
+        assert!(!out.document.contains("</style><b>"), "{}", out.document);
+        let sheet = rewrite_urls_for_test("a{background:url(\"https://x.com/</style><b>\")}");
+        assert!(!sheet.contains("</style"), "{sheet}");
+    }
+
+    fn rewrite_urls_for_test(css: &str) -> String {
+        stylesheet::rewrite_urls(css, |u| CssUrl::Replace(u.to_string()))
     }
 
     #[test]

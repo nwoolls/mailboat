@@ -2927,6 +2927,12 @@ Round 1 (2026-10-30), all seven findings confirmed and fixed:
       file could have refresh tokens sent elsewhere. Google's endpoints
       are fixed now; the file only gives the ID, secret and project
 - [x] R1-03: test data used a real company's domain; now `work.example.com`
+- [x] R1-04: images in CSS (`style` attributes, `<style>` sheets) and
+      `background` attributes skipped the tracker check, the held-back
+      rule and prefetch. One rule covers them all now
+- [ ] R1-04 follow-up: a browser test that a CSS tracker makes no
+      request in the reader's frame (the sanitized output and the CSP are
+      tested in Rust; nothing yet watches the frame's requests)
 
 ## Milestone 14: Open the code
 

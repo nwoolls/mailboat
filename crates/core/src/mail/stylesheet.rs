@@ -437,6 +437,145 @@ fn parse_decls(p: &mut Parser<'_>) -> Vec<Decl> {
     decls
 }
 
+/// What happens to one image address found in CSS (`rewrite_urls`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CssUrl {
+    Keep,
+    Replace(String),
+    /// Becomes `none` (or an empty string inside `image-set()`), which
+    /// loads nothing.
+    Remove,
+}
+
+/// Rewrites the image addresses in `css` (a `<style>` sheet or a `style`
+/// attribute's declarations): `url(…)` in either form, and the strings of
+/// `image-set()`. `@import`, `@font-face` and `@namespace` are left alone:
+/// they aren't images, and the CSP refuses what they'd load. Returns `css`
+/// unchanged when `decide` keeps everything.
+pub fn rewrite_urls(css: &str, mut decide: impl FnMut(&str) -> CssUrl) -> String {
+    let mut edits = Vec::new();
+    let mut parser = Parser::new(css);
+    collect_urls(&mut parser, false, &mut decide, &mut edits);
+    if edits.is_empty() {
+        return css.to_string();
+    }
+    let mut out = String::with_capacity(css.len());
+    let mut copied = 0;
+    for (start, end, text) in edits {
+        out.push_str(&css[copied..start]);
+        out.push_str(&text);
+        copied = end;
+    }
+    out.push_str(&css[copied..]);
+    out
+}
+
+/// Finds `rewrite_urls`'s addresses, recording `(start, end, replacement)`
+/// byte ranges in order. `in_image_set`: plain strings here are addresses.
+fn collect_urls(
+    p: &mut Parser<'_>,
+    in_image_set: bool,
+    decide: &mut dyn FnMut(&str) -> CssUrl,
+    edits: &mut Vec<(usize, usize, String)>,
+) {
+    loop {
+        let start = p.position().byte_index();
+        let Ok(token) = p.next_including_whitespace_and_comments().cloned() else {
+            break;
+        };
+        match token {
+            Token::UnquotedUrl(url) => {
+                push_edit(decide, edits, start, p.position().byte_index(), &url, false)
+            }
+            Token::Function(name) if name.eq_ignore_ascii_case("url") => {
+                let mut url = None;
+                let _ = p.parse_nested_block(|p| {
+                    while let Ok(t) = p.next() {
+                        if let Token::QuotedString(s) = t {
+                            url.get_or_insert_with(|| s.to_string());
+                        }
+                    }
+                    Ok::<_, Ignored>(())
+                });
+                if let Some(url) = url {
+                    push_edit(decide, edits, start, p.position().byte_index(), &url, false);
+                }
+            }
+            Token::QuotedString(s) if in_image_set => {
+                push_edit(decide, edits, start, p.position().byte_index(), &s, true);
+            }
+            Token::AtKeyword(name)
+                if ["import", "font-face", "namespace"]
+                    .iter()
+                    .any(|n| name.eq_ignore_ascii_case(n)) =>
+            {
+                // To the end of the rule; a block left unread is skipped.
+                while let Ok(t) = p.next() {
+                    if matches!(t, Token::Semicolon | Token::CurlyBracketBlock) {
+                        break;
+                    }
+                }
+            }
+            Token::Function(name) => {
+                let image_set = name.to_ascii_lowercase().ends_with("image-set");
+                let _ = p.parse_nested_block(|p| {
+                    collect_urls(p, image_set, decide, edits);
+                    Ok::<_, Ignored>(())
+                });
+            }
+            Token::ParenthesisBlock | Token::SquareBracketBlock | Token::CurlyBracketBlock => {
+                let _ = p.parse_nested_block(|p| {
+                    collect_urls(p, false, decide, edits);
+                    Ok::<_, Ignored>(())
+                });
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Records what `decide` makes of one address at `start..end`. `quoted`:
+/// a bare string (in `image-set()`) rather than `url(…)`.
+fn push_edit(
+    decide: &mut dyn FnMut(&str) -> CssUrl,
+    edits: &mut Vec<(usize, usize, String)>,
+    start: usize,
+    end: usize,
+    url: &str,
+    quoted: bool,
+) {
+    let text = match decide(url) {
+        CssUrl::Keep => return,
+        CssUrl::Replace(new) if quoted => css_string(&new),
+        CssUrl::Replace(new) => format!("url({})", css_string(&new)),
+        CssUrl::Remove if quoted => "\"\"".into(),
+        CssUrl::Remove => "none".into(),
+    };
+    edits.push((start, end, text));
+}
+
+/// `s` as a CSS string. Quotes, backslashes, control characters and `<` `>`
+/// are escaped, so an address can't end the string, the rule or the
+/// `<style>` element it's in.
+fn css_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' | '\\' => {
+                out.push('\\');
+                out.push(c);
+            }
+            c if c < ' ' || c == '<' || c == '>' || c == '\u{7f}' => {
+                out.push_str(&format!("\\{:x} ", c as u32));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
