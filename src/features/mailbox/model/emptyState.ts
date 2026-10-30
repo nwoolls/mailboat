@@ -1,4 +1,4 @@
-import type { MailView } from "../../../platform/tauri/bindings";
+import type { AccountSyncState, MailView } from "../../../platform/tauri/bindings";
 
 /** What an empty list says, and which icon sits above it. */
 export type EmptyState = {
@@ -10,6 +10,7 @@ export type EmptyState = {
 
 export type EmptyIcon =
   | "caughtUp"
+  | "inbox"
   | "search"
   | "star"
   | "important"
@@ -21,14 +22,25 @@ export type EmptyIcon =
   | "label";
 
 /**
- * `syncing`: some account hasn't finished its first sync, so an empty list
- * may only mean the mail hasn't arrived yet, and "all caught up" would be
- * wrong. A search keeps its own words.
+ * Whether the account's very first sync is still going (or waiting to
+ * retry). Later syncs don't count: at inbox zero the list should still say
+ * "All caught up" through every once-a-minute check. A failed account needs
+ * the person, not time, so it isn't "getting" anything.
+ */
+export function isFirstSync(state: AccountSyncState): boolean {
+  if (state.status === "error" || state.status === "authError") return false;
+  return state.lastSyncAt == null;
+}
+
+/**
+ * `syncing`: some account is on its first sync, so an empty list may only
+ * mean the mail hasn't arrived yet, and "all caught up" would be wrong. A
+ * search keeps its own words.
  */
 export function emptyStateFor(view: MailView, syncing = false): EmptyState {
   if (syncing && view.kind !== "search") {
     return {
-      icon: "archive",
+      icon: "inbox",
       title: "Getting your mail…",
       detail: "It shows up here as it arrives.",
     };

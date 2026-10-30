@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyStateFor, emptyStateKey } from "./emptyState";
+import { emptyStateFor, emptyStateKey, isFirstSync } from "./emptyState";
 
 describe("emptyStateFor", () => {
   it("keeps an empty inbox to an icon and a title", () => {
@@ -13,6 +13,16 @@ describe("emptyStateFor", () => {
     const state = emptyStateFor({ kind: "system", label: "inbox" }, true);
     expect(state.title).toBe("Getting your mail…");
     expect(emptyStateFor({ kind: "search", text: "x" }, true).icon).toBe("search");
+  });
+
+  it("counts only a first sync, not the later once-a-minute ones", () => {
+    const state = (status: string, lastSyncAt: number | null) =>
+      ({ accountId: 1, status, errorKind: null, errorMessage: null, lastSyncAt }) as never;
+    expect(isFirstSync(state("syncing", null))).toBe(true);
+    expect(isFirstSync(state("backoff", null))).toBe(true);
+    expect(isFirstSync(state("syncing", 5))).toBe(false);
+    expect(isFirstSync(state("error", null))).toBe(false);
+    expect(isFirstSync(state("authError", null))).toBe(false);
   });
 
   it("names the search text when nothing matches", () => {

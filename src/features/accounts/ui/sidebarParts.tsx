@@ -74,7 +74,8 @@ export function viewIcon(view: MailView): Icon {
 /**
  * A sidebar section. Its header is a row like the others (28px). The title
  * lines up with the view icons on the left; an `aside` (the account avatar)
- * ends flush with the right edge of a selected row's highlight.
+ * ends 4px inside the right edge, so its hover circle and sync ring (which
+ * reach beyond the picture) aren't clipped by the scrolling list.
  */
 export function Section({
   title,
@@ -92,7 +93,7 @@ export function Section({
     <div className="mt-2">
       <div
         onContextMenu={onContextMenu}
-        className="mb-1 flex h-7 items-center gap-2 pl-2 text-[11px] font-medium tracking-wide text-content/45"
+        className="mb-1 flex h-7 items-center gap-2 pr-1 pl-2 text-[11px] font-medium tracking-wide text-content/45"
       >
         <span className="flex min-w-0 items-center gap-2 truncate">{title}</span>
         {aside && <span className="ml-auto flex shrink-0">{aside}</span>}

@@ -4,6 +4,7 @@ import {
   DraftIcon,
   type IconProps,
   ImportantIcon,
+  InboxIcon,
   LabelIcon,
   SearchIcon,
   SentIcon,
@@ -27,6 +28,7 @@ import { emptyToy } from "../../emptyToys/ui/prefs";
 
 const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
   caughtUp: ThumbsUpIcon,
+  inbox: InboxIcon,
   search: SearchIcon,
   star: StarIcon,
   important: ImportantIcon,
