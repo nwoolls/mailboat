@@ -2681,7 +2681,7 @@ first sync runs.*
 and, inside the app, get from nothing to their mail in about 15
 minutes. Details: `docs/RELEASE.md` → Plan 2.*
 
-- [ ] Onboarding *(owner request, 2026-10-17; moved from the Release
+- [x] Onboarding *(owner request, 2026-10-17; moved from the Release
       Spike)*: a first-launch flow instead of today's single Welcome
       screen. At least: set up Google credentials (below), then add one
       or more accounts (each shown as it signs in, with its first sync
@@ -2727,7 +2727,7 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       for Done: it doesn't, because Done would be a click with no meaning
       and "Watch my Downloads" works best armed while the file is being
       made). Owner to try again from a fresh project*
-- [ ] Credentials walkthrough in the app: one card per step (create a
+- [x] Credentials walkthrough in the app: one card per step (create a
       project; turn on the Gmail, People and Calendar APIs; consent
       screen, External; add your addresses as test users; create a
       Desktop client and download its JSON), each with a button that opens the exact Google
@@ -2749,7 +2749,7 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       permissions that start empty with Select all). The Console
       addresses (project, APIs, Audience, Clients) were opened by the
       owner and work*
-- [ ] Optional fast path for people with Google's `gcloud` tool: one
+- [x] Optional fast path for people with Google's `gcloud` tool: one
       copy-paste command that creates the project and turns on the
       APIs (the consent screen and the client stay manual) *Built
       2026-10-27: "I use gcloud" makes up a project ID, shows the one
@@ -2757,8 +2757,11 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       (since 2026-10-29: sign-in screen, test users, Desktop client).
       Named "Use Google's command-line tool", marked Advanced, with
       where to run it (Terminal or PowerShell), as the owner pointed
-      out that "gcloud" means nothing to most people*
-- [ ] Drop the JSON on the window, or choose it. The app checks it is a
+      out that "gcloud" means nothing to most people. 2026-10-30: the
+      one command used `&&`, which Windows PowerShell 5.1 rejects, so
+      it is now two commands, each with its own copy button; both ran
+      cleanly on Windows. Owner confirmed the path on Windows*
+- [x] Drop the JSON on the window, or choose it. The app checks it is a
       Desktop client with an ID and secret and says plainly what's
       wrong if not (e.g. a Web client). Ends with a test sign-in
       *Built 2026-10-27 (`auth::config::check`): drop anywhere on the
@@ -2776,7 +2779,10 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       can happen about weekly in Testing. The owner's Mac accounts were
       signed in again, so if the rule applies they are refused again within a week
       (sync log: `invalid_grant`): that confirms it, and the wording
-      ("about once a week" or "rarely") is then settled*
+      ("about once a week" or "rarely") is then settled. 2026-10-30,
+      Windows: with the app's access removed in the Google Account, the
+      sidebar and Settings → Accounts show the message and signing in
+      again restores the account. Only the 2026-11-01 check is left)*
 - [x] Scopes: check whether `gmail.compose` is needed beside
       `gmail.modify` (which may already cover drafts and sending) and
       drop any scope that isn't. Fewer scopes means fewer APIs to turn
@@ -2787,12 +2793,13 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       others are all used: contacts and other contacts, calendar events,
       Gmail settings (rules, signatures, vacation). Tried by the owner on
       Windows on a fresh sign-in, 2026-10-29: sending and drafts both work)*
-- [ ] A sign-in that lacks the mail permission is refused at once, in
+- [x] A sign-in that lacks the mail permission is refused at once, in
       plain words *(owner's trial, 2026-10-29: Google's permissions
       start with every box empty and Continue works with none ticked, so
       the account was added and then failed with a raw 403. Built
       2026-10-29: the app checks which permissions Google granted
-      before saving anything, and says to tick "Select all")*
+      before saving anything, and says to tick "Select all". Owner
+      confirmed on Windows, 2026-10-30)*
 - [x] A more conventional app icon on Windows *(owner request,
       2026-10-29; after the onboarding feedback is dealt with)*: today's
       Windows icon is the Mac one (a dark rounded square with the boat
@@ -2870,7 +2877,15 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
 - [ ] Tried with the owner on a fresh Google account, following only
       what the app says (using Milestone 11's clean start) *(first
       trial 2026-10-29 on Windows, which led to the changes above; to
-      repeat from a fresh project)*
+      repeat from a fresh project. 2026-10-30: a clean-start walkthrough
+      from the welcome screen to writing a message took the owner a short while, and the alternatives in the drop zone, the refusal,
+      the "Access blocked" hint, the first-sync fixes and the gcloud
+      path were each tried on Windows. Left: a fresh Google account
+      that has never touched the project)*
+
+- [ ] "Use a different file" on "Google Cloud is set up" goes back to
+      the start of the walkthrough *(owner, 2026-10-30: fine for now;
+      look again if it becomes a problem)*
 
 ## Milestone 13: Independent code review
 
