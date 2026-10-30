@@ -163,12 +163,19 @@ const PICTURES: Record<GuideStepId, () => React.ReactNode> = {
       <text x="24" y="192" fontSize="11" fill={GREY}>
         {`Project ID: ${PROJECT_ID}. It cannot be changed later.`}
       </text>
-      <Field y={206} label="Location *" value="No organisation" />
+      <Field y={206} label="Location *" value="No organization" />
       <text x="340" y="234" fontSize="12.5" fill={BLUE} fontWeight="500">
         BROWSE
       </text>
       <TextButton x={248} y={294} label="Cancel" />
       <FilledButton x={316} y={272} w={100} label="Create" />
+      <rect x="24" y="268" width="196" height="46" rx="6" fill="#f1f3f4" stroke={LINE} />
+      <text x="36" y="288" fontSize="12" fill={INK}>
+        {`Create Project: ${APP_NAME}`}
+      </text>
+      <text x="36" y="305" fontSize="12.5" fill={BLUE} fontWeight="500">
+        Select Project
+      </text>
     </Page>
   ),
   apis: () => (

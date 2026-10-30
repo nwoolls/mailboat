@@ -37,7 +37,8 @@ const STEPS: Record<GuideStepId, StepText> = {
       <>
         A project is a free space in Google Cloud that holds your own sign-in for {APP_NAME}. No
         billing account or card is needed. Name it, leave the location as it is, and press{" "}
-        <b>Create</b>.
+        <b>Create</b>. If you already have projects, Google may keep showing the old one: press{" "}
+        <b>Select Project</b> in its notification to switch to the new one.
       </>
     ),
     copy: [["Project name", APP_NAME]],
@@ -80,15 +81,13 @@ const STEPS: Record<GuideStepId, StepText> = {
     title: "Create and download OAuth credentials",
     body: (
       <>
-        Choose <b>Desktop app</b> as the application type, name it and press <b>Create</b>. Then
-        press <b>Download JSON</b> in the box that appears, straight away: Google shows the secret
-        only this once. When it’s downloaded, drop the file below.
+        Choose <b>Desktop app</b> as the application type, keep the name Google fills in, leave the
+        AI-agent box unticked and press <b>Create</b>. Then press <b>Download JSON</b> in the box
+        that appears, straight away: Google shows the secret only this once. When it’s downloaded,
+        drop the file below.
       </>
     ),
-    copy: [
-      ["Application type", "Desktop app"],
-      ["Name", APP_NAME],
-    ],
+    copy: [["Application type", "Desktop app"]],
   },
 };
 

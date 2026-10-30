@@ -72,12 +72,13 @@ export function AccountsStage({
         <section className="space-y-2.5 rounded-xl bg-selection-subtle p-4 ring-1 ring-stroke">
           <h2 className="flex items-center gap-1.5 text-[13px] font-medium">
             <LockIcon size={14} className="text-content/60" />
-            Two things Google will show you
+            What Google will show you
           </h2>
           <p className="text-[13px] leading-relaxed text-content/65">
-            First a warning that Google hasn’t verified the app. That’s expected: it’s your own
-            private project. Press <b>Continue</b>. Then the permissions, which start empty: tick{" "}
-            <b>Select all</b>, or {APP_NAME} can’t read your mail.
+            Choose the account. Google then warns it hasn’t verified the app, which is expected:
+            it’s your own private project. Press <b>Continue</b>, and again to confirm your name and
+            email. Last come the permissions, which start empty: tick <b>Select all</b>, or{" "}
+            {APP_NAME} can’t read your mail.
           </p>
           <SignInSketches />
           <p className="text-[12px] text-content/55">

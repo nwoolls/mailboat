@@ -72,6 +72,7 @@ import {
   systemSelection,
 } from "../features/mailbox/model/views";
 import { emptyStateFor, emptyStateKey } from "../features/mailbox/model/emptyState";
+import { isSyncing } from "../features/onboarding/model/onboarding";
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
 import { EmptySpamButton } from "../features/mailbox/ui/EmptySpamButton";
 import { SCREENSAVER_EVENT, SCREENSAVERS } from "../features/screensaver/model/catalog";
@@ -209,6 +210,7 @@ export function Shell() {
   const setup = useOAuthSetup();
   const onboardingProgress = onboarding.use();
   const syncStates = useSyncStates().data ?? [];
+  const firstSyncing = syncStates.some(isSyncing);
   const labels = useLabels({ kind: "all" }).data ?? [];
   const flags = useFeatureFlags();
   const accountList = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
@@ -1150,8 +1152,8 @@ export function Shell() {
                 older={older}
                 empty={
                   <EmptyState
-                    state={emptyStateFor(selection.view)}
-                    swapKey={emptyStateKey(selection.view)}
+                    state={emptyStateFor(selection.view, firstSyncing)}
+                    swapKey={emptyStateKey(selection.view, firstSyncing)}
                   />
                 }
               />

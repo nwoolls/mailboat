@@ -20,7 +20,19 @@ export type EmptyIcon =
   | "archive"
   | "label";
 
-export function emptyStateFor(view: MailView): EmptyState {
+/**
+ * `syncing`: some account hasn't finished its first sync, so an empty list
+ * may only mean the mail hasn't arrived yet, and "all caught up" would be
+ * wrong. A search keeps its own words.
+ */
+export function emptyStateFor(view: MailView, syncing = false): EmptyState {
+  if (syncing && view.kind !== "search") {
+    return {
+      icon: "archive",
+      title: "Getting your mail…",
+      detail: "It shows up here as it arrives.",
+    };
+  }
   switch (view.kind) {
     case "search":
       return {
@@ -85,8 +97,8 @@ export function emptyStateFor(view: MailView): EmptyState {
  * words) keeps it still instead of re-rising each click; searches keep one
  * key so typing doesn't replay it on every keystroke.
  */
-export function emptyStateKey(view: MailView): string {
+export function emptyStateKey(view: MailView, syncing = false): string {
   if (view.kind === "search") return "search";
-  const { icon, title, detail } = emptyStateFor(view);
+  const { icon, title, detail } = emptyStateFor(view, syncing);
   return `${icon}|${title}|${detail ?? ""}`;
 }

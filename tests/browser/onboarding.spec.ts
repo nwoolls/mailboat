@@ -57,7 +57,7 @@ test("the guide ends with test users, never with publishing", async ({ page }) =
 
 test("the first sign-in is prepared for Google's real screens", async ({ page }) => {
   await open(page, "stage=accounts&configured=1");
-  await expect(page.getByText("Two things Google will show you")).toBeVisible();
+  await expect(page.getByText("What Google will show you")).toBeVisible();
   await expect(page.getByText("currently being tested")).toBeVisible();
   await expect(page.getByText(/Advanced/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Sign in with Google" })).toBeFocused();

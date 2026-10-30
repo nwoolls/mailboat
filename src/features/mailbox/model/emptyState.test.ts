@@ -9,6 +9,12 @@ describe("emptyStateFor", () => {
     expect(state.detail).toBeUndefined();
   });
 
+  it("doesn't say all caught up while a first sync is still bringing mail in", () => {
+    const state = emptyStateFor({ kind: "system", label: "inbox" }, true);
+    expect(state.title).toBe("Getting your mail…");
+    expect(emptyStateFor({ kind: "search", text: "x" }, true).icon).toBe("search");
+  });
+
   it("names the search text when nothing matches", () => {
     const state = emptyStateFor({ kind: "search", text: "invoice" });
     expect(state.icon).toBe("search");

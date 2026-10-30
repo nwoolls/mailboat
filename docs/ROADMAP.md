@@ -2669,6 +2669,14 @@ one at a time.*
 
 ## Milestone 12: Onboarding and bring your own Google credentials
 
+*Windows walkthrough, 2026-10-30 (clean start to writing a message): the Google Cloud steps all matched Google's screens.
+Fixed from it: step 1 says to press Select Project when Google keeps the
+old project; step 5 says to keep Google's name and leave the AI-agent
+box unticked; the sign-in note lists all of Google's screens (it shows
+three Continues, not two); "No organization" in the picture; an empty
+list says "Getting your mail…", not "All caught up", while an account's
+first sync runs.*
+
 *Done when: someone who has never used Google Cloud can install Mailboat
 and, inside the app, get from nothing to their mail in about 15
 minutes. Details: `docs/RELEASE.md` → Plan 2.*
@@ -3157,7 +3165,12 @@ again until the next spike.*
       (and ⌘J) now show only while a writing provider is ready, using the
       same check as "Reply with AI". Browser tests, with a new "no AI set
       up" setting in the harness, fail without the change. Not looked at:
-      the default writing provider on Windows. Owner to try on Windows)*
+      the default writing provider on Windows. Owner tried it on Windows,
+      2026-10-30: no AI options show. The default needs no change: on
+      Windows the stored "Apple Intelligence" counts as not chosen, so
+      nothing goes to a cloud provider until it is picked. Still to
+      polish: Settings → AI's intro line names Apple Intelligence on
+      Windows)*
 
 - [ ] Email images show larger than in Gmail *(owner report, 2026-10-29)*:
       the same email in Gmail and in Mailboat: the logo and the illustration are wider in Mailboat. Likely the sizes the sender sets (width and height
