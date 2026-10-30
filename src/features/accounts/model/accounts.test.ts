@@ -13,7 +13,7 @@ const state = (accountId: number, status: AccountSyncState["status"]): AccountSy
 describe("accounts", () => {
   it("initials prefer the display name", () => {
     expect(accountInitial({ email: "me@gmail.com", displayName: "jordan" })).toBe("N");
-    expect(accountInitial({ email: "work@example.com", displayName: null })).toBe("W");
+    expect(accountInitial({ email: "work@work.example.com", displayName: null })).toBe("W");
   });
 
   it("an auth error asks the user to sign in again", () => {

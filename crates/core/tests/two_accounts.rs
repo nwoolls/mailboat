@@ -86,7 +86,7 @@ const INBOX: MailView = MailView::System {
 fn two_accounts_with_overlapping_gmail_ids() {
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "sub-a", "me@gmail.com");
-    let b = add_account(&db, "sub-b", "me@example.com");
+    let b = add_account(&db, "sub-b", "me@work.example.com");
 
     // Both accounts have a label "Label_1" named "Work", and a thread "t1"
     // containing message "m1". Only the IDs collide; the content differs.
@@ -545,7 +545,7 @@ fn spam_and_trash_for_images_are_decided_per_account() {
 fn unread_counts_stay_per_account() {
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "sub-a", "me@gmail.com");
-    let b = add_account(&db, "sub-b", "me@example.com");
+    let b = add_account(&db, "sub-b", "me@work.example.com");
     store::sync_labels(&mut db.conn(), a.id, &work_label()).unwrap();
     store::sync_labels(&mut db.conn(), b.id, &work_label()).unwrap();
     // Same Gmail IDs in both accounts. A: one unread in Inbox + Work, one
@@ -590,7 +590,7 @@ fn unread_counts_stay_per_account() {
 fn drafts_count_saved_drafts_per_account() {
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "sub-a", "me@gmail.com");
-    let b = add_account(&db, "sub-b", "me@example.com");
+    let b = add_account(&db, "sub-b", "me@work.example.com");
     // A: two drafts (one read, one in a thread with unread mail) and one
     // in Trash. B: one, with the same Gmail IDs as A's.
     for (account, t, m, labels) in [
@@ -627,7 +627,7 @@ fn drafts_count_saved_drafts_per_account() {
 fn dock_badge_counts_unread_in_every_account() {
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "sub-a", "me@gmail.com");
-    let b = add_account(&db, "sub-b", "me@example.com");
+    let b = add_account(&db, "sub-b", "me@work.example.com");
     store::sync_labels(&mut db.conn(), a.id, &work_label()).unwrap();
     store::sync_labels(&mut db.conn(), b.id, &work_label()).unwrap();
     // Same Gmail IDs in both accounts. Unread: A's t1 (Inbox), B's t1

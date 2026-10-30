@@ -28,7 +28,7 @@ const accounts: Account[] = [
   },
   {
     id: 2,
-    email: "me@example.com",
+    email: "me@work.example.com",
     displayName: null,
     avatarUrl: null,
     color: "#e0795b",
@@ -82,7 +82,9 @@ describe("selections", () => {
 
   it("titles", () => {
     expect(selectionTitle(ALL_INBOXES, accounts, [])).toBe("Inbox");
-    expect(selectionTitle(systemSelection("sent", 2), accounts, [])).toBe("Sent · me@example.com");
+    expect(selectionTitle(systemSelection("sent", 2), accounts, [])).toBe(
+      "Sent · me@work.example.com",
+    );
     expect(selectionTitle(labelSelection(work(10, 1)), accounts, [work(10, 1)])).toBe("Work");
   });
 
@@ -104,7 +106,7 @@ describe("selections", () => {
       accounts: { kind: "only", ids: [2] },
       view: { kind: "archive" },
     });
-    expect(selectionTitle(archive, accounts, [])).toBe("Archive · me@example.com");
+    expect(selectionTitle(archive, accounts, [])).toBe("Archive · me@work.example.com");
     expect(selectionTitle(viewSelection({ kind: "allMail" }), accounts, [])).toBe("All Mail");
     expect(sameSelection(archive, viewSelection({ kind: "allMail" }, 2))).toBe(false);
   });

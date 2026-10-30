@@ -2910,6 +2910,17 @@ so problems are fixed before anyone can read the code.*
       paths that can send mail out, and the new credentials handling
 - [ ] Fixes for the findings the owner chooses, each in its own commit
 
+### Review rounds
+
+The owner runs the review as rounds (2026-10-30): a reviewing agent that
+changes no code sends findings; the coding agent checks each one before
+acting, fixes or rejects it with evidence, and the next round checks the
+fixes. At most 10 rounds.
+
+Round 1 (2026-10-30), all seven findings confirmed and fixed:
+
+- [x] R1-03: test data used a real company's domain; now `work.example.com`
+
 ## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an
