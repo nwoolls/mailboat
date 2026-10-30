@@ -3064,6 +3064,24 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [ ] On Windows in dark mode, the From list in a new message is hard to
+      read *(owner report, 2026-10-29, with a screenshot)*: the two
+      address headings in the dropdown are nearly white on a white
+      background, while the options under them read fine. Likely cause:
+      it's Windows' own dropdown, which keeps a white background while the
+      headings take the light text colour from our dark theme. Fix by
+      styling the dropdown (or the headings) for dark mode, or by using
+      the app's own menu there
+
+- [ ] The compose window's AI button shows even when no AI is set up
+      *(owner report, 2026-10-29, with a screenshot)*: on Windows with
+      nothing configured, "Reply with AI" is hidden but the AI button in
+      a new message is not, and it opens "Write with" with an Apple
+      Intelligence message ("only on Macs. Choose another above…") and an
+      empty list to choose from. Hide the button the same way "Reply with
+      AI" is hidden. Also check what the writing provider is set to by
+      default on Windows, since Apple Intelligence can't be there
+
 - [ ] Email images show larger than in Gmail *(owner report, 2026-10-29)*:
       the same email in Gmail and in Mailboat: the logo and the illustration are wider in Mailboat. Likely the sizes the sender sets (width and height
       attributes, or styles, often for images made at twice the size)
@@ -3136,6 +3154,16 @@ again until the next spike.*
       Adapted colors forgets it. It was per message, until the app quit
 
 ## Later / unscheduled
+
+- [ ] Windows: the unified folders in the taskbar icon's right-click menu
+      *(owner enhancement, 2026-10-29, with a screenshot)*: the menu shows
+      only "Mailboat / Pin to taskbar / Close window". Add Inbox, Unread,
+      Starred, Drafts, Archive and All Mail (all accounts) in the actions
+      area, which Windows calls the jump list's Tasks. Each entry should
+      show that folder, starting the app or telling the copy that is
+      already running (the app already passes `mailto:` links to a running
+      copy, which may be the way to do it). Tauri has no jump list of its
+      own, so this needs Windows' own API
 
 - [ ] Task-app integrations: "add to Todoist and archive" *(owner idea,
       2026-10-29; wanted soon after the first release, he'd use it
