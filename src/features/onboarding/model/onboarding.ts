@@ -244,7 +244,7 @@ export function explainSignInError(message: string): Advice {
   if (/invalid_client|unauthorized_client|deleted_client/.test(message))
     return {
       message:
-        "Google didn’t recognise the client in your file. It may have been deleted, or the file is from another project. Create a new Desktop client and give its file here.",
+        "Google didn’t recognise the OAuth client in your credentials file. It may have been deleted, or the file is from another project. You’ll need a new Desktop app OAuth client and its credentials file.",
       step: "client",
     };
   if (/org_internal/.test(message))
