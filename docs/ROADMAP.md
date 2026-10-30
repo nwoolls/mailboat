@@ -2874,14 +2874,15 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       locally, with the sync still waiting. It fails if the send used the
       background path. It checks the thread is cached, not the Sent view
       itself)*
-- [ ] Tried with the owner on a fresh Google account, following only
+- [x] Tried with the owner on a fresh Google account, following only
       what the app says (using Milestone 11's clean start) *(first
       trial 2026-10-29 on Windows, which led to the changes above; to
       repeat from a fresh project. 2026-10-30: a clean-start walkthrough
       from the welcome screen to writing a message took the owner a short while, and the alternatives in the drop zone, the refusal,
       the "Access blocked" hint, the first-sync fixes and the gcloud
-      path were each tried on Windows. Left: a fresh Google account
-      that has never touched the project)*
+      path were each tried on Windows. The owner chose to call this done
+      (2026-10-30). The part that needs someone who has never seen the
+      app moved to Milestone 15, where builds exist for others)*
 
 - [ ] "Use a different file" on "Google Cloud is set up" goes back to
       the start of the walkthrough *(owner, 2026-10-30: fine for now;
@@ -3071,6 +3072,13 @@ themselves.*
       tampered with
 - [ ] Settings → About: version, "Check for updates", and the update
       channel (stable, or early builds) if wanted
+- [ ] First-timer trial of the onboarding *(moved from Milestone 12,
+      2026-10-30)*: someone who has never used Google Cloud installs a
+      real build from GitHub and gets from nothing to their mail
+      following only what the app says (using a clean start), while
+      the owner watches and times it (the target is about 15 minutes).
+      Needs the signed builds above, so the installer's own warnings
+      don't become part of the test
 - [ ] Optional: a Homebrew tap of the owner's own (the main Homebrew
       list needs an app to be popular first) and `winget` for Windows
 
