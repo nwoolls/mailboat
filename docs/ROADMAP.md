@@ -2791,6 +2791,35 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       `scripts/build-app-icon.sh`. The Dock icon choices in Settings
       stay Mac only. First impression for new users, so it belongs with
       onboarding
+- [ ] Front-load the quick things in an account's first sync, so a new
+      account is usable at once *(owner, 2026-10-29: "I consider these
+      bugs", found when a message written during the first sync had no
+      signature and Settings → Signatures was empty)*: the Send mail as
+      addresses (which carry the signatures) and Google contacts are
+      fetched only after a whole sync pass has finished
+      (`sync/worker.rs`), so for an account with thousands of
+      conversations nothing arrives for minutes. They are a few small
+      requests and don't depend on the mail: fetch them first, at the
+      start of the first pass (labels already are). Anything else that is
+      cheap and visible (the account's name and picture, rules and the
+      vacation responder if the permission is there) belongs in the same
+      front-loaded step, and the sidebar should show what has arrived
+- [ ] Mail that arrives during a first sync shows only after it ends
+      *(found 2026-10-29: a test message to the account that was still
+      syncing hadn't appeared)*: a first sync notes where Gmail's history
+      stood when it began, lists and fetches every conversation, and
+      leaves anything that arrives meanwhile to the next incremental
+      pass, which only runs after the first has finished and the poll
+      interval has passed. Catch up at once when the first pass ends, and
+      better, also every few minutes during a long one, so new mail never
+      waits for thousands of old conversations
+- [ ] Sending while an account is still syncing: check, and prove with a
+      test *(owner, 2026-10-29: "allow sending while syncing if we don't
+      currently")*. Reading the code, it already does: a send uses the
+      interactive client, which goes ahead of background sync and of its
+      rate-limit pauses, and saves the sent message locally at once. Add
+      a test that sends during a full sync that has the quota pacer
+      saturated, so it can't regress, and check the Sent view shows it
 - [ ] Tried with the owner on a fresh Google account, following only
       what the app says (using Milestone 11's clean start) *(first
       trial 2026-10-29 on Windows, which led to the changes above; to
