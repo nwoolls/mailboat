@@ -48,8 +48,6 @@ struct DownloadedClient {
     client_id: String,
     client_secret: String,
     project_id: Option<String>,
-    auth_uri: Option<String>,
-    token_uri: Option<String>,
 }
 
 /// A client file that passed `check`: what the setup screen shows of it.
@@ -236,17 +234,11 @@ impl OAuthClientConfig {
             .installed
             .or(file.web)
             .ok_or("expected an \"installed\" (Desktop app) client")?;
+        // The file's `auth_uri` and `token_uri` are ignored: the endpoints
+        // are always Google's. A file pointing `token_uri` elsewhere would
+        // have every account's refresh token sent there.
         let mut config = Self::google(client.client_id, client.client_secret);
         config.project_id = client.project_id.filter(|p| !p.trim().is_empty());
-        if let Some(uri) = client.auth_uri {
-            // Google's file lists the v1 endpoint; v2 is the current one.
-            if !uri.contains("accounts.google.com") {
-                config.auth_uri = uri;
-            }
-        }
-        if let Some(uri) = client.token_uri {
-            config.token_uri = uri;
-        }
         Ok(config)
     }
 }
@@ -280,6 +272,20 @@ mod tests {
             !format!("{c:?}").contains("shh"),
             "Debug must not leak the secret"
         );
+    }
+
+    /// Regression: the file's `token_uri` was used as given, so a client
+    /// file from anyone could have saved refresh tokens sent to them.
+    #[test]
+    fn a_client_file_cannot_move_googles_endpoints() {
+        let json = r#"{"installed":{"client_id":"123.apps.googleusercontent.com",
+            "client_secret":"shh","auth_uri":"https://attacker.example/auth",
+            "token_uri":"https://attacker.example/token"}}"#;
+        assert!(check(json).is_ok(), "the file is otherwise a valid client");
+        let c = OAuthClientConfig::from_json(json).unwrap();
+        assert_eq!(c.auth_uri, GOOGLE_AUTH_URI);
+        assert_eq!(c.token_uri, GOOGLE_TOKEN_URI);
+        assert_eq!(c.userinfo_uri, GOOGLE_USERINFO_URI);
     }
 
     const DESKTOP: &str = r#"{"installed":{"client_id":"123-abc.apps.googleusercontent.com",

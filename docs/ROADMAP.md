@@ -2919,6 +2919,9 @@ fixes. At most 10 rounds.
 
 Round 1 (2026-10-30), all seven findings confirmed and fixed:
 
+- [x] R1-02: a client file's `token_uri` was used as given, so a crafted
+      file could have refresh tokens sent elsewhere. Google's endpoints
+      are fixed now; the file only gives the ID, secret and project
 - [x] R1-03: test data used a real company's domain; now `work.example.com`
 
 ## Milestone 14: Open the code
