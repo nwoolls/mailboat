@@ -3100,14 +3100,18 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
-- [ ] On Windows in dark mode, the From list in a new message is hard to
+- [x] On Windows in dark mode, the From list in a new message is hard to
       read *(owner report, 2026-10-29, with a screenshot)*: the two
       address headings in the dropdown are nearly white on a white
       background, while the options under them read fine. Likely cause:
       it's Windows' own dropdown, which keeps a white background while the
       headings take the light text colour from our dark theme. Fix by
       styling the dropdown (or the headings) for dark mode, or by using
-      the app's own menu there
+      the app's own menu there *(fixed 2026-10-29: the existing Windows
+      rule that gives a dropdown's choices solid theme colours now covers
+      its group headings too (`optgroup`). A Chromium test checks that
+      headings and choices get the same colours; it fails without the
+      fix. Owner to try on Windows)*
 
 - [ ] The compose window's AI button shows even when no AI is set up
       *(owner report, 2026-10-29, with a screenshot)*: on Windows with

@@ -529,8 +529,12 @@ html[data-platform="windows"] ::-webkit-scrollbar-thumb:hover {
 
 /* WebView2 draws a select's list itself, with the select's own (often
    faded) text color on a white list, so in dark mode some choices were
-   near-invisible. Solid theme colors there; macOS draws its own menu. */
-html[data-platform="windows"] option {
+   near-invisible. Solid theme colors there; macOS draws its own menu.
+   The group headings (`optgroup`, like the addresses in a new message's
+   From list) need it too: they stayed light on white (owner report,
+   2026-10-29; tests/browser/windows-select). */
+html[data-platform="windows"] option,
+html[data-platform="windows"] optgroup {
   background-color: var(--color-background-raised);
   color: var(--color-content);
 }
