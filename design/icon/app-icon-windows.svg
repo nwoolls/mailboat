@@ -1,20 +1,20 @@
-<!-- Windows copy of app-icon.svg (keep the two in step): the same tile,
-     cropped to fill the icon's square. macOS icons sit inside a margin
-     (Apple's grid), but Windows draws icons edge to edge, so the Mac art
-     looked shrunk on Windows (owner, 2026-10-25). No drop shadow: it would
-     be cut off at the edge. Used for src-tauri/icons/icon.ico only.
-     The app's icon: a blue paper boat (round 12, P1): the sail's two halves behind it, the far half darker,
-     and the hull folded over the front. The near half is the colour mixed 20% toward black, the far half 40%.
-     Colour C17 (Apple's system blue, matching Mail); a copy of design/icon/choices/C17-system-blue.svg.
-     Regenerate every size with scripts/build-app-icon.sh. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="92 92 840 840">
-<defs>
-  <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity="0.30"/></filter>
-  <filter id="fold" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#000" flood-opacity="0.5"/></filter>
-</defs>
-<rect x="100" y="100" width="824" height="824" rx="186" fill="#0d0f14"/>
-<rect x="101.5" y="101.5" width="821" height="821" rx="185" fill="none" stroke="#ffffff" stroke-opacity="0.13" stroke-width="3"/>
+<!-- Windows copy of the app's icon: the paper boat alone, with no tile.
+     Windows apps usually show the mark itself (VS Code, Outlook), and the
+     near-black tile of the Mac icon faded into a dark taskbar (owner,
+     2026-10-25 and 2026-10-29: "more conventional, without the mac style
+     black rounded square"). The same boat as app-icon.svg (round 12, P1:
+     the sail's two halves behind the hull, the far half darker, the hull
+     folded over the front; Apple's system blue, C17), cropped to fill its
+     square edge to edge (the boat is wide and low, so its width touches
+     both sides: 2026-10-29, chosen over a taller sail). The hull's top corners
+     are squared off by 42 units instead of ending in sharp points: at 24px
+     the points faded out, so the solid part of the hull was 22px wide, not
+     24, and the boat looked narrower than VS Code's mark (owner,
+     2026-10-29; Windows shows the 24px frame in the taskbar). No shadows: the edge would cut them off.
+     Used for src-tauri/icons/icon.ico only. Keep the shapes in step with
+     app-icon.svg. Regenerate every size with scripts/build-app-icon.sh. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="170 174 684 684">
 <path d="M 512.0 282.0 L 512.0 590.0 L 350.0 590.0 Z" fill="#086acc"/>
 <path d="M 512.0 282.0 L 674.0 590.0 L 512.0 590.0 Z" fill="#064f99"/>
-<path d="M 170.0 570.0 L 854.0 570.0 L 709.0 750.0 L 315.0 750.0 Z" fill="#0a84ff" filter="url(#fold)"/>
+<path d="M 170.0 570.0 L 854.0 570.0 L 854.0 612.0 L 709.0 750.0 L 315.0 750.0 L 170.0 612.0 Z" fill="#0a84ff"/>
 </svg>

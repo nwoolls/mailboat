@@ -4,7 +4,11 @@
   paper boat for the name Mailboat (owner's pick, 2026-10-27), the
   sail's two halves behind the hull. Before it, the M of the app's old
   name (round three's N7). The classic icons in
-  `src-tauri/icons/` (Windows, older macOS, the fallback) come from it.
+  `src-tauri/icons/` (older macOS, the fallback) come from it.
+- `app-icon-windows.svg` is the same boat alone, with no tile, filling its
+  square (owner, 2026-10-29: "more conventional, without the mac style black
+  rounded square", compared with VS Code's icon). It makes
+  `src-tauri/icons/icon.ico`. Keep its shapes in step with `app-icon.svg`.
 - `app-icon-layer.svg` is the same boat without the tile, on Icon Composer's
   1024px canvas. It is the artwork layer of `src-tauri/macos/AppIcon.icon`
   (whose fill is the tile colour), compiled to `src-tauri/macos/Assets.car`.

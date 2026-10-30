@@ -2780,7 +2780,7 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       the account was added and then failed with a raw 403. Built
       2026-10-29: the app checks which permissions Google granted
       before saving anything, and says to tick "Select all")*
-- [ ] A more conventional app icon on Windows *(owner request,
+- [x] A more conventional app icon on Windows *(owner request,
       2026-10-29; after the onboarding feedback is dealt with)*: today's
       Windows icon is the Mac one (a dark rounded square with the boat
       on it, only cropped to fill its square: `design/icon/app-icon-windows.svg`
@@ -2790,7 +2790,14 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       installer); then redraw the Windows icon from the boat alone, in
       `scripts/build-app-icon.sh`. The Dock icon choices in Settings
       stay Mac only. First impression for new users, so it belongs with
-      onboarding
+      onboarding *(built 2026-10-29: the boat alone, no tile, in
+      `design/icon/app-icon-windows.svg`. Edge to edge by width was
+      tried, and then measured in the owner's taskbar: the mark was the
+      same width as VS Code's, but the hull's sharp top corners faded
+      out at 24px, so its widest solid row was 22px of 24 and it read
+      narrower. The corners are now squared off a little (42 units), so
+      the row is the full 24px (100% at 32 and 48px). Owner to try after
+      a rebuild and a cleared icon cache)*
 - [ ] Front-load the quick things in an account's first sync, so a new
       account is usable at once *(owner, 2026-10-29: "I consider these
       bugs", found when a message written during the first sync had no
