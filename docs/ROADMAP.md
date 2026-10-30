@@ -2930,6 +2930,9 @@ Round 1 (2026-10-30), all seven findings confirmed and fixed:
 - [x] R1-04: images in CSS (`style` attributes, `<style>` sheets) and
       `background` attributes skipped the tracker check, the held-back
       rule and prefetch. One rule covers them all now
+- [x] R1-05: changing From to another account deleted the draft before
+      the new account saved it, so a failed save lost it. It's saved in
+      the new account first now
 - [ ] R1-04 follow-up: a browser test that a CSS tracker makes no
       request in the reader's frame (the sanitized output and the CSP are
       tested in Rust; nothing yet watches the frame's requests)

@@ -414,6 +414,7 @@ pub async fn save_draft_with_files(
         Some(id) => draft_row(db, id)?.map(|row| (id, row)),
         None => None,
     };
+    let mut moving_from = None;
     if let Some((id, (account, gmail_id))) = saved {
         if account == msg.account_id {
             let gmail = gmail_for(account)?;
@@ -434,8 +435,8 @@ pub async fn save_draft_with_files(
             }
             return Ok(id);
         }
-        // From changed account: the draft moves with it.
-        delete_draft(db, &gmail_for, id).await?;
+        // From changed account: the draft moves with it (below).
+        moving_from = Some(id);
     }
     let gmail = gmail_for(msg.account_id)?;
     let created = gmail.create_draft(&raw, thread.as_deref()).await?;
@@ -448,6 +449,13 @@ pub async fn save_draft_with_files(
         DraftId(conn.last_insert_rowid())
     };
     cache_draft(db, &gmail, msg.account_id, id, &created).await;
+    // The old account's copy goes only once the new one is saved, so a
+    // failure on either side never leaves the draft saved nowhere. If it
+    // can't go now, it stays in that account's Drafts: a spare copy the
+    // owner can delete, rather than none.
+    if let Some(old) = moving_from {
+        let _ = delete_draft(db, &gmail_for, old).await;
+    }
     Ok(id)
 }
 

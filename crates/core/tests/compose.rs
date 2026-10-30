@@ -476,6 +476,41 @@ async fn a_draft_moves_when_from_changes_account() {
     assert_eq!(owner, b);
 }
 
+/// Regression: moving a draft deleted the old account's copy first, so if
+/// the new account couldn't save it (its sign-in expired) the draft was
+/// saved nowhere.
+#[tokio::test]
+async fn a_draft_that_cannot_move_stays_where_it_was() {
+    let server_a = MockServer::start().await;
+    mount_drafts(&server_a, "da").await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    let ua = server_a.uri();
+    let gmail_for = |acct: AccountId| {
+        if acct == a {
+            Ok(client(&ua).0)
+        } else {
+            Err(CoreError::Auth("sign in again".into()))
+        }
+    };
+
+    let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.com", None))
+        .await
+        .unwrap();
+    let moved = compose::save_draft(&db, gmail_for, Some(id), &outgoing(b, "b@x.com", None)).await;
+    assert!(moved.is_err());
+    let on_a = server_a.received_requests().await.unwrap();
+    assert_eq!(calls(&on_a, "DELETE"), 0, "A's copy is kept");
+    let owner: AccountId = db
+        .conn()
+        .query_row("SELECT account_id FROM drafts WHERE id = ?1", [id], |r| {
+            r.get(0)
+        })
+        .unwrap();
+    assert_eq!(owner, a);
+}
+
 #[tokio::test]
 async fn a_draft_made_elsewhere_is_found_and_discarded() {
     let server = MockServer::start().await;
