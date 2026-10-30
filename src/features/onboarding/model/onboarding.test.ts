@@ -6,7 +6,7 @@ import {
   explainSignInError,
   explainSyncError,
   FRESH,
-  gcloudCommand,
+  gcloudCommands,
   isSyncing,
   makeProjectId,
   nextStage,
@@ -144,11 +144,12 @@ describe("gcloud", () => {
     expect(makeProjectId("123", () => 0)).toBe("mail-000000");
   });
 
-  it("creates the project and turns on all three APIs", () => {
-    expect(gcloudCommand("mail-abc123", 'Ma"il')).toBe(
-      'gcloud projects create mail-abc123 --name="Mail" && ' +
-        "gcloud services enable gmail.googleapis.com people.googleapis.com calendar-json.googleapis.com --project=mail-abc123",
-    );
+  it("creates the project and turns on all three APIs, in two commands", () => {
+    // Two lines, because `&&` fails in Windows PowerShell 5.1 (owner, 2026-10-30).
+    expect(gcloudCommands("mail-abc123", 'Ma"il')).toEqual([
+      'gcloud projects create mail-abc123 --name="Mail"',
+      "gcloud services enable gmail.googleapis.com people.googleapis.com calendar-json.googleapis.com --project=mail-abc123",
+    ]);
   });
 });
 

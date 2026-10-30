@@ -194,12 +194,17 @@ export function makeProjectId(appName: string, random: () => number): string {
   return `${base}-${tail}`;
 }
 
-/** The one command that creates the project and turns on the APIs. */
-export function gcloudCommand(projectId: string, appName: string): string {
-  return (
-    `gcloud projects create ${projectId} --name="${appName.replace(/["\\$`]/g, "")}" && ` +
-    `gcloud services enable ${APIS.join(" ")} --project=${projectId}`
-  );
+/**
+ * The commands that create the project and turn on the APIs, to run one at
+ * a time. Two, not one joined with `&&`: Windows PowerShell 5.1 (the
+ * default) doesn't know `&&`, and cmd (the Cloud SDK Shell) doesn't know
+ * `;`, so no single line works in every shell.
+ */
+export function gcloudCommands(projectId: string, appName: string): [string, string] {
+  return [
+    `gcloud projects create ${projectId} --name="${appName.replace(/["\\$`]/g, "")}"`,
+    `gcloud services enable ${APIS.join(" ")} --project=${projectId}`,
+  ];
 }
 
 /**

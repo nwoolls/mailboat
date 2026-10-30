@@ -16,7 +16,7 @@ import {
 import {
   consoleUrl,
   currentStep,
-  gcloudCommand,
+  gcloudCommands,
   type GooglePath,
   type GuideStepId,
   makeProjectId,
@@ -216,7 +216,7 @@ function ChoosePath() {
       path: "gcloud",
       icon: TerminalIcon,
       title: "Use Google’s command-line tool",
-      detail: "For people who already have gcloud installed. One command does the first two steps.",
+      detail: "For people who already have gcloud installed. Two commands do the first two steps.",
       tag: "Advanced",
     },
     {
@@ -360,20 +360,25 @@ function StepCard({
 function GcloudCard({ progress }: { progress: Progress }) {
   // Made when the path was chosen.
   const projectId = progress.projectId ?? "";
-  const command = gcloudCommand(projectId, APP_NAME);
+  const commands = gcloudCommands(projectId, APP_NAME);
   return (
     <div className="space-y-2 rounded-xl bg-selection-subtle p-4 ring-1 ring-stroke">
       <p className="text-[13px] text-content/70">
-        Open Terminal (Mac) or PowerShell (Windows) and run this, once you’ve signed in with{" "}
-        <code>gcloud auth login</code>. It creates the project <code>{projectId}</code> and turns on
-        the Gmail, People and Calendar APIs.
+        Open Terminal (Mac) or PowerShell (Windows) and sign in with <code>gcloud auth login</code>.
+        Then run these two commands, one at a time. They create the project <code>{projectId}</code>{" "}
+        and turn on the Gmail, People and Calendar APIs.
       </p>
-      <div className="flex items-start gap-2 rounded-lg bg-background-base/60 p-2.5">
-        <code className="selectable flex-1 font-mono text-[11px] leading-relaxed break-all">
-          {command}
-        </code>
-        <CopyButton value={command} label="Copy command" />
-      </div>
+      {commands.map((command, i) => (
+        <div
+          key={command}
+          className="flex items-start gap-2 rounded-lg bg-background-base/60 p-2.5"
+        >
+          <code className="selectable flex-1 font-mono text-[11px] leading-relaxed break-all">
+            {command}
+          </code>
+          <CopyButton value={command} label={`Copy command ${i + 1}`} />
+        </div>
+      ))}
       <p className="text-[12px] text-content/50">
         Google’s tool can’t make the sign-in screen, add test users or create a Desktop client, so
         those are below, each opening on this project.
