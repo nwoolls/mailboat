@@ -22,7 +22,9 @@ use specta::Type;
 use super::{process, Answer, Prompt, ProviderState, Quality, Usage};
 use crate::error::{CoreError, Result};
 
-/// Codex tools that could act on the Mac or the web.
+/// Codex tools that could act on the Mac or the web: always turned off,
+/// even if `codex features list` stops listing them. Every other switch
+/// Codex reports on is turned off too (`switches_off`).
 const TOOLS_OFF: &[&str] = &[
     "shell_tool",
     "unified_exec",
@@ -84,7 +86,62 @@ pub fn choice(quality: Quality, models: &Models) -> Choice {
     }
 }
 
-pub fn args(choice: &Choice) -> Vec<String> {
+/// Codex's switches (`codex features list`): each name and whether it's
+/// on. Lines are "name  stage  true|false"; the stage can be two words.
+pub fn parse_switches(stdout: &str) -> Vec<(String, bool)> {
+    stdout
+        .lines()
+        .filter_map(|line| {
+            let words: Vec<&str> = line.split_whitespace().collect();
+            let on = match *words.last()? {
+                "true" => true,
+                "false" => false,
+                _ => return None,
+            };
+            (words.len() >= 3).then(|| (words[0].to_string(), on))
+        })
+        .collect()
+}
+
+/// Codex's switches as it reports them, with `overrides` (`-c` settings)
+/// applied. An error when Codex can't say, so a request never goes ahead
+/// unchecked.
+pub async fn switches(program: &Path, overrides: &[String]) -> Result<Vec<(String, bool)>> {
+    let mut args: Vec<&str> = vec!["features", "list"];
+    for o in overrides {
+        args.push("-c");
+        args.push(o);
+    }
+    let (ok, stdout, _) = process::run_quick_with(program, &args, process::Env::Minimal).await?;
+    let found = parse_switches(&stdout);
+    if !ok || found.is_empty() {
+        return Err(CoreError::Ai(
+            "Couldn't check ChatGPT's Codex switches.".into(),
+        ));
+    }
+    Ok(found)
+}
+
+/// Every switch to turn off for a request: the known tool switches and
+/// every switch Codex reports on, so one added in an update is off too.
+pub fn switches_off(reported: &[(String, bool)]) -> Vec<String> {
+    let mut off: Vec<String> = TOOLS_OFF.iter().map(|t| t.to_string()).collect();
+    for (name, on) in reported {
+        if *on && !off.contains(name) {
+            off.push(name.clone());
+        }
+    }
+    off
+}
+
+/// The `-c` settings that turn `off` off.
+pub fn overrides(off: &[String]) -> Vec<String> {
+    off.iter().map(|t| format!("features.{t}=false")).collect()
+}
+
+/// `codex exec`'s arguments for a request, with the switches in `off`
+/// turned off.
+pub fn args(choice: &Choice, off: &[String]) -> Vec<String> {
     let effort = choice.effort;
     let mut a: Vec<String> = [
         "exec",
@@ -99,9 +156,9 @@ pub fn args(choice: &Choice) -> Vec<String> {
     .into_iter()
     .map(String::from)
     .collect();
-    for tool in TOOLS_OFF {
+    for o in overrides(off) {
         a.push("-c".into());
-        a.push(format!("features.{tool}=false"));
+        a.push(o);
     }
     a.push("-c".into());
     a.push("web_search=\"disabled\"".into());
@@ -228,15 +285,25 @@ pub async fn ask(
 }
 
 async fn run(program: &Path, prompt: &Prompt, chosen: &Choice) -> Result<Answer> {
+    // Asked each time (it takes about 10ms), so a switch an update added
+    // is off from the first request after it.
+    let off = switches_off(&switches(program, &[]).await?);
     let mut reader = Reader::default();
-    let exit = process::run_lines(program, &args(chosen), &stdin(prompt), |line| {
-        reader.line(line);
-        Ok(if reader.done {
-            ControlFlow::Break(())
-        } else {
-            ControlFlow::Continue(())
-        })
-    })
+    let args = args(chosen, &off);
+    let exit = process::run_lines_with(
+        program,
+        &args,
+        &stdin(prompt),
+        process::Env::Minimal,
+        |line| {
+            reader.line(line);
+            Ok(if reader.done {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            })
+        },
+    )
     .await?;
     reader.finish(exit)
 }
@@ -389,7 +456,7 @@ mod tests {
             (fast.model.as_deref(), fast.effort),
             (Some("gpt-6-luna"), "none")
         );
-        let a = args(&fast);
+        let a = args(&fast, &switches_off(&[]));
         assert_eq!(
             a[a.iter().position(|x| x == "-m").unwrap() + 1],
             "gpt-6-luna"
@@ -402,12 +469,91 @@ mod tests {
         // Without a catalog, Codex's default model at low effort, no -m.
         let plain = choice(Quality::Fast, &Models::default());
         assert_eq!(plain.effort, "low");
-        assert!(!args(&plain).contains(&"-m".to_string()));
+        assert!(!args(&plain, &switches_off(&[])).contains(&"-m".to_string()));
+    }
+
+    const FEATURES: &str = "apps                                     stable             true
+agent_message_board                      under development  false
+brand_new_tool                           stable             true
+shell_tool                               stable             false
+not a switch line
+";
+
+    #[test]
+    fn reads_codex_switches() {
+        assert_eq!(
+            parse_switches(FEATURES),
+            [
+                ("apps".to_string(), true),
+                ("agent_message_board".to_string(), false),
+                ("brand_new_tool".to_string(), true),
+                ("shell_tool".to_string(), false),
+            ]
+        );
+    }
+
+    /// Round 5 (Codex fenced in): a switch an update adds, on by
+    /// default, is turned off without anyone naming it; known tool
+    /// switches stay off even if Codex stops listing them.
+    #[test]
+    fn every_switch_codex_reports_on_is_turned_off() {
+        let off = switches_off(&parse_switches(FEATURES));
+        let a = args(&choice(Quality::Fast, &Models::default()), &off);
+        for name in ["brand_new_tool", "apps", "shell_tool", "browser_use"] {
+            assert!(
+                a.contains(&format!("features.{name}=false")),
+                "{name}: {a:?}"
+            );
+        }
+        assert!(!a.contains(&"features.agent_message_board=false".to_string()));
+    }
+
+    /// The whole request against a stand-in `codex`: the switches it
+    /// reports on go into `exec`'s arguments, and it doesn't see the
+    /// app's environment.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_request_turns_off_what_codex_reports_and_hides_the_environment() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("codex-stub-{}", fastrand::u64(..)));
+        std::fs::create_dir_all(&dir).unwrap();
+        let log = dir.join("exec-args");
+        let stub = dir.join("codex");
+        std::fs::write(
+            &stub,
+            format!(
+                "#!/bin/sh\nif [ \"$1\" = features ]; then printf '%s' '{FEATURES}'; exit 0; fi\n\
+                 echo \"$@\" > {log}; env >> {log}\n\
+                 echo '{{\"type\":\"item.completed\",\"item\":{{\"type\":\"agent_message\",\"text\":\"Done.\"}}}}'\n\
+                 echo '{{\"type\":\"turn.completed\",\"usage\":{{}}}}'\n",
+                log = log.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::env::set_var("AI_ENV_PROBE_CODEX", "x");
+        let prompt = Prompt {
+            instructions: "Summarize.".into(),
+            input: "Hi".into(),
+            quality: Quality::Fast,
+            max_tokens: None,
+        };
+        let answer = ask(&stub, &prompt, &Models::default(), &|_| {})
+            .await
+            .unwrap();
+        assert_eq!(answer.text, "Done.");
+        let ran = std::fs::read_to_string(&log).unwrap();
+        assert!(ran.contains("features.brand_new_tool=false"), "{ran}");
+        assert!(!ran.contains("AI_ENV_PROBE_CODEX"), "{ran}");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn tools_are_off_and_the_prompt_comes_on_stdin() {
-        let a = args(&choice(Quality::Fast, &Models::default()));
+        let a = args(
+            &choice(Quality::Fast, &Models::default()),
+            &switches_off(&[]),
+        );
         assert!(a.contains(&"features.shell_tool=false".to_string()));
         assert!(a.contains(&"web_search=\"disabled\"".to_string()));
         assert!(a.contains(&"read-only".to_string()));

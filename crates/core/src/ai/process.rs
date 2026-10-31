@@ -87,6 +87,55 @@ pub struct Exit {
     pub stderr: String,
 }
 
+/// What a provider's program gets from the app's environment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Env {
+    /// Everything (Claude, Apple's helper).
+    Inherit,
+    /// Only `MINIMAL_VARS` and PATH: nothing else the app was started with
+    /// (Codex, which can't promise no tools).
+    Minimal,
+}
+
+/// What `Env::Minimal` keeps: where home and temp are, the language, the
+/// proxy and certificates the network may need, Codex's own folder, and
+/// what Windows programs expect. Absent ones are skipped.
+const MINIMAL_VARS: &[&str] = &[
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "TMPDIR",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "CODEX_HOME",
+    "HTTPS_PROXY",
+    "HTTP_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY",
+    "https_proxy",
+    "http_proxy",
+    "all_proxy",
+    "no_proxy",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "USERPROFILE",
+    "USERNAME",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "ProgramData",
+    "ProgramFiles",
+    "SystemRoot",
+    "SystemDrive",
+    "windir",
+    "TEMP",
+    "TMP",
+    "PATHEXT",
+    "HOMEDRIVE",
+    "HOMEPATH",
+    "COMSPEC",
+];
+
 /// Runs `program` in an empty folder, writes `stdin`, and calls `on_line`
 /// for each line it prints. An error from `on_line` stops the program.
 /// So does `Break`, for the line that ends the answer: Claude and Codex
@@ -97,11 +146,22 @@ pub async fn run_lines(
     program: &Path,
     args: &[String],
     stdin: &str,
+    on_line: impl FnMut(&str) -> Result<ControlFlow<()>>,
+) -> Result<Exit> {
+    run_lines_with(program, args, stdin, Env::Inherit, on_line).await
+}
+
+/// `run_lines` with a choice of what the program inherits.
+pub async fn run_lines_with(
+    program: &Path,
+    args: &[String],
+    stdin: &str,
+    env: Env,
     mut on_line: impl FnMut(&str) -> Result<ControlFlow<()>>,
 ) -> Result<Exit> {
     let work = tokio::time::timeout(TIMEOUT, async {
         let dir = scratch_dir()?;
-        let mut child = command(program)
+        let mut child = command(program, env)
             .args(args)
             .current_dir(&dir)
             .env("PATH", child_path(program))
@@ -164,10 +224,23 @@ pub async fn run_lines(
 /// Runs a short command (a status check) and returns its stdout, stderr
 /// and whether it succeeded.
 pub async fn run_quick(program: &Path, args: &[&str]) -> Result<(bool, String, String)> {
+    run_quick_with(program, args, Env::Inherit).await
+}
+
+/// `run_quick` with a choice of what the program inherits. With
+/// `Env::Minimal` it runs in the temp folder, not the app's.
+pub async fn run_quick_with(
+    program: &Path,
+    args: &[&str],
+    env: Env,
+) -> Result<(bool, String, String)> {
+    let mut cmd = command(program, env);
+    if env == Env::Minimal {
+        cmd.current_dir(std::env::temp_dir());
+    }
     let out = tokio::time::timeout(
         Duration::from_secs(15),
-        command(program)
-            .args(args)
+        cmd.args(args)
             .env("PATH", child_path(program))
             .stdin(Stdio::null())
             .kill_on_drop(true)
@@ -186,7 +259,7 @@ pub async fn run_quick(program: &Path, args: &[&str]) -> Result<(bool, String, S
 /// Starts a sign-in command (it opens the browser) and returns the
 /// running process; dropping it stops the sign-in.
 pub fn spawn_login(program: &Path, args: &[&str]) -> Result<tokio::process::Child> {
-    command(program)
+    command(program, Env::Inherit)
         .args(args)
         .env("PATH", child_path(program))
         .stdin(Stdio::null())
@@ -200,9 +273,16 @@ pub fn spawn_login(program: &Path, args: &[&str]) -> Result<tokio::process::Chil
 /// A command for `program` that, on Windows, opens no console window: a
 /// windowed app starting a command-line tool otherwise gets one flashing
 /// up for every request.
-fn command(program: &Path) -> Command {
-    #[allow(unused_mut)]
+fn command(program: &Path, env: Env) -> Command {
     let mut cmd = Command::new(program);
+    if env == Env::Minimal {
+        cmd.env_clear();
+        for var in MINIMAL_VARS {
+            if let Some(value) = std::env::var_os(var) {
+                cmd.env(var, value);
+            }
+        }
+    }
     #[cfg(windows)]
     {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -256,6 +336,21 @@ mod tests {
         assert_eq!(seen, ["got one", "got two"]);
         assert!(exit.success);
         assert_eq!(exit.stderr, "oops");
+    }
+
+    /// Codex gets only what it needs from the app's environment, not
+    /// whatever the app was started with (code review Round 5).
+    #[tokio::test]
+    async fn a_minimal_environment_keeps_only_whats_needed() {
+        std::env::set_var("AI_ENV_PROBE_SECRET", "x");
+        let (_, inherited, _) = run_quick(Path::new("/usr/bin/env"), &[]).await.unwrap();
+        assert!(inherited.contains("AI_ENV_PROBE_SECRET="));
+        let (_, minimal, _) = run_quick_with(Path::new("/usr/bin/env"), &[], Env::Minimal)
+            .await
+            .unwrap();
+        assert!(!minimal.contains("AI_ENV_PROBE_SECRET="), "{minimal}");
+        assert!(minimal.contains("HOME="), "{minimal}");
+        assert!(minimal.contains("PATH="), "{minimal}");
     }
 
     #[tokio::test]

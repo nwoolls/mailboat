@@ -3124,9 +3124,12 @@ leads, each checked before acting:
         (only warn in automated builds, `CI` set), and `AGENTS.md` → Codex
         review says to ask the owner, then recheck and run the live tests
         below
-  - [ ] Every request turns off every switch Codex reports on (not only
-        a named list), and Codex gets a minimal environment (home, `PATH`,
-        temp folder), not the app's
+  - [x] Every request turns off every switch Codex reports on (not only
+        a named list; `codex features list` is asked each time, about
+        10ms, and a request doesn't go ahead if it can't say), and Codex
+        gets a minimal environment (home, `PATH`, temp folder, language,
+        proxy and certificate settings, what Windows needs), not the
+        app's. Tested against a stand-in `codex`
   - [ ] macOS: Mailboat starts Codex inside its own sandbox profile that
         blocks reading the owner's home folder except Codex's own (its
         sign-in), so a new read tool can't reach private files. Windows
