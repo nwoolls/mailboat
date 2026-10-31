@@ -164,7 +164,7 @@ impl GmailClient {
         let rate = self.pacer.throttle(pause).await;
         self.log(&format!(
             "rate limited ({what}, HTTP {status}): {}; pausing {}s, then {rate:.0} units/s",
-            error_detail(body),
+            error_message(body),
             pause.as_secs()
         ));
     }
@@ -708,7 +708,7 @@ impl GmailClient {
                         return Err(CoreError::RateLimited(format!(
                             "{} batch items still failing after retries: {}",
                             pending.len(),
-                            error_detail(&body)
+                            error_message(&body)
                         )));
                     }
                     tokio::time::sleep(self.retry.delay(attempt, None)).await;
@@ -807,7 +807,10 @@ impl GmailClient {
                 if matches!(status.as_u16(), 403 | 429) {
                     self.throttle("request", status.as_u16(), &body).await;
                 } else {
-                    self.log(&format!("HTTP {status}, retrying: {}", error_detail(&body)));
+                    self.log(&format!(
+                        "HTTP {status}, retrying: {}",
+                        error_message(&body)
+                    ));
                 }
                 if attempt >= self.retry.max_retries {
                     return Err(if status.as_u16() == 429 || status.as_u16() == 403 {
@@ -873,25 +876,21 @@ fn is_retryable(status: u16, body: &str) -> bool {
     }
 }
 
-/// Google's message plus the machine-readable reasons, for the log.
-fn error_detail(body: &str) -> String {
+/// The single formatter for returned errors and diagnostics. Keep Google's
+/// message and reasons, but never copy other bodies: proxy/captive portal
+/// pages can echo request paths and queries into the sync log.
+fn error_message(body: &str) -> String {
     match serde_json::from_str::<ErrorEnvelope>(body) {
         Ok(e) => {
             let reasons: Vec<&str> = e.error.errors.iter().map(|i| i.reason.as_str()).collect();
-            format!("{} [{}]", e.error.message, reasons.join(", "))
+            if reasons.is_empty() {
+                e.error.message
+            } else {
+                format!("{} [{}]", e.error.message, reasons.join(", "))
+            }
         }
-        Err(_) if body.is_empty() => "(no body)".into(),
-        Err(_) => body.chars().take(300).collect(),
+        Err(_) => "an answer that wasn't from Gmail".into(),
     }
-}
-
-/// Google's own message from an error answer. Anything else (a proxy's or
-/// captive portal's page) isn't copied: it can echo the request, and this
-/// text reaches the sync log.
-fn error_message(body: &str) -> String {
-    serde_json::from_str::<ErrorEnvelope>(body)
-        .map(|e| e.error.message)
-        .unwrap_or_else(|_| "an answer that wasn't from Gmail".into())
 }
 
 fn api_error(status: u16, body: &str) -> CoreError {
@@ -911,14 +910,23 @@ pub(crate) fn net_error(e: reqwest::Error) -> CoreError {
 mod tests {
     use super::*;
 
-    /// Regression: an error answer that wasn't Google's JSON was copied
-    /// into the error text (its first 200 characters).
+    /// Proxy pages and malformed JSON can echo request paths and queries.
+    /// Neither returned errors nor diagnostic detail may copy those bodies.
     #[test]
     fn error_answers_from_others_are_not_copied() {
-        let page = "<html>Blocked: GET /gmail/v1/users/me/messages/msgid123</html>";
-        assert!(!error_message(page).contains("msgid123"));
+        for body in [
+            "<html>Blocked: GET /gmail/v1/users/me/messages/msgid123?q=secretword</html>",
+            r#"{"message":"msgid123 secretword"}"#,
+            r#"{"error":"msgid123 secretword"}"#,
+            "",
+        ] {
+            assert_eq!(error_message(body), "an answer that wasn't from Gmail");
+        }
         let google = r#"{"error":{"code":403,"message":"Insufficient Permission"}}"#;
         assert_eq!(error_message(google), "Insufficient Permission");
+        let limited =
+            r#"{"error":{"message":"Quota exceeded","errors":[{"reason":"rateLimitExceeded"}]}}"#;
+        assert_eq!(error_message(limited), "Quota exceeded [rateLimitExceeded]");
     }
 
     /// Regression: a request that failed kept its URL in the error text,

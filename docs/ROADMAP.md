@@ -2947,15 +2947,27 @@ Of the gaps it listed, one was fixed, the rest checked and left:
 
 - [x] R1-06 gap: an error answer that wasn't Google's JSON (a proxy's
       page) had its first 200 characters copied into the error text and
-      the sync log. Only Google's own message is kept now
+      the sync log. Round 2 fixed returned errors only; Round 3 below
+      completes the diagnostic paths
 - Left as is, with reasons: a draft's old copy that can't be deleted
   after a move stays visible in that account's Drafts; a sent message
   that couldn't be cached shows at the next sync, as when Gmail can't be
   asked for it; nothing outside the cascading tables keeps an account's
   ID (in-memory clients, cursors and its attachments folder go on
   removal); the lint warnings are style only (the effect-dependency one
-  reads only a ref and state setters); the browser tests pass here (58),
-  so the reviewer's timeouts were its environment
+  reads only a ref and state setters).
+- Validation correction (Round 3): the saved `/tmp/check-r2.log` ends
+  `EXIT 1`, with 1 browser test passed and 57 failed. The earlier claim
+  that all 58 passed was unsupported; its cause was not established.
+
+Round 3 (2026-10-30):
+
+- [x] R3-01: non-Gmail error bodies still reached retry/throttle logs and
+      exhausted-batch errors through `error_detail`. A failing regression
+      reproduced the leak. Returned errors and every diagnostic path now
+      use one formatter, keeping Gmail messages/reasons and replacing other
+      bodies with a fixed sentence. Mock HTTP tests capture the logger and
+      final errors for 500/502/503/504/429, including failed batch parts.
 
 ## Milestone 14: Open the code
 

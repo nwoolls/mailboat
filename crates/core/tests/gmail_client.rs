@@ -259,3 +259,55 @@ async fn reads_a_message_as_it_arrived() {
     let (gmail, _) = client(&server.uri());
     assert_eq!(gmail.message_raw("m1").await.unwrap(), raw.as_bytes());
 }
+
+/// Exercise the logger wired to the sync log, as well as the final error.
+/// Retry, throttle and exhausted batch paths must all discard proxy bodies.
+#[tokio::test]
+async fn proxy_answers_stay_out_of_diagnostics() {
+    use std::sync::{Arc, Mutex};
+
+    let page = "<html>Blocked: GET /gmail/v1/users/me/messages/msgid123?q=secretword</html>";
+    for status in [500, 502, 503, 504, 429] {
+        for batch in [false, true] {
+            let server = MockServer::start().await;
+            let response = if batch {
+                batch_response(&[(status, page.into())])
+            } else {
+                ResponseTemplate::new(status).set_body_raw(page, "text/html")
+            };
+            Mock::given(method(if batch { "POST" } else { "GET" }))
+                .respond_with(response)
+                .expect(1)
+                .mount(&server)
+                .await;
+            let lines = Arc::new(Mutex::new(Vec::<String>::new()));
+            let captured = lines.clone();
+            let (gmail, _) = client(&server.uri());
+            let gmail = gmail
+                .with_retry(mail_core::gmail::RetryPolicy {
+                    max_retries: 0,
+                    ..fast_retry()
+                })
+                .with_logger(Arc::new(move |line| {
+                    captured.lock().unwrap().push(line.to_owned());
+                }));
+            let error = if batch {
+                gmail
+                    .batch_thread_metadata(&["msgid123".into()])
+                    .await
+                    .unwrap_err()
+            } else {
+                gmail.profile().await.unwrap_err()
+            };
+            let lines = lines.lock().unwrap();
+            assert!(!lines.is_empty(), "HTTP {status}, batch={batch}");
+            for text in lines.iter().cloned().chain([error.to_string()]) {
+                assert!(text.contains("an answer that wasn't from Gmail"), "{text}");
+                assert!(
+                    !text.contains("msgid123") && !text.contains("secretword"),
+                    "{text}"
+                );
+            }
+        }
+    }
+}
