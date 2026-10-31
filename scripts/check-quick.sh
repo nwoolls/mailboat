@@ -20,6 +20,8 @@ fi
 
 # Fast, and any change can bring the app's name back.
 bun run check:brand
+# Fast: is Codex's monthly review due (AGENTS.md → Codex review)?
+bun run check:codex
 
 web=false
 rust=false

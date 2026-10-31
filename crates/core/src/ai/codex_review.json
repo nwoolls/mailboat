@@ -1,0 +1,15 @@
+{
+  "reviewed": "2026-10-31",
+  "codex": "0.166.0",
+  "stays_on": [
+    "item_ids",
+    "realtime_conversation",
+    "resize_all_images",
+    "terminal_resize_reflow",
+    "tool_search_always_defer_mcp_tools",
+    "tui_app_server",
+    "unified_exec",
+    "worktrees"
+  ],
+  "tools": ["request_user_input"]
+}

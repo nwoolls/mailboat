@@ -189,6 +189,30 @@ these rules. Keep it passing.
 - Tauri capabilities stay as narrow as possible. Do not add plugins or
   permissions to the web side without a reason recorded in the commit.
 
+## Codex review (monthly)
+
+ChatGPT runs through OpenAI's `codex` command-line tool, which can't
+promise no tools, so it's fenced in (docs/ROADMAP.md → Milestone 13,
+Codex): every switch turned off per request, a macOS sandbox, and a
+runtime check that pauses ChatGPT when a switch it hasn't reviewed stays
+on. What was reviewed is `crates/core/src/ai/codex_review.json`.
+
+`bun run check` (and `check:quick`) stops when that review is over 31 days
+old. When it does:
+
+1. Stop and ask the owner before going on. The recheck makes a few small
+   live requests on their ChatGPT subscription, with harmless input.
+2. With their OK: capture the tools in Codex's real request with every
+   switch off (against a local stand-in server, with an empty Codex
+   folder), list the switches that stay on after being turned off, and
+   run the live tests (Codex must not write a file, run a command, reach
+   the network or read a test file planted in the home folder). Never
+   send real mail, and never read or copy Codex's sign-in.
+3. Anything new or any test that fails: tell the owner what changed and
+   what it can do before accepting it. If nothing changed, or the owner
+   accepts the change, update `codex_review.json` (date, Codex version,
+   lists) and commit it with the results in the message.
+
 ## Testing
 
 - Rust: `cargo test` against Gmail API JSON fixtures in

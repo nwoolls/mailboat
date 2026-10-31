@@ -19,6 +19,7 @@ pub mod apple;
 pub mod apps;
 pub mod claude;
 pub mod codex;
+pub mod codex_review;
 pub mod context;
 pub mod format;
 pub mod process;

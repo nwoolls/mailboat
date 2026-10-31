@@ -3117,11 +3117,13 @@ leads, each checked before acting:
   files, and only the absence of a read tool stops it. Server-side tools
   (like web search) aren't stopped by any local fence. The layers:
 
-  - [ ] Reviewed list in the repo: the tools Codex offers and the
+  - [x] Reviewed list in the repo (`crates/core/src/ai/codex_review.json`):
+        the tools Codex's request carries with every switch off and the
         switches that stay on despite being turned off, with the date of
-        the review. `bun run check` stops after 31 days (only warns in
-        automated builds), and `AGENTS.md` says to ask the owner, then
-        recheck and run the live tests below
+        the review. `bun run check` and `check:quick` stop after 31 days
+        (only warn in automated builds, `CI` set), and `AGENTS.md` → Codex
+        review says to ask the owner, then recheck and run the live tests
+        below
   - [ ] Every request turns off every switch Codex reports on (not only
         a named list), and Codex gets a minimal environment (home, `PATH`,
         temp folder), not the app's
@@ -3129,15 +3131,27 @@ leads, each checked before acting:
         blocks reading the owner's home folder except Codex's own (its
         sign-in), so a new read tool can't reach private files. Windows
         has no equivalent; there, reading depends on the checks
-  - [ ] Checked at start-up, every few hours, when the `codex` program
-        changes on disk, and before a request if the last check is over an
-        hour old: a tool not on the reviewed list, a switch that stays on
-        that isn't on it, or a check that fails pauses ChatGPT with a
-        warning in Settings → AI (Check again; Use anyway, until the app
-        quits or something else new appears). No version check
-  - [ ] Live tests for the monthly recheck (ignored by default, harmless
-        input): Codex can't write a file, run a command, reach the
-        network or read a test file planted in the home folder
+  - [ ] Checked at start-up, every few hours and when the `codex` program
+        changes on disk, with `codex features list` only (offline, no
+        server): a switch that stays on after being turned off and isn't
+        on the reviewed list, or a check that fails, pauses ChatGPT with
+        a warning in Settings → AI (Check again; Use anyway, until the app
+        quits or something else new appears). No version check. Not a
+        full tool list: `codex debug prompt-input` doesn't show the
+        request's tools, the model's own list is unreliable (it named 15
+        tools its request didn't have), and capturing the real request
+        needs a local server, which the app shouldn't run (a listening
+        port, Codex's internals, false pauses), so that's the monthly
+        recheck's job. Accepted: a new server-side tool, on by default
+        and with no switch, goes unnoticed until the next recheck
+  - [ ] Monthly recheck tooling (run by an agent with the owner's OK,
+        never by the app): Codex's real request captured against a local
+        stand-in server with an empty Codex folder, its tools compared to
+        the reviewed list (with every switch off, Codex 0.166.0 sends one:
+        `request_user_input`); and live tests over the owner's ChatGPT
+        sign-in, on harmless input: Codex can't write a file, run a
+        command, reach the network or read a test file planted in the home
+        folder
 - Suggested, not scheduled (owner to decide): browser tests that fail
   clearly when the test page doesn't start (a "ready" signal, page and
   module errors collected), so a failure like Round 2's shows its cause.
