@@ -2974,6 +2974,21 @@ Round 3 (2026-10-30):
       bodies with a fixed sentence. Mock HTTP tests capture the logger and
       final errors for 500/502/503/504/429, including failed batch parts.
 
+Round 4 (2026-10-31): seven findings and two questions, each checked
+before acting:
+
+- [x] R4-01: a conversation with an ordinary email and one in Trash or
+      Spam is in All Mail, so AI apps (MCP) saw it, and its search
+      matches, snippet, senders, subject, date, counts and a reply's
+      default recipient included the hidden email. Reproduced (searching
+      a word only in the trashed email found the conversation, with that
+      email's snippet and sender). A search without Spam and Trash now
+      matches only emails outside them (as Gmail does, in the app too);
+      Gmail's hits from a search that took them in are kept apart (old
+      hits cleared once, a cache); AI apps get each conversation as it is
+      outside Spam and Trash (`query::outside_spam_trash`), and replies go
+      to those emails only. Tested for Trash and Spam
+
 ## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an

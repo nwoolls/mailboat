@@ -418,12 +418,22 @@ impl MailServer {
         threads: &[ThreadSummary],
     ) -> Outcome<Vec<ConversationSummary>> {
         let ids: Vec<AccountId> = scope.accounts.iter().map(|a| a.id).collect();
-        let names: HashMap<LabelId, String> =
-            query::user_labels(&self.db.conn(), &AccountFilter::Only(ids))
-                .map_err(fail)?
-                .into_iter()
-                .map(|l| (l.id, l.name))
-                .collect();
+        let (names, threads) = {
+            let conn = self.db.conn();
+            let names: HashMap<LabelId, String> =
+                query::user_labels(&conn, &AccountFilter::Only(ids))
+                    .map_err(fail)?
+                    .into_iter()
+                    .map(|l| (l.id, l.name))
+                    .collect();
+            // Only what's outside Spam and Trash (R4-01).
+            let mut shown = Vec::new();
+            for t in threads {
+                let visible = query::outside_spam_trash(&conn, t).map_err(fail)?;
+                shown.extend(visible);
+            }
+            (names, shown)
+        };
         Ok(threads
             .iter()
             .map(|t| ConversationSummary {
@@ -467,16 +477,16 @@ impl MailServer {
     /// Mail. Anything else is "not found", so nothing about it leaks.
     fn visible(&self, scope: &Scope, id: ThreadId) -> Outcome<ThreadSummary> {
         let missing = || format!("There's no conversation {} in the shared accounts.", id.0);
-        let (summary, in_all_mail) = {
+        let summary = {
             let conn = self.db.conn();
             let summary = query::thread_summary(&conn, id).map_err(|_| missing())?;
-            let in_all_mail = query::in_all_mail(&conn, id).map_err(fail)?;
-            (summary, in_all_mail)
+            // As it is outside Spam and Trash (R4-01); None if it's all there.
+            query::outside_spam_trash(&conn, &summary).map_err(fail)?
         };
-        if !scope.shared(summary.account_id) || !in_all_mail {
-            return Err(missing());
+        match summary {
+            Some(s) if scope.shared(s.account_id) => Ok(s),
+            _ => Err(missing()),
         }
-        Ok(summary)
     }
 
     async fn read(&self, scope: &Scope, id: ThreadId) -> Outcome<Conversation> {
@@ -522,7 +532,7 @@ impl MailServer {
         Ok(Conversation {
             conversation_id: id.0,
             account: scope.email(summary.account_id),
-            subject: text.subject,
+            subject: summary.subject,
             labels: detail.labels.into_iter().map(|l| l.name).collect(),
             emails,
         })
@@ -545,13 +555,22 @@ impl MailServer {
                 req.thread = Some(id);
                 let summary = self.visible(scope, id)?;
                 let text = read_thread(&self.db, None, id).await.map_err(fail)?;
-                let newest = text
-                    .messages
+                // A reply to what the AI app can see: never to an email in
+                // Spam or Trash, or its sender (R4-01).
+                let mut messages = Vec::new();
+                for m in text.messages {
+                    let (spam, trash) =
+                        store::message_spam_trash(&self.db.conn(), m.id).map_err(fail)?;
+                    if !spam && !trash {
+                        messages.push(m);
+                    }
+                }
+                let newest = messages
                     .last()
                     .ok_or("That conversation has no emails to reply to.")?;
                 if to.is_empty() {
                     // The person who wrote last, or whoever the user wrote to.
-                    to = match text.messages.iter().rev().find(|m| !m.mine) {
+                    to = match messages.iter().rev().find(|m| !m.mine) {
                         Some(m) => vec![m.from.clone()],
                         None => newest.to.clone(),
                     };

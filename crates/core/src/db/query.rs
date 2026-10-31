@@ -9,25 +9,46 @@ use super::placeholders;
 use crate::error::{CoreError, Result};
 use crate::model::{
     AccountFilter, Address, Label, LabelId, LabelKind, LabelUnread, ListCursor, ListQuery,
-    MailView, MessageMeta, SystemLabel, ThreadDetail, ThreadId, ThreadPage, ThreadSummary,
+    MailView, MessageMeta, SystemLabel, ThreadDetail, ThreadId, ThreadPage, ThreadSender,
+    ThreadSummary,
 };
 
 const MAX_LIMIT: u32 = 500;
 
-/// How a search's text is stored with Gmail's hits for it.
-pub fn search_key(text: &str) -> String {
-    text.split_whitespace()
+/// How a search's text is stored with Gmail's hits for it. Hits from a
+/// search that took in Spam and Trash are kept apart: they can match a
+/// conversation by an email in Trash, which a search without them mustn't
+/// show (code review R4-01). A tab never appears in the words themselves.
+pub fn search_key(text: &str, with_spam_trash: bool) -> String {
+    let words = text
+        .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
-        .to_lowercase()
+        .to_lowercase();
+    if with_spam_trash {
+        format!("spam-trash\t{words}")
+    } else {
+        words
+    }
 }
+
+/// The message `m` isn't in Spam or Trash (a macro, so `concat!` can use it).
+macro_rules! outside_spam_trash {
+    () => {
+        "NOT EXISTS (
+    SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+    WHERE ml.message_id = m.id AND l.kind = 'system' AND l.gmail_label_id IN ('SPAM', 'TRASH'))"
+    };
+}
+const OUTSIDE_SPAM_TRASH: &str = outside_spam_trash!();
 
 /// The thread has at least one message that isn't in Spam or Trash, which is
 /// what puts a conversation in Gmail's All Mail.
-const IN_ALL_MAIL: &str =
-    "EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = t.id AND NOT EXISTS (
-    SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
-    WHERE ml.message_id = m.id AND l.kind = 'system' AND l.gmail_label_id IN ('SPAM', 'TRASH')))";
+const IN_ALL_MAIL: &str = concat!(
+    "EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = t.id AND ",
+    outside_spam_trash!(),
+    ")"
+);
 
 const IN_INBOX: &str = "EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
     WHERE tl.thread_id = t.id AND l.kind = 'system' AND l.gmail_label_id = 'INBOX')";
@@ -152,18 +173,26 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
             }
             // Matches in the cache, plus what Gmail's own search found for
             // the same text (`search_hits`, filled when Gmail is asked).
+            // Without Spam and Trash, as in Gmail, only an email outside
+            // them can match: a conversation isn't found by words in its
+            // trashed reply (code review R4-01).
             let hits = "t.id IN (SELECT h.thread_id FROM search_hits h WHERE h.query = ?)";
+            let outside = if *with_spam_trash {
+                String::new()
+            } else {
+                format!(" AND {OUTSIDE_SPAM_TRASH}")
+            };
             match fts_query(text) {
                 Some(fts) => {
                     clauses.push(format!(
                         "(t.id IN (SELECT m.thread_id FROM messages_fts f JOIN messages m ON m.id = f.rowid
-                                   WHERE messages_fts MATCH ?) OR {hits})"
+                                   WHERE messages_fts MATCH ?{outside}) OR {hits})"
                     ));
                     values.push(Value::Text(fts));
                 }
                 None => clauses.push(hits.into()),
             }
-            values.push(Value::Text(search_key(text)));
+            values.push(Value::Text(search_key(text, *with_spam_trash)));
         }
     }
 
@@ -219,19 +248,6 @@ fn fts_query(text: &str) -> Option<String> {
     }
 }
 
-/// Whether a conversation is in All Mail: at least one of its messages
-/// is outside Spam and Trash.
-pub fn in_all_mail(conn: &Connection, id: ThreadId) -> Result<bool> {
-    Ok(conn
-        .query_row(
-            &format!("SELECT {IN_ALL_MAIL} FROM threads t WHERE t.id = ?1"),
-            [id],
-            |r| r.get(0),
-        )
-        .optional()?
-        .unwrap_or(false))
-}
-
 pub fn thread_summary(conn: &Connection, id: ThreadId) -> Result<ThreadSummary> {
     conn.query_row(
         &format!("SELECT {THREAD_COLUMNS} FROM threads t WHERE t.id = ?1"),
@@ -240,6 +256,98 @@ pub fn thread_summary(conn: &Connection, id: ThreadId) -> Result<ThreadSummary> 
     )
     .optional()?
     .ok_or_else(|| CoreError::NotFound(format!("thread {}", id.0)))
+}
+
+/// A conversation as it is outside Spam and Trash: its subject, snippet,
+/// senders, date, counts and labels from those emails only, or None if
+/// every email is in Spam or Trash. For AI apps, which never see Spam or
+/// Trash, so a conversation with a trashed reply mustn't show that
+/// reply's words, sender or date (code review R4-01). The app's own lists
+/// show the whole conversation, as Gmail does.
+pub fn outside_spam_trash(
+    conn: &Connection,
+    thread: &ThreadSummary,
+) -> Result<Option<ThreadSummary>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT m.id, m.from_name, m.from_email, m.subject, m.snippet, m.internal_date,
+           m.has_attachments,
+           EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                   WHERE ml.message_id = m.id AND l.gmail_label_id = 'UNREAD'),
+           EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                   WHERE ml.message_id = m.id AND l.gmail_label_id = 'STARRED'),
+           EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                   WHERE ml.message_id = m.id AND l.gmail_label_id = 'INBOX')
+         FROM messages m WHERE m.thread_id = ?1 AND {OUTSIDE_SPAM_TRASH}
+         ORDER BY m.internal_date, m.id"
+    ))?;
+    struct Row {
+        from: ThreadSender,
+        subject: String,
+        snippet: String,
+        at: i64,
+        attachments: bool,
+        starred: bool,
+        inbox: bool,
+    }
+    let rows: Vec<Row> = stmt
+        .query_map([thread.id], |r| {
+            Ok(Row {
+                from: ThreadSender {
+                    name: r.get(1)?,
+                    email: r.get(2)?,
+                    unread: r.get(7)?,
+                },
+                subject: r.get(3)?,
+                snippet: r.get(4)?,
+                at: r.get(5)?,
+                attachments: r.get(6)?,
+                starred: r.get(8)?,
+                inbox: r.get(9)?,
+            })
+        })?
+        .collect::<rusqlite::Result<_>>()?;
+    let (Some(first), Some(last)) = (rows.first(), rows.last()) else {
+        return Ok(None);
+    };
+    // Each sender once, in the order they first wrote, as `store` does.
+    let mut senders: Vec<ThreadSender> = Vec::new();
+    for row in &rows {
+        if row.from.email.is_empty() {
+            continue;
+        }
+        match senders
+            .iter_mut()
+            .find(|s| s.email.eq_ignore_ascii_case(&row.from.email))
+        {
+            Some(seen) => seen.unread |= row.from.unread,
+            None => senders.push(row.from.clone()),
+        }
+    }
+    let mut stmt = conn.prepare(&format!(
+        "SELECT DISTINCT ml.label_id FROM messages m
+         JOIN message_labels ml ON ml.message_id = m.id JOIN labels l ON l.id = ml.label_id
+         WHERE m.thread_id = ?1 AND l.kind = 'user' AND {OUTSIDE_SPAM_TRASH}
+         ORDER BY ml.label_id"
+    ))?;
+    let label_ids = stmt
+        .query_map([thread.id], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    Ok(Some(ThreadSummary {
+        subject: first.subject.clone(),
+        snippet: last.snippet.clone(),
+        senders,
+        last_message_at: last.at,
+        message_count: rows.len() as u32,
+        unread: rows.iter().any(|r| r.from.unread),
+        starred: rows.iter().any(|r| r.starred),
+        has_attachments: rows.iter().any(|r| r.attachments),
+        in_inbox: rows.iter().any(|r| r.inbox),
+        in_trash: false,
+        in_spam: false,
+        label_ids,
+        sign_in_code: None,
+        ..thread.clone()
+    }))
 }
 
 /// A thread with its messages (oldest first) and user labels. Messages come

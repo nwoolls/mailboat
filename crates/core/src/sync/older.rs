@@ -85,7 +85,10 @@ pub async fn load_older(
     };
     let cached = store::thread_ids_for_account(&db.conn(), account)?;
     let hit_key = match view {
-        MailView::Search { text, .. } => Some(crate::db::query::search_key(text)),
+        MailView::Search {
+            text,
+            with_spam_trash,
+        } => Some(crate::db::query::search_key(text, *with_spam_trash)),
         _ => None,
     };
 

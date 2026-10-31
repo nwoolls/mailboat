@@ -114,6 +114,7 @@ fn migrate(conn: &mut Connection) -> Result<()> {
         (17, schema::MIGRATION_V17),
         (18, schema::MIGRATION_V18),
         (19, schema::MIGRATION_V19),
+        (20, schema::MIGRATION_V20),
     ];
     for (version, sql) in steps {
         if current < *version {
@@ -153,7 +154,7 @@ mod tests {
         let versions: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(versions, 19);
+        assert_eq!(versions, 20);
         conn.execute(
             "INSERT INTO messages_fts (rowid, subject, sender, recipients, snippet, body) VALUES (1, 'hello', '', '', '', '')",
             [],
@@ -170,7 +171,7 @@ mod tests {
         let db = Db::open_in_memory().unwrap();
         let mut conn = db.conn();
         conn.execute_batch(
-            "DROP TABLE account_id_seq; DELETE FROM schema_migrations WHERE version = 19;
+            "DROP TABLE account_id_seq; DELETE FROM schema_migrations WHERE version >= 19;
              INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at)
                VALUES (1, 's1', 'a@example.com', '#5b8def', 'default', 0);
              INSERT INTO app_settings (key, value)

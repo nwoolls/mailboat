@@ -498,3 +498,182 @@ async fn through_the_proxy_with_server_closed_then_open() {
     app.abort();
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Code review R4-01: a conversation with an ordinary email and one in
+/// Trash (or Spam) is still in All Mail, but the hidden email's words,
+/// snippet, sender and date reached AI apps through search, the lists and
+/// a reply's default recipient. Only what's outside Spam and Trash counts.
+#[tokio::test]
+async fn a_conversations_emails_in_spam_or_trash_stay_hidden() {
+    for hidden_label in ["TRASH", "SPAM"] {
+        let server = MockServer::start().await;
+        let draft = json!({ "id": "d1", "message": { "id": "dm", "threadId": "mixed" } });
+        Mock::given(method("POST"))
+            .and(path("/upload/gmail/v1/users/me/drafts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(draft))
+            .mount(&server)
+            .await;
+        let m = mail();
+        let email =
+            |id: &str, at: i64, from: &str, subject: &str, snippet: &str, labels: &[&str]| {
+                IncomingMessage {
+                    gmail_message_id: id.into(),
+                    label_ids: labels.iter().map(|l| l.to_string()).collect(),
+                    internal_date: at,
+                    snippet: snippet.into(),
+                    subject: subject.into(),
+                    from: Some(Address {
+                        name: Some(from.into()),
+                        email: format!("{}@example.com", from.to_lowercase()),
+                    }),
+                    to: vec![Address {
+                        name: None,
+                        email: "me@example.com".into(),
+                    }],
+                    ..Default::default()
+                }
+            };
+        store::upsert_thread(
+            &mut m.db.conn(),
+            m.a,
+            &IncomingThread {
+                gmail_thread_id: "mixed".into(),
+                messages: vec![
+                    email(
+                        "h0",
+                        2_000,
+                        "Hidden",
+                        "Hidden subject",
+                        "early hidden words",
+                        &[hidden_label, "UNREAD", "STARRED"],
+                    ),
+                    email(
+                        "v1",
+                        3_000,
+                        "Visible",
+                        "Picnic",
+                        "Picnic on Sunday",
+                        &["INBOX"],
+                    ),
+                    email(
+                        "h2",
+                        4_000,
+                        "Hidden",
+                        "Re: Picnic",
+                        "HIDDENMARKER picnic",
+                        &[hidden_label, "UNREAD"],
+                    ),
+                ],
+            },
+        )
+        .unwrap();
+        let ids: Vec<(String, MessageId)> = {
+            let conn = m.db.conn();
+            let mut stmt = conn
+                .prepare("SELECT gmail_message_id, id FROM messages WHERE gmail_message_id IN ('h0','v1','h2')")
+                .unwrap();
+            let rows = stmt
+                .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+                .unwrap()
+                .collect::<rusqlite::Result<_>>()
+                .unwrap();
+            rows
+        };
+        for (gid, id) in ids {
+            store::set_body(
+                &mut m.db.conn(),
+                id,
+                &StoredBody {
+                    html: None,
+                    text: Some(format!(
+                        "{gid} body picnic {}",
+                        if gid == "v1" { "" } else { "HIDDENMARKER" }
+                    )),
+                },
+                &[],
+            )
+            .unwrap();
+        }
+        share(&m.db, &[m.a], &[m.a]);
+        let c = connect(m.db.clone(), host(Some(server.uri()))).await;
+        let what = format!("{hidden_label}: ");
+
+        // Words only in the hidden emails find nothing, even once Gmail's
+        // own search took in Spam and Trash (the app's setting) and found
+        // the conversation by them.
+        m.db.conn()
+            .execute(
+                "INSERT INTO search_hits (account_id, query, thread_id)
+                 SELECT account_id, ?1, id FROM threads WHERE gmail_thread_id = 'mixed'",
+                [mail_core::db::query::search_key("HIDDENMARKER", true)],
+            )
+            .unwrap();
+        let found = ok(&call(&c, "search_mail", json!({ "query": "HIDDENMARKER" })).await);
+        assert_eq!(found["conversations"], json!([]), "{what}{found}");
+
+        // Found by its visible email, it shows only that email.
+        for answer in [
+            ok(&call(&c, "search_mail", json!({ "query": "picnic" })).await),
+            ok(&call(&c, "list_conversations", json!({ "view": "all_mail" })).await),
+        ] {
+            let mixed = answer["conversations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|t| {
+                    t["snippet"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_lowercase()
+                        .contains("picnic")
+                })
+                .unwrap_or_else(|| panic!("{what}{answer}"))
+                .clone();
+            let shown = mixed.to_string();
+            assert!(
+                !shown.contains("HIDDENMARKER") && !shown.contains("hidden"),
+                "{what}{shown}"
+            );
+            assert!(!shown.contains("Hidden"), "{what}{shown}");
+            assert_eq!(mixed["subject"], "Picnic", "{what}{shown}");
+            assert_eq!(mixed["snippet"], "Picnic on Sunday", "{what}{shown}");
+            assert_eq!(
+                mixed["from"],
+                json!(["Visible <visible@example.com>"]),
+                "{what}{shown}"
+            );
+            assert_eq!(mixed["emails"], 1, "{what}{shown}");
+            assert_eq!(mixed["unread"], false, "{what}{shown}");
+            assert_eq!(mixed["starred"], false, "{what}{shown}");
+            assert_eq!(
+                mixed["date"],
+                json!(chrono::DateTime::from_timestamp_millis(3_000)
+                    .unwrap()
+                    .with_timezone(&chrono::Local)
+                    .to_rfc3339()),
+                "{what}{shown}"
+            );
+        }
+
+        let id = ok(&call(&c, "search_mail", json!({ "query": "picnic" })).await)["conversations"]
+            [0]["conversation_id"]
+            .clone();
+        let read = ok(&call(&c, "read_conversation", json!({ "conversation_id": id })).await);
+        assert_eq!(read["subject"], "Picnic", "{what}{read}");
+        assert!(!read.to_string().contains("HIDDENMARKER"), "{what}{read}");
+
+        // A reply goes to the visible email's sender, not the hidden one's.
+        let saved = ok(&call(
+            &c,
+            "create_draft",
+            json!({ "reply_to_conversation_id": id, "body": "Sounds good" }),
+        )
+        .await);
+        assert_eq!(
+            saved["to"],
+            json!(["Visible <visible@example.com>"]),
+            "{what}{saved}"
+        );
+        assert_eq!(saved["subject"], "Re: Picnic", "{what}{saved}");
+    }
+}

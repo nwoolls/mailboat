@@ -403,3 +403,11 @@ UPDATE app_settings SET value = json_set(value,
                         WHERE j.value IN (SELECT id FROM accounts))))
 WHERE key = 'app' AND json_valid(value) AND json_type(value, '$.mcp') = 'object';
 "#;
+
+/// Gmail's search hits are kept apart for searches that took in Spam and
+/// Trash now (`query::search_key`, code review R4-01). Hits saved before
+/// can't be told apart, so they go: they're a cache, filled again the
+/// next time Gmail is searched.
+pub const MIGRATION_V20: &str = r#"
+DELETE FROM search_hits;
+"#;
