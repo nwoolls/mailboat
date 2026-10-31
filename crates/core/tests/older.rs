@@ -556,3 +556,73 @@ fn an_email_moving_threads_takes_the_old_threads_hits_with_it() {
     assert_eq!(found(), 0);
     assert_eq!(count(), 1);
 }
+
+/// Code review R9-01: a normal sync deleting an older email (a fresh copy
+/// of the thread without it, or `history.list`'s deletion) left the
+/// thread's cached AI summary and reply ideas, which covered that email;
+/// they're only rechecked against the newest email, which didn't change.
+#[test]
+fn a_deleted_email_takes_the_threads_ai_results_with_it() {
+    use mail_core::db::store::{IncomingMessage, IncomingThread};
+    for by_history in [false, true] {
+        let db = Db::open_in_memory().unwrap();
+        let a = add_account(&db, "a");
+        let email = |id: &str, at: i64| IncomingMessage {
+            gmail_message_id: id.into(),
+            label_ids: vec!["INBOX".into()],
+            internal_date: at,
+            subject: "Plans".into(),
+            snippet: format!("{id} words"),
+            from: Some(Address {
+                name: None,
+                email: "probe@example.com".into(),
+            }),
+            ..Default::default()
+        };
+        let store = |messages: Vec<IncomingMessage>| {
+            store::upsert_thread(
+                &mut db.conn(),
+                a,
+                &IncomingThread {
+                    gmail_thread_id: "t".into(),
+                    messages,
+                },
+            )
+            .unwrap()
+        };
+        let thread = store(vec![email("older", 1_000), email("newest", 2_000)]);
+        let newest: i64 = db
+            .conn()
+            .query_row(
+                "SELECT MAX(id) FROM messages WHERE thread_id = ?1",
+                [thread],
+                |r| r.get(0),
+            )
+            .unwrap();
+        db.conn()
+            .execute_batch(&format!(
+                "INSERT INTO ai_summaries (account_id, thread_id, kind, provider, newest_message_id, text, created_at)
+                   VALUES ({a}, {t}, 'full', 'apple', {newest}, 'covers both', 0);
+                 INSERT INTO ai_reply_ideas (account_id, thread_id, forward, newest_message_id, ideas, created_at)
+                   VALUES ({a}, {t}, 0, {newest}, '[\"covers both\"]', 0);",
+                a = a.0,
+                t = thread.0
+            ))
+            .unwrap();
+        if by_history {
+            store::delete_messages(&mut db.conn(), a, &["older".to_string()]).unwrap();
+        } else {
+            store(vec![email("newest", 2_000)]);
+        }
+        let cached: i64 = db
+            .conn()
+            .query_row(
+                "SELECT (SELECT COUNT(*) FROM ai_summaries WHERE thread_id = ?1)
+                      + (SELECT COUNT(*) FROM ai_reply_ideas WHERE thread_id = ?1)",
+                [thread],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(cached, 0, "by_history={by_history}");
+    }
+}

@@ -225,7 +225,7 @@ pub fn upsert_thread(
     }
     let dropped = tx.execute(&sql, values.as_slice())?;
     if dropped > 0 {
-        forget_search_hits(&tx, thread_id)?;
+        forget_derived(&tx, thread_id)?;
     }
 
     if kept.is_empty() {
@@ -236,15 +236,7 @@ pub fn upsert_thread(
     // A thread an email moved out of: its Gmail hits may have been for
     // that email, and its counts change; gone if nothing's left.
     for previous in left {
-        forget_search_hits(&tx, previous)?;
-        // Its summary and reply ideas covered the email that left; they're
-        // only rechecked against the newest email, which may not change
-        // (code review R8-04).
-        tx.execute("DELETE FROM ai_summaries WHERE thread_id = ?1", [previous])?;
-        tx.execute(
-            "DELETE FROM ai_reply_ideas WHERE thread_id = ?1",
-            [previous],
-        )?;
+        forget_derived(&tx, previous)?;
         let remaining: i64 = tx.query_row(
             "SELECT COUNT(*) FROM messages WHERE thread_id = ?1",
             [previous],
@@ -349,12 +341,16 @@ fn refresh_thread(conn: &Connection, account: AccountId, thread: ThreadId) -> Re
     Ok(())
 }
 
-/// Forgets what Gmail's searches found in a thread once an email has left
-/// it: a hit doesn't say which email matched, so it may have been the one
-/// that's gone (code review R6-05: deleting a trashed email made its old
-/// hit count again). They're a cache, found again by the next search.
-fn forget_search_hits(conn: &Connection, thread: ThreadId) -> Result<()> {
+/// Forgets what was worked out from a thread's emails once one has left
+/// it: what Gmail's searches found there (a hit doesn't say which email
+/// matched, so it may have been the one that's gone; code review R6-05),
+/// and its cached AI summary and reply ideas, which covered it and are only
+/// rechecked against the newest email (R8-04, R9-01). All are found or
+/// written again when next needed.
+fn forget_derived(conn: &Connection, thread: ThreadId) -> Result<()> {
     conn.execute("DELETE FROM search_hits WHERE thread_id = ?1", [thread])?;
+    conn.execute("DELETE FROM ai_summaries WHERE thread_id = ?1", [thread])?;
+    conn.execute("DELETE FROM ai_reply_ideas WHERE thread_id = ?1", [thread])?;
     Ok(())
 }
 
@@ -380,7 +376,7 @@ pub fn delete_messages(
                 "DELETE FROM messages WHERE account_id = ?1 AND gmail_message_id = ?2",
                 params![account, gid],
             )?;
-            forget_search_hits(&tx, thread)?;
+            forget_derived(&tx, thread)?;
             touched.insert(thread);
         }
     }

@@ -3347,6 +3347,18 @@ findings and four questions, each checked before acting:
       or copies it. The wording now says exactly that. Reading the list
       the way the app does is the point, so no code changed
 
+Round 9 (2026-10-31): the reviewer checked Round 8's fixes; four
+findings and four questions, each checked before acting. The owner asked
+to fix what's real and medium-to-high risk and call the rest good enough:
+
+- [x] R9-01: a normal sync deleting an older email from a thread (a fresh
+      copy of the thread without it, or `history.list`'s deletion) left
+      the thread's cached AI summary and reply ideas, which covered that
+      email; they're only rechecked against the newest email. Reproduced
+      both ways. Every way an email leaves a thread now forgets what was
+      worked out from it, Gmail's hits and the AI results alike
+      (`store::forget_derived`)
+
 ## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an
