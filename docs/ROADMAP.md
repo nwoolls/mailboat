@@ -3331,7 +3331,9 @@ findings and four questions, each checked before acting:
       writing model, whatever Codex is signed in with (tested with a
       stand-in `codex`: nothing is sent); and the live check, which now
       asks Codex directly with the app's settings since the app won't,
-      only counts OpenAI's refusal of that model
+      only counts OpenAI's refusal of that model. Run live with the
+      owner's OK (2026-10-31): still refused ("The 'gpt-5.5' model is not
+      supported when using Codex with a ChatGPT account"), and passes
 - [x] R8-02 and R8-03: the capture skipped a chosen writing model that
       Codex no longer lists at all (the app keeps asking it by name), and
       one model list that failed or came back empty went unnoticed while
