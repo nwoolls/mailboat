@@ -214,9 +214,10 @@ old. When it does:
    - `codex_request_tools_are_as_reviewed` (offline): the tools in
      Codex's real request, captured by a local stand-in server with an
      empty Codex folder, are the reviewed ones.
-   - `codex_cannot_*` (four small live requests): Codex can't write a
-     file, run a command, reach the network or read a file planted in
-     the home folder.
+   - `codex_cannot_*` (five tests, two small live requests each: the
+     fast and the writing model): Codex can't write a file, run a
+     command, reach the network, read a file planted in the home folder,
+     or act through a helper agent.
 
    Never send real mail, and never read or copy Codex's sign-in.
 3. Anything new or any test that fails: tell the owner what changed and

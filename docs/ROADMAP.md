@@ -3220,7 +3220,8 @@ fencing; seven findings and six questions, each checked before acting:
 - [x] R6-06: the monthly live tests turned an error into answer text, so a
       ChatGPT that never answered passed every "it couldn't" check. They
       now need a real answer, or fail as inconclusive
-- [ ] R6-01 (confirmed; owner decision open): the monthly capture checked
+- [x] R6-01 (confirmed; owner chose to accept, 2026-10-31): the monthly
+      capture checked
       a made-up model. With every switch off, every model Codex lists
       (8 on 2026-10-31, including the fast one the app uses) still
       carries `exec` (code mode, runs JavaScript) and `wait`, two
@@ -3234,7 +3235,12 @@ fencing; seven findings and six questions, each checked before acting:
       owner decides: accept these tools into the review (after a live
       rerun on the real models with the owner's OK), or pause ChatGPT
       until Codex can drop them. The app's own check sees switches, not
-      tools, so it doesn't pause today
+      tools, so it doesn't pause today. The owner chose to accept them
+      after a live rerun: each live test now runs on both the fast and
+      the writing model, plus a new one asking a helper agent to act;
+      all ten requests failed to act ("code-mode host is disabled"; on
+      the writing model the helper didn't start). The ten tools are in
+      `codex_review.json`, and the capture of all eight models passes
 - Questions, answered: what lies outside the home folder (`/Volumes`,
   `/Users/Shared`) stays readable, and file metadata stays visible:
   now said in R6-03 rather than changed. While ChatGPT is paused, the

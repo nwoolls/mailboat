@@ -11,5 +11,16 @@
     "unified_exec",
     "worktrees"
   ],
-  "tools": ["request_user_input"]
+  "tools": [
+    "collaboration.followup_task",
+    "collaboration.interrupt_agent",
+    "collaboration.list_agents",
+    "collaboration.send_message",
+    "collaboration.spawn_agent",
+    "collaboration.wait_agent",
+    "functions.exec",
+    "functions.request_user_input",
+    "functions.request_user_input_async",
+    "functions.wait"
+  ]
 }
