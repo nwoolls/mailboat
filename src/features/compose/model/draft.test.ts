@@ -346,7 +346,7 @@ it("sent HTML keeps the editor's spacing and blank lines", () => {
 });
 
 describe("signatures", () => {
-  const sig = '<div><font color="#1c3a6b" size="4"><b>Jordan</b></font><br>Architect</div>';
+  const sig = '<div><font color="#1c3a6b" size="4"><b>Jordan</b></font><br>Designer</div>';
   const signed: Identity[] = [
     { ...identities[0]!, signature: sig },
     { ...identities[1]!, signature: "<p>— Alias</p><p><br></p>" },
@@ -377,7 +377,7 @@ describe("signatures", () => {
       `<p style="margin:0">Hi</p><div><br></div><div class="gmail_signature">${sig}</div>` +
         `<div><br></div>${d.quote}`,
     );
-    expect(out.text).toBe(`Hi\n\nJordan\nArchitect\n\n${d.quoteText}`);
+    expect(out.text).toBe(`Hi\n\nJordan\nDesigner\n\n${d.quoteText}`);
   });
 });
 

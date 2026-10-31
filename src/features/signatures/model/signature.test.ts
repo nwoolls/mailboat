@@ -4,7 +4,9 @@ import { editorWouldSimplify, signatureToSave } from "./signature";
 describe("signatures", () => {
   it("warns about tables the editor would flatten", () => {
     expect(editorWouldSimplify('<TABLE border="0"><tr><td>Jordan</td></tr></TABLE>')).toBe(true);
-    expect(editorWouldSimplify("<div>Jordan<br><a href='https://x.com'>x.com</a></div>")).toBe(false);
+    expect(editorWouldSimplify("<div>Jordan<br><a href='https://x.com'>x.com</a></div>")).toBe(
+      false,
+    );
     expect(editorWouldSimplify("<p>tablet</p>")).toBe(false);
     expect(editorWouldSimplify(null)).toBe(false);
   });

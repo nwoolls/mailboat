@@ -12,7 +12,7 @@ const state = (accountId: number, status: AccountSyncState["status"]): AccountSy
 
 describe("accounts", () => {
   it("initials prefer the display name", () => {
-    expect(accountInitial({ email: "me@gmail.com", displayName: "jordan" })).toBe("N");
+    expect(accountInitial({ email: "me@gmail.com", displayName: "jordan" })).toBe("J");
     expect(accountInitial({ email: "work@work.example.com", displayName: null })).toBe("W");
   });
 

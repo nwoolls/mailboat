@@ -3033,6 +3033,11 @@ before acting:
       other emails removed leave the held one at the top. Left as is: a
       scroll by hand during the 350ms hold is overridden, which is what
       keeps the email at the top while others fold
+- [x] R4-07 (partly confirmed): test data now uses made-up names only. Moved to Milestone 14's scrub, not changed now: about 400
+      placeholder addresses at real domains (`x.com`, `work.com`,
+      `me.com`, `key.example`…). They're made up, no real person's, but
+      reserved domains (`example.com`) are the safer convention for a
+      public repository. No credentials or real mail were found
 
 ## Milestone 14: Open the code
 
@@ -3054,7 +3059,11 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       Choices that keep the doors open
 - [ ] Scrub before publishing: no real mail in fixtures, examples or
       `design/`; no personal details in the docs; nothing from the owner's machine (paths, certificates)
-      that matters. Search for personal details.
+      that matters. Search for personal details. Also
+      move test placeholder addresses at real domains (`x.com`,
+      `work.com`, `me.com`, `key.example`, `vendor.com`…, about 400) to
+      reserved ones (`example.com`, `.example`) *(code review R4-07,
+      2026-10-31)*
 - [ ] Dependency licences checked with `cargo-deny` (and the same for
       the JavaScript packages): every crate and package must be allowed
       in the chosen licence (GPL-3.0 can't include some licences).

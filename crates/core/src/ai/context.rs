@@ -268,8 +268,7 @@ mod tests {
     fn quoted_history_and_signatures_are_cut() {
         let text = "Sounds good, see you then.\n\nSam\n\nOn Mon, Oct 19, 2026 at 9:00 AM Jordan <n@x.com> wrote:\n> Thursday?\n> Jordan";
         assert_eq!(new_part(text), "Sounds good, see you then.\n\nSam");
-        let wrapped =
-            "Yes.\n\nOn Mon, Oct 19, 2026 at 9:00 AM Jordan Lee\n<n@x.com> wrote:\n> old";
+        let wrapped = "Yes.\n\nOn Mon, Oct 19, 2026 at 9:00 AM Jordan Lee\n<n@x.com> wrote:\n> old";
         assert_eq!(new_part(wrapped), "Yes.");
         let outlook =
             "Fine by me.\n\nFrom: Pat <p@x.com>\nSent: Monday\nTo: Sam\nSubject: Re: x\n\nold";
