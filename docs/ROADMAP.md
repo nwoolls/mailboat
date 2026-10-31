@@ -3358,6 +3358,12 @@ to fix what's real and medium-to-high risk and call the rest good enough:
       both ways. Every way an email leaves a thread now forgets what was
       worked out from it, Gmail's hits and the AI results alike
       (`store::forget_derived`)
+- [x] R9-02: the screen kept its own copy of a conversation's AI summary
+      and reply ideas, so after mail changed it could go on showing ones
+      that covered a deleted email, and reply ideas missed new mail.
+      Reproduced in Vitest. When mail changes, both are now asked again
+      (Rust answers from its cache unless the conversation changed); a
+      summary still being written isn't interrupted
 
 ## Milestone 14: Open the code
 

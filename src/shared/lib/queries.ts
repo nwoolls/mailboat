@@ -585,6 +585,12 @@ export function useMailEvents() {
         void qc.invalidateQueries({ queryKey: ["labels"] });
         void qc.invalidateQueries({ queryKey: keys.unreadCounts });
         void qc.invalidateQueries({ queryKey: ["contacts"] });
+        // An open conversation's AI summary and reply ideas are asked
+        // again: Rust answers from its cache unless the conversation
+        // changed (an email arrived or left; code review R9-02). A request
+        // still being written isn't interrupted.
+        for (const queryKey of [["aiSummary"], ["aiReplyIdeas"]])
+          void qc.invalidateQueries({ queryKey }, { cancelRefetch: false });
       }),
       events.accountsChangedEvent.listen(() => {
         void qc.invalidateQueries({ queryKey: keys.accounts });
