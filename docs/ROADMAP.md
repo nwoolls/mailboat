@@ -3024,6 +3024,15 @@ before acting:
       deleted, so trying again works. Tested with a keychain that fails,
       then works. After a failed removal the account stays listed, not
       syncing until the app restarts
+- [x] R4-06: an email removed while `n` / `p` held it at the top (a sync,
+      the conversation changing) measured as 0, and the hold kept
+      aligning to it, scrolling the reader away (213 to 0 in a browser
+      test, with the reader below the window's top as in the app). The
+      hold now stops when its email leaves the reader or the reader
+      closes, and clears when it ends. Checked: a newer hold takes over;
+      other emails removed leave the held one at the top. Left as is: a
+      scroll by hand during the 350ms hold is overridden, which is what
+      keeps the email at the top while others fold
 
 ## Milestone 14: Open the code
 

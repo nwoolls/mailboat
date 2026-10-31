@@ -46,6 +46,31 @@ for (const ms of [40, 80, 120, 160, 200]) {
   });
 }
 
+test("an email removed while n / p holds it leaves the reader where it is", async ({ page }) => {
+  // Code review R4-06: a removed email measures as 0, and the hold kept
+  // aligning to it, scrolling the reader away. Only shows with the reader
+  // below the top of the window, as in the app.
+  await page.goto("/tests/browser/harness.html?mode=unread");
+  await expect(page.locator('section[data-message-id="13"]')).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>("#root")!.style.paddingTop = "150px";
+  });
+  await page.waitForTimeout(1700);
+  await page.keyboard.press("n");
+  await expect.poll(() => topEmail(page)).toBe("14");
+  await page.waitForTimeout(500);
+  await page.keyboard.press("p");
+  const moved = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    document.querySelector('section[data-message-id="13"]')!.remove();
+    const before = reader.scrollTop;
+    await new Promise((done) => setTimeout(done, 400));
+    return { before, after: reader.scrollTop };
+  });
+  expect(moved.before).toBeGreaterThan(100);
+  expect(moved.after).toBe(moved.before);
+});
+
 test("Space and ⇧Space page through the open email", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=unread");
   await expect(page.locator('section[data-message-id="13"]')).toBeVisible();

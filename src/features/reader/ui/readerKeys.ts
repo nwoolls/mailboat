@@ -52,8 +52,13 @@ export function stepEmail(dir: "next" | "prev"): boolean {
   holding = hold;
   const step = () => {
     if (holding !== hold) return;
-    align();
-    if (performance.now() < hold.until) requestAnimationFrame(step);
+    // Gone from this reader (removed by a sync, the conversation changed)
+    // or the reader closing: a removed email measures as 0, so holding on
+    // scrolled the reader away (code review R4-06).
+    const held = card.isConnected && reader.contains(card) && !reader.closest("[inert]");
+    if (held) align();
+    if (held && performance.now() < hold.until) requestAnimationFrame(step);
+    else holding = null;
   };
   requestAnimationFrame(step);
   return true;
