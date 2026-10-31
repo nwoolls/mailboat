@@ -52,7 +52,7 @@ most mail was missing from Mailboat.
 - [x] Read/unread round trip against real Gmail (change shows up in Gmail on the web)
 - [x] Clicking a link in an email opens the default browser (web and
       mailto links) *(first attempt failed: the web view doesn't deliver
-      clicks inside the sandboxed frame; reworked to a `mailboat-link:` scheme
+      clicks inside the sandboxed frame; reworked to a `email-link:` scheme
       handler, verified 2026-10-15)*
 - [x] Keychain prompt no longer returns after rebuilds (signed dev builds)
 
@@ -2017,7 +2017,7 @@ editor, and prompts and answers are never logged.*
         each with its own per-account switch. Never sends
       - **Spam and Trash are hidden** from AI apps entirely
       - **The log keeps 30 days**, shown in Settings → AI
-      *Built 2026-10-24* (`mailboat_core::mcp`, Settings → AI → AI apps):
+      *Built 2026-10-24* (`mail_core::mcp`, Settings → AI → AI apps):
       tools `list_accounts`, `search_mail`, `list_conversations`,
       `read_conversation`, `list_labels` and `create_draft` (listed only
       while an account allows drafts). AI apps start `mailboat --mcp` (the
@@ -2236,7 +2236,7 @@ Later.
 - [x] The icon looked shrunk on Windows *(owner report, 2026-10-25)*:
       the Mac art keeps Apple's margin around the tile, but Windows draws
       icons edge to edge. `icon.ico` now comes from a cropped copy,
-      `design/icon/mailboat-icon-windows.svg`. *Owner, 2026-10-25: still
+      `design/icon/app-icon-windows.svg`. *Owner, 2026-10-25: still
       small in the taskbar.* The installed program carries the new icon
       (checked byte for byte), and the taskbar showed the old one's size:
       Windows' icon cache, which reinstalling doesn't refresh. *After clearing the cache: 47 px against Claude's 48 px in the taskbar; owner, 2026-10-25: "an optical illusion" (the near-black tile fades into the dark taskbar)*
@@ -2331,90 +2331,20 @@ Name checks → Mailboat).*
       GitHub (small, a month old, no stars) is also called
       Mailboat. Details in `docs/RELEASE.md` → Name checks → Mailboat
 - [x] Neutral code names, one brand file *(owner, 2026-10-26: the name
-      isn't settled yet, so the code shouldn't depend on it)*. Every
-      name that isn't branding becomes neutral, and everything that is
-      comes from one `brand.json` (name, short name, bundle ID,
-      environment prefix), so picking a name is one file, the icons and
-      the migration below. Six commits, each passing the full check:
-  - [x] `brand.json`, read by Rust when it builds and by the UI; a test
-        that `src-tauri/tauri.conf.json` (name, ID, program name, which
-        Tauri can't read from elsewhere) matches it; a check that fails
-        if the brand name shows up anywhere else
-  - [x] Rust packages: `mailboat-core`/`mailboat_core` to `mail-core`/
-        `mail_core` (folder `crates/core` stays); `mailboat`/`mailboat_lib`
-        to `desktop`/`desktop_lib`, the installed program keeping the
-        brand name through Tauri's `mainBinaryName`
-  - [x] Internal names: the AI helper `mailboat-ai` to `ai-helper`;
-        `mailboat-link:` to `email-link:`; the sanitizer's marks
-        (`data-mailboat-*`, `mailboat-none`, …) to `data-safe-*`, `safe-none`,
-        …; `MailboatNotificationDelegate` to `AppNotificationDelegate`;
-        notification IDs `mailboat:` to `thread:`; dev-script variables
-        without the prefix; test names and design files neutral
-  - [x] Stored names, without losing anything: new installs get
-        `mail.sqlite3`, and an existing `mailboat.sqlite3` keeps being used
-        (`db::path_in`); saved settings `mailboat.*` are copied to `prefs.*`
-        when the window starts (`shared/lib/carryOver.ts`). Nothing is
-        renamed or removed yet: the installed `/Applications/Mailboat.app`
-        shares the data folder and may have the database open. The
-        bundle-ID move below does the renaming. Tried by the owner on
-        their own data, on macOS and Windows, after the last step:
-        mail, settings, AI summaries, email links and the Dock icon all
-        as before (2026-10-26)
-  - [x] Text from the brand: UI strings, errors, the sign-in page, the
-        MCP server's name, Windows' registration, the
-        `<PREFIX>_GOOGLE_*` variables, the user agent; comments say
-        "the app"
-  - [x] Docs: README, CLAUDE.md and ARCHITECTURE describe the brand
-        file. Dated history in ROADMAP and ARCHITECTURE stays as
-        written. The local folder stays (renaming
-        it would cut Claude Code off from this project's memory)
-- [x] Rename to Mailboat *(started and finished 2026-10-27)*:
-  - [x] The name people see: `brand.json`'s `name`, `tauri.conf.json`
-        (product name, window titles), README and AGENTS.md. The app,
-        its windows, menus, the dev build's `Mailboat.app` and the
-        Windows installer now say Mailboat
-  - [x] The icon: a paper boat in the ribbon style, in all 17 current
-        colours, system blue built in. The owner picked P1 from seven
-        boats (sheet 12 in `design/icon/sheets/`), 2026-10-27.
-        The fireflies and fireworks screensavers now gather into the
-        boat, not the M (owner report, same day)
-  - [x] The short name, bundle ID and environment prefix (`mailboat`,
-        `com.nwoolls.mailboat`, `MAILBOAT_GOOGLE_*` to `mailboat`,
-        `com.nwoolls.mailboat`, `MAILBOAT_GOOGLE_*`), together with the
-        move below *(2026-10-27)*. `brand.json` keeps the previous short
-        name and ID (`previous`) for the move
+      wasn't settled yet, so the code shouldn't depend on it)*. Every
+      name that isn't branding became neutral (`mail-core`, `desktop`,
+      `ai-helper`, `email-link:`, `mail.sqlite3`, `prefs.*`), and
+      everything that is comes from one `brand.json` (name, short name,
+      bundle ID, environment prefix). `bun run check:brand` fails if the
+      name shows up anywhere else
+- [x] Rename to Mailboat *(2026-10-27)*: the name people see, the icon
+      (a paper boat in the ribbon style, picked from seven by the owner),
+      and the short name, bundle ID and environment prefix
+      (`com.nwoolls.mailboat`, `MAILBOAT_GOOGLE_*`)
 - [x] Move the owner's data, settings and keychain sign-ins to the new
-      ID once, on the first launch after the rename, so nothing has to
-      be signed in again (nobody else has installed it). Built
-      *(2026-10-27)*: `mail_core::carry_over` **copies** rather than
-      moves, so the old Mailboat keeps working as a way back: the data,
-      cache (images, attachments) and log folders, the web view's saved
-      settings (`~/Library/WebKit/<ID>`; on Windows inside the local
-      data folder), the database through SQLite's backup (a consistent
-      copy even if the old app is open, written as `mail.sqlite3`
-      under a temporary name until complete), then each account's
-      sign-in from the old keychain name to the new. The web side moves
-      the old `mailboat.*` settings to `prefs.*` and drops them. Connecting
-      Claude Code or Claude Desktop again replaces the old `mailboat` entry.
-      Rehearsed on a copy of the owner's real data (2026-10-27): quick;
-      the same accounts, emails, conversations and labels in both; integrity check ok; every file, none missed; both web
-      views' settings present. *Owner, 2026-10-27: ran Mailboat on
-      macOS and Windows and sees the old data; the Mac's log: every file and its sign-ins carried over, none missed*
-- [x] Remove the move's code once both machines had moved *(2026-10-27)*:
-      `carry_over` (core and app), its rehearsal example, the settings
-      carry-over (`carryOver.ts`), replacing the old AI apps entry,
-      `brand.json`'s `previous`, and rusqlite's backup feature. Nobody
-      else ever installed Mailboat, so it would only be dead code in the
-      code review. Both web views already had every old setting under
-      `prefs.*`
-- [x] Owner: delete the old copies once happy with Mailboat: the
-      `com.nwoolls.mailboat` folders in `~/Library` (Application Support,
-      Caches, Logs, WebKit), the `com.nwoolls.mailboat` keychain
-      entries, `target/debug/Mailboat.app`, and on Windows the Mailboat install
-      and its `com.nwoolls.mailboat` folders *(owner, 2026-10-27, Mac checked:
-      no folders or keychain entries left; the stale `mailboat` entries in
-      Claude Code and Claude Desktop removed too, Desktop's config backed
-      up beside it)*
+      ID once, then remove that code *(2026-10-27; nobody else had
+      installed the app, so it would only have been dead code in the
+      code review)*. The owner deleted the old copies afterwards
 - [x] Email on the domain for security reports and anything that
       shouldn't be a public GitHub issue: `security@getmailboat.app`,
       through Cloudflare Email Routing, forwarding to the owner
@@ -3392,9 +3322,11 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
 
 ### Publishing
 
-- [ ] Remove remaining references to Mailboat throughout the repository,
-      including the README and other docs, before publishing *(owner
-      request, 2026-10-30)*
+- [x] Remove remaining references to the old working name throughout
+      the repository, including the README and other docs, before
+      publishing *(owner request, 2026-10-30; done 2026-10-31: docs,
+      README, three icon comments and the lockfile's package name. Still
+      to do in the history rewrite below: commit messages)*
 - [ ] Owner: choose the licence. GPL-3.0 suggested (nobody can sell a
       closed copy; respected by a technical audience); MIT and the
       Functional Source License compared in `docs/RELEASE.md` →

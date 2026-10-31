@@ -381,8 +381,8 @@ disclosing paid endorsements).
 
 ### Name checks (2026-10-25)
 
-"Mailboat" collides with Mailboat, Inc. (mailboat.com), which sells software and
-has an app on Apple's store. "the alternative name": `altname`, `altname.example`,
+The working name collided with a company that sells software and has an
+app on Apple's store. "the alternative name": `altname`, `altname.example`,
 `altname` free; no Mac App Store app; US trademarks only dead or in
 other trades; the alternative name XG is museum software. `altname` taken on GitHub and
 Bluesky; `altname` free on both. "another candidate" was rejected: a registered US

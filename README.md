@@ -186,7 +186,3 @@ bunx playwright install webkit
 | AI summaries and usage | In the mail cache (`ai_summaries`, `ai_usage`: sizes only, never content) |
 | AI apps' socket | `~/Library/Application Support/com.nwoolls.mailboat/mcp.sock` (while Mailboat runs) |
 | AI apps' requests | In the mail cache (`mcp_log`: what was asked, never content; 30 days) |
-
-Until 2026-10-27 the app was Mailboat (`com.nwoolls.mailboat`). Its data was
-copied over once and the copying code removed, so an install that old
-starts empty.
