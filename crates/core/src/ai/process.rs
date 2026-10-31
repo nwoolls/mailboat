@@ -17,20 +17,23 @@ pub const TIMEOUT: Duration = Duration::from_secs(180);
 /// Folders the Claude and Codex installers use. A Mac app starts with a
 /// bare PATH (`/usr/bin:/bin:…`), not the shell's, so these are searched
 /// as well as PATH.
+/// Folders in the home folder the Claude and Codex installers use.
+const INSTALLER_DIRS: &[&str] = &[
+    ".local/bin",
+    ".claude/local",
+    ".bun/bin",
+    ".npm-global/bin",
+    ".volta/bin",
+    ".cargo/bin",
+];
+
 fn search_dirs() -> Vec<PathBuf> {
     let mut dirs: Vec<PathBuf> = std::env::var_os("PATH")
         .map(|p| std::env::split_paths(&p).collect())
         .unwrap_or_default();
     let home_var = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
     if let Some(home) = std::env::var_os(home_var).map(PathBuf::from) {
-        for rel in [
-            ".local/bin",
-            ".claude/local",
-            ".bun/bin",
-            ".npm-global/bin",
-            ".volta/bin",
-            ".cargo/bin",
-        ] {
+        for rel in INSTALLER_DIRS {
             dirs.push(home.join(rel));
         }
     }
@@ -166,22 +169,46 @@ pub fn fence_profile(home: &Path, codex_home: &Path, readable: &[PathBuf]) -> St
     profile
 }
 
-/// The folders a fenced program may read in the home folder: where the
-/// program really lives (two levels up, its package) and the PATH folders.
-fn fence_readable(program: &Path) -> Vec<PathBuf> {
-    let mut dirs = Vec::new();
-    if let Ok(real) = std::fs::canonicalize(program) {
-        if let Some(package) = real.parent().and_then(Path::parent) {
-            dirs.push(package.to_path_buf());
+/// The fence's profile for these folders, or why there can't be one.
+/// Code review R6-03: without a home folder, or with Codex's folder at or
+/// above it, there's no safe fence and the program doesn't run; and only
+/// the installers' folders and the program's own package are readable in
+/// the home folder, not every PATH folder (a PATH entry like `~/Documents`
+/// would open it). Paths are as the caller found them (canonical).
+pub fn fence_for(
+    home: Option<&Path>,
+    codex_home: Option<&Path>,
+    package: Option<&Path>,
+    path_dirs: &[PathBuf],
+    installers: &[PathBuf],
+) -> Result<String> {
+    let home = home.ok_or_else(|| {
+        CoreError::Ai("Couldn't find the home folder, so the AI can't be fenced in.".into())
+    })?;
+    let codex_home = codex_home.map_or_else(|| home.join(".codex"), Path::to_path_buf);
+    if home.starts_with(&codex_home) {
+        return Err(CoreError::Ai(
+            "Codex's folder (CODEX_HOME) is the home folder or above it, so it can't be fenced in."
+                .into(),
+        ));
+    }
+    let mut readable: Vec<PathBuf> = Vec::new();
+    for dir in package
+        .into_iter()
+        .map(Path::to_path_buf)
+        .chain(path_dirs.iter().cloned())
+    {
+        // Home or above it would open all of home; inside home, only the
+        // installers' folders and the program's package.
+        let allowed = !home.starts_with(&dir)
+            && (!dir.starts_with(home)
+                || installers.contains(&dir)
+                || package.is_some_and(|p| p == dir));
+        if allowed && !readable.contains(&dir) {
+            readable.push(dir);
         }
     }
-    for dir in search_dirs() {
-        let real = std::fs::canonicalize(&dir).unwrap_or(dir);
-        if !dirs.contains(&real) {
-            dirs.push(real);
-        }
-    }
-    dirs
+    Ok(fence_profile(home, &codex_home, &readable))
 }
 
 /// Runs `program` in an empty folder, writes `stdin`, and calls `on_line`
@@ -209,7 +236,7 @@ pub async fn run_lines_with(
 ) -> Result<Exit> {
     let work = tokio::time::timeout(TIMEOUT, async {
         let dir = scratch_dir()?;
-        let mut child = command(program, env)
+        let mut child = command(program, env)?
             .args(args)
             .current_dir(&dir)
             .env("PATH", child_path(program))
@@ -282,7 +309,7 @@ pub async fn run_quick_with(
     args: &[&str],
     env: Env,
 ) -> Result<(bool, String, String)> {
-    let mut cmd = command(program, env);
+    let mut cmd = command(program, env)?;
     if env == Env::Minimal {
         cmd.current_dir(std::env::temp_dir());
     }
@@ -307,7 +334,7 @@ pub async fn run_quick_with(
 /// Starts a sign-in command (it opens the browser) and returns the
 /// running process; dropping it stops the sign-in.
 pub fn spawn_login(program: &Path, args: &[&str]) -> Result<tokio::process::Child> {
-    command(program, Env::Inherit)
+    command(program, Env::Inherit)?
         .args(args)
         .env("PATH", child_path(program))
         .stdin(Stdio::null())
@@ -321,14 +348,18 @@ pub fn spawn_login(program: &Path, args: &[&str]) -> Result<tokio::process::Chil
 /// A command for `program` that, on Windows, opens no console window: a
 /// windowed app starting a command-line tool otherwise gets one flashing
 /// up for every request.
-fn command(program: &Path, env: Env) -> Command {
-    let mut cmd = match (env, fence(program)) {
-        (Env::Minimal, Some(profile)) => {
+fn command(program: &Path, env: Env) -> Result<Command> {
+    let fenced = match env {
+        Env::Minimal => fence(program)?,
+        Env::Inherit => None,
+    };
+    let mut cmd = match fenced {
+        Some(profile) => {
             let mut c = Command::new("/usr/bin/sandbox-exec");
             c.arg("-p").arg(profile).arg(program);
             c
         }
-        _ => Command::new(program),
+        None => Command::new(program),
     };
     if env == Env::Minimal {
         cmd.env_clear();
@@ -343,27 +374,35 @@ fn command(program: &Path, env: Env) -> Command {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    cmd
+    Ok(cmd)
 }
 
 /// The fence for `Env::Minimal` on macOS; none elsewhere (Windows has no
 /// equivalent: there, reading files depends on Codex offering no tool
 /// that does).
-fn fence(program: &Path) -> Option<String> {
+fn fence(program: &Path) -> Result<Option<String>> {
     if !cfg!(target_os = "macos") {
-        return None;
+        return Ok(None);
     }
-    let home = PathBuf::from(std::env::var_os("HOME")?);
-    let home = std::fs::canonicalize(&home).unwrap_or(home);
-    let codex_home = std::env::var_os("CODEX_HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| home.join(".codex"));
-    // A readable folder that is home or above it would open all of home.
-    let readable: Vec<PathBuf> = fence_readable(program)
-        .into_iter()
-        .filter(|d| !home.starts_with(d))
+    let real = |p: PathBuf| std::fs::canonicalize(&p).unwrap_or(p);
+    let home = std::env::var_os("HOME").map(|h| real(PathBuf::from(h)));
+    let codex_home = std::env::var_os("CODEX_HOME").map(|c| real(PathBuf::from(c)));
+    let package = std::fs::canonicalize(program)
+        .ok()
+        .and_then(|p| p.parent().and_then(Path::parent).map(Path::to_path_buf));
+    let path_dirs: Vec<PathBuf> = search_dirs().into_iter().map(real).collect();
+    let installers: Vec<PathBuf> = home
+        .iter()
+        .flat_map(|h| INSTALLER_DIRS.iter().map(move |rel| real(h.join(rel))))
         .collect();
-    Some(fence_profile(&home, &codex_home, &readable))
+    fence_for(
+        home.as_deref(),
+        codex_home.as_deref(),
+        package.as_deref(),
+        &path_dirs,
+        &installers,
+    )
+    .map(Some)
 }
 
 /// An empty folder to run in, so the tools find no project files
@@ -467,10 +506,57 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn minimal_runs_are_fenced() {
-        let fenced = command(Path::new("/bin/cat"), Env::Minimal);
+        let fenced = command(Path::new("/bin/cat"), Env::Minimal).unwrap();
         assert_eq!(fenced.as_std().get_program(), "/usr/bin/sandbox-exec");
-        let plain = command(Path::new("/bin/cat"), Env::Inherit);
+        let plain = command(Path::new("/bin/cat"), Env::Inherit).unwrap();
         assert_eq!(plain.as_std().get_program(), "/bin/cat");
+    }
+
+    /// Code review R6-03: no fence without a home folder, none when
+    /// Codex's folder is home or above it, and no arbitrary PATH folder
+    /// inside home made readable.
+    #[test]
+    fn the_fence_refuses_what_would_open_the_home_folder() {
+        let home = Path::new("/Users/someone");
+        let docs = home.join("Documents");
+        let local = home.join(".local/bin");
+        let package = home.join(".codex/packages/x");
+        assert!(fence_for(None, None, None, &[], &[]).is_err(), "no home");
+        assert!(
+            fence_for(Some(home), Some(home), None, &[], &[]).is_err(),
+            "CODEX_HOME = home"
+        );
+        assert!(
+            fence_for(Some(home), Some(Path::new("/Users")), None, &[], &[]).is_err(),
+            "CODEX_HOME above home"
+        );
+        let p = fence_for(
+            Some(home),
+            None,
+            Some(&package),
+            &[
+                docs.clone(),
+                local.clone(),
+                "/usr/bin".into(),
+                home.to_path_buf(),
+            ],
+            std::slice::from_ref(&local),
+        )
+        .unwrap();
+        assert!(!p.contains("Documents"), "{p}");
+        assert!(
+            p.contains("(allow file-read* (subpath \"/Users/someone/.local/bin\"))"),
+            "{p}"
+        );
+        assert!(
+            p.contains("(allow file-read* (subpath \"/usr/bin\"))"),
+            "{p}"
+        );
+        assert!(p.contains(".codex/packages/x"), "{p}");
+        assert!(
+            !p.contains("(allow file-read* (subpath \"/Users/someone\"))"),
+            "{p}"
+        );
     }
 
     #[test]

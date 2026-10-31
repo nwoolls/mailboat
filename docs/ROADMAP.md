@@ -3199,6 +3199,17 @@ fencing; seven findings and six questions, each checked before acting:
       (`code_mode_host`). Every switch Codex reports, on or off, is now
       turned off explicitly, so the check and the request agree; Codex
       still answers with all 194 off
+- [x] R6-03: the macOS fence had gaps: with `CODEX_HOME` set to the home
+      folder (or above it) all of home was readable and writable; every
+      PATH folder was readable, so a PATH entry like `~/Documents` opened
+      it; and without `HOME` Codex ran unfenced. Now there's no run at all
+      without a home folder or with `CODEX_HOME` at or above it, and in
+      the home folder only the installers' folders and Codex's own
+      package are readable (`process::fence_for`, tested with the old
+      rules put back). Left as is, now said plainly: the fence covers
+      the home folder only (other places such as `/Volumes` and
+      `/Users/Shared` stay readable), and file names' metadata stays
+      visible, which Codex needs to start
 
 ## Milestone 14: Open the code
 
