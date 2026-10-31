@@ -32,6 +32,20 @@ test("n and p step through the emails, opening folded ones", async ({ page }) =>
   await expect.poll(() => topEmail(page)).toBe("14");
 });
 
+for (const ms of [40, 80, 120, 160, 200]) {
+  test(`n ${ms}ms after p steps on, while the email is still opening`, async ({ page }) => {
+    // While `p` holds an email at the top as it opens, it wobbles by a
+    // pixel or so; `n` then took it for the next one and went nowhere.
+    await page.goto("/tests/browser/harness.html?mode=unread");
+    await expect(page.locator('section[data-message-id="13"]')).toBeVisible();
+    await page.waitForTimeout(1700);
+    await page.keyboard.press("p");
+    await page.waitForTimeout(ms);
+    await page.keyboard.press("n");
+    await expect.poll(() => topEmail(page), { timeout: 1500 }).toBe("13");
+  });
+}
+
 test("Space and ⇧Space page through the open email", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=unread");
   await expect(page.locator('section[data-message-id="13"]')).toBeVisible();

@@ -3287,12 +3287,17 @@ again until the next spike.*
       was added to the cache, the old one staying until sync. Now a
       reopened draft is saved only once edited or its people, subject
       or files change, and saving removes the replaced message at once
-- [ ] The browser test for n / p (`reader-keys.spec.ts`) fails about
+- [x] The browser test for n / p (`reader-keys.spec.ts`) fails about
       one run in ten *(found 2026-10-24 while checking search history; moved from Bug
       Spike 2 when it closed)*:
       after `n`, the reader sometimes rests on the email before the one
-      asked for. Either the test reads too early or `n` can land short in
-      the app too; to look into
+      asked for. A real app bug (found 2026-10-30, when it failed the
+      Milestone 13 check most runs): while `p` holds an email at the top
+      as it opens, its top wobbles by a pixel or so, `n` took it for the
+      next email and went nowhere. A step now counts from the email
+      still being held. Unit test for the rule; browser tests press `n`
+      40–200ms after `p` (they caught the old code in 2 runs of 3; the
+      fixed code passed 35 of 35)
 - [x] Emails mangled in dark mode *(owner report with screenshots,
       2026-10-20: a news site, a notice, a bank)*. Rendered outside the app
       (`examples/render_email`, headless Chrome in dark mode) to find
