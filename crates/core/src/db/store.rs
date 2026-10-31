@@ -237,6 +237,14 @@ pub fn upsert_thread(
     // that email, and its counts change; gone if nothing's left.
     for previous in left {
         forget_search_hits(&tx, previous)?;
+        // Its summary and reply ideas covered the email that left; they're
+        // only rechecked against the newest email, which may not change
+        // (code review R8-04).
+        tx.execute("DELETE FROM ai_summaries WHERE thread_id = ?1", [previous])?;
+        tx.execute(
+            "DELETE FROM ai_reply_ideas WHERE thread_id = ?1",
+            [previous],
+        )?;
         let remaining: i64 = tx.query_row(
             "SELECT COUNT(*) FROM messages WHERE thread_id = ?1",
             [previous],

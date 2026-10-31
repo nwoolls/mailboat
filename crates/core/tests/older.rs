@@ -504,17 +504,55 @@ fn an_email_moving_threads_takes_the_old_threads_hits_with_it() {
         .len()
     };
     assert_eq!(found(), 0, "the hidden email holds the hit back");
-
-    thread("new", vec![email("moving", &["TRASH"])]);
-    thread("old", vec![email("keep", &["INBOX"])]);
-    assert_eq!(found(), 0, "the hit went when the email left");
-    let count: i64 = db
+    // R8-04: a summary and reply ideas written while the moving email was
+    // in the old thread. They're kept while the newest email is the same,
+    // so they'd outlive an older email leaving.
+    let newest: i64 = db
         .conn()
         .query_row(
-            "SELECT message_count FROM threads WHERE id = ?1",
+            "SELECT MAX(id) FROM messages WHERE thread_id = ?1",
             [old],
             |r| r.get(0),
         )
         .unwrap();
-    assert_eq!(count, 1, "the old thread's count follows");
+    db.conn()
+        .execute_batch(&format!(
+            "INSERT INTO ai_summaries (account_id, thread_id, kind, provider, newest_message_id, text, created_at)
+               VALUES ({a}, {old}, 'full', 'apple', {newest}, 'covers both', 0);
+             INSERT INTO ai_reply_ideas (account_id, thread_id, forward, newest_message_id, ideas, created_at)
+               VALUES ({a}, {old}, 0, {newest}, '[\"covers both\"]', 0);",
+            a = a.0,
+            old = old.0
+        ))
+        .unwrap();
+    let cached = || -> i64 {
+        db.conn()
+            .query_row(
+                "SELECT (SELECT COUNT(*) FROM ai_summaries WHERE thread_id = ?1)
+                      + (SELECT COUNT(*) FROM ai_reply_ideas WHERE thread_id = ?1)",
+                [old],
+                |r| r.get(0),
+            )
+            .unwrap()
+    };
+    let count = || -> i64 {
+        db.conn()
+            .query_row(
+                "SELECT message_count FROM threads WHERE id = ?1",
+                [old],
+                |r| r.get(0),
+            )
+            .unwrap()
+    };
+
+    // Checked straight after the move, before anything else stores the
+    // old thread (question 4: so its own refresh is what's tested).
+    thread("new", vec![email("moving", &["TRASH"])]);
+    assert_eq!(found(), 0, "the hit went when the email left");
+    assert_eq!(count(), 1, "the old thread's count follows");
+    assert_eq!(cached(), 0, "its AI results went too (R8-04)");
+
+    thread("old", vec![email("keep", &["INBOX"])]);
+    assert_eq!(found(), 0);
+    assert_eq!(count(), 1);
 }

@@ -3308,6 +3308,17 @@ findings and three questions, each checked before acting:
   didn't appear and the helper reported failing or not starting; it
   doesn't watch every possible helper action, and is described that way
 
+Round 8 (2026-10-31): the reviewer checked Round 7's fixes; four
+findings and four questions, each checked before acting:
+
+- [x] R8-04 and question 4: when an email left a thread, the thread kept
+      its cached AI summary and reply ideas, which covered the email that
+      left (they're only rechecked against the newest email, which may
+      not change). Reproduced through the storage API, like R7-03. They
+      go with the email now. The test also checks the old thread straight
+      after the move, so it fails if the thread's own refresh is taken out
+      (before, a later store of the old thread hid that)
+
 ## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an
