@@ -209,7 +209,10 @@ pub fn upsert_thread(
     } else {
         values.extend(kept.iter().map(|k| k as &dyn rusqlite::ToSql));
     }
-    tx.execute(&sql, values.as_slice())?;
+    let dropped = tx.execute(&sql, values.as_slice())?;
+    if dropped > 0 {
+        forget_search_hits(&tx, thread_id)?;
+    }
 
     if kept.is_empty() {
         tx.execute("DELETE FROM threads WHERE id = ?1", [thread_id])?;
@@ -309,6 +312,15 @@ fn refresh_thread(conn: &Connection, account: AccountId, thread: ThreadId) -> Re
     Ok(())
 }
 
+/// Forgets what Gmail's searches found in a thread once an email has left
+/// it: a hit doesn't say which email matched, so it may have been the one
+/// that's gone (code review R6-05: deleting a trashed email made its old
+/// hit count again). They're a cache, found again by the next search.
+fn forget_search_hits(conn: &Connection, thread: ThreadId) -> Result<()> {
+    conn.execute("DELETE FROM search_hits WHERE thread_id = ?1", [thread])?;
+    Ok(())
+}
+
 /// Deletes messages by Gmail ID (from `history.list` messageDeleted events).
 /// Threads left empty are removed too.
 pub fn delete_messages(
@@ -331,6 +343,7 @@ pub fn delete_messages(
                 "DELETE FROM messages WHERE account_id = ?1 AND gmail_message_id = ?2",
                 params![account, gid],
             )?;
+            forget_search_hits(&tx, thread)?;
             touched.insert(thread);
         }
     }

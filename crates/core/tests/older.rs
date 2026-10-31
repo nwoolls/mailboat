@@ -385,5 +385,61 @@ async fn gmails_hit_stops_counting_once_an_email_in_it_is_hidden() {
         thread.messages[1].label_ids = vec![hidden.into()];
         store::upsert_thread(&mut db.conn(), a, &parse::thread_to_incoming(&thread)).unwrap();
         assert_eq!(found(&db), 0, "{hidden}: the hit no longer counts");
+
+        // R6-05: once the hidden email is deleted for good, Gmail's old
+        // hit (perhaps for its words) mustn't count again.
+        thread.messages.pop();
+        store::upsert_thread(&mut db.conn(), a, &parse::thread_to_incoming(&thread)).unwrap();
+        assert_eq!(
+            found(&db),
+            0,
+            "{hidden}: deleting it doesn't bring the hit back"
+        );
     }
+}
+
+/// R6-05 by the other route: `history.list` reports the hidden email
+/// deleted (`delete_messages`), not a whole new copy of the thread.
+#[tokio::test]
+async fn a_deleted_email_takes_gmails_hit_with_it() {
+    use mail_core::db::query;
+    let server = MockServer::start().await;
+    Mock::given(path("/gmail/v1/users/me/threads"))
+        .and(query_param("q", "Zebra"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "threads": [{ "id": "t1" }]
+        })))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    cache(&db, a, "thread_t1.json");
+    let view = MailView::Search {
+        text: "Zebra".into(),
+        with_spam_trash: false,
+    };
+    let found = |db: &Db| {
+        query::list_threads(
+            &db.conn(),
+            &ListQuery {
+                accounts: AccountFilter::All,
+                view: view.clone(),
+                cursor: None,
+                limit: 50,
+            },
+        )
+        .unwrap()
+        .threads
+        .len()
+    };
+    let (gmail, _) = client(&server.uri());
+    let mut cursor = OlderCursor::default();
+    load_older(&db, &gmail, a, &view, 25, &mut cursor, &|| {})
+        .await
+        .unwrap();
+    assert_eq!(found(&db), 1, "Gmail's hit shows");
+    let thread: Thread = serde_json::from_str(&fixture("thread_t1.json")).unwrap();
+    let gone = thread.messages[1].id.clone();
+    store::delete_messages(&mut db.conn(), a, &[gone]).unwrap();
+    assert_eq!(found(&db), 0, "the hit went with the email");
 }

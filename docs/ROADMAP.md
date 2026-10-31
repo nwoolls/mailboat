@@ -3210,6 +3210,12 @@ fencing; seven findings and six questions, each checked before acting:
       the home folder only (other places such as `/Volumes` and
       `/Users/Shared` stay readable), and file names' metadata stays
       visible, which Codex needs to start
+- [x] R6-05: Gmail's saved hit came back once the hidden email it may
+      have matched was deleted for good (by a fresh copy of the thread or
+      by `history.list`), since nothing hidden was left to suppress it.
+      Reproduced both ways. A thread's saved hits now go when an email
+      leaves it (`store::forget_search_hits`); they're a cache, found
+      again by the next search
 
 ## Milestone 14: Open the code
 
