@@ -7,7 +7,9 @@ import { expect, type Page, test } from "@playwright/test";
  * is the Rust sanitizer's real output (`fixtures/trackers.json`, written
  * by `crates/core/tests/browser_fixtures.rs`), shown in the real reader,
  * with every request the page and its frames make recorded. Nothing
- * leaves the machine: requests to other hosts are answered here.
+ * leaves the machine: requests to other hosts are answered here. The
+ * fixture also writes trackers as the web view reads them but the check
+ * didn't (R4-04): `//host`, a CSS-escaped newline in `https`, `https:host`.
  */
 const PIXEL = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",

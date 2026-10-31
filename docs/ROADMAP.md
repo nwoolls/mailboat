@@ -3006,6 +3006,17 @@ before acting:
       checks (missing permission, an API turned off); a forged 4xx would
       need a proxy trusted for TLS to Google, which already sees every
       request
+- [x] R4-04: tracker addresses written so the check didn't see a remote
+      address or its host, which the web view still loads: `//host/x`
+      (the sanitizer even upgraded it to HTTPS, and prefetch downloaded
+      it as mail arrived), a CSS-escaped newline (`ht\a tps://`) and
+      `https:host/x` or backslashes in CSS. Reproduced in WebKit: the
+      reader asked four disguised trackers. Addresses are now read as
+      browsers read them (`remote_address`, with the `url` crate) before
+      the remote, tracker and prefetch checks. Rust tests cover 13 forms;
+      the browser fixture has five more trackers. In `<img>`, the
+      escaped, slash-less and control-character forms were already
+      removed (ammonia parses them as browsers do)
 
 ## Milestone 14: Open the code
 

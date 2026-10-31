@@ -74,9 +74,40 @@ const TRACKER_PATHS: &[&str] = &[
     "/pixel.gif",
 ];
 
+/// A remote address as the web view reads it, or None if it isn't one.
+/// Parsed as browsers do (`url` follows the same standard): tabs and
+/// newlines anywhere are dropped, control characters at either end too,
+/// `\\` counts as `/`, and `https:host/x` means `https://host/x`. Checking
+/// the text as written missed `//host`, `ht\a tps://host` (a CSS escape)
+/// and `https:host`, which the web view loads (code review R4-04).
+fn remote_address(raw: &str) -> Option<url::Url> {
+    match url::Url::parse(raw) {
+        Ok(u) if matches!(u.scheme(), "http" | "https") => Some(u),
+        Ok(_) => None,
+        Err(url::ParseError::RelativeUrlWithoutBase) => {
+            // Scheme-relative (`//host/x`): the web view would ask the host.
+            let bare: String = raw
+                .trim_matches(|c: char| c <= ' ')
+                .chars()
+                .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
+                .collect();
+            let mut start = bare.chars();
+            match (start.next(), start.next()) {
+                (Some('/' | '\\'), Some('/' | '\\')) => {
+                    url::Url::parse("https://relative.invalid/")
+                        .ok()?
+                        .join(&bare)
+                        .ok()
+                }
+                _ => None,
+            }
+        }
+        Err(_) => None,
+    }
+}
+
 fn is_remote(url: &str) -> bool {
-    let u = url.trim().to_ascii_lowercase();
-    u.starts_with("http://") || u.starts_with("https://") || u.starts_with("//")
+    remote_address(url).is_some()
 }
 
 fn is_tiny(value: Option<String>) -> bool {
@@ -84,16 +115,16 @@ fn is_tiny(value: Option<String>) -> bool {
 }
 
 /// The address a remote image is loaded from: always HTTPS (the CSP
-/// allows nothing else), so `http://` and `//` addresses are upgraded.
-/// Also the key cached images are stored under (`mail::prefetch`).
+/// allows nothing else), so `http://` and `//` addresses are upgraded, and
+/// written as the web view reads it (`remote_address`). Also the key
+/// cached images are stored under (`mail::prefetch`).
 pub fn remote_image_url(src: &str) -> String {
-    let src = src.trim();
-    if let Some(rest) = src.strip_prefix("http://") {
-        format!("https://{rest}")
-    } else if let Some(rest) = src.strip_prefix("//") {
-        format!("https://{rest}")
-    } else {
-        src.to_string()
+    match remote_address(src) {
+        Some(mut u) => {
+            let _ = u.set_scheme("https");
+            u.to_string()
+        }
+        None => src.trim().to_string(),
     }
 }
 
@@ -187,10 +218,15 @@ fn looks_like_tracker(
     height: Option<String>,
     style: Option<String>,
 ) -> bool {
-    let lower = src.to_ascii_lowercase();
-    let host = url::Url::parse(&lower)
-        .ok()
-        .and_then(|u| u.host_str().map(str::to_string))
+    // As the web view reads it (R4-04); the text as written if it isn't
+    // a remote address.
+    let address = remote_address(src);
+    let lower = address
+        .as_ref()
+        .map_or_else(|| src.to_string(), |u| u.to_string())
+        .to_ascii_lowercase();
+    let host = address
+        .and_then(|u| u.host_str().map(str::to_ascii_lowercase))
         .unwrap_or_default();
     let style = style
         .unwrap_or_default()
@@ -1075,6 +1111,41 @@ mod tests {
                 .contains("@import url(https://cdn.vendor.com/x.css)"),
             "left to the CSP, which refuses style sheets from anywhere"
         );
+    }
+
+    /// Code review R4-04: addresses a browser reads as HTTPS, written so
+    /// the tracker check didn't see a remote address or its host.
+    const DISGUISED: &[(&str, &str)] = &[
+        ("img, scheme-relative", r#"<img src="//mailtrack.io/trace/1.png">"#),
+        ("css, scheme-relative", r#"<div style="background:url(//mailtrack.io/trace/2.png)">x</div>"#),
+        ("background, scheme-relative", r#"<table background="//mailtrack.io/trace/3.png"><tr><td>x</td></tr></table>"#),
+        ("css, escaped newline", r#"<div style="background:url('ht\a tps://mailtrack.io/trace/4.png')">x</div>"#),
+        ("sheet, escaped newline", "<style>.a{background:url(\"ht\\a tps://mailtrack.io/trace/5.png\")}</style><div class=a>x</div>"),
+        ("img, newline entity", r#"<img src="ht&#10;tps://mailtrack.io/trace/6.png">"#),
+        ("img, tab entity", r#"<img src="https://mail&#9;track.io/trace/7.png">"#),
+        ("img, no slashes", r#"<img src="https:mailtrack.io/trace/8.png">"#),
+        ("css, no slashes", r#"<div style="background:url(https:mailtrack.io/trace/9.png)">x</div>"#),
+        ("img, backslashes", r#"<img src="https:\\mailtrack.io\trace\10.png">"#),
+        ("css, backslashes", r#"<div style="background:url('\\\\mailtrack.io/trace/11.png')">x</div>"#),
+        ("img, leading control", "<img src=\"&#1;https://mailtrack.io/trace/12.png\">"),
+        ("img, upper case", r#"<img src="HTTPS://MAILTRACK.IO/trace/13.png">"#),
+    ];
+
+    #[test]
+    fn disguised_tracker_addresses_are_still_trackers() {
+        let mut failed = Vec::new();
+        for (what, html) in DISGUISED {
+            let out = sanitize_html(html, true);
+            let shown = !out.document.to_ascii_lowercase().contains("mailtrack");
+            let fetched = remote_image_urls(html);
+            if !shown || !fetched.is_empty() {
+                failed.push(format!(
+                    "{what}: in document {}, trackers {}, prefetch {fetched:?}",
+                    !shown, out.trackers_removed
+                ));
+            }
+        }
+        assert!(failed.is_empty(), "\n{}", failed.join("\n"));
     }
 
     #[test]
