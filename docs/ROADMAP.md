@@ -3192,6 +3192,13 @@ fencing; seven findings and six questions, each checked before acting:
       that isn't "name, stage, true/false", a repeated name or an empty
       list now fails the check, and nothing is sent. Codex 0.166.0's 194
       lines all match
+- [x] R6-02: the check read the owner's Codex config, requests ignore it
+      (`--ignore-user-config`), and only switches reported on were
+      turned off, so a switch their config turns off was back on (its
+      default) in the request. Reproduced with a stand-in config
+      (`code_mode_host`). Every switch Codex reports, on or off, is now
+      turned off explicitly, so the check and the request agree; Codex
+      still answers with all 194 off
 
 ## Milestone 14: Open the code
 

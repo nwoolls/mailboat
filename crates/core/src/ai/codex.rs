@@ -134,11 +134,15 @@ pub async fn switches(program: &Path, overrides: &[String]) -> Result<Vec<(Strin
 }
 
 /// Every switch to turn off for a request: the known tool switches and
-/// every switch Codex reports on, so one added in an update is off too.
+/// every switch Codex reports, on or off, so one added in an update is
+/// off too. Off ones as well because `features list` reads the owner's
+/// Codex config and `exec` (with `--ignore-user-config`) doesn't: a switch
+/// their config turns off would otherwise be back at its default, on, in
+/// the request (code review R6-02).
 pub fn switches_off(reported: &[(String, bool)]) -> Vec<String> {
     let mut off: Vec<String> = TOOLS_OFF.iter().map(|t| t.to_string()).collect();
-    for (name, on) in reported {
-        if *on && !off.contains(name) {
+    for (name, _) in reported {
+        if !off.contains(name) {
             off.push(name.clone());
         }
     }
@@ -579,7 +583,7 @@ shell_tool                               stable             false
     /// default, is turned off without anyone naming it; known tool
     /// switches stay off even if Codex stops listing them.
     #[test]
-    fn every_switch_codex_reports_on_is_turned_off() {
+    fn every_switch_codex_reports_is_turned_off() {
         let off = switches_off(&parse_switches(FEATURES).unwrap());
         let a = args(&choice(Quality::Fast, &Models::default()), &off);
         for name in ["brand_new_tool", "apps", "shell_tool", "browser_use"] {
@@ -588,7 +592,10 @@ shell_tool                               stable             false
                 "{name}: {a:?}"
             );
         }
-        assert!(!a.contains(&"features.agent_message_board=false".to_string()));
+        // R6-02: one reported off is turned off too. The check reads the
+        // owner's Codex config, a request ignores it, so a switch their
+        // config turns off would be back on (its default) in the request.
+        assert!(a.contains(&"features.agent_message_board=false".to_string()));
     }
 
     /// The whole request against a stand-in `codex`: the switches it
