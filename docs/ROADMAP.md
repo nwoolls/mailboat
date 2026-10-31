@@ -3186,6 +3186,12 @@ fencing; seven findings and six questions, each checked before acting:
       and daylight saving can't move the limit; impossible or future
       dates fail everywhere, CI too). Vitest now also runs
       `scripts/**/*.test.ts`
+- [x] R6-04: a line of `codex features list` the parser couldn't read was
+      skipped, so that switch went unchecked and the request went ahead
+      (reproduced with a stand-in `codex`: it answered "SENT"). Any line
+      that isn't "name, stage, true/false", a repeated name or an empty
+      list now fails the check, and nothing is sent. Codex 0.166.0's 194
+      lines all match
 
 ## Milestone 14: Open the code
 

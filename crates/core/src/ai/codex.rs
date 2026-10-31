@@ -91,19 +91,28 @@ pub fn choice(quality: Quality, models: &Models) -> Choice {
 
 /// Codex's switches (`codex features list`): each name and whether it's
 /// on. Lines are "name  stage  true|false"; the stage can be two words.
-pub fn parse_switches(stdout: &str) -> Vec<(String, bool)> {
-    stdout
-        .lines()
-        .filter_map(|line| {
-            let words: Vec<&str> = line.split_whitespace().collect();
-            let on = match *words.last()? {
-                "true" => true,
-                "false" => false,
-                _ => return None,
-            };
-            (words.len() >= 3).then(|| (words[0].to_string(), on))
-        })
-        .collect()
+/// None if any line isn't one (a changed format), a name repeats, or
+/// there are none: a switch it couldn't read would go unchecked (code
+/// review R6-04).
+pub fn parse_switches(stdout: &str) -> Option<Vec<(String, bool)>> {
+    let mut found: Vec<(String, bool)> = Vec::new();
+    for line in stdout.lines().filter(|l| !l.trim().is_empty()) {
+        let words: Vec<&str> = line.split_whitespace().collect();
+        let on = match *words.last()? {
+            "true" => true,
+            "false" => false,
+            _ => return None,
+        };
+        let name = words[0];
+        let named = name
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.');
+        if words.len() < 3 || !named || found.iter().any(|(n, _)| n == name) {
+            return None;
+        }
+        found.push((name.to_string(), on));
+    }
+    (!found.is_empty()).then_some(found)
 }
 
 /// Codex's switches as it reports them, with `overrides` (`-c` settings)
@@ -116,13 +125,12 @@ pub async fn switches(program: &Path, overrides: &[String]) -> Result<Vec<(Strin
         args.push(o);
     }
     let (ok, stdout, _) = process::run_quick_with(program, &args, process::Env::Minimal).await?;
-    let found = parse_switches(&stdout);
-    if !ok || found.is_empty() {
-        return Err(CoreError::Ai(
+    match parse_switches(&stdout) {
+        Some(found) if ok => Ok(found),
+        _ => Err(CoreError::Ai(
             "Couldn't check ChatGPT's Codex switches.".into(),
-        ));
+        )),
     }
-    Ok(found)
 }
 
 /// Every switch to turn off for a request: the known tool switches and
@@ -517,7 +525,6 @@ mod tests {
 agent_message_board                      under development  false
 brand_new_tool                           stable             true
 shell_tool                               stable             false
-not a switch line
 ";
 
     /// `FEATURES` after `-c features.…=false`: all off.
@@ -547,7 +554,7 @@ shell_tool                               stable             false
     #[test]
     fn reads_codex_switches() {
         assert_eq!(
-            parse_switches(FEATURES),
+            parse_switches(FEATURES).unwrap(),
             [
                 ("apps".to_string(), true),
                 ("agent_message_board".to_string(), false),
@@ -555,6 +562,17 @@ shell_tool                               stable             false
                 ("shell_tool".to_string(), false),
             ]
         );
+        // R6-04: anything it can't read means no answer, not a shorter one.
+        for odd in [
+            "apps stable false\nnew_reader stable enabled\n",
+            "apps stable false\nnot a switch line\n",
+            "apps stable false\napps stable true\n",
+            "Apps stable false\n",
+            "apps false\n",
+            "\n",
+        ] {
+            assert_eq!(parse_switches(odd), None, "{odd:?}");
+        }
     }
 
     /// Round 5 (Codex fenced in): a switch an update adds, on by
@@ -562,7 +580,7 @@ shell_tool                               stable             false
     /// switches stay off even if Codex stops listing them.
     #[test]
     fn every_switch_codex_reports_on_is_turned_off() {
-        let off = switches_off(&parse_switches(FEATURES));
+        let off = switches_off(&parse_switches(FEATURES).unwrap());
         let a = args(&choice(Quality::Fast, &Models::default()), &off);
         for name in ["brand_new_tool", "apps", "shell_tool", "browser_use"] {
             assert!(
@@ -665,6 +683,41 @@ shell_tool                               stable             false
         };
         let answer = ask(&stub, &prompt, &anyway, &|_| {}).await.unwrap();
         assert_eq!(answer.text, "Done.");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Code review R6-04: a line of `codex features list` the parser
+    /// couldn't read was skipped, so that switch went unchecked and the
+    /// request went ahead. Now nothing is sent.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_switch_list_it_cant_fully_read_stops_the_request() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("codex-partial-{}", fastrand::u64(..)));
+        std::fs::create_dir_all(&dir).unwrap();
+        let stub = dir.join("codex");
+        let ran = dir.join("ran");
+        std::fs::write(
+            &stub,
+            format!(
+                "#!/bin/sh\nif [ \"$1\" = features ]; then printf 'apps stable false\\nnew_reader stable enabled\\n'; exit 0; fi\n\
+                 echo ran > {ran}\n\
+                 echo '{{\"type\":\"item.completed\",\"item\":{{\"type\":\"agent_message\",\"text\":\"SENT\"}}}}'\n\
+                 echo '{{\"type\":\"turn.completed\",\"usage\":{{}}}}'\n",
+                ran = ran.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let prompt = Prompt {
+            instructions: "Summarize.".into(),
+            input: "Hi".into(),
+            quality: Quality::Fast,
+            max_tokens: None,
+        };
+        let result = ask(&stub, &prompt, &Models::default(), &|_| {}).await;
+        assert!(result.is_err(), "{result:?}");
+        assert!(!ran.exists(), "nothing was sent");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
