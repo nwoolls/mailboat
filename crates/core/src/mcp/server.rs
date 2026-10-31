@@ -466,7 +466,7 @@ impl MailServer {
     }
 
     fn list(&self, scope: &Scope, query: &ListQuery) -> Outcome<Conversations> {
-        let page = query::list_threads(&self.db.conn(), query).map_err(fail)?;
+        let page = query::list_threads_outside_spam_trash(&self.db.conn(), query).map_err(fail)?;
         Ok(Conversations {
             conversations: self.summaries(scope, &page.threads)?,
             next_page: page.next_cursor.as_ref().map(page_token),
@@ -533,7 +533,13 @@ impl MailServer {
             conversation_id: id.0,
             account: scope.email(summary.account_id),
             subject: summary.subject,
-            labels: detail.labels.into_iter().map(|l| l.name).collect(),
+            // Only labels on the visible emails (R5-01).
+            labels: detail
+                .labels
+                .into_iter()
+                .filter(|l| summary.label_ids.contains(&l.id))
+                .map(|l| l.name)
+                .collect(),
             emails,
         })
     }

@@ -677,3 +677,127 @@ async fn a_conversations_emails_in_spam_or_trash_stay_hidden() {
         assert_eq!(saved["subject"], "Re: Picnic", "{what}{saved}");
     }
 }
+
+/// Code review R5-01 and R5-02: after R4-01, a mixed conversation's
+/// summary came from its visible emails, but its labels when read, which
+/// mailboxes it was listed in (Unread, Starred, Inbox, a label, Archive),
+/// its order and the page token still came from the hidden email too.
+#[tokio::test]
+async fn a_mixed_conversation_is_listed_and_paged_by_its_visible_emails() {
+    for hidden_label in ["TRASH", "SPAM"] {
+        let m = mail();
+        let user = |id: &str, name: &str| IncomingLabel {
+            gmail_label_id: id.into(),
+            name: name.into(),
+            kind: LabelKind::User,
+            color_bg: None,
+            color_fg: None,
+        };
+        store::sync_labels(
+            &mut m.db.conn(),
+            m.a,
+            &[
+                system("INBOX"),
+                system("SPAM"),
+                system("TRASH"),
+                system("UNREAD"),
+                system("STARRED"),
+                system("SENT"),
+                user("Label_vis", "Visible label"),
+                user("Label_hid", "Hidden label"),
+            ],
+        )
+        .unwrap();
+        let email = |id: &str, at: i64, labels: &[&str]| IncomingMessage {
+            gmail_message_id: id.into(),
+            label_ids: labels.iter().map(|l| l.to_string()).collect(),
+            internal_date: at,
+            snippet: format!("{id} text"),
+            subject: "Mixed".into(),
+            from: Some(Address {
+                name: None,
+                email: "sam@example.com".into(),
+            }),
+            ..Default::default()
+        };
+        let thread = |gid: &str, messages: Vec<IncomingMessage>| {
+            store::upsert_thread(
+                &mut m.db.conn(),
+                m.a,
+                &IncomingThread {
+                    gmail_thread_id: gid.into(),
+                    messages,
+                },
+            )
+            .unwrap();
+        };
+        // Visible: sent, read, unstarred, archived, at 3000. Hidden: in
+        // the Inbox, unread, starred, with its own label, at 9000.
+        thread(
+            "mixed",
+            vec![
+                email("v", 3_000, &["SENT", "Label_vis"]),
+                email(
+                    "h",
+                    9_000,
+                    &[hidden_label, "INBOX", "UNREAD", "STARRED", "Label_hid"],
+                ),
+            ],
+        );
+        thread("other", vec![email("o", 5_000, &["INBOX"])]);
+        share(&m.db, &[m.a], &[]);
+        let c = connect(m.db.clone(), host(None)).await;
+        let what = hidden_label;
+        let subjects = |answer: &Value| -> Vec<String> {
+            answer["conversations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|t| t["snippet"].as_str().unwrap().to_string())
+                .collect()
+        };
+
+        for (args, listed) in [
+            (json!({ "view": "unread" }), false),
+            (json!({ "view": "starred" }), false),
+            (json!({ "view": "inbox" }), false),
+            (json!({ "label": "Hidden label" }), false),
+            (json!({ "label": "Visible label" }), true),
+            (json!({ "view": "archive" }), true),
+        ] {
+            let found = ok(&call(&c, "list_conversations", args.clone()).await);
+            assert_eq!(
+                subjects(&found).contains(&"v text".to_string()),
+                listed,
+                "{what} {args}: {found}"
+            );
+        }
+
+        // Ordered and paged by the visible email's date (3000), not 9000.
+        let first = ok(&call(
+            &c,
+            "list_conversations",
+            json!({ "view": "all_mail", "limit": 1 }),
+        )
+        .await);
+        assert_eq!(subjects(&first), ["o text"], "{what}: {first}");
+        let page = first["next_page"].as_str().unwrap().to_string();
+        let second = ok(&call(
+            &c,
+            "list_conversations",
+            json!({ "view": "all_mail", "limit": 1, "page": page }),
+        )
+        .await);
+        assert_eq!(subjects(&second), ["v text"], "{what}: {second}");
+        let next = second["next_page"].as_str().unwrap_or_default().to_string();
+        assert!(
+            !page.contains("9000") && !next.contains("9000"),
+            "{what}: {page} {next}"
+        );
+
+        // Read: only the visible email's labels.
+        let id = second["conversations"][0]["conversation_id"].clone();
+        let read = ok(&call(&c, "read_conversation", json!({ "conversation_id": id })).await);
+        assert_eq!(read["labels"], json!(["Visible label"]), "{what}: {read}");
+    }
+}

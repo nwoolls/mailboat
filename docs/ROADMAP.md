@@ -3059,6 +3059,20 @@ before acting:
   cause was shown. A harness-ready check would make it visible next
   time
 
+Round 5 (2026-10-31): the reviewer checked Round 4's fixes and found six
+leads, each checked before acting:
+
+- [x] R5-01 and R5-02: after R4-01, a mixed conversation's summary came
+      from its visible emails, but AI apps still saw the hidden email
+      through which mailboxes listed it (its trashed reply put it in
+      Unread, Starred or the Inbox, or a label, and took it out of
+      Archive), its place in the list and the page token (the hidden
+      email's date), and the labels shown when it was read. Reproduced
+      for Trash and Spam. AI apps' lists now use
+      `query::list_threads_outside_spam_trash`, where membership, order
+      and paging come from emails outside Spam and Trash, and a read
+      shows only their labels. The app's own lists are unchanged
+
 ## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an

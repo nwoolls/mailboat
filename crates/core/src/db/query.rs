@@ -117,6 +117,55 @@ fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
 /// Lists threads for any view across any set of accounts, newest first,
 /// with keyset paging.
 pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> {
+    list(conn, query, false)
+}
+
+/// `list_threads` as AI apps see mail: a conversation is in a mailbox or
+/// label, and ordered and paged, by its emails outside Spam and Trash
+/// only. Its trashed reply can't put it in Unread, Starred or the Inbox,
+/// take it out of Archive, or move it up the list (code review R5-02).
+/// The rows are the whole conversations; `outside_spam_trash` projects
+/// them.
+pub fn list_threads_outside_spam_trash(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> {
+    list(conn, query, true)
+}
+
+/// The newest email outside Spam and Trash: the date `list` orders and
+/// pages by when `visible`.
+const VISIBLE_LAST: &str = concat!(
+    "(SELECT MAX(m.internal_date) FROM messages m WHERE m.thread_id = t.id AND ",
+    outside_spam_trash!(),
+    ")"
+);
+
+/// A visible email in the thread carries the label (bound as `?`).
+const VISIBLE_SYSTEM_LABEL: &str = concat!(
+    "EXISTS (SELECT 1 FROM messages m JOIN message_labels vl ON vl.message_id = m.id
+      JOIN labels v ON v.id = vl.label_id
+      WHERE m.thread_id = t.id AND v.kind = 'system' AND v.gmail_label_id = ? AND ",
+    outside_spam_trash!(),
+    ")"
+);
+const VISIBLE_USER_LABEL: &str = concat!(
+    "EXISTS (SELECT 1 FROM messages m JOIN message_labels vl ON vl.message_id = m.id
+      WHERE m.thread_id = t.id AND vl.label_id = ? AND ",
+    outside_spam_trash!(),
+    ")"
+);
+const VISIBLE_IN_INBOX: &str = concat!(
+    "EXISTS (SELECT 1 FROM messages m JOIN message_labels vl ON vl.message_id = m.id
+      JOIN labels v ON v.id = vl.label_id
+      WHERE m.thread_id = t.id AND v.kind = 'system' AND v.gmail_label_id = 'INBOX' AND ",
+    outside_spam_trash!(),
+    ")"
+);
+
+fn list(conn: &Connection, query: &ListQuery, visible: bool) -> Result<ThreadPage> {
+    let last = if visible {
+        VISIBLE_LAST
+    } else {
+        "t.last_message_at"
+    };
     let limit = query.limit.clamp(1, MAX_LIMIT);
     let mut clauses: Vec<String> = Vec::new();
     let mut values: Vec<Value> = Vec::new();
@@ -139,11 +188,13 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
         MailView::System { label } => {
             // Matches the system label in every account: this is what makes
             // INBOX/STARRED/... unified views.
-            clauses.push(
+            clauses.push(if visible {
+                VISIBLE_SYSTEM_LABEL.into()
+            } else {
                 "EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
                          WHERE tl.thread_id = t.id AND l.kind = 'system' AND l.gmail_label_id = ?)"
-                    .into(),
-            );
+                    .into()
+            });
             values.push(Value::Text(label.gmail_id().into()));
             // As in Gmail, every view but Spam and Trash leaves out
             // conversations that are wholly in Spam or Trash (a trashed
@@ -155,14 +206,19 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
         MailView::UserLabel { label_id } => {
             // A user label row belongs to one account, so this can never
             // match another account's same-named label.
-            clauses.push("EXISTS (SELECT 1 FROM thread_labels tl WHERE tl.thread_id = t.id AND tl.label_id = ?)".into());
+            clauses.push(if visible {
+                VISIBLE_USER_LABEL.into()
+            } else {
+                "EXISTS (SELECT 1 FROM thread_labels tl WHERE tl.thread_id = t.id AND tl.label_id = ?)".into()
+            });
             values.push(Value::Integer(label_id.0));
             clauses.push(IN_ALL_MAIL.into());
         }
         MailView::AllMail => clauses.push(IN_ALL_MAIL.into()),
         MailView::Archive => {
             clauses.push(IN_ALL_MAIL.into());
-            clauses.push(format!("NOT {IN_INBOX}"));
+            let inbox = if visible { VISIBLE_IN_INBOX } else { IN_INBOX };
+            clauses.push(format!("NOT {inbox}"));
         }
         MailView::Search {
             text,
@@ -197,12 +253,15 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
     }
 
     if let Some(cursor) = &query.cursor {
-        clauses.push("(t.last_message_at < ? OR (t.last_message_at = ? AND t.id < ?))".into());
+        clauses.push(format!("({last} < ? OR ({last} = ? AND t.id < ?))"));
         values.push(Value::Integer(cursor.last_message_at));
         values.push(Value::Integer(cursor.last_message_at));
         values.push(Value::Integer(cursor.thread_id.0));
     }
 
+    // When `visible`, the row's date is the newest visible email's, so
+    // the cursor (`next_cursor` below) pages by it too.
+    let columns = THREAD_COLUMNS.replacen("t.last_message_at,", &format!("{last},"), 1);
     let where_sql = if clauses.is_empty() {
         String::new()
     } else {
@@ -210,8 +269,8 @@ pub fn list_threads(conn: &Connection, query: &ListQuery) -> Result<ThreadPage> 
     };
     // Fetch one extra row to know whether another page exists.
     let sql = format!(
-        "SELECT {THREAD_COLUMNS} FROM threads t {where_sql}
-         ORDER BY t.last_message_at DESC, t.id DESC LIMIT {}",
+        "SELECT {columns} FROM threads t {where_sql}
+         ORDER BY {last} DESC, t.id DESC LIMIT {}",
         limit + 1
     );
     let mut stmt = conn.prepare(&sql)?;
