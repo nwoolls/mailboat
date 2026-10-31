@@ -873,15 +873,56 @@ fn is_retryable(status: u16, body: &str) -> bool {
     }
 }
 
-/// Google's reason codes ("rateLimitExceeded", "backendError"): kept only
-/// if they're plain words, so nothing else can be carried in them.
-fn reasons(e: &ErrorEnvelope) -> Vec<&str> {
-    e.error
-        .errors
-        .iter()
-        .map(|i| i.reason.as_str())
-        .filter(|r| !r.is_empty() && r.len() <= 64 && r.chars().all(|c| c.is_ascii_alphabetic()))
-        .collect()
+/// Google's documented error reason codes (Gmail, People and Calendar
+/// share them). Only these are written out: plain words that aren't one
+/// of them could still carry anything (code review R5-06).
+const KNOWN_REASONS: &[&str] = &[
+    "accessNotConfigured",
+    "authError",
+    "backendError",
+    "badRequest",
+    "conflict",
+    "dailyLimitExceeded",
+    "deleted",
+    "domainPolicy",
+    "duplicate",
+    "failedPrecondition",
+    "forbidden",
+    "insufficientPermissions",
+    "internalError",
+    "invalid",
+    "invalidArgument",
+    "invalidParameter",
+    "invalidQuery",
+    "limitExceeded",
+    "notFound",
+    "parseError",
+    "quotaExceeded",
+    "rateLimitExceeded",
+    "required",
+    "serviceUnavailable",
+    "unauthorized",
+    "userRateLimitExceeded",
+];
+
+/// Google's reason codes ("rateLimitExceeded", "backendError"): the known
+/// ones as they are, anything else as "other".
+fn reasons(e: &ErrorEnvelope) -> Vec<&'static str> {
+    let mut out: Vec<&'static str> = Vec::new();
+    for item in &e.error.errors {
+        if item.reason.is_empty() {
+            continue;
+        }
+        let reason = KNOWN_REASONS
+            .iter()
+            .find(|k| **k == item.reason)
+            .copied()
+            .unwrap_or("other");
+        if !out.contains(&reason) {
+            out.push(reason);
+        }
+    }
+    out
 }
 
 /// The message for a returned 4xx error, which the owner sees and the app

@@ -3094,6 +3094,10 @@ leads, each checked before acting:
       reader asked both trailing-dot trackers in the fixture). The dot
       goes before comparing now; tested in `<img>`, CSS and a subdomain,
       and in the browser fixture
+- [x] R5-06: R4-03's "plain-word" reason codes still let any short
+      word through (a proxy could put text there). Reproduced over mock
+      HTTP. Only Google's documented reason codes are written out now;
+      anything else is "other"
 
 ## Milestone 14: Open the code
 

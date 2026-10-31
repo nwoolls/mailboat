@@ -322,7 +322,12 @@ async fn google_shaped_answers_keep_only_reason_codes() {
 
     let echo = serde_json::json!({ "error": {
         "message": "Blocked https://example.com/messages/msgid123?q=secretword Authorization: Bearer TOKEN_MARKER",
-        "errors": [{ "reason": "backendError" }, { "reason": "see https://example.com/?q=secretword" }]
+        "errors": [
+            { "reason": "backendError" },
+            { "reason": "see https://example.com/?q=secretword" },
+            // R5-06: plain words, but not one of Google's codes.
+            { "reason": "CONFIDENTIALMAILMARKER" }
+        ]
     }})
     .to_string();
     for status in [500, 502, 503, 504, 429] {
@@ -366,6 +371,7 @@ async fn google_shaped_answers_keep_only_reason_codes() {
                     "TOKEN_MARKER",
                     "Bearer",
                     "example.com",
+                    "CONFIDENTIALMAILMARKER",
                 ] {
                     assert!(
                         !text.contains(secret),
