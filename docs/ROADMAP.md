@@ -3104,16 +3104,40 @@ leads, each checked before acting:
   missed, so that image loads when its email is opened, as it would
   without prefetch. It's an image the owner's setting already loads,
   never a tracker; downloading every image again would cost far more
-- Owner decision, still open: Codex's tools. Round 5 added: Codex has no
-  allow-list like Claude's `--tools ""`; the reviewer read in its
-  documentation that opting out of `unified_exec` is ignored (only `shell_tool=false` stopped
-  commands in Round 4's run); a made-up `-c features.…=false` is
-  accepted silently; neither `HOME` nor `CODEX_HOME` alone keeps the
-  owner's skills out, and changing them moves the sign-in; the child
-  inherits the app's environment except `PATH`. Choices: (a) keep it,
-  rechecking after each Codex update; (b) a check at start-up that the
-  installed version's switches match a reviewed list, refusing Codex if
-  not; (c) turn Codex off until it can promise no tools
+- Owner decision (2026-10-31), Codex's tools: keep ChatGPT through
+  Codex, fenced in layers, since Codex can't promise no tools. Round 5
+  evidence: no allow-list like Claude's `--tools ""`; switches aren't a
+  full tool list and some opt-outs are ignored (`unified_exec` and seven
+  more stay on); `codex debug prompt-input` shows the request's messages,
+  not its separate tool list (a second opinion, which corrected an
+  earlier claim here). Tested in Mailboat's setup (Codex 0.166.0):
+  `apply_patch` can't write, a `spawn_agent` helper can't run commands
+  or read files, `exec` has no network or files. The weak spot is
+  reading: Codex's read-only sandbox lets anything read the owner's
+  files, and only the absence of a read tool stops it. Server-side tools
+  (like web search) aren't stopped by any local fence. The layers:
+
+  - [ ] Reviewed list in the repo: the tools Codex offers and the
+        switches that stay on despite being turned off, with the date of
+        the review. `bun run check` stops after 31 days (only warns in
+        automated builds), and `AGENTS.md` says to ask the owner, then
+        recheck and run the live tests below
+  - [ ] Every request turns off every switch Codex reports on (not only
+        a named list), and Codex gets a minimal environment (home, `PATH`,
+        temp folder), not the app's
+  - [ ] macOS: Mailboat starts Codex inside its own sandbox profile that
+        blocks reading the owner's home folder except Codex's own (its
+        sign-in), so a new read tool can't reach private files. Windows
+        has no equivalent; there, reading depends on the checks
+  - [ ] Checked at start-up, every few hours, when the `codex` program
+        changes on disk, and before a request if the last check is over an
+        hour old: a tool not on the reviewed list, a switch that stays on
+        that isn't on it, or a check that fails pauses ChatGPT with a
+        warning in Settings → AI (Check again; Use anyway, until the app
+        quits or something else new appears). No version check
+  - [ ] Live tests for the monthly recheck (ignored by default, harmless
+        input): Codex can't write a file, run a command, reach the
+        network or read a test file planted in the home folder
 - Suggested, not scheduled (owner to decide): browser tests that fail
   clearly when the test page doesn't start (a "ready" signal, page and
   module errors collected), so a failure like Round 2's shows its cause.
@@ -3491,6 +3515,14 @@ again until the next spike.*
       Adapted colors forgets it. It was per message, until the app quit
 
 ## Later / unscheduled
+
+- [ ] ChatGPT through OpenAI's API with the owner's key *(owner,
+      2026-10-31, after Milestone 13 Round 5)*: tools-free by design (the
+      app sends none), unlike Codex, which can only be fenced in. Paid per
+      request, separately from ChatGPT Plus; the key in the keychain like
+      Google's tokens (`AGENTS.md` already allows API keys as a later
+      provider). Once it works, Codex can go. The same could take a
+      Claude API key
 
 - [ ] Windows: the unified folders in the taskbar icon's right-click menu
       *(owner enhancement, 2026-10-29, with a screenshot)*: the menu shows
