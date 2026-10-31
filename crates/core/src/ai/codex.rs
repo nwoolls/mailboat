@@ -292,7 +292,12 @@ impl Reader {
     }
 
     pub fn finish(self, exit: process::Exit) -> Result<Answer> {
-        if self.answer.text.is_empty() {
+        // Text that came before a failure isn't an answer (R7-01): the
+        // turn failed, or never finished and Codex exited with an error.
+        // A completed turn counts whatever came before it (Codex also
+        // reports passing problems, like falling back from WebSockets).
+        let failed = !self.done && (self.error.is_some() || !exit.success);
+        if self.answer.text.is_empty() || failed {
             let raw = self.error.unwrap_or(exit.stderr);
             let lower = raw.to_lowercase();
             return Err(CoreError::Ai(
@@ -445,6 +450,46 @@ mod tests {
         assert_eq!(a.text, "Thursday works for me.");
         assert_eq!(a.usage.input_tokens, 14740);
         assert_eq!(a.usage.output_tokens, 36);
+    }
+
+    /// Code review R7-01: text before a failure isn't an answer. A turn
+    /// that said something and then failed, or never finished and exited
+    /// with an error, was returned as if complete (and so counted as the
+    /// "real answer" the monthly live tests need).
+    #[test]
+    fn text_before_a_failure_is_not_an_answer() {
+        let said = r#"{"type":"item.completed","item":{"type":"agent_message","text":"I will try the requested check."}}"#;
+        let mut r = Reader::default();
+        r.line(said);
+        r.line(r#"{"type":"turn.failed","error":{"message":"transport failure"}}"#);
+        let failed = r.finish(process::Exit {
+            success: false,
+            stderr: "failure".into(),
+        });
+        assert!(failed.is_err(), "{failed:?}");
+
+        let mut r = Reader::default();
+        r.line(said);
+        let unfinished = r.finish(process::Exit {
+            success: false,
+            stderr: "crashed".into(),
+        });
+        assert!(unfinished.is_err(), "{unfinished:?}");
+    }
+
+    #[test]
+    fn a_passing_problem_before_a_completed_turn_is_fine() {
+        let mut r = Reader::default();
+        r.line(r#"{"type":"error","message":"Falling back from WebSockets to HTTPS transport."}"#);
+        r.line(
+            r#"{"type":"item.completed","item":{"type":"agent_message","text":"Thursday works."}}"#,
+        );
+        r.line(r#"{"type":"turn.completed","usage":{}}"#);
+        let a = r.finish(process::Exit {
+            success: true,
+            stderr: String::new(),
+        });
+        assert_eq!(a.unwrap().text, "Thursday works.");
     }
 
     #[test]

@@ -3253,6 +3253,16 @@ fencing; seven findings and six questions, each checked before acting:
   hangs (question 5). The reviewer's one browser time-out came with slow
   page loads in its sandbox; full runs here passed 66 of 66
 
+Round 7 (2026-10-31): the reviewer checked Round 6's fixes; three
+findings and three questions, each checked before acting:
+
+- [x] R7-01: a Codex turn that said something and then failed (or never
+      finished and exited with an error) was returned as a complete
+      answer, in the app and as the "real answer" the monthly live tests
+      need. Reproduced through the real reader. Text before a failure is
+      now an error; a turn that completes still counts, whatever passing
+      problems Codex reported before it
+
 ## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an
