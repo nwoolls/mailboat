@@ -3072,6 +3072,15 @@ leads, each checked before acting:
       `query::list_threads_outside_spam_trash`, where membership, order
       and paging come from emails outside Spam and Trash, and a read
       shows only their labels. The app's own lists are unchanged
+- [x] R5-03: a conversation Gmail's search matched kept that hit after
+      one of its emails moved to Trash or Spam, so a search without them
+      still found it, perhaps only by that email's words. Reproduced
+      through the real loader. Gmail's hits don't say which email
+      matched, so without Spam and Trash a hit now counts only for a
+      conversation with nothing there; a mixed one must match on its
+      visible emails in the cache. The cost: a mixed conversation found
+      only by Gmail's search (its words in a body not downloaded yet)
+      isn't shown
 
 ## Milestone 14: Open the code
 

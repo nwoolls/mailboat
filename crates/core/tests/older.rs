@@ -334,3 +334,56 @@ async fn searching_spam_and_trash_asks_gmail_for_them() {
         assert!(cursor.exhausted);
     }
 }
+
+/// Code review R5-03: a conversation Gmail's search matched kept that hit
+/// after one of its emails went to Trash or Spam, so a search without them
+/// still found it, perhaps only by that email's words (Gmail's hits don't
+/// say which email matched). A hit now counts only for conversations with
+/// nothing in Spam or Trash; mixed ones must match on their visible emails.
+#[tokio::test]
+async fn gmails_hit_stops_counting_once_an_email_in_it_is_hidden() {
+    use mail_core::db::query;
+    for hidden in ["TRASH", "SPAM"] {
+        let server = MockServer::start().await;
+        Mock::given(path("/gmail/v1/users/me/threads"))
+            .and(query_param("q", "Zebra"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "threads": [{ "id": "t1" }]
+            })))
+            .mount(&server)
+            .await;
+        let db = Db::open_in_memory().unwrap();
+        let a = add_account(&db, "a");
+        cache(&db, a, "thread_t1.json");
+        let view = MailView::Search {
+            text: "Zebra".into(),
+            with_spam_trash: false,
+        };
+        let found = |db: &Db| {
+            query::list_threads(
+                &db.conn(),
+                &ListQuery {
+                    accounts: AccountFilter::All,
+                    view: view.clone(),
+                    cursor: None,
+                    limit: 50,
+                },
+            )
+            .unwrap()
+            .threads
+            .len()
+        };
+        let (gmail, _) = client(&server.uri());
+        let mut cursor = OlderCursor::default();
+        load_older(&db, &gmail, a, &view, 25, &mut cursor, &|| {})
+            .await
+            .unwrap();
+        assert_eq!(found(&db), 1, "{hidden}: Gmail's hit shows");
+
+        // One of its two emails moves to Trash (or Spam); the other stays.
+        let mut thread: Thread = serde_json::from_str(&fixture("thread_t1.json")).unwrap();
+        thread.messages[1].label_ids = vec![hidden.into()];
+        store::upsert_thread(&mut db.conn(), a, &parse::thread_to_incoming(&thread)).unwrap();
+        assert_eq!(found(&db), 0, "{hidden}: the hit no longer counts");
+    }
+}

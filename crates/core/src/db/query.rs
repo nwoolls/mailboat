@@ -232,11 +232,25 @@ fn list(conn: &Connection, query: &ListQuery, visible: bool) -> Result<ThreadPag
             // Without Spam and Trash, as in Gmail, only an email outside
             // them can match: a conversation isn't found by words in its
             // trashed reply (code review R4-01).
-            let hits = "t.id IN (SELECT h.thread_id FROM search_hits h WHERE h.query = ?)";
-            let outside = if *with_spam_trash {
-                String::new()
+            //
+            // Gmail's hits don't say which email matched, and a hit stays
+            // after an email moves to Trash, so without Spam and Trash a
+            // hit counts only for conversations with nothing there; mixed
+            // ones must match on their visible emails (code review R5-03).
+            let (hits, outside) = if *with_spam_trash {
+                (
+                    "t.id IN (SELECT h.thread_id FROM search_hits h WHERE h.query = ?)".to_string(),
+                    String::new(),
+                )
             } else {
-                format!(" AND {OUTSIDE_SPAM_TRASH}")
+                (
+                    format!(
+                        "(t.id IN (SELECT h.thread_id FROM search_hits h WHERE h.query = ?)
+                          AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = t.id
+                                          AND NOT {OUTSIDE_SPAM_TRASH}))"
+                    ),
+                    format!(" AND {OUTSIDE_SPAM_TRASH}"),
+                )
             };
             match fts_query(text) {
                 Some(fts) => {
@@ -246,7 +260,7 @@ fn list(conn: &Connection, query: &ListQuery, visible: bool) -> Result<ThreadPag
                     ));
                     values.push(Value::Text(fts));
                 }
-                None => clauses.push(hits.into()),
+                None => clauses.push(hits),
             }
             values.push(Value::Text(search_key(text, *with_spam_trash)));
         }
