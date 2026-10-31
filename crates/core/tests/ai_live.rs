@@ -426,24 +426,69 @@ async fn codex_request_tools_are_as_reviewed() {
     );
 }
 
+/// OpenAI's refusal of this model for a ChatGPT account, not any other
+/// "not supported" (R8 question 1): a different failure mustn't pass as
+/// proof the model is still refused.
+fn refuses(error: &str, model: &str) -> bool {
+    error.contains(&format!("'{model}' model is not supported"))
+        && error.contains("ChatGPT account")
+}
+
+#[test]
+fn only_openais_refusal_of_that_model_counts() {
+    let real = "ChatGPT failed: The 'gpt-5.5' model is not supported when using Codex with a ChatGPT account.";
+    assert!(refuses(real, "gpt-5.5"));
+    assert!(!refuses(real, "gpt-6-luna"));
+    assert!(!refuses(
+        "ChatGPT failed: transport not supported",
+        "gpt-5.5"
+    ));
+    assert!(!refuses("ChatGPT failed: connection refused", "gpt-5.5"));
+}
+
 /// Live: models the review lists as refused with a ChatGPT sign-in
 /// (`refused_models`, whose tools the capture skips) are still refused.
 /// If one is accepted now, its tools must be reviewed (AGENTS.md).
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn codex_refused_models_are_still_refused() {
+    use std::ops::ControlFlow;
+    let codex = programs().codex.expect("codex installed");
     for model in ai::codex_review::review().refused_models {
-        let mut programs = programs();
-        programs.codex_models.writing = Some(model.clone());
+        // Straight to Codex, as the app would ask (every switch off, the
+        // minimal environment and the fence): the app itself never asks a
+        // refused model (R8 questions 1–2), so it can't be used here.
+        let off = ai::codex::switches_off(&ai::codex::switches(&codex, &[]).await.unwrap());
+        let choice = ai::codex::Choice {
+            model: Some(model.clone()),
+            effort: "low",
+        };
         let prompt = Prompt {
             instructions: "Reply with the word OK.".into(),
             input: "OK?".into(),
             quality: Quality::Best,
             max_tokens: None,
         };
-        let answer = ai::ask(&programs, AiProvider::ChatGpt, &prompt, &|_| {}).await;
+        let mut reader = ai::codex::Reader::default();
+        let exit = ai::process::run_lines_with(
+            &codex,
+            &ai::codex::args(&choice, &off),
+            &ai::codex::stdin(&prompt),
+            ai::process::Env::Minimal,
+            |line| {
+                reader.line(line);
+                Ok(if reader.done {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                })
+            },
+        )
+        .await
+        .unwrap();
+        let answer = reader.finish(exit);
         println!("{model}: {answer:?}");
-        let refused = matches!(&answer, Err(e) if e.to_string().contains("not supported"));
+        let refused = matches!(&answer, Err(e) if refuses(&e.to_string(), &model));
         assert!(
             refused,
             "{model} is no longer refused: review its tools with the owner"

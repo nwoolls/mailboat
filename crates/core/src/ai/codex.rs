@@ -343,6 +343,16 @@ async fn run(
     // Asked each time (two quick `features list`s, about 20ms), so a
     // switch an update added is off from the first request after it, and
     // one that won't turn off pauses ChatGPT before anything is sent.
+    // A model the review lists as refused for ChatGPT accounts is never
+    // asked for, whatever Codex is signed in with: its tools were never
+    // reviewed (R8 questions 1–2).
+    if let Some(model) = &chosen.model {
+        if super::codex_review::review().refused_models.contains(model) {
+            return Err(CoreError::Ai(format!(
+                "ChatGPT's model {model} hasn't been reviewed for use here; choose another in Settings → AI."
+            )));
+        }
+    }
     let (unreviewed, off) = checked(program).await?;
     if !unreviewed.iter().all(|u| accepted.contains(u)) {
         return Err(paused(&unreviewed));
@@ -795,6 +805,51 @@ shell_tool                               stable             false
         let result = ask(&stub, &prompt, &Models::default(), &|_| {}).await;
         assert!(result.is_err(), "{result:?}");
         assert!(!ran.exists(), "nothing was sent");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// R8 questions 1–2: a model the review lists as refused
+    /// (`refused_models`) is never asked for, as the fast model or for
+    /// writing, whatever Codex is signed in with: its tools were never
+    /// reviewed. Nothing is sent.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_refused_model_is_never_asked() {
+        let refused = super::super::codex_review::review().refused_models;
+        let model = refused.first().expect("the review lists one").clone();
+        let dir = std::env::temp_dir().join(format!("codex-refused-{}", fastrand::u64(..)));
+        let stub = stubborn_codex(&dir);
+        let prompt = |quality| Prompt {
+            instructions: "Summarize.".into(),
+            input: "Hi".into(),
+            quality,
+            max_tokens: None,
+        };
+        let accepted = vec!["brand_new_tool".to_string()];
+        for (quality, models) in [
+            (
+                Quality::Fast,
+                Models {
+                    fast: Some(model.clone()),
+                    accepted: accepted.clone(),
+                    ..Models::default()
+                },
+            ),
+            (
+                Quality::Best,
+                Models {
+                    writing: Some(model.clone()),
+                    accepted: accepted.clone(),
+                    ..Models::default()
+                },
+            ),
+        ] {
+            let e = ask(&stub, &prompt(quality), &models, &|_| {})
+                .await
+                .unwrap_err();
+            assert!(e.to_string().contains(&model), "{e}");
+            assert!(!dir.join("ran").exists(), "nothing was sent");
+        }
         let _ = std::fs::remove_dir_all(&dir);
     }
 

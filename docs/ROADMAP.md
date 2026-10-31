@@ -3323,6 +3323,15 @@ findings and four questions, each checked before acting:
       with no message. Every real run ends a good answer with
       `turn.completed`, so an answer now needs one; a failure with no
       details says "ChatGPT failed without saying why"
+- [x] Questions 1 and 2: the refused-model record (`gpt-5.5`) relied on
+      OpenAI refusing it, and the live check counted any "not supported"
+      error as that refusal. With Codex signed in some other way (an API
+      key), or the wording changed, that was weaker than recorded. The
+      app now never asks for a refused model itself, as the fast or the
+      writing model, whatever Codex is signed in with (tested with a
+      stand-in `codex`: nothing is sent); and the live check, which now
+      asks Codex directly with the app's settings since the app won't,
+      only counts OpenAI's refusal of that model
 
 ## Milestone 14: Open the code
 
