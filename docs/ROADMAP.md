@@ -2895,7 +2895,7 @@ gone through every finding (fixed, or consciously left). After all the
 features above, so nothing goes public unreviewed; before Milestone 14,
 so problems are fixed before anyone can read the code.*
 
-- [ ] Independent code review by an agent *(owner request, 2026-10-19;
+- [x] Independent code review by an agent *(owner request, 2026-10-19;
       moved here from Later, 2026-10-25)*: a fresh agent, with none of
       the context of the agents that wrote the code, reviews the whole
       codebase for bugs, security problems (sanitizing, tokens,
@@ -2904,11 +2904,13 @@ so problems are fixed before anyone can read the code.*
       one at a time, not as fixes made straight away. Timing agreed by
       the owner (2026-10-25): after every feature above, before the code
       goes public. Scope: the whole app is suggested, to confirm when it
-      starts
-- [ ] Also in scope, as the code is about to be public: secrets or
+      starts. Done in nine rounds (2026-10-30 to 10-31, below); the owner
+      called it done after Round 9 (2026-10-31), with the remaining
+      low-risk items recorded there
+- [x] Also in scope, as the code is about to be public: secrets or
       personal details anywhere in the tree, the AI and AI-apps (MCP)
       paths that can send mail out, and the new credentials handling
-- [ ] Fixes for the findings the owner chooses, each in its own commit
+- [x] Fixes for the findings the owner chooses, each in its own commit
 
 ### Review rounds
 
