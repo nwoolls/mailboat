@@ -202,12 +202,23 @@ old. When it does:
 
 1. Stop and ask the owner before going on. The recheck makes a few small
    live requests on their ChatGPT subscription, with harmless input.
-2. With their OK: capture the tools in Codex's real request with every
-   switch off (against a local stand-in server, with an empty Codex
-   folder), list the switches that stay on after being turned off, and
-   run the live tests (Codex must not write a file, run a command, reach
-   the network or read a test file planted in the home folder). Never
-   send real mail, and never read or copy Codex's sign-in.
+2. With their OK, run the recheck (ignored tests, in
+   `crates/core/tests/ai_live.rs`):
+
+   ```
+   cargo test -p mail-core --test ai_live codex_ -- --ignored --nocapture --test-threads=1
+   ```
+
+   - `codex_switches_are_as_reviewed` (offline): no switch stays on that
+     the review doesn't list.
+   - `codex_request_tools_are_as_reviewed` (offline): the tools in
+     Codex's real request, captured by a local stand-in server with an
+     empty Codex folder, are the reviewed ones.
+   - `codex_cannot_*` (four small live requests): Codex can't write a
+     file, run a command, reach the network or read a file planted in
+     the home folder.
+
+   Never send real mail, and never read or copy Codex's sign-in.
 3. Anything new or any test that fails: tell the owner what changed and
    what it can do before accepting it. If nothing changed, or the owner
    accepts the change, update `codex_review.json` (date, Codex version,

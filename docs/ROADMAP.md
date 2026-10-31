@@ -3155,14 +3155,17 @@ leads, each checked before acting:
         recheck's job. Accepted: a new server-side tool, on by default and
         with no switch, goes unnoticed until the next recheck. Tested
         against a stand-in `codex` whose new switch won't turn off
-  - [ ] Monthly recheck tooling (run by an agent with the owner's OK,
+  - [x] Monthly recheck tooling (run by an agent with the owner's OK,
         never by the app): Codex's real request captured against a local
         stand-in server with an empty Codex folder, its tools compared to
         the reviewed list (with every switch off, Codex 0.166.0 sends one:
         `request_user_input`); and live tests over the owner's ChatGPT
         sign-in, on harmless input: Codex can't write a file, run a
         command, reach the network or read a test file planted in the home
-        folder
+        folder. Ignored tests in `crates/core/tests/ai_live.rs`
+        (`codex_*`); first run 2026-10-31, all six passed: the request
+        carries only `request_user_input`, and every attempt failed with
+        "code-mode host is disabled"
 - Suggested, not scheduled (owner to decide): browser tests that fail
   clearly when the test page doesn't start (a "ready" signal, page and
   module errors collected), so a failure like Round 2's shows its cause.
