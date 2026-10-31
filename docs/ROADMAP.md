@@ -3081,6 +3081,13 @@ leads, each checked before acting:
       visible emails in the cache. The cost: a mixed conversation found
       only by Gmail's search (its words in a body not downloaded yet)
       isn't shown
+- [x] R5-05: Google's token endpoint errors kept its own text (the
+      description, an error code it made up, a value the parser quoted),
+      which reached the sync log as "sync failed: …". Reproduced for each
+      of the four. Token errors now say a fixed sentence with the
+      standard OAuth code (`invalid_grant`, `invalid_client`…), or
+      "other"; `invalid_grant` still asks to sign in again, and
+      `invalid_client` points to the client file
 
 ## Milestone 14: Open the code
 

@@ -228,3 +228,51 @@ fn a_failed_keychain_delete_keeps_the_account_to_try_again() {
     assert!(accounts::get(&db.conn(), account).is_err());
     assert_eq!(secrets.get(&refresh_token_key("sub-r")).unwrap(), None);
 }
+
+/// Code review R5-05: a token endpoint's failure text (its description,
+/// an error code it made up, a value quoted by the parser) went into the
+/// error and so into the sync log ("sync failed: …"). Only fixed text
+/// goes now, with the standard OAuth code when it's one.
+#[tokio::test]
+async fn token_endpoint_text_stays_out_of_the_error() {
+    let marker = "CONFIDENTIALMAILMARKER";
+    let answers = [
+        (
+            502,
+            serde_json::json!({ "error": "server_error", "error_description": marker }),
+        ),
+        (
+            400,
+            serde_json::json!({ "error": "invalid_grant", "error_description": marker }),
+        ),
+        (
+            400,
+            serde_json::json!({ "error": marker, "error_description": "x" }),
+        ),
+        (
+            200,
+            serde_json::json!({ "access_token": "a", "token_type": "Bearer", "expires_in": marker }),
+        ),
+    ];
+    for (status, body) in answers {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/token"))
+            .respond_with(ResponseTemplate::new(status).set_body_json(body.clone()))
+            .mount(&server)
+            .await;
+        let secrets = Arc::new(MemoryStore::default());
+        secrets.set(&refresh_token_key("sub-e"), "r").unwrap();
+        let tokens = AccountTokens::new(reqwest::Client::new(), config(&server), secrets, "sub-e");
+        let e = tokens.access_token().await.unwrap_err();
+        let text = e.to_string();
+        assert!(!text.contains(marker), "HTTP {status} {body}: {text}");
+        if body["error"] == "invalid_grant" {
+            assert!(
+                matches!(e, CoreError::Auth(_)),
+                "still asks to sign in again: {e:?}"
+            );
+            assert!(text.contains("invalid_grant"), "{text}");
+        }
+    }
+}

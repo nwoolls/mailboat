@@ -175,27 +175,37 @@ fn convert(token: oauth2::basic::BasicTokenResponse) -> TokenResponse {
     }
 }
 
-/// Maps token-endpoint failures onto the app's error kinds.
+/// Maps token-endpoint failures onto the app's error kinds, in fixed
+/// words: the endpoint's description, an error code it made up and a
+/// value the parser quotes all stay out, as this reaches the sync log
+/// (code review R5-05). The standard OAuth code is kept.
 fn token_error(e: RequestTokenError<HttpError, oauth2::basic::BasicErrorResponse>) -> CoreError {
     match e {
         RequestTokenError::ServerResponse(resp) => {
-            let message = format!(
-                "{}: {}",
-                resp.error(),
-                resp.error_description().cloned().unwrap_or_default()
-            );
+            let code = match resp.error() {
+                BasicErrorResponseType::InvalidGrant => "invalid_grant",
+                BasicErrorResponseType::InvalidClient => "invalid_client",
+                BasicErrorResponseType::InvalidRequest => "invalid_request",
+                BasicErrorResponseType::InvalidScope => "invalid_scope",
+                BasicErrorResponseType::UnauthorizedClient => "unauthorized_client",
+                BasicErrorResponseType::UnsupportedGrantType => "unsupported_grant_type",
+                BasicErrorResponseType::Extension(_) => "other",
+            };
             // invalid_grant = refresh token revoked/expired; sign in again.
             if *resp.error() == BasicErrorResponseType::InvalidGrant {
-                CoreError::Auth(message)
+                CoreError::Auth(format!("Google refused the sign-in ({code})"))
+            } else if *resp.error() == BasicErrorResponseType::InvalidClient {
+                CoreError::Config(format!(
+                    "Google doesn't recognise this OAuth client ({code}); check the client file"
+                ))
             } else {
-                CoreError::Config(format!("token request rejected: {message}"))
+                CoreError::Config(format!("token request rejected ({code})"))
             }
         }
         RequestTokenError::Request(e) => CoreError::Network(e.to_string()),
-        RequestTokenError::Parse(e, _) => {
-            CoreError::Other(format!("unexpected token response: {e}"))
+        RequestTokenError::Parse(_, _) | RequestTokenError::Other(_) => {
+            CoreError::Other("unexpected token response".into())
         }
-        RequestTokenError::Other(e) => CoreError::Other(e),
     }
 }
 
