@@ -3038,6 +3038,26 @@ before acting:
       `me.com`, `key.example`…). They're made up, no real person's, but
       reserved domains (`example.com`) are the safer convention for a
       public repository. No credentials or real mail were found
+- Question, the AI tools really off: checked by running each tool once
+  with the app's arguments, from an empty folder, on harmless input
+  (2026-10-31; Claude Code 2.1.314, Codex 0.166.0). Claude reported no
+  tools and no MCP servers (`--tools ""` lists what's allowed, so new
+  tools stay off); three of its built-in plugins still load, with
+  nothing for the model to call them with. Codex ran no command when
+  asked to (its command tool reports "on" even with
+  `features.unified_exec=false`, but `shell_tool=false` takes it away).
+  Still open, for the owner: Codex's list turns named tools off, so a
+  tool added later and on by default wouldn't be, and Codex ignores
+  names it doesn't know; it also reads the owner's skills
+  (`~/.agents/skills`) into its context. Recheck after Codex updates
+- Question, the client file read before its size is checked: left as
+  is. The owner picks the file; Rust refuses anything over 64 KiB; a
+  huge file dropped by mistake is only slow to refuse
+- Round 2's 57 failed browser tests: not found. The reviewer's lead (the
+  harness not mounting, as one passing test only checked for absent
+  text) fits, and the reviewer's runs once timed out loading pages; no
+  cause was shown. A harness-ready check would make it visible next
+  time
 
 ## Milestone 14: Open the code
 
