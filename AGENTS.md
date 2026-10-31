@@ -220,7 +220,10 @@ old. When it does:
      Codex's real request, captured by a local stand-in server with an
      empty Codex folder, are the reviewed ones, for every model on
      Codex's list (hidden ones too, as the app reads the list and as a
-     fresh install would) and for Codex's default.
+     fresh install would), the chosen writing model (set
+     `AI_LIVE_CODEX_WRITING_MODEL` as above) and Codex's default. To list
+     models as the app does, Codex opens its own folder, sign-in file
+     included; the test never reads or copies it.
    - `codex_refused_models_are_still_refused` (one small live request
      per model, straight to Codex with the app's settings, since the app
      never asks a refused model): OpenAI still refuses each model the

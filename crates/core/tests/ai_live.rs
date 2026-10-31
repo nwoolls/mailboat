@@ -364,14 +364,73 @@ async fn captured_tools(codex: &std::path::Path, model: Option<&str>) -> Vec<Str
     tools
 }
 
+/// The models in one `codex debug models` answer, hidden ones too, or why
+/// the list can't be trusted: a failed command, an answer that isn't the
+/// list, or an empty one (R8-03: one bad list quietly left the check
+/// covering only the other).
+fn catalog_slugs(succeeded: bool, stdout: &[u8]) -> Result<Vec<String>, String> {
+    if !succeeded {
+        return Err("`codex debug models` failed".into());
+    }
+    let list: serde_json::Value =
+        serde_json::from_slice(stdout).map_err(|e| format!("not Codex's model list: {e}"))?;
+    let models = list["models"]
+        .as_array()
+        .ok_or("Codex's answer has no model list")?;
+    let slugs: Vec<String> = models
+        .iter()
+        .filter_map(|m| m["slug"].as_str().map(String::from))
+        .collect();
+    if slugs.is_empty() {
+        return Err("Codex's model list is empty".into());
+    }
+    Ok(slugs)
+}
+
+/// What the capture must cover: every model on both lists, plus the
+/// writing model chosen in Settings → AI even if Codex no longer lists it
+/// (R8-02: the app keeps asking a chosen model by name). Each once.
+fn models_to_capture(lists: &[Vec<String>], writing: Option<&str>) -> Vec<String> {
+    let mut all: Vec<String> = Vec::new();
+    for slug in lists.iter().flatten().map(String::as_str).chain(writing) {
+        if !all.iter().any(|s| s == slug) {
+            all.push(slug.to_string());
+        }
+    }
+    all
+}
+
+#[test]
+fn the_capture_covers_both_lists_and_the_chosen_model_or_fails() {
+    assert!(catalog_slugs(false, br#"{"models":[{"slug":"a"}]}"#).is_err());
+    assert!(catalog_slugs(true, b"fresh catalog failed").is_err());
+    assert!(catalog_slugs(true, br#"{"other":1}"#).is_err());
+    assert!(catalog_slugs(true, br#"{"models":[]}"#).is_err());
+    assert_eq!(
+        catalog_slugs(true, br#"{"models":[{"slug":"a","visibility":"hide"}]}"#).unwrap(),
+        ["a"]
+    );
+    let lists = vec![
+        vec!["a".to_string(), "b".to_string()],
+        vec!["b".to_string(), "c".to_string()],
+    ];
+    assert_eq!(
+        models_to_capture(&lists, Some("gone")),
+        ["a", "b", "c", "gone"]
+    );
+    assert_eq!(models_to_capture(&lists, Some("a")), ["a", "b", "c"]);
+}
+
 /// Every model in Codex's model list, hidden ones too (a model chosen for
 /// writing stays chosen after it's hidden), as the app reads the list
 /// (from Codex's folder) and as a fresh install would (an empty one: it
-/// can differ, R7 question 1). Read offline; never the sign-in.
-fn all_codex_models(codex: &std::path::Path) -> Vec<String> {
-    let mut slugs = Vec::new();
+/// can differ, R7 question 1). Offline. Codex opens its own folder to
+/// answer, sign-in file included, as it does when the app asks (R8-01);
+/// the test itself never reads or copies it.
+fn all_codex_models(codex: &std::path::Path) -> Vec<Vec<String>> {
     let empty = std::env::temp_dir().join(format!("codex-models-{}", fastrand::u64(..)));
     std::fs::create_dir_all(&empty).unwrap();
+    let mut lists = Vec::new();
     for codex_home in [None, Some(&empty)] {
         let mut cmd = std::process::Command::new(codex);
         cmd.args(["debug", "models"]);
@@ -379,29 +438,32 @@ fn all_codex_models(codex: &std::path::Path) -> Vec<String> {
             cmd.env("CODEX_HOME", home);
         }
         let out = cmd.output().unwrap();
-        let list: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap_or_default();
-        for m in list["models"].as_array().into_iter().flatten() {
-            if let Some(slug) = m["slug"].as_str() {
-                if !slugs.iter().any(|s| s == slug) {
-                    slugs.push(slug.to_string());
-                }
-            }
-        }
+        let which = if codex_home.is_some() {
+            "a fresh install's"
+        } else {
+            "the app's"
+        };
+        lists.push(
+            catalog_slugs(out.status.success(), &out.stdout)
+                .unwrap_or_else(|e| panic!("incomplete: {which} model list: {e}")),
+        );
     }
     let _ = std::fs::remove_dir_all(&empty);
-    slugs
+    lists
 }
 
-/// Every model the app can ask carries only reviewed tools: each in
-/// `all_codex_models`, and Codex's default when no model is named (the
-/// writing model when none is chosen). Code review R6-01: this checked one
+/// Every model the app can ask carries only reviewed tools: each on
+/// either list, the chosen writing model, and Codex's default when no
+/// model is named (the writing model when none is chosen). Code review R6-01: this checked one
 /// fixed model; R7-02: then only listed ones, from one list. Offline.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn codex_request_tools_are_as_reviewed() {
     let codex = programs().codex.expect("codex installed");
-    let models = all_codex_models(&codex);
-    assert!(!models.is_empty(), "Codex lists no models");
+    let writing = std::env::var("AI_LIVE_CODEX_WRITING_MODEL")
+        .ok()
+        .filter(|m| !m.trim().is_empty());
+    let models = models_to_capture(&all_codex_models(&codex), writing.as_deref());
     let review = ai::codex_review::review();
     let reviewed = review.tools;
     let mut unreviewed = Vec::new();

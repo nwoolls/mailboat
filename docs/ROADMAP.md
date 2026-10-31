@@ -3332,6 +3332,18 @@ findings and four questions, each checked before acting:
       stand-in `codex`: nothing is sent); and the live check, which now
       asks Codex directly with the app's settings since the app won't,
       only counts OpenAI's refusal of that model
+- [x] R8-02 and R8-03: the capture skipped a chosen writing model that
+      Codex no longer lists at all (the app keeps asking it by name), and
+      one model list that failed or came back empty went unnoticed while
+      the other covered for it. The chosen model
+      (`AI_LIVE_CODEX_WRITING_MODEL`) is now always captured, and a list
+      that fails, isn't Codex's, or is empty stops the check as
+      incomplete (offline tests for both)
+- [x] R8-01 (partly confirmed): the capture's comment said Codex's model
+      list is read "never the sign-in", but Codex opens its own sign-in
+      file to answer, as it does when the app asks; the test never reads
+      or copies it. The wording now says exactly that. Reading the list
+      the way the app does is the point, so no code changed
 
 ## Milestone 14: Open the code
 
