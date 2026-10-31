@@ -2942,6 +2942,21 @@ Round 1 (2026-10-30), all seven findings confirmed and fixed:
       request in the reader's frame (the sanitized output and the CSP are
       tested in Rust; nothing yet watches the frame's requests)
 
+Round 2 (2026-10-30): no new findings; the reviewer recommended stopping.
+Of the gaps it listed, one was fixed, the rest checked and left:
+
+- [x] R1-06 gap: an error answer that wasn't Google's JSON (a proxy's
+      page) had its first 200 characters copied into the error text and
+      the sync log. Only Google's own message is kept now
+- Left as is, with reasons: a draft's old copy that can't be deleted
+  after a move stays visible in that account's Drafts; a sent message
+  that couldn't be cached shows at the next sync, as when Gmail can't be
+  asked for it; nothing outside the cascading tables keeps an account's
+  ID (in-memory clients, cursors and its attachments folder go on
+  removal); the lint warnings are style only (the effect-dependency one
+  reads only a ref and state setters); the browser tests pass here (58),
+  so the reviewer's timeouts were its environment
+
 ## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an

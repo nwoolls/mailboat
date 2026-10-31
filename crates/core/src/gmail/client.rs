@@ -885,10 +885,13 @@ fn error_detail(body: &str) -> String {
     }
 }
 
+/// Google's own message from an error answer. Anything else (a proxy's or
+/// captive portal's page) isn't copied: it can echo the request, and this
+/// text reaches the sync log.
 fn error_message(body: &str) -> String {
     serde_json::from_str::<ErrorEnvelope>(body)
         .map(|e| e.error.message)
-        .unwrap_or_else(|_| body.chars().take(200).collect())
+        .unwrap_or_else(|_| "an answer that wasn't from Gmail".into())
 }
 
 fn api_error(status: u16, body: &str) -> CoreError {
@@ -907,6 +910,16 @@ pub(crate) fn net_error(e: reqwest::Error) -> CoreError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Regression: an error answer that wasn't Google's JSON was copied
+    /// into the error text (its first 200 characters).
+    #[test]
+    fn error_answers_from_others_are_not_copied() {
+        let page = "<html>Blocked: GET /gmail/v1/users/me/messages/msgid123</html>";
+        assert!(!error_message(page).contains("msgid123"));
+        let google = r#"{"error":{"code":403,"message":"Insufficient Permission"}}"#;
+        assert_eq!(error_message(google), "Insufficient Permission");
+    }
 
     /// Regression: a request that failed kept its URL in the error text,
     /// so the sync log recorded Gmail message IDs.
