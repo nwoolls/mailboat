@@ -292,17 +292,19 @@ impl Reader {
     }
 
     pub fn finish(self, exit: process::Exit) -> Result<Answer> {
-        // Text that came before a failure isn't an answer (R7-01): the
-        // turn failed, or never finished and Codex exited with an error.
-        // A completed turn counts whatever came before it (Codex also
-        // reports passing problems, like falling back from WebSockets).
-        let failed = !self.done && (self.error.is_some() || !exit.success);
-        if self.answer.text.is_empty() || failed {
+        // An answer needs a completed turn (R7-01, R8 question 3): text
+        // before a failure, or before Codex stopped without finishing, is
+        // not one. A completed turn counts whatever came before it (Codex
+        // also reports passing problems, like falling back from
+        // WebSockets).
+        if self.answer.text.is_empty() || !self.done {
             let raw = self.error.unwrap_or(exit.stderr);
             let lower = raw.to_lowercase();
             return Err(CoreError::Ai(
                 if lower.contains("login") || lower.contains("401") || lower.contains("auth") {
                     "ChatGPT needs you to sign in again (Settings → AI).".into()
+                } else if raw.trim().is_empty() {
+                    "ChatGPT failed without saying why.".into()
                 } else {
                     format!("ChatGPT failed: {}", raw.trim())
                 },
@@ -475,6 +477,29 @@ mod tests {
             stderr: "crashed".into(),
         });
         assert!(unfinished.is_err(), "{unfinished:?}");
+    }
+
+    /// R8 question 3: an answer needs a completed turn. Text with a clean
+    /// exit but no `turn.completed`, or a `turn.failed` with no message,
+    /// counted as an answer; and a failure with no details said only
+    /// "ChatGPT failed: ".
+    #[test]
+    fn an_answer_needs_a_completed_turn() {
+        let said =
+            r#"{"type":"item.completed","item":{"type":"agent_message","text":"Partial words"}}"#;
+        let clean = || process::Exit {
+            success: true,
+            stderr: String::new(),
+        };
+        let mut r = Reader::default();
+        r.line(said);
+        assert!(r.finish(clean()).is_err(), "clean exit, no completion");
+
+        let mut r = Reader::default();
+        r.line(said);
+        r.line(r#"{"type":"turn.failed","error":{}}"#);
+        let e = r.finish(clean()).unwrap_err().to_string();
+        assert!(e.contains("without saying why"), "{e}");
     }
 
     #[test]

@@ -3318,6 +3318,11 @@ findings and four questions, each checked before acting:
       go with the email now. The test also checks the old thread straight
       after the move, so it fails if the thread's own refresh is taken out
       (before, a later store of the old thread hid that)
+- [x] Question 3: Codex's reader still took text as an answer when Codex
+      exited cleanly without finishing the turn, or reported a failure
+      with no message. Every real run ends a good answer with
+      `turn.completed`, so an answer now needs one; a failure with no
+      details says "ChatGPT failed without saying why"
 
 ## Milestone 14: Open the code
 
