@@ -158,3 +158,73 @@ async fn keychain_is_read_once_per_run() {
         "but read the keychain once"
     );
 }
+
+/// A keychain whose deletes fail (locked, or the owner said no).
+#[derive(Default)]
+struct StuckStore {
+    inner: MemoryStore,
+    stuck: std::sync::atomic::AtomicBool,
+}
+
+impl SecretStore for StuckStore {
+    fn get(&self, key: &str) -> mail_core::Result<Option<String>> {
+        self.inner.get(key)
+    }
+    fn set(&self, key: &str, value: &str) -> mail_core::Result<()> {
+        self.inner.set(key, value)
+    }
+    fn delete(&self, key: &str) -> mail_core::Result<()> {
+        if self.stuck.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(mail_core::CoreError::Keychain(
+                "the keychain said no".into(),
+            ));
+        }
+        self.inner.delete(key)
+    }
+}
+
+/// Code review R4-05: removing an account deleted it before its refresh
+/// token, so a keychain that failed left the token behind with nothing
+/// left to say which one it was. The account stays until the token goes.
+#[test]
+fn a_failed_keychain_delete_keeps_the_account_to_try_again() {
+    use mail_core::auth::tokens::remove_account;
+    use mail_core::db::{accounts, Db};
+
+    let db = Db::open_in_memory().unwrap();
+    let account = accounts::upsert(
+        &db.conn(),
+        &accounts::NewAccount {
+            google_sub: "sub-r",
+            email: "me@example.com",
+            display_name: None,
+            avatar_url: None,
+            oauth_client: "default",
+        },
+    )
+    .unwrap()
+    .id;
+    let secrets = StuckStore::default();
+    secrets.set(&refresh_token_key("sub-r"), "r").unwrap();
+    secrets
+        .stuck
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+
+    assert!(remove_account(&db, &secrets, account).is_err());
+    assert!(
+        accounts::get(&db.conn(), account).is_ok(),
+        "the account is kept"
+    );
+    assert_eq!(
+        secrets.get(&refresh_token_key("sub-r")).unwrap().as_deref(),
+        Some("r")
+    );
+
+    // Trying again once the keychain works removes both.
+    secrets
+        .stuck
+        .store(false, std::sync::atomic::Ordering::SeqCst);
+    remove_account(&db, &secrets, account).unwrap();
+    assert!(accounts::get(&db.conn(), account).is_err());
+    assert_eq!(secrets.get(&refresh_token_key("sub-r")).unwrap(), None);
+}

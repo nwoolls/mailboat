@@ -20,6 +20,22 @@ pub fn refresh_token_key(google_sub: &str) -> String {
     format!("google-refresh:{google_sub}")
 }
 
+/// Removes an account: its refresh token from the keychain first, then the
+/// account and its cached mail. In that order, so a keychain that fails
+/// leaves the account (and the Google ID the token is filed under) to try
+/// again; removing the account first left the token behind for good
+/// (code review R4-05). A token already gone counts as deleted. The
+/// database isn't held while the keychain works (it can ask the owner).
+pub fn remove_account(
+    db: &crate::db::Db,
+    secrets: &dyn SecretStore,
+    account: crate::model::AccountId,
+) -> Result<()> {
+    let sub = crate::db::accounts::google_sub(&db.conn(), account)?;
+    secrets.delete(&refresh_token_key(&sub))?;
+    crate::db::accounts::remove(&db.conn(), account)
+}
+
 pub trait SecretStore: Send + Sync {
     fn get(&self, key: &str) -> Result<Option<String>>;
     fn set(&self, key: &str, value: &str) -> Result<()>;

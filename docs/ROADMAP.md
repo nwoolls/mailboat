@@ -3017,6 +3017,13 @@ before acting:
       the browser fixture has five more trackers. In `<img>`, the
       escaped, slash-less and control-character forms were already
       removed (ammonia parses them as browsers do)
+- [x] R4-05: removing an account deleted it before its refresh token, so
+      a keychain that failed (locked, or the owner said no) left the token
+      behind with nothing left saying which it was. The token goes first
+      now (`tokens::remove_account`), and a token already gone counts as
+      deleted, so trying again works. Tested with a keychain that fails,
+      then works. After a failed removal the account stays listed, not
+      syncing until the app restarts
 
 ## Milestone 14: Open the code
 
