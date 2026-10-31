@@ -311,3 +311,72 @@ async fn proxy_answers_stay_out_of_diagnostics() {
         }
     }
 }
+
+/// Code review R4-03: an answer in Google's error shape isn't proof it came
+/// from Google (a proxy can send one), so retry, throttle and rate-limit
+/// diagnostics, and server errors, keep only Google's reason codes, never
+/// its message. Reason codes that aren't plain words are dropped too.
+#[tokio::test]
+async fn google_shaped_answers_keep_only_reason_codes() {
+    use std::sync::{Arc, Mutex};
+
+    let echo = serde_json::json!({ "error": {
+        "message": "Blocked https://example.com/messages/msgid123?q=secretword Authorization: Bearer TOKEN_MARKER",
+        "errors": [{ "reason": "backendError" }, { "reason": "see https://example.com/?q=secretword" }]
+    }})
+    .to_string();
+    for status in [500, 502, 503, 504, 429] {
+        for batch in [false, true] {
+            let server = MockServer::start().await;
+            let response = if batch {
+                batch_response(&[(status, echo.clone())])
+            } else {
+                ResponseTemplate::new(status).set_body_raw(echo.clone(), "application/json")
+            };
+            Mock::given(method(if batch { "POST" } else { "GET" }))
+                .respond_with(response)
+                .expect(1)
+                .mount(&server)
+                .await;
+            let lines = Arc::new(Mutex::new(Vec::<String>::new()));
+            let captured = lines.clone();
+            let (gmail, _) = client(&server.uri());
+            let gmail = gmail
+                .with_retry(mail_core::gmail::RetryPolicy {
+                    max_retries: 0,
+                    ..fast_retry()
+                })
+                .with_logger(Arc::new(move |line| {
+                    captured.lock().unwrap().push(line.to_owned());
+                }));
+            let error = if batch {
+                gmail
+                    .batch_thread_metadata(&["msgid123".into()])
+                    .await
+                    .unwrap_err()
+            } else {
+                gmail.profile().await.unwrap_err()
+            };
+            let lines = lines.lock().unwrap();
+            assert!(!lines.is_empty(), "HTTP {status}, batch={batch}");
+            for text in lines.iter().cloned().chain([error.to_string()]) {
+                for secret in [
+                    "msgid123",
+                    "secretword",
+                    "TOKEN_MARKER",
+                    "Bearer",
+                    "example.com",
+                ] {
+                    assert!(
+                        !text.contains(secret),
+                        "HTTP {status}, batch={batch}: {text}"
+                    );
+                }
+                assert!(
+                    text.contains("backendError"),
+                    "HTTP {status}, batch={batch}: {text}"
+                );
+            }
+        }
+    }
+}

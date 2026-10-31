@@ -2996,6 +2996,16 @@ before acting:
       mail" rule. The log now gets the provider and a fixed reason
       (`ai::log_reason`); the owner still sees the full message. No other
       AI path writes to the log
+- [x] R4-03 (partly confirmed): R3-01 kept any message in Google's error
+      shape (`{"error":{"message":…}}`), and a proxy can send that shape,
+      so a 502 echoing a URL, IDs, search words or a token reached the
+      retry log and the error. Reproduced over mock HTTP. Retry, throttle
+      and rate-limit lines and server (5xx) errors now keep only Google's
+      reason codes, and only plain-word ones. Left as is, with reasons: a
+      4xx error keeps Google's message, which the owner sees and the app
+      checks (missing permission, an API turned off); a forged 4xx would
+      need a proxy trusted for TLS to Google, which already sees every
+      request
 
 ## Milestone 14: Open the code
 

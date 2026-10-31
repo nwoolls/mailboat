@@ -164,7 +164,7 @@ impl GmailClient {
         let rate = self.pacer.throttle(pause).await;
         self.log(&format!(
             "rate limited ({what}, HTTP {status}): {}; pausing {}s, then {rate:.0} units/s",
-            error_message(body),
+            diagnostic(body),
             pause.as_secs()
         ));
     }
@@ -708,7 +708,7 @@ impl GmailClient {
                         return Err(CoreError::RateLimited(format!(
                             "{} batch items still failing after retries: {}",
                             pending.len(),
-                            error_message(&body)
+                            diagnostic(&body)
                         )));
                     }
                     tokio::time::sleep(self.retry.delay(attempt, None)).await;
@@ -807,14 +807,11 @@ impl GmailClient {
                 if matches!(status.as_u16(), 403 | 429) {
                     self.throttle("request", status.as_u16(), &body).await;
                 } else {
-                    self.log(&format!(
-                        "HTTP {status}, retrying: {}",
-                        error_message(&body)
-                    ));
+                    self.log(&format!("HTTP {status}, retrying: {}", diagnostic(&body)));
                 }
                 if attempt >= self.retry.max_retries {
                     return Err(if status.as_u16() == 429 || status.as_u16() == 403 {
-                        CoreError::RateLimited(error_message(&body))
+                        CoreError::RateLimited(diagnostic(&body))
                     } else {
                         api_error(status.as_u16(), &body)
                     });
@@ -876,27 +873,59 @@ fn is_retryable(status: u16, body: &str) -> bool {
     }
 }
 
-/// The single formatter for returned errors and diagnostics. Keep Google's
-/// message and reasons, but never copy other bodies: proxy/captive portal
-/// pages can echo request paths and queries into the sync log.
+/// Google's reason codes ("rateLimitExceeded", "backendError"): kept only
+/// if they're plain words, so nothing else can be carried in them.
+fn reasons(e: &ErrorEnvelope) -> Vec<&str> {
+    e.error
+        .errors
+        .iter()
+        .map(|i| i.reason.as_str())
+        .filter(|r| !r.is_empty() && r.len() <= 64 && r.chars().all(|c| c.is_ascii_alphabetic()))
+        .collect()
+}
+
+/// The message for a returned 4xx error, which the owner sees and the app
+/// checks ("insufficient" permission, an API turned off): Google's message
+/// and reason codes. Other bodies are never copied: proxy and captive
+/// portal pages can echo request paths and queries into the sync log.
 fn error_message(body: &str) -> String {
     match serde_json::from_str::<ErrorEnvelope>(body) {
         Ok(e) => {
-            let reasons: Vec<&str> = e.error.errors.iter().map(|i| i.reason.as_str()).collect();
+            let reasons = reasons(&e);
             if reasons.is_empty() {
                 e.error.message
             } else {
                 format!("{} [{}]", e.error.message, reasons.join(", "))
             }
         }
-        Err(_) => "an answer that wasn't from Gmail".into(),
+        Err(_) => NOT_GMAIL.into(),
+    }
+}
+
+const NOT_GMAIL: &str = "an answer that wasn't from Gmail";
+
+/// For retry, throttle and rate-limit lines and server errors: Google's
+/// reason codes only, never its message. An answer in Google's shape isn't
+/// proof it came from Google (a proxy can send one, echoing the request),
+/// and these say nothing the codes don't (code review R4-03).
+fn diagnostic(body: &str) -> String {
+    match serde_json::from_str::<ErrorEnvelope>(body) {
+        Ok(e) => match reasons(&e).as_slice() {
+            [] => "no reason given".into(),
+            reasons => format!("[{}]", reasons.join(", ")),
+        },
+        Err(_) => NOT_GMAIL.into(),
     }
 }
 
 fn api_error(status: u16, body: &str) -> CoreError {
     CoreError::Api {
         status,
-        message: error_message(body),
+        message: if status >= 500 {
+            format!("Gmail's servers had a problem: {}", diagnostic(body))
+        } else {
+            error_message(body)
+        },
     }
 }
 
@@ -920,7 +949,8 @@ mod tests {
             r#"{"error":"msgid123 secretword"}"#,
             "",
         ] {
-            assert_eq!(error_message(body), "an answer that wasn't from Gmail");
+            assert_eq!(error_message(body), NOT_GMAIL);
+            assert_eq!(diagnostic(body), NOT_GMAIL);
         }
         let google = r#"{"error":{"code":403,"message":"Insufficient Permission"}}"#;
         assert_eq!(error_message(google), "Insufficient Permission");
