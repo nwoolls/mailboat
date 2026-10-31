@@ -2938,9 +2938,14 @@ Round 1 (2026-10-30), all seven findings confirmed and fixed:
 - [x] R1-07: a sent message whose conversation couldn't be cached was
       reported "Couldn't send", inviting a second send. A send that Gmail
       accepted is reported as sent now
-- [ ] R1-04 follow-up: a browser test that a CSS tracker makes no
-      request in the reader's frame (the sanitized output and the CSP are
-      tested in Rust; nothing yet watches the frame's requests)
+- [x] R1-04 follow-up: a browser test that a CSS tracker makes no
+      request in the reader's frame. `trackers.spec.ts` opens the Rust
+      sanitizer's real output (`tests/browser/fixtures/trackers.json`,
+      kept current by a Rust test) in the reader and records every
+      request: the email's three images load, its five trackers (in
+      `<img>`, `<style>`, `style` and `background`) don't, and with
+      images held back nothing is requested. With the CSS tracker check
+      taken out, it fails naming the three CSS trackers
 
 Round 2 (2026-10-30): no new findings; the reviewer recommended stopping.
 Of the gaps it listed, one was fixed, the rest checked and left:

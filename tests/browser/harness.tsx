@@ -25,6 +25,9 @@
  *     &path=…&done=a,b&accounts=0|1&configured=1
  *   ?mode=search                  the title bar's search, with three recent
  *                                 searches saved
+ *   ?mode=trackers&images=1|0     the reader with an email full of trackers,
+ *                                 as the Rust sanitizer gave it (images
+ *                                 loading or held back), `fixtures/`
  */
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -40,6 +43,7 @@ import {
   messagesOf,
   threadOf,
 } from "./demoMail";
+import trackers from "./fixtures/trackers.json";
 
 // Demo mode's made-up mail (`demo/mail.json`): Maya's "Lisbon in May?",
 // five emails, as conversation 7 with emails 10 to 14.
@@ -181,6 +185,19 @@ mockIPC((cmd, args) => {
       };
     }
     case "message_open": {
+      if (harnessMode === "trackers") {
+        const loading = new URLSearchParams(location.search).get("images") === "1";
+        return {
+          messageId: (args as { messageId: number }).messageId,
+          accountId: 1,
+          senderEmail: maya.email,
+          imagesAllowed: loading,
+          imagePolicy: "loadedByDefault",
+          attachments: [],
+          originalColors: false,
+          ...(loading ? trackers.loaded : trackers.blocked),
+        };
+      }
       // The email's own text, made long, so the reader scrolls as with real mail.
       const id = (args as { messageId: number }).messageId;
       const text = lisbon.messages[id - 10]?.text ?? "";
