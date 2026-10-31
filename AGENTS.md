@@ -221,6 +221,9 @@ old. When it does:
      empty Codex folder, are the reviewed ones, for every model on
      Codex's list (hidden ones too, as the app reads the list and as a
      fresh install would) and for Codex's default.
+   - `codex_refused_models_are_still_refused` (one small live request
+     per model): the models the review lists as refused for ChatGPT
+     accounts still are; if one is accepted, its tools need review.
    - `codex_cannot_*` (five tests, two small live requests each: the
      fast and the writing model): Codex can't write a file, run a
      command, reach the network, read a file planted in the home folder,

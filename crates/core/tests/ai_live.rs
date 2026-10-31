@@ -402,9 +402,14 @@ async fn codex_request_tools_are_as_reviewed() {
     let codex = programs().codex.expect("codex installed");
     let models = all_codex_models(&codex);
     assert!(!models.is_empty(), "Codex lists no models");
-    let reviewed = ai::codex_review::review().tools;
+    let review = ai::codex_review::review();
+    let reviewed = review.tools;
     let mut unreviewed = Vec::new();
-    for model in models.iter().map(|m| Some(m.as_str())).chain([None]) {
+    let usable = models
+        .iter()
+        .filter(|m| !review.refused_models.contains(m))
+        .map(|m| Some(m.as_str()));
+    for model in usable.chain([None]) {
         let tools = captured_tools(&codex, model).await;
         let name = model.unwrap_or("(Codex's default)");
         println!("{name}: {tools:?}");
@@ -419,6 +424,31 @@ async fn codex_request_tools_are_as_reviewed() {
         unreviewed.is_empty(),
         "not reviewed (accept only with the owner's OK): {unreviewed:?}"
     );
+}
+
+/// Live: models the review lists as refused with a ChatGPT sign-in
+/// (`refused_models`, whose tools the capture skips) are still refused.
+/// If one is accepted now, its tools must be reviewed (AGENTS.md).
+#[tokio::test(flavor = "multi_thread")]
+#[ignore]
+async fn codex_refused_models_are_still_refused() {
+    for model in ai::codex_review::review().refused_models {
+        let mut programs = programs();
+        programs.codex_models.writing = Some(model.clone());
+        let prompt = Prompt {
+            instructions: "Reply with the word OK.".into(),
+            input: "OK?".into(),
+            quality: Quality::Best,
+            max_tokens: None,
+        };
+        let answer = ai::ask(&programs, AiProvider::ChatGpt, &prompt, &|_| {}).await;
+        println!("{model}: {answer:?}");
+        let refused = matches!(&answer, Err(e) if e.to_string().contains("not supported"));
+        assert!(
+            refused,
+            "{model} is no longer refused: review its tools with the owner"
+        );
+    }
 }
 
 /// A file deleted when the test ends, however it ends.

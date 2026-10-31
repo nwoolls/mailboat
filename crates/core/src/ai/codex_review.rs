@@ -19,6 +19,11 @@ pub struct Review {
     pub stays_on: Vec<String>,
     /// The tools in Codex's request with every switch off.
     pub tools: Vec<String>,
+    /// Models Codex lists but refuses with a ChatGPT sign-in (the only way
+    /// the app uses it), so their tools can't reach a request: the monthly
+    /// capture skips them, and a live check confirms they're still refused.
+    #[serde(default)]
+    pub refused_models: Vec<String>,
 }
 
 /// The committed review.

@@ -3278,7 +3278,7 @@ findings and three questions, each checked before acting:
       reads it and as a fresh install would, plus Codex's default; the
       live tests take the chosen writing model
       (`AI_LIVE_CODEX_WRITING_MODEL`, AGENTS.md says to ask the owner)
-- [ ] Question 1 (owner decision open): the wider capture finds tools not
+- [x] Question 1 (owner decision, 2026-10-31): the wider capture finds tools not
       in the review. `gpt-5.5` (only on a fresh install's list, not on the
       owner's) carries a direct `apply_patch` (edits files) and
       `request_user_input`; `gpt-reserve` (hidden on the owner's list)
@@ -3289,6 +3289,17 @@ findings and three questions, each checked before acting:
       but it hasn't been tested live on these models. Accepting needs a
       live run with `AI_LIVE_CODEX_WRITING_MODEL=gpt-5.5` (and
       `gpt-reserve`) and the owner's OK
+      Run with the owner's OK (their writing model is Codex's default,
+      already covered): `gpt-reserve` passed all five live tests (every
+      attempt failed, "code-mode host is disabled"), so its direct
+      `request_user_input` joins the review. `gpt-5.5` is refused for
+      ChatGPT accounts ("not supported when using Codex with a ChatGPT
+      account"), the only way the app uses Codex, so its tools can't
+      reach a request: it's listed as refused (`refused_models`), the
+      capture skips it, and a new live check
+      (`codex_refused_models_are_still_refused`) fails if OpenAI ever
+      accepts it, so its tools come back for review. `apply_patch` is
+      not added to the reviewed tools
 - Questions 2 and 3, answered: the capture uses a local stand-in
   provider; the real ChatGPT route can't be captured offline (Codex
   first asks OpenAI where to send it, which fails locally), so a
@@ -3556,6 +3567,12 @@ steps are those of Plan 1 there.*
 Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
+
+- [ ] The browser test "starfield paints a night sky and lightens the
+      words" (`screensaver-night.spec.ts`) failed once in a full check
+      (2026-10-31: a brightness reading over its limit, `toBeLessThan`),
+      then passed 3 runs of 3 alone and in the next full check. Look into
+      whether it measures before the sky is painted
 
 - [x] On Windows in dark mode, the From list in a new message is hard to
       read *(owner report, 2026-10-29, with a screenshot)*: the two

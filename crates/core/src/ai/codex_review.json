@@ -21,6 +21,10 @@
     "functions.exec",
     "functions.request_user_input",
     "functions.request_user_input_async",
-    "functions.wait"
+    "functions.wait",
+    "request_user_input"
+  ],
+  "refused_models": [
+    "gpt-5.5"
   ]
 }
