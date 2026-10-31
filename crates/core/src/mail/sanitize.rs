@@ -225,8 +225,13 @@ fn looks_like_tracker(
         .as_ref()
         .map_or_else(|| src.to_string(), |u| u.to_string())
         .to_ascii_lowercase();
+    // `host.` is the same host as `host` (the DNS root), so the dot goes
+    // before comparing (code review R5-04).
     let host = address
-        .and_then(|u| u.host_str().map(str::to_ascii_lowercase))
+        .and_then(|u| {
+            u.host_str()
+                .map(|h| h.trim_end_matches('.').to_ascii_lowercase())
+        })
         .unwrap_or_default();
     let style = style
         .unwrap_or_default()
@@ -1129,6 +1134,10 @@ mod tests {
         ("css, backslashes", r#"<div style="background:url('\\\\mailtrack.io/trace/11.png')">x</div>"#),
         ("img, leading control", "<img src=\"&#1;https://mailtrack.io/trace/12.png\">"),
         ("img, upper case", r#"<img src="HTTPS://MAILTRACK.IO/trace/13.png">"#),
+        // R5-04: a host ending in the DNS root's dot is the same host.
+        ("img, trailing dot", r#"<img src="https://mailtrack.io./x/14.png" width="80" height="80">"#),
+        ("img, subdomain trailing dot", r#"<img src="https://a.mailtrack.io./x/15.png" width="80" height="80">"#),
+        ("css, trailing dot", r#"<div style="background:url(https://mailtrack.io./x/16.png)">x</div>"#),
     ];
 
     #[test]

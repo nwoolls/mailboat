@@ -3088,6 +3088,12 @@ leads, each checked before acting:
       standard OAuth code (`invalid_grant`, `invalid_client`…), or
       "other"; `invalid_grant` still asks to sign in again, and
       `invalid_client` points to the client file
+- [x] R5-04: a tracker's host with the DNS root's dot on the end
+      (`host./x.png`) is the same host but missed the tracker list, so it
+      loaded and was prefetched. Reproduced in Rust and WebKit (the
+      reader asked both trailing-dot trackers in the fixture). The dot
+      goes before comparing now; tested in `<img>`, CSS and a subdomain,
+      and in the browser fixture
 
 ## Milestone 14: Open the code
 
