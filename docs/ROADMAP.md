@@ -3130,10 +3130,15 @@ leads, each checked before acting:
         gets a minimal environment (home, `PATH`, temp folder, language,
         proxy and certificate settings, what Windows needs), not the
         app's. Tested against a stand-in `codex`
-  - [ ] macOS: Mailboat starts Codex inside its own sandbox profile that
-        blocks reading the owner's home folder except Codex's own (its
-        sign-in), so a new read tool can't reach private files. Windows
-        has no equivalent; there, reading depends on the checks
+  - [x] macOS: Mailboat starts Codex inside its own sandbox profile
+        (`/usr/bin/sandbox-exec`, `process::fence_profile`) that blocks
+        reading and writing the owner's home folder except Codex's own
+        (its sign-in) and, read-only, where its program lives, so a new
+        read tool can't reach private files. It also keeps the owner's
+        skills out of Codex's requests. Tested: a file in a stand-in home
+        can't be read, Codex's folder can; ChatGPT answered through the
+        real fenced path in 3s. Windows has no equivalent; there, reading
+        depends on the checks
   - [ ] Checked at start-up, every few hours and when the `codex` program
         changes on disk, with `codex features list` only (offline, no
         server): a switch that stays on after being turned off and isn't

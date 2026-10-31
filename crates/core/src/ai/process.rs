@@ -136,6 +136,54 @@ const MINIMAL_VARS: &[&str] = &[
     "COMSPEC",
 ];
 
+/// The macOS sandbox profile `Env::Minimal` runs a program in: no reading
+/// or writing anything in the home folder, except Codex's own folder (its
+/// sign-in) and, read-only, the folders its program and PATH tools live
+/// in. The network stays (Codex needs OpenAI). macOS enforces it, whatever
+/// tools Codex offers, so a tool that reads files can't reach the owner's
+/// (Milestone 13, Codex fenced in). It also keeps the owner's skills out.
+pub fn fence_profile(home: &Path, codex_home: &Path, readable: &[PathBuf]) -> String {
+    let quote = |p: &Path| {
+        p.to_string_lossy()
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+    };
+    let mut profile = format!(
+        "(version 1)\n(allow default)\n\
+         (deny file-read* file-write* (subpath \"{home}\"))\n\
+         (allow file-read* file-write* (subpath \"{codex}\"))\n",
+        home = quote(home),
+        codex = quote(codex_home),
+    );
+    for dir in readable {
+        profile.push_str(&format!(
+            "(allow file-read* (subpath \"{}\"))\n",
+            quote(dir)
+        ));
+    }
+    // Seeing that a file exists (not reading it) is needed to start at all.
+    profile.push_str("(allow file-read-metadata)\n");
+    profile
+}
+
+/// The folders a fenced program may read in the home folder: where the
+/// program really lives (two levels up, its package) and the PATH folders.
+fn fence_readable(program: &Path) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Ok(real) = std::fs::canonicalize(program) {
+        if let Some(package) = real.parent().and_then(Path::parent) {
+            dirs.push(package.to_path_buf());
+        }
+    }
+    for dir in search_dirs() {
+        let real = std::fs::canonicalize(&dir).unwrap_or(dir);
+        if !dirs.contains(&real) {
+            dirs.push(real);
+        }
+    }
+    dirs
+}
+
 /// Runs `program` in an empty folder, writes `stdin`, and calls `on_line`
 /// for each line it prints. An error from `on_line` stops the program.
 /// So does `Break`, for the line that ends the answer: Claude and Codex
@@ -274,7 +322,14 @@ pub fn spawn_login(program: &Path, args: &[&str]) -> Result<tokio::process::Chil
 /// windowed app starting a command-line tool otherwise gets one flashing
 /// up for every request.
 fn command(program: &Path, env: Env) -> Command {
-    let mut cmd = Command::new(program);
+    let mut cmd = match (env, fence(program)) {
+        (Env::Minimal, Some(profile)) => {
+            let mut c = Command::new("/usr/bin/sandbox-exec");
+            c.arg("-p").arg(profile).arg(program);
+            c
+        }
+        _ => Command::new(program),
+    };
     if env == Env::Minimal {
         cmd.env_clear();
         for var in MINIMAL_VARS {
@@ -289,6 +344,26 @@ fn command(program: &Path, env: Env) -> Command {
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
     cmd
+}
+
+/// The fence for `Env::Minimal` on macOS; none elsewhere (Windows has no
+/// equivalent: there, reading files depends on Codex offering no tool
+/// that does).
+fn fence(program: &Path) -> Option<String> {
+    if !cfg!(target_os = "macos") {
+        return None;
+    }
+    let home = PathBuf::from(std::env::var_os("HOME")?);
+    let home = std::fs::canonicalize(&home).unwrap_or(home);
+    let codex_home = std::env::var_os("CODEX_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join(".codex"));
+    // A readable folder that is home or above it would open all of home.
+    let readable: Vec<PathBuf> = fence_readable(program)
+        .into_iter()
+        .filter(|d| !home.starts_with(d))
+        .collect();
+    Some(fence_profile(&home, &codex_home, &readable))
 }
 
 /// An empty folder to run in, so the tools find no project files
@@ -351,6 +426,65 @@ mod tests {
         assert!(!minimal.contains("AI_ENV_PROBE_SECRET="), "{minimal}");
         assert!(minimal.contains("HOME="), "{minimal}");
         assert!(minimal.contains("PATH="), "{minimal}");
+    }
+
+    /// Milestone 13, Codex fenced in: inside the fence a program can't
+    /// read the home folder, but can read Codex's own folder and what's
+    /// outside home. A stand-in home, so nothing touches the real one.
+    #[cfg(target_os = "macos")]
+    #[tokio::test]
+    async fn the_fence_keeps_a_program_out_of_the_home_folder() {
+        let home = std::fs::canonicalize(std::env::temp_dir())
+            .unwrap()
+            .join(format!("fence-home-{}", fastrand::u64(..)));
+        let codex = home.join(".codex");
+        std::fs::create_dir_all(&codex).unwrap();
+        std::fs::write(home.join("private.txt"), "PRIVATE").unwrap();
+        std::fs::write(codex.join("auth.json"), "SIGN-IN").unwrap();
+        let profile = fence_profile(&home, &codex, &[]);
+        let cat = |file: PathBuf| {
+            let profile = profile.clone();
+            async move {
+                tokio::process::Command::new("/usr/bin/sandbox-exec")
+                    .args(["-p", &profile, "/bin/cat"])
+                    .arg(file)
+                    .output()
+                    .await
+                    .unwrap()
+            }
+        };
+        let private = cat(home.join("private.txt")).await;
+        assert!(!private.status.success());
+        assert!(!String::from_utf8_lossy(&private.stdout).contains("PRIVATE"));
+        let own = cat(codex.join("auth.json")).await;
+        assert_eq!(String::from_utf8_lossy(&own.stdout), "SIGN-IN");
+        assert!(cat("/etc/hosts".into()).await.status.success());
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    /// Codex's runs (`Env::Minimal`) go through the fence on macOS; other
+    /// programs don't.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn minimal_runs_are_fenced() {
+        let fenced = command(Path::new("/bin/cat"), Env::Minimal);
+        assert_eq!(fenced.as_std().get_program(), "/usr/bin/sandbox-exec");
+        let plain = command(Path::new("/bin/cat"), Env::Inherit);
+        assert_eq!(plain.as_std().get_program(), "/bin/cat");
+    }
+
+    #[test]
+    fn the_fence_profile_quotes_paths() {
+        let p = fence_profile(
+            Path::new("/Users/a \"b\""),
+            Path::new("/c"),
+            &[PathBuf::from("/d")],
+        );
+        assert!(
+            p.contains("(deny file-read* file-write* (subpath \"/Users/a \\\"b\\\"\"))"),
+            "{p}"
+        );
+        assert!(p.contains("(allow file-read* (subpath \"/d\"))"), "{p}");
     }
 
     #[tokio::test]
