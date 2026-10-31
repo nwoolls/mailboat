@@ -3158,14 +3158,15 @@ leads, each checked before acting:
   - [x] Monthly recheck tooling (run by an agent with the owner's OK,
         never by the app): Codex's real request captured against a local
         stand-in server with an empty Codex folder, its tools compared to
-        the reviewed list (with every switch off, Codex 0.166.0 sends one:
-        `request_user_input`); and live tests over the owner's ChatGPT
+        the reviewed list; and live tests over the owner's ChatGPT
         sign-in, on harmless input: Codex can't write a file, run a
         command, reach the network or read a test file planted in the home
         folder. Ignored tests in `crates/core/tests/ai_live.rs`
-        (`codex_*`); first run 2026-10-31, all six passed: the request
-        carries only `request_user_input`, and every attempt failed with
-        "code-mode host is disabled"
+        (`codex_*`); first run 2026-10-31, all six passed, and every
+        live attempt failed with "code-mode host is disabled". Corrected
+        in Round 6 (R6-01): the capture used a made-up model (`gpt-5`),
+        whose request carries only `request_user_input`; the app's real
+        models carry more (see R6-01)
 - Suggested, not scheduled (owner to decide): browser tests that fail
   clearly when the test page doesn't start (a "ready" signal, page and
   module errors collected), so a failure like Round 2's shows its cause.
@@ -3216,6 +3217,35 @@ fencing; seven findings and six questions, each checked before acting:
       Reproduced both ways. A thread's saved hits now go when an email
       leaves it (`store::forget_search_hits`); they're a cache, found
       again by the next search
+- [x] R6-06: the monthly live tests turned an error into answer text, so a
+      ChatGPT that never answered passed every "it couldn't" check. They
+      now need a real answer, or fail as inconclusive
+- [ ] R6-01 (confirmed; owner decision open): the monthly capture checked
+      a made-up model. With every switch off, every model Codex lists
+      (8 on 2026-10-31, including the fast one the app uses) still
+      carries `exec` (code mode, runs JavaScript) and `wait`, two
+      `request_user_input` tools and, on all but one, six helper-agent
+      tools (`spawn_agent` and companions). No setting tried removes them
+      (`agents.max_depth`, `agents.max_threads`, the collaboration
+      switches); two stopped Codex sending anything. The live tests ran
+      on the real fast model, and every attempt to act failed ("code-mode
+      host is disabled"): offered, but they don't work. The capture now
+      checks every listed model, so the monthly recheck fails until the
+      owner decides: accept these tools into the review (after a live
+      rerun on the real models with the owner's OK), or pause ChatGPT
+      until Codex can drop them. The app's own check sees switches, not
+      tools, so it doesn't pause today
+- Questions, answered: what lies outside the home folder (`/Volumes`,
+  `/Users/Shared`) stays readable, and file metadata stays visible:
+  now said in R6-03 rather than changed. While ChatGPT is paused, the
+  list's one-line summaries quietly show the email's own words (the
+  reader's summary and the writing assistant show the error, Settings
+  shows the card): left as is, reasoned from the code. A Codex update
+  landing between the switch check and the request (about 20ms) could
+  slip one request through with a new switch: accepted as narrow, the
+  next request checks again. The capture test now stops Codex if it
+  hangs (question 5). The reviewer's one browser time-out came with slow
+  page loads in its sandbox; full runs here passed 66 of 66
 
 ## Milestone 14: Open the code
 

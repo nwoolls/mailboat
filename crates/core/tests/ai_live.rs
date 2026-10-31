@@ -264,15 +264,12 @@ async fn codex_switches_are_as_reviewed() {
 
 // ---- The monthly Codex recheck (AGENTS.md → Codex review) ----
 
-/// Codex's real request, captured by a local stand-in for OpenAI: with
-/// the app's arguments (every switch off) and an empty Codex folder, so no
-/// sign-in is involved and nothing leaves the Mac. Its tools must be the
-/// reviewed ones (`ai/codex_review.json`). Offline.
-#[tokio::test(flavor = "multi_thread")]
-#[ignore]
-async fn codex_request_tools_are_as_reviewed() {
+/// The tools in Codex's real request for `model`, captured by a local
+/// stand-in for OpenAI: with the app's arguments (every switch off) and an
+/// empty Codex folder, so no sign-in is involved and nothing leaves the
+/// Mac.
+async fn captured_tools(codex: &std::path::Path, model: &str) -> Vec<String> {
     use wiremock::{matchers::method, Mock, MockServer, ResponseTemplate};
-    let codex = programs().codex.expect("codex installed");
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .respond_with(
@@ -282,7 +279,7 @@ async fn codex_request_tools_are_as_reviewed() {
         )
         .mount(&server)
         .await;
-    let off = ai::codex::switches_off(&ai::codex::switches(&codex, &[]).await.unwrap());
+    let off = ai::codex::switches_off(&ai::codex::switches(codex, &[]).await.unwrap());
     let mut args = ai::codex::args(
         &ai::codex::choice(Quality::Fast, &ai::codex::Models::default()),
         &off,
@@ -297,18 +294,19 @@ async fn codex_request_tools_are_as_reviewed() {
             server.uri()
         ),
         "-m".into(),
-        "gpt-5".into(),
+        model.into(),
         stdin_marker,
     ]);
     let empty_home = std::env::temp_dir().join(format!("codex-standin-{}", fastrand::u64(..)));
     std::fs::create_dir_all(&empty_home).unwrap();
-    let mut child = tokio::process::Command::new(&codex)
+    let mut child = tokio::process::Command::new(codex)
         .args(&args)
         .current_dir(&empty_home)
         .env("CODEX_HOME", &empty_home)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
+        .kill_on_drop(true)
         .spawn()
         .unwrap();
     {
@@ -316,7 +314,13 @@ async fn codex_request_tools_are_as_reviewed() {
         let mut stdin = child.stdin.take().unwrap();
         stdin.write_all(b"Reply OK.\n").await.unwrap();
     }
-    let _ = tokio::time::timeout(std::time::Duration::from_secs(60), child.wait()).await;
+    if tokio::time::timeout(std::time::Duration::from_secs(60), child.wait())
+        .await
+        .is_err()
+    {
+        // Code review R6, question 5: don't leave Codex running.
+        let _ = child.kill().await;
+    }
     let _ = std::fs::remove_dir_all(&empty_home);
 
     let requests = server.received_requests().await.unwrap();
@@ -347,11 +351,34 @@ async fn codex_request_tools_are_as_reviewed() {
             names(item["tools"].as_array().unwrap_or(&vec![]), "", &mut tools);
         }
     }
-    println!("Codex's request carries: {tools:?}");
-    assert_eq!(
-        tools,
-        ai::codex_review::review().tools,
-        "update the review only with the owner's OK"
+    tools
+}
+
+/// Every model the app can ask (Codex's own list: its fast one for quick
+/// requests, any for writing) carries only reviewed tools. Code review
+/// R6-01: this checked one fixed model, which carried fewer tools than the
+/// app's fast model. Offline.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore]
+async fn codex_request_tools_are_as_reviewed() {
+    let codex = programs().codex.expect("codex installed");
+    let models = ai::codex::models(&codex).await.unwrap();
+    assert!(!models.is_empty(), "Codex lists no models");
+    let reviewed = ai::codex_review::review().tools;
+    let mut unreviewed = Vec::new();
+    for model in &models {
+        let tools = captured_tools(&codex, &model.slug).await;
+        println!("{}: {tools:?}", model.slug);
+        unreviewed.extend(
+            tools
+                .into_iter()
+                .filter(|t| !reviewed.contains(t))
+                .map(|t| format!("{}: {t}", model.slug)),
+        );
+    }
+    assert!(
+        unreviewed.is_empty(),
+        "not reviewed (accept only with the owner's OK): {unreviewed:?}"
     );
 }
 
@@ -372,11 +399,13 @@ async fn chatgpt_tries(task: &str) -> String {
         quality: Quality::Fast,
         max_tokens: None,
     };
-    let answer = ai::ask(&programs(), AiProvider::ChatGpt, &prompt, &|_| {}).await;
-    let text = match answer {
-        Ok(a) => a.text,
-        Err(e) => format!("(error) {e}"),
-    };
+    // Code review R6-06: an error passed every "couldn't" check below
+    // (nothing written, no request, no code quoted) without Codex having
+    // been asked at all. Without an answer the recheck says nothing.
+    let text = ai::ask(&programs(), AiProvider::ChatGpt, &prompt, &|_| {})
+        .await
+        .unwrap_or_else(|e| panic!("inconclusive: ChatGPT didn't answer ({e})"))
+        .text;
     println!("{task}\n  -> {text}");
     text
 }

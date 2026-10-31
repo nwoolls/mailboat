@@ -246,7 +246,9 @@ old. When it does:
 AI (built in the AI Spike, see `docs/ARCHITECTURE.md` → AI): summaries and
 a writing assistant through Apple Intelligence (on-device, the default) or the
 owner's Claude / ChatGPT subscriptions via the `claude` and `codex` CLIs. Mailboat
-holds no AI keys or tokens. Rules: every request runs with all tools off;
+holds no AI keys or tokens. Rules: every request runs with all tools off
+(Claude: none at all; Codex can't promise that, so it's fenced in
+instead, see "Codex review" above);
 mail goes to a cloud model only when the owner chose that provider for the
 feature; never send AI output without the owner seeing it in the editor;
 never log prompts or answers. API keys (keychain, like Google tokens) could
