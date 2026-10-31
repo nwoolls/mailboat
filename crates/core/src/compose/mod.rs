@@ -702,7 +702,7 @@ mod tests {
     #[test]
     fn quoted_html_keeps_formatting_but_not_scripts() {
         let clean = super::quote_clean(
-            r#"<table><tr><td><b>Hi</b></td></tr></table><script>x()</script><a href="https://x.com" onclick="y()">l</a>"#,
+            r#"<table><tr><td><b>Hi</b></td></tr></table><script>x()</script><a href="https://x.example" onclick="y()">l</a>"#,
         );
         assert!(
             clean.contains("<table>") && clean.contains("<b>Hi</b>"),

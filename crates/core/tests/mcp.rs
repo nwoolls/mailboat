@@ -187,7 +187,7 @@ struct Mail {
 fn mail() -> Mail {
     let db = Arc::new(Db::open_in_memory().unwrap());
     let a = add_account(&db, "sub-a", "me@gmail.com");
-    let b = add_account(&db, "sub-b", "me@work.com");
+    let b = add_account(&db, "sub-b", "me@work.example");
     for account in [a, b] {
         store::sync_labels(
             &mut db.conn(),
@@ -291,7 +291,7 @@ async fn only_shared_accounts_and_never_spam() {
     let r = call(
         &c,
         "search_mail",
-        json!({ "query": "lunch", "account": "me@work.com" }),
+        json!({ "query": "lunch", "account": "me@work.example" }),
     )
     .await;
     assert!(text(&r).contains("isn't shared"), "{}", text(&r));

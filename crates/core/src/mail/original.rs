@@ -86,7 +86,7 @@ pub fn read(raw: &[u8]) -> Original {
     original
 }
 
-/// "Ann <ann@x.com>, bob@y.com"
+/// "Ann <ann@x.example>, bob@y.example"
 fn addresses(list: AddressList<'_>) -> String {
     list.mailboxes()
         .map(|m| match (m.name(), m.address()) {
@@ -144,7 +144,7 @@ fn gmail_checks(value: &str) -> Vec<AuthCheck> {
         .collect()
 }
 
-/// "a@x.com" is x.com; a bare domain stays as it is.
+/// "a@x.example" is x.example; a bare domain stays as it is.
 fn domain_of(value: &str) -> String {
     value.rsplit('@').next().unwrap_or(value).to_string()
 }
@@ -243,8 +243,8 @@ Body text\r\n";
 
     #[test]
     fn ignores_checks_gmail_didnt_write() {
-        let raw = "Authentication-Results: evil.example; spf=pass smtp.mailfrom=x.com\r\n\
-Authentication-Results: mx.google.com; spf=fail smtp.mailfrom=x.com\r\n\r\nHi";
+        let raw = "Authentication-Results: evil.example; spf=pass smtp.mailfrom=x.example\r\n\
+Authentication-Results: mx.google.com; spf=fail smtp.mailfrom=x.example\r\n\r\nHi";
         assert!(read(raw.as_bytes()).checks.is_empty());
     }
 

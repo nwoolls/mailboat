@@ -45,31 +45,40 @@ fn send_as(email: &str, primary: bool) -> SendAs {
 async fn changing_a_signature_stores_what_gmail_kept() {
     let server = MockServer::start().await;
     Mock::given(method("PATCH"))
-        .and(path("/gmail/v1/users/me/settings/sendAs/alias+work@x.com"))
+        .and(path(
+            "/gmail/v1/users/me/settings/sendAs/alias+work@x.example",
+        ))
         .and(body_json(json!({ "signature": "<p>Jordan</p>" })))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "sendAsEmail": "alias+work@x.com", "signature": "<div>Jordan</div>"
+            "sendAsEmail": "alias+work@x.example", "signature": "<div>Jordan</div>"
         })))
         .expect(1)
         .mount(&server)
         .await;
-    let (db, a) = setup("a@x.com");
+    let (db, a) = setup("a@x.example");
     identities::store(
         &mut db.conn(),
         a,
-        &[send_as("a@x.com", true), send_as("alias+work@x.com", false)],
+        &[
+            send_as("a@x.example", true),
+            send_as("alias+work@x.example", false),
+        ],
     )
     .unwrap();
     let (gmail, _) = client(&server.uri());
 
-    let kept = identities::set_signature(&db, &gmail, a, "Alias+Work@x.com", "  <p>Jordan</p> ")
-        .await
-        .unwrap();
+    let kept =
+        identities::set_signature(&db, &gmail, a, "Alias+Work@x.example", "  <p>Jordan</p> ")
+            .await
+            .unwrap();
     assert_eq!(kept.as_deref(), Some("<div>Jordan</div>"));
     let list = identities::list(&db.conn()).unwrap();
-    let alias = list.iter().find(|i| i.email == "alias+work@x.com").unwrap();
+    let alias = list
+        .iter()
+        .find(|i| i.email == "alias+work@x.example")
+        .unwrap();
     assert_eq!(alias.signature.as_deref(), Some("<div>Jordan</div>"));
-    let main = list.iter().find(|i| i.email == "a@x.com").unwrap();
+    let main = list.iter().find(|i| i.email == "a@x.example").unwrap();
     assert_eq!(
         main.signature.as_deref(),
         Some("<b>Old</b>"),
@@ -80,14 +89,14 @@ async fn changing_a_signature_stores_what_gmail_kept() {
 #[tokio::test]
 async fn signatures_only_for_your_own_addresses_and_within_gmails_limit() {
     let server = MockServer::start().await;
-    let (db, a) = setup("a@x.com");
+    let (db, a) = setup("a@x.example");
     let (gmail, _) = client(&server.uri());
-    let err = identities::set_signature(&db, &gmail, a, "someone@else.com", "hi")
+    let err = identities::set_signature(&db, &gmail, a, "someone@else.example", "hi")
         .await
         .unwrap_err();
     assert!(matches!(err, CoreError::NotFound(_)), "{err:?}");
     let long = "x".repeat(identities::SIGNATURE_MAX + 1);
-    let err = identities::set_signature(&db, &gmail, a, "a@x.com", &long)
+    let err = identities::set_signature(&db, &gmail, a, "a@x.example", &long)
         .await
         .unwrap_err();
     assert!(matches!(err, CoreError::Invalid(_)), "{err:?}");
@@ -164,7 +173,7 @@ async fn reads_and_saves_the_vacation_responder() {
 #[tokio::test]
 async fn vacation_without_the_permission_asks_to_sign_in_again() {
     let server = MockServer::start().await;
-    let (db, a) = setup("a@x.com");
+    let (db, a) = setup("a@x.example");
     accounts::set_granted_scopes(&db.conn(), a, &["openid".to_string()]).unwrap();
     let (gmail, _) = client(&server.uri());
     let got = vacation::get(&db, &gmail, a).await.unwrap();

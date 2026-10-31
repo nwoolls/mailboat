@@ -22,12 +22,15 @@ const label = (id: number, accountId: number, name: string): Label => ({
 });
 
 it("lists unified views only with several accounts, then each account's views and labels", () => {
-  const one = destinations([account(1, "a@x.com")], [label(5, 1, "Work/Acme")]);
+  const one = destinations([account(1, "a@x.example")], [label(5, 1, "Work/Acme")]);
   expect(one[0]).toMatchObject({ title: "Inbox", detail: null });
   expect(one.at(-1)).toMatchObject({ title: "Work / Acme" });
 
-  const two = destinations([account(1, "a@x.com"), account(2, "b@y.com")], [label(5, 2, "Bills")]);
+  const two = destinations(
+    [account(1, "a@x.example"), account(2, "b@y.example")],
+    [label(5, 2, "Bills")],
+  );
   expect(two[0]).toMatchObject({ title: "Inbox", detail: "All accounts" });
-  expect(two.find((d) => d.title === "Bills")?.detail).toBe("b@y.com");
+  expect(two.find((d) => d.title === "Bills")?.detail).toBe("b@y.example");
   expect(new Set(two.map((d) => d.key)).size).toBe(two.length);
 });

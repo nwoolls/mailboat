@@ -49,9 +49,9 @@ mod tests {
     #[test]
     fn web_and_mail_links_round_trip() {
         for link in [
-            "https://vendor.com/pay?a=1&b=two#x",
+            "https://vendor.example/pay?a=1&b=two#x",
             "http://example.com/",
-            "mailto:a@b.com?subject=Hi%20there",
+            "mailto:a@b.example?subject=Hi%20there",
         ] {
             let wrapped = wrap(link).unwrap();
             assert!(wrapped.starts_with(link_base()));

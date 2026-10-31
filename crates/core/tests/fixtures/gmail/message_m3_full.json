@@ -15,7 +15,7 @@
     "headers": [
       {
         "name": "From",
-        "value": "Billing <billing@vendor.com>"
+        "value": "Billing <billing@vendor.example>"
       },
       {
         "name": "To",
@@ -31,7 +31,7 @@
       },
       {
         "name": "Message-ID",
-        "value": "<b1@vendor.com>"
+        "value": "<b1@vendor.example>"
       }
     ],
     "body": {
@@ -59,7 +59,7 @@
             ],
             "body": {
               "size": 30,
-              "data": "SGkgdGhlcmUsClBheSBub3c6IGh0dHBzOi8vdmVuZG9yLmNvbS9wYXkK"
+              "data": "SGkgdGhlcmUsClBheSBub3c6IGh0dHBzOi8vdmVuZG9yLmV4YW1wbGUvcGF5Cg"
             }
           },
           {
@@ -74,7 +74,7 @@
             ],
             "body": {
               "size": 281,
-              "data": "PGh0bWw-PGhlYWQ-PHN0eWxlPnB7Y29sb3I6IzMzM308L3N0eWxlPjwvaGVhZD48Ym9keT48cD5IaSA8Yj50aGVyZTwvYj4sPC9wPjxpbWcgc3JjPSJodHRwczovL2Nkbi52ZW5kb3IuY29tL2xvZ28ucG5nIiB3aWR0aD0iMTIwIj48aW1nIHNyYz0iaHR0cHM6Ly90cmFjay5leGFtcGxlLm5ldC9vcGVuLmdpZiIgd2lkdGg9IjEiIGhlaWdodD0iMSI-PGEgaHJlZj0iaHR0cHM6Ly92ZW5kb3IuY29tL3BheSI-UGF5IG5vdzwvYT48c2NyaXB0PmFsZXJ0KDEpPC9zY3JpcHQ-PC9ib2R5PjwvaHRtbD4"
+              "data": "PGh0bWw-PGhlYWQ-PHN0eWxlPnB7Y29sb3I6IzMzM308L3N0eWxlPjwvaGVhZD48Ym9keT48cD5IaSA8Yj50aGVyZTwvYj4sPC9wPjxpbWcgc3JjPSJodHRwczovL2Nkbi52ZW5kb3IuZXhhbXBsZS9sb2dvLnBuZyIgd2lkdGg9IjEyMCI-PGltZyBzcmM9Imh0dHBzOi8vdHJhY2suZXhhbXBsZS5uZXQvb3Blbi5naWYiIHdpZHRoPSIxIiBoZWlnaHQ9IjEiPjxhIGhyZWY9Imh0dHBzOi8vdmVuZG9yLmV4YW1wbGUvcGF5Ij5QYXkgbm93PC9hPjxzY3JpcHQ-YWxlcnQoMSk8L3NjcmlwdD48L2JvZHk-PC9odG1sPg"
             }
           }
         ]

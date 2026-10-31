@@ -235,9 +235,11 @@ mod tests {
     #[test]
     fn status_says_who_is_signed_in() {
         assert_eq!(
-            parse_status(r#"{"loggedIn": true, "authMethod": "claude.ai", "email": "n@x.com"}"#),
+            parse_status(
+                r#"{"loggedIn": true, "authMethod": "claude.ai", "email": "n@x.example"}"#
+            ),
             ProviderState::Ready {
-                account: Some("n@x.com".into())
+                account: Some("n@x.example".into())
             }
         );
         assert_eq!(

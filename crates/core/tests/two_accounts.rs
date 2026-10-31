@@ -98,7 +98,7 @@ fn two_accounts_with_overlapping_gmail_ids() {
         &thread(
             "t1",
             "m1",
-            "alice@x.com",
+            "alice@x.example",
             "Personal hello",
             1_000,
             &["INBOX", "Label_1"],
@@ -108,7 +108,14 @@ fn two_accounts_with_overlapping_gmail_ids() {
     store::upsert_thread(
         &mut db.conn(),
         b.id,
-        &thread("t1", "m1", "bob@y.com", "Work update", 2_000, &["INBOX"]),
+        &thread(
+            "t1",
+            "m1",
+            "bob@y.example",
+            "Work update",
+            2_000,
+            &["INBOX"],
+        ),
     )
     .unwrap();
     // Only account B has t2; it is starred but archived (not in INBOX).
@@ -118,7 +125,7 @@ fn two_accounts_with_overlapping_gmail_ids() {
         &thread(
             "t2",
             "m2",
-            "carol@z.com",
+            "carol@z.example",
             "Starred thing",
             3_000,
             &["STARRED"],
@@ -221,7 +228,7 @@ fn two_accounts_with_overlapping_gmail_ids() {
         assert!(detail.messages.iter().all(|m| m.account_id == t.account_id));
     }
     let a_detail = query::thread_detail(&db.conn(), unified[1].id).unwrap();
-    assert_eq!(a_detail.messages[0].from.email, "alice@x.com");
+    assert_eq!(a_detail.messages[0].from.email, "alice@x.example");
     assert_eq!(a_detail.labels.len(), 1);
     assert_eq!(a_detail.labels[0].account_id, a.id);
 
@@ -229,7 +236,7 @@ fn two_accounts_with_overlapping_gmail_ids() {
     store::upsert_thread(
         &mut db.conn(),
         b.id,
-        &thread("t1", "m1", "bob@y.com", "Work update", 2_000, &[]),
+        &thread("t1", "m1", "bob@y.example", "Work update", 2_000, &[]),
     )
     .unwrap();
     let unified = list(&db, AccountFilter::All, INBOX);
@@ -294,13 +301,13 @@ fn two_accounts_with_overlapping_gmail_ids() {
 #[test]
 fn label_from_another_account_is_rejected_by_the_schema() {
     let db = Db::open_in_memory().unwrap();
-    let a = add_account(&db, "sub-a", "a@x.com");
-    let b = add_account(&db, "sub-b", "b@x.com");
+    let a = add_account(&db, "sub-a", "a@x.example");
+    let b = add_account(&db, "sub-b", "b@x.example");
     store::sync_labels(&mut db.conn(), b.id, &work_label()).unwrap();
     store::upsert_thread(
         &mut db.conn(),
         a.id,
-        &thread("t1", "m1", "x@x.com", "s", 1, &[]),
+        &thread("t1", "m1", "x@x.example", "s", 1, &[]),
     )
     .unwrap();
     let conn = db.conn();
@@ -329,8 +336,8 @@ fn label_from_another_account_is_rejected_by_the_schema() {
 #[test]
 fn paging_walks_every_thread_once() {
     let db = Db::open_in_memory().unwrap();
-    let a = add_account(&db, "sub-a", "a@x.com");
-    let b = add_account(&db, "sub-b", "b@x.com");
+    let a = add_account(&db, "sub-a", "a@x.example");
+    let b = add_account(&db, "sub-b", "b@x.example");
     for i in 0..25 {
         let acct = if i % 2 == 0 { a.id } else { b.id };
         // Same timestamps for pairs, to exercise the tie-breaker.
@@ -340,7 +347,7 @@ fn paging_walks_every_thread_once() {
             &thread(
                 &format!("t{i}"),
                 &format!("m{i}"),
-                "x@x.com",
+                "x@x.example",
                 "s",
                 (i / 2) as i64,
                 &["INBOX"],
@@ -377,43 +384,43 @@ fn paging_walks_every_thread_once() {
 #[test]
 fn all_mail_and_archive_views_across_accounts() {
     let db = Db::open_in_memory().unwrap();
-    let a = add_account(&db, "sub-a", "a@x.com");
-    let b = add_account(&db, "sub-b", "b@x.com");
+    let a = add_account(&db, "sub-a", "a@x.example");
+    let b = add_account(&db, "sub-b", "b@x.example");
     // Same Gmail IDs in both accounts, different states.
     store::upsert_thread(
         &mut db.conn(),
         a.id,
-        &thread("t1", "m1", "x@x.com", "A inbox", 5, &["INBOX"]),
+        &thread("t1", "m1", "x@x.example", "A inbox", 5, &["INBOX"]),
     )
     .unwrap();
     store::upsert_thread(
         &mut db.conn(),
         a.id,
-        &thread("t2", "m2", "x@x.com", "A archived", 4, &["Label_1"]),
+        &thread("t2", "m2", "x@x.example", "A archived", 4, &["Label_1"]),
     )
     .unwrap();
     store::upsert_thread(
         &mut db.conn(),
         a.id,
-        &thread("t3", "m3", "x@x.com", "A spam", 3, &["SPAM"]),
+        &thread("t3", "m3", "x@x.example", "A spam", 3, &["SPAM"]),
     )
     .unwrap();
     store::upsert_thread(
         &mut db.conn(),
         b.id,
-        &thread("t1", "m1", "y@y.com", "B archived", 6, &[]),
+        &thread("t1", "m1", "y@y.example", "B archived", 6, &[]),
     )
     .unwrap();
     store::upsert_thread(
         &mut db.conn(),
         b.id,
-        &thread("t2", "m2", "y@y.com", "B trash", 2, &["TRASH"]),
+        &thread("t2", "m2", "y@y.example", "B trash", 2, &["TRASH"]),
     )
     .unwrap();
     store::upsert_thread(
         &mut db.conn(),
         b.id,
-        &thread("t3", "m3", "y@y.com", "B sent", 1, &["SENT"]),
+        &thread("t3", "m3", "y@y.example", "B sent", 1, &["SENT"]),
     )
     .unwrap();
 
@@ -500,25 +507,25 @@ fn all_mail_and_archive_views_across_accounts() {
 #[test]
 fn spam_and_trash_for_images_are_decided_per_account() {
     let db = Db::open_in_memory().unwrap();
-    let a = add_account(&db, "sub-a", "a@x.com");
-    let b = add_account(&db, "sub-b", "b@x.com");
+    let a = add_account(&db, "sub-a", "a@x.example");
+    let b = add_account(&db, "sub-b", "b@x.example");
     // Same Gmail IDs: spam in account A, inbox in account B.
     store::upsert_thread(
         &mut db.conn(),
         a.id,
-        &thread("t1", "m1", "x@x.com", "A spam", 1, &["SPAM"]),
+        &thread("t1", "m1", "x@x.example", "A spam", 1, &["SPAM"]),
     )
     .unwrap();
     store::upsert_thread(
         &mut db.conn(),
         b.id,
-        &thread("t1", "m1", "x@x.com", "B inbox", 1, &["INBOX"]),
+        &thread("t1", "m1", "x@x.example", "B inbox", 1, &["INBOX"]),
     )
     .unwrap();
     store::upsert_thread(
         &mut db.conn(),
         b.id,
-        &thread("t2", "m2", "y@y.com", "B trash", 2, &["TRASH"]),
+        &thread("t2", "m2", "y@y.example", "B trash", 2, &["TRASH"]),
     )
     .unwrap();
     let id = |account: AccountId, gmail: &str| -> MessageId {
@@ -558,7 +565,7 @@ fn unread_counts_stay_per_account() {
         store::upsert_thread(
             &mut db.conn(),
             account,
-            &thread(t, m, "x@y.com", "Hi", 1_000, &labels),
+            &thread(t, m, "x@y.example", "Hi", 1_000, &labels),
         )
         .unwrap();
     }
@@ -602,7 +609,7 @@ fn drafts_count_saved_drafts_per_account() {
         store::upsert_thread(
             &mut db.conn(),
             account,
-            &thread(t, m, "me@x.com", "Draft", 1_000, &labels),
+            &thread(t, m, "me@x.example", "Draft", 1_000, &labels),
         )
         .unwrap();
     }
@@ -641,7 +648,7 @@ fn dock_badge_counts_unread_in_every_account() {
         store::upsert_thread(
             &mut db.conn(),
             account,
-            &thread(t, m, "x@y.com", "Hi", 1_000, &labels),
+            &thread(t, m, "x@y.example", "Hi", 1_000, &labels),
         )
         .unwrap();
     }
@@ -681,7 +688,7 @@ fn unread_leaves_out_spam_and_trash() {
         store::upsert_thread(
             &mut db.conn(),
             a.id,
-            &thread(t, m, "x@y.com", "Hi", 1_000, &labels),
+            &thread(t, m, "x@y.example", "Hi", 1_000, &labels),
         )
         .unwrap();
     }

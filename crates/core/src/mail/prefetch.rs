@@ -290,7 +290,7 @@ mod tests {
             &db.conn(),
             &accounts::NewAccount {
                 google_sub: "a",
-                email: "a@me.com",
+                email: "a@me.example",
                 display_name: None,
                 avatar_url: None,
                 oauth_client: "default",
@@ -310,7 +310,7 @@ mod tests {
                     internal_date: at,
                     from: Some(Address {
                         name: None,
-                        email: "news@shop.com".into(),
+                        email: "news@shop.example".into(),
                     }),
                     ..Default::default()
                 }],

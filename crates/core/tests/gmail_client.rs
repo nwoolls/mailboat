@@ -245,7 +245,7 @@ fn extracts_bodies_and_attachments_from_full_message() {
 #[tokio::test]
 async fn reads_a_message_as_it_arrived() {
     let server = MockServer::start().await;
-    let raw = "Subject: Hi\r\nFrom: a@x.com\r\n\r\nHello\r\n";
+    let raw = "Subject: Hi\r\nFrom: a@x.example\r\n\r\nHello\r\n";
     Mock::given(method("GET"))
         .and(path("/gmail/v1/users/me/messages/m1"))
         .and(query_param("format", "raw"))

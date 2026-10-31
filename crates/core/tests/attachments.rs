@@ -20,7 +20,7 @@ fn setup() -> (Db, AccountId, MessageId) {
         &db.conn(),
         &accounts::NewAccount {
             google_sub: "a",
-            email: "a@x.com",
+            email: "a@x.example",
             display_name: None,
             avatar_url: None,
             oauth_client: "default",

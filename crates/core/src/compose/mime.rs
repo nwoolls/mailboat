@@ -189,21 +189,24 @@ mod tests {
     #[test]
     fn plain_message_has_the_expected_headers() {
         let raw = built(&MimeMessage {
-            from: addr(Some("Me Myself"), "me@x.com"),
-            to: vec![addr(None, "a@y.com"), addr(Some("Bee"), "b@y.com")],
-            cc: vec![addr(None, "c@y.com")],
-            bcc: vec![addr(None, "secret@y.com")],
+            from: addr(Some("Me Myself"), "me@x.example"),
+            to: vec![addr(None, "a@y.example"), addr(Some("Bee"), "b@y.example")],
+            cc: vec![addr(None, "c@y.example")],
+            bcc: vec![addr(None, "secret@y.example")],
             subject: "Hello".into(),
             text: "Line one\nLine two".into(),
             ..Default::default()
         });
-        assert!(raw.contains("From: \"Me Myself\" <me@x.com>"), "{raw}");
-        assert!(raw.contains("To: <a@y.com>, \"Bee\" <b@y.com>"), "{raw}");
-        assert!(raw.contains("Cc: <c@y.com>"), "{raw}");
-        assert!(raw.contains("Bcc: <secret@y.com>"), "{raw}");
+        assert!(raw.contains("From: \"Me Myself\" <me@x.example>"), "{raw}");
+        assert!(
+            raw.contains("To: <a@y.example>, \"Bee\" <b@y.example>"),
+            "{raw}"
+        );
+        assert!(raw.contains("Cc: <c@y.example>"), "{raw}");
+        assert!(raw.contains("Bcc: <secret@y.example>"), "{raw}");
         assert!(raw.contains("Subject: Hello"), "{raw}");
         assert!(raw.contains("Message-ID: <m."), "{raw}");
-        assert!(raw.contains("@x.com>"), "{raw}");
+        assert!(raw.contains("@x.example>"), "{raw}");
         assert!(raw.contains("Line one\r\nLine two"), "{raw}");
         assert!(!raw.contains("In-Reply-To"), "{raw}");
     }
@@ -211,24 +214,27 @@ mod tests {
     #[test]
     fn replies_carry_threading_headers() {
         let raw = built(&MimeMessage {
-            from: addr(None, "me@x.com"),
-            to: vec![addr(None, "a@y.com")],
+            from: addr(None, "me@x.example"),
+            to: vec![addr(None, "a@y.example")],
             subject: "Re: Plans".into(),
             text: "ok".into(),
-            in_reply_to: Some("<two@y.com>".into()),
-            references: vec!["<one@y.com>".into(), "<two@y.com>".into()],
+            in_reply_to: Some("<two@y.example>".into()),
+            references: vec!["<one@y.example>".into(), "<two@y.example>".into()],
             ..Default::default()
         });
-        assert!(raw.contains("In-Reply-To: <two@y.com>"), "{raw}");
-        assert!(raw.contains("References: <one@y.com> <two@y.com>"), "{raw}");
+        assert!(raw.contains("In-Reply-To: <two@y.example>"), "{raw}");
+        assert!(
+            raw.contains("References: <one@y.example> <two@y.example>"),
+            "{raw}"
+        );
     }
 
     #[test]
     fn line_breaks_cannot_inject_headers() {
         let raw = built(&MimeMessage {
-            from: addr(Some("Evil\r\nBcc: x@evil.com"), "me@x.com"),
-            to: vec![addr(None, "a@y.com")],
-            subject: "Hi\r\nBcc: victim@evil.com".into(),
+            from: addr(Some("Evil\r\nBcc: x@evil.example"), "me@x.example"),
+            to: vec![addr(None, "a@y.example")],
+            subject: "Hi\r\nBcc: victim@evil.example".into(),
             text: "body".into(),
             ..Default::default()
         });
@@ -238,8 +244,8 @@ mod tests {
     #[test]
     fn non_ascii_subjects_and_names_are_encoded() {
         let raw = built(&MimeMessage {
-            from: addr(Some("Zoë"), "me@x.com"),
-            to: vec![addr(None, "a@y.com")],
+            from: addr(Some("Zoë"), "me@x.example"),
+            to: vec![addr(None, "a@y.example")],
             subject: "Café ☕".into(),
             text: "Grüße".into(),
             ..Default::default()
@@ -252,8 +258,8 @@ mod tests {
     #[test]
     fn attachments_are_attached() {
         let raw = built(&MimeMessage {
-            from: addr(None, "me@x.com"),
-            to: vec![addr(None, "a@y.com")],
+            from: addr(None, "me@x.example"),
+            to: vec![addr(None, "a@y.example")],
             subject: "Files".into(),
             text: "see attached".into(),
             attachments: vec![(
@@ -271,8 +277,8 @@ mod tests {
     #[test]
     fn inline_images_keep_their_content_id() {
         let raw = built(&MimeMessage {
-            from: addr(None, "me@x.com"),
-            to: vec![addr(None, "a@y.com")],
+            from: addr(None, "me@x.example"),
+            to: vec![addr(None, "a@y.example")],
             subject: "Logo".into(),
             text: "see".into(),
             html: Some(r#"<img src="cid:logo@x">"#.into()),
@@ -286,8 +292,8 @@ mod tests {
     #[test]
     fn formatted_mail_carries_both_versions() {
         let raw = built(&MimeMessage {
-            from: addr(None, "me@x.com"),
-            to: vec![addr(None, "a@y.com")],
+            from: addr(None, "me@x.example"),
+            to: vec![addr(None, "a@y.example")],
             subject: "Hi".into(),
             text: "Hello there".into(),
             html: Some("<p>Hello <b>there</b></p>".into()),
@@ -314,11 +320,11 @@ mod tests {
         for bad in [
             "",
             "a",
-            "@x.com",
+            "@x.example",
             "a@",
-            "a b@x.com",
-            "a@x.com>",
-            "a@x.com,b@y",
+            "a b@x.example",
+            "a@x.example>",
+            "a@x.example,b@y",
             "a\r\n@x",
         ] {
             assert!(!valid_email(bad), "{bad:?}");

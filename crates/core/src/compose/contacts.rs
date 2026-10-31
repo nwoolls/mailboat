@@ -194,7 +194,7 @@ mod tests {
             &db.conn(),
             &accounts::NewAccount {
                 google_sub: sub,
-                email: &format!("{sub}@me.com"),
+                email: &format!("{sub}@me.example"),
                 display_name: None,
                 avatar_url: None,
                 oauth_client: "default",
@@ -240,7 +240,7 @@ mod tests {
                 &message(
                     &format!("r{i}"),
                     &["INBOX"],
-                    addr("Sam Smith", "sam@x.com"),
+                    addr("Sam Smith", "sam@x.example"),
                     vec![],
                     now,
                 ),
@@ -253,15 +253,15 @@ mod tests {
             &message(
                 "s1",
                 &["SENT"],
-                addr("", "b@me.com"),
-                vec![addr("Sally Jones", "sally@y.com")],
+                addr("", "b@me.example"),
+                vec![addr("Sally Jones", "sally@y.example")],
                 now - 400 * 24 * 3600 * 1000,
             ),
         )
         .unwrap();
         let found = all(&conn).unwrap();
         let emails: Vec<&str> = found.iter().map(|c| c.email.as_str()).collect();
-        assert_eq!(&emails[..2], &["sally@y.com", "sam@x.com"]);
+        assert_eq!(&emails[..2], &["sally@y.example", "sam@x.example"]);
         assert!(found[0].wrote && !found[1].wrote);
         assert_eq!(found[1].name.as_deref(), Some("Sam Smith"));
     }
@@ -272,11 +272,11 @@ mod tests {
         let a = account(&db, "a");
         let mut conn = db.conn();
         for (id, labels, from) in [
-            ("m1", ["INBOX"], addr("", "noreply@shop.com")),
-            ("m2", ["SPAM"], addr("", "nigel@spam.com")),
-            ("m3", ["INBOX"], addr("Kim", "Kim@x.com")),
-            ("m4", ["INBOX"], addr("", "kim@x.com")),
-            ("m5", ["INBOX"], addr("", "bounce+123@lists.x.com")),
+            ("m1", ["INBOX"], addr("", "noreply@shop.example")),
+            ("m2", ["SPAM"], addr("", "nigel@spam.example")),
+            ("m3", ["INBOX"], addr("Kim", "Kim@x.example")),
+            ("m4", ["INBOX"], addr("", "kim@x.example")),
+            ("m5", ["INBOX"], addr("", "bounce+123@lists.x.example")),
         ] {
             upsert_thread(&mut conn, a, &message(id, &labels, from, vec![], 1)).unwrap();
         }
@@ -298,8 +298,8 @@ mod tests {
             &message(
                 "s1",
                 &["SENT"],
-                addr("", "a@me.com"),
-                vec![addr("", "sally@y.com")],
+                addr("", "a@me.example"),
+                vec![addr("", "sally@y.example")],
                 now,
             ),
         )
@@ -307,13 +307,19 @@ mod tests {
         upsert_thread(
             &mut conn,
             a,
-            &message("r1", &["INBOX"], addr("sammy", "sam@x.com"), vec![], now),
+            &message(
+                "r1",
+                &["INBOX"],
+                addr("sammy", "sam@x.example"),
+                vec![],
+                now,
+            ),
         )
         .unwrap();
         for (email, name, kind) in [
-            ("sam@x.com", "Sam Smith", "saved"),
-            ("pat@z.com", "Pat Lee", "saved"),
-            ("old@w.com", "", "other"),
+            ("sam@x.example", "Sam Smith", "saved"),
+            ("pat@z.example", "Pat Lee", "saved"),
+            ("old@w.example", "", "other"),
         ] {
             conn.execute(
                 "INSERT INTO google_contacts (account_id, email, name, kind) VALUES (?1, ?2, ?3, ?4)",
@@ -328,11 +334,11 @@ mod tests {
         assert_eq!(
             order,
             [
-                "sally@y.com",
-                "sam@x.com",
-                "pat@z.com",
-                "a@me.com",
-                "old@w.com"
+                "sally@y.example",
+                "sam@x.example",
+                "pat@z.example",
+                "a@me.example",
+                "old@w.example"
             ]
         );
         assert_eq!(
@@ -353,8 +359,8 @@ mod tests {
             &message(
                 "s1",
                 &["SENT"],
-                addr("", "a@me.com"),
-                vec![addr("Sally", "Sally@y.com")],
+                addr("", "a@me.example"),
+                vec![addr("Sally", "Sally@y.example")],
                 1,
             ),
         )
@@ -365,17 +371,20 @@ mod tests {
             &message(
                 "r1",
                 &["INBOX"],
-                addr("Sam", "sam@x.com"),
-                vec![addr("", "a@me.com")],
+                addr("Sam", "sam@x.example"),
+                vec![addr("", "a@me.example")],
                 1,
             ),
         )
         .unwrap();
-        assert!(wrote_to(&conn, "sally@y.com").unwrap(), "case is ignored");
         assert!(
-            !wrote_to(&conn, "sam@x.com").unwrap(),
+            wrote_to(&conn, "sally@y.example").unwrap(),
+            "case is ignored"
+        );
+        assert!(
+            !wrote_to(&conn, "sam@x.example").unwrap(),
             "received from, never wrote to"
         );
-        assert!(!wrote_to(&conn, "nobody@z.com").unwrap());
+        assert!(!wrote_to(&conn, "nobody@z.example").unwrap());
     }
 }

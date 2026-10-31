@@ -35,7 +35,7 @@ export function quoted(value: string): string {
   return /["“”]/.test(v) ? v : `“${v}”`;
 }
 
-/** Which mail a rule is for: "From news@x.com, subject “Invoice”, with an attachment". */
+/** Which mail a rule is for: "From news@x.example, subject “Invoice”, with an attachment". */
 export function describeCriteria(c: RuleCriteria): string {
   const parts: string[] = [];
   if (c.from) parts.push(`from ${c.from}`);

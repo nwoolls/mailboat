@@ -17,9 +17,9 @@ describe("parseComposingPrefs", () => {
       undoSendSeconds: 30,
     });
     const all = parseComposingPrefs(
-      '{"defaultFrom":{"accountId":2,"email":"me@y.com"},"style":{"font":"Georgia, serif","size":"18px"}}',
+      '{"defaultFrom":{"accountId":2,"email":"me@y.example"},"style":{"font":"Georgia, serif","size":"18px"}}',
     );
-    expect(all.defaultFrom).toEqual({ accountId: 2, email: "me@y.com" });
+    expect(all.defaultFrom).toEqual({ accountId: 2, email: "me@y.example" });
     expect(all.style).toEqual({ font: "Georgia, serif", size: "18px" });
   });
 });

@@ -29,7 +29,7 @@ describe("AssistantPanel", () => {
   it("puts the cursor in the chat box when it opens", async () => {
     render(
       <AssistantPanel
-        draft={newDraft([], 1, "me@x.com")}
+        draft={newDraft([], 1, "me@x.example")}
         placement="left"
         onUse={vi.fn()}
         onClose={vi.fn()}
@@ -49,7 +49,7 @@ describe("AssistantPanel", () => {
       },
     });
     const onUse = vi.fn();
-    const draft = { ...newDraft([], 1, "me@x.com"), kind: "reply" as const, threadId: 42 };
+    const draft = { ...newDraft([], 1, "me@x.example"), kind: "reply" as const, threadId: 42 };
     render(<AssistantPanel draft={draft} placement="left" onUse={onUse} onClose={vi.fn()} />);
 
     const field = screen.getByLabelText("Ask the AI");
@@ -83,7 +83,7 @@ describe("AssistantPanel", () => {
   });
 
   it("offers ideas written from the email when replying", () => {
-    const reply = { ...newDraft([], 1, "me@x.com"), kind: "reply" as const, threadId: 42 };
+    const reply = { ...newDraft([], 1, "me@x.example"), kind: "reply" as const, threadId: 42 };
     render(<AssistantPanel draft={reply} placement="top" onUse={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByText("Confirm Thursday at 3pm")).toBeTruthy();
     expect(screen.queryByText("Say yes")).toBeNull();
@@ -97,7 +97,7 @@ describe("AssistantPanel", () => {
     const onClose = vi.fn();
     render(
       <AssistantPanel
-        draft={newDraft([], 1, "me@x.com")}
+        draft={newDraft([], 1, "me@x.example")}
         placement="top"
         onUse={vi.fn()}
         onClose={onClose}

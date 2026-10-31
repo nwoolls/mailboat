@@ -706,10 +706,10 @@ mod tests {
             trash: false,
             importance: Importance::Never,
             category: Some(Category::Updates),
-            forward_to: Some("ignored@x.com".into()),
+            forward_to: Some("ignored@x.example".into()),
         };
-        let f = to_gmail(&from(" news@x.com "), &actions, &labels(), None).unwrap();
-        assert_eq!(f.criteria.from.as_deref(), Some("news@x.com"));
+        let f = to_gmail(&from(" news@x.example "), &actions, &labels(), None).unwrap();
+        assert_eq!(f.criteria.from.as_deref(), Some("news@x.example"));
         assert_eq!(f.criteria.to, None);
         assert_eq!(
             f.action.add_label_ids,
@@ -764,20 +764,23 @@ mod tests {
         let old = Filter {
             id: Some("f1".into()),
             criteria: FilterCriteria {
-                from: Some("a@x.com".into()),
+                from: Some("a@x.example".into()),
                 exclude_chats: Some(true),
                 ..Default::default()
             },
             action: FilterAction {
                 add_label_ids: vec!["Label_7".into(), "Label_99".into()],
                 remove_label_ids: vec!["INBOX".into()],
-                forward: Some("me@elsewhere.com".into()),
+                forward: Some("me@elsewhere.example".into()),
             },
         };
         let (rule, unknown) = from_gmail(AccountId(1), &old, &labels());
         // Label_99 isn't known locally: flagged so labels refresh.
         assert!(unknown);
-        assert_eq!(rule.actions.forward_to.as_deref(), Some("me@elsewhere.com"));
+        assert_eq!(
+            rule.actions.forward_to.as_deref(),
+            Some("me@elsewhere.example")
+        );
         // The owner swaps the label and stops archiving.
         let actions = RuleActions {
             labels: vec![LabelId(8)],
@@ -787,7 +790,7 @@ mod tests {
         let f = to_gmail(&rule.criteria, &actions, &labels(), Some(&old)).unwrap();
         assert_eq!(f.action.add_label_ids, ["Label_8", "Label_99"]);
         assert!(f.action.remove_label_ids.is_empty());
-        assert_eq!(f.action.forward.as_deref(), Some("me@elsewhere.com"));
+        assert_eq!(f.action.forward.as_deref(), Some("me@elsewhere.example"));
         assert_eq!(f.criteria.exclude_chats, Some(true));
     }
 
@@ -806,7 +809,12 @@ mod tests {
             Err(CoreError::Invalid(_))
         ));
         assert!(matches!(
-            to_gmail(&from("a@x.com"), &RuleActions::default(), &labels(), None),
+            to_gmail(
+                &from("a@x.example"),
+                &RuleActions::default(),
+                &labels(),
+                None
+            ),
             Err(CoreError::Invalid(_))
         ));
         let gone = RuleActions {
@@ -814,7 +822,7 @@ mod tests {
             ..Default::default()
         };
         assert!(matches!(
-            to_gmail(&from("a@x.com"), &gone, &labels(), None),
+            to_gmail(&from("a@x.example"), &gone, &labels(), None),
             Err(CoreError::Invalid(_))
         ));
         let zero = RuleCriteria {
@@ -833,7 +841,7 @@ mod tests {
     #[test]
     fn search_query_reads_like_gmails() {
         let c = FilterCriteria {
-            from: Some("a@x.com OR b@x.com".into()),
+            from: Some("a@x.example OR b@x.example".into()),
             subject: Some("weekly report".into()),
             query: Some("unsubscribe".into()),
             negated_query: Some("urgent".into()),
@@ -844,7 +852,7 @@ mod tests {
         };
         assert_eq!(
             search_query(&c),
-            "from:(a@x.com OR b@x.com) subject:(weekly report) unsubscribe -{urgent} has:attachment smaller:2048"
+            "from:(a@x.example OR b@x.example) subject:(weekly report) unsubscribe -{urgent} has:attachment smaller:2048"
         );
     }
 
@@ -853,7 +861,7 @@ mod tests {
         let a = Filter {
             id: Some("x".into()),
             criteria: FilterCriteria {
-                from: Some("a@x.com".into()),
+                from: Some("a@x.example".into()),
                 to: Some("".into()),
                 has_attachment: Some(false),
                 size_comparison: Some("unspecified".into()),
@@ -867,7 +875,7 @@ mod tests {
         let b = Filter {
             id: None,
             criteria: FilterCriteria {
-                from: Some(" a@x.com".into()),
+                from: Some(" a@x.example".into()),
                 ..Default::default()
             },
             action: FilterAction {

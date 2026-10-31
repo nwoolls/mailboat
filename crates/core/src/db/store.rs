@@ -1182,7 +1182,7 @@ mod tests {
         let db = crate::db::Db::open_in_memory().unwrap();
         let conn = db.conn();
         assert!(!sender_wants_original_colors(&conn, "news@key.example").unwrap());
-        set_sender_original_colors(&conn, "News@key.example", true).unwrap();
+        set_sender_original_colors(&conn, "News@Key.example", true).unwrap();
         set_sender_original_colors(&conn, "news@key.example", true).unwrap();
         assert!(sender_wants_original_colors(&conn, "news@key.example").unwrap());
         assert!(!sender_wants_original_colors(&conn, "other@key.example").unwrap());

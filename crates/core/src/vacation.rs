@@ -269,7 +269,7 @@ mod tests {
                 .restrict_to_domain
         );
         assert!(
-            to_gmail(&s, can_limit_to_domain("me@acme.com"))
+            to_gmail(&s, can_limit_to_domain("me@acme.example"))
                 .unwrap()
                 .restrict_to_domain
         );

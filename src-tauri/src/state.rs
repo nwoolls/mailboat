@@ -219,7 +219,7 @@ mod tests {
                 &db.conn(),
                 &accounts::NewAccount {
                     google_sub: sub,
-                    email: &format!("{sub}@x.com"),
+                    email: &format!("{sub}@x.example"),
                     display_name: None,
                     avatar_url: None,
                     oauth_client: "default",

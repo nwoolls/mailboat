@@ -22,7 +22,7 @@ fn setup() -> (Db, AccountId, LabelId) {
         &db.conn(),
         &accounts::NewAccount {
             google_sub: "a",
-            email: "a@x.com",
+            email: "a@x.example",
             display_name: None,
             avatar_url: None,
             oauth_client: "default",
@@ -58,7 +58,7 @@ fn from(addr: &str) -> RuleCriteria {
 fn news_filter(id: &str) -> serde_json::Value {
     json!({
         "id": id,
-        "criteria": { "from": "news@x.com" },
+        "criteria": { "from": "news@x.example" },
         "action": { "addLabelIds": ["Label_1"], "removeLabelIds": ["INBOX"] }
     })
 }
@@ -98,7 +98,7 @@ async fn lists_rules_and_learns_new_labels() {
     };
     assert_eq!(rules.len(), 2);
     assert_eq!(rules[0].filter_id, "f1");
-    assert_eq!(rules[0].criteria.from, "news@x.com");
+    assert_eq!(rules[0].criteria.from, "news@x.example");
     assert_eq!(rules[0].actions.labels, [news]);
     assert!(rules[0].actions.skip_inbox);
     let receipts: LabelId = db
@@ -141,7 +141,7 @@ async fn creates_a_rule_and_applies_it_to_existing_mail() {
     Mock::given(method("POST"))
         .and(path(FILTERS))
         .and(body_json(json!({
-            "criteria": { "from": "news@x.com" },
+            "criteria": { "from": "news@x.example" },
             "action": { "addLabelIds": ["Label_1"], "removeLabelIds": ["INBOX"] }
         })))
         .respond_with(ResponseTemplate::new(200).set_body_json(news_filter("f9")))
@@ -150,7 +150,7 @@ async fn creates_a_rule_and_applies_it_to_existing_mail() {
         .await;
     Mock::given(method("GET"))
         .and(path("/gmail/v1/users/me/messages"))
-        .and(query_param("q", "from:(news@x.com)"))
+        .and(query_param("q", "from:(news@x.example)"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "messages": [{ "id": "m1", "threadId": "t1" }, { "id": "m2", "threadId": "t1" }]
         })))
@@ -175,7 +175,7 @@ async fn creates_a_rule_and_applies_it_to_existing_mail() {
         labels: vec![news],
         ..Default::default()
     };
-    let saved = rules::create(&db, &gmail, a, &from("news@x.com"), &actions, true)
+    let saved = rules::create(&db, &gmail, a, &from("news@x.example"), &actions, true)
         .await
         .unwrap();
     assert_eq!(saved.rule.filter_id, "f9");
@@ -193,28 +193,28 @@ async fn editing_replaces_the_filter_and_keeps_forwarding() {
         .and(path(format!("{FILTERS}/f1")))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "id": "f1",
-            "criteria": { "from": "news@x.com" },
-            "action": { "removeLabelIds": ["INBOX"], "forward": "me@elsewhere.com" }
+            "criteria": { "from": "news@x.example" },
+            "action": { "removeLabelIds": ["INBOX"], "forward": "me@elsewhere.example" }
         })))
         .mount(&server)
         .await;
     Mock::given(method("POST"))
         .and(path(FILTERS))
         .and(body_json(json!({
-            "criteria": { "from": "news@x.com" },
+            "criteria": { "from": "news@x.example" },
             "action": {
                 "addLabelIds": ["IMPORTANT"],
                 "removeLabelIds": ["INBOX"],
-                "forward": "me@elsewhere.com"
+                "forward": "me@elsewhere.example"
             }
         })))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "id": "f2",
-            "criteria": { "from": "news@x.com" },
+            "criteria": { "from": "news@x.example" },
             "action": {
                 "addLabelIds": ["IMPORTANT"],
                 "removeLabelIds": ["INBOX"],
-                "forward": "me@elsewhere.com"
+                "forward": "me@elsewhere.example"
             }
         })))
         .expect(1)
@@ -233,13 +233,21 @@ async fn editing_replaces_the_filter_and_keeps_forwarding() {
         importance: Importance::Always,
         ..Default::default()
     };
-    let saved = rules::update(&db, &gmail, a, "f1", &from("news@x.com"), &actions, false)
-        .await
-        .unwrap();
+    let saved = rules::update(
+        &db,
+        &gmail,
+        a,
+        "f1",
+        &from("news@x.example"),
+        &actions,
+        false,
+    )
+    .await
+    .unwrap();
     assert_eq!(saved.rule.filter_id, "f2");
     assert_eq!(
         saved.rule.actions.forward_to.as_deref(),
-        Some("me@elsewhere.com")
+        Some("me@elsewhere.example")
     );
     assert_eq!(saved.applied, None);
 }
@@ -259,9 +267,17 @@ async fn saving_an_unchanged_rule_changes_nothing() {
         labels: vec![news],
         ..Default::default()
     };
-    let saved = rules::update(&db, &gmail, a, "f1", &from(" news@x.com "), &actions, false)
-        .await
-        .unwrap();
+    let saved = rules::update(
+        &db,
+        &gmail,
+        a,
+        "f1",
+        &from(" news@x.example "),
+        &actions,
+        false,
+    )
+    .await
+    .unwrap();
     assert_eq!(saved.rule.filter_id, "f1");
     // Only the read: no create, no delete.
     assert_eq!(server.received_requests().await.unwrap().len(), 1);
@@ -278,7 +294,7 @@ async fn a_failed_edit_leaves_the_old_rule_alone() {
     Mock::given(method("POST"))
         .and(path(FILTERS))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "id": "f2", "criteria": { "from": "other@x.com" },
+            "id": "f2", "criteria": { "from": "other@x.example" },
             "action": { "addLabelIds": ["STARRED"] }
         })))
         .mount(&server)
@@ -304,7 +320,7 @@ async fn a_failed_edit_leaves_the_old_rule_alone() {
         star: true,
         ..Default::default()
     };
-    let err = rules::update(&db, &gmail, a, "f1", &from("other@x.com"), &star, false)
+    let err = rules::update(&db, &gmail, a, "f1", &from("other@x.example"), &star, false)
         .await
         .unwrap_err();
     assert!(matches!(err, CoreError::Api { status: 400, .. }), "{err:?}");
@@ -326,7 +342,7 @@ async fn a_duplicate_rule_is_refused_kindly() {
         star: true,
         ..Default::default()
     };
-    let err = rules::create(&db, &gmail, a, &from("a@x.com"), &star, false)
+    let err = rules::create(&db, &gmail, a, &from("a@x.example"), &star, false)
         .await
         .unwrap_err();
     assert!(
@@ -340,7 +356,7 @@ async fn counts_matching_conversations() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/gmail/v1/users/me/threads"))
-        .and(query_param("q", "from:(news@x.com) has:attachment"))
+        .and(query_param("q", "from:(news@x.example) has:attachment"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "threads": [{ "id": "t1" }, { "id": "t2" }, { "id": "t3" }],
             "nextPageToken": "more"
@@ -350,7 +366,7 @@ async fn counts_matching_conversations() {
     let (gmail, _) = client(&server.uri());
     let criteria = RuleCriteria {
         has_attachment: true,
-        ..from("news@x.com")
+        ..from("news@x.example")
     };
     let count = rules::match_count(&gmail, &criteria)
         .await

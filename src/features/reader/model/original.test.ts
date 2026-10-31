@@ -6,7 +6,7 @@ const meta = (id: number, internalDate: number, draft = false): MessageMeta => (
   id,
   accountId: 1,
   threadId: 1,
-  from: { name: null, email: "a@x.com" },
+  from: { name: null, email: "a@x.example" },
   to: [],
   cc: [],
   subject: "",
@@ -19,14 +19,14 @@ const meta = (id: number, internalDate: number, draft = false): MessageMeta => (
 });
 
 const original: Original = {
-  messageId: "<a@x.com>",
+  messageId: "<a@x.example>",
   date: Date.UTC(2026, 9, 24, 13, 15),
-  from: "Ann <a@x.com>",
+  from: "Ann <a@x.example>",
   to: "me@gmail.com",
   cc: null,
   subject: "",
   checks: [
-    { method: "SPF", result: "pass", detail: "x.com" },
+    { method: "SPF", result: "pass", detail: "x.example" },
     { method: "DMARC", result: "fail", detail: null },
   ],
   source: "",
@@ -53,7 +53,7 @@ describe("summaryRows", () => {
       "SPF",
       "DMARC",
     ]);
-    expect(rows[4]![1]).toBe("PASS with domain x.com");
+    expect(rows[4]![1]).toBe("PASS with domain x.example");
     expect(rows[5]![1]).toBe("FAIL");
   });
 });

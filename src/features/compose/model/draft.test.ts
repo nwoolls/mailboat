@@ -33,7 +33,7 @@ const OTHER = 2;
 const identities: Identity[] = [
   {
     accountId: ME,
-    email: "me@x.com",
+    email: "me@x.example",
     name: "Me",
     isPrimary: true,
     isDefault: true,
@@ -41,7 +41,7 @@ const identities: Identity[] = [
   },
   {
     accountId: ME,
-    email: "alias@x.com",
+    email: "alias@x.example",
     name: "Alias",
     isPrimary: false,
     isDefault: false,
@@ -49,7 +49,7 @@ const identities: Identity[] = [
   },
   {
     accountId: OTHER,
-    email: "work@y.com",
+    email: "work@y.example",
     name: "Work",
     isPrimary: true,
     isDefault: true,
@@ -63,9 +63,9 @@ function source(over: Partial<ReplySource> = {}): ReplySource {
     messageId: 10,
     accountId: ME,
     threadId: 5,
-    from: a("jane@z.com", "Jane"),
-    to: [a("me@x.com"), a("bob@z.com", "Bob")],
-    cc: [a("carol@z.com")],
+    from: a("jane@z.example", "Jane"),
+    to: [a("me@x.example"), a("bob@z.example", "Bob")],
+    cc: [a("carol@z.example")],
     replyTo: [],
     subject: "Lunch",
     date: 0,
@@ -113,7 +113,7 @@ describe("starting font", () => {
   });
   it("sends the signature and quote outside the wrapper", () => {
     const d = {
-      ...newDraft(identities, ME, "me@x.com"),
+      ...newDraft(identities, ME, "me@x.example"),
       html: "<p>Hi</p>",
       quote: "<blockquote>q</blockquote>",
     };
@@ -125,11 +125,11 @@ describe("starting font", () => {
 describe("preferredIdentity", () => {
   it("finds the chosen address, or none if it's gone", () => {
     expect(preferredIdentity(identities, null)).toBeUndefined();
-    expect(preferredIdentity(identities, { accountId: ME, email: "ALIAS@x.com" })?.email).toBe(
-      "alias@x.com",
+    expect(preferredIdentity(identities, { accountId: ME, email: "ALIAS@x.example" })?.email).toBe(
+      "alias@x.example",
     );
     expect(
-      preferredIdentity(identities, { accountId: OTHER, email: "alias@x.com" }),
+      preferredIdentity(identities, { accountId: OTHER, email: "alias@x.example" }),
     ).toBeUndefined();
   });
 });
@@ -141,10 +141,10 @@ describe("withSelection", () => {
     expect(cut.text).toBe("Noon? Sure");
     expect(cut.html).toBeNull();
     expect(cut.inlineImages).toEqual([]);
-    const reply = replyDraft("reply", cut, [], "me@x.com");
+    const reply = replyDraft("reply", cut, [], "me@x.example");
     expect(reply.quote).toContain("Noon? Sure");
     expect(reply.quote).not.toContain("<p>J</p>");
-    expect(reply.to).toEqual([a("jane@z.com", "Jane")]);
+    expect(reply.to).toEqual([a("jane@z.example", "Jane")]);
   });
   it("keeps the whole message when only spaces are selected", () => {
     expect(withSelection(original, " \n ")).toBe(original);
@@ -152,56 +152,64 @@ describe("withSelection", () => {
 });
 
 describe("replyRecipients", () => {
-  const mine = ["me@x.com", "alias@x.com"];
+  const mine = ["me@x.example", "alias@x.example"];
 
   it("reply goes to the sender only", () => {
     expect(replyRecipients(source(), false, mine)).toEqual({
-      to: [a("jane@z.com", "Jane")],
+      to: [a("jane@z.example", "Jane")],
       cc: [],
     });
   });
 
   it("reply honours Reply-To", () => {
-    const s = source({ replyTo: [a("list@z.com")] });
-    expect(replyRecipients(s, false, mine).to).toEqual([a("list@z.com")]);
+    const s = source({ replyTo: [a("list@z.example")] });
+    expect(replyRecipients(s, false, mine).to).toEqual([a("list@z.example")]);
   });
 
   it("reply all: the sender in To, everyone else but me in Cc, without repeats", () => {
-    const s = source({ cc: [a("carol@z.com"), a("ALIAS@x.com"), a("bob@z.com")] });
+    const s = source({ cc: [a("carol@z.example"), a("ALIAS@x.example"), a("bob@z.example")] });
     expect(replyRecipients(s, true, mine)).toEqual({
-      to: [a("jane@z.com", "Jane")],
-      cc: [a("bob@z.com", "Bob"), a("carol@z.com")],
+      to: [a("jane@z.example", "Jane")],
+      cc: [a("bob@z.example", "Bob"), a("carol@z.example")],
     });
   });
 
   it("reply all moves the original's other To people to Cc", () => {
-    const s = source({ to: [a("me@x.com"), a("bob@z.com"), a("dan@z.com")] });
+    const s = source({ to: [a("me@x.example"), a("bob@z.example"), a("dan@z.example")] });
     expect(replyRecipients(s, true, mine)).toEqual({
-      to: [a("jane@z.com", "Jane")],
-      cc: [a("bob@z.com"), a("dan@z.com"), a("carol@z.com")],
+      to: [a("jane@z.example", "Jane")],
+      cc: [a("bob@z.example"), a("dan@z.example"), a("carol@z.example")],
     });
   });
 
   it("reply all to a Reply-To list keeps the sender out of To", () => {
-    const s = source({ replyTo: [a("list@z.com")], to: [a("bob@z.com")] });
+    const s = source({ replyTo: [a("list@z.example")], to: [a("bob@z.example")] });
     expect(replyRecipients(s, true, mine)).toEqual({
-      to: [a("list@z.com")],
-      cc: [a("bob@z.com"), a("carol@z.com")],
+      to: [a("list@z.example")],
+      cc: [a("bob@z.example"), a("carol@z.example")],
     });
   });
 
   it("replying to my own sent mail goes to its recipients again", () => {
-    const s = source({ from: a("me@x.com"), to: [a("bob@z.com")], cc: [a("carol@z.com")] });
-    expect(replyRecipients(s, false, mine)).toEqual({ to: [a("bob@z.com")], cc: [] });
+    const s = source({
+      from: a("me@x.example"),
+      to: [a("bob@z.example")],
+      cc: [a("carol@z.example")],
+    });
+    expect(replyRecipients(s, false, mine)).toEqual({ to: [a("bob@z.example")], cc: [] });
     expect(replyRecipients(s, true, mine)).toEqual({
-      to: [a("bob@z.com")],
-      cc: [a("carol@z.com")],
+      to: [a("bob@z.example")],
+      cc: [a("carol@z.example")],
     });
   });
 
   it("when only Cc'd people are left, they become the To", () => {
-    const s = source({ from: a("me@x.com"), to: [a("me@x.com")], cc: [a("carol@z.com")] });
-    expect(replyRecipients(s, true, mine)).toEqual({ to: [a("carol@z.com")], cc: [] });
+    const s = source({
+      from: a("me@x.example"),
+      to: [a("me@x.example")],
+      cc: [a("carol@z.example")],
+    });
+    expect(replyRecipients(s, true, mine)).toEqual({ to: [a("carol@z.example")], cc: [] });
   });
 });
 
@@ -218,7 +226,7 @@ describe("subjects", () => {
 describe("quoting", () => {
   it("quotes the original's own HTML in Gmail's quote block", () => {
     expect(quoteHtml(source({ html: "<table><tr><td><b>Noon?</b></td></tr></table>" }), date)).toBe(
-      '<div class="gmail_quote"><p>On Thu, Oct 9, Jane &lt;jane@z.com&gt; wrote:</p>' +
+      '<div class="gmail_quote"><p>On Thu, Oct 9, Jane &lt;jane@z.example&gt; wrote:</p>' +
         '<blockquote style="margin:0 0 0 .8ex;border-left:1px solid #ccc;padding-left:1ex">' +
         "<table><tr><td><b>Noon?</b></td></tr></table></blockquote></div>",
     );
@@ -232,22 +240,22 @@ describe("quoting", () => {
 
   it("the text copy quotes each line behind >", () => {
     expect(quoteText(source(), date)).toBe(
-      "On Thu, Oct 9, Jane <jane@z.com> wrote:\n> Noon?\n>\n> J",
+      "On Thu, Oct 9, Jane <jane@z.example> wrote:\n> Noon?\n>\n> J",
     );
   });
 
   it("forwards carry the original's headers", () => {
     expect(forwardText(source(), date)).toBe(
-      "---------- Forwarded message ---------\nFrom: Jane <jane@z.com>\nDate: Thu, Oct 9\n" +
-        "Subject: Lunch\nTo: me@x.com, Bob <bob@z.com>\nCc: carol@z.com\n\nNoon?\n\nJ",
+      "---------- Forwarded message ---------\nFrom: Jane <jane@z.example>\nDate: Thu, Oct 9\n" +
+        "Subject: Lunch\nTo: me@x.example, Bob <bob@z.example>\nCc: carol@z.example\n\nNoon?\n\nJ",
     );
     expect(forwardHtml(source({ html: "<i>x</i>" }), date)).toContain(
-      "Cc: carol@z.com</p><i>x</i>",
+      "Cc: carol@z.example</p><i>x</i>",
     );
   });
 
   it("sending puts the quote after what was written, in both copies", () => {
-    const d = replyDraft("reply", source(), identities, "me@x.com", date);
+    const d = replyDraft("reply", source(), identities, "me@x.example", date);
     const out = toOutgoing({ ...d, html: "<p>Sure</p>", text: "Sure" });
     expect(out.text).toBe(`Sure\n\n${d.quoteText}`);
     expect(out.html).toBe(`<p style="margin:0">Sure</p><div><br></div>${d.quote}`);
@@ -256,45 +264,45 @@ describe("quoting", () => {
 
 describe("defaultIdentity", () => {
   it("uses the alias the mail was sent to", () => {
-    const s = source({ to: [a("ALIAS@x.com")] });
-    expect(defaultIdentity(identities, ME, s)?.email).toBe("alias@x.com");
+    const s = source({ to: [a("ALIAS@x.example")] });
+    expect(defaultIdentity(identities, ME, s)?.email).toBe("alias@x.example");
   });
   it("otherwise the account's default", () => {
-    expect(defaultIdentity(identities, ME)?.email).toBe("me@x.com");
-    expect(defaultIdentity(identities, OTHER, source())?.email).toBe("work@y.com");
+    expect(defaultIdentity(identities, ME)?.email).toBe("me@x.example");
+    expect(defaultIdentity(identities, OTHER, source())?.email).toBe("work@y.example");
   });
 });
 
 describe("drafts", () => {
   it("a reply starts with the quote below room to write, and a fresh subject", () => {
-    const d = replyDraft("replyAll", source(), identities, "me@x.com", date);
+    const d = replyDraft("replyAll", source(), identities, "me@x.example", date);
     expect(d.subject).toBe("Re: Lunch");
     expect(d.html).toBe("");
     expect(d.quote).toContain("On Thu, Oct 9");
     expect(d.replyingTo).toBe(10);
     expect(d.threadId).toBe(5);
     expect(d.showCc).toBe(true);
-    expect(d.from.email).toBe("me@x.com");
+    expect(d.from.email).toBe("me@x.example");
   });
 
   it("a forward has no recipients yet", () => {
-    const d = replyDraft("forward", source(), identities, "me@x.com", date);
+    const d = replyDraft("forward", source(), identities, "me@x.example", date);
     expect(d.to).toEqual([]);
     expect(d.subject).toBe("Fwd: Lunch");
     expect(sendProblem(d)).toBe("Add at least one recipient.");
   });
 
   it("flags invalid recipients", () => {
-    const d = { ...newDraft(identities, ME, "me@x.com"), to: [a("bob")] };
+    const d = { ...newDraft(identities, ME, "me@x.example"), to: [a("bob")] };
     expect(sendProblem(d)).toBe("“bob” isn’t a valid email address.");
-    expect(sendProblem({ ...d, to: [a("bob@z.com")] })).toBeNull();
+    expect(sendProblem({ ...d, to: [a("bob@z.example")] })).toBeNull();
   });
 
   it("knows when closing would lose something", () => {
-    const fresh = newDraft(identities, ME, "me@x.com");
+    const fresh = newDraft(identities, ME, "me@x.example");
     expect(hasChanges(fresh)).toBe(false);
     expect(hasChanges({ ...fresh, subject: "Hi" })).toBe(true);
-    const reply = replyDraft("reply", source(), identities, "me@x.com", date);
+    const reply = replyDraft("reply", source(), identities, "me@x.example", date);
     expect(hasChanges(reply)).toBe(false);
     expect(hasChanges({ ...reply, edited: true })).toBe(true);
   });
@@ -305,8 +313,8 @@ describe("drafts", () => {
       {
         draft: 9,
         accountId: ME,
-        from: { name: null, email: "me@x.com" },
-        to: [{ name: "Jordan", email: "jordan@x.com" }],
+        from: { name: null, email: "me@x.example" },
+        to: [{ name: "Jordan", email: "jordan@x.example" }],
         cc: [],
         bcc: [],
         subject: "What's up?",
@@ -326,9 +334,9 @@ describe("drafts", () => {
   });
 
   it("choosing another account's address moves the draft to that account", () => {
-    const d = withIdentity(newDraft(identities, ME, "me@x.com"), identities[2]!);
+    const d = withIdentity(newDraft(identities, ME, "me@x.example"), identities[2]!);
     expect(d.accountId).toBe(OTHER);
-    expect(d.from).toEqual({ name: "Work", email: "work@y.com" });
+    expect(d.from).toEqual({ name: "Work", email: "work@y.example" });
   });
 });
 
@@ -354,24 +362,30 @@ describe("signatures", () => {
   ];
 
   it("keep Gmail's HTML as is (outside the editor), minus trailing empty lines", () => {
-    const d = newDraft(signed, ME, "me@x.com");
+    const d = newDraft(signed, ME, "me@x.example");
     expect(d.html).toBe("");
     expect(d.signature).toBe(sig);
-    const r = replyDraft("reply", source({ to: [a("alias@x.com")] }), signed, "me@x.com", date);
+    const r = replyDraft(
+      "reply",
+      source({ to: [a("alias@x.example")] }),
+      signed,
+      "me@x.example",
+      date,
+    );
     expect(r.signature).toBe("<p>— Alias</p>");
-    expect(newDraft(signed, OTHER, "work@y.com").signature).toBe("");
+    expect(newDraft(signed, OTHER, "work@y.example").signature).toBe("");
     expect(trimSignature("<p>Jordan</p><p><br></p><div>&nbsp;</div><br>")).toBe("<p>Jordan</p>");
   });
 
   it("switching From swaps the signature, even after typing", () => {
-    const d = { ...replyDraft("reply", source(), signed, "me@x.com", date), edited: true };
+    const d = { ...replyDraft("reply", source(), signed, "me@x.example", date), edited: true };
     const swapped = withIdentity(d, signed[1]!);
     expect(swapped.signature).toBe("<p>— Alias</p>");
     expect(swapped.edited).toBe(true);
   });
 
   it("is sent after a blank line, in Gmail's wrapper, before the quote", () => {
-    const d = replyDraft("reply", source(), signed, "me@x.com", date);
+    const d = replyDraft("reply", source(), signed, "me@x.example", date);
     const out = toOutgoing({ ...d, html: "<p>Hi</p>", text: "Hi" });
     expect(out.html).toBe(
       `<p style="margin:0">Hi</p><div><br></div><div class="gmail_signature">${sig}</div>` +
@@ -382,7 +396,7 @@ describe("signatures", () => {
 });
 
 it("attachments count as changes, report their size, and respect Gmail's limit", () => {
-  const d = { ...newDraft(identities, ME, "me@x.com"), to: [a("b@z.com")] };
+  const d = { ...newDraft(identities, ME, "me@x.example"), to: [a("b@z.example")] };
   const file = { filename: "a.txt", mimeType: "text/plain", data: "aGVsbG8=" };
   expect(attachmentSize(file)).toBe(5);
   expect(hasChanges({ ...d, to: [], attachments: [file] })).toBe(true);
@@ -398,10 +412,10 @@ it("a resumed draft goes inline when it's a reply, in the card otherwise", () =>
     draft: 9,
     accountId: ME,
     threadId: 5,
-    from: a("me@x.com"),
-    to: [a("bob@z.com")],
+    from: a("me@x.example"),
+    to: [a("bob@z.example")],
     cc: [],
-    bcc: [a("boss@x.com")],
+    bcc: [a("boss@x.example")],
     subject: "Re: Lunch",
     html: "<p>Sure</p>",
     text: "Sure",
@@ -419,35 +433,41 @@ it("a resumed draft goes inline when it's a reply, in the card otherwise", () =>
 
 it("a forward carries the original's files; replies don't", () => {
   const pdf = { id: 3, messageId: 10, filename: "plan.pdf", mimeType: "application/pdf", size: 9 };
-  const fwd = replyDraft("forward", source({ attachments: [pdf] }), identities, "me@x.com", date);
+  const fwd = replyDraft(
+    "forward",
+    source({ attachments: [pdf] }),
+    identities,
+    "me@x.example",
+    date,
+  );
   expect(fwd.forwarded).toEqual([pdf]);
-  expect(toOutgoing({ ...fwd, to: [a("b@z.com")] }).forwarded).toEqual([3]);
+  expect(toOutgoing({ ...fwd, to: [a("b@z.example")] }).forwarded).toEqual([3]);
   expect(
-    replyDraft("reply", source({ attachments: [pdf] }), identities, "me@x.com", date).forwarded,
+    replyDraft("reply", source({ attachments: [pdf] }), identities, "me@x.example", date).forwarded,
   ).toEqual([]);
 });
 
 it("replies and forwards carry the quote's embedded images", () => {
-  const d = replyDraft("reply", source({ inlineImages: [7] }), identities, "me@x.com", date);
-  expect(toOutgoing({ ...d, to: [a("b@z.com")] }).inlineImages).toEqual([7]);
+  const d = replyDraft("reply", source({ inlineImages: [7] }), identities, "me@x.example", date);
+  expect(toOutgoing({ ...d, to: [a("b@z.example")] }).inlineImages).toEqual([7]);
 });
 
 it("switching kind keeps the writing and swaps recipients and quote", () => {
   const src = source();
   const reply = {
-    ...replyDraft("reply", src, identities, "me@x.com", date),
+    ...replyDraft("reply", src, identities, "me@x.example", date),
     html: "<p>Hi</p>",
     text: "Hi",
     edited: true,
-    bcc: [a("hidden@z.com")],
+    bcc: [a("hidden@z.example")],
   };
-  const fwd = switchedKind(reply, replyDraft("forward", src, identities, "me@x.com", date));
+  const fwd = switchedKind(reply, replyDraft("forward", src, identities, "me@x.example", date));
   expect([fwd.id, fwd.kind, fwd.html, fwd.to, fwd.bcc]).toEqual([
     reply.id,
     "forward",
     "<p>Hi</p>",
     [],
-    [a("hidden@z.com")],
+    [a("hidden@z.example")],
   ]);
   expect(fwd.subject).toBe(forwardSubject(src.subject));
   expect(fwd.quote).toBe(forwardHtml(src, date));

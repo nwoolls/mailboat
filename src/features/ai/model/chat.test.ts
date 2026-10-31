@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { newDraft } from "../../compose/model/draft";
 import { chatMessage, suggestions, toTurns, writeRequest } from "./chat";
 
-const blankDraft = () => newDraft([], 1, "me@x.com");
+const blankDraft = () => newDraft([], 1, "me@x.example");
 
 describe("writing assistant chat", () => {
   it("leaves failed requests out of what the model hears", () => {

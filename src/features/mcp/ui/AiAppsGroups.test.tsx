@@ -9,7 +9,7 @@ vi.mock("../../../shared/lib/queries", () => ({
   useAccounts: () => ({
     data: [
       { id: 1, email: "me@gmail.com", color: "#f00" },
-      { id: 2, email: "me@work.com", color: "#00f" },
+      { id: 2, email: "me@work.example", color: "#00f" },
     ],
   }),
   useMcpSetup: () => ({
@@ -46,9 +46,11 @@ afterEach(cleanup);
 describe("AiAppsGroups", () => {
   it("is off for every account, and allowing drafts shares the account too", () => {
     render(<AiAppsGroups />);
-    const read = screen.getByRole("switch", { name: "AI apps can read me@work.com" });
+    const read = screen.getByRole("switch", { name: "AI apps can read me@work.example" });
     expect(read.getAttribute("aria-checked")).toBe("false");
-    fireEvent.click(screen.getByRole("switch", { name: "AI apps can save drafts in me@work.com" }));
+    fireEvent.click(
+      screen.getByRole("switch", { name: "AI apps can save drafts in me@work.example" }),
+    );
     expect(save.mock.calls[0]![0].mcp).toEqual({ read: [2], drafts: [2] });
   });
 

@@ -21,7 +21,7 @@ import { type Draft, newDraft } from "./draft";
 const identities: Identity[] = [
   {
     accountId: 1,
-    email: "me@x.com",
+    email: "me@x.example",
     name: null,
     isPrimary: true,
     isDefault: true,
@@ -31,7 +31,7 @@ const identities: Identity[] = [
 
 function reply(threadId: number, kind: Draft["kind"] = "reply"): Draft {
   return {
-    ...newDraft(identities, 1, "me@x.com"),
+    ...newDraft(identities, 1, "me@x.example"),
     kind,
     threadId,
     replyingTo: 100 + threadId,
@@ -58,21 +58,21 @@ describe("compose state", () => {
   });
 
   it("a new message minimises the card with writing in it, and drops an untouched one", () => {
-    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.com"));
-    s = openCard(s, newDraft(identities, 1, "me@x.com"));
+    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.example"));
+    s = openCard(s, newDraft(identities, 1, "me@x.example"));
     expect(s.cards).toHaveLength(1);
     const first = s.cards[0]!.draft.id;
     s = updateDraft(s, first, (d) => ({ ...d, subject: "Hello" }));
-    s = openCard(s, newDraft(identities, 1, "me@x.com"));
+    s = openCard(s, newDraft(identities, 1, "me@x.example"));
     expect(s.cards.map((c) => c.minimized)).toEqual([true, false]);
     expect(openCardEntry(s)?.draft.id).not.toBe(first);
   });
 
   it("expanding a tab swaps it with the open card, keeping tab order", () => {
-    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.com"));
+    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.example"));
     const a = s.cards[0]!.draft.id;
     s = updateDraft(s, a, (d) => ({ ...d, subject: "A" }));
-    s = openCard(s, newDraft(identities, 1, "me@x.com"));
+    s = openCard(s, newDraft(identities, 1, "me@x.example"));
     const b = s.cards[1]!.draft.id;
     s = updateDraft(s, b, (d) => ({ ...d, subject: "B" }));
     s = expand(s, a);
@@ -86,7 +86,7 @@ describe("compose state", () => {
   });
 
   it("editing clears a send error; closing removes the draft", () => {
-    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.com"));
+    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.example"));
     const id = s.cards[0]!.draft.id;
     s = setSending(s, id, false, "Network error");
     expect(s.cards[0]?.error).toBe("Network error");
@@ -96,7 +96,7 @@ describe("compose state", () => {
   });
 
   it("undo send puts the draft back as it was, focused", () => {
-    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.com"));
+    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.example"));
     const sent = s.cards[0]!;
     s = close(s, sent.draft.id);
     s = reopen(s, sent);
@@ -109,7 +109,7 @@ describe("compose state", () => {
   });
 
   it("records a save without counting it as an edit", () => {
-    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.com"));
+    let s = openCard(EMPTY, newDraft(identities, 1, "me@x.example"));
     const id = s.cards[0]!.draft.id;
     s = setSending(s, id, false, "Network error");
     s = setSaved(s, id, "saved", 42);

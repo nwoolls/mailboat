@@ -18,11 +18,11 @@ describe("rule summaries", () => {
   it("describes what a rule matches", () => {
     expect(
       describeCriteria({
-        ...toCriteria(emptyForm({ from: "news@x.com", subject: "Weekly" })),
+        ...toCriteria(emptyForm({ from: "news@x.example", subject: "Weekly" })),
         hasAttachment: true,
         size: { comparison: "larger", bytes: 2 * 1024 * 1024 },
       }),
-    ).toBe("From news@x.com, subject “Weekly”, with an attachment, larger than 2 MB");
+    ).toBe("From news@x.example, subject “Weekly”, with an attachment, larger than 2 MB");
   });
 
   it("never doubles quotes Gmail already stores", () => {
@@ -44,10 +44,10 @@ describe("rule summaries", () => {
       skipInbox: true,
       labels: [7 as LabelId, 99 as LabelId],
       importance: "never",
-      forwardTo: "me@else.com",
+      forwardTo: "me@else.example",
     });
     expect(describeActions(actions, names)).toBe(
-      "Skip the Inbox, label “News”, never mark as important, forward to me@else.com",
+      "Skip the Inbox, label “News”, never mark as important, forward to me@else.example",
     );
   });
 
@@ -55,7 +55,7 @@ describe("rule summaries", () => {
     const rule: Rule = {
       accountId: 1 as AccountId,
       filterId: "f1",
-      criteria: toCriteria(emptyForm({ from: "news@x.com" })),
+      criteria: toCriteria(emptyForm({ from: "news@x.example" })),
       actions: toActions({ ...emptyForm(), labels: [7 as LabelId] }),
     };
     expect(ruleMatchesSearch(rule, "NEWS@", names)).toBe(true);
@@ -92,7 +92,7 @@ describe("rule summaries", () => {
   });
 });
 
-const self = () => ["me@x.com"];
+const self = () => ["me@x.example"];
 const thread = (accountId: number, ...emails: string[]) => ({
   accountId: accountId as AccountId,
   senders: emails.map((email) => ({ name: null, email, unread: false })),
@@ -100,48 +100,52 @@ const thread = (accountId: number, ...emails: string[]) => ({
 
 describe("filter messages like these", () => {
   it("fills From with who started the conversation, not you", () => {
-    expect(criteriaLikeThreads([thread(1, "me@x.com", "Ann@Y.com", "bob@z.com")], self)).toEqual({
+    expect(
+      criteriaLikeThreads([thread(1, "me@x.example", "Ann@Y.example", "bob@z.example")], self),
+    ).toEqual({
       accountId: 1,
-      criteria: { from: "ann@y.com" },
+      criteria: { from: "ann@y.example" },
     });
   });
 
   it("joins several senders with OR, once each", () => {
     const like = criteriaLikeThreads(
-      [thread(1, "a@y.com"), thread(1, "b@y.com"), thread(1, "A@y.com")],
+      [thread(1, "a@y.example"), thread(1, "b@y.example"), thread(1, "A@y.example")],
       self,
     );
-    expect(like?.criteria.from).toBe("a@y.com OR b@y.com");
+    expect(like?.criteria.from).toBe("a@y.example OR b@y.example");
   });
 
   it("starts blank for your own conversations, and refuses mixed accounts", () => {
-    expect(criteriaLikeThreads([thread(1, "me@x.com")], self)?.criteria).toEqual({});
-    expect(criteriaLikeThreads([thread(1, "a@y.com"), thread(2, "b@y.com")], self)).toBeNull();
+    expect(criteriaLikeThreads([thread(1, "me@x.example")], self)?.criteria).toEqual({});
+    expect(
+      criteriaLikeThreads([thread(1, "a@y.example"), thread(2, "b@y.example")], self),
+    ).toBeNull();
     expect(criteriaLikeThreads([], self)).toBeNull();
   });
 });
 
 describe("block sender", () => {
   it("blocks the one person who wrote, not you", () => {
-    expect(senderToBlock([thread(1, "me@x.com", "Spam@Y.com")], self)).toEqual({
+    expect(senderToBlock([thread(1, "me@x.example", "Spam@Y.example")], self)).toEqual({
       accountId: 1,
-      email: "spam@y.com",
+      email: "spam@y.example",
     });
     // The same sender in several conversations is still one person.
-    expect(senderToBlock([thread(1, "a@y.com"), thread(1, "a@y.com")], self)?.email).toBe(
-      "a@y.com",
+    expect(senderToBlock([thread(1, "a@y.example"), thread(1, "a@y.example")], self)?.email).toBe(
+      "a@y.example",
     );
   });
 
   it("offers nothing for several senders, your own mail, or mixed accounts", () => {
-    expect(senderToBlock([thread(1, "a@y.com"), thread(1, "b@y.com")], self)).toBeNull();
-    expect(senderToBlock([thread(1, "me@x.com")], self)).toBeNull();
-    expect(senderToBlock([thread(1, "a@y.com"), thread(2, "a@y.com")], self)).toBeNull();
+    expect(senderToBlock([thread(1, "a@y.example"), thread(1, "b@y.example")], self)).toBeNull();
+    expect(senderToBlock([thread(1, "me@x.example")], self)).toBeNull();
+    expect(senderToBlock([thread(1, "a@y.example"), thread(2, "a@y.example")], self)).toBeNull();
   });
 
   it("makes a rule that deletes their mail and nothing else", () => {
-    const rule = blockRule("a@y.com");
-    expect(rule.criteria.from).toBe("a@y.com");
+    const rule = blockRule("a@y.example");
+    expect(rule.criteria.from).toBe("a@y.example");
     expect(rule.actions.trash).toBe(true);
     expect(describeActions(rule.actions, names)).toBe("Delete");
   });

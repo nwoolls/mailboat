@@ -863,7 +863,7 @@ editors live in Settings (Signatures, Rules), which now exists.
 - [x] Rules (Gmail filters): list, create, edit, delete *(owner request,
       2026-10-16)*. **Built (2026-10-18):** Settings → Rules (between
       Appearance and Keyboard) lists each account's rules as a sentence
-      ("From news@x.com" / "Skip the Inbox, label “News”"), with a search,
+      ("From news@x.example" / "Skip the Inbox, label “News”"), with a search,
       New rule, Edit and Delete. One editor, laid out like Gmail's filter
       form: From, To, Subject, Has the words, Doesn't have, Size, Has an
       attachment; then Skip the Inbox, Mark as read, Star, Never send to
@@ -936,7 +936,7 @@ editors live in Settings (Signatures, Rules), which now exists.
       seconds whether the other wrote to it, then refreshes its lists.
       Both copies still sync with Gmail on their own
 - [x] Block sender *(from the list below; 2026-10-18)*: "Block
-      sender@x.com…" in the toolbar's More menu, the right-click menu and
+      sender@x.example…" in the toolbar's More menu, the right-click menu and
       ⌘K, offered when the picked conversations have one sender other
       than you. After a confirmation it makes the rule "From them →
       Delete it" and applies it to their mail already here, so it all
@@ -3331,13 +3331,16 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       closed copy; respected by a technical audience); MIT and the
       Functional Source License compared in `docs/RELEASE.md` →
       Choices that keep the doors open
-- [ ] Scrub before publishing: no real mail in fixtures, examples or
+- [x] Scrub before publishing (tree done; history below): no real mail in fixtures, examples or
       `design/`; no personal details in the docs; nothing from the owner's machine (paths, certificates)
       that matters. Search for personal details. Also
       move test placeholder addresses at real domains (`x.com`,
       `work.com`, `me.com`, `key.example`, `vendor.com`…, about 400) to
       reserved ones (`example.com`, `.example`) *(code review R4-07,
-      2026-10-31)*
+      2026-10-31)*. **Done 2026-10-31** for the tree: 474 uses in 59
+      files and a fixture's encoded body now use `.example`; a search of
+      the tree found no real company domain, no real addresses, no personal
+      paths, no screenshots of mail. Remaining: the commit history
 - [ ] Dependency licences checked with `cargo-deny` (and the same for
       the JavaScript packages): every crate and package must be allowed
       in the chosen licence (GPL-3.0 can't include some licences).

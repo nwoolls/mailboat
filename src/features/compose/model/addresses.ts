@@ -14,7 +14,7 @@ export function sameEmail(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
-/** "Jane Doe <jane@x.com>", or just the address without a name. */
+/** "Jane Doe <jane@x.example>", or just the address without a name. */
 export function formatAddress(a: Address): string {
   return a.name ? `${a.name} <${a.email}>` : a.email;
 }
@@ -33,8 +33,8 @@ export function uniqueAddresses(list: Address[], exclude: string[] = []): Addres
 }
 
 /**
- * Splits typed or pasted text into addresses: `a@x.com, "Doe, Jane"
- * <jane@y.com>; Bob <bob@z.com>`. Separators inside quotes or angle
+ * Splits typed or pasted text into addresses: `a@x.example, "Doe, Jane"
+ * <jane@y.example>; Bob <bob@z.example>`. Separators inside quotes or angle
  * brackets don't split. Every piece comes back (invalid ones too, so the
  * field can flag them instead of silently dropping what was typed).
  */

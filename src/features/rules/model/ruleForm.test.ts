@@ -14,7 +14,7 @@ const rule: Rule = {
   accountId: 1,
   filterId: "f1",
   criteria: {
-    from: "news@x.com",
+    from: "news@x.example",
     to: "",
     subject: "",
     hasWords: "",
@@ -31,7 +31,7 @@ const rule: Rule = {
     trash: false,
     importance: "never",
     category: "updates",
-    forwardTo: "me@elsewhere.com",
+    forwardTo: "me@elsewhere.example",
   },
 };
 
@@ -52,20 +52,20 @@ describe("rule form", () => {
 
   it("converts a typed size to bytes, and trims text", () => {
     const form = {
-      ...emptyForm({ from: "  a@x.com " }),
+      ...emptyForm({ from: "  a@x.example " }),
       sizeValue: "1.5",
       sizeUnit: "kb" as const,
     };
     expect(toCriteria(form)).toMatchObject({
-      from: "a@x.com",
+      from: "a@x.example",
       size: { comparison: "larger", bytes: 1536 },
     });
   });
 
   it("says what's missing before saving", () => {
     expect(formProblem(emptyForm())).toMatch(/which mail/);
-    expect(formProblem(emptyForm({ from: "a@x.com" }))).toMatch(/at least one thing/);
-    expect(formProblem({ ...emptyForm({ from: "a@x.com" }), star: true })).toBeNull();
+    expect(formProblem(emptyForm({ from: "a@x.example" }))).toMatch(/at least one thing/);
+    expect(formProblem({ ...emptyForm({ from: "a@x.example" }), star: true })).toBeNull();
     expect(formProblem({ ...emptyForm(), star: true, sizeValue: "-3" })).toMatch(/number/);
     expect(formProblem({ ...emptyForm(), star: true, sizeValue: "9999" })).toMatch(/4,095 MB/);
     // A size alone is enough to say which mail.
@@ -73,8 +73,8 @@ describe("rule form", () => {
   });
 
   it("starts from what the message suggests", () => {
-    const form = emptyForm({ from: "news@x.com" });
-    expect(form.from).toBe("news@x.com");
+    const form = emptyForm({ from: "news@x.example" });
+    expect(form.from).toBe("news@x.example");
     expect(form.applyToExisting).toBe(false);
   });
 });

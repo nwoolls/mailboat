@@ -927,15 +927,15 @@ a{{color:#2f6fde}}
 mod tests {
     use super::*;
 
-    const EVIL: &str = r#"<html><head><base href="https://evil.com/"><meta http-equiv="refresh" content="0;url=https://evil.com"><link rel="stylesheet" href="https://evil.com/x.css"></head>
+    const EVIL: &str = r#"<html><head><base href="https://evil.example/"><meta http-equiv="refresh" content="0;url=https://evil.example"><link rel="stylesheet" href="https://evil.example/x.css"></head>
 <body onload="steal()"><p style="color:red" onclick="x()">Hi <b>there</b></p>
-<script>alert(1)</script><iframe src="https://evil.com"></iframe><form action="https://evil.com"><input name="pw"></form>
+<script>alert(1)</script><iframe src="https://evil.example"></iframe><form action="https://evil.example"><input name="pw"></form>
 <a href="javascript:alert(1)">bad link</a><a href="https://ok.com/pay">good link</a>
-<img src="https://cdn.vendor.com/logo.png" width="120" alt="Logo">
+<img src="https://cdn.vendor.example/logo.png" width="120" alt="Logo">
 <img src="https://track.example.net/x.gif" width="1" height="1">
 <img src="https://mailtrack.io/trace/abc.png">
 <img src="cid:part1@x">
-<table background="https://cdn.vendor.com/bg.png"><tr><td>cell</td></tr></table>
+<table background="https://cdn.vendor.example/bg.png"><tr><td>cell</td></tr></table>
 <style>p{color:#333}</style></body></html>"#;
 
     #[test]
@@ -949,7 +949,7 @@ mod tests {
             "<form",
             "<input",
             "javascript:",
-            "evil.com",
+            "evil.example",
             "<base",
             "http-equiv=\"refresh\"",
         ] {
@@ -977,7 +977,7 @@ mod tests {
     #[test]
     fn narrow_cells_keep_words_and_small_icons() {
         let out = sanitize_html(
-            r#"<table><tr><td width="1%"><img src="https://x.com/fail.png" width="16" height="16"></td><td width="1%">Failed</td></tr></table>"#,
+            r#"<table><tr><td width="1%"><img src="https://x.example/fail.png" width="16" height="16"></td><td width="1%">Failed</td></tr></table>"#,
             true,
         );
         assert!(
@@ -997,7 +997,7 @@ mod tests {
         assert_eq!(out.trackers_removed, 2);
         assert_eq!(out.blocked_images, 2, "logo + table background");
         assert_eq!(out.loaded_images, 0);
-        assert!(!out.document.contains("cdn.vendor.com"));
+        assert!(!out.document.contains("cdn.vendor.example"));
         assert!(!out.document.contains("track.example.net"));
         assert!(out.document.contains("data-safe-blocked"));
         assert!(
@@ -1044,21 +1044,24 @@ mod tests {
             .replace("&amp;", "&");
         assert_eq!(super::super::links::unwrap(&wrapped).unwrap(), rsvp);
         // The hover title keeps `&` escaped, so `&copy=` can't turn into ©.
-        let out = sanitize_html(r#"<a href="https://x.com/?a=1&amp;copy=2">x</a>"#, false);
+        let out = sanitize_html(
+            r#"<a href="https://x.example/?a=1&amp;copy=2">x</a>"#,
+            false,
+        );
         assert!(out
             .document
-            .contains(r#"title="https://x.com/?a=1&amp;copy=2""#));
+            .contains(r#"title="https://x.example/?a=1&amp;copy=2""#));
     }
 
     #[test]
     fn remote_images_with_several_query_parameters_load_intact() {
         let out = sanitize_html(
-            r#"<img src="http://cdn.x.com/a.png?w=600&amp;h=200">"#,
+            r#"<img src="http://cdn.x.example/a.png?w=600&amp;h=200">"#,
             true,
         );
         assert!(
             out.document
-                .contains(r#"src="https://cdn.x.com/a.png?w=600&amp;h=200""#),
+                .contains(r#"src="https://cdn.x.example/a.png?w=600&amp;h=200""#),
             "{}",
             out.document
         );
@@ -1067,13 +1070,13 @@ mod tests {
     #[test]
     fn blocked_images_get_a_placeholder_instead_of_a_broken_icon() {
         let out = sanitize_html(
-            r#"<img src="https://cdn.x.com/a.png" width="600" height="200" style="border:0"><img src="https://cdn.x.com/b.png">"#,
+            r#"<img src="https://cdn.x.example/a.png" width="600" height="200" style="border:0"><img src="https://cdn.x.example/b.png">"#,
             false,
         );
         assert_eq!(out.document.matches(PLACEHOLDER_SRC).count(), 2);
         assert!(out.document.contains("border:0;aspect-ratio:600/200"));
         assert!(out.document.contains("height:24px"));
-        assert!(!out.document.contains("cdn.x.com"));
+        assert!(!out.document.contains("cdn.x.example"));
     }
 
     #[test]
@@ -1082,7 +1085,7 @@ mod tests {
         assert_eq!(out.blocked_images, 0);
         assert_eq!(out.loaded_images, 2, "logo + table background, now loading");
         assert_eq!(out.trackers_removed, 2);
-        assert!(out.document.contains("https://cdn.vendor.com/logo.png"));
+        assert!(out.document.contains("https://cdn.vendor.example/logo.png"));
         assert!(!out.document.contains("mailtrack.io"));
         assert!(out.document.contains("img-src data: https:"));
     }
@@ -1090,12 +1093,12 @@ mod tests {
     /// Regression: images in CSS and `background` attributes skipped the
     /// tracker check and prefetch, so a tracker in a `background-image`
     /// was requested on opening even though trackers are always removed.
-    const CSS_IMAGES: &str = r#"<style>.hero{background:#fff url(https://cdn.vendor.com/hero.png) no-repeat}
+    const CSS_IMAGES: &str = r#"<style>.hero{background:#fff url(https://cdn.vendor.example/hero.png) no-repeat}
 .t{background-image:url("https://mailtrack.io/trace/css.png")}
-.s{background-image:image-set("http://cdn.vendor.com/set.png" 1x)}
-@import url(https://cdn.vendor.com/x.css);</style>
+.s{background-image:image-set("http://cdn.vendor.example/set.png" 1x)}
+@import url(https://cdn.vendor.example/x.css);</style>
 <div style="background-image:url('https://mailtrack.io/trace/inline.png')">a</div>
-<div style="background:url(//cdn.vendor.com/inline.png)">b</div>
+<div style="background:url(//cdn.vendor.example/inline.png)">b</div>
 <table background="https://mailtrack.io/trace/bg.png"><tr><td>c</td></tr></table>"#;
 
     #[test]
@@ -1106,14 +1109,16 @@ mod tests {
         assert_eq!(out.loaded_images, 3, "hero, image-set, inline");
         assert!(out
             .document
-            .contains(r#"url("https://cdn.vendor.com/hero.png") no-repeat"#));
+            .contains(r#"url("https://cdn.vendor.example/hero.png") no-repeat"#));
         assert!(out
             .document
-            .contains(r#"image-set("https://cdn.vendor.com/set.png" 1x)"#));
-        assert!(out.document.contains("https://cdn.vendor.com/inline.png"));
+            .contains(r#"image-set("https://cdn.vendor.example/set.png" 1x)"#));
+        assert!(out
+            .document
+            .contains("https://cdn.vendor.example/inline.png"));
         assert!(
             out.document
-                .contains("@import url(https://cdn.vendor.com/x.css)"),
+                .contains("@import url(https://cdn.vendor.example/x.css)"),
             "left to the CSP, which refuses style sheets from anywhere"
         );
     }
@@ -1172,13 +1177,13 @@ mod tests {
         assert_eq!(
             remote_image_urls(CSS_IMAGES),
             [
-                "https://cdn.vendor.com/hero.png",
-                "https://cdn.vendor.com/set.png",
-                "https://cdn.vendor.com/inline.png",
+                "https://cdn.vendor.example/hero.png",
+                "https://cdn.vendor.example/set.png",
+                "https://cdn.vendor.example/inline.png",
             ]
         );
         let cached = HashMap::from([(
-            "https://cdn.vendor.com/hero.png".to_string(),
+            "https://cdn.vendor.example/hero.png".to_string(),
             "data:image/png;base64,AAAA".to_string(),
         )]);
         let out = sanitize_html_colors(CSS_IMAGES, true, &HashMap::new(), &cached, false);
@@ -1191,11 +1196,11 @@ mod tests {
     #[test]
     fn a_css_address_cannot_end_the_style_element() {
         let out = sanitize_html(
-            r#"<div style="background:url('https://x.com/a&quot;)}&lt;/style&gt;&lt;b&gt;.png')">x</div>"#,
+            r#"<div style="background:url('https://x.example/a&quot;)}&lt;/style&gt;&lt;b&gt;.png')">x</div>"#,
             true,
         );
         assert!(!out.document.contains("</style><b>"), "{}", out.document);
-        let sheet = rewrite_urls_for_test("a{background:url(\"https://x.com/</style><b>\")}");
+        let sheet = rewrite_urls_for_test("a{background:url(\"https://x.example/</style><b>\")}");
         assert!(!sheet.contains("</style"), "{sheet}");
     }
 
@@ -1332,17 +1337,20 @@ mod tests {
 
     #[test]
     fn prefetched_images_show_from_their_copy() {
-        let html = r#"<img src="http://cdn.shop.com/a.png" width="200">
-            <img src="//cdn.shop.com/b.png" width="200">
-            <img src="https://cdn.shop.com/a.png" width="200">
+        let html = r#"<img src="http://cdn.shop.example/a.png" width="200">
+            <img src="//cdn.shop.example/b.png" width="200">
+            <img src="https://cdn.shop.example/a.png" width="200">
             <img src="https://mailtrack.io/open.gif" width="1" height="1">"#;
         assert_eq!(
             remote_image_urls(html),
-            vec!["https://cdn.shop.com/a.png", "https://cdn.shop.com/b.png"],
+            vec![
+                "https://cdn.shop.example/a.png",
+                "https://cdn.shop.example/b.png"
+            ],
             "upgraded, once each, trackers left out"
         );
         let cached = HashMap::from([(
-            "https://cdn.shop.com/a.png".to_string(),
+            "https://cdn.shop.example/a.png".to_string(),
             "data:image/png;base64,AAAA".to_string(),
         )]);
         let shown = sanitize_html_colors(html, true, &HashMap::new(), &cached, false);
@@ -1351,7 +1359,7 @@ mod tests {
             2
         );
         assert!(
-            shown.document.contains("//cdn.shop.com/b.png"),
+            shown.document.contains("//cdn.shop.example/b.png"),
             "not cached: loads live"
         );
         assert_eq!(shown.loaded_images, 3);
@@ -1502,8 +1510,8 @@ mod tests {
 
     #[test]
     fn upgrades_http_images_for_trusted_senders() {
-        let out = sanitize_html(r#"<img src="http://cdn.x.com/a.png">"#, true);
-        assert!(out.document.contains("https://cdn.x.com/a.png"));
+        let out = sanitize_html(r#"<img src="http://cdn.x.example/a.png">"#, true);
+        assert!(out.document.contains("https://cdn.x.example/a.png"));
     }
 
     #[test]

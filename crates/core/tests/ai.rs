@@ -121,8 +121,8 @@ fn line(thread: ThreadId) -> SummaryRequest {
 #[tokio::test]
 async fn summaries_stay_with_their_account_and_go_stale_on_new_mail() {
     let db = Db::open_in_memory().unwrap();
-    let a = add_account(&db, "a", "a@x.com");
-    let b = add_account(&db, "b", "b@x.com");
+    let a = add_account(&db, "a", "a@x.example");
+    let b = add_account(&db, "b", "b@x.example");
     // Same Gmail thread and message IDs in both accounts.
     let ta = put_thread(
         &db,
@@ -209,7 +209,7 @@ async fn summaries_stay_with_their_account_and_go_stale_on_new_mail() {
 #[tokio::test]
 async fn automatic_summaries_skip_short_mail_and_spam() {
     let db = Db::open_in_memory().unwrap();
-    let a = add_account(&db, "a", "a@x.com");
+    let a = add_account(&db, "a", "a@x.example");
     let (programs, dir) = fake_apple();
     let short = put_thread(&db, a, vec![message("m1", 1_000, &["INBOX"])], "alpha: ok");
     let full = SummaryRequest {
@@ -250,8 +250,8 @@ async fn automatic_summaries_skip_short_mail_and_spam() {
 #[tokio::test]
 async fn reply_ideas_are_saved_until_new_mail() {
     let db = Db::open_in_memory().unwrap();
-    let a = add_account(&db, "a", "a@x.com");
-    let b = add_account(&db, "b", "b@x.com");
+    let a = add_account(&db, "a", "a@x.example");
+    let b = add_account(&db, "b", "b@x.example");
     let t = put_thread(
         &db,
         a,

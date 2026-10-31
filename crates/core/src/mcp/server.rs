@@ -314,7 +314,7 @@ fn person(a: &Address) -> String {
     }
 }
 
-/// "Name <a@b.com>" or "a@b.com".
+/// "Name <a@b.example>" or "a@b.example".
 fn parse_address(s: &str) -> Option<Address> {
     let s = s.trim();
     let (name, email) = match (s.rfind('<'), s.ends_with('>')) {

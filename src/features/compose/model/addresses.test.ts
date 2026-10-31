@@ -12,24 +12,35 @@ describe("isValidEmail", () => {
     expect(isValidEmail("a.b+c@example.co.uk")).toBe(true);
   });
   it("rejects anything that could break a header", () => {
-    for (const bad of ["", "a", "@x.com", "a@", "a b@x.com", "a@x.com>", "a@b@c", "a\n@x"])
+    for (const bad of [
+      "",
+      "a",
+      "@x.example",
+      "a@",
+      "a b@x.example",
+      "a@x.example>",
+      "a@b@c",
+      "a\n@x",
+    ])
       expect(isValidEmail(bad), bad).toBe(false);
   });
 });
 
 describe("parseAddresses", () => {
   it("splits on commas, semicolons and newlines outside quotes and brackets", () => {
-    expect(parseAddresses('a@x.com, "Doe, Jane" <jane@y.com>; Bob <bob@z.com>\nc@w.com')).toEqual([
-      { name: null, email: "a@x.com" },
-      { name: "Doe, Jane", email: "jane@y.com" },
-      { name: "Bob", email: "bob@z.com" },
-      { name: null, email: "c@w.com" },
+    expect(
+      parseAddresses('a@x.example, "Doe, Jane" <jane@y.example>; Bob <bob@z.example>\nc@w.example'),
+    ).toEqual([
+      { name: null, email: "a@x.example" },
+      { name: "Doe, Jane", email: "jane@y.example" },
+      { name: "Bob", email: "bob@z.example" },
+      { name: null, email: "c@w.example" },
     ]);
   });
   it("keeps invalid pieces so the field can flag them", () => {
-    expect(parseAddresses("bob, ,a@x.com")).toEqual([
+    expect(parseAddresses("bob, ,a@x.example")).toEqual([
       { name: null, email: "bob" },
-      { name: null, email: "a@x.com" },
+      { name: null, email: "a@x.example" },
     ]);
   });
 });
@@ -37,22 +48,22 @@ describe("parseAddresses", () => {
 describe("uniqueAddresses", () => {
   it("drops repeats (any case) and excluded emails", () => {
     const list = [
-      { name: "A", email: "a@x.com" },
-      { name: null, email: "A@X.com" },
-      { name: null, email: "me@x.com" },
+      { name: "A", email: "a@x.example" },
+      { name: null, email: "A@X.example" },
+      { name: null, email: "me@x.example" },
     ];
-    expect(uniqueAddresses(list, ["ME@x.com"])).toEqual([{ name: "A", email: "a@x.com" }]);
+    expect(uniqueAddresses(list, ["ME@x.example"])).toEqual([{ name: "A", email: "a@x.example" }]);
   });
 });
 
 it("formats with or without a name", () => {
-  expect(formatAddress({ name: "Jo", email: "jo@x.com" })).toBe("Jo <jo@x.com>");
-  expect(formatAddress({ name: null, email: "jo@x.com" })).toBe("jo@x.com");
+  expect(formatAddress({ name: "Jo", email: "jo@x.example" })).toBe("Jo <jo@x.example>");
+  expect(formatAddress({ name: null, email: "jo@x.example" })).toBe("jo@x.example");
 });
 
 describe("moveAddress", () => {
-  const bob = { name: "Bob", email: "bob@z.com" };
-  const carol = { name: null, email: "carol@z.com" };
+  const bob = { name: "Bob", email: "bob@z.example" };
+  const carol = { name: null, email: "carol@z.example" };
   const lines = { to: [bob, carol], cc: [], bcc: [], subject: "kept" };
 
   it("moves the address, name and all, to the end of the other line", () => {
@@ -61,13 +72,13 @@ describe("moveAddress", () => {
   });
   it("never copies: an address already there just leaves the first line", () => {
     const moved = moveAddress(
-      { ...lines, bcc: [{ name: null, email: "BOB@z.com" }] },
+      { ...lines, bcc: [{ name: null, email: "BOB@z.example" }] },
       bob,
       "to",
       "bcc",
     );
     expect(moved.to).toEqual([carol]);
-    expect(moved.bcc).toEqual([{ name: null, email: "BOB@z.com" }]);
+    expect(moved.bcc).toEqual([{ name: null, email: "BOB@z.example" }]);
   });
   it("dropping on the same line changes nothing", () => {
     expect(moveAddress(lines, bob, "to", "to")).toBe(lines);

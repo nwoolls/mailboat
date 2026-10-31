@@ -197,20 +197,20 @@ mod tests {
     fn file_names_come_from_the_address() {
         let name = |u: &str, mime: &str| filename_for(&url::Url::parse(u).unwrap(), mime);
         assert_eq!(
-            name("https://x.com/a/logo.png?v=2", "image/png"),
+            name("https://x.example/a/logo.png?v=2", "image/png"),
             "logo.png"
         );
         assert_eq!(
-            name("https://x.com/a/My%20Photo.JPG", "image/jpeg"),
+            name("https://x.example/a/My%20Photo.JPG", "image/jpeg"),
             "My Photo.JPG"
         );
         assert_eq!(
-            name("https://x.com/track/abc123", "image/gif"),
+            name("https://x.example/track/abc123", "image/gif"),
             "abc123.gif"
         );
-        assert_eq!(name("https://x.com/", "image/jpeg"), "image.jpg");
-        assert_eq!(name("https://x.com/img", "image/svg+xml"), "img.svg");
-        assert_eq!(name("https://x.com/p", "image/weird;x"), "p.png");
+        assert_eq!(name("https://x.example/", "image/jpeg"), "image.jpg");
+        assert_eq!(name("https://x.example/img", "image/svg+xml"), "img.svg");
+        assert_eq!(name("https://x.example/p", "image/weird;x"), "p.png");
     }
 
     #[tokio::test]

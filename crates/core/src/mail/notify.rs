@@ -83,7 +83,7 @@ mod tests {
             &db.conn(),
             &accounts::NewAccount {
                 google_sub: "a",
-                email: "a@x.com",
+                email: "a@x.example",
                 display_name: None,
                 avatar_url: None,
                 oauth_client: "default",
@@ -106,7 +106,7 @@ mod tests {
                         },
                         from: Some(Address {
                             name: (i == 1).then(|| "Jane Doe".to_string()),
-                            email: format!("p{i}@y.com"),
+                            email: format!("p{i}@y.example"),
                         }),
                         ..Default::default()
                     }],
@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn a_few_messages_get_one_notice_each() {
         let (db, a, ids) = setup(2);
-        let n = notices(&db.conn(), a, &ids, Some("a@x.com")).unwrap();
+        let n = notices(&db.conn(), a, &ids, Some("a@x.example")).unwrap();
         let thread_of = |m: MessageId| -> ThreadId {
             db.conn()
                 .query_row("SELECT thread_id FROM messages WHERE id = ?1", [m], |r| {
@@ -140,13 +140,13 @@ mod tests {
             n,
             vec![
                 Notice {
-                    title: "p0@y.com".into(),
-                    body: "(no subject) · a@x.com".into(),
+                    title: "p0@y.example".into(),
+                    body: "(no subject) · a@x.example".into(),
                     thread: Some(thread_of(ids[0])),
                 },
                 Notice {
                     title: "Jane Doe".into(),
-                    body: "Hello 1 · a@x.com".into(),
+                    body: "Hello 1 · a@x.example".into(),
                     thread: Some(thread_of(ids[1])),
                 },
             ]
@@ -181,7 +181,7 @@ mod tests {
                     snippet: "Your login code is 346625. It expires in 15 minutes.".into(),
                     from: Some(Address {
                         name: Some("Spotify".into()),
-                        email: "no-reply@spotify.com".into(),
+                        email: "no-reply@spotify.example".into(),
                     }),
                     ..Default::default()
                 }],

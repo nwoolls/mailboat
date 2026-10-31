@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { imageNotice } from "./imageNotice";
 
 const base = {
-  senderEmail: "news@shop.com",
+  senderEmail: "news@shop.example",
   blockedImages: 0,
   loadedImages: 0,
   trackersRemoved: 0,
@@ -14,7 +14,7 @@ describe("imageNotice", () => {
     expect(n?.quiet).toBe(true);
     expect(n?.action).toEqual({
       label: "Block images",
-      hint: "Block images from news@shop.com",
+      hint: "Block images from news@shop.example",
       allow: false,
     });
   });

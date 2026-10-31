@@ -22,7 +22,7 @@ const row = (over: Partial<Parameters<typeof conversationCommands>[0][number]> =
 const none = {
   editing: false,
   canFilter: true,
-  blockEmail: "x@y.com",
+  blockEmail: "x@y.example",
   ai: { summarize: true, write: true },
 };
 
@@ -36,7 +36,7 @@ describe("conversationCommands", () => {
     expect(byId.get("archive")?.title).toBe("Move to Inbox");
     expect(byId.get("read")?.title).toBe("Mark as unread");
     expect(byId.get("star")?.title).toBe("Unstar");
-    expect(byId.get("block")?.title).toBe("Block x@y.com…");
+    expect(byId.get("block")?.title).toBe("Block x@y.example…");
   });
 
   it("offers replies for one conversation only, and nothing with none", () => {

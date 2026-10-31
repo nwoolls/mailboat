@@ -53,8 +53,8 @@ describe("providers", () => {
   });
 
   it("describes each state in plain words", () => {
-    const claude: ProviderStatus = { provider: "claude", state: "ready", account: "n@x.com" };
-    expect(statusLine(claude, true)).toBe("Connected as n@x.com.");
+    const claude: ProviderStatus = { provider: "claude", state: "ready", account: "n@x.example" };
+    expect(statusLine(claude, true)).toBe("Connected as n@x.example.");
     expect(statusLine(claude, false)).toBe(`Signed in, not used by ${APP_NAME} yet.`);
     expect(statusLine({ provider: "chatgpt", state: "notInstalled" }, false)).toContain("Codex");
     // The desktop app is enough: the app uses the copy inside it.

@@ -19,17 +19,17 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 const ICS: &str = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\n\
 DTSTART:20261020T180000Z\r\nDTEND:20261020T183000Z\r\n\
 ORGANIZER;CN=Pat:mailto:pat@example.com\r\nUID:abc123@google.com\r\n\
-ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:a@x.com\r\nSEQUENCE:0\r\n\
+ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:a@x.example\r\nSEQUENCE:0\r\n\
 SUMMARY:Design review\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
 
-/// One account (a@x.com) with thread t1; returns its message m2.
+/// One account (a@x.example) with thread t1; returns its message m2.
 fn setup(granted: &[&str]) -> (Db, MessageId) {
     let db = Db::open_in_memory().unwrap();
     let account = accounts::upsert(
         &db.conn(),
         &accounts::NewAccount {
             google_sub: "a",
-            email: "a@x.com",
+            email: "a@x.example",
             display_name: None,
             avatar_url: None,
             oauth_client: "default",
@@ -83,7 +83,7 @@ fn event(answer: &str) -> serde_json::Value {
         "end": { "dateTime": "2026-10-20T14:30:00-04:00" },
         "attendees": [
             { "email": "pat@example.com", "organizer": true, "responseStatus": "accepted" },
-            { "email": "a@x.com", "self": true, "responseStatus": answer }
+            { "email": "a@x.example", "self": true, "responseStatus": answer }
         ]
     })
 }
@@ -114,7 +114,7 @@ async fn serve_range(server: &MockServer) {
             { "id": "said-no", "summary": "Standup",
               "start": { "dateTime": "2026-10-20T14:00:00-04:00" },
               "end": { "dateTime": "2026-10-20T14:15:00-04:00" },
-              "attendees": [{ "email": "a@x.com", "self": true, "responseStatus": "declined" }] },
+              "attendees": [{ "email": "a@x.example", "self": true, "responseStatus": "declined" }] },
             { "id": "day", "summary": "Offsite", "start": { "date": "2026-10-20" }, "end": { "date": "2026-10-21" } }
         ]})))
         .mount(server)
@@ -167,7 +167,7 @@ async fn shows_the_invitation_your_answer_and_clashes_then_answers() {
         .and(query_param("sendUpdates", "all"))
         .and(body_json(serde_json::json!({
             "attendeesOmitted": true,
-            "attendees": [{ "email": "a@x.com", "responseStatus": "accepted" }]
+            "attendees": [{ "email": "a@x.example", "responseStatus": "accepted" }]
         })))
         .respond_with(ResponseTemplate::new(200).set_body_json(event("accepted")))
         .expect(1)
@@ -223,7 +223,7 @@ async fn an_invitation_not_on_the_calendar_is_added_then_answered() {
             "start": { "dateTime": "2026-10-20T18:00:00Z" },
             "end": { "dateTime": "2026-10-20T18:30:00Z" },
             "organizer": { "email": "pat@example.com", "displayName": "Pat" },
-            "attendees": [{ "email": "a@x.com", "responseStatus": "needsAction" }]
+            "attendees": [{ "email": "a@x.example", "responseStatus": "needsAction" }]
         })))
         .respond_with(ResponseTemplate::new(200).set_body_json(event("needsAction")))
         .expect(1)

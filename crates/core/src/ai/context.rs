@@ -266,12 +266,13 @@ mod tests {
 
     #[test]
     fn quoted_history_and_signatures_are_cut() {
-        let text = "Sounds good, see you then.\n\nSam\n\nOn Mon, Oct 19, 2026 at 9:00 AM Jordan <n@x.com> wrote:\n> Thursday?\n> Jordan";
+        let text = "Sounds good, see you then.\n\nSam\n\nOn Mon, Oct 19, 2026 at 9:00 AM Jordan <n@x.example> wrote:\n> Thursday?\n> Jordan";
         assert_eq!(new_part(text), "Sounds good, see you then.\n\nSam");
-        let wrapped = "Yes.\n\nOn Mon, Oct 19, 2026 at 9:00 AM Jordan Lee\n<n@x.com> wrote:\n> old";
+        let wrapped =
+            "Yes.\n\nOn Mon, Oct 19, 2026 at 9:00 AM Jordan Lee\n<n@x.example> wrote:\n> old";
         assert_eq!(new_part(wrapped), "Yes.");
         let outlook =
-            "Fine by me.\n\nFrom: Pat <p@x.com>\nSent: Monday\nTo: Sam\nSubject: Re: x\n\nold";
+            "Fine by me.\n\nFrom: Pat <p@x.example>\nSent: Monday\nTo: Sam\nSubject: Re: x\n\nold";
         assert_eq!(new_part(outlook), "Fine by me.");
         let sig = "Thanks!\n-- \nSam Smith\nAcme";
         assert_eq!(new_part(sig), "Thanks!");
@@ -283,11 +284,11 @@ mod tests {
             id: MessageId(id),
             from: Address {
                 name: Some("Sam".into()),
-                email: "sam@x.com".into(),
+                email: "sam@x.example".into(),
             },
             to: vec![Address {
                 name: None,
-                email: "n@x.com".into(),
+                email: "n@x.example".into(),
             }],
             date: 1_792_000_000_000,
             mine: id % 2 == 0,
@@ -307,7 +308,7 @@ mod tests {
         let first = out.find("Lunch Thursday?").unwrap();
         let second = out.find("Yes, noon.").unwrap();
         assert!(first < second);
-        assert!(out.contains("Sam <sam@x.com> (me)"), "{out}");
+        assert!(out.contains("Sam <sam@x.example> (me)"), "{out}");
         assert!(out.contains("Date: 2026-"));
         // The newest is marked, and only it.
         assert_eq!(out.matches("Newest message:").count(), 1);

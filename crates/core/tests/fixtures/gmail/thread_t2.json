@@ -21,7 +21,7 @@
         "headers": [
           {
             "name": "From",
-            "value": "Billing <billing@vendor.com>"
+            "value": "Billing <billing@vendor.example>"
           },
           {
             "name": "To",
@@ -37,7 +37,7 @@
           },
           {
             "name": "Message-ID",
-            "value": "<b1@vendor.com>"
+            "value": "<b1@vendor.example>"
           }
         ],
         "body": {

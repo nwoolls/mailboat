@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
 import { contactMatches, matchContacts } from "./contacts";
 
-const jane = { name: "Jane Doe", email: "jd@acme.com", wrote: true };
-const sam = { name: null, email: "sam@x.com", wrote: false };
+const jane = { name: "Jane Doe", email: "jd@acme.example", wrote: true };
+const sam = { name: null, email: "sam@x.example", wrote: false };
 
 it("matches address, name words and domain starts, not word middles", () => {
   expect(contactMatches(jane, "doe")).toBe(true);
@@ -15,7 +15,10 @@ it("matches address, name words and domain starts, not word middles", () => {
 });
 
 it("keeps Rust's ranking and stops at the limit", () => {
-  const list = [jane, sam, { ...sam, email: "sally@x.com" }];
+  const list = [jane, sam, { ...sam, email: "sally@x.example" }];
   expect(matchContacts(list, "s", 1)).toEqual([sam]);
-  expect(matchContacts(list, "x.com").map((c) => c.email)).toEqual(["sam@x.com", "sally@x.com"]);
+  expect(matchContacts(list, "x.example").map((c) => c.email)).toEqual([
+    "sam@x.example",
+    "sally@x.example",
+  ]);
 });

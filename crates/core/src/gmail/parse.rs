@@ -84,7 +84,7 @@ fn decode_entities(s: &str) -> String {
 }
 
 /// Parses an address header such as
-/// `"Doe, Jane" <jane@x.com>, bob@y.com, Ann <ann@z.com>`.
+/// `"Doe, Jane" <jane@x.example>, bob@y.example, Ann <ann@z.example>`.
 /// Headers from the Gmail API are already decoded to UTF-8.
 pub fn parse_address_list(value: &str) -> Vec<Address> {
     let mut items = Vec::new();
@@ -368,27 +368,31 @@ mod tests {
 
     #[test]
     fn parses_tricky_address_lists() {
-        let list =
-            parse_address_list(r#""Doe, Jane" <jane@x.com>, bob@y.com, Ann Lee <ann@z.com>"#);
+        let list = parse_address_list(
+            r#""Doe, Jane" <jane@x.example>, bob@y.example, Ann Lee <ann@z.example>"#,
+        );
         assert_eq!(
             list,
             vec![
                 Address {
                     name: Some("Doe, Jane".into()),
-                    email: "jane@x.com".into()
+                    email: "jane@x.example".into()
                 },
                 Address {
                     name: None,
-                    email: "bob@y.com".into()
+                    email: "bob@y.example".into()
                 },
                 Address {
                     name: Some("Ann Lee".into()),
-                    email: "ann@z.com".into()
+                    email: "ann@z.example".into()
                 },
             ]
         );
         assert!(parse_address_list("undisclosed-recipients:;").is_empty());
-        assert_eq!(parse_address_list("<solo@x.com>")[0].email, "solo@x.com");
+        assert_eq!(
+            parse_address_list("<solo@x.example>")[0].email,
+            "solo@x.example"
+        );
     }
 
     #[test]

@@ -18,7 +18,7 @@ fn add_account(db: &Db, sub: &str) -> AccountId {
         &db.conn(),
         &accounts::NewAccount {
             google_sub: sub,
-            email: &format!("{sub}@x.com"),
+            email: &format!("{sub}@x.example"),
             display_name: Some("Me"),
             avatar_url: None,
             oauth_client: "default",
@@ -112,7 +112,7 @@ async fn a_reply_joins_the_thread_with_threading_headers() {
     let m2 = message_id(&db, a, "m2");
 
     let (gmail, _) = client(&server.uri());
-    let thread = compose::send(&db, &gmail, &outgoing(a, "a@x.com", Some(m2)))
+    let thread = compose::send(&db, &gmail, &outgoing(a, "a@x.example", Some(m2)))
         .await
         .unwrap();
     assert_eq!(thread, Some(t1));
@@ -130,7 +130,7 @@ async fn a_reply_joins_the_thread_with_threading_headers() {
         "{raw}"
     );
     assert!(
-        raw.contains("From: \"Me\" <a@x.com>") || raw.contains("From: <a@x.com>"),
+        raw.contains("From: \"Me\" <a@x.example>") || raw.contains("From: <a@x.example>"),
         "{raw}"
     );
 }
@@ -149,7 +149,7 @@ async fn a_reply_from_another_account_starts_its_own_thread() {
     let m2 = message_id(&db, a, "m2");
 
     let (gmail_b, _) = client(&server_b.uri());
-    let thread = compose::send(&db, &gmail_b, &outgoing(b, "b@x.com", Some(m2)))
+    let thread = compose::send(&db, &gmail_b, &outgoing(b, "b@x.example", Some(m2)))
         .await
         .unwrap()
         .unwrap();
@@ -185,7 +185,7 @@ async fn a_sent_message_is_sent_even_if_caching_it_fails() {
         .unwrap();
 
     let (gmail, _) = client(&server.uri());
-    let thread = compose::send(&db, &gmail, &outgoing(a, "a@x.com", None)).await;
+    let thread = compose::send(&db, &gmail, &outgoing(a, "a@x.example", None)).await;
     assert_eq!(thread.unwrap(), None, "sent; sync brings it in later");
 }
 
@@ -202,7 +202,7 @@ async fn a_server_error_while_sending_is_not_retried() {
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "a");
     let (gmail, _) = client(&server.uri());
-    let err = compose::send(&db, &gmail, &outgoing(a, "a@x.com", None))
+    let err = compose::send(&db, &gmail, &outgoing(a, "a@x.example", None))
         .await
         .unwrap_err();
     assert!(matches!(err, CoreError::Api { status: 503, .. }), "{err:?}");
@@ -222,7 +222,7 @@ async fn a_rate_limit_while_sending_is_retried() {
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "a");
     let (gmail, _) = client(&server.uri());
-    compose::send(&db, &gmail, &outgoing(a, "a@x.com", None))
+    compose::send(&db, &gmail, &outgoing(a, "a@x.example", None))
         .await
         .unwrap();
 }
@@ -240,20 +240,20 @@ async fn from_must_be_one_of_the_accounts_addresses() {
     add_account(&db, "b");
     let (gmail, _) = client(&server.uri());
     // B's address can't be used with A's account.
-    let err = compose::send(&db, &gmail, &outgoing(a, "b@x.com", None))
+    let err = compose::send(&db, &gmail, &outgoing(a, "b@x.example", None))
         .await
         .unwrap_err();
     assert!(matches!(err, CoreError::Invalid(_)), "{err:?}");
 
-    let mut none = outgoing(a, "a@x.com", None);
+    let mut none = outgoing(a, "a@x.example", None);
     none.to.clear();
     assert!(matches!(
         compose::send(&db, &gmail, &none).await.unwrap_err(),
         CoreError::Invalid(_)
     ));
 
-    let mut bad = outgoing(a, "a@x.com", None);
-    bad.to = vec![addr("bob@example.com>\r\nBcc: x@evil.com")];
+    let mut bad = outgoing(a, "a@x.example", None);
+    bad.to = vec![addr("bob@example.com>\r\nBcc: x@evil.example")];
     assert!(matches!(
         compose::send(&db, &gmail, &bad).await.unwrap_err(),
         CoreError::Invalid(_)
@@ -266,11 +266,11 @@ async fn aliases_come_from_gmail_and_unverified_ones_are_left_out() {
     Mock::given(path("/gmail/v1/users/me/settings/sendAs"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "sendAs": [
-                { "sendAsEmail": "a@x.com", "displayName": "", "isPrimary": true,
+                { "sendAsEmail": "a@x.example", "displayName": "", "isPrimary": true,
                   "signature": "<b>A</b>" },
-                { "sendAsEmail": "alias@x.com", "displayName": "Alias", "isDefault": true,
+                { "sendAsEmail": "alias@x.example", "displayName": "Alias", "isDefault": true,
                   "verificationStatus": "accepted" },
-                { "sendAsEmail": "pending@x.com", "verificationStatus": "pending" }
+                { "sendAsEmail": "pending@x.example", "verificationStatus": "pending" }
             ]
         })))
         .mount(&server)
@@ -296,23 +296,23 @@ async fn aliases_come_from_gmail_and_unverified_ones_are_left_out() {
     assert_eq!(
         summary,
         vec![
-            (a, "alias@x.com", Some("Alias"), true),
+            (a, "alias@x.example", Some("Alias"), true),
             // The main address's blank name falls back to the account's.
-            (a, "a@x.com", Some("Me"), false),
+            (a, "a@x.example", Some("Me"), false),
             // B was never fetched: its own address still works.
-            (b, "b@x.com", Some("Me"), true),
+            (b, "b@x.example", Some("Me"), true),
         ]
     );
     assert_eq!(list[1].signature.as_deref(), Some("<b>A</b>"));
-    assert!(identities::owns(&db.conn(), a, "ALIAS@x.com").unwrap());
-    assert!(!identities::owns(&db.conn(), a, "pending@x.com").unwrap());
+    assert!(identities::owns(&db.conn(), a, "ALIAS@x.example").unwrap());
+    assert!(!identities::owns(&db.conn(), a, "pending@x.example").unwrap());
 
     // Refreshing replaces the list rather than adding to it.
     identities::store(
         &mut db.conn(),
         a,
         &[SendAs {
-            send_as_email: "a@x.com".into(),
+            send_as_email: "a@x.example".into(),
             display_name: None,
             reply_to_address: None,
             signature: None,
@@ -389,14 +389,14 @@ async fn sync_records_reply_to() {
         "messages": [{
             "id": "m9", "threadId": "t9", "internalDate": "1",
             "payload": { "headers": [
-                { "name": "From", "value": "a@y.com" },
-                { "name": "Reply-To", "value": "b@y.com" }
+                { "name": "From", "value": "a@y.example" },
+                { "name": "Reply-To", "value": "b@y.example" }
             ]}
         }]
     }))
     .unwrap();
     let incoming = parse::thread_to_incoming(&t);
-    assert_eq!(incoming.messages[0].reply_to[0].email, "b@y.com");
+    assert_eq!(incoming.messages[0].reply_to[0].email, "b@y.example");
 }
 
 async fn mount_drafts(server: &MockServer, id: &str) {
@@ -434,7 +434,7 @@ async fn drafts_are_created_once_then_updated_and_deleted() {
     let uri = server.uri();
     let gmail_for = |_| Ok(client(&uri).0);
 
-    let mut msg = outgoing(a, "a@x.com", None);
+    let mut msg = outgoing(a, "a@x.example", None);
     // Half-typed recipients don't go into the saved copy.
     msg.cc = vec![addr("bob")];
     let id = compose::save_draft(&db, gmail_for, None, &msg)
@@ -472,10 +472,10 @@ async fn a_draft_moves_when_from_changes_account() {
     let (ua, ub) = (server_a.uri(), server_b.uri());
     let gmail_for = |acct: AccountId| Ok(client(if acct == a { &ua } else { &ub }).0);
 
-    let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.com", None))
+    let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.example", None))
         .await
         .unwrap();
-    let moved = compose::save_draft(&db, gmail_for, Some(id), &outgoing(b, "b@x.com", None))
+    let moved = compose::save_draft(&db, gmail_for, Some(id), &outgoing(b, "b@x.example", None))
         .await
         .unwrap();
     // (SQLite may reuse the freed row number; the UI always keeps the ID
@@ -515,10 +515,11 @@ async fn a_draft_that_cannot_move_stays_where_it_was() {
         }
     };
 
-    let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.com", None))
+    let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.example", None))
         .await
         .unwrap();
-    let moved = compose::save_draft(&db, gmail_for, Some(id), &outgoing(b, "b@x.com", None)).await;
+    let moved =
+        compose::save_draft(&db, gmail_for, Some(id), &outgoing(b, "b@x.example", None)).await;
     assert!(moved.is_err());
     let on_a = server_a.received_requests().await.unwrap();
     assert_eq!(calls(&on_a, "DELETE"), 0, "A's copy is kept");
@@ -654,7 +655,7 @@ async fn a_saved_draft_is_cached_at_once() {
     let a = add_account(&db, "a");
     let uri = server.uri();
     let gmail_for = |_| Ok(client(&uri).0);
-    let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.com", None))
+    let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.example", None))
         .await
         .unwrap();
     let linked: Option<i64> = db
@@ -705,7 +706,7 @@ async fn saving_a_draft_again_leaves_one_copy() {
     let a = add_account(&db, "a");
     let uri = server.uri();
     let gmail_for = |_| Ok(client(&uri).0);
-    let msg = outgoing(a, "a@x.com", None);
+    let msg = outgoing(a, "a@x.example", None);
     let id = compose::save_draft(&db, gmail_for, None, &msg)
         .await
         .unwrap();
@@ -745,13 +746,13 @@ async fn google_contacts_are_fetched_from_both_lists() {
     Mock::given(path("/v1/people/me/connections"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "connections": [{ "names": [{ "displayName": "Pat Lee" }],
-                              "emailAddresses": [{ "value": "pat@z.com" }, { "value": "pat@work.com" }] }]
+                              "emailAddresses": [{ "value": "pat@z.example" }, { "value": "pat@work.example" }] }]
         })))
         .mount(&server)
         .await;
     Mock::given(path("/v1/otherContacts"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "otherContacts": [{ "emailAddresses": [{ "value": "old@w.com" }, { "value": "not-an-address" }] }]
+            "otherContacts": [{ "emailAddresses": [{ "value": "old@w.example" }, { "value": "not-an-address" }] }]
         })))
         .mount(&server)
         .await;
@@ -813,7 +814,7 @@ async fn a_forward_carries_the_originals_attachments() {
         .unwrap();
 
     let (gmail, _) = client(&server.uri());
-    let mut msg = outgoing(a, "a@x.com", Some(m2));
+    let mut msg = outgoing(a, "a@x.example", Some(m2));
     msg.forwarded = vec![attachment];
     let files = compose::carried_parts(&db, |_| Ok(client(&server.uri()).0), &msg, &cache)
         .await
@@ -852,7 +853,7 @@ async fn reopening_a_draft_brings_its_files() {
             "payload": {
                 "mimeType": "multipart/mixed",
                 "headers": [
-                    { "name": "From", "value": "a@x.com" },
+                    { "name": "From", "value": "a@x.example" },
                     { "name": "To", "value": "bob@example.com" },
                     { "name": "Subject", "value": "Plan" }
                 ],
@@ -908,7 +909,7 @@ async fn a_quote_carries_the_originals_embedded_images() {
         .query_row("SELECT id FROM attachments", [], |r| r.get(0))
         .unwrap();
 
-    let mut msg = outgoing(a, "a@x.com", Some(m2));
+    let mut msg = outgoing(a, "a@x.example", Some(m2));
     msg.html = Some(r#"<p>Hi</p><blockquote><img src="cid:logo@x"></blockquote>"#.into());
     msg.inline_images = vec![logo];
     let carried = compose::carried_parts(&db, |_| Ok(client(&server.uri()).0), &msg, &cache)

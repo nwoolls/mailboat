@@ -50,7 +50,7 @@ fn decode(s: &str) -> String {
     percent_decode_str(s).decode_utf8_lossy().into_owned()
 }
 
-/// Splits on commas outside quotes, so `"Doe, Jane" <j@x.com>` stays whole.
+/// Splits on commas outside quotes, so `"Doe, Jane" <j@x.example>` stays whole.
 fn push_recipients(list: &mut Vec<String>, encoded: &str) {
     let decoded = decode(encoded);
     let mut quoted = false;
@@ -93,12 +93,12 @@ mod tests {
     #[test]
     fn every_field() {
         let m = parse(
-            "MAILTO:a@x.com,b@x.com?cc=c@x.com&BCC=d@x.com&subject=Hello%20there&body=Line%201%0D%0ALine%202&to=e@x.com",
+            "MAILTO:a@x.example,b@x.example?cc=c@x.example&BCC=d@x.example&subject=Hello%20there&body=Line%201%0D%0ALine%202&to=e@x.example",
         )
         .unwrap();
-        assert_eq!(m.to, vec!["a@x.com", "b@x.com", "e@x.com"]);
-        assert_eq!(m.cc, vec!["c@x.com"]);
-        assert_eq!(m.bcc, vec!["d@x.com"]);
+        assert_eq!(m.to, vec!["a@x.example", "b@x.example", "e@x.example"]);
+        assert_eq!(m.cc, vec!["c@x.example"]);
+        assert_eq!(m.bcc, vec!["d@x.example"]);
         assert_eq!(m.subject, "Hello there");
         assert_eq!(m.body, "Line 1\nLine 2");
     }
@@ -112,8 +112,8 @@ mod tests {
 
     #[test]
     fn names_with_commas_stay_whole() {
-        let m = parse("mailto:%22Doe,%20Jane%22%20%3Cj@x.com%3E,%20k@x.com").unwrap();
-        assert_eq!(m.to, vec!["\"Doe, Jane\" <j@x.com>", "k@x.com"]);
+        let m = parse("mailto:%22Doe,%20Jane%22%20%3Cj@x.example%3E,%20k@x.example").unwrap();
+        assert_eq!(m.to, vec!["\"Doe, Jane\" <j@x.example>", "k@x.example"]);
     }
 
     #[test]

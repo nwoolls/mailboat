@@ -70,8 +70,8 @@ describe("vacation form", () => {
     expect(vacationStatus(settings, startOfDay("2026-10-26")!)).toBe("Ended");
     expect(vacationStatus({ ...settings, start: null, end: null }, during)).toBe("On");
     expect(vacationStatus({ ...settings, enabled: false }, during)).toBe("Off");
-    expect(bannerText(settings, "me@x.com")).toBe(
-      "Vacation responder is on for me@x.com until the end of Sat, Oct 24",
+    expect(bannerText(settings, "me@x.example")).toBe(
+      "Vacation responder is on for me@x.example until the end of Sat, Oct 24",
     );
     expect(bannerText({ ...settings, end: null }, null)).toBe("Vacation responder is on");
   });

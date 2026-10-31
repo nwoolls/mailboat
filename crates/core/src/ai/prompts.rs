@@ -183,7 +183,7 @@ and no signature, because their signature (with their name) follows automaticall
     }
 }
 
-/// The first word of "Jordan Lee <n@x.com>" ("Jordan"); none for a bare
+/// The first word of "Jordan Lee <n@x.example>" ("Jordan"); none for a bare
 /// address.
 fn first_name(writer: &str) -> Option<String> {
     let name = writer.split('<').next()?.trim().trim_matches('"');
@@ -403,7 +403,7 @@ mod tests {
                 id: MessageId(1),
                 from: Address {
                     name: Some("Sam".into()),
-                    email: "s@x.com".into(),
+                    email: "s@x.example".into(),
                 },
                 to: vec![],
                 date: 0,
@@ -429,9 +429,9 @@ mod tests {
     fn writing_includes_the_conversation_draft_and_chat() {
         let ctx = WritingContext {
             thread: Some(thread()),
-            writer: "Jordan <n@x.com>".into(),
+            writer: "Jordan <n@x.example>".into(),
             kind: "reply".into(),
-            to: "Sam <s@x.com>".into(),
+            to: "Sam <s@x.example>".into(),
             subject: "Re: Review".into(),
             draft: "Thursday is fine".into(),
             has_signature: false,
@@ -451,7 +451,7 @@ mod tests {
             },
         ];
         let p = write(&ctx, &chat, AiProvider::Claude);
-        assert!(p.instructions.contains("Jordan <n@x.com>"));
+        assert!(p.instructions.contains("Jordan <n@x.example>"));
         assert!(
             !p.instructions.contains("Subject: …"),
             "replies keep their subject"
@@ -490,11 +490,14 @@ mod tests {
 
     #[test]
     fn signs_off_with_the_writers_first_name() {
-        assert_eq!(first_name("Jordan Lee <n@x.com>"), Some("Jordan".into()));
-        assert_eq!(first_name("\"Sam\" <s@x.com>"), Some("Sam".into()));
-        assert_eq!(first_name("n@x.com"), None);
+        assert_eq!(
+            first_name("Jordan Lee <n@x.example>"),
+            Some("Jordan".into())
+        );
+        assert_eq!(first_name("\"Sam\" <s@x.example>"), Some("Sam".into()));
+        assert_eq!(first_name("n@x.example"), None);
         let ctx = WritingContext {
-            writer: "Jordan Lee <n@x.com>".into(),
+            writer: "Jordan Lee <n@x.example>".into(),
             ..Default::default()
         };
         assert!(write(&ctx, &[], AiProvider::Apple)

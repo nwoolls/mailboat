@@ -19,7 +19,7 @@ fn add_account(db: &Db, sub: &str) -> AccountId {
         &db.conn(),
         &accounts::NewAccount {
             google_sub: sub,
-            email: &format!("{sub}@x.com"),
+            email: &format!("{sub}@x.example"),
             display_name: None,
             avatar_url: None,
             oauth_client: "default",
@@ -257,7 +257,7 @@ async fn fetch_body_downloads_once_then_uses_cache() {
         &ListQuery {
             accounts: AccountFilter::All,
             view: MailView::Search {
-                text: "vendor.com/pay".into(),
+                text: "vendor.example/pay".into(),
                 with_spam_trash: false,
             },
             cursor: None,
@@ -611,7 +611,7 @@ async fn a_new_accounts_signatures_arrive_before_its_first_sync_finishes() {
         .await;
     Mock::given(path("/gmail/v1/users/me/settings/sendAs"))
         .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "sendAs": [{ "sendAsEmail": "a@x.com", "isPrimary": true, "signature": "<b>Sig</b>" }]
+            "sendAs": [{ "sendAsEmail": "a@x.example", "isPrimary": true, "signature": "<b>Sig</b>" }]
         })))
         .mount(&server)
         .await;
@@ -845,7 +845,7 @@ async fn sending_goes_ahead_while_a_first_sync_waits_on_its_quota() {
         account_id: account,
         from: Address {
             name: None,
-            email: "a@x.com".into(),
+            email: "a@x.example".into(),
         },
         to: vec![Address {
             name: None,
