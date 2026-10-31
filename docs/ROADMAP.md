@@ -3098,6 +3098,29 @@ leads, each checked before acting:
       word through (a proxy could put text there). Reproduced over mock
       HTTP. Only Google's documented reason codes are written out now;
       anything else is "other"
+- Question, images cached before R4-04: left as is. Prefetch keys are
+  now addresses as browsers read them; an old copy saved under a
+  spelling that now reads differently (an upper-case host, a space) is
+  missed, so that image loads when its email is opened, as it would
+  without prefetch. It's an image the owner's setting already loads,
+  never a tracker; downloading every image again would cost far more
+- Owner decision, still open: Codex's tools. Round 5 added: Codex has no
+  allow-list like Claude's `--tools ""`; the reviewer read in its
+  documentation that opting out of `unified_exec` is ignored (only `shell_tool=false` stopped
+  commands in Round 4's run); a made-up `-c features.…=false` is
+  accepted silently; neither `HOME` nor `CODEX_HOME` alone keeps the
+  owner's skills out, and changing them moves the sign-in; the child
+  inherits the app's environment except `PATH`. Choices: (a) keep it,
+  rechecking after each Codex update; (b) a check at start-up that the
+  installed version's switches match a reviewed list, refusing Codex if
+  not; (c) turn Codex off until it can promise no tools
+- Suggested, not scheduled (owner to decide): browser tests that fail
+  clearly when the test page doesn't start (a "ready" signal, page and
+  module errors collected), so a failure like Round 2's shows its cause.
+  The reviewer's sandboxed run had one time-out and slow page loads;
+  every full run here passed (66 of 66)
+- R4-07 has no test that keeps names out; Milestone 14's scrub covers
+  it before publishing
 
 ## Milestone 14: Open the code
 
