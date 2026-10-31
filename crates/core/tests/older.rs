@@ -443,3 +443,78 @@ async fn a_deleted_email_takes_gmails_hit_with_it() {
     store::delete_messages(&mut db.conn(), a, &[gone]).unwrap();
     assert_eq!(found(&db), 0, "the hit went with the email");
 }
+
+/// Code review R7-03: storage lets an email move to another thread, but
+/// the thread it left kept Gmail's saved hits (and its old counts), so a
+/// hit that may have matched the moved, hidden email counted again.
+#[test]
+fn an_email_moving_threads_takes_the_old_threads_hits_with_it() {
+    use mail_core::db::query;
+    use mail_core::db::store::{IncomingMessage, IncomingThread};
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let email = |id: &str, labels: &[&str]| IncomingMessage {
+        gmail_message_id: id.into(),
+        label_ids: labels.iter().map(|l| l.to_string()).collect(),
+        internal_date: 1_000,
+        subject: "Plans".into(),
+        snippet: format!("{id} words"),
+        from: Some(Address {
+            name: None,
+            email: "probe@example.com".into(),
+        }),
+        ..Default::default()
+    };
+    let thread = |gid: &str, messages: Vec<IncomingMessage>| {
+        store::upsert_thread(
+            &mut db.conn(),
+            a,
+            &IncomingThread {
+                gmail_thread_id: gid.into(),
+                messages,
+            },
+        )
+        .unwrap()
+    };
+    let old = thread(
+        "old",
+        vec![email("keep", &["INBOX"]), email("moving", &["TRASH"])],
+    );
+    db.conn()
+        .execute(
+            "INSERT INTO search_hits (account_id, query, thread_id) VALUES (?1, ?2, ?3)",
+            rusqlite::params![a, query::search_key("Zebra", false), old],
+        )
+        .unwrap();
+    let found = || {
+        query::list_threads(
+            &db.conn(),
+            &ListQuery {
+                accounts: AccountFilter::All,
+                view: MailView::Search {
+                    text: "Zebra".into(),
+                    with_spam_trash: false,
+                },
+                cursor: None,
+                limit: 50,
+            },
+        )
+        .unwrap()
+        .threads
+        .len()
+    };
+    assert_eq!(found(), 0, "the hidden email holds the hit back");
+
+    thread("new", vec![email("moving", &["TRASH"])]);
+    thread("old", vec![email("keep", &["INBOX"])]);
+    assert_eq!(found(), 0, "the hit went when the email left");
+    let count: i64 = db
+        .conn()
+        .query_row(
+            "SELECT message_count FROM threads WHERE id = ?1",
+            [old],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(count, 1, "the old thread's count follows");
+}

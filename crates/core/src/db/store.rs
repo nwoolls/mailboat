@@ -134,7 +134,21 @@ pub fn upsert_thread(
     )?;
 
     let mut kept: Vec<MessageId> = Vec::with_capacity(thread.messages.len());
+    // Threads an email moves out of (R7-03): tidied below.
+    let mut left: Vec<ThreadId> = Vec::new();
     for msg in &thread.messages {
+        let previous: Option<ThreadId> = tx
+            .query_row(
+                "SELECT thread_id FROM messages WHERE account_id = ?1 AND gmail_message_id = ?2",
+                params![account, msg.gmail_message_id],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if let Some(previous) = previous.filter(|p| *p != thread_id) {
+            if !left.contains(&previous) {
+                left.push(previous);
+            }
+        }
         let from = msg.from.clone().unwrap_or(Address {
             name: None,
             email: String::new(),
@@ -218,6 +232,21 @@ pub fn upsert_thread(
         tx.execute("DELETE FROM threads WHERE id = ?1", [thread_id])?;
     } else {
         refresh_thread(&tx, account, thread_id)?;
+    }
+    // A thread an email moved out of: its Gmail hits may have been for
+    // that email, and its counts change; gone if nothing's left.
+    for previous in left {
+        forget_search_hits(&tx, previous)?;
+        let remaining: i64 = tx.query_row(
+            "SELECT COUNT(*) FROM messages WHERE thread_id = ?1",
+            [previous],
+            |r| r.get(0),
+        )?;
+        if remaining == 0 {
+            tx.execute("DELETE FROM threads WHERE id = ?1", [previous])?;
+        } else {
+            refresh_thread(&tx, account, previous)?;
+        }
     }
     tx.commit()?;
     Ok(thread_id)

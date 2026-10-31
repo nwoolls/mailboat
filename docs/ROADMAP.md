@@ -3262,6 +3262,14 @@ findings and three questions, each checked before acting:
       need. Reproduced through the real reader. Text before a failure is
       now an error; a turn that completes still counts, whatever passing
       problems Codex reported before it
+- [x] R7-03 (partly confirmed): storage lets an email move to another
+      thread, but the thread it left kept Gmail's saved hits (and its old
+      counts; an emptied one lingered). Reproduced through the storage
+      API; Gmail's API has no way to move a message between threads and
+      no flow in the app does it, so whether real mail reaches this isn't
+      shown. Tidied anyway, as the storage layer allows it: the thread an
+      email leaves loses its saved hits and is refreshed, or removed if
+      empty
 
 ## Milestone 14: Open the code
 
