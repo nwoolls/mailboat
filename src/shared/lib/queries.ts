@@ -51,6 +51,7 @@ export const keys = {
   ruleMatch: (account: AccountId, criteria: RuleCriteria) =>
     ["ruleMatch", account, criteria] as const,
   aiStatus: ["aiStatus"] as const,
+  codexCheck: ["codexCheck"] as const,
   aiUsage: ["aiUsage"] as const,
 };
 
@@ -288,6 +289,28 @@ export function useAiStatus() {
     queryFn: () => unwrap(commands.aiStatus()),
     enabled: IS_TAURI,
     staleTime: 60_000,
+  });
+}
+
+/**
+ * Whether Codex is as reviewed (ChatGPT pauses if not). Checked each time
+ * Settings → AI is shown; every ChatGPT request checks again itself.
+ */
+export function useCodexCheck(enabled: boolean) {
+  return useQuery({
+    queryKey: keys.codexCheck,
+    queryFn: () => unwrap(commands.aiCodexCheck()),
+    enabled: IS_TAURI && enabled,
+    staleTime: 0,
+  });
+}
+
+/** "Use anyway" for these unreviewed Codex switches, until the app quits. */
+export function useCodexAccept() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (switches: string[]) => commands.aiCodexAccept(switches),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.codexCheck }),
   });
 }
 

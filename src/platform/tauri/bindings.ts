@@ -295,6 +295,13 @@ export const commands = {
 	menuBarUpdate: (items: MenuItemState[]) => typedError<null, AppError>(__TAURI_INVOKE("menu_bar_update", { items })),
 	/**  Whether each provider can be used now. */
 	aiStatus: () => typedError<ProviderStatus[], AppError>(__TAURI_INVOKE("ai_status")),
+	/**  Checks Codex's switches against the review (about 20ms, offline). */
+	aiCodexCheck: () => typedError<CodexCheck, AppError>(__TAURI_INVOKE("ai_codex_check")),
+	/**
+	 *  "Use anyway": ChatGPT goes on with these unreviewed switches until the
+	 *  app quits, or until a switch not among them appears.
+	 */
+	aiCodexAccept: (switches: string[]) => __TAURI_INVOKE<void>("ai_codex_accept", { switches }),
 	/**
 	 *  Connects Claude or ChatGPT: if its tool isn't signed in, starts its
 	 *  sign-in (which opens the browser) and waits for it, then remembers the
@@ -683,6 +690,25 @@ export type Clash = {
 	title: string | null,
 	start: Moment,
 	end: Moment | null,
+};
+
+/**
+ *  Whether Codex is as reviewed (`ai/codex_review.json`), for Settings →
+ *  AI. Every ChatGPT request checks again before anything is sent.
+ */
+export type CodexCheck = {
+	/**
+	 *  Switches still on after being turned off that the review doesn't
+	 *  list: ChatGPT is paused while any aren't accepted.
+	 */
+	unreviewed: string[],
+	/**  The owner chose "use anyway" for all of `unreviewed`. */
+	accepted: boolean,
+	/**
+	 *  Codex couldn't say (ChatGPT is paused). False when it isn't
+	 *  installed: there's nothing to check.
+	 */
+	failed: boolean,
 };
 
 /**  One model from Codex's catalog, as offered in Settings → AI. */

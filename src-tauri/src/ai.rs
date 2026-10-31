@@ -52,6 +52,9 @@ pub struct AiState {
     limits: Mutex<Vec<PlanLimit>>,
     /// Codex's model catalog, read once (`codex debug models`).
     codex_catalog: Mutex<Option<Vec<CodexModel>>>,
+    /// Unreviewed Codex switches the owner chose to use ChatGPT with anyway
+    /// (Settings → AI), until the app quits.
+    codex_accepted: Mutex<Vec<String>>,
     queue: LineQueue,
 }
 
@@ -67,6 +70,7 @@ impl AiState {
             connect_cancel: tokio::sync::Notify::new(),
             limits: Mutex::new(Vec::new()),
             codex_catalog: Mutex::new(None),
+            codex_accepted: Mutex::new(Vec::new()),
             queue: LineQueue::default(),
         }
     }
@@ -86,6 +90,7 @@ impl AiState {
         programs.codex_models = ai::codex::Models {
             fast: ai::codex::fast_model(&catalog),
             writing: saved.ai.chatgpt_model.clone(),
+            accepted: self.codex_accepted.lock().unwrap().clone(),
         };
         programs
     }
@@ -174,6 +179,55 @@ pub async fn ai_status(ai: State<'_, AiState>) -> CmdResult<Vec<ProviderStatus>>
         ai::status(&programs, AiProvider::Claude),
     );
     Ok(vec![apple, chatgpt, claude])
+}
+
+/// Whether Codex is as reviewed (`ai/codex_review.json`), for Settings →
+/// AI. Every ChatGPT request checks again before anything is sent.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexCheck {
+    /// Switches still on after being turned off that the review doesn't
+    /// list: ChatGPT is paused while any aren't accepted.
+    pub unreviewed: Vec<String>,
+    /// The owner chose "use anyway" for all of `unreviewed`.
+    pub accepted: bool,
+    /// Codex couldn't say (ChatGPT is paused). False when it isn't
+    /// installed: there's nothing to check.
+    pub failed: bool,
+}
+
+/// Checks Codex's switches against the review (about 20ms, offline).
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_codex_check(ai: State<'_, AiState>) -> CmdResult<CodexCheck> {
+    let Some(codex) = ai.refresh().codex else {
+        return Ok(CodexCheck {
+            unreviewed: Vec::new(),
+            accepted: false,
+            failed: false,
+        });
+    };
+    let accepted = ai.codex_accepted.lock().unwrap().clone();
+    Ok(match ai::codex::check(&codex).await {
+        Ok(unreviewed) => CodexCheck {
+            accepted: !unreviewed.is_empty() && unreviewed.iter().all(|u| accepted.contains(u)),
+            unreviewed,
+            failed: false,
+        },
+        Err(_) => CodexCheck {
+            unreviewed: Vec::new(),
+            accepted: false,
+            failed: true,
+        },
+    })
+}
+
+/// "Use anyway": ChatGPT goes on with these unreviewed switches until the
+/// app quits, or until a switch not among them appears.
+#[tauri::command]
+#[specta::specta]
+pub fn ai_codex_accept(ai: State<'_, AiState>, switches: Vec<String>) {
+    *ai.codex_accepted.lock().unwrap() = switches;
 }
 
 /// Connects Claude or ChatGPT: if its tool isn't signed in, starts its

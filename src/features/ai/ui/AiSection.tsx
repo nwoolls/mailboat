@@ -31,6 +31,7 @@ import {
   statusOf,
 } from "../model/providers";
 import { describeLimit, describeTotals, startOfToday } from "../model/usage";
+import { CodexNoticeCard } from "./CodexNotice";
 import { AiAppsGroups } from "../../mcp/ui/AiAppsGroups";
 import { clearLineSummaries } from "./lineSummaries";
 import { accelLabel } from "../../../shared/lib/platform";
@@ -63,6 +64,7 @@ export function AiSection() {
   const apple = appleSupported(statuses);
   return (
     <>
+      <CodexNoticeCard connected={ai.connected.includes("chatgpt")} />
       <Group
         title="Providers"
         description={`${apple ? "Apple Intelligence runs on this Mac. " : ""}ChatGPT and Claude use your own subscription: connecting signs in through their apps in the browser, with no API key.`}

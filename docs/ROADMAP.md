@@ -3139,19 +3139,22 @@ leads, each checked before acting:
         can't be read, Codex's folder can; ChatGPT answered through the
         real fenced path in 3s. Windows has no equivalent; there, reading
         depends on the checks
-  - [ ] Checked at start-up, every few hours and when the `codex` program
-        changes on disk, with `codex features list` only (offline, no
-        server): a switch that stays on after being turned off and isn't
-        on the reviewed list, or a check that fails, pauses ChatGPT with
-        a warning in Settings → AI (Check again; Use anyway, until the app
-        quits or something else new appears). No version check. Not a
-        full tool list: `codex debug prompt-input` doesn't show the
-        request's tools, the model's own list is unreliable (it named 15
-        tools its request didn't have), and capturing the real request
-        needs a local server, which the app shouldn't run (a listening
-        port, Codex's internals, false pauses), so that's the monthly
-        recheck's job. Accepted: a new server-side tool, on by default
-        and with no switch, goes unnoticed until the next recheck
+  - [x] Checked before every ChatGPT request, and when Settings → AI is
+        shown, with `codex features list` only (offline, no server, about
+        20ms): a switch that stays on after being turned off and isn't on
+        the reviewed list, or a check that fails, pauses ChatGPT before
+        anything is sent. Settings → AI says so (Check again; Use anyway,
+        until the app quits or another switch appears; no Use anyway when
+        the check fails). Checking every request replaced the planned
+        start-up, every-few-hours and program-changed checks: stricter,
+        and nothing to schedule. No version check. Not a full tool list:
+        `codex debug prompt-input` doesn't show the request's tools, the
+        model's own list is unreliable (it named 15 tools its request
+        didn't have), and capturing the real request needs a local
+        server, which the app shouldn't run, so that's the monthly
+        recheck's job. Accepted: a new server-side tool, on by default and
+        with no switch, goes unnoticed until the next recheck. Tested
+        against a stand-in `codex` whose new switch won't turn off
   - [ ] Monthly recheck tooling (run by an agent with the owner's OK,
         never by the app): Codex's real request captured against a local
         stand-in server with an empty Codex folder, its tools compared to

@@ -118,6 +118,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::menu_bar_set,
             commands::menu_bar_update,
             ai::ai_status,
+            ai::ai_codex_check,
+            ai::ai_codex_accept,
             ai::ai_connect,
             ai::ai_connect_cancel,
             ai::ai_disconnect,

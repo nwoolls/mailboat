@@ -27,6 +27,17 @@ pub fn review() -> Review {
         .expect("codex_review.json is checked by its test")
 }
 
+/// Switches still on after being turned off that the review doesn't
+/// list: what pauses ChatGPT.
+pub fn unreviewed(still_on: &[String]) -> Vec<String> {
+    let review = review();
+    still_on
+        .iter()
+        .filter(|s| !review.stays_on.contains(s))
+        .cloned()
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -40,5 +51,11 @@ mod tests {
             r.reviewed
         );
         assert!(r.stays_on.contains(&"unified_exec".to_string()));
+    }
+
+    #[test]
+    fn only_switches_the_review_doesnt_list_are_unreviewed() {
+        let still = vec!["unified_exec".to_string(), "brand_new_tool".to_string()];
+        assert_eq!(unreviewed(&still), ["brand_new_tool"]);
     }
 }

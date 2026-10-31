@@ -58,6 +58,9 @@ pub struct Choice {
 pub struct Models {
     pub fast: Option<String>,
     pub writing: Option<String>,
+    /// Unreviewed switches the owner chose to use ChatGPT with anyway
+    /// (Settings → AI), until the app quits.
+    pub accepted: Vec<String>,
 }
 
 /// The model and effort for a request. Quick requests on the fast model
@@ -132,6 +135,34 @@ pub fn switches_off(reported: &[(String, bool)]) -> Vec<String> {
         }
     }
     off
+}
+
+/// Turns every switch off and checks Codex agrees: the switches still on
+/// that the review doesn't list (`codex_review::unreviewed`), with the
+/// switches to turn off. An error when Codex can't say.
+async fn checked(program: &Path) -> Result<(Vec<String>, Vec<String>)> {
+    let off = switches_off(&switches(program, &[]).await?);
+    let still_on: Vec<String> = switches(program, &overrides(&off))
+        .await?
+        .into_iter()
+        .filter_map(|(name, on)| on.then_some(name))
+        .collect();
+    Ok((super::codex_review::unreviewed(&still_on), off))
+}
+
+/// Codex's switches as reviewed: those still on after being turned off
+/// that the review doesn't list. Empty when all is as reviewed. For
+/// Settings → AI; each request checks again (`run`).
+pub async fn check(program: &Path) -> Result<Vec<String>> {
+    Ok(checked(program).await?.0)
+}
+
+/// What a request says when ChatGPT is paused.
+fn paused(unreviewed: &[String]) -> CoreError {
+    CoreError::Ai(format!(
+        "ChatGPT is paused: Codex has switches that haven't been reviewed and stay on ({}). See Settings → AI.",
+        unreviewed.join(", ")
+    ))
 }
 
 /// The `-c` settings that turn `off` off.
@@ -271,12 +302,12 @@ pub async fn ask(
     on_text: &(dyn Fn(&str) + Send + Sync),
 ) -> Result<Answer> {
     let mut chosen = choice(prompt.quality, models);
-    let answer = match run(program, prompt, &chosen).await {
+    let answer = match run(program, prompt, &chosen, &models.accepted).await {
         // A model that doesn't take "none" (a newer fast model, say)
         // gets one more try with "low".
         Err(CoreError::Ai(m)) if chosen.effort == "none" && m.contains("Unsupported value") => {
             chosen.effort = "low";
-            run(program, prompt, &chosen).await?
+            run(program, prompt, &chosen, &models.accepted).await?
         }
         other => other?,
     };
@@ -284,10 +315,19 @@ pub async fn ask(
     Ok(answer)
 }
 
-async fn run(program: &Path, prompt: &Prompt, chosen: &Choice) -> Result<Answer> {
-    // Asked each time (it takes about 10ms), so a switch an update added
-    // is off from the first request after it.
-    let off = switches_off(&switches(program, &[]).await?);
+async fn run(
+    program: &Path,
+    prompt: &Prompt,
+    chosen: &Choice,
+    accepted: &[String],
+) -> Result<Answer> {
+    // Asked each time (two quick `features list`s, about 20ms), so a
+    // switch an update added is off from the first request after it, and
+    // one that won't turn off pauses ChatGPT before anything is sent.
+    let (unreviewed, off) = checked(program).await?;
+    if !unreviewed.iter().all(|u| accepted.contains(u)) {
+        return Err(paused(&unreviewed));
+    }
     let mut reader = Reader::default();
     let args = args(chosen, &off);
     let exit = process::run_lines_with(
@@ -450,6 +490,7 @@ mod tests {
         let models = Models {
             fast: Some("gpt-6-luna".into()),
             writing: Some("gpt-6-astra".into()),
+            ..Models::default()
         };
         let fast = choice(Quality::Fast, &models);
         assert_eq!(
@@ -478,6 +519,30 @@ brand_new_tool                           stable             true
 shell_tool                               stable             false
 not a switch line
 ";
+
+    /// `FEATURES` after `-c features.…=false`: all off.
+    const FEATURES_OFF: &str = "apps                                     stable             false
+agent_message_board                      under development  false
+brand_new_tool                           stable             false
+shell_tool                               stable             false
+";
+
+    /// `FEATURES` after turning them off, with one that won't.
+    const FEATURES_STUBBORN: &str =
+        "apps                                     stable             false
+agent_message_board                      under development  false
+brand_new_tool                           stable             true
+shell_tool                               stable             false
+";
+
+    /// A shell line that answers `features list` like Codex: `FEATURES`,
+    /// or `after` when switches are turned off (`-c`).
+    #[cfg(unix)]
+    fn features_answer(after: &str) -> String {
+        format!(
+            "if [ \"$1\" = features ]; then if [ \"$3\" = -c ]; then printf '%s' '{after}'; else printf '%s' '{FEATURES}'; fi; exit 0; fi\n"
+        )
+    }
 
     #[test]
     fn reads_codex_switches() {
@@ -522,10 +587,11 @@ not a switch line
         std::fs::write(
             &stub,
             format!(
-                "#!/bin/sh\nif [ \"$1\" = features ]; then printf '%s' '{FEATURES}'; exit 0; fi\n\
+                "#!/bin/sh\n{features}\
                  echo \"$@\" > {log}; env >> {log}\n\
                  echo '{{\"type\":\"item.completed\",\"item\":{{\"type\":\"agent_message\",\"text\":\"Done.\"}}}}'\n\
                  echo '{{\"type\":\"turn.completed\",\"usage\":{{}}}}'\n",
+                features = features_answer(FEATURES_OFF),
                 log = log.display()
             ),
         )
@@ -545,6 +611,60 @@ not a switch line
         let ran = std::fs::read_to_string(&log).unwrap();
         assert!(ran.contains("features.brand_new_tool=false"), "{ran}");
         assert!(!ran.contains("AI_ENV_PROBE_CODEX"), "{ran}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A stand-in `codex` whose `brand_new_tool` stays on even when turned
+    /// off, logging `exec`'s arguments if it gets that far.
+    #[cfg(unix)]
+    fn stubborn_codex(dir: &std::path::Path) -> std::path::PathBuf {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::create_dir_all(dir).unwrap();
+        let stub = dir.join("codex");
+        std::fs::write(
+            &stub,
+            format!(
+                "#!/bin/sh\n{features}\
+                 echo ran > {ran}\n\
+                 echo '{{\"type\":\"item.completed\",\"item\":{{\"type\":\"agent_message\",\"text\":\"Done.\"}}}}'\n\
+                 echo '{{\"type\":\"turn.completed\",\"usage\":{{}}}}'\n",
+                features = features_answer(FEATURES_STUBBORN),
+                ran = dir.join("ran").display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
+        stub
+    }
+
+    /// Fencing in Codex (Milestone 13): a switch that stays on after being
+    /// turned off and isn't on the reviewed list pauses ChatGPT before
+    /// anything is sent, unless the owner chose "use anyway" for it.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_switch_that_wont_turn_off_pauses_chatgpt() {
+        let dir = std::env::temp_dir().join(format!("codex-stubborn-{}", fastrand::u64(..)));
+        let stub = stubborn_codex(&dir);
+        let prompt = Prompt {
+            instructions: "Summarize.".into(),
+            input: "Hi".into(),
+            quality: Quality::Fast,
+            max_tokens: None,
+        };
+        assert_eq!(check(&stub).await.unwrap(), ["brand_new_tool"]);
+        let e = ask(&stub, &prompt, &Models::default(), &|_| {})
+            .await
+            .unwrap_err();
+        assert!(e.to_string().contains("ChatGPT is paused"), "{e}");
+        assert!(e.to_string().contains("brand_new_tool"), "{e}");
+        assert!(!dir.join("ran").exists(), "nothing was sent");
+
+        let anyway = Models {
+            accepted: vec!["brand_new_tool".into()],
+            ..Models::default()
+        };
+        let answer = ask(&stub, &prompt, &anyway, &|_| {}).await.unwrap();
+        assert_eq!(answer.text, "Done.");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
