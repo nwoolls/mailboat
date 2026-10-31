@@ -209,11 +209,18 @@ old. When it does:
    cargo test -p mail-core --test ai_live codex_ -- --ignored --nocapture --test-threads=1
    ```
 
+   Ask the owner which ChatGPT model Settings → AI uses for writing; if
+   it isn't "Default", run the live tests again with
+   `AI_LIVE_CODEX_WRITING_MODEL=<that model>` set, so both runs cover what
+   the app asks.
+
    - `codex_switches_are_as_reviewed` (offline): no switch stays on that
      the review doesn't list.
    - `codex_request_tools_are_as_reviewed` (offline): the tools in
      Codex's real request, captured by a local stand-in server with an
-     empty Codex folder, are the reviewed ones.
+     empty Codex folder, are the reviewed ones, for every model on
+     Codex's list (hidden ones too, as the app reads the list and as a
+     fresh install would) and for Codex's default.
    - `codex_cannot_*` (five tests, two small live requests each: the
      fast and the writing model): Codex can't write a file, run a
      command, reach the network, read a file planted in the home folder,

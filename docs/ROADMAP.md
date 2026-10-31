@@ -3270,6 +3270,32 @@ findings and three questions, each checked before acting:
       shown. Tidied anyway, as the storage layer allows it: the thread an
       email leaves loses its saved hits and is refreshed, or removed if
       empty
+- [x] R7-02 (confirmed): the monthly checks didn't cover every model the
+      app can ask. The live tests' writing model was always Codex's
+      default, and the capture only visited listed models from one list,
+      though a chosen model stays chosen after Codex hides it. The capture
+      now visits every model on Codex's list (hidden too), both as the app
+      reads it and as a fresh install would, plus Codex's default; the
+      live tests take the chosen writing model
+      (`AI_LIVE_CODEX_WRITING_MODEL`, AGENTS.md says to ask the owner)
+- [ ] Question 1 (owner decision open): the wider capture finds tools not
+      in the review. `gpt-5.5` (only on a fresh install's list, not on the
+      owner's) carries a direct `apply_patch` (edits files) and
+      `request_user_input`; `gpt-reserve` (hidden on the owner's list)
+      carries a direct `request_user_input`. Neither can be asked by the
+      app today unless chosen before it was hidden or the owner's list
+      refreshes. Not added to the review: `apply_patch` was refused by the
+      read-only sandbox in Round 5 and the fence blocks the home folder,
+      but it hasn't been tested live on these models. Accepting needs a
+      live run with `AI_LIVE_CODEX_WRITING_MODEL=gpt-5.5` (and
+      `gpt-reserve`) and the owner's OK
+- Questions 2 and 3, answered: the capture uses a local stand-in
+  provider; the real ChatGPT route can't be captured offline (Codex
+  first asks OpenAI where to send it, which fails locally), so a
+  difference there is covered only by the live tests, as already
+  accepted. The helper-agent test shows what it saw: the requested file
+  didn't appear and the helper reported failing or not starting; it
+  doesn't watch every possible helper action, and is described that way
 
 ## Milestone 14: Open the code
 

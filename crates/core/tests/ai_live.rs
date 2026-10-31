@@ -5,7 +5,10 @@
 
 use mail_core::ai::{self, AiProvider, Programs, Prompt, Quality};
 
-/// As the app sets them up: Codex's fast model from its own catalog.
+/// As the app sets them up: Codex's fast model from its own catalog, and
+/// the writing model chosen in Settings → AI, given here as
+/// `AI_LIVE_CODEX_WRITING_MODEL` (the owner says which; unset means
+/// Codex's default, as when none is chosen). Code review R7-02.
 fn programs() -> Programs {
     let helper =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/debug/ai-helper");
@@ -16,7 +19,13 @@ fn programs() -> Programs {
         })
         .unwrap_or_default();
         programs.codex_models.fast = ai::codex::fast_model(&catalog);
-        println!("Codex fast model: {:?}", programs.codex_models.fast);
+        programs.codex_models.writing = std::env::var("AI_LIVE_CODEX_WRITING_MODEL")
+            .ok()
+            .filter(|m| !m.trim().is_empty());
+        println!(
+            "Codex fast model: {:?}, writing: {:?}",
+            programs.codex_models.fast, programs.codex_models.writing
+        );
     }
     programs
 }
@@ -268,7 +277,7 @@ async fn codex_switches_are_as_reviewed() {
 /// stand-in for OpenAI: with the app's arguments (every switch off) and an
 /// empty Codex folder, so no sign-in is involved and nothing leaves the
 /// Mac.
-async fn captured_tools(codex: &std::path::Path, model: &str) -> Vec<String> {
+async fn captured_tools(codex: &std::path::Path, model: Option<&str>) -> Vec<String> {
     use wiremock::{matchers::method, Mock, MockServer, ResponseTemplate};
     let server = MockServer::start().await;
     Mock::given(method("POST"))
@@ -293,10 +302,11 @@ async fn captured_tools(codex: &std::path::Path, model: &str) -> Vec<String> {
             "model_providers.standin={{name=\"standin\", base_url=\"{}/v1\", wire_api=\"responses\"}}",
             server.uri()
         ),
-        "-m".into(),
-        model.into(),
-        stdin_marker,
     ]);
+    if let Some(model) = model {
+        args.extend(["-m".into(), model.into()]);
+    }
+    args.push(stdin_marker);
     let empty_home = std::env::temp_dir().join(format!("codex-standin-{}", fastrand::u64(..)));
     std::fs::create_dir_all(&empty_home).unwrap();
     let mut child = tokio::process::Command::new(codex)
@@ -354,26 +364,55 @@ async fn captured_tools(codex: &std::path::Path, model: &str) -> Vec<String> {
     tools
 }
 
-/// Every model the app can ask (Codex's own list: its fast one for quick
-/// requests, any for writing) carries only reviewed tools. Code review
-/// R6-01: this checked one fixed model, which carried fewer tools than the
-/// app's fast model. Offline.
+/// Every model in Codex's model list, hidden ones too (a model chosen for
+/// writing stays chosen after it's hidden), as the app reads the list
+/// (from Codex's folder) and as a fresh install would (an empty one: it
+/// can differ, R7 question 1). Read offline; never the sign-in.
+fn all_codex_models(codex: &std::path::Path) -> Vec<String> {
+    let mut slugs = Vec::new();
+    let empty = std::env::temp_dir().join(format!("codex-models-{}", fastrand::u64(..)));
+    std::fs::create_dir_all(&empty).unwrap();
+    for codex_home in [None, Some(&empty)] {
+        let mut cmd = std::process::Command::new(codex);
+        cmd.args(["debug", "models"]);
+        if let Some(home) = codex_home {
+            cmd.env("CODEX_HOME", home);
+        }
+        let out = cmd.output().unwrap();
+        let list: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap_or_default();
+        for m in list["models"].as_array().into_iter().flatten() {
+            if let Some(slug) = m["slug"].as_str() {
+                if !slugs.iter().any(|s| s == slug) {
+                    slugs.push(slug.to_string());
+                }
+            }
+        }
+    }
+    let _ = std::fs::remove_dir_all(&empty);
+    slugs
+}
+
+/// Every model the app can ask carries only reviewed tools: each in
+/// `all_codex_models`, and Codex's default when no model is named (the
+/// writing model when none is chosen). Code review R6-01: this checked one
+/// fixed model; R7-02: then only listed ones, from one list. Offline.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn codex_request_tools_are_as_reviewed() {
     let codex = programs().codex.expect("codex installed");
-    let models = ai::codex::models(&codex).await.unwrap();
+    let models = all_codex_models(&codex);
     assert!(!models.is_empty(), "Codex lists no models");
     let reviewed = ai::codex_review::review().tools;
     let mut unreviewed = Vec::new();
-    for model in &models {
-        let tools = captured_tools(&codex, &model.slug).await;
-        println!("{}: {tools:?}", model.slug);
+    for model in models.iter().map(|m| Some(m.as_str())).chain([None]) {
+        let tools = captured_tools(&codex, model).await;
+        let name = model.unwrap_or("(Codex's default)");
+        println!("{name}: {tools:?}");
         unreviewed.extend(
             tools
                 .into_iter()
                 .filter(|t| !reviewed.contains(t))
-                .map(|t| format!("{}: {t}", model.slug)),
+                .map(|t| format!("{name}: {t}")),
         );
     }
     assert!(
