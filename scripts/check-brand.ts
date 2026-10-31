@@ -15,6 +15,11 @@ const ALLOWED = [
   "AGENTS.md",
   "CLAUDE.md",
   "docs/",
+  "CONTRIBUTING.md",
+  "SECURITY.md",
+  ".github/ISSUE_TEMPLATE/",
+  ".github/pull_request_template.md",
+  ".github/FUNDING.yml",
   "design/",
   // Generated.
   "bun.lock",

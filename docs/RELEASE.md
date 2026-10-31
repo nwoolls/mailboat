@@ -1,6 +1,6 @@
 # Releasing Mailboat
 
-How Mailboat (named Mailboat until 2026-10-27, then briefly to be Mailboat) could reach other people. Three plans,
+How Mailboat could reach other people. Three plans,
 worked out with the owner on 2026-10-25.
 
 **Chosen (owner, 2026-10-25): Plan 3, the hybrid.** Open source first,

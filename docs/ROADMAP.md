@@ -3327,10 +3327,11 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       publishing *(owner request, 2026-10-30; done 2026-10-31: docs,
       README, three icon comments and the lockfile's package name. Still
       to do in the history rewrite below: commit messages)*
-- [ ] Owner: choose the licence. GPL-3.0 suggested (nobody can sell a
+- [x] Owner: choose the licence. GPL-3.0 suggested (nobody can sell a
       closed copy; respected by a technical audience); MIT and the
       Functional Source License compared in `docs/RELEASE.md` →
       Choices that keep the doors open
+      *Owner chose GPL-3.0, 2026-10-31. `LICENSE` added; Cargo and package.json say `GPL-3.0-only`.*
 - [x] Scrub before publishing (tree done; history below): no real mail in fixtures, examples or
       `design/`; no personal details in the docs; nothing from the owner's machine (paths, certificates)
       that matters. Search for personal details. Also
@@ -3341,10 +3342,11 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       files and a fixture's encoded body now use `.example`; a search of
       the tree found no real company domain, no real addresses, no personal
       paths, no screenshots of mail. Remaining: the commit history
-- [ ] Dependency licences checked with `cargo-deny` (and the same for
+- [x] Dependency licences checked with `cargo-deny` (and the same for
       the JavaScript packages): every crate and package must be allowed
       in the chosen licence (GPL-3.0 can't include some licences).
       Kept as a CI check afterwards
+      *Done 2026-10-31: `deny.toml` (allow-list of GPL-3.0-compatible licences, advisories, sources) passes; it found and fixed advisories in `ammonia` (the email sanitizer), `rustls`, `rustls-webpki` and `pulldown-cmark` by updating them. `bun audit --prod` is clean. Both run in `.github/workflows/audit.yml`, untested in Actions until the repository exists.*
 - [ ] Publish a clean history: a new public repository on the owner's GitHub, which becomes the working repository. The original private repository is kept offline as the archive. The README says that commit hashes quoted in older docs come from it
 - [ ] A README that sells it, written for people, not agents:
       - A hero image or short GIF of Mailboat at work (from Demo mode,
@@ -3372,6 +3374,14 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       shows when the link is shared), pinned on the owner's profile
 
 ### Pipelines (GitHub Actions, free for public repositories)
+
+*Written 2026-10-31, not yet run (no repository on GitHub yet), so the
+boxes below stay open until a first pull request shows them green:
+`.github/workflows/` (`ci`, `build`, `audit`, `codeql`, `scorecard`) and
+`.github/dependabot.yml`. Actions are pinned to commit hashes with the
+version in a comment; each workflow starts from read-only permissions.
+CI leaves out `check:codex`, the monthly Codex review reminder, which is
+for the owner's machine.*
 
 - [ ] Checks on every pull request and push to `main`: `bun run check`
       (format, lint, types, Vitest, Rust format, clippy, tests,
@@ -3410,14 +3420,16 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
 
 ### Community (kept small, so it never becomes a job)
 
-- [ ] `CONTRIBUTING.md`: bug reports and ideas welcome; outside code
+- [x] `CONTRIBUTING.md`: bug reports and ideas welcome; outside code
       not accepted (an email client is an attractive target for a
       malicious change, and it keeps the copyright with the owner so
       the licence can change later)
-- [ ] Issue forms for bugs (version, Mac or Windows, steps) and ideas;
+- [x] Issue forms for bugs (version, Mac or Windows, steps) and ideas;
       labels; a pull request template for the owner's own PRs
-- [ ] `SECURITY.md` with GitHub's private vulnerability reporting
+      *Written; labels to be created with the repository.*
+- [x] `SECURITY.md` with GitHub's private vulnerability reporting
       turned on, and the domain's email as a fallback
+      *File written; turn private reporting on in the repository's settings (owner).*
 - [ ] GitHub Discussions for questions and ideas, so users can help
       each other and issues stay for bugs (optional; can be switched
       off if it becomes a chore)

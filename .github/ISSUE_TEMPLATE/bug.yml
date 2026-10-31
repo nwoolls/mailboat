@@ -1,0 +1,27 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown in Settings → About
+    validations: { required: true }
+  - type: dropdown
+    id: os
+    attributes:
+      label: System
+      options: [macOS, Windows]
+    validations: { required: true }
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to see it
+      description: What you did, what you expected, what happened. Please leave out real email content.
+    validations: { required: true }
+  - type: textarea
+    id: log
+    attributes:
+      label: Sync log (optional)
+      description: The relevant lines of `sync.log`. It holds no email content.
