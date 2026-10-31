@@ -340,9 +340,10 @@ pub async fn ai_thread_summary(
         }
         Ok(Summarized::NotNeeded) => Ok(None),
         Err(e) => {
-            state
-                .sync_log
-                .write(account, &format!("AI summary failed: {}", e.message));
+            state.sync_log.write(
+                account,
+                &failure_line("AI summary", provider, &e.kind, &e.message),
+            );
             Err(e)
         }
     }
@@ -706,7 +707,7 @@ pub fn run_line_queue(app: AppHandle) {
                     }
                     state.sync_log.write(
                         account,
-                        &format!("AI list summary failed ({}): {e}", provider.as_str()),
+                        &failure_line("AI list summary", provider, e.kind(), &e.to_string()),
                     );
                     let mut q = ai.queue.inner.lock().unwrap();
                     q.failed.insert(thread);
@@ -723,6 +724,16 @@ pub fn run_line_queue(app: AppHandle) {
 
 /// The model declined this email (Apple's guardrails), rather than the
 /// provider being off or signed out.
+/// The sync log's line for a failed AI request: the provider and a fixed
+/// reason, never the error's text, which can quote the mail (R4-02).
+fn failure_line(what: &str, provider: AiProvider, kind: &str, message: &str) -> String {
+    format!(
+        "{what} failed ({}): {}",
+        provider.as_str(),
+        ai::log_reason(kind, message)
+    )
+}
+
 fn is_refusal(e: &CoreError) -> bool {
     let m = e.to_string().to_lowercase();
     m.contains("guardrail") || m.contains("declined")
@@ -731,6 +742,18 @@ fn is_refusal(e: &CoreError) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Code review R4-02: a provider's error text (its answer or stderr)
+    /// can quote the mail it was sent, and went into the sync log.
+    #[test]
+    fn a_failed_summary_is_logged_without_the_providers_text() {
+        for provider in [AiProvider::Claude, AiProvider::ChatGpt, AiProvider::Apple] {
+            let e = CoreError::Ai("Claude failed: Rejected input: CONFIDENTIAL_MAIL_MARKER".into());
+            let line = failure_line("AI summary", provider, e.kind(), &e.to_string());
+            assert!(!line.contains("CONFIDENTIAL"), "{line}");
+            assert!(line.starts_with("AI summary failed ("), "{line}");
+        }
+    }
 
     #[test]
     fn refusals_are_told_apart_from_a_provider_being_down() {

@@ -2988,6 +2988,14 @@ before acting:
       hits cleared once, a cache); AI apps get each conversation as it is
       outside Spam and Trash (`query::outside_spam_trash`), and replies go
       to those emails only. Tested for Trash and Spam
+- [x] R4-02 (partly confirmed): a failed AI summary (in the reader, and
+      the list's background summaries) wrote the error's text to the sync
+      log, and that text comes from the provider (Claude's or ChatGPT's
+      answer or stderr, Apple's helper), which can quote the mail. No real
+      provider was seen doing it; the path is enough under the "never log
+      mail" rule. The log now gets the provider and a fixed reason
+      (`ai::log_reason`); the owner still sees the full message. No other
+      AI path writes to the log
 
 ## Milestone 14: Open the code
 

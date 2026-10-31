@@ -232,6 +232,44 @@ pub async fn ask(
     Ok(answer)
 }
 
+/// What the sync log says about a failed AI request, from its error's
+/// `kind` and message: a fixed reason, never the message itself. An AI
+/// error's text comes from the provider (its answer, its stderr), which
+/// can quote the mail it was given, and mail never goes in the log (code
+/// review R4-02). The message is shown to the owner as it is.
+pub fn log_reason(kind: &str, message: &str) -> &'static str {
+    if kind != "ai" {
+        return match kind {
+            "network" => "network error",
+            "auth" => "Google sign-in needed",
+            "rate_limited" => "Gmail rate limit",
+            "api" => "Gmail error",
+            "not_found" => "not found",
+            "cancelled" => "cancelled",
+            "db" => "database error",
+            _ => "error",
+        };
+    }
+    let m = message.to_lowercase();
+    if m.contains("sign in again") {
+        "the provider needs signing in again"
+    } else if m.contains("usage limit") {
+        "usage limit reached"
+    } else if m.contains("guardrail") || m.contains("declined") {
+        "the model declined"
+    } else if m.contains("took too long") {
+        "timed out"
+    } else if m.contains("isn't installed") || m.contains("needs macos") {
+        "not installed"
+    } else if m.contains("empty answer") {
+        "empty answer"
+    } else if m.contains("couldn't start") {
+        "couldn't start the provider"
+    } else {
+        "the provider failed"
+    }
+}
+
 pub fn display_name(provider: AiProvider) -> &'static str {
     match provider {
         AiProvider::Apple => "Apple Intelligence",
@@ -250,6 +288,30 @@ fn not_installed(provider: AiProvider) -> CoreError {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn the_log_never_gets_the_providers_text() {
+        let quoted = "Rejected input: CONFIDENTIAL_MAIL_MARKER";
+        for (kind, message) in [
+            ("ai", format!("Claude failed: {quoted}")),
+            ("ai", format!("ChatGPT failed: {quoted}")),
+            ("ai", format!("Claude's usage limit was reached: {quoted}")),
+            ("ai", format!("Apple Intelligence failed: {quoted}")),
+            ("other", quoted.to_string()),
+        ] {
+            assert!(!log_reason(kind, &message).contains("CONFIDENTIAL"));
+        }
+        assert_eq!(
+            log_reason("ai", "Claude's usage limit was reached: soon"),
+            "usage limit reached"
+        );
+        assert_eq!(
+            log_reason("ai", "ChatGPT needs you to sign in again (Settings → AI)."),
+            "the provider needs signing in again"
+        );
+        assert_eq!(log_reason("network", "anything"), "network error");
+    }
+
     use super::*;
 
     #[test]
