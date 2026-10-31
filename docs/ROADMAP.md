@@ -3174,6 +3174,19 @@ leads, each checked before acting:
 - R4-07 has no test that keeps names out; Milestone 14's scrub covers
   it before publishing
 
+Round 6 (2026-10-31): the reviewer checked Round 5's fixes and the Codex
+fencing; seven findings and six questions, each checked before acting:
+
+- [x] R6-07 and question 4: `check:quick` stopped on a clean checkout
+      before the monthly Codex check, so it never said the review was
+      due; and the date check accepted an impossible date (2026-02-30, as
+      "0 days") and a future one, and counted elapsed hours, not
+      calendar days. The monthly check now runs first, and the date is
+      read by `scripts/codexReviewAge.ts` (calendar days, so time zones
+      and daylight saving can't move the limit; impossible or future
+      dates fail everywhere, CI too). Vitest now also runs
+      `scripts/**/*.test.ts`
+
 ## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an

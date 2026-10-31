@@ -12,6 +12,10 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# Fast: is Codex's monthly review due (AGENTS.md → Codex review)? First,
+# so a clean checkout still says so (code review R6-07).
+bun run check:codex
+
 changed="$( (git diff --name-only HEAD; git ls-files --others --exclude-standard) | sort -u)"
 if [ -z "$changed" ]; then
   echo "check:quick: no uncommitted changes"
@@ -20,8 +24,6 @@ fi
 
 # Fast, and any change can bring the app's name back.
 bun run check:brand
-# Fast: is Codex's monthly review due (AGENTS.md → Codex review)?
-bun run check:codex
 
 web=false
 rust=false
