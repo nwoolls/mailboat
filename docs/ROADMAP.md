@@ -3364,6 +3364,20 @@ to fix what's real and medium-to-high risk and call the rest good enough:
       Reproduced in Vitest. When mail changes, both are now asked again
       (Rust answers from its cache unless the conversation changed); a
       summary still being written isn't interrupted
+- [x] R9-03: the monthly capture's model-list reading skipped a row with
+      no usable name instead of stopping, so a changed list format could
+      quietly drop a model from the check. A bad row now stops it as
+      incomplete
+- Left as is, with reasons (the owner's call to stop at medium risk):
+  R9-04, the monthly capture has no time limit while listing models (it's
+  run by hand, a hang is plain to see, and it can't affect the app);
+  question 1, if Codex's default or fast model were ever a refused one,
+  the error's advice ("choose another in Settings → AI") wouldn't fit
+  (today's fast model is `gpt-6-luna`); question 2, whether an empty
+  error from Codex could hide a useful one (no real output shown to do
+  it); question 3, only the capture's helper is tested for including the
+  chosen model, not the line that passes it in (test-only code). Question
+  4 found nothing wrong
 
 ## Milestone 14: Open the code
 

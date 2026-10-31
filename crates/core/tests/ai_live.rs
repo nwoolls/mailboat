@@ -377,10 +377,15 @@ fn catalog_slugs(succeeded: bool, stdout: &[u8]) -> Result<Vec<String>, String> 
     let models = list["models"]
         .as_array()
         .ok_or("Codex's answer has no model list")?;
-    let slugs: Vec<String> = models
+    // Every row needs a real name: a row that can't be read would quietly
+    // drop a model from the check (R9-03).
+    let slugs = models
         .iter()
-        .filter_map(|m| m["slug"].as_str().map(String::from))
-        .collect();
+        .map(|m| match m["slug"].as_str().map(str::trim) {
+            Some(slug) if !slug.is_empty() => Ok(slug.to_string()),
+            _ => Err(format!("a model in Codex's list has no name: {m}")),
+        })
+        .collect::<Result<Vec<String>, String>>()?;
     if slugs.is_empty() {
         return Err("Codex's model list is empty".into());
     }
@@ -406,6 +411,19 @@ fn the_capture_covers_both_lists_and_the_chosen_model_or_fails() {
     assert!(catalog_slugs(true, b"fresh catalog failed").is_err());
     assert!(catalog_slugs(true, br#"{"other":1}"#).is_err());
     assert!(catalog_slugs(true, br#"{"models":[]}"#).is_err());
+    // R9-03: one bad row isn't skipped, it makes the list untrustworthy.
+    for odd in [
+        br#"{"models":[{"slug":"a"},{"slug":7}]}"#.as_slice(),
+        br#"{"models":[{"slug":"a"},{}]}"#,
+        br#"{"models":[{"slug":""}]}"#,
+        br#"{"models":[{"slug":"   "}]}"#,
+    ] {
+        assert!(
+            catalog_slugs(true, odd).is_err(),
+            "{}",
+            String::from_utf8_lossy(odd)
+        );
+    }
     assert_eq!(
         catalog_slugs(true, br#"{"models":[{"slug":"a","visibility":"hide"}]}"#).unwrap(),
         ["a"]
