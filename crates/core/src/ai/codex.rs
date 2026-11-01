@@ -612,6 +612,7 @@ shell_tool                               stable             false
 ";
 
     /// `FEATURES` after `-c features.…=false`: all off.
+    #[cfg(unix)]
     const FEATURES_OFF: &str = "apps                                     stable             false
 agent_message_board                      under development  false
 brand_new_tool                           stable             false
@@ -619,6 +620,7 @@ shell_tool                               stable             false
 ";
 
     /// `FEATURES` after turning them off, with one that won't.
+    #[cfg(unix)]
     const FEATURES_STUBBORN: &str =
         "apps                                     stable             false
 agent_message_board                      under development  false

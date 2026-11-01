@@ -11,6 +11,8 @@ permissions: read-all
 jobs:
   analysis:
     name: Scorecard analysis
+    # Scorecard can't read a private repository with the default token.
+    if: github.event.repository.private == false
     runs-on: ubuntu-latest
     permissions:
       security-events: write
