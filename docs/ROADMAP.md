@@ -3347,7 +3347,12 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       in the chosen licence (GPL-3.0 can't include some licences).
       Kept as a CI check afterwards
       *Done 2026-10-31: `deny.toml` (allow-list of GPL-3.0-compatible licences, advisories, sources) passes; it found and fixed advisories in `ammonia` (the email sanitizer), `rustls`, `rustls-webpki` and `pulldown-cmark` by updating them. `bun audit --prod` is clean. Both run in `.github/workflows/audit.yml`, untested in Actions until the repository exists.*
-- [ ] Publish a clean history: a new public repository on the owner's GitHub, which becomes the working repository. The original private repository is kept offline as the archive. The README says that commit hashes quoted in older docs come from it
+- [x] Publish a clean history *(2026-10-31)*: the history of `main` was cleaned and checked, images included, and the original private repository is kept offline as the archive. The README says that commit hashes quoted in older docs come from it
+- [ ] Push the clean history to the new GitHub repository (owner's OK
+      first), then make it the working repository
+
+### The README
+
 - [ ] A README that sells it, written for people, not agents:
       - A hero image or short GIF of Mailboat at work (from Demo mode,
         or a cut of the trailer once it exists), in light and dark

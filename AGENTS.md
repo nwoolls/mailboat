@@ -118,7 +118,8 @@ Rust owns sync, storage, auth, sending and search. UI logic lives in TS.
 
 ## Reference repos
 
-When unsure how to do something, do what these do, and say which you followed:
+When unsure how to do something, do what these do, and say which you followed.
+They are the owner's other projects, kept in their own source folder (ask the owner where):
 
 - `the MonoCode project` — Tauri app. Project layout, command registration,
   SQLite setup, settings, packaging, visual language.

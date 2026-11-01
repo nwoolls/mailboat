@@ -169,10 +169,10 @@ bun run check:quick   # while working: only what changed, fast tests only
 bun run check         # everything (format, lint, types, Vitest, clippy, cargo test, Playwright); before committing
 ```
 
-The browser tests (`tests/browser`, Playwright in WebKit) need WebKit once:
+The browser tests (`tests/browser`, Playwright) need WebKit and Chromium once:
 
 ```sh
-bunx playwright install webkit
+bunx playwright install webkit chromium
 ```
 
 ## Files on your Mac
@@ -186,3 +186,11 @@ bunx playwright install webkit
 | AI summaries and usage | In the mail cache (`ai_summaries`, `ai_usage`: sizes only, never content) |
 | AI apps' socket | `~/Library/Application Support/com.nwoolls.mailboat/mcp.sock` (while Mailboat runs) |
 | AI apps' requests | In the mail cache (`mcp_log`: what was asked, never content; 30 days) |
+
+## Licence and contributing
+
+Mailboat is free software under the [GNU GPL v3](LICENSE). Bug reports and
+ideas are welcome as issues; code from outside is not accepted (see
+[CONTRIBUTING.md](CONTRIBUTING.md)). Security problems: [SECURITY.md](SECURITY.md).
+Commit hashes mentioned in the older docs come from the private repository
+this one was cleaned from, so they won't be found here.
