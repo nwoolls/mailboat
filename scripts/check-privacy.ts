@@ -1,22 +1,33 @@
 // Fails when the repository (or the commits not yet pushed) holds what looks
 // like real mail: an address at a real domain, a real-looking phone number, a
 // measurement taken on a real mailbox, or a term from the local denylist.
-// AGENTS.md → "Real mail never goes in the repository". Run by `bun run check`.
+// AGENTS.md → "Real mail never goes in the repository". Run by `bun run check`
+// and in CI. It is a safety net, not clearance: it cannot know a person's name
+// or a company, so the written rule and a careful reread still come first.
 //
 // Local denylist (never committed): one term per line in
 // `~/.config/<short name>/privacy-denylist` (the short name is in brand.json),
-// or the file named by <ENV PREFIX>_PRIVACY_DENYLIST. Put in it the real names, companies and domains
-// you have seen in your own mail, so they can never be written by accident.
+// or the file named by <ENV PREFIX>_PRIVACY_DENYLIST. Put in it the real names,
+// companies and domains you have seen in your own mail.
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import brand from "../brand.json";
 import { findIssues, parseDenylist } from "./privacy";
 
+/** Not text, generated, or the detector's own test inputs. */
 const SKIP =
-  /(^|\/)(bun\.lock|Cargo\.lock|LICENSE)$|\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp|svg)$|^docs\/images\/|^crates\/core\/tests\/fixtures\/gmail\/.*\.json$|^scripts\/privacy\.test\.ts$/i;
+  /(^|\/)(bun\.lock|Cargo\.lock|LICENSE)$|\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp|svg)$|^docs\/images\/|^scripts\/privacy\.test\.ts$/i;
 
-const run = (args: string[]) =>
-  Bun.spawnSync(args, { stdout: "pipe", stderr: "pipe" }).stdout.toString();
+/** A git command; a failure is an error, never an empty answer. */
+function git(...args: string[]): string {
+  const r = Bun.spawnSync(["git", ...args], { stdout: "pipe", stderr: "pipe" });
+  if (r.exitCode !== 0) {
+    throw new Error(`check:privacy: git ${args.join(" ")} failed: ${r.stderr.toString().trim()}`);
+  }
+  return r.stdout.toString();
+}
+const gitOk = (...args: string[]) =>
+  Bun.spawnSync(["git", ...args], { stdout: "pipe", stderr: "pipe" }).exitCode === 0;
 
 const denyPath =
   process.env[`${brand.envPrefix}_PRIVACY_DENYLIST`] ??
@@ -32,39 +43,48 @@ const report = (where: string, kind: string, text: string) => {
   console.error(`check:privacy: ${where}: ${kind}: ${text}`);
 };
 
-const files = run(["git", "ls-files", "-z"]).split("\0").filter(Boolean);
+const files = git("ls-files", "-z").split("\0").filter(Boolean);
 for (const file of files) {
   if (SKIP.test(file)) continue;
   let content: string;
   try {
     content = readFileSync(file, "utf8");
   } catch {
-    continue;
+    continue; // deleted in the working tree, or not text
   }
   content.split("\n").forEach((line, i) => {
-    for (const f of findIssues(line, denylist, projectDomains))
+    for (const f of findIssues(line, denylist, projectDomains)) {
       report(`${file}:${i + 1}`, f.kind, f.text);
+    }
   });
 }
 
-// The messages of commits not yet pushed. With no upstream (before the first
-// push) the whole history is "unpushed", so the messages are left to the
-// reviewed history and only commits made after the first push are checked.
-const hasUpstream =
-  Bun.spawnSync(["git", "rev-parse", "@{upstream}"], { stdout: "pipe", stderr: "pipe" })
-    .exitCode === 0;
-if (hasUpstream) {
-  const messages = run(["git", "log", "@{upstream}..HEAD", "--format=%h%x00%B%x01"]);
+// The messages of the commits this branch adds: against the upstream, else
+// against origin/main or main when on another branch (CHECK_PRIVACY_BASE
+// overrides). On main with nothing to compare, the history is left to review.
+const branch = git("rev-parse", "--abbrev-ref", "HEAD").trim();
+const base =
+  process.env.CHECK_PRIVACY_BASE ??
+  (gitOk("rev-parse", "--verify", "-q", "@{upstream}")
+    ? "@{upstream}"
+    : gitOk("rev-parse", "--verify", "-q", "origin/main")
+      ? "origin/main"
+      : branch !== "main" && gitOk("rev-parse", "--verify", "-q", "main")
+        ? "main"
+        : null);
+if (base) {
+  const messages = git("log", `${base}..HEAD`, "--format=%h%x00%B%x01");
   for (const block of messages.split("\x01")) {
     const [hash, body] = block.split("\0");
     if (!hash || !body) continue;
-    for (const f of findIssues(
-      body.replace(/Co-Authored-By:.*$/gim, ""),
-      denylist,
-      projectDomains,
-    )) {
-      report(`commit ${hash.trim()}`, f.kind, f.text);
-    }
+    body
+      .replace(/^Co-Authored-By:.*$/gim, "")
+      .split("\n")
+      .forEach((line) => {
+        for (const f of findIssues(line, denylist, projectDomains)) {
+          report(`commit ${hash.trim()}`, f.kind, f.text);
+        }
+      });
   }
 }
 
@@ -75,5 +95,5 @@ if (problems > 0) {
   process.exit(1);
 }
 console.log(
-  `check:privacy: no real mail details found${denylist.length ? ` (with ${denylist.length} denylisted terms)` : ""}`,
+  `check:privacy: no real mail details found${denylist.length ? ` (with ${denylist.length} denylisted terms)` : ""}${base ? `, commits since ${base} included` : ""}`,
 );

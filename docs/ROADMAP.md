@@ -1688,7 +1688,8 @@ built, tested and waiting for the owner to try.*
         agent's wrong belief that Codex had no model list.* Summaries and
         chips always use the quick model
       - Faster chips *(owner, 2026-10-20: "many seconds")*. Measured per
-        email: ChatGPT was the slowest, Claude and Apple faster, and part of Codex's time is starting up. Now: ChatGPT's quick requests (chips, summaries)
+        email: ChatGPT was the slowest, Claude and Apple faster, and part
+        of Codex's time is starting up. Now: ChatGPT's quick requests (chips, summaries)
         use Codex's fast model (the catalog's newest "fast" one, today
         GPT-6-Luna) with no reasoning, faster, with ideas as specific in testing; chips are saved per conversation like summaries
         (instant until new mail arrives); Reply with AI starts them
@@ -3692,7 +3693,7 @@ again until the next spike.*
       fixed code passed 35 of 35)
 - [x] Emails mangled in dark mode *(owner report with screenshots,
       2026-10-20: a news site, a notice, a bank)*. Rendered outside the app
-      (`examples/render_email`, headless Chrome in dark mode) to find
+      (headless Chrome in dark mode) to find
       three causes:
       - a news site says `color-scheme: light only` but also has a dark-mode
         block forcing its page white; any mention of "dark" counted as
@@ -3806,8 +3807,8 @@ again until the next spike.*
 - [ ] Mute a conversation *(owner request, 2026-10-21; moved here from Milestone 8, owner,
       2026-10-24: "leave it for now")*: later replies
       skip the Inbox and don't notify, as Gmail's Mute does
-      *Tried with the owner (2026-10-24, `examples/try_mute`, on a test
-      email in the personal account): Gmail's API refuses the label
+      *Tried with the owner (2026-10-24, on a test email in a personal
+      account): Gmail's API refuses the label
       (`400 Invalid label: MUTED`), and `labels.list` has no MUTED. So
       Mailboat can't set Gmail's own Mute. Muted in Gmail's web app, the
       conversation only lost INBOX (and IMPORTANT) through the API, with
@@ -3907,9 +3908,9 @@ niche or extra", so Windows and the Release Spike come first)
         shows the email; it leaves by itself after 10 minutes
       - the code leads the macOS notification ("346625 · Spotify")
       - a pill on the conversation's row for a day; clicking copies it
-      Checked on invented sign-in emails of many styles; promotional wording; meeting
-      passcodes and people writing about codes are left alone
-      (`examples/code_stats`). Not seen in the app by the agent
+      Checked on invented sign-in emails of many styles; promotional wording,
+      meeting passcodes and people writing about codes are left alone.
+      Not seen in the app by the agent
 - [x] Sidebar peek *(owner request, 2026-10-20: "a floating sidebar when
       you mouse over the toolbar button for it while it's collapsed, like
       in Notion Calendar")*. Built to try: with the sidebar hidden, resting

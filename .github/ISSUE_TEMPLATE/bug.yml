@@ -6,7 +6,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: Shown in Settings → About
+      description: "Shown in Settings → About"
     validations: { required: true }
   - type: dropdown
     id: os
@@ -18,10 +18,10 @@ body:
     id: steps
     attributes:
       label: Steps to see it
-      description: What you did, what you expected, what happened. Please leave out real email content.
+      description: "What you did, what you expected, what happened. Please describe it in general terms with made-up names and addresses: no real senders, people, companies, subjects, message text, counts or screenshots of your own mail (demo mode screenshots are fine)."
     validations: { required: true }
   - type: textarea
     id: log
     attributes:
       label: Sync log (optional)
-      description: The relevant lines of `sync.log`. It holds no email content.
+      description: "Only the relevant lines of `sync.log`, after looking them over. It holds no email content, but it does name accounts and activity."

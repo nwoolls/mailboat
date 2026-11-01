@@ -6,9 +6,8 @@ const kinds = (text: string, deny: string[] = []) => findIssues(text, deny).map(
 describe("findIssues", () => {
   it("lets reserved domains and placeholders through", () => {
     expect(kinds("ann@x.example, bob@work.example.com, me@gmail.com, a@example.com")).toEqual([]);
-    expect(findIssues("contact@project.app", [], ["project.app"])).toEqual(
-      [],
-    );
+    expect(findIssues("contact@project.app", [], ["project.app"])).toEqual([]);
+    expect(kinds("Co-author noreply@anthropic.com, bot 1+x@users.noreply.github.com")).toEqual([]);
   });
 
   it("flags an address at a real domain, or a stranger's Gmail address", () => {
@@ -35,8 +34,20 @@ describe("findIssues", () => {
     expect(kinds("nothing here", ["acme corp"])).toEqual([]);
   });
 
-  it("lets a line opt out", () => {
+  it("lets a line opt out, only with a reason", () => {
     expect(kinds("jane@company.com // privacy-ok: documentation example")).toEqual([]);
+    expect(kinds("jane@company.com // privacy-ok")).toEqual(["email address"]);
+  });
+
+  it("only trusts reserved domains, not look-alikes or other real tools", () => {
+    expect(kinds("a@example.co.uk")).toEqual(["email address"]);
+    expect(kinds("a@notexample.com")).toEqual(["email address"]);
+    expect(kinds("someone@google.com, x@github.com, y@anthropic.com")).toEqual([
+      "email address",
+      "email address",
+      "email address",
+    ]);
+    expect(kinds("a@b.example, c@d.invalid, e@f.test, g@example.org")).toEqual([]);
   });
 });
 

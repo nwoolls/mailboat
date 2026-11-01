@@ -18,7 +18,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const ICS: &str = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\n\
 DTSTART:20261020T180000Z\r\nDTEND:20261020T183000Z\r\n\
-ORGANIZER;CN=Pat:mailto:pat@example.com\r\nUID:abc123@google.com\r\n\
+ORGANIZER;CN=Pat:mailto:pat@example.com\r\nUID:abc123@invite.example\r\n\
 ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:a@x.example\r\nSEQUENCE:0\r\n\
 SUMMARY:Design review\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
 
@@ -91,7 +91,7 @@ fn event(answer: &str) -> serde_json::Value {
 async fn serve_lookup(server: &MockServer, items: Vec<serde_json::Value>) {
     Mock::given(method("GET"))
         .and(path("/calendar/v3/calendars/primary/events"))
-        .and(query_param("iCalUID", "abc123@google.com"))
+        .and(query_param("iCalUID", "abc123@invite.example"))
         .respond_with(
             ResponseTemplate::new(200).set_body_json(serde_json::json!({ "items": items })),
         )
@@ -216,7 +216,7 @@ async fn an_invitation_not_on_the_calendar_is_added_then_answered() {
     Mock::given(method("POST"))
         .and(path("/calendar/v3/calendars/primary/events/import"))
         .and(body_json(serde_json::json!({
-            "iCalUID": "abc123@google.com",
+            "iCalUID": "abc123@invite.example",
             "sequence": 0,
             "summary": "Design review",
             "location": null,

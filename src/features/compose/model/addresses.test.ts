@@ -9,7 +9,7 @@ import {
 
 describe("isValidEmail", () => {
   it("accepts ordinary addresses", () => {
-    expect(isValidEmail("a.b+c@example.co.uk")).toBe(true);
+    expect(isValidEmail("a.b+c@mail.x.example")).toBe(true);
   });
   it("rejects anything that could break a header", () => {
     for (const bad of [

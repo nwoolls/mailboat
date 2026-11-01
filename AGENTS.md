@@ -11,8 +11,8 @@ Agents write all the code, so:
 - While iterating, run `bun run check:quick` (seconds to about a minute).
   Run the full `bun run check` once, before committing. Never commit
   code without it passing. A commit with no code in it (only docs such
-  as `docs/`, `README.md` or this file) needs no checks: commit it
-  straight away.
+  as `docs/`, `README.md` or this file) needs only `bun run check:privacy`
+  (seconds), because docs are where real mail details leak most easily.
 - Explain decisions in plain language. Never leave the owner to debug by hand.
 
 ## Real mail never goes in the repository
@@ -46,6 +46,9 @@ What to do instead:
 - Reproduce with made-up data: people from demo mode (Maya Chen, Priya Raman,
   Jordan Park), addresses on reserved domains (`@x.example`, `example.com`),
   invented subjects, companies and numbers (phone numbers `555-01xx`).
+- Made-up amounts in test data (a fake invoice total, a fake price in a
+  sample email) are fine; amounts for the project's own price, fees or
+  income are not written down at all.
 - Qualitative wording for real-world measurements ("most", "a small share",
   "thousands of"). Numbers that are design parameters or documented limits
   (quotas, batch sizes, sync scope) are fine.

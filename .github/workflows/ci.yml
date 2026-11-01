@@ -31,6 +31,10 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run check:brand
+      # Real mail details never belong in the repository (AGENTS.md). The
+      # owner's local denylist isn't available here; the written rule and
+      # reviews cover names.
+      - run: bun run check:privacy
       - run: bun run test
 
   rust:

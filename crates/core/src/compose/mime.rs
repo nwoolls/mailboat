@@ -316,7 +316,7 @@ mod tests {
 
     #[test]
     fn email_validation_rejects_header_breakers() {
-        assert!(valid_email("a.b+c@example.co.uk"));
+        assert!(valid_email("a.b+c@mail.x.example"));
         for bad in [
             "",
             "a",

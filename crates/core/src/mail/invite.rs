@@ -287,7 +287,7 @@ DTSTART;TZID=America/New_York:20261020T140000\r
 DTEND;TZID=America/New_York:20261020T143000\r
 DTSTAMP:20261017T180000Z\r
 ORGANIZER;CN=Pat Organizer:mailto:pat@example.com\r
-UID:abc123@google.com\r
+UID:abc123@invite.example\r
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=\r
  TRUE;CN=Me;X-NUM-GUESTS=0:mailto:Me@Example.com\r
 ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;CN=Pat Or\r
@@ -304,7 +304,7 @@ END:VCALENDAR\r
     fn reads_a_google_invitation() {
         let invite = parse(GOOGLE, &["me@example.com"]).unwrap();
         assert_eq!(invite.kind, InviteKind::Request);
-        assert_eq!(invite.uid, "abc123@google.com");
+        assert_eq!(invite.uid, "abc123@invite.example");
         assert_eq!(invite.sequence, 2);
         assert_eq!(invite.title.as_deref(), Some("Design review"));
         assert_eq!(invite.location.as_deref(), Some("Room 4"));
@@ -407,7 +407,7 @@ END:VEVENT\r\nEND:VCALENDAR\r\n";
         // Read back: a reply for the same event, from you, with your answer.
         let reply = parse(&ics, &[]).unwrap();
         assert_eq!(reply.kind, InviteKind::Reply);
-        assert_eq!(reply.uid, "abc123@google.com");
+        assert_eq!(reply.uid, "abc123@invite.example");
         assert_eq!(reply.sequence, 2);
         assert_eq!(reply.start, invite.start);
         assert_eq!(reply.organizer.unwrap().email, "pat@example.com");
@@ -420,7 +420,7 @@ END:VEVENT\r\nEND:VCALENDAR\r\n";
     fn not_an_invitation() {
         assert_eq!(parse("hello", &[]), None);
         // An event with no UID can't be found on a calendar.
-        let no_uid = GOOGLE.replace("UID:abc123@google.com\r\n", "");
+        let no_uid = GOOGLE.replace("UID:abc123@invite.example\r\n", "");
         assert_eq!(parse(&no_uid, &[]), None);
     }
 }
