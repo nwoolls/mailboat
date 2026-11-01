@@ -91,14 +91,21 @@ which has since shut down.
 | | Mailboat | Gmail on the web | Mimestream |
 |---|---|---|---|
 | Price | Free, open source (GPL-3.0) | Free | Paid subscription |
-| Platforms | macOS, Windows | Any browser | macOS only |
+| Platforms | macOS, Windows | Any browser | macOS (iOS and iPadOS in beta) |
 | Several accounts in one inbox | Yes, unified | Switch between accounts | Yes |
 | Local cache and search | Yes | No | Yes |
+| AI summaries of conversations | Yes: Apple Intelligence on your Mac, or your own Claude or ChatGPT | Google's Gemini features, where offered | Not documented |
+| Write, rewrite and reply with AI | Yes: drafts, rewrites, reply ideas and translation, shown in the editor before anything is sent | Google's Gemini features, where offered | In the compose window, through Apple's Writing Tools (and ChatGPT through Apple, on macOS 15.2+) |
+| Sign-in codes surfaced on the row | Yes, with a Copy button | No | Not documented |
+| Meeting invitations answered in the email | Yes | Yes | Yes |
+| Lets AI apps (Claude, others) use your mail | Yes, over MCP, off by default | No | Not documented |
 | Source code | Public | Closed | Closed |
 | Setup | Your own Google credentials, once | None | Sign in with Google |
 | Maturity | Early development | Mature | Mature |
 
-*Mimestream's details are as of late 2026; check its site for today's.*
+*Mimestream's column comes from its website and release notes, checked on
+2026-11-01. "Not documented" means I found nothing there, not that it can't
+be done. Check each product's site for today's details.*
 
 ## Get started
 
