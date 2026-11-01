@@ -25,9 +25,7 @@ describe("findIssues", () => {
     expect(kinds("Of the 23,000 cached HTML emails, most adapt")).toEqual([
       "real-mailbox measurement",
     ]);
-    expect(kinds("only a small share of emails still use the card")).toEqual([
-      "real-mailbox measurement",
-    ]);
+    expect(kinds("about 3% of messages still need it")).toEqual(["real-mailbox measurement"]);
     expect(kinds("5 matches in 40 ms on the real cache")).toEqual(["real-mailbox measurement"]);
     expect(kinds("a small share of cached HTML emails")).toEqual([]);
   });

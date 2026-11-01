@@ -32,7 +32,7 @@ What counts as real mail:
 - What: subjects, message text, snippets, labels or folders from a real
   account, attachment names, order, ticket or account numbers, links.
 - Numbers measured on a real mailbox or cache: how many messages, how many
-  matched, how many codes were found, a share ("2% of emails"), timings
+  matched, how many codes were found, a share ("2% of emails"), timings <!-- privacy-ok: an example of what not to write -->
   taken on real data, sizes, dates or times of real messages, sign-in times.
 - Screenshots or descriptions of the app showing real mail or a real
   desktop. Only demo mode (`bun run demo`, made-up mail) may be pictured.

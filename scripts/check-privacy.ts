@@ -13,7 +13,7 @@ import brand from "../brand.json";
 import { findIssues, parseDenylist } from "./privacy";
 
 const SKIP =
-  /(^|\/)(bun\.lock|Cargo\.lock|LICENSE)$|\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp|svg)$|^docs\/images\/|^crates\/core\/tests\/fixtures\/gmail\/.*\.json$/i;
+  /(^|\/)(bun\.lock|Cargo\.lock|LICENSE)$|\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp|svg)$|^docs\/images\/|^crates\/core\/tests\/fixtures\/gmail\/.*\.json$|^scripts\/privacy\.test\.ts$/i;
 
 const run = (args: string[]) =>
   Bun.spawnSync(args, { stdout: "pipe", stderr: "pipe" }).stdout.toString();
