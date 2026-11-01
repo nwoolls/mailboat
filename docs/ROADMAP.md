@@ -3358,8 +3358,10 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       comparison, shortcuts, architecture diagram, FAQ. Setup moved to
       `docs/DEVELOPMENT.md`, `docs/GOOGLE-SETUP.md` and `docs/AI.md`. Still
       to do: download buttons and the release badge (when builds exist,
-      Milestone 15), a short demo GIF, the social preview image, and a
-      check of how it renders once the repository is public. The plan:*
+      Milestone 15), a short demo GIF, and a check of how it renders once
+      the repository is public. The social preview image is made
+      (`docs/images/social-preview.png`, 1280×640); the owner uploads it
+      in the repository's settings. The plan:*
       - A hero image or short GIF of Mailboat at work (from Demo mode,
         or a cut of the trailer once it exists), in light and dark
         (GitHub shows the one matching the reader's theme)
