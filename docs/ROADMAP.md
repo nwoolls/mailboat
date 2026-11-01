@@ -2704,10 +2704,7 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       *Reworked 2026-10-29: the project stays in Testing, so this is
       expected, not a mistake to fix. The sidebar line now reads "Google
       signed you out · sign in again", and Settings → Accounts says it
-      can happen about weekly in Testing. The owner's Mac accounts were
-      signed in again, so if the rule applies they are refused again within a week
-      (sync log: `invalid_grant`): that confirms it, and the wording
-      ("about once a week" or "rarely") is then settled. 2026-10-30,
+      can happen about weekly in Testing. The wording ("about once a week" or "rarely") is to be settled by watching. 2026-10-30,
       Windows: with the app's access removed in the Google Account, the
       sidebar and Settings → Accounts show the message and signing in
       again restores the account. Only the 2026-11-01 check is left)*

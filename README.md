@@ -77,12 +77,17 @@ which has since shut down.
   Credential Manager. Never in a file, never in the database.
 - **Mail goes to an AI only when you chose that provider.** Apple Intelligence
   runs on your Mac. Claude and ChatGPT are used through their own command-line
-  tools, signed in as you, with every tool turned off. Prompts and answers are
-  never logged.
+  tools, signed in as you. Claude runs with no tools at all; ChatGPT's tool
+  can't promise that, so it is fenced in (every setting turned off, a sandbox,
+  and a check that stops it if anything unreviewed stays on; see
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)). Prompts and answers are never
+  logged. Summaries you ask for are kept in your local cache so they aren't
+  generated twice.
 - **Remote images are your call.** They load by default (Settings → Viewing can
   limit this to people you've written to, or block them), never in Spam, and
-  new mail's images are fetched as it arrives so opening an email makes no
-  request.
+  new mail's images are fetched as it arrives, so opening an email normally
+  makes no request (an image that couldn't be fetched, or was evicted from the
+  cache, loads when you open the mail, as the setting allows).
 - **Open source.** Read every line. The code has been through several rounds
   of review by AI code-review agents (findings and fixes are in the
   [roadmap](docs/ROADMAP.md)). There has been no third-party security audit.

@@ -110,6 +110,7 @@ bunx playwright install webkit chromium
 | OAuth client file | `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json` |
 | Sign-in tokens | macOS Keychain, service `com.nwoolls.mailboat` |
 | Sync log | `~/Library/Logs/com.nwoolls.mailboat/sync.log` |
-| AI summaries and usage | In the mail cache (`ai_summaries`, `ai_usage`: sizes only, never content) |
+| AI summaries | In the mail cache (`ai_summaries`: the summary text, so it isn't generated twice) |
+| AI usage | In the mail cache (`ai_usage`: sizes only, never prompts or answers) |
 | AI apps' socket | `~/Library/Application Support/com.nwoolls.mailboat/mcp.sock` (while Mailboat runs) |
 | AI apps' requests | In the mail cache (`mcp_log`: what was asked, never content; 30 days) |
