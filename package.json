@@ -22,7 +22,8 @@
     "check:quick": "scripts/check-quick.sh",
     "check:brand": "bun scripts/check-brand.ts",
     "check:codex": "bun scripts/check-codex-review.ts",
-    "check:web": "bun run fmt:check && bun run lint && bun run typecheck && bun run check:brand && bun run check:codex && bun run test",
+    "check:privacy": "bun scripts/check-privacy.ts",
+    "check:web": "bun run fmt:check && bun run lint && bun run typecheck && bun run check:brand && bun run check:privacy && bun run check:codex && bun run test",
     "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace"
   },
   "dependencies": {

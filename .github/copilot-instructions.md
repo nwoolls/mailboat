@@ -15,6 +15,7 @@ is broken.
 - **Anything that sends mail or acts on it without the owner seeing it first**
   (AI output goes to the editor, never straight to send).
 - **New Tauri permissions or plugins** without a reason in the commit message.
+- **Real mail details** anywhere: in code, comments, tests, fixtures, docs, bug notes, commit messages or screenshots. That means real senders, people, companies, subjects, message text, labels, counts or timings measured on a real mailbox, and anything that names the real source of an email. This is an email app and examples will come from real mail; they must be made generic or made up.
 - **Secrets, OAuth client files, or real email addresses and names** committed.
   Test data uses reserved domains (`example.com`, `.example`) and made-up names.
 

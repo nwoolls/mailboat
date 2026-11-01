@@ -25,6 +25,10 @@ fi
 # Fast, and any change can bring the app's name back.
 bun run check:brand
 
+# Fast, and any change can bring real mail details in (AGENTS.md → Real mail
+# never goes in the repository).
+bun run check:privacy
+
 web=false
 rust=false
 for f in $changed; do

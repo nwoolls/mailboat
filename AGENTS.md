@@ -15,6 +15,64 @@ Agents write all the code, so:
   straight away.
 - Explain decisions in plain language. Never leave the owner to debug by hand.
 
+## Real mail never goes in the repository
+
+Mailboat is an email app, and whoever reports a bug or asks for a change
+(the owner, a tester, a user) will naturally give examples from their own
+mail. **None of it may be written down in the repository.** Not in code,
+comments, tests, fixtures, docs, the roadmap's bug notes, commit messages,
+pull request or issue text, screenshots, or logs. Once pushed, it is public
+for good, and history rewrites are costly and never complete.
+
+What counts as real mail:
+
+- Who: senders, recipients, people's names, email addresses, usernames,
+  phone numbers, companies, banks, employers, schools, or services named as
+  the source of an email ("an email from <real company>").
+- What: subjects, message text, snippets, labels or folders from a real
+  account, attachment names, order, ticket or account numbers, links.
+- Numbers measured on a real mailbox or cache: how many messages, how many
+  matched, how many codes were found, a share ("2% of emails"), timings
+  taken on real data, sizes, dates or times of real messages, sign-in times.
+- Screenshots or descriptions of the app showing real mail or a real
+  desktop. Only demo mode (`bun run demo`, made-up mail) may be pictured.
+
+What to do instead:
+
+- Describe the behaviour in general terms: "a newsletter that declares
+  light-only but forces a white page", "a bank notice with a white box set
+  inline", "a mailing list with a long recipient line". Keep what is needed
+  to reproduce it, never who sent it.
+- Reproduce with made-up data: people from demo mode (Maya Chen, Priya Raman,
+  Jordan Park), addresses on reserved domains (`@x.example`, `example.com`),
+  invented subjects, companies and numbers (phone numbers `555-01xx`).
+- Qualitative wording for real-world measurements ("most", "a small share",
+  "thousands of"). Numbers that are design parameters or documented limits
+  (quotas, batch sizes, sync scope) are fine.
+- Investigating with the owner's real mail is allowed **locally**; record the
+  conclusion, never the data. A throwaway script that reads the real cache
+  prints aggregates to the terminal only and is never committed with its
+  output, a path to the real database, or real examples in its comments.
+- If the owner pastes or attaches real mail (a screenshot, an example),
+  treat it as input to read, not content to keep: do not copy it, quote it,
+  or paraphrase identifying details into any file or message. Reply in
+  general terms too.
+
+How this is enforced:
+
+- `bun run check` (and `check:quick`) run `check:privacy`
+  (`scripts/check-privacy.ts`): it fails on an address at a real domain, a
+  real-looking phone number, wording that reports a measurement on a real
+  mailbox, and any term in the owner's local denylist
+  (`~/.config/mailboat/privacy-denylist`, one term per line, never committed:
+  real names, companies and domains seen in their own mail). It cannot know
+  every name, so reread your diff and commit message for real details before
+  committing. A rare false positive may carry the marker `privacy-ok` on
+  its line, with a reason.
+- Reviews (Copilot, pull requests, the owner) check for it too.
+- If real mail slips in anyway: stop, tell the owner, and do not paper over
+  it with a follow-up commit; removing it from history needs a rewrite.
+
 ## Docs to keep current
 
 - `docs/ROADMAP.md`: every milestone item, ticked when done. Update it in the
@@ -207,7 +265,8 @@ these rules. Keep it passing.
   Known tracking pixels are always removed. The rule lives in
   `mail_core::mail::images`. Images of new mail that the rule would load
   are downloaded as mail arrives (`mail::prefetch`, on by default, like
-  Apple Mail), so opening an email makes no request.
+  Apple Mail), so opening an email normally makes no request (an image that
+  couldn't be fetched, or was evicted, still loads as the setting allows).
 - Tauri capabilities stay as narrow as possible. Do not add plugins or
   permissions to the web side without a reason recorded in the commit.
 
@@ -267,6 +326,8 @@ When it does:
 
 - Rust: `cargo test` against Gmail API JSON fixtures in
   `crates/core/tests/fixtures/gmail/`, with `wiremock` standing in for Google.
+  Fixtures and test data are always made up (see "Real mail never goes in the
+  repository").
 - Frontend logic: Vitest, files named `*.test.ts(x)` next to the code.
 - UI behaviour unit tests can't see (animation, layout, scrolling):
   Playwright in WebKit (the macOS web view's engine), `tests/browser/`.

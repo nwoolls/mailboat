@@ -289,7 +289,7 @@ fresh one; small parts come with the message and have no ID at all.
    (Settings → Viewing can make that "people you've written to" or
    "blocked", `AppSettings::remote_images`; images of new mail are
    downloaded as it arrives, `mail/prefetch.rs`, so opening shows saved
-   copies and makes no request), except in Spam (always held back) and Trash (held back unless the sender
+   copies, so it normally makes no request; an image that couldn't be fetched still loads as the setting allows), except in Spam (always held back) and Trash (held back unless the sender
    is allowed); a per-sender load/block choice wins outside Spam
    (`mail/images.rs`). The reader says which applied and offers the
    opposite choice.
