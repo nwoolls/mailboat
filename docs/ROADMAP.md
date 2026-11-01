@@ -3419,7 +3419,7 @@ for the owner's machine.*
       force pushes; the owner can bypass in an emergency
 - [ ] Copilot code review on every pull request, requested
       automatically by the ruleset. Likely needs a paid Copilot plan
-      (Pro, about a monthly price) with a monthly review allowance; to
+      (Pro) with a monthly review allowance; to
       confirm when setting up. Optionally Claude's GitHub Action as a
       second reviewer, on the owner's Claude subscription
 - [ ] Code scanning with CodeQL (Rust and TypeScript), with Copilot
@@ -3459,12 +3459,12 @@ for the owner's machine.*
 open it without security warnings, and later receive updates by
 themselves.*
 
-- [ ] Owner: Apple Developer Program (the annual developer fee, personal name is fine).
+- [ ] Owner: Apple Developer Program (paid, personal name is fine).
       The free Apple Development certificate can't notarize, and macOS
       (and Homebrew, since September 2026) refuse apps that aren't
       notarized
 - [ ] Mac: Developer ID signing and notarization
-- [ ] Windows: Azure Artifact Signing (about a monthly signing fee, open to
+- [ ] Windows: Azure Artifact Signing (open to
       individuals in the US and Canada), so SmartScreen doesn't warn.
       Signing from the Mac (e.g. `jsign`) or in GitHub Actions, to be
       confirmed
@@ -3583,7 +3583,7 @@ steps are those of Plan 1 there.*
       building; never in the public code
 - [ ] Polar store and licence keys (up to 2 devices), with a sandbox
       purchase first; price decided then (it buys setup-free sign-in,
-      not features, so it may be below Plan 1's the yearly price)
+      not features, so it may be below Plan 1's price)
 - [ ] First launch offers both: "Use your own Google credentials
       (free)" or "Subscribe: no setup". Users can switch either way by
       signing each account in again

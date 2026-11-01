@@ -35,10 +35,10 @@ accounts (GitHub, social media, Apple).
 | Setup for a user | None | 10–15 min, guided in the app | Free: guided. Paid: none |
 | Google verification and security assessment | Required (yearly) | **None** | Only when the paid version starts |
 | Users before Google approves | 100 in total | No limit | No limit (free) |
-| Income | a subscription | Tips at most | Tips, then subscriptions |
+| Income | A subscription | Tips at most | Tips, then subscriptions |
 | Payments and licences | Polar | None | Polar, added later |
 | Code | Private | Public | Public |
-| Yearly fixed cost | the fixed costs + assessment if required | the signing fees (signing), or none if unsigned | the signing fees, then as Plan 1 |
+| Yearly fixed costs | Signing, hosting, and the assessment if required | Signing, or none if unsigned | Signing, then as Plan 1 |
 | Reach | Anyone with Gmail | Technical people | Technical people, then anyone |
 
 ```mermaid
@@ -59,8 +59,8 @@ open. Starting with Plan 1 makes opening the code later harder (see
 
 Agreed in detail with the owner on 2026-10-25.
 
-- Price: a subscription per person (not per Gmail account), up
-  to 2 devices. Mimestream is its yearly price, Mac only.
+- Price: a monthly or yearly subscription per person (not per Gmail
+  account), up to 2 devices; the amount is decided at launch.
 - Trial: 14 days with a card up front, run by Polar, so there's no trial
   server to write. Cost: a new email and card start another trial; and
   Mimestream's trial needs no card.
@@ -134,7 +134,7 @@ verified; it's paperwork and waiting (weeks to months).
       pitch), "Mimestream, but on Windows too" for Windows users
 - After about 2 weeks, with the owner: did the places fill, do people
       still use it daily (ask them; there are no analytics), would they
-      pay a monthly price? If not, stop: nothing more is spent. If yes, submit
+      pay for it? If not, stop: nothing more is spent. If yes, submit
       Google verification
 
 ### Paid launch (after Google approves)
@@ -142,7 +142,7 @@ verified; it's paperwork and waiting (weeks to months).
 - Website and terms say how a wind-down would go, before anyone pays:
       notice by email, refunds for unused time, and the app keeps working
       with mail already downloaded
-- Polar store: one product, a subscription, 14-day trial with
+- Polar store: one product, a monthly or yearly price, 14-day trial with
       a card, a licence-key benefit limited to 2 device activations.
       First a sandbox purchase, to confirm the key works during the trial
       and is revoked when it's cancelled or a payment fails (Polar's docs
@@ -251,7 +251,7 @@ A setup screen in the app (part of Onboarding), not just a web page:
       keep Cloudflare), Releases (installers and the update file),
       Actions (unlimited minutes, Mac builds included). The domain and
       update address stay on `getmailboat.app` either way
-- Signing: still advised (the signing fees). Unsigned, Mac users must
+- Signing: still advised. Unsigned, Mac users must
       allow the app in System Settings, Windows shows a SmartScreen
       warning, and Homebrew announced it would drop casks that aren't
       signed and notarized from September 2026
@@ -312,7 +312,7 @@ Plan 2, in full.
 - Plan 1's Polar store and in-app licence, used only when the user
       picks "Subscribe"
 - Price to decide then: the paid option buys setup-free sign-in, not
-      features, so it may need to be lower than Plan 1's the yearly price
+      features, so it may need to be lower than Plan 1's price
 - Plan 1's wind-down promise; plus, if paid ends, subscribers can
       switch to their own credentials and keep going
 
@@ -356,8 +356,8 @@ Decide these before the first public release, whatever the plan:
    Polar integration.
 2. Setapp (Mac app bundle): paid by usage; a separate
    build with Setapp's licensing; Windows unconfirmed.
-3. One-off sponsorships at launch (e.g. The Sweet Setup once listed
-   a listing fee; a developer newsletter charges a fee), each
+3. One-off sponsorships at launch (Mac and developer newsletters sell
+   sponsored slots), each
    with its own discount code.
 4. Small Reddit ad tests.
 
