@@ -13,6 +13,8 @@ permissions:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
+    # Code scanning isn't available on a private repository (free plan).
+    if: github.event.repository.private == false
     runs-on: macos-latest
     permissions:
       contents: read

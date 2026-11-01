@@ -54,8 +54,14 @@ jobs:
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       # Includes the test that fails when src/platform/tauri/bindings.ts is
-      # out of date.
-      - run: cargo test --workspace
+      # out of date (it doesn't depend on the platform, so macOS covers it).
+      - if: runner.os != 'Windows'
+        run: cargo test --workspace
+      # On Windows the app crate's test program can't start
+      # (STATUS_ENTRYPOINT_NOT_FOUND): Tauri's test executables need an
+      # application manifest there. The core crate holds the logic.
+      - if: runner.os == 'Windows'
+        run: cargo test --workspace --exclude desktop
 
   browser:
     name: Browser tests (WebKit, Chromium)
