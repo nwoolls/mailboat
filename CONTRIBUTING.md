@@ -22,4 +22,4 @@ Don't use an issue. See [SECURITY.md](SECURITY.md).
 
 ## Building from source
 
-See the README. The project is [GPL-3.0](LICENSE).
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). The project is [GPL-3.0](LICENSE).

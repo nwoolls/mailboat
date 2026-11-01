@@ -26,7 +26,9 @@ Agents write all the code, so:
 - `docs/RELEASE.md`: the release plans (closed and paid, open source,
   hybrid) and the research behind them. The owner chose the hybrid
   (2026-10-25); its work is tracked in the roadmap, Milestones 10–18.
-- `README.md`: setup and run instructions for people.
+- `README.md`: what it is and why, for people. Setup and running live in
+  `docs/DEVELOPMENT.md`, Google credentials in `docs/GOOGLE-SETUP.md`, AI in
+  `docs/AI.md`.
 
 ## Conventions
 

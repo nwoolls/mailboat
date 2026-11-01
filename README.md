@@ -1,196 +1,209 @@
+<div align="center">
+
+<img src="docs/images/icon.png" alt="" width="112" height="112">
+
 # Mailboat
 
-All your Gmail accounts, in one calm inbox.
+**All your Gmail accounts, in one calm inbox.**
 
-Mailboat is a desktop Gmail client for macOS and Windows, with Linux to
-follow. It talks to the Gmail API directly, keeps a local cache for instant
-browsing and search, and brings several Google accounts together in one
-unified inbox.
+A fast, keyboard-first Gmail client for macOS and Windows. Free and open source.
 
-Status: early development. See [docs/ROADMAP.md](docs/ROADMAP.md) for what
-works today and what is next, and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-for how it is built.
+[![CI](https://github.com/nwoolls/mailboat/actions/workflows/ci.yml/badge.svg)](https://github.com/nwoolls/mailboat/actions/workflows/ci.yml)
+[![Licence: GPL-3.0](https://img.shields.io/badge/licence-GPL--3.0-blue)](LICENSE)
+![Platforms: macOS and Windows](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-blue)
+![Built with Tauri, Rust and React](https://img.shields.io/badge/built%20with-Tauri%20%C2%B7%20Rust%20%C2%B7%20React-orange)
 
-## Requirements
+[Get started](#get-started) · [Features](#why-mailboat) · [Privacy](#your-mail-stays-yours) · [Build from source](#build-from-source) · [Roadmap](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md)
 
-- macOS with Xcode command line tools (its Swift compiler builds the
-  Apple Intelligence helper; Apple Intelligence itself needs macOS 26+)
-- [Rust](https://rustup.rs) (stable)
-- [Bun](https://bun.sh): `brew install oven-sh/bun/bun`
-- Optional but recommended: an Apple Development certificate (free Apple ID,
-  Xcode → Settings → Accounts → Manage Certificates → + Apple Development),
-  so macOS doesn't ask for keychain access after every rebuild.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png">
+  <img src="docs/images/hero-light.png" alt="Mailboat showing a unified inbox of two Gmail accounts, with a conversation open" width="860">
+</picture>
 
-## Google setup (once)
+</div>
 
-Mailboat uses your own Google OAuth client, so no app review is needed.
-On first launch the app walks you through it: one card per step, each
-with a button that opens the right Google Cloud page, then you drop the
-downloaded file on the window. In short:
+> **Early development.** Mailboat works today, but there are no downloads yet:
+> signed installers and automatic updates are the next big milestone
+> ([roadmap](docs/ROADMAP.md)). For now you build it from source, and you
+> bring your own Google credentials (it takes about ten minutes, once).
 
-1. In [Google Cloud Console](https://console.cloud.google.com), create a
-   project and enable the **Gmail API**, the **People API** (address
-   suggestions from Google Contacts; Mailboat works without it, suggesting
-   only from mail) and the **Google Calendar API** (answering meeting
-   invitations; not "CalDAV API" or the MCP ones).
-2. Set up the sign-in screen (Google Auth Platform → Get started): an app
-   name, your own email, and **External**. Leave it in **Testing**, and under
-   **Audience → Test users** add each Gmail address you'll use in Mailboat
-   (work and school accounts work too). Google can sign accounts out about
-   once a week while a project is in Testing; signing in again takes a click.
-3. Create an OAuth client ID of type **Desktop app** and download its JSON.
-4. Give the file to the app (drop it on the window), or save it yourself as
-   `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`.
-   It is never committed. Alternatively set `MAILBOAT_GOOGLE_CLIENT_ID` and
-   `MAILBOAT_GOOGLE_CLIENT_SECRET`.
+## Why Mailboat
 
-When you sign in, Google warns that the app isn't verified. Press
-**Continue**: it's your own private project. On the permissions screen the
-boxes start empty, so tick **Select all**. This happens once per account.
+Mailboat talks to Gmail's API directly and keeps a local cache, so browsing and
+search are instant. Its calm, minimal look is inspired in part by Notion Mail,
+which has since shut down.
 
-Accounts added before Mailboat asked for a permission (Google Contacts,
-Calendar events for invitations, Gmail settings for rules and
-signatures) keep working without it. Settings → Accounts says which
-features an account is missing; **Sign in again** there (or the + in the
-sidebar, same Google account) and the consent screen asks for them once.
+- **One inbox for every account.** Personal, work and school Gmail accounts side
+  by side, each with its own colour. Threads never merge across accounts, and
+  every action uses the account the mail belongs to.
+- **Keyboard first.** Gmail's own keys (`j`/`k`, `e`, `#`, `g` then `i`, `c`,
+  `r`…), and a command palette on <kbd>⌘K</kbd> for everything else.
+- **Instant search.** Local full-text search across all accounts, with Gmail's
+  own search (`from:`, `has:attachment`…) merged in as it arrives.
+- **Read mail safely.** Email is cleaned in Rust and shown in a sandboxed view
+  with no scripts. Known tracking pixels are removed, and dark mode recolours
+  email instead of inverting it.
+- **Sign-in codes and meeting invitations.** One-time codes surface as a pill
+  on the row; invitations get Yes, Maybe and No right in the email, answered through Google Calendar.
+- **Rules, signatures, vacation reply.** Your Gmail filters and signatures,
+  edited in the app.
+- **Undo send.** Five seconds to take it back by default, up to thirty.
+- **AI that stays optional.** Summaries, a writing assistant, reply ideas and
+  translation, through Apple Intelligence on your Mac or your own Claude or
+  ChatGPT subscription. No API keys, and nothing is sent without you seeing it.
+- **Works with your AI apps.** Let Claude Desktop or Claude Code search and read
+  your mail, and save drafts, over MCP. Off by default, read-only, never sends.
 
-## AI (optional)
+### A closer look
 
-Settings → AI. Summaries and writing help use **Apple Intelligence** by
-default: nothing to set up beyond turning it on in System Settings →
-Apple Intelligence & Siri, and mail stays on the Mac.
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/feature-palette.png" alt="The command palette open over a conversation, listing Reply, Archive, Labels and more with their shortcuts"></td>
+    <td width="50%"><img src="docs/images/feature-invitation.png" alt="A meeting invitation in the reader with Yes, Maybe and No buttons, under an AI summary"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Everything is a keystroke away: <kbd>⌘K</kbd> opens the command palette.</sub></td>
+    <td align="center"><sub>Meeting invitations, answered in the email. The summary is Apple Intelligence, on the Mac.</sub></td>
+  </tr>
+</table>
 
-To use **Claude** or **ChatGPT** instead, install its command-line tool,
-then press Connect in Settings → AI; the tool's own sign-in opens in the
-browser and uses your subscription (no API key):
+*Screenshots show Mailboat's demo mode, with made-up mail.*
 
-| Provider | Install | Signs in with |
-|---|---|---|
-| Claude | [Claude Code](https://claude.com/product/claude-code) (`claude`) | `claude auth login` |
-| ChatGPT | [Codex CLI](https://developers.openai.com/codex/cli) (`codex`) | `codex login` |
+## Your mail stays yours
 
-If Connect's browser sign-in doesn't finish, run the sign-in command in
-Terminal once, then press Connect again. Disconnecting only stops Mailboat
-using it; the tool stays signed in.
+- **No servers of ours.** Mailboat talks to Google from your computer. There is
+  no Mailboat account, no tracking and no analytics.
+- **Tokens in the keychain.** Sign-ins live in the macOS Keychain or Windows
+  Credential Manager. Never in a file, never in the database.
+- **Mail goes to an AI only when you chose that provider.** Apple Intelligence
+  runs on your Mac. Claude and ChatGPT are used through their own command-line
+  tools, signed in as you, with every tool turned off. Prompts and answers are
+  never logged.
+- **Remote images are your call.** They load by default (Settings → Viewing can
+  limit this to people you've written to, or block them), never in Spam, and
+  new mail's images are fetched as it arrives so opening an email makes no
+  request.
+- **Open source.** Read every line. It has had several independent code
+  reviews; findings and fixes are listed in the [roadmap](docs/ROADMAP.md).
 
-To check all three from Terminal after building once:
-`cargo test -p mail-core --test ai_live -- --ignored --nocapture`.
+## How it compares
 
-### AI apps (Claude Desktop, Claude Code)
+| | Mailboat | Gmail on the web | Mimestream |
+|---|---|---|---|
+| Price | Free, open source (GPL-3.0) | Free | Paid subscription |
+| Platforms | macOS, Windows | Any browser | macOS only |
+| Several accounts in one inbox | Yes, unified | Switch between accounts | Yes |
+| Local cache and search | Yes | No | Yes |
+| Source code | Public | Closed | Closed |
+| Setup | Your own Google credentials, once | None | Sign in with Google |
+| Maturity | Early development | Mature | Mature |
 
-Mailboat can let AI apps search and read your mail (and save drafts) over
-MCP, while Mailboat is open. In Settings → AI → AI apps, turn on the
-accounts to share (all are off to begin with), then press Connect for
-Claude Code or Claude Desktop (quit and reopen Claude Desktop after).
-Any other MCP app can run `<Mailboat's program> --mcp`; Settings shows the
-exact command. Spam and Trash are never shared, nothing is ever sent,
-and Settings lists what was asked for.
+*Mimestream's details are as of late 2026; check its site for today's.*
 
-## Run
+## Get started
+
+1. **Build it** ([below](#build-from-source)). Signed downloads are coming.
+2. **Create your own Google credentials**, once. The app walks you through it:
+   one card per step, each with a button that opens the right Google page, then
+   you drop the downloaded file on the window. The short version, and the full
+   guide, are in [docs/GOOGLE-SETUP.md](docs/GOOGLE-SETUP.md).
+3. **Sign in** with each Gmail account. Google warns that the app isn't
+   verified: press **Continue**, it's your own private project. The first sync
+   takes a while, because Gmail limits how fast an account can be read; the
+   inbox fills in first.
+4. **Optional:** turn on AI in Settings → AI ([docs/AI.md](docs/AI.md)).
+
+Want to look around first? [Demo mode](docs/DEVELOPMENT.md#demo-mode) opens the
+app full of made-up mail, with no Google connection.
+
+## Keyboard shortcuts
+
+| Keys | Action |
+|---|---|
+| `j` / `k` | Next / previous conversation |
+| `↩` or `o` | Open the selected conversation |
+| `/` | Search |
+| <kbd>⌘K</kbd> | Command palette |
+| `g` then `i` / `s` / `t` / `d` / `a` | Go to Inbox / Starred / Sent / Drafts / All Mail |
+| `e` | Archive |
+| `#` | Move to Trash |
+| `u` · `s` · `l` | Read/unread · star · labels |
+| `x` and <kbd>⇧</kbd><kbd>↓</kbd> | Pick one or a range |
+| `z` or <kbd>⌘Z</kbd> | Undo |
+| `c` · `r` · `a` · `f` | New message · reply · reply all · forward |
+| <kbd>⌘↩</kbd> | Send |
+| `?` | Every shortcut |
+
+On Windows, <kbd>Ctrl</kbd> takes the place of <kbd>⌘</kbd>.
+
+## How it's built
+
+Rust owns sync, storage, sign-in, sending and search; the React interface only
+draws what Rust tells it. One query layer serves every list, so the unified
+inbox is a query, not a copy.
+
+```mermaid
+flowchart LR
+  UI["React UI"] -->|"typed commands"| CMD["Tauri commands"]
+  CMD --> CORE["mail-core (Rust)"]
+  CORE --> DB[("SQLite + FTS5")]
+  CORE --> KC["OS keychain"]
+  CORE -->|"paced HTTPS"| G["Gmail REST API"]
+  CORE -->|"events"| UI
+```
+
+[Tauri](https://tauri.app) v2, Rust, SQLite with FTS5, React, TypeScript and
+Tailwind, with [Bun](https://bun.sh) for tooling. The details, and a dated
+table of why each choice was made, are in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Build from source
+
+You need macOS with the Xcode command line tools (the Swift compiler builds the
+Apple Intelligence helper), [Rust](https://rustup.rs) (stable) and
+[Bun](https://bun.sh).
 
 ```sh
 bun install
 bun tauri dev
 ```
 
-The first sync of an account takes a while (Gmail's per-user quota limits
-the pace); the inbox fills in first. Later syncs only fetch changes.
+Windows is built from a Mac for now, and checked on Windows by CI. Checks, the
+test suite, demo mode and the rest are in
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-### Demo mode
+## FAQ
 
-```sh
-bun run demo
-```
+**Why do I need my own Google credentials?**
+Google asks apps that read Gmail to pass a yearly paid security assessment.
+Mailboat has no server that touches your mail, so the assessment would only
+exist to tick a box. Using your own credentials means there is no review, no
+user limit and nobody in the middle. A paid, no-setup version may come later
+([docs/RELEASE.md](docs/RELEASE.md)); the open-source one stays.
 
-Starts the app full of made-up mail, with no Google connection: two
-accounts (personal and work), about 25 conversations with attachments,
-labels, a meeting invitation, a draft, spam, trash and list summaries.
-None of your own mail can show. Archiving, labels, rules and the rest all
-work. Sending is faked: the message lands in Sent and the person answers
-about 8 seconds later. A sign-in code arrives 45 seconds after the window opens.
+**Google signs me out about once a week.**
+While a project is in Google's "Testing" mode, sign-ins expire after seven
+days. Signing in again takes one click.
 
-The made-up mail lives in `demo/mail.json` (reserved `.example` addresses
-only). Like the clean start below, the demo keeps to its own folder
-(`com.nwoolls.mailboat.demo`) and starts over at every launch, dated
-relative to now. It takes the flag `--demo` in the same ways.
+**Is it safe?**
+The code is public and independently reviewed; mail is sanitised and sandboxed,
+tokens stay in your keychain, and the AI features are fenced. See
+[Your mail stays yours](#your-mail-stays-yours) and
+[SECURITY.md](SECURITY.md).
 
-### A first launch, again and again (clean start)
+**Windows? Linux?**
+Windows is supported (unsigned for now). Linux will follow.
 
-```sh
-bun run clean-start
-```
+**What's next?**
+Signed builds and automatic updates, then a website. The full list is in the
+[roadmap](docs/ROADMAP.md).
 
-Starts the app as if it had never run: no accounts, no settings, no OAuth
-client file. It keeps to a folder of its own
-(`~/Library/Application Support/com.nwoolls.mailboat.clean-start`), its own
-keychain name (`com.nwoolls.mailboat.clean-start`) and web storage that's
-gone when it quits, and all of it is emptied at the next clean start.
-Your own accounts, mail and settings aren't touched, and the AI apps
-connection (MCP) stays with the normal copy.
+## Contributing and licence
 
-`bun run clean-start` starts its own dev server, so stop `bun tauri dev`
-first, or start the built dev copy next to it:
-`target/debug/Mailboat.app/Contents/MacOS/mailboat --clean-start`. An installed
-copy takes the same flag: `open -n -a Mailboat --args --clean-start` on the
-Mac, `mailboat.exe --clean-start` on Windows.
+Bug reports and ideas are welcome as issues. Code from outside isn't accepted;
+[CONTRIBUTING.md](CONTRIBUTING.md) explains why. Security problems:
+[SECURITY.md](SECURITY.md).
 
-## Windows (built on the Mac)
-
-Mailboat for Windows is built on the Mac and tried in a Windows VM. One-time
-setup:
-
-```sh
-rustup target add aarch64-pc-windows-msvc x86_64-pc-windows-msvc
-brew install llvm lld nsis
-cargo install cargo-xwin --locked
-```
-
-Then:
-
-```sh
-scripts/windows.sh check   # does it compile for Windows, with no lint warnings
-scripts/windows.sh build   # makes the installer (.exe)
-```
-
-The installer lands in `target/aarch64-pc-windows-msvc/release/bundle/nsis/`.
-Copy it into the VM and run it. It's for Windows on ARM (a VM on an Apple
-silicon Mac); for an Intel/AMD PC, set
-`WINDOWS_TARGET=x86_64-pc-windows-msvc` first. The Google client file
-goes in `%APPDATA%\com.nwoolls.mailboat\google-oauth-client.json`.
-
-The installer registers Mailboat as an email app. To have email links open
-it, choose Mailboat for `MAILTO` in Settings → Apps → Default apps (Mailboat's
-Settings → General → Email links opens that page).
-
-## Check
-
-```sh
-bun run check:quick   # while working: only what changed, fast tests only
-bun run check         # everything (format, lint, types, Vitest, clippy, cargo test, Playwright); before committing
-```
-
-The browser tests (`tests/browser`, Playwright) need WebKit and Chromium once:
-
-```sh
-bunx playwright install webkit chromium
-```
-
-## Files on your Mac
-
-| What | Where |
-|---|---|
-| Mail cache (SQLite) | `~/Library/Application Support/com.nwoolls.mailboat/mail.sqlite3` |
-| OAuth client file | `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json` |
-| Sign-in tokens | macOS Keychain, service `com.nwoolls.mailboat` |
-| Sync log | `~/Library/Logs/com.nwoolls.mailboat/sync.log` |
-| AI summaries and usage | In the mail cache (`ai_summaries`, `ai_usage`: sizes only, never content) |
-| AI apps' socket | `~/Library/Application Support/com.nwoolls.mailboat/mcp.sock` (while Mailboat runs) |
-| AI apps' requests | In the mail cache (`mcp_log`: what was asked, never content; 30 days) |
-
-## Licence and contributing
-
-Mailboat is free software under the [GNU GPL v3](LICENSE). Bug reports and
-ideas are welcome as issues; code from outside is not accepted (see
-[CONTRIBUTING.md](CONTRIBUTING.md)). Security problems: [SECURITY.md](SECURITY.md).
-Commit hashes mentioned in the older docs come from the private repository
-this one was cleaned from, so they won't be found here.
+Mailboat is free software under the [GNU GPL v3](LICENSE). Commit hashes
+mentioned in the older docs come from the private repository this one was
+cleaned from, so they won't be found here.
