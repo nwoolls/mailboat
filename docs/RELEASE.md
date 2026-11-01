@@ -6,7 +6,8 @@ worked out with the owner on 2026-10-25.
 **Chosen (owner, 2026-10-25): Plan 3, the hybrid.** Open source first,
 with each user bringing their own Google credentials (Stage A, which is
 Plan 2), and a paid no-setup option later only if people want it
-(Stage B). For the open-source stage the owner may use their personal
+(Stage B), where the owner maintains the Google API access and
+verifications so users don't have to. For the open-source stage the owner may use their personal
 accounts (GitHub, social media, Apple).
 
 - The work is in `docs/ROADMAP.md`, Milestones 10–18 (Release: the road
@@ -25,7 +26,7 @@ accounts (GitHub, social media, Apple).
 - Mac and Windows.
 - Money and effort are spent only after a checkpoint shows people want it.
 - No company (LLC) for now: the owner's name shows as the Windows
-  publisher and in the Mac signature. Revisit if there's revenue.
+  publisher and in the Mac signature. Revisit if the paid version starts.
 
 ## The three plans at a glance
 
