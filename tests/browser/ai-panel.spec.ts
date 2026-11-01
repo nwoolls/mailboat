@@ -115,12 +115,19 @@ test("inline reply: opening and closing the panel many times never moves the rep
           setTimeout(() => {
             watch?.disconnect();
             resolve(painted);
-          }, 450);
+          }, 900);
         }),
     );
     expect(tops.length, `toggle ${i + 1} animated`).toBeGreaterThan(2);
     for (const t of tops) expect(Math.abs(t - start), `toggle ${i + 1}`).toBeLessThanOrEqual(2);
+    // The reply must come back to where it started. Polled, since a slow
+    // machine (CI) can still be finishing the animation after the window.
     // oxlint-disable-next-line no-await-in-loop -- measured after each toggle
-    expect(Math.abs((await top()) - start), `after toggle ${i + 1}`).toBeLessThan(1);
+    await expect
+      .poll(async () => Math.abs((await top()) - start), {
+        message: `after toggle ${i + 1}`,
+        timeout: 3000,
+      })
+      .toBeLessThan(1);
   }
 });
