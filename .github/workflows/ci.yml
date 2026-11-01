@@ -61,7 +61,7 @@ jobs:
       # (STATUS_ENTRYPOINT_NOT_FOUND): Tauri's test executables need an
       # application manifest there. The core crate holds the logic.
       - if: runner.os == 'Windows'
-        run: cargo test --workspace --exclude desktop
+        run: cargo test --workspace --exclude desktop --no-fail-fast
 
   browser:
     name: Browser tests (WebKit, Chromium)

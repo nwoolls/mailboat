@@ -308,7 +308,11 @@ mod tests {
         assert_eq!(loaded.remote_images, RemoteImages::Load);
         assert!(loaded.image_prefetch);
         assert_eq!(loaded.image_cache_mb, 500);
-        assert_eq!(loaded.ai.list_summaries, Some(AiProvider::Apple));
+        // Apple Intelligence exists only on macOS; elsewhere nothing is on.
+        assert_eq!(
+            loaded.ai.list_summaries,
+            cfg!(target_os = "macos").then_some(AiProvider::Apple)
+        );
         assert_eq!(loaded.notify_for, NotifyFor::Inbox);
         assert!(!loaded.quiet_hours.on);
     }

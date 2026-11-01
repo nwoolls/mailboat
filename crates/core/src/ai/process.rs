@@ -430,6 +430,8 @@ fn tail(s: &str, max: usize) -> String {
 mod tests {
     use super::*;
 
+    // Needs a Unix shell or path rules (/bin/sh, /usr/bin/env, /Users/…).
+    #[cfg(unix)]
     #[tokio::test]
     async fn reads_each_line_and_passes_stdin() {
         let mut seen = Vec::new();
@@ -454,6 +456,8 @@ mod tests {
 
     /// Codex gets only what it needs from the app's environment, not
     /// whatever the app was started with (code review Round 5).
+    // Needs a Unix shell or path rules (/bin/sh, /usr/bin/env, /Users/…).
+    #[cfg(unix)]
     #[tokio::test]
     async fn a_minimal_environment_keeps_only_whats_needed() {
         std::env::set_var("AI_ENV_PROBE_SECRET", "x");
@@ -515,6 +519,8 @@ mod tests {
     /// Code review R6-03: no fence without a home folder, none when
     /// Codex's folder is home or above it, and no arbitrary PATH folder
     /// inside home made readable.
+    // Needs a Unix shell or path rules (/bin/sh, /usr/bin/env, /Users/…).
+    #[cfg(unix)]
     #[test]
     fn the_fence_refuses_what_would_open_the_home_folder() {
         let home = Path::new("/Users/someone");
@@ -573,6 +579,8 @@ mod tests {
         assert!(p.contains("(allow file-read* (subpath \"/d\"))"), "{p}");
     }
 
+    // Needs a Unix shell or path rules (/bin/sh, /usr/bin/env, /Users/…).
+    #[cfg(unix)]
     #[tokio::test]
     async fn an_error_from_a_line_stops_the_program() {
         let result = run_lines(
@@ -585,6 +593,8 @@ mod tests {
         assert!(matches!(result, Err(CoreError::Ai(m)) if m == "stop"));
     }
 
+    // Needs a Unix shell or path rules (/bin/sh, /usr/bin/env, /Users/…).
+    #[cfg(unix)]
     #[tokio::test]
     async fn the_last_line_stops_the_program_without_waiting_for_it() {
         let started = std::time::Instant::now();
