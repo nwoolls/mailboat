@@ -99,7 +99,7 @@ which has since shut down.
 | Price | Free, open source (GPL-3.0) | Free | Paid subscription |
 | Platforms | macOS, Windows | Any browser | macOS (iOS and iPadOS in beta) |
 | Several accounts in one inbox | Yes, unified | Switch between accounts | Yes |
-| Local cache and search | Yes | No | Yes |
+| Local cache and search | Yes | Only with Chrome's optional offline mode | Yes |
 | AI summaries of conversations | Yes: Apple Intelligence on your Mac, or your own Claude or ChatGPT | Google's Gemini features, where offered | Not documented |
 | Write, rewrite and reply with AI | Yes: drafts, rewrites, reply ideas and translation, shown in the editor before anything is sent | Google's Gemini features, where offered | In the compose window, through Apple's Writing Tools (and ChatGPT through Apple, on macOS 15.2+) |
 | Sign-in codes surfaced on the row | Yes, with a Copy button | No | Not documented |

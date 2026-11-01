@@ -2962,7 +2962,7 @@ before acting:
       keeps the email at the top while others fold
 - [x] R4-07 (partly confirmed): test data now uses made-up names only. Moved to Milestone 14's scrub, not changed now: about 400
       placeholder addresses at real domains (`x.com`, `work.com`,
-      `me.com`, `key.example`…). They're made up, no real person's, but
+      `me.com`…). They're made up, no real person's, but
       reserved domains (`example.com`) are the safer convention for a
       public repository. No credentials or real mail were found
 - Question, the AI tools really off: checked by running each tool once
@@ -3331,7 +3331,7 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       `design/`; no personal details in the docs; nothing from the owner's machine (paths, certificates)
       that matters. Search for personal details. Also
       move test placeholder addresses at real domains (`x.com`,
-      `work.com`, `me.com`, `key.example`, `vendor.com`…, about 400) to
+      `work.com`, `me.com`…, about 400) to
       reserved ones (`example.com`, `.example`) *(code review R4-07,
       2026-10-31)*. **Done 2026-10-31** for the tree: 474 uses in 59
       files and a fixture's encoded body now use `.example`; a search of

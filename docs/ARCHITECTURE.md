@@ -423,7 +423,7 @@ flowchart LR
   T --> C["mail_core::ai"]
   C -->|"stdin JSON"| A["ai-helper (Swift, Foundation Models)"]
   C -->|"claude -p, no tools"| CL["Claude Code CLI"]
-  C -->|"codex exec, no tools"| CX["Codex CLI"]
+  C -->|"codex exec, fenced"| CX["Codex CLI"]
   C --> DB[("ai_summaries, ai_usage")]
   T -->|"AiTextEvent, AiLineSummaryEvent"| UI
 ```
@@ -436,14 +436,18 @@ flowchart LR
   finds them in the usual install folders (a Mac app has no shell PATH).
   "Connect" runs `claude auth login` / `codex login`, which open the
   browser, and waits until the tool reports it's signed in.
-- **One request, one run, no tools.** Each request starts the program
+- **One request, one run, nothing for the model to act with.** Each request starts the program
   once in an empty temp folder, prompt on stdin, answer read line by line
   (`ai::process`), stopping it at the line that ends the answer
   rather than waiting for it to exit. Claude runs with `--tools ""`, no settings, MCP or
-  skills; Codex with its shell, web search, plugins and the rest turned
-  off and a read-only sandbox. An email written to steer a model can
-  only change the text it returns, which is shown as plain text, and a
-  draft is only ever put in the editor for the owner to read.
+  skills, so it has no tools at all. Codex can't promise that (no allow-list
+  of tools exists), so it is fenced instead: every switch turned off per
+  request, a read-only sandbox, on macOS an extra sandbox profile, and a
+  runtime check that pauses it when a switch nobody has reviewed stays on
+  (see "Codex review" in `AGENTS.md` and `ai/codex_review.json`). The aim
+  is that an email written to steer a model can only change the text it
+  returns, which is shown as plain text, and a draft is only ever put in
+  the editor for the owner to read.
 - **Context** (`ai::context`): the conversation from the cache, oldest
   first, drafts left out, each message cut at its quoted history and
   signature, marked "(me)" for the owner's addresses. Bodies not cached
@@ -720,7 +724,7 @@ made-up mail.
 | 2026-10-31 | Gmail retry, throttle and rate-limit lines and 5xx errors keep only Google's reason codes (its documented ones, others as "other", since R5-06); 4xx errors keep Google's message too | Code review R4-03: Google's error shape doesn't prove an answer came from Google, so a proxy's 502 in that shape could echo the request into the sync log. Diagnostics don't need the message. A 4xx's message is shown to the owner and checked by the app ("insufficient" permission, an API turned off), and a forged one needs a proxy trusted for TLS to Google, which already sees every request; that trade-off is kept. |
 | 2026-10-31 | An email's image addresses are read as browsers read them (`sanitize::remote_address`, the `url` crate's WHATWG parsing) before deciding remote, tracker or prefetch | Code review R4-04: checking the text as written missed `//host`, CSS escapes (`ht\a tps://`) and `https:host`, which the web view loads. `url` is already a dependency and implements the same URL standard as WebKit and Chromium, so no hand-written normalising. |
 | 2026-10-31 | Without Spam and Trash, Gmail's saved search hit counts only for a conversation with nothing in Spam or Trash | Code review R5-03: a hit is per conversation and stays after an email in it is trashed, so it could find a conversation by its hidden email's words. Clearing hits whenever a conversation changes would drop remote results the loader won't fetch again. A mixed conversation must match on its visible emails in the cache; one found only by Gmail (its words in a body not downloaded yet) is missed, which is rarer and errs on hiding. |
-| 2026-10-31 | ChatGPT stays on Codex, fenced in layers, with a reviewed list (`ai/codex_review.json`) rechecked monthly by an agent; `bun run check` stops after 31 days (warns only in CI) | Codex can't promise no tools (no allow-list; switches aren't a full tool list; `prompt-input` doesn't show the request's tools; the model's own tool list is unreliable). Capturing the real request needs a local stand-in server, which the shipped app shouldn't run, so that's the monthly recheck's job; the app only checks switches. A date check rather than a version check, which the owner judged too flaky. An API-key ChatGPT, tools-free by design, is in the backlog. |
+| 2026-10-31 | ChatGPT stays on Codex, fenced in layers, with a reviewed list (`ai/codex_review.json`) rechecked monthly by an agent; `bun run check` stops after 31 days on the owner's machine (an uncommitted `.codex-review-enforce` file turns the failure on; everywhere else, and in CI, it only warns) | Codex can't promise no tools (no allow-list; switches aren't a full tool list; `prompt-input` doesn't show the request's tools; the model's own tool list is unreliable). Capturing the real request needs a local stand-in server, which the shipped app shouldn't run, so that's the monthly recheck's job; the app only checks switches. A date check rather than a version check, which the owner judged too flaky. An API-key ChatGPT, tools-free by design, is in the backlog. |
 | 2026-10-31 | On macOS, Codex runs inside `sandbox-exec` with a profile that denies the home folder except Codex's own | Codex's read-only sandbox lets anything read the owner's files, and only the absence of a read tool stopped it. macOS's sandbox (Seatbelt) enforces the rule whatever tools Codex has. Apple marks `sandbox-exec` deprecated, but it ships with macOS and Codex itself relies on the same system; if it stops working, Codex fails to start (ChatGPT fails closed). The network stays open: Codex needs OpenAI, and server-side tools are the checks' job. No Windows equivalent. |
 | 2026-10-31 | The app is licensed GPL-3.0-only | The owner's choice. Nobody can sell a closed copy, and it fits a technical audience; every dependency licence in `deny.toml` is one GPL-3.0 can include. Copyright stays with the owner (outside code isn't accepted), so the licence can change later. |
 | 2026-10-31 | `cargo-deny` ignores RUSTSEC-2024-0436 (`paste` unmaintained) | It is not vulnerable, only unmaintained, comes in through Tauri's dependencies, and has no replacement to upgrade to. Listed in `deny.toml` with the reason; revisit when Tauri drops it. |
