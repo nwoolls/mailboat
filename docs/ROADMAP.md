@@ -823,7 +823,7 @@ owner has seen invitations and the Dock icon working.*
         button to macOS's settings for style and sound. Appearance: two
         transparency sliders (sidebar and reader, list) with Restore
         defaults; they show how see-through each area is, in percent,
-        and right is clearer (owner found "+5"/"−5" confusing). Then (owner
+        and right is clearer ("+5"/"−5" was confusing). Then (owner
         request) first in Appearance: Theme (System, the default, Light,
         Dark) and an accent colour (seven, as macOS offers, minus yellow),
         with Restore defaults now for the whole page. Keyboard: every shortcut. Still to come in the ✱
@@ -2312,11 +2312,11 @@ domains are the owner's, and the owner's own setup has moved over.
 First of the release milestones, so the onboarding text, demo data and
 screenshots that follow carry the new name from the start.*
 
-*Owner, 2026-10-27: the name is **Mailboat** (not the alternative name), and the
+*Owner, 2026-10-27: the name is **Mailboat**, and the
 domains are `getmailboat.app` (the main one: website, update address,
 security email), `mailboat.dev` and `mailboat.software`.
 `mailboat.app` and `mailboat.com` were taken (see `docs/RELEASE.md` →
-Name checks → Mailboat).*
+The name).*
 
 - [x] Owner, first: register the domains at Cloudflare Registrar, so
       nobody else can take them once the name starts to appear:
@@ -2325,11 +2325,9 @@ Name checks → Mailboat).*
       drop if the trademark search below turns something up
 - [x] Trademark search for "Mailboat" *(owner, 2026-10-27: an agent
       does it, and a second agent confirms)*. Done and confirmed
-      (2026-10-27): no software mark; the seven US unrelated music records are
-      an unrelated music business's, for music, five live (Class 9 and 41);
-      nothing in the EU. One caution: a tiny Windows bulk-email app on
-      GitHub (small, a month old, no stars) is also called
-      Mailboat. Details in `docs/RELEASE.md` → Name checks → Mailboat
+      (2026-10-27): no software mark; the existing US records are an
+      unrelated music business's; nothing in the EU. Details in
+      `docs/RELEASE.md` → The name
 - [x] Neutral code names, one brand file *(owner, 2026-10-26: the name
       wasn't settled yet, so the code shouldn't depend on it)*. Every
       name that isn't branding became neutral (`mail-core`, `desktop`,
@@ -3794,8 +3792,8 @@ again until the next spike.*
       Mailboat can't set Gmail's own Mute. Muted in Gmail's web app, the
       conversation only lost INBOX (and IMPORTANT) through the API, with
       no label Mailboat can see, so a Gmail-muted conversation looks archived
-      and Mailboat can't tell. A reply from the owner's other address, sent
-      to them alone, came back to the Inbox, as Google's help says it
+      and Mailboat can't tell. A reply sent from another of the owner's
+      addresses to them alone, came back to the Inbox, as Google's help says it
       does when you're the only recipient or in To/Cc. So Mute would have
       to be Mailboat's own: a "Muted" label it adds, with later replies
       archived and kept quiet as they sync (only while Mailboat runs; the

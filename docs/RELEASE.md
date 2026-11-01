@@ -364,60 +364,23 @@ a technical audience; Reddit and Hacker News punish marketing), and any
 paid upvotes, followers or reviews (against the rules; US law requires
 disclosing paid endorsements).
 
-### Name checks (2026-10-25)
+### The name (2026-10-27)
 
-The working name collided with a company that sells software and has an
-app on Apple's store. "the alternative name": `altname`, `altname.example`,
-`altname` free; no Mac App Store app; US trademarks only dead or in
-other trades; the alternative name XG is museum software. `altname` taken on GitHub and
-Bluesky; `altname` free on both. "another candidate" was rejected: a registered US
-trademark for software (another company, No. 4956463).
+The app was renamed to **Mailboat** before release, after the first
+working name looked likely to collide with an existing software company.
+Domains checked on 2026-10-27: `mailboat.com` and `mailboat.app` were
+taken; the owner registered `getmailboat.app` (the main domain),
+`mailboat.dev` and `mailboat.software`.
 
-### Mailboat (2026-10-27)
-
-The owner chose **Mailboat** over the alternative name. Domains checked that day
-(whois and RDAP): `mailboat.com` taken since 1996, `mailboat.app` taken
-(registered 2026-04-12, on Cloudflare's name servers), `getmailboat.com`
-registered 2026-09-30 at Cloudflare (the owner's, or someone else's: to
-confirm). Free: `mailboatapp.com`, `usemailboat.com`,
-`trymailboat.com`. Trademarks, the Mac App Store, GitHub and social
-handles not checked yet. The owner registered `getmailboat.app` (the
-main domain), `mailboat.dev` and `mailboat.software` the same day.
-
-Trademark search (2026-10-27, by an agent, through Trademarkia's copy
-of the USPTO records; USPTO's own search can't be scripted). All seven
-US records for MAILBOAT belong to **an unrelated music business** (an unrelated music business):
-
-| Serial | Class | Goods or services | Status |
-|---|---|---|---|
-
-None covers software, email or computer services. Class 9 is software's
-class too, but trademarks protect the goods named, and music
-recordings are far from an email app; still, the label is well known
-and keeps its marks up with lawyers, so it is the one owner who could
-object. "MAIL BOAT" and "MAILBOATS" turn up no other owner. Not legal
-advice: an attorney's clearance would be the step before filing a mark
-of our own. No App Store or Mac App Store app is called Mailboat.
-GitHub: the `mailboat` account is taken, `mailboatapp` free; a few
-small repositories use the name (0–4 stars), one a bulk-email desktop
-app. The owner's view: a trademark doesn't affect Google's approval of
-the consent screen.
-
-A second agent confirmed this the same day: the seven records, their
-owner and status; no live or pending US mark for MAILBOAT or close
-spellings in software or email; nothing in the EU (TMview); no app of
-that name in the Apple, Mac, Microsoft or Google Play stores. Its main
-concern is a desktop app already called Mailboat:
-`an unrelated project`, a small Windows tool
-for bulk outreach email (SMTP and the Gmail API, several accounts,
-scheduled sends), with paid quotas through WeChat Pay. Checked on
-GitHub: created 2026-09-07, three commits, last pushed 2026-09-08, no
-stars, forks or licence. Other small email projects use the name too
-(a mail server, an email toolkit, a former email-marketing service).
-Its conclusion: the registrations look favourable, but "no conflict"
-is too strong while another email app carries the name, open source or
-not; unregistered rights from use in the US were not established.
-
+Trademark search (2026-10-27, by two agents, through Trademarkia's copy
+of the USPTO records and TMview): no live or pending mark for MAILBOAT
+covers software, email or computer services. The US records that exist
+belong to an unrelated music business. No app of that name was found in
+the Apple, Mac, Microsoft or Google Play stores; a few small, unrelated
+projects on GitHub share the name. That points to no conflict, but it is
+not legal advice, and unregistered rights from use were not established:
+an attorney's clearance would be the step before filing a mark of our
+own.
 
 ## Sources
 
