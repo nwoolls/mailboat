@@ -3603,6 +3603,15 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [ ] A sent email's full recipient list can't be seen without resizing
+      *(owner report, 2026-11-01)*: in the reader, the recipients of a
+      message you sent (To and Cc) are cut off with an ellipsis, and the
+      only way to read them all is to make the reader or the window wider.
+      Wanted: a way to see everyone, such as expanding the line on click
+      or a "Details" popover with the full To, Cc and Bcc, as Gmail and
+      Mail have. Not investigated yet; likely the header's fixed one-line
+      layout
+
 - [ ] The browser test "starfield paints a night sky and lightens the
       words" (`screensaver-night.spec.ts`) failed once in a full check
       (2026-10-31: a brightness reading over its limit, `toBeLessThan`),
