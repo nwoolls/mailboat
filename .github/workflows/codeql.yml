@@ -16,6 +16,7 @@ jobs:
     # Code scanning isn't available on a private repository (free plan).
     if: github.event.repository.private == false
     runs-on: macos-latest
+    timeout-minutes: 60
     permissions:
       contents: read
       actions: read

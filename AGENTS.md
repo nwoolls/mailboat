@@ -220,7 +220,9 @@ runtime check that pauses ChatGPT when a switch it hasn't reviewed stays
 on. What was reviewed is `crates/core/src/ai/codex_review.json`.
 
 `bun run check` (and `check:quick`) stops when that review is over 31 days
-old. When it does:
+old, on the owner's machine (an empty, uncommitted `.codex-review-enforce`
+file in the repository folder turns the failure on; elsewhere it only warns).
+When it does:
 
 1. Stop and ask the owner before going on. The recheck makes a few small
    live requests on their ChatGPT subscription, with harmless input.

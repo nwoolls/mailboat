@@ -21,8 +21,8 @@ accounts (GitHub, social media, Apple).
 
 ## The owner's goals
 
-- An interesting experience and a side project, **not a full-time job**: no
-  daily social media, little support.
+- A side project, **not a full-time job**: no daily social media, little
+  support.
 - Mac and Windows.
 - Money and effort are spent only after a checkpoint shows people want it.
 - No company (LLC) for now: the owner's name shows as the Windows
@@ -245,7 +245,8 @@ A setup screen in the app (part of Onboarding), not just a web page:
 - Licence: see "Choices that keep the doors open". GPL-3.0 suggested
 - Contributions: bug reports and ideas welcome; outside code not
       accepted. An email client is an attractive target for a malicious
-      change, and every change would need careful review. Say so in `CONTRIBUTING.md`
+      change, and every change would need careful review. Say so in
+      `CONTRIBUTING.md`
 - Hosting on GitHub, all free for a public repo: Pages (website; or
       keep Cloudflare), Releases (installers and the update file),
       Actions (unlimited minutes, Mac builds included). The domain and

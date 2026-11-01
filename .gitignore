@@ -1,3 +1,6 @@
+# Makes check:codex fail (not just warn) on the owner's machine
+.codex-review-enforce
+
 # Secrets: never commit OAuth client files or keys
 .env
 .env.*

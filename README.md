@@ -52,7 +52,7 @@ which has since shut down.
   translation, through Apple Intelligence on your Mac or your own Claude or
   ChatGPT subscription. No API keys, and nothing is sent without you seeing it.
 - **Works with your AI apps.** Let Claude Desktop or Claude Code search and read
-  your mail, and save drafts, over MCP. Off by default, read-only, never sends.
+  your mail, and save drafts, over MCP. Off by default; AI apps can only read mail and save drafts, never send.
 
 ### A closer look
 
@@ -83,8 +83,9 @@ which has since shut down.
   limit this to people you've written to, or block them), never in Spam, and
   new mail's images are fetched as it arrives so opening an email makes no
   request.
-- **Open source.** Read every line. It has had several independent code
-  reviews; findings and fixes are listed in the [roadmap](docs/ROADMAP.md).
+- **Open source.** Read every line. The code has been through several rounds
+  of review by AI code-review agents (findings and fixes are in the
+  [roadmap](docs/ROADMAP.md)). There has been no third-party security audit.
 
 ## How it compares
 
@@ -193,13 +194,16 @@ While a project is in Google's "Testing" mode, sign-ins expire after seven
 days. Signing in again takes one click.
 
 **Is it safe?**
-The code is public and independently reviewed; mail is sanitised and sandboxed,
+The code is public and has been reviewed several times by AI code-review
+agents (not by an outside security firm); mail is sanitised and sandboxed,
 tokens stay in your keychain, and the AI features are fenced. See
 [Your mail stays yours](#your-mail-stays-yours) and
 [SECURITY.md](SECURITY.md).
 
 **Windows? Linux?**
-Windows is supported (unsigned for now). Linux will follow.
+Mailboat runs on Windows, but there's no installer to download yet: for now it
+has to be built from a Mac ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)), and
+CI checks it on Windows. Linux will follow.
 
 **What's next?**
 Signed builds and automatic updates, then a website. The full list is in the
@@ -211,6 +215,7 @@ Bug reports and ideas are welcome as issues. Code from outside isn't accepted;
 [CONTRIBUTING.md](CONTRIBUTING.md) explains why. Security problems:
 [SECURITY.md](SECURITY.md).
 
-Mailboat is free software under the [GNU GPL v3](LICENSE). Commit hashes
+Copyright © 2026 Nate Woolls. Mailboat is free software under the
+[GNU GPL v3](LICENSE). Commit hashes
 mentioned in the older docs come from the private repository this one was
 cleaned from, so they won't be found here.
