@@ -63,6 +63,25 @@ fails otherwise.
 Commits: one topic each, imperative subject, a body that explains why.
 - Make small, focused commits with clear messages.
 
+### Pull requests (once the repository's ruleset is on)
+
+Nothing goes to `main` directly. For each piece of work:
+
+1. Branch from an up-to-date `main` (`git switch -c <topic>`), commit there
+   (the checks and commit rules above still apply), and push the branch.
+2. Open a pull request with `gh pr create`: what changed and why, and the
+   roadmap item it ticks. One topic per pull request.
+3. Wait for the checks (`gh pr checks`) and for Copilot's review. Deal with
+   every review comment: fix it, or reply with why not. A failing check is
+   never "flaky" until the logs show it.
+4. The owner merges (squash, branch deleted), or says to. Then update the
+   local `main`.
+
+Pushing, opening or commenting on a pull request, and merging are all writes
+to the shared repository: confirm with the owner first, as always. Dependabot's
+pull requests follow the same path, one at a time, with the full `bun run
+check` run on the branch first when it touches Rust or the build.
+
 ## Commands
 
 | What | Command |

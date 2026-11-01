@@ -3412,6 +3412,10 @@ for the owner's machine.*
       pull request instead of committing to `main`; it merges once the
       checks pass and the review comments are dealt with. CLAUDE.md
       gets the new workflow
+      *2026-11-01: the workflow is written into `AGENTS.md` (applies once
+      the ruleset below is on); `.github/copilot-instructions.md` tells
+      Copilot what to check. The ruleset waits for the repository to be
+      public.*
 - [ ] A ruleset on `main`: pull request and passing checks required, no
       force pushes; the owner can bypass in an emergency
 - [ ] Copilot code review on every pull request, requested
