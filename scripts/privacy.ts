@@ -120,11 +120,12 @@ export function parseDenylist(content: string): string[] {
 const COUNT_WORDS =
   "(?<![\\d,.])\\d{1,2}(?![\\d,])|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a few hundred|a few dozen|a dozen|dozens of|hundreds of|several hundred";
 const COUNTED = new RegExp(
-  `\\b(?:${COUNT_WORDS})\\s+(?:(?:cached|real|white|colou?red)\\s+)?(?:html\\s+)?(?:emails?|messages?|boxes|newsletters?)\\b`,
+  `\\b(?:${COUNT_WORDS})\\s+(?:(?:cached|real|white|colou?red)\\s+)?(?:html\\s+)?(?:emails?|messages?|boxes|newsletters?|summaries)\\b`,
   "i",
 );
 /** Talks about what was seen, tried or measured on real mail. */
-const OBSERVED = /\b(?:owner|render(?:ed|ing)|measured|observed|real mail|screenshot|trial)\b/i;
+const OBSERVED =
+  /\b(?:owner|render(?:ed|ing)|measured|observed|real mail|screenshot|trial|seen working|while it ran)\b/i;
 /** A limit or design choice, not an observation ("newest 25 messages"). */
 const DESIGN =
   /\b(?:newest|first|oldest|up to|at most|per|capped|cap|limit|no more than|max|every)\b/i;

@@ -85,6 +85,9 @@ describe("findPassageIssues", () => {
       findPassageIssues("a screenshot showed four white boxes\n left out").map((f) => f.kind),
     ).toEqual(["count of real mail"]);
     expect(findPassageIssues("the owner saw a few hundred emails changed").length).toBe(1);
+    expect(
+      findPassageIssues("Seen working in the dev app: 18 summaries\n written while it ran").length,
+    ).toBe(1);
   });
 
   it("leaves ordinary prose alone", () => {
