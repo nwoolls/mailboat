@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { findIssues, findPassageIssues, parseDenylist } from "./privacy";
+import {
+  findDenylistInPassage,
+  findIssues,
+  findPassageIssues,
+  joinLines,
+  parseDenylist,
+} from "./privacy";
 
 const kinds = (text: string, deny: string[] = []) => findIssues(text, deny).map((f) => f.kind);
 
@@ -18,6 +24,12 @@ describe("findIssues", () => {
   it("flags phone numbers except fictional 555 ones", () => {
     expect(kinds("call (212) 867-5309")).toEqual(["phone number"]);
     expect(kinds("call 1-800-555-0142 or 555-0100")).toEqual([]);
+  });
+
+  it("flags a phone number written without separators, when it reads as a phone number", () => {
+    expect(kinds("call 2128675309 today")).toEqual(["phone number"]);
+    expect(kinds("const MAX = 4294967296")).toEqual([]);
+    expect(kinds("call 2125550123")).toEqual([]);
   });
 
   it("flags measurements of a real mailbox", () => {
@@ -54,10 +66,10 @@ describe("findIssues", () => {
 describe("findPassageIssues", () => {
   it("flags a count of emails or boxes in a passage about what was observed", () => {
     expect(
-      findPassageIssues("Checked by rendering several newsletters in dark mode").map((f) => f.kind),
+      findPassageIssues("Checked by rendering nine newsletters in dark mode").map((f) => f.kind),
     ).toEqual(["count of real mail"]);
     expect(
-      findPassageIssues("a screenshot showed some white boxes\n left out").map((f) => f.kind),
+      findPassageIssues("a screenshot showed four white boxes\n left out").map((f) => f.kind),
     ).toEqual(["count of real mail"]);
     expect(findPassageIssues("the owner saw a few hundred emails changed").length).toBe(1);
   });
@@ -65,6 +77,18 @@ describe("findPassageIssues", () => {
   it("leaves ordinary prose alone", () => {
     expect(findPassageIssues("two emails in a thread are shown newest first")).toEqual([]);
     expect(findPassageIssues("Checked by rendering several newsletters")).toEqual([]);
+  });
+});
+
+describe("passages across a line wrap", () => {
+  it("joins lines and drops comment and list markers", () => {
+    expect(joinLines(["// Acme", "// Corp wrote", "- this"])).toBe("Acme Corp wrote this");
+  });
+
+  it("finds a multiword denylisted name split by a wrap", () => {
+    expect(
+      findDenylistInPassage(joinLines(["from Acme", "Corp today"]), ["acme corp"]),
+    ).toHaveLength(1);
   });
 });
 

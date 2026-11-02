@@ -19,6 +19,8 @@ const GMAIL_OK = new Set(["me", "you", "someone", "someone.else", "user", "test"
 
 const EMAIL = /([A-Za-z0-9._%+-]+)@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,})/g;
 const PHONE = /(?<![\d.])(?:\+?1[-. ])?\(?\d{3}\)?[-. ]\d{3}[-. ]\d{4}(?![\d.])/g;
+/** Ten digits run together (area code and exchange start 2-9, so epoch times don't match). */
+const PHONE_PLAIN = /(?<![\d.])(?:\+?1)?[2-9]\d{2}[2-9]\d{6}(?![\d.])/g;
 
 /** Wording that reports what was measured on, or found in, a real mailbox. */
 const MEASUREMENTS: [string, RegExp][] = [
@@ -59,11 +61,17 @@ export function findIssues(
       continue;
     if (projectDomains.includes(domain)) continue;
     if (domain === "gmail.com" && GMAIL_OK.has(local)) continue;
-    if (/\.(png|jpe?g|gif|svg|webp|css|js|ts|tsx|json|rs)$/i.test(domain)) continue;
+    if (/\.(png|jpe?g|gif|svg|webp|css|js|ts|tsx|json)$/i.test(domain)) continue;
     found.push({ kind: "email address", text: m[0] });
   }
   for (const m of line.matchAll(PHONE)) {
     if (/[-. ]555[-. ]/.test(m[0])) continue;
+    found.push({ kind: "phone number", text: m[0] });
+  }
+  for (const m of /\b(?:phone|tel|call|cell|mobile|fax|sms|text me)\b/i.test(line)
+    ? line.matchAll(PHONE_PLAIN)
+    : []) {
+    if (/^(?:\+?1)?\d{3}555\d{4}$/.test(m[0])) continue;
     found.push({ kind: "phone number", text: m[0] });
   }
   for (const [kind, re] of MEASUREMENTS) {
@@ -113,4 +121,27 @@ export function findPassageIssues(passage: string): Finding[] {
   const around = text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40);
   if (DESIGN.test(around)) return [];
   return [{ kind: "count of real mail", text: m[0] }];
+}
+
+/** Markdown and comment markers that start a wrapped line of prose. */
+const LEAD = /^\s*(?:\/\/[/!]?|\*|#+|-|>|\|)\s?/;
+
+/**
+ * A few consecutive lines joined into one passage (comment and list markers
+ * dropped), so a name or a number split by a line wrap is still seen.
+ */
+export function joinLines(lines: string[]): string {
+  return lines
+    .map((l) => l.replace(LEAD, ""))
+    .join(" ")
+    .replace(/\s+/g, " ");
+}
+
+/** Denylisted terms in a joined passage (multiword terms survive a wrap). */
+export function findDenylistInPassage(passage: string, denylist: string[]): Finding[] {
+  if (OPT_OUT.test(passage)) return [];
+  const lower = passage.toLowerCase();
+  return denylist
+    .filter((term) => term && lower.includes(term.toLowerCase()))
+    .map(() => ({ kind: "denylisted term", text: "(a term from your local denylist)" }));
 }

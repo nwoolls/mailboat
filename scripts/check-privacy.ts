@@ -12,7 +12,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import brand from "../brand.json";
-import { findIssues, findPassageIssues, parseDenylist } from "./privacy";
+import {
+  findDenylistInPassage,
+  findIssues,
+  findPassageIssues,
+  joinLines,
+  parseDenylist,
+} from "./privacy";
 
 /** Not text, generated, or the detector's own test inputs. */
 const SKIP =
@@ -49,8 +55,10 @@ for (const file of files) {
   let content: string;
   try {
     content = readFileSync(file, "utf8");
-  } catch {
-    continue; // deleted in the working tree, or not text
+  } catch (e) {
+    // Deleted in the working tree (not committed yet) is fine; anything else is not.
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") continue;
+    throw e;
   }
   const lines = content.split("\n");
   lines.forEach((line, i) => {
@@ -58,18 +66,27 @@ for (const file of files) {
       report(`${file}:${i + 1}`, f.kind, f.text);
     }
   });
-  // Prose wraps: look at three lines at a time for counts of real mail.
-  if (/\.(md|txt)$/i.test(file)) {
-    let lastAt = -9;
-    let lastText = "";
-    for (let i = 0; i < lines.length; i++) {
-      const found = findPassageIssues(lines.slice(i, i + 3).join(" "));
-      for (const f of found) {
-        if (f.text === lastText && i - lastAt < 3) continue;
-        lastAt = i;
-        lastText = f.text;
-        report(`${file}:${i + 1}`, f.kind, f.text);
-      }
+  // Text wraps: look at three lines at a time, for counts of real mail (prose
+  // only) and for terms or names split across a line break.
+  const prose = /\.(md|txt)$/i.test(file);
+  const seen = new Set<string>();
+  for (let i = 0; i < lines.length; i++) {
+    const window = lines.slice(i, i + 3);
+    const passage = joinLines(window);
+    const found = [
+      ...(prose ? findPassageIssues(passage) : []),
+      ...findDenylistInPassage(passage, denylist),
+    ];
+    for (const f of found) {
+      const key = `${f.kind}:${f.text}:${Math.floor(i / 2)}`;
+      if (seen.has(key) || seen.has(`${f.kind}:${f.text}:${Math.floor(i / 2) - 1}`)) continue;
+      // Already reported from a single line?
+      if (
+        window.some((l) => findIssues(l, denylist, projectDomains).some((g) => g.kind === f.kind))
+      )
+        continue;
+      seen.add(key);
+      report(`${file}:${i + 1}`, f.kind, f.text);
     }
   }
 }
@@ -87,19 +104,37 @@ const base =
       : branch !== "main" && gitOk("rev-parse", "--verify", "-q", "main")
         ? "main"
         : null);
+if (!base && process.env.CI && branch !== "main") {
+  throw new Error(
+    "check:privacy: in CI the commits to compare against could not be found (fetch the full history)",
+  );
+}
 if (base) {
   const messages = git("log", `${base}..HEAD`, "--format=%h%x00%B%x01");
   for (const block of messages.split("\x01")) {
     const [hash, body] = block.split("\0");
     if (!hash || !body) continue;
-    body
-      .replace(/^Co-Authored-By:.*$/gim, "")
-      .split("\n")
-      .forEach((line) => {
-        for (const f of findIssues(line, denylist, projectDomains)) {
-          report(`commit ${hash.trim()}`, f.kind, f.text);
-        }
-      });
+    const msgLines = body.split("\n");
+    msgLines.forEach((line) => {
+      for (const f of findIssues(line, denylist, projectDomains)) {
+        report(`commit ${hash.trim()}`, f.kind, f.text);
+      }
+    });
+    for (let i = 0; i < msgLines.length; i++) {
+      const passage = joinLines(msgLines.slice(i, i + 3));
+      for (const f of [
+        ...findPassageIssues(passage),
+        ...findDenylistInPassage(passage, denylist),
+      ]) {
+        if (
+          msgLines
+            .slice(i, i + 3)
+            .some((l) => findIssues(l, denylist, projectDomains).some((g) => g.kind === f.kind))
+        )
+          continue;
+        report(`commit ${hash.trim()}`, f.kind, f.text);
+      }
+    }
   }
 }
 
