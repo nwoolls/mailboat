@@ -134,10 +134,10 @@ app full of made-up mail, with no Google connection.
 | Keys | Action |
 |---|---|
 | `j` / `k` | Next / previous conversation |
-| `↩` or `o` | Open the selected conversation |
+| `↩` or `o` | Preview the selected conversation |
 | `/` | Search |
 | <kbd>⌘K</kbd> | Command palette |
-| `g` then `i` / `s` / `t` / `d` / `a` | Go to Inbox / Starred / Sent / Drafts / All Mail |
+| `g` then `i` / `u` / `s` / `t` / `d` / `a` / `e` | Go to Inbox / Unread / Starred / Sent / Drafts / All Mail / Archive |
 | `e` | Archive |
 | `#` | Move to Trash |
 | `u` · `s` · `l` | Read/unread · star · labels |

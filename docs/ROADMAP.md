@@ -3717,7 +3717,8 @@ again until the next spike.*
       reader skipped it, so the boxes stayed white while their text was
       turned light. HTML color attributes now take hex without `#` too
       (a small share of cached HTML emails have one). Checked on the email
-      itself: before, the grey page and some white boxes were left out of the dark colors; now all the colored boxes adapt. *Owner to try:
+      itself: before, the grey page and some white boxes were left out
+      of the dark colors; now all the colored boxes adapt. *Owner to try:
       reopen it with Adapted colors*
 
 - [x] "Original colors" is remembered per sender *(owner, 2026-10-20:

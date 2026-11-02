@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
@@ -35,6 +36,9 @@ jobs:
       # owner's local denylist isn't available here; the written rule and
       # reviews cover names.
       - run: bun run check:privacy
+        env:
+          # The commits this push or pull request adds (messages are checked too).
+          CHECK_PRIVACY_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
       - run: bun run test
 
   rust:

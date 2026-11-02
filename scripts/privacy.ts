@@ -86,3 +86,31 @@ export function parseDenylist(content: string): string[] {
     .map((l) => l.trim())
     .filter((l) => l && !l.startsWith("#"));
 }
+
+/**
+ * Contextual rules for prose that wraps across lines: a count or a number
+ * word ("eight", "a few hundred") in front of emails, boxes or newsletters,
+ * in a passage that also talks about what was observed or measured. Used on
+ * a few consecutive lines at once (joined), not one line.
+ */
+const COUNT_WORDS =
+  "(?<![\\d,.])\\d{1,2}(?![\\d,])|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a few hundred|a few dozen|a dozen|dozens of|hundreds of|several hundred";
+const COUNTED = new RegExp(
+  `\\b(?:${COUNT_WORDS})\\s+(?:(?:cached|real|white|colou?red)\\s+)?(?:html\\s+)?(?:emails?|messages?|boxes|newsletters?)\\b`,
+  "i",
+);
+/** Talks about what was seen, tried or measured on real mail. */
+const OBSERVED = /\b(?:owner|render(?:ed|ing)|measured|observed|real mail|screenshot|trial)\b/i;
+/** A limit or design choice, not an observation ("newest 25 messages"). */
+const DESIGN =
+  /\b(?:newest|first|oldest|up to|at most|per|capped|cap|limit|no more than|max|every)\b/i;
+
+export function findPassageIssues(passage: string): Finding[] {
+  if (OPT_OUT.test(passage)) return [];
+  const text = passage.replace(/\s+/g, " ");
+  const m = COUNTED.exec(text);
+  if (!m || !OBSERVED.test(text)) return [];
+  const around = text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40);
+  if (DESIGN.test(around)) return [];
+  return [{ kind: "count of real mail", text: m[0] }];
+}

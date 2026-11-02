@@ -352,7 +352,8 @@ Decide these before the first public release, whatever the plan:
 
 ### Promotion (if wanted)
 
-1. Affiliate program: reward writers and YouTubers for the customers they bring. Affonso has an official
+1. Affiliate program: reward writers and YouTubers for the customers
+   they bring. Affonso has an official
    Polar integration.
 2. Setapp (Mac app bundle): paid by usage; a separate
    build with Setapp's licensing; Windows unconfirmed.

@@ -12,11 +12,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import brand from "../brand.json";
-import { findIssues, parseDenylist } from "./privacy";
+import { findIssues, findPassageIssues, parseDenylist } from "./privacy";
 
 /** Not text, generated, or the detector's own test inputs. */
 const SKIP =
-  /(^|\/)(bun\.lock|Cargo\.lock|LICENSE)$|\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp|svg)$|^docs\/images\/|^scripts\/privacy\.test\.ts$/i;
+  /(^|\/)(bun\.lock|Cargo\.lock|LICENSE)$|\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp)$|^docs\/images\/|^scripts\/privacy\.test\.ts$/i;
 
 /** A git command; a failure is an error, never an empty answer. */
 function git(...args: string[]): string {
@@ -52,11 +52,26 @@ for (const file of files) {
   } catch {
     continue; // deleted in the working tree, or not text
   }
-  content.split("\n").forEach((line, i) => {
+  const lines = content.split("\n");
+  lines.forEach((line, i) => {
     for (const f of findIssues(line, denylist, projectDomains)) {
       report(`${file}:${i + 1}`, f.kind, f.text);
     }
   });
+  // Prose wraps: look at three lines at a time for counts of real mail.
+  if (/\.(md|txt)$/i.test(file)) {
+    let lastAt = -9;
+    let lastText = "";
+    for (let i = 0; i < lines.length; i++) {
+      const found = findPassageIssues(lines.slice(i, i + 3).join(" "));
+      for (const f of found) {
+        if (f.text === lastText && i - lastAt < 3) continue;
+        lastAt = i;
+        lastText = f.text;
+        report(`${file}:${i + 1}`, f.kind, f.text);
+      }
+    }
+  }
 }
 
 // The messages of the commits this branch adds: against the upstream, else
@@ -64,7 +79,7 @@ for (const file of files) {
 // overrides). On main with nothing to compare, the history is left to review.
 const branch = git("rev-parse", "--abbrev-ref", "HEAD").trim();
 const base =
-  process.env.CHECK_PRIVACY_BASE ??
+  process.env.CHECK_PRIVACY_BASE?.replace(/^0+$/, "") ||
   (gitOk("rev-parse", "--verify", "-q", "@{upstream}")
     ? "@{upstream}"
     : gitOk("rev-parse", "--verify", "-q", "origin/main")

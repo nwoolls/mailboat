@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findIssues, parseDenylist } from "./privacy";
+import { findIssues, findPassageIssues, parseDenylist } from "./privacy";
 
 const kinds = (text: string, deny: string[] = []) => findIssues(text, deny).map((f) => f.kind);
 
@@ -48,6 +48,23 @@ describe("findIssues", () => {
       "email address",
     ]);
     expect(kinds("a@b.example, c@d.invalid, e@f.test, g@example.org")).toEqual([]);
+  });
+});
+
+describe("findPassageIssues", () => {
+  it("flags a count of emails or boxes in a passage about what was observed", () => {
+    expect(
+      findPassageIssues("Checked by rendering several newsletters in dark mode").map((f) => f.kind),
+    ).toEqual(["count of real mail"]);
+    expect(
+      findPassageIssues("a screenshot showed some white boxes\n left out").map((f) => f.kind),
+    ).toEqual(["count of real mail"]);
+    expect(findPassageIssues("the owner saw a few hundred emails changed").length).toBe(1);
+  });
+
+  it("leaves ordinary prose alone", () => {
+    expect(findPassageIssues("two emails in a thread are shown newest first")).toEqual([]);
+    expect(findPassageIssues("Checked by rendering several newsletters")).toEqual([]);
   });
 });
 
