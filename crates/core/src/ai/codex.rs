@@ -9,7 +9,7 @@
 //!
 //! Models come from Codex's own catalog (`codex debug models`). Quick
 //! requests (summaries, the writing assistant's chips) use the catalog's
-//! fast model with no reasoning, faster as the default model
+//! fast model with no reasoning, faster than the default model
 //! with the same results in testing; writing uses the owner's choice.
 
 use std::ops::ControlFlow;

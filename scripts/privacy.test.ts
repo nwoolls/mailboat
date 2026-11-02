@@ -92,7 +92,7 @@ describe("findPassageIssues", () => {
 
   it("flags a speed multiple and larger spelled-out totals in an observed passage", () => {
     expect(
-      findPassageIssues("In the owner's trial it was faster").map((f) => f.kind),
+      findPassageIssues("In the owner's trial it ran three times faster").map((f) => f.kind),
     ).toEqual(["multiple measured on real mail"]);
     expect(findPassageIssues("a screenshot of six thousand conversations").length).toBe(1);
     expect(findPassageIssues("the owner saw 11-20 of 132 rules").length).toBe(0);
