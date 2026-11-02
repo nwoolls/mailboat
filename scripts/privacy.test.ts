@@ -90,6 +90,20 @@ describe("findPassageIssues", () => {
     ).toBe(1);
   });
 
+  it("flags a speed multiple and larger spelled-out totals in an observed passage", () => {
+    expect(
+      findPassageIssues("In the owner's trial it was faster").map((f) => f.kind),
+    ).toEqual(["multiple measured on real mail"]);
+    expect(findPassageIssues("a screenshot of six thousand conversations").length).toBe(1);
+    expect(findPassageIssues("the owner saw 11-20 of 132 rules").length).toBe(0);
+  });
+
+  it("lets an exemption cover only its own line", () => {
+    const lines = ["nine newsletters seen in the owner's screenshot", "x privacy-ok: ex", "more"];
+    expect(findPassageIssues(joinLines(lines)).length).toBe(1);
+    expect(joinLines(["a", "b privacy-ok: why", "c"])).toBe("a c");
+  });
+
   it("leaves ordinary prose alone", () => {
     expect(findPassageIssues("two emails in a thread are shown newest first")).toEqual([]);
     expect(findPassageIssues("Checked by rendering several newsletters")).toEqual([]);

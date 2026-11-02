@@ -118,9 +118,9 @@ export function parseDenylist(content: string): string[] {
  * a few consecutive lines at once (joined), not one line.
  */
 const COUNT_WORDS =
-  "(?<![\\d,.])\\d{1,2}(?![\\d,])|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a few hundred|a few dozen|a dozen|dozens of|hundreds of|several hundred";
+  "(?<![\\d,.])\\d{1,2}(?![\\d,])|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|(?:one|two|three|four|five|six|seven|eight|nine|ten|twelve|twenty|thirty|forty|fifty) (?:hundred|thousand)|a few hundred|a few dozen|a dozen|dozens of|hundreds of|several hundred";
 const COUNTED = new RegExp(
-  `\\b(?:${COUNT_WORDS})\\s+(?:(?:cached|real|white|colou?red)\\s+)?(?:html\\s+)?(?:emails?|messages?|boxes|newsletters?|summaries)\\b`,
+  `\\b(?:${COUNT_WORDS})\\s+(?:(?:cached|real|white|colou?red|old|older|new)\\s+)?(?:html\\s+)?(?:emails?|messages?|boxes|newsletters?|summaries|conversations|threads|rules)\\b`,
   "i",
 );
 /** Talks about what was seen, tried or measured on real mail. */
@@ -130,14 +130,22 @@ const OBSERVED =
 const DESIGN =
   /\b(?:newest|first|oldest|up to|at most|per|capped|cap|limit|no more than|max|every)\b/i;
 
+/** A speed or size multiple taken from a real run ("twice as fast", "3x faster"). */
+const MULTIPLE =
+  /\b(?:twice|half|double|(?:\d+(?:\.\d+)?|two|three|four|five|ten) times|\d+(?:\.\d+)?x)\s+(?:as\s+)?(?:fast|faster|slow|slower|wide|wider|large|larger|long|longer)\b/i;
+
 export function findPassageIssues(passage: string): Finding[] {
-  if (OPT_OUT.test(passage)) return [];
   const text = passage.replace(/\s+/g, " ");
+  if (!OBSERVED.test(text)) return [];
+  const found: Finding[] = [];
   const m = COUNTED.exec(text);
-  if (!m || !OBSERVED.test(text)) return [];
-  const around = text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40);
-  if (DESIGN.test(around)) return [];
-  return [{ kind: "count of real mail", text: m[0] }];
+  if (m) {
+    const around = text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40);
+    if (!DESIGN.test(around)) found.push({ kind: "count of real mail", text: m[0] });
+  }
+  const x = MULTIPLE.exec(text);
+  if (x) found.push({ kind: "multiple measured on real mail", text: x[0] });
+  return found;
 }
 
 /** Markdown and comment markers that start a wrapped line of prose. */
@@ -148,7 +156,9 @@ const LEAD = /^\s*(?:\/\/[/!]?|\*|#+|-|>|\|)\s?/;
  * dropped), so a name or a number split by a line wrap is still seen.
  */
 export function joinLines(lines: string[]): string {
+  // A line with an exemption is left out, so it can't hide its neighbours.
   return lines
+    .filter((l) => !OPT_OUT.test(l))
     .map((l) => l.replace(LEAD, ""))
     .join(" ")
     .replace(/\s+/g, " ");
@@ -156,7 +166,6 @@ export function joinLines(lines: string[]): string {
 
 /** Denylisted terms in a joined passage (multiword terms survive a wrap). */
 export function findDenylistInPassage(passage: string, denylist: string[]): Finding[] {
-  if (OPT_OUT.test(passage)) return [];
   const lower = passage.toLowerCase();
   return denylist
     .filter((term) => term && lower.includes(term.toLowerCase()))
