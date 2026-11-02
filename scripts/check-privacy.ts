@@ -135,18 +135,44 @@ if (base) {
   let commit = "";
   let file = "";
   let skip = false;
+  let added: string[] = [];
+  // A count or a name split over consecutive added lines is joined, like the
+  // final files are (three lines at a time).
+  const flush = () => {
+    for (let i = 0; i < added.length; i++) {
+      const window = added.slice(i, i + 3);
+      const passage = joinLines(window);
+      for (const f of [
+        ...findPassageIssues(passage),
+        ...findDenylistInPassage(passage, denylist),
+      ]) {
+        if (
+          window.some((l) => findIssues(l, denylist, projectDomains).some((g) => g.kind === f.kind))
+        )
+          continue;
+        report(`commit ${commit} ${file}`, f.kind, f.text);
+      }
+    }
+    added = [];
+  };
   for (const line of patch.split("\n")) {
     if (line.startsWith("@@commit ")) {
+      flush();
       commit = line.slice(9).trim();
     } else if (line.startsWith("+++ ")) {
+      flush();
       file = line === "+++ /dev/null" ? "" : line.slice(6);
       skip = !file || SKIP.test(file);
+    } else if (line.startsWith("@@ ")) {
+      flush();
     } else if (line.startsWith("+") && !skip) {
+      added.push(line.slice(1));
       for (const f of findIssues(line.slice(1), denylist, projectDomains)) {
         report(`commit ${commit} ${file}`, f.kind, f.text);
       }
     }
   }
+  flush();
   const messages = git("log", `${base}..HEAD`, "--format=%h%x00%B%x01");
   for (const block of messages.split("\x01")) {
     const [hash, body] = block.split("\0");
