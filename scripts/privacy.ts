@@ -46,6 +46,18 @@ const MEASUREMENTS: [string, RegExp][] = [
  */
 const OPT_OUT = /privacy-ok:\s*\S/;
 
+/**
+ * A path into someone's home folder, or the owner's development layout. The
+ * placeholder users below are the ones the tests and docs use; any other name
+ * is a real account on a real machine.
+ */
+const FAKE_USER = "you|someone|me|a|x|user|username|name|shared|public|default|runner";
+const LOCAL_PATHS: RegExp[] = [
+  new RegExp(`(?:/Users|/home)/(?!(?:${FAKE_USER})\\b)[A-Za-z][\\w.-]*`, "i"),
+  new RegExp(`[A-Za-z]:\\\\Users\\\\(?!(?:${FAKE_USER})\\b)[\\w.-]+`, "i"),
+  /~\/src\//,
+];
+
 export function findIssues(
   line: string,
   denylist: string[] = [],
@@ -77,6 +89,10 @@ export function findIssues(
   for (const [kind, re] of MEASUREMENTS) {
     const m = line.match(re);
     if (m) found.push({ kind, text: m[0] });
+  }
+  for (const re of LOCAL_PATHS) {
+    const m = line.match(re);
+    if (m) found.push({ kind: "local path", text: m[0] });
   }
   const lower = line.toLowerCase();
   for (const term of denylist) {

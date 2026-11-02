@@ -32,6 +32,16 @@ describe("findIssues", () => {
     expect(kinds("call 2125550123")).toEqual([]);
   });
 
+  it("flags a path into a real home folder or the owner's dev layout", () => {
+    expect(kinds("see /Users/jdoe/Library/Logs")).toEqual(["local path"]);
+    expect(kinds("under /home/jdoe/.config")).toEqual(["local path"]);
+    expect(kinds("C:\\Users\\jdoe\\AppData")).toEqual(["local path"]);
+    expect(kinds("the folder ~/src/project stays")).toEqual(["local path"]);
+    expect(kinds("/Users/someone/x, /Users/Shared, C:\\Users\\me\\a, /home/runner/work")).toEqual(
+      [],
+    );
+  });
+
   it("flags measurements of a real mailbox", () => {
     expect(kinds("Of the 23,000 cached HTML emails, most adapt")).toEqual([
       "real-mailbox measurement",
