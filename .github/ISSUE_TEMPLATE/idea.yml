@@ -6,4 +6,5 @@ body:
     id: idea
     attributes:
       label: What would you like, and what problem does it solve?
+      description: "Describe it in general terms with made-up names and addresses: no real senders, people, companies, subjects, message text, counts or screenshots of your own mail (demo mode screenshots are fine)."
     validations: { required: true }

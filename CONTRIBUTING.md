@@ -8,7 +8,9 @@ Open an issue using one of the forms. For a bug, the version, whether you're on
 Mac or Windows, and the steps to see it help most. Please never paste real
 email or tokens, and describe a problem in general terms (made-up names and
 addresses are enough to show it); the sync log (`sync.log`) holds no email content, but it does name
-accounts and activity, so look it over and attach only the relevant lines.
+accounts and activity. Look it over first and remove account names and
+addresses, counts, timings and timestamps, file paths and any error text
+that identifies mail, then attach only the relevant lines.
 
 ## Code: not accepted
 

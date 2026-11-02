@@ -30,6 +30,7 @@ describe("findIssues", () => {
     expect(kinds("call 2128675309 today")).toEqual(["phone number"]);
     expect(kinds("const MAX = 4294967296")).toEqual([]);
     expect(kinds("call 2125550123")).toEqual([]);
+    expect(kinds("phone_number: 2128675309")).toEqual(["phone number"]);
   });
 
   it("flags a path into a real home folder or the owner's dev layout", () => {
@@ -37,6 +38,8 @@ describe("findIssues", () => {
     expect(kinds("under /home/jdoe/.config")).toEqual(["local path"]);
     expect(kinds("C:\\Users\\jdoe\\AppData")).toEqual(["local path"]);
     expect(kinds("the folder ~/src/project stays")).toEqual(["local path"]);
+    expect(kinds("/Users/someone-else/Documents")).toEqual(["local path"]);
+    expect(kinds("C:\\\\Users\\\\jdoe\\\\AppData")).toEqual(["local path"]);
     expect(kinds("/Users/someone/x, /Users/Shared, C:\\Users\\me\\a, /home/runner/work")).toEqual(
       [],
     );

@@ -53,8 +53,8 @@ const OPT_OUT = /privacy-ok:\s*\S/;
  */
 const FAKE_USER = "you|someone|me|a|x|user|username|name|shared|public|default|runner";
 const LOCAL_PATHS: RegExp[] = [
-  new RegExp(`(?:/Users|/home)/(?!(?:${FAKE_USER})\\b)[A-Za-z][\\w.-]*`, "i"),
-  new RegExp(`[A-Za-z]:\\\\Users\\\\(?!(?:${FAKE_USER})\\b)[\\w.-]+`, "i"),
+  new RegExp(`(?:/Users|/home)/(?!(?:${FAKE_USER})(?![\\w.-]))[A-Za-z][\\w.-]*`, "i"),
+  new RegExp(`[A-Za-z]:\\\\{1,2}Users\\\\{1,2}(?!(?:${FAKE_USER})(?![\\w.-]))[\\w.-]+`, "i"),
   /~\/src\//,
 ];
 
@@ -80,7 +80,7 @@ export function findIssues(
     if (/[-. ]555[-. ]/.test(m[0])) continue;
     found.push({ kind: "phone number", text: m[0] });
   }
-  for (const m of /\b(?:phone|tel|call|cell|mobile|fax|sms|text me)\b/i.test(line)
+  for (const m of /(?:^|[^a-z])(?:phone|tel|call|cell|mobile|fax|sms|text me)(?![a-z])/i.test(line)
     ? line.matchAll(PHONE_PLAIN)
     : []) {
     if (/^(?:\+?1)?\d{3}555\d{4}$/.test(m[0])) continue;

@@ -24,4 +24,4 @@ body:
     id: log
     attributes:
       label: Sync log (optional)
-      description: "Only the relevant lines of `sync.log`, after looking them over. It holds no email content, but it does name accounts and activity."
+      description: "Only the relevant lines of `sync.log`, after removing account names and addresses, counts, timings and timestamps, file paths and any error text that identifies mail. It holds no email content, but it does name accounts and activity."
