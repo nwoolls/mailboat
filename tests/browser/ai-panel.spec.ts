@@ -7,13 +7,15 @@ import { expect, type Page, test } from "@playwright/test";
  * opens and closes (it used to creep under the pinned Send bar).
  */
 
-type Samples = { translate: number[]; formX: number[]; done: boolean };
+type Samples = { translate: number[]; formX: number[]; done: boolean; read?: () => void };
 
 /**
- * Starts recording, every frame, the card's nudge and the form's left edge.
- * It runs until `stopSampling`, not for a fixed time: on a slow machine (the
- * first test of a run, or CI) the animation can start late, and a fixed
- * window missed it.
+ * Starts recording the card's nudge and the form's left edge: every frame,
+ * until `stopSampling` (not for a fixed time: on a slow machine the
+ * animation can start late). A slow machine also paints few frames, so
+ * frames alone can miss the peak of the nudge; when the nudge starts, it is
+ * stepped through from start to end, and read at every step, whatever the
+ * frame rate.
  */
 async function startSampling(page: Page) {
   await page.evaluate(() => {
@@ -22,10 +24,30 @@ async function startSampling(page: Page) {
     const form = card.querySelector<HTMLElement>('form[aria-label="New message"]')!;
     const out: Samples = { translate: [], formX: [], done: false };
     (window as unknown as { sampled: Samples }).sampled = out;
-    const tick = () => {
+    const read = () => {
       const t = getComputedStyle(card).translate;
       out.translate.push(t === "none" ? 0 : parseFloat(t));
       out.formX.push(form.getBoundingClientRect().left);
+    };
+    out.read = read;
+    card.addEventListener("animationstart", (e) => {
+      if (!e.animationName.startsWith("nudge-")) return;
+      const nudge = card
+        .getAnimations()
+        .find((a) => a instanceof CSSAnimation && a.animationName === e.animationName);
+      if (!nudge) return;
+      const was = nudge.currentTime;
+      const total = Number(nudge.effect!.getComputedTiming().endTime);
+      nudge.pause();
+      for (let i = 0; i <= 40; i++) {
+        nudge.currentTime = (total * i) / 40;
+        read();
+      }
+      nudge.currentTime = was;
+      nudge.play();
+    });
+    const tick = () => {
+      read();
       if (!out.done) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -41,8 +63,10 @@ async function stopSampling(page: Page) {
         const out = (window as unknown as { sampled: Samples }).sampled;
         requestAnimationFrame(() =>
           requestAnimationFrame(() => {
+            // The end state, read on purpose, not left to the last frame.
+            out.read?.();
             out.done = true;
-            resolve(out);
+            resolve({ translate: out.translate, formX: out.formX, done: true });
           }),
         );
       }),
