@@ -3344,12 +3344,13 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       Kept as a CI check afterwards
       *Done 2026-10-31: `deny.toml` (allow-list of GPL-3.0-compatible licences, advisories, sources) passes; it found and fixed advisories in `ammonia` (the email sanitizer), `rustls`, `rustls-webpki` and `pulldown-cmark` by updating them. `bun audit --prod` is clean. Both run in `.github/workflows/audit.yml`, untested in Actions until the repository exists.*
 - [x] Publish a clean history *(2026-10-31)*: the history of `main` was cleaned and checked, images included, and the original private repository is kept offline as the archive. The README says that commit hashes quoted in older docs come from it
-- [ ] Push the clean history to the new GitHub repository (owner's OK
+- [x] Push the clean history to the new GitHub repository (owner's OK
       first), then make it the working repository
+      *Done 2026-11-02: new repository, only `main` pushed (history verified from a clean transport clone), then made public.*
 
 ### The README
 
-- [ ] A README that sells it, written for people, not agents.
+- [x] A README that sells it, written for people, not agents.
       *Written 2026-11-01 from a review of well-regarded READMEs (Spacedrive,
       Mailspring, Zero, Cap, lazygit): header and badges, hero screenshot in
       light and dark (captured from demo mode), two feature shots, privacy,
@@ -3380,56 +3381,75 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
         diagram (GitHub draws Mermaid), and building from source
       - FAQ: why your own Google credentials, is it safe, Windows,
         Linux, what's next (link to the roadmap)
-- [ ] Repository dressing: description, website link, topics (gmail,
-      email-client, tauri, rust, mcp…), a social preview image (what
-      shows when the link is shared), pinned on the owner's profile
+- [x] Repository dressing: description, topics (gmail, email-client,
+      tauri, rust, mcp…) and a social preview image (what shows when the
+      link is shared). *Done 2026-11-02.*
+- [ ] Website link on the repository, and the repository pinned on the
+      owner's profile (waits for the website, Milestone 16)
 
 ### Pipelines (GitHub Actions, free for public repositories)
 
-*Written 2026-10-31, not yet run (no repository on GitHub yet), so the
-boxes below stay open until a first pull request shows them green:
-`.github/workflows/` (`ci`, `build`, `audit`, `codeql`, `scorecard`) and
-`.github/dependabot.yml`. Actions are pinned to commit hashes with the
-version in a comment; each workflow starts from read-only permissions.
-CI leaves out `check:codex`, the monthly Codex review reminder, which is
-for the owner's machine.*
+*Written 2026-10-31 and first run on GitHub on 2026-11-02, when pull
+requests showed them green: `.github/workflows/` (`ci`, `build`, `audit`,
+`codeql`, `scorecard`) and `.github/dependabot.yml`. Actions are pinned
+to commit hashes with the version in a comment; each workflow starts
+from read-only permissions. CI leaves out `check:codex`, the monthly
+Codex review reminder, which is for the owner's machine. The unsigned
+builds are attached to each run as artifacts.*
 
-- [ ] Checks on every pull request and push to `main`: `bun run check`
+- [x] Checks on every pull request and push to `main`: `bun run check`
       (format, lint, types, Vitest, Rust format, clippy, tests,
       bindings up to date) on macOS and Windows runners, plus the
       Playwright browser tests (WebKit) on macOS
-- [ ] Unsigned test builds attached to each pull request, so a change
+      *Done 2026-11-02, with two differences on Windows: the app crate's
+      own tests are left out (their binary doesn't start on the runner)
+      and six tests that assume Unix are skipped. The browser tests run
+      WebKit and Chromium (Chromium for the Windows-only ones).*
+- [x] Unsigned test builds attached to each pull request, so a change
       can be tried before it's merged
-- [ ] `cargo-deny` (licences, known vulnerable crates) and
+- [x] `cargo-deny` (licences, known vulnerable crates) and
       `bun audit` for the JavaScript packages
-- [ ] Actions pinned to exact versions, with the least permissions
+- [x] Actions pinned to exact versions, with the least permissions
       each needs (a public repository's workflows are an attack target)
+      *Also enforced by the repository setting "Require actions to be pinned to a full-length commit SHA".*
 - [ ] The release pipeline itself is Milestone 15
 
 ### Reviews and protection
 
-- [ ] Work moves to pull requests: agents push a branch and open a
+- [x] Work moves to pull requests: agents push a branch and open a
       pull request instead of committing to `main`; it merges once the
       checks pass and the review comments are dealt with. CLAUDE.md
       gets the new workflow
-      *2026-11-01: the workflow is written into `AGENTS.md` (applies once
-      the ruleset below is on); `.github/copilot-instructions.md` tells
-      Copilot what to check. The ruleset waits for the repository to be
-      public.*
-- [ ] A ruleset on `main`: pull request and passing checks required, no
+      *2026-11-01: the workflow is written into `AGENTS.md`, and
+      `.github/copilot-instructions.md` tells Copilot what to check.
+      In use since 2026-11-02, once the ruleset below was on (four pull
+      requests merged, Dependabot's included).*
+- [x] A ruleset on `main`: pull request and passing checks required, no
       force pushes; the owner can bypass in an emergency
-- [ ] Copilot code review on every pull request, requested
-      automatically by the ruleset. Likely needs a paid Copilot plan
-      (Pro) with a monthly review allowance; to
-      confirm when setting up. Optionally Claude's GitHub Action as a
-      second reviewer, on the owner's Claude subscription
-- [ ] Code scanning with CodeQL (Rust and TypeScript), with Copilot
+      *Done 2026-11-02, imported from `docs/rulesets/main.json`. Review conversations must be resolved before a merge.*
+- [x] Copilot code review on every pull request, requested
+      automatically by the ruleset
+      *Done 2026-11-02, on the owner's paid Copilot plan: it reviews each
+      pull request, and its comments have found real problems. It
+      sometimes says it could not finish at the selected tier (plan
+      limits).*
+- [ ] Optional: Claude's GitHub Action as a second reviewer, on the
+      owner's Claude subscription
+- [x] Code scanning with CodeQL (Rust and TypeScript), with Copilot
       Autofix suggestions for what it finds
-- [ ] Secret scanning with push protection (blocks a commit that
+      *Running on pull requests since 2026-11-02, with Copilot Autofix on. The first findings still need a look: see the next item.*
+- [ ] Look through the first code-scanning findings (CodeQL on the Rust
+      and TypeScript code, and Scorecard's repository checks): fix what is
+      real, and dismiss the false positives one by one with a reason
+      (most are "cleartext" rules on code that talks to Google over HTTPS,
+      and on tests that use a local mock server). Add the Scorecard badge
+      to the README once its score is worth showing
+- [x] Secret scanning with push protection (blocks a commit that
       contains a key or token)
-- [ ] Dependabot: security alerts and fixes, and weekly grouped
+- [x] Dependabot: security alerts and fixes, and weekly grouped
       version updates for Cargo, Bun and GitHub Actions (grouped, so
       it's one pull request a week, not dozens)
+      *Done 2026-11-02; its first two pull requests were merged. One alert (a Linux-only GTK dependency pinned by Tauri) cannot be fixed by an update.*
 - [ ] OpenSSF Scorecard: a security health score for the repository,
       shown as a badge
 
@@ -3441,10 +3461,11 @@ for the owner's machine.*
       the licence can change later)
 - [x] Issue forms for bugs (version, Mac or Windows, steps) and ideas;
       labels; a pull request template for the owner's own PRs
-      *Written; labels to be created with the repository.*
+      *Done 2026-11-02: the forms use the repository's `bug` and
+      `enhancement` labels (GitHub's standard ones).*
 - [x] `SECURITY.md` with GitHub's private vulnerability reporting
       turned on, and the domain's email as a fallback
-      *File written; turn private reporting on in the repository's settings (owner).*
+      *Done 2026-11-02: private vulnerability reporting is on.*
 - [ ] GitHub Discussions for questions and ideas, so users can help
       each other and issues stay for bugs (optional; can be switched
       off if it becomes a chore)
