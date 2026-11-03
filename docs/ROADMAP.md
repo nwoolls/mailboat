@@ -3389,13 +3389,13 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
 
 ### Pipelines (GitHub Actions, free for public repositories)
 
-*Written 2026-10-31, not yet run (no repository on GitHub yet), so the
-boxes below stay open until a first pull request shows them green:
-`.github/workflows/` (`ci`, `build`, `audit`, `codeql`, `scorecard`) and
-`.github/dependabot.yml`. Actions are pinned to commit hashes with the
-version in a comment; each workflow starts from read-only permissions.
-CI leaves out `check:codex`, the monthly Codex review reminder, which is
-for the owner's machine.*
+*Written 2026-10-31 and first run on GitHub on 2026-11-02, when pull
+requests showed them green: `.github/workflows/` (`ci`, `build`, `audit`,
+`codeql`, `scorecard`) and `.github/dependabot.yml`. Actions are pinned
+to commit hashes with the version in a comment; each workflow starts
+from read-only permissions. CI leaves out `check:codex`, the monthly
+Codex review reminder, which is for the owner's machine. The unsigned
+builds are attached to each run as artifacts.*
 
 - [x] Checks on every pull request and push to `main`: `bun run check`
       (format, lint, types, Vitest, Rust format, clippy, tests,
