@@ -3381,10 +3381,11 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
         diagram (GitHub draws Mermaid), and building from source
       - FAQ: why your own Google credentials, is it safe, Windows,
         Linux, what's next (link to the roadmap)
-- [x] Repository dressing: description, website link, topics (gmail,
-      email-client, tauri, rust, mcp…), a social preview image (what
-      shows when the link is shared), pinned on the owner's profile
-      *Done 2026-11-02: description, topics and social preview set. Pinning on the owner's profile and a website link wait for the website (Milestone 16).*
+- [x] Repository dressing: description, topics (gmail, email-client,
+      tauri, rust, mcp…) and a social preview image (what shows when the
+      link is shared). *Done 2026-11-02.*
+- [ ] Website link on the repository, and the repository pinned on the
+      owner's profile (waits for the website, Milestone 16)
 
 ### Pipelines (GitHub Actions, free for public repositories)
 
@@ -3400,6 +3401,10 @@ for the owner's machine.*
       (format, lint, types, Vitest, Rust format, clippy, tests,
       bindings up to date) on macOS and Windows runners, plus the
       Playwright browser tests (WebKit) on macOS
+      *Done 2026-11-02, with two differences on Windows: the app crate's
+      own tests are left out (their binary doesn't start on the runner)
+      and six tests that assume Unix are skipped. The browser tests run
+      WebKit and Chromium (Chromium for the Windows-only ones).*
 - [x] Unsigned test builds attached to each pull request, so a change
       can be tried before it's merged
 - [x] `cargo-deny` (licences, known vulnerable crates) and
