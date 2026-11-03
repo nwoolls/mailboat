@@ -65,12 +65,20 @@ async function startSampling(page: Page) {
 }
 
 /**
- * Waits until no animation that can finish is still running. Endless ones
- * (a spinner, the sync ring) never will, and must not hold the test up.
+ * Waits until every animation that can finish has finished. Endless ones
+ * (a spinner, the sync ring) never will, and are left out; a finished one
+ * that still holds its end state (fill forwards) counts as done.
  */
 async function animationsDone(page: Page) {
   await page.waitForFunction(() =>
-    document.getAnimations().every((a) => a.effect?.getComputedTiming().iterations === Infinity),
+    document
+      .getAnimations()
+      .every(
+        (a) =>
+          a.effect?.getComputedTiming().iterations === Infinity ||
+          a.playState === "finished" ||
+          a.playState === "idle",
+      ),
   );
 }
 
