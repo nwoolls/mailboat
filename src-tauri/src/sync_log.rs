@@ -26,15 +26,16 @@ impl SyncLog {
         }
         let mut options = OpenOptions::new();
         options.create(true).append(true);
-        // Only this user reads it (an older log keeps the mode it had, so
-        // it is set after opening too).
+        // Only this user reads it: new, and (below) an older log too, which
+        // keeps the mode it had until it is set.
         #[cfg(unix)]
-        {
-            use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-            options.mode(0o600);
+        std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+        let file = options.open(&path).ok();
+        #[cfg(unix)]
+        if file.is_some() {
+            use std::os::unix::fs::PermissionsExt;
             let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
         }
-        let file = options.open(&path).ok();
         Self {
             file: Mutex::new(file),
             path,

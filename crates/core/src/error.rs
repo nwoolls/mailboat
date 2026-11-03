@@ -64,15 +64,19 @@ impl CoreError {
 
     /// The error as the sync log may show it. The log never carries what
     /// Google or the mail wrote: an API answer shows only its status (the
-    /// retry lines already log Google's reason codes), and errors with
-    /// free text show only their kind. The full message is for the person
-    /// using the app, in the window.
+    /// retry lines already log Google's reason codes), and the errors that
+    /// can hold free text (a 404's message among them) show only their
+    /// kind. What stays whole is written by this app: database and
+    /// keychain errors, a transport error (its URL already removed), fixed
+    /// sign-in and rate-limit texts (reason codes only). The full message
+    /// is for the person using the app, in the window.
     pub fn for_log(&self) -> String {
         match self {
             CoreError::Api { status, .. } => format!("Google API error {status}"),
-            CoreError::Invalid(_) | CoreError::Other(_) | CoreError::Ai(_) => {
-                format!("{} error", self.kind())
-            }
+            CoreError::NotFound(_)
+            | CoreError::Invalid(_)
+            | CoreError::Other(_)
+            | CoreError::Ai(_) => format!("{} error", self.kind()),
             other => other.to_string(),
         }
     }
@@ -120,6 +124,8 @@ mod tests {
     fn free_text_errors_show_only_their_kind_and_fixed_ones_keep_their_text() {
         for e in [
             CoreError::Invalid("bad address ada@example.com".into()),
+            // A Gmail 404's message, as the client builds it.
+            CoreError::NotFound("No message ada@example.com madeupsecret".into()),
             CoreError::Other("made up text".into()),
             CoreError::Ai("made up answer".into()),
         ] {
@@ -134,8 +140,8 @@ mod tests {
             "sign-in required: sign-in timed out"
         );
         assert_eq!(
-            CoreError::NotFound("thread 12".into()).for_log(),
-            "not found: thread 12"
+            CoreError::RateLimited("[rateLimitExceeded]".into()).for_log(),
+            "rate limited by Google: [rateLimitExceeded]"
         );
     }
 }
