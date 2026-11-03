@@ -30,20 +30,31 @@ export function InlineReveal({ open, children }: { open: boolean; children: Reac
     const hold = () => {
       scroller.scrollTop += reply.getBoundingClientRect().top - where;
     };
-    // Every frame of the animation (a resize alone can miss the last one).
+    // Every frame of the animation (a resize alone can miss the last one),
+    // until the panel's own animation has really finished. A timer alone
+    // ended the correction too soon on a slow machine, where the page can
+    // stall and paint the end of the animation late: the reply then stayed
+    // where the last painted frame had left it.
+    let ticks = 0;
+    let finished = 0;
     let frame = requestAnimationFrame(function tick() {
       hold();
-      frame = requestAnimationFrame(tick);
+      ticks += 1;
+      // A few frames of grace for the animation to start; then two frames
+      // with nothing running.
+      finished = ticks > 3 && el.getAnimations().length === 0 ? finished + 1 : 0;
+      if (finished < 2) frame = requestAnimationFrame(tick);
     });
-    // Until the panel would be gone (ReplyArea keeps it REVEAL_MS + 100).
-    const stop = window.setTimeout(() => cancelAnimationFrame(frame), REVEAL_MS + 100);
+    // A backstop, before ReplyArea removes the panel.
+    const stop = window.setTimeout(() => cancelAnimationFrame(frame), REVEAL_PRESENT_MS - 100);
     return () => {
       cancelAnimationFrame(frame);
       window.clearTimeout(stop);
     };
   }, [open]);
   return (
-    <div ref={ref} className="inline-reveal grid" data-open={open || undefined}>
+    // inert while it closes: it stays drawn for a moment, but can't be used.
+    <div ref={ref} className="inline-reveal grid" data-open={open || undefined} inert={!open}>
       <div className="min-h-0 overflow-hidden">{children}</div>
     </div>
   );
@@ -51,3 +62,10 @@ export function InlineReveal({ open, children }: { open: boolean; children: Reac
 
 /** `.inline-reveal`'s duration in index.css. */
 export const REVEAL_MS = 180;
+
+/**
+ * How long a closing panel stays drawn: well past its animation, since a
+ * slow machine can paint the animation late (and the reply is only held
+ * in place while the panel is there).
+ */
+export const REVEAL_PRESENT_MS = 800;

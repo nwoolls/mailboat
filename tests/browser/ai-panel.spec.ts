@@ -7,26 +7,45 @@ import { expect, type Page, test } from "@playwright/test";
  * opens and closes (it used to creep under the pinned Send bar).
  */
 
-/** Samples, every frame for `ms`, the card's nudge and the form's left edge. */
-async function sampleCard(page: Page, ms: number) {
+type Samples = { translate: number[]; formX: number[]; done: boolean };
+
+/**
+ * Starts recording, every frame, the card's nudge and the form's left edge.
+ * It runs until `stopSampling`, not for a fixed time: on a slow machine (the
+ * first test of a run, or CI) the animation can start late, and a fixed
+ * window missed it.
+ */
+async function startSampling(page: Page) {
+  await page.evaluate(() => {
+    const card = document.querySelector<HTMLElement>("section.compose-card")!;
+    // The message's form (the panel has a form of its own, the chat box).
+    const form = card.querySelector<HTMLElement>('form[aria-label="New message"]')!;
+    const out: Samples = { translate: [], formX: [], done: false };
+    (window as unknown as { sampled: Samples }).sampled = out;
+    const tick = () => {
+      const t = getComputedStyle(card).translate;
+      out.translate.push(t === "none" ? 0 : parseFloat(t));
+      out.formX.push(form.getBoundingClientRect().left);
+      if (!out.done) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+/** Waits for every animation to finish (plus a couple of frames), then stops. */
+async function stopSampling(page: Page) {
+  await page.waitForFunction(() => document.getAnimations().length === 0);
   return page.evaluate(
-    (duration) =>
-      new Promise<{ translate: number[]; formX: number[] }>((resolve) => {
-        const card = document.querySelector<HTMLElement>("section.compose-card")!;
-        // The message's form (the panel has a form of its own, the chat box).
-        const form = card.querySelector<HTMLElement>('form[aria-label="New message"]')!;
-        const out = { translate: [] as number[], formX: [] as number[] };
-        const end = performance.now() + duration;
-        const tick = () => {
-          const t = getComputedStyle(card).translate;
-          out.translate.push(t === "none" ? 0 : parseFloat(t));
-          out.formX.push(form.getBoundingClientRect().left);
-          if (performance.now() < end) requestAnimationFrame(tick);
-          else resolve(out);
-        };
-        requestAnimationFrame(tick);
+    () =>
+      new Promise<Samples>((resolve) => {
+        const out = (window as unknown as { sampled: Samples }).sampled;
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            out.done = true;
+            resolve(out);
+          }),
+        );
       }),
-    ms,
   );
 }
 
@@ -45,12 +64,13 @@ for (const [spot, opensOn] of [
     const form = page.locator('section.compose-card form[aria-label="New message"]');
     await expect(form).toBeVisible();
     // Let the card's own entrance settle.
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => document.getAnimations().length === 0);
     const before = (await form.boundingBox())!;
 
-    const opening = sampleCard(page, 700);
+    await startSampling(page);
     await toggleAssistant(page);
-    const open = await opening;
+    await expect(page.getByRole("complementary", { name: "Write with AI" })).toBeVisible();
+    const open = await stopSampling(page);
     const panel = (await page.getByRole("complementary", { name: "Write with AI" }).boundingBox())!;
     if (opensOn === "left") expect(panel.x).toBeLessThan(before.x);
     else expect(panel.x).toBeGreaterThan(before.x);
@@ -62,16 +82,16 @@ for (const [spot, opensOn] of [
     for (const x of open.formX) expect(Math.abs(x - before.x)).toBeLessThanOrEqual(16);
     expect(Math.abs(open.formX.at(-1)! - before.x)).toBeLessThan(0.5);
 
-    const closing = sampleCard(page, 700);
+    await startSampling(page);
     await toggleAssistant(page);
-    const closed = await closing;
+    await expect(page.getByRole("complementary", { name: "Write with AI" })).toHaveCount(0);
+    const closed = await stopSampling(page);
     const pulled =
       opensOn === "left" ? Math.max(...closed.translate) : Math.min(...closed.translate);
     expect(Math.abs(pulled)).toBeGreaterThan(6);
     expect(Math.sign(pulled)).toBe(opensOn === "left" ? 1 : -1);
     for (const x of closed.formX) expect(Math.abs(x - before.x)).toBeLessThanOrEqual(16);
     expect(Math.abs(closed.formX.at(-1)! - before.x)).toBeLessThan(0.5);
-    await expect(page.getByRole("complementary", { name: "Write with AI" })).toHaveCount(0);
   });
 }
 
@@ -129,5 +149,36 @@ test("inline reply: opening and closing the panel many times never moves the rep
         timeout: 3000,
       })
       .toBeLessThan(1);
+  }
+});
+
+test("inline reply: stays put when the page stalls mid-animation", async ({ page }) => {
+  // A slow machine (CI): the page can't paint for a while, so the end of the
+  // panel's animation is painted late. The reply used to end up displaced
+  // by the part of the animation the correction had already given up on.
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await page.getByRole("button", { name: "Reply", exact: true }).click();
+  const reply = page.locator('section[aria-label="Reply"] form[aria-label="Reply"]');
+  await expect(reply).toBeVisible();
+  await page.locator(".reader-scroll").evaluate((el) => (el.scrollTop = el.scrollHeight));
+  await page.waitForTimeout(1800);
+  const top = async () => (await reply.boundingBox())!.y;
+  const start = await top();
+
+  for (let i = 0; i < 4; i++) {
+    // oxlint-disable-next-line no-await-in-loop -- one toggle after another, on purpose
+    await page.evaluate(() => {
+      document.querySelector<HTMLButtonElement>('button[aria-label="Write with AI"]')!.click();
+      setTimeout(() => {
+        const end = performance.now() + 220;
+        while (performance.now() < end);
+      }, 90);
+    });
+    // Each toggle settles before the next (not measured at once: before the
+    // click is applied, the reply is still where it started).
+    // oxlint-disable-next-line no-await-in-loop -- measured after each toggle
+    await page.waitForTimeout(1500);
+    // oxlint-disable-next-line no-await-in-loop -- measured after each toggle
+    expect(Math.abs((await top()) - start), `after toggle ${i + 1}`).toBeLessThan(1);
   }
 });
