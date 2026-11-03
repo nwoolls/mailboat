@@ -14,10 +14,12 @@ describe("findIssues", () => {
     expect(kinds("ann@x.example, bob@work.example.com, me@gmail.com, a@example.com")).toEqual([]);
     expect(findIssues("contact@project.app", [], ["project.app"])).toEqual([]);
     expect(kinds("Co-author noreply@anthropic.com, bot 1+x@users.noreply.github.com")).toEqual([]);
+    expect(kinds("Signed-off-by: dependabot[bot] <support@github.com>")).toEqual([]);
   });
 
   it("flags an address at a real domain, or a stranger's Gmail address", () => {
     expect(kinds("write to jane@company.com")).toEqual(["email address"]);
+    expect(kinds("Write to help@github.com")).toEqual(["email address"]);
     expect(kinds("jane.doe@gmail.com")).toEqual(["email address"]);
   });
 
