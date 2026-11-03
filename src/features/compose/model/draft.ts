@@ -135,7 +135,13 @@ export function trimSignature(html: string): string {
   return html.trim().replace(emptyTail, "");
 }
 
-/** Rough plain text of an HTML fragment, for the text copy: one line per block or break. */
+/**
+ * Rough plain text of an HTML fragment, for the text/plain copy: one line
+ * per block or break. Not a sanitizer: `&lt;` is decoded on purpose, so
+ * the result may contain the characters `<script`. Send it as text/plain
+ * or render it as text. Do not pass it to an HTML parser, innerHTML,
+ * srcdoc, or the editor's HTML content.
+ */
 export function htmlToText(html: string): string {
   return html
     .replace(/<(style|script)[\s\S]*?<\/\1>/gi, "")
