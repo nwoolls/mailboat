@@ -181,7 +181,11 @@ impl AppState {
         let all = accounts::list(&self.db.conn())?;
         for account in all {
             if let Err(e) = self.start_sync(account.id) {
-                eprintln!("could not start sync for account {}: {e}", account.id.0);
+                eprintln!(
+                    "could not start sync for account {}: {}",
+                    account.id.0,
+                    e.for_log()
+                );
             }
         }
         Ok(())

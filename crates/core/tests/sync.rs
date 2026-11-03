@@ -272,6 +272,7 @@ async fn fetch_body_downloads_once_then_uses_cache() {
 struct Recorder {
     statuses: Mutex<Vec<AccountSyncState>>,
     changed: Mutex<Vec<AccountId>>,
+    lines: Mutex<Vec<String>>,
 }
 
 impl SyncEvents for Recorder {
@@ -281,6 +282,9 @@ impl SyncEvents for Recorder {
     fn progress(&self, _: SyncProgress) {}
     fn mail_changed(&self, a: AccountId) {
         self.changed.lock().unwrap().push(a);
+    }
+    fn log(&self, _: AccountId, line: &str) {
+        self.lines.lock().unwrap().push(line.to_string());
     }
 }
 
@@ -293,6 +297,64 @@ impl Recorder {
             .rev()
             .find(|s| s.account_id == a)
             .map(|s| s.status)
+    }
+}
+
+/// The sync log never carries what Google (or a proxy posing as Google)
+/// wrote: an answer in Google's shape that echoes the request shows up in
+/// the window, but the log line has only its status.
+#[tokio::test]
+async fn a_failed_sync_logs_the_status_not_googles_message() {
+    let server = MockServer::start().await;
+    Mock::given(wiremock::matchers::any())
+        .respond_with(ResponseTemplate::new(400).set_body_json(serde_json::json!({
+            "error": {
+                "code": 400,
+                "message": "Invalid query from:ada@example.com subject:madeupsecret",
+                "errors": [{ "reason": "invalidArgument" }]
+            }
+        })))
+        .mount(&server)
+        .await;
+
+    let db = Arc::new(Db::open_in_memory().unwrap());
+    let account = add_account(&db, "a");
+    let events = Arc::new(Recorder::default());
+    let supervisor = Supervisor::new(
+        tokio::runtime::Handle::current(),
+        db.clone(),
+        events.clone(),
+        config(),
+        WorkerTiming {
+            poll_interval: Duration::from_secs(3600),
+            ..WorkerTiming::default()
+        },
+    );
+    supervisor.start(account, client(&server.uri()).0);
+
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    let failed = loop {
+        let found = events
+            .lines
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|l| l.starts_with("sync failed"))
+            .cloned();
+        if let Some(line) = found {
+            break line;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "no failure line: {:?}",
+            events.lines.lock().unwrap()
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    };
+    assert!(failed.contains("Google API error 400"), "{failed}");
+    for line in events.lines.lock().unwrap().iter() {
+        assert!(!line.contains("ada@example.com"), "{line}");
+        assert!(!line.contains("madeupsecret"), "{line}");
     }
 }
 
