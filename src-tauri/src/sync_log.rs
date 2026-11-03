@@ -24,11 +24,17 @@ impl SyncLog {
         if std::fs::metadata(&path).is_ok_and(|m| m.len() > MAX_BYTES) {
             let _ = std::fs::remove_file(&path);
         }
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)
-            .ok();
+        let mut options = OpenOptions::new();
+        options.create(true).append(true);
+        // Only this user reads it (an older log keeps the mode it had, so
+        // it is set after opening too).
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+            options.mode(0o600);
+            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+        }
+        let file = options.open(&path).ok();
         Self {
             file: Mutex::new(file),
             path,
@@ -49,5 +55,32 @@ impl SyncLog {
         if let Some(file) = self.file.lock().unwrap().as_mut() {
             let _ = file.write_all(entry.as_bytes());
         }
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    fn mode(path: &Path) -> u32 {
+        std::fs::metadata(path).unwrap().permissions().mode() & 0o777
+    }
+
+    #[test]
+    fn the_log_is_private_to_this_user_new_or_old() {
+        let dir = std::env::temp_dir().join(format!("sync-log-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let log = SyncLog::open(&dir);
+        log.write(AccountId(1), "made-up line");
+        assert_eq!(mode(log.path()), 0o600);
+
+        // A log from an older run, with the usual open mode.
+        drop(log);
+        std::fs::set_permissions(dir.join("sync.log"), std::fs::Permissions::from_mode(0o644))
+            .unwrap();
+        let log = SyncLog::open(&dir);
+        assert_eq!(mode(log.path()), 0o600);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

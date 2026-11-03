@@ -246,10 +246,14 @@ pub fn run() {
                 ))
                 .timeout(std::time::Duration::from_secs(60));
             // The demo's made-up Google is on this computer: no proxy.
+            // Everything it talks to is Google over HTTPS, so a redirect
+            // can't turn a request, its token or its body into plain HTTP.
+            // The demo's made-up Google is `http://127.0.0.1`: no proxy,
+            // and not HTTPS-only.
             let http = if mode == mode::Mode::Demo {
                 http.no_proxy()
             } else {
-                http
+                http.https_only(true)
             }
             .build()?;
             let sync_log = Arc::new(sync_log::SyncLog::open(&dirs.logs));

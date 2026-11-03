@@ -13,7 +13,9 @@ pub fn handle(app: &AppHandle, request: &Request<Vec<u8>>) -> Response<Vec<u8>> 
         Some(url) => match open(app, &url) {
             Ok(()) => 204,
             Err(e) => {
-                eprintln!("could not open link: {e}");
+                // Only the kind: the launcher's own message includes the link, which
+                // can carry a private token.
+                eprintln!("could not open a link ({:?})", e.kind());
                 500
             }
         },
