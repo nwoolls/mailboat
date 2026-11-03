@@ -7,7 +7,13 @@ import { expect, type Page, test } from "@playwright/test";
  * opens and closes (it used to creep under the pinned Send bar).
  */
 
-type Samples = { translate: number[]; formX: number[]; done: boolean; read?: () => void };
+type Samples = {
+  translate: number[];
+  formX: number[];
+  done: boolean;
+  read?: () => void;
+  off?: () => void;
+};
 
 /**
  * Starts recording the card's nudge and the form's left edge: every frame,
@@ -30,7 +36,7 @@ async function startSampling(page: Page) {
       out.formX.push(form.getBoundingClientRect().left);
     };
     out.read = read;
-    card.addEventListener("animationstart", (e) => {
+    const onStart = (e: AnimationEvent) => {
       if (!e.animationName.startsWith("nudge-")) return;
       const nudge = card
         .getAnimations()
@@ -45,7 +51,11 @@ async function startSampling(page: Page) {
       }
       nudge.currentTime = was;
       nudge.play();
-    });
+    };
+    card.addEventListener("animationstart", onStart);
+    // Removed when sampling stops: the next sampling (the close) must not
+    // also step the animation.
+    out.off = () => card.removeEventListener("animationstart", onStart);
     const tick = () => {
       read();
       if (!out.done) requestAnimationFrame(tick);
@@ -54,9 +64,19 @@ async function startSampling(page: Page) {
   });
 }
 
+/**
+ * Waits until no animation that can finish is still running. Endless ones
+ * (a spinner, the sync ring) never will, and must not hold the test up.
+ */
+async function animationsDone(page: Page) {
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.effect?.getComputedTiming().iterations === Infinity),
+  );
+}
+
 /** Waits for every animation to finish (plus a couple of frames), then stops. */
 async function stopSampling(page: Page) {
-  await page.waitForFunction(() => document.getAnimations().length === 0);
+  await animationsDone(page);
   return page.evaluate(
     () =>
       new Promise<Samples>((resolve) => {
@@ -65,6 +85,7 @@ async function stopSampling(page: Page) {
           requestAnimationFrame(() => {
             // The end state, read on purpose, not left to the last frame.
             out.read?.();
+            out.off?.();
             out.done = true;
             resolve({ translate: out.translate, formX: out.formX, done: true });
           }),
@@ -88,7 +109,7 @@ for (const [spot, opensOn] of [
     const form = page.locator('section.compose-card form[aria-label="New message"]');
     await expect(form).toBeVisible();
     // Let the card's own entrance settle.
-    await page.waitForFunction(() => document.getAnimations().length === 0);
+    await animationsDone(page);
     const before = (await form.boundingBox())!;
 
     await startSampling(page);
