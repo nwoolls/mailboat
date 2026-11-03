@@ -11,7 +11,7 @@ import { type ComposeEntry, poppedReplyIn, replyIn } from "../model/composeState
 import { canSwitchKind, editorKey } from "../model/draft";
 import { ComposeForm, KIND_LABELS, type ReplyKind } from "./ComposeForm";
 import { usePresence } from "../../../shared/ui/usePresence";
-import { REVEAL_MS } from "../../ai/ui/InlineReveal";
+import { REVEAL_PRESENT_MS } from "../../ai/ui/InlineReveal";
 import { openAssistantForNextReply, useAssistantOpen } from "../../ai/ui/assistantOpen";
 import { aiChoices, canWrite } from "../../ai/model/providers";
 import { useAiStatus, useAppSettings, usePrefetchAiReplyIdeas } from "../../../shared/lib/queries";
@@ -83,9 +83,9 @@ export function ReplyArea({
   // stays open when the reply pops out into the card and back.
   const [assistant, setAssistant] = useAssistantOpen(reply?.draft ?? NO_DRAFT);
   // Drawn until it has certainly finished shrinking closed (`.inline-reveal`
-  // is 180ms): removed a frame early, its last fraction of a pixel went
-  // uncorrected and the reply crept down with each close.
-  const assistantShown = usePresence(assistant, REVEAL_MS + 100);
+  // is 180ms, but a slow machine can paint that late): removed early, its
+  // last pixels went uncorrected and the reply crept down with each close.
+  const assistantShown = usePresence(assistant, REVEAL_PRESENT_MS);
   useEffect(() => {
     if (resumeId === null || asked.current === resumeId) return;
     asked.current = resumeId;

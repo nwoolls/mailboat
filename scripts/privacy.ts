@@ -10,8 +10,15 @@ export type Finding = { kind: string; text: string };
 const FAKE_DOMAIN =
   /(^|\.)example$|(^|\.)example\.(com|net|org)$|\.(invalid|test|localhost)$|^localhost$/i;
 
-/** The only addresses at real domains that may appear: tool and bot metadata. */
-const ALLOWED_ADDRESS = new Set(["noreply@github.com", "noreply@anthropic.com"]);
+/**
+ * The only addresses at real domains that may appear: tool and bot metadata.
+ * support@github.com is GitHub's own address in Dependabot's sign-off line.
+ */
+const ALLOWED_ADDRESS = new Set([
+  "noreply@github.com",
+  "noreply@anthropic.com",
+  "support@github.com",
+]);
 const ALLOWED_DOMAIN = new Set(["users.noreply.github.com"]);
 
 /** Gmail placeholders (a stranger's Gmail address is flagged). */
