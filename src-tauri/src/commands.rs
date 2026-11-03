@@ -299,9 +299,10 @@ pub async fn threads_load_older(
                             .write(account, &format!("loaded {n} older threads"));
                     }
                     Err(e) => {
-                        state
-                            .sync_log
-                            .write(account, &format!("loading older mail failed: {e}"));
+                        state.sync_log.write(
+                            account,
+                            &format!("loading older mail failed: {}", e.for_log()),
+                        );
                         failures.push(e);
                     }
                 }
@@ -883,7 +884,11 @@ pub async fn message_send(
         {
             state.sync_log.write(
                 message.account_id,
-                &format!("sent, but its draft wasn't deleted ({}): {e}", e.kind()),
+                &format!(
+                    "sent, but its draft wasn't deleted ({}): {}",
+                    e.kind(),
+                    e.for_log()
+                ),
             );
         }
     }

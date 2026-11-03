@@ -231,7 +231,7 @@ async fn run_worker(
                         Ok(_) => {}
                         Err(e) => events.log(
                             account,
-                            &format!("image download failed ({}): {e}", e.kind()),
+                            &format!("image download failed ({}): {}", e.kind(), e.for_log()),
                         ),
                     }
                 }
@@ -245,7 +245,10 @@ async fn run_worker(
                 Some(timing.poll_interval)
             }
             Err(e) => {
-                events.log(account, &format!("sync failed ({}): {e}", e.kind()));
+                events.log(
+                    account,
+                    &format!("sync failed ({}): {}", e.kind(), e.for_log()),
+                );
                 // Partial progress may already be written; let the UI refresh.
                 events.mail_changed(account);
                 match &e {
@@ -305,7 +308,11 @@ async fn load_identities(
         Err(e) => {
             events.log(
                 account,
-                &format!("could not read Send mail as addresses ({}): {e}", e.kind()),
+                &format!(
+                    "could not read Send mail as addresses ({}): {}",
+                    e.kind(),
+                    e.for_log()
+                ),
             );
             false
         }
@@ -333,8 +340,9 @@ async fn load_contacts(
             events.log(
                 account,
                 &format!(
-                    "Google contacts unavailable ({}): {e}; sign in again to allow them",
-                    e.kind()
+                    "Google contacts unavailable ({}): {}; sign in again to allow them",
+                    e.kind(),
+                    e.for_log()
                 ),
             );
             !e.is_transient()
