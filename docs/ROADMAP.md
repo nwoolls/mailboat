@@ -3420,20 +3420,21 @@ builds are attached to each run as artifacts.*
       pull request instead of committing to `main`; it merges once the
       checks pass and the review comments are dealt with. CLAUDE.md
       gets the new workflow
-      *2026-11-01: the workflow is written into `AGENTS.md` (applies once
-      the ruleset below is on); `.github/copilot-instructions.md` tells
-      Copilot what to check. The ruleset waits for the repository to be
-      public.*
-      *In use since 2026-11-02 (four pull requests merged, Dependabot's included).*
+      *2026-11-01: the workflow is written into `AGENTS.md`, and
+      `.github/copilot-instructions.md` tells Copilot what to check.
+      In use since 2026-11-02, once the ruleset below was on (four pull
+      requests merged, Dependabot's included).*
 - [x] A ruleset on `main`: pull request and passing checks required, no
       force pushes; the owner can bypass in an emergency
       *Done 2026-11-02, imported from `docs/rulesets/main.json`. Review conversations must be resolved before a merge.*
 - [x] Copilot code review on every pull request, requested
-      automatically by the ruleset. Likely needs a paid Copilot plan
-      (Pro) with a monthly review allowance; to
-      confirm when setting up. Optionally Claude's GitHub Action as a
-      second reviewer, on the owner's Claude subscription
-      *Working: it reviews each pull request and its comments have found real problems. It sometimes says it could not finish at the selected tier (plan limits); the second reviewer (Claude's GitHub Action) is not set up.*
+      automatically by the ruleset
+      *Done 2026-11-02, on the owner's paid Copilot plan: it reviews each
+      pull request, and its comments have found real problems. It
+      sometimes says it could not finish at the selected tier (plan
+      limits).*
+- [ ] Optional: Claude's GitHub Action as a second reviewer, on the
+      owner's Claude subscription
 - [x] Code scanning with CodeQL (Rust and TypeScript), with Copilot
       Autofix suggestions for what it finds
       *Running on pull requests since 2026-11-02, with Copilot Autofix on. The first findings still need a look: see the next item.*
@@ -3460,10 +3461,11 @@ builds are attached to each run as artifacts.*
       the licence can change later)
 - [x] Issue forms for bugs (version, Mac or Windows, steps) and ideas;
       labels; a pull request template for the owner's own PRs
-      *Written; labels to be created with the repository.*
+      *Done 2026-11-02: the forms use the repository's `bug` and
+      `enhancement` labels (GitHub's standard ones).*
 - [x] `SECURITY.md` with GitHub's private vulnerability reporting
       turned on, and the domain's email as a fallback
-      *File written; turn private reporting on in the repository's settings (owner).*
+      *Done 2026-11-02: private vulnerability reporting is on.*
 - [ ] GitHub Discussions for questions and ideas, so users can help
       each other and issues stay for bugs (optional; can be switched
       off if it becomes a chore)
