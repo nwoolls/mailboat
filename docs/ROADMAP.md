@@ -3511,15 +3511,38 @@ builds are attached to each run as artifacts.*
 open it without security warnings, and later receive updates by
 themselves.*
 
-- [ ] Owner: Apple Developer Program (paid, personal name is fine).
+- [x] Owner: Apple Developer Program (paid, personal name is fine).
       The free Apple Development certificate can't notarize, and macOS
       (and Homebrew, since September 2026) refuse apps that aren't
-      notarized
-- [ ] Mac: Developer ID signing and notarization
+      notarized *(done: enrolled as an individual before 2026-11-04. Auto-renew
+      was off when checked; if the membership lapses, signing and
+      notarization of new builds stop)*
+- [ ] Mac: Developer ID signing and notarization *(proven by hand
+      2026-11-04, not yet automated. A Developer ID Application
+      certificate was made (on Apple's site from a signing request, since
+      Xcode's Manage Certificates refused with an "Account Holder" error)
+      and backed up as a password-protected `.p12` in the owner's password
+      manager. A notarization key (App Store Connect team key, Developer
+      role) is kept there too and saved as the keychain profile
+      `mailboat-notary`. A release build signed with the hardened runtime
+      and no entitlements was accepted by Apple's notary, stapled, and
+      passed Gatekeeper (`spctl`: Notarized Developer ID). Run under it, the
+      app opened, read its existing keychain item after one "Always Allow"
+      prompt (the item was made by a differently signed dev build, so
+      macOS asks once) and the AI features worked. How: `docs/DEVELOPMENT.md`,
+      "A signed build on the Mac". Left for the release script below)*
 - [ ] Windows: Azure Artifact Signing (open to
       individuals in the US and Canada), so SmartScreen doesn't warn.
       Signing from the Mac (e.g. `jsign`) or in GitHub Actions, to be
-      confirmed
+      confirmed *(started 2026-11-04: an Artifact Signing account exists
+      under its own Azure subscription for the project, and Azure offers
+      individual identity validation to the owner's account, so the
+      "individual developers" route is open. Still to do: the validation
+      itself (government ID and the Authenticator app, in the name on the
+      billing profile), a certificate profile, then signing a build. The
+      certificate will carry the owner's name and city. How the signing
+      step runs in the release build isn't verified yet (Tauri's Windows
+      signing command, or `jsign`)*
 - [ ] Automatic updates *(added 2026-10-19, settings comparison;
       Mimestream has an update channel setting)*: Tauri's updater plugin
       with its own signing key. The address built into the app is on
@@ -3570,7 +3593,14 @@ themselves.*
 - [ ] One release script (on the Mac, or GitHub Actions) builds, signs
       and publishes both platforms and the update file. Signing keys
       stay in the Mac's keychain or in encrypted GitHub secrets, never
-      in the repository
+      in the repository *(what a release needs, so far: the Developer ID
+      certificate and key as a `.p12` with its password, the notarization
+      key with its key and issuer IDs, the updater's signing key, and the
+      Windows signing account's credentials. On the Mac, notarization can
+      use the saved keychain profile; Tauri's own notarization step instead
+      reads `APPLE_API_ISSUER`, `APPLE_API_KEY` and `APPLE_API_KEY_PATH`,
+      the path of the key file, so GitHub Actions needs the key as a
+      secret written to a temporary file)*
 - [ ] Build provenance: GitHub attests each installer was built by
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
