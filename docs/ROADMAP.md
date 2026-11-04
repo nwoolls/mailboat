@@ -3534,15 +3534,18 @@ themselves.*
 - [ ] Windows: Azure Artifact Signing (open to
       individuals in the US and Canada), so SmartScreen doesn't warn.
       Signing from the Mac (e.g. `jsign`) or in GitHub Actions, to be
-      confirmed *(started 2026-11-04: an Artifact Signing account exists
-      under its own Azure subscription for the project, and Azure offers
-      individual identity validation to the owner's account, so the
-      "individual developers" route is open. Still to do: the validation
-      itself (government ID and the Authenticator app, in the name on the
-      billing profile), a certificate profile, then signing a build. The
-      certificate will carry the owner's name and city. How the signing
-      step runs in the release build isn't verified yet (Tauri's Windows
-      signing command, or `jsign`)*
+      confirmed *(2026-11-04, local signing works. An Artifact Signing
+      account exists under its own Azure subscription for the project, the
+      owner's individual identity validation is complete, and a Public
+      Trust certificate profile is active (the certificate carries the
+      owner's name, state and city, and no street address or postal code).
+      Signing is done from the Mac with `jsign`; a signed build's
+      installer, installed app and uninstaller all carry the certificate
+      (`scripts/sign-windows.sh`, `docs/DEVELOPMENT.md`, "A signed Windows
+      installer"). Not yet done: trying the signed installer in the Windows
+      VM (publisher, SmartScreen), and the GitHub Actions version, which
+      should sign through GitHub's OIDC login to Azure rather than a stored
+      secret)*
 - [ ] Automatic updates *(added 2026-10-19, settings comparison;
       Mimestream has an update channel setting)*: Tauri's updater plugin
       with its own signing key. The address built into the app is on
