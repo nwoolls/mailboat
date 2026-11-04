@@ -31,8 +31,9 @@ pub struct DemoSession {
 impl DemoSession {
     /// A sign-in that ends after `after`.
     pub fn ending_in(after: std::time::Duration) -> Self {
+        // A huge value (a typo in the setting) just never ends.
         Self {
-            ends_at: std::sync::Mutex::new(Some(std::time::Instant::now() + after)),
+            ends_at: std::sync::Mutex::new(std::time::Instant::now().checked_add(after)),
         }
     }
 

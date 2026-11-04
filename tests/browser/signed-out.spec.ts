@@ -35,8 +35,10 @@ test("a signed-out account gets a notice and a menu, not red text in the sidebar
   // Dismissing hides the notice; the menu still offers the way back in.
   await notice.getByRole("button", { name: /^Dismiss/ }).click();
   await expect(notice).toBeHidden();
-  // The sidebar ignores a click that reopens a menu closed a moment ago.
-  await page.waitForTimeout(400);
+  // The sidebar ignores a click that reopens a menu closed a moment ago
+  // (300 ms, `lastClose` in Sidebar.tsx): wait just over it.
+  const reopenGuardMs = 300;
+  await page.waitForTimeout(reopenGuardMs + 100);
   await avatarButton.click();
   await expect(page.getByRole("menuitem", { name: "Sign in again" })).toBeVisible();
 });

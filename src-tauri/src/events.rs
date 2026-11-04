@@ -60,19 +60,22 @@ impl TauriSyncEvents {
         if !is_new {
             return;
         }
-        let (settings, email) = {
+        // A read that fails says nothing about the person's settings (the
+        // defaults have notifications on), so it isn't guessed: not told,
+        // and a later report may be.
+        let read = {
             let conn = self.db.conn();
-            let settings = mail_core::settings::load(&conn).unwrap_or_default();
-            let all = mail_core::db::accounts::list(&conn).unwrap_or_default();
-            let email = all
-                .into_iter()
-                .find(|a| a.id == state.account_id)
-                .map(|a| a.email);
-            (settings, email)
+            let settings = mail_core::settings::load(&conn);
+            let all = mail_core::db::accounts::list(&conn);
+            settings.and_then(|s| all.map(|a| (s, a)))
         };
-        let Some(email) = email else {
-            // Nothing to say it about (the account list couldn't be read, or
-            // the account is gone): not told, so a later report may be.
+        let email = read.as_ref().ok().and_then(|(_, all)| {
+            all.iter()
+                .find(|a| a.id == state.account_id)
+                .map(|a| a.email.clone())
+        });
+        let (Ok((settings, _)), Some(email)) = (read, email) else {
+            // Nothing to say it about (or no way to know whether to): not told.
             self.sign_outs.lock().unwrap().forget(state.account_id);
             return;
         };
