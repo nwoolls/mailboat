@@ -2699,17 +2699,18 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       client, a service-account key, a missing secret or a wrong ID
       each get their own message. The test sign-in is the first
       account's sign-in*
-- [x] If Google signs an account out about 7 days later
+- [x] If Google signs an account out after seven days
       (`invalid_grant`; what Google's documents say happens to projects
       in Testing), the app says so and offers one-click sign-in again
       *Reworked 2026-10-29: the project stays in Testing, so this is
       expected, not a mistake to fix. The sidebar line now reads "Google
-      signed you out · sign in again", and Settings → Accounts says it
-      can happen about weekly in Testing. The wording ("about once a week" or "rarely") is to be settled by watching. 2026-10-30,
+      signed you out · sign in again", and Settings → Accounts said it
+      could happen about weekly in Testing (the wording was left to be
+      settled by watching). 2026-10-30,
       Windows: with the app's access removed in the Google Account, the
       sidebar and Settings → Accounts show the message and signing in
       again restores the account. Only the 2026-11-01 check is left.
-      2026-11-03: the owner reproduced the sign-out at about seven days,
+      2026-11-03: the owner reproduced the sign-out after seven days,
       so the wording is settled (it happens, there is no "may") and the
       experience is to be improved: moved to Milestone 15, "When Google
       signs an account out")*
@@ -3550,10 +3551,10 @@ themselves.*
 ### When Google signs an account out
 
 *Added 2026-11-03 (owner). The owner reproduced it: while the Google Cloud
-project is in Testing, a sign-in to Gmail ends after about seven days
+project is in Testing, a sign-in to Gmail ends after seven days
 (`invalid_grant`), as Google's documents say (see `docs/RELEASE.md`). It
 is not a "may" or an "about once a week": every account has to sign in
-again each week until the project is published.*
+again every seven days until the project is published.*
 
 - [x] Say it plainly everywhere: sign-ins to a project in Testing end
       after seven days. Replace "may", "can" and "about once a week" in
