@@ -3399,9 +3399,9 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
 - [x] Repository dressing: description, topics (gmail, email-client,
       tauri, rust, mcp…) and a social preview image (what shows when the
       link is shared). *Done 2026-11-02.*
-- [x] Website link on the repository, and the repository pinned on the
-      owner's profile *(moved to Milestone 16, 2026-11-04: waits for the
-      website)*
+- *Moved to Milestone 16 (2026-11-04), as it waits for the website: the
+  website link on the repository, and the repository pinned on the
+  owner's profile.*
 
 ### Pipelines (GitHub Actions, free for public repositories)
 
@@ -3428,8 +3428,8 @@ builds are attached to each run as artifacts.*
 - [x] Actions pinned to exact versions, with the least permissions
       each needs (a public repository's workflows are an attack target)
       *Also enforced by the repository setting "Require actions to be pinned to a full-length commit SHA".*
-- [x] The release pipeline itself *(it is Milestone 15, "One release
-      script"; moved there 2026-11-04)*
+- *Moved to Milestone 15 (2026-11-04): the release pipeline itself is its
+  "One release script" item.*
 
 ### Reviews and protection
 
@@ -3497,8 +3497,8 @@ builds are attached to each run as artifacts.*
       *Done 2026-11-04: four categories (Announcements, Q&A, Ideas, Show
       and tell), a welcome post, and a "Question or setup help" link on
       the new-issue page, CONTRIBUTING and the README.*
-- [x] Release notes *(moved to Milestone 15, "Release notes", 2026-11-04:
-      they come from the changesets chosen there)*
+- *Moved to Milestone 15 (2026-11-04), "Release notes": they come from the
+  changesets chosen there.*
 - [x] Optional: GitHub Sponsors on the owner's account, with a
       `FUNDING.yml` so a Sponsor button shows on the repository
       *Not for now (owner, 2026-11-04): no donations. Look again at the
