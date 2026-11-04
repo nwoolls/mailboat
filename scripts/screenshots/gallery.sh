@@ -6,6 +6,9 @@
 # Positions: the window is at 640,300 (1424x820); a window capture has 56px
 # of shadow at the sides and 28px above, so a point seen at (cx,cy) in such
 # a capture is at (584+cx, 272+cy) on screen.
+# No `set -e`: the small helpers (`ev`, `kill`) fail harmlessly on purpose. The
+# steps that matter stop the script themselves: place.sh, check_window, shoot
+# and record, so no later click lands in the wrong state.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 OUT="${OUT:-/tmp/shots}"
@@ -32,7 +35,10 @@ focus() { check_window; ev "set frontmost of (first process whose unix id is $pi
 key() { ev "keystroke \"$1\"${2:+ using $2 down}"; sleep "${3:-1}"; }
 esc() { ev "key code 53"; sleep 0.8; }
 click() { ev "click at {$((584 + $1)), $((272 + $2))}"; sleep "${3:-1.5}"; }   # capture coordinates
-shoot() { "$here/shoot.sh" "$wallpaper" "$OUT/gallery/$theme/$1.png"; echo "shot $theme/$1"; }
+shoot() {
+  "$here/shoot.sh" "$wallpaper" "$OUT/gallery/$theme/$1.png" || { echo "shoot $1 failed: stopping"; exit 1; }
+  echo "shot $theme/$1"
+}
 
 # Settings sidebar rows (capture y); the sidebar is at x=113.
 settings_y() {
@@ -126,6 +132,7 @@ record() {
   wait "$recording" 2>/dev/null || true
   kill "$picture" 2>/dev/null || true
   trap - EXIT INT TERM
+  [ -s "$OUT/loops/$clip.mov" ] || { echo "no recording of $clip: stopping"; exit 1; }
   ffmpeg -y -loglevel error -i "$OUT/loops/$clip.mov" -t "$took" -an -vf "scale=1600:900" -c:v libx264 -pix_fmt yuv420p -crf 24 -movflags +faststart "$OUT/loops/$clip.mp4"
   ffmpeg -y -loglevel error -i "$OUT/loops/$clip.mov" -t "$took" -an -vf "fps=12,scale=640:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer:bayer_scale=4" -loop 0 "$OUT/loops/$clip.gif"
   echo "loop $clip"

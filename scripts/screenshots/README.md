@@ -10,7 +10,8 @@ the desktop. Each shot is 1600x900 (16:9): good for the README and for a post.
 
 ## One-time
 
-- Xcode command line tools (the Swift compiler), `bun`, and Python 3 with
+- Xcode command line tools (the Swift compiler), `bun`, Playwright's Chromium
+  (`bunx playwright install chromium`, which draws the sunset), and Python 3 with
   Pillow (`optimize.py`). The loops also need `ffmpeg` (`brew install ffmpeg`).
 - A main display at 1x, as on a 2560x1440 monitor. On a Retina main display
   the pictures come out twice the size, and `find_button.py` (which finds the
