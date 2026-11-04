@@ -30,14 +30,17 @@ bun run demo
 ```
 
 Starts the app full of made-up mail, with no Google connection: two
-accounts (personal and work), about 25 conversations with attachments,
-labels, a meeting invitation, a draft, spam, trash and list summaries.
+accounts (personal and work), 24 conversations with attachments,
+labels (one of them empty), a meeting invitation, a draft, spam, trash, list
+summaries, Gmail rules, and a vacation reply set to start in a few days.
 None of your own mail can show. Archiving, labels, rules and the rest all
 work. Sending is faked: the message lands in Sent and the person answers
 about 8 seconds later. A sign-in code arrives 45 seconds after the window opens.
 
 The made-up mail lives in `demo/mail.json` (reserved `.example` addresses
-only). Like the clean start below, the demo keeps to its own folder
+only). The pictures in the README and in [FEATURES.md](FEATURES.md) are taken
+from it, with scripts you can run again: see
+[scripts/screenshots/README.md](../scripts/screenshots/README.md). Like the clean start below, the demo keeps to its own folder
 (`com.nwoolls.mailboat.demo`) and starts over at every launch, dated
 relative to now. It takes the flag `--demo` in the same ways.
 

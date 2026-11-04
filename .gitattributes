@@ -3,3 +3,6 @@
 *.icns binary
 *.ico binary
 *.car binary
+*.gif binary
+*.mp4 binary
+*.mov binary

@@ -53,21 +53,63 @@ which has since shut down.
   ChatGPT subscription. No API keys, and nothing is sent without you seeing it.
 - **Works with your AI apps.** Let Claude Desktop or Claude Code search and read
   your mail, and save drafts, over MCP. Off by default; AI apps can only read mail and save drafts, never send.
+- **Inbox Zero, with toys.** An empty view can have a toy (a pond, bubble wrap to pop, or a
+  sky that follows the time of day) or one of ten pixel-art screensavers.
 
 ### A closer look
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/feature-palette.png" alt="The command palette open over a conversation, listing Reply, Archive, Labels and more with their shortcuts"></td>
-    <td width="50%"><img src="docs/images/feature-invitation.png" alt="A meeting invitation in the reader with Yes, Maybe and No buttons, under an AI summary"></td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/rules-dark.png">
+        <img src="docs/images/features/rules-light.png" alt="The rule editor over the list of Gmail rules">
+      </picture>
+      <br><sub><b>Gmail rules</b>, edited in the app. Google runs them, even when Mailboat is closed.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/write-with-ai-dark.png">
+        <img src="docs/images/features/write-with-ai-light.png" alt="The writing assistant drafting a reply from a reply idea">
+      </picture>
+      <br><sub><b>Write with AI</b>: reply ideas and drafts from Apple Intelligence, on your Mac.</sub>
+    </td>
   </tr>
   <tr>
-    <td align="center"><sub>Everything is a keystroke away: <kbd>⌘K</kbd> opens the command palette.</sub></td>
-    <td align="center"><sub>Meeting invitations, answered in the email. The summary is Apple Intelligence, on the Mac.</sub></td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/ai-apps-dark.png">
+        <img src="docs/images/features/ai-apps-light.png" alt="Settings for AI apps, with one-click buttons to connect Claude Code and Claude Desktop">
+      </picture>
+      <br><sub><b>AI apps</b>: let Claude search your mail and save drafts while Mailboat is open, in one click. Off by default; it can never send.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/screensaver-dark.png">
+        <img src="docs/images/features/screensaver-light.png" alt="A pixel-art koi pond swimming over an empty view">
+      </picture>
+      <br><sub><b>Inbox Zero</b> has toys: a pond, bubble wrap, a sky, and ten screensavers.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/codes-dark.png">
+        <img src="docs/images/features/codes-light.png" alt="A sign-in code email, with the code as a pill on its row and in a panel with a Copy button">
+      </picture>
+      <br><sub><b>Sign-in codes</b> become a pill on the row: click it to copy.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/palette-dark.png">
+        <img src="docs/images/features/palette-light.png" alt="The command palette over a conversation, listing actions with their shortcuts">
+      </picture>
+      <br><sub><b>⌘K</b>: every action, with its shortcut.</sub>
+    </td>
   </tr>
 </table>
 
-*Screenshots show Mailboat's demo mode, with made-up mail.*
+More pictures of more features, in [docs/FEATURES.md](docs/FEATURES.md).
 
 ## Your mail stays yours
 
