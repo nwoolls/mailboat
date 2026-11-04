@@ -3496,8 +3496,11 @@ builds are attached to each run as artifacts.*
       off if it becomes a chore)
 - [x] Release notes *(moved to Milestone 15, "Release notes", 2026-11-04:
       they come from the changesets chosen there)*
-- [ ] Optional: GitHub Sponsors on the owner's account, with a
+- [x] Optional: GitHub Sponsors on the owner's account, with a
       `FUNDING.yml` so a Sponsor button shows on the repository
+      *Not for now (owner, 2026-11-04): no donations. Look again at the
+      Milestone 17 checkpoint, together with the paid-option decision
+      (Milestone 18), so the two don't muddy each other.*
 
 ## Milestone 15: Signed builds and automatic updates
 
