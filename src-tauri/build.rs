@@ -2,6 +2,10 @@ fn main() {
     // `generate_context!()` embeds the icons at compile time, but Cargo
     // doesn't know that, so a regenerated icon set kept the old Dock icon.
     println!("cargo:rerun-if-changed=icons");
+    // `tauri.conf.json` points at `package.json` for the version, and the
+    // resolved version is baked in when this script runs. Cargo only knows
+    // the config file, so a release's version bump needs this line.
+    println!("cargo:rerun-if-changed=../package.json");
     build_ai_helper();
     tauri_build::build()
 }

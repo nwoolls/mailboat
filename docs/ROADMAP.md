@@ -3560,7 +3560,7 @@ themselves.*
       server), `tauri.conf.json` points at it, and the workspace
       `Cargo.toml` is `0.0.0`, not the app's. Every pull request adds a
       changeset (CI runs `changeset status` and fails without one, except
-      for Dependabot); `bun run version-packages` makes the next version
+      for Dependabot and the release pull request, `changeset-release/…`); `bun run version-packages` makes the next version
       and a `CHANGELOG.md` entry, whose lines have no commit hashes. The
       release pull request that does this for you belongs to the release
       script below)*

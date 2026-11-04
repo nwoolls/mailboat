@@ -144,8 +144,9 @@ changeset in `.changeset/` (`bun run changeset`, or by hand: see
 `.changeset/README.md`): `patch`, `minor` or `major`, and one plain
 sentence for people (no real mail details). Anything people won't notice
 (docs, tests, tooling) gets an empty one (`bun run changeset --empty`).
-CI fails a pull request without one, except Dependabot's. Never edit the
-version or `CHANGELOG.md` by hand.
+CI fails a pull request without one, except Dependabot's and the release
+pull request (branch `changeset-release/…`, which consumes them). Never edit
+the version or `CHANGELOG.md` by hand.
 
 ### Pull requests (once the repository's ruleset is on)
 

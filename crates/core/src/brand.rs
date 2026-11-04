@@ -34,6 +34,15 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_version_is_the_one_in_package_json() {
+        // Not the crate's own version (`0.0.0`): releases bump package.json.
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../package.json");
+        let package: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        assert_eq!(package["version"], VERSION);
+    }
+
+    #[test]
     fn the_version_is_a_semantic_version() {
         let core = VERSION.split(['-', '+']).next().unwrap();
         let parts: Vec<_> = core.split('.').collect();

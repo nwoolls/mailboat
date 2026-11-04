@@ -118,14 +118,17 @@ bunx playwright install webkit chromium
 
 The version is written once, in `package.json` (`0.x` until the owner calls
 it 1.0). Rust reads it at build time (`mail_core::brand::VERSION`) and
-`tauri.conf.json` points at it, so nothing else needs editing.
+`tauri.conf.json` points at it, so nothing else needs editing. A
+pre-release version (`0.2.0-beta.1`) has not been tried: the macOS bundle
+strips the tag, and the Windows installer may not accept it, so check
+that the first time one is used.
 
 Each pull request adds a changeset, a small file in `.changeset/` made with
 `bun run changeset` (`--empty` when people won't notice the change); CI
 fails without one. At release, `bun run version-packages` turns the
 changesets into the next version and a `CHANGELOG.md` entry; that release
-pull request (branch `changeset-release/…`) is the one kind CI doesn't ask a
-changeset of. Never edit either by hand. Details: `.changeset/README.md`.
+pull request (branch `changeset-release/…`) and Dependabot's are the two
+kinds CI doesn't ask a changeset of. Never edit either by hand. Details: `.changeset/README.md`.
 
 ## Files on your Mac
 
