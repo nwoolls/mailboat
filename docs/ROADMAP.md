@@ -2699,7 +2699,7 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       client, a service-account key, a missing secret or a wrong ID
       each get their own message. The test sign-in is the first
       account's sign-in*
-- [ ] If Google signs an account out about 7 days later
+- [x] If Google signs an account out about 7 days later
       (`invalid_grant`; what Google's documents say happens to projects
       in Testing), the app says so and offers one-click sign-in again
       *Reworked 2026-10-29: the project stays in Testing, so this is
@@ -2708,7 +2708,11 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       can happen about weekly in Testing. The wording ("about once a week" or "rarely") is to be settled by watching. 2026-10-30,
       Windows: with the app's access removed in the Google Account, the
       sidebar and Settings → Accounts show the message and signing in
-      again restores the account. Only the 2026-11-01 check is left)*
+      again restores the account. Only the 2026-11-01 check is left.
+      2026-11-03: the owner reproduced the sign-out at about seven days,
+      so the wording is settled (it happens, there is no "may") and the
+      experience is to be improved: moved to Milestone 15, "When Google
+      signs an account out")*
 - [x] Scopes: check whether `gmail.compose` is needed beside
       `gmail.modify` (which may already cover drafts and sending) and
       drop any scope that isn't. Fewer scopes means fewer APIs to turn
@@ -3542,6 +3546,38 @@ themselves.*
       don't become part of the test
 - [ ] Optional: a Homebrew tap of the owner's own (the main Homebrew
       list needs an app to be popular first) and `winget` for Windows
+
+### When Google signs an account out
+
+*Added 2026-11-03 (owner). The owner reproduced it: while the Google Cloud
+project is in Testing, a sign-in to Gmail ends after about seven days
+(`invalid_grant`), as Google's documents say (see `docs/RELEASE.md`). It
+is not a "may" or an "about once a week": every account has to sign in
+again each week until the project is published.*
+
+- [ ] Say it plainly everywhere: sign-ins to a project in Testing end
+      after seven days. Replace "may", "can" and "about once a week" in
+      the onboarding Audience step (`GoogleStage.tsx`), Settings →
+      Accounts (`SettingsSections.tsx`), `docs/GOOGLE-SETUP.md`, the
+      README's FAQ, `AGENTS.md` (Gmail / Google), the Architecture
+      decisions of 2026-10-14 and 2026-10-29, and the new notice below
+- [ ] Take the red status text out of the sidebar: the line centred under
+      an account ("Google signed you out · sign in again", from
+      `accounts.ts` and `sidebarParts.tsx`). Keep the red dot on the
+      account's avatar, and put the message in the popup that the avatar
+      opens, with its Sign in again button
+- [ ] A notice in the top right when an account is signed out, like the
+      one for sign-in codes (`CodeNotices.tsx`): which account, one line
+      on why, and a Sign in again button; and an OS notification at the
+      same moment, as the codes have. One notice per sign-out (not one
+      per sync), gone when the account signs in again, and the OS
+      notification follows the app's notification settings and quiet
+      hours. To settle at the start: whether a dismissed notice comes
+      back at the next launch
+- [ ] Tests: a signed-out account raises the notice and the
+      notification once, and clears them when it signs in again; the
+      sidebar shows the red dot and no centred text (a browser test);
+      demo mode can show it with a made-up account that signs out
 
 ## Milestone 16: Website
 
