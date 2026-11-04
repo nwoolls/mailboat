@@ -125,8 +125,8 @@ belong to your Azure account, so they stay out of the repository):
 
 ```sh
 WINDOWS_SIGN=1 \
-WINDOWS_SIGN_ENDPOINT=<region>.codesigning.azure.net \
-WINDOWS_SIGN_ALIAS=<signing account>/<certificate profile> \
+WINDOWS_SIGN_ENDPOINT="<region>.codesigning.azure.net" \
+WINDOWS_SIGN_ALIAS="<signing account>/<certificate profile>" \
 scripts/windows.sh build
 ```
 

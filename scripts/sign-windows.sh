@@ -8,8 +8,8 @@
 # Artifact Signing (docs/DEVELOPMENT.md, "A signed Windows installer"):
 #
 #   WINDOWS_SIGN=1 \
-#   WINDOWS_SIGN_ENDPOINT=<region>.codesigning.azure.net \
-#   WINDOWS_SIGN_ALIAS=<signing account>/<certificate profile> \
+#   WINDOWS_SIGN_ENDPOINT="<region>.codesigning.azure.net" \
+#   WINDOWS_SIGN_ALIAS="<signing account>/<certificate profile>" \
 #   scripts/windows.sh build
 #
 # Needs `az login` (an account with the "Artifact Signing Certificate Profile
@@ -35,13 +35,21 @@ for tool in az jsign; do
 done
 
 echo "sign-windows: signing $(basename "$file")" >&2
-SIGN_TOKEN="$(az account get-access-token --resource https://codesigning.azure.net \
-  --query accessToken -o tsv 2>/dev/null)"
+# Never let a trace (bash -x) print the token.
+case $- in *x*) traced=1 ;; *) traced= ;; esac
+set +x
+if ! SIGN_TOKEN="$(az account get-access-token --resource https://codesigning.azure.net \
+  --query accessToken -o tsv)"; then
+  # az has said why on stderr (not logged in, no network, wrong account).
+  echo "sign-windows: az could not get an access token; not signing $(basename "$file")" >&2
+  exit 1
+fi
 if [ -z "$SIGN_TOKEN" ]; then
-  echo "sign-windows: no access token from az (run az login); not signing $(basename "$file")" >&2
+  echo "sign-windows: az gave no access token (run az login); not signing $(basename "$file")" >&2
   exit 1
 fi
 export SIGN_TOKEN
+[ -z "$traced" ] || set -x
 # RFC 3161 is what Microsoft's timestamp service speaks; jsign's default
 # (Authenticode) mode fails against it.
 jsign --storetype TRUSTEDSIGNING \
