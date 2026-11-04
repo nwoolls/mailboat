@@ -260,7 +260,8 @@ Signed builds and automatic updates, then a website. The full list is in the
 
 ## Contributing and licence
 
-Bug reports and ideas are welcome as issues. Code from outside isn't accepted;
+Bug reports and ideas are welcome as issues, and questions go in
+[Discussions](https://github.com/nwoolls/mailboat/discussions). Code from outside isn't accepted;
 [CONTRIBUTING.md](CONTRIBUTING.md) explains why. Security problems:
 [SECURITY.md](SECURITY.md).
 

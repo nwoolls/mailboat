@@ -3491,9 +3491,12 @@ builds are attached to each run as artifacts.*
 - [x] `SECURITY.md` with GitHub's private vulnerability reporting
       turned on, and the domain's email as a fallback
       *Done 2026-11-02: private vulnerability reporting is on.*
-- [ ] GitHub Discussions for questions and ideas, so users can help
+- [x] GitHub Discussions for questions and ideas, so users can help
       each other and issues stay for bugs (optional; can be switched
       off if it becomes a chore)
+      *Done 2026-11-04: four categories (Announcements, Q&A, Ideas, Show
+      and tell), a welcome post, and a "Question or setup help" link on
+      the new-issue page, CONTRIBUTING and the README.*
 - [x] Release notes *(moved to Milestone 15, "Release notes", 2026-11-04:
       they come from the changesets chosen there)*
 - [x] Optional: GitHub Sponsors on the owner's account, with a
