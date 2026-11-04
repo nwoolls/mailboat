@@ -151,6 +151,15 @@ Nothing goes to `main` directly. For each piece of work:
 4. The owner merges (squash, branch deleted), or says to. Then update the
    local `main`.
 
+Before the first push of a branch, before opening its pull request, and
+before each push that updates an open pull request, hand the owner an independent review prompt, made from
+`docs/REVIEW-PROMPT.md` and filled in for the branch (what it does, the
+decisions already made, what to look for), as one code block. Then wait: the
+owner has it reviewed and brings the reviews back. Check each finding against
+the code before acting on it: fix it, reject it with evidence, or ask the
+owner; a finding is not true because a reviewer said so. For a second round,
+add what changed since the last, so the fixes are verified first.
+
 Pushing, opening or commenting on a pull request, and merging are all writes
 to the shared repository: confirm with the owner first, as always. Dependabot's
 pull requests follow the same path, one at a time, with the full `bun run
