@@ -4,7 +4,7 @@
 use rusqlite::{params, Connection};
 
 use crate::error::Result;
-use crate::model::{AccountId, MessageId, ThreadId};
+use crate::model::{AccountId, MessageId, SyncStatus, ThreadId};
 
 /// One notification to show.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,6 +68,46 @@ pub fn notices(
         }
     }
     Ok(out)
+}
+
+/// Remembers which accounts Google has signed out, so each sign-out is
+/// told once (the sync worker reports the state again at every launch and
+/// after every manual retry, and a person shouldn't be notified each time).
+#[derive(Debug, Default)]
+pub struct SignOuts(std::collections::HashSet<AccountId>);
+
+impl SignOuts {
+    /// Feeds an account's new sync status. True when it has just been
+    /// signed out (it wasn't, as far as this knows). Only `Idle` (a whole
+    /// pass worked) forgets it: every retry reports `Syncing` first and
+    /// `AuthError` again after, and that is the same sign-out, as is a
+    /// retry that fails some other way.
+    pub fn is_new(&mut self, account: AccountId, status: SyncStatus) -> bool {
+        match status {
+            SyncStatus::AuthError => self.0.insert(account),
+            SyncStatus::Idle => {
+                self.0.remove(&account);
+                false
+            }
+            _ => false,
+        }
+    }
+
+    /// Takes it back: the notification couldn't be made, so the next report
+    /// of the sign-out should try again.
+    pub fn forget(&mut self, account: AccountId) {
+        self.0.remove(&account);
+    }
+}
+
+/// The notification for a sign-out. Clicking it only brings the app
+/// forward, where the notice has the Sign in again button.
+pub fn signed_out_notice(email: &str) -> Notice {
+    Notice {
+        title: "Google signed you out".into(),
+        body: format!("{email} needs to sign in again"),
+        thread: None,
+    }
 }
 
 #[cfg(test)]
@@ -201,5 +241,26 @@ mod tests {
         assert_eq!(found[0].code, "346625");
         assert_eq!(found[0].thread_id, thread);
         assert_eq!(found[0].sender, "Spotify");
+    }
+
+    #[test]
+    fn a_sign_out_is_new_once_until_the_account_signs_in_again() {
+        let mut outs = SignOuts::default();
+        let a = AccountId(1);
+        assert!(!outs.is_new(a, SyncStatus::Syncing));
+        assert!(outs.is_new(a, SyncStatus::AuthError));
+        // A retry: Syncing, then AuthError again. The same sign-out.
+        assert!(!outs.is_new(a, SyncStatus::Syncing));
+        assert!(!outs.is_new(a, SyncStatus::AuthError));
+        assert!(!outs.is_new(a, SyncStatus::Backoff));
+        assert!(!outs.is_new(a, SyncStatus::AuthError));
+        // Another account is its own.
+        assert!(outs.is_new(AccountId(2), SyncStatus::AuthError));
+        // Signed in again (a pass worked), then out again: new.
+        assert!(!outs.is_new(a, SyncStatus::Idle));
+        assert!(outs.is_new(a, SyncStatus::AuthError));
+        // A notification that couldn't be made is tried again.
+        outs.forget(a);
+        assert!(outs.is_new(a, SyncStatus::AuthError));
     }
 }

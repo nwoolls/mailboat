@@ -42,6 +42,13 @@ only). Like the clean start below, the demo keeps to its own folder
 (`com.nwoolls.mailboat.demo`) and starts over at every launch, dated
 relative to now. It takes the flag `--demo` in the same ways.
 
+To see what happens when Google signs an account out, start the demo with
+`MAILBOAT_DEMO_SIGN_OUT_AFTER=30 bun run demo`: 30 seconds after the demo
+opens, the second account's sign-in ends, as one of Google's can. The
+account finds out at its next sync pass (within a minute, or at once with
+"Sync now"). Then the notice, the red dot and the avatar menu appear, and
+"Sign in again" lets the account back in.
+
 The pictures in the README and in [FEATURES.md](FEATURES.md) are taken from
 the demo, with scripts you can run again:
 [scripts/screenshots/README.md](../scripts/screenshots/README.md).

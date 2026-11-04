@@ -43,10 +43,53 @@ pub struct TauriSyncEvents {
     pub log: std::sync::Arc<crate::sync_log::SyncLog>,
     /// For reading what new mail notifications say.
     pub db: std::sync::Arc<mail_core::db::Db>,
+    /// Which accounts' sign-outs have been told already.
+    pub sign_outs: std::sync::Mutex<mail_core::mail::notify::SignOuts>,
+}
+
+impl TauriSyncEvents {
+    /// The OS notification for a sign-out, once per sign-out (the window's
+    /// notice is separate and always shows). Follows Settings →
+    /// Notifications: off, or quiet hours, and it stays silent.
+    fn notify_signed_out(&self, state: &AccountSyncState) {
+        let is_new = self
+            .sign_outs
+            .lock()
+            .unwrap()
+            .is_new(state.account_id, state.status);
+        if !is_new {
+            return;
+        }
+        // A read that fails says nothing about the person's settings (the
+        // defaults have notifications on), so it isn't guessed: not told,
+        // and a later report may be.
+        let read = {
+            let conn = self.db.conn();
+            let settings = mail_core::settings::load(&conn);
+            let all = mail_core::db::accounts::list(&conn);
+            settings.and_then(|s| all.map(|a| (s, a)))
+        };
+        let email = read.as_ref().ok().and_then(|(_, all)| {
+            all.iter()
+                .find(|a| a.id == state.account_id)
+                .map(|a| a.email.clone())
+        });
+        let (Ok((settings, _)), Some(email)) = (read, email) else {
+            // Nothing to say it about (or no way to know whether to): not told.
+            self.sign_outs.lock().unwrap().forget(state.account_id);
+            return;
+        };
+        if !settings.new_mail_notifications || settings.quiet_hours.covers_now() {
+            return;
+        }
+        let notice = mail_core::mail::notify::signed_out_notice(&email);
+        crate::notifications::show(&self.app, vec![notice]);
+    }
 }
 
 impl SyncEvents for TauriSyncEvents {
     fn status(&self, state: AccountSyncState) {
+        self.notify_signed_out(&state);
         let _ = SyncStatusEvent(state).emit(&self.app);
     }
     fn progress(&self, progress: SyncProgress) {

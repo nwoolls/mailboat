@@ -260,7 +260,7 @@ function AccountGroup({
           ) : reason ? (
             <span className="text-warn">{reason}</span>
           ) : (
-            `If Google signed this account out (it does after seven days while your Google Cloud project is in Testing), or to give ${APP_NAME} new permissions.`
+            `If Google signed this account out, or to give ${APP_NAME} new permissions.`
           )
         }
       >

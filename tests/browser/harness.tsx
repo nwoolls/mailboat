@@ -10,6 +10,8 @@
  *   &colors=1                     (reader modes) the email's colors can be
  *                                 switched, and its images were shown
  *   &colors=2                     the same, with no images
+ *   ?mode=signedout               the sidebar and the top-right notice for an
+ *                                account Google has signed out
  *   ?mode=shortcuts               the `?` keyboard shortcuts sheet
  *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a
@@ -94,8 +96,9 @@ mockIPC((cmd, args) => {
       return [
         {
           accountId: account.id,
-          status: "syncing",
-          errorKind: null,
+          // `?mode=signedout`: Google ended this account's sign-in.
+          status: harnessMode === "signedout" ? "authError" : "syncing",
+          errorKind: harnessMode === "signedout" ? "auth" : null,
           errorMessage: null,
           lastSyncAt: null,
         },

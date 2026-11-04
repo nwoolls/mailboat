@@ -127,6 +127,22 @@ pub async fn account_add(
         }
     };
     if state.demo.is_some() {
+        // Signing in again: the made-up Google just lets the account back in.
+        let all = accounts::list(&state.db.conn())?;
+        let known = all.iter().find(|a| Some(&a.email) == login_hint.as_ref());
+        if let Some(account) = known {
+            let session = state
+                .demo_sessions
+                .lock()
+                .unwrap()
+                .get(&account.id)
+                .cloned();
+            if let Some(session) = session {
+                session.renew();
+                state.supervisor.sync_now(Some(&[account.id]));
+                return Ok(accounts::get(&state.db.conn(), account.id)?);
+            }
+        }
         return Err(CoreError::Invalid(
             "The demo has no Google connection, so it can't add accounts.".into(),
         )

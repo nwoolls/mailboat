@@ -22,20 +22,24 @@ export type AccountMenuTarget = { account: Account; anchor: MenuAnchor };
 /**
  * The menu behind an account's avatar (or a right-click on its header):
  * its sync status, "Sync now" and "Remove account…", which asks first.
+ * When Google has signed the account out: "Sign in again".
  */
 export function AccountMenu({
   target,
   state,
+  onSignIn,
   onClose,
   onRemoved,
 }: {
   target: AccountMenuTarget | null;
   state: AccountSyncState | undefined;
+  onSignIn: (account: Account) => void;
   onClose: () => void;
   onRemoved: (id: AccountId) => void;
 }) {
   // The account whose removal is being confirmed (the menu closes first).
   const [confirming, setConfirming] = useState<Account | null>(null);
+  const signedOut = state?.status === "authError";
 
   return (
     <>
@@ -46,6 +50,17 @@ export function AccountMenu({
             <div className="truncate">{syncHint(state)}</div>
           </MenuHeader>
           <MenuSeparator />
+          {signedOut && (
+            <MenuItem
+              icon={SyncIcon}
+              onSelect={() => {
+                onSignIn(target.account);
+                onClose();
+              }}
+            >
+              Sign in again
+            </MenuItem>
+          )}
           <MenuItem
             icon={SyncIcon}
             onSelect={() => {

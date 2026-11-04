@@ -14,8 +14,15 @@ import { CommandPalette } from "../../src/features/palette/ui/CommandPalette";
 import { TitleSearch } from "../../src/app/TitleSearch";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import { inbox } from "./demoMail";
+import { Sidebar } from "../../src/features/accounts/ui/Sidebar";
+import { useSignIn } from "../../src/features/accounts/ui/useSignIn";
+import {
+  SignedOutNotices,
+  useSignedOutNotices,
+} from "../../src/features/accounts/ui/SignedOutNotices";
+import { systemSelection } from "../../src/features/mailbox/model/views";
 import { Onboarding } from "../../src/features/onboarding/ui/Onboarding";
-import { useAccounts, useOAuthSetup } from "../../src/shared/lib/queries";
+import { useAccounts, useOAuthSetup, useSyncStates } from "../../src/shared/lib/queries";
 import {
   setCardSpot,
   useComposeActions,
@@ -41,6 +48,9 @@ export function Harness({
   detail: ThreadDetail;
 }) {
   const compose = useComposeState();
+  const states = useSyncStates().data ?? [];
+  const signIn = useSignIn();
+  const notices = useSignedOutNotices([account], states);
   const actions = useComposeActions([account]);
   const mode = params.get("mode");
   // Once: the actions object is new on every render.
@@ -64,6 +74,25 @@ export function Harness({
   }, [mode]);
 
   if (mode === "onboarding") return <OnboardingHarness />;
+  if (mode === "signedout")
+    return (
+      <div style={{ display: "flex", height: 600, width: 900 }}>
+        <Sidebar
+          accounts={[account]}
+          width={240}
+          syncStates={states}
+          selection={systemSelection("inbox")}
+          onSelect={() => {}}
+          onAccountRemoved={() => {}}
+          onOpenSettings={() => {}}
+          signIn={signIn}
+          errorInNotice={notices.list.some((a) => a.email === signIn.hint)}
+        />
+        <div className="fixed top-12 right-3 z-50">
+          <SignedOutNotices list={notices.list} onDismiss={notices.dismiss} signIn={signIn} />
+        </div>
+      </div>
+    );
   if (mode === "shortcuts") return <ShortcutsHelp onClose={() => {}} />;
   if (mode === "palette") return <PaletteOverSearch />;
   if (mode === "search") return <SearchBar />;

@@ -37,7 +37,6 @@ export type SidebarBodyProps = {
   syncStates: AccountSyncState[];
   selection: Selection;
   onSelect: (s: Selection) => void;
-  onReauth: (account: Account) => void;
   /** Opens an account's menu: below its avatar, or at the pointer. */
   onAccountMenu: (account: Account, anchor: MenuAnchor) => void;
   /** Folds, by key; they reset on relaunch. */
@@ -297,31 +296,24 @@ export function LabelRows({
 
 /**
  * Only problems you can act on get a line; syncing and retrying stay on
- * the avatar so the list never jumps.
+ * the avatar so the list never jumps. A sign-out has none: its red dot
+ * and menu (Sign in again) and the top-right notice say it.
  */
 export function AccountProblem({
   state,
-  onReauth,
   name,
 }: {
   state: AccountSyncState | undefined;
-  onReauth: () => void;
   /** Named when the line isn't already under the account's own header. */
   name?: string;
 }) {
   const badge = syncBadge(state);
-  if (badge.tone !== "error") return null;
+  if (badge.tone !== "error" || state?.status === "authError") return null;
   return (
     <div className="flex items-start gap-1.5 px-2 pb-1 text-xs text-danger">
       <AlertIcon size={13} className="mt-px shrink-0" />
       {name && <span className="shrink-0">{name}:</span>}
-      {state?.status === "authError" ? (
-        <button type="button" className="underline" onClick={onReauth}>
-          {badge.label}
-        </button>
-      ) : (
-        <span className="selectable">{badge.label}</span>
-      )}
+      <span className="selectable">{badge.label}</span>
     </div>
   );
 }
