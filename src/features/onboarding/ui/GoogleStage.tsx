@@ -76,7 +76,8 @@ const STEPS: Record<GuideStepId, StepText> = {
       <>
         Open <b>Audience</b>. Under <b>Test users</b>, press <b>Add users</b> and enter each Gmail
         address you’ll use in {APP_NAME}. Leave <b>Publishing status</b> on <b>Testing</b>, since
-        publishing isn’t needed here. Google may ask you to sign in again about once a week.
+        publishing isn’t needed here. Google ends each sign-in after seven days, and you sign in
+        again with one click.
       </>
     ),
   },

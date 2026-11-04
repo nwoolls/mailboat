@@ -257,8 +257,8 @@ these rules. Keep it passing.
   account's address added as a test user (decided with the owner,
   2026-10-29; see the Architecture decisions: publishing needs a homepage
   and privacy URL and shows scarier screens). Each account clicks Continue
-  past Google's "hasn't verified this app" warning once, and Google can
-  sign accounts out about weekly while in Testing. Each account records which OAuth client it used
+  past Google's "hasn't verified this app" warning once, and Google ends
+  each account's sign-in after seven days while in Testing. Each account records which OAuth client it used
   (`accounts.oauth_client`) so a second, Internal client can be added later.
 - Credentials are never committed. The app reads Google's downloaded client
   JSON from `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`
