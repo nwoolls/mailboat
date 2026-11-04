@@ -41,8 +41,13 @@ jobs:
           CHECK_PRIVACY_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
       - run: bun run test
       # Each pull request carries a changeset (an empty one when people
-      # won't notice the change). Dependabot's don't.
-      - if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+      # won't notice the change). Dependabot's don't, and neither does a
+      # release pull request: it turns the changesets into the version and
+      # the changelog, so they are gone from it by design.
+      - if: >-
+          github.event_name == 'pull_request'
+          && github.actor != 'dependabot[bot]'
+          && !startsWith(github.head_ref, 'changeset-release/')
         run: bun run changeset status --since="origin/$BASE_REF"
         env:
           BASE_REF: ${{ github.base_ref }}

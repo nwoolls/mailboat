@@ -123,8 +123,9 @@ it 1.0). Rust reads it at build time (`mail_core::brand::VERSION`) and
 Each pull request adds a changeset, a small file in `.changeset/` made with
 `bun run changeset` (`--empty` when people won't notice the change); CI
 fails without one. At release, `bun run version-packages` turns the
-changesets into the next version and a `CHANGELOG.md` entry. Never edit
-either by hand. Details: `.changeset/README.md`.
+changesets into the next version and a `CHANGELOG.md` entry; that release
+pull request (branch `changeset-release/…`) is the one kind CI doesn't ask a
+changeset of. Never edit either by hand. Details: `.changeset/README.md`.
 
 ## Files on your Mac
 
