@@ -48,6 +48,52 @@ pub struct AccountData {
     pub contacts: Vec<String>,
     #[serde(default)]
     pub conversations: Vec<Conversation>,
+    /// Gmail filters the account starts with (what the app calls rules).
+    #[serde(default)]
+    pub rules: Vec<RuleData>,
+    /// The vacation reply the account starts with.
+    #[serde(default)]
+    pub vacation: Option<VacationData>,
+}
+
+/// A filter, written the way the app shows a rule: what it matches, then
+/// what it does. Labels are named (they must exist on the account).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuleData {
+    #[serde(default)]
+    pub from: Option<String>,
+    #[serde(default)]
+    pub to: Option<String>,
+    #[serde(default)]
+    pub subject: Option<String>,
+    /// "Has the words": a Gmail search.
+    #[serde(default)]
+    pub query: Option<String>,
+    #[serde(default)]
+    pub has_attachment: bool,
+    /// Labels to add (user labels by name, or STARRED, IMPORTANT).
+    #[serde(default)]
+    pub add_labels: Vec<String>,
+    /// Skip the inbox.
+    #[serde(default)]
+    pub archive: bool,
+    /// Mark as read.
+    #[serde(default)]
+    pub mark_read: bool,
+}
+
+/// A vacation reply, with its days counted from today.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VacationData {
+    pub subject: String,
+    pub body: String,
+    #[serde(default)]
+    pub restrict_to_contacts: bool,
+    /// Days from now (negative: it already started).
+    pub starts_in_days: i64,
+    pub ends_in_days: i64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

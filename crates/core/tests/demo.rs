@@ -307,8 +307,9 @@ async fn searches_labels_and_actions_work_like_gmail() {
 
     let drafts = gmail.list_drafts().await.unwrap();
     assert!(drafts.drafts.is_empty(), "the work account has no drafts");
+    // The work account starts with the demo's own rules.
     let filters = gmail.filters().await.unwrap();
-    assert!(filters.filter.is_empty());
+    assert_eq!(filters.filter.len(), data.accounts[1].rules.len());
     let send_as = gmail.send_as().await.unwrap();
     assert!(send_as.send_as[0]
         .signature
@@ -360,4 +361,42 @@ async fn prepare_adds_the_accounts_synced_with_their_summaries() {
     .unwrap()
     .unwrap();
     assert!(reader.text.starts_with("- Maya wants to book"));
+}
+
+/// The accounts start with rules, and a vacation reply that is on but not
+/// started yet (so no banner shows over the demo's other screens).
+#[tokio::test]
+async fn the_demo_accounts_start_with_rules_and_a_scheduled_vacation() {
+    let (google, data) = start().await;
+    let http = reqwest::Client::new();
+
+    let personal = demo::client(http.clone(), &google, &data.accounts[0].email);
+    let filters = personal.filters().await.unwrap().filter;
+    assert_eq!(filters.len(), data.accounts[0].rules.len());
+    // A rule's label names became the account's label IDs, and "skip the
+    // inbox" and "mark as read" became removed labels.
+    let travel = filters
+        .iter()
+        .find(|f| f.criteria.from.as_deref() == Some("bookings@ternair.example"))
+        .unwrap();
+    assert!(travel.action.add_label_ids.contains(&"STARRED".to_string()));
+    assert!(travel
+        .action
+        .add_label_ids
+        .iter()
+        .any(|l| l.starts_with("Label_")));
+    let newsletter = filters
+        .iter()
+        .find(|f| f.criteria.from.as_deref() == Some("letters@slowweb.example"))
+        .unwrap();
+    assert_eq!(newsletter.action.remove_label_ids, ["INBOX", "UNREAD"]);
+    let vacation = personal.vacation().await.unwrap();
+    assert!(vacation.enable_auto_reply);
+    let start: i64 = vacation.start_time.unwrap().parse().unwrap();
+    let end: i64 = vacation.end_time.unwrap().parse().unwrap();
+    let now = mail_core::db::now_millis();
+    assert!(start > now && end > start, "{start} {end} {now}");
+
+    let work = demo::client(http, &google, &data.accounts[1].email);
+    assert!(!work.vacation().await.unwrap().enable_auto_reply);
 }

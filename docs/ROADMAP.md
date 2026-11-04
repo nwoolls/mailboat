@@ -3381,6 +3381,16 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
         diagram (GitHub draws Mermaid), and building from source
       - FAQ: why your own Google credentials, is it safe, Windows,
         Linux, what's next (link to the roadmap)
+- [x] A feature gallery, for the README and for social posts *(2026-11-03)*:
+      six tiles in the README and every feature, one picture each, in
+      [docs/FEATURES.md](FEATURES.md), each with a one-line tagline that also
+      works as a post. Every picture is demo mode, in dark and light, 16:9
+      (1600x900), over the same wallpapers as the hero. Made by repeatable
+      scripts (`scripts/screenshots/`), so the whole set can be re-taken
+      after a change. Four short loops (GIF and MP4) show the features that
+      move: swiping to archive, bubble wrap, a screensaver and the AI panel.
+      First draft: the owner reviews the pictures and the wording, and the
+      look can be refined. Not yet: a 4:5 portrait version for Instagram.
 - [x] Repository dressing: description, topics (gmail, email-client,
       tauri, rust, mcp…) and a social preview image (what shows when the
       link is shared). *Done 2026-11-02.*

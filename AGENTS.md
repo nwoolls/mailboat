@@ -91,6 +91,19 @@ How this is enforced:
   `docs/DEVELOPMENT.md`, Google credentials in `docs/GOOGLE-SETUP.md`, AI in
   `docs/AI.md`.
 
+### Writing for people
+
+Anything a person will read goes through the `unslop` skill before it is
+committed: `README.md`, everything in `docs/`, `CONTRIBUTING.md`,
+`SECURITY.md`, the other READMEs, and the issue and pull request templates.
+Run it on the whole file when you write a new one or change one a lot, and
+on the changed passages when you touch a long log (`docs/ROADMAP.md`,
+`docs/ARCHITECTURE.md`, `docs/RELEASE.md`). It repairs only what is clearly
+wrong, so read the diff afterwards: no fact, number, link, quoted string,
+"never" or "must", or recorded decision may change. Files written for
+agents (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) are
+exempt. A docs-only commit still needs `bun run check:privacy`.
+
 ## Conventions
 
 Rust:
@@ -358,5 +371,6 @@ feature; never send AI output without the owner seeing it in the editor;
 never log prompts or answers. API keys (keychain, like Google tokens) could
 be added later as another provider.
 
-An MCP server exposing Mailboat's mail to AI apps (see `docs/ROADMAP.md`,
-Later): off by default, read-only first, never sends.
+The MCP server exposing Mailboat's mail to AI apps is built (Settings → AI →
+AI apps, `docs/AI.md`): off for every account until the owner turns it on,
+search and read plus saving drafts, never sends, Spam and Trash never shared.

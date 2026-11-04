@@ -17,7 +17,7 @@ use super::mailbox::Mailbox;
 use crate::ai::summaries::SummaryKind;
 use crate::db::now_millis;
 use crate::error::{CoreError, Result};
-use crate::gmail::types::{Filter, Vacation};
+use crate::gmail::types::{Filter, FilterAction, FilterCriteria, Vacation};
 
 /// Told which account (by address) has new mail, so the app syncs it now
 /// rather than at its next scheduled pass.
@@ -89,7 +89,15 @@ impl FakeGoogle {
                 mailbox.create_label(&l.name, l.background.clone(), l.text.clone());
             }
             mailbox.signature = account.signature.clone();
-            mailbox.vacation = Vacation::default();
+            mailbox.vacation = account
+                .vacation
+                .as_ref()
+                .map(|v| vacation_from(v, now))
+                .unwrap_or_default();
+            for (n, rule) in account.rules.iter().enumerate() {
+                let filter = filter_from(rule, n, &mut mailbox);
+                mailbox.filters.push(filter);
+            }
             for key in &account.contacts {
                 let p = data.person(key, account)?;
                 mailbox.contacts.push((p.name, p.email));
@@ -792,6 +800,47 @@ impl State {
             mailbox.add(raw, Some(&thread), labels, now);
         }
         Ok(true)
+    }
+}
+
+/// A demo vacation reply, its days counted from `now` (epoch ms).
+fn vacation_from(v: &super::data::VacationData, now: u64) -> Vacation {
+    let day = 86_400_000_i64;
+    let at = |days: i64| (now as i64 + days * day).to_string();
+    Vacation {
+        enable_auto_reply: true,
+        response_subject: Some(v.subject.clone()),
+        response_body_plain_text: Some(v.body.clone()),
+        restrict_to_contacts: v.restrict_to_contacts,
+        start_time: Some(at(v.starts_in_days)),
+        end_time: Some(at(v.ends_in_days)),
+        ..Vacation::default()
+    }
+}
+
+/// A demo rule as the Gmail filter the app reads.
+fn filter_from(rule: &super::data::RuleData, n: usize, mailbox: &mut Mailbox) -> Filter {
+    let mut action = FilterAction::default();
+    for name in &rule.add_labels {
+        action.add_label_ids.push(mailbox.label_id(name));
+    }
+    if rule.archive {
+        action.remove_label_ids.push("INBOX".into());
+    }
+    if rule.mark_read {
+        action.remove_label_ids.push("UNREAD".into());
+    }
+    Filter {
+        id: Some(format!("ANe1Bmj{}", n + 1)),
+        criteria: FilterCriteria {
+            from: rule.from.clone(),
+            to: rule.to.clone(),
+            subject: rule.subject.clone(),
+            query: rule.query.clone(),
+            has_attachment: rule.has_attachment.then_some(true),
+            ..FilterCriteria::default()
+        },
+        action,
     }
 }
 

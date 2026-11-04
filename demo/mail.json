@@ -94,9 +94,31 @@
           "name": "Receipts",
           "background": "#b3efd3",
           "text": "#0b4f30"
+        },
+        {
+          "name": "Someday",
+          "background": "#e4d7f5",
+          "text": "#41236d"
         }
       ],
       "contacts": ["maya", "sam", "ana", "tomas"],
+      "vacation": {
+        "subject": "Out of office",
+        "body": "Thanks for your note. I'm away from my desk and will reply when I'm back. If it's urgent, please write to Priya Raman and she'll help.",
+        "restrictToContacts": false,
+        "startsInDays": 3,
+        "endsInDays": 10
+      },
+      "rules": [
+        { "from": "bookings@ternair.example", "addLabels": ["Travel", "STARRED"] },
+        {
+          "query": "receipt OR \"order confirmation\"",
+          "addLabels": ["Receipts"],
+          "archive": true
+        },
+        { "from": "letters@slowweb.example", "archive": true, "markRead": true },
+        { "from": "appointments@brightside.example", "addLabels": ["IMPORTANT"] }
+      ],
       "conversations": [
         {
           "labels": ["INBOX", "STARRED", "IMPORTANT", "Travel"],
@@ -367,6 +389,11 @@
         }
       ],
       "contacts": ["priya", "jordan", "ben", "lena"],
+      "rules": [
+        { "from": "@fernhill.example", "addLabels": ["Clients/Fernhill", "IMPORTANT"] },
+        { "subject": "1:1", "addLabels": ["1:1s"] },
+        { "query": "unsubscribe", "archive": true, "markRead": true }
+      ],
       "conversations": [
         {
           "labels": ["INBOX", "IMPORTANT"],
