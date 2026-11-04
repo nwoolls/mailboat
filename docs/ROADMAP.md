@@ -3469,7 +3469,7 @@ builds are attached to each run as artifacts.*
       *Done 2026-11-02; its first two pull requests were merged. One alert (a Linux-only GTK dependency pinned by Tauri) cannot be fixed by an update.*
 - [x] OpenSSF Scorecard: a security health score for the repository
       *Running since 2026-11-02 (`scorecard` workflow); the score is
-      6.2 on 2026-11-04. The badge waits on the item above.*
+      6.2 on 2026-11-04. The badge is in the README (owner's OK, 2026-11-04).*
 
 ### Community (kept small, so it never becomes a job)
 
