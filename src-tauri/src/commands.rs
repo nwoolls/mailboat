@@ -1052,7 +1052,7 @@ pub struct AppInfo {
 #[specta::specta]
 pub fn app_info() -> AppInfo {
     AppInfo {
-        version: env!("CARGO_PKG_VERSION").to_string(),
+        version: mail_core::brand::VERSION.to_string(),
         account_colors: accounts::ACCOUNT_COLORS
             .iter()
             .map(|c| (*c).to_string())

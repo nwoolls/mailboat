@@ -137,6 +137,17 @@ fails otherwise.
 Commits: one topic each, imperative subject, a body that explains why.
 - Make small, focused commits with clear messages.
 
+Versions: the app's version is written once, in `package.json` (Rust reads
+it as `mail_core::brand::VERSION`, `tauri.conf.json` points at it), and
+only a release changes it, through Changesets. Every pull request adds a
+changeset in `.changeset/` (`bun run changeset`, or by hand: see
+`.changeset/README.md`): `patch`, `minor` or `major`, and one plain
+sentence for people (no real mail details). Anything people won't notice
+(docs, tests, tooling) gets an empty one (`bun run changeset --empty`).
+CI fails a pull request without one, except Dependabot's and the release
+pull request (branch `changeset-release/…`, which consumes them). Never edit
+the version or `CHANGELOG.md` by hand.
+
 ### Pull requests (once the repository's ruleset is on)
 
 Nothing goes to `main` directly. For each piece of work:

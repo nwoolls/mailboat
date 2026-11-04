@@ -242,7 +242,7 @@ pub fn run() {
                 .user_agent(format!(
                     "{}/{}",
                     mail_core::brand::NAME,
-                    env!("CARGO_PKG_VERSION")
+                    mail_core::brand::VERSION
                 ))
                 .timeout(std::time::Duration::from_secs(60));
             // The demo's made-up Google is on this computer: no proxy.
@@ -464,6 +464,11 @@ mod tests {
             "tauri.conf.json productName"
         );
         assert_eq!(conf["identifier"], brand::ID, "tauri.conf.json identifier");
+        // The version is written once, in package.json; Tauri follows it.
+        assert_eq!(
+            conf["version"], "../package.json",
+            "tauri.conf.json version must point at package.json"
+        );
         assert_eq!(
             conf["mainBinaryName"],
             brand::SHORT_NAME,

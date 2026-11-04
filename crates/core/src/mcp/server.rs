@@ -375,7 +375,7 @@ impl MailServer {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new(
                 crate::brand::SHORT_NAME,
-                env!("CARGO_PKG_VERSION"),
+                crate::brand::VERSION,
             ))
             .with_instructions(INSTRUCTIONS)
     }

@@ -9,6 +9,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
     "clean-start": "tauri dev -- -- --clean-start",
     "demo": "tauri dev -- -- --demo",
     "test": "vitest run",
@@ -44,6 +46,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.12.4",

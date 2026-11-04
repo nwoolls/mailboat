@@ -1017,7 +1017,7 @@ dependencies = [
 
 [[package]]
 name = "desktop"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "block2",
  "mail-core",
@@ -2651,7 +2651,7 @@ dependencies = [
 
 [[package]]
 name = "mail-core"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "ammonia",
  "async-trait",

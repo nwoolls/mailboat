@@ -3526,7 +3526,7 @@ themselves.*
       `getmailboat.app` (e.g. `https://getmailboat.app/updates/latest.json`), never
       a GitHub address, so hosting can change without stranding anyone.
       Installers live on GitHub Releases
-- [ ] Version numbers and changelog *(owner, 2026-10-25: semversioner
+- [x] Version numbers and changelog *(owner, 2026-10-25: semversioner
       if that's the usual thing, or the option and alternatives)*.
       Semantic versioning (1.4.2: big, feature, fix) is the convention,
       and Tauri's updater requires it. Today the version is written in
@@ -3553,6 +3553,17 @@ themselves.*
         plain sentences
       - **git-cliff**: a changelog from commit history only, with the
         version bumped by hand
+      *(built 2026-11-04: Changesets, chosen by the owner, with `0.x` for
+      the first public builds. `package.json` is the only place the version
+      is written: Rust reads it in `crates/core/build.rs`
+      (`brand::VERSION`, used by the user agent, About info and MCP
+      server), `tauri.conf.json` points at it, and the workspace
+      `Cargo.toml` is `0.0.0`, not the app's. Every pull request adds a
+      changeset (CI runs `changeset status` and fails without one, except
+      for Dependabot and the release pull request, `changeset-release/…`); `bun run version-packages` makes the next version
+      and a `CHANGELOG.md` entry, whose lines have no commit hashes. The
+      release pull request that does this for you belongs to the release
+      script below)*
 - [ ] Release notes *(moved from Milestone 14, 2026-11-04)*: from those
       changesets, or failing that generated from merged pull requests,
       grouped by label (new, fixed, changed)
