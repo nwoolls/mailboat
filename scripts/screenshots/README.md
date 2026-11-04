@@ -10,7 +10,11 @@ the desktop. Each shot is 1600x900 (16:9): good for the README and for a post.
 
 ## One-time
 
-- Xcode command line tools (the Swift compiler) and `bun`.
+- Xcode command line tools (the Swift compiler), `bun`, and Python 3 with
+  Pillow (`optimize.py`). The loops also need `ffmpeg` (`brew install ffmpeg`).
+- A main display at 1x, as on a 2560x1440 monitor. On a Retina main display
+  the pictures come out twice the size, and `find_button.py` (which finds the
+  AI loop's Replace button) needs its coordinates doubled.
 - macOS permissions for the app that runs the scripts (Terminal, iTerm, an
   editor): **Screen & System Audio Recording** (to capture) and
   **Accessibility** (to click and type). If a capture says "could not create
@@ -26,7 +30,14 @@ OUT=/tmp/shots scripts/screenshots/place.sh   # puts the demo window in its spot
 OUT=/tmp/shots scripts/screenshots/gallery.sh dark     # every picture, dark
 OUT=/tmp/shots scripts/screenshots/gallery.sh light    # every picture, light
 OUT=/tmp/shots scripts/screenshots/gallery.sh dark rules vacation   # just some
+OUT=/tmp/shots scripts/screenshots/gallery.sh dark loop_bubbles loop_swipe loop_koi loop_write_with_ai   # the loops
 ```
+
+Take each AI picture, and the AI loop, on a fresh demo: the writing assistant
+leaves a draft reply behind, and the app's undo brings back only the latest
+archived conversation. The sign-in code pictures need the popup that arrives
+about 45 seconds after the demo opens: run them with `KEEP_TOAST=1` right
+then, since every other feature dismisses it.
 
 While it runs, the **main display is in use**: a picture window appears behind
 the app for a few seconds per shot, and the script clicks and types at screen
@@ -49,13 +60,14 @@ OUT=/tmp/shots scripts/screenshots/install.sh   # into docs/images/features/, sR
 | `place.sh` | Finds the demo (the process started with `--demo`, never an installed copy) and puts its window at 640,300, 1424x820 |
 | `shoot.sh` | One picture: backdrop window, pointer out of the way, region capture |
 | `gallery.sh` | One function per feature: the clicks to get there, then `shoot` |
-| `install.sh` | Copies the pictures into the repository, converted to the plain sRGB profile |
-| `backdrop.swift`, `windows.swift`, `mouse.swift`, `scroll.swift`, `frame.swift`, `render.mjs` | Small helpers |
+| `install.sh` | Copies the pictures and the loops into the repository; each PNG is recompressed without changing a pixel (`optimize.py`) and carries the plain sRGB profile |
+| `find_button.py` | Finds the writing assistant's Replace button by its colour, in the right-hand strip of the window |
+| `backdrop.swift`, `windows.swift`, `mouse.swift`, `scroll.swift`, `drag.swift`, `swipe.swift`, `frame.swift`, `render.mjs` | Small helpers: a picture behind the window, window positions, the pointer, scrolling, a hand-like drag, a trackpad swipe, a frame of a video wallpaper, an SVG to PNG |
 
 ## Adding a feature
 
 Add a `feature_<name>` function to `gallery.sh` (use `settings <page>`,
 `click x y` in window-capture coordinates, `sclick x y` in shot coordinates,
-`key`, `scrolldown`, then `shoot <name>`), add its name to the `features` list,
-and run it for `dark` and `light`. To find positions, capture just the app's
+`key`, `scrolldown`, then `shoot <name>`; a loop uses `record <name> <most seconds> <command>`),
+add its name to the `features` list, and run it for `dark` and `light`. To find positions, capture just the app's
 window (`screencapture -l <window id>`) and read them off the picture.

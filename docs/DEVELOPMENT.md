@@ -38,11 +38,13 @@ work. Sending is faked: the message lands in Sent and the person answers
 about 8 seconds later. A sign-in code arrives 45 seconds after the window opens.
 
 The made-up mail lives in `demo/mail.json` (reserved `.example` addresses
-only). The pictures in the README and in [FEATURES.md](FEATURES.md) are taken
-from it, with scripts you can run again: see
-[scripts/screenshots/README.md](../scripts/screenshots/README.md). Like the clean start below, the demo keeps to its own folder
+only). Like the clean start below, the demo keeps to its own folder
 (`com.nwoolls.mailboat.demo`) and starts over at every launch, dated
 relative to now. It takes the flag `--demo` in the same ways.
+
+The pictures in the README and in [FEATURES.md](FEATURES.md) are taken from
+the demo, with scripts you can run again:
+[scripts/screenshots/README.md](../scripts/screenshots/README.md).
 
 ### A first launch, again and again (clean start)
 

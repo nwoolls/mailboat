@@ -76,7 +76,7 @@ Say how to reply, or tap a reply idea, and the assistant drafts it from the conv
 
 ### Summaries
 
-**Long threads, in three bullet points.**
+**Long threads, in a few bullet points.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/features/conversation-dark.png">
@@ -87,7 +87,7 @@ A few points above a long conversation, and a one-line summary in place of each 
 
 ### AI apps (MCP)
 
-**Let Claude search your Gmail, read-only, with one click, and drafts that wait for you.**
+**Let Claude search and read your Gmail with one click, and save drafts that wait for you.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/features/ai-apps-dark.png">
@@ -133,7 +133,7 @@ A sheet of bubbles behind the empty view: click one to pop it, or drag across a 
   <img src="images/features/inbox-zero-sky-light.png" alt="An empty view with a soft sky and clouds behind the icon" width="800">
 </picture>
 
-A quiet sky behind the empty view that follows the time of day, with the sun or tonight's moon on its way across.
+It follows the time of day, with the sun or tonight's moon on its way across.
 
 ### Screensavers
 
@@ -216,7 +216,7 @@ Instant local search across all accounts, with Gmail's own operators (from:, has
   <img src="images/features/palette-light.png" alt="The command palette open over a conversation, listing Reply, Archive, Labels and more with their shortcuts" width="800">
 </picture>
 
-Everything is a keystroke away: ⌘K opens the command palette, with the actions for the conversation in front of you and the shortcut for each.
+⌘K opens the command palette, with the actions for the conversation in front of you and the shortcut for each.
 
 ### Swipes
 
@@ -250,8 +250,6 @@ Gmail's own keys (j and k, e, #, g then i, c, r) plus the extras, in a sheet one
   <source media="(prefers-color-scheme: dark)" srcset="images/features/keyboard-dark.png">
   <img src="images/features/keyboard-light.png" alt="Settings, Keyboard: the full list of shortcuts" width="800">
 </picture>
-
-Every shortcut in one list.
 
 ## Make it yours
 

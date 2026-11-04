@@ -17,5 +17,5 @@ What it does:
 
 Check names must match the jobs in `.github/workflows` exactly; update this
 file if a job is renamed. The Copilot rule needs a Copilot plan on the owner's
-account. Rulesets are enforced only on public repositories (or a paid plan),
-which is why this waits for the repository to go public.
+account. Rulesets are enforced only on public repositories (or with a paid plan),
+so this one was turned on when the repository went public.
