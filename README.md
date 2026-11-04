@@ -194,9 +194,10 @@ exist to tick a box. Using your own credentials means there is no review, no
 user limit and nobody in the middle. A paid, no-setup version may come later
 ([docs/RELEASE.md](docs/RELEASE.md)); the open-source one stays.
 
-**Google signs me out about once a week.**
-While a project is in Google's "Testing" mode, sign-ins expire after seven
-days. Signing in again takes one click.
+**Google signs me out every seven days.**
+While a project is in Google's "Testing" mode, which is how your own Google
+credentials are set up, Google ends each sign-in after seven days. Signing in
+again takes one click.
 
 **Is it safe?**
 The code is public and has been reviewed several times by AI code-review

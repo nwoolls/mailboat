@@ -13,8 +13,8 @@ downloaded file on the window. In short:
 2. Set up the sign-in screen (Google Auth Platform → Get started): an app
    name, your own email, and **External**. Leave it in **Testing**, and under
    **Audience → Test users** add each Gmail address you'll use in Mailboat
-   (work and school accounts work too). Google can sign accounts out about
-   once a week while a project is in Testing; signing in again takes a click.
+   (work and school accounts work too). While a project is in Testing,
+   Google ends each sign-in after seven days; signing in again takes a click.
 3. Create an OAuth client ID of type **Desktop app** and download its JSON.
 4. Give the file to the app (drop it on the window), or save it yourself as
    `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`.

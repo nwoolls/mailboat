@@ -3555,12 +3555,14 @@ project is in Testing, a sign-in to Gmail ends after about seven days
 is not a "may" or an "about once a week": every account has to sign in
 again each week until the project is published.*
 
-- [ ] Say it plainly everywhere: sign-ins to a project in Testing end
+- [x] Say it plainly everywhere: sign-ins to a project in Testing end
       after seven days. Replace "may", "can" and "about once a week" in
       the onboarding Audience step (`GoogleStage.tsx`), Settings →
       Accounts (`SettingsSections.tsx`), `docs/GOOGLE-SETUP.md`, the
       README's FAQ, `AGENTS.md` (Gmail / Google), the Architecture
       decisions of 2026-10-14 and 2026-10-29, and the new notice below
+      *(done 2026-11-03 for all but the notice, whose text is written
+      with it; no test pinned the old wording)*
 - [ ] Take the red status text out of the sidebar: the line centred under
       an account ("Google signed you out · sign in again", from
       `accounts.ts` and `sidebarParts.tsx`). Keep the red dot on the
