@@ -3542,10 +3542,22 @@ themselves.*
       Signing is done from the Mac with `jsign`; a signed build's
       installer, installed app and uninstaller all carry the certificate
       (`scripts/sign-windows.sh`, `docs/DEVELOPMENT.md`, "A signed Windows
-      installer"). Not yet done: trying the signed installer in the Windows
-      VM (publisher, SmartScreen), and the GitHub Actions version, which
-      should sign through GitHub's OIDC login to Azure rather than a stored
-      secret)*
+      installer"). The owner checked a signed ARM64 installer in the Windows
+      VM: the installer, the app and the uninstaller show the signature,
+      and the elevation (UAC) prompt shows it. Not yet done: SmartScreen
+      on a downloaded installer, which depends on reputation, and the
+      GitHub Actions version, which should sign through GitHub's OIDC login
+      to Azure rather than a stored secret)*
+- [ ] Release platforms *(owner, 2026-11-04)*: Windows x64 and ARM64
+      (ARM64 alone is too niche for a public release; an x64 installer
+      builds and the script already takes `WINDOWS_TARGET`, only not yet tried
+      on a real x64 PC), and macOS on Apple silicon only. A universal Mac
+      build was looked at and set aside: the Swift helper for Apple
+      Intelligence would need building for both architectures and the
+      universal triple, the Intel half couldn't be tried on any machine here, Apple
+      Intelligence needs Apple silicon anyway, and Apple is dropping Intel
+      Macs. Revisit if people ask for Intel. Each installer is its own file,
+      so the update file and the release script list them all
 - [ ] Automatic updates *(added 2026-10-19, settings comparison;
       Mimestream has an update channel setting)*: Tauri's updater plugin
       with its own signing key. The address built into the app is on
