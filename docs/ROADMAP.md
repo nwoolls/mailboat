@@ -3733,6 +3733,22 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [ ] A sign-in code in a verification email isn't surfaced, and its
+      summaries are wrong *(owner report, 2026-11-04)*: an identity
+      verification email showed a short numeric code in large styled text
+      beside a "Verify" button. The list row and the reader didn't offer the
+      code, the list's one-line summary said no action was needed, and the
+      full summary failed with Apple Intelligence's "safety guardrails"
+      message. `mail::codes` finds codes by the words near them
+      ("verification code", "your code is"), within the first 800
+      characters of the text, so the likeliest cause is that nothing near
+      the number says "code", or that markup puts the digits away from its
+      wording. Not investigated yet. To address it without writing the mail
+      down: the owner keeps the email; an agent reads it locally (Show
+      original gives its HTML), works out why detection missed it, and
+      builds a made-up fixture with the same structure (an invented sender
+      on a reserved domain, the same layout and wording shape) for the
+      test. Nothing from the real email goes into the repository
 - [ ] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the
