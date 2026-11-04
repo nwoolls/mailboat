@@ -3450,8 +3450,15 @@ builds are attached to each run as artifacts.*
       pull request, and its comments have found real problems. It
       sometimes says it could not finish at the selected tier (plan
       limits).*
-- [ ] Optional: Claude's GitHub Action as a second reviewer, on the
+- [x] Optional: Claude's GitHub Action as a second reviewer, on the
       owner's Claude subscription
+      *Dropped for now (owner, 2026-11-04): the owner already reviews
+      with AI locally and Copilot reviews every pull request, so a third
+      pass adds comments and a stored token for little. It would not
+      raise Scorecard's Code-Review score either, as bot reviews don't
+      count as approvals. Worth another look before the launch
+      (Milestone 17), when a reviewer from a different model family
+      could catch what the others share.*
 - [x] Code scanning with CodeQL (Rust and TypeScript), with Copilot
       Autofix suggestions for what it finds
       *Running on pull requests since 2026-11-02, with Copilot Autofix on. The first findings still need a look: see the next item.*
