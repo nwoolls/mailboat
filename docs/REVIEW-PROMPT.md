@@ -31,12 +31,15 @@ relative to `main`, committed and uncommitted:
   git status --short                 (also read the untracked files it lists; `git diff` does not show them)
   git log main..HEAD                 (commit messages)
 
-Do NOT modify, create, format or delete any file in the working tree, and do
-not commit, stash, switch branches or push. Read-only commands only (git
-diff/log/status, grep, cat). Running the existing check and test commands is
-fine. Do not run anything that writes (formatters, installs, bindings or
-changeset commands). If you want to try something that writes, do it in a
-throwaway copy or `git worktree` under /tmp and remove it when done.
+Do NOT change the project: no editing, creating, formatting or deleting of
+tracked or untracked files in the working tree, and no commit, stash, branch
+switch or push. Look with read-only commands (git diff/log/status, grep, cat).
+Running the existing check and test commands is fine: they may write build
+output and caches in folders git ignores (`target/`, `node_modules/`,
+`test-results/`), and that is not a change to the project. Do not run
+anything that rewrites the project's own files (formatters, installs,
+bindings or changeset commands). If you want to try something that does, do
+it in a throwaway copy or `git worktree` under /tmp and remove it when done.
 
 ## Read first
 - AGENTS.md (project rules: privacy of real mail, multi-account rules, Rust
@@ -79,7 +82,7 @@ already rejected in an earlier round, with the reason.>
 - Code quality: dead code, duplicated logic, wrong or excessive comments.
   Skip matters of taste.
 
-## Run these (read-only) and report real output
+## Run these and report real output
 - `bun run check:privacy` and `bun run check:brand`
 - <the test commands that cover the change: `cargo test -p …`, `bun run test`,
   a single Playwright spec, …>

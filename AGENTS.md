@@ -151,8 +151,8 @@ Nothing goes to `main` directly. For each piece of work:
 4. The owner merges (squash, branch deleted), or says to. Then update the
    local `main`.
 
-Before the first push of a branch, and before each push that updates an open
-pull request, hand the owner an independent review prompt, made from
+Before the first push of a branch, before opening its pull request, and
+before each push that updates an open pull request, hand the owner an independent review prompt, made from
 `docs/REVIEW-PROMPT.md` and filled in for the branch (what it does, the
 decisions already made, what to look for), as one code block. Then wait: the
 owner has it reviewed and brings the reviews back. Check each finding against
