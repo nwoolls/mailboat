@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use mail_core::auth::tokens::ScopeHook;
 use mail_core::auth::{AccountTokens, OAuthClientConfig, SecretStore};
@@ -52,6 +53,10 @@ pub struct AppState {
     accounts_changed: Arc<dyn Fn() + Send + Sync>,
     /// Demo mode's made-up Google, which every account talks to instead.
     pub demo: Option<mail_core::demo::FakeGoogle>,
+    /// Demo mode with a sign-out to see: the second account's sign-in
+    /// ends this long after its client is made, and "Sign in again" renews it.
+    pub demo_sign_out: Option<Duration>,
+    pub demo_sessions: Mutex<HashMap<AccountId, Arc<mail_core::demo::DemoSession>>>,
 }
 
 impl AppState {
@@ -81,6 +86,8 @@ impl AppState {
             older: Mutex::new(HashMap::new()),
             accounts_changed,
             demo: None,
+            demo_sign_out: None,
+            demo_sessions: Mutex::default(),
         }
     }
 
@@ -118,8 +125,20 @@ impl AppState {
             return Ok(client);
         }
         if let Some(google) = &self.demo {
+            let all = accounts::list(&self.db.conn())?;
             let email = accounts::get(&self.db.conn(), account)?.email;
-            let client = mail_core::demo::client(self.http.clone(), google, &email);
+            let session = self
+                .demo_sign_out
+                .filter(|_| all.get(1).is_some_and(|a| a.id == account))
+                .map(|after| Arc::new(mail_core::demo::DemoSession::ending_in(after)));
+            if let Some(s) = &session {
+                self.demo_sessions
+                    .lock()
+                    .unwrap()
+                    .insert(account, s.clone());
+            }
+            let client =
+                mail_core::demo::client_with_session(self.http.clone(), google, &email, session);
             return Ok(self.keep_client(account, client));
         }
         let sub = accounts::google_sub(&self.db.conn(), account)?;

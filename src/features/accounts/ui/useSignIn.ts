@@ -4,6 +4,8 @@ import { unwrap } from "../../../platform/tauri/ipc";
 import { keys } from "../../../shared/lib/queries";
 import { signInErrorMessage } from "../model/signIn";
 
+export type SignIn = ReturnType<typeof useSignIn>;
+
 /** Browser sign-in for a new (or re-authorizing) account, with cancel. */
 export function useSignIn() {
   const qc = useQueryClient();
@@ -23,6 +25,8 @@ export function useSignIn() {
     start: (loginHint: string | null = null) => mutation.mutate(loginHint),
     cancel: () => void commands.accountAddCancel(),
     pending: mutation.isPending,
+    /** Whose sign-in is running or failed: an address, null for a new account, undefined before any. */
+    hint: mutation.variables,
     error: signInErrorMessage(mutation.error),
   };
 }

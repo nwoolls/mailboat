@@ -38,7 +38,6 @@ export function SidebarSections(props: SidebarBodyProps) {
     syncStates,
     selection,
     onSelect,
-    onReauth,
     onAccountMenu,
     isOpen,
     toggle,
@@ -111,7 +110,7 @@ export function SidebarSections(props: SidebarBodyProps) {
               </span>
             }
           >
-            <AccountProblem state={state} onReauth={() => onReauth(account)} />
+            <AccountProblem state={state} />
             <Fold open={accountOpen}>
               {PRIMARY_ACCOUNT_VIEWS.map((view) => {
                 const s = viewSelection(view, account.id);

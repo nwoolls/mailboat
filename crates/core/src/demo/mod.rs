@@ -20,13 +20,51 @@ pub use server::{FakeGoogle, OnChange, Summary, Timing};
 use crate::gmail::{GmailClient, QuotaPacer, TokenSource};
 use crate::Result;
 
-/// The made-up Google takes an account's address as its access token.
-pub struct DemoTokens(pub String);
+/// When a demo account's sign-in ends, as Google ends one in Testing.
+/// Lets the sign-out notice be tried without waiting seven days
+/// (the `DEMO_SIGN_OUT_AFTER` setting, with the app's environment prefix).
+#[derive(Debug, Default)]
+pub struct DemoSession {
+    ends_at: std::sync::Mutex<Option<std::time::Instant>>,
+}
+
+impl DemoSession {
+    /// A sign-in that ends after `after`.
+    pub fn ending_in(after: std::time::Duration) -> Self {
+        Self {
+            ends_at: std::sync::Mutex::new(Some(std::time::Instant::now() + after)),
+        }
+    }
+
+    /// Signing in again: it doesn't end any more.
+    pub fn renew(&self) {
+        *self.ends_at.lock().unwrap() = None;
+    }
+
+    fn ended(&self) -> bool {
+        self.ends_at
+            .lock()
+            .unwrap()
+            .is_some_and(|t| std::time::Instant::now() >= t)
+    }
+}
+
+/// The made-up Google takes an account's address as its access token. With
+/// a session that has ended, it refuses it as Google does a revoked grant.
+pub struct DemoTokens {
+    email: String,
+    session: Option<Arc<DemoSession>>,
+}
 
 #[async_trait]
 impl TokenSource for DemoTokens {
     async fn access_token(&self) -> Result<String> {
-        Ok(self.0.clone())
+        if self.session.as_ref().is_some_and(|s| s.ended()) {
+            return Err(crate::CoreError::Auth(
+                "the demo's sign-in ended (invalid_grant)".into(),
+            ));
+        }
+        Ok(self.email.clone())
     }
     async fn invalidate(&self) {}
 }
@@ -34,9 +72,22 @@ impl TokenSource for DemoTokens {
 /// A Gmail client acting as one demo account. Nothing to pace: there's no
 /// quota to respect.
 pub fn client(http: reqwest::Client, google: &FakeGoogle, email: &str) -> GmailClient {
+    client_with_session(http, google, email, None)
+}
+
+/// As `client`, for an account whose sign-in can end.
+pub fn client_with_session(
+    http: reqwest::Client,
+    google: &FakeGoogle,
+    email: &str,
+    session: Option<Arc<DemoSession>>,
+) -> GmailClient {
     GmailClient::with_base_url(
         http,
-        Arc::new(DemoTokens(email.to_string())),
+        Arc::new(DemoTokens {
+            email: email.to_string(),
+            session,
+        }),
         google.base_url(),
     )
     .with_pacer(QuotaPacer::unlimited())
@@ -110,4 +161,23 @@ pub async fn prepare(
         }
     }
     Ok(added)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn an_ended_demo_sign_in_is_refused_until_it_is_renewed() {
+        let session = Arc::new(DemoSession::ending_in(Duration::ZERO));
+        let tokens = DemoTokens {
+            email: "a@x.example".into(),
+            session: Some(session.clone()),
+        };
+        let err = tokens.access_token().await.unwrap_err();
+        assert!(matches!(err, crate::CoreError::Auth(_)));
+        session.renew();
+        assert_eq!(tokens.access_token().await.unwrap(), "a@x.example");
+    }
 }

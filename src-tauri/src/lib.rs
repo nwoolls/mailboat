@@ -264,6 +264,7 @@ pub fn run() {
                     app: app.handle().clone(),
                     log: sync_log.clone(),
                     db: db.clone(),
+                    sign_outs: Default::default(),
                 }),
                 SyncConfig {
                     images: Some(mail_core::mail::prefetch::Prefetch::new(
@@ -293,7 +294,17 @@ pub fn run() {
             );
             let state = if mode == mode::Mode::Demo {
                 let google = start_demo(&db, &state.http)?;
-                state.with_demo(google)
+                let mut state = state.with_demo(google);
+                // `<prefix>_DEMO_SIGN_OUT_AFTER=<seconds>`: the second
+                // account's sign-in ends then, to see the sign-out notice.
+                state.demo_sign_out = std::env::var(format!(
+                    "{}_DEMO_SIGN_OUT_AFTER",
+                    mail_core::brand::ENV_PREFIX
+                ))
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .map(std::time::Duration::from_secs);
+                state
             } else {
                 state
             };

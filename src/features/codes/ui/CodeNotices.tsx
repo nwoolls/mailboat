@@ -7,7 +7,7 @@ import { type CodeNotice, current, NOTICE_LIFETIME_MS, withCode } from "../model
 
 /**
  * Sign-in codes from new mail, in a glass notice at the top right (as
- * MonoCode's update notices), so a code can be copied without opening the
+ * MonoCode's update notices; the Shell stacks it with the others), so a code can be copied without opening the
  * email. Each stays until dismissed, copied, or 10 minutes pass (codes
  * expire). Never modal: the app works around it.
  */
@@ -56,7 +56,7 @@ export function CodeNotices({ onOpen }: { onOpen: (thread: ThreadId) => void }) 
     <section
       aria-label="Sign-in codes"
       role="status"
-      className="notice-card fixed top-12 right-3 z-50 w-[min(320px,calc(100vw-24px))] overflow-hidden rounded-xl"
+      className="notice-card w-[min(320px,calc(100vw-24px))] overflow-hidden rounded-xl"
     >
       <header className="flex h-8 items-center gap-2 border-b border-stroke pr-1.5 pl-3">
         <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">

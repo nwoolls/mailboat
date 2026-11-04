@@ -8,7 +8,7 @@ import { viewUnread } from "../model/sidebar";
 import { AccountMenu, type AccountMenuTarget } from "./AccountMenu";
 import { LabelMenu, type LabelMenuTarget } from "./LabelMenu";
 import { SidebarSections } from "./SidebarSections";
-import { useSignIn } from "./useSignIn";
+import type { SignIn } from "./useSignIn";
 import { accelLabel } from "../../../shared/lib/platform";
 
 type Props = {
@@ -19,6 +19,10 @@ type Props = {
   onSelect: (s: Selection) => void;
   onAccountRemoved: (id: AccountId) => void;
   onOpenSettings: () => void;
+  /** Shared with the signed-out notice, so one wait has one Cancel. */
+  signIn: SignIn;
+  /** The signed-out notice is up for this sign-in and tells a failure itself. */
+  errorInNotice: boolean;
 };
 
 export function Sidebar({
@@ -29,10 +33,11 @@ export function Sidebar({
   onSelect,
   onAccountRemoved,
   onOpenSettings,
+  signIn,
+  errorInNotice,
 }: Props) {
   const labels = useLabels({ kind: "all" }).data ?? [];
   const counts = useUnreadCounts().data ?? [];
-  const signIn = useSignIn();
   // Which folds are open (or, for ones that start open, closed),
   // remembered between launches.
   const open = new Set(panels.use().folds);
@@ -65,7 +70,6 @@ export function Sidebar({
           syncStates={syncStates}
           selection={selection}
           onSelect={onSelect}
-          onReauth={(account) => signIn.start(account.email)}
           onAccountMenu={openMenu}
           onLabelMenu={(label, anchor) => setLabelMenu({ label, anchor })}
           isOpen={(key) => open.has(key)}
@@ -99,7 +103,9 @@ export function Sidebar({
           <SettingsIcon size={16} />
         </button>
       </div>
-      {signIn.error && <p className="selectable px-4 pb-2 text-xs text-danger">{signIn.error}</p>}
+      {signIn.error && !errorInNotice && (
+        <p className="selectable px-4 pb-2 text-xs text-danger">{signIn.error}</p>
+      )}
       <LabelMenu
         target={labelMenu}
         onClose={() => setLabelMenu(null)}
@@ -112,6 +118,7 @@ export function Sidebar({
       <AccountMenu
         target={menu}
         state={syncStates.find((s) => s.accountId === menu?.account.id)}
+        onSignIn={(account) => signIn.start(account.email)}
         onClose={closeMenu}
         onRemoved={onAccountRemoved}
       />

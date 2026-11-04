@@ -3588,27 +3588,52 @@ again every seven days until the project is published.*
       after seven days. Replace "may", "can" and "about once a week" in
       the onboarding Audience step (`GoogleStage.tsx`), Settings →
       Accounts (`SettingsSections.tsx`), `docs/GOOGLE-SETUP.md`, the
-      README's FAQ, `AGENTS.md` (Gmail / Google), the Architecture
-      decisions of 2026-10-14 and 2026-10-29, and the new notice below
-      *(done 2026-11-03 for all but the notice, whose text is written
-      with it; no test pinned the old wording)*
-- [ ] Take the red status text out of the sidebar: the line centred under
+      README's FAQ, `AGENTS.md` (Gmail / Google) and the Architecture
+      decisions of 2026-10-14 and 2026-10-29 *(done 2026-11-03; no test
+      pinned the old wording. The notice, the avatar menu and Settings →
+      Accounts later gave up any stated cause, 2026-11-04: see the
+      notice item below)*
+- [x] Take the red status text out of the sidebar: the line centred under
       an account ("Google signed you out · sign in again", from
       `accounts.ts` and `sidebarParts.tsx`). Keep the red dot on the
       account's avatar, and put the message in the popup that the avatar
-      opens, with its Sign in again button
-- [ ] A notice in the top right when an account is signed out, like the
-      one for sign-in codes (`CodeNotices.tsx`): which account, one line
-      on why, and a Sign in again button; and an OS notification at the
+      opens, with its Sign in again button *(built 2026-11-04: the line is
+      gone; the avatar's menu says it and has Sign in again. Other
+      errors keep their line)*
+- [x] A notice in the top right when an account is signed out, like the
+      one for sign-in codes (`CodeNotices.tsx`): which account, a line
+      on what to do, and a Sign in again button; and an OS notification at the
       same moment, as the codes have. One notice per sign-out (not one
       per sync), gone when the account signs in again, and the OS
       notification follows the app's notification settings and quiet
-      hours. To settle at the start: whether a dismissed notice comes
-      back at the next launch
-- [ ] Tests: a signed-out account raises the notice and the
+      hours *(built 2026-11-04, `SignedOutNotices.tsx`; the OS
+      notification is `mail::notify::SignOuts`, which tells each sign-out
+      once. Decided with the owner: a dismissed notice comes back at the
+      next launch while the account is still signed out; the red dot and
+      menu stay either way. The OS notification is also once per launch
+      then, since the sync worker reports the state again at start. The
+      notice stacks with the sign-in code notices. Neither the notice nor the
+      menu gives a reason (owner, 2026-11-04): Google's `invalid_grant` is the
+      same for the seven-day limit, a revoked grant and a changed password,
+      so the seven days stay only where someone sets up their own Google Cloud
+      project (onboarding's Audience step, `GOOGLE-SETUP.md`, the README),
+      not as this sign-out's cause. Settings → Accounts lost its seven-day
+      parenthetical too (owner, 2026-11-04), since it would stick out under
+      an official, verified project. A retry of the same sign-out (Syncing,
+      then signed out again) isn't a new one: only a finished pass forgets
+      it, in the OS notification and in a dismissal)*
+- [x] Tests: a signed-out account raises the notice and the
       notification once, and clears them when it signs in again; the
       sidebar shows the red dot and no centred text (a browser test);
       demo mode can show it with a made-up account that signs out
+      *(2026-11-04. Tested: the once-per-sign-out rule (Rust, with a retry in
+      between), the notice's dismissal rules (Vitest), `tests/browser/signed-out.spec.ts` for the sidebar,
+      menu and notice (fails with the old sidebar line), and the demo's
+      token refusal (a unit test). Not tested, to try by hand: the OS
+      notification itself (quiet hours, notifications off), and Sign in
+      again in the demo. Demo mode: with
+      `MAILBOAT_DEMO_SIGN_OUT_AFTER=<seconds>` the second account's sign-in
+      ends then, and Sign in again renews it (`demo::DemoSession`). Off by default, so the gallery's pictures stay as they were)*
 
 ## Milestone 16: Website
 

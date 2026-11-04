@@ -103,6 +103,8 @@ import { SettingsTitleBar } from "../features/settings/ui/SettingsTitleBar";
 import { accountForNew } from "../features/compose/model/draft";
 import { openCardEntry } from "../features/compose/model/composeState";
 import { ComposeCard } from "../features/compose/ui/ComposeCard";
+import { useSignIn } from "../features/accounts/ui/useSignIn";
+import { SignedOutNotices, useSignedOutNotices } from "../features/accounts/ui/SignedOutNotices";
 import { CodeNotices } from "../features/codes/ui/CodeNotices";
 import { MinimizedTabs } from "../features/compose/ui/MinimizedTabs";
 import { ReplyArea } from "../features/compose/ui/ReplyArea";
@@ -209,10 +211,13 @@ export function Shell() {
   const setup = useOAuthSetup();
   const onboardingProgress = onboarding.use();
   const syncStates = useSyncStates().data ?? [];
+  // One browser sign-in at a time, for the sidebar and the signed-out notice.
+  const signIn = useSignIn();
   const firstSyncing = syncStates.some(isFirstSync);
   const labels = useLabels({ kind: "all" }).data ?? [];
   const flags = useFeatureFlags();
   const accountList = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
+  const signedOutNotices = useSignedOutNotices(accountList, syncStates);
   const accounts = useMemo(() => indexAccounts(accountList), [accountList]);
   const identities = useIdentities().data ?? [];
   const compose = useComposeActions(accountList);
@@ -1012,6 +1017,8 @@ export function Shell() {
                   onSelect={goTo}
                   onAccountRemoved={onAccountRemoved}
                   onOpenSettings={openSettings}
+                  signIn={signIn}
+                  errorInNotice={signedOutNotices.list.some((a) => a.email === signIn.hint)}
                 />
               </div>
               {settings && (
@@ -1055,6 +1062,8 @@ export function Shell() {
               onSelect={goTo}
               onAccountRemoved={onAccountRemoved}
               onOpenSettings={openSettings}
+              signIn={signIn}
+              errorInNotice={signedOutNotices.list.some((a) => a.email === signIn.hint)}
             />
           </div>
         )}
@@ -1253,12 +1262,19 @@ export function Shell() {
           onSwitch={(id, kind) => void compose.switchKind(id, kind)}
         />
       )}
-      <CodeNotices
-        onOpen={(id) => {
-          setSelectedId(id);
-          setReaderOpen(true);
-        }}
-      />
+      <div className="fixed top-12 right-3 z-50 flex flex-col gap-2">
+        <SignedOutNotices
+          list={signedOutNotices.list}
+          onDismiss={signedOutNotices.dismiss}
+          signIn={signIn}
+        />
+        <CodeNotices
+          onOpen={(id) => {
+            setSelectedId(id);
+            setReaderOpen(true);
+          }}
+        />
+      </div>
       <MinimizedTabs
         entries={composeState.cards.filter((c) => c.minimized)}
         accounts={accountList}
