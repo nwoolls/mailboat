@@ -3399,8 +3399,9 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
 - [x] Repository dressing: description, topics (gmail, email-client,
       tauri, rust, mcp…) and a social preview image (what shows when the
       link is shared). *Done 2026-11-02.*
-- [ ] Website link on the repository, and the repository pinned on the
-      owner's profile (waits for the website, Milestone 16)
+- *Moved to Milestone 16 (2026-11-04), as it waits for the website: the
+  website link on the repository, and the repository pinned on the
+  owner's profile.*
 
 ### Pipelines (GitHub Actions, free for public repositories)
 
@@ -3427,7 +3428,8 @@ builds are attached to each run as artifacts.*
 - [x] Actions pinned to exact versions, with the least permissions
       each needs (a public repository's workflows are an attack target)
       *Also enforced by the repository setting "Require actions to be pinned to a full-length commit SHA".*
-- [ ] The release pipeline itself is Milestone 15
+- *Moved to Milestone 15 (2026-11-04): the release pipeline itself is its
+  "One release script" item.*
 
 ### Reviews and protection
 
@@ -3448,8 +3450,15 @@ builds are attached to each run as artifacts.*
       pull request, and its comments have found real problems. It
       sometimes says it could not finish at the selected tier (plan
       limits).*
-- [ ] Optional: Claude's GitHub Action as a second reviewer, on the
+- [x] Optional: Claude's GitHub Action as a second reviewer, on the
       owner's Claude subscription
+      *Dropped for now (owner, 2026-11-04): the owner already reviews
+      with AI locally and Copilot reviews every pull request, so a third
+      pass adds comments and a stored token for little. It would not
+      raise Scorecard's Code-Review score either, as bot reviews don't
+      count as approvals. Worth another look before the launch
+      (Milestone 17), when a reviewer from a different model family
+      could catch what the others share.*
 - [x] Code scanning with CodeQL (Rust and TypeScript), with Copilot
       Autofix suggestions for what it finds
       *Running on pull requests since 2026-11-02, with Copilot Autofix on. The first findings still need a look: see the next item.*
@@ -3465,8 +3474,9 @@ builds are attached to each run as artifacts.*
       version updates for Cargo, Bun and GitHub Actions (grouped, so
       it's one pull request a week, not dozens)
       *Done 2026-11-02; its first two pull requests were merged. One alert (a Linux-only GTK dependency pinned by Tauri) cannot be fixed by an update.*
-- [ ] OpenSSF Scorecard: a security health score for the repository,
-      shown as a badge
+- [x] OpenSSF Scorecard: a security health score for the repository
+      *Running since 2026-11-02 (`scorecard` workflow); the score is
+      6.2 on 2026-11-04. The badge is in the README (owner's OK, 2026-11-04).*
 
 ### Community (kept small, so it never becomes a job)
 
@@ -3481,14 +3491,19 @@ builds are attached to each run as artifacts.*
 - [x] `SECURITY.md` with GitHub's private vulnerability reporting
       turned on, and the domain's email as a fallback
       *Done 2026-11-02: private vulnerability reporting is on.*
-- [ ] GitHub Discussions for questions and ideas, so users can help
+- [x] GitHub Discussions for questions and ideas, so users can help
       each other and issues stay for bugs (optional; can be switched
       off if it becomes a chore)
-- [ ] Release notes: from the changesets chosen in Milestone 15
-      (Version numbers and changelog), or failing that generated from
-      merged pull requests, grouped by label (new, fixed, changed)
-- [ ] Optional: GitHub Sponsors on the owner's account, with a
+      *Done 2026-11-04: four categories (Announcements, Q&A, Ideas, Show
+      and tell), a welcome post, and a "Question or setup help" link on
+      the new-issue page, CONTRIBUTING and the README.*
+- *Moved to Milestone 15 (2026-11-04), "Release notes": they come from the
+  changesets chosen there.*
+- [x] Optional: GitHub Sponsors on the owner's account, with a
       `FUNDING.yml` so a Sponsor button shows on the repository
+      *Not for now (owner, 2026-11-04): no donations. Look again at the
+      Milestone 17 checkpoint, together with the paid-option decision
+      (Milestone 18), so the two don't muddy each other.*
 
 ## Milestone 15: Signed builds and automatic updates
 
@@ -3538,6 +3553,9 @@ themselves.*
         plain sentences
       - **git-cliff**: a changelog from commit history only, with the
         version bumped by hand
+- [ ] Release notes *(moved from Milestone 14, 2026-11-04)*: from those
+      changesets, or failing that generated from merged pull requests,
+      grouped by label (new, fixed, changed)
 - [ ] One release script (on the Mac, or GitHub Actions) builds, signs
       and publishes both platforms and the update file. Signing keys
       stay in the Mac's keychain or in encrypted GitHub secrets, never
@@ -3617,6 +3635,9 @@ download it and follow the setup guide.*
       licence (free for individuals and small companies) when starting,
       and record it in ARCHITECTURE
 
+- [ ] Website link on the repository, and the repository pinned on the
+      owner's profile *(moved from Milestone 14, 2026-11-04)*
+
 ## Milestone 17: Launch
 
 *Done when: Mailboat has been announced once in the right places, and the
@@ -3633,6 +3654,9 @@ starting.*
       features are the pitch for a technical audience); "Mimestream,
       but on Windows too" for Windows users. Each post links to the
       website and GitHub
+- [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
+      bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
+      paperwork, best done once there are releases to point at
 - [ ] Checkpoint, about a month later, with the owner: downloads
       (GitHub counts them), stars, issues from people who finished the
       setup, and whether people say they'd pay to skip it. Decide:
@@ -3798,6 +3822,11 @@ again until the next spike.*
       Adapted colors forgets it. It was per message, until the app quit
 
 ## Later / unscheduled
+
+- [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and
+      the MIME and `mailto:` parsers (Scorecard's "Fuzzing" check; cargo-fuzz
+      or proptest). Anything it finds is a security bug, so it goes first
+      in the queue
 
 - [ ] ChatGPT through OpenAI's API with the owner's key *(owner,
       2026-10-31, after Milestone 13 Round 5)*: tools-free by design (the

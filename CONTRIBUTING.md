@@ -12,6 +12,10 @@ accounts and activity. Look it over first and remove account names and
 addresses, counts, timings and timestamps, file paths and any error text
 that identifies mail, then attach only the relevant lines.
 
+Questions and setup help go in
+[Discussions](https://github.com/nwoolls/mailboat/discussions), so issues stay
+for bugs and ideas.
+
 ## Code: not accepted
 
 Pull requests from outside are closed without review. An email client is an

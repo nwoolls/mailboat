@@ -9,9 +9,21 @@ Please **don't open a public issue** for a security problem. Use either:
 - GitHub's private reporting: the **Security** tab → **Report a vulnerability**, or
 - email `security@getmailboat.app`.
 
-Say what you found, how to reproduce it, and which version. You'll get an
-answer within a few days. This is a one-person project, so please allow time
-for a fix.
+Say what you found, how to reproduce it, and which version.
+
+## What to expect
+
+This is a one-person project, so these are goals, not promises:
+
+- **A first reply** within 7 days.
+- **A fix or a plan** within 30 days for a confirmed problem. Anything that
+  could expose mail or sign-in tokens comes before all other work.
+- **Disclosure:** please keep the details private until a fix is out. Once it
+  is, the fix and what it changed are written up in the release notes, with
+  credit to you if you want it. If a problem is still open after 90 days, you
+  are free to publish it.
+
+Only the latest version is supported.
 
 ## What matters most
 
