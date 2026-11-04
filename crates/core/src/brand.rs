@@ -12,6 +12,10 @@ pub const ID: &str = env!("BRAND_ID");
 /// Starts the environment variables people can set (`<PREFIX>_GOOGLE_…`).
 pub const ENV_PREFIX: &str = env!("BRAND_ENV_PREFIX");
 
+/// The app's version, from `package.json` (the one place it is written;
+/// `tauri.conf.json` points at it too). Releases bump it with Changesets.
+pub const VERSION: &str = env!("APP_VERSION");
+
 /// The app's data folder, as Tauri names it (`app_data_dir`), for code
 /// that runs without Tauri: the MCP proxy and the dev examples.
 pub fn data_dir() -> Option<std::path::PathBuf> {
@@ -28,6 +32,14 @@ pub fn data_dir() -> Option<std::path::PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_version_is_a_semantic_version() {
+        let core = VERSION.split(['-', '+']).next().unwrap();
+        let parts: Vec<_> = core.split('.').collect();
+        assert_eq!(parts.len(), 3, "major.minor.patch, got {VERSION}");
+        assert!(parts.iter().all(|p| p.parse::<u32>().is_ok()));
+    }
 
     #[test]
     fn the_brand_is_well_formed() {

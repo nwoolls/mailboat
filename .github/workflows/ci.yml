@@ -40,6 +40,12 @@ jobs:
           # The commits this push or pull request adds (messages are checked too).
           CHECK_PRIVACY_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
       - run: bun run test
+      # Each pull request carries a changeset (an empty one when people
+      # won't notice the change). Dependabot's don't.
+      - if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+        run: bun run changeset status --since="origin/$BASE_REF"
+        env:
+          BASE_REF: ${{ github.base_ref }}
 
   rust:
     name: Rust checks (${{ matrix.os }})

@@ -70,7 +70,7 @@ async fn connect(socket: &PathBuf, client: &str) -> Result<Upstream> {
         .map_err(|e| CoreError::Other(format!("connect to {}: {e}", crate::brand::NAME)))?;
     ClientConfig::new(
         ClientCapabilities::default(),
-        Implementation::new(client, env!("CARGO_PKG_VERSION")),
+        Implementation::new(client, crate::brand::VERSION),
     )
     .serve(stream)
     .await
@@ -98,7 +98,7 @@ async fn connect(socket: &PathBuf, client: &str) -> Result<Upstream> {
     };
     ClientConfig::new(
         ClientCapabilities::default(),
-        Implementation::new(client, env!("CARGO_PKG_VERSION")),
+        Implementation::new(client, crate::brand::VERSION),
     )
     .serve(stream)
     .await

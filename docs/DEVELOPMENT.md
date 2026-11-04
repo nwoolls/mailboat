@@ -114,6 +114,18 @@ The browser tests (`tests/browser`, Playwright) need WebKit and Chromium once:
 bunx playwright install webkit chromium
 ```
 
+## Versions and the changelog
+
+The version is written once, in `package.json` (`0.x` until the owner calls
+it 1.0). Rust reads it at build time (`mail_core::brand::VERSION`) and
+`tauri.conf.json` points at it, so nothing else needs editing.
+
+Each pull request adds a changeset, a small file in `.changeset/` made with
+`bun run changeset` (`--empty` when people won't notice the change); CI
+fails without one. At release, `bun run version-packages` turns the
+changesets into the next version and a `CHANGELOG.md` entry. Never edit
+either by hand. Details: `.changeset/README.md`.
+
 ## Files on your Mac
 
 | What | Where |

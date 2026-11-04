@@ -3,7 +3,10 @@ resolver = "2"
 members = ["crates/core", "src-tauri"]
 
 [workspace.package]
-version = "0.1.0"
+# Not the app's version: that is written once, in package.json (read by
+# crates/core/build.rs as `brand::VERSION`; tauri.conf.json points at it).
+# The crates are never published, so this stays put.
+version = "0.0.0"
 edition = "2021"
 license = "GPL-3.0-only"
 
