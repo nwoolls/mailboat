@@ -27,9 +27,20 @@ fi
 : "${WINDOWS_SIGN_ENDPOINT:?set WINDOWS_SIGN_ENDPOINT, e.g. eus.codesigning.azure.net}"
 : "${WINDOWS_SIGN_ALIAS:?set WINDOWS_SIGN_ALIAS to <signing account>/<certificate profile>}"
 
+for tool in az jsign; do
+  if ! command -v "$tool" >/dev/null; then
+    echo "sign-windows: $tool is not installed; not signing $(basename "$file")" >&2
+    exit 1
+  fi
+done
+
 echo "sign-windows: signing $(basename "$file")" >&2
 SIGN_TOKEN="$(az account get-access-token --resource https://codesigning.azure.net \
   --query accessToken -o tsv 2>/dev/null)"
+if [ -z "$SIGN_TOKEN" ]; then
+  echo "sign-windows: no access token from az (run az login); not signing $(basename "$file")" >&2
+  exit 1
+fi
 export SIGN_TOKEN
 # RFC 3161 is what Microsoft's timestamp service speaks; jsign's default
 # (Authenticode) mode fails against it.
