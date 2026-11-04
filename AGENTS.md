@@ -371,5 +371,6 @@ feature; never send AI output without the owner seeing it in the editor;
 never log prompts or answers. API keys (keychain, like Google tokens) could
 be added later as another provider.
 
-An MCP server exposing Mailboat's mail to AI apps (see `docs/ROADMAP.md`,
-Later): off by default, read-only first, never sends.
+The MCP server exposing Mailboat's mail to AI apps is built (Settings → AI →
+AI apps, `docs/AI.md`): off for every account until the owner turns it on,
+search and read plus saving drafts, never sends, Spam and Trash never shared.
