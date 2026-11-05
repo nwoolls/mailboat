@@ -3682,7 +3682,8 @@ published the same day through the same workflow (`docs/DEVELOPMENT.md`,
       files; checked on 0.0.1: every checksum matched and `latest.json` listed
       the three platforms with their signatures. Decided with the owner:
       test releases 0.0.1 and 0.0.2 first, then 0.1.0 with an updater known
-      to work. Still to do: remove or mark the test releases after 0.1.0)*
+      to work. The test releases and their tags were deleted after 0.1.0
+      (2026-11-05))*
 - [x] Build provenance: GitHub attests each installer was built by
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
