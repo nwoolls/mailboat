@@ -3513,7 +3513,8 @@ themselves.*
 
 *Closed 2026-11-05 (owner). The release pipeline and updater ran for real
 on the test releases 0.0.1 and 0.0.2; the first public release, 0.1.0, is
-cut with the same steps (`docs/DEVELOPMENT.md`, "Releasing").*
+still to come. It goes out through the same workflow (`docs/DEVELOPMENT.md`,
+"Releasing"), with its version bump made by `version-packages`, not by hand.*
 
 - [x] Owner: Apple Developer Program (paid, personal name is fine).
       The free Apple Development certificate can't notarize, and macOS
@@ -3539,8 +3540,8 @@ cut with the same steps (`docs/DEVELOPMENT.md`, "Releasing").*
       "A signed build on the Mac")*
 - [x] Windows: Azure Artifact Signing (open to
       individuals in the US and Canada), so SmartScreen doesn't warn.
-      Signing from the Mac (e.g. `jsign`) or in GitHub Actions, to be
-      confirmed *(2026-11-04, local signing works. An Artifact Signing
+      Signing from the Mac (e.g. `jsign`) or in GitHub Actions
+      *(2026-11-04, local signing works. An Artifact Signing
       account exists under its own Azure subscription for the project, the
       owner's individual identity validation is complete, and a Public
       Trust certificate profile is active (the certificate carries the
@@ -3551,7 +3552,7 @@ cut with the same steps (`docs/DEVELOPMENT.md`, "Releasing").*
       installer"). The owner checked a signed ARM64 installer in the Windows
       VM: the installer, the app and the uninstaller show the signature,
       and the elevation (UAC) prompt shows it. The release workflow signs
-      through GitHub's OIDC login to Azure, with no stored secret (2026-11-05).
+      through GitHub's OIDC login to Azure, with no stored password (2026-11-05).
       The owner downloaded and installed the real 0.0.1 installer in the
       Windows VM and saw no SmartScreen warning; the Mac DMG showed only
       macOS's ordinary "downloaded from the internet" question, which a
@@ -3646,14 +3647,14 @@ cut with the same steps (`docs/DEVELOPMENT.md`, "Releasing").*
       in the repository *(what a release needs, so far: the Developer ID
       certificate and key as a `.p12` with its password, the notarization
       key with its key and issuer IDs, and the updater's signing key. Windows
-      signing should need no stored secret: GitHub signs in to Azure through
+      signing should need no stored password: GitHub signs in to Azure through
       a trust set up there (OIDC). On the Mac, notarization can
       use the saved keychain profile; Tauri's own notarization step instead
       reads `APPLE_API_ISSUER`, `APPLE_API_KEY` and `APPLE_API_KEY_PATH`,
       the path of the key file, so GitHub Actions needs the key as a
       secret written to a temporary file. The Mac job is written
       (`release.yml`, 2026-11-05): a `release` environment with a required
-      reviewer, `main` only, admin bypass off, holds five secrets (names in
+      reviewer, `main` and `v*` tags only, admin bypass off, holds five secrets (names in
       `docs/DEVELOPMENT.md`), and the job builds, signs, notarizes and checks
       the app and DMG on a macOS runner. Its first run (2026-11-05) passed
       in about eight minutes, and the app it built was checked by hand:
@@ -3666,7 +3667,7 @@ cut with the same steps (`docs/DEVELOPMENT.md`, "Releasing").*
       with the same script; Azure trusts the `release` environment through
       OIDC, with no stored password) also ran 2026-11-05, and both installers,
       with the app and uninstaller inside, were checked as signed.
-      Publishing is written (2026-11-05) and untried on a real tag: a version
+      Publishing is written, and ran on two real tags (2026-11-05): a version
       tag starts the workflow, a fast first job checks the tag against
       `package.json` and the changelog, the build jobs also make the update
       payloads (the Updater section of `docs/DEVELOPMENT.md`), and a `publish`
