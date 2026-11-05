@@ -154,3 +154,80 @@ jobs:
             security delete-keychain "$RELEASE_KEYCHAIN" || true
           fi
           rm -f "$RUNNER_TEMP/notarization-key.p8" "$RUNNER_TEMP/certificate.p12"
+
+  windows:
+    name: Windows (${{ matrix.arch }})
+    runs-on: macos-latest
+    environment: release
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      # Lets this job ask GitHub for the short-lived token that Azure trusts
+      # (the trust is set up for runs in the `release` environment only).
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            target: x86_64-pc-windows-msvc
+          - arch: ARM64
+            target: aarch64-pc-windows-msvc
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+          no-cache: true
+      - run: bun install --frozen-lockfile
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          targets: ${{ matrix.target }}
+      # The Windows installers are cross-built on a Mac, as scripts/windows.sh
+      # does on the owner's machine (docs/DEVELOPMENT.md), then signed with
+      # scripts/sign-windows.sh through Azure Artifact Signing.
+      - name: Install the Windows build tools
+        run: |
+          brew install llvm lld nsis jsign sevenzip
+          cargo install cargo-xwin --locked --version 0.23.1
+      - name: Sign in to Azure
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Build and sign the installer
+        env:
+          WINDOWS_TARGET: ${{ matrix.target }}
+          WINDOWS_SIGN: "1"
+          WINDOWS_SIGN_ENDPOINT: ${{ vars.WINDOWS_SIGN_ENDPOINT }}
+          WINDOWS_SIGN_ALIAS: ${{ vars.WINDOWS_SIGN_ALIAS }}
+        run: scripts/windows.sh build
+      - name: Check the signatures and keep the installer
+        env:
+          WINDOWS_TARGET: ${{ matrix.target }}
+        run: |
+          shopt -s nullglob
+          installers=("target/$WINDOWS_TARGET/release/bundle/nsis/"*.exe)
+          if [ "${#installers[@]}" -ne 1 ]; then
+            echo "Expected one installer, found ${#installers[@]}" >&2
+            exit 1
+          fi
+          # The installer, and the app and uninstaller inside it, must be signed.
+          bun scripts/check-windows-signature.ts "${installers[0]}"
+          mkdir -p release-files
+          cp "${installers[0]}" release-files/
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-signed-${{ matrix.arch }}
+          path: release-files/*
+          if-no-files-found: error
+          retention-days: 7
+      - name: Sign out of Azure
+        if: always()
+        run: az logout || true

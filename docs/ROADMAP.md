@@ -3626,7 +3626,10 @@ themselves.*
       "Notarized Developer ID", both binaries arm64. The disk image came out
       signed but unnotarized (Gatekeeper: "Unnotarized Developer ID"), so a
       step now notarizes and staples it too, tried first on that very
-      image. Still to do: the Windows job, publishing, the update file)*
+      image. The Windows job is written too (x64 and ARM64 cross-built on a macOS
+      runner, signed with the same script; Azure trusts the `release`
+      environment through OIDC, with no stored password), and is untried until
+      it runs. Still to do: publishing, the update file)*
 - [ ] Build provenance: GitHub attests each installer was built by
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
