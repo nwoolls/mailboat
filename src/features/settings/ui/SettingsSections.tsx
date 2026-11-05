@@ -82,6 +82,8 @@ import { iconSetting, shownIcon } from "../model/appIcon";
 import { defaultMailAppRow } from "../model/mailApp";
 import { describeImageCache, IMAGE_CACHE_SIZES } from "../model/imageCache";
 import { APP_NAME } from "../../../shared/lib/brand";
+import { canCheck, describeUpdate } from "../../updates/model/update";
+import { checkForUpdates, installUpdate, useUpdateState } from "../../updates/ui/updateStore";
 
 function errorText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -89,11 +91,43 @@ function errorText(e: unknown): string {
 
 export function GeneralSection() {
   const info = useAppInfo().data;
+  const settings = useAppSettings().data;
+  const save = useSaveAppSettings();
+  const update = useUpdateState();
   return (
     <>
       <DefaultMailAppGroup />
       <Group title="About">
         <Row label={`${APP_NAME}`} description={info ? `Version ${info.version}` : undefined} />
+        <Row label="Updates" description={describeUpdate(update)}>
+          {update.kind === "available" ? (
+            <Button onClick={() => void installUpdate()}>Install and restart</Button>
+          ) : (
+            <Button disabled={!canCheck(update)} onClick={() => void checkForUpdates()}>
+              Check for updates
+            </Button>
+          )}
+        </Row>
+        <Row
+          label="Check for updates automatically"
+          description="Looks when the app starts and about once a day, and tells you when there is a new version. It never installs one by itself. A look tells the update server, and GitHub behind it, your IP address, this version and your kind of computer."
+        >
+          <Toggle
+            label="Check for updates automatically"
+            on={settings?.autoCheckUpdates ?? true}
+            disabled={!settings}
+            onChange={(autoCheckUpdates) =>
+              settings &&
+              save.mutate(
+                { ...settings, autoCheckUpdates },
+                {
+                  onError: (e) =>
+                    showToast({ tone: "error", message: `Couldn’t save: ${errorText(e)}` }),
+                },
+              )
+            }
+          />
+        </Row>
       </Group>
     </>
   );

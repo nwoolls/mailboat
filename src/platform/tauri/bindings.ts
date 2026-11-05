@@ -376,6 +376,17 @@ export const commands = {
 	aiSummariesClear: () => typedError<null, AppError>(__TAURI_INVOKE("ai_summaries_clear")),
 	/**  Opens System Settings → Apple Intelligence & Siri, where it's turned on. */
 	aiAppleSettingsOpen: () => typedError<null, AppError>(__TAURI_INVOKE("ai_apple_settings_open")),
+	/**  Looks for a newer version now ("Check for updates"). */
+	updateCheck: () => typedError<{
+	version: string,
+	/**  What the release says changed, as plain text. */
+	notes: string | null,
+} | null, AppError>(__TAURI_INVOKE("update_check")),
+	/**
+	 *  Downloads the newer version, checks its signature, installs it and
+	 *  starts it. Progress goes to the window as events.
+	 */
+	updateInstall: () => typedError<null, AppError>(__TAURI_INVOKE("update_install")),
 };
 
 /** Events */
@@ -394,6 +405,8 @@ export const events = {
 	syncProgressEvent: makeEvent<SyncProgressEvent>("sync-progress-event"),
 	syncStatusEvent: makeEvent<SyncStatusEvent>("sync-status-event"),
 	trackpadEvent: makeEvent<TrackpadEvent>("trackpad-event"),
+	updateAvailableEvent: makeEvent<UpdateAvailableEvent>("update-available-event"),
+	updateProgressEvent: makeEvent<UpdateProgressEvent>("update-progress-event"),
 };
 
 /* Types */
@@ -549,6 +562,11 @@ export type AppSettings_Deserialize = {
 	 *  account's mail through the app's MCP server. Nothing by default.
 	 */
 	mcp?: McpSettings,
+	/**
+	 *  Look for a new version at launch and about once a day. It only
+	 *  looks and tells: installing is always the person's click.
+	 */
+	autoCheckUpdates?: boolean,
 };
 
 export type AppSettings_Serialize = {
@@ -586,6 +604,11 @@ export type AppSettings_Serialize = {
 	 *  account's mail through the app's MCP server. Nothing by default.
 	 */
 	mcp: McpSettings,
+	/**
+	 *  Look for a new version at launch and about once a day. It only
+	 *  looks and tells: installing is always the person's click.
+	 */
+	autoCheckUpdates: boolean,
 };
 
 /**  What applying a rule to mail already received changed. */
@@ -1522,6 +1545,22 @@ export type TranslateAnswer = {
 	source: string | null,
 	/**  Who translated it: "Apple Translation", or the writing provider's name. */
 	by: string,
+};
+
+/**  A look that nobody asked for found an update. Told once per version. */
+export type UpdateAvailableEvent = UpdateInfo;
+
+/**  An update that can be installed. */
+export type UpdateInfo = {
+	version: string,
+	/**  What the release says changed, as plain text. */
+	notes: string | null,
+};
+
+/**  How far the download has got. */
+export type UpdateProgressEvent = {
+	downloaded: number,
+	total: number | null,
 };
 
 export type UsageTotals = {

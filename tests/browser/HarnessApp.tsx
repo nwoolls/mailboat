@@ -14,6 +14,8 @@ import { CommandPalette } from "../../src/features/palette/ui/CommandPalette";
 import { TitleSearch } from "../../src/app/TitleSearch";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import { inbox } from "./demoMail";
+import { GeneralSection } from "../../src/features/settings/ui/SettingsSections";
+import { UpdateNotice } from "../../src/features/updates/ui/UpdateNotice";
 import { Sidebar } from "../../src/features/accounts/ui/Sidebar";
 import { useSignIn } from "../../src/features/accounts/ui/useSignIn";
 import {
@@ -74,6 +76,16 @@ export function Harness({
   }, [mode]);
 
   if (mode === "onboarding") return <OnboardingHarness />;
+  // Settings → About with the update row, and the update notice.
+  if (mode === "updates")
+    return (
+      <div style={{ width: 720, padding: 16 }}>
+        <GeneralSection />
+        <div className="fixed top-12 right-3 z-50">
+          <UpdateNotice />
+        </div>
+      </div>
+    );
   if (mode === "signedout")
     return (
       <div style={{ display: "flex", height: 600, width: 900 }}>

@@ -18,6 +18,7 @@ mod state;
 mod sync_log;
 mod theme;
 mod trackpad;
+mod updates;
 mod window_place;
 
 use std::sync::Arc;
@@ -140,6 +141,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             ai::ai_usage,
             ai::ai_summaries_clear,
             ai::ai_apple_settings_open,
+            updates::update_check,
+            updates::update_install,
         ])
         .events(collect_events![
             SyncStatusEvent,
@@ -155,7 +158,9 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             email_menu::EmailMenuEvent,
             codes::SignInCodeEvent,
             ai::AiTextEvent,
-            ai::AiLineSummaryEvent
+            ai::AiLineSummaryEvent,
+            updates::UpdateAvailableEvent,
+            updates::UpdateProgressEvent
         ])
         // IDs and millisecond timestamps stay far below 2^53, so plain JS
         // numbers are exact.
@@ -212,6 +217,8 @@ pub fn run() {
         )
         // New-mail notifications, shown from Rust (no web permission).
         .plugin(tauri_plugin_notification::init())
+        // The app updating itself (src/updates.rs): Rust only, no web permission.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(mail_handler::MailtoQueue::default())
         .manage(menu::MenuItems::default())
         .manage(ai::AiState::new())
@@ -313,6 +320,10 @@ pub fn run() {
             theme::apply(app.handle(), saved.theme);
             state.resume_all_accounts()?;
             app.manage(state);
+            app.manage(updates::UpdatesEnabled(
+                mode.is_normal() && !cfg!(debug_assertions),
+            ));
+            updates::watch(app.handle().clone());
             sync_demo_changes(app.handle());
             open_window(app, mode)?;
             // AI apps reach the app through a socket in the normal data

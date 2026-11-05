@@ -12,6 +12,10 @@
  *   &colors=2                     the same, with no images
  *   ?mode=signedout               the sidebar and the top-right notice for an
  *                                account Google has signed out
+ *   ?mode=updates&update=found    Settings → About and the update notice;
+ *                                 `update=none` or `update=error` is what a
+ *                                 check finds, `&install=fail` makes
+ *                                 installing fail
  *   ?mode=shortcuts               the `?` keyboard shortcuts sheet
  *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a
@@ -104,7 +108,31 @@ mockIPC((cmd, args) => {
         },
       ];
     case "app_info":
-      return { iconChoices: [] };
+      return { iconChoices: [], version: "0.1.0" };
+    case "update_check": {
+      const found = new URLSearchParams(location.search).get("update");
+      if (found === "error")
+        throw {
+          kind: "other",
+          message: "Couldn’t reach the update server. Check your connection and try again.",
+        };
+      if (found === "none") return null;
+      return new Promise((done) =>
+        setTimeout(
+          () =>
+            done({
+              version: "0.2.0",
+              notes: "Sign-in notices are calmer.\nFixed a crash at launch.",
+            }),
+          150,
+        ),
+      );
+    }
+    case "update_install":
+      if (new URLSearchParams(location.search).get("install") === "fail")
+        throw { kind: "other", message: "The update failed." };
+      // The real app restarts here, so this never answers.
+      return new Promise(() => {});
     case "identities_list":
       return [identity];
     case "contacts_list":

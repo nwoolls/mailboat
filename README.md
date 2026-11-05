@@ -116,6 +116,11 @@ More pictures of more features, in [docs/FEATURES.md](docs/FEATURES.md).
 
 - **No servers of ours.** Mailboat talks to Google from your computer. There is
   no Mailboat account, no tracking and no analytics.
+- **Update checks, and only that.** Mailboat looks for a new version when it
+  starts and about once a day (Settings → About turns this off). A look asks
+  getmailboat.app, which passes it on to GitHub, so both can see your IP address,
+  the version you run and your kind of computer. Nothing is installed without
+  your click, and an update must carry the project's signature or it is refused.
 - **Tokens in the keychain.** Sign-ins live in the macOS Keychain or Windows
   Credential Manager. Never in a file, never in the database.
 - **Mail goes to an AI only when you chose that provider.** Apple Intelligence
