@@ -146,7 +146,8 @@ sentence for people (no real mail details). Anything people won't notice
 (docs, tests, tooling) gets an empty one (`bun run changeset --empty`).
 CI fails a pull request without one, except Dependabot's and the release
 pull request (branch `changeset-release/…`, which consumes them). Never edit
-the version or `CHANGELOG.md` by hand.
+the version or `CHANGELOG.md` by hand, except for the test releases 0.0.1 and
+0.0.2 (decided 2026-11-05), which have no generated bump.
 
 ### Pull requests (once the repository's ruleset is on)
 
