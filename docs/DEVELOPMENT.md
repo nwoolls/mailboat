@@ -131,9 +131,12 @@ scripts/windows.sh build
 ```
 
 `scripts/sign-windows.sh` is the signing step: Tauri's
-`bundle.windows.signCommand` (`src-tauri/tauri.windows.conf.json`) runs it for
-each file, and without `WINDOWS_SIGN=1` it does nothing, so checks and
-ordinary builds are unchanged. The access token for Azure is short-lived and
+`bundle.windows.signCommand` runs it for each file. That command lives in its
+own file, `src-tauri/tauri.sign-windows.conf.json`, which `scripts/windows.sh`
+adds only when `WINDOWS_SIGN=1`, so checks, CI and ordinary builds never
+mention it. (It once sat in `tauri.windows.conf.json`; on GitHub's Windows
+runner `bash` is the WSL launcher, which has no Linux installed, and the
+build failed.) The access token for Azure is short-lived and
 goes to `jsign` through the environment, never to disk or the command line.
 
 Good to know:

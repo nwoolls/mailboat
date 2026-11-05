@@ -24,13 +24,6 @@
     "windows": {
       "nsis": {
         "installerHooks": "windows/installer.nsh"
-      },
-      "signCommand": {
-        "cmd": "bash",
-        "args": [
-          "../scripts/sign-windows.sh",
-          "%1"
-        ]
       }
     }
   }

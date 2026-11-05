@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Signs one Windows file. Tauri runs it for each file it makes
-# (`bundle.windows.signCommand` in src-tauri/tauri.windows.conf.json), with the
-# file's path as the only argument.
+# (`bundle.windows.signCommand` in src-tauri/tauri.sign-windows.conf.json,
+# which scripts/windows.sh adds to the build only when WINDOWS_SIGN=1), with
+# the file's path as the only argument. It is for the Mac (bash): on a
+# Windows machine `bash` can be the WSL launcher, so no default build names it.
 #
-# Off by default: without WINDOWS_SIGN=1 it does nothing, so checks, tests and
-# unsigned local builds are unchanged. To sign, from this Mac, with Azure's
-# Artifact Signing (docs/DEVELOPMENT.md, "A signed Windows installer"):
+# Without WINDOWS_SIGN=1 it does nothing, as a second guard. To sign, from this
+# Mac, with Azure's Artifact Signing (docs/DEVELOPMENT.md, "A signed Windows
+# installer"):
 #
 #   WINDOWS_SIGN=1 \
 #   WINDOWS_SIGN_ENDPOINT="<region>.codesigning.azure.net" \
@@ -45,7 +47,7 @@ if ! SIGN_TOKEN="$(az account get-access-token --resource https://codesigning.az
   exit 1
 fi
 if [ -z "$SIGN_TOKEN" ]; then
-  echo "sign-windows: az gave no access token (run az login); not signing $(basename "$file")" >&2
+  echo "sign-windows: az gave no access token (is it logged in to the right account?); not signing $(basename "$file")" >&2
   exit 1
 fi
 export SIGN_TOKEN
