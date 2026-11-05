@@ -3511,6 +3511,10 @@ builds are attached to each run as artifacts.*
 open it without security warnings, and later receive updates by
 themselves.*
 
+*Closed 2026-11-05 (owner). The release pipeline and updater ran for real
+on the test releases 0.0.1 and 0.0.2; the first public release, 0.1.0, is
+cut with the same steps (`docs/DEVELOPMENT.md`, "Releasing").*
+
 - [x] Owner: Apple Developer Program (paid, personal name is fine).
       The free Apple Development certificate can't notarize, and macOS
       (and Homebrew, since September 2026) refuse apps that aren't
@@ -3690,15 +3694,9 @@ themselves.*
       "Check for updates" and a switch for the automatic look are built, with a
       top-right notice for a new version; the channel was left out, as the
       owner decided it can wait)*
-- [ ] First-timer trial of the onboarding *(moved from Milestone 12,
-      2026-10-30)*: someone who has never used Google Cloud installs a
-      real build from GitHub and gets from nothing to their mail
-      following only what the app says (using a clean start), while
-      the owner watches and times it (the target is about 15 minutes).
-      Needs the signed builds above, so the installer's own warnings
-      don't become part of the test
-- [ ] Optional: a Homebrew tap of the owner's own (the main Homebrew
-      list needs an app to be popular first) and `winget` for Windows
+*Moved out of this milestone (owner, 2026-11-05): the first-timer trial of
+the onboarding to Milestone 16, and the Homebrew tap and `winget` to
+Milestone 17.*
 
 ### When Google signs an account out
 
@@ -3786,6 +3784,15 @@ download it and follow the setup guide.*
 
 - [ ] Website link on the repository, and the repository pinned on the
       owner's profile *(moved from Milestone 14, 2026-11-04)*
+- [ ] First-timer trial of the onboarding *(moved from Milestone 12,
+      2026-10-30, then from Milestone 15, 2026-11-05)*: someone who has
+      never used Google Cloud installs a real build from GitHub and gets
+      from nothing to their mail following only what the app says (using
+      a clean start), while the owner watches and times it (the target is
+      about 15 minutes).
+      Needs the signed builds (Milestone 15, done) and a real download,
+      so the installer's own warnings don't become part of the test; the
+      website's setup guide is part of what the person follows
 
 ## Milestone 17: Launch
 
@@ -3803,6 +3810,9 @@ starting.*
       features are the pitch for a technical audience); "Mimestream,
       but on Windows too" for Windows users. Each post links to the
       website and GitHub
+- [ ] Optional *(moved from Milestone 15, 2026-11-05)*: a Homebrew tap of
+      the owner's own (the main Homebrew list needs an app to be popular
+      first) and `winget` for Windows
 - [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
       bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
       paperwork, best done once there are releases to point at
