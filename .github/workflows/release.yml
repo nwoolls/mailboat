@@ -64,6 +64,27 @@ jobs:
           # the environment of the build.
           unset APPLE_API_KEY_CONTENT
           bun tauri build --ci --bundles app,dmg
+      - name: Notarize the disk image
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
+        run: |
+          # Tauri notarizes the app inside the disk image and signs the image,
+          # but doesn't notarize the image itself, which Gatekeeper then calls
+          # unnotarized. The key file is the one the build step wrote.
+          shopt -s nullglob
+          dmgs=(target/release/bundle/dmg/*.dmg)
+          if [ "${#dmgs[@]}" -ne 1 ]; then
+            echo "Expected one .dmg, found ${#dmgs[@]}" >&2
+            exit 1
+          fi
+          xcrun notarytool submit "${dmgs[0]}" \
+            --key "$RUNNER_TEMP/notarization-key.p8" \
+            --key-id "$APPLE_API_KEY" \
+            --issuer "$APPLE_API_ISSUER" \
+            --wait
+          # Fails when Apple didn't accept it: there is no ticket to attach.
+          xcrun stapler staple "${dmgs[0]}"
       - name: Check the build and keep it
         run: |
           # Exactly one app and one disk image, or something is wrong.
@@ -87,8 +108,10 @@ jobs:
               exit 1
             fi
           done
-          # The disk image is signed after it is built, so check that too.
+          # The disk image: signed, notarized, ticket attached.
           codesign --verify --verbose=2 "$dmg"
+          xcrun stapler validate "$dmg"
+          spctl --assess --type open --context context:primary-signature -vv "$dmg"
           mkdir -p release-files
           # ditto keeps what a plain zip would lose (permissions, the ticket).
           ditto -c -k --keepParent "$app" "release-files/$(basename "$app").zip"

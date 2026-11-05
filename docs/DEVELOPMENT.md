@@ -235,11 +235,13 @@ file. To replace the certificate or the key, set the same names again.
 
 What the job does: `scripts/import-apple-certificate.sh` puts the certificate
 in a throwaway keychain (and stops unless there is exactly one Developer ID
-identity); Tauri signs, notarizes and staples through `APPLE_API_*`; the job
-checks the signature, the ticket and Gatekeeper's verdict on the app, that
-every binary in it is Apple silicon only, and the signature on the disk image.
-It always deletes the keychain and the key file at the end, and uses no build
-cache.
+identity); Tauri signs, notarizes and staples the app through `APPLE_API_*`
+and signs the disk image; a separate step notarizes and staples the disk image
+with `notarytool` (Tauri doesn't, and Gatekeeper calls an unnotarized image
+"Unnotarized Developer ID"); the job then checks the signature, the ticket and
+Gatekeeper's verdict on the app and on the disk image, and that every binary
+in the app is Apple silicon only. It always deletes the keychain and the key
+file at the end, and uses no build cache.
 
 ## Versions and the changelog
 

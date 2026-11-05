@@ -3620,9 +3620,13 @@ themselves.*
       (`release.yml`, 2026-11-05): a `release` environment with a required
       reviewer, `main` only, admin bypass off, holds five secrets (names in
       `docs/DEVELOPMENT.md`), and the job builds, signs, notarizes and checks
-      the app and DMG on a macOS runner. It can't run before it is merged,
-      since the environment only lets `main` use the secrets, so its first run
-      will tell. Still to do: the Windows job, publishing, the update file)*
+      the app and DMG on a macOS runner. Its first run (2026-11-05) passed
+      in about eight minutes, and the app it built was checked by hand:
+      signed with the hardened runtime, ticket attached, Gatekeeper says
+      "Notarized Developer ID", both binaries arm64. The disk image came out
+      signed but unnotarized (Gatekeeper: "Unnotarized Developer ID"), so a
+      step now notarizes and staples it too, tried first on that very
+      image. Still to do: the Windows job, publishing, the update file)*
 - [ ] Build provenance: GitHub attests each installer was built by
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
