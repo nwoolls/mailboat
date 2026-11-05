@@ -113,6 +113,12 @@ describe("the update manifest", () => {
       f.file.startsWith("App.app") ? { ...f, signature: "not base64!" } : f,
     );
     expect(() => buildManifest({ ...input, files: bad })).toThrow(/base64/);
+    for (const blank of ["", " \n"]) {
+      const empty = files.map((f) =>
+        f.file.startsWith("App.app") ? { ...f, signature: blank } : f,
+      );
+      expect(() => buildManifest({ ...input, files: empty })).toThrow(/base64/);
+    }
     expect(() => buildManifest({ ...input, version: "v0.1.0" })).toThrow(/version/);
     expect(() => buildManifest({ ...input, repo: "no-slash" })).toThrow(/repository/);
   });
