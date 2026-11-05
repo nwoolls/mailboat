@@ -23,10 +23,11 @@ A fast, keyboard-first Gmail client for macOS and Windows. Free and open source.
 
 </div>
 
-> **Early development.** Mailboat works today, but there are no downloads yet:
-> signed installers and automatic updates are the next big milestone
-> ([roadmap](docs/ROADMAP.md)). For now you build it from source, and you
-> bring your own Google credentials (it takes about ten minutes, once).
+> **Early development.** Version 0.1.0 is out, with signed downloads for Mac
+> (Apple silicon) and Windows on the
+> [releases page](https://github.com/nwoolls/mailboat/releases/latest), and it
+> updates itself. Expect rough edges. You bring your own Google credentials,
+> and the app walks you through it (about ten minutes, once).
 
 ## Why Mailboat
 
@@ -165,7 +166,13 @@ be done. Check each product's site for today's details.*
 
 ## Get started
 
-1. **Build it** ([below](#build-from-source)). Signed downloads are coming.
+1. **Download it** from the
+   [releases page](https://github.com/nwoolls/mailboat/releases/latest): the
+   `.dmg` for a Mac with Apple silicon, or the `x64-setup.exe` (most PCs) or
+   `arm64-setup.exe` (Windows on Arm) for Windows. macOS asks once whether you
+   want to open an app from the internet, as it does for any app that isn't from
+   the App Store. Rather build it yourself? See
+   [Build from source](#build-from-source).
 2. **Create your own Google credentials**, once. The app walks you through it:
    one card per step, each with a button that opens the right Google page, then
    you drop the downloaded file on the window. The short version, and the full
@@ -257,13 +264,12 @@ tokens stay in your keychain, and the AI features are fenced. See
 [SECURITY.md](SECURITY.md).
 
 **Windows? Linux?**
-Mailboat runs on Windows, but there's no installer to download yet: for now it
-has to be built from a Mac ([docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)), and
-CI checks it on Windows. Linux will follow.
+Mailboat runs on Windows: the releases page has a signed installer for x64 and
+one for Arm. Linux will follow.
 
 **What's next?**
-Signed builds and automatic updates, then a website. The full list is in the
-[roadmap](docs/ROADMAP.md).
+A website, and trying the setup with someone who has never used Google Cloud.
+The full list is in the [roadmap](docs/ROADMAP.md).
 
 ## Contributing and licence
 
