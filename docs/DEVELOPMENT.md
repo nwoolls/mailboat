@@ -207,16 +207,16 @@ different app to macOS. "Always Allow" ends the question for this signature.
 
 `.github/workflows/release.yml` builds, signs and notarizes the Mac app, and
 builds and signs the Windows installers (x64 and ARM64), on GitHub's own
-macOS runners, so a release doesn't depend on one laptop. For now it only
-keeps the results as artifacts for a week; publishing and the update file are
-separate, later changes.
+macOS runners, so a release doesn't depend on one laptop. A tag run then
+turns the results into a draft GitHub release (see "Releasing" below); a run
+started by hand only keeps the builds as artifacts for a week.
 
 It is started by a version tag (see "Releasing" below), or by hand: Actions →
 Release → Run workflow, on `main`, which only makes the builds. It then waits
 in the `release` environment for your approval (the run page shows a
 Review deployments button). That environment is where the signing secrets
-live. It lets only `main` use them, requires a reviewer, and has admin bypass
-off, so a pull request, or a run you didn't expect, can't reach them.
+live. It lets only `main` and `v*` tags use them, requires a reviewer, and has
+admin bypass off, so a pull request, or a run you didn't expect, can't reach them.
 
 The secrets (environment secrets, not repository ones): `APPLE_CERTIFICATE`
 (the `.p12`, base64), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_API_KEY_CONTENT`
