@@ -49,10 +49,23 @@ describe("a Windows executable's signature", () => {
 
   it("is refused when the table doesn't hold PKCS#7 signed data", () => {
     // Wrong type, an old revision, or a length longer than the table.
-    for (const cert of [{ type: 0x0001 }, { revision: 0x0100 }, { length: 400 }]) {
+    for (const cert of [
+      { type: 0x0001 },
+      { revision: 0x0100 },
+      { length: 400 },
+      // Too short to hold even the 8-byte header.
+      { length: 0 },
+      { length: 7 },
+    ]) {
       expect(() => certificateTableSize(pe({ offset: 600, size: 200, cert }))).toThrow(/PKCS#7/);
     }
     expect(() => certificateTableSize(pe({ offset: 600, size: 4 }))).toThrow(/too small/);
+  });
+
+  it("is refused, with a clear message, when the file is cut short", () => {
+    // Ends exactly where the optional header would start, and just inside it.
+    expect(() => isSigned(pe().slice(0, 0x80 + 24))).toThrow(/cut short/);
+    expect(() => isSigned(pe().slice(0, 0x80 + 25))).toThrow(/cut short/);
   });
 
   it("treats the table's address as a file offset, not an RVA", () => {

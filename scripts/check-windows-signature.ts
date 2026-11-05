@@ -17,13 +17,23 @@ if (!installer) {
 }
 
 const failures: string[] = [];
-function check(label: string, path: string) {
-  const signed = isSigned(readFileSync(path));
-  console.log(`${signed ? "signed  " : "UNSIGNED"}  ${label}`);
-  if (!signed) failures.push(label);
+
+/** Says whether the file is signed; false, with the reason, if it can't be read as one. */
+function check(label: string, path: string): boolean {
+  try {
+    const signed = isSigned(readFileSync(path));
+    console.log(`${signed ? "signed  " : "UNSIGNED"}  ${label}`);
+    if (!signed) failures.push(label);
+    return true;
+  } catch (error) {
+    console.error(`${label}: ${error instanceof Error ? error.message : String(error)}`);
+    failures.push(label);
+    return false;
+  }
 }
 
-check("installer", installer);
+// Without a readable installer there is nothing to look inside.
+const readable = check("installer", installer);
 
 const sevenZip = ["7zz", "7z"].find((tool) => Bun.which(tool));
 if (!sevenZip) {
@@ -32,19 +42,17 @@ if (!sevenZip) {
 }
 const folder = mkdtempSync(join(tmpdir(), "installer-"));
 try {
-  const out = Bun.spawnSync([sevenZip, "x", "-y", `-o${folder}`, installer]);
-  if (out.exitCode !== 0) {
-    console.error(`${sevenZip} could not open the installer`);
+  const out = readable ? Bun.spawnSync([sevenZip, "x", "-y", `-o${folder}`, installer]) : undefined;
+  if (out && out.exitCode !== 0) {
+    const why = out.stderr.toString().trim().split("\n").slice(-5).join(" | ");
+    console.error(`${sevenZip} could not open the installer (exit ${out.exitCode}): ${why}`);
     failures.push("the installer could not be opened");
   }
   // process.exit would skip the cleanup below, so failures are collected and
   // the exit comes after it.
-  for (const name of out.exitCode === 0 ? [`${brand.shortName}.exe`, "uninstall.exe"] : []) {
-    try {
+  if (out && out.exitCode === 0) {
+    for (const name of [`${brand.shortName}.exe`, "uninstall.exe"]) {
       check(`${name} (inside)`, join(folder, name));
-    } catch (error) {
-      console.error(`${name}: ${error instanceof Error ? error.message : String(error)}`);
-      failures.push(name);
     }
   }
 } finally {

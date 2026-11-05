@@ -22,10 +22,11 @@ export function certificateTableSize(bytes: Uint8Array): number {
     throw new Error("not a Windows executable (no MZ header)");
   }
   const pe = view.getUint32(0x3c, true);
-  if (pe + 24 > bytes.length || view.getUint32(pe, true) !== PE) {
+  if (pe + 4 > bytes.length || view.getUint32(pe, true) !== PE) {
     throw new Error("not a Windows executable (no PE header)");
   }
   const optional = pe + 24;
+  if (optional + 2 > bytes.length) throw new Error("PE header is cut short");
   const magic = view.getUint16(optional, true);
   // PE32 keeps its data directories 96 bytes in, PE32+ 112.
   const directories = optional + (magic === 0x20b ? 112 : magic === 0x10b ? 96 : NaN);
@@ -40,7 +41,9 @@ export function certificateTableSize(bytes: Uint8Array): number {
   const length = view.getUint32(offset, true);
   const revision = view.getUint16(offset + 4, true);
   const type = view.getUint16(offset + 6, true);
-  if (revision !== WIN_CERT_REVISION_2 || type !== WIN_CERT_PKCS_SIGNED_DATA || length > size) {
+  // The length covers the 8-byte header too, so it can't be less than that.
+  const fits = length >= 8 && length <= size;
+  if (revision !== WIN_CERT_REVISION_2 || type !== WIN_CERT_PKCS_SIGNED_DATA || !fits) {
     throw new Error("the certificate table doesn't hold PKCS#7 signed data");
   }
   return size;
