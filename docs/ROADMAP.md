@@ -3517,8 +3517,10 @@ themselves.*
       notarized *(done: enrolled as an individual before 2026-11-04. Auto-renew
       was off when checked; if the membership lapses, signing and
       notarization of new builds stop)*
-- [ ] Mac: Developer ID signing and notarization *(proven by hand
-      2026-11-04, not yet automated. A Developer ID Application
+- [x] Mac: Developer ID signing and notarization *(proven by hand
+      2026-11-04, automated 2026-11-05 in the release workflow, which signs,
+      notarizes and staples the app and the disk image and checks both, and
+      whose real tag runs passed. A Developer ID Application
       certificate was made (on Apple's site from a signing request, since
       Xcode's Manage Certificates refused with an "Account Holder" error)
       and backed up as a password-protected `.p12` in the owner's password
@@ -3530,8 +3532,8 @@ themselves.*
       app opened, read its existing keychain item after one "Always Allow"
       prompt (the item was made by a differently signed dev build, so
       macOS asks once) and the AI features worked. How: `docs/DEVELOPMENT.md`,
-      "A signed build on the Mac". Left for the release script below)*
-- [ ] Windows: Azure Artifact Signing (open to
+      "A signed build on the Mac")*
+- [x] Windows: Azure Artifact Signing (open to
       individuals in the US and Canada), so SmartScreen doesn't warn.
       Signing from the Mac (e.g. `jsign`) or in GitHub Actions, to be
       confirmed *(2026-11-04, local signing works. An Artifact Signing
@@ -3544,14 +3546,21 @@ themselves.*
       (`scripts/sign-windows.sh`, `docs/DEVELOPMENT.md`, "A signed Windows
       installer"). The owner checked a signed ARM64 installer in the Windows
       VM: the installer, the app and the uninstaller show the signature,
-      and the elevation (UAC) prompt shows it. Not yet done: SmartScreen
-      on a downloaded installer, which depends on reputation, and the
-      GitHub Actions version, which should sign through GitHub's OIDC login
-      to Azure rather than a stored secret)*
-- [ ] Release platforms *(owner, 2026-11-04)*: Windows x64 and ARM64, and
+      and the elevation (UAC) prompt shows it. The release workflow signs
+      through GitHub's OIDC login to Azure, with no stored secret (2026-11-05).
+      The owner downloaded and installed the real 0.0.1 installer in the
+      Windows VM and saw no SmartScreen warning; the Mac DMG showed only
+      macOS's ordinary "downloaded from the internet" question, which a
+      notarized app gets. SmartScreen can still warn another person's PC
+      while the publisher is new)*
+- [x] Release platforms *(owner, 2026-11-04)*: Windows x64 and ARM64, and
       macOS on Apple silicon only. ARM64 alone is too niche for a public
       Windows release. An x64 installer builds and the script already takes
-      `WINDOWS_TARGET`, but it hasn't been tried on a real x64 PC. A
+      `WINDOWS_TARGET`. Tried 2026-11-05 in the Windows ARM VM (x64 under
+      emulation, not a real x64 PC): it installed and ran, and an update from
+      0.0.1 to 0.0.2 went through on the second try; the first attempt's
+      installer said it couldn't close the running app, which looks like a race
+      between the app exiting and the installer's check, and wasn't seen again. A
       universal Mac build was looked at and set aside: the Swift helper for
       Apple Intelligence would need building for both architectures and for
       the universal triple, the Intel half couldn't be tried on any machine
