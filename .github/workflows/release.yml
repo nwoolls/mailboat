@@ -78,12 +78,19 @@ jobs:
             echo "Expected one .dmg, found ${#dmgs[@]}" >&2
             exit 1
           fi
-          xcrun notarytool submit "${dmgs[0]}" \
+          result="$(xcrun notarytool submit "${dmgs[0]}" \
             --key "$RUNNER_TEMP/notarization-key.p8" \
             --key-id "$APPLE_API_KEY" \
             --issuer "$APPLE_API_ISSUER" \
-            --wait
-          # Fails when Apple didn't accept it: there is no ticket to attach.
+            --wait --output-format json)"
+          echo "$result"
+          # `notarytool` can finish normally with a refusal in its answer.
+          status="$(printf '%s' "$result" | plutil -extract status raw -o - -)"
+          if [ "$status" != "Accepted" ]; then
+            echo "Apple's notary service did not accept the disk image: $status" >&2
+            exit 1
+          fi
+          # Fails too when there is no ticket to attach.
           xcrun stapler staple "${dmgs[0]}"
       - name: Check the build and keep it
         run: |
