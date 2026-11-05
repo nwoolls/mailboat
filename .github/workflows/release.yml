@@ -78,20 +78,33 @@ jobs:
             echo "Expected one .dmg, found ${#dmgs[@]}" >&2
             exit 1
           fi
-          result="$(xcrun notarytool submit "${dmgs[0]}" \
-            --key "$RUNNER_TEMP/notarization-key.p8" \
-            --key-id "$APPLE_API_KEY" \
-            --issuer "$APPLE_API_ISSUER" \
-            --wait --output-format json)"
+          key=(--key "$RUNNER_TEMP/notarization-key.p8" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER")
+          # A time limit, so a stuck submission can't hold the job for its
+          # whole 90 minutes (Apple goes on processing it either way).
+          result="$(xcrun notarytool submit "${dmgs[0]}" "${key[@]}" \
+            --wait --timeout 30m --output-format json)"
           echo "$result"
           # `notarytool` can finish normally with a refusal in its answer.
           status="$(printf '%s' "$result" | plutil -extract status raw -o - -)"
           if [ "$status" != "Accepted" ]; then
             echo "Apple's notary service did not accept the disk image: $status" >&2
+            id="$(printf '%s' "$result" | plutil -extract id raw -o - - || true)"
+            if [ -n "$id" ]; then
+              xcrun notarytool log "$id" "${key[@]}" /dev/stdout || true
+            fi
             exit 1
           fi
-          # Fails too when there is no ticket to attach.
-          xcrun stapler staple "${dmgs[0]}"
+          # The ticket can take a moment to be available after Apple accepts.
+          stapled=
+          for attempt in 1 2 3 4 5 6; do
+            if xcrun stapler staple "${dmgs[0]}"; then
+              stapled=1
+              break
+            fi
+            echo "No ticket yet (try $attempt of 6); waiting 10 seconds" >&2
+            sleep 10
+          done
+          [ -n "$stapled" ] || exit 1
       - name: Check the build and keep it
         run: |
           # Exactly one app and one disk image, or something is wrong.
