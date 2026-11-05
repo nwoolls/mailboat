@@ -3573,10 +3573,13 @@ themselves.*
       switch, and never installs without a click (open drafts are saved
       first); no update channel yet. The unsigned manifest's release notes are
       not shown, and `requireSignedVersion` is on, so a crafted manifest can't
-      force a downgrade. Check that the first release's signature carries
-      `version:` when it is built. Still
-      to do: the update bundles and `latest.json` in the release workflow with
-      publishing, and trying a real update across two published versions)*
+      force a downgrade. Checked 2026-11-05 with a throwaway key: Tauri's
+      signature carries `version:`, and both the Mac tarball and a signed
+      Windows installer verify against the key (the installer's signature
+      covers the final, Authenticode-signed file). The release workflow now
+      makes the update payloads and `latest.json` (see the release items
+      below) but is untried on a real tag. Still to do: trying a real update
+      across two published versions)*
 - [x] Version numbers and changelog *(owner, 2026-10-25: semversioner
       if that's the usual thing, or the option and alternatives)*.
       Semantic versioning (1.4.2: big, feature, fix) is the convention,
@@ -3617,7 +3620,11 @@ themselves.*
       script below)*
 - [ ] Release notes *(moved from Milestone 14, 2026-11-04)*: from those
       changesets, or failing that generated from merged pull requests,
-      grouped by label (new, fixed, changed)
+      grouped by label (new, fixed, changed) *(written 2026-11-05: a release's
+      notes are the version's `## <version>` section of `CHANGELOG.md`, which
+      Changesets writes grouped as Major, Minor and Patch changes; the tag
+      check fails before any build if the section is missing, and it becomes the
+      draft release's text. Tested here, untried on a real tag)*
 - [ ] One release script (on the Mac, or GitHub Actions) builds, signs
       and publishes both platforms and the update file. Signing keys
       stay in the Mac's keychain or in encrypted GitHub secrets, never
@@ -3639,14 +3646,29 @@ themselves.*
       "Notarized Developer ID", both binaries arm64. The disk image came out
       signed but unnotarized (Gatekeeper: "Unnotarized Developer ID"), so a
       step now notarizes and staples it too, tried first on that very
-      image. The Windows job is written too (x64 and ARM64 cross-built on a macOS
-      runner, signed with the same script; Azure trusts the `release`
-      environment through OIDC, with no stored password), and is untried until
-      it runs. Still to do: publishing, the update file)*
+      image, and its second run passed with the disk image Gatekeeper-accepted.
+      The Windows jobs (x64 and ARM64 cross-built on a macOS runner, signed
+      with the same script; Azure trusts the `release` environment through
+      OIDC, with no stored password) also ran 2026-11-05, and both installers,
+      with the app and uninstaller inside, were checked as signed.
+      Publishing is written (2026-11-05) and untried on a real tag: a version
+      tag starts the workflow, a fast first job checks the tag against
+      `package.json` and the changelog, the build jobs also make the update
+      payloads (the Updater section of `docs/DEVELOPMENT.md`), and a `publish`
+      job (its own environment and approval, no signing secrets) verifies every
+      update signature against the app's public key and for the version, writes
+      `latest.json` and `SHA256SUMS`, and makes a DRAFT release for the owner
+      to read and publish. Finding on the way: the updater plugin's default TLS
+      brought in `ring`, which broke the Windows ARM64 cross-build; its
+      defaults are off now. The one-time environment setup is in
+      `docs/DEVELOPMENT.md`, "Releasing". Still to do: a first real tag, and
+      trying a real update across two published versions)*
 - [ ] Build provenance: GitHub attests each installer was built by
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
-      tampered with
+      tampered with *(written 2026-11-05: the publish job attests every
+      release file with `actions/attest-build-provenance`, and
+      `docs/DEVELOPMENT.md` says how to check one; untried on a real tag)*
 - [x] Settings → About: version, "Check for updates", and the update
       channel (stable, or early builds) if wanted *(2026-11-05: the version,
       "Check for updates" and a switch for the automatic look are built, with a

@@ -19,6 +19,10 @@
 # anywhere: the short-lived access token goes to jsign through the environment.
 set -euo pipefail
 
+# The updater's signing key belongs to Tauri's own last step, not to this one
+# or to the tools it runs.
+unset TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+
 file="${1:?usage: $0 <file to sign>}"
 
 if [ "${WINDOWS_SIGN:-}" != "1" ]; then

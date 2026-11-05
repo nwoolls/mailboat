@@ -207,15 +207,16 @@ different app to macOS. "Always Allow" ends the question for this signature.
 
 `.github/workflows/release.yml` builds, signs and notarizes the Mac app, and
 builds and signs the Windows installers (x64 and ARM64), on GitHub's own
-macOS runners, so a release doesn't depend on one laptop. For now it only
-keeps the results as artifacts for a week; publishing and the update file are
-separate, later changes.
+macOS runners, so a release doesn't depend on one laptop. A tag run then
+turns the results into a draft GitHub release (see "Releasing" below); a run
+started by hand only keeps the builds as artifacts for a week.
 
-It is started by hand: Actions → Release → Run workflow, on `main`. It then
-waits in the `release` environment for your approval (the run page shows a
+It is started by a version tag (see "Releasing" below), or by hand: Actions →
+Release → Run workflow, on `main`, which only makes the builds. It then waits
+in the `release` environment for your approval (the run page shows a
 Review deployments button). That environment is where the signing secrets
-live. It lets only `main` use them, requires a reviewer, and has admin bypass
-off, so a pull request, or a run you didn't expect, can't reach them.
+live. It lets only `main` and `v*` tags use them, requires a reviewer, and has
+admin bypass off, so a pull request, or a run you didn't expect, can't reach them.
 
 The secrets (environment secrets, not repository ones): `APPLE_CERTIFICATE`
 (the `.p12`, base64), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_API_KEY_CONTENT`
@@ -304,9 +305,59 @@ private key that matches the public one in the config.
   The Tauri CLI records the version in each signature when it builds, so the
   first release needs nothing extra, but check that its signature carries
   `version:` before publishing it.
-- **Not built yet.** The release workflow doesn't make the update bundles or
-  `latest.json` yet (that comes with publishing), so until a release has them
-  the address answers 404 and a check says it couldn't reach the update server.
+- **The files.** A release build (the release workflow) turns on
+  `createUpdaterArtifacts` through `src-tauri/tauri.updater-artifacts.conf.json`,
+  and Tauri signs each update payload with the private key as its last step:
+  the Mac app as a `.app.tar.gz`, and each Windows installer itself (after its
+  Authenticode signing, so the signature covers the final file). A normal build
+  doesn't, since that needs the key. The `latest.json` the app reads is made by
+  the release workflow (`scripts/make-release-files.ts`). Until a release is
+  *published* the address answers 404 and a check says it couldn't reach the
+  update server: a draft isn't visible to it.
+
+## Releasing
+
+A release is a version tag. The workflow (`.github/workflows/release.yml`)
+builds everything, checks it, and makes a **draft** GitHub Release; nothing is
+public until the owner publishes the draft.
+
+**Cutting one**
+1. On a branch named `changeset-release/<something>`, run `bun run
+   version-packages`: it applies the pending changesets, bumps `package.json`
+   and writes the `## <version>` section of `CHANGELOG.md`, which becomes the
+   release notes. Open a pull request and merge it. (The first release,
+   `0.1.0`, has no bump: write its `## 0.1.0` section in `CHANGELOG.md` by hand.)
+2. Tag the merged commit on `main` and push the tag as yourself:
+   `git tag v0.1.0 <commit> && git push origin v0.1.0`. The tag must be `v`
+   and the version in `package.json`, and be on `main`; the workflow's first
+   job fails in seconds otherwise, before any build.
+3. Open the run on the Actions tab, **Review deployments**, and approve the
+   three build jobs. They take about 10 to 15 minutes. Then approve **publish**,
+   which waits for its own approval and has none of the signing secrets.
+4. The publish job checks every update signature against the public key in the
+   app and for this version (and makes nothing if one is wrong), writes
+   `latest.json` and `SHA256SUMS`, attests where the files came from, and makes
+   the draft release.
+5. Read the draft on GitHub (files, notes), then **Publish release**. Only a
+   published release is what the update address redirects to.
+
+A run started by hand ("Run workflow") makes the same builds as artifacts and
+publishes nothing, to try the builds without a tag. A pre-release tag
+(`v0.2.0-beta.1`) is marked as a pre-release, so it is never "latest" and never
+offered as an update.
+
+**One-time setup** (repository settings, not in the code)
+- Environment `release` must allow tags `v*` as well as `main`: `gh api -X POST
+  repos/<owner>/<repo>/environments/release/deployment-branch-policies -f
+  name='v*' -f type=tag`.
+- An environment `publish`: a required reviewer (the owner, self-review
+  allowed), admin bypass off, deployments limited to tags `v*`, and no
+  secrets.
+
+**Checking a download**
+- `shasum -a 256 -c SHA256SUMS` in the folder with the files.
+- `gh attestation verify <file> --repo <owner>/<repo>` says the file was built
+  by this repository's release workflow from a given commit.
 
 ## Versions and the changelog
 
