@@ -288,6 +288,9 @@ private key that matches the public one in the config.
   Settings → About → "Check for updates automatically" is off. It tells the
   window, which shows a notice; it never installs without a click. A development
   build, the demo and a clean start don't look at all.
+- **Restarting.** "Install and restart" restarts the app at once. Drafts are
+  saved about 2.5 seconds after typing stops, so a restart can lose only the
+  last few seconds of a message; the owner chose to rely on that for now.
 - **Not built yet.** The release workflow doesn't make the update bundles or
   `latest.json` yet (that comes with publishing), so until a release has them
   the address answers 404 and a check says it couldn't reach the update server.

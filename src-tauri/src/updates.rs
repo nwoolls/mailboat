@@ -72,7 +72,10 @@ fn ensure_enabled(app: &AppHandle) -> Result<(), CoreError> {
 }
 
 /// What to tell a person about a failed look or install. Fixed words, so
-/// nothing from the network or the system is shown as an explanation.
+/// nothing the network said is shown as an explanation. The one exception is
+/// the folder the previous version was left in when it couldn't be put back:
+/// it is this computer's own path, shown only here on its screen, and the
+/// person needs it to recover the app.
 fn friendly(e: tauri_plugin_updater::Error) -> CoreError {
     use tauri_plugin_updater::Error as E;
     let words = match e {
@@ -104,14 +107,17 @@ async fn look(app: &AppHandle) -> Result<Option<Update>, CoreError> {
     updater.check().await.map_err(friendly)
 }
 
+/// The release's notes without the blank space around them, or nothing.
+fn clean_notes(notes: Option<&str>) -> Option<String> {
+    notes
+        .map(|n| n.trim().to_string())
+        .filter(|n| !n.is_empty())
+}
+
 fn info(update: &Update) -> UpdateInfo {
     UpdateInfo {
         version: update.version.clone(),
-        notes: update
-            .body
-            .clone()
-            .map(|n| n.trim().to_string())
-            .filter(|n| !n.is_empty()),
+        notes: clean_notes(update.body.as_deref()),
     }
 }
 
@@ -177,4 +183,59 @@ pub fn watch(app: AppHandle) {
             tokio::time::sleep(LOOK_EVERY).await;
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tauri_plugin_updater::Error as E;
+
+    fn said(e: E) -> String {
+        friendly(e).to_string()
+    }
+
+    #[test]
+    fn a_server_that_cannot_be_reached_is_told_in_fixed_words() {
+        let words = said(E::ReleaseNotFound);
+        assert_eq!(
+            words,
+            "Couldn't reach the update server. Check your connection and try again."
+        );
+        assert_eq!(
+            said(E::Network("secret detail from the network".into())),
+            words
+        );
+    }
+
+    #[test]
+    fn a_computer_with_no_update_says_so() {
+        for e in [
+            E::UnsupportedOs,
+            E::UnsupportedArch,
+            E::TargetNotFound("x".into()),
+        ] {
+            assert_eq!(said(e), "There is no update for this kind of computer yet.");
+        }
+    }
+
+    #[test]
+    fn a_failed_rollback_says_where_the_previous_version_is() {
+        let words = said(E::PreviousAppNotRestored("/Applications/Old.app".into()));
+        assert!(words.contains("couldn't be put back"));
+        assert!(words.contains("/Applications/Old.app"));
+    }
+
+    #[test]
+    fn anything_else_is_just_that_the_update_failed_with_nothing_from_the_error() {
+        let words = said(E::Io(std::io::Error::other("a path and details")));
+        assert_eq!(words, "The update failed.");
+        assert_eq!(said(E::EmptyEndpoints), "The update failed.");
+    }
+
+    #[test]
+    fn a_notes_text_is_trimmed_and_empty_ones_are_nothing() {
+        assert_eq!(clean_notes(Some("  Fixes.\n")), Some("Fixes.".to_string()));
+        assert_eq!(clean_notes(Some("  \n")), None);
+        assert_eq!(clean_notes(None), None);
+    }
 }
