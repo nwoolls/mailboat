@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  canCheck,
-  describeUpdate,
-  notesPreview,
-  percent,
-  showNotice,
-  type UpdateState,
-} from "./update";
+import { canCheck, describeUpdate, percent, showNotice, type UpdateState } from "./update";
 
-const available: UpdateState = { kind: "available", version: "0.2.0", notes: "Fixes." };
+const available: UpdateState = { kind: "available", version: "0.2.0" };
 
 describe("what the About row says", () => {
   it("says each state in plain words", () => {
@@ -47,9 +40,9 @@ describe("pressing Check for updates", () => {
     expect(canCheck(available)).toBe(true);
     expect(canCheck({ kind: "failed", message: "x" })).toBe(true);
     expect(canCheck({ kind: "checking" })).toBe(false);
-    expect(
-      canCheck({ kind: "installing", version: "0.2.0", notes: null, downloaded: 0, total: null }),
-    ).toBe(false);
+    expect(canCheck({ kind: "installing", version: "0.2.0", downloaded: 0, total: null })).toBe(
+      false,
+    );
   });
 });
 
@@ -73,29 +66,9 @@ describe("the notice", () => {
     const installing: UpdateState = {
       kind: "installing",
       version: "0.2.0",
-      notes: null,
       downloaded: 10,
       total: 100,
     };
     expect(showNotice(installing, new Set(["0.2.0"]))).toBe(true);
-  });
-});
-
-describe("the release notes in the notice", () => {
-  it("is nothing for empty or missing notes", () => {
-    expect(notesPreview(null)).toBeNull();
-    expect(notesPreview("  \n \n")).toBeNull();
-  });
-
-  it("keeps short notes as they are, without blank lines", () => {
-    expect(notesPreview("A fix.\n\n  Another fix.  ")).toBe("A fix.\nAnother fix.");
-  });
-
-  it("cuts long notes to a few lines, and says so", () => {
-    expect(notesPreview("1\n2\n3\n4\n5\n6")).toBe("1\n2\n3\n4…");
-    const long = "x".repeat(500);
-    const cut = notesPreview(long)!;
-    expect(cut.length).toBeLessThanOrEqual(281);
-    expect(cut.endsWith("…")).toBe(true);
   });
 });

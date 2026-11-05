@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { commands, events } from "../../../platform/tauri/bindings";
 import { IS_TAURI, unwrap } from "../../../platform/tauri/ipc";
+import { saveOpenDrafts } from "../../compose/ui/useCompose";
 import { canCheck, type UpdateState } from "../model/update";
 
 /**
@@ -41,28 +42,36 @@ export async function checkForUpdates(): Promise<void> {
   set({ kind: "checking" });
   try {
     const found = await unwrap(commands.updateCheck());
-    set(
-      found
-        ? { kind: "available", version: found.version, notes: found.notes }
-        : { kind: "upToDate" },
-    );
+    set(found ? { kind: "available", version: found.version } : { kind: "upToDate" });
   } catch (e) {
     set({ kind: "failed", message: errorText(e) });
   }
 }
 
 /**
- * "Install and restart": Rust downloads it, checks its signature, installs it
- * and starts the new version, so this only comes back with an error.
+ * "Install and restart": the messages being written are saved first (the
+ * app restarts at once, and anything typed since the last save would be
+ * lost); if one can't be saved, nothing is installed. Then Rust downloads the
+ * update, checks its signature, installs it and starts the new version, so
+ * this only comes back with an error.
  */
 export async function installUpdate(): Promise<void> {
   if (state.kind !== "available") return;
-  const { version, notes } = state;
-  set({ kind: "installing", version, notes, downloaded: 0, total: null });
+  const { version } = state;
+  set({ kind: "installing", version, downloaded: 0, total: null });
   try {
+    if (!(await saveOpenDrafts())) {
+      set({
+        kind: "available",
+        version,
+        error:
+          "Couldn’t save a message you’re writing, so nothing was installed. Save or send it, then try again.",
+      });
+      return;
+    }
     await unwrap(commands.updateInstall());
   } catch (e) {
-    set({ kind: "available", version, notes, error: errorText(e) });
+    set({ kind: "available", version, error: errorText(e) });
   }
 }
 
@@ -80,7 +89,7 @@ export function useUpdateEvents() {
       events.updateAvailableEvent.listen((e) => {
         // Not in the middle of installing one.
         if (state.kind === "installing") return;
-        set({ kind: "available", version: e.payload.version, notes: e.payload.notes });
+        set({ kind: "available", version: e.payload.version });
       }),
       events.updateProgressEvent.listen((e) => {
         if (state.kind !== "installing") return;

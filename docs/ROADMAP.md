@@ -3570,7 +3570,11 @@ themselves.*
       release's `latest.json`; the key pair is the owner's, the private half
       in the password manager and the `release` environment. Decided with the
       owner: the app looks at launch and about daily, on by default with a
-      switch, and never installs without a click; no update channel yet. Still
+      switch, and never installs without a click (open drafts are saved
+      first); no update channel yet. The unsigned manifest's release notes are
+      not shown, and `requireSignedVersion` is on, so a crafted manifest can't
+      force a downgrade. Check that the first release's signature carries
+      `version:` when it is built. Still
       to do: the update bundles and `latest.json` in the release workflow with
       publishing, and trying a real update across two published versions)*
 - [x] Version numbers and changelog *(owner, 2026-10-25: semversioner

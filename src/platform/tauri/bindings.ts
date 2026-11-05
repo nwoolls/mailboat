@@ -379,8 +379,6 @@ export const commands = {
 	/**  Looks for a newer version now ("Check for updates"). */
 	updateCheck: () => typedError<{
 	version: string,
-	/**  What the release says changed, as plain text. */
-	notes: string | null,
 } | null, AppError>(__TAURI_INVOKE("update_check")),
 	/**
 	 *  Downloads the newer version, checks its signature, installs it and
@@ -1553,8 +1551,6 @@ export type UpdateAvailableEvent = UpdateInfo;
 /**  An update that can be installed. */
 export type UpdateInfo = {
 	version: string,
-	/**  What the release says changed, as plain text. */
-	notes: string | null,
 };
 
 /**  How far the download has got. */

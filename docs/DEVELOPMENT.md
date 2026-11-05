@@ -286,11 +286,24 @@ private key that matches the public one in the config.
   up. The public key is only a public key; it is in the config.
 - **When it looks.** About 30 seconds after launch and then about daily, unless
   Settings → About → "Check for updates automatically" is off. It tells the
-  window, which shows a notice; it never installs without a click. A development
+  window, which shows a notice; it never installs without a click. A look
+  fetches one static file, so the update server and GitHub see the IP address
+  and the updater's own user agent; the app's version and the kind of computer
+  are not sent, and GitHub learns the kind of computer when an update is
+  downloaded. A development
   build, the demo and a clean start don't look at all.
-- **Restarting.** "Install and restart" restarts the app at once. Drafts are
-  saved about 2.5 seconds after typing stops, so a restart can lose only the
-  last few seconds of a message; the owner chose to rely on that for now.
+- **Restarting.** "Install and restart" restarts the app at once, so it first
+  saves every open draft (they otherwise save 2.5 seconds after typing stops,
+  and a message typed without a pause would never have been saved); if one
+  can't be saved, nothing is installed and the notice says so.
+- **What a person sees from the manifest.** Only the version. The manifest
+  (`latest.json`) is not signed, only the downloaded update is, so no release
+  notes are shown, and `requireSignedVersion` has the plugin refuse an update
+  whose signature wasn't made for the version announced (otherwise a crafted
+  manifest could pair a newer number with an older, genuinely signed release).
+  The Tauri CLI records the version in each signature when it builds, so the
+  first release needs nothing extra, but check that its signature carries
+  `version:` before publishing it.
 - **Not built yet.** The release workflow doesn't make the update bundles or
   `latest.json` yet (that comes with publishing), so until a release has them
   the address answers 404 and a check says it couldn't reach the update server.

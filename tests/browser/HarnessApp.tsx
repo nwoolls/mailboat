@@ -27,6 +27,7 @@ import { Onboarding } from "../../src/features/onboarding/ui/Onboarding";
 import { useAccounts, useOAuthSetup, useSyncStates } from "../../src/shared/lib/queries";
 import {
   setCardSpot,
+  updateDraft,
   useComposeActions,
   useComposeState,
 } from "../../src/features/compose/ui/useCompose";
@@ -76,6 +77,18 @@ export function Harness({
   }, [mode]);
 
   if (mode === "onboarding") return <OnboardingHarness />;
+  // `?mode=updates&draft=1`: a message being written, so there is something to save.
+  const draftStarted = useRef(false);
+  useEffect(() => {
+    if (mode !== "updates" || !params.has("draft") || draftStarted.current) return;
+    draftStarted.current = true;
+    void actions.startNew(account.id);
+  }, [mode, actions, account.id]);
+  const writing = compose.cards[0];
+  useEffect(() => {
+    if (mode === "updates" && params.has("draft") && writing && writing.draft.subject === "")
+      updateDraft(writing.draft.id, (d) => ({ ...d, subject: "Lunch on Friday" }));
+  }, [mode, writing]);
   // Settings → About with the update row, and the update notice.
   if (mode === "updates")
     return (

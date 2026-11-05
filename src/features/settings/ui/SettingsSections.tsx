@@ -110,7 +110,7 @@ export function GeneralSection() {
         </Row>
         <Row
           label="Check for updates automatically"
-          description="Looks when the app starts and about once a day, and tells you when there is a new version. It never installs one by itself. A look tells the update server, and GitHub behind it, your IP address, this version and your kind of computer."
+          description="Looks when the app starts and about once a day, and tells you when there is a new version. It never installs one by itself. A look fetches one file from the update server, which passes it on to GitHub, so both see your IP address. Installing an update also tells GitHub your kind of computer."
         >
           <Toggle
             label="Check for updates automatically"

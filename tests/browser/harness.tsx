@@ -15,7 +15,10 @@
  *   ?mode=updates&update=found    Settings → About and the update notice;
  *                                 `update=none` or `update=error` is what a
  *                                 check finds, `&install=fail` makes
- *                                 installing fail
+ *                                 installing fail; `&draft=1` has a message
+ *                                 being written, and `&draftsave=fail` makes
+ *                                 saving it fail. The order the commands were
+ *                                 called in is in `window.__order`
  *   ?mode=shortcuts               the `?` keyboard shortcuts sheet
  *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a
@@ -83,6 +86,12 @@ const onboardingParams = new URLSearchParams(location.search);
 const onboardingAccounts =
   harnessMode === "onboarding" ? Number(onboardingParams.get("accounts") ?? 0) : 1;
 
+/** The commands that matter to a test, in the order they were called. */
+function record(name: string) {
+  const w = window as unknown as { __order?: string[] };
+  (w.__order ??= []).push(name);
+}
+
 mockIPC((cmd, args) => {
   switch (cmd) {
     case "oauth_setup":
@@ -117,18 +126,10 @@ mockIPC((cmd, args) => {
           message: "Couldn’t reach the update server. Check your connection and try again.",
         };
       if (found === "none") return null;
-      return new Promise((done) =>
-        setTimeout(
-          () =>
-            done({
-              version: "0.2.0",
-              notes: "Sign-in notices are calmer.\nFixed a crash at launch.",
-            }),
-          150,
-        ),
-      );
+      return new Promise((done) => setTimeout(() => done({ version: "0.2.0" }), 150));
     }
     case "update_install":
+      record("update_install");
       if (new URLSearchParams(location.search).get("install") === "fail")
         throw { kind: "other", message: "The update failed." };
       // The real app restarts here, so this never answers.
@@ -195,6 +196,9 @@ mockIPC((cmd, args) => {
         recolorable: false,
       };
     case "draft_save":
+      record("draft_save");
+      if (new URLSearchParams(location.search).get("draftsave") === "fail")
+        throw { kind: "network", message: "offline" };
       return 1;
     case "message_original": {
       // Which email was asked for shows in its subject.

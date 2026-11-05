@@ -9,10 +9,19 @@
 //! release environment's secrets).
 //!
 //! Looking is automatic unless the person turns it off (Settings → About),
-//! installing never is: it takes their click. A look tells the update server,
-//! and GitHub behind it, the person's IP address, the app's version and their
-//! kind of computer, which the README's privacy section says.
+//! installing never is: it takes their click. A look fetches one static file
+//! from the update server, which passes it on to GitHub, so both see the
+//! person's IP address and the updater's own user agent. The app's version and
+//! the kind of computer are not sent: the address has no placeholders for them.
+//! Downloading an update tells GitHub which kind of computer it was for. The
+//! README's privacy section says so.
+//!
+//! The manifest the plugin fetches is not signed, only the downloaded update
+//! is, so nothing from the manifest but the version is ever shown (no release
+//! notes), and `requireSignedVersion` in `tauri.conf.json` has the plugin
+//! refuse an update whose signature wasn't made for the version announced.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use mail_core::CoreError;
@@ -30,8 +39,6 @@ use crate::state::AppState;
 #[serde(rename_all = "camelCase")]
 pub struct UpdateInfo {
     pub version: String,
-    /// What the release says changed, as plain text.
-    pub notes: Option<String>,
 }
 
 /// A look that nobody asked for found an update. Told once per version.
@@ -107,17 +114,31 @@ async fn look(app: &AppHandle) -> Result<Option<Update>, CoreError> {
     updater.check().await.map_err(friendly)
 }
 
-/// The release's notes without the blank space around them, or nothing.
-fn clean_notes(notes: Option<&str>) -> Option<String> {
-    notes
-        .map(|n| n.trim().to_string())
-        .filter(|n| !n.is_empty())
-}
-
 fn info(update: &Update) -> UpdateInfo {
     UpdateInfo {
         version: update.version.clone(),
-        notes: clean_notes(update.body.as_deref()),
+    }
+}
+
+/// Set while an update is being installed, so a second request (the window
+/// can't make one, but nothing else stops it) fails instead of running a second
+/// download and swap of the app.
+static INSTALLING: AtomicBool = AtomicBool::new(false);
+
+struct InstallGuard;
+
+impl InstallGuard {
+    fn take() -> Option<Self> {
+        INSTALLING
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .ok()
+            .map(|_| Self)
+    }
+}
+
+impl Drop for InstallGuard {
+    fn drop(&mut self) {
+        INSTALLING.store(false, Ordering::SeqCst);
     }
 }
 
@@ -133,6 +154,9 @@ pub async fn update_check(app: AppHandle) -> CmdResult<Option<UpdateInfo>> {
 #[tauri::command]
 #[specta::specta]
 pub async fn update_install(app: AppHandle) -> CmdResult<()> {
+    let Some(_installing) = InstallGuard::take() else {
+        return Err(CoreError::Other("An update is already being installed.".into()).into());
+    };
     let Some(update) = look(&app).await? else {
         return Err(CoreError::Other("The app is already up to date.".into()).into());
     };
@@ -233,9 +257,15 @@ mod tests {
     }
 
     #[test]
-    fn a_notes_text_is_trimmed_and_empty_ones_are_nothing() {
-        assert_eq!(clean_notes(Some("  Fixes.\n")), Some("Fixes.".to_string()));
-        assert_eq!(clean_notes(Some("  \n")), None);
-        assert_eq!(clean_notes(None), None);
+    fn only_one_install_runs_at_a_time() {
+        let first = InstallGuard::take();
+        assert!(first.is_some());
+        assert!(
+            InstallGuard::take().is_none(),
+            "a second install must be refused"
+        );
+        drop(first);
+        // Finished (or failed): the next one may go ahead.
+        assert!(InstallGuard::take().is_some());
     }
 }

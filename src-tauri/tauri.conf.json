@@ -61,7 +61,8 @@
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDAxN0MxOEUxQUNEMTkxN0YKUldSL2tkR3M0Umg4QWN0RjgxTE1zQTlEVmNjNlBCK21NSDJYNGNFbW1TL0VHTC9zVnE0VGNWb1IK",
       "endpoints": [
         "https://getmailboat.app/updates/latest.json"
-      ]
+      ],
+      "requireSignedVersion": true
     }
   }
 }

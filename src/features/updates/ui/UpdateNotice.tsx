@@ -1,5 +1,5 @@
 import { APP_NAME } from "../../../shared/lib/brand";
-import { notesPreview, percent, showNotice } from "../model/update";
+import { percent, showNotice } from "../model/update";
 import { installUpdate, putOffUpdate, usePutOffUpdates, useUpdateState } from "./updateStore";
 
 /**
@@ -13,7 +13,6 @@ export function UpdateNotice() {
   const putOff = usePutOffUpdates();
   if (!showNotice(state, putOff)) return null;
   if (state.kind !== "available" && state.kind !== "installing") return null;
-  const notes = notesPreview(state.notes);
 
   return (
     <section
@@ -26,9 +25,6 @@ export function UpdateNotice() {
         <div className="text-[12px] text-content/85">
           {APP_NAME} {state.version}
         </div>
-        {notes && (
-          <p className="selectable mt-1 text-[11px] whitespace-pre-line text-content/50">{notes}</p>
-        )}
         {state.kind === "installing" ? <Progress state={state} /> : <Actions state={state} />}
       </div>
     </section>
@@ -76,7 +72,8 @@ function Progress({ state }: { state: { downloaded: number; total: number | null
           style={done === null ? undefined : { width: `${done}%` }}
         />
       </div>
-      <p className="mt-1 text-[11px] text-content/50">
+      {/* Not read out at each chunk: only the bar and its value are. */}
+      <p aria-live="off" className="mt-1 text-[11px] text-content/50">
         {done === null ? "Downloading…" : `Downloading… ${done}%`} The app restarts when it’s done.
       </p>
     </div>

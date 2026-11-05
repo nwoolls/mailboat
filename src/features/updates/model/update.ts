@@ -4,14 +4,8 @@ export type UpdateState =
   | { kind: "checking" }
   | { kind: "upToDate" }
   /** A newer version is there. `error` is why the last try to install it failed. */
-  | { kind: "available"; version: string; notes: string | null; error?: string }
-  | {
-      kind: "installing";
-      version: string;
-      notes: string | null;
-      downloaded: number;
-      total: number | null;
-    }
+  | { kind: "available"; version: string; error?: string }
+  | { kind: "installing"; version: string; downloaded: number; total: number | null }
   /** A look somebody asked for couldn't be made. */
   | { kind: "failed"; message: string };
 
@@ -54,17 +48,4 @@ export function canCheck(state: UpdateState): boolean {
 export function showNotice(state: UpdateState, dismissed: ReadonlySet<string>): boolean {
   if (state.kind === "installing") return true;
   return state.kind === "available" && !dismissed.has(state.version);
-}
-
-/** The release notes cut to a few short lines for the notice. */
-export function notesPreview(notes: string | null, maxLines = 4, maxChars = 280): string | null {
-  const lines = (notes ?? "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line !== "");
-  if (lines.length === 0) return null;
-  let text = lines.slice(0, maxLines).join("\n");
-  const cut = lines.length > maxLines || text.length > maxChars;
-  if (text.length > maxChars) text = text.slice(0, maxChars).trimEnd();
-  return cut ? `${text}…` : text;
 }
