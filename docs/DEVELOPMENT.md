@@ -163,8 +163,14 @@ key). The certificate, the key file and the password for them live in the
 owner's password manager, never in the repository.
 
 ```sh
+# List your signing identities and copy the name of the Developer ID one.
+# Nothing listed means the certificate (or its private key) isn't in this
+# keychain, so stop there. Pick the name yourself: with two, guessing could
+# sign a release with the wrong certificate.
+security find-identity -v -p codesigning | grep "Developer ID Application"
+
 # Build and sign (the hardened runtime is on by default); no notarization yet.
-ID=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -n 1 | sed -E 's/.*"(.*)"/\1/')
+ID="Developer ID Application: <name from the list> (<team id>)"
 APPLE_SIGNING_IDENTITY="$ID" bun tauri build --bundles app
 
 # Notarize with the saved profile, then attach the ticket.
@@ -191,7 +197,8 @@ and no keychain), then without it:
 open -n "$APP"
 ```
 
-`bun run demo` and `open -a` start a different copy, not this one. The second
+Use these two commands, not `bun run demo` or `open -a Mailboat`: those start
+a dev build or an installed copy, not the one you just signed. The second
 run asks once for the keychain item your dev builds made: they are signed
 with the Apple Development certificate, so a Developer ID build looks like a
 different app to macOS. "Always Allow" ends the question for this signature.

@@ -3548,16 +3548,16 @@ themselves.*
       on a downloaded installer, which depends on reputation, and the
       GitHub Actions version, which should sign through GitHub's OIDC login
       to Azure rather than a stored secret)*
-- [ ] Release platforms *(owner, 2026-11-04)*: Windows x64 and ARM64
-      (ARM64 alone is too niche for a public release; an x64 installer
-      builds and the script already takes `WINDOWS_TARGET`, only not yet tried
-      on a real x64 PC), and macOS on Apple silicon only. A universal Mac
-      build was looked at and set aside: the Swift helper for Apple
-      Intelligence would need building for both architectures and the
-      universal triple, the Intel half couldn't be tried on any machine here, Apple
-      Intelligence needs Apple silicon anyway, and Apple is dropping Intel
-      Macs. Revisit if people ask for Intel. Each installer is its own file,
-      so the update file and the release script list them all
+- [ ] Release platforms *(owner, 2026-11-04)*: Windows x64 and ARM64, and
+      macOS on Apple silicon only. ARM64 alone is too niche for a public
+      Windows release. An x64 installer builds and the script already takes
+      `WINDOWS_TARGET`, but it hasn't been tried on a real x64 PC. A
+      universal Mac build was looked at and set aside: the Swift helper for
+      Apple Intelligence would need building for both architectures and for
+      the universal triple, the Intel half couldn't be tried on any machine
+      here, Apple Intelligence needs Apple silicon anyway, and Apple is
+      dropping Intel Macs. Revisit if people ask for Intel. Each installer is
+      its own file, so the update file and the release script list them all
 - [ ] Automatic updates *(added 2026-10-19, settings comparison;
       Mimestream has an update channel setting)*: Tauri's updater plugin
       with its own signing key. The address built into the app is on
@@ -3610,8 +3610,9 @@ themselves.*
       stay in the Mac's keychain or in encrypted GitHub secrets, never
       in the repository *(what a release needs, so far: the Developer ID
       certificate and key as a `.p12` with its password, the notarization
-      key with its key and issuer IDs, the updater's signing key, and the
-      Windows signing account's credentials. On the Mac, notarization can
+      key with its key and issuer IDs, and the updater's signing key. Windows
+      signing should need no stored secret: GitHub signs in to Azure through
+      a trust set up there (OIDC). On the Mac, notarization can
       use the saved keychain profile; Tauri's own notarization step instead
       reads `APPLE_API_ISSUER`, `APPLE_API_KEY` and `APPLE_API_KEY_PATH`,
       the path of the key file, so GitHub Actions needs the key as a
