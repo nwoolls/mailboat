@@ -203,6 +203,44 @@ run asks once for the keychain item your dev builds made: they are signed
 with the Apple Development certificate, so a Developer ID build looks like a
 different app to macOS. "Always Allow" ends the question for this signature.
 
+## The release workflow
+
+`.github/workflows/release.yml` builds, signs and notarizes the Mac app on
+GitHub's own macOS runner (Apple silicon), so a release doesn't depend on one
+laptop. For now it only keeps the result as an artifact for a week; Windows,
+publishing and the update file are separate, later changes.
+
+It is started by hand: Actions → Release → Run workflow, on `main`. It then
+waits in the `release` environment for your approval (the run page shows a
+Review deployments button). That environment is where the signing secrets
+live. It lets only `main` use them, requires a reviewer, and has admin bypass
+off, so a pull request, or a run you didn't expect, can't reach them.
+
+The secrets (environment secrets, not repository ones): `APPLE_CERTIFICATE`
+(the `.p12`, base64), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_API_KEY_CONTENT`
+(the `.p8` text), `APPLE_API_KEY_ID` and `APPLE_API_ISSUER_ID`. Set each with
+`gh secret set <name> --env release --repo <owner>/<repo>`, so a value never
+sits in your shell history, and delete any file you saved afterwards:
+
+```sh
+base64 -i Certificate.p12 | gh secret set APPLE_CERTIFICATE --env release ...
+gh secret set APPLE_API_KEY_CONTENT --env release ... < AuthKey_XXXXXXXXXX.p8
+gh secret set APPLE_CERTIFICATE_PASSWORD --env release ...   # prompts
+gh secret set APPLE_API_KEY_ID --env release ...             # prompts
+gh secret set APPLE_API_ISSUER_ID --env release ...          # prompts
+```
+
+The certificate has to go in as base64 text (the first command), not the raw
+file. To replace the certificate or the key, set the same names again.
+
+What the job does: `scripts/import-apple-certificate.sh` puts the certificate
+in a throwaway keychain (and stops unless there is exactly one Developer ID
+identity); Tauri signs, notarizes and staples through `APPLE_API_*`; the job
+checks the signature, the ticket and Gatekeeper's verdict on the app, that
+every binary in it is Apple silicon only, and the signature on the disk image.
+It always deletes the keychain and the key file at the end, and uses no build
+cache.
+
 ## Versions and the changelog
 
 The version is written once, in `package.json` (`0.x` until the owner calls

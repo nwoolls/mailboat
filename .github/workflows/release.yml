@@ -1,0 +1,108 @@
+name: Release
+
+# Signed builds, started by hand from the Actions tab (a version tag will start
+# them later, once publishing is built). Each job waits for the owner's approval
+# in the `release` environment, which holds the signing secrets and only lets
+# `main` use them, so a pull request can never reach them.
+#
+# Today this builds, signs and notarizes the Mac app and keeps it as an
+# artifact for a week. Windows and publishing follow in their own changes.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  macos:
+    name: Mac (Apple silicon)
+    runs-on: macos-latest
+    environment: release
+    timeout-minutes: 90
+    defaults:
+      run:
+        # An explicit bash also fails a step when any command in a pipeline fails.
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check this is an Apple silicon runner
+        run: |
+          arch="$(uname -m)"
+          if [ "$arch" != "arm64" ]; then
+            echo "Expected an Apple silicon runner, got $arch" >&2
+            exit 1
+          fi
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+          no-cache: true
+      - run: bun install --frozen-lockfile
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      # No build cache here: a release is built from scratch.
+      - name: Import the signing certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: scripts/import-apple-certificate.sh
+      - name: Build, sign and notarize
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+        run: |
+          # Tauri reads the notarization key from a file.
+          key_file="$RUNNER_TEMP/notarization-key.p8"
+          (umask 077 && printf '%s' "$APPLE_API_KEY_CONTENT" > "$key_file")
+          export APPLE_API_KEY_PATH="$key_file"
+          # Tauri reads the path, not the key itself: don't leave the key in
+          # the environment of the build.
+          unset APPLE_API_KEY_CONTENT
+          bun tauri build --ci --bundles app,dmg
+      - name: Check the build and keep it
+        run: |
+          # Exactly one app and one disk image, or something is wrong.
+          shopt -s nullglob
+          apps=(target/release/bundle/macos/*.app)
+          dmgs=(target/release/bundle/dmg/*.dmg)
+          if [ "${#apps[@]}" -ne 1 ] || [ "${#dmgs[@]}" -ne 1 ]; then
+            echo "Expected one .app and one .dmg, found ${#apps[@]} and ${#dmgs[@]}" >&2
+            exit 1
+          fi
+          app="${apps[0]}"
+          dmg="${dmgs[0]}"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          xcrun stapler validate "$app"
+          spctl --assess --type execute -vv "$app"
+          # The app and its helper must both be Apple silicon only.
+          for binary in "$app"/Contents/MacOS/*; do
+            archs="$(lipo -archs "$binary")"
+            if [ "$archs" != "arm64" ]; then
+              echo "$(basename "$binary") is $archs, expected arm64" >&2
+              exit 1
+            fi
+          done
+          # The disk image is signed after it is built, so check that too.
+          codesign --verify --verbose=2 "$dmg"
+          mkdir -p release-files
+          # ditto keeps what a plain zip would lose (permissions, the ticket).
+          ditto -c -k --keepParent "$app" "release-files/$(basename "$app").zip"
+          cp "$dmg" release-files/
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mac-signed
+          path: release-files/*
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove the keychain and the key file
+        if: always()
+        run: |
+          if [ -n "${RELEASE_KEYCHAIN:-}" ]; then
+            security delete-keychain "$RELEASE_KEYCHAIN" || true
+          fi
+          rm -f "$RUNNER_TEMP/notarization-key.p8" "$RUNNER_TEMP/certificate.p12"
