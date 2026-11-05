@@ -3558,7 +3558,7 @@ themselves.*
       here, Apple Intelligence needs Apple silicon anyway, and Apple is
       dropping Intel Macs. Revisit if people ask for Intel. Each installer is
       its own file, so the update file and the release script list them all
-- [ ] Automatic updates *(added 2026-10-19, settings comparison;
+- [x] Automatic updates *(added 2026-10-19, settings comparison;
       Mimestream has an update channel setting)*: Tauri's updater plugin
       with its own signing key. The address built into the app is on
       `getmailboat.app` (e.g. `https://getmailboat.app/updates/latest.json`), never
@@ -3578,8 +3578,10 @@ themselves.*
       Windows installer verify against the key (the installer's signature
       covers the final, Authenticode-signed file). The release workflow now
       makes the update payloads and `latest.json` (see the release items
-      below) but is untried on a real tag. Still to do: trying a real update
-      across two published versions)*
+      below). Tried for real 2026-11-05 with test releases 0.0.1 and 0.0.2:
+      0.0.1 reported up to date on the Mac and Windows ARM64, then found
+      0.0.2 and installed it (a button press on the Mac, the launch-time
+      notice on Windows). Windows x64 isn't tried on a real PC)*
 - [x] Version numbers and changelog *(owner, 2026-10-25: semversioner
       if that's the usual thing, or the option and alternatives)*.
       Semantic versioning (1.4.2: big, feature, fix) is the convention,
@@ -3618,14 +3620,14 @@ themselves.*
       and a `CHANGELOG.md` entry, whose lines have no commit hashes. The
       release pull request that does this for you belongs to the release
       script below)*
-- [ ] Release notes *(moved from Milestone 14, 2026-11-04)*: from those
+- [x] Release notes *(moved from Milestone 14, 2026-11-04)*: from those
       changesets, or failing that generated from merged pull requests,
       grouped by label (new, fixed, changed) *(written 2026-11-05: a release's
       notes are the version's `## <version>` section of `CHANGELOG.md`, which
       Changesets writes grouped as Major, Minor and Patch changes; the tag
       check fails before any build if the section is missing, and it becomes the
-      draft release's text. Tested here, untried on a real tag)*
-- [ ] One release script (on the Mac, or GitHub Actions) builds, signs
+      draft release's text. Seen on the real 0.0.1 draft)*
+- [x] One release script (on the Mac, or GitHub Actions) builds, signs
       and publishes both platforms and the update file. Signing keys
       stay in the Mac's keychain or in encrypted GitHub secrets, never
       in the repository *(what a release needs, so far: the Developer ID
@@ -3661,17 +3663,19 @@ themselves.*
       to read and publish. Finding on the way: the updater plugin's default TLS
       brought in `ring`, which broke the Windows ARM64 cross-build; its
       defaults are off now. The one-time environment setup is in
-      `docs/DEVELOPMENT.md`, "Releasing". Still to do: a first real tag, and
-      trying a real update across two published versions. Decided with the
-      owner (2026-11-05): publish test releases 0.0.1 and 0.0.2 first, try
-      the update on Mac and Windows, then release 0.1.0 with an updater that
-      is known to work, and remove or mark the test releases after)*
-- [ ] Build provenance: GitHub attests each installer was built by
+      `docs/DEVELOPMENT.md`, "Releasing". Two real tags ran end to end
+      (v0.0.1, v0.0.2, 2026-11-05), each producing the draft with all eleven
+      files; checked on 0.0.1: every checksum matched and `latest.json` listed
+      the three platforms with their signatures. Decided with the owner:
+      test releases 0.0.1 and 0.0.2 first, then 0.1.0 with an updater known
+      to work. Still to do: remove or mark the test releases after 0.1.0)*
+- [x] Build provenance: GitHub attests each installer was built by
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
       tampered with *(written 2026-11-05: the publish job attests every
       release file with `actions/attest-build-provenance`, and
-      `docs/DEVELOPMENT.md` says how to check one; untried on a real tag)*
+      `docs/DEVELOPMENT.md` says how to check one; `gh attestation verify` accepted
+      the real 0.0.1 Mac payload, built from the tag's commit)*
 - [x] Settings → About: version, "Check for updates", and the update
       channel (stable, or early builds) if wanted *(2026-11-05: the version,
       "Check for updates" and a switch for the automatic look are built, with a
