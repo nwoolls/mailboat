@@ -164,7 +164,7 @@ owner's password manager, never in the repository.
 
 ```sh
 # Build and sign (the hardened runtime is on by default); no notarization yet.
-ID=$(security find-identity -v -p codesigning | grep "Developer ID Application" | sed -E 's/.*"(.*)"/\1/')
+ID=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -n 1 | sed -E 's/.*"(.*)"/\1/')
 APPLE_SIGNING_IDENTITY="$ID" bun tauri build --bundles app
 
 # Notarize with the saved profile, then attach the ticket.
@@ -173,16 +173,28 @@ ditto -c -k --keepParent "$APP" /tmp/Mailboat-notarize.zip
 xcrun notarytool submit /tmp/Mailboat-notarize.zip --keychain-profile mailboat-notary --wait
 xcrun stapler staple "$APP"
 
-# Check: both should say it's fine ("Notarized Developer ID").
+# Check: the first says "The validate action worked!", the second prints
+# "source=Notarized Developer ID" (and the signer's name, locally).
 xcrun stapler validate "$APP"
 spctl --assess --type execute -vv "$APP"
 ```
 
 Tauri can also notarize during the build, but it reads the key's file path
 and IDs from `APPLE_API_*` variables and can't use the saved profile; that is
-how GitHub Actions will do it. Run the signed app once with `--demo` first (made-up mail),
-then without it: macOS asks once for the keychain item that an unsigned dev
-build made.
+how GitHub Actions will do it.
+
+Try the signed app before trusting it, starting with demo mode (made-up mail,
+and no keychain), then without it:
+
+```sh
+"$APP/Contents/MacOS/mailboat" --demo
+open -n "$APP"
+```
+
+`bun run demo` and `open -a` start a different copy, not this one. The second
+run asks once for the keychain item your dev builds made: they are signed
+with the Apple Development certificate, so a Developer ID build looks like a
+different app to macOS. "Always Allow" ends the question for this signature.
 
 ## Versions and the changelog
 
