@@ -3616,7 +3616,13 @@ themselves.*
       use the saved keychain profile; Tauri's own notarization step instead
       reads `APPLE_API_ISSUER`, `APPLE_API_KEY` and `APPLE_API_KEY_PATH`,
       the path of the key file, so GitHub Actions needs the key as a
-      secret written to a temporary file)*
+      secret written to a temporary file. The Mac job is written
+      (`release.yml`, 2026-11-05): a `release` environment with a required
+      reviewer, `main` only, admin bypass off, holds five secrets (names in
+      `docs/DEVELOPMENT.md`), and the job builds, signs, notarizes and checks
+      the app and DMG on a macOS runner. It can't run before it is merged,
+      since the environment only lets `main` use the secrets, so its first run
+      will tell. Still to do: the Windows job, publishing, the update file)*
 - [ ] Build provenance: GitHub attests each installer was built by
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
