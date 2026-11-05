@@ -37,11 +37,16 @@ case "${1:-}" in
   build)
     # Signing is its own config file, added only when asked for, so a build
     # that doesn't sign never names a signing command (see sign-windows.sh).
-    sign_config=()
+    extra_config=()
     if [ "${WINDOWS_SIGN:-}" = "1" ]; then
-      sign_config=(--config src-tauri/tauri.sign-windows.conf.json)
+      extra_config+=(--config src-tauri/tauri.sign-windows.conf.json)
     fi
-    bun tauri build --runner cargo-xwin --target "$target" --bundles nsis ${sign_config[@]+"${sign_config[@]}"}
+    # A release: also make the installer's update signature (needs the updater
+    # key in TAURI_SIGNING_PRIVATE_KEY, so it is off unless asked for).
+    if [ "${UPDATER_ARTIFACTS:-}" = "1" ]; then
+      extra_config+=(--config src-tauri/tauri.updater-artifacts.conf.json)
+    fi
+    bun tauri build --runner cargo-xwin --target "$target" --bundles nsis ${extra_config[@]+"${extra_config[@]}"}
     echo
     echo "Installer:"
     ls -1 "target/$target/release/bundle/nsis/"*.exe

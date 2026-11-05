@@ -29,8 +29,13 @@ time = { version = "0.3.55", features = ["formatting"] }
 tauri-plugin-window-state = "2"
 tauri-plugin-notification = "2"
 # The app updating itself (src/updates.rs): Rust only, with no web permission.
-# Adds ten small crates (zip, tar, minisign-verify and a few more).
-tauri-plugin-updater = "2"
+# Its own TLS switch (`rustls-tls`) would add the `ring` crypto library and make
+# it the process default, a second one beside `aws-lc-rs`, which the app's
+# network code already uses, and `ring` doesn't cross-compile for Windows ARM64
+# with cargo-xwin. So its defaults are off: it uses the TLS the app already has
+# (reqwest's, through mail-core), and keeps only the system proxy setting. `zip`
+# is for Tauri v1 bundles; ours are a tarball (Mac) and an installer (Windows).
+tauri-plugin-updater = { version = "2", default-features = false, features = ["system-proxy"] }
 
 # Already part of the build through Tauri; declared to set the Dock picture
 # (src/dock.rs) and to read trackpad phases (src/trackpad.rs).

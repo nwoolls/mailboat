@@ -488,6 +488,37 @@ mod tests {
         assert!(conf["bundle"].get("createUpdaterArtifacts").is_none());
     }
 
+    /// The `ring` crypto library isn't in the build. The updater plugin's own
+    /// TLS feature adds it, and its assembly doesn't cross-compile for Windows
+    /// ARM64 with cargo-xwin, which is how the release builds Windows on a Mac
+    /// runner; native Windows CI doesn't notice. The app's TLS is rustls with
+    /// aws-lc-rs already, so the updater's defaults are off (src-tauri/Cargo.toml).
+    /// Asks `cargo tree` what is really built: `ring` stays in `Cargo.lock` (and in
+    /// `cargo metadata`) as an unused optional dependency of other crates.
+    #[test]
+    fn the_ring_crypto_library_is_not_in_the_build() {
+        let out = std::process::Command::new(env!("CARGO"))
+            .args([
+                "tree",
+                "--locked",
+                "--target",
+                "all",
+                "-e",
+                "normal,build",
+                "--prefix",
+                "none",
+            ])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "cargo tree failed");
+        let tree = String::from_utf8(out.stdout).unwrap();
+        assert!(
+            !tree.lines().any(|l| l.starts_with("ring v")),
+            "`ring` is in the build again: see the comment on this test before accepting it"
+        );
+    }
+
     /// Tauri reads the app's name and ID from its own config files, not
     /// `brand.json`, so they're checked to match it.
     #[test]
