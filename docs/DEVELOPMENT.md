@@ -114,6 +114,46 @@ The browser tests (`tests/browser`, Playwright) need WebKit and Chromium once:
 bunx playwright install webkit chromium
 ```
 
+## A signed Windows installer
+
+The Windows build above is unsigned unless you ask. Signing uses Azure
+Artifact Signing (a Public Trust certificate profile, individual identity
+validation) from this Mac, with `jsign`. Needs `brew install jsign`, `az
+login` as an account that has the "Artifact Signing Certificate Profile
+Signer" role on the signing account, and these three settings (the values
+belong to your Azure account, so they stay out of the repository):
+
+```sh
+WINDOWS_SIGN=1 \
+WINDOWS_SIGN_ENDPOINT="<region>.codesigning.azure.net" \
+WINDOWS_SIGN_ALIAS="<signing account>/<certificate profile>" \
+scripts/windows.sh build
+```
+
+`scripts/sign-windows.sh` is the signing step: Tauri's
+`bundle.windows.signCommand` runs it for each file. That command lives in its
+own file, `src-tauri/tauri.sign-windows.conf.json`, which `scripts/windows.sh`
+adds only when `WINDOWS_SIGN=1`, so checks, CI and ordinary builds never
+mention it. (It once sat in `tauri.windows.conf.json`; on GitHub's Windows
+runner `bash` is the WSL launcher, which has no Linux installed, and the
+build failed.) The access token for Azure is short-lived and
+goes to `jsign` through the environment, never to disk or the command line.
+
+Good to know:
+
+- One build makes about eight signatures: the app, the installer, the
+  uninstaller, and the installer's helper libraries. The plan allows a
+  monthly number of them, so don't loop it.
+- The signed app is inside the installer. Tauri puts the unsigned
+  `mailboat.exe` back in `target/.../release/` afterwards, so check the
+  installer, not that file.
+- Microsoft's timestamp service only works with `jsign`'s `--tsmode RFC3161`,
+  which the script sets.
+- To check a signature, copy the installer to the Windows VM and use the
+  file's Properties → Digital Signatures, or `Get-AuthenticodeSignature` in
+  PowerShell. The publisher should be your name. Whether SmartScreen warns
+  also depends on reputation, which builds up over time.
+
 ## Versions and the changelog
 
 The version is written once, in `package.json` (`0.x` until the owner calls

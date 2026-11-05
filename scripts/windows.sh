@@ -35,7 +35,13 @@ case "${1:-}" in
     cargo xwin clippy --workspace --all-targets --target "$target" -- -D warnings
     ;;
   build)
-    bun tauri build --runner cargo-xwin --target "$target" --bundles nsis
+    # Signing is its own config file, added only when asked for, so a build
+    # that doesn't sign never names a signing command (see sign-windows.sh).
+    sign_config=()
+    if [ "${WINDOWS_SIGN:-}" = "1" ]; then
+      sign_config=(--config src-tauri/tauri.sign-windows.conf.json)
+    fi
+    bun tauri build --runner cargo-xwin --target "$target" --bundles nsis ${sign_config[@]+"${sign_config[@]}"}
     echo
     echo "Installer:"
     ls -1 "target/$target/release/bundle/nsis/"*.exe
