@@ -3512,8 +3512,8 @@ open it without security warnings, and later receive updates by
 themselves.*
 
 *Closed 2026-11-05 (owner). The release pipeline and updater ran for real
-on the test releases 0.0.1 and 0.0.2; the first public release, 0.1.0, is
-still to come. It goes out through the same workflow (`docs/DEVELOPMENT.md`,
+on the test releases 0.0.1 and 0.0.2; the first public release, 0.1.0, was
+published the same day through the same workflow (`docs/DEVELOPMENT.md`,
 "Releasing"), with its version bump made by `version-packages`, not by hand.*
 
 - [x] Owner: Apple Developer Program (paid, personal name is fine).
