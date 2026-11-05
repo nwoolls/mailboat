@@ -3664,7 +3664,7 @@ themselves.*
       brought in `ring`, which broke the Windows ARM64 cross-build; its
       defaults are off now. The one-time environment setup is in
       `docs/DEVELOPMENT.md`, "Releasing". Two real tags ran end to end
-      (v0.0.1, v0.0.2, 2026-11-05), each producing the draft with all eleven
+      (v0.0.1, v0.0.2, 2026-11-05), each producing the draft with all nine
       files; checked on 0.0.1: every checksum matched and `latest.json` listed
       the three platforms with their signatures. Decided with the owner:
       test releases 0.0.1 and 0.0.2 first, then 0.1.0 with an updater known
