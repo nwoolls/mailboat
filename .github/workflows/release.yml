@@ -200,7 +200,10 @@ jobs:
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          # Signing only needs the tenant-level token, and the signing service
+          # checks the app's role on the certificate profile. No subscription
+          # is needed, so the login doesn't depend on seeing one.
+          allow-no-subscriptions: true
       - name: Build and sign the installer
         env:
           WINDOWS_TARGET: ${{ matrix.target }}

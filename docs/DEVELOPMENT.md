@@ -251,8 +251,8 @@ password: the job asks GitHub for a short-lived token, and Azure accepts it
 because of a trust set up on an Azure app registration, for runs in the
 `release` environment only. That app has one role, "Artifact Signing
 Certificate Profile Signer", on the one certificate profile. The environment
-holds three more secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
-`AZURE_SUBSCRIPTION_ID`) and two variables, which are names and not secrets
+holds two more secrets (`AZURE_CLIENT_ID` and `AZURE_TENANT_ID`; the login is
+at tenant level, since signing needs no subscription) and two variables, which are names and not secrets
 (`WINDOWS_SIGN_ENDPOINT`, `WINDOWS_SIGN_ALIAS`: the signing account and the
 certificate profile, as in the signed Windows installer section). Afterwards
 `scripts/check-windows-signature.ts` fails the job unless the installer and

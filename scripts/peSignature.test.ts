@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 import { certificateTableSize, isSigned } from "./peSignature";
 
 /** A minimal PE file: headers only, with the certificate table entry set. */
-function pe(opts: { magic?: number; offset?: number; size?: number; length?: number } = {}) {
+function pe(
+  opts: {
+    magic?: number;
+    offset?: number;
+    size?: number;
+    length?: number;
+    /** What the WIN_CERTIFICATE header at the offset says; PKCS#7 by default. */
+    cert?: { length?: number; revision?: number; type?: number };
+  } = {},
+) {
   const magic = opts.magic ?? 0x20b;
   const bytes = new Uint8Array(opts.length ?? 1024);
   const view = new DataView(bytes.buffer);
@@ -14,6 +23,12 @@ function pe(opts: { magic?: number; offset?: number; size?: number; length?: num
   const directories = optional + (magic === 0x20b ? 112 : 96);
   view.setUint32(directories + 4 * 8, opts.offset ?? 0, true);
   view.setUint32(directories + 4 * 8 + 4, opts.size ?? 0, true);
+  const offset = opts.offset ?? 0;
+  if (offset > 0 && offset + 8 <= bytes.length) {
+    view.setUint32(offset, opts.cert?.length ?? opts.size ?? 0, true);
+    view.setUint16(offset + 4, opts.cert?.revision ?? 0x0200, true);
+    view.setUint16(offset + 6, opts.cert?.type ?? 0x0002, true);
+  }
   return bytes;
 }
 
@@ -30,6 +45,19 @@ describe("a Windows executable's signature", () => {
 
   it("is refused when the table points outside the file", () => {
     expect(() => certificateTableSize(pe({ offset: 1000, size: 200 }))).toThrow(/outside/);
+  });
+
+  it("is refused when the table doesn't hold PKCS#7 signed data", () => {
+    // Wrong type, an old revision, or a length longer than the table.
+    for (const cert of [{ type: 0x0001 }, { revision: 0x0100 }, { length: 400 }]) {
+      expect(() => certificateTableSize(pe({ offset: 600, size: 200, cert }))).toThrow(/PKCS#7/);
+    }
+    expect(() => certificateTableSize(pe({ offset: 600, size: 4 }))).toThrow(/too small/);
+  });
+
+  it("treats the table's address as a file offset, not an RVA", () => {
+    // The header sits at the offset the entry gives, wherever any section is.
+    expect(certificateTableSize(pe({ offset: 900, size: 100, length: 1024 }))).toBe(100);
   });
 
   it("is refused for something that isn't a Windows executable", () => {
