@@ -46,10 +46,11 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: bun scripts/check-release-tag.ts "$TAG"
+      # The checkout (full history, so origin/main is there) has the token; later
+      # git commands are unauthenticated, which a private repository would refuse.
       - name: The tag is on main
         if: github.ref_type == 'tag'
         run: |
-          git fetch --no-tags origin main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "This tag isn't on main: merge the release to main, then tag that commit." >&2
             exit 1
