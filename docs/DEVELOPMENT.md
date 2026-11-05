@@ -325,8 +325,10 @@ public until the owner publishes the draft.
 1. On a branch named `changeset-release/<something>`, run `bun run
    version-packages`: it applies the pending changesets, bumps `package.json`
    and writes the `## <version>` section of `CHANGELOG.md`, which becomes the
-   release notes. Open a pull request and merge it. (The first release,
-   `0.1.0`, has no bump: write its `## 0.1.0` section in `CHANGELOG.md` by hand.)
+   release notes. Open a pull request and merge it. (The first
+   releases, the test ones `0.0.1` and `0.0.2`, have no generated bump: set the
+   version in `package.json` and write the `## <version>` section in
+   `CHANGELOG.md` by hand.)
 2. Tag the merged commit on `main` and push the tag as yourself:
    `git tag v0.1.0 <commit> && git push origin v0.1.0`. The tag must be `v`
    and the version in `package.json`, and be on `main`; the workflow's first

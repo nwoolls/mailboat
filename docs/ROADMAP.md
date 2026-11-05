@@ -3662,7 +3662,10 @@ themselves.*
       brought in `ring`, which broke the Windows ARM64 cross-build; its
       defaults are off now. The one-time environment setup is in
       `docs/DEVELOPMENT.md`, "Releasing". Still to do: a first real tag, and
-      trying a real update across two published versions)*
+      trying a real update across two published versions. Decided with the
+      owner (2026-11-05): publish test releases 0.0.1 and 0.0.2 first, try
+      the update on Mac and Windows, then release 0.1.0 with an updater that
+      is known to work, and remove or mark the test releases after)*
 - [ ] Build provenance: GitHub attests each installer was built by
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
