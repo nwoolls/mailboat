@@ -324,8 +324,8 @@ public until the owner publishes the draft.
 **Cutting one**
 1. The test releases `0.0.1` and `0.0.2` have no generated bump: set the
    version in `package.json`, write the `## <version>` section of
-   `CHANGELOG.md` by hand, and don't run `version-packages`. From `0.1.0` on, on
-   a branch named `changeset-release/<something>`, run `bun run
+   `CHANGELOG.md` by hand, and don't run `version-packages`. Starting with
+   `0.1.0`, use a branch named `changeset-release/<something>` and run `bun run
    version-packages`: it applies the pending changesets, bumps `package.json`
    and writes the `## <version>` section of `CHANGELOG.md`, which becomes the
    release notes. Either way, open a pull request and merge it.
