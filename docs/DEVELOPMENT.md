@@ -154,6 +154,48 @@ Good to know:
   PowerShell. The publisher should be your name. Whether SmartScreen warns
   also depends on reputation, which builds up over time.
 
+## A signed build on the Mac
+
+Needs the Developer ID Application certificate (with its private key) in the
+login keychain and a notarization profile saved with `xcrun notarytool
+store-credentials` (here `mailboat-notary`, from an App Store Connect API
+key). The certificate, the key file and the password for them live in the
+owner's password manager, never in the repository.
+
+```sh
+# Build and sign (the hardened runtime is on by default); no notarization yet.
+ID=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -n 1 | sed -E 's/.*"(.*)"/\1/')
+APPLE_SIGNING_IDENTITY="$ID" bun tauri build --bundles app
+
+# Notarize with the saved profile, then attach the ticket.
+APP=target/release/bundle/macos/Mailboat.app
+ditto -c -k --keepParent "$APP" /tmp/Mailboat-notarize.zip
+xcrun notarytool submit /tmp/Mailboat-notarize.zip --keychain-profile mailboat-notary --wait
+xcrun stapler staple "$APP"
+
+# Check: the first says "The validate action worked!", the second prints
+# "source=Notarized Developer ID" (and the signer's name, locally).
+xcrun stapler validate "$APP"
+spctl --assess --type execute -vv "$APP"
+```
+
+Tauri can also notarize during the build, but it reads the key's file path
+and IDs from `APPLE_API_*` variables and can't use the saved profile; that is
+how GitHub Actions will do it.
+
+Try the signed app before trusting it, starting with demo mode (made-up mail,
+and no keychain), then without it:
+
+```sh
+"$APP/Contents/MacOS/mailboat" --demo
+open -n "$APP"
+```
+
+`bun run demo` and `open -a` start a different copy, not this one. The second
+run asks once for the keychain item your dev builds made: they are signed
+with the Apple Development certificate, so a Developer ID build looks like a
+different app to macOS. "Always Allow" ends the question for this signature.
+
 ## Versions and the changelog
 
 The version is written once, in `package.json` (`0.x` until the owner calls

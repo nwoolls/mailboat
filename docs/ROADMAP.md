@@ -3511,15 +3511,53 @@ builds are attached to each run as artifacts.*
 open it without security warnings, and later receive updates by
 themselves.*
 
-- [ ] Owner: Apple Developer Program (paid, personal name is fine).
+- [x] Owner: Apple Developer Program (paid, personal name is fine).
       The free Apple Development certificate can't notarize, and macOS
       (and Homebrew, since September 2026) refuse apps that aren't
-      notarized
-- [ ] Mac: Developer ID signing and notarization
+      notarized *(done: enrolled as an individual before 2026-11-04. Auto-renew
+      was off when checked; if the membership lapses, signing and
+      notarization of new builds stop)*
+- [ ] Mac: Developer ID signing and notarization *(proven by hand
+      2026-11-04, not yet automated. A Developer ID Application
+      certificate was made (on Apple's site from a signing request, since
+      Xcode's Manage Certificates refused with an "Account Holder" error)
+      and backed up as a password-protected `.p12` in the owner's password
+      manager. A notarization key (App Store Connect team key, Developer
+      role) is kept there too and saved as the keychain profile
+      `mailboat-notary`. A release build signed with the hardened runtime
+      and no entitlements was accepted by Apple's notary, stapled, and
+      passed Gatekeeper (`spctl`: Notarized Developer ID). Run under it, the
+      app opened, read its existing keychain item after one "Always Allow"
+      prompt (the item was made by a differently signed dev build, so
+      macOS asks once) and the AI features worked. How: `docs/DEVELOPMENT.md`,
+      "A signed build on the Mac". Left for the release script below)*
 - [ ] Windows: Azure Artifact Signing (open to
       individuals in the US and Canada), so SmartScreen doesn't warn.
       Signing from the Mac (e.g. `jsign`) or in GitHub Actions, to be
-      confirmed
+      confirmed *(2026-11-04, local signing works. An Artifact Signing
+      account exists under its own Azure subscription for the project, the
+      owner's individual identity validation is complete, and a Public
+      Trust certificate profile is active (the certificate carries the
+      owner's name, state and city, and no street address or postal code).
+      Signing is done from the Mac with `jsign`; a signed build's
+      installer, installed app and uninstaller all carry the certificate
+      (`scripts/sign-windows.sh`, `docs/DEVELOPMENT.md`, "A signed Windows
+      installer"). The owner checked a signed ARM64 installer in the Windows
+      VM: the installer, the app and the uninstaller show the signature,
+      and the elevation (UAC) prompt shows it. Not yet done: SmartScreen
+      on a downloaded installer, which depends on reputation, and the
+      GitHub Actions version, which should sign through GitHub's OIDC login
+      to Azure rather than a stored secret)*
+- [ ] Release platforms *(owner, 2026-11-04)*: Windows x64 and ARM64
+      (ARM64 alone is too niche for a public release; an x64 installer
+      builds and the script already takes `WINDOWS_TARGET`, only not yet tried
+      on a real x64 PC), and macOS on Apple silicon only. A universal Mac
+      build was looked at and set aside: the Swift helper for Apple
+      Intelligence would need building for both architectures and the
+      universal triple, the Intel half couldn't be tried on any machine here, Apple
+      Intelligence needs Apple silicon anyway, and Apple is dropping Intel
+      Macs. Revisit if people ask for Intel. Each installer is its own file,
+      so the update file and the release script list them all
 - [ ] Automatic updates *(added 2026-10-19, settings comparison;
       Mimestream has an update channel setting)*: Tauri's updater plugin
       with its own signing key. The address built into the app is on
@@ -3570,7 +3608,14 @@ themselves.*
 - [ ] One release script (on the Mac, or GitHub Actions) builds, signs
       and publishes both platforms and the update file. Signing keys
       stay in the Mac's keychain or in encrypted GitHub secrets, never
-      in the repository
+      in the repository *(what a release needs, so far: the Developer ID
+      certificate and key as a `.p12` with its password, the notarization
+      key with its key and issuer IDs, the updater's signing key, and the
+      Windows signing account's credentials. On the Mac, notarization can
+      use the saved keychain profile; Tauri's own notarization step instead
+      reads `APPLE_API_ISSUER`, `APPLE_API_KEY` and `APPLE_API_KEY_PATH`,
+      the path of the key file, so GitHub Actions needs the key as a
+      secret written to a temporary file)*
 - [ ] Build provenance: GitHub attests each installer was built by
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
@@ -3733,6 +3778,22 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [ ] A sign-in code in a verification email isn't surfaced, and its
+      summaries are wrong *(owner report, 2026-11-04)*: an identity
+      verification email showed a short numeric code in large styled text
+      beside a "Verify" button. The list row and the reader didn't offer the
+      code, the list's one-line summary said no action was needed, and the
+      full summary failed with Apple Intelligence's "safety guardrails"
+      message. `mail::codes` finds codes by the words near them
+      ("verification code", "your code is"), within the first 800
+      characters of the text, so the likeliest cause is that nothing near
+      the number says "code", or that markup puts the digits away from its
+      wording. Not investigated yet. To address it without writing the mail
+      down: the owner keeps the email; an agent reads it locally (Show
+      original gives its HTML), works out why detection missed it, and
+      builds a made-up fixture with the same structure (an invented sender
+      on a reserved domain, the same layout and wording shape) for the
+      test. Nothing from the real email goes into the repository
 - [ ] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the
