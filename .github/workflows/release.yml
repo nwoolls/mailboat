@@ -64,9 +64,18 @@ jobs:
           # the environment of the build.
           unset APPLE_API_KEY_CONTENT
           bun tauri build --ci --bundles app,dmg
-      - name: Check the signature and the notarization
+      - name: Check the build and keep it
         run: |
-          app="$(ls -d target/release/bundle/macos/*.app)"
+          # Exactly one app and one disk image, or something is wrong.
+          shopt -s nullglob
+          apps=(target/release/bundle/macos/*.app)
+          dmgs=(target/release/bundle/dmg/*.dmg)
+          if [ "${#apps[@]}" -ne 1 ] || [ "${#dmgs[@]}" -ne 1 ]; then
+            echo "Expected one .app and one .dmg, found ${#apps[@]} and ${#dmgs[@]}" >&2
+            exit 1
+          fi
+          app="${apps[0]}"
+          dmg="${dmgs[0]}"
           codesign --verify --deep --strict --verbose=2 "$app"
           xcrun stapler validate "$app"
           spctl --assess --type execute -vv "$app"
@@ -79,14 +88,11 @@ jobs:
             fi
           done
           # The disk image is signed after it is built, so check that too.
-          codesign --verify --verbose=2 target/release/bundle/dmg/*.dmg
-      - name: Keep the build
-        run: |
+          codesign --verify --verbose=2 "$dmg"
           mkdir -p release-files
-          app="$(ls -d target/release/bundle/macos/*.app)"
           # ditto keeps what a plain zip would lose (permissions, the ticket).
           ditto -c -k --keepParent "$app" "release-files/$(basename "$app").zip"
-          cp target/release/bundle/dmg/*.dmg release-files/
+          cp "$dmg" release-files/
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: mac-signed
