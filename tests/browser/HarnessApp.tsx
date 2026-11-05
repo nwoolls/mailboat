@@ -14,6 +14,8 @@ import { CommandPalette } from "../../src/features/palette/ui/CommandPalette";
 import { TitleSearch } from "../../src/app/TitleSearch";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import { inbox } from "./demoMail";
+import { GeneralSection } from "../../src/features/settings/ui/SettingsSections";
+import { UpdateNotice } from "../../src/features/updates/ui/UpdateNotice";
 import { Sidebar } from "../../src/features/accounts/ui/Sidebar";
 import { useSignIn } from "../../src/features/accounts/ui/useSignIn";
 import {
@@ -25,6 +27,7 @@ import { Onboarding } from "../../src/features/onboarding/ui/Onboarding";
 import { useAccounts, useOAuthSetup, useSyncStates } from "../../src/shared/lib/queries";
 import {
   setCardSpot,
+  updateDraft,
   useComposeActions,
   useComposeState,
 } from "../../src/features/compose/ui/useCompose";
@@ -74,6 +77,28 @@ export function Harness({
   }, [mode]);
 
   if (mode === "onboarding") return <OnboardingHarness />;
+  // `?mode=updates&draft=1`: a message being written, so there is something to save.
+  const draftStarted = useRef(false);
+  useEffect(() => {
+    if (mode !== "updates" || !params.has("draft") || draftStarted.current) return;
+    draftStarted.current = true;
+    void actions.startNew(account.id);
+  }, [mode, actions, account.id]);
+  const writing = compose.cards[0];
+  useEffect(() => {
+    if (mode === "updates" && params.has("draft") && writing && writing.draft.subject === "")
+      updateDraft(writing.draft.id, (d) => ({ ...d, subject: "Lunch on Friday" }));
+  }, [mode, writing]);
+  // Settings → About with the update row, and the update notice.
+  if (mode === "updates")
+    return (
+      <div style={{ width: 720, padding: 16 }}>
+        <GeneralSection />
+        <div className="fixed top-12 right-3 z-50">
+          <UpdateNotice />
+        </div>
+      </div>
+    );
   if (mode === "signedout")
     return (
       <div style={{ display: "flex", height: 600, width: 900 }}>

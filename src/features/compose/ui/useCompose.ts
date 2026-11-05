@@ -168,6 +168,17 @@ export async function saveNow(id: number): Promise<boolean> {
 }
 
 /**
+ * Saves every open draft (new messages and replies) now, for before the app
+ * restarts to update: what was typed since the last save would be lost. Says
+ * whether they all saved.
+ */
+export async function saveOpenDrafts(): Promise<boolean> {
+  const open = [...state.cards, ...state.replies].filter((e) => hasChanges(e.draft));
+  const results = await Promise.all(open.map((e) => saveNow(e.draft.id)));
+  return results.every(Boolean);
+}
+
+/**
  * Closes a new message at once, keeping it in Gmail's Drafts: it saves in
  * the background. If that fails the card comes back with the error, so
  * nothing written is lost.

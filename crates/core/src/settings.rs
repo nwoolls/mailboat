@@ -120,6 +120,9 @@ pub struct AppSettings {
     /// What AI apps (Claude Desktop, Claude Code) may do with each
     /// account's mail through the app's MCP server. Nothing by default.
     pub mcp: McpSettings,
+    /// Look for a new version at launch and about once a day. It only
+    /// looks and tells: installing is always the person's click.
+    pub auto_check_updates: bool,
 }
 
 /// Which accounts AI apps may use through the MCP server (`crate::mcp`),
@@ -206,6 +209,7 @@ impl Default for AppSettings {
             image_cache_mb: 500,
             ai: AiSettings::default(),
             mcp: McpSettings::default(),
+            auto_check_updates: true,
         }
     }
 }
@@ -273,6 +277,7 @@ mod tests {
             remote_images: RemoteImages::Correspondents,
             image_prefetch: false,
             image_cache_mb: 1000,
+            auto_check_updates: false,
             ai: AiSettings {
                 connected: vec![AiProvider::Claude],
                 list_summaries: None,
@@ -315,6 +320,8 @@ mod tests {
         );
         assert_eq!(loaded.notify_for, NotifyFor::Inbox);
         assert!(!loaded.quiet_hours.on);
+        // Settings saved before the switch existed look for updates, as new ones do.
+        assert!(loaded.auto_check_updates);
     }
 
     #[test]

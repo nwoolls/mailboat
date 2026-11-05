@@ -106,6 +106,8 @@ import { ComposeCard } from "../features/compose/ui/ComposeCard";
 import { useSignIn } from "../features/accounts/ui/useSignIn";
 import { SignedOutNotices, useSignedOutNotices } from "../features/accounts/ui/SignedOutNotices";
 import { CodeNotices } from "../features/codes/ui/CodeNotices";
+import { UpdateNotice } from "../features/updates/ui/UpdateNotice";
+import { useUpdateEvents } from "../features/updates/ui/updateStore";
 import { MinimizedTabs } from "../features/compose/ui/MinimizedTabs";
 import { ReplyArea } from "../features/compose/ui/ReplyArea";
 import {
@@ -206,6 +208,7 @@ type Peek = "closed" | "open" | "leaving" | "docking";
 
 export function Shell() {
   useMailEvents();
+  useUpdateEvents();
   useIgnoreStrayDrops();
   const accountsQuery = useAccounts();
   const setup = useOAuthSetup();
@@ -1268,6 +1271,7 @@ export function Shell() {
           onDismiss={signedOutNotices.dismiss}
           signIn={signIn}
         />
+        <UpdateNotice />
         <CodeNotices
           onOpen={(id) => {
             setSelectedId(id);

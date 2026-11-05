@@ -18,6 +18,7 @@ mod state;
 mod sync_log;
 mod theme;
 mod trackpad;
+mod updates;
 mod window_place;
 
 use std::sync::Arc;
@@ -140,6 +141,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             ai::ai_usage,
             ai::ai_summaries_clear,
             ai::ai_apple_settings_open,
+            updates::update_check,
+            updates::update_install,
         ])
         .events(collect_events![
             SyncStatusEvent,
@@ -155,7 +158,9 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             email_menu::EmailMenuEvent,
             codes::SignInCodeEvent,
             ai::AiTextEvent,
-            ai::AiLineSummaryEvent
+            ai::AiLineSummaryEvent,
+            updates::UpdateAvailableEvent,
+            updates::UpdateProgressEvent
         ])
         // IDs and millisecond timestamps stay far below 2^53, so plain JS
         // numbers are exact.
@@ -212,6 +217,8 @@ pub fn run() {
         )
         // New-mail notifications, shown from Rust (no web permission).
         .plugin(tauri_plugin_notification::init())
+        // The app updating itself (src/updates.rs): Rust only, no web permission.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(mail_handler::MailtoQueue::default())
         .manage(menu::MenuItems::default())
         .manage(ai::AiState::new())
@@ -313,6 +320,10 @@ pub fn run() {
             theme::apply(app.handle(), saved.theme);
             state.resume_all_accounts()?;
             app.manage(state);
+            app.manage(updates::UpdatesEnabled(
+                mode.is_normal() && !cfg!(debug_assertions),
+            ));
+            updates::watch(app.handle().clone());
             sync_demo_changes(app.handle());
             open_window(app, mode)?;
             // AI apps reach the app through a socket in the normal data
@@ -446,6 +457,35 @@ mod tests {
             before == after,
             "src/platform/tauri/bindings.ts was out of date and has been regenerated; commit the new file"
         );
+    }
+
+    /// The updater's settings that keep it safe, pinned: its key is a public
+    /// key (a minisign secret key file would say "secret key" where this says
+    /// "public key"), it only talks over https, and an update must carry a
+    /// signature made for the version it announces (the manifest isn't signed,
+    /// so without this a crafted one could pair a newer number with an older,
+    /// genuinely signed release).
+    #[test]
+    fn the_updater_is_configured_safely() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tauri.conf.json");
+        let conf: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let updater = &conf["plugins"]["updater"];
+        // Base64 of "untrusted comment: minisign public key".
+        assert!(updater["pubkey"]
+            .as_str()
+            .unwrap()
+            .starts_with("dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk"));
+        let endpoints = updater["endpoints"].as_array().unwrap();
+        assert!(!endpoints.is_empty());
+        for endpoint in endpoints {
+            assert!(endpoint.as_str().unwrap().starts_with("https://"));
+        }
+        assert_eq!(updater["requireSignedVersion"], true);
+        assert!(updater.get("dangerousInsecureTransportProtocol").is_none());
+        // Off here: it needs the private key at build time, so the release
+        // workflow turns it on and pull-request builds don't need the key.
+        assert!(conf["bundle"].get("createUpdaterArtifacts").is_none());
     }
 
     /// Tauri reads the app's name and ID from its own config files, not

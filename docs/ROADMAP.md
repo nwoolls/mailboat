@@ -3563,7 +3563,20 @@ themselves.*
       with its own signing key. The address built into the app is on
       `getmailboat.app` (e.g. `https://getmailboat.app/updates/latest.json`), never
       a GitHub address, so hosting can change without stranding anyone.
-      Installers live on GitHub Releases
+      Installers live on GitHub Releases *(app side built 2026-11-05: the
+      updater plugin runs in Rust only, with no web permission; the public
+      key and the address are in `tauri.conf.json`; `getmailboat.app/updates/latest.json`
+      is a Cloudflare redirect (302, so it can be repointed) to the newest
+      release's `latest.json`; the key pair is the owner's, the private half
+      in the password manager and the `release` environment. Decided with the
+      owner: the app looks at launch and about daily, on by default with a
+      switch, and never installs without a click (open drafts are saved
+      first); no update channel yet. The unsigned manifest's release notes are
+      not shown, and `requireSignedVersion` is on, so a crafted manifest can't
+      force a downgrade. Check that the first release's signature carries
+      `version:` when it is built. Still
+      to do: the update bundles and `latest.json` in the release workflow with
+      publishing, and trying a real update across two published versions)*
 - [x] Version numbers and changelog *(owner, 2026-10-25: semversioner
       if that's the usual thing, or the option and alternatives)*.
       Semantic versioning (1.4.2: big, feature, fix) is the convention,
@@ -3634,8 +3647,11 @@ themselves.*
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
       tampered with
-- [ ] Settings → About: version, "Check for updates", and the update
-      channel (stable, or early builds) if wanted
+- [x] Settings → About: version, "Check for updates", and the update
+      channel (stable, or early builds) if wanted *(2026-11-05: the version,
+      "Check for updates" and a switch for the automatic look are built, with a
+      top-right notice for a new version; the channel was left out, as the
+      owner decided it can wait)*
 - [ ] First-timer trial of the onboarding *(moved from Milestone 12,
       2026-10-30)*: someone who has never used Google Cloud installs a
       real build from GitHub and gets from nothing to their mail
