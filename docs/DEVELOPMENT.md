@@ -205,10 +205,11 @@ different app to macOS. "Always Allow" ends the question for this signature.
 
 ## The release workflow
 
-`.github/workflows/release.yml` builds, signs and notarizes the Mac app on
-GitHub's own macOS runner (Apple silicon), so a release doesn't depend on one
-laptop. For now it only keeps the result as an artifact for a week; Windows,
-publishing and the update file are separate, later changes.
+`.github/workflows/release.yml` builds, signs and notarizes the Mac app, and
+builds and signs the Windows installers (x64 and ARM64), on GitHub's own
+macOS runners, so a release doesn't depend on one laptop. For now it only
+keeps the results as artifacts for a week; publishing and the update file are
+separate, later changes.
 
 It is started by hand: Actions → Release → Run workflow, on `main`. It then
 waits in the `release` environment for your approval (the run page shows a
@@ -242,6 +243,29 @@ with `notarytool` (Tauri doesn't, and Gatekeeper calls an unnotarized image
 Gatekeeper's verdict on the app and on the disk image, and that every binary
 in the app is Apple silicon only. It always deletes the keychain and the key
 file at the end, and uses no build cache.
+
+The Windows jobs cross-build the installers on a Mac runner, as
+`scripts/windows.sh` does on your machine, and sign them with
+`scripts/sign-windows.sh` through Azure Artifact Signing. They need no stored
+password: the job asks GitHub for a short-lived token, and Azure accepts it
+because of a trust set up on an Azure app registration, for runs in the
+`release` environment only. The trust's subject must be exactly what GitHub puts
+in the token: this repository uses immutable subjects, which include numeric
+owner and repository IDs, so take the prefix from `gh api
+repos/<owner>/<repo>/actions/oidc/customization/sub` and add
+`:environment:release`. A login that fails with "no matching federated
+identity record" is this subject being wrong. GitHub's login token lasts only
+about five minutes, so the job fetches the signing service's token straight
+after logging in; a build that ran for more than about an hour after that would
+need to log in again. That app has one role, "Artifact Signing
+Certificate Profile Signer", on the one certificate profile. The environment
+holds two more secrets (`AZURE_CLIENT_ID` and `AZURE_TENANT_ID`; the login is
+at tenant level, since signing needs no subscription) and two variables, which are names and not secrets
+(`WINDOWS_SIGN_ENDPOINT`, `WINDOWS_SIGN_ALIAS`: the signing account and the
+certificate profile, as in the signed Windows installer section). Afterwards
+`scripts/check-windows-signature.ts` fails the job unless the installer and
+the app and uninstaller inside it are all signed. Each build makes about eight
+signatures per installer.
 
 ## Versions and the changelog
 

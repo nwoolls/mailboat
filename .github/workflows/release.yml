@@ -5,8 +5,9 @@ name: Release
 # in the `release` environment, which holds the signing secrets and only lets
 # `main` use them, so a pull request can never reach them.
 #
-# Today this builds, signs and notarizes the Mac app and keeps it as an
-# artifact for a week. Windows and publishing follow in their own changes.
+# Today this builds, signs and notarizes the Mac app, builds and signs the
+# Windows installers (x64 and ARM64), and keeps the results as artifacts for a
+# week. Publishing and the update file follow in their own changes.
 on:
   workflow_dispatch:
 
@@ -154,3 +155,87 @@ jobs:
             security delete-keychain "$RELEASE_KEYCHAIN" || true
           fi
           rm -f "$RUNNER_TEMP/notarization-key.p8" "$RUNNER_TEMP/certificate.p12"
+
+  windows:
+    name: Windows (${{ matrix.arch }})
+    runs-on: macos-latest
+    environment: release
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      id-token: write # lets this job ask GitHub for the token Azure trusts, for the `release` environment only
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            target: x86_64-pc-windows-msvc
+          - arch: ARM64
+            target: aarch64-pc-windows-msvc
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+          no-cache: true
+      - run: bun install --frozen-lockfile
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          targets: ${{ matrix.target }}
+      # The Windows installers are cross-built on a Mac, as scripts/windows.sh
+      # does on the owner's machine (docs/DEVELOPMENT.md), then signed with
+      # scripts/sign-windows.sh through Azure Artifact Signing.
+      - name: Install the Windows build tools
+        run: |
+          brew install llvm lld nsis jsign sevenzip
+          cargo install cargo-xwin --locked --version 0.23.1
+      - name: Sign in to Azure
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          # Signing only needs the tenant-level token, and the signing service
+          # checks the app's role on the certificate profile. No subscription
+          # is needed, so the login doesn't depend on seeing one.
+          allow-no-subscriptions: true
+      - name: Fetch the signing token now
+        # GitHub's login token lasts about five minutes, and Azure CLI can only
+        # use it to get a token for a service while it is fresh. Getting the
+        # signing service's token right after login caches it (for about an
+        # hour), so the per-file signing calls during the long build find it.
+        run: az account get-access-token --resource https://codesigning.azure.net --output none
+      - name: Build and sign the installer
+        env:
+          WINDOWS_TARGET: ${{ matrix.target }}
+          WINDOWS_SIGN: "1"
+          WINDOWS_SIGN_ENDPOINT: ${{ vars.WINDOWS_SIGN_ENDPOINT }}
+          WINDOWS_SIGN_ALIAS: ${{ vars.WINDOWS_SIGN_ALIAS }}
+        run: scripts/windows.sh build
+      - name: Check the signatures and keep the installer
+        env:
+          WINDOWS_TARGET: ${{ matrix.target }}
+        run: |
+          shopt -s nullglob
+          installers=("target/$WINDOWS_TARGET/release/bundle/nsis/"*.exe)
+          if [ "${#installers[@]}" -ne 1 ]; then
+            echo "Expected one installer, found ${#installers[@]}" >&2
+            exit 1
+          fi
+          # The installer, and the app and uninstaller inside it, must be signed.
+          bun scripts/check-windows-signature.ts "${installers[0]}"
+          mkdir -p release-files
+          cp "${installers[0]}" release-files/
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-signed-${{ matrix.arch }}
+          path: release-files/*
+          if-no-files-found: error
+          retention-days: 7
+      - name: Sign out of Azure
+        if: always()
+        run: az logout || true
