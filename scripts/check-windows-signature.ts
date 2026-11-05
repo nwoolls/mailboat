@@ -35,9 +35,11 @@ try {
   const out = Bun.spawnSync([sevenZip, "x", "-y", `-o${folder}`, installer]);
   if (out.exitCode !== 0) {
     console.error(`${sevenZip} could not open the installer`);
-    process.exit(1);
+    failures.push("the installer could not be opened");
   }
-  for (const name of [`${brand.shortName}.exe`, "uninstall.exe"]) {
+  // process.exit would skip the cleanup below, so failures are collected and
+  // the exit comes after it.
+  for (const name of out.exitCode === 0 ? [`${brand.shortName}.exe`, "uninstall.exe"] : []) {
     try {
       check(`${name} (inside)`, join(folder, name));
     } catch (error) {
@@ -50,7 +52,7 @@ try {
 }
 
 if (failures.length > 0) {
-  console.error(`Not signed: ${failures.join(", ")}`);
+  console.error(`Problems: ${failures.join(", ")}`);
   process.exit(1);
 }
 console.log("Everything checked is signed.");

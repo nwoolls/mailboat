@@ -5,8 +5,9 @@ name: Release
 # in the `release` environment, which holds the signing secrets and only lets
 # `main` use them, so a pull request can never reach them.
 #
-# Today this builds, signs and notarizes the Mac app and keeps it as an
-# artifact for a week. Windows and publishing follow in their own changes.
+# Today this builds, signs and notarizes the Mac app, builds and signs the
+# Windows installers (x64 and ARM64), and keeps the results as artifacts for a
+# week. Publishing and the update file follow in their own changes.
 on:
   workflow_dispatch:
 
@@ -162,9 +163,7 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
-      # Lets this job ask GitHub for the short-lived token that Azure trusts
-      # (the trust is set up for runs in the `release` environment only).
-      id-token: write
+      id-token: write # lets this job ask GitHub for the token Azure trusts, for the `release` environment only
     strategy:
       fail-fast: false
       matrix:
@@ -204,6 +203,12 @@ jobs:
           # checks the app's role on the certificate profile. No subscription
           # is needed, so the login doesn't depend on seeing one.
           allow-no-subscriptions: true
+      - name: Fetch the signing token now
+        # GitHub's login token lasts about five minutes, and Azure CLI can only
+        # use it to get a token for a service while it is fresh. Getting the
+        # signing service's token right after login caches it (for about an
+        # hour), so the per-file signing calls during the long build find it.
+        run: az account get-access-token --resource https://codesigning.azure.net --output none
       - name: Build and sign the installer
         env:
           WINDOWS_TARGET: ${{ matrix.target }}
