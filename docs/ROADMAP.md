@@ -3511,14 +3511,21 @@ builds are attached to each run as artifacts.*
 open it without security warnings, and later receive updates by
 themselves.*
 
+*Closed 2026-11-05 (owner). The release pipeline and updater ran for real
+on the test releases 0.0.1 and 0.0.2; the first public release, 0.1.0, is
+still to come. It goes out through the same workflow (`docs/DEVELOPMENT.md`,
+"Releasing"), with its version bump made by `version-packages`, not by hand.*
+
 - [x] Owner: Apple Developer Program (paid, personal name is fine).
       The free Apple Development certificate can't notarize, and macOS
       (and Homebrew, since September 2026) refuse apps that aren't
       notarized *(done: enrolled as an individual before 2026-11-04. Auto-renew
       was off when checked; if the membership lapses, signing and
       notarization of new builds stop)*
-- [ ] Mac: Developer ID signing and notarization *(proven by hand
-      2026-11-04, not yet automated. A Developer ID Application
+- [x] Mac: Developer ID signing and notarization *(proven by hand
+      2026-11-04, automated 2026-11-05 in the release workflow, which signs,
+      notarizes and staples the app and the disk image and checks both, and
+      whose real tag runs passed. A Developer ID Application
       certificate was made (on Apple's site from a signing request, since
       Xcode's Manage Certificates refused with an "Account Holder" error)
       and backed up as a password-protected `.p12` in the owner's password
@@ -3530,11 +3537,11 @@ themselves.*
       app opened, read its existing keychain item after one "Always Allow"
       prompt (the item was made by a differently signed dev build, so
       macOS asks once) and the AI features worked. How: `docs/DEVELOPMENT.md`,
-      "A signed build on the Mac". Left for the release script below)*
-- [ ] Windows: Azure Artifact Signing (open to
+      "A signed build on the Mac")*
+- [x] Windows: Azure Artifact Signing (open to
       individuals in the US and Canada), so SmartScreen doesn't warn.
-      Signing from the Mac (e.g. `jsign`) or in GitHub Actions, to be
-      confirmed *(2026-11-04, local signing works. An Artifact Signing
+      Signing from the Mac (e.g. `jsign`) or in GitHub Actions
+      *(2026-11-04, local signing works. An Artifact Signing
       account exists under its own Azure subscription for the project, the
       owner's individual identity validation is complete, and a Public
       Trust certificate profile is active (the certificate carries the
@@ -3544,21 +3551,28 @@ themselves.*
       (`scripts/sign-windows.sh`, `docs/DEVELOPMENT.md`, "A signed Windows
       installer"). The owner checked a signed ARM64 installer in the Windows
       VM: the installer, the app and the uninstaller show the signature,
-      and the elevation (UAC) prompt shows it. Not yet done: SmartScreen
-      on a downloaded installer, which depends on reputation, and the
-      GitHub Actions version, which should sign through GitHub's OIDC login
-      to Azure rather than a stored secret)*
-- [ ] Release platforms *(owner, 2026-11-04)*: Windows x64 and ARM64, and
+      and the elevation (UAC) prompt shows it. The release workflow signs
+      through GitHub's OIDC login to Azure, with no stored password (2026-11-05).
+      The owner downloaded and installed the real 0.0.1 installer in the
+      Windows VM and saw no SmartScreen warning; the Mac DMG showed only
+      macOS's ordinary "downloaded from the internet" question, which a
+      notarized app gets. SmartScreen can still warn another person's PC
+      while the publisher is new)*
+- [x] Release platforms *(owner, 2026-11-04)*: Windows x64 and ARM64, and
       macOS on Apple silicon only. ARM64 alone is too niche for a public
       Windows release. An x64 installer builds and the script already takes
-      `WINDOWS_TARGET`, but it hasn't been tried on a real x64 PC. A
+      `WINDOWS_TARGET`. Tried 2026-11-05 in the Windows ARM VM (x64 under
+      emulation, not a real x64 PC): it installed and ran, and an update from
+      0.0.1 to 0.0.2 went through on the second try; the first attempt's
+      installer said it couldn't close the running app, which looks like a race
+      between the app exiting and the installer's check, and wasn't seen again. A
       universal Mac build was looked at and set aside: the Swift helper for
       Apple Intelligence would need building for both architectures and for
       the universal triple, the Intel half couldn't be tried on any machine
       here, Apple Intelligence needs Apple silicon anyway, and Apple is
       dropping Intel Macs. Revisit if people ask for Intel. Each installer is
       its own file, so the update file and the release script list them all
-- [ ] Automatic updates *(added 2026-10-19, settings comparison;
+- [x] Automatic updates *(added 2026-10-19, settings comparison;
       Mimestream has an update channel setting)*: Tauri's updater plugin
       with its own signing key. The address built into the app is on
       `getmailboat.app` (e.g. `https://getmailboat.app/updates/latest.json`), never
@@ -3578,8 +3592,10 @@ themselves.*
       Windows installer verify against the key (the installer's signature
       covers the final, Authenticode-signed file). The release workflow now
       makes the update payloads and `latest.json` (see the release items
-      below) but is untried on a real tag. Still to do: trying a real update
-      across two published versions)*
+      below). Tried for real 2026-11-05 with test releases 0.0.1 and 0.0.2:
+      0.0.1 reported up to date on the Mac and Windows ARM64, then found
+      0.0.2 and installed it (a button press on the Mac, the launch-time
+      notice on Windows). Windows x64 isn't tried on a real PC)*
 - [x] Version numbers and changelog *(owner, 2026-10-25: semversioner
       if that's the usual thing, or the option and alternatives)*.
       Semantic versioning (1.4.2: big, feature, fix) is the convention,
@@ -3618,27 +3634,27 @@ themselves.*
       and a `CHANGELOG.md` entry, whose lines have no commit hashes. The
       release pull request that does this for you belongs to the release
       script below)*
-- [ ] Release notes *(moved from Milestone 14, 2026-11-04)*: from those
+- [x] Release notes *(moved from Milestone 14, 2026-11-04)*: from those
       changesets, or failing that generated from merged pull requests,
       grouped by label (new, fixed, changed) *(written 2026-11-05: a release's
       notes are the version's `## <version>` section of `CHANGELOG.md`, which
       Changesets writes grouped as Major, Minor and Patch changes; the tag
       check fails before any build if the section is missing, and it becomes the
-      draft release's text. Tested here, untried on a real tag)*
-- [ ] One release script (on the Mac, or GitHub Actions) builds, signs
+      draft release's text. Seen on the real 0.0.1 draft)*
+- [x] One release script (on the Mac, or GitHub Actions) builds, signs
       and publishes both platforms and the update file. Signing keys
       stay in the Mac's keychain or in encrypted GitHub secrets, never
       in the repository *(what a release needs, so far: the Developer ID
       certificate and key as a `.p12` with its password, the notarization
       key with its key and issuer IDs, and the updater's signing key. Windows
-      signing should need no stored secret: GitHub signs in to Azure through
+      signing should need no stored password: GitHub signs in to Azure through
       a trust set up there (OIDC). On the Mac, notarization can
       use the saved keychain profile; Tauri's own notarization step instead
       reads `APPLE_API_ISSUER`, `APPLE_API_KEY` and `APPLE_API_KEY_PATH`,
       the path of the key file, so GitHub Actions needs the key as a
       secret written to a temporary file. The Mac job is written
       (`release.yml`, 2026-11-05): a `release` environment with a required
-      reviewer, `main` only, admin bypass off, holds five secrets (names in
+      reviewer, `main` and `v*` tags only, admin bypass off, holds five secrets (names in
       `docs/DEVELOPMENT.md`), and the job builds, signs, notarizes and checks
       the app and DMG on a macOS runner. Its first run (2026-11-05) passed
       in about eight minutes, and the app it built was checked by hand:
@@ -3651,7 +3667,7 @@ themselves.*
       with the same script; Azure trusts the `release` environment through
       OIDC, with no stored password) also ran 2026-11-05, and both installers,
       with the app and uninstaller inside, were checked as signed.
-      Publishing is written (2026-11-05) and untried on a real tag: a version
+      Publishing is written, and ran on two real tags (2026-11-05): a version
       tag starts the workflow, a fast first job checks the tag against
       `package.json` and the changelog, the build jobs also make the update
       payloads (the Updater section of `docs/DEVELOPMENT.md`), and a `publish`
@@ -3661,31 +3677,27 @@ themselves.*
       to read and publish. Finding on the way: the updater plugin's default TLS
       brought in `ring`, which broke the Windows ARM64 cross-build; its
       defaults are off now. The one-time environment setup is in
-      `docs/DEVELOPMENT.md`, "Releasing". Still to do: a first real tag, and
-      trying a real update across two published versions. Decided with the
-      owner (2026-11-05): publish test releases 0.0.1 and 0.0.2 first, try
-      the update on Mac and Windows, then release 0.1.0 with an updater that
-      is known to work, and remove or mark the test releases after)*
-- [ ] Build provenance: GitHub attests each installer was built by
+      `docs/DEVELOPMENT.md`, "Releasing". Two real tags ran end to end
+      (v0.0.1, v0.0.2, 2026-11-05), each producing the draft with all nine
+      files; checked on 0.0.1: every checksum matched and `latest.json` listed
+      the three platforms with their signatures. Decided with the owner:
+      test releases 0.0.1 and 0.0.2 first, then 0.1.0 with an updater known
+      to work. Still to do: remove or mark the test releases after 0.1.0)*
+- [x] Build provenance: GitHub attests each installer was built by
       this repository's release pipeline from a given commit (free for
       public repositories), so anyone can check a download wasn't
       tampered with *(written 2026-11-05: the publish job attests every
       release file with `actions/attest-build-provenance`, and
-      `docs/DEVELOPMENT.md` says how to check one; untried on a real tag)*
+      `docs/DEVELOPMENT.md` says how to check one; `gh attestation verify` accepted
+      the real 0.0.1 Mac payload, built from the tag's commit)*
 - [x] Settings → About: version, "Check for updates", and the update
       channel (stable, or early builds) if wanted *(2026-11-05: the version,
       "Check for updates" and a switch for the automatic look are built, with a
       top-right notice for a new version; the channel was left out, as the
       owner decided it can wait)*
-- [ ] First-timer trial of the onboarding *(moved from Milestone 12,
-      2026-10-30)*: someone who has never used Google Cloud installs a
-      real build from GitHub and gets from nothing to their mail
-      following only what the app says (using a clean start), while
-      the owner watches and times it (the target is about 15 minutes).
-      Needs the signed builds above, so the installer's own warnings
-      don't become part of the test
-- [ ] Optional: a Homebrew tap of the owner's own (the main Homebrew
-      list needs an app to be popular first) and `winget` for Windows
+*Moved out of this milestone (owner, 2026-11-05): the first-timer trial of
+the onboarding to Milestone 16, and the Homebrew tap and `winget` to
+Milestone 17.*
 
 ### When Google signs an account out
 
@@ -3773,6 +3785,15 @@ download it and follow the setup guide.*
 
 - [ ] Website link on the repository, and the repository pinned on the
       owner's profile *(moved from Milestone 14, 2026-11-04)*
+- [ ] First-timer trial of the onboarding *(moved from Milestone 12,
+      2026-10-30, then from Milestone 15, 2026-11-05)*: someone who has
+      never used Google Cloud installs a real build from GitHub and gets
+      from nothing to their mail following only what the app says (using
+      a clean start), while the owner watches and times it (the target is
+      about 15 minutes).
+      Needs the signed builds (Milestone 15, done) and a real download,
+      so the installer's own warnings don't become part of the test; the
+      website's setup guide is part of what the person follows
 
 ## Milestone 17: Launch
 
@@ -3790,6 +3811,9 @@ starting.*
       features are the pitch for a technical audience); "Mimestream,
       but on Windows too" for Windows users. Each post links to the
       website and GitHub
+- [ ] Optional *(moved from Milestone 15, 2026-11-05)*: a Homebrew tap of
+      the owner's own (the main Homebrew list needs an app to be popular
+      first) and `winget` for Windows
 - [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
       bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
       paperwork, best done once there are releases to point at
