@@ -330,8 +330,9 @@ public until the owner publishes the draft.
    version in `package.json` and write the `## <version>` section in
    `CHANGELOG.md` by hand.)
 2. Tag the merged commit on `main` and push the tag as yourself:
-   `git tag v0.1.0 <commit> && git push origin v0.1.0`. The tag must be `v`
-   and the version in `package.json`, and be on `main`; the workflow's first
+   `git tag v<version> <commit> && git push origin v<version>` (the first test
+   release is `v0.0.1`). The tag must be `v` and the version in `package.json`,
+   and be on `main`; the workflow's first
    job fails in seconds otherwise, before any build.
 3. Open the run on the Actions tab, **Review deployments**, and approve the
    three build jobs. They take about 10 to 15 minutes. Then approve **publish**,
