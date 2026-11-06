@@ -3857,6 +3857,21 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [ ] A sideways swipe on the trackpad drags the whole app *(owner report,
+      2026-11-06)*: with nothing left in the inbox (inbox zero), swiping
+      side to side pulls the entire app's contents sideways inside the
+      window, as if the page were scrollable; other apps don't do this. It
+      matters most when archiving by swipe: the swipe archives the message,
+      the list empties, and the rest of the same gesture then lands on the
+      app and visibly shifts it. Likely cause: with no scrolling content
+      left, the page itself takes the gesture (overscroll), so the fix is
+      probably to stop the page scrolling or bouncing sideways
+      (`overscroll-behavior`, no horizontal overflow on the root) while
+      leaving the swipe-to-archive gesture alone. Not investigated yet;
+      check on macOS first, and on Windows' touchpad too. A browser test
+      could assert that a sideways wheel event with an empty list moves
+      nothing
+
 - [ ] A sign-in code in a verification email isn't surfaced, and its
       summaries are wrong *(owner report, 2026-11-04)*: an identity
       verification email showed a short numeric code in large styled text
