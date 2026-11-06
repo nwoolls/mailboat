@@ -3875,6 +3875,28 @@ again until the next spike.*
       could assert that a sideways wheel event with an empty list moves
       nothing
 
+- [ ] A summary's first bullet repeats the prompt's own example
+      *(owner report, 2026-11-06, with a screenshot)*: the summary of a
+      marketing email began with the bullet `Newest message: "Sounds
+      good."`, though nothing in the email says it; another summary began
+      with a bullet reading just "Agreed". The rest of the summary was
+      accurate. Cause, from reading the code: `thread_summary`'s
+      instructions (`crates/core/src/ai/prompts.rs`) quote the example
+      `"Sounds good."` and the label "Newest message", and
+      `context::render` puts that label in the text for conversations of
+      more than one message; Apple's small on-device model copied them
+      into its answer. Both come from the Spam-and-reply fix of
+      2026-10-21, which added them so a one-line reply isn't ignored. To
+      fix: describe the case without a quoted example ("even when it's a
+      brief acknowledgement") and without echoing the label, or mark the
+      newest message another way; and have a test (or a check on the
+      answer) that fails when a bullet repeats the label or the example.
+      The owner's screenshot shows a single visible message, so also check
+      whether the thread had more (the label is only added to
+      conversations of two or more). Nothing from the email is needed
+      to reproduce it: a made-up thread with a long first message and a
+      one-line reply will do
+
 - [ ] A sign-in code in a verification email isn't surfaced, and its
       summaries are wrong *(owner report, 2026-11-04)*: an identity
       verification email showed a short numeric code in large styled text
