@@ -3764,9 +3764,11 @@ again every seven days until the project is published.*
 *Done when: `getmailboat.app` explains Mailboat, shows it, and lets people
 download it and follow the setup guide.*
 
-- [ ] Website: plain HTML/CSS/JS on GitHub Pages (free; Cloudflare
-      Pages if needed later), on `getmailboat.app`: home with screenshots
-      from Demo mode, download (latest release), the credentials setup
+- [ ] Website: plain HTML/CSS/JS in this repository (`website/`), on
+      Cloudflare (free; decided 2026-11-06, see Architecture), deployed
+      by its own GitHub Actions workflow on `getmailboat.app`: home with
+      screenshots from Demo mode, download (latest release), the
+      credentials setup
       guide with a short screen recording, privacy policy (what Google
       data Mailboat uses; it stays on the device), terms of use (limits
       liability, as there's no company), link to GitHub. Also serves
