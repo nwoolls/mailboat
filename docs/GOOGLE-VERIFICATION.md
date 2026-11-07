@@ -125,6 +125,28 @@ address bar visible. Use a dedicated test Google account with made-up mail
 7. Show Settings → AI with the providers, the privacy policy page, and
    removing the account.
 
+### What recording it taught
+
+The first two takes were redone, so this is what to do next time:
+
+- Use a browser profile that is signed in to the demo account only, so the
+  account chooser lists nothing else.
+- The OAuth client ID is in the address of the account chooser page (it
+  contains `client_id=`). Later Google pages use opaque tokens and the
+  "hasn't verified this app" page shows none. Click the address bar on the
+  chooser page and hold, then press Esc, so the browser's history
+  suggestions don't stay on screen.
+- Google collapses the permission list ("already has some access") when the
+  account granted access before. Remove the app at the account's third-party
+  access page first, so every permission shows with its box.
+- Record the screen with a fixed length (`screencapture -v -V <seconds>`)
+  and let it end on its own. Stopping it with a signal throws the file away.
+  A take is about six minutes; shrink it to 1080p before uploading.
+- Settings edits (a rule, a signature, the vacation reply) stay in the demo
+  mailbox, so use a new value in each take.
+- Settings → Accounts → Remove is the last scene. It leaves the app at the
+  "Make it yours" onboarding step (a known bug, noted in the roadmap).
+
 ## Status
 
 Updated as each piece is done.
@@ -134,8 +156,26 @@ Updated as each piece is done.
 - [x] Branding: name, logo, home page, privacy policy, terms, domain, contacts
 - [x] Data Access: the eight permissions (both Gmail permissions are restricted)
 - [x] Desktop OAuth client created
-- [ ] The site live at `getmailboat.app`
-- [ ] Publish to production
-- [ ] Demo video recorded and uploaded
-- [ ] Verification Center filled in and submitted
+- [x] The site live at `getmailboat.app`
+- [x] Publish to production (2026-11-07)
+- [x] Branding verified and published (2026-11-07)
+- [x] Demo video recorded and uploaded, unlisted on YouTube (2026-11-07)
+- [x] Verification Center filled in and submitted (2026-11-07). Google's
+  Trust and Safety team said the first email would come within 3 to 5
+  days and the whole review could take 4 to 6 weeks. Until it finishes,
+  the consent screen people see is the last approved one and each
+  sign-in shows "Google hasn't verified this app". Don't switch the app
+  back to Testing or change the user type meanwhile: Google warns that it
+  can delay the review, and a logo change after branding is verified needs
+  a new review.
 - [ ] Google's answer on a security assessment (exempt, or required and by when)
+- [ ] Google's final decision on the permissions
+
+Choices made on the submission form: the Gmail permissions were described
+as an "Email client"; the questionnaire answers were No to personal use,
+internal use, development or testing use and a WordPress plug-in; the extra
+details box said there is no server of ours and asked to be treated as
+exempt from the assessment. Two boxes were ticked at the end: that the
+requirements were read and the app meets them, and that restricted permissions
+need an assessment (every year, from an independent assessor) unless Google
+agrees otherwise.
