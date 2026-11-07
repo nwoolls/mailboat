@@ -3766,7 +3766,7 @@ again every seven days until the project is published.*
 *Done when: `getmailboat.app` explains Mailboat, shows it, and lets people
 download it.*
 
-- [ ] Website: plain HTML/CSS/JS in this repository (`website/`), on
+- [x] Website: plain HTML/CSS/JS in this repository (`website/`), on
       Cloudflare (free; decided 2026-11-06, see Architecture), deployed
       by its own GitHub Actions workflow on `getmailboat.app`: home with
       screenshots from Demo mode, download (latest release), privacy
@@ -3793,12 +3793,17 @@ download it.*
       and record it in ARCHITECTURE
 
 - [ ] Website link on the repository, and the repository pinned on the
-      owner's profile *(moved from Milestone 14, 2026-11-04)*
-- [ ] Cloudflare setup for the site *(owner, 2026-11-06)*:
-      *(2026-11-07: done so far: the Worker, the deploy token, the GitHub
-      `website` environment, the `www` redirect, Always Use HTTPS and TLS 1.2,
-      and a check that `support@` and `security@` arrive. Left: the first
-      deploy and the route that attaches the Worker to the domain.)* the site
+      owner's profile *(moved from Milestone 14, 2026-11-04)* *(2026-11-07:
+      the website link is set; pinning the repository is left, and it is the
+      owner's to do)*
+- [x] Cloudflare setup for the site *(owner, 2026-11-06)*:
+      *(2026-11-07: done: the Worker, the deploy token, the GitHub
+      `website` environment, the first deploy, the route that attaches the
+      Worker to the domain, the `www` redirect, Always Use HTTPS and TLS 1.2,
+      and a check that `support@` and `security@` arrive. Checked against
+      the live site the same day: HTTPS with a valid certificate, TLS 1.1
+      refused, HTTP and `www` redirecting, the update address redirecting to
+      the latest release file.)* the site
       attached to `getmailboat.app` with its free certificate active
       (`.app` is HTTPS-only in every browser, so the site only works
       over HTTPS); "Always Use HTTPS" on and a minimum TLS version of 1.2;
