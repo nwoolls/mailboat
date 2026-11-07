@@ -95,7 +95,9 @@ How this is enforced:
 
 Anything a person will read goes through the `unslop` skill before it is
 committed: `README.md`, everything in `docs/`, `CONTRIBUTING.md`,
-`SECURITY.md`, the other READMEs, and the issue and pull request templates.
+`SECURITY.md`, the other READMEs, the issue and pull request templates,
+and the website's text (`website/`: every page's visible copy, its
+`<title>` and description, and image `alt` text).
 Run it on the whole file when you write a new one or change one a lot, and
 on the changed passages when you touch a long log (`docs/ROADMAP.md`,
 `docs/ARCHITECTURE.md`, `docs/RELEASE.md`). It repairs only what is clearly

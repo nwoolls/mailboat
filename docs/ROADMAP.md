@@ -3762,17 +3762,21 @@ again every seven days until the project is published.*
 ## Milestone 16: Website
 
 *Done when: `getmailboat.app` explains Mailboat, shows it, and lets people
-download it and follow the setup guide.*
+download it.*
 
 - [ ] Website: plain HTML/CSS/JS in this repository (`website/`), on
       Cloudflare (free; decided 2026-11-06, see Architecture), deployed
       by its own GitHub Actions workflow on `getmailboat.app`: home with
-      screenshots from Demo mode, download (latest release), the
-      credentials setup
-      guide with a short screen recording, privacy policy (what Google
+      screenshots from Demo mode, download (latest release), privacy
+      policy (what Google
       data Mailboat uses; it stays on the device), terms of use (limits
       liability, as there's no company), link to GitHub. Also serves
-      the update file (Milestone 15)
+      the update file (Milestone 15). No setup-guide page *(owner,
+      2026-11-06)*: the app's onboarding walks people through the Google
+      credentials, and `docs/GOOGLE-SETUP.md` (which says so at the top)
+      stays in the repository for anyone who wants the steps in writing.
+      The short screen recording of the setup moves to the first-timer
+      trial below: make it only if the trial shows people get stuck
 - [ ] Teaser trailer *(owner, 2026-10-22; moved from the Release
       Spike)*: a short video made in code with Remotion (videos written
       in React), drawing Mailboat's real components with the demo data, as
@@ -3788,6 +3792,22 @@ download it and follow the setup guide.*
 
 - [ ] Website link on the repository, and the repository pinned on the
       owner's profile *(moved from Milestone 14, 2026-11-04)*
+- [ ] Cloudflare setup for the site *(owner, 2026-11-06)*: the site
+      attached to `getmailboat.app` with its free certificate active
+      (`.app` is HTTPS-only in every browser, so the site only works
+      over HTTPS); "Always Use HTTPS" on and a minimum TLS version of 1.2;
+      `www.getmailboat.app` redirecting to `getmailboat.app`, covered by the
+      same certificate; the update address's redirect rule left as it is.
+      Also the deploy workflow (a deploy token limited to this one site, in a
+      `website` environment, pushes to `main` only) and the app's workflows
+      skipping site-only pull requests, as the Architecture decision of
+      2026-11-06 describes
+- [ ] A note in Settings → AI recommending that model training be turned
+      off *(owner, 2026-11-06)*: when Claude or ChatGPT is chosen for a
+      feature, a short line says the provider may train on what it receives,
+      depending on the account's settings, and recommends turning that off
+      in that provider's privacy settings. The website's privacy policy says
+      the same; this puts it where people choose the provider
 - [ ] First-timer trial of the onboarding *(moved from Milestone 12,
       2026-10-30, then from Milestone 15, 2026-11-05)*: someone who has
       never used Google Cloud installs a real build from GitHub and gets
@@ -3795,8 +3815,7 @@ download it and follow the setup guide.*
       a clean start), while the owner watches and times it (the target is
       about 15 minutes).
       Needs the signed builds (Milestone 15, done) and a real download,
-      so the installer's own warnings don't become part of the test; the
-      website's setup guide is part of what the person follows
+      so the installer's own warnings don't become part of the test
 
 ## Milestone 17: Launch
 
