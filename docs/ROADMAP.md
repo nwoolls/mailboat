@@ -2817,8 +2817,8 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
 
 - [ ] "Use a different file" on "Google Cloud is set up" goes back to
       the start of the walkthrough *(owner, 2026-10-30: fine for now;
-      look again if it becomes a problem)* *(in the Polish Spike, 2026-11-07,
-      only if it becomes a problem)*
+      look again if it becomes a problem)* *(held out of the Polish Spike,
+      2026-11-07: only if it becomes a problem)*
 
 ## Milestone 13: Independent code review
 
@@ -3969,7 +3969,8 @@ steps are those of Plan 1 there.*
 ## Polish Spike
 
 *Proposed by the owner 2026-11-07, to run alongside the Milestone 16
-leftovers or after them, in its own session. Not started. Done when: each
+leftovers or after them, in its own session. Scope settled the same day;
+building not started. Done when: each
 item picked below is built, the owner has tried it, and its entry is ticked
 in the place it came from (each item below says where: the Bug backlog,
 Milestone 12, 14 or 16, or "Later / unscheduled"; they keep the full text,
@@ -4015,23 +4016,28 @@ the first email was due within 3 to 5 days). Until it ends:
 - When Google writes, the owner reads the email with the agent before
   anyone answers. That comes before spike work.
 
-### Decide first (owner)
+### Scope (owner, 2026-11-07)
 
-- Which bugs below are in, and in what order. The last-account fix needs a
-  design choice: stay in Settings → Accounts with an empty list and "Add
-  account", or open onboarding at its accounts stage.
-- Which hardening items are in, and which wait. The list below is a
-  proposal.
-- Whether encrypting the local cache is worth a dependency, and which option
-  to take for contacting fewer image hosts before a message is opened.
+Settled with the owner, taking the agent's recommendation. Everything in
+the Hardening and Bugs lists below is in, built in the order shown and one
+pull request each (the ordering is the plan; a fuzzing finding still goes to
+the front). The items under "Held or later" are not built in this spike.
+Nothing in the spike touches Google's review: the items that would are
+under "Held or later".
 
-Decided (owner, 2026-11-07, taking the agent's recommendation):
+Decided:
 
 - CodeQL keeps skipping docs-only changes, which have no code to analyze and
   cost CI time. The Scorecard SAST alert is accepted: dismiss it with that
   reason.
-- The "Delete all Mailboat data" option is in the account-removal item below,
-  as its original asks.
+- The "Delete all Mailboat data" option is in the account-removal work
+  below, as its original asks, in its own pull request.
+- Last account removed: stay in Settings → Accounts, with an empty list and
+  "Add account" (not onboarding). Onboarding stays a first-run flow, and
+  "Delete all Mailboat data" stays reachable from the same page. The mail
+  pane shows an empty state that points back to Settings.
+- Use Opus for the two fuzzing items and the two account-removal items
+  (token revocation and deleting data across accounts); Sonnet for the rest.
 
 ### Step 0: bring this file up to date (documentation only)
 
@@ -4040,12 +4046,15 @@ are done but still unticked; the Cloudflare item still says the first deploy
 and the route are left. Tick both and drop that sentence. The repository's
 website link is set; only pinning the repository on the owner's profile is
 left, and it is the owner's to do. Check each against the live site first
-(HTTPS, the `www` redirect, the update address).
+(HTTPS, the `www` redirect, the update address). Ticking the alerts item
+joins this pass once the owner has OK'd the two dismissals on GitHub.
 
-### Hardening, in the proposed order
+### Hardening, in order
 
 Full text of each is where its bullet points: in "Privacy and security by
-default" (Milestone 16) unless the bullet names another place.
+default" (Milestone 16) unless the bullet names another place. Each
+bullet is one pull request, except the alerts, which are GitHub settings
+and a tick.
 
 - [ ] `security.txt` and a Security link in the footer. Tiny and site-only;
       `check:website` should require both
@@ -4064,22 +4073,29 @@ default" (Milestone 16) unless the bullet names another place.
       can't fix it). The earlier code-scanning alerts are dismissed and the
       README has the Scorecard badge, so those parts of the original item are
       done. Tick the original when both alerts are resolved or accepted
-- [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and the
-      MIME and `mailto:` parsers (the first item under "Later /
-      unscheduled"). Anything it finds is a security bug, so a finding goes
-      to the front of the queue, ahead of the rest of the spike
-- [ ] Cloud AI is manual by default (the summary above a conversation waits
-      for the Summarize button with Claude or ChatGPT; Apple Intelligence
-      stays automatic). A default changes, so the policy changes in the same
-      commit
-- [ ] Removing an account cleans up fully: revoke the refresh token at Google
+- [ ] Fuzz the email HTML cleaner (the first item under "Later /
+      unscheduled", first half). Opus. Anything it finds is a security bug,
+      so a finding goes to the front of the queue, ahead of the rest of the
+      spike
+- [ ] Fuzz the MIME and `mailto:` parsers (the same item, second half; the
+      item is ticked when both are done). Opus, same rule for findings
+- [ ] Removing an account cleans up: revoke the refresh token at Google
       (best effort, and say so when offline), then delete the account's
       images with the link table the next Milestone 16 item describes, with
       the two-account test that item asks for. The policy's line about
-      removed accounts leaving their images comes out when this lands. The
-      original item also asks for a "Delete all Mailboat data" option in
-      Settings (mail cache, images, summaries, settings): in scope (see
-      "Decided" above), so this item isn't ticked until that is built too
+      removed accounts leaving their images comes out when this lands. Opus
+- [ ] A "Delete all Mailboat data" option in Settings (mail cache, images,
+      summaries, settings), the other half of the original item, so that
+      item is ticked only when this is built too. Opus
+- [ ] Removing the last account throws you out of Settings: stay in Settings
+      → Accounts instead (see "Decided"). Full text in the Bug backlog; the
+      worktree `fix-last-account-removal` may already exist and be empty, and
+      needs bringing up to date with `main`. It sits here because it shares
+      a code path with account removal
+- [ ] Cloud AI is manual by default (the summary above a conversation waits
+      for the Summarize button with Claude or ChatGPT; Apple Intelligence
+      stays automatic). A default changes, so the policy changes in the same
+      commit, and the release goes out only after that edit has merged
 - [ ] Settings → Privacy, one page listing every way data leaves the
       computer with its current setting. The onboarding can point to it
 - [ ] Summaries kept only as long as needed: a switch to not keep them, or
@@ -4093,9 +4109,10 @@ default" (Milestone 16) unless the bullet names another place.
       known tracking pixels are removed, so it gets a line for links in the
       same commit
 
-### Bugs, proposed order (small and visible first)
+### Bugs, in order (small and visible first)
 
 Full text of each is in the Bug backlog (or, for the zoom bug, Milestone 16).
+One pull request each.
 
 - [ ] A sent email's full recipient list can't be seen without resizing
 - [ ] A summary's first bullet repeats the prompt's own example (needs a test
@@ -4108,29 +4125,28 @@ Full text of each is in the Bug backlog (or, for the zoom bug, Milestone 16).
 - [ ] Bug: the screenshot zoom flashes at full size before it animates (the
       website; a browser test with an empty cache and a slowed network)
 - [ ] The browser test "starfield paints a night sky and lightens the words"
-      that failed once
-- [ ] Periodically refresh each account's Google profile image
-- [ ] Removing the last account throws you out of Settings (it leaves you on
-      onboarding; after the design choice above; a worktree for it, `fix-last-account-removal`, may
-      already exist and be empty)
-
-### Small additions
-
-Full text of each is where it lives now.
-
-- [ ] Warn about outside recipients (addresses not ending with chosen
-      domains are marked while writing; "Later / unscheduled" → Writing)
-- [ ] Remove an address from compose suggestions ("Later / unscheduled" →
-      Writing). It touches the Contacts data Google is reviewing, so it must
-      ask for no new permission
-- [ ] Only if it becomes a problem: "Use a different file" on "Google Cloud
-      is set up" goes back to the start of the walkthrough (Milestone 12;
-      the owner said it was fine for now)
+      that failed once (done in the same browser-test session as the zoom
+      flash)
+- [ ] Periodically refresh each account's Google profile image. First
+      confirm it uses the request and permission the app already has; if it
+      needs anything new, it moves to "Held or later"
 
 ### Held or later
 
+Held so the spike stays clear of Google's review and stays about polish and
+privacy:
+
 - Ask for Google permissions when first needed: after Google's answer (see
   above).
+- Remove an address from compose suggestions ("Later / unscheduled" →
+  Writing). It touches the Contacts data Google is reviewing, so it must
+  ask for no new permission.
+- Warn about outside recipients (addresses not ending with chosen
+  domains are marked while writing; "Later / unscheduled" → Writing). Not a
+  bug or a privacy item; held to keep the scope small.
+- Only if it becomes a problem: "Use a different file" on "Google Cloud
+  is set up" goes back to the start of the walkthrough (Milestone 12;
+  the owner said it was fine for now).
 - Contacting fewer image hosts before a message is opened (prefetch only for
   people you've written to, or not at all): a design decision for the owner.
 - Encrypting the local cache at rest, and Touch ID or Windows Hello: decide,
@@ -4165,9 +4181,10 @@ again until the next spike.*
       stage: "Make it yours" (the last one) after a normal first run, or
       the welcome screen for someone who had accounts before onboarding
       existed and so has no saved progress. Wanted: stay in Settings →
-      Accounts, showing an empty list with "Add account", or at least land
-      on the account stage of onboarding. Design to agree first, since an
-      app with no accounts has nothing else to show
+      Accounts, showing an empty list with "Add account". Design agreed
+      (owner, 2026-11-07): onboarding stays a first-run flow, "Delete all
+      Mailboat data" stays reachable from the same page, and the mail pane
+      shows an empty state that points back to Settings
 
 - [ ] A sideways swipe on the trackpad drags the whole app *(owner report,
       2026-11-06)*: with nothing left in the inbox (inbox zero), swiping
@@ -4451,10 +4468,11 @@ niche or extra", so Windows and the Release Spike come first)
 - [ ] Templates: saved replies to insert while writing (Gmail's own
       templates aren't in its API, so these would be Mailboat's)
 - [ ] Warn about outside recipients (addresses not ending with chosen
-      domains are marked while writing) *(picked for the Polish Spike,
+      domains are marked while writing) *(held out of the Polish Spike,
       2026-11-07)*
-- [ ] Remove an address from compose suggestions *(picked for the Polish
-      Spike, 2026-11-07)*
+- [ ] Remove an address from compose suggestions *(held out of the Polish
+      Spike, 2026-11-07: it touches the Contacts data Google is reviewing,
+      so it must ask for no new permission)*
 - [ ] Images inline in the email being written, as Gmail does *(owner
       request, 2026-10-22)*: dropping (or pasting) an image into the
       composer puts it in the body where it lands, while other files
