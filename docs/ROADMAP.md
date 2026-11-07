@@ -3975,8 +3975,10 @@ again until the next spike.*
       Settings → Accounts. Cause, from reading the code:
       `showOnboarding` (`features/onboarding/model/onboarding.ts`) is
       always true with no accounts, so the window swaps to onboarding, and
-      onboarding resumes at the stage it saved last ("Make it yours", the
-      last one), not at the account stage. Wanted: stay in Settings →
+      onboarding resumes at the stage it saved last, not at the account
+      stage: "Make it yours" (the last one) after a normal first run, or
+      the welcome screen for someone who had accounts before onboarding
+      existed and so has no saved progress. Wanted: stay in Settings →
       Accounts, showing an empty list with "Add account", or at least land
       on the account stage of onboarding. Design to agree first, since an
       app with no accounts has nothing else to show
