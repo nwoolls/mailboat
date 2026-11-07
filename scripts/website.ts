@@ -114,8 +114,16 @@ export function checkSite(
 
   for (const [page, source] of Object.entries(pages)) {
     const say = (what: string) => problems.push(`${page}: ${what}`);
-    // A comment is not served as page content.
-    const html = source.replace(/<!--[\s\S]*?-->/g, "");
+    // A comment is not served as page content. Strip until nothing changes:
+    // one pass can leave a new "<!--" behind (<!<!-- x -->-->), which a
+    // browser reads differently from this check.
+    let html = source;
+    for (let before = ""; before !== html;) {
+      before = html;
+      html = html.replace(/<!--[\s\S]*?-->/g, "");
+    }
+    if (html.includes("<!--"))
+      say("a comment that is never closed, or one written so this check can't read it");
 
     if (!/<html[^>]*\slang\s*=\s*["']?[^\s"'>]+/i.test(html)) say("<html> has no lang");
     if (!/<title>[^<]+<\/title>/i.test(html)) say("no <title>");

@@ -110,6 +110,20 @@ describe("checkSite", () => {
     expect(out).toContain("no width and height");
   });
 
+  it("refuses a comment it can't read the way a browser does", () => {
+    const body = (text: string) =>
+      checkSite({ ...good, "index.html": good["index.html"] + text }, exists, CSP);
+    // stripping once would leave <!--> behind, hiding what follows from this check
+    expect(body(`<!<!-- x -->--><a href="missing.html">x</a>`)).toEqual(
+      expect.arrayContaining([expect.stringContaining("a comment that is never closed")]),
+    );
+    expect(body(`<!-- never closed <a href="missing.html">x</a>`)).toEqual(
+      expect.arrayContaining([expect.stringContaining("a comment that is never closed")]),
+    );
+    // ordinary comments, several in a row or around real links, are fine
+    expect(body(`<!-- a --><!-- b --><p>ok</p><!-- <a href="gone.html"> -->`)).toEqual([]);
+  });
+
   it("ignores what is inside a comment", () => {
     const pages = {
       ...good,
