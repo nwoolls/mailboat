@@ -4,6 +4,7 @@ import {
   buildManifest,
   changelogSection,
   checksumLines,
+  isInstaller,
   isPrerelease,
   isVersion,
   platformOf,
@@ -55,6 +56,20 @@ describe("names a download link can rely on", () => {
     expect(stableName("App_0.1.0_x64-setup.exe", "0.1.0")).toBe("App_x64-setup.exe");
     expect(stableName("App_0.1.0_arm64-setup.exe", "0.1.0")).toBe("App_arm64-setup.exe");
     expect(stableName("App_0.2.0-beta.1_x64-setup.exe", "0.2.0-beta.1")).toBe("App_x64-setup.exe");
+  });
+
+  it("knows which files are the installers a person downloads", () => {
+    expect(isInstaller("App_0.1.0_aarch64.dmg")).toBe(true);
+    expect(isInstaller("App_0.1.0_x64-setup.exe")).toBe(true);
+    expect(isInstaller("App_0.1.0_arm64-setup.exe")).toBe(true);
+    for (const file of [
+      "App.app.tar.gz",
+      "App_0.1.0_x64-setup.exe.sig",
+      "App.app.zip",
+      "notes.txt",
+    ]) {
+      expect(isInstaller(file), file).toBe(false);
+    }
   });
 
   it("gives nothing to the update files, the signatures, or a file for another version", () => {
