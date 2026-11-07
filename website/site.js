@@ -85,6 +85,7 @@ if (zoomables.length && typeof HTMLDialogElement === "function") {
   let index = 0;
   let closing = false;
 
+  const buttons = []; // each screenshot's button, in the same order as zoomables
   const thumb = () => zoomables[index];
 
   function show(i) {
@@ -137,6 +138,9 @@ if (zoomables.length && typeof HTMLDialogElement === "function") {
     const finish = () => {
       dialog.close();
       document.documentElement.classList.remove("is-zoomed");
+      // The browser returns focus to the button the view was opened from; after
+      // stepping, the one being viewed is where the person is.
+      buttons[index].focus({ preventScroll: true });
       // Drop the closing animations' held end state, or the next open starts faded out.
       for (const a of [...dialog.getAnimations(), ...big.getAnimations()]) a.cancel();
     };
@@ -188,6 +192,7 @@ if (zoomables.length && typeof HTMLDialogElement === "function") {
     button.setAttribute("aria-label", `Enlarge screenshot: ${img.alt}`);
     pic.replaceWith(button);
     button.append(pic);
+    buttons[i] = button;
     button.addEventListener("click", () => open(i));
   });
 
