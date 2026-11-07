@@ -178,4 +178,25 @@ describe("the CI's skips, evaluated", () => {
     }
     expect(byName.browser.cond).toContain("!cancelled()");
   });
+
+  it("keeps the path filters on the test builds and CodeQL where they belong", () => {
+    const ignored = (file: string) => {
+      const text = readFileSync(resolve(__dirname, `../.github/workflows/${file}`), "utf8");
+      return [...text.matchAll(/^\s+- "([^"]+)"$/gm)].map((m) => m[1]);
+    };
+    const codeql = ignored("codeql.yml");
+    const build = ignored("build.yml");
+    // CodeQL scans the website's and the scripts' JavaScript, so only docs-like paths are ignored
+    expect(new Set(codeql)).toEqual(new Set(["docs/**", ".changeset/**", "*.md"]));
+    // the test builds also skip the website, but never the app's scripts or the workflows
+    expect(build).toEqual(
+      expect.arrayContaining(["docs/**", ".changeset/**", "website/**", "*.md"]),
+    );
+    // (the one file under scripts/ that is not code: the website's image script)
+    for (const pattern of [...codeql, ...build].filter(
+      (p) => p !== "scripts/build-website-images.sh",
+    )) {
+      expect(pattern).not.toMatch(/^(scripts|\.github|src|src-tauri|crates)\b/);
+    }
+  });
 });

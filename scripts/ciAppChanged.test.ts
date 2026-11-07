@@ -58,6 +58,12 @@ describe("ci-app-changed.sh", () => {
     expect(answer(() => write("docs/a.md", "changed\n"))).toBe("docs");
   });
 
+  it("reads a non-ASCII file name as it is, so a docs change with one is still docs", () => {
+    expect(answer(() => write("docs/café.md"))).toBe("docs");
+    expect(answer(() => write("website/café.html"))).toBe("site");
+    expect(answer(() => write("src/café.rs"))).toBe("app");
+  });
+
   it("says site when the website or its image script changes, with or without docs", () => {
     expect(answer(() => write("website/a.html", "changed\n"))).toBe("site");
     expect(answer(() => write("website/images/new.webp"))).toBe("site");

@@ -13,7 +13,9 @@
 # Usage: scripts/ci-app-changed.sh <base commit> <head commit>
 base=$1
 head=$2
-if ! files=$(git diff --name-only --no-renames "$base...$head" 2>/dev/null); then
+# core.quotepath=off: a non-ASCII name (docs/café.md) is listed as it is, not as "\303\251"-style
+# escapes that no pattern below would match. (A name with a newline is still quoted: it counts as app.)
+if ! files=$(git -c core.quotepath=off diff --name-only --no-renames "$base...$head" 2>/dev/null); then
   echo app
   exit 0
 fi
