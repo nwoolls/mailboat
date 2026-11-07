@@ -135,8 +135,7 @@ TypeScript:
 - Derive state during render instead of setting state in effects (the
   linter enforces this).
 
-Brand: the app's name lives in `brand.json` (plus Tauri's config files,
-the docs and the artwork), so a rename is one file. Rust takes it from
+Brand: the app's name lives in `brand.json` (plus Tauri's config files, the docs, the website's pages and the artwork), so a rename is one file. Rust takes it from
 `mail_core::brand` (`NAME`, `SHORT_NAME`, `ID`, `ENV_PREFIX`;
 `env!("BRAND_NAME")` inside `concat!` for constants), the UI from
 `APP_NAME` (`src/shared/lib/brand.ts`), and comments say "the app".

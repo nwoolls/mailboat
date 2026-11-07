@@ -3792,14 +3792,17 @@ download it.*
 
 - [ ] Website link on the repository, and the repository pinned on the
       owner's profile *(moved from Milestone 14, 2026-11-04)*
-- [ ] Cloudflare setup for the site *(owner, 2026-11-06)*: the site
+- [ ] Cloudflare setup for the site *(owner, 2026-11-06)*:
+      *(2026-11-07: done so far: the Worker, the deploy token, the GitHub
+      `website` environment, the `www` redirect, Always Use HTTPS and TLS 1.2,
+      and a check that `support@` and `security@` arrive. Left: the first
+      deploy and the route that attaches the Worker to the domain.)* the site
       attached to `getmailboat.app` with its free certificate active
       (`.app` is HTTPS-only in every browser, so the site only works
       over HTTPS); "Always Use HTTPS" on and a minimum TLS version of 1.2;
       `www.getmailboat.app` redirecting to `getmailboat.app`, covered by the
       same certificate; the update address's redirect rule left as it is.
-      Also the deploy workflow (a deploy token limited to this one site, in a
-      `website` environment, pushes to `main` only) and the app's workflows
+      Also the deploy workflow (a deploy token that can only edit Workers, in a `website` environment, pushes to `main` only) and the app's workflows
       skipping site-only pull requests, as the Architecture decision of
       2026-11-06 describes
 - [ ] A note in Settings → AI recommending that model training be turned

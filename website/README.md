@@ -24,6 +24,19 @@ step and no backend. It is meant to be served by Cloudflare as it is (decided
   made by `scripts/build-website-images.sh`. Only Demo mode is ever
   pictured.
 
+## Publishing
+
+A push to `main` that changes this folder, `.github/website/` or the workflow itself runs `.github/workflows/website.yml`,
+which checks the site and deploys it to Cloudflare. Pull requests never deploy.
+`404.html` is shown, with a real 404 status, for any address that isn't a file.
+Its links and files are root-absolute (`/site.css`) because it is served at the
+address that was asked for.
+
+The deploy token expires on 2027-11-06. To rotate it, create a new account-owned
+token in Cloudflare with only **Workers Scripts: Edit**, replace the
+`CLOUDFLARE_API_TOKEN` secret in the repository's `website` environment, then
+delete the old token.
+
 To preview, serve the folder and open it in a browser:
 
 ```

@@ -1,0 +1,62 @@
+name: Website
+
+# Publishes website/ to Cloudflare when a change to it reaches main (or from
+# the Actions tab). Pull requests never deploy: they get the normal checks
+# (Web checks runs check:website), and the Cloudflare token exists only in the
+# `website` environment, which only the main branch may use.
+#
+# The Worker's name and the account ID are variables of that environment, the
+# token is its secret. The token (account-owned, "Workers Scripts: Edit" and
+# nothing else) expires 2027-11-06: create a new one with the same single
+# permission, replace the secret, then delete the old token. The route that
+# sends the site's domain to the Worker is set by hand in the Cloudflare
+# dashboard, because this token has no zone permissions.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "website/**"
+      - ".github/website/**"
+      - ".github/workflows/website.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare
+    # A manual run from another branch is refused here too, besides the
+    # environment's own branch rule.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: website
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      # Never publish a site with a broken link or a file the security policy
+      # would block.
+      - run: bun run check:website
+      # Wrangler is pinned (a version more than two weeks old when chosen).
+      - name: Deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          WORKER_NAME: ${{ vars.CLOUDFLARE_WORKER_NAME }}
+          COMMIT: ${{ github.sha }}
+          # No usage reports to Cloudflare from the build.
+          WRANGLER_SEND_METRICS: "false"
+        run: >-
+          bunx wrangler@4.152.0 deploy
+          --config .github/website/wrangler.jsonc
+          --name "$WORKER_NAME"
+          --message "Deploy $COMMIT"

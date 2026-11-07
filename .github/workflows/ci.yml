@@ -13,6 +13,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Decides whether the app itself changed, so a pull request that only
+  # touches the website, the docs or the changesets doesn't build the app on
+  # three runners. The required checks still report on every pull request
+  # (a skipped job or step counts as passing), which a `paths:` filter on the
+  # whole workflow would not do: it would leave them waiting forever.
+  # Web checks always run: they cover formatting, privacy and the website.
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.diff.outputs.app }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # A push to main always runs everything. On a pull request the
+          # script says whether any file outside the website, the docs, the
+          # changesets and the top-level Markdown files changed (a moved file
+          # counts, and so does a list it couldn't make).
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          app=$(scripts/ci-app-changed.sh "$BASE_SHA" "$HEAD_SHA")
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+          if [ "$app" = false ]; then
+            echo "Only the website, docs or changesets changed: the app's build and tests are skipped."
+          fi
+
   web:
     name: Web checks
     runs-on: macos-latest
@@ -32,6 +69,8 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run check:brand
+      # The website's links, files and what its security policy allows.
+      - run: bun run check:website
       # Real mail details never belong in the repository (AGENTS.md). The
       # owner's local denylist isn't available here; the written rule and
       # reviews cover names.
@@ -54,38 +93,50 @@ jobs:
 
   rust:
     name: Rust checks (${{ matrix.os }})
+    needs: changes
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
+    # Each step is gated, not the job: a matrix job skipped whole never
+    # reports the check names the ruleset requires.
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: needs.changes.outputs.app == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - if: needs.changes.outputs.app == 'true'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
-      - run: bun install --frozen-lockfile
-      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - if: needs.changes.outputs.app == 'true'
+        run: bun install --frozen-lockfile
+      - if: needs.changes.outputs.app == 'true'
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - if: needs.changes.outputs.app == 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - if: needs.changes.outputs.app == 'true'
+        run: cargo fmt --all --check
+      - if: needs.changes.outputs.app == 'true'
+        run: cargo clippy --workspace --all-targets -- -D warnings
       # Includes the test that fails when src/platform/tauri/bindings.ts is
       # out of date (it doesn't depend on the platform, so macOS covers it).
-      - if: runner.os != 'Windows'
+      - if: needs.changes.outputs.app == 'true' && runner.os != 'Windows'
         run: cargo test --workspace
       # On Windows the app crate's test program can't start
       # (STATUS_ENTRYPOINT_NOT_FOUND): Tauri's test executables need an
       # application manifest there. The core crate holds the logic.
-      - if: runner.os == 'Windows'
+      - if: needs.changes.outputs.app == 'true' && runner.os == 'Windows'
         run: cargo test --workspace --exclude desktop --no-fail-fast
 
   browser:
     name: Browser tests (WebKit, Chromium)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
