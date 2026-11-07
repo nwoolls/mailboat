@@ -35,6 +35,21 @@ export function publishable(file: string): boolean {
   return platformOf(payload) !== null;
 }
 
+/**
+ * The name a person's download link can rely on: the installer's file name
+ * with the version taken out (`App_0.1.0_x64-setup.exe` is `App_x64-setup.exe`),
+ * so `releases/latest/download/<this name>` is always the newest one. Only the
+ * disk image and the two Windows installers have one. The update files keep
+ * their versioned names, because the manifest points at them.
+ */
+export function stableName(file: string, version: string): string | null {
+  const installer =
+    file.endsWith(".dmg") || file.endsWith("_x64-setup.exe") || file.endsWith("_arm64-setup.exe");
+  const marker = `_${version}_`;
+  if (!installer || !file.includes(marker)) return null;
+  return file.replace(marker, "_");
+}
+
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/;
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 /** What a minisign signature file holds once its line breaks are taken off: base64. */

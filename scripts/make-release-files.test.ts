@@ -104,6 +104,9 @@ describe("making a release's files", () => {
       "App_0.1.0_arm64-setup.exe.sig",
       "App_0.1.0_x64-setup.exe",
       "App_0.1.0_x64-setup.exe.sig",
+      "App_aarch64.dmg",
+      "App_arm64-setup.exe",
+      "App_x64-setup.exe",
       "SHA256SUMS",
       "latest.json",
     ]);
@@ -121,8 +124,32 @@ describe("making a release's files", () => {
       readFileSync(join(dir, "to", "SHA256SUMS"), "utf8")
         .trim()
         .split("\n"),
-    ).toHaveLength(8);
+    ).toHaveLength(11);
     expect(readFileSync(join(dir, "notes.md"), "utf8")).toBe("First release.\n");
+  });
+
+  it("copies the three installers under version-free names, with the same bytes, and keeps them out of the manifest", () => {
+    expect(run().code).toBe(0);
+    const to = (f: string) => readFileSync(join(dir, "to", f));
+    for (const [stable, versioned] of [
+      ["App_aarch64.dmg", "App_0.1.0_aarch64.dmg"],
+      ["App_x64-setup.exe", "App_0.1.0_x64-setup.exe"],
+      ["App_arm64-setup.exe", "App_0.1.0_arm64-setup.exe"],
+    ]) {
+      expect(to(stable).equals(to(versioned)), stable).toBe(true);
+    }
+    // the updater still points at the versioned files, and the sums list the copies
+    const manifest = readFileSync(join(dir, "to", "latest.json"), "utf8");
+    expect(manifest).not.toContain("App_x64-setup.exe");
+    expect(manifest).not.toContain("App_arm64-setup.exe");
+    const sums = readFileSync(join(dir, "to", "SHA256SUMS"), "utf8");
+    for (const stable of ["App_aarch64.dmg", "App_x64-setup.exe", "App_arm64-setup.exe"]) {
+      expect(sums).toContain(`  ${stable}\n`);
+    }
+    // the update tarball and the signatures get no copy
+    expect(
+      readdirSync(join(dir, "to")).filter((f) => f.includes("tar.gz") || f.endsWith(".sig")),
+    ).toHaveLength(4);
   });
 });
 

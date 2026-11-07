@@ -8,6 +8,7 @@ import {
   isVersion,
   platformOf,
   publishable,
+  stableName,
   tagFor,
   tagProblem,
 } from "./releaseFiles";
@@ -45,6 +46,24 @@ describe("what goes on the release", () => {
     expect(publishable("App.app.zip")).toBe(false);
     expect(publishable("App_0.1.0_aarch64.dmg.sig")).toBe(false);
     expect(publishable("notes.txt")).toBe(false);
+  });
+});
+
+describe("names a download link can rely on", () => {
+  it("takes the version out of the disk image and the two Windows installers", () => {
+    expect(stableName("App_0.1.0_aarch64.dmg", "0.1.0")).toBe("App_aarch64.dmg");
+    expect(stableName("App_0.1.0_x64-setup.exe", "0.1.0")).toBe("App_x64-setup.exe");
+    expect(stableName("App_0.1.0_arm64-setup.exe", "0.1.0")).toBe("App_arm64-setup.exe");
+    expect(stableName("App_0.2.0-beta.1_x64-setup.exe", "0.2.0-beta.1")).toBe("App_x64-setup.exe");
+  });
+
+  it("gives nothing to the update files, the signatures, or a file for another version", () => {
+    expect(stableName("App.app.tar.gz", "0.1.0")).toBeNull();
+    expect(stableName("App.app.tar.gz.sig", "0.1.0")).toBeNull();
+    expect(stableName("App_0.1.0_x64-setup.exe.sig", "0.1.0")).toBeNull();
+    expect(stableName("App_0.1.0_aarch64.dmg", "0.2.0")).toBeNull();
+    expect(stableName("App_aarch64.dmg", "0.1.0")).toBeNull();
+    expect(stableName("notes.txt", "0.1.0")).toBeNull();
   });
 });
 
