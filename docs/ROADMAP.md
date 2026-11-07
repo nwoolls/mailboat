@@ -3964,6 +3964,129 @@ steps are those of Plan 1 there.*
 - [ ] Promotion if wanted: options and costs in `docs/RELEASE.md` →
       Promotion
 
+## Polish Spike
+
+*Proposed by the owner 2026-11-07, to run alongside the Milestone 16
+leftovers or after them, in its own session. Not started. Done when: each
+item picked below is built, the owner has tried it, and its entry is ticked
+in the place it came from (the Bug backlog or "Privacy and security by
+default" in Milestone 16, which keep the full text; this section only
+orders and scopes them). Apart from step 0, nothing here is new work: it
+collects the open bugs and the hardening items that are cheap, safe while Google reviews the
+app, and make the privacy story easier to defend.*
+
+### Read first
+
+`AGENTS.md`; `docs/GOOGLE-VERIFICATION.md` → Status; the items named below,
+where their full text is. What the code did on 2026-11-07, checked then, so a
+new session need not repeat it: `check:website` does not read `SCOPES`;
+nothing revokes a refresh token at Google on account removal, and removing an
+account leaves its downloaded images; there is no `/.well-known/security.txt`
+(the address answers 404) and no Security link in the footer; image prefetch
+is on by default; nothing encrypts the local database; the "model training"
+note is on the website's policy but not in Settings → AI; the repository's
+website link is already set.
+
+### While Google reviews the app
+
+Google verification was submitted on 2026-11-07 (review up to 4 to 6 weeks;
+the first email was due within 3 to 5 days). Until it ends:
+
+- Don't change `SCOPES` (`crates/core/src/auth/oauth.rs`), the app's
+  publishing status or user type in Google Cloud, or its logo: each can delay
+  or restart the review. So "Ask for Google permissions when they are first
+  needed" waits for Google's answer, and its plan should be written with the
+  verified result in hand.
+- A change to what leaves the computer, what is stored or deleted, or a
+  default in Settings updates `website/privacy.html` in the same commit (the
+  rule in `AGENTS.md`), and a site change redeploys the website on merge.
+  Say only what the code does.
+- When Google writes, the owner reads the email with the agent before
+  anyone answers. That comes before spike work.
+
+### Decide first (owner)
+
+- Which bugs below are in, and in what order. The last-account fix needs a
+  design choice: stay in Settings → Accounts with an empty list and "Add
+  account", or open onboarding at its accounts stage.
+- Which hardening items are in, and which wait. The list below is a
+  proposal.
+- Whether encrypting the local cache is worth a dependency, and which option
+  to take for contacting fewer image hosts before a message is opened.
+
+### Step 0: bring this file up to date (documentation only)
+
+The Milestone 16 items for the website itself and for the Cloudflare setup
+are done but still unticked; the Cloudflare item still says the first deploy
+and the route are left. Tick both and drop that sentence. The repository's
+website link is set; only pinning the repository on the owner's profile is
+left, and it is the owner's to do. Check each against the live site first
+(HTTPS, the `www` redirect, the update address).
+
+### Hardening, in the proposed order
+
+Full text of each is in "Privacy and security by default" (Milestone 16).
+
+- [ ] `security.txt` and a Security link in the footer. Tiny and site-only;
+      `check:website` should require both
+- [ ] The note in Settings → AI recommending that model training be turned
+      off for the chosen provider (Milestone 16 item). The policy already
+      says it; the app should say it where the provider is chosen
+- [ ] `check:website` reads `SCOPES` and fails when a permission has no
+      matching line in the policy, and a test pins the defaults the policy
+      states (the first "Privacy and security by default" item). This guards
+      the claims Google is checking
+- [ ] Cloud AI is manual by default (the summary above a conversation waits
+      for the Summarize button with Claude or ChatGPT; Apple Intelligence
+      stays automatic). A default changes, so the policy changes in the same
+      commit
+- [ ] Removing an account cleans up fully: revoke the refresh token at Google
+      (best effort, and say so when offline), then delete the account's
+      images with the link table the next Milestone 16 item describes, with
+      the two-account test that item asks for. The policy's line about
+      removed accounts leaving their images comes out when this lands
+- [ ] Settings → Privacy, one page listing every way data leaves the
+      computer with its current setting, and the switch for keeping
+      summaries only as long as needed. The onboarding can point to it
+
+### Bugs, proposed order (small and visible first)
+
+Full text of each is in the Bug backlog (or, for the zoom bug, Milestone 16).
+
+- [ ] A sent email's full recipient list can't be seen without resizing
+- [ ] A summary's first bullet repeats the prompt's own example (needs a test
+      that fails when a bullet repeats the label or the example)
+- [ ] Email images show larger than in Gmail
+- [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
+      the email; an agent works from a made-up fixture of the same shape,
+      never the real one)
+- [ ] A sideways swipe on the trackpad drags the whole app
+- [ ] The screenshot zoom on the website flashes at full size first (a
+      browser test with an empty cache and a slowed network)
+- [ ] The starfield browser test that failed once
+- [ ] Periodically refresh each account's Google profile image
+- [ ] Removing the last account leaves you on onboarding (after the design
+      choice above; a worktree for it, `fix-last-account-removal`, may
+      already exist and be empty)
+
+### Held or later
+
+- Ask for Google permissions when first needed: after Google's answer (see
+  above).
+- Contacting fewer image hosts before a message is opened (prefetch only for
+  people you've written to, or not at all): a design decision for the owner.
+- Encrypting the local cache at rest, and Touch ID or Windows Hello: decide,
+  then plan; neither is needed for the review.
+
+### How to run it
+
+One topic per branch and per pull request, each in its own `git worktree`;
+the checks in `AGENTS.md` before every commit; an empty changeset for what
+people won't notice, a real one for what they will; and a review prompt
+from `docs/REVIEW-PROMPT.md` handed to the owner before each push. The owner
+tries each change before it is ticked, as in the earlier spikes. Record a
+choice a later agent might second-guess in the Architecture decisions table.
+
 ## Bug backlog
 
 *Bugs found in passing (started 2026-10-19 at the owner's request).
