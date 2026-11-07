@@ -2817,8 +2817,8 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
 
 - [ ] "Use a different file" on "Google Cloud is set up" goes back to
       the start of the walkthrough *(owner, 2026-10-30: fine for now;
-      look again if it becomes a problem)* *(in the Polish Spike, 2026-11-07,
-      only if it becomes a problem)*
+      look again if it becomes a problem)* *(held out of the Polish Spike,
+      2026-11-07: only if it becomes a problem)*
 
 ## Milestone 13: Independent code review
 
@@ -4019,8 +4019,9 @@ the first email was due within 3 to 5 days). Until it ends:
 ### Scope (owner, 2026-11-07)
 
 Settled with the owner, taking the agent's recommendation. Everything in
-the lists below is in, built in the order shown and one pull request each
-(the ordering is the plan; a fuzzing finding still goes to the front).
+the Hardening and Bugs lists below is in, built in the order shown and one
+pull request each (the ordering is the plan; a fuzzing finding still goes to
+the front). The items under "Held or later" are not built in this spike.
 Nothing in the spike touches Google's review: the items that would are
 under "Held or later".
 
@@ -4138,7 +4139,8 @@ privacy:
 - Ask for Google permissions when first needed: after Google's answer (see
   above).
 - Remove an address from compose suggestions ("Later / unscheduled" →
-  Writing). It touches the Contacts data Google is reviewing.
+  Writing). It touches the Contacts data Google is reviewing, so it must
+  ask for no new permission.
 - Warn about outside recipients (addresses not ending with chosen
   domains are marked while writing; "Later / unscheduled" → Writing). Not a
   bug or a privacy item; held to keep the scope small.
@@ -4179,9 +4181,10 @@ again until the next spike.*
       stage: "Make it yours" (the last one) after a normal first run, or
       the welcome screen for someone who had accounts before onboarding
       existed and so has no saved progress. Wanted: stay in Settings →
-      Accounts, showing an empty list with "Add account", or at least land
-      on the account stage of onboarding. Design to agree first, since an
-      app with no accounts has nothing else to show
+      Accounts, showing an empty list with "Add account". Design agreed
+      (owner, 2026-11-07): onboarding stays a first-run flow, "Delete all
+      Mailboat data" stays reachable from the same page, and the mail pane
+      shows an empty state that points back to Settings
 
 - [ ] A sideways swipe on the trackpad drags the whole app *(owner report,
       2026-11-06)*: with nothing left in the inbox (inbox zero), swiping
@@ -4465,10 +4468,11 @@ niche or extra", so Windows and the Release Spike come first)
 - [ ] Templates: saved replies to insert while writing (Gmail's own
       templates aren't in its API, so these would be Mailboat's)
 - [ ] Warn about outside recipients (addresses not ending with chosen
-      domains are marked while writing) *(picked for the Polish Spike,
+      domains are marked while writing) *(held out of the Polish Spike,
       2026-11-07)*
-- [ ] Remove an address from compose suggestions *(picked for the Polish
-      Spike, 2026-11-07)*
+- [ ] Remove an address from compose suggestions *(held out of the Polish
+      Spike, 2026-11-07: it touches the Contacts data Google is reviewing,
+      so it must ask for no new permission)*
 - [ ] Images inline in the email being written, as Gmail does *(owner
       request, 2026-10-22)*: dropping (or pasting) an image into the
       composer puts it in the body where it lands, while other files
