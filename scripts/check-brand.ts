@@ -21,6 +21,8 @@ const ALLOWED = [
   ".github/pull_request_template.md",
   ".github/FUNDING.yml",
   "design/",
+  // The website: prose and artwork for people, like docs/.
+  "website/",
   // Generated.
   "bun.lock",
   "Cargo.lock",

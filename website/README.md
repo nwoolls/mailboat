@@ -1,0 +1,31 @@
+# Website
+
+The site at getmailboat.app: plain HTML, CSS and JavaScript, with no build
+step and no backend. It is meant to be served by Cloudflare as it is (decided
+2026-11-06, see the Architecture decisions).
+
+- `index.html`, `privacy.html`, `terms.html`: the pages. The header and
+  footer are repeated in each page; change them in all of them.
+- `site.css`: the one stylesheet. Colours follow the visitor's system theme.
+- `site.js`: fades sections in as they scroll into view, lifts the header
+  once the page scrolls, and opens a screenshot in a zoomed view (a native
+  `<dialog>`) when it is clicked: any `<img data-zoom="images/…">` is made
+  clickable, and `data-zoom` names its full-size pictures. The pages read
+  fine without it.
+- `_headers`: security headers Cloudflare adds to every response. The
+  Content Security Policy allows only the site's own files, so no inline
+  scripts or `style` attributes.
+- `fonts/`: Inter and Geist Mono (Latin), self-hosted so visitors' browsers
+  never contact Google. Both are under the SIL Open Font License (the
+  `OFL-*.txt` files).
+- `images/`: WebP copies of the Demo-mode screenshots in `docs/images` (full size
+  for the hero and the two spotlight sections, half size in `cards/` for the
+  feature cards, one per section of `docs/FEATURES.md`),
+  made by `scripts/build-website-images.sh`. Only Demo mode is ever
+  pictured.
+
+To preview, serve the folder and open it in a browser:
+
+```
+python3 -m http.server 4321 --directory website
+```

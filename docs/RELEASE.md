@@ -110,6 +110,17 @@ verified; it's paperwork and waiting (weeks to months).
 - Demo video, unlisted on YouTube: the sign-in, the consent screen
       with the client ID in the address bar, each scope in use
 - A written reason for each scope
+- The AI transfer under Limited Use *(2026-11-06)*: with Claude or
+      ChatGPT chosen, mail goes to that provider, which may train on it
+      depending on the user's account settings. The privacy policy says the
+      user chooses the provider for each job, says which requests go out on
+      their own (a long conversation's summary when it is opened, while
+      Automatic is on, which is the default; list summaries as rows scroll
+      into view), and recommends turning training off (Settings → AI is to
+      say the same, Milestone 16). An open question for the owner: require
+      the Summarize button whenever the provider is Claude or ChatGPT, so
+      every transfer is one the user started. Whether Google's reviewers
+      accept the transfer is their call; be ready to explain it
 - Security assessment (CASA): Google requires it when restricted data
       is stored on or sent to servers. Mailboat keeps mail on the device,
       and AI and MCP only send it where the user chooses, so ask to be

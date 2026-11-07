@@ -87,6 +87,13 @@ How this is enforced:
 - `docs/RELEASE.md`: the release plans (closed and paid, open source,
   hybrid) and the research behind them. The owner chose the hybrid
   (2026-10-25); its work is tracked in the roadmap, Milestones 10–18.
+- `website/`: the public site. Its feature cards and `website/privacy.html`
+  must match what the app does, because Google's verification reads the
+  policy against the app. A change to what leaves the device, the Google
+  permissions asked for (`SCOPES`), what is stored or deleted, or a default
+  in Settings updates the policy in the same commit, and a new or changed
+  feature updates its card. Say only what the code does (check it); when the
+  app is more private than the policy claims, fix the policy too.
 - `README.md`: what it is and why, for people. Setup and running live in
   `docs/DEVELOPMENT.md`, Google credentials in `docs/GOOGLE-SETUP.md`, AI in
   `docs/AI.md`.
@@ -95,7 +102,9 @@ How this is enforced:
 
 Anything a person will read goes through the `unslop` skill before it is
 committed: `README.md`, everything in `docs/`, `CONTRIBUTING.md`,
-`SECURITY.md`, the other READMEs, and the issue and pull request templates.
+`SECURITY.md`, the other READMEs, the issue and pull request templates,
+and the website's text (`website/`: every page's visible copy, its
+`<title>` and description, and image `alt` text).
 Run it on the whole file when you write a new one or change one a lot, and
 on the changed passages when you touch a long log (`docs/ROADMAP.md`,
 `docs/ARCHITECTURE.md`, `docs/RELEASE.md`). It repairs only what is clearly

@@ -3762,17 +3762,21 @@ again every seven days until the project is published.*
 ## Milestone 16: Website
 
 *Done when: `getmailboat.app` explains Mailboat, shows it, and lets people
-download it and follow the setup guide.*
+download it.*
 
 - [ ] Website: plain HTML/CSS/JS in this repository (`website/`), on
       Cloudflare (free; decided 2026-11-06, see Architecture), deployed
       by its own GitHub Actions workflow on `getmailboat.app`: home with
-      screenshots from Demo mode, download (latest release), the
-      credentials setup
-      guide with a short screen recording, privacy policy (what Google
+      screenshots from Demo mode, download (latest release), privacy
+      policy (what Google
       data Mailboat uses; it stays on the device), terms of use (limits
       liability, as there's no company), link to GitHub. Also serves
-      the update file (Milestone 15)
+      the update file (Milestone 15). No setup-guide page *(owner,
+      2026-11-06)*: the app's onboarding walks people through the Google
+      credentials, and `docs/GOOGLE-SETUP.md` (which says so at the top)
+      stays in the repository for anyone who wants the steps in writing.
+      The short screen recording of the setup moves to the first-timer
+      trial below: make it only if the trial shows people get stuck
 - [ ] Teaser trailer *(owner, 2026-10-22; moved from the Release
       Spike)*: a short video made in code with Remotion (videos written
       in React), drawing Mailboat's real components with the demo data, as
@@ -3788,6 +3792,22 @@ download it and follow the setup guide.*
 
 - [ ] Website link on the repository, and the repository pinned on the
       owner's profile *(moved from Milestone 14, 2026-11-04)*
+- [ ] Cloudflare setup for the site *(owner, 2026-11-06)*: the site
+      attached to `getmailboat.app` with its free certificate active
+      (`.app` is HTTPS-only in every browser, so the site only works
+      over HTTPS); "Always Use HTTPS" on and a minimum TLS version of 1.2;
+      `www.getmailboat.app` redirecting to `getmailboat.app`, covered by the
+      same certificate; the update address's redirect rule left as it is.
+      Also the deploy workflow (a deploy token limited to this one site, in a
+      `website` environment, pushes to `main` only) and the app's workflows
+      skipping site-only pull requests, as the Architecture decision of
+      2026-11-06 describes
+- [ ] A note in Settings → AI recommending that model training be turned
+      off *(owner, 2026-11-06)*: when Claude or ChatGPT is chosen for a
+      feature, a short line says the provider may train on what it receives,
+      depending on the account's settings, and recommends turning that off
+      in that provider's privacy settings. The website's privacy policy says
+      the same; this puts it where people choose the provider
 - [ ] First-timer trial of the onboarding *(moved from Milestone 12,
       2026-10-30, then from Milestone 15, 2026-11-05)*: someone who has
       never used Google Cloud installs a real build from GitHub and gets
@@ -3795,8 +3815,78 @@ download it and follow the setup guide.*
       a clean start), while the owner watches and times it (the target is
       about 15 minutes).
       Needs the signed builds (Milestone 15, done) and a real download,
-      so the installer's own warnings don't become part of the test; the
-      website's setup guide is part of what the person follows
+      so the installer's own warnings don't become part of the test
+
+### Privacy and security by default *(owner, 2026-11-06)*
+
+The website and Google's verification read the app's behaviour against what
+the privacy policy says, so the safest default is the one that needs the
+least explaining. Each item below picks the more private or more secure
+setting for a fresh install and keeps the other as an option. The options
+are decided when each is picked up. Settled defaults stay as they are until
+then (remote images load by default, owner 2026-10-15; update checks on, for
+security fixes).
+
+- [ ] The website stays true to the app: `website/privacy.html` and the
+      feature cards match what the app does, and a change to what leaves
+      the device, the Google permissions asked for, what is stored or
+      deleted, or a default in Settings updates them in the same commit
+      (the rule is in `AGENTS.md`). A check backs it: `check:website` reads
+      `SCOPES` in `crates/core/src/auth/oauth.rs` and fails when a
+      permission has no matching line in the policy, and a test pins the
+      defaults the policy states
+- [ ] Cloud AI is manual by default: with Claude or ChatGPT chosen, the
+      summary above a conversation waits for the Summarize button, so every
+      transfer is one the person started. Automatic stays an option, and
+      stays the default for Apple Intelligence, which never leaves the Mac.
+      Summaries in the list with a cloud provider stay off until turned on,
+      with the existing warning at the switch
+- [ ] Ask for Google permissions when they are first needed: sign-in asks
+      for what mail needs, and Calendar, Contacts and Gmail settings are
+      requested when the person first uses invitations, address suggestions,
+      rules, signatures or the vacation reply. The consent screen shrinks
+      from eight permissions to a few, and each remaining permission maps
+      to a feature Google's reviewers can see. Needs care for accounts
+      already signed in (one more consent, as when a permission was added
+      before) and for the seven-day sign-in in Testing
+- [ ] Removing an account cleans up fully: revoke the refresh token at
+      Google (best effort; say so when offline), delete that account's
+      downloaded remote images (next item), and offer "Delete all Mailboat
+      data" in Settings (mail cache, images, summaries, settings). Today
+      removal deletes the token from the keychain and the mail cache, and
+      leaves the images and does not revoke
+- [ ] Downloaded remote images are deleted with their account: the image
+      cache (`image_cache`) is keyed by address only, and one file serves
+      every account that received the same image, so removing an account
+      can't just delete rows. Record which accounts' mail uses each image
+      (a link table filled when an image is fetched, or found by reading the
+      removed account's message bodies before they go), and on removal
+      delete the images no remaining account uses, files included. The
+      policy's line that removed accounts leave their images behind comes
+      out when this is done. A test with two accounts that received the
+      same image (the multi-account rule: nothing keyed by an address or ID
+      alone) covers it
+- [ ] Fewer hosts contacted before a message is opened: options are
+      remote images for people you've written to by default, prefetching
+      images only for those people or not at all, or both. Prefetch is
+      on today, so the image host is contacted when mail arrives
+- [ ] Encrypt the local cache at rest: a key in the keychain and an
+      encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
+      and costs little speed. Until then the cache relies on the
+      computer's disk encryption (FileVault, BitLocker), and the policy
+      says only what is true. Decide whether it is worth the dependency
+- [ ] Settings → Privacy, one page that lists every way data leaves the
+      computer (Google, update checks, remote images, AI providers, AI
+      apps over MCP) with its current setting and a switch, and a short
+      "what stays on this computer" line. The onboarding can point to it
+- [ ] Summaries kept only as long as needed: they are cached in the local
+      database until new mail arrives. Options are a switch to not keep
+      them, or clearing them on quit
+- [ ] The security contact on the website: `/.well-known/security.txt`
+      (RFC 9116) naming `security@getmailboat.app` and `SECURITY.md`, and a
+      Security link in the footer
+- [ ] Optional, later: require Touch ID or Windows Hello to open the app,
+      for shared computers
 
 ## Milestone 17: Launch
 

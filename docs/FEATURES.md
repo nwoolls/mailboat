@@ -229,7 +229,7 @@ Instant local search across all accounts, with Gmail's own operators (from:, has
 
 *Animated:* [GIF](images/loops/swipe-archive.gif) · [MP4](images/loops/swipe-archive.mp4)
 
-Two fingers to the left on a conversation archives it, and a toast offers Undo (or press z). What each swipe does is yours to choose in Settings, List, where rows can also be compact, default or roomy, with no, one or two lines of preview.
+Two fingers to the left on a conversation archives it from the Inbox (anywhere else it moves it to Trash), and a toast offers Undo (or press z). What each swipe does is yours to choose in Settings, List, where rows can also be compact, default or roomy, with no, one or two lines of preview.
 
 ### Keyboard shortcuts
 
