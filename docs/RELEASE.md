@@ -97,8 +97,8 @@ flowchart LR
 ### Google verification (prepared in groundwork, submitted after Checkpoint 1)
 
 Mailboat asks for restricted scopes (`gmail.modify`; `gmail.settings.basic`
-is believed restricted, to confirm on Google's
-list) and sensitive ones (contacts, calendar). An individual can get
+is restricted too, as the consent screen's Data Access page shows,
+confirmed 2026-11-07) and sensitive ones (contacts, calendar). An individual can get
 verified; it's paperwork and waiting (weeks to months).
 
 - New production OAuth client in a Cloud project named for Mailboat
@@ -109,7 +109,8 @@ verified; it's paperwork and waiting (weeks to months).
       support email
 - Demo video, unlisted on YouTube: the sign-in, the consent screen
       with the client ID in the address bar, each scope in use
-- A written reason for each scope
+- A written reason for each scope (written, with the demo-video script and
+      the order of steps, in `docs/GOOGLE-VERIFICATION.md`)
 - The AI transfer under Limited Use *(2026-11-06)*: with Claude or
       ChatGPT chosen, mail goes to that provider, which may train on it
       depending on the user's account settings. The privacy policy says the
