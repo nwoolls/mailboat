@@ -31,7 +31,7 @@ How the owner and the writing agent use it:
 ````text
 You are reviewing the git branch `<branch>` in the repository at <path to the
 repository> (<one line on the project>). The branch is committed; review ALL
-of its changes relative to `main`.
+of its changes relative to `origin/main` (see below).
 
 ## FIRST: work in your own copy of the repository (mandatory)
 
@@ -63,10 +63,14 @@ stash corrupts that agent's work. So:
   and confirm with `git -C <path to the repository> worktree list` that only
   the main folder remains. Say in your report that you did.
 
-Review ALL changes on the branch relative to `main`:
+Review ALL changes on the branch relative to `origin/main`. The local `main`
+branch is often behind, and comparing against it shows other people's merged
+work as part of this branch. Fetch first (it only updates the `origin/*`
+references):
 
-  git diff main...<branch>           (what the branch changes)
-  git log main..<branch>             (commit messages)
+  git fetch origin
+  git diff origin/main...<branch>    (what the branch changes)
+  git log origin/main..<branch>      (commit messages)
 
 ## Read first
 - AGENTS.md (project rules: privacy of real mail, multi-account rules, Rust
