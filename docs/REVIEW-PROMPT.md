@@ -52,7 +52,9 @@ stash corrupts that agent's work. So:
   dependencies, `bun install --frozen-lockfile` inside your worktree is fine
   (it only writes there).
   If that folder already exists (another reviewer's copy), pick another name
-  (`/tmp/review-<name>-2`) and leave the existing one alone.
+  (`/tmp/review-<name>-2`) and leave the existing one alone. Wherever this
+  prompt says `/tmp/review-<name>`, use the exact folder you ended up with and
+  nothing else: that is the only folder you may remove at the end.
 - Do NOT run the browser tests (`bun run test:browser`, `bun run check`, or any
   Playwright command). They bind a fixed port (1436) that the other agent may
   be using. If a browser test matters for this branch, say so in your report
@@ -61,19 +63,24 @@ stash corrupts that agent's work. So:
   fix. If you want to try a change, copy the file to `/tmp/scratch-<name>`
   first.
 - When you finish, remove your copy:
-  `git -C <path to the repository> worktree remove --force /tmp/review-<name>`,
+  `git -C <path to the repository> worktree remove --force <the folder you created>`,
   and confirm with `git -C <path to the repository> worktree list` that only
   the main folder (and any worktree that was already there) remains. Say in
   your report that you did.
 
 Review ALL changes on the branch relative to `origin/main`. The local `main`
 branch is often behind, and comparing against it shows other people's merged
-work as part of this branch. Fetch first (it only updates the `origin/*`
-references):
+work as part of this branch. Fetch first, scoped so it changes only the
+`origin/main` reference (no tags, no pruning):
 
-  git fetch origin
-  git diff origin/main...<branch>    (what the branch changes)
-  git log origin/main..<branch>      (commit messages)
+  git fetch --no-tags --no-prune origin main
+
+Then, from inside YOUR worktree (its `HEAD` is the commit you were asked to
+review, even if the branch moves later; write that commit down in your report):
+
+  git rev-parse HEAD
+  git diff origin/main...HEAD        (what the branch changes)
+  git log origin/main..HEAD          (commit messages)
 
 ## Read first
 - AGENTS.md (project rules: privacy of real mail, multi-account rules, Rust
@@ -119,7 +126,7 @@ already rejected in an earlier round, with the reason.>
 ## Run these and report real output
 - `bun run check:privacy` and `bun run check:brand`
 - <the test commands that cover the change: `cargo test -p …`, `bun run test`,
-  a single Playwright spec, …>
+  …. Never a browser test: if browser coverage matters, say so in the report>
 - `bun run fmt:check`, `bun run lint`, `bun run typecheck`
 - `cargo clippy --workspace --all-targets -- -D warnings`, in your worktree (it
   only writes the worktree's own ignored `target/` folder)

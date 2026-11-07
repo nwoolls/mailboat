@@ -42,8 +42,11 @@ server of ours.
 Lets the user edit three things that live in Gmail's settings from inside the
 app: filters (rules), the signature for each address they send from, and the
 vacation reply. Because Google stores them, filters and the vacation reply
-keep working when the app is closed. The app reads and writes them only when
-the user opens Settings → Rules, Signatures or Vacation responder.
+keep working when the app is closed. The app reads and writes them when the
+user opens Settings → Rules, Signatures or Vacation responder to edit them. It
+also reads the account's "Send mail as" addresses and their signatures while
+it syncs (at start-up and sign-in), so the composer can offer them when the
+user writes.
 
 **`https://www.googleapis.com/auth/calendar.events`** (sensitive)
 Answers meeting invitations in the email, as Gmail does. When a message holds
@@ -51,7 +54,10 @@ a calendar invitation, the app finds the event on the user's primary
 calendar by its iCalendar ID, shows the user's current answer and any events
 it clashes with, and sets the answer (Yes, Maybe or No) when the user
 chooses. If the invitation isn't on the calendar yet, the app adds that one
-event first, then records the answer. It works only on the primary calendar: it adds or answers the event in the message, and reads nearby events to show clashes.
+event first, then records the answer. It works only on the primary calendar: it adds or answers the event in the
+message, and reads nearby events to show clashes. For an invitation that was
+cancelled and is still on the calendar, it removes that event when the user
+presses "Remove from calendar".
 
 **`https://www.googleapis.com/auth/contacts.readonly`** (sensitive)
 Suggests addresses while the user writes a message, by matching what they
@@ -64,21 +70,26 @@ automatically from the user's mail. Read-only, kept on the computer.
 
 **`openid`, `https://www.googleapis.com/auth/userinfo.email`,
 `https://www.googleapis.com/auth/userinfo.profile`** (basic)
-Identify the account being added: its address, name and picture, shown for
-the account in the app's sidebar and used to keep accounts apart.
+Identify the account being added: its address and picture, shown for the
+account in the app's sidebar and used to keep accounts apart, and its name,
+which the app uses as the sender's name when Gmail leaves it blank.
 
 ## What happens to the data
 
-- Stored on the user's computer only. Refresh tokens are in the system
-  keychain, never in a file. Removing an account deletes its token and mail
-  cache.
+- Mail and Google data are stored on the user's computer, not on any server
+  of the project's, apart from the transfers listed below that the user turns
+  on. Refresh tokens are in the system keychain, never in a file. Removing an
+  account deletes its token and its mail cache. Remote images the app
+  downloaded stay in a cache the accounts share, until newer ones push them
+  out or the user clears it in Settings.
 - No Mailboat server, account or analytics. The developer never receives mail
   or Google data.
 - The project does not sell it, use it for advertising or use it to train AI models, and no person on the project reads it.
 - Mail reaches an AI provider only when the user has chosen that provider for
-  a feature, in Settings → AI (a long conversation's summary is sent when it
-  is opened while the summary setting is Automatic; the list's summaries are
-  sent as rows scroll into view when the user turns them on). Apple
+  a feature, in Settings → AI (the conversation's text is sent to write its
+  summary when a long conversation is opened while the summary setting is
+  Automatic; each conversation that scrolls into view is sent for the list's
+  summaries when the user turns those on). Apple
   Intelligence runs on the Mac. The MCP server for AI apps is off for every
   account until the user turns it on, shares neither Spam nor Trash, and
   cannot send mail.
@@ -101,7 +112,7 @@ address bar visible. Use a dedicated test Google account with made-up mail
    Calendar. (Calendar permission.)
 5. Write a message and type a name: the suggestions appear. (Contacts
    permissions.)
-6. Show the account's name and picture in the sidebar. (Basic permissions.)
+6. Show the account's address and picture in the sidebar. (Basic permissions.)
 7. Show Settings → AI with the providers, the privacy policy page, and
    removing the account.
 
