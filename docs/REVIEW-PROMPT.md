@@ -51,6 +51,8 @@ stash corrupts that agent's work. So:
   Then `cd /tmp/review-<name>` and run EVERYTHING there. If you need
   dependencies, `bun install --frozen-lockfile` inside your worktree is fine
   (it only writes there).
+  If that folder already exists (another reviewer's copy), pick another name
+  (`/tmp/review-<name>-2`) and leave the existing one alone.
 - Do NOT run the browser tests (`bun run test:browser`, `bun run check`, or any
   Playwright command). They bind a fixed port (1436) that the other agent may
   be using. If a browser test matters for this branch, say so in your report
@@ -61,7 +63,8 @@ stash corrupts that agent's work. So:
 - When you finish, remove your copy:
   `git -C <path to the repository> worktree remove --force /tmp/review-<name>`,
   and confirm with `git -C <path to the repository> worktree list` that only
-  the main folder remains. Say in your report that you did.
+  the main folder (and any worktree that was already there) remains. Say in
+  your report that you did.
 
 Review ALL changes on the branch relative to `origin/main`. The local `main`
 branch is often behind, and comparing against it shows other people's merged
