@@ -26,7 +26,7 @@ step and no backend. It is meant to be served by Cloudflare as it is (decided
 
 ## Publishing
 
-A push to `main` that changes this folder runs `.github/workflows/website.yml`,
+A push to `main` that changes this folder, `.github/website/` or the workflow itself runs `.github/workflows/website.yml`,
 which checks the site and deploys it to Cloudflare. Pull requests never deploy.
 `404.html` is shown, with a real 404 status, for any address that isn't a file.
 Its links and files are root-absolute (`/site.css`) because it is served at the

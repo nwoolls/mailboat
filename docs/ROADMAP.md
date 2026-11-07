@@ -3802,8 +3802,7 @@ download it.*
       over HTTPS); "Always Use HTTPS" on and a minimum TLS version of 1.2;
       `www.getmailboat.app` redirecting to `getmailboat.app`, covered by the
       same certificate; the update address's redirect rule left as it is.
-      Also the deploy workflow (a deploy token limited to this one site, in a
-      `website` environment, pushes to `main` only) and the app's workflows
+      Also the deploy workflow (a deploy token that can only edit Workers, in a `website` environment, pushes to `main` only) and the app's workflows
       skipping site-only pull requests, as the Architecture decision of
       2026-11-06 describes
 - [ ] A note in Settings → AI recommending that model training be turned

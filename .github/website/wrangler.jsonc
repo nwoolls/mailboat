@@ -12,5 +12,8 @@
     // Unknown addresses get website/404.html, with its real 404 status.
     "not_found_handling": "404-page",
   },
+  // A deploy keeps any variable set in the Cloudflare dashboard (by default it
+  // deletes them). There are none today; this keeps a later one safe.
+  "keep_vars": true,
   "observability": { "enabled": false },
 }
