@@ -3820,6 +3820,22 @@ download it.*
       Needs the signed builds (Milestone 15, done) and a real download,
       so the installer's own warnings don't become part of the test
 
+- [ ] Bug: the screenshot zoom flashes at full size before it animates
+      *(owner report, 2026-11-07)*: the first time each screenshot is
+      zoomed, it appears large for a moment and then the grow-from-the-card
+      animation plays; once that screenshot's full-size picture is cached,
+      every later zoom is smooth. Cause, from reading `website/site.js`:
+      `open()` shows the dialog first and only then waits for the full-size
+      picture to load and decode, so the picture sits on screen at its final
+      size until the animation can start. Fix ideas, to choose among when it
+      is picked up: keep the picture hidden until it has decoded (the dimmed
+      backdrop can show at once); start the animation from the card's
+      already-loaded smaller picture while the large one loads; fetch the
+      large picture when the pointer or focus reaches a card. A browser test
+      in WebKit and Chromium, with an empty cache and a slowed network,
+      should check that the picture is never painted large before the
+      animation starts
+
 ### Privacy and security by default *(owner, 2026-11-06)*
 
 The website and Google's verification read the app's behaviour against what
