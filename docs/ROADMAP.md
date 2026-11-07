@@ -4046,13 +4046,14 @@ Decided:
 
 ### Step 0: bring this file up to date (documentation only)
 
-The Milestone 16 items for the website itself and for the Cloudflare setup
-are done but still unticked; the Cloudflare item still says the first deploy
-and the route are left. Tick both and drop that sentence. The repository's
-website link is set; only pinning the repository on the owner's profile is
-left, and it is the owner's to do. Check each against the live site first
-(HTTPS, the `www` redirect, the update address). Ticking the alerts item
-joins this pass once the owner has OK'd the two dismissals on GitHub.
+Done 2026-11-07: the Milestone 16 items for the website itself and for the
+Cloudflare setup are ticked, the Cloudflare item's "first deploy and route
+left" sentence is dropped, and the checks against the live site (HTTPS, the
+`www` redirect, the update address) are recorded on that item. The
+repository's website link is set; only pinning the repository on the owner's
+profile is left, and it is the owner's to do. Still open: ticking the alerts
+item, which joins this pass once the owner has OK'd the two dismissals on
+GitHub.
 
 ### Hardening, in order
 
