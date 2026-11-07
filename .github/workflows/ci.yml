@@ -36,19 +36,17 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # A push to main always runs everything. On a pull request, any
-          # file outside the website, the docs, the changesets and the
-          # top-level Markdown files may change the app.
+          # A push to main always runs everything. On a pull request the
+          # script says whether any file outside the website, the docs, the
+          # changesets and the top-level Markdown files changed (a moved file
+          # counts, and so does a list it couldn't make).
           if [ "$EVENT" != "pull_request" ]; then
             echo "app=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          others=$(git diff --name-only "$BASE_SHA...$HEAD_SHA" \
-            | grep -vE '^(website/|docs/|\.changeset/|scripts/build-website-images\.sh$|[^/]+\.md$)' || true)
-          if [ -n "$others" ]; then
-            echo "app=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "app=false" >> "$GITHUB_OUTPUT"
+          app=$(scripts/ci-app-changed.sh "$BASE_SHA" "$HEAD_SHA")
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+          if [ "$app" = false ]; then
             echo "Only the website, docs or changesets changed: the app's build and tests are skipped."
           fi
 
@@ -71,6 +69,8 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run check:brand
+      # The website's links, files and what its security policy allows.
+      - run: bun run check:website
       # Real mail details never belong in the repository (AGENTS.md). The
       # owner's local denylist isn't available here; the written rule and
       # reviews cover names.
