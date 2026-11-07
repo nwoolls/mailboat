@@ -69,7 +69,7 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: smooth; /* off again under prefers-reduced-motion: reduce, below */
   scroll-padding-top: 96px; /* anchors land below the floating header */
 }
 
@@ -800,6 +800,14 @@ section {
     top: auto;
     bottom: 20px;
     margin-top: 0;
+  }
+}
+
+/* Anchor jumps (Features, Download, the skip link) don't glide for people
+   who asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
   }
 }
 

@@ -140,6 +140,10 @@
         </li>
         <li><strong>Google Contacts (read only):</strong> to suggest addresses as you type.</li>
         <li>
+          <strong>Other contacts (read only):</strong> the addresses Google saved for you
+          automatically, for the same suggestions.
+        </li>
+        <li>
           <strong>Your name, email address and profile picture:</strong> to label the account.
         </li>
       </ul>
@@ -152,15 +156,15 @@
       <ul>
         <li>
           Mail and related data are cached in a database on your computer, so browsing and search
-          are instant. Removing an account deletes its cache.
+          are instant. Removing an account deletes its mail cache and its sign-in.
         </li>
         <li>
           Sign-in tokens are kept in your system's keychain (macOS Keychain or Windows Credential
           Manager), never in a file.
         </li>
         <li>
-          Nothing is sent to the developer. There is no Mailboat server that receives your mail or
-          your Google data.
+          No Mailboat server receives your mail or your Google data. The one request that reaches
+          the developer's domain is the update check, described below.
         </li>
       </ul>
 
@@ -171,10 +175,14 @@
           <strong>AI features, only if you turn them on.</strong> Apple Intelligence runs on your
           Mac. If you choose Claude or ChatGPT instead, the text the feature needs (for example the
           conversation being summarised) goes to that provider through its own app, signed in as
-          you, under that provider's terms. You start each of these requests and choose the
-          provider. Depending on your account's settings, the provider may use what it receives to
-          train its models; we recommend turning that off in Claude's or ChatGPT's privacy settings
-          before using them with Mailboat. Mailboat doesn't log prompts or answers.
+          you, under that provider's terms. You choose which provider does each job in Settings →
+          AI. With Claude or ChatGPT chosen for summaries, a long conversation is summarised when
+          you open it (Settings → AI can change this to a Summarize button, so nothing is sent until
+          you press it), and if you also choose one for the summaries in the list, each conversation
+          that scrolls into view is sent. Depending on your account's settings, the provider may use
+          what it receives to train its models; we recommend turning that off in Claude's or
+          ChatGPT's privacy settings before using them with Mailboat. Mailboat doesn't log prompts
+          or answers.
         </li>
         <li>
           <strong>AI apps, only if you turn them on.</strong> You can let an app such as Claude
@@ -183,14 +191,18 @@
           shared.
         </li>
         <li>
-          <strong>Images in email.</strong> Loading an email's remote images contacts the server
-          that hosts them. You can limit or block this in Settings. Known tracking pixels are always
-          removed.
+          <strong>Images in email.</strong> Remote images load by default, and the app downloads the
+          images of new mail as it arrives, so the server that hosts them is contacted before you
+          open the message. Spam never loads them, and Trash doesn't unless you've allowed the
+          sender. Settings → Viewing can limit this to people you've written to, or block it. Known
+          tracking pixels are always removed.
         </li>
         <li>
           <strong>Update checks.</strong> When it starts and about once a day, the app fetches one
           small file from getmailboat.app, which passes it on to GitHub, so both see your IP
-          address. You can turn this off in Settings → About.
+          address. The version you run and your kind of computer aren't sent. When you install an
+          update, GitHub also learns your kind of computer. You can turn the checks off in Settings
+          → About.
         </li>
       </ul>
 
@@ -206,8 +218,10 @@
 
       <h2>Removing your data</h2>
       <p>
-        Remove an account in Mailboat's settings to delete its local data and sign-in. You can also
-        revoke Mailboat's access at any time from your Google Account's
+        Remove an account in Mailboat's settings to delete its mail cache and sign-in. Remote images
+        the app downloaded stay in a cache shared by your accounts until newer ones push them out,
+        or until you clear it in Settings. You can also revoke Mailboat's access at any time from
+        your Google Account's
         <a href="https://myaccount.google.com/permissions">third-party access page</a>.
       </p>
 
@@ -229,7 +243,7 @@
       <div class="wrap">
         <span>Mailboat · free and open source (GPL-3.0)</span>
         <nav aria-label="Footer">
-          <a href="privacy.html">Privacy</a>
+          <a href="privacy.html" aria-current="page">Privacy</a>
           <a href="terms.html">Terms</a>
           <a href="https://github.com/nwoolls/mailboat">GitHub</a>
           <a href="https://github.com/nwoolls/mailboat/releases">Releases</a>

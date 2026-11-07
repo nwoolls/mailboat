@@ -32,7 +32,7 @@ window.addEventListener("scroll", onScroll, { passive: true });
 // Close the small-screen menu after a link in it is chosen.
 for (const menu of document.querySelectorAll("details.menu")) {
   menu.addEventListener("click", (event) => {
-    if (event.target instanceof HTMLAnchorElement) menu.open = false;
+    if (event.target instanceof Element && event.target.closest("a")) menu.open = false;
   });
 }
 
