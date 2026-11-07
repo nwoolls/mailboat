@@ -45,49 +45,72 @@ beforeAll(() => {
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 describe("ci-app-changed.sh", () => {
-  it("says false when only the website, docs, changesets, the image script or top-level Markdown change", () => {
+  it("says docs when only docs, changesets and top-level Markdown change", () => {
+    expect(
+      answer(() => {
+        write("docs/b.md");
+        write("docs/images/new.png");
+        write(".changeset/x.md");
+        write("CHANGELOG.md");
+        write("README.md", "changed\n");
+      }),
+    ).toBe("docs");
+    expect(answer(() => write("docs/a.md", "changed\n"))).toBe("docs");
+  });
+
+  it("reads a non-ASCII file name as it is, so a docs change with one is still docs", () => {
+    expect(answer(() => write("docs/café.md"))).toBe("docs");
+    expect(answer(() => write("website/café.html"))).toBe("site");
+    expect(answer(() => write("src/café.rs"))).toBe("app");
+  });
+
+  it("says site when the website or its image script changes, with or without docs", () => {
+    expect(answer(() => write("website/a.html", "changed\n"))).toBe("site");
+    expect(answer(() => write("website/images/new.webp"))).toBe("site");
+    expect(answer(() => write("scripts/build-website-images.sh"))).toBe("site");
     expect(
       answer(() => {
         write("website/a.html", "changed\n");
-        write("website/images/new.webp");
         write("docs/b.md");
         write(".changeset/x.md");
-        write("scripts/build-website-images.sh");
-        write("CHANGELOG.md");
       }),
-    ).toBe("false");
+    ).toBe("site");
   });
 
-  it("says true when an app file changes, alone or with site files", () => {
-    expect(answer(() => write("src/lib.rs", "changed\n"))).toBe("true");
+  it("says app when an app file changes, alone or with site and docs files", () => {
+    expect(answer(() => write("src/lib.rs", "changed\n"))).toBe("app");
     expect(
       answer(() => {
         write("website/a.html", "changed\n");
+        write("docs/b.md");
         write("crates/core/src/x.rs");
       }),
-    ).toBe("true");
+    ).toBe("app");
   });
 
-  it("says true for files that only look like docs: a nested Markdown file, other scripts, workflows", () => {
-    expect(answer(() => write("crates/core/README.md"))).toBe("true");
-    expect(answer(() => write("scripts/check-brand.ts"))).toBe("true");
-    expect(answer(() => write(".github/workflows/ci.yml"))).toBe("true");
+  it("says app for files that only look like docs or site: a nested Markdown file, other scripts, workflows, the website's own scripts and config", () => {
+    expect(answer(() => write("crates/core/README.md"))).toBe("app");
+    expect(answer(() => write("scripts/check-brand.ts"))).toBe("app");
+    expect(answer(() => write("scripts/website.ts"))).toBe("app");
+    expect(answer(() => write(".github/workflows/ci.yml"))).toBe("app");
+    expect(answer(() => write(".github/website/wrangler.jsonc"))).toBe("app");
+    expect(answer(() => write("package.json"))).toBe("app");
   });
 
-  it("says true when an app file is deleted", () => {
-    expect(answer(() => rmSync(join(dir, "src-tauri/tauri.conf.json")))).toBe("true");
+  it("says app when an app file is deleted", () => {
+    expect(answer(() => rmSync(join(dir, "src-tauri/tauri.conf.json")))).toBe("app");
   });
 
-  it("says true when an app file is moved into website/ or docs/ (a rename lists only the new path)", () => {
-    expect(answer(() => git("mv", "src/lib.rs", "website/lib.rs"))).toBe("true");
+  it("says app when an app file is moved into website/ or docs/ (a rename lists only the new path)", () => {
+    expect(answer(() => git("mv", "src/lib.rs", "website/lib.rs"))).toBe("app");
     expect(answer(() => git("mv", "src-tauri/tauri.conf.json", "docs/tauri.conf.json"))).toBe(
-      "true",
+      "app",
     );
   });
 
-  it("fails safe: says true when the changed files can't be listed", () => {
+  it("fails safe: says app when the changed files can't be listed", () => {
     const out = spawnSync(script, ["nope", "nope"], { cwd: dir, encoding: "utf8" });
-    expect(out.stdout.trim()).toBe("true");
+    expect(out.stdout.trim()).toBe("app");
     expect(out.status).toBe(0);
   });
 });
