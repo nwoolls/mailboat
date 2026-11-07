@@ -74,7 +74,7 @@ flowchart LR
   P0["Groundwork"] --> P1["Private beta, up to 100 users"]
   P1 --> C1{"Checkpoint 1: used daily?"}
   C1 -->|"No"| K["Keep as the owner's own app"]
-  C1 -->|"Yes"| G["Google verification"]
+  C1 -->|"Yes"| G["Google verification (submitted early, 2026-11-07)"]
   G --> P2["Paid launch"]
   P2 --> C2{"Checkpoint 2: covering costs at 6 months?"}
   C2 -->|"No"| W["Wind down gently"]
@@ -297,7 +297,7 @@ for everyone.
 flowchart LR
   A["Stage A: Plan 2, open source"] --> C{"Do people want it?"}
   C -->|"No"| K["Stays a free open-source app"]
-  C -->|"Yes"| G["Google verification for Mailboat's own client"]
+  C -->|"Yes"| G["Google verification for Mailboat's own client (submitted early, 2026-11-07)"]
   G --> B["Stage B: optional subscription for no-setup sign-in"]
 ```
 

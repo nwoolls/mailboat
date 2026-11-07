@@ -145,7 +145,10 @@ The first two takes were redone, so this is what to do next time:
   access page (`myaccount.google.com/permissions`) first, so every permission shows with its box.
 - Record the screen with a fixed length (`screencapture -v -V <seconds> <file.mov>`)
   and let it end on its own. Stopping it with a signal throws the file away.
-  A take is about six minutes; shrink it to 1080p before uploading.
+  A take is about six minutes. Shrink it to 1080p before uploading, for example
+  `ffmpeg -i take.mov -t <seconds> -vf "fps=30,scale=1920:-2" -c:v libx264
+  -crf 24 -pix_fmt yuv420p -an out.mp4` (`brew install ffmpeg`); `-t` cuts
+  the idle end.
 - Settings edits (a rule, a signature, the vacation reply) stay in the demo
   mailbox, so use a new value in each take.
 - Settings → Accounts → Remove is the last scene. It leaves the app at the
