@@ -19,27 +19,54 @@ How the owner and the writing agent use it:
   in the pull request, as with Copilot's comments.
 - For a second round on the same branch, add "What changed since the last
   round" to the prompt, with the fixes to verify first.
+- The writing agent commits the branch before handing the prompt over, and
+  reviewers work in their own `git worktree` under `/tmp`, never in the main
+  folder. Reviewers who switched branches or ran the tests in the main folder
+  have moved the writing agent's branch under it and made the browser tests
+  collide on their fixed port (this happened in the Milestone 16 reviews).
+  Reviewers run no browser tests: say so in the prompt.
 
 ## The prompt
 
 ````text
 You are reviewing the git branch `<branch>` in the repository at <path to the
-repository> (<one line on the project>). Review ALL changes on the branch
-relative to `main`, committed and uncommitted:
+repository> (<one line on the project>). The branch is committed; review ALL
+of its changes relative to `main`.
 
-  git diff main                      (committed + uncommitted, tracked files)
-  git status --short                 (also read the untracked files it lists; `git diff` does not show them)
-  git log main..HEAD                 (commit messages)
+## FIRST: work in your own copy of the repository (mandatory)
 
-Do NOT change the project: no editing, creating, formatting or deleting of
-tracked or untracked files in the working tree, and no commit, stash, branch
-switch or push. Look with read-only commands (git diff/log/status, grep, cat).
-Running the existing check and test commands is fine: they may write build
-output and caches in folders git ignores (`target/`, `node_modules/`,
-`test-results/`), and that is not a change to the project. Do not run
-anything that rewrites the project's own files (formatters, installs,
-bindings or changeset commands). If you want to try something that does, do
-it in a throwaway copy or `git worktree` under /tmp and remove it when done.
+The main folder <path to the repository> is in use by another agent right
+now. Anything that changes its checked-out branch, its files, its index or its
+stash corrupts that agent's work. So:
+
+- NEVER run any command that changes the main folder's state: no
+  `git switch`, `git checkout`, `git stash`, `git reset`, `git restore`,
+  `git clean`, `git merge`, `git rebase`, `git commit`, `git worktree prune`,
+  no formatter, no installer, no `bun run changeset`. Reading is fine from
+  anywhere: `git log`, `git show`, `git diff`, `git branch`, `cat`, `grep`.
+- Make your own working copy FIRST, outside the main folder, at the branch:
+
+    git -C <path to the repository> worktree add --detach /tmp/review-<name> <branch>
+
+  Then `cd /tmp/review-<name>` and run EVERYTHING there. If you need
+  dependencies, `bun install --frozen-lockfile` inside your worktree is fine
+  (it only writes there).
+- Do NOT run the browser tests (`bun run test:browser`, `bun run check`, or any
+  Playwright command). They bind a fixed port (1436) that the other agent may
+  be using. If a browser test matters for this branch, say so in your report
+  instead of running it.
+- Do NOT edit, format or delete files, even in your worktree: report, do not
+  fix. If you want to try a change, copy the file to `/tmp/scratch-<name>`
+  first.
+- When you finish, remove your copy:
+  `git -C <path to the repository> worktree remove --force /tmp/review-<name>`,
+  and confirm with `git -C <path to the repository> worktree list` that only
+  the main folder remains. Say in your report that you did.
+
+Review ALL changes on the branch relative to `main`:
+
+  git diff main...<branch>           (what the branch changes)
+  git log main..<branch>             (commit messages)
 
 ## Read first
 - AGENTS.md (project rules: privacy of real mail, multi-account rules, Rust
@@ -87,10 +114,11 @@ already rejected in an earlier round, with the reason.>
 - <the test commands that cover the change: `cargo test -p …`, `bun run test`,
   a single Playwright spec, …>
 - `bun run fmt:check`, `bun run lint`, `bun run typecheck`
-- `cargo clippy --workspace --all-targets -- -D warnings` if it runs without
-  writing into the repository (otherwise say you skipped it and why)
+- `cargo clippy --workspace --all-targets -- -D warnings`, in your worktree (it
+  only writes the worktree's own ignored `target/` folder)
 The full `bun run check` has already passed for the current tree; you don't
-need to run it. Never claim something passes without having run it.
+need to run it (it includes the browser tests: see the worktree rules above).
+Never claim something passes without having run it.
 
 ## How to report
 Return the whole review as ONE Markdown code fence (a single block starting
@@ -108,7 +136,8 @@ outside it). Inside it use these sections:
 3. **Questions for the owner**: only decisions that are genuinely theirs.
 4. **Checked and fine**: a short list of the risky areas you examined and
    found correct.
-5. **Commands run**: each command and its result in one line.
+5. **Commands run**: each command and its result in one line, including your
+   worktree creation and removal.
 
 Keep it factual and specific. No praise, no restating the diff.
 ````
