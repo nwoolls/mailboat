@@ -2817,7 +2817,8 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
 
 - [ ] "Use a different file" on "Google Cloud is set up" goes back to
       the start of the walkthrough *(owner, 2026-10-30: fine for now;
-      look again if it becomes a problem)*
+      look again if it becomes a problem)* *(in the Polish Spike, 2026-11-07,
+      only if it becomes a problem)*
 
 ## Milestone 13: Independent code review
 
@@ -3467,7 +3468,8 @@ builds are attached to each run as artifacts.*
       real, and dismiss the false positives one by one with a reason
       (most are "cleartext" rules on code that talks to Google over HTTPS,
       and on tests that use a local mock server). Add the Scorecard badge
-      to the README once its score is worth showing
+      to the README once its score is worth showing *(picked for the Polish
+      Spike, 2026-11-07)*
 - [x] Secret scanning with push protection (blocks a commit that
       contains a key or token)
 - [x] Dependabot: security alerts and fixes, and weekly grouped
@@ -3964,6 +3966,188 @@ steps are those of Plan 1 there.*
 - [ ] Promotion if wanted: options and costs in `docs/RELEASE.md` →
       Promotion
 
+## Polish Spike
+
+*Proposed by the owner 2026-11-07, to run alongside the Milestone 16
+leftovers or after them, in its own session. Not started. Done when: each
+item picked below is built, the owner has tried it, and its entry is ticked
+in the place it came from (each item below says where: the Bug backlog,
+Milestone 12, 14 or 16, or "Later / unscheduled"; they keep the full text,
+and this section only orders and scopes them). An item that sits inside
+another, already ticked item gets a dated "done" note there instead of a
+tick, and an item marked conditional that never becomes necessary doesn't
+hold the spike open. Apart from step 0, nothing here is new work: it
+collects the open bugs and the hardening items that are cheap, safe while Google reviews the
+app, and make the privacy story easier to defend.*
+
+### Read first
+
+`AGENTS.md`; `docs/GOOGLE-VERIFICATION.md` → Status; the items named below,
+where their full text is. What the code did on 2026-11-07, checked then, so a
+new session need not repeat it: `check:website` does not read `SCOPES`;
+nothing revokes a refresh token at Google on account removal, and removing an
+account leaves its downloaded images; there is no `/.well-known/security.txt`
+(the address answers 404) and no Security link in the footer; image prefetch
+is on by default; nothing encrypts the local database; the "model training"
+note is on the website's policy but not in Settings → AI; the repository's
+website link is already set. GitHub showed one open code-scanning alert
+(Scorecard's SAST check, medium: its own text says 28 of the last 30
+commits were scanned, most likely because CodeQL skips docs-only changes on
+purpose, `paths-ignore` in `.github/workflows/codeql.yml`) and one open
+Dependabot alert (`glib`, medium, a Linux-only dependency Tauri pins, so an
+update can't fix it). Twenty-two earlier code-scanning alerts are already
+dismissed with reasons, and the Scorecard badge is already in `README.md`.
+
+### While Google reviews the app
+
+Google verification was submitted on 2026-11-07 (review up to 4 to 6 weeks;
+the first email was due within 3 to 5 days). Until it ends:
+
+- Don't change `SCOPES` (`crates/core/src/auth/oauth.rs`), the app's
+  publishing status or user type in Google Cloud, or its logo: each can delay
+  or restart the review. So "Ask for Google permissions when they are first
+  needed" waits for Google's answer, and its plan should be written with the
+  verified result in hand.
+- A change to what leaves the computer, what is stored or deleted, or a
+  default in Settings updates `website/privacy.html` in the same commit (the
+  rule in `AGENTS.md`), and a site change redeploys the website on merge.
+  Say only what the code does.
+- When Google writes, the owner reads the email with the agent before
+  anyone answers. That comes before spike work.
+
+### Decide first (owner)
+
+- Which bugs below are in, and in what order. The last-account fix needs a
+  design choice: stay in Settings → Accounts with an empty list and "Add
+  account", or open onboarding at its accounts stage.
+- Which hardening items are in, and which wait. The list below is a
+  proposal.
+- Whether encrypting the local cache is worth a dependency, and which option
+  to take for contacting fewer image hosts before a message is opened.
+
+Decided (owner, 2026-11-07, taking the agent's recommendation):
+
+- CodeQL keeps skipping docs-only changes, which have no code to analyze and
+  cost CI time. The Scorecard SAST alert is accepted: dismiss it with that
+  reason.
+- The "Delete all Mailboat data" option is in the account-removal item below,
+  as its original asks.
+
+### Step 0: bring this file up to date (documentation only)
+
+The Milestone 16 items for the website itself and for the Cloudflare setup
+are done but still unticked; the Cloudflare item still says the first deploy
+and the route are left. Tick both and drop that sentence. The repository's
+website link is set; only pinning the repository on the owner's profile is
+left, and it is the owner's to do. Check each against the live site first
+(HTTPS, the `www` redirect, the update address).
+
+### Hardening, in the proposed order
+
+Full text of each is where its bullet points: in "Privacy and security by
+default" (Milestone 16) unless the bullet names another place.
+
+- [ ] `security.txt` and a Security link in the footer. Tiny and site-only;
+      `check:website` should require both
+- [ ] The note in Settings → AI recommending that model training be turned
+      off for the chosen provider (Milestone 16 item). The policy already
+      says it; the app should say it where the provider is chosen
+- [ ] `check:website` reads `SCOPES` and fails when a permission has no
+      matching line in the policy, and a test pins the defaults the policy
+      states (the first "Privacy and security by default" item). This guards
+      the claims Google is checking
+- [ ] Clear the open security alerts (the Milestone 14 item "Look through
+      the first code-scanning findings"): Scorecard's SAST alert (accepted:
+      dismiss it with the reason that CodeQL skips docs-only changes on
+      purpose, see "Decided" above) and the `glib`
+      Dependabot alert (Linux-only; dismiss it with a reason, since an update
+      can't fix it). The earlier code-scanning alerts are dismissed and the
+      README has the Scorecard badge, so those parts of the original item are
+      done. Tick the original when both alerts are resolved or accepted
+- [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and the
+      MIME and `mailto:` parsers (the first item under "Later /
+      unscheduled"). Anything it finds is a security bug, so a finding goes
+      to the front of the queue, ahead of the rest of the spike
+- [ ] Cloud AI is manual by default (the summary above a conversation waits
+      for the Summarize button with Claude or ChatGPT; Apple Intelligence
+      stays automatic). A default changes, so the policy changes in the same
+      commit
+- [ ] Removing an account cleans up fully: revoke the refresh token at Google
+      (best effort, and say so when offline), then delete the account's
+      images with the link table the next Milestone 16 item describes, with
+      the two-account test that item asks for. The policy's line about
+      removed accounts leaving their images comes out when this lands. The
+      original item also asks for a "Delete all Mailboat data" option in
+      Settings (mail cache, images, summaries, settings): in scope (see
+      "Decided" above), so this item isn't ticked until that is built too
+- [ ] Settings → Privacy, one page listing every way data leaves the
+      computer with its current setting. The onboarding can point to it
+- [ ] Summaries kept only as long as needed: a switch to not keep them, or
+      clearing them on quit (its own Milestone 16 item, so it is ticked on
+      its own)
+- [ ] Strip tracking codes (`utm_` and the like) from links, next to the
+      tracking pixels already removed (from the GotEmail and bytemail ideas
+      under "Later / unscheduled"; a sub-point of a ticked research item, so
+      when it is done, add a dated "done" note to that sub-point instead of
+      ticking). Adds no permission. The policy says
+      known tracking pixels are removed, so it gets a line for links in the
+      same commit
+
+### Bugs, proposed order (small and visible first)
+
+Full text of each is in the Bug backlog (or, for the zoom bug, Milestone 16).
+
+- [ ] A sent email's full recipient list can't be seen without resizing
+- [ ] A summary's first bullet repeats the prompt's own example (needs a test
+      that fails when a bullet repeats the label or the example)
+- [ ] Email images show larger than in Gmail
+- [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
+      the email; an agent works from a made-up fixture of the same shape,
+      never the real one)
+- [ ] A sideways swipe on the trackpad drags the whole app
+- [ ] Bug: the screenshot zoom flashes at full size before it animates (the
+      website; a browser test with an empty cache and a slowed network)
+- [ ] The browser test "starfield paints a night sky and lightens the words"
+      that failed once
+- [ ] Periodically refresh each account's Google profile image
+- [ ] Removing the last account throws you out of Settings (it leaves you on
+      onboarding; after the design choice above; a worktree for it, `fix-last-account-removal`, may
+      already exist and be empty)
+
+### Small additions
+
+Full text of each is where it lives now.
+
+- [ ] Warn about outside recipients (addresses not ending with chosen
+      domains are marked while writing; "Later / unscheduled" → Writing)
+- [ ] Remove an address from compose suggestions ("Later / unscheduled" →
+      Writing). It touches the Contacts data Google is reviewing, so it must
+      ask for no new permission
+- [ ] Only if it becomes a problem: "Use a different file" on "Google Cloud
+      is set up" goes back to the start of the walkthrough (Milestone 12;
+      the owner said it was fine for now)
+
+### Held or later
+
+- Ask for Google permissions when first needed: after Google's answer (see
+  above).
+- Contacting fewer image hosts before a message is opened (prefetch only for
+  people you've written to, or not at all): a design decision for the owner.
+- Encrypting the local cache at rest, and Touch ID or Windows Hello: decide,
+  then plan; neither is needed for the review.
+
+### How to run it
+
+One topic per branch and per pull request, each in its own `git worktree`;
+the checks in `AGENTS.md` before every commit; an empty changeset for what
+people won't notice, a real one for what they will; and a review prompt
+from `docs/REVIEW-PROMPT.md` handed to the owner before each push. The owner
+tries each change before it is ticked, as in the earlier spikes. Record a
+choice a later agent might second-guess in the Architecture decisions table.
+Items that call for a browser test (the zoom flash, the starfield flake) run
+`bun run test:browser` in a session that owns port 1436, never alongside
+another agent's browser tests.
+
 ## Bug backlog
 
 *Bugs found in passing (started 2026-10-19 at the owner's request).
@@ -4167,7 +4351,7 @@ again until the next spike.*
 - [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and
       the MIME and `mailto:` parsers (Scorecard's "Fuzzing" check; cargo-fuzz
       or proptest). Anything it finds is a security bug, so it goes first
-      in the queue
+      in the queue *(picked for the Polish Spike, 2026-11-07)*
 
 - [ ] ChatGPT through OpenAI's API with the owner's key *(owner,
       2026-10-31, after Milestone 13 Round 5)*: tools-free by design (the
@@ -4267,8 +4451,10 @@ niche or extra", so Windows and the Release Spike come first)
 - [ ] Templates: saved replies to insert while writing (Gmail's own
       templates aren't in its API, so these would be Mailboat's)
 - [ ] Warn about outside recipients (addresses not ending with chosen
-      domains are marked while writing)
-- [ ] Remove an address from compose suggestions
+      domains are marked while writing) *(picked for the Polish Spike,
+      2026-11-07)*
+- [ ] Remove an address from compose suggestions *(picked for the Polish
+      Spike, 2026-11-07)*
 - [ ] Images inline in the email being written, as Gmail does *(owner
       request, 2026-10-22)*: dropping (or pasting) an image into the
       composer puts it in the body where it lands, while other files
@@ -4320,7 +4506,8 @@ niche or extra", so Windows and the Release Spike come first)
       - **Phishing warnings** (bytemail): look-alike domains, sender
         authenticity, links whose text and address differ
       - **Strip tracking codes from links** (bytemail): utm_ and the like,
-        alongside the tracking pixels Mailboat already removes
+        alongside the tracking pixels Mailboat already removes *(picked for
+        the Polish Spike, 2026-11-07)*
       - **Translate** (GotEmail): Apple's on-device translation of an
         email, with Show original. *Translating selected text moved to
         AI Spike 2 (owner, 2026-10-24)*
