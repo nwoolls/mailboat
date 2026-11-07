@@ -17,11 +17,15 @@ domain is verified in Google Search Console.
 2. Publish the app to production (Google Auth Platform → Audience). From then
    on people see "Google hasn't verified this app" until verification
    finishes, and the app is capped at 100 users.
-3. Fill in the Verification Center: a reason for each permission (below), the
+3. Verify the branding and publish it (Google Auth Platform → Branding →
+   Verify branding, then Publish branding). The data-access step of the
+   Verification Center stays locked until this is done, and a verified result
+   that isn't published within 7 days expires.
+4. Fill in the Verification Center: a reason for each permission (below), the
    demo video, and the contact details.
-4. Submit, then answer Google's questions by email. Restricted permissions
+5. Submit, then answer Google's questions by email. Restricted permissions
    (Gmail) can take weeks.
-5. Expect a question about a security assessment (CASA). Google requires one
+6. Expect a question about a security assessment (CASA). Google requires one
    when an app can reach restricted data from or through a third-party server.
    This app has no server of the project's; mail leaves the computer only for a
    provider the user chose (an AI provider, an AI app). The answer is to say so
@@ -138,14 +142,14 @@ The first two takes were redone, so this is what to do next time:
   suggestions don't stay on screen.
 - Google collapses the permission list ("already has some access") when the
   account granted access before. Remove the app at the account's third-party
-  access page first, so every permission shows with its box.
-- Record the screen with a fixed length (`screencapture -v -V <seconds>`)
+  access page (`myaccount.google.com/permissions`) first, so every permission shows with its box.
+- Record the screen with a fixed length (`screencapture -v -V <seconds> <file.mov>`)
   and let it end on its own. Stopping it with a signal throws the file away.
   A take is about six minutes; shrink it to 1080p before uploading.
 - Settings edits (a rule, a signature, the vacation reply) stay in the demo
   mailbox, so use a new value in each take.
 - Settings → Accounts → Remove is the last scene. It leaves the app at the
-  "Make it yours" onboarding step (a known bug, noted in the roadmap).
+  "Make it yours" onboarding step (a known bug).
 
 ## Status
 
