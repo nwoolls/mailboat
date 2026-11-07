@@ -3766,7 +3766,7 @@ again every seven days until the project is published.*
 *Done when: `getmailboat.app` explains Mailboat, shows it, and lets people
 download it.*
 
-- [ ] Website: plain HTML/CSS/JS in this repository (`website/`), on
+- [x] Website: plain HTML/CSS/JS in this repository (`website/`), on
       Cloudflare (free; decided 2026-11-06, see Architecture), deployed
       by its own GitHub Actions workflow on `getmailboat.app`: home with
       screenshots from Demo mode, download (latest release), privacy
@@ -3793,12 +3793,17 @@ download it.*
       and record it in ARCHITECTURE
 
 - [ ] Website link on the repository, and the repository pinned on the
-      owner's profile *(moved from Milestone 14, 2026-11-04)*
-- [ ] Cloudflare setup for the site *(owner, 2026-11-06)*:
-      *(2026-11-07: done so far: the Worker, the deploy token, the GitHub
-      `website` environment, the `www` redirect, Always Use HTTPS and TLS 1.2,
-      and a check that `support@` and `security@` arrive. Left: the first
-      deploy and the route that attaches the Worker to the domain.)* the site
+      owner's profile *(moved from Milestone 14, 2026-11-04)* *(2026-11-07:
+      the website link is set; pinning the repository is left, and it is the
+      owner's to do)*
+- [x] Cloudflare setup for the site *(owner, 2026-11-06)*:
+      *(2026-11-07: done: the Worker, the deploy token, the GitHub
+      `website` environment, the first deploy, the route that attaches the
+      Worker to the domain, the `www` redirect, Always Use HTTPS and TLS 1.2,
+      and a check that `support@` and `security@` arrive. Checked against
+      the live site the same day: HTTPS with a valid certificate, TLS 1.1
+      refused, HTTP and `www` redirecting, the update address redirecting to
+      the latest release file.)* the site
       attached to `getmailboat.app` with its free certificate active
       (`.app` is HTTPS-only in every browser, so the site only works
       over HTTPS); "Always Use HTTPS" on and a minimum TLS version of 1.2;
@@ -4041,13 +4046,14 @@ Decided:
 
 ### Step 0: bring this file up to date (documentation only)
 
-The Milestone 16 items for the website itself and for the Cloudflare setup
-are done but still unticked; the Cloudflare item still says the first deploy
-and the route are left. Tick both and drop that sentence. The repository's
-website link is set; only pinning the repository on the owner's profile is
-left, and it is the owner's to do. Check each against the live site first
-(HTTPS, the `www` redirect, the update address). Ticking the alerts item
-joins this pass once the owner has OK'd the two dismissals on GitHub.
+Done 2026-11-07: the Milestone 16 items for the website itself and for the
+Cloudflare setup are ticked, the Cloudflare item's "first deploy and route
+left" sentence is dropped, and the checks against the live site (HTTPS, the
+`www` redirect, the update address) are recorded on that item. The
+repository's website link is set; only pinning the repository on the owner's
+profile is left, and it is the owner's to do. Still open: ticking the alerts
+item, which joins this pass once the owner has OK'd the two dismissals on
+GitHub.
 
 ### Hardening, in order
 
