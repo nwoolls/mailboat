@@ -1,5 +1,13 @@
 import { generateKeyPairSync, randomBytes, sign, type KeyObject } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -85,7 +93,7 @@ function run() {
       "--conf",
       join(dir, "tauri.conf.json"),
     ],
-    { encoding: "utf8" },
+    { encoding: "utf8", cwd: join(__dirname, "..") },
   );
   return { code: result.status, out: `${result.stdout}${result.stderr}` };
 }
@@ -104,6 +112,9 @@ describe("making a release's files", () => {
       "App_0.1.0_arm64-setup.exe.sig",
       "App_0.1.0_x64-setup.exe",
       "App_0.1.0_x64-setup.exe.sig",
+      "App_aarch64.dmg",
+      "App_arm64-setup.exe",
+      "App_x64-setup.exe",
       "SHA256SUMS",
       "latest.json",
     ]);
@@ -121,12 +132,74 @@ describe("making a release's files", () => {
       readFileSync(join(dir, "to", "SHA256SUMS"), "utf8")
         .trim()
         .split("\n"),
-    ).toHaveLength(8);
+    ).toHaveLength(11);
     expect(readFileSync(join(dir, "notes.md"), "utf8")).toBe("First release.\n");
+  });
+
+  it("copies the three installers under version-free names, with the same bytes, and keeps them out of the manifest", () => {
+    expect(run().code).toBe(0);
+    const to = (f: string) => readFileSync(join(dir, "to", f));
+    for (const [stable, versioned] of [
+      ["App_aarch64.dmg", "App_0.1.0_aarch64.dmg"],
+      ["App_x64-setup.exe", "App_0.1.0_x64-setup.exe"],
+      ["App_arm64-setup.exe", "App_0.1.0_arm64-setup.exe"],
+    ]) {
+      expect(to(stable).equals(to(versioned)), stable).toBe(true);
+    }
+    // the updater still points at the versioned files, and the sums list the copies
+    const manifest = readFileSync(join(dir, "to", "latest.json"), "utf8");
+    expect(manifest).not.toContain("App_x64-setup.exe");
+    expect(manifest).not.toContain("App_arm64-setup.exe");
+    const sums = readFileSync(join(dir, "to", "SHA256SUMS"), "utf8");
+    for (const stable of ["App_aarch64.dmg", "App_x64-setup.exe", "App_arm64-setup.exe"]) {
+      expect(sums).toContain(`  ${stable}\n`);
+    }
+    // the update tarball and the signatures get no copy
+    expect(
+      readdirSync(join(dir, "to")).filter((f) => f.includes("tar.gz") || f.endsWith(".sig")),
+    ).toHaveLength(4);
   });
 });
 
 describe("a release that must not be made", () => {
+  it("is refused, making nothing, when an installer's name has no version to take out", () => {
+    setup();
+    renameSync(join(dir, "from", "App_0.1.0_aarch64.dmg"), join(dir, "from", "App_aarch64.dmg"));
+    const { code, out } = run();
+    expect(code).toBe(1);
+    expect(out).toContain("doesn't contain");
+    expect(out).toContain("App_aarch64.dmg");
+    expect(() => readdirSync(join(dir, "to"))).toThrow();
+  });
+
+  it("is refused, making nothing, when a version-free name would overwrite another file", () => {
+    setup();
+    // a doubled version: its version-free name is the other disk image's own name
+    writeFileSync(join(dir, "from", "App_0.1.0_0.1.0_aarch64.dmg"), "another disk image");
+    const { code, out } = run();
+    expect(code).toBe(1);
+    expect(out).toContain("would be copied over another file");
+    expect(() => readdirSync(join(dir, "to"))).toThrow();
+  });
+
+  it("is refused when the version in the tag is not the one in the file names (a build-metadata version)", () => {
+    setup();
+    for (const f of readdirSync(join(dir, "from")))
+      renameSync(join(dir, "from", f), join(dir, "from", f.replace("_0.1.0_", "_0.1.0+build.5_")));
+    const { code, out } = run();
+    expect(code, out).toBe(1);
+    expect(out).toContain(`doesn't contain "_0.1.0_"`);
+  });
+
+  it("is refused, making nothing, when one of the three installers is missing", () => {
+    setup();
+    rmSync(join(dir, "from", "App_0.1.0_aarch64.dmg"));
+    const { code, out } = run();
+    expect(code).toBe(1);
+    expect(out).toContain("no installer ending in .dmg");
+    expect(() => readdirSync(join(dir, "to"))).toThrow();
+  });
+
   it("is refused when a signature is by another key", () => {
     setup({ signedBy: newKey() });
     const { code, out } = run();

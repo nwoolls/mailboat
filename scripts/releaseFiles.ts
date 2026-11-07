@@ -16,6 +16,9 @@ export const PLATFORMS: readonly Platform[] = [
  * Which platform's update payload a build output is, or null if it isn't one:
  * the Mac app's tarball, and each Windows installer (the updater runs the
  * installer itself).
+ * It reads the build's own versioned names; the version-free copies of the
+ * installers (see `stableName`) are made afterwards, in another folder, and
+ * are never passed through here.
  */
 export function platformOf(file: string): Platform | null {
   if (file.endsWith(".app.tar.gz")) return "darwin-aarch64";
@@ -34,6 +37,27 @@ export function publishable(file: string): boolean {
   const payload = file.endsWith(".sig") ? file.slice(0, -".sig".length) : file;
   return platformOf(payload) !== null;
 }
+
+/**
+ * The name a person's download link can rely on: the installer's file name
+ * with the version taken out (`App_0.1.0_x64-setup.exe` is `App_x64-setup.exe`),
+ * so `releases/latest/download/<this name>` is always the newest one. Only the
+ * disk image and the two Windows installers have one. The update files keep
+ * their versioned names, because the manifest points at them.
+ */
+export function stableName(file: string, version: string): string | null {
+  const marker = `_${version}_`;
+  if (!isInstaller(file) || !file.includes(marker)) return null;
+  return file.replace(marker, "_");
+}
+
+/** The disk image and the two Windows installers: what a person downloads. */
+export function isInstaller(file: string): boolean {
+  return INSTALLER_ENDINGS.some((ending) => file.endsWith(ending));
+}
+
+/** How the three installers' names end; a release must have one of each. */
+export const INSTALLER_ENDINGS = [".dmg", "_x64-setup.exe", "_arm64-setup.exe"] as const;
 
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/;
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;

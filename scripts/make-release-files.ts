@@ -1,6 +1,7 @@
 // Makes a release's files from what the release workflow's build jobs made:
 // copies the ones that go on the release, writes `latest.json` (the manifest
-// the app's updater reads) and SHA256SUMS, and takes the release notes from
+// the app's updater reads) and SHA256SUMS, makes version-free copies of the
+// installers for download links, and takes the release notes from
 // CHANGELOG.md. Before it makes anything, it checks every update file's
 // signature the way the app will: against the public key in tauri.conf.json,
 // and for this version. It fails, leaving nothing a person could publish by
@@ -19,9 +20,12 @@ import {
   buildManifest,
   changelogSection,
   checksumLines,
+  INSTALLER_ENDINGS,
+  isInstaller,
   isVersion,
   platformOf,
   publishable,
+  stableName,
 } from "./releaseFiles";
 import { verifyMinisign } from "./minisign";
 
@@ -93,8 +97,42 @@ try {
   fail(error instanceof Error ? error.message : String(error));
 }
 
+// The installers also go out under names without the version, so the
+// website's download links never change. If the build's names ever stop
+// carrying the version, or an installer is missing, the release would go out
+// without a link that works: stop here, before anything is made.
+const stableCopies: { file: string; stable: string }[] = [];
+for (const file of chosen.filter(isInstaller)) {
+  const stable = stableName(file, version);
+  if (!stable) {
+    fail(
+      `${file} doesn't contain "_${version}_", so it can't have a name without the version, ` +
+        `and the website's download link for it would break`,
+    );
+  }
+  // A name that still holds the version, one that is already a file in the
+  // release, or one two installers share would overwrite a different file.
+  if (
+    stable.includes(`_${version}_`) ||
+    chosen.includes(stable) ||
+    stableCopies.some((c) => c.stable === stable)
+  ) {
+    fail(`${file} would be copied over another file as ${stable}`);
+  }
+  stableCopies.push({ file, stable });
+}
+for (const ending of INSTALLER_ENDINGS) {
+  if (!stableCopies.some((c) => c.stable.endsWith(ending))) {
+    fail(`no installer ending in ${ending}: the website's download link for it would break`);
+  }
+}
+
 mkdirSync(to, { recursive: true });
 for (const file of chosen) copyFileSync(join(from, file), join(to, file));
+// The same installers again under names without the version, so the website
+// can link to the newest one for good. Same bytes, so the checksums and the
+// provenance attestation cover them like the rest.
+for (const { file, stable } of stableCopies) copyFileSync(join(from, file), join(to, stable));
 writeFileSync(join(to, "latest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
 const entries = readdirSync(to).map((file) => ({
