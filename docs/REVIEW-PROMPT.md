@@ -41,7 +41,8 @@ stash corrupts that agent's work. So:
 
 - NEVER run any command that changes the main folder's state: no
   `git switch`, `git checkout`, `git stash`, `git reset`, `git restore`,
-  `git clean`, `git merge`, `git rebase`, `git commit`, `git worktree prune`,
+  `git clean`, `git merge`, `git rebase`, `git commit`, `git pull`, `git push`,
+  `git update-ref`, `git tag`, `git branch -f` / `-d`, `git worktree prune`,
   no formatter, no installer, no `bun run changeset`. Reading is fine from
   anywhere: `git log`, `git show`, `git diff`, `git branch`, `cat`, `grep`.
 - Make your own working copy FIRST, outside the main folder, at the branch:
@@ -73,7 +74,8 @@ branch is often behind, and comparing against it shows other people's merged
 work as part of this branch. Fetch first, scoped so it changes only the
 `origin/main` reference (no tags, no pruning):
 
-  git fetch --no-tags --no-prune origin main
+    git -C <path to the repository> fetch --no-tags --no-prune origin main
+
 
 Then, from inside YOUR worktree (its `HEAD` is the commit you were asked to
 review, even if the branch moves later; write that commit down in your report):
@@ -107,7 +109,9 @@ already rejected in an earlier round, with the reason.>
   only made-up data on reserved domains and demo people are allowed). Nothing
   about the owner's Apple developer or code-signing accounts (names, team or
   key IDs, certificate details, file paths) and no credentials or keys. The
-  brand rule: the app's name only in `brand.json`, and comments say "the app".
+  brand rule in AGENTS.md: the app's name is written by hand only where it
+  allows (`brand.json`, Tauri's config files, the docs, the website's pages,
+  the artwork), and comments say "the app".
 - Tests: do they prove what the roadmap and docs claim? Name any test that
   would still pass with the change taken out. Name anything promised but
   untested.
@@ -130,9 +134,14 @@ already rejected in an earlier round, with the reason.>
 - `bun run fmt:check`, `bun run lint`, `bun run typecheck`
 - `cargo clippy --workspace --all-targets -- -D warnings`, in your worktree (it
   only writes the worktree's own ignored `target/` folder)
-The full `bun run check` has already passed for the current tree; you don't
-need to run it (it includes the browser tests: see the worktree rules above).
-Never claim something passes without having run it.
+
+## What the writing agent already ran                          [fill in]
+<State truthfully what was run on this tree: "the full `bun run check`
+passed", or "not run: the change is documentation", and so on.>
+
+Do not run the full `bun run check` yourself (it includes the browser tests:
+see the worktree rules above). Never claim something passes without having run
+it.
 
 ## How to report
 Return the whole review as ONE Markdown code fence (a single block starting

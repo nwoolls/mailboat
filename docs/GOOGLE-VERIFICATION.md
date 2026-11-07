@@ -21,6 +21,12 @@ domain is verified in Google Search Console.
    demo video, and the contact details.
 4. Submit, then answer Google's questions by email. Restricted permissions
    (Gmail) can take weeks.
+5. Expect a question about a security assessment (CASA). Google requires one
+   when an app can reach restricted data from or through a third-party server.
+   This app has no server of the project's; mail leaves the computer only for a
+   provider the user chose (an AI provider, an AI app). The answer is to say so
+   and ask to be exempt (see `docs/RELEASE.md`). If Google insists, the
+   assessment is yearly and paid. Google decides; nothing here promises it.
 
 ## The eight permissions
 
@@ -42,11 +48,12 @@ server of ours.
 Lets the user edit three things that live in Gmail's settings from inside the
 app: filters (rules), the signature for each address they send from, and the
 vacation reply. Because Google stores them, filters and the vacation reply
-keep working when the app is closed. The app reads and writes them when the
-user opens Settings → Rules, Signatures or Vacation responder to edit them. It
-also reads the account's "Send mail as" addresses and their signatures while
-it syncs (at start-up and sign-in), so the composer can offer them when the
-user writes.
+keep working when the app is closed. The app reads three things: the
+account's "Send mail as" addresses and their signatures while it syncs (at
+start-up and sign-in), so the composer can offer them; the vacation reply's
+state, so the main window can show that it is on; and the filters, when the
+user opens Settings → Rules. It writes only when the user saves a change in
+Settings → Rules, Signatures or Vacation responder.
 
 **`https://www.googleapis.com/auth/calendar.events`** (sensitive)
 Answers meeting invitations in the email, as Gmail does. When a message holds
@@ -84,7 +91,9 @@ which the app uses as the sender's name when Gmail leaves it blank.
   out or the user clears it in Settings.
 - No Mailboat server, account or analytics. The developer never receives mail
   or Google data.
-- The project does not sell it, use it for advertising or use it to train AI models, and no person on the project reads it.
+- The project does not sell it, use it for advertising or use it to train AI
+  models, and does not read it except where the user agrees, or for security,
+  legal or support reasons that Google's Limited Use rules allow.
 - Mail reaches an AI provider only when the user has chosen that provider for
   a feature, in Settings → AI (the conversation's text is sent to write its
   summary when a long conversation is opened while the summary setting is
@@ -129,3 +138,4 @@ Updated as each piece is done.
 - [ ] Publish to production
 - [ ] Demo video recorded and uploaded
 - [ ] Verification Center filled in and submitted
+- [ ] Google's answer on a security assessment (exempt, or required and by when)
