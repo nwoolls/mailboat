@@ -2817,7 +2817,8 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
 
 - [ ] "Use a different file" on "Google Cloud is set up" goes back to
       the start of the walkthrough *(owner, 2026-10-30: fine for now;
-      look again if it becomes a problem)*
+      look again if it becomes a problem)* *(in the Polish Spike, 2026-11-07,
+      only if it becomes a problem)*
 
 ## Milestone 13: Independent code review
 
@@ -3467,7 +3468,8 @@ builds are attached to each run as artifacts.*
       real, and dismiss the false positives one by one with a reason
       (most are "cleartext" rules on code that talks to Google over HTTPS,
       and on tests that use a local mock server). Add the Scorecard badge
-      to the README once its score is worth showing
+      to the README once its score is worth showing *(picked for the Polish
+      Spike, 2026-11-07)*
 - [x] Secret scanning with push protection (blocks a commit that
       contains a key or token)
 - [x] Dependabot: security alerts and fixes, and weekly grouped
@@ -3985,7 +3987,10 @@ account leaves its downloaded images; there is no `/.well-known/security.txt`
 (the address answers 404) and no Security link in the footer; image prefetch
 is on by default; nothing encrypts the local database; the "model training"
 note is on the website's policy but not in Settings → AI; the repository's
-website link is already set.
+website link is already set. GitHub showed one open code-scanning alert
+(Scorecard's SAST check, medium; its cause is not yet looked into) and one
+open Dependabot alert (`glib`, medium, a Linux-only dependency Tauri pins, so
+an update can't fix it).
 
 ### While Google reviews the app
 
@@ -4036,6 +4041,15 @@ Full text of each is in "Privacy and security by default" (Milestone 16).
       matching line in the policy, and a test pins the defaults the policy
       states (the first "Privacy and security by default" item). This guards
       the claims Google is checking
+- [ ] Go through the open code-scanning findings (Milestone 14 item): fix
+      what is real, dismiss the rest one by one with a reason (the `glib`
+      alert is Linux-only and can't be fixed by an update), find out what the
+      Scorecard SAST alert wants, and add the Scorecard badge to the README
+      once the score is worth showing
+- [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and the
+      MIME and `mailto:` parsers (the first item under "Later /
+      unscheduled"). Anything it finds is a security bug, so a finding goes
+      to the front of the queue, ahead of the rest of the spike
 - [ ] Cloud AI is manual by default (the summary above a conversation waits
       for the Summarize button with Claude or ChatGPT; Apple Intelligence
       stays automatic). A default changes, so the policy changes in the same
@@ -4048,6 +4062,11 @@ Full text of each is in "Privacy and security by default" (Milestone 16).
 - [ ] Settings → Privacy, one page listing every way data leaves the
       computer with its current setting, and the switch for keeping
       summaries only as long as needed. The onboarding can point to it
+- [ ] Strip tracking codes (`utm_` and the like) from links, next to the
+      tracking pixels already removed (from the GotEmail and bytemail ideas
+      under "Later / unscheduled"). Adds no permission. The policy says
+      known tracking pixels are removed, so it gets a line for links in the
+      same commit
 
 ### Bugs, proposed order (small and visible first)
 
@@ -4068,6 +4087,19 @@ Full text of each is in the Bug backlog (or, for the zoom bug, Milestone 16).
 - [ ] Removing the last account leaves you on onboarding (after the design
       choice above; a worktree for it, `fix-last-account-removal`, may
       already exist and be empty)
+
+### Small additions
+
+Full text of each is where it lives now.
+
+- [ ] Warn about outside recipients (addresses not ending with chosen
+      domains are marked while writing; "Later / unscheduled" → Writing)
+- [ ] Remove an address from compose suggestions ("Later / unscheduled" →
+      Writing). It touches the Contacts data Google is reviewing, so it must
+      ask for no new permission
+- [ ] Only if it becomes a problem: "Use a different file" on "Google Cloud
+      is set up" goes back to the start of the walkthrough (Milestone 12;
+      the owner said it was fine for now)
 
 ### Held or later
 
@@ -4290,7 +4322,7 @@ again until the next spike.*
 - [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and
       the MIME and `mailto:` parsers (Scorecard's "Fuzzing" check; cargo-fuzz
       or proptest). Anything it finds is a security bug, so it goes first
-      in the queue
+      in the queue *(picked for the Polish Spike, 2026-11-07)*
 
 - [ ] ChatGPT through OpenAI's API with the owner's key *(owner,
       2026-10-31, after Milestone 13 Round 5)*: tools-free by design (the
@@ -4390,8 +4422,10 @@ niche or extra", so Windows and the Release Spike come first)
 - [ ] Templates: saved replies to insert while writing (Gmail's own
       templates aren't in its API, so these would be Mailboat's)
 - [ ] Warn about outside recipients (addresses not ending with chosen
-      domains are marked while writing)
-- [ ] Remove an address from compose suggestions
+      domains are marked while writing) *(picked for the Polish Spike,
+      2026-11-07)*
+- [ ] Remove an address from compose suggestions *(picked for the Polish
+      Spike, 2026-11-07)*
 - [ ] Images inline in the email being written, as Gmail does *(owner
       request, 2026-10-22)*: dropping (or pasting) an image into the
       composer puts it in the body where it lands, while other files
@@ -4443,7 +4477,8 @@ niche or extra", so Windows and the Release Spike come first)
       - **Phishing warnings** (bytemail): look-alike domains, sender
         authenticity, links whose text and address differ
       - **Strip tracking codes from links** (bytemail): utm_ and the like,
-        alongside the tracking pixels Mailboat already removes
+        alongside the tracking pixels Mailboat already removes *(picked for
+        the Polish Spike, 2026-11-07)*
       - **Translate** (GotEmail): Apple's on-device translation of an
         email, with Show original. *Translating selected text moved to
         AI Spike 2 (owner, 2026-10-24)*
