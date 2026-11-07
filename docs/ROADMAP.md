@@ -4024,11 +4024,14 @@ the first email was due within 3 to 5 days). Until it ends:
   proposal.
 - Whether encrypting the local cache is worth a dependency, and which option
   to take for contacting fewer image hosts before a message is opened.
-- Whether to have CodeQL scan docs-only changes too, which would clear the
-  Scorecard SAST alert at the cost of more CI time (the skip is deliberate),
-  or to accept that score.
-- Whether the "Delete all Mailboat data" option is in the account-removal
-  item below, as its original asks, or is dropped from it.
+
+Decided (owner, 2026-11-07, taking the agent's recommendation):
+
+- CodeQL keeps skipping docs-only changes, which have no code to analyze and
+  cost CI time. The Scorecard SAST alert is accepted: dismiss it with that
+  reason.
+- The "Delete all Mailboat data" option is in the account-removal item below,
+  as its original asks.
 
 ### Step 0: bring this file up to date (documentation only)
 
@@ -4054,8 +4057,9 @@ default" (Milestone 16) unless the bullet names another place.
       states (the first "Privacy and security by default" item). This guards
       the claims Google is checking
 - [ ] Clear the open security alerts (the Milestone 14 item "Look through
-      the first code-scanning findings"): Scorecard's SAST alert (scan every
-      commit, or accept 28 of 30: see "Decide first") and the `glib`
+      the first code-scanning findings"): Scorecard's SAST alert (accepted:
+      dismiss it with the reason that CodeQL skips docs-only changes on
+      purpose, see "Decided" above) and the `glib`
       Dependabot alert (Linux-only; dismiss it with a reason, since an update
       can't fix it). The earlier code-scanning alerts are dismissed and the
       README has the Scorecard badge, so those parts of the original item are
@@ -4074,8 +4078,8 @@ default" (Milestone 16) unless the bullet names another place.
       the two-account test that item asks for. The policy's line about
       removed accounts leaving their images comes out when this lands. The
       original item also asks for a "Delete all Mailboat data" option in
-      Settings (mail cache, images, summaries, settings): this item isn't
-      ticked until that is built too, unless the owner drops it
+      Settings (mail cache, images, summaries, settings): in scope (see
+      "Decided" above), so this item isn't ticked until that is built too
 - [ ] Settings → Privacy, one page listing every way data leaves the
       computer with its current setting. The onboarding can point to it
 - [ ] Summaries kept only as long as needed: a switch to not keep them, or
