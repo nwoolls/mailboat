@@ -3969,6 +3969,18 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [ ] Removing the last account throws you out of Settings *(owner report,
+      2026-11-07)*: in Settings → Accounts, removing the only account
+      leaves you on the "Make it yours" onboarding screen instead of in
+      Settings → Accounts. Cause, from reading the code:
+      `showOnboarding` (`features/onboarding/model/onboarding.ts`) is
+      always true with no accounts, so the window swaps to onboarding, and
+      onboarding resumes at the stage it saved last ("Make it yours", the
+      last one), not at the account stage. Wanted: stay in Settings →
+      Accounts, showing an empty list with "Add account", or at least land
+      on the account stage of onboarding. Design to agree first, since an
+      app with no accounts has nothing else to show
+
 - [ ] A sideways swipe on the trackpad drags the whole app *(owner report,
       2026-11-06)*: with nothing left in the inbox (inbox zero), swiping
       side to side pulls the entire app's contents sideways inside the
