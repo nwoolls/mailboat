@@ -7,7 +7,7 @@ name: Website
 #
 # The Worker's name and the account ID are variables of that environment, the
 # token is its secret. The token (account-owned, "Workers Scripts: Edit" and
-# nothing else) expires 2027-11-06: create a new one with the same single
+# nothing else) expires 2027-11-07: create a new one with the same single
 # permission, replace the secret, then delete the old token. The route that
 # sends the site's domain to the Worker is set by hand in the Cloudflare
 # dashboard, because this token has no zone permissions.
