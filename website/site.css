@@ -419,6 +419,12 @@ section {
     padding-top: 128px;
   }
 }
+.more-downloads {
+  margin-top: 8px;
+}
+.closing .more-downloads {
+  margin-top: 16px;
+}
 .fine {
   margin-top: 16px;
   font-size: 13px;
