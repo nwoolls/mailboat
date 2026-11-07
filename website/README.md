@@ -32,7 +32,7 @@ which checks the site and deploys it to Cloudflare. Pull requests never deploy.
 Its links and files are root-absolute (`/site.css`) because it is served at the
 address that was asked for.
 
-The deploy token expires on 2027-11-06. To rotate it, create a new account-owned
+The deploy token expires on 2027-11-07. To rotate it, create a new account-owned
 token in Cloudflare with only **Workers Scripts: Edit**, replace the
 `CLOUDFLARE_API_TOKEN` secret in the repository's `website` environment, then
 delete the old token.

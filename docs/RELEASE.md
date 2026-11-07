@@ -97,8 +97,8 @@ flowchart LR
 ### Google verification (prepared in groundwork, submitted after Checkpoint 1)
 
 Mailboat asks for restricted scopes (`gmail.modify`; `gmail.settings.basic`
-is believed restricted, to confirm on Google's
-list) and sensitive ones (contacts, calendar). An individual can get
+is restricted too, as the consent screen's Data Access page shows,
+confirmed 2026-11-07) and sensitive ones (contacts, calendar). An individual can get
 verified; it's paperwork and waiting (weeks to months).
 
 - New production OAuth client in a Cloud project named for Mailboat
