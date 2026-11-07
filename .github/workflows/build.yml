@@ -4,6 +4,13 @@ name: Test builds
 # merged. They are not releases (signed builds are Milestone 15).
 on:
   pull_request:
+    # Not for a change that can't alter the app. Not a required check.
+    paths-ignore:
+      - "docs/**"
+      - ".changeset/**"
+      - "website/**"
+      - "scripts/build-website-images.sh"
+      - "*.md"
 
 permissions:
   contents: read
