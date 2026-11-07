@@ -3946,6 +3946,8 @@ steps are those of Plan 1 there.*
       policy, terms), demo video, a reason for each scope, and the case
       for no security assessment (mail stays on the device). If Google
       requires the assessment anyway: yearly, a paid assessment. Re-verified every 12 months
+      *Submitted 2026-11-07; Google's review is under way (see
+      `docs/GOOGLE-VERIFICATION.md` → Status). Tick this when Google approves.*
 - [ ] The client's ID and secret only in official builds, added when
       building; never in the public code
 - [ ] Polar store and licence keys (up to 2 devices), with a sandbox
