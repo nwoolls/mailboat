@@ -3971,9 +3971,12 @@ steps are those of Plan 1 there.*
 *Proposed by the owner 2026-11-07, to run alongside the Milestone 16
 leftovers or after them, in its own session. Not started. Done when: each
 item picked below is built, the owner has tried it, and its entry is ticked
-in the place it came from (the Bug backlog or "Privacy and security by
-default" in Milestone 16, which keep the full text; this section only
-orders and scopes them). Apart from step 0, nothing here is new work: it
+in the place it came from (each item below says where: the Bug backlog,
+Milestone 12, 14 or 16, or "Later / unscheduled"; they keep the full text,
+and this section only orders and scopes them). An item that sits inside
+another, already ticked item gets a dated "done" note there instead of a
+tick, and an item marked conditional that never becomes necessary doesn't
+hold the spike open. Apart from step 0, nothing here is new work: it
 collects the open bugs and the hardening items that are cheap, safe while Google reviews the
 app, and make the privacy story easier to defend.*
 
@@ -3988,9 +3991,12 @@ account leaves its downloaded images; there is no `/.well-known/security.txt`
 is on by default; nothing encrypts the local database; the "model training"
 note is on the website's policy but not in Settings → AI; the repository's
 website link is already set. GitHub showed one open code-scanning alert
-(Scorecard's SAST check, medium; its cause is not yet looked into) and one
-open Dependabot alert (`glib`, medium, a Linux-only dependency Tauri pins, so
-an update can't fix it).
+(Scorecard's SAST check, medium: its own text says 28 of the last 30
+commits were scanned, most likely because CodeQL skips docs-only changes on
+purpose, `paths-ignore` in `.github/workflows/codeql.yml`) and one open
+Dependabot alert (`glib`, medium, a Linux-only dependency Tauri pins, so an
+update can't fix it). Twenty-two earlier code-scanning alerts are already
+dismissed with reasons, and the Scorecard badge is already in `README.md`.
 
 ### While Google reviews the app
 
@@ -4018,6 +4024,11 @@ the first email was due within 3 to 5 days). Until it ends:
   proposal.
 - Whether encrypting the local cache is worth a dependency, and which option
   to take for contacting fewer image hosts before a message is opened.
+- Whether to have CodeQL scan docs-only changes too, which would clear the
+  Scorecard SAST alert at the cost of more CI time (the skip is deliberate),
+  or to accept that score.
+- Whether the "Delete all Mailboat data" option is in the account-removal
+  item below, as its original asks, or is dropped from it.
 
 ### Step 0: bring this file up to date (documentation only)
 
@@ -4030,7 +4041,8 @@ left, and it is the owner's to do. Check each against the live site first
 
 ### Hardening, in the proposed order
 
-Full text of each is in "Privacy and security by default" (Milestone 16).
+Full text of each is where its bullet points: in "Privacy and security by
+default" (Milestone 16) unless the bullet names another place.
 
 - [ ] `security.txt` and a Security link in the footer. Tiny and site-only;
       `check:website` should require both
@@ -4041,11 +4053,13 @@ Full text of each is in "Privacy and security by default" (Milestone 16).
       matching line in the policy, and a test pins the defaults the policy
       states (the first "Privacy and security by default" item). This guards
       the claims Google is checking
-- [ ] Go through the open code-scanning findings (Milestone 14 item): fix
-      what is real, dismiss the rest one by one with a reason (the `glib`
-      alert is Linux-only and can't be fixed by an update), find out what the
-      Scorecard SAST alert wants, and add the Scorecard badge to the README
-      once the score is worth showing
+- [ ] Clear the open security alerts (the Milestone 14 item "Look through
+      the first code-scanning findings"): Scorecard's SAST alert (scan every
+      commit, or accept 28 of 30: see "Decide first") and the `glib`
+      Dependabot alert (Linux-only; dismiss it with a reason, since an update
+      can't fix it). The earlier code-scanning alerts are dismissed and the
+      README has the Scorecard badge, so those parts of the original item are
+      done. Tick the original when both alerts are resolved or accepted
 - [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and the
       MIME and `mailto:` parsers (the first item under "Later /
       unscheduled"). Anything it finds is a security bug, so a finding goes
@@ -4058,13 +4072,20 @@ Full text of each is in "Privacy and security by default" (Milestone 16).
       (best effort, and say so when offline), then delete the account's
       images with the link table the next Milestone 16 item describes, with
       the two-account test that item asks for. The policy's line about
-      removed accounts leaving their images comes out when this lands
+      removed accounts leaving their images comes out when this lands. The
+      original item also asks for a "Delete all Mailboat data" option in
+      Settings (mail cache, images, summaries, settings): this item isn't
+      ticked until that is built too, unless the owner drops it
 - [ ] Settings → Privacy, one page listing every way data leaves the
-      computer with its current setting, and the switch for keeping
-      summaries only as long as needed. The onboarding can point to it
+      computer with its current setting. The onboarding can point to it
+- [ ] Summaries kept only as long as needed: a switch to not keep them, or
+      clearing them on quit (its own Milestone 16 item, so it is ticked on
+      its own)
 - [ ] Strip tracking codes (`utm_` and the like) from links, next to the
       tracking pixels already removed (from the GotEmail and bytemail ideas
-      under "Later / unscheduled"). Adds no permission. The policy says
+      under "Later / unscheduled"; a sub-point of a ticked research item, so
+      when it is done, add a dated "done" note to that sub-point instead of
+      ticking). Adds no permission. The policy says
       known tracking pixels are removed, so it gets a line for links in the
       same commit
 
@@ -4080,12 +4101,13 @@ Full text of each is in the Bug backlog (or, for the zoom bug, Milestone 16).
       the email; an agent works from a made-up fixture of the same shape,
       never the real one)
 - [ ] A sideways swipe on the trackpad drags the whole app
-- [ ] The screenshot zoom on the website flashes at full size first (a
-      browser test with an empty cache and a slowed network)
-- [ ] The starfield browser test that failed once
+- [ ] Bug: the screenshot zoom flashes at full size before it animates (the
+      website; a browser test with an empty cache and a slowed network)
+- [ ] The browser test "starfield paints a night sky and lightens the words"
+      that failed once
 - [ ] Periodically refresh each account's Google profile image
-- [ ] Removing the last account leaves you on onboarding (after the design
-      choice above; a worktree for it, `fix-last-account-removal`, may
+- [ ] Removing the last account throws you out of Settings (it leaves you on
+      onboarding; after the design choice above; a worktree for it, `fix-last-account-removal`, may
       already exist and be empty)
 
 ### Small additions
@@ -4118,6 +4140,9 @@ people won't notice, a real one for what they will; and a review prompt
 from `docs/REVIEW-PROMPT.md` handed to the owner before each push. The owner
 tries each change before it is ticked, as in the earlier spikes. Record a
 choice a later agent might second-guess in the Architecture decisions table.
+Items that call for a browser test (the zoom flash, the starfield flake) run
+`bun run test:browser` in a session that owns port 1436, never alongside
+another agent's browser tests.
 
 ## Bug backlog
 
