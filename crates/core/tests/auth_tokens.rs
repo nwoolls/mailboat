@@ -210,7 +210,7 @@ fn a_failed_keychain_delete_keeps_the_account_to_try_again() {
         .stuck
         .store(true, std::sync::atomic::Ordering::SeqCst);
 
-    assert!(remove_account(&db, &secrets, account).is_err());
+    assert!(remove_account(&db, &secrets, account, std::path::Path::new("images")).is_err());
     assert!(
         accounts::get(&db.conn(), account).is_ok(),
         "the account is kept"
@@ -224,7 +224,7 @@ fn a_failed_keychain_delete_keeps_the_account_to_try_again() {
     secrets
         .stuck
         .store(false, std::sync::atomic::Ordering::SeqCst);
-    remove_account(&db, &secrets, account).unwrap();
+    remove_account(&db, &secrets, account, std::path::Path::new("images")).unwrap();
     assert!(accounts::get(&db.conn(), account).is_err());
     assert_eq!(secrets.get(&refresh_token_key("sub-r")).unwrap(), None);
 }
@@ -274,5 +274,123 @@ async fn token_endpoint_text_stays_out_of_the_error() {
             );
             assert!(text.contains("invalid_grant"), "{text}");
         }
+    }
+}
+
+/// Removing an account ends its grant at Google, best effort: the refresh
+/// token goes in the request body, a token Google no longer knows (400)
+/// counts as done, and a refusal or no network reports "not revoked"
+/// without failing.
+#[tokio::test]
+async fn removing_an_account_revokes_its_refresh_token_at_google() {
+    use mail_core::auth::tokens::revoke_refresh_token;
+    use mail_core::db::{accounts, Db};
+
+    let db = Db::open_in_memory().unwrap();
+    accounts::upsert(
+        &db.conn(),
+        &accounts::NewAccount {
+            google_sub: "sub-v",
+            email: "me@example.com",
+            display_name: None,
+            avatar_url: None,
+            oauth_client: "default",
+        },
+    )
+    .unwrap();
+    let account = accounts::list(&db.conn()).unwrap()[0].id;
+    let secrets = MemoryStore::default();
+    let http = reqwest::Client::new();
+
+    // No token in the keychain: nothing to revoke, nothing to report.
+    let server = MockServer::start().await;
+    let endpoint = format!("{}/revoke", server.uri());
+    assert!(revoke_refresh_token(&db, &secrets, &http, &endpoint, account).await);
+
+    secrets
+        .set(&refresh_token_key("sub-v"), "the-refresh-token")
+        .unwrap();
+    for (status, revoked) in [(200, true), (400, true), (500, false), (403, false)] {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/revoke"))
+            .and(body_string_contains("token=the-refresh-token"))
+            .respond_with(ResponseTemplate::new(status))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let endpoint = format!("{}/revoke", server.uri());
+        assert_eq!(
+            revoke_refresh_token(&db, &secrets, &http, &endpoint, account).await,
+            revoked,
+            "HTTP {status}"
+        );
+    }
+
+    // Offline: the address answers nothing.
+    assert!(
+        !revoke_refresh_token(&db, &secrets, &http, "http://127.0.0.1:9/revoke", account).await
+    );
+    // The address the app uses is Google's, over HTTPS.
+    assert_eq!(
+        mail_core::auth::oauth::GOOGLE_REVOKE_URI,
+        "https://oauth2.googleapis.com/revoke"
+    );
+}
+
+/// Removing an account with a stored token asks Google to revoke it, and a
+/// revoke that fails (a refusal, no network) never keeps the account: the
+/// removal goes ahead and says it wasn't confirmed. With no endpoint (the
+/// demo) nothing is asked. None of it needs the OAuth client file.
+#[tokio::test]
+async fn removal_goes_ahead_whether_or_not_google_confirms_the_revoke() {
+    use mail_core::auth::tokens::remove_account_revoking;
+    use mail_core::db::{accounts, Db};
+
+    let http = reqwest::Client::new();
+    let images = std::path::Path::new("no-images-here");
+    // (status of Google's answer or None for the demo, whether it's confirmed, requests expected)
+    for (answer, confirmed, requests) in [
+        (Some(200), true, 1),
+        (Some(400), true, 1),
+        (Some(500), false, 1),
+        (None, true, 0),
+    ] {
+        let db = Db::open_in_memory().unwrap();
+        let account = accounts::upsert(
+            &db.conn(),
+            &accounts::NewAccount {
+                google_sub: "sub-w",
+                email: "me@example.com",
+                display_name: None,
+                avatar_url: None,
+                oauth_client: "default",
+            },
+        )
+        .unwrap()
+        .id;
+        let secrets = MemoryStore::default();
+        secrets
+            .set(&refresh_token_key("sub-w"), "the-token")
+            .unwrap();
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/revoke"))
+            .and(body_string_contains("token=the-token"))
+            .respond_with(ResponseTemplate::new(answer.unwrap_or(200)))
+            .expect(requests)
+            .mount(&server)
+            .await;
+        let endpoint = answer.map(|_| format!("{}/revoke", server.uri()));
+        let revoked =
+            remove_account_revoking(&db, &secrets, &http, endpoint.as_deref(), account, images)
+                .await
+                .unwrap();
+        assert_eq!(revoked, confirmed, "answer {answer:?}");
+        assert!(
+            accounts::get(&db.conn(), account).is_err(),
+            "the account is gone"
+        );
+        assert_eq!(secrets.get(&refresh_token_key("sub-w")).unwrap(), None);
     }
 }

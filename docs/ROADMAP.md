@@ -3894,8 +3894,10 @@ security fixes).
       downloaded remote images (next item), and offer "Delete all Mailboat
       data" in Settings (mail cache, images, summaries, settings). Today
       removal deletes the token from the keychain and the mail cache, and
-      leaves the images and does not revoke
-- [ ] Downloaded remote images are deleted with their account: the image
+      leaves the images and does not revoke *(2026-11-08: revoking and the
+      images are done; "Delete all Mailboat data" is still open, so this
+      stays unticked)*
+- [x] Downloaded remote images are deleted with their account: the image
       cache (`image_cache`) is keyed by address only, and one file serves
       every account that received the same image, so removing an account
       can't just delete rows. Record which accounts' mail uses each image
@@ -3905,7 +3907,9 @@ security fixes).
       policy's line that removed accounts leave their images behind comes
       out when this is done. A test with two accounts that received the
       same image (the multi-account rule: nothing keyed by an address or ID
-      alone) covers it
+      alone) covers it *(2026-11-08: built with the item above, in the
+      Polish Spike, as a per-account cache instead of a link table (see
+      there); the policy line is the one open part, held for Google)*
 - [ ] Fewer hosts contacted before a message is opened: options are
       remote images for people you've written to by default, prefetching
       images only for those people or not at all, or both. Prefetch is
@@ -4135,11 +4139,27 @@ and a tick.
       names too long in bytes, a trailing space or dot after a cut, and a
       dot-only subject that cost the `.eml` its extension. The `mailto:`
       reader, the Gmail message reader and the raw-email reader had none)*
-- [ ] Removing an account cleans up: revoke the refresh token at Google
+- [x] Removing an account cleans up: revoke the refresh token at Google
       (best effort, and say so when offline), then delete the account's
       images with the link table the next Milestone 16 item describes, with
       the two-account test that item asks for. The policy's line about
       removed accounts leaving their images comes out when this lands. Opus
+      *(2026-11-08: built. Removal asks Google to end the sign-in
+      (`oauth::revoke`; a token Google no longer knows counts as done, and a
+      refusal or no network is reported in a toast while the removal goes
+      ahead), then deletes the account's downloaded images. The image cache
+      became per account instead of the link table this item named: each
+      account's copies live in their own folder and rows, so removal deletes
+      the folder and nothing is shared to race on, at the price of an image
+      two accounts received being downloaded for each. Review of the link
+      table found two races in sharing the files; the owner proposed the
+      per-account cache, 2026-11-08. The cache that existed before is
+      dropped by the migration and its files swept at start-up. The
+      policy's line still says the images stay: the privacy policy is one of
+      the three pages held while Google reviews, so that line comes out
+      after Google's answer, in the pass that brings the three pages into
+      American spelling. The app is meanwhile more private than the policy
+      claims)*
 - [ ] A "Delete all Mailboat data" option in Settings (mail cache, images,
       summaries, settings), the other half of the original item, so that
       item is ticked only when this is built too. Opus

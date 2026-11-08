@@ -115,6 +115,7 @@ fn migrate(conn: &mut Connection) -> Result<()> {
         (18, schema::MIGRATION_V18),
         (19, schema::MIGRATION_V19),
         (20, schema::MIGRATION_V20),
+        (21, schema::MIGRATION_V21),
     ];
     for (version, sql) in steps {
         if current < *version {
@@ -154,7 +155,7 @@ mod tests {
         let versions: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(versions, 20);
+        assert_eq!(versions, 21);
         conn.execute(
             "INSERT INTO messages_fts (rowid, subject, sender, recipients, snippet, body) VALUES (1, 'hello', '', '', '', '')",
             [],
@@ -171,7 +172,8 @@ mod tests {
         let db = Db::open_in_memory().unwrap();
         let mut conn = db.conn();
         conn.execute_batch(
-            "DROP TABLE account_id_seq; DELETE FROM schema_migrations WHERE version >= 19;
+            "DROP TABLE account_id_seq;
+             DELETE FROM schema_migrations WHERE version >= 19;
              INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at)
                VALUES (1, 's1', 'a@example.com', '#5b8def', 'default', 0);
              INSERT INTO app_settings (key, value)
@@ -187,6 +189,46 @@ mod tests {
             .query_row("SELECT last FROM account_id_seq", [], |r| r.get(0))
             .unwrap();
         assert_eq!(next, 1);
+    }
+
+    /// `MIGRATION_V21` on a database from before it: the shared image cache
+    /// goes (its rows can't be given to an account), and the new one is
+    /// per account, one copy of an address each.
+    #[test]
+    fn upgrading_replaces_the_shared_image_cache_with_one_per_account() {
+        let db = Db::open_in_memory().unwrap();
+        let mut conn = db.conn();
+        conn.execute_batch(
+            "DROP TABLE image_cache; DELETE FROM schema_migrations WHERE version >= 21;
+             CREATE TABLE image_cache (id INTEGER PRIMARY KEY, url TEXT NOT NULL UNIQUE,
+               mime TEXT NOT NULL, size INTEGER NOT NULL, fetched_at INTEGER NOT NULL,
+               used_at INTEGER NOT NULL);
+             INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at)
+               VALUES (1, 's1', 'a@example.com', '#5b8def', 'default', 0),
+                      (2, 's2', 'b@example.com', '#e0803f', 'default', 0);
+             INSERT INTO image_cache (id, url, mime, size, fetched_at, used_at)
+               VALUES (7, 'https://x.example/a.png', 'image/png', 1, 0, 0);",
+        )
+        .unwrap();
+        migrate(&mut conn).unwrap();
+        let old: i64 = conn
+            .query_row("SELECT COUNT(*) FROM image_cache", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(old, 0, "the shared cache is dropped");
+        for account in [1, 2] {
+            conn.execute(
+                "INSERT INTO image_cache (account_id, url, mime, size, fetched_at, used_at)
+                 VALUES (?1, 'https://x.example/a.png', 'image/png', 1, 0, 0)",
+                [account],
+            )
+            .unwrap();
+        }
+        conn.execute("DELETE FROM accounts WHERE id = 1", [])
+            .unwrap();
+        let left: i64 = conn
+            .query_row("SELECT COUNT(*) FROM image_cache", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(left, 1, "an account's images go with it");
     }
 
     #[test]
@@ -209,6 +251,7 @@ mod tests {
             "ai_summaries",
             "ai_reply_ideas",
             "mcp_log",
+            "image_cache",
         ] {
             let has: bool = conn
                 .query_row(

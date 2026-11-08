@@ -204,17 +204,45 @@ pub fn account_add_cancel(state: State<'_, AppState>) {
     state.sign_in_cancel.notify_waiters();
 }
 
-/// Disconnects an account: stops its sync, deletes its cached mail and
-/// removes its token from the keychain. Nothing changes in Gmail itself.
+/// What removing an account did that can fail without stopping the removal.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountRemoved {
+    /// Google confirmed the app's sign-in is ended (or there was none to
+    /// end). False when it didn't (no connection, or Google refused): the
+    /// account is gone here, but the access stays listed in the owner's
+    /// Google Account.
+    pub revoked: bool,
+}
+
+/// Disconnects an account: stops its sync, tells Google to end its sign-in
+/// (best effort), deletes its cached mail and its downloaded images, and removes its token from the keychain. Nothing changes in Gmail
+/// itself.
 #[tauri::command]
 #[specta::specta]
-pub async fn account_remove(state: State<'_, AppState>, account_id: AccountId) -> CmdResult<()> {
+pub async fn account_remove(
+    state: State<'_, AppState>,
+    account_id: AccountId,
+) -> CmdResult<AccountRemoved> {
     // Wait for the worker to end first, so a sync in flight can't write
     // into the account while its rows are being deleted.
     state.supervisor.stop_and_wait(account_id).await;
     state.forget_account(account_id);
-    tokens::remove_account(&state.db, state.secrets.as_ref(), account_id)?;
-    Ok(())
+    // The demo's Google is made up: there is no sign-in to end.
+    let endpoint = state
+        .demo
+        .is_none()
+        .then_some(mail_core::auth::oauth::GOOGLE_REVOKE_URI);
+    let revoked = tokens::remove_account_revoking(
+        &state.db,
+        state.secrets.as_ref(),
+        &state.http,
+        endpoint,
+        account_id,
+        &state.images_dir,
+    )
+    .await?;
+    Ok(AccountRemoved { revoked })
 }
 
 #[tauri::command]
@@ -431,7 +459,7 @@ pub async fn message_open(
     let cached = match (&body.html, images_allowed) {
         (Some(html), true) => {
             let urls = mail::sanitize::remote_image_urls(html);
-            mail::prefetch::cached_for(&state.db.conn(), &state.images_dir, &urls)?
+            mail::prefetch::cached_for(&state.db.conn(), &state.images_dir, account, &urls)?
         }
         _ => Default::default(),
     };

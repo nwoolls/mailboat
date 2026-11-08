@@ -25,7 +25,8 @@ export function RemoveAccountDialog({
       onCancel={onCancel}
     >
       <p>
-        {APP_NAME} stops syncing it, deletes its mail saved on this Mac and forgets its sign-in.
+        {APP_NAME} stops syncing it, asks Google to end its sign-in, deletes its mail and the images
+        it downloaded on this Mac, and forgets its sign-in.
       </p>
       <p>Nothing changes in Gmail. You can add the account again at any time.</p>
     </ConfirmDialog>

@@ -35,10 +35,11 @@ export const commands = {
 	/**  Stops waiting for a browser sign-in started by `account_add`. */
 	accountAddCancel: () => __TAURI_INVOKE<void>("account_add_cancel"),
 	/**
-	 *  Disconnects an account: stops its sync, deletes its cached mail and
-	 *  removes its token from the keychain. Nothing changes in Gmail itself.
+	 *  Disconnects an account: stops its sync, tells Google to end its sign-in
+	 *  (best effort), deletes its cached mail and its downloaded images, and removes its token from the keychain. Nothing changes in Gmail
+	 *  itself.
 	 */
-	accountRemove: (accountId: AccountId) => typedError<null, AppError>(__TAURI_INVOKE("account_remove", { accountId })),
+	accountRemove: (accountId: AccountId) => typedError<AccountRemoved, AppError>(__TAURI_INVOKE("account_remove", { accountId })),
 	threadsList: (query: ListQuery) => typedError<ThreadPage, AppError>(__TAURI_INVOKE("threads_list", { query })),
 	/**
 	 *  Fetches conversations older than the cache for a view, from each
@@ -428,6 +429,17 @@ export type Account = {
 export type AccountFilter = { kind: "all" } | { kind: "only"; ids: AccountId[] };
 
 export type AccountId = number;
+
+/**  What removing an account did that can fail without stopping the removal. */
+export type AccountRemoved = {
+	/**
+	 *  Google confirmed the app's sign-in is ended (or there was none to
+	 *  end). False when it didn't (no connection, or Google refused): the
+	 *  account is gone here, but the access stays listed in the owner's
+	 *  Google Account.
+	 */
+	revoked: boolean,
+};
 
 export type AccountRules = {
 	accountId: AccountId,
