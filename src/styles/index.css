@@ -96,6 +96,15 @@ body,
   height: 100%;
 }
 
+/* A window, not a page: nothing scrolls the page itself, so what a list
+   leaves over (a swipe that archived the last row takes the list away, and
+   the rest of the gesture lands on the page; a sideways flick over an empty
+   list) must not rubber-band the whole app inside the window. Lists and the
+   reader keep their own scrolling (owner report, 2026-11-06). */
+html {
+  overscroll-behavior: none;
+}
+
 /* The window is transparent over a native blur; surfaces paint their own
    glass tint. */
 body {
