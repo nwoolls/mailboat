@@ -132,6 +132,33 @@ export function leavesMac(provider: AiProvider): boolean {
 }
 
 /**
+ * The providers, in the usual order, that may train on what a feature sends
+ * them: ones off the Mac that are connected and chosen for a feature that is
+ * on (the summary above a conversation counts only when it isn't turned off).
+ */
+export function trainingProviders(ai: AiChoices): AiProvider[] {
+  const chosen = new Set<AiProvider>();
+  if (ai.listSummaries) chosen.add(ai.listSummaries);
+  if (ai.readerSummary !== "off") chosen.add(ai.readerProvider);
+  chosen.add(ai.writingProvider);
+  return PROVIDERS.filter((p) => chosen.has(p) && leavesMac(p) && ai.connected.includes(p));
+}
+
+/**
+ * The line Settings → AI shows under the features when mail goes to a
+ * provider: it may train on it, depending on the account's settings, and
+ * turning that off is recommended. The website's privacy policy says the same.
+ */
+export function trainingNote(providers: AiProvider[]): string | null {
+  const names = providers.map((p) => PROVIDER_NAMES[p]);
+  if (names.length === 0) return null;
+  if (names.length === 1) {
+    return `${names[0]} may use what it receives to train its models, depending on your account’s settings. We recommend turning that off in ${names[0]}’s privacy settings.`;
+  }
+  return `${names.join(" and ")} may use what they receive to train their models, depending on your accounts’ settings. We recommend turning that off in each one’s privacy settings.`;
+}
+
+/**
  * Claude's writing model choice. ChatGPT picks a model from Codex's own
  * list instead (Settings → AI); Apple has one model: no choice.
  */

@@ -10,6 +10,8 @@ import {
   offered,
   qualityChoices,
   statusLine,
+  trainingNote,
+  trainingProviders,
 } from "./providers";
 import { APP_NAME } from "../../../shared/lib/brand";
 
@@ -98,5 +100,43 @@ describe("what can run", () => {
     expect(canWrite(claude, [ready("claude")])).toBe(false);
     expect(canWrite({ ...claude, connected: ["claude"] }, [ready("claude")])).toBe(true);
     expect(canSummarize({ ...claude, connected: ["claude"] }, [ready("claude")])).toBe(true);
+  });
+});
+
+describe("the model-training note", () => {
+  const cloud: AiChoices = {
+    ...ai,
+    connected: ["chatgpt", "claude"],
+    listSummaries: null,
+    readerSummary: "off",
+  };
+
+  it("names only connected providers that a feature that is on uses", () => {
+    expect(trainingProviders(ai)).toEqual([]); // Apple for everything: on the Mac
+    expect(trainingProviders({ ...cloud, writingProvider: "claude" })).toEqual(["claude"]);
+    expect(
+      trainingProviders({ ...cloud, listSummaries: "chatgpt", writingProvider: "claude" }),
+    ).toEqual(["chatgpt", "claude"]);
+  });
+
+  it("counts the summary above a conversation only when it isn't turned off", () => {
+    const chosen: AiChoices = { ...cloud, readerProvider: "chatgpt" };
+    expect(trainingProviders(chosen)).toEqual([]);
+    expect(trainingProviders({ ...chosen, readerSummary: "button" })).toEqual(["chatgpt"]);
+    expect(trainingProviders({ ...chosen, readerSummary: "auto" })).toEqual(["chatgpt"]);
+  });
+
+  it("leaves out a provider that was chosen but is no longer connected", () => {
+    expect(trainingProviders({ ...cloud, connected: [], writingProvider: "claude" })).toEqual([]);
+  });
+
+  it("says it once for one provider, and for both when two are used", () => {
+    expect(trainingNote([])).toBeNull();
+    expect(trainingNote(["claude"])).toBe(
+      "Claude may use what it receives to train its models, depending on your account’s settings. We recommend turning that off in Claude’s privacy settings.",
+    );
+    expect(trainingNote(["chatgpt", "claude"])).toBe(
+      "ChatGPT and Claude may use what they receive to train their models, depending on your accounts’ settings. We recommend turning that off in each one’s privacy settings.",
+    );
   });
 });

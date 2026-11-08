@@ -29,6 +29,8 @@ import {
   qualityChoices,
   statusLine,
   statusOf,
+  trainingNote,
+  trainingProviders,
 } from "../model/providers";
 import { describeLimit, describeTotals, startOfToday } from "../model/usage";
 import { CodexNoticeCard } from "./CodexNotice";
@@ -62,6 +64,7 @@ export function AiSection() {
   const choices = offered(ai, statuses);
   // Windows, or a Mac that can't run it: not offered anywhere.
   const apple = appleSupported(statuses);
+  const training = trainingNote(trainingProviders(ai));
   return (
     <>
       <CodexNoticeCard connected={ai.connected.includes("chatgpt")} />
@@ -198,6 +201,11 @@ export function AiSection() {
           />
         )}
       </Group>
+      {training && (
+        <p role="note" className="px-1 pt-3 text-[12px] leading-relaxed text-content/45">
+          {training}
+        </p>
+      )}
       <AiAppsGroups />
       <UsageGroup />
     </>

@@ -3823,7 +3823,11 @@ download it.*
       feature, a short line says the provider may train on what it receives,
       depending on the account's settings, and recommends turning that off
       in that provider's privacy settings. The website's privacy policy says
-      the same; this puts it where people choose the provider
+      the same; this puts it where people choose the provider *(2026-11-07:
+      built, in its pull request: one line under the features, naming only
+      the providers that are connected and chosen for a feature that is on,
+      and not shown while everything stays on the Mac. Tick it once the owner
+      has tried it)*
 - [ ] First-timer trial of the onboarding *(moved from Milestone 12,
       2026-10-30, then from Milestone 15, 2026-11-05)*: someone who has
       never used Google Cloud installs a real build from GitHub and gets
@@ -4078,7 +4082,9 @@ and a tick.
       tried it)*
 - [ ] The note in Settings → AI recommending that model training be turned
       off for the chosen provider (Milestone 16 item). The policy already
-      says it; the app should say it where the provider is chosen
+      says it; the app should say it where the provider is chosen *(built
+      2026-11-07, in its pull request; ticked in Milestone 16 once the owner
+      has tried it)*
 - [ ] `check:website` reads `SCOPES` and fails when a permission has no
       matching line in the policy, and a test pins the defaults the policy
       states (the first "Privacy and security by default" item). This guards
