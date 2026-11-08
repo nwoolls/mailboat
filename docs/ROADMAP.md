@@ -4407,8 +4407,9 @@ again until the next spike.*
       Each is easy to pin to the code that does it (`mail/images.rs`,
       `auth/tokens.rs`, `mcp/`), or to the test that already proves it. The
       update check's version and machine details are harder, as they are
-      behaviour of the updater, not a setting. Owner to say when, and
-      whether to bring it into the Polish Spike
+      behaviour of the updater, not a setting. The owner decided on
+      2026-11-07 that this is a follow-up, after the Polish Spike's first
+      check lands, and not part of the spike
 
 - [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and
       the MIME and `mailto:` parsers (Scorecard's "Fuzzing" check; cargo-fuzz
