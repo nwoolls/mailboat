@@ -124,6 +124,9 @@ already rejected in an earlier round, with the reason.>
   other doc the change touches must match what the code now does. Flag any
   statement that is false or no longer true, any ticked item that isn't done,
   and clear AI-writing tics in prose a person will read (do not rewrite them).
+- The changeset: empty only if nothing the app outputs or does changed. Name
+  any change in the diff that does change it, visible or not, and say if the
+  changeset's sentence is false or missing it.
 - Code quality: dead code, duplicated logic, wrong or excessive comments.
   Skip matters of taste.
 
