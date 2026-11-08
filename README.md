@@ -43,7 +43,7 @@ which has since shut down.
 - **Instant search.** Local full-text search across all accounts, with Gmail's
   own search (`from:`, `has:attachment`…) merged in as it arrives.
 - **Read mail safely.** Email is cleaned in Rust and shown in a sandboxed view
-  with no scripts. Known tracking pixels are removed, and dark mode recolours
+  with no scripts. Known tracking pixels are removed, and dark mode recolors
   email instead of inverting it.
 - **Sign-in codes and meeting invitations.** One-time codes surface as a pill
   on the row; invitations get Yes, Maybe and No right in the email, answered through Google Calendar.
