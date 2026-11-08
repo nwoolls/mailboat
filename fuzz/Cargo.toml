@@ -1,0 +1,27 @@
+# Coverage-guided fuzzing of the code that reads untrusted email, with
+# cargo-fuzz (libFuzzer). Its own workspace, so the app's build, lockfile and
+# checks don't include it; it needs the nightly toolchain. How to run it is in
+# fuzz/README.md; a weekly job runs it too (.github/workflows/fuzz.yml).
+[package]
+name = "mail-core-fuzz"
+version = "0.0.0"
+edition = "2021"
+license = "GPL-3.0-only"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+mail-core = { path = "../crates/core", features = ["fuzzing"] }
+
+[[bin]]
+name = "sanitize_html"
+path = "fuzz_targets/sanitize_html.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]

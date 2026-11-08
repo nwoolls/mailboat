@@ -327,6 +327,13 @@ fn ammonia_builder() -> ammonia::Builder<'static> {
     .add_tag_attributes("font", ["color", "face", "size"])
     .add_tag_attributes("table", ["cellpadding", "cellspacing"])
     .add_tag_attributes("img", ["alt", "src", "width", "height"])
+    // A quote's source address (`cite`) is invisible and nothing opens it, but
+    // ammonia doesn't check its scheme as it does a link's: it would keep
+    // `cite="javascript:…"`. Left out, as it has no use in a reader.
+    .rm_tag_attributes("blockquote", ["cite"])
+    .rm_tag_attributes("q", ["cite"])
+    .rm_tag_attributes("del", ["cite"])
+    .rm_tag_attributes("ins", ["cite"])
     .url_schemes(
         ["http", "https", "mailto", "cid", "tel"]
             .into_iter()
@@ -1298,6 +1305,28 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Found by the fuzzing checks: ammonia keeps a quote's `cite` address
+    /// whatever its scheme (it only filters `href`, `src` and the like).
+    #[test]
+    fn a_quotes_cite_address_is_dropped() {
+        for html in [
+            r#"<blockquote cite="javascript:x">y</blockquote>"#,
+            r#"<q cite="data:text/html,x">y</q>"#,
+            r#"<del cite="vbscript:x" datetime="2026-01-01">y</del>"#,
+            r#"<ins cite="https://x.example/a">y</ins>"#,
+        ] {
+            for allow_images in [true, false] {
+                let out = sanitize_html(html, allow_images).document;
+                let body = out.split("<body>").nth(1).unwrap_or_default();
+                assert!(!body.contains("cite"), "{html}\n{body}");
+                assert!(body.contains('y'), "the text stays: {body}");
+            }
+        }
+        // What else a quote has stays.
+        let out = sanitize_html(r#"<del datetime="2026-01-01">y</del>"#, true).document;
+        assert!(out.contains(r#"datetime="2026-01-01""#), "{out}");
     }
 
     #[test]

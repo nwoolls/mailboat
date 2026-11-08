@@ -46,9 +46,17 @@ mail-parser = "1.0.0"
 rmcp = { version = "3.7", features = ["server", "client", "macros", "schemars", "transport-io", "transport-async-rw"] }
 schemars = "1.1"
 
+[features]
+# Exposes the checks the fuzz target in `fuzz/` runs (`mail::sanitize_check`).
+# Off in the app.
+fuzzing = []
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
 wiremock = "0.6"
+# Property tests for the code that reads untrusted email (random input, with
+# the failing case shrunk to its smallest form).
+proptest = "1"
 
 # OS keychain for refresh tokens (same per-platform setup as MonoCode).
 [target.'cfg(target_os = "macos")'.dependencies]
