@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkSite, type Pages } from "./website";
+import { checkSite, securityTxtDaysLeft, securityTxtProblems, type Pages } from "./website";
 
 const HEAD = `<!doctype html><html lang="en"><head><title>T</title>
 <meta name="description" content="D" /><link rel="stylesheet" href="site.css" />
@@ -283,5 +283,91 @@ describe("checkSite", () => {
         ),
       ),
     ).toEqual([]);
+  });
+});
+
+describe("the footer's Security link", () => {
+  const footer = (links: string) =>
+    page(
+      `<footer class="site-footer"><nav>${links}<a href="privacy.html">Privacy</a></nav></footer>`,
+    );
+
+  it("is required wherever a page has the site footer", () => {
+    const without = { ...good, "privacy.html": footer("") };
+    expect(checkSite(without, exists, CSP)).toEqual([
+      'privacy.html: the footer has no "Security" link',
+    ]);
+  });
+
+  it("is satisfied by a link with that text", () => {
+    const withLink = {
+      ...good,
+      "privacy.html": footer('<a href="https://example.com/policy">Security</a>'),
+    };
+    expect(checkSite(withLink, exists, CSP)).toEqual([]);
+  });
+
+  it("does not ask a page without the footer (the test pages) for one", () => {
+    expect(checkSite(good, exists, CSP)).toEqual([]);
+  });
+});
+
+describe("securityTxtProblems", () => {
+  const NOW = new Date("2026-11-07T12:00:00Z");
+  const file = (expires = "2027-11-01T00:00:00.000Z") =>
+    [
+      "Contact: mailto:security@x.example",
+      "Contact: https://x.example/advisories/new",
+      `Expires: ${expires}`,
+      "Preferred-Languages: en",
+      "Canonical: https://x.example/.well-known/security.txt",
+      "Policy: https://x.example/SECURITY.md",
+      "",
+    ].join("\n");
+
+  it("accepts a complete file", () => {
+    expect(securityTxtProblems(file(), NOW)).toEqual([]);
+  });
+
+  it("requires the file", () => {
+    expect(securityTxtProblems(undefined, NOW)).toEqual([".well-known/security.txt is missing"]);
+  });
+
+  it("requires a contact, a policy and a canonical address", () => {
+    const text = "Expires: 2027-01-01T00:00:00Z\nContact: tel:555-0100\nPolicy: http://x.example\n";
+    expect(securityTxtProblems(text, NOW)).toEqual([
+      expect.stringContaining("no Contact"),
+      expect.stringContaining("no Policy"),
+      expect.stringContaining("no Canonical"),
+    ]);
+  });
+
+  it("requires exactly one Expires, and a real date", () => {
+    expect(securityTxtProblems(file().replace(/Expires:.*\n/, ""), NOW)).toEqual([
+      expect.stringContaining("exactly one Expires"),
+    ]);
+    expect(securityTxtProblems(`${file()}Expires: 2027-02-01T00:00:00Z\n`, NOW)).toEqual([
+      expect.stringContaining("exactly one Expires"),
+    ]);
+    expect(securityTxtProblems(file("next year"), NOW)).toEqual([
+      expect.stringContaining("not an ISO 8601"),
+    ]);
+    expect(securityTxtProblems(file("2027-13-45T00:00:00Z"), NOW)).toEqual([
+      expect.stringContaining("not an ISO 8601"),
+    ]);
+  });
+
+  it("fails once Expires has passed, and when it is more than a year away", () => {
+    expect(securityTxtProblems(file("2026-11-07T11:59:00Z"), NOW)).toEqual([
+      expect.stringContaining("has passed"),
+    ]);
+    expect(securityTxtProblems(file("2027-11-09T00:00:00Z"), NOW)).toEqual([
+      expect.stringContaining("more than a year away"),
+    ]);
+  });
+
+  it("counts the days left, for a warning ahead of the deadline", () => {
+    expect(securityTxtDaysLeft(file("2026-12-07T12:00:00Z"), NOW)).toBe(30);
+    expect(securityTxtDaysLeft("Contact: mailto:a@x.example\n", NOW)).toBeUndefined();
   });
 });

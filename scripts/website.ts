@@ -130,6 +130,13 @@ export function checkSite(
     if (!/<meta\s+name\s*=\s*["']description["']\s+content\s*=\s*["'][^"']+["']/i.test(html)) {
       say("no meta description");
     }
+    // Every footer carries the Security link (the address of the security policy).
+    if (
+      /class\s*=\s*["'][^"']*\bsite-footer\b/i.test(html) &&
+      !/<a\b[^>]*>\s*Security\s*<\/a>/i.test(html)
+    ) {
+      say('the footer has no "Security" link');
+    }
     if (/<style[\s>]/i.test(html))
       say("an inline <style> block (the Content Security Policy blocks it)");
     if (/<script\b(?![^>]*\ssrc\s*=)[^>]*>/i.test(html)) {
@@ -238,4 +245,67 @@ export function checkSite(
 
   problems.push(...policyProblems(headers));
   return problems;
+}
+
+/** Where a security contact file must be served, as RFC 9116 sets it. */
+export const SECURITY_TXT_PATH = ".well-known/security.txt";
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/** How long before its `Expires` date the file may be left (RFC 9116 advises under a year). */
+const SECURITY_TXT_MAX_DAYS = 366;
+
+/**
+ * Problems with `/.well-known/security.txt` (RFC 9116), one line each; `text`
+ * is undefined when the file is missing. `Expires` must be a real date, still
+ * ahead, and no more than a year away, so the file is renewed rather than
+ * forgotten. `now` is a parameter so the tests can pin the date.
+ */
+export function securityTxtProblems(text: string | undefined, now: Date = new Date()): string[] {
+  if (text === undefined) return [`${SECURITY_TXT_PATH} is missing`];
+  const fields = new Map<string, string[]>();
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^([A-Za-z-]+):\s*(.+?)\s*$/.exec(line);
+    if (m) fields.set(m[1].toLowerCase(), [...(fields.get(m[1].toLowerCase()) ?? []), m[2]]);
+  }
+  const problems: string[] = [];
+  const say = (what: string) => problems.push(`${SECURITY_TXT_PATH}: ${what}`);
+
+  const contacts = fields.get("contact") ?? [];
+  if (!contacts.some((c) => /^(mailto:[^\s@]+@[^\s@]+|https:\/\/\S+)$/i.test(c))) {
+    say("no Contact that is a mailto: or https:// address");
+  }
+
+  const expires = fields.get("expires") ?? [];
+  if (expires.length !== 1) {
+    say("it needs exactly one Expires");
+  } else if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(expires[0]) ||
+    Number.isNaN(Date.parse(expires[0]))
+  ) {
+    say(`Expires ${expires[0]} is not an ISO 8601 date and time`);
+  } else {
+    const days = (Date.parse(expires[0]) - now.getTime()) / DAY;
+    if (days <= 0) say(`Expires ${expires[0]} has passed: renew the file`);
+    else if (days > SECURITY_TXT_MAX_DAYS) say(`Expires ${expires[0]} is more than a year away`);
+  }
+
+  if (!(fields.get("policy") ?? []).some((v) => /^https:\/\/\S+$/i.test(v))) {
+    say("no Policy that is an https:// address");
+  }
+  if (
+    !(fields.get("canonical") ?? []).some((v) =>
+      /^https:\/\/\S+\/\.well-known\/security\.txt$/i.test(v),
+    )
+  ) {
+    say("no Canonical https:// address ending in /.well-known/security.txt");
+  }
+  return problems;
+}
+
+/** Days left before `Expires` (undefined when there is none to read), for a warning ahead of the deadline. */
+export function securityTxtDaysLeft(text: string, now: Date = new Date()): number | undefined {
+  const m = /^Expires:\s*(\S+)\s*$/im.exec(text);
+  const when = m ? Date.parse(m[1]) : NaN;
+  return Number.isNaN(when) ? undefined : Math.floor((when - now.getTime()) / DAY);
 }
