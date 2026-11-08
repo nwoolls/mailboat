@@ -3997,7 +3997,8 @@ where their full text is. What the code did on 2026-11-07, checked then, so a
 new session need not repeat it: `check:website` does not read `SCOPES`;
 nothing revokes a refresh token at Google on account removal, and removing an
 account leaves its downloaded images; there is no `/.well-known/security.txt`
-(the address answers 404) and no Security link in the footer; image prefetch
+(the address answers 404) and no Security link in the footer (both are built
+since: see the hardening list); image prefetch
 is on by default; nothing encrypts the local database; the "model training"
 note is on the website's policy but not in Settings → AI; the repository's
 website link is already set. GitHub showed one open code-scanning alert
