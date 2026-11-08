@@ -210,7 +210,7 @@ fn a_failed_keychain_delete_keeps_the_account_to_try_again() {
         .stuck
         .store(true, std::sync::atomic::Ordering::SeqCst);
 
-    assert!(remove_account(&db, &secrets, account).is_err());
+    assert!(remove_account(&db, &secrets, account, std::path::Path::new("images")).is_err());
     assert!(
         accounts::get(&db.conn(), account).is_ok(),
         "the account is kept"
@@ -224,7 +224,7 @@ fn a_failed_keychain_delete_keeps_the_account_to_try_again() {
     secrets
         .stuck
         .store(false, std::sync::atomic::Ordering::SeqCst);
-    remove_account(&db, &secrets, account).unwrap();
+    remove_account(&db, &secrets, account, std::path::Path::new("images")).unwrap();
     assert!(accounts::get(&db.conn(), account).is_err());
     assert_eq!(secrets.get(&refresh_token_key("sub-r")).unwrap(), None);
 }
@@ -275,4 +275,62 @@ async fn token_endpoint_text_stays_out_of_the_error() {
             assert!(text.contains("invalid_grant"), "{text}");
         }
     }
+}
+
+/// Removing an account ends its grant at Google, best effort: the refresh
+/// token goes in the request body, a token Google no longer knows (400)
+/// counts as done, and a refusal or no network reports "not revoked"
+/// without failing.
+#[tokio::test]
+async fn removing_an_account_revokes_its_refresh_token_at_google() {
+    use mail_core::auth::tokens::revoke_refresh_token;
+    use mail_core::db::{accounts, Db};
+
+    let db = Db::open_in_memory().unwrap();
+    accounts::upsert(
+        &db.conn(),
+        &accounts::NewAccount {
+            google_sub: "sub-v",
+            email: "me@example.com",
+            display_name: None,
+            avatar_url: None,
+            oauth_client: "default",
+        },
+    )
+    .unwrap();
+    let account = accounts::list(&db.conn()).unwrap()[0].id;
+    let secrets = MemoryStore::default();
+    let http = reqwest::Client::new();
+
+    // No token in the keychain: nothing to revoke, nothing to report.
+    let server = MockServer::start().await;
+    let mut c = config(&server);
+    c.revoke_uri = format!("{}/revoke", server.uri());
+    assert!(revoke_refresh_token(&db, &secrets, &http, &c, account).await);
+
+    secrets
+        .set(&refresh_token_key("sub-v"), "the-refresh-token")
+        .unwrap();
+    for (status, revoked) in [(200, true), (400, true), (500, false), (403, false)] {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/revoke"))
+            .and(body_string_contains("token=the-refresh-token"))
+            .respond_with(ResponseTemplate::new(status))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let mut c = config(&server);
+        c.revoke_uri = format!("{}/revoke", server.uri());
+        assert_eq!(
+            revoke_refresh_token(&db, &secrets, &http, &c, account).await,
+            revoked,
+            "HTTP {status}"
+        );
+    }
+
+    // Offline: the address answers nothing.
+    let mut c = config(&MockServer::start().await);
+    c.revoke_uri = "http://127.0.0.1:9/revoke".into();
+    assert!(!revoke_refresh_token(&db, &secrets, &http, &c, account).await);
 }

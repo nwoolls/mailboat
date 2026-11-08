@@ -293,8 +293,8 @@ ALTER TABLE message_bodies ADD COLUMN calendar_read INTEGER NOT NULL DEFAULT 0;
 
 /// Remote images downloaded when mail arrives (`mail::prefetch`), so
 /// opening an email doesn't tell its sender when. Keyed by address, not by
-/// account: the same image is the same file whichever account received it.
-/// The bytes are files named by `id` in the image cache folder.
+/// account: the same image is the same file whichever account received it
+/// (per account since `MIGRATION_V21`). The bytes are files named by `id` in the image cache folder.
 /// `images_prefetched` marks bodies already handled (fetched, or opened
 /// first, when images load live anyway).
 pub const MIGRATION_V14: &str = r#"
@@ -410,4 +410,24 @@ WHERE key = 'app' AND json_valid(value) AND json_type(value, '$.mcp') = 'object'
 /// next time Gmail is searched.
 pub const MIGRATION_V20: &str = r#"
 DELETE FROM search_hits;
+"#;
+
+/// The image cache is kept per account (it was shared by address): each
+/// account's copies live in its own folder, so removing the account deletes
+/// its rows with it (`ON DELETE CASCADE`) and its folder, and nothing is
+/// keyed by an address alone. The cache held in the old shape can't be told
+/// apart by account, so it goes: it is a cache, and the images of that mail
+/// load live as an evicted image does (the old files are swept at start-up).
+pub const MIGRATION_V21: &str = r#"
+DROP TABLE image_cache;
+CREATE TABLE image_cache (
+  id INTEGER PRIMARY KEY,
+  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  fetched_at INTEGER NOT NULL,
+  used_at INTEGER NOT NULL,
+  UNIQUE (account_id, url)
+);
 "#;

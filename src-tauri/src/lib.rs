@@ -274,9 +274,11 @@ pub fn run() {
                     sign_outs: Default::default(),
                 }),
                 SyncConfig {
-                    images: Some(mail_core::mail::prefetch::Prefetch::new(
-                        dirs.cache.join("images"),
-                    )?),
+                    images: Some({
+                        // Copies kept before the cache was per account.
+                        mail_core::mail::prefetch::sweep_shared_copies(&dirs.cache.join("images"));
+                        mail_core::mail::prefetch::Prefetch::new(dirs.cache.join("images"))?
+                    }),
                     ..SyncConfig::default()
                 },
                 WorkerTiming::default(),

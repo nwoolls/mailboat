@@ -20,6 +20,8 @@ pub struct OAuthClientConfig {
     pub client_secret: String,
     pub auth_uri: String,
     pub token_uri: String,
+    /// Where a refresh token is given up when its account is removed.
+    pub revoke_uri: String,
     pub userinfo_uri: String,
     /// The Google Cloud project it belongs to, when the file names it:
     /// lets the app open Google Cloud pages on the right project.
@@ -191,6 +193,7 @@ pub fn read_download(path: &Path) -> Result<String> {
 
 const GOOGLE_AUTH_URI: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URI: &str = "https://oauth2.googleapis.com/token";
+const GOOGLE_REVOKE_URI: &str = "https://oauth2.googleapis.com/revoke";
 const GOOGLE_USERINFO_URI: &str = "https://openidconnect.googleapis.com/v1/userinfo";
 
 impl OAuthClientConfig {
@@ -201,6 +204,7 @@ impl OAuthClientConfig {
             client_secret,
             auth_uri: GOOGLE_AUTH_URI.into(),
             token_uri: GOOGLE_TOKEN_URI.into(),
+            revoke_uri: GOOGLE_REVOKE_URI.into(),
             userinfo_uri: GOOGLE_USERINFO_URI.into(),
             project_id: None,
         }
@@ -286,6 +290,7 @@ mod tests {
         assert_eq!(c.auth_uri, GOOGLE_AUTH_URI);
         assert_eq!(c.token_uri, GOOGLE_TOKEN_URI);
         assert_eq!(c.userinfo_uri, GOOGLE_USERINFO_URI);
+        assert_eq!(c.revoke_uri, GOOGLE_REVOKE_URI);
     }
 
     const DESKTOP: &str = r#"{"installed":{"client_id":"123-abc.apps.googleusercontent.com",

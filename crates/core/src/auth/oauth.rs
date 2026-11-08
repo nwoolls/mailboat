@@ -238,6 +238,33 @@ pub async fn refresh(
         .map_err(token_error)
 }
 
+/// Tells Google to end a refresh token's grant (the account was removed
+/// here). Google answers 400 for a token that is already revoked or expired;
+/// that counts as done. A network failure is an error for the caller to
+/// report, never to retry in a loop. The token goes in the request body and
+/// nowhere else: no error text carries it.
+pub async fn revoke(
+    http: &reqwest::Client,
+    config: &OAuthClientConfig,
+    refresh_token: &str,
+) -> Result<()> {
+    let response = http
+        .post(&config.revoke_uri)
+        .form(&[("token", refresh_token)])
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(net_error)?;
+    let status = response.status().as_u16();
+    if response.status().is_success() || status == 400 {
+        return Ok(());
+    }
+    Err(CoreError::Api {
+        status,
+        message: "Google didn't revoke the sign-in".into(),
+    })
+}
+
 pub async fn user_info(
     http: &reqwest::Client,
     config: &OAuthClientConfig,

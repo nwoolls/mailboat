@@ -8,6 +8,8 @@ export type ToastData = {
   action?: { label: string; run: () => void };
   /** How long it stays up, if not the usual few seconds. */
   ms?: number;
+  /** Let a long message wrap instead of being cut off with an ellipsis. */
+  wrap?: boolean;
 };
 
 /** How long a toast stays up. */
@@ -38,7 +40,9 @@ export function Toast({ toast, onDismiss }: { toast: ToastData | null; onDismiss
             toast.tone === "error" ? "text-danger" : "text-content"
           }`}
         >
-          <span className="selectable min-w-0 truncate">{toast.message}</span>
+          <span className={`selectable min-w-0 ${toast.wrap ? "" : "truncate"}`}>
+            {toast.message}
+          </span>
           {toast.action && (
             <button
               type="button"
