@@ -11,7 +11,7 @@
   `src-tauri/icons/icon.ico`. Keep its shapes in step with `app-icon.svg`.
 - `app-icon-layer.svg` is the same boat without the tile, on Icon Composer's
   1024px canvas. It is the artwork layer of `src-tauri/macos/AppIcon.icon`
-  (whose fill is the tile colour), compiled to `src-tauri/macos/Assets.car`.
+  (whose fill is the tile color), compiled to `src-tauri/macos/Assets.car`.
   On macOS 26+ the system draws that with its glass rim and depth.
 - Change either, then run `scripts/build-app-icon.sh` (needs Xcode) to
   regenerate everything.
@@ -19,8 +19,8 @@
   (run `scripts/build-icon-choices.sh` after changing one, to re-render the
   PNGs the Dock uses; the order Settings shows them in is set in
   `src-tauri/src/app_icon.rs`): the paper boat (P1, round 12; the
-  envelope-fold M, N7, before) in 17 colours on a flat near-black tile.
-  The sail's near half is the colour 20% toward black, its far half 40%. The earlier glass icon (`glass-midnight.svg`, now in
+  envelope-fold M, N7, before) in 17 colors on a flat near-black tile.
+  The sail's near half is the color 20% toward black, its far half 40%. The earlier glass icon (`glass-midnight.svg`, now in
   this folder) was offered too, until the owner dropped it as the odd one
   out (2026-10-17). The
   current icon is `C17-system-blue` (tried before: `C13-green`, `C04-cobalt`,
@@ -32,9 +32,9 @@
   2. Tweaks to A3; T2 (brighter, glowing M) was picked
   3. Backgrounds behind T2; B3 (midnight) was picked
   4. Flat, high-contrast tiles; F2 (black, sky M) was picked
-  5. F2's M as a folded ribbon, in eight colours
+  5. F2's M as a folded ribbon, in eight colors
   6. Six ways to shade the fold; S4 (even shading) was picked
-  7. S4 in 16 colours; C13 (green) was picked, then C04 (cobalt), C03 (sky) and
+  7. S4 in 16 colors; C13 (green) was picked, then C04 (cobalt), C03 (sky) and
      finally C17 (system blue, not on the sheet)
   8. Round three (2026-10-17, not picked yet): the M as one ribbon folded
      over at its top corners, like an envelope's flap, so the folds and
@@ -63,7 +63,7 @@
      from its angle: D1 45° (74 wide), D2 48° (77), D3 51° (81), D4 54°
      (84, its point level with the sides' feet). The sides are 104.
      The owner picked N7 from sheet 10 (2026-10-18): every choice, the
-     built-in icon and the glass layer now use it, each colour keeping its
+     built-in icon and the glass layer now use it, each color keeping its
      darker shade for the sides
   12. Mailboat (2026-10-27): the app is renamed Mailboat,
      so the icon becomes a boat in the same ribbon style and system blue,

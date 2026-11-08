@@ -20,7 +20,7 @@ for bugs and ideas.
 
 Pull requests from outside are closed without review. An email client is an
 attractive target for a malicious change, and keeping the copyright with the
-owner means the licence can change later. If you've found a fix, describe it in
+owner means the license can change later. If you've found a fix, describe it in
 an issue and it will be written here.
 
 ## Security problems
