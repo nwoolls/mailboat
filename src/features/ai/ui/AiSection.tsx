@@ -29,6 +29,9 @@ import {
   qualityChoices,
   statusLine,
   statusOf,
+  summaryTrainingProviders,
+  trainingNote,
+  writingTrainingProviders,
 } from "../model/providers";
 import { describeLimit, describeTotals, startOfToday } from "../model/usage";
 import { CodexNoticeCard } from "./CodexNotice";
@@ -36,6 +39,7 @@ import { AiAppsGroups } from "../../mcp/ui/AiAppsGroups";
 import { clearLineSummaries } from "./lineSummaries";
 import { accelLabel } from "../../../shared/lib/platform";
 import { APP_NAME } from "../../../shared/lib/brand";
+import { InfoIcon } from "../../../shared/ui/icons";
 
 const SELECT_CLASS =
   "h-7 max-w-64 rounded-md border border-content/10 bg-transparent px-1.5 text-[12px] text-content/80 hover:bg-selection";
@@ -155,6 +159,7 @@ export function AiSection() {
           </Button>
         </Row>
       </Group>
+      <TrainingNote providers={summaryTrainingProviders(ai)} />
       <Group title="Writing">
         <Row
           label="Help writing with"
@@ -198,9 +203,25 @@ export function AiSection() {
           />
         )}
       </Group>
+      <TrainingNote providers={writingTrainingProviders(ai)} />
       <AiAppsGroups />
       <UsageGroup />
     </>
+  );
+}
+
+/** The line under a group when its features send mail to Claude or ChatGPT (it may train on it). */
+function TrainingNote({ providers }: { providers: AiProvider[] }) {
+  const note = trainingNote(providers);
+  if (!note) return null;
+  return (
+    <p
+      role="note"
+      className="flex items-start gap-2 px-1 pt-3 text-[12px] leading-relaxed text-content/45"
+    >
+      <InfoIcon size={14} aria-hidden="true" className="mt-[3px] shrink-0 text-info" />
+      <span>{note}</span>
+    </p>
   );
 }
 

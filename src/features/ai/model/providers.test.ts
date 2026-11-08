@@ -10,6 +10,9 @@ import {
   offered,
   qualityChoices,
   statusLine,
+  trainingNote,
+  summaryTrainingProviders,
+  writingTrainingProviders,
 } from "./providers";
 import { APP_NAME } from "../../../shared/lib/brand";
 
@@ -98,5 +101,58 @@ describe("what can run", () => {
     expect(canWrite(claude, [ready("claude")])).toBe(false);
     expect(canWrite({ ...claude, connected: ["claude"] }, [ready("claude")])).toBe(true);
     expect(canSummarize({ ...claude, connected: ["claude"] }, [ready("claude")])).toBe(true);
+  });
+});
+
+describe("the model-training note", () => {
+  const cloud: AiChoices = {
+    ...ai,
+    connected: ["chatgpt", "claude"],
+    listSummaries: null,
+    readerSummary: "off",
+  };
+
+  it("names, under Summaries, the provider for the list and the one above a conversation", () => {
+    expect(summaryTrainingProviders(ai)).toEqual([]); // Apple for everything: on the Mac
+    expect(summaryTrainingProviders({ ...cloud, listSummaries: "chatgpt" })).toEqual(["chatgpt"]);
+    expect(
+      summaryTrainingProviders({
+        ...cloud,
+        listSummaries: "chatgpt",
+        readerSummary: "button",
+        readerProvider: "claude",
+      }),
+    ).toEqual(["chatgpt", "claude"]);
+  });
+
+  it("counts the summary above a conversation only when it isn't turned off", () => {
+    const chosen: AiChoices = { ...cloud, readerProvider: "chatgpt" };
+    expect(summaryTrainingProviders(chosen)).toEqual([]);
+    expect(summaryTrainingProviders({ ...chosen, readerSummary: "button" })).toEqual(["chatgpt"]);
+    expect(summaryTrainingProviders({ ...chosen, readerSummary: "auto" })).toEqual(["chatgpt"]);
+  });
+
+  it("names, under Writing, only the writing provider, and Summaries' choices stay out of it", () => {
+    expect(writingTrainingProviders(ai)).toEqual([]);
+    expect(writingTrainingProviders({ ...cloud, writingProvider: "claude" })).toEqual(["claude"]);
+    const summariesOnly: AiChoices = { ...cloud, listSummaries: "chatgpt" };
+    expect(writingTrainingProviders(summariesOnly)).toEqual([]);
+    expect(summaryTrainingProviders({ ...cloud, writingProvider: "claude" })).toEqual([]);
+  });
+
+  it("leaves out a provider that was chosen but is no longer connected", () => {
+    const gone: AiChoices = { ...cloud, connected: [], listSummaries: "claude" };
+    expect(summaryTrainingProviders(gone)).toEqual([]);
+    expect(writingTrainingProviders({ ...gone, writingProvider: "claude" })).toEqual([]);
+  });
+
+  it("says it once for one provider, and for both when two are used", () => {
+    expect(trainingNote([])).toBeNull();
+    expect(trainingNote(["claude"])).toBe(
+      "Claude may use what it receives to train its models, depending on your account’s settings. We recommend turning that off in Claude’s privacy settings.",
+    );
+    expect(trainingNote(["chatgpt", "claude"])).toBe(
+      "ChatGPT and Claude may use what they receive to train their models, depending on your accounts’ settings. We recommend turning that off in each one’s privacy settings.",
+    );
   });
 });

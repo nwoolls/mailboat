@@ -9,6 +9,7 @@ import SourceCode from "@hugeicons/core-free-icons/SourceCodeIcon";
 import Wrench01 from "@hugeicons/core-free-icons/Wrench01Icon";
 import LeftToRightListDash from "@hugeicons/core-free-icons/LeftToRightListDashIcon";
 import AlertCircle from "@hugeicons/core-free-icons/AlertCircleIcon";
+import InformationCircle from "@hugeicons/core-free-icons/InformationCircleIcon";
 import Archive02 from "@hugeicons/core-free-icons/Archive02Icon";
 import BookOpen01 from "@hugeicons/core-free-icons/BookOpen01Icon";
 import ArrowRight01 from "@hugeicons/core-free-icons/ArrowRight01Icon";
@@ -94,6 +95,7 @@ function wrap(icon: IconSvgElement) {
 }
 
 export const AlertIcon = wrap(AlertCircle);
+export const InfoIcon = wrap(InformationCircle);
 export const AddIcon = wrap(Add01);
 export const AllMailIcon = wrap(Mail01);
 export const AttachmentIcon = wrap(Attachment01);

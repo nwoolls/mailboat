@@ -29,6 +29,9 @@
   );
   --color-danger: hsl(4 75% 60%);
   --color-warn: hsl(38 85% 55%);
+  /* Information that isn't a warning: always blue, whatever accent is chosen
+     (a red or orange accent would read as a warning). */
+  --color-info: hsl(217 85% 62%);
   --font-sans:
     -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, "Helvetica Neue", sans-serif;
 }
