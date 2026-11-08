@@ -157,12 +157,20 @@ it as `mail_core::brand::VERSION`, `tauri.conf.json` points at it), and
 only a release changes it, through Changesets. Every pull request adds a
 changeset in `.changeset/` (`bun run changeset`, or by hand: see
 `.changeset/README.md`): `patch`, `minor` or `major`, and one plain
-sentence for people (no real mail details). Anything people won't notice
-(docs, tests, tooling) gets an empty one (`bun run changeset --empty`).
-CI fails a pull request without one, except Dependabot's and the release
-pull request (branch `changeset-release/…`, which consumes them). Never edit
-the version or `CHANGELOG.md` by hand, except for the test releases 0.0.1 and
-0.0.2 (decided 2026-11-05), which have no generated bump.
+sentence for people (no real mail details). Decide it by what the change
+does to the app, not by what the pull request is about. A change to what
+the app outputs or does gets a real changeset, even an invisible one (a
+security cleanup, a stricter check on input): a `patch` for a fix, as the
+image-address fix was, and a `minor` or `major` when it adds or breaks
+something, as `.changeset/README.md` says. An empty one
+(`bun run changeset --empty`) is for a pull request that changes nothing
+the app outputs or does: docs, tests, tooling, or the website's text. When
+a pull request mixes the two, the real changeset wins. Recheck it whenever
+a commit is added to an open pull request. CI fails a pull request without
+one, except Dependabot's and the release pull request (branch
+`changeset-release/…`, which consumes them). Never edit the version or
+`CHANGELOG.md` by hand, except for the test releases 0.0.1 and 0.0.2
+(decided 2026-11-05), which have no generated bump.
 
 ### Pull requests (once the repository's ruleset is on)
 
