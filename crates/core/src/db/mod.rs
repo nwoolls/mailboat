@@ -2,6 +2,7 @@
 //! foreign keys on, and a `schema_migrations` table with numbered steps.
 
 pub mod accounts;
+pub mod erase;
 pub mod query;
 mod schema;
 pub mod store;

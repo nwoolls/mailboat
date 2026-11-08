@@ -187,6 +187,29 @@ pub(crate) fn numbered_filename(name: &str, n: u32) -> String {
     format!("{kept}{suffix}{ext}")
 }
 
+/// Deletes the account folders in `dir` (attachments, or downloaded images:
+/// both keep one folder per account, named by its ID) of accounts that are no
+/// longer in `keep`. What a removal couldn't delete, or an operation still
+/// running then wrote, goes at the next start. Account IDs are never given out
+/// again, so a folder with no account is always left over. Anything not named
+/// by a number stays.
+pub fn remove_unlisted_account_folders(dir: &Path, keep: &[AccountId]) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let listed = entry
+            .file_name()
+            .to_str()
+            .and_then(|n| n.parse::<i64>().ok())
+            .map(AccountId);
+        let is_dir = entry.file_type().is_ok_and(|t| t.is_dir());
+        if is_dir && listed.is_some_and(|id| !keep.contains(&id)) {
+            let _ = std::fs::remove_dir_all(entry.path());
+        }
+    }
+}
+
 /// Downloads an attachment into the cache (once) and returns its path.
 pub async fn download(
     db: &Db,
@@ -206,6 +229,15 @@ pub async fn download(
     std::fs::create_dir_all(&dir).map_err(|e| io_error("create the attachment folder", e))?;
     let path = dir.join(safe_filename(&a.filename));
     std::fs::write(&path, &bytes).map_err(|e| io_error("save the attachment", e))?;
+    // The account may have been removed (or everything deleted) while the
+    // bytes were coming: nothing may keep what it no longer has a row for.
+    let still_there = store::attachment_ref(&db.conn(), a.id).is_ok();
+    if !still_there {
+        let _ = std::fs::remove_dir_all(&dir);
+        // The account's own folder too, if that left it empty.
+        let _ = std::fs::remove_dir(account_dir(cache_dir, a.account));
+        return Err(CoreError::NotFound(format!("attachment {}", a.id.0)));
+    }
     store::set_attachment_cached_path(&db.conn(), a.id, &path.to_string_lossy())?;
     Ok(path)
 }
@@ -284,6 +316,29 @@ fn io_error(what: &str, e: std::io::Error) -> CoreError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn folders_of_accounts_that_are_gone_are_swept() {
+        let dir = std::env::temp_dir().join(format!("sweep-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        for name in ["1", "2", "7", "notes", "12x"] {
+            std::fs::create_dir_all(dir.join(name).join("inner")).unwrap();
+        }
+        std::fs::write(dir.join("9"), b"a file named like an account").unwrap();
+        remove_unlisted_account_folders(&dir, &[AccountId(1), AccountId(7)]);
+        assert!(
+            dir.join("1").exists() && dir.join("7").exists(),
+            "listed accounts stay"
+        );
+        assert!(!dir.join("2").exists(), "an account that is gone");
+        assert!(
+            dir.join("notes").exists() && dir.join("12x").exists(),
+            "not an ID: left alone"
+        );
+        assert!(dir.join("9").exists(), "a file isn't an account's folder");
+        remove_unlisted_account_folders(&dir.join("missing"), &[]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn file_names_cannot_escape_or_hide() {

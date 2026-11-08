@@ -49,6 +49,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::account_add,
             commands::account_add_cancel,
             commands::account_remove,
+            commands::data_delete_all,
             commands::threads_list,
             commands::threads_load_older,
             commands::thread_get,
@@ -263,6 +264,19 @@ pub fn run() {
                 http.https_only(true)
             }
             .build()?;
+            // Downloaded files of accounts that are gone: what a removal
+            // couldn't delete, or something still running then wrote.
+            let existing: Vec<mail_core::model::AccountId> =
+                mail_core::db::accounts::list(&db.conn())?
+                    .iter()
+                    .map(|a| a.id)
+                    .collect();
+            for folder in ["attachments", "images"] {
+                mail_core::attachments::remove_unlisted_account_folders(
+                    &dirs.cache.join(folder),
+                    &existing,
+                );
+            }
             let sync_log = Arc::new(sync_log::SyncLog::open(&dirs.logs));
             let supervisor = Supervisor::new(
                 tauri::async_runtime::handle().inner().clone(),
