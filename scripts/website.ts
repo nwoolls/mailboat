@@ -59,6 +59,22 @@ function ids(html: string): Set<string> {
   return found;
 }
 
+/** Whether this HTML has a link whose text is "Security" (tags inside it ignored) and that has an address. */
+function hasSecurityLink(html: string): boolean {
+  for (const m of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
+    // Strip tags until nothing changes (one pass can leave a new "<tag" behind).
+    let inner = m[2];
+    for (let before = ""; before !== inner;) {
+      before = inner;
+      inner = inner.replace(/<[^>]*>/g, "");
+    }
+    const text = inner.replace(/\s+/g, " ").trim();
+    const href = attrs(m[1]).get("href")?.trim() ?? "";
+    if (text === "Security" && href !== "" && href !== "#") return true;
+  }
+  return false;
+}
+
 /** Where a link in `from` leads: the file's path and the #fragment, if any. */
 function resolve(from: string, href: string): { path: string; fragment: string } {
   const [target, fragment = ""] = href.split("#");
@@ -129,6 +145,16 @@ export function checkSite(
     if (!/<title>[^<]+<\/title>/i.test(html)) say("no <title>");
     if (!/<meta\s+name\s*=\s*["']description["']\s+content\s*=\s*["'][^"']+["']/i.test(html)) {
       say("no meta description");
+    }
+    // Every footer carries the Security link (the address of the security policy).
+    if (/class\s*=\s*["'][^"']*\bsite-footer\b/i.test(html)) {
+      const footer =
+        /<footer\b[^>]*class\s*=\s*["'][^"']*\bsite-footer\b[^>]*>([\s\S]*?)<\/footer>/i.exec(html);
+      if (!footer) {
+        say("the site-footer class is not on a <footer> element");
+      } else if (!hasSecurityLink(footer[1])) {
+        say('the footer has no "Security" link with an address');
+      }
     }
     if (/<style[\s>]/i.test(html))
       say("an inline <style> block (the Content Security Policy blocks it)");
@@ -238,4 +264,87 @@ export function checkSite(
 
   problems.push(...policyProblems(headers));
   return problems;
+}
+
+/** Where a security contact file must be served, as RFC 9116 sets it. */
+export const SECURITY_TXT_PATH = ".well-known/security.txt";
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/** How long before its `Expires` date the file may be left (RFC 9116 advises under a year). */
+const SECURITY_TXT_MAX_DAYS = 366;
+
+/**
+ * An `Expires` value as milliseconds, or undefined unless it is a real RFC 3339
+ * date and time (the format RFC 9116 asks for): all the parts, seconds
+ * included, a calendar date that exists (no 30 February), and an offset or Z.
+ */
+function parseExpires(value: string): number | undefined {
+  const m =
+    /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(\.\d+)?([Zz]|[+-](\d{2}):(\d{2}))$/.exec(
+      value,
+    );
+  if (!m) return undefined;
+  const [year, month, day, hour, minute, second] = m.slice(1, 7).map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  // A day that rolled over into the next month does not exist.
+  if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return undefined;
+  if (hour > 23 || minute > 59 || second > 59) return undefined;
+  if (m[9] !== undefined && (Number(m[9]) > 23 || Number(m[10]) > 59)) return undefined;
+  const time = Date.parse(value.toUpperCase());
+  return Number.isNaN(time) ? undefined : time;
+}
+
+/**
+ * Problems with `/.well-known/security.txt` (RFC 9116), one line each; `text`
+ * is undefined when the file is missing. `Expires` must be a real date, still
+ * ahead, and no more than a year away, so the file is renewed rather than
+ * forgotten. `now` is a parameter so the tests can pin the date.
+ */
+export function securityTxtProblems(text: string | undefined, now: Date = new Date()): string[] {
+  if (text === undefined) return [`${SECURITY_TXT_PATH} is missing`];
+  const problems: string[] = [];
+  const say = (what: string) => problems.push(`${SECURITY_TXT_PATH}: ${what}`);
+  // RFC 9116: every line, the last included, ends in LF or CRLF.
+  if (!text.endsWith("\n")) say("the last line has no line ending");
+  const fields = new Map<string, string[]>();
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^([A-Za-z-]+):\s*(.+?)\s*$/.exec(line);
+    if (m) fields.set(m[1].toLowerCase(), [...(fields.get(m[1].toLowerCase()) ?? []), m[2]]);
+  }
+
+  const contacts = fields.get("contact") ?? [];
+  if (!contacts.some((c) => /^(mailto:[^\s@]+@[^\s@]+|https:\/\/\S+)$/i.test(c))) {
+    say("no Contact that is a mailto: or https:// address");
+  }
+
+  const expires = fields.get("expires") ?? [];
+  if (expires.length !== 1) {
+    say("it needs exactly one Expires");
+  } else if (parseExpires(expires[0]) === undefined) {
+    say(`Expires ${expires[0]} is not an RFC 3339 date and time (such as 2027-11-01T00:00:00Z)`);
+  } else {
+    const days = (parseExpires(expires[0])! - now.getTime()) / DAY;
+    if (days <= 0) say(`Expires ${expires[0]} has passed: renew the file`);
+    else if (days > SECURITY_TXT_MAX_DAYS) say(`Expires ${expires[0]} is more than a year away`);
+  }
+
+  if (!(fields.get("policy") ?? []).some((v) => /^https:\/\/\S+$/i.test(v))) {
+    say("no Policy that is an https:// address");
+  }
+  if (
+    !(fields.get("canonical") ?? []).some((v) =>
+      /^https:\/\/\S+\/\.well-known\/security\.txt$/i.test(v),
+    )
+  ) {
+    say("no Canonical https:// address ending in /.well-known/security.txt");
+  }
+  return problems;
+}
+
+/** Days left before `Expires` (undefined when there is none to read), for a warning ahead of the deadline. */
+export function securityTxtDaysLeft(text: string, now: Date = new Date()): number | undefined {
+  const m = /^Expires:\s*(\S+)\s*$/im.exec(text);
+  const when = m ? parseExpires(m[1]) : undefined;
+  return when === undefined ? undefined : Math.floor((when - now.getTime()) / DAY);
 }

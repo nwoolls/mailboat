@@ -4,9 +4,17 @@
 // attributes, files from other servers), a policy no wider than the site's
 // own files, and the basics each page needs. Every .html and .css file under
 // website/ is read, folders included. The rules are in scripts/website.ts,
-// where scripts/website.test.ts tests them. Run by `bun run check:web`.
+// where scripts/website.test.ts tests them (the security contact file,
+// .well-known/security.txt, included). Run by `bun run check:web`.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { checkSite, type Pages, type Sheets } from "./website";
+import {
+  checkSite,
+  SECURITY_TXT_PATH,
+  securityTxtDaysLeft,
+  securityTxtProblems,
+  type Pages,
+  type Sheets,
+} from "./website";
 
 const root = new URL("../website/", import.meta.url).pathname;
 const read = (name: string) =>
@@ -23,12 +31,25 @@ if (!pages["index.html"]) {
   process.exit(1);
 }
 
-const problems = checkSite(pages, (path) => existsSync(`${root}${path}`), read("_headers"), sheets);
+const securityTxt = existsSync(`${root}${SECURITY_TXT_PATH}`)
+  ? readFileSync(`${root}${SECURITY_TXT_PATH}`, "utf8")
+  : undefined;
+
+const problems = [
+  ...checkSite(pages, (path) => existsSync(`${root}${path}`), read("_headers"), sheets),
+  ...securityTxtProblems(securityTxt),
+];
 
 if (problems.length) {
   console.error(`check:website: ${problems.length} problem(s) in website/:`);
   for (const p of problems) console.error(`  ${p}`);
   process.exit(1);
+}
+const daysLeft = securityTxt === undefined ? undefined : securityTxtDaysLeft(securityTxt);
+if (daysLeft !== undefined && daysLeft < 60) {
+  console.warn(
+    `check:website: ${SECURITY_TXT_PATH} expires in ${daysLeft} day(s): renew its Expires date (the check fails once it has passed)`,
+  );
 }
 console.log(
   `check:website: ${Object.keys(pages).length} pages and ${Object.keys(sheets).length} style sheet(s) are sound`,

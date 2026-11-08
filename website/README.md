@@ -12,6 +12,11 @@ step and no backend. It is meant to be served by Cloudflare as it is (decided
   `<dialog>`) when it is clicked: any `<img data-zoom="images/…">` is made
   clickable, and `data-zoom` names its full-size pictures. The pages read
   fine without it.
+- `.well-known/security.txt`: where to report a security problem (RFC 9116),
+  naming `SECURITY.md`. Its `Expires` date must be renewed before it passes,
+  at most a year ahead: `bun run check:website` warns in the last 60 days and
+  fails once it has passed. `check:website` also requires a "Security" link in
+  every page's footer.
 - `_headers`: security headers Cloudflare adds to every response. The
   Content Security Policy allows only the site's own files, so no inline
   scripts or `style` attributes.

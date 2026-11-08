@@ -3916,7 +3916,11 @@ security fixes).
       them, or clearing them on quit
 - [ ] The security contact on the website: `/.well-known/security.txt`
       (RFC 9116) naming `security@getmailboat.app` and `SECURITY.md`, and a
-      Security link in the footer
+      Security link in the footer *(2026-11-07: built, in its pull request:
+      the file and the footer link are in `website/`, `check:website`
+      requires both, and the file's `Expires` date, a year ahead, has to be
+      renewed; see the Architecture decisions. Tick it once it is live and
+      the owner has tried it)*
 - [ ] Optional, later: require Touch ID or Windows Hello to open the app,
       for shared computers
 
@@ -3999,7 +4003,8 @@ where their full text is. What the code did on 2026-11-07, checked then, so a
 new session need not repeat it: `check:website` does not read `SCOPES`;
 nothing revokes a refresh token at Google on account removal, and removing an
 account leaves its downloaded images; there is no `/.well-known/security.txt`
-(the address answers 404) and no Security link in the footer; image prefetch
+(the address answers 404) and no Security link in the footer (both are built
+since: see the hardening list); image prefetch
 is on by default; nothing encrypts the local database; the "model training"
 note is on the website's policy but not in Settings → AI; the repository's
 website link is already set. GitHub showed one open code-scanning alert
@@ -4068,7 +4073,9 @@ bullet is one pull request, except the alerts, which are GitHub settings
 and a tick.
 
 - [ ] `security.txt` and a Security link in the footer. Tiny and site-only;
-      `check:website` should require both
+      `check:website` should require both *(built 2026-11-07, in its pull
+      request; ticked in Milestone 16 once it is live and the owner has
+      tried it)*
 - [ ] The note in Settings → AI recommending that model training be turned
       off for the chosen provider (Milestone 16 item). The policy already
       says it; the app should say it where the provider is chosen

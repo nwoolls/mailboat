@@ -1,0 +1,6 @@
+Contact: mailto:security@getmailboat.app
+Contact: https://github.com/nwoolls/mailboat/security/advisories/new
+Expires: 2027-11-01T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://getmailboat.app/.well-known/security.txt
+Policy: https://github.com/nwoolls/mailboat/blob/main/SECURITY.md
