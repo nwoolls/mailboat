@@ -62,6 +62,29 @@ pub fn set_granted_scopes(conn: &Connection, id: AccountId, scopes: &[String]) -
     Ok(changed > 0)
 }
 
+/// Records a fresher Google profile: the name and picture it gave, when they
+/// differ from what is saved. What it didn't give (or gave empty) is kept as
+/// it was, so a refresh that finds less never removes the last good picture.
+/// Says whether anything changed.
+pub fn set_profile(
+    conn: &Connection,
+    id: AccountId,
+    name: Option<&str>,
+    picture: Option<&str>,
+) -> Result<bool> {
+    let name = name.map(str::trim).filter(|n| !n.is_empty());
+    let picture = picture.map(str::trim).filter(|p| !p.is_empty());
+    let changed = conn.execute(
+        "UPDATE accounts SET display_name = COALESCE(?2, display_name),
+                             avatar_url = COALESCE(?3, avatar_url)
+         WHERE id = ?1
+           AND (COALESCE(?2, display_name) IS NOT display_name
+                OR COALESCE(?3, avatar_url) IS NOT avatar_url)",
+        params![id, name, picture],
+    )?;
+    Ok(changed > 0)
+}
+
 /// Adds an account, or refreshes its profile if this Google identity is
 /// already connected (signing in again must not create a duplicate).
 pub fn upsert(conn: &Connection, new: &NewAccount<'_>) -> Result<Account> {
@@ -205,6 +228,53 @@ mod tests {
             avatar_url: None,
             oauth_client: "default",
         }
+    }
+
+    #[test]
+    fn a_fresher_profile_is_saved_and_what_it_leaves_out_is_kept() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        let id = upsert(
+            &conn,
+            &NewAccount {
+                display_name: Some("Ada"),
+                avatar_url: Some("https://x.example/old.png"),
+                ..new("sub-1", "a@x.example")
+            },
+        )
+        .unwrap()
+        .id;
+        // A new picture; the name is unchanged.
+        assert!(set_profile(&conn, id, Some("Ada"), Some("https://x.example/new.png")).unwrap());
+        let a = get(&conn, id).unwrap();
+        assert_eq!(a.avatar_url.as_deref(), Some("https://x.example/new.png"));
+        assert_eq!(a.display_name.as_deref(), Some("Ada"));
+        // The same again: nothing changed.
+        assert!(!set_profile(&conn, id, Some("Ada"), Some("https://x.example/new.png")).unwrap());
+        // A refresh that finds less (or only blanks) never removes the last good ones.
+        assert!(!set_profile(&conn, id, None, None).unwrap());
+        assert!(!set_profile(&conn, id, Some("  "), Some("")).unwrap());
+        let a = get(&conn, id).unwrap();
+        assert_eq!(a.avatar_url.as_deref(), Some("https://x.example/new.png"));
+        assert_eq!(a.display_name.as_deref(), Some("Ada"));
+        // A new name alone, trimmed.
+        assert!(set_profile(&conn, id, Some(" Ada Lovelace "), None).unwrap());
+        assert_eq!(
+            get(&conn, id).unwrap().display_name.as_deref(),
+            Some("Ada Lovelace")
+        );
+        // An account with no picture yet gets one.
+        let bare = upsert(&conn, &new("sub-2", "b@x.example")).unwrap().id;
+        assert!(set_profile(&conn, bare, None, Some("https://x.example/b.png")).unwrap());
+        assert_eq!(
+            get(&conn, bare).unwrap().avatar_url.as_deref(),
+            Some("https://x.example/b.png")
+        );
+        // Only that account.
+        assert_eq!(
+            get(&conn, id).unwrap().avatar_url.as_deref(),
+            Some("https://x.example/new.png")
+        );
     }
 
     /// Regression: SQLite gave a removed account's ID to the next account

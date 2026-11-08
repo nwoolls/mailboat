@@ -20,6 +20,15 @@ use crate::error::{CoreError, Result};
 pub const GMAIL_BASE_URL: &str = "https://gmail.googleapis.com";
 pub const PEOPLE_BASE_URL: &str = "https://people.googleapis.com";
 pub const CALENDAR_BASE_URL: &str = "https://www.googleapis.com";
+/// Google's sign-in profile (name and picture), as read at sign-in.
+pub const USERINFO_BASE_URL: &str = "https://openidconnect.googleapis.com";
+
+/// What Google's profile endpoint says about the account.
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct UserProfile {
+    pub name: Option<String>,
+    pub picture: Option<String>,
+}
 
 /// Headers requested with `format=metadata`.
 pub const METADATA_HEADERS: [&str; 9] = [
@@ -88,6 +97,8 @@ pub struct GmailClient {
     people_base_url: String,
     /// Google Calendar API (meeting invitations), with the same sign-in.
     pub(crate) calendar_base_url: String,
+    /// Google's profile endpoint (`openid`/`profile`, asked at sign-in).
+    userinfo_base_url: String,
     tokens: Arc<dyn TokenSource>,
     retry: RetryPolicy,
     /// Shared by every clone of this client, so all calls for the account
@@ -103,6 +114,7 @@ impl GmailClient {
         Self {
             people_base_url: PEOPLE_BASE_URL.into(),
             calendar_base_url: CALENDAR_BASE_URL.into(),
+            userinfo_base_url: USERINFO_BASE_URL.into(),
             ..Self::with_base_url(http, tokens, GMAIL_BASE_URL)
         }
     }
@@ -118,6 +130,7 @@ impl GmailClient {
             // Tests point both at one mock server.
             people_base_url: base_url.trim_end_matches('/').to_string(),
             calendar_base_url: base_url.trim_end_matches('/').to_string(),
+            userinfo_base_url: base_url.trim_end_matches('/').to_string(),
             tokens,
             retry: RetryPolicy::default(),
             pacer: QuotaPacer::default(),
@@ -507,6 +520,15 @@ impl GmailClient {
             Retry::Transient,
         )
         .await
+    }
+
+    /// The account's Google profile (name and picture), the same call that
+    /// reads it at sign-in, with the same permission. Not Gmail quota, so no
+    /// pacing.
+    pub async fn user_profile(&self) -> Result<UserProfile> {
+        let url = format!("{}/v1/userinfo", self.userinfo_base_url);
+        let response = self.send(|| self.http.get(&url)).await?;
+        response.json().await.map_err(net_error)
     }
 
     /// People API `people.connections.list`: the account's saved contacts

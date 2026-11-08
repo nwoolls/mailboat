@@ -4224,9 +4224,17 @@ One pull request each.
 - [x] The browser test "starfield paints a night sky and lightens the words"
       that failed once (done in the same browser-test session as the zoom
       flash) *(2026-11-08: fixed; see the Bug backlog entry)*
-- [ ] Periodically refresh each account's Google profile image. First
+- [x] Periodically refresh each account's Google profile image. First
       confirm it uses the request and permission the app already has; if it
-      needs anything new, it moves to "Held or later"
+      needs anything new, it moves to "Held or later" *(2026-11-08: built; it
+      needs nothing new: the same `userinfo` request the sign-in makes, with
+      the `openid` and `profile` permissions `SCOPES` already asks for, so
+      the policy's line about the name and picture still holds. Each
+      account's worker reads it at launch and then once a day (an hour
+      later after a failure that may pass, and giving up after 20 seconds so
+      a slow answer can't hold up the mail); a changed name or picture is
+      saved and shown, and a refresh that fails or finds less keeps what was
+      saved)*
 
 ### Writing
 
@@ -4426,12 +4434,13 @@ again until the next spike.*
       Gmail sizes them and match it, checking this email and a few other
       newsletters. Not investigated yet
 
-- [ ] Periodically refresh each account's Google profile image *(owner
-      request, 2026-10-27; for the next bug spike)*. Today the profile
-      URL is saved only at sign-in; background sync never refreshes it.
-      Recheck each account's profile on a throttled schedule, persist
-      changes and update its avatar without requiring another sign-in.
-      Keep the last image if a refresh fails
+- [x] Periodically refresh each account's Google profile image *(owner
+      request, 2026-10-27; for the next bug spike; built 2026-11-08, see the
+      Polish Spike item)*. The profile URL was saved only at sign-in, and
+      background sync never refreshed it. Wanted: recheck each account's
+      profile on a throttled schedule, persist changes and update its avatar
+      without requiring another sign-in, and keep the last image if a refresh
+      fails
 - [x] The koi pond's koi crowded the middle of the screen *(owner
       report with a screenshot, 2026-10-26)*. Every koi near an edge
       turned toward the exact center, and between nibbles they swam

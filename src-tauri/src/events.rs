@@ -145,6 +145,9 @@ impl SyncEvents for TauriSyncEvents {
     fn identities_changed(&self, account_id: AccountId) {
         let _ = IdentitiesChangedEvent { account_id }.emit(&self.app);
     }
+    fn account_changed(&self, _account_id: AccountId) {
+        let _ = AccountsChangedEvent.emit(&self.app);
+    }
 }
 
 /// A `mailto:` link arrived; take it with `mailto_take`.

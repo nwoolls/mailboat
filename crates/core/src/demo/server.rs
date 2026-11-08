@@ -259,6 +259,9 @@ impl FakeGoogle {
             self.gmail(&account, method, rest, &query, body)
         } else if let Some(rest) = path.strip_prefix("/calendar/v3/calendars/primary/") {
             self.calendar(&account, method, rest, &query, body)
+        } else if path == "/v1/userinfo" {
+            // The made-up Google has no name or picture to change.
+            Ok(json!({ "sub": account, "email": account }))
         } else if path == "/v1/people/me/connections" || path == "/v1/otherContacts" {
             Ok(self.people(&account, path == "/v1/otherContacts"))
         } else {
