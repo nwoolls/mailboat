@@ -450,8 +450,11 @@ pub enum CssUrl {
 /// Rewrites the image addresses in `css` (a `<style>` sheet or a `style`
 /// attribute's declarations): `url(…)` in either form, and the strings of
 /// `image-set()`. `@import`, `@font-face` and `@namespace` are left alone:
-/// they aren't images, and the CSP refuses what they'd load. Returns `css`
-/// unchanged when `decide` keeps everything.
+/// they aren't images, and the CSP refuses what they'd load. A broken
+/// unquoted `url(` (a bad-url token, such as a space after the scheme's
+/// colon) becomes `none` without asking `decide`: a browser loads nothing
+/// from one, and its text shouldn't stay to be read any other way. Returns
+/// `css` unchanged when there is nothing to change.
 pub fn rewrite_urls(css: &str, mut decide: impl FnMut(&str) -> CssUrl) -> String {
     let mut edits = Vec::new();
     let mut parser = Parser::new(css);
@@ -487,6 +490,7 @@ fn collect_urls(
             Token::UnquotedUrl(url) => {
                 push_edit(decide, edits, start, p.position().byte_index(), &url, false)
             }
+            Token::BadUrl(_) => edits.push((start, p.position().byte_index(), "none".into())),
             Token::Function(name) if name.eq_ignore_ascii_case("url") => {
                 let mut url = None;
                 let _ = p.parse_nested_block(|p| {

@@ -4107,7 +4107,14 @@ and a tick.
 - [ ] Fuzz the email HTML cleaner (the first item under "Later /
       unscheduled", first half). Opus. Anything it finds is a security bug,
       so a finding goes to the front of the queue, ahead of the rest of the
-      spike
+      spike *(2026-11-07: its first finding is fixed in its own pull request,
+      ahead of the fuzzing work: with images allowed, the cleaner kept image
+      addresses that aren't web addresses in `background` attributes and CSS
+      `url()`, the app's own link address among them (and, on Windows, its
+      `email-link.localhost` form counted as a remote image), which would
+      open its link with no click if it loaded. Nothing loaded, as the CSP,
+      the upgrade to HTTPS and the browser's reading of the odd forms stood in
+      the way; the cleaner now removes them itself)*
 - [ ] Fuzz the MIME and `mailto:` parsers (the same item, second half; the
       item is ticked when both are done). Opus, same rule for findings
 - [ ] Removing an account cleans up: revoke the refresh token at Google
@@ -4395,6 +4402,16 @@ again until the next spike.*
       Adapted colors forgets it. It was per message, until the app quit
 
 ## Later / unscheduled
+
+- [ ] Images from local or private hosts *(raised by the review of the
+      image-address fix, 2026-11-07)*: an email's remote image may name a
+      loopback or private-network host (`127.0.0.1`, `*.localhost`,
+      `192.168.…`), which loads like any other when images are allowed, and
+      is downloaded by the app itself as mail arrives (`mail::prefetch`).
+      That lets a sender make a request to a device on the reader's own
+      network. Decide whether the cleaner and prefetch should refuse such
+      hosts (the app's own link host already is), and record the choice in
+      the Architecture decisions. Owner to schedule
 
 - [ ] Pin more of the privacy policy's claims in `check:website`
       (`scripts/policy.ts`) *(from the review of the first check,

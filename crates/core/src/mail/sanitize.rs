@@ -80,7 +80,16 @@ const TRACKER_PATHS: &[&str] = &[
 /// `\\` counts as `/`, and `https:host/x` means `https://host/x`. Checking
 /// the text as written missed `//host`, `ht\a tps://host` (a CSS escape)
 /// and `https:host`, which the web view loads (code review R4-04).
+///
+/// The app's own link address on Windows (`http://email-link.localhost/…`,
+/// `super::links::is_link_host`) is never a remote image: loading one would
+/// ask the app to open a link with no click. So it isn't downloaded ahead
+/// of time, and as an image it is removed like any unsafe address.
 fn remote_address(raw: &str) -> Option<url::Url> {
+    web_address(raw).filter(|u| !u.host_str().is_some_and(super::links::is_link_host))
+}
+
+fn web_address(raw: &str) -> Option<url::Url> {
     match url::Url::parse(raw) {
         Ok(u) if matches!(u.scheme(), "http" | "https") => Some(u),
         Ok(_) => None,
@@ -184,10 +193,49 @@ pub fn remote_image_urls(html: &str) -> Vec<String> {
     urls.into_inner()
 }
 
+/// Whether an image address that isn't remote may stay: one the email
+/// carries itself (`cid:`, `data:image/…`) or a relative one, which loads
+/// nothing in the frame. Anything else is removed: other schemes
+/// (`javascript:`, `data:text/html`, the app's own `email-link:` link
+/// address, which would open its link if it loaded) and the app's link host
+/// (`remote_address`). Found by fuzzing. The CSP's `img-src` (`data:` and
+/// `https:`) refused all but `data:` ones, and a `data:` one that isn't an
+/// image can only fail to decode; the cleaner shouldn't depend on either.
+///
+/// "Relative" is strict: not scheme-relative (`//host`, which reaches a
+/// host), and no `:` before the first `/`, `?` or `#`. A browser
+/// reads `\u{200b}email-link:…` (a zero-width space, BOM or no-break space in
+/// front) or `\javascript:…` as a relative address too, but a cleaner that
+/// relies on that reading is one parser quirk away from a live scheme.
+fn keeps_local_image(raw: &str) -> bool {
+    match url::Url::parse(raw) {
+        Ok(u) => match u.scheme() {
+            "cid" => true,
+            "data" => u.path().to_ascii_lowercase().starts_with("image/"),
+            _ => false,
+        },
+        Err(url::ParseError::RelativeUrlWithoutBase) => {
+            // As the web view reads it: `//host` (or `\\host`) reaches a
+            // host, so it isn't relative; a remote one never gets here.
+            let bare: String = raw
+                .trim_matches(|c: char| c <= ' ')
+                .chars()
+                .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
+                .collect();
+            let scheme_relative =
+                bare.starts_with(['/', '\\']) && bare[1..].starts_with(['/', '\\']);
+            let before_path = bare.split(['/', '?', '#']).next().unwrap_or_default();
+            !scheme_relative && !before_path.contains(':')
+        }
+        Err(_) => false,
+    }
+}
+
 /// The rule for a remote image outside `<img>` (a CSS image or a
 /// `background` attribute), the same as `<img>`'s: known trackers are
 /// removed, held-back images too, and the rest load from their downloaded
-/// copy or over HTTPS. Anything else is left to the CSP, which refuses it.
+/// copy or over HTTPS. One that isn't remote stays only if
+/// `keeps_local_image` says so.
 fn css_image_rule(
     url: &str,
     allow_images: bool,
@@ -196,7 +244,11 @@ fn css_image_rule(
 ) -> CssUrl {
     let (trackers, blocked, loaded) = counts;
     if !is_remote(url) {
-        return CssUrl::Keep;
+        return if keeps_local_image(url) {
+            CssUrl::Keep
+        } else {
+            CssUrl::Remove
+        };
     }
     let bump = |c: &Cell<u32>| c.set(c.get() + 1);
     if looks_like_tracker(url, None, None, None) {
@@ -519,7 +571,7 @@ pub fn sanitize_html_colors(
             .append_element_content_handler(element!("[background]", |el| {
                 let background = attr(el, "background").unwrap_or_default();
                 if !is_remote(&background) {
-                    if !allow_images {
+                    if !allow_images || !keeps_local_image(&background) {
                         el.remove_attribute("background");
                     }
                     return Ok(());
@@ -1121,6 +1173,153 @@ mod tests {
                 .contains("@import url(https://cdn.vendor.example/x.css)"),
             "left to the CSP, which refuses style sheets from anywhere"
         );
+    }
+
+    /// Found by fuzzing: image addresses that aren't web addresses were kept
+    /// in `background` and CSS, including the app's own link address,
+    /// which would open its link if it loaded. The CSP refused all but the
+    /// `data:` one, which couldn't decode as an image; now the cleaner
+    /// removes them itself, whether images load or not.
+    #[test]
+    fn image_addresses_keep_only_safe_schemes() {
+        let app_link = "email-link://localhost/open?u=https%3A%2F%2Fx.example%2F";
+        let unsafe_addresses = [
+            "javascript:x",
+            "data:text/html,x",
+            "file:///x",
+            "vbscript:x",
+            app_link,
+        ];
+        for allow_images in [true, false] {
+            for address in unsafe_addresses {
+                for html in [
+                    format!(r#"<table background="{address}"><tr><td>x</td></tr></table>"#),
+                    format!(r#"<div style="background:url({address})">x</div>"#),
+                    format!(r#"<div style="background:url('{address}')">x</div>"#),
+                    format!(
+                        "<style>.a{{background:url(\"{address}\")}}</style><div class=a>x</div>"
+                    ),
+                    format!(r#"<div style="background-image:image-set('{address}' 1x)">x</div>"#),
+                ] {
+                    let out = sanitize_html(&html, allow_images).document;
+                    let body = out.split("<body>").nth(1).unwrap_or_default();
+                    let scheme = address.split(':').next().unwrap_or_default();
+                    assert!(
+                        !body.contains(&format!("{scheme}:")),
+                        "images {allow_images}: {html}\n{body}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// Review of the fix: a scheme behind an invisible character, or a
+    /// leading backslash, read as "relative" and stayed.
+    #[test]
+    fn a_scheme_hidden_behind_a_prefix_is_removed_too() {
+        let app_link = "email-link://localhost/open?u=https%3A%2F%2Fx.example%2F";
+        for allow_images in [true, false] {
+            for prefix in ["\u{200b}", "\u{feff}", "\u{a0}", "\u{2060}"] {
+                for address in ["javascript:x", app_link] {
+                    for html in [
+                        format!(
+                            r#"<table background="{prefix}{address}"><tr><td>x</td></tr></table>"#
+                        ),
+                        format!(r#"<div style="background:url('{prefix}{address}')">x</div>"#),
+                    ] {
+                        let out = sanitize_html(&html, allow_images).document;
+                        let body = out.split("<body>").nth(1).unwrap_or_default();
+                        let scheme = address.split(':').next().unwrap_or_default();
+                        assert!(
+                            !body.contains(&format!("{scheme}:")),
+                            "images {allow_images}: {html:?}\n{body}"
+                        );
+                    }
+                }
+            }
+            let out = sanitize_html(
+                r#"<div style="background:url(\\javascript:x)">x</div>"#,
+                allow_images,
+            );
+            assert!(!out.document.contains("javascript:"), "{}", out.document);
+            // A space after the colon makes a broken `url(`, which loads
+            // nothing; its text goes too.
+            for address in [
+                "javascript: x",
+                "email-link: //localhost/open?u=x",
+                "data: text/html,x",
+            ] {
+                let html = format!(
+                    r#"<div style="background:url({address})">x</div><style>p{{background:url({address})}}</style>"#
+                );
+                let out = sanitize_html(&html, allow_images).document;
+                let body = out.split("<body>").nth(1).unwrap_or_default();
+                let scheme = address.split(':').next().unwrap_or_default();
+                assert!(!body.contains(&format!("{scheme}:")), "{html}\n{body}");
+            }
+        }
+    }
+
+    /// Review of the fix: on Windows the app's link address is
+    /// `http://email-link.localhost/…`, which looked like any remote image.
+    #[test]
+    fn the_app_link_host_is_never_an_image() {
+        let forms = [
+            "http://email-link.localhost/open?u=https%3A%2F%2Fx.example%2F",
+            "https://email-link.localhost/open?u=https%3A%2F%2Fx.example%2F",
+            "//email-link.localhost/open?u=https%3A%2F%2Fx.example%2F",
+            "https://EMAIL-LINK.localhost./open?u=x",
+            "http://a.email-link.localhost/open?u=x",
+        ];
+        for allow_images in [true, false] {
+            for address in forms {
+                for html in [
+                    format!(r#"<img src="{address}">"#),
+                    format!(r#"<table background="{address}"><tr><td>x</td></tr></table>"#),
+                    format!(r#"<div style="background:url({address})">x</div>"#),
+                    format!(
+                        "<style>.a{{background:url(\"{address}\")}}</style><div class=a>x</div>"
+                    ),
+                ] {
+                    let out = sanitize_html(&html, allow_images);
+                    assert!(
+                        !out.document
+                            .to_ascii_lowercase()
+                            .contains("email-link.localhost"),
+                        "images {allow_images}: {html}\n{}",
+                        out.document
+                    );
+                    assert_eq!(out.loaded_images, 0, "{html}");
+                }
+                // Nor downloaded ahead of time as mail arrives.
+                assert_eq!(
+                    remote_image_urls(&format!(r#"<img src="{address}">"#)),
+                    Vec::<String>::new()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn image_addresses_the_email_carries_still_show() {
+        for (html, address) in [
+            (
+                r#"<table background="data:image/png;base64,AAAA"><tr><td>x</td></tr></table>"#,
+                "data:image/png;base64,AAAA",
+            ),
+            (
+                r#"<div style="background:url(data:image/png;base64,AAAA)">x</div>"#,
+                "data:image/png;base64,AAAA",
+            ),
+            (
+                r#"<div style="background:url(cid:part1@x.example)">x</div>"#,
+                "cid:part1@x.example",
+            ),
+            (r#"<div style="background:url(a.png)">x</div>"#, "a.png"),
+        ] {
+            let out = sanitize_html(html, true).document;
+            assert!(out.contains(address), "{html}\n{out}");
+        }
     }
 
     /// Code review R4-04: addresses a browser reads as HTTPS, written so
