@@ -4125,6 +4125,13 @@ and a tick.
       it was harmless; it is now removed, and the fuzz inputs reach it)*
 - [ ] Fuzz the MIME and `mailto:` parsers (the same item, second half; the
       item is ticked when both are done). Opus, same rule for findings
+      *(2026-11-08: its findings so far are fixed in their own pull request,
+      ahead of the fuzzing work: the cleaning of the file names an email
+      picks (`attachments::safe_filename`, and the name of a downloaded
+      original) let through text-direction characters, Windows device names,
+      names too long in bytes, a trailing space or dot after a cut, and a
+      dot-only subject that cost the `.eml` its extension. The `mailto:`
+      reader, the Gmail message reader and the raw-email reader had none)*
 - [ ] Removing an account cleans up: revoke the refresh token at Google
       (best effort, and say so when offline), then delete the account's
       images with the link table the next Milestone 16 item describes, with
