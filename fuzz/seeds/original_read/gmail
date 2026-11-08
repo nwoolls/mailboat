@@ -1,0 +1,12 @@
+Delivered-To: me@x.example
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@news.x.example header.s=s1;
+       spf=pass (google.com: domain of bounce@x.example designates 192.0.2.1 as permitted sender) smtp.mailfrom=bounce@x.example;
+       dmarc=pass (p=REJECT) header.from=x.example
+From: Maya Chen <maya@x.example>
+To: Priya Raman <priya@x.example>
+Subject: Lunch on Friday?
+Date: Fri, 1 Nov 2026 10:00:00 +0000
+Message-ID: <abc@x.example>
+
+Hi Priya,

@@ -4104,7 +4104,7 @@ and a tick.
       README has the Scorecard badge, so those parts of the original item are
       done. Tick the original when both alerts are resolved or accepted
       *(done 2026-11-07; ticked in Milestone 14)*
-- [ ] Fuzz the email HTML cleaner (the first item under "Later /
+- [x] Fuzz the email HTML cleaner (the first item under "Later /
       unscheduled", first half). Opus. Anything it finds is a security bug,
       so a finding goes to the front of the queue, ahead of the rest of the
       spike *(2026-11-07: its first finding is fixed in its own pull request,
@@ -4117,16 +4117,19 @@ and a tick.
       the way; the cleaner now removes them itself)* *(2026-11-07: the
       fuzzing is built, in its pull request: `mail::sanitize_check`, checks
       on the cleaner's output run as property tests in every `cargo test`
-      and by a cargo-fuzz target in `fuzz/`, weekly and by hand. Ticked
-      here once it has merged; the original item waits for the parsers too.
+      and by a cargo-fuzz target in `fuzz/`, weekly and by hand. Both
+      halves are built; see the parsers bullet below.
       Review of it found the checker's own gap, the second finding: ammonia
       keeps a quote's `cite` address whatever its scheme, so `cite="javascript:…"`
       stayed on `blockquote`, `q`, `del` and `ins`. Nothing opens `cite`, so
       it was harmless; it is now removed, and the fuzz inputs reach it)*
-- [ ] Fuzz the MIME and `mailto:` parsers (the same item, second half; the
+- [x] Fuzz the MIME and `mailto:` parsers (the same item, second half; the
       item is ticked when both are done). Opus, same rule for findings
-      *(2026-11-08: its findings so far are fixed in their own pull request,
-      ahead of the fuzzing work: the cleaning of the file names an email
+      *(2026-11-08: built, in its pull request: `parse_check`, run as
+      property tests in every `cargo test` and by four cargo-fuzz targets
+      (`mailto_parse`, `original_read`, `gmail_message`, `file_name`),
+      weekly with the cleaner's. Its findings were fixed in their own pull
+      request, ahead of the fuzzing work: the cleaning of the file names an email
       picks (`attachments::safe_filename`, and the name of a downloaded
       original) let through text-direction characters, Windows device names,
       names too long in bytes, a trailing space or dot after a cut, and a
@@ -4470,10 +4473,12 @@ again until the next spike.*
       2026-11-07 that this is a follow-up, after the Polish Spike's first
       check lands, and not part of the spike
 
-- [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and
+- [x] Fuzz the code that reads untrusted text: the email HTML cleaner and
       the MIME and `mailto:` parsers (Scorecard's "Fuzzing" check; cargo-fuzz
       or proptest). Anything it finds is a security bug, so it goes first
-      in the queue *(picked for the Polish Spike, 2026-11-07)*
+      in the queue *(picked for the Polish Spike, 2026-11-07; done
+      2026-11-08: both halves are built, see the Polish Spike's two fuzzing
+      bullets, and Scorecard's check looks for the cargo-fuzz targets)*
 
 - [ ] ChatGPT through OpenAI's API with the owner's key *(owner,
       2026-10-31, after Milestone 13 Round 5)*: tools-free by design (the

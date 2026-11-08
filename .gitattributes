@@ -6,3 +6,5 @@
 *.gif binary
 *.mp4 binary
 *.mov binary
+# The fuzz seeds are raw inputs, byte for byte: a raw email's CRLF line breaks matter.
+fuzz/seeds/** -text
