@@ -197,11 +197,17 @@ fn when(millis: i64) -> String {
         .unwrap_or_default()
 }
 
+/// What marks the newest message of a conversation, after its date.
+/// In the date line, not on a line of its own and not in words the
+/// instructions quote: Apple's small on-device model copied a label that
+/// stood alone into its answer as a bullet.
+pub const LATEST_MARK: &str = " (latest message)";
+
 /// The conversation as text within `budget` characters. The newest
 /// message gets the most room; older ones are shortened, then left out
 /// (oldest first), with a note saying how many. In a conversation, the
 /// newest is marked as such: Apple's small model summarized a one-line
-/// "Sounds good." as if the long email before it were still where things
+/// acknowledgment as if the long email before it were still where things
 /// stood.
 pub fn render(thread: &ThreadText, budget: usize) -> String {
     let mut parts: Vec<String> = Vec::new();
@@ -210,14 +216,14 @@ pub fn render(thread: &ThreadText, budget: usize) -> String {
     for (n, m) in thread.messages.iter().rev().enumerate() {
         let newest = n == 0 && thread.messages.len() > 1;
         let header = format!(
-            "{}From: {}\nTo: {}\nDate: {}\n\n",
-            if newest { "Newest message:\n" } else { "" },
+            "From: {}\nTo: {}\nDate: {}{}\n\n",
             person(&m.from, m.mine),
             m.to.iter()
                 .map(|a| person(a, false))
                 .collect::<Vec<_>>()
                 .join(", "),
-            when(m.date)
+            when(m.date),
+            if newest { LATEST_MARK } else { "" }
         );
         // The newest may take most of the room; each older one a share.
         let cap = if n == 0 {
@@ -310,15 +316,20 @@ mod tests {
         assert!(first < second);
         assert!(out.contains("Sam <sam@x.example> (me)"), "{out}");
         assert!(out.contains("Date: 2026-"));
-        // The newest is marked, and only it.
-        assert_eq!(out.matches("Newest message:").count(), 1);
-        assert!(out.find("Newest message:").unwrap() > first);
-        assert!(out.find("Newest message:").unwrap() < second);
+        // The newest is marked, and only it, in its date line.
+        assert_eq!(out.matches(LATEST_MARK).count(), 1);
+        assert!(out.find(LATEST_MARK).unwrap() > first);
+        assert!(out.find(LATEST_MARK).unwrap() < second);
+        assert!(
+            out.lines()
+                .any(|l| l.starts_with("Date: ") && l.ends_with(LATEST_MARK)),
+            "{out}"
+        );
         let alone = ThreadText {
             messages: vec![msg(1, "Lunch Thursday?")],
             ..t
         };
-        assert!(!render(&alone, 10_000).contains("Newest message:"));
+        assert!(!render(&alone, 10_000).contains(LATEST_MARK.trim()));
     }
 
     #[test]
