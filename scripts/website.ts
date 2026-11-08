@@ -62,10 +62,13 @@ function ids(html: string): Set<string> {
 /** Whether this HTML has a link whose text is "Security" (tags inside it ignored) and that has an address. */
 function hasSecurityLink(html: string): boolean {
   for (const m of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
-    const text = m[2]
-      .replace(/<[^>]*>/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
+    // Strip tags until nothing changes (one pass can leave a new "<tag" behind).
+    let inner = m[2];
+    for (let before = ""; before !== inner;) {
+      before = inner;
+      inner = inner.replace(/<[^>]*>/g, "");
+    }
+    const text = inner.replace(/\s+/g, " ").trim();
     const href = attrs(m[1]).get("href")?.trim() ?? "";
     if (text === "Security" && href !== "" && href !== "#") return true;
   }
