@@ -94,6 +94,11 @@ How this is enforced:
   in Settings updates the policy in the same commit, and a new or changed
   feature updates its card. Say only what the code does (check it); when the
   app is more private than the policy claims, fix the policy too.
+  `bun run check:website` backs this for two things (`scripts/policy.ts`): it
+  fails when a permission in `SCOPES` has no line in the policy's list (or the
+  list has one `SCOPES` doesn't ask for), and when a default the policy states
+  no longer matches `crates/core/src/settings.rs`. A new permission needs a
+  line in `SCOPE_LABELS`; a new stated default needs an entry in `CLAIMS`.
 - `README.md`: what it is and why, for people. Setup and running live in
   `docs/DEVELOPMENT.md`, Google credentials in `docs/GOOGLE-SETUP.md`, AI in
   `docs/AI.md`.

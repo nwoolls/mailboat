@@ -3871,7 +3871,10 @@ security fixes).
       (the rule is in `AGENTS.md`). A check backs it: `check:website` reads
       `SCOPES` in `crates/core/src/auth/oauth.rs` and fails when a
       permission has no matching line in the policy, and a test pins the
-      defaults the policy states
+      defaults the policy states *(2026-11-07: the check is built, in its
+      pull request: `scripts/policy.ts`, run by `check:website`, with a
+      label for each permission and a table of the stated defaults. Tick
+      this item when it has merged)*
 - [ ] Cloud AI is manual by default: with Claude or ChatGPT chosen, the
       summary above a conversation waits for the Summarize button, so every
       transfer is one the person started. Automatic stays an option, and
@@ -4090,7 +4093,8 @@ and a tick.
 - [ ] `check:website` reads `SCOPES` and fails when a permission has no
       matching line in the policy, and a test pins the defaults the policy
       states (the first "Privacy and security by default" item). This guards
-      the claims Google is checking
+      the claims Google is checking *(built 2026-11-07, in its pull request;
+      ticked in Milestone 16 once it has merged)*
 - [ ] Clear the open security alerts (the Milestone 14 item "Look through
       the first code-scanning findings"): Scorecard's SAST alert (accepted:
       dismiss it with the reason that CodeQL skips docs-only changes on
