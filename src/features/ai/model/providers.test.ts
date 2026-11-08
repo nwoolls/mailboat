@@ -11,7 +11,8 @@ import {
   qualityChoices,
   statusLine,
   trainingNote,
-  trainingProviders,
+  summaryTrainingProviders,
+  writingTrainingProviders,
 } from "./providers";
 import { APP_NAME } from "../../../shared/lib/brand";
 
@@ -111,23 +112,38 @@ describe("the model-training note", () => {
     readerSummary: "off",
   };
 
-  it("names only connected providers that a feature that is on uses", () => {
-    expect(trainingProviders(ai)).toEqual([]); // Apple for everything: on the Mac
-    expect(trainingProviders({ ...cloud, writingProvider: "claude" })).toEqual(["claude"]);
+  it("names, under Summaries, the provider for the list and the one above a conversation", () => {
+    expect(summaryTrainingProviders(ai)).toEqual([]); // Apple for everything: on the Mac
+    expect(summaryTrainingProviders({ ...cloud, listSummaries: "chatgpt" })).toEqual(["chatgpt"]);
     expect(
-      trainingProviders({ ...cloud, listSummaries: "chatgpt", writingProvider: "claude" }),
+      summaryTrainingProviders({
+        ...cloud,
+        listSummaries: "chatgpt",
+        readerSummary: "button",
+        readerProvider: "claude",
+      }),
     ).toEqual(["chatgpt", "claude"]);
   });
 
   it("counts the summary above a conversation only when it isn't turned off", () => {
     const chosen: AiChoices = { ...cloud, readerProvider: "chatgpt" };
-    expect(trainingProviders(chosen)).toEqual([]);
-    expect(trainingProviders({ ...chosen, readerSummary: "button" })).toEqual(["chatgpt"]);
-    expect(trainingProviders({ ...chosen, readerSummary: "auto" })).toEqual(["chatgpt"]);
+    expect(summaryTrainingProviders(chosen)).toEqual([]);
+    expect(summaryTrainingProviders({ ...chosen, readerSummary: "button" })).toEqual(["chatgpt"]);
+    expect(summaryTrainingProviders({ ...chosen, readerSummary: "auto" })).toEqual(["chatgpt"]);
+  });
+
+  it("names, under Writing, only the writing provider, and Summaries' choices stay out of it", () => {
+    expect(writingTrainingProviders(ai)).toEqual([]);
+    expect(writingTrainingProviders({ ...cloud, writingProvider: "claude" })).toEqual(["claude"]);
+    const summariesOnly: AiChoices = { ...cloud, listSummaries: "chatgpt" };
+    expect(writingTrainingProviders(summariesOnly)).toEqual([]);
+    expect(summaryTrainingProviders({ ...cloud, writingProvider: "claude" })).toEqual([]);
   });
 
   it("leaves out a provider that was chosen but is no longer connected", () => {
-    expect(trainingProviders({ ...cloud, connected: [], writingProvider: "claude" })).toEqual([]);
+    const gone: AiChoices = { ...cloud, connected: [], listSummaries: "claude" };
+    expect(summaryTrainingProviders(gone)).toEqual([]);
+    expect(writingTrainingProviders({ ...gone, writingProvider: "claude" })).toEqual([]);
   });
 
   it("says it once for one provider, and for both when two are used", () => {

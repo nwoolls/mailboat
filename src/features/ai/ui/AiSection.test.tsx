@@ -22,8 +22,20 @@ const { AiSection } = await import("./AiSection");
 
 afterEach(cleanup);
 
-describe("AiSection's model-training note", () => {
-  it("shows nothing while every feature stays on the Mac, even with a provider connected", () => {
+/** The heading of the group a note sits directly under. */
+function groupAbove(note: HTMLElement): string | null {
+  return note.previousElementSibling?.querySelector("h2")?.textContent ?? null;
+}
+
+/** The nth training line on the page (a missing one fails the test with a clear message). */
+function noteAt(index: number): HTMLElement {
+  const note = screen.getAllByRole("note")[index];
+  if (!note) throw new Error(`There is no training line number ${index + 1} on the page`);
+  return note;
+}
+
+describe("AiSection's model-training notes", () => {
+  it("show nothing while every feature stays on the Mac, even with a provider connected", () => {
     ai = {};
     render(<AiSection />);
     expect(screen.queryByRole("note")).toBeNull();
@@ -34,26 +46,37 @@ describe("AiSection's model-training note", () => {
     expect(screen.queryByRole("note")).toBeNull();
   });
 
-  it("names the provider once Claude is connected and chosen for writing", () => {
-    ai = { connected: ["claude"], writingProvider: "claude" };
+  it("put a provider chosen for writing under Writing, and only there", () => {
+    ai = { connected: ["claude"], writingProvider: "claude", readerSummary: "off" };
     render(<AiSection />);
-    expect(screen.getByRole("note").textContent).toBe(
+    expect(screen.getAllByRole("note")).toHaveLength(1);
+    expect(groupAbove(noteAt(0))).toBe("Writing");
+    expect(noteAt(0).textContent).toBe(
       "Claude may use what it receives to train its models, depending on your account’s settings. We recommend turning that off in Claude’s privacy settings.",
     );
   });
 
-  it("names both when two are in use, and leaves out one the features don't use", () => {
+  it("put a provider chosen for summaries under Summaries, next to the choice, and only there", () => {
+    ai = { connected: ["chatgpt"], listSummaries: "chatgpt", readerSummary: "off" };
+    render(<AiSection />);
+    expect(screen.getAllByRole("note")).toHaveLength(1);
+    expect(groupAbove(noteAt(0))).toBe("Summaries");
+    expect(noteAt(0).textContent).toMatch(/^ChatGPT may use what it receives/);
+  });
+
+  it("give each group its own providers when both use one", () => {
     ai = {
       connected: ["chatgpt", "claude"],
       listSummaries: "chatgpt",
-      readerSummary: "off",
+      readerSummary: "button",
+      readerProvider: "claude",
       writingProvider: "claude",
     };
     render(<AiSection />);
-    expect(screen.getByRole("note").textContent).toContain("ChatGPT and Claude may use");
-    cleanup();
-    ai = { connected: ["chatgpt", "claude"], readerSummary: "off", writingProvider: "claude" };
-    render(<AiSection />);
-    expect(screen.getByRole("note").textContent).toMatch(/^Claude may use/);
+    expect(screen.getAllByRole("note")).toHaveLength(2);
+    expect(groupAbove(noteAt(0))).toBe("Summaries");
+    expect(noteAt(0).textContent).toContain("ChatGPT and Claude may use");
+    expect(groupAbove(noteAt(1))).toBe("Writing");
+    expect(noteAt(1).textContent).toMatch(/^Claude may use/);
   });
 });

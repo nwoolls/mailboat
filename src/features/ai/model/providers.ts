@@ -133,19 +133,27 @@ export function leavesMac(provider: AiProvider): boolean {
 
 /**
  * The providers, in the usual order, that may train on what a feature sends
- * them: ones off the Mac that are connected and chosen for a feature that is
- * on (the summary above a conversation counts only when it isn't turned off).
+ * them: ones off the Mac that are connected and chosen for it.
  */
-export function trainingProviders(ai: AiChoices): AiProvider[] {
-  const chosen = new Set<AiProvider>();
-  if (ai.listSummaries) chosen.add(ai.listSummaries);
-  if (ai.readerSummary !== "off") chosen.add(ai.readerProvider);
-  chosen.add(ai.writingProvider);
-  return PROVIDERS.filter((p) => chosen.has(p) && leavesMac(p) && ai.connected.includes(p));
+function mayTrain(ai: AiChoices, chosen: (AiProvider | null)[]): AiProvider[] {
+  return PROVIDERS.filter((p) => chosen.includes(p) && leavesMac(p) && ai.connected.includes(p));
 }
 
 /**
- * The line Settings → AI shows under the features when mail goes to a
+ * Who the Summaries group sends mail to: the one chosen for the list, and the
+ * one for the summary above a conversation unless that is turned off.
+ */
+export function summaryTrainingProviders(ai: AiChoices): AiProvider[] {
+  return mayTrain(ai, [ai.listSummaries, ai.readerSummary === "off" ? null : ai.readerProvider]);
+}
+
+/** Who the Writing group sends mail to (writing, rewriting, reply ideas, translation). */
+export function writingTrainingProviders(ai: AiChoices): AiProvider[] {
+  return mayTrain(ai, [ai.writingProvider]);
+}
+
+/**
+ * The line Settings → AI shows under a group when its features send mail to a
  * provider: it may train on it, depending on the account's settings, and
  * turning that off is recommended. The website's privacy policy says the same.
  */

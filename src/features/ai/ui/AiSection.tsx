@@ -29,8 +29,9 @@ import {
   qualityChoices,
   statusLine,
   statusOf,
+  summaryTrainingProviders,
   trainingNote,
-  trainingProviders,
+  writingTrainingProviders,
 } from "../model/providers";
 import { describeLimit, describeTotals, startOfToday } from "../model/usage";
 import { CodexNoticeCard } from "./CodexNotice";
@@ -64,7 +65,6 @@ export function AiSection() {
   const choices = offered(ai, statuses);
   // Windows, or a Mac that can't run it: not offered anywhere.
   const apple = appleSupported(statuses);
-  const training = trainingNote(trainingProviders(ai));
   return (
     <>
       <CodexNoticeCard connected={ai.connected.includes("chatgpt")} />
@@ -158,6 +158,7 @@ export function AiSection() {
           </Button>
         </Row>
       </Group>
+      <TrainingNote providers={summaryTrainingProviders(ai)} />
       <Group title="Writing">
         <Row
           label="Help writing with"
@@ -201,14 +202,21 @@ export function AiSection() {
           />
         )}
       </Group>
-      {training && (
-        <p role="note" className="px-1 pt-3 text-[12px] leading-relaxed text-content/45">
-          {training}
-        </p>
-      )}
+      <TrainingNote providers={writingTrainingProviders(ai)} />
       <AiAppsGroups />
       <UsageGroup />
     </>
+  );
+}
+
+/** The line under a group when its features send mail to Claude or ChatGPT (it may train on it). */
+function TrainingNote({ providers }: { providers: AiProvider[] }) {
+  const note = trainingNote(providers);
+  if (!note) return null;
+  return (
+    <p role="note" className="px-1 pt-3 text-[12px] leading-relaxed text-content/45">
+      {note}
+    </p>
   );
 }
 
