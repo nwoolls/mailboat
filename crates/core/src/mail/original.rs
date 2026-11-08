@@ -185,11 +185,13 @@ fn without_comments(s: &str) -> String {
 /// A name for the downloaded file: the subject, as Gmail's "Download
 /// original" names it, with `.eml` so Mail opens it.
 pub fn file_name(subject: Option<&str>) -> String {
+    // The subject is cleaned first, so that what is cut or dropped (a path in
+    // it, dots, a long text) can't take the extension with it.
     let base = subject
         .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .unwrap_or("original");
-    format!("{base}.eml")
+        .and_then(crate::attachments::clean_filename)
+        .unwrap_or_else(|| "original".to_string());
+    crate::attachments::safe_filename(&format!("{base}.eml"))
 }
 
 #[cfg(test)]
@@ -274,5 +276,22 @@ Authentication-Results: mx.google.com; spf=fail smtp.mailfrom=x.example\r\n\r\nH
         assert_eq!(file_name(Some(" Hello ")), "Hello.eml");
         assert_eq!(file_name(Some("")), "original.eml");
         assert_eq!(file_name(None), "original.eml");
+    }
+
+    /// Found by fuzzing: a subject of only dots or a path ending in a
+    /// separator left a file named `eml`, which no mail app opens.
+    #[test]
+    fn the_file_always_ends_in_eml_whatever_the_subject() {
+        for subject in ["...", ".", "a/", "Re: a\\", "////", "\u{202e}", "  .  "] {
+            let name = file_name(Some(subject));
+            assert!(name.ends_with(".eml"), "{subject:?} -> {name:?}");
+            assert_ne!(name, "eml");
+        }
+        assert_eq!(file_name(Some("...")), "original.eml");
+        // A device name gets its `_` before the extension is added.
+        assert_eq!(file_name(Some("NUL")), "_NUL.eml");
+        // A long subject is cut, and the extension stays.
+        let long = file_name(Some(&"あ".repeat(100)));
+        assert!(long.ends_with(".eml") && long.len() <= 200, "{long:?}");
     }
 }
