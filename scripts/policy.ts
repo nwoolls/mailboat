@@ -107,8 +107,8 @@ export function withoutComments(rust: string): string {
  * when the array can't be read, so a refactor fails loudly instead of passing
  * an empty list.
  */
-export function parseScopes(oauthRs: string): string[] {
-  const source = withoutComments(oauthRs);
+export function parseScopes(scopesSource: string): string[] {
+  const source = withoutComments(scopesSource);
   const array = /pub const SCOPES: \[&str; (\d+)\] = \[([\s\S]*?)\];/.exec(source);
   if (!array) throw new Error("pub const SCOPES is not in oauth.rs in the form this check reads");
   const constants = new Map<string, string>();
