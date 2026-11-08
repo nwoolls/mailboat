@@ -558,6 +558,10 @@ mod tests {
             "<iframe src=",
             "<svg><script>",
             "<math>",
+            "<blockquote cite=",
+            "<q cite=",
+            "<del cite=",
+            "<ins cite=",
             "<style>",
             "</style>",
             "<base href=",
@@ -663,6 +667,9 @@ mod tests {
         (inline, cached)
     }
 
+    // These only prove something while `problems` does: a checker that
+    // returned nothing would pass them. `the_checker_catches_each_kind_of_problem`
+    // above is what keeps it honest, so keep the two together.
     proptest! {
         #![proptest_config(ProptestConfig { cases: 512, ..ProptestConfig::default() })]
 

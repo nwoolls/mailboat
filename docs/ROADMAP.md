@@ -4118,7 +4118,11 @@ and a tick.
       fuzzing is built, in its pull request: `mail::sanitize_check`, checks
       on the cleaner's output run as property tests in every `cargo test`
       and by a cargo-fuzz target in `fuzz/`, weekly and by hand. Ticked
-      here once it has merged; the original item waits for the parsers too)*
+      here once it has merged; the original item waits for the parsers too.
+      Review of it found the checker's own gap, the second finding: ammonia
+      keeps a quote's `cite` address whatever its scheme, so `cite="javascript:…"`
+      stayed on `blockquote`, `q`, `del` and `ins`. Nothing opens `cite`, so
+      it was harmless; it is now removed, and the fuzz inputs reach it)*
 - [ ] Fuzz the MIME and `mailto:` parsers (the same item, second half; the
       item is ticked when both are done). Opus, same rule for findings
 - [ ] Removing an account cleans up: revoke the refresh token at Google
