@@ -4211,7 +4211,8 @@ and a tick.
 Full text of each is in the Bug backlog (or, for the zoom bug, Milestone 16).
 One pull request each.
 
-- [ ] A sent email's full recipient list can't be seen without resizing
+- [x] A sent email's full recipient list can't be seen without resizing
+      *(2026-11-08: fixed; see the Bug backlog entry)*
 - [ ] A summary's first bullet repeats the prompt's own example (needs a test
       that fails when a bullet repeats the label or the example)
 - [ ] Email images show larger than in Gmail
@@ -4363,14 +4364,22 @@ again until the next spike.*
       builds a made-up fixture with the same structure (an invented sender
       on a reserved domain, the same layout and wording shape) for the
       test. Nothing from the real email goes into the repository
-- [ ] A sent email's full recipient list can't be seen without resizing
-      *(owner report, 2026-11-01)*: in the reader, the recipients of a
+- [x] A sent email's full recipient list can't be seen without resizing
+      *(owner report, 2026-11-01; fixed 2026-11-08, see below)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the
       only way to read them all is to make the reader or the window wider.
       Wanted: a way to see everyone, such as expanding the line on click
       or a "Details" popover with the full To, Cc and Bcc, as Gmail and
       Mail have. Not investigated yet; likely the header's fixed one-line
       layout
+      *(Fixed 2026-11-08: an open email's addressing line has a Details
+      button, which unfolds everyone in full, From, To and Cc, as selectable
+      text (`reader/model/recipients.ts`). The line stays one line, cut
+      off, as before; the addresses moved out of the card's button, so
+      clicking the line no longer folds the card (the name row still does).
+      Bcc isn't shown: the cache doesn't keep it. A browser test fails
+      without the button. The owner to try it on a sent email with a long
+      list)*
 
 - [x] The browser test "starfield paints a night sky and lightens the
       words" (`screensaver-night.spec.ts`) failed once in a full check

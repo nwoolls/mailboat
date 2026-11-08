@@ -7,6 +7,8 @@
  *   ?mode=card&spot=bottom-left   a new message in the floating card
  *   ?mode=unread                  Maya's "Lisbon in May?", five emails,
  *                                 the last two unread, in the reader
+ *   &recipients=many              (the default reader) an email to nine people
+ *                                 and four more in Cc
  *   &colors=1                     (reader modes) the email's colors can be
  *                                 switched, and its images were shown
  *   &colors=2                     the same, with no images
@@ -76,6 +78,14 @@ const longBody = (text: string) => {
 const harnessMode = new URLSearchParams(location.search).get("mode");
 const unreadMode = harnessMode === "unread" || harnessMode === "original";
 const colorsMode = new URLSearchParams(location.search).get("colors");
+// `&recipients=many`: an email you sent, to a long list (the reader's
+// addressing line cuts it off; Details shows everyone).
+const recipientsMode = new URLSearchParams(location.search).get("recipients");
+const manyPeople = (prefix: string, count: number) =>
+  Array.from({ length: count }, (_, i) => ({
+    name: `${prefix} Person ${i + 1}`,
+    email: `${prefix.toLowerCase()}${i + 1}@x.example`,
+  }));
 const detail = unreadMode
   ? {
       thread: { ...thread, unread: true, messageCount: 5 },
@@ -83,7 +93,15 @@ const detail = unreadMode
       messages: emails.map((m, i) => ({ ...m, unread: i >= 3 })),
       labels: [],
     }
-  : { thread, messages: [message], labels: [] };
+  : {
+      thread,
+      messages: [
+        recipientsMode === "many"
+          ? { ...message, to: manyPeople("To", 9), cc: manyPeople("Cc", 4) }
+          : message,
+      ],
+      labels: [],
+    };
 
 const onboardingParams = new URLSearchParams(location.search);
 /** `?mode=shell`: whether the account was removed (the fake list then answers empty). */
