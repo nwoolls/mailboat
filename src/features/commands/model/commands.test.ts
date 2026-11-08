@@ -78,6 +78,26 @@ describe("AI commands", () => {
   });
 });
 
+describe("with no account left", () => {
+  const enabled = (hasAccounts: boolean) =>
+    Object.fromEntries(
+      appCommands({ sidebarOpen: true, readerOpen: true, hasConversation: true, hasAccounts }).map(
+        (c) => [c.id, c.enabled],
+      ),
+    );
+
+  it("turns off writing and syncing, and nothing else", () => {
+    const some = enabled(true);
+    const none = enabled(false);
+    expect(none.new).toBe(false);
+    expect(none.sync).toBe(false);
+    expect(some.new).toBe(true);
+    expect(some.sync).toBe(true);
+    for (const id of Object.keys(some).filter((id) => id !== "new" && id !== "sync"))
+      expect(none[id], id).toBe(some[id]);
+  });
+});
+
 describe("menu bar", () => {
   it("lists only commands that exist, each once", () => {
     const ids = new Set([

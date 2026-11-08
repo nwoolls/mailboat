@@ -15,6 +15,23 @@ describe("emptyStateFor", () => {
     expect(emptyStateFor({ kind: "search", text: "x" }, true).icon).toBe("search");
   });
 
+  it("points to Settings when every account was removed, whatever the view", () => {
+    for (const view of [
+      { kind: "system", label: "inbox" },
+      { kind: "search", text: "x" },
+      { kind: "allMail" },
+    ] as const) {
+      const state = emptyStateFor(view, false, true);
+      expect(state.title).toBe("No accounts yet");
+      expect(state.detail).toContain("Settings → Accounts");
+      // A first sync can't be going: there is no account to sync.
+      expect(emptyStateFor(view, true, true)).toEqual(state);
+    }
+    expect(emptyStateKey({ kind: "search", text: "x" }, false, true)).toBe(
+      emptyStateKey({ kind: "system", label: "inbox" }, false, true),
+    );
+  });
+
   it("counts only a first sync, not the later once-a-minute ones", () => {
     const state = (status: string, lastSyncAt: number | null) =>
       ({ accountId: 1, status, errorKind: null, errorMessage: null, lastSyncAt }) as never;

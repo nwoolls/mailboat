@@ -21,8 +21,11 @@ import { Splitter } from "../features/layout/ui/Splitter";
 import { useElementWidth } from "../features/layout/ui/useElementWidth";
 import { panels, setSavedReaderOpen, setSidebarOpen } from "../features/layout/ui/panels";
 import { Onboarding } from "../features/onboarding/ui/Onboarding";
-import { onboarding } from "../features/onboarding/ui/progress";
-import { showOnboarding } from "../features/onboarding/model/onboarding";
+import { onboarding, updateProgress } from "../features/onboarding/ui/progress";
+import {
+  finishedForExistingAccounts,
+  showOnboarding,
+} from "../features/onboarding/model/onboarding";
 import {
   moveKeyboard,
   moveSelection,
@@ -220,6 +223,13 @@ export function Shell() {
   const labels = useLabels({ kind: "all" }).data ?? [];
   const flags = useFeatureFlags();
   const accountList = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
+  // Someone who had accounts before onboarding existed is recorded as past
+  // it as soon as they are seen with accounts, so removing every account
+  // later (however it happens) doesn't start it.
+  const pastOnboarding = finishedForExistingAccounts(accountList.length, onboardingProgress);
+  useEffect(() => {
+    if (pastOnboarding) updateProgress(pastOnboarding);
+  }, [pastOnboarding]);
   const signedOutNotices = useSignedOutNotices(accountList, syncStates);
   const accounts = useMemo(() => indexAccounts(accountList), [accountList]);
   const identities = useIdentities().data ?? [];
@@ -537,7 +547,12 @@ export function Shell() {
       ai: { summarize: canSummarize(ai, aiStatus), write: canWrite(ai, aiStatus) },
     });
   const conversationList = commandsFor(targets);
-  const appList = appCommands({ sidebarOpen, readerOpen, hasConversation: chosenId !== null });
+  const appList = appCommands({
+    sidebarOpen,
+    readerOpen,
+    hasConversation: chosenId !== null,
+    hasAccounts: accountList.length > 0,
+  });
   const allCommands = [...conversationList, ...appList];
 
   /**
@@ -984,6 +999,7 @@ export function Shell() {
           onToggleSidebar={toggleSidebar}
           onSidebarHover={hoverSidebar}
           onToggleReader={toggleReader}
+          canCompose={accountList.length > 0}
           onCompose={startNew}
         />
       )}
@@ -1163,8 +1179,8 @@ export function Shell() {
                 older={older}
                 empty={
                   <EmptyState
-                    state={emptyStateFor(selection.view, firstSyncing)}
-                    swapKey={emptyStateKey(selection.view, firstSyncing)}
+                    state={emptyStateFor(selection.view, firstSyncing, accountList.length === 0)}
+                    swapKey={emptyStateKey(selection.view, firstSyncing, accountList.length === 0)}
                   />
                 }
               />
