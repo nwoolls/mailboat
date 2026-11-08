@@ -1177,8 +1177,9 @@ mod tests {
 
     /// Found by fuzzing: image addresses that aren't web addresses were kept
     /// in `background` and CSS, including the app's own link address,
-    /// which would open its link if it loaded. The CSP refused them; now the
-    /// cleaner removes them too, whether images load or not.
+    /// which would open its link if it loaded. The CSP refused all but the
+    /// `data:` one, which couldn't decode as an image; now the cleaner
+    /// removes them itself, whether images load or not.
     #[test]
     fn image_addresses_keep_only_safe_schemes() {
         let app_link = "email-link://localhost/open?u=https%3A%2F%2Fx.example%2F";
@@ -1241,6 +1242,21 @@ mod tests {
                 allow_images,
             );
             assert!(!out.document.contains("javascript:"), "{}", out.document);
+            // A space after the colon makes a broken `url(`, which loads
+            // nothing; its text goes too.
+            for address in [
+                "javascript: x",
+                "email-link: //localhost/open?u=x",
+                "data: text/html,x",
+            ] {
+                let html = format!(
+                    r#"<div style="background:url({address})">x</div><style>p{{background:url({address})}}</style>"#
+                );
+                let out = sanitize_html(&html, allow_images).document;
+                let body = out.split("<body>").nth(1).unwrap_or_default();
+                let scheme = address.split(':').next().unwrap_or_default();
+                assert!(!body.contains(&format!("{scheme}:")), "{html}\n{body}");
+            }
         }
     }
 
@@ -1253,6 +1269,7 @@ mod tests {
             "https://email-link.localhost/open?u=https%3A%2F%2Fx.example%2F",
             "//email-link.localhost/open?u=https%3A%2F%2Fx.example%2F",
             "https://EMAIL-LINK.localhost./open?u=x",
+            "http://a.email-link.localhost/open?u=x",
         ];
         for allow_images in [true, false] {
             for address in forms {

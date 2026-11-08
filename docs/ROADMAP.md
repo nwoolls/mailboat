@@ -4403,6 +4403,16 @@ again until the next spike.*
 
 ## Later / unscheduled
 
+- [ ] Images from local or private hosts *(raised by the review of the
+      image-address fix, 2026-11-07)*: an email's remote image may name a
+      loopback or private-network host (`127.0.0.1`, `*.localhost`,
+      `192.168.…`), which loads like any other when images are allowed, and
+      is downloaded by the app itself as mail arrives (`mail::prefetch`).
+      That lets a sender make a request to a device on the reader's own
+      network. Decide whether the cleaner and prefetch should refuse such
+      hosts (the app's own link host already is), and record the choice in
+      the Architecture decisions. Owner to schedule
+
 - [ ] Pin more of the privacy policy's claims in `check:website`
       (`scripts/policy.ts`) *(from the review of the first check,
       2026-11-07)*: it covers the Google permissions and the stated
