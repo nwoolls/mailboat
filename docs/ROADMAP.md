@@ -4396,6 +4396,20 @@ again until the next spike.*
 
 ## Later / unscheduled
 
+- [ ] Pin more of the privacy policy's claims in `check:website`
+      (`scripts/policy.ts`) *(from the review of the first check,
+      2026-11-07)*: it covers the Google permissions and the stated
+      defaults, but not the policy's behaviour claims: Spam never loads
+      remote images and Trash doesn't unless the sender is allowed, known
+      tracking pixels are always removed, sign-in tokens are kept in the
+      keychain and never in a file, AI apps can never send and never share
+      Spam or Trash, and removing an account deletes its cache and sign-in.
+      Each is easy to pin to the code that does it (`mail/images.rs`,
+      `auth/tokens.rs`, `mcp/`), or to the test that already proves it. The
+      update check's version and machine details are harder, as they are
+      behaviour of the updater, not a setting. Owner to say when, and
+      whether to bring it into the Polish Spike
+
 - [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and
       the MIME and `mailto:` parsers (Scorecard's "Fuzzing" check; cargo-fuzz
       or proptest). Anything it finds is a security bug, so it goes first

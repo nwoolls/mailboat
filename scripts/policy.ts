@@ -25,28 +25,68 @@ export const SCOPE_LABELS: Record<string, string> = {
   "https://www.googleapis.com/auth/contacts.other.readonly": "Other contacts (read only)",
 };
 
-/** HTML as plain text: tags gone, whitespace collapsed (the policy's lines wrap in the source). */
+/** The character an HTML entity stands for, for the few a page is likely to use. */
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(Number(dec)))
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+/** HTML as plain text: tags gone, entities decoded, whitespace collapsed (lines wrap in the source). */
 export function plainText(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, " ")
+  return decodeEntities(html.replace(/<[^>]*>/g, " "))
     .replace(/\s+/g, " ")
     .replace(/\s+([.,;:])/g, "$1")
     .trim();
 }
 
-/** `// …` comments gone from Rust source, leaving string literals alone. */
-function withoutComments(rust: string): string {
-  return rust
-    .split("\n")
-    .map((line) => {
-      let inString = false;
-      for (let i = 0; i < line.length; i++) {
-        if (line[i] === '"' && line[i - 1] !== "\\") inString = !inString;
-        if (!inString && line[i] === "/" && line[i + 1] === "/") return line.slice(0, i);
+/**
+ * Rust source with its comments gone (line comments and nested block
+ * comments), leaving string and character literals alone, so a line that is
+ * only commented out can't count as present.
+ */
+export function withoutComments(rust: string): string {
+  let out = "";
+  let i = 0;
+  while (i < rust.length) {
+    const c = rust[i]!;
+    const next = rust[i + 1];
+    if (rust.startsWith("'\"'", i)) {
+      out += "'\"'";
+      i += 3;
+    } else if (c === '"') {
+      let j = i + 1;
+      while (j < rust.length && rust[j] !== '"') j += rust[j] === "\\" ? 2 : 1;
+      out += rust.slice(i, j + 1);
+      i = j + 1;
+    } else if (c === "/" && next === "/") {
+      while (i < rust.length && rust[i] !== "\n") i++;
+    } else if (c === "/" && next === "*") {
+      let depth = 1;
+      i += 2;
+      while (i < rust.length && depth > 0) {
+        if (rust.startsWith("/*", i)) {
+          depth++;
+          i += 2;
+        } else if (rust.startsWith("*/", i)) {
+          depth--;
+          i += 2;
+        } else {
+          i++;
+        }
       }
-      return line;
-    })
-    .join("\n");
+    } else {
+      out += c;
+      i++;
+    }
+  }
+  return out;
 }
 
 /**
@@ -81,28 +121,39 @@ export function parseScopes(oauthRs: string): string[] {
   return scopes;
 }
 
-/** The bold labels that open the lines of the policy's list of Google permissions. */
-export function policyPermissionLabels(policyHtml: string): string[] | undefined {
+/**
+ * The lines of the policy's list of Google permissions, each with the bold
+ * label that opens it (null for a line without one). Undefined when the list
+ * can't be found under its heading.
+ */
+export function policyPermissionItems(policyHtml: string): (string | null)[] | undefined {
   const section = /<h2>Google data the app uses, and why<\/h2>([\s\S]*?)<h2>/.exec(policyHtml);
-  if (!section) return undefined;
-  const list = /<ul>([\s\S]*?)<\/ul>/.exec(section[1]!);
+  const list = section && /<ul>([\s\S]*?)<\/ul>/.exec(section[1]!);
   if (!list) return undefined;
-  return [...list[1]!.matchAll(/<li>\s*<strong>([\s\S]*?)<\/strong>/g)].map((m) =>
-    plainText(m[1]!).replace(/:$/, ""),
-  );
+  return [...list[1]!.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((item) => {
+    const label = /^\s*<strong>([\s\S]*?)<\/strong>/.exec(item[1]!);
+    return label ? plainText(label[1]!).replace(/:$/, "") : null;
+  });
 }
 
 /**
  * Problems between the permissions the app asks for and the policy's list of
  * them, one line each (empty when they agree). A permission needs a line, and
- * a line needs a permission: the policy says only what the code does.
+ * a line needs a permission: the policy says only what the code does. A label
+ * shared by several scopes (name, email address and picture) needs all of them.
  */
 export function scopeProblems(scopes: string[], policyHtml: string): string[] {
-  const labels = policyPermissionLabels(policyHtml);
-  if (!labels) {
+  const items = policyPermissionItems(policyHtml);
+  if (!items) {
     return ["privacy.html: can't find the list of Google permissions under its heading"];
   }
   const problems: string[] = [];
+  if (items.includes(null)) {
+    problems.push(
+      "privacy.html: a line in the list of Google permissions has no bold label, so it can't be checked against SCOPES",
+    );
+  }
+  const labels = items.filter((label): label is string => label !== null);
   const asked = new Set<string>();
   for (const scope of scopes) {
     const label = SCOPE_LABELS[scope];
@@ -118,6 +169,13 @@ export function scopeProblems(scopes: string[], policyHtml: string): string[] {
     if (!labels.includes(label)) {
       problems.push(`SCOPES asks for a permission the policy doesn't list: "${label}"`);
     }
+    for (const [scope, own] of Object.entries(SCOPE_LABELS)) {
+      if (own === label && !scopes.includes(scope)) {
+        problems.push(
+          `the policy's "${label}" covers ${scope}, which SCOPES no longer asks for: change the line, or the scope is missing`,
+        );
+      }
+    }
   }
   for (const label of labels) {
     if (!asked.has(label)) {
@@ -131,44 +189,77 @@ export function scopeProblems(scopes: string[], policyHtml: string): string[] {
 
 /** A Rust item's text: from its opening line to the closing brace at the start of a line. */
 function rustItem(source: string, header: string): string | undefined {
+  if (header === "") return source;
   const start = source.indexOf(header);
   if (start === -1) return undefined;
   const end = source.indexOf("\n}\n", start);
   return source.slice(start, end === -1 ? undefined : end + 3);
 }
 
+/** Where the code decides a default, as a path from the repository's root. */
+const SETTINGS_RS = "crates/core/src/settings.rs";
+const UPDATES_RS = "src-tauri/src/updates.rs";
+export const POLICY_SOURCES = [SETTINGS_RS, UPDATES_RS];
+
 type Claim = {
-  /** What the policy says, as it reads once its tags and line breaks are gone. */
-  says: string;
-  /** Where the code decides it: an item in settings.rs, and lines it must contain. */
+  /**
+   * Whole sentences of the policy, as they read once tags and line breaks are
+   * gone. `<site>` stands for the website's address (the brand check keeps the
+   * app's name out of scripts).
+   */
+  says: string[];
+  /** The Rust file, and the item in it ("" for the whole file), that makes it true. */
+  file: string;
   item: string;
+  /** Lines the item must contain. */
   lines: string[];
 };
 
+const APP_DEFAULT = "impl Default for AppSettings {";
+const AI_DEFAULT = "impl Default for AiSettings {";
+
 /**
- * The defaults the policy states, each with the sentence that states it and
- * the lines in settings.rs that make it true. Changing a default means
- * changing the sentence, so the two move together.
+ * The defaults the policy states, each with the whole sentences that state it
+ * and the lines in the code that make it true. Whole sentences, so a
+ * qualifier added to one fails here; changing a default, or the way the
+ * policy puts it, means changing both, and this table with them.
  */
 export const CLAIMS: Claim[] = [
   {
-    says: "Remote images load by default",
-    item: "impl Default for AppSettings {",
-    lines: ["remote_images: RemoteImages::Load,"],
+    says: [
+      "Remote images load by default, and the app downloads the images of new mail as it arrives, so the server that hosts them is contacted before you open the message.",
+    ],
+    file: SETTINGS_RS,
+    item: APP_DEFAULT,
+    lines: ["remote_images: RemoteImages::Load,", "image_prefetch: true,"],
   },
   {
-    says: "downloads the images of new mail as it arrives",
-    item: "impl Default for AppSettings {",
-    lines: ["image_prefetch: true,"],
-  },
-  {
-    says: "When it starts and about once a day, the app fetches one small file",
-    item: "impl Default for AppSettings {",
+    says: [
+      "When it starts and about once a day, the app fetches one small file from <site>, which passes it on to GitHub, so both see your IP address.",
+    ],
+    file: SETTINGS_RS,
+    item: APP_DEFAULT,
     lines: ["auto_check_updates: true,"],
   },
   {
-    says: "AI features, only if you turn them on.",
-    item: "impl Default for AiSettings {",
+    // The "about once a day" is this constant, not the on/off setting above.
+    says: [
+      "When it starts and about once a day, the app fetches one small file from <site>, which passes it on to GitHub, so both see your IP address.",
+    ],
+    file: UPDATES_RS,
+    item: "",
+    lines: ["const LOOK_EVERY: Duration = Duration::from_secs(24 * 60 * 60);"],
+  },
+  {
+    says: ["AI features, only if you turn them on."],
+    file: SETTINGS_RS,
+    item: APP_DEFAULT,
+    lines: ["ai: AiSettings::default(),"],
+  },
+  {
+    says: ["AI features, only if you turn them on."],
+    file: SETTINGS_RS,
+    item: AI_DEFAULT,
     lines: [
       "connected: Vec::new(),",
       "reader_provider: AiProvider::Apple,",
@@ -177,54 +268,95 @@ export const CLAIMS: Claim[] = [
     ],
   },
   {
-    says: "a long conversation is summarised when you open it",
-    item: "impl Default for AiSettings {",
+    says: [
+      "With Claude or ChatGPT chosen for summaries, a long conversation is summarised when you open it (Settings → AI can change this to a Summarize button, so nothing is sent until you press it), and if you also choose one for the summaries in the list, each conversation that scrolls into view is sent.",
+    ],
+    file: SETTINGS_RS,
+    item: AI_DEFAULT,
     lines: ["reader_summary: ReaderSummary::Auto,"],
   },
   {
-    says: "AI apps, only if you turn them on.",
-    item: "impl Default for AppSettings {",
+    says: [
+      "AI apps, only if you turn them on.",
+      "It is off for every account until you turn it on, it can never send, and Spam and Trash are never shared.",
+    ],
+    file: SETTINGS_RS,
+    item: APP_DEFAULT,
     lines: ["mcp: McpSettings::default(),"],
   },
   {
-    says: "It is off for every account until you turn it on",
+    says: [
+      "It is off for every account until you turn it on, it can never send, and Spam and Trash are never shared.",
+    ],
+    file: SETTINGS_RS,
     item: "pub struct McpSettings {",
     lines: ["pub read: Vec<AccountId>,", "pub drafts: Vec<AccountId>,"],
   },
 ];
 
+/** Whether the policy has this sentence whole (`<site>` matches an address). */
+function policyHas(policy: string, sentence: string): boolean {
+  const pattern = sentence
+    .split("<site>")
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("[a-z0-9.-]+");
+  return new RegExp(pattern).test(policy);
+}
+
+/** Whether the attributes just above `pub struct McpSettings` derive `Default`. */
+function mcpDerivesDefault(source: string): boolean {
+  const at = source.indexOf("pub struct McpSettings");
+  if (at === -1) return false;
+  const above = source.slice(0, at).split("\n");
+  const attributes: string[] = [];
+  for (let i = above.length - 1; i >= 0; i--) {
+    const line = above[i]!.trim();
+    if (line === "") continue;
+    if (!line.startsWith("#[")) break;
+    attributes.push(line);
+  }
+  return attributes.some((a) => /^#\[derive\([^)]*\bDefault\b[^)]*\)\]$/.test(a));
+}
+
 /**
- * Problems between the defaults the policy states and settings.rs, one line
- * each. A sentence missing from the policy is a problem too: remove its claim
- * from CLAIMS on purpose, or put the sentence back.
+ * Problems between the defaults the policy states and the code, one line
+ * each. `sources` holds the Rust files by path (`POLICY_SOURCES`). A sentence
+ * missing from the policy is a problem too: change that claim in CLAIMS on
+ * purpose, or put the sentence back.
  */
-export function claimProblems(policyHtml: string, settingsRs: string): string[] {
+export function claimProblems(policyHtml: string, sources: Record<string, string>): string[] {
   const policy = plainText(policyHtml);
-  const source = withoutComments(settingsRs);
   const problems: string[] = [];
+  const reported = new Set<string>();
+  const report = (problem: string) => {
+    if (!reported.has(problem)) problems.push(problem);
+    reported.add(problem);
+  };
   for (const claim of CLAIMS) {
-    if (!policy.includes(claim.says)) {
-      problems.push(
-        `privacy.html no longer says "${claim.says}": update CLAIMS in scripts/policy.ts with it`,
-      );
+    for (const sentence of claim.says) {
+      if (!policyHas(policy, sentence)) {
+        report(
+          `privacy.html no longer says "${sentence.slice(0, 70)}…" as a whole: update CLAIMS in scripts/policy.ts to match`,
+        );
+      }
     }
-    const item = rustItem(source, claim.item);
+    const text = sources[claim.file];
+    const item = text === undefined ? undefined : rustItem(withoutComments(text), claim.item);
     if (item === undefined) {
-      problems.push(`settings.rs: can't find "${claim.item}" for the policy's "${claim.says}"`);
+      report(`${claim.file}: can't find "${claim.item}" for the policy's "${claim.says[0]}"`);
       continue;
     }
     for (const line of claim.lines) {
       if (!item.includes(line)) {
-        problems.push(
-          `the policy says "${claim.says}", but ${claim.item} no longer has \`${line}\`: change the default and the policy together`,
+        report(
+          `the policy says "${claim.says[0]!.slice(0, 70)}…", but ${claim.file} ${claim.item === "" ? "" : `(${claim.item}) `}no longer has \`${line}\`: change the default and the policy together`,
         );
       }
     }
   }
-  // McpSettings must still start empty: its derive has to include Default.
-  const derive = /#\[derive\(([^)]*)\)\]\s*#\[serde[^\]]*\]\s*pub struct McpSettings/.exec(source);
-  if (!derive || !/\bDefault\b/.test(derive[1]!)) {
-    problems.push(
+  const settings = sources[SETTINGS_RS];
+  if (settings !== undefined && !mcpDerivesDefault(withoutComments(settings))) {
+    report(
       'the policy says AI apps are "off for every account until you turn it on", but McpSettings no longer derives Default',
     );
   }

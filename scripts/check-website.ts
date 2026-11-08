@@ -17,7 +17,7 @@ import {
   type Pages,
   type Sheets,
 } from "./website";
-import { claimProblems, parseScopes, scopeProblems } from "./policy";
+import { claimProblems, parseScopes, POLICY_SOURCES, scopeProblems } from "./policy";
 
 const root = new URL("../website/", import.meta.url).pathname;
 const read = (name: string) =>
@@ -40,13 +40,15 @@ const securityTxt = existsSync(`${root}${SECURITY_TXT_PATH}`)
 
 // The policy against the code: the Google permissions asked for, and the
 // defaults it states (scripts/policy.ts).
-const rust = (path: string) =>
-  readFileSync(new URL(`../crates/core/src/${path}`, import.meta.url).pathname, "utf8");
+const repoFile = (path: string) =>
+  readFileSync(new URL(`../${path}`, import.meta.url).pathname, "utf8");
 const policyChecks = (): string[] => {
   try {
+    const policy = pages["privacy.html"] ?? "";
+    const sources = Object.fromEntries(POLICY_SOURCES.map((path) => [path, repoFile(path)]));
     return [
-      ...scopeProblems(parseScopes(rust("auth/oauth.rs")), pages["privacy.html"] ?? ""),
-      ...claimProblems(pages["privacy.html"] ?? "", rust("settings.rs")),
+      ...scopeProblems(parseScopes(repoFile("crates/core/src/auth/oauth.rs")), policy),
+      ...claimProblems(policy, sources),
     ];
   } catch (e) {
     return [`policy: ${e instanceof Error ? e.message : String(e)}`];
