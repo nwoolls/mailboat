@@ -3462,7 +3462,7 @@ builds are attached to each run as artifacts.*
       could catch what the others share.*
 - [x] Code scanning with CodeQL (Rust and TypeScript), with Copilot
       Autofix suggestions for what it finds
-      *Running on pull requests since 2026-11-02, with Copilot Autofix on. The first findings still need a look: see the next item.*
+      *Running on pull requests since 2026-11-02, with Copilot Autofix on. The first findings were reviewed: see the next item.*
 - [x] Look through the first code-scanning findings (CodeQL on the Rust
       and TypeScript code, and Scorecard's repository checks): fix what is
       real, and dismiss the false positives one by one with a reason
