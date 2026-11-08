@@ -97,8 +97,10 @@ How this is enforced:
   `bun run check:website` backs this for two things (`scripts/policy.ts`): it
   fails when a permission in `SCOPES` has no line in the policy's list (or the
   list has one `SCOPES` doesn't ask for), and when a default the policy states
-  no longer matches `crates/core/src/settings.rs`. A new permission needs a
-  line in `SCOPE_LABELS`; a new stated default needs an entry in `CLAIMS`.
+  no longer matches the code (`crates/core/src/settings.rs`, and the update
+  schedule in `src-tauri/src/updates.rs`). A new permission needs a line in
+  `SCOPE_LABELS`; a new stated default needs an entry in `CLAIMS`, which also
+  names the file (`POLICY_SOURCES`).
 - `README.md`: what it is and why, for people. Setup and running live in
   `docs/DEVELOPMENT.md`, Google credentials in `docs/GOOGLE-SETUP.md`, AI in
   `docs/AI.md`.

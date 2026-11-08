@@ -7,7 +7,7 @@
 // where scripts/website.test.ts tests them (the security contact file,
 // .well-known/security.txt, included). The policy is also checked against the
 // code (scripts/policy.ts): the Google permissions and the defaults it states.
-// Run by `bun run check:web`.
+// Run by `bun run check:website`, which `bun run check:web` includes.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import {
   checkSite,

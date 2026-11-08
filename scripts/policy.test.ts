@@ -21,6 +21,7 @@ const OAUTH = read("crates/core/src/auth/oauth.rs");
 const SOURCES = Object.fromEntries(POLICY_SOURCES.map((path) => [path, read(path)]));
 const SETTINGS_PATH = "crates/core/src/settings.rs";
 const UPDATES_PATH = "src-tauri/src/updates.rs";
+const TAURI_CONF_PATH = "src-tauri/tauri.conf.json";
 
 const OAUTH_FIXTURE = `
 pub const SCOPES: [&str; 3] = [
@@ -51,6 +52,19 @@ describe("withoutComments", () => {
         'let c = \'"\'; let d = "a \\" /* kept */";',
       ].join("\n"),
     );
+  });
+});
+
+describe("withoutComments, on literals", () => {
+  it("keeps a raw string whole, quotes and slashes inside it included", () => {
+    expect(withoutComments('let x = r#"quote " // inside"#; let y = 1; // gone')).toBe(
+      'let x = r#"quote " // inside"#; let y = 1; ',
+    );
+  });
+
+  it("turns a string that spans lines into an empty one, so its lines can't pass for code", () => {
+    const rust = 'let a = "one\nimage_prefetch: true,\ntwo"; let b = r#"x\ny"#;';
+    expect(withoutComments(rust)).toBe('let a = ""; let b = "";');
   });
 });
 
@@ -134,8 +148,12 @@ describe("scopeProblems", () => {
   });
 
   it("fails a line with no bold label, so a permission can't be claimed in plain text", () => {
-    const html = policy(labels).replace("</ul>", "<li>Drive: full access</li></ul>");
-    expect(scopeProblems(identity, html)).toEqual([expect.stringContaining("has no bold label")]);
+    for (const item of ["<li>Drive: full access</li>", '<li class="x">Drive: full access</li>']) {
+      const html = policy(labels).replace("</ul>", `${item}</ul>`);
+      expect(scopeProblems(identity, html), item).toEqual([
+        expect.stringContaining("has no bold label"),
+      ]);
+    }
   });
 
   it("needs every scope behind a shared label, not just one of them", () => {
@@ -264,6 +282,60 @@ describe("the defaults the policy states", () => {
       "Remote images load by default only if you turn them on",
     );
     expect(claimProblems(qualified, SOURCES)).toEqual([expect.stringContaining("no longer says")]);
+  });
+
+  it("fail when the policy sentence sits inside a longer one that contradicts it", () => {
+    const before = POLICY.replace(
+      "Remote images load by default",
+      "It is false that Remote images load by default",
+    );
+    expect(before).not.toBe(POLICY);
+    expect(claimProblems(before, SOURCES)).toEqual([expect.stringContaining("no longer says")]);
+    const after = POLICY.replace(/open the message\./, "open the message. Not so.");
+    expect(after).not.toBe(POLICY);
+    expect(claimProblems(after, SOURCES)).toEqual([]);
+    const glued = POLICY.replace(/open the message\./, "open the message, ever.");
+    expect(glued).not.toBe(POLICY);
+    expect(claimProblems(glued, SOURCES)).toEqual([expect.stringContaining("no longer says")]);
+  });
+
+  it("need the website's address to be the updater's, not any address", () => {
+    const other = POLICY.replace(
+      /from [a-z0-9.-]+, which passes it on/,
+      "from evil.example, which passes it on",
+    );
+    expect(other).not.toBe(POLICY);
+    expect(claimProblems(other, SOURCES).length).toBeGreaterThan(0);
+    const noConf = { ...SOURCES, [TAURI_CONF_PATH]: "{}" };
+    expect(claimProblems(POLICY, noConf)).toEqual(
+      expect.arrayContaining([expect.stringContaining("can't read the updater's address")]),
+    );
+  });
+
+  it("don't count a pinned line behind a conditional-compilation attribute, or set again after", () => {
+    const line = "            image_prefetch: true,";
+    const rest = "            image_prefetch: false,";
+    expect(
+      changed(
+        SETTINGS_PATH,
+        line,
+        `${line.replace("image_prefetch", "#[cfg(any())] image_prefetch")}\n${rest}`,
+      ),
+    ).toEqual([expect.stringContaining("Remote images load by default")]);
+    expect(changed(SETTINGS_PATH, line, `            #[cfg(any())]\n${line}\n${rest}`)).toEqual([
+      expect.stringContaining("Remote images load by default"),
+    ]);
+    expect(changed(SETTINGS_PATH, line, `${line}\n${rest}`)).toEqual([
+      expect.stringContaining("Remote images load by default"),
+    ]);
+  });
+
+  it("don't count a pinned line that only appears inside a string", () => {
+    const line = "            image_prefetch: true,";
+    const decoy = `            image_prefetch: false,\n        };\n        let _ = "image_prefetch: true,";\n        let _ = "a\n${line.trim()}\nb";\n        Self {`;
+    expect(changed(SETTINGS_PATH, line, decoy)).toEqual([
+      expect.stringContaining("Remote images load by default"),
+    ]);
   });
 
   it("find McpSettings' derive even with other attributes in between", () => {

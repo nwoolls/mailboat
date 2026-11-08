@@ -48,8 +48,10 @@ export function plainText(html: string): string {
 
 /**
  * Rust source with its comments gone (line comments and nested block
- * comments), leaving string and character literals alone, so a line that is
- * only commented out can't count as present.
+ * comments), so a line that is only commented out can't count as present.
+ * String and character literals stay (a `//` inside one isn't a comment), raw
+ * strings included, except that a string spanning lines becomes an empty one:
+ * its lines can't pass for code.
  */
 export function withoutComments(rust: string): string {
   let out = "";
@@ -57,13 +59,23 @@ export function withoutComments(rust: string): string {
   while (i < rust.length) {
     const c = rust[i]!;
     const next = rust[i + 1];
+    const raw = /^b?r(#*)"/.exec(rust.slice(i, i + 40));
     if (rust.startsWith("'\"'", i)) {
       out += "'\"'";
       i += 3;
+    } else if (raw && !/[\w]/.test(rust[i - 1] ?? " ")) {
+      // r#"…"#: ends at a quote followed by as many hashes as it opened with.
+      const closing = `"${"#".repeat(raw[1]!.length)}`;
+      const end = rust.indexOf(closing, i + raw[0].length);
+      const stop = end === -1 ? rust.length : end + closing.length;
+      const literal = rust.slice(i, stop);
+      out += literal.includes("\n") ? '""' : literal;
+      i = stop;
     } else if (c === '"') {
       let j = i + 1;
       while (j < rust.length && rust[j] !== '"') j += rust[j] === "\\" ? 2 : 1;
-      out += rust.slice(i, j + 1);
+      const literal = rust.slice(i, j + 1);
+      out += literal.includes("\n") ? '""' : literal;
       i = j + 1;
     } else if (c === "/" && next === "/") {
       while (i < rust.length && rust[i] !== "\n") i++;
@@ -130,7 +142,7 @@ export function policyPermissionItems(policyHtml: string): (string | null)[] | u
   const section = /<h2>Google data the app uses, and why<\/h2>([\s\S]*?)<h2>/.exec(policyHtml);
   const list = section && /<ul>([\s\S]*?)<\/ul>/.exec(section[1]!);
   if (!list) return undefined;
-  return [...list[1]!.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((item) => {
+  return [...list[1]!.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)].map((item) => {
     const label = /^\s*<strong>([\s\S]*?)<\/strong>/.exec(item[1]!);
     return label ? plainText(label[1]!).replace(/:$/, "") : null;
   });
@@ -199,13 +211,14 @@ function rustItem(source: string, header: string): string | undefined {
 /** Where the code decides a default, as a path from the repository's root. */
 const SETTINGS_RS = "crates/core/src/settings.rs";
 const UPDATES_RS = "src-tauri/src/updates.rs";
-export const POLICY_SOURCES = [SETTINGS_RS, UPDATES_RS];
+const TAURI_CONF = "src-tauri/tauri.conf.json";
+export const POLICY_SOURCES = [SETTINGS_RS, UPDATES_RS, TAURI_CONF];
 
 type Claim = {
   /**
    * Whole sentences of the policy, as they read once tags and line breaks are
-   * gone. `<site>` stands for the website's address (the brand check keeps the
-   * app's name out of scripts).
+   * gone. `<site>` stands for the website's address, which has to be the
+   * updater's (the brand check keeps the app's name out of scripts).
    */
   says: string[];
   /** The Rust file, and the item in it ("" for the whole file), that makes it true. */
@@ -294,13 +307,46 @@ export const CLAIMS: Claim[] = [
   },
 ];
 
-/** Whether the policy has this sentence whole (`<site>` matches an address). */
-function policyHas(policy: string, sentence: string): boolean {
-  const pattern = sentence
-    .split("<site>")
-    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-    .join("[a-z0-9.-]+");
-  return new RegExp(pattern).test(policy);
+const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Whether the policy has this sentence whole: at the start of a sentence (so
+ * "It is false that…" in front of it doesn't pass) and ending where it ends.
+ * `<site>` is the updater's host.
+ */
+function policyHas(policy: string, sentence: string, host: string): boolean {
+  const pattern = sentence.split("<site>").map(escaped).join(escaped(host));
+  return new RegExp(`(?:^|[.!?] )${pattern}(?: |$)`).test(policy);
+}
+
+/** The host the app's updater fetches from, per tauri.conf.json (undefined if it can't be read). */
+function updaterHost(tauriConf: string | undefined): string | undefined {
+  try {
+    const conf = JSON.parse(tauriConf ?? "") as {
+      plugins?: { updater?: { endpoints?: string[] } };
+    };
+    return new URL(conf.plugins?.updater?.endpoints?.[0] ?? "").host;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Whether the item has this line as its own line, once: not inside a string,
+ * not behind a conditional-compilation attribute (on it or above it), and not
+ * set again by another line (which would win).
+ */
+function hasActiveLine(item: string, line: string): boolean {
+  const lines = item.split("\n").map((l) => l.trim());
+  const at = lines.indexOf(line);
+  if (at === -1) return false;
+  for (let i = at - 1; i >= 0; i--) {
+    if (lines[i] === "") continue;
+    if (lines[i]!.startsWith("#[")) return false;
+    break;
+  }
+  const key = line.split(/[:=]/)[0]!.trim();
+  return lines.filter((l) => l.startsWith(`${key}:`) || l.startsWith(`${key} =`)).length === 1;
 }
 
 /** Whether the attributes just above `pub struct McpSettings` derive `Default`. */
@@ -326,15 +372,21 @@ function mcpDerivesDefault(source: string): boolean {
  */
 export function claimProblems(policyHtml: string, sources: Record<string, string>): string[] {
   const policy = plainText(policyHtml);
+  const host = updaterHost(sources[TAURI_CONF]);
   const problems: string[] = [];
   const reported = new Set<string>();
   const report = (problem: string) => {
     if (!reported.has(problem)) problems.push(problem);
     reported.add(problem);
   };
+  if (host === undefined) {
+    report(
+      `${TAURI_CONF}: can't read the updater's address, which the policy's address must match`,
+    );
+  }
   for (const claim of CLAIMS) {
     for (const sentence of claim.says) {
-      if (!policyHas(policy, sentence)) {
+      if (!policyHas(policy, sentence, host ?? "")) {
         report(
           `privacy.html no longer says "${sentence.slice(0, 70)}…" as a whole: update CLAIMS in scripts/policy.ts to match`,
         );
@@ -347,7 +399,7 @@ export function claimProblems(policyHtml: string, sources: Record<string, string
       continue;
     }
     for (const line of claim.lines) {
-      if (!item.includes(line)) {
+      if (!hasActiveLine(item, line)) {
         report(
           `the policy says "${claim.says[0]!.slice(0, 70)}…", but ${claim.file} ${claim.item === "" ? "" : `(${claim.item}) `}no longer has \`${line}\`: change the default and the policy together`,
         );
