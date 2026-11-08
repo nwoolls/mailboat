@@ -229,26 +229,19 @@ pub async fn account_remove(
     state.supervisor.stop_and_wait(account_id).await;
     state.forget_account(account_id);
     // The demo's Google is made up: there is no sign-in to end.
-    let revoked = match (&state.demo, state.oauth_config()) {
-        (None, Ok(config)) => {
-            tokens::revoke_refresh_token(
-                &state.db,
-                state.secrets.as_ref(),
-                &state.http,
-                &config,
-                account_id,
-            )
-            .await
-        }
-        (None, Err(_)) => false,
-        (Some(_), _) => true,
-    };
-    tokens::remove_account(
+    let endpoint = state
+        .demo
+        .is_none()
+        .then_some(mail_core::auth::oauth::GOOGLE_REVOKE_URI);
+    let revoked = tokens::remove_account_revoking(
         &state.db,
         state.secrets.as_ref(),
+        &state.http,
+        endpoint,
         account_id,
         &state.images_dir,
-    )?;
+    )
+    .await?;
     Ok(AccountRemoved { revoked })
 }
 

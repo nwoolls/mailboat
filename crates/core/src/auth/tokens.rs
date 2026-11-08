@@ -29,17 +29,38 @@ pub async fn revoke_refresh_token(
     db: &crate::db::Db,
     secrets: &dyn SecretStore,
     http: &reqwest::Client,
-    config: &OAuthClientConfig,
+    endpoint: &str,
     account: crate::model::AccountId,
 ) -> bool {
     let Ok(sub) = crate::db::accounts::google_sub(&db.conn(), account) else {
         return false;
     };
     match secrets.get(&refresh_token_key(&sub)) {
-        Ok(Some(token)) => oauth::revoke(http, config, &token).await.is_ok(),
+        Ok(Some(token)) => oauth::revoke(http, endpoint, &token).await.is_ok(),
         Ok(None) => true,
         Err(_) => false,
     }
+}
+
+/// Removes an account, asking Google to revoke its token first when there is
+/// an `endpoint` (none in the demo, whose Google is made up). Says whether
+/// Google confirmed, or there was nothing to revoke. A revoke that fails
+/// never stops the removal; a removal that fails is an error, with nothing
+/// said about Google.
+pub async fn remove_account_revoking(
+    db: &crate::db::Db,
+    secrets: &dyn SecretStore,
+    http: &reqwest::Client,
+    endpoint: Option<&str>,
+    account: crate::model::AccountId,
+    images_dir: &std::path::Path,
+) -> Result<bool> {
+    let revoked = match endpoint {
+        Some(endpoint) => revoke_refresh_token(db, secrets, http, endpoint, account).await,
+        None => true,
+    };
+    remove_account(db, secrets, account, images_dir)?;
+    Ok(revoked)
 }
 
 /// Removes an account: its downloaded images (its own folder) first, then
