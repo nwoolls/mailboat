@@ -3825,7 +3825,8 @@ download it.*
       in that provider's privacy settings. The website's privacy policy says
       the same; this puts it where people choose the provider *(2026-11-07:
       built, in its pull request: one line under Summaries and another under
-      Writing, each next to the choice it is about and naming only the
+      Writing, each with a blue information icon, next to the choice it is
+      about and naming only the
       providers that are connected and chosen there, and not shown while
       everything stays on the Mac. Tick it once the owner has tried it)*
 - [ ] First-timer trial of the onboarding *(moved from Milestone 12,

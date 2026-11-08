@@ -56,6 +56,14 @@ describe("AiSection's model-training notes", () => {
     );
   });
 
+  it("start with an information icon that is hidden from screen readers", () => {
+    ai = { connected: ["claude"], writingProvider: "claude" };
+    render(<AiSection />);
+    const icon = noteAt(0).querySelector("svg");
+    expect(icon?.getAttribute("aria-hidden")).toBe("true");
+    expect(icon?.getAttribute("class")).toContain("text-info");
+  });
+
   it("put a provider chosen for summaries under Summaries, next to the choice, and only there", () => {
     ai = { connected: ["chatgpt"], listSummaries: "chatgpt", readerSummary: "off" };
     render(<AiSection />);
