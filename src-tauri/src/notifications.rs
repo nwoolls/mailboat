@@ -46,6 +46,16 @@ pub fn install(app: &AppHandle) {
     let _ = app;
 }
 
+/// Removes the notifications already delivered (and any waiting): they can
+/// hold senders, subjects and sign-in codes. macOS only; the Windows
+/// plugin has no way to take back a toast.
+pub fn clear_all() {
+    #[cfg(target_os = "macos")]
+    if mac::available() {
+        mac::clear_all();
+    }
+}
+
 /// Shows these notifications.
 pub fn show(app: &AppHandle, notices: Vec<Notice>) {
     #[cfg(target_os = "macos")]
@@ -164,6 +174,12 @@ mod mac {
             UNAuthorizationOptions::Alert | UNAuthorizationOptions::Sound,
             &asked,
         );
+    }
+
+    pub fn clear_all() {
+        let center = UNUserNotificationCenter::currentNotificationCenter();
+        center.removeAllDeliveredNotifications();
+        center.removeAllPendingNotificationRequests();
     }
 
     pub fn show(notice: &Notice) {

@@ -10,6 +10,7 @@ export function ConfirmDialog({
   children,
   confirmLabel,
   danger,
+  hideCancel,
   busy,
   error,
   onConfirm,
@@ -19,6 +20,8 @@ export function ConfirmDialog({
   children: React.ReactNode;
   confirmLabel: string;
   danger?: boolean;
+  /** Only the confirm button: for a notice, where there is nothing to cancel. */
+  hideCancel?: boolean;
   /** The confirmed action is running: buttons wait. */
   busy?: boolean;
   error?: string | null;
@@ -27,23 +30,25 @@ export function ConfirmDialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);
+  const confirm = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const el = ref.current;
     el?.showModal();
     // Opening focuses the dialog itself (React's autoFocus ran before it
     // was open), so move focus to Cancel afterwards.
-    cancel.current?.focus();
+    (hideCancel ? confirm : cancel).current?.focus();
     return () => el?.close();
-  }, []);
+  }, [hideCancel]);
 
   return (
     <dialog
       ref={ref}
       aria-labelledby="confirm-dialog-title"
-      // Escape: ignore while busy, otherwise let the owner close it.
+      // Escape: ignore while busy, otherwise let the owner close it (a
+      // notice with only a confirm button isn't closed that way).
       onCancel={(e) => {
         e.preventDefault();
-        if (!busy) onCancel();
+        if (!busy && !hideCancel) onCancel();
       }}
       className="dialog m-auto w-[22rem] rounded-xl p-5 text-[13px] text-content"
     >
@@ -53,16 +58,19 @@ export function ConfirmDialog({
       <div className="selectable space-y-2 text-content/70">{children}</div>
       {error && <p className="selectable mt-3 text-xs text-danger">{error}</p>}
       <div className="mt-5 flex justify-end gap-2">
+        {!hideCancel && (
+          <button
+            ref={cancel}
+            type="button"
+            disabled={busy}
+            onClick={onCancel}
+            className="h-7 rounded-md px-3 bg-selection hover:bg-selection-strong disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        )}
         <button
-          ref={cancel}
-          type="button"
-          disabled={busy}
-          onClick={onCancel}
-          className="h-7 rounded-md px-3 bg-selection hover:bg-selection-strong disabled:opacity-50"
-        >
-          Cancel
-        </button>
-        <button
+          ref={confirm}
           type="button"
           disabled={busy}
           onClick={onConfirm}

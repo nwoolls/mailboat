@@ -11,7 +11,7 @@ use mail_core::calendar::{self, InviteCard};
 use mail_core::compose::contacts::Contact;
 use mail_core::compose::identities::{self, Identity};
 use mail_core::compose::{self, OpenedDraft, OutgoingMessage, ReplySource};
-use mail_core::db::{accounts, query, store};
+use mail_core::db::{accounts, erase, query, store};
 use mail_core::mail::images::{self, ImagePolicy};
 use mail_core::mail::invite::Answer;
 use mail_core::mail::mailto::Mailto;
@@ -103,6 +103,21 @@ pub fn oauth_client_from_downloads(
     Ok(Some(config::save(&state.config_dir, &text)?))
 }
 
+/// Takes the sign-in lock, cancelling a sign-in that is still waiting for the
+/// browser until it lets go (the cancel is repeated, in case the old sign-in
+/// hadn't started listening for it yet). Held for as long as nothing else may
+/// sign in: a new account, or everything being deleted.
+async fn take_sign_in_lock<'a>(state: &'a AppState) -> tokio::sync::MutexGuard<'a, ()> {
+    loop {
+        state.sign_in_cancel.notify_waiters();
+        if let Ok(guard) =
+            tokio::time::timeout(Duration::from_millis(100), state.sign_in.lock()).await
+        {
+            return guard;
+        }
+    }
+}
+
 /// Opens Google sign-in in the browser and adds (or re-authorizes) the
 /// account that signs in. Signing in again with a connected account
 /// refreshes it instead of creating a duplicate. A second call cancels a
@@ -118,14 +133,7 @@ pub async fn account_add(
     // that is still waiting instead of failing. The cancel is repeated
     // until the lock is free, in case the old sign-in hadn't started
     // listening for it yet.
-    let _guard = loop {
-        state.sign_in_cancel.notify_waiters();
-        if let Ok(guard) =
-            tokio::time::timeout(Duration::from_millis(100), state.sign_in.lock()).await
-        {
-            break guard;
-        }
-    };
+    let _guard = take_sign_in_lock(&state).await;
     if state.demo.is_some() {
         // Signing in again: the made-up Google just lets the account back in.
         let all = accounts::list(&state.db.conn())?;
@@ -243,6 +251,111 @@ pub async fn account_remove(
     )
     .await?;
     Ok(AccountRemoved { revoked })
+}
+
+/// What deleting everything did that can fail without stopping it.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DataDeleted {
+    /// Google confirmed every account's sign-in is ended (or there was none
+    /// to end). False when it didn't for at least one: the access stays
+    /// listed in the owner's Google Account.
+    pub revoked: bool,
+}
+
+/// Deletes everything the app keeps: asks Google to end every account's
+/// sign-in, then removes every account (its token, mail and images), then the
+/// rest of the database (settings, per-sender choices, summaries, usage and
+/// the log of what AI apps read), downloaded attachments, the sync log and
+/// delivered notifications (macOS). Kept: the Google credentials file, so
+/// signing in again needs no new setup; files saved to Downloads; and Gmail
+/// itself, with the signatures and filters in it. The window clears what it
+/// keeps and starts over.
+///
+/// Nothing may sign in meanwhile (a sign-in waiting for the browser is
+/// cancelled, and no other starts until this is done). The sign-ins are
+/// revoked first, while every token is still there, so a failure partway
+/// can say whether Google confirmed, and a retry asks again for the accounts
+/// that remain. A failure leaves the accounts still there syncing.
+#[tauri::command]
+#[specta::specta]
+pub async fn data_delete_all(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    ai: State<'_, crate::ai::AiState>,
+) -> CmdResult<DataDeleted> {
+    let _signing_in = take_sign_in_lock(&state).await;
+    // Nothing from an AI request may be written into what is being deleted.
+    ai.stop_all();
+    let all = accounts::list(&state.db.conn())?;
+    // The demo's Google is made up: there is no sign-in to end.
+    let mut revoked = true;
+    if state.demo.is_none() {
+        for account in &all {
+            let confirmed = tokens::revoke_refresh_token(
+                &state.db,
+                state.secrets.as_ref(),
+                &state.http,
+                mail_core::auth::oauth::GOOGLE_REVOKE_URI,
+                account.id,
+            )
+            .await;
+            revoked &= confirmed;
+        }
+    }
+    match delete_everything(&app, &state, &all).await {
+        Ok(()) => Ok(DataDeleted { revoked }),
+        Err(e) => {
+            // Whatever is left carries on, and the rest is said as it was.
+            let _ = state.resume_all_accounts();
+            let mut error = AppError::from(e);
+            if !revoked {
+                error.message.push_str(&format!(
+                    " Google also didn't confirm ending every sign-in: you can remove {}'s access at myaccount.google.com/permissions.",
+                    brand::NAME
+                ));
+            }
+            Err(error)
+        }
+    }
+}
+
+/// The deleting itself, in order; each step can be tried again.
+async fn delete_everything(
+    app: &AppHandle,
+    state: &AppState,
+    all: &[Account],
+) -> Result<(), CoreError> {
+    for account in all {
+        // A sync in flight mustn't write into what's being deleted.
+        state.supervisor.stop_and_wait(account.id).await;
+        state.forget_account(account.id);
+        tokens::remove_account(
+            &state.db,
+            state.secrets.as_ref(),
+            account.id,
+            &state.images_dir,
+        )?;
+    }
+    erase::erase_all(&mut state.db.conn())?;
+    for dir in [&state.attachments_dir, &state.images_dir] {
+        match std::fs::remove_dir_all(dir) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(CoreError::Other(format!("delete downloaded files: {e}"))),
+        }
+    }
+    state.saved.lock().unwrap().clear();
+    state
+        .sync_log
+        .clear()
+        .map_err(|e| CoreError::Other(format!("empty the sync log: {e}")))?;
+    crate::notifications::clear_all();
+    // What Rust shows of the settings it just lost.
+    let defaults = AppSettings::default();
+    crate::theme::apply(app, defaults.theme);
+    crate::dock::set_icon(app, crate::app_icon::png(defaults.app_icon.as_deref()));
+    Ok(())
 }
 
 #[tauri::command]

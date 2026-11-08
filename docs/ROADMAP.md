@@ -3889,14 +3889,12 @@ security fixes).
       to a feature Google's reviewers can see. Needs care for accounts
       already signed in (one more consent, as when a permission was added
       before) and for the seven-day sign-in in Testing
-- [ ] Removing an account cleans up fully: revoke the refresh token at
+- [x] Removing an account cleans up fully: revoke the refresh token at
       Google (best effort; say so when offline), delete that account's
       downloaded remote images (next item), and offer "Delete all Mailboat
       data" in Settings (mail cache, images, summaries, settings). Today
       removal deletes the token from the keychain and the mail cache, and
-      leaves the images and does not revoke *(2026-11-08: revoking and the
-      images are done; "Delete all Mailboat data" is still open, so this
-      stays unticked)*
+      leaves the images and does not revoke *(2026-11-08: all three are done)*
 - [x] Downloaded remote images are deleted with their account: the image
       cache (`image_cache`) is keyed by address only, and one file serves
       every account that received the same image, so removing an account
@@ -4160,9 +4158,21 @@ and a tick.
       after Google's answer, in the pass that brings the three pages into
       American spelling. The app is meanwhile more private than the policy
       claims)*
-- [ ] A "Delete all Mailboat data" option in Settings (mail cache, images,
+- [x] A "Delete all Mailboat data" option in Settings (mail cache, images,
       summaries, settings), the other half of the original item, so that
-      item is ticked only when this is built too. Opus
+      item is ticked only when this is built too. Opus *(2026-11-08: built,
+      in Settings → Accounts (decided earlier), as the owner chose that day:
+      it asks Google to end every sign-in (and says so in a closing notice
+      when it can't), removes every account as removal does, then empties
+      every other table (`db::erase::erase_all`, which finds the tables in
+      the database, so a new one is covered), deletes the downloaded
+      attachments and images, empties the sync log and clears delivered
+      notifications (macOS only), and the
+      window clears what it keeps and starts over, back at the first-run
+      welcome. Kept: the Google credentials file, files saved to Downloads,
+      and Gmail itself. The confirmation is a dialog that lists what goes.
+      The privacy policy's "Removing your data" paragraph doesn't mention it
+      yet: held for Google's answer with the other policy lines)*
 - [ ] Removing the last account throws you out of Settings: stay in Settings
       → Accounts instead (see "Decided"). Full text in the Bug backlog; the
       worktree `fix-last-account-removal` may already exist and be empty, and

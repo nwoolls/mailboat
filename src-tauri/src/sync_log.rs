@@ -43,6 +43,19 @@ impl SyncLog {
         }
     }
 
+    /// Empties the log ("Delete all data"). Later lines start at the top: the
+    /// file is opened for appending. A log that couldn't be opened is deleted
+    /// instead, if there is one; an error is for the caller to report.
+    pub fn clear(&self) -> std::io::Result<()> {
+        match self.file.lock().unwrap().as_mut() {
+            Some(file) => file.set_len(0),
+            None => match std::fs::remove_file(&self.path) {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
+                _ => Ok(()),
+            },
+        }
+    }
+
     /// Where the log is, for Settings → Advanced.
     pub fn path(&self) -> &Path {
         &self.path
@@ -67,6 +80,30 @@ mod tests {
 
     fn mode(path: &Path) -> u32 {
         std::fs::metadata(path).unwrap().permissions().mode() & 0o777
+    }
+
+    #[test]
+    fn clearing_empties_the_log_and_later_lines_start_at_the_top() {
+        let dir = std::env::temp_dir().join(format!("sync-log-clear-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let log = SyncLog::open(&dir);
+        log.write(AccountId(1), "made-up line");
+        assert!(std::fs::metadata(log.path()).unwrap().len() > 0);
+        log.clear().unwrap();
+        assert_eq!(std::fs::metadata(log.path()).unwrap().len(), 0);
+        log.write(AccountId(1), "a later line");
+        let text = std::fs::read_to_string(log.path()).unwrap();
+        assert!(text.starts_with(|c: char| c.is_ascii_digit()), "{text:?}");
+        assert!(!text.contains("made-up line"));
+        // A log that couldn't be opened is deleted instead; none is fine.
+        let unopened = SyncLog {
+            file: Mutex::new(None),
+            path: dir.join("sync.log"),
+        };
+        unopened.clear().unwrap();
+        assert!(!unopened.path().exists());
+        unopened.clear().unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

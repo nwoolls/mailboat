@@ -210,3 +210,41 @@ async fn inline_images_are_embedded_in_the_email() {
     assert!(!shown.document.contains("cid:"));
     std::fs::remove_dir_all(&cache).unwrap();
 }
+
+/// An account removed (or everything deleted) while an attachment is still
+/// coming in: the download fails, and nothing is left in the cache.
+#[tokio::test]
+async fn a_download_finishing_after_its_account_is_gone_keeps_nothing() {
+    let server = MockServer::start().await;
+    serve_message(&server, "message_m2_attachments.json", 1).await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m2/attachments/ATT_PDF"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_delay(std::time::Duration::from_millis(400))
+                .set_body_json(serde_json::json!({ "size": 9, "data": "JVBERi0xLjcK" })),
+        )
+        .mount(&server)
+        .await;
+    let (db, account, m2) = setup();
+    let gmail = client(&server.uri()).0;
+    let cache = temp_cache();
+    fetch_body(&db, &gmail, m2).await.unwrap();
+    let pdf = store::attachments_for(&db.conn(), m2).unwrap()[0].id;
+
+    let download = attachments::download(&db, &gmail, pdf, &cache);
+    let remove = async {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        accounts::remove(&db.conn(), account).unwrap();
+    };
+    let (result, ()) = tokio::join!(download, remove);
+    assert!(
+        matches!(result, Err(mail_core::CoreError::NotFound(_))),
+        "{result:?}"
+    );
+    assert!(
+        !attachments::account_dir(&cache, account).exists(),
+        "no file stays behind"
+    );
+    let _ = std::fs::remove_dir_all(&cache);
+}

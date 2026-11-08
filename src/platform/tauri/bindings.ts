@@ -40,6 +40,23 @@ export const commands = {
 	 *  itself.
 	 */
 	accountRemove: (accountId: AccountId) => typedError<AccountRemoved, AppError>(__TAURI_INVOKE("account_remove", { accountId })),
+	/**
+	 *  Deletes everything the app keeps: asks Google to end every account's
+	 *  sign-in, then removes every account (its token, mail and images), then the
+	 *  rest of the database (settings, per-sender choices, summaries, usage and
+	 *  the log of what AI apps read), downloaded attachments, the sync log and
+	 *  delivered notifications (macOS). Kept: the Google credentials file, so
+	 *  signing in again needs no new setup; files saved to Downloads; and Gmail
+	 *  itself, with the signatures and filters in it. The window clears what it
+	 *  keeps and starts over.
+	 * 
+	 *  Nothing may sign in meanwhile (a sign-in waiting for the browser is
+	 *  cancelled, and no other starts until this is done). The sign-ins are
+	 *  revoked first, while every token is still there, so a failure partway
+	 *  can say whether Google confirmed, and a retry asks again for the accounts
+	 *  that remain. A failure leaves the accounts still there syncing.
+	 */
+	dataDeleteAll: () => typedError<DataDeleted, AppError>(__TAURI_INVOKE("data_delete_all")),
 	threadsList: (query: ListQuery) => typedError<ThreadPage, AppError>(__TAURI_INVOKE("threads_list", { query })),
 	/**
 	 *  Fetches conversations older than the cache for a view, from each
@@ -763,6 +780,16 @@ export type Contact = {
 	 *  contacts, then everyone else).
 	 */
 	wrote: boolean,
+};
+
+/**  What deleting everything did that can fail without stopping it. */
+export type DataDeleted = {
+	/**
+	 *  Google confirmed every account's sign-in is ended (or there was none
+	 *  to end). False when it didn't for at least one: the access stays
+	 *  listed in the owner's Google Account.
+	 */
+	revoked: boolean,
 };
 
 /**  Which app opens `mailto:` links. */

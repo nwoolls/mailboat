@@ -27,6 +27,7 @@ import {
 import { syncHint } from "../../accounts/model/accounts";
 import { signInAgainReason } from "../../accounts/model/permissions";
 import { AccountAvatar } from "../../accounts/ui/AccountAvatar";
+import { DeleteAllDataDialog } from "../../accounts/ui/DeleteAllDataDialog";
 import { RemoveAccountDialog } from "../../accounts/ui/RemoveAccountDialog";
 import { useSignIn } from "../../accounts/ui/useSignIn";
 import { explainSignInError } from "../../onboarding/model/onboarding";
@@ -177,6 +178,7 @@ export function AccountsSection({
 }) {
   const signIn = useSignIn();
   const [removing, setRemoving] = useState<Account | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
   // Which sign-in is waiting for the browser: an account's address, or ""
   // for a new account. Nothing is ever disabled while it waits: closing
   // the browser tab can't be detected, so starting again (which replaces
@@ -216,6 +218,15 @@ export function AccountsSection({
           onRemove={() => setRemoving(account)}
         />
       ))}
+      <Group title="Delete everything">
+        <Row
+          label={`Delete all ${APP_NAME} data`}
+          description={`Removes every account and deletes all the mail, files, summaries and settings ${APP_NAME} keeps on this computer, as on a first launch. Gmail itself isn't changed.`}
+        >
+          <Button onClick={() => setDeletingAll(true)}>Delete all data…</Button>
+        </Row>
+      </Group>
+      {deletingAll && <DeleteAllDataDialog onCancel={() => setDeletingAll(false)} />}
       {removing && (
         <RemoveAccountDialog
           account={removing}

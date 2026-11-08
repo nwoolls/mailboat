@@ -75,6 +75,18 @@ impl AiState {
         }
     }
 
+    /// Stops what is running for the window and forgets what waits in the
+    /// background ("Delete all data"): cancellable requests are dropped, which
+    /// stops the provider's program, and the queue of one-line summaries is
+    /// emptied. The one summary being written at that moment isn't stopped.
+    pub fn stop_all(&self) {
+        let jobs: Vec<_> = self.jobs.lock().unwrap().drain().collect();
+        for (_, job) in jobs {
+            job.abort();
+        }
+        self.queue.reset();
+    }
+
     /// Looks for the programs again (one may have been installed since).
     fn refresh(&self) -> Programs {
         let found = Programs::find(self.helper.clone());
