@@ -203,7 +203,7 @@ if (base) {
 
 if (problems > 0) {
   console.error(
-    `check:privacy: ${problems} problem(s). Real mail must not be written into the repository: describe the behaviour in general terms, with made-up data.`,
+    `check:privacy: ${problems} problem(s). Real mail must not be written into the repository: describe the behavior in general terms, with made-up data.`,
   );
   process.exit(1);
 }

@@ -163,9 +163,7 @@ pub fn set_color(conn: &Connection, id: AccountId, color: &str) -> Result<Accoun
         .iter()
         .find(|c| c.eq_ignore_ascii_case(color))
     else {
-        return Err(CoreError::Invalid(format!(
-            "not an account colour: {color}"
-        )));
+        return Err(CoreError::Invalid(format!("not an account color: {color}")));
     };
     let changed = conn.execute(
         "UPDATE accounts SET color = ?2 WHERE id = ?1",

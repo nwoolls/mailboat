@@ -249,13 +249,13 @@ export function explainSignInError(message: string): Advice {
   if (/invalid_client|unauthorized_client|deleted_client/.test(message))
     return {
       message:
-        "Google didn’t recognise the OAuth client in your credentials file. It may have been deleted, or the file is from another project. You’ll need a new Desktop app OAuth client and its credentials file.",
+        "Google didn’t recognize the OAuth client in your credentials file. It may have been deleted, or the file is from another project. You’ll need a new Desktop app OAuth client and its credentials file.",
       step: "client",
     };
   if (/org_internal/.test(message))
     return {
       message:
-        "The project’s audience is set to Internal, which only lets in accounts from your own Google Workspace organisation. Change it to External on the Audience page.",
+        "The project’s audience is set to Internal, which only lets in accounts from your own Google Workspace organization. Change it to External on the Audience page.",
       step: "users",
     };
   if (/access_denied/.test(message))

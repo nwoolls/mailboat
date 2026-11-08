@@ -81,8 +81,8 @@ describe("invitation card", () => {
   it("heads the card with what it is", () => {
     expect(headline(invite, onCalendar())).toBe("Invitation");
     expect(headline({ ...invite, sequence: 2 }, onCalendar())).toBe("Updated invitation");
-    expect(headline({ ...invite, cancelled: true }, onCalendar())).toBe("Cancelled");
-    expect(headline(invite, onCalendar({ cancelled: true }))).toBe("Cancelled");
+    expect(headline({ ...invite, cancelled: true }, onCalendar())).toBe("Canceled");
+    expect(headline(invite, onCalendar({ cancelled: true }))).toBe("Canceled");
     expect(
       headline(
         {

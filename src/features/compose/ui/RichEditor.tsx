@@ -206,7 +206,7 @@ export function FormatBar({
           run={() => chain().toggleUnderline().run()}
         />
         <label
-          title="Text colour"
+          title="Text color"
           className="relative flex h-7 w-7 items-center justify-center rounded-md text-content/70 hover:bg-selection"
         >
           <TextColorIcon size={15} />
@@ -216,7 +216,7 @@ export function FormatBar({
           />
           <input
             type="color"
-            aria-label="Text colour"
+            aria-label="Text color"
             value={state.color.startsWith("#") ? state.color : "#000000"}
             onChange={(e) => chain().setColor(e.target.value).run()}
             className="absolute inset-0 cursor-default opacity-0"

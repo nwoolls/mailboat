@@ -196,7 +196,7 @@ fn token_error(e: RequestTokenError<HttpError, oauth2::basic::BasicErrorResponse
                 CoreError::Auth(format!("Google refused the sign-in ({code})"))
             } else if *resp.error() == BasicErrorResponseType::InvalidClient {
                 CoreError::Config(format!(
-                    "Google doesn't recognise this OAuth client ({code}); check the client file"
+                    "Google doesn't recognize this OAuth client ({code}); check the client file"
                 ))
             } else {
                 CoreError::Config(format!("token request rejected ({code})"))

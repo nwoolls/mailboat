@@ -31,7 +31,7 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   {
     id: "accounts",
     label: "Accounts",
-    description: "Your Gmail accounts: their colour, sign-in and addresses.",
+    description: "Your Gmail accounts: their color, sign-in and addresses.",
   },
   {
     id: "notifications",

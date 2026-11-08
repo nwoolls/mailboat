@@ -84,7 +84,7 @@ export function headline(invite: Invite, calendar: CalendarState): string {
   }
   if (invite.kind === "reply") return "Reply to your invitation";
   const cancelled = invite.cancelled || (calendar.kind === "onCalendar" && calendar.cancelled);
-  if (cancelled) return "Cancelled";
+  if (cancelled) return "Canceled";
   return invite.sequence > 0 ? "Updated invitation" : "Invitation";
 }
 

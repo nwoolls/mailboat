@@ -172,7 +172,7 @@
           "brief": [
             "Casa Azul is available 16–23 May.",
             "Check-in from 3 pm; Tomás meets you with the keys.",
-            "A neighbourhood guide (bakeries, viewpoint, fado) is attached."
+            "A neighborhood guide (bakeries, viewpoint, fado) is attached."
           ],
           "reply": "Obrigado, Alex! See you in May. Tomás",
           "messages": [
@@ -180,7 +180,7 @@
               "from": "tomas",
               "ago": "5h",
               "subject": "Your stay at Casa Azul",
-              "text": "Olá Alex,\n\nThank you for your interest in Casa Azul! The apartment is available 16–23 May. Check-in is from 3 pm; I'll meet you at the door with the keys.\n\nI attached a short guide to the neighbourhood: bakeries, the best viewpoint, and where to hear fado.\n\nAté breve,\nTomás",
+              "text": "Olá Alex,\n\nThank you for your interest in Casa Azul! The apartment is available 16–23 May. Check-in is from 3 pm; I'll meet you at the door with the keys.\n\nI attached a short guide to the neighborhood: bakeries, the best viewpoint, and where to hear fado.\n\nAté breve,\nTomás",
               "attachments": [
                 {
                   "name": "Casa Azul guide.pdf",
@@ -449,7 +449,7 @@
               "from": "me",
               "cc": ["jordan"],
               "ago": "2d",
-              "text": "Hi Lena,\n\nWonderful, B is my favourite too. I'll warm up the green and mock it up on cups, bags and the sign.\n\nJordan is copied in for the timeline.\n\nAlex"
+              "text": "Hi Lena,\n\nWonderful, B is my favorite too. I'll warm up the green and mock it up on cups, bags and the sign.\n\nJordan is copied in for the timeline.\n\nAlex"
             },
             {
               "from": "lena",
