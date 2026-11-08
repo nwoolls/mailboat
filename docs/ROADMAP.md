@@ -4010,7 +4010,8 @@ account leaves its downloaded images; there is no `/.well-known/security.txt`
 (the address answers 404) and no Security link in the footer (both are built
 since: see the hardening list); image prefetch
 is on by default; nothing encrypts the local database; the "model training"
-note is on the website's policy but not in Settings → AI; the repository's
+note is on the website's policy but not in Settings → AI (built since: see
+the hardening list); the repository's
 website link is already set. GitHub showed one open code-scanning alert
 (Scorecard's SAST check, medium: its own text says 28 of the last 30
 commits were scanned, most likely because CodeQL skips docs-only changes on

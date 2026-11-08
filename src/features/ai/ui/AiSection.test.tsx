@@ -23,8 +23,13 @@ const { AiSection } = await import("./AiSection");
 afterEach(cleanup);
 
 describe("AiSection's model-training note", () => {
-  it("shows nothing while every feature stays on the Mac", () => {
+  it("shows nothing while every feature stays on the Mac, even with a provider connected", () => {
     ai = {};
+    render(<AiSection />);
+    expect(screen.queryByRole("note")).toBeNull();
+    cleanup();
+    // Connected, but no feature uses it: it receives nothing, so no warning.
+    ai = { connected: ["claude", "chatgpt"] };
     render(<AiSection />);
     expect(screen.queryByRole("note")).toBeNull();
   });
