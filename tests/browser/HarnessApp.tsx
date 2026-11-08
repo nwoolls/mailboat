@@ -24,6 +24,7 @@ import {
 } from "../../src/features/accounts/ui/SignedOutNotices";
 import { systemSelection } from "../../src/features/mailbox/model/views";
 import { Onboarding } from "../../src/features/onboarding/ui/Onboarding";
+import { Shell } from "../../src/app/Shell";
 import { useAccounts, useOAuthSetup, useSyncStates } from "../../src/shared/lib/queries";
 import {
   setCardSpot,
@@ -77,6 +78,7 @@ export function Harness({
   }, [mode]);
 
   if (mode === "onboarding") return <OnboardingHarness />;
+  if (mode === "shell") return <Shell />;
   // `?mode=updates&draft=1`: a message being written, so there is something to save.
   const draftStarted = useRef(false);
   useEffect(() => {

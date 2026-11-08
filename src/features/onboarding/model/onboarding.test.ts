@@ -5,6 +5,7 @@ import {
   currentStep,
   explainSignInError,
   explainSyncError,
+  finishedForExistingAccounts,
   FRESH,
   gcloudCommands,
   isSyncing,
@@ -51,15 +52,42 @@ describe("parseProgress", () => {
 });
 
 describe("showOnboarding", () => {
-  it("shows with no accounts, and after the first until finished", () => {
+  it("shows with no accounts until finished, and after the first until finished", () => {
     expect(showOnboarding(0, FRESH)).toBe(true);
-    expect(showOnboarding(0, { ...FRESH, started: true, finished: true })).toBe(true);
+    expect(showOnboarding(0, { ...FRESH, started: true })).toBe(true);
     expect(showOnboarding(1, { ...FRESH, started: true })).toBe(true);
     expect(showOnboarding(1, { ...FRESH, started: true, finished: true })).toBe(false);
   });
 
+  it("stays out of the way once finished, even with every account removed", () => {
+    expect(showOnboarding(0, { ...FRESH, started: true, finished: true })).toBe(false);
+  });
+
+  it("starts over after everything is deleted (the saved progress is gone)", () => {
+    expect(showOnboarding(0, parseProgress(null))).toBe(true);
+  });
+
   it("never shows to someone who had accounts before it existed", () => {
     expect(showOnboarding(2, FRESH)).toBe(false);
+  });
+});
+
+describe("finishedForExistingAccounts", () => {
+  it("records someone seen with accounts and no saved progress as past onboarding", () => {
+    expect(finishedForExistingAccounts(1, FRESH)).toEqual({ finished: true });
+    expect(finishedForExistingAccounts(3, FRESH)).toEqual({ finished: true });
+  });
+
+  it("leaves a first launch, a flow under way and a finished one alone", () => {
+    expect(finishedForExistingAccounts(0, FRESH)).toBeNull();
+    expect(finishedForExistingAccounts(1, { ...FRESH, started: true })).toBeNull();
+    expect(finishedForExistingAccounts(2, { ...FRESH, started: true, finished: true })).toBeNull();
+  });
+
+  it("keeps someone who had accounts before onboarding existed out of it", () => {
+    // Seen with accounts, then every account removed: no onboarding.
+    const progress = { ...FRESH, ...finishedForExistingAccounts(2, FRESH), started: true };
+    expect(showOnboarding(0, progress)).toBe(false);
   });
 });
 

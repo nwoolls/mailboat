@@ -62,6 +62,8 @@ type Props = {
   /** The pointer went onto (true) or off (false) the sidebar button. */
   onSidebarHover?: (inside: boolean) => void;
   onToggleReader: () => void;
+  /** Writing needs an account to write from. */
+  canCompose: boolean;
   onCompose: () => void;
 };
 
@@ -83,6 +85,7 @@ export function Toolbar({
   onToggleSidebar,
   onSidebarHover,
   onToggleReader,
+  canCompose,
   onCompose,
 }: Props) {
   const many = count > 1 ? ` ${count} conversations` : "";
@@ -163,7 +166,13 @@ export function Toolbar({
         disabled={!actions.more}
       />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
-      <ToolButton icon={ComposeIcon} label={names.new ?? ""} shortcut="c" onClick={onCompose} />
+      <ToolButton
+        icon={ComposeIcon}
+        label={names.new ?? ""}
+        shortcut="c"
+        onClick={onCompose}
+        disabled={!canCompose}
+      />
       <span className="mx-1.5 h-4 w-px bg-stroke" />
       <ToolButton
         icon={ReaderToggleIcon}

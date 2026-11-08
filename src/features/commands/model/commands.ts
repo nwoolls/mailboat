@@ -152,11 +152,14 @@ export function appCommands(o: {
   sidebarOpen: boolean;
   readerOpen: boolean;
   hasConversation: boolean;
+  /** Writing and syncing need an account: off once every one is removed. */
+  hasAccounts?: boolean;
 }): Command[] {
+  const hasAccounts = o.hasAccounts ?? true;
   return [
-    { id: "new", title: "New message", key: "c", accel: "Cmd+N", enabled: true },
+    { id: "new", title: "New message", key: "c", accel: "Cmd+N", enabled: hasAccounts },
     { id: "search", title: "Search mail", key: "/", enabled: true },
-    { id: "sync", title: "Sync now", accel: "Shift+Cmd+N", enabled: true },
+    { id: "sync", title: "Sync now", accel: "Shift+Cmd+N", enabled: hasAccounts },
     {
       id: "sidebar",
       title: o.sidebarOpen ? "Hide sidebar" : "Show sidebar",

@@ -4173,11 +4173,22 @@ and a tick.
       and Gmail itself. The confirmation is a dialog that lists what goes.
       The privacy policy's "Removing your data" paragraph doesn't mention it
       yet: held for Google's answer with the other policy lines)*
-- [ ] Removing the last account throws you out of Settings: stay in Settings
+- [x] Removing the last account throws you out of Settings: stay in Settings
       → Accounts instead (see "Decided"). Full text in the Bug backlog; the
       worktree `fix-last-account-removal` may already exist and be empty, and
       needs bringing up to date with `main`. It sits here because it shares
-      a code path with account removal
+      a code path with account removal *(2026-11-08: fixed, in its own pull
+      request. Onboarding shows with no accounts only until its flow was
+      finished once, and a window seen with accounts and no saved progress
+      (someone who had accounts before onboarding existed) is recorded as
+      past it, so removing every account later doesn't start it. The window
+      then stays where it is, in Settings → Accounts with an empty list and
+      "Add account", and the mail pane says "No accounts yet" and points back
+      to Settings; New message and Sync now are off with no account.
+      "Delete all data" clears the saved progress, so it still ends at the
+      first-run welcome. A browser test mounts the whole window
+      (`?mode=shell`) with a fake account list that empties when the account
+      is removed)*
 - [ ] Cloud AI is manual by default (the summary above a conversation waits
       for the Summarize button with Claude or ChatGPT; Apple Intelligence
       stays automatic). A default changes, so the policy changes in the same
@@ -4284,8 +4295,8 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
-- [ ] Removing the last account throws you out of Settings *(owner report,
-      2026-11-07)*: in Settings → Accounts, removing the only account
+- [x] Removing the last account throws you out of Settings *(owner report,
+      2026-11-07; fixed 2026-11-08, see the Polish Spike item)*: in Settings → Accounts, removing the only account
       leaves you on the "Make it yours" onboarding screen instead of in
       Settings → Accounts. Cause, from reading the code:
       `showOnboarding` (`features/onboarding/model/onboarding.ts`) is

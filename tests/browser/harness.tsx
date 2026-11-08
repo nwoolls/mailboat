@@ -32,6 +32,9 @@
  *   &ai=none                      (card, inline) no AI set up
  *   ?mode=onboarding&stage=…     first-launch onboarding at a stage
  *     &path=…&done=a,b&accounts=0|1&configured=1
+ *   ?mode=shell                   the whole window (`Shell`) with one account,
+ *                                 `&accounts=0` for none; removing the
+ *                                 account (`account_remove`) empties the list
  *   ?mode=search                  the title bar's search, with three recent
  *                                 searches saved
  *   ?mode=trackers&images=1|0     the reader with an email full of trackers,
@@ -83,6 +86,8 @@ const detail = unreadMode
   : { thread, messages: [message], labels: [] };
 
 const onboardingParams = new URLSearchParams(location.search);
+/** `?mode=shell`: whether the account was removed (the fake list then answers empty). */
+let shellAccountRemoved = false;
 const onboardingAccounts =
   harnessMode === "onboarding" ? Number(onboardingParams.get("accounts") ?? 0) : 1;
 
@@ -139,7 +144,22 @@ mockIPC((cmd, args) => {
     case "contacts_list":
       return [];
     case "accounts_list":
+      if (harnessMode === "shell")
+        return shellAccountRemoved || onboardingParams.get("accounts") === "0" ? [] : [account];
       return onboardingAccounts ? [account] : [];
+    case "account_remove":
+      record("account_remove");
+      shellAccountRemoved = true;
+      return { revoked: true };
+    case "threads_list":
+      return { threads: [], nextCursor: null };
+    case "threads_load_older":
+      // As Rust with no account to ask: nothing older, and not an error.
+      return { added: 0, exhausted: true, failed: 0 };
+    case "mailto_take":
+      return [];
+    case "labels_list":
+      return [];
     case "settings_get":
       return { ai: { writingProvider: "apple" } };
     case "ai_status":

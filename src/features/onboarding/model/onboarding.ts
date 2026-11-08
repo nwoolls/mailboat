@@ -72,12 +72,32 @@ export function parseProgress(raw: string | null): Progress {
 }
 
 /**
- * Whether the window shows onboarding instead of the mail: always with no
- * accounts, and after the first sign-in until the flow is finished.
+ * Whether the window shows onboarding instead of the mail: with no accounts
+ * until the flow was finished once (a first launch, or a flow left half
+ * done), and after the first sign-in until it is finished. Someone who has
+ * been through it (or had accounts before it existed, which
+ * `finishedForExistingAccounts` records) and then removes every account
+ * stays in the app, in Settings → Accounts, where "Add account" is.
  */
 export function showOnboarding(accountCount: number, progress: Progress): boolean {
-  if (accountCount === 0) return true;
+  if (accountCount === 0) return !progress.finished;
   return progress.started && !progress.finished;
+}
+
+/**
+ * The progress to save when the window is seen with accounts and onboarding
+ * never started: someone who had accounts before onboarding existed (it
+ * saves progress as soon as it is used, so a first launch is never here
+ * with accounts). Recorded as finished, so removing every account later
+ * doesn't start onboarding for them. Saved when first seen, not when the
+ * last account goes, so no removal (quick, interrupted or from anywhere)
+ * can miss it.
+ */
+export function finishedForExistingAccounts(
+  accountCount: number,
+  progress: Progress,
+): Partial<Progress> | null {
+  return accountCount > 0 && !progress.started ? { finished: true } : null;
 }
 
 /**

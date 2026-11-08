@@ -35,9 +35,17 @@ export function isFirstSync(state: AccountSyncState): boolean {
 /**
  * `syncing`: some account is on its first sync, so an empty list may only
  * mean the mail hasn't arrived yet, and "all caught up" would be wrong. A
- * search keeps its own words.
+ * search keeps its own words. `noAccounts`: every account was removed, so
+ * the list is empty for want of one, whatever the view.
  */
-export function emptyStateFor(view: MailView, syncing = false): EmptyState {
+export function emptyStateFor(view: MailView, syncing = false, noAccounts = false): EmptyState {
+  if (noAccounts) {
+    return {
+      icon: "inbox",
+      title: "No accounts yet",
+      detail: "Add one in Settings → Accounts.",
+    };
+  }
   if (syncing && view.kind !== "search") {
     return {
       icon: "inbox",
@@ -109,8 +117,8 @@ export function emptyStateFor(view: MailView, syncing = false): EmptyState {
  * words) keeps it still instead of re-rising each click; searches keep one
  * key so typing doesn't replay it on every keystroke.
  */
-export function emptyStateKey(view: MailView, syncing = false): string {
-  if (view.kind === "search") return "search";
-  const { icon, title, detail } = emptyStateFor(view, syncing);
+export function emptyStateKey(view: MailView, syncing = false, noAccounts = false): string {
+  if (view.kind === "search" && !noAccounts) return "search";
+  const { icon, title, detail } = emptyStateFor(view, syncing, noAccounts);
   return `${icon}|${title}|${detail ?? ""}`;
 }
