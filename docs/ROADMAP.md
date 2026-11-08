@@ -3462,14 +3462,20 @@ builds are attached to each run as artifacts.*
       could catch what the others share.*
 - [x] Code scanning with CodeQL (Rust and TypeScript), with Copilot
       Autofix suggestions for what it finds
-      *Running on pull requests since 2026-11-02, with Copilot Autofix on. The first findings still need a look: see the next item.*
-- [ ] Look through the first code-scanning findings (CodeQL on the Rust
+      *Running on pull requests since 2026-11-02, with Copilot Autofix on. The first findings were reviewed: see the next item.*
+- [x] Look through the first code-scanning findings (CodeQL on the Rust
       and TypeScript code, and Scorecard's repository checks): fix what is
       real, and dismiss the false positives one by one with a reason
       (most are "cleartext" rules on code that talks to Google over HTTPS,
       and on tests that use a local mock server). Add the Scorecard badge
       to the README once its score is worth showing *(picked for the Polish
-      Spike, 2026-11-07)*
+      Spike, 2026-11-07)* *(2026-11-07: done. The earlier alerts were
+      dismissed with reasons and the badge is in the README. The last two
+      were dismissed on GitHub the same day with the owner's OK: Scorecard's
+      SAST alert as "won't fix", since CodeQL skips docs-only changes on
+      purpose, and the Linux-only `glib` Dependabot alert as "tolerable
+      risk", since Tauri's gtk 0.18 stack pins it and an update can't fix
+      it; revisit when Tauri moves to a newer gtk.)*
 - [x] Secret scanning with push protection (blocks a commit that
       contains a key or token)
 - [x] Dependabot: security alerts and fixes, and weekly grouped
@@ -4051,9 +4057,8 @@ Cloudflare setup are ticked, the Cloudflare item's "first deploy and route
 left" sentence is dropped, and the checks against the live site (HTTPS, the
 `www` redirect, the update address) are recorded on that item. The
 repository's website link is set; only pinning the repository on the owner's
-profile is left, and it is the owner's to do. Still open: ticking the alerts
-item, which joins this pass once the owner has OK'd the two dismissals on
-GitHub.
+profile is left, and it is the owner's to do. The alerts item is ticked too,
+after the owner OK'd the two dismissals on GitHub (2026-11-07).
 
 ### Hardening, in order
 
@@ -4079,6 +4084,7 @@ and a tick.
       can't fix it). The earlier code-scanning alerts are dismissed and the
       README has the Scorecard badge, so those parts of the original item are
       done. Tick the original when both alerts are resolved or accepted
+      *(done 2026-11-07; ticked in Milestone 14)*
 - [ ] Fuzz the email HTML cleaner (the first item under "Later /
       unscheduled", first half). Opus. Anything it finds is a security bug,
       so a finding goes to the front of the queue, ahead of the rest of the
