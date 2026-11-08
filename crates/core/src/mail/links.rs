@@ -20,6 +20,16 @@ pub fn link_base() -> &'static str {
     }
 }
 
+/// Whether `host` is where Windows' web view serves the app's link address
+/// (`email-link.localhost`, as `url` writes it: lowercased; a trailing dot
+/// names the same host). Never an image's host: loading one would ask the
+/// app to open a link (`mail::sanitize`).
+pub fn is_link_host(host: &str) -> bool {
+    host.trim_end_matches('.')
+        .strip_suffix(".localhost")
+        .is_some_and(|name| name == SCHEME)
+}
+
 /// Only these may be opened from an email.
 fn is_openable(url: &url::Url) -> bool {
     matches!(url.scheme(), "http" | "https" | "mailto")
