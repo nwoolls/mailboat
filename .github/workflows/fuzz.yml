@@ -1,9 +1,11 @@
 name: Fuzz
 
 # Coverage-guided fuzzing of the code that reads untrusted email (fuzz/,
-# cargo-fuzz). Once a week and by hand; never on pull requests, which run the
-# same checks as property tests in `cargo test` instead. A failure is a
-# security bug: the input that caused it is kept as an artifact.
+# cargo-fuzz): the HTML cleaner, `mailto:` links, a raw email's source, a Gmail
+# message and the file names an email picks, one job each. Once a week and by
+# hand; never on pull requests, which run the same checks as property tests in
+# `cargo test` instead. A failure is a security bug: the input that caused it
+# is kept as an artifact.
 on:
   schedule:
     - cron: "41 4 * * 2"
@@ -20,7 +22,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [sanitize_html]
+        # The dictionary and the longest input each target gets (fuzz/README.md).
+        include:
+          - { target: sanitize_html, dict: html.dict, max_len: 4096 }
+          - { target: file_name, dict: gmail.dict, max_len: 512 }
+          - { target: gmail_message, dict: gmail.dict, max_len: 8192 }
+          - { target: mailto_parse, dict: mailto.dict, max_len: 2048 }
+          - { target: original_read, dict: mailto.dict, max_len: 8192 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -35,13 +43,21 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: fuzz
+      # Its own step, so the ten minutes below are fuzzing alone: a cold build
+      # takes about six.
+      - name: Build the fuzz target
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cargo +nightly fuzz build "$TARGET"
       - name: Fuzz for ten minutes
         env:
           TARGET: ${{ matrix.target }}
+          DICT: ${{ matrix.dict }}
+          MAX_LEN: ${{ matrix.max_len }}
         run: |
           mkdir -p "fuzz/corpus/$TARGET"
           cargo +nightly fuzz run "$TARGET" "fuzz/corpus/$TARGET" "fuzz/seeds/$TARGET" -- \
-            -dict=fuzz/html.dict -max_total_time=600 -max_len=4096
+            "-dict=fuzz/$DICT" -max_total_time=600 "-max_len=$MAX_LEN" -timeout=10
       - name: Keep the failing input
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -1,0 +1,5 @@
+Subject: x
+Authentication-Results: mx.evil.example; spf=pass smtp.mailfrom=a@x.example
+Authentication-Results: mx.google.com; dmarc=pass header.from=x.example
+
+body

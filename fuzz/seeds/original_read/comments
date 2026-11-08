@@ -1,0 +1,4 @@
+Authentication-Results: (c1 (nested)) mx.google.com ; spf=pass (a;b) smtp.mailfrom=@x.example; dkim=fail header.d=x.example
+From: =?UTF-8?B?w6k=?= <e@x.example>
+Subject: =?UTF-8?Q?caf=C3=A9?=
+

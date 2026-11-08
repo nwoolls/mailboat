@@ -171,17 +171,20 @@ pub fn unique_path(dir: &Path, filename: &str) -> PathBuf {
     if !first.exists() {
         return first;
     }
-    let (stem, ext) = split_extension(&name);
-    // The number goes in before the extension, and the stem gives up the room
-    // it takes, so a numbered name fits the limits like any other.
     (1..)
-        .map(|n| {
-            let suffix = format!(" ({n})");
-            let kept = cut_stem(stem, ext, suffix.chars().count(), suffix.len());
-            dir.join(format!("{kept}{suffix}{ext}"))
-        })
+        .map(|n| dir.join(numbered_filename(&name, n)))
         .find(|p| !p.exists())
         .unwrap_or(first)
+}
+
+/// `name` (already cleaned) as its `n`th copy: "a (2).pdf". The number goes in
+/// before the extension, and the stem gives up the room it takes, so a
+/// numbered name fits the limits like any other.
+pub(crate) fn numbered_filename(name: &str, n: u32) -> String {
+    let (stem, ext) = split_extension(name);
+    let suffix = format!(" ({n})");
+    let kept = cut_stem(stem, ext, suffix.chars().count(), suffix.len());
+    format!("{kept}{suffix}{ext}")
 }
 
 /// Downloads an attachment into the cache (once) and returns its path.
