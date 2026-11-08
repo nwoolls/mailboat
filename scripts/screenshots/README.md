@@ -62,7 +62,7 @@ OUT=/tmp/shots scripts/screenshots/install.sh   # into docs/images/features/, sR
 | `shoot.sh` | One picture: backdrop window, pointer out of the way, region capture |
 | `gallery.sh` | One function per feature: the clicks to get there, then `shoot` |
 | `install.sh` | Copies the pictures and the loops into the repository; each PNG is recompressed without changing a pixel (`optimize.py`) and carries the plain sRGB profile |
-| `find_button.py` | Finds the writing assistant's Replace button by its colour, in the right-hand strip of the window |
+| `find_button.py` | Finds the writing assistant's Replace button by its color, in the right-hand strip of the window |
 | `backdrop.swift`, `windows.swift`, `mouse.swift`, `scroll.swift`, `drag.swift`, `swipe.swift`, `frame.swift`, `render.mjs` | Small helpers: a picture behind the window, window positions, the pointer, scrolling, a hand-like drag, a trackpad swipe, a frame of a video wallpaper, an SVG to PNG |
 
 ## Adding a feature

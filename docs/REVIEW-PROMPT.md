@@ -116,7 +116,7 @@ already rejected in an earlier round, with the reason.>
   would still pass with the change taken out. Name anything promised but
   untested.
 - Regressions around the touched code, and accessibility of any new UI.
-- Dependencies and workflows: anything added, its licence (GPL-3.0-only
+- Dependencies and workflows: anything added, its license (GPL-3.0-only
   project), install scripts, and whether workflows keep the repository's
   hardening (pinned actions, least-privilege permissions, no untrusted input
   in shell commands).

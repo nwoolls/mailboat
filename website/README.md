@@ -6,7 +6,7 @@ step and no backend. It is meant to be served by Cloudflare as it is (decided
 
 - `index.html`, `privacy.html`, `terms.html`: the pages. The header and
   footer are repeated in each page; change them in all of them.
-- `site.css`: the one stylesheet. Colours follow the visitor's system theme.
+- `site.css`: the one stylesheet. Colors follow the visitor's system theme.
 - `site.js`: fades sections in as they scroll into view, lifts the header
   once the page scrolls, and opens a screenshot in a zoomed view (a native
   `<dialog>`) when it is clicked: any `<img data-zoom="images/…">` is made

@@ -10,7 +10,7 @@ A fast, keyboard-first Gmail client for macOS and Windows. Free and open source.
 
 [![CI](https://github.com/nwoolls/mailboat/actions/workflows/ci.yml/badge.svg)](https://github.com/nwoolls/mailboat/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/nwoolls/mailboat/badge)](https://scorecard.dev/viewer/?uri=github.com/nwoolls/mailboat)
-[![Licence: GPL-3.0](https://img.shields.io/badge/licence-GPL--3.0-blue)](LICENSE)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 ![Platforms: macOS and Windows](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-blue)
 ![Built with Tauri, Rust and React](https://img.shields.io/badge/built%20with-Tauri%20%C2%B7%20Rust%20%C2%B7%20React-orange)
 
@@ -36,14 +36,14 @@ search are instant. Its calm, minimal look is inspired in part by Notion Mail,
 which has since shut down.
 
 - **One inbox for every account.** Personal, work and school Gmail accounts side
-  by side, each with its own colour. Threads never merge across accounts, and
+  by side, each with its own color. Threads never merge across accounts, and
   every action uses the account the mail belongs to.
 - **Keyboard first.** Gmail's own keys (`j`/`k`, `e`, `#`, `g` then `i`, `c`,
   `r`…), and a command palette on <kbd>⌘K</kbd> for everything else.
 - **Instant search.** Local full-text search across all accounts, with Gmail's
   own search (`from:`, `has:attachment`…) merged in as it arrives.
 - **Read mail safely.** Email is cleaned in Rust and shown in a sandboxed view
-  with no scripts. Known tracking pixels are removed, and dark mode recolours
+  with no scripts. Known tracking pixels are removed, and dark mode recolors
   email instead of inverting it.
 - **Sign-in codes and meeting invitations.** One-time codes surface as a pill
   on the row; invitations get Yes, Maybe and No right in the email, answered through Google Calendar.
@@ -258,7 +258,7 @@ again takes one click.
 
 **Is it safe?**
 The code is public and has been reviewed several times by AI code-review
-agents (not by an outside security firm); mail is sanitised and sandboxed,
+agents (not by an outside security firm); mail is sanitized and sandboxed,
 tokens stay in your keychain, and the AI features are fenced. See
 [Your mail stays yours](#your-mail-stays-yours) and
 [SECURITY.md](SECURITY.md).
@@ -271,7 +271,7 @@ one for Arm. Linux will follow.
 A website, and trying the setup with someone who has never used Google Cloud.
 The full list is in the [roadmap](docs/ROADMAP.md).
 
-## Contributing and licence
+## Contributing and license
 
 Bug reports and ideas are welcome as issues, and questions go in
 [Discussions](https://github.com/nwoolls/mailboat/discussions). Code from outside isn't accepted;

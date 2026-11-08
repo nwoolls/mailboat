@@ -67,7 +67,7 @@ it clashes with, and sets the answer (Yes, Maybe or No) when the user
 chooses. If the invitation isn't on the calendar yet, the app adds that one
 event first, then records the answer. It works only on the primary calendar: it adds or answers the event in the
 message, and reads nearby events to show clashes. For an invitation that was
-cancelled and is still on the calendar, it removes that event when the user
+canceled and is still on the calendar, it removes that event when the user
 presses "Remove from calendar".
 
 **`https://www.googleapis.com/auth/contacts.readonly`** (sensitive)

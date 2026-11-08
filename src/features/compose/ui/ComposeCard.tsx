@@ -151,8 +151,8 @@ export function ComposeCard({
         </h2>
         <button
           type="button"
-          aria-label="Minimise"
-          title="Minimise (Esc)"
+          aria-label="Minimize"
+          title="Minimize (Esc)"
           className="flex h-7 w-7 items-center justify-center rounded-md text-content/60 hover:bg-selection hover:text-content"
           onClick={() => minimizeCard(draft.id)}
         >

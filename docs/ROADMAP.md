@@ -90,7 +90,7 @@ a darker glass body, rounded corners where they meet, resizable panes.
       around the pane. Motion stops with macOS "Reduce motion". The
       rise plays once, when a list turns empty; moving to another empty
       view only cross-fades the glyph and words in place. The icon is pinned
-      at the centre with the words hanging below, so different messages
+      at the center with the words hanging below, so different messages
       can't shift it, and the list keeps showing until the next view's
       arrives instead of blanking
 - [x] Panels slide open and closed (220ms ease-out, from MonoCode): the
@@ -137,8 +137,8 @@ a darker glass body, rounded corners where they meet, resizable panes.
       layouts tried in the app; Switcher and Mimestream-style Nested were
       the others): unread counts, the account ring in each header,
       accounts fold away (open by default, Inbox count shown while
-      folded), labels in their own fold (closed by default), no grey dots
-      on labels without a Gmail colour
+      folded), labels in their own fold (closed by default), no gray dots
+      on labels without a Gmail color
 - [x] "Add account" is a small "+" in an icon bar at the sidebar's foot
       (owner picked option A), with room for settings and the log console
 - [x] While a browser sign-in waits, the "+" becomes a cancel button; and
@@ -151,12 +151,12 @@ a darker glass body, rounded corners where they meet, resizable panes.
 - [x] Archive, Delete, Star, Label and More dim with nothing selected
 - [x] Read rows use medium weight throughout; unread subjects step up to
       semibold so unread still stands out
-- [x] The empty-state glow is drawn towards the pointer while it's over
+- [x] The empty-state glow is drawn toward the pointer while it's over
       the pane (still drifting), and eases back to its usual path when the
       pointer leaves. Off under "Reduce motion". Reworked after it stuttered: it
       now glides per frame instead of restarting a CSS transition on every
       pointer move, and the glow is a soft gradient instead of a blur filter;
-      it then centres on the cursor (its drift is cancelled out while
+      it then centers on the cursor (its drift is canceled out while
       attracted) instead of stopping short; it spans the whole list card,
       title row included (it was cut off below it), and follows the pointer
       anywhere on the card. It lingers 2s where the pointer left before
@@ -228,7 +228,7 @@ Options offered during the spike that the owner didn't pick (yet):
       colors are inline sit straight on the reader's glass, text aligned
       with the subject. In dark mode their colors are remapped (Rust,
       `mail/colors.rs`): near-white backgrounds turn see-through, light
-      greys and pale tints turn dark, dark text and links get lighter,
+      grays and pale tints turn dark, dark text and links get lighter,
       strong brand colors and images stay. Light mode keeps the email's own
       colors. Emails with their own style sheet or that ask for light only
       keep the white card
@@ -242,7 +242,7 @@ Options offered during the spike that the owner didn't pick (yet):
       is the same in both states, the snippet fades, and the addresses and
       body fold in with a short animation; the image notice is shorter
       ("Block images", sender in the tooltip) so it never truncates
-- [x] Collapsed message cards are 44px with the header centred (a stray
+- [x] Collapsed message cards are 44px with the header centered (a stray
       5px descender gap under the header button is gone); the padding
       eases open with the message
 - [x] New app icon (owner picked variant A3 of six): a sky-blue M drawn
@@ -256,8 +256,8 @@ Options offered during the spike that the owner didn't pick (yet):
 - [x] New app icon, round two: a green M drawn as a ribbon folding over
       itself at each corner (after VS Code's logo) on a flat near-black
       tile, replacing the glass icon (owner wanted flat, high-contrast
-      icons). Picked fold style S4 and colour C13 from the sheets in
-      `design/icon/sheets/`; the other colours are kept in
+      icons). Picked fold style S4 and color C13 from the sheets in
+      `design/icon/sheets/`; the other colors are kept in
       `design/icon/choices/`
 - [x] Clicking the empty area below the list's rows clears the selection
       and slides the reader closed (as Escape does), like Mail and
@@ -266,7 +266,7 @@ Options offered during the spike that the owner didn't pick (yet):
       keeps its width when the window resizes; the list and reader resize
       together, since the list is stored as a share of the space beside the
       sidebar
-- [x] Icon colour changed after living with it: green (C13), then cobalt
+- [x] Icon color changed after living with it: green (C13), then cobalt
       (C04) and sky (C03), now Apple's system blue (C17), matched to Mail's
       icon as macOS renders it
 - [x] The icon gets macOS's Liquid Glass rim and depth, like other apps:
@@ -274,22 +274,22 @@ Options offered during the spike that the owner didn't pick (yet):
       run from a signed `Mailboat.app` so the Dock shows it there too
 - [x] Tell unread apart from the account in mixed-account lists (both
       were blue dots): the account is now a hollow ring in a softened
-      account colour, unread stays a solid dot. Owner picked it after two
+      account color, unread stays a solid dot. Owner picked it after two
       rounds in the app (round 1: bar, no unread dot, avatar, all too busy;
       round 2: glass bar, ring, glass dot)
-- [x] Emails on the glass: grey borders (hairlines meant for a white card)
+- [x] Emails on the glass: gray borders (hairlines meant for a white card)
       become a faint line in dark mode instead of stark white; colored
       borders stay. Seen on Gmail's confidential-mode notice, which also
       has no top border by design. (Its content can't be shown in any
       client: it only opens on Gmail's site, via "View the email".)
-- [x] Emails on the glass: a white card on a light grey page stays
+- [x] Emails on the glass: a white card on a light gray page stays
       distinct (the page gets a faint lift, the card a slightly darker
       tint, as Mimestream shows them), so cards without a top border keep
       their top edge; plain white emails still show the glass
 - [x] Emails shown on the white card ignore their own dark-mode rules (an
       a software vendor email's text went white on white, in Mimestream too), and an
       email's page title no longer shows at the top of the body
-- Its open follow-ups (email colours and dark mode, remote-image
+- Its open follow-ups (email colors and dark mode, remote-image
   options) moved to UX Spike 2 (owner, 2026-10-17)
 
 - [x] Sidebar spacing matches the panes: its rows end 8px before the list
@@ -384,7 +384,7 @@ split per account for selections that span accounts.
       label from the picker closes the picker (the next conversation had
       opened under it, still ticked); conversations opened in the first
       M3 build get their paperclips (a one-time recount); sidebar label
-      dots lose their grey outline (owner's call)
+      dots lose their gray outline (owner's call)
 - [x] Tidy placeholders instead of broken "?" boxes where images don't
       load (blocked remote images, missing inline ones), sized as the
       email asked *(moved from the UX Spike's deferred ideas)*
@@ -403,21 +403,21 @@ Design agreed with the owner, 2026-10-16:
   can be copied between them (Notion Mail can't do this; the owner relies
   on it in Gmail).
 - **Moving the card works like iOS picture-in-picture:** it can't be left
-  just anywhere; dragged towards a corner or the middle of a side, it
+  just anywhere; dragged toward a corner or the middle of a side, it
   springs (rubber-bands) into that spot when released. No pop-out window.
 - **Replies, reply-all and forwards are inline,** at the bottom of the
   conversation in the reader, as Gmail does by default.
-- **Full formatting from the start:** fonts, sizes, colours, bold,
+- **Full formatting from the start:** fonts, sizes, colors, bold,
   italic, underline, lists, links, quotes, alignment (as Gmail's
   toolbar), not a basic set first.
 - **Undo send as Gmail:** 5 seconds (Gmail's default) to take a message
   back.
 - **Card size:** start around Gmail's (about 500×560) and adjust once
   it's in use.
-- Proposed and not objected to: Esc minimises (never discards); drafts
-  save to Gmail as you type; several minimised drafts sit side by side
+- Proposed and not objected to: Esc minimizes (never discards); drafts
+  save to Gmail as you type; several minimized drafts sit side by side
   along the bottom; keys `c` new, `r` reply, `a` reply all, `f` forward,
-  ⌘↩ send; the card shows the From account's colour; quoted text folds
+  ⌘↩ send; the card shows the From account's color; quoted text folds
   behind "…".
 
 Owner's answers before starting, 2026-10-16:
@@ -452,7 +452,7 @@ owner to try it in the app)*
 - [x] Keys: `c` new, `r` reply, `a` reply all, `f` forward, ⌘↩ send.
       Buttons under the conversation (Reply all only when there's
       someone else to include) and the toolbar's pencil do the same
-- [x] Basic floating card (lower right, the From account's colour on
+- [x] Basic floating card (lower right, the From account's color on
       its top edge) and basic inline replies *(pulled forward from stage
       2 so there was somewhere to write; their polish stays there)*
 - Sending isn't retried after a timeout or server error (it might
@@ -461,11 +461,11 @@ owner to try it in the app)*
 
 Stage 2: the card and inline replies
 
-- [x] Several new messages at once, and minimise: Esc or the – button
+- [x] Several new messages at once, and minimize: Esc or the – button
       folds the card into a tab along the bottom (nothing is lost).
-      Opening another message minimises the one open (an untouched one
+      Opening another message minimizes the one open (an untouched one
       just closes); clicking a tab swaps it back in
-- [x] Floating compose card: the snapping behaviour above. Drag it by
+- [x] Floating compose card: the snapping behavior above. Drag it by
       its header; on release it springs (overshooting a little) to the
       nearest corner or side middle, and a quick flick carries it to
       where it was heading. The next new message opens in the same spot
@@ -497,7 +497,7 @@ Stage 3: formatting, signatures, attachments
 
 - [x] Full formatting toolbar (TipTap), as Gmail's: font (Gmail's 11),
       size (small/normal/large/huge), bold, italic, underline, text
-      colour (the macOS colour picker), alignment, numbered and bulleted
+      color (the macOS color picker), alignment, numbered and bulleted
       lists, quote, link, remove formatting. Links (owner's pick of three
       designs, 2026-10-16): ⌘K or the button opens a popup under the text,
       as in Google Docs; Return applies, Esc or a click elsewhere cancels.
@@ -506,7 +506,7 @@ Stage 3: formatting, signatures, attachments
       copy; spacing in the email matches the editor
 - [x] Reply and forward with quoted HTML (folded behind "…"). The
       original is quoted with its own formatting (tables, bold, lists,
-      links, colours and fonts: style blocks and inline styles are kept;
+      links, colors and fonts: style blocks and inline styles are kept;
       scripts, forms and event handlers are removed in Rust), in
       Gmail's quote style. It stays out of the editor, as in Gmail: a
       "•••" under your text shows it as it will be sent, in a sandboxed
@@ -569,14 +569,14 @@ Stage 5: Google Contacts
 Found while testing stage 3 (owner, 2026-10-16):
 
 - [x] Signatures don't look as in Gmail *(owner report with screenshots,
-      2026-10-16)*: extra blank lines before the image, and colours and
+      2026-10-16)*: extra blank lines before the image, and colors and
       fonts lost in sent mail. The editor (TipTap) was rewriting Gmail's
       signature HTML. The signature now stays out of the editor, like the
       quote: shown read-only under the text, and sent as Gmail's own HTML
       in Gmail's `gmail_signature` wrapper. Switching From swaps it even
       after typing. Its preview first sat on a white box (owner:
       unconventional); it now goes through the reader's sanitizer and
-      sits on the glass with colours adjusted for dark mode
+      sits on the glass with colors adjusted for dark mode
 - [x] Reader: a CI service's pipeline email rendered squeezed ("Failed"
       one letter per line, icons missing) while Gmail showed it correctly.
       The reader's page style used `overflow-wrap:anywhere`, which lets a
@@ -633,7 +633,7 @@ owner has seen invitations and the Dock icon working.*
       - An invitation not on your calendar yet (some from outside Google)
         is added first, then answered; if that fails, fall back to an
         emailed reply (the standard calendar reply, as Apple Mail sends)
-      - Updates and cancellations show as such; a cancelled event offers
+      - Updates and cancellations show as such; a canceled event offers
         "Remove from calendar"
       - Groundwork done (2026-10-17, needs no new permission):
         `mail::invite` reads an email's calendar part (title, time with
@@ -650,10 +650,10 @@ owner has seen invitations and the Dock icon working.*
       - **Built; the owner tried it against real Google and it works
         (2026-10-17):** the
         card at the top of an opened invitation: what it is (invitation,
-        updated, cancelled, or "Sam accepted your invitation"), title,
+        updated, canceled, or "Sam accepted your invitation"), title,
         when (in your time zone), place, organizer, clashes on your
         calendar, Yes / Maybe / No with your current answer, "Open in
-        Calendar", and "Remove from calendar" for a cancelled event still
+        Calendar", and "Remove from calendar" for a canceled event still
         on it. Not on your calendar yet: answering adds it first. An
         account without the permission gets "Sign in again" on the card.
         The Calendar API is turned on in the owner's project. The
@@ -687,7 +687,7 @@ owner has seen invitations and the Dock icon working.*
         Archive or Sent); right toggles read/unread
       - A long swipe commits on release; a short one stops with the
         button(s) showing, to click
-      - **Not** Mail's or Mimestream's coloured strips (garish, worse on
+      - **Not** Mail's or Mimestream's colored strips (garish, worse on
         glass). Closer to iOS 26/27 notification swipes, in Mailboat's own
         style rather than Liquid Glass: the row stretches rather than
         slides, the button grows out of it joined to the row with its
@@ -764,7 +764,7 @@ owner has seen invitations and the Dock icon working.*
       → Notifications → Mailboat. Not yet: clicking one opening that
       conversation (it brings Mailboat forward)
 - [x] Settings: choose the app icon from `design/icon/choices/` (the
-      folded M in 16 colours, or the earlier glass icon). In Appearance,
+      folded M in 16 colors, or the earlier glass icon). In Appearance,
       after Theme: a grid of the choices (System blue, the built-in one,
       is the default). Owner checked the Dock change (2026-10-17), then
       asked to drop the earlier glass icon (the odd one out) and sort the
@@ -791,7 +791,7 @@ owner has seen invitations and the Dock icon working.*
         1. General ✱: default email reader, text size, delete key
            (trash or archive), sounds, unread count on the Dock icon,
            which searches include Trash and Spam, About and version
-        2. Accounts ✱: each account's colour, name, sign in again, remove;
+        2. Accounts ✱: each account's color, name, sign in again, remove;
            its aliases and signatures shown (edited in Gmail until
            Milestone 6)
         3. Notifications ✱: on/off, which mail (Inbox only, all, VIP),
@@ -815,8 +815,8 @@ owner has seen invitations and the Dock icon working.*
         what exists today; the others appear as their features arrive
       - **Built (2026-10-17):** the page, its three openers (⌘, from the
         menu bar, the gear, and "Settings" in ⌘K), Esc/Back back to the mail
-        as it was. General: About and version. Accounts: colour (from the
-        eight account colours), sync status and Sync now, Sign in again,
+        as it was. General: About and version. Accounts: color (from the
+        eight account colors), sync status and Sync now, Sign in again,
         Remove…, Add account, and each account's "Send mail as" addresses
         with which has a signature ("Open in Gmail" to change them).
         Notifications: an on/off switch for new-mail notifications, and a
@@ -825,7 +825,7 @@ owner has seen invitations and the Dock icon working.*
         defaults; they show how see-through each area is, in percent,
         and right is clearer ("+5"/"−5" was confusing). Then (owner
         request) first in Appearance: Theme (System, the default, Light,
-        Dark) and an accent colour (seven, as macOS offers, minus yellow),
+        Dark) and an accent color (seven, as macOS offers, minus yellow),
         with Restore defaults now for the whole page. Keyboard: every shortcut. Still to come in the ✱
         sections, with their features: default email reader, text size,
         delete key, sounds, Dock unread count, search scope (General);
@@ -888,11 +888,11 @@ editors live in Settings (Signatures, Rules), which now exists.
       for the conversation's account with From filled in, as Gmail does:
       who started the conversation (not you), or several senders joined
       with OR when several conversations are picked. Conversations from
-      different accounts can't share a rule, so the item is greyed out
+      different accounts can't share a rule, so the item is grayed out
 - [x] Manage signatures per address (using them is in Milestone 4).
       **Built (2026-10-18):** Settings → Signatures lists every "Send mail
       as" address per account with its signature shown as compose shows
-      it, and Add / Edit opens the composer's editor (fonts, colours,
+      it, and Add / Edit opens the composer's editor (fonts, colors,
       links, web images) with Save, Cancel and Remove signature; ⌘↩
       saves. Gmail keeps its own cleaned-up copy, which Mailboat stores, so
       compose uses the new one at once (Gmail too). Signatures laid out
@@ -928,7 +928,7 @@ editors live in Settings (Signatures, Rules), which now exists.
       under 24rem, about 384px) it scrolls with the email instead, so the
       message isn't hidden. The line being typed stays above the pinned
       bar. The owner tried it (2026-10-19): works; the Reply / Forward bar
-      was too tall with its buttons above centre, so its padding is now
+      was too tall with its buttons above center, so its padding is now
       even (10px above and below) and the reply's Send bar evened out too
 - [x] A second copy of Mailboat running (installed app plus a dev build)
       refreshes when the other one syncs new mail *(owner request,
@@ -1060,7 +1060,7 @@ comparison"), or to "Considered, not planned" there.*
       do. Mail's ⌘ shortcuts come with it (⌘N, ⌘R, ⇧⌘R, ⇧⌘F, ⌃⌘A, ⇧⌘U,
       ⇧⌘L, ⇧⌘J, ⇧⌘N); Gmail's single keys stay. Delete has no ⌘⌫ (in a
       text field that deletes the line), and the actions that change a
-      conversation grey out while typing in a field. The right-click menu
+      conversation gray out while typing in a field. The right-click menu
       now shows each action's key. Not verified in the app by the agent:
       that ⌃⌘S, ⌃⌘R and ⌘K toggle once, not twice (the page and the menu
       both know them)*
@@ -1072,7 +1072,7 @@ comparison"), or to "Considered, not planned" there.*
       Starred and Sent were already named; `g then u` goes to Unread
       (Gmail has g+i/s/t/d/a, checked in Google's help, but no Unread;
       `g then e` for Archive was already Mailboat's own); and the Go to items
-      are ⌘1 to ⌘7 in the sidebar's order, as Mail numbers its favourite
+      are ⌘1 to ⌘7 in the sidebar's order, as Mail numbers its favorite
       mailboxes. Owner confirmed (2026-10-19)*
 - [x] Remember between launches whether the sidebar and the reader are
       hidden, and which sidebar folds are open *(moved from UX Spike 1's
@@ -1134,7 +1134,7 @@ ticked.*
       everyone else (the original's To and Cc, minus you) in Cc; the
       owner showed it with screenshots after an agent wrongly said Gmail
       worked like Mailboat does today. Fix: do what Gmail does, as the only
-      behaviour (no setting needed). Replying to your own message keeps
+      behavior (no setting needed). Replying to your own message keeps
       its To as To
       *Built (2026-10-19), waiting for the owner to try it: Reply all
       now puts the sender (or the Reply-To address) alone in To and
@@ -1192,7 +1192,7 @@ ticked.*
 - [x] Check that ⌃⌘S, ⌃⌘R and ⌘K act once, not twice *(from Milestone
       7, 2026-10-19)*. Since the menus were trued up, both the page and
       the menu bar know these keys. The page stops the key reaching the
-      menu (it calls `preventDefault`, which WebKit is expected to honour,
+      menu (it calls `preventDefault`, which WebKit is expected to honor,
       as web apps overriding ⌘B in Safari rely on); if it didn't, the
       sidebar or reader would hide and show again at once, or the palette
       open twice. Not checked in the app by the agent. If it does happen:
@@ -1208,7 +1208,7 @@ look-and-feel items from Later. As with Spike 1, built to try in the app
 and settled with the owner one at a time.*
 
 **Done (owner, 2026-10-18):** the owner called the spike complete with
-the app as it stands. The email-colour and remote-image items it carried
+the app as it stands. The email-color and remote-image items it carried
 weren't built and moved to Later / unscheduled ("From UX Spike 2").
 
 - [x] Icon, round three *(owner request, 2026-10-17)*: the folded-ribbon
@@ -1216,7 +1216,7 @@ weren't built and moved to Later / unscheduled ("From UX Spike 2").
       sides and meets them edge to edge at the top corners (the fold and
       its shadow sit left and right, nothing folds in the middle), the
       sides a shade darker. Owner picked N7 after four sheets in
-      `design/icon/sheets/` (8 to 11); every colour in Settings → App
+      `design/icon/sheets/` (8 to 11); every color in Settings → App
       icon, the built-in icon and the Liquid Glass layer use it
 - [x] Idle screensavers for the empty list *(owner request,
       2026-10-17; discuss first, then pick one to try and iterate)*: an
@@ -1230,7 +1230,7 @@ weren't built and moved to Later / unscheduled ("From UX Spike 2").
       battery (pause when the window is hidden or unfocused)
       *First try (2026-10-17): falling sand poured from a spout, draining
       like an hourglass. Fixed after the owner found it never started (any
-      pointer event, even WebKit's still-cursor ones, cancelled the start
+      pointer event, even WebKit's still-cursor ones, canceled the start
       and reset the idle wait). Second try, after the owner pointed to
       sandscapes (the sand-and-liquid frames you turn over): a layered
       ceiling leaks through three wandering gaps in
@@ -1253,9 +1253,9 @@ weren't built and moved to Later / unscheduled ("From UX Spike 2").
       (koi nibble the letters, ripples from the pointer), fireflies (blink
       into step, gather into the M), and a lava lamp (wax flows around the
       icon and words). Settings → Advanced → Screensaver picks one or
-      Random (a different one each time), plus colours: six palettes,
-      "Mono + accent" (greys plus the Appearance accent) by default, then
-      Accent, Ocean (the original sand colours), Desert, Dusk, Forest. ⌘K
+      Random (a different one each time), plus colors: six palettes,
+      "Mono + accent" (grays plus the Appearance accent) by default, then
+      Accent, Ocean (the original sand colors), Desert, Dusk, Forest. ⌘K
       can start any of them by name. The owner kept them as they are
       (2026-10-18), behind the Screensavers feature flag*
 
@@ -1297,10 +1297,10 @@ settled with the owner one at a time, as in the earlier spikes.*
       "Original colors" is the way out for any that look wrong*
 - [x] Dark mode for emails that declare it (`color-scheme: light dark`, as
       a vendor's do): apply their own dark rules plus our remap of their
-      inline colours, as Mail.app does, instead of the white card. Their
+      inline colors, as Mail.app does, instead of the white card. Their
       dark rules alone aren't enough (a vendor's turn text white but never
       darken its inline white backgrounds). Fall back to the white card if
-      their style sheet sets text colours outside its dark-mode block
+      their style sheet sets text colors outside its dark-mode block
       *Built (2026-10-20) with step 2, waiting for the owner to try it:
       these emails now sit on the glass with their own dark rules kept
       and our remap of their inline and style-sheet colors added. Where
@@ -1323,7 +1323,7 @@ settled with the owner one at a time, as in the earlier spikes.*
 - [x] Softer look for the remaining white cards on the glass
       *First try built (2026-10-20), waiting for the owner's eye: in dark
       mode the white card is dimmed to 90% brightness (images too) with a
-      faint light edge and a small shadow instead of the grey ring, and
+      faint light edge and a small shadow instead of the gray ring, and
       rounded like the message cards (10px). Light mode is unchanged
       apart from the rounding. After step 2 only a small share of emails still use the card, plus any switched to "Original colors". Numbers are
       in `.email-card` in `src/styles/index.css`*
@@ -1406,7 +1406,7 @@ and the second swipe each way (no second button).
       opens the panel on the side with room and bounces as a whole on
       either side with the form ending where it was, and that the inline
       reply stays within 2px through 12 opens and closes. Each fails when
-      the old behaviour is put back (no nudge; no scroll correction; the
+      the old behavior is put back (no nudge; no scroll correction; the
       version that crept)
 - [x] Settings → Appearance → Transparency: "Sidebar and reader" is now
       "Window" *(owner: it affects the list too)*, since it's the
@@ -1532,7 +1532,7 @@ and the second swipe each way (no second button).
       and celebrate the person, not the product. So three quiet, optional
       toys, in Settings → Toybox → Something to play with (None by
       default): Pond (a click drops rings that spread and fade, in the
-      accent colour), Bubble wrap (a sheet of bubbles, a click pops one;
+      accent color), Bubble wrap (a sheet of bubbles, a click pops one;
       all popped, a fresh sheet), and Sky (a soft sky behind the view
       following the time of day, sun or moon on its way across, in the
       spirit of Superhuman's reward). Each stays in the empty area (never
@@ -1645,7 +1645,7 @@ built, tested and waiting for the owner to try.*
       - Formatting: drafts may use bullets, numbered lists, bold, italics
         and tables, shown formatted in the chat and in the editor, sent
         without list margins or a font of their own (tables with thin
-        grey lines). Checked live: all three providers wrote a numbered
+        gray lines). Checked live: all three providers wrote a numbered
         agenda, a table and bold text when asked
       - "Use this" became two buttons *(owner's pick, 2026-10-20)*:
         **Insert** (at the cursor, keeping what's written) and **Replace**
@@ -1945,7 +1945,7 @@ flaky n / p browser test, found later, moved to the Bug backlog.*
       it into that column under them (the summary text stays where it
       is), and compare in the app before keeping it
       *Built to try (2026-10-24): the sparkle now sits in the icon
-      column the account ring and star use (the star's column, centred
+      column the account ring and star use (the star's column, centered
       under it), on the third line; the summary text hasn't moved. The
       other option is the outer gutter, under the unread dot and
       paperclip. Keep, move to the outer gutter, or go back?*
@@ -1975,7 +1975,7 @@ flaky n / p browser test, found later, moved to the Bug backlog.*
 owner: the MCP server from Claude Desktop and Claude Code, AI actions
 in ⌘K, Rewrite, and Translate (including the email's right-click menu).
 Keeping Codex running was decided against (no action, owner). Left for
-Later, as the owner chose: AI apps labelling and archiving. A signature
+Later, as the owner chose: AI apps labeling and archiving. A signature
 on drafts they save, first left for Later too, was built after closing
 (owner, 2026-10-25: "seems odd to leave it out").
 
@@ -2208,7 +2208,7 @@ Later.
       from the app's (dark). Adaptive emails now declare `light dark`.
       Shown in Chromium and WebKit with a test page; built, to try in
       the VM *Owner, 2026-10-25: "everything but MCP looks good"*
-- [x] Dropdown lists in Settings showed some choices as pale grey on
+- [x] Dropdown lists in Settings showed some choices as pale gray on
       white on Windows (WebView2 draws the list with the select's faded
       text color) *(owner's screenshot, 2026-10-25)*: solid theme colors
       for the choices there. *Owner, 2026-10-25: "everything but MCP looks good"*
@@ -2428,13 +2428,13 @@ one at a time.*
       side-to-side wave, turn in wide arcs (each joint of the spine
       bends only so far, so they no longer fold in two), and turn
       quickly only when the pointer startles them. Smaller in a small
-      pond. Behaviour otherwise as before (nibbling, ripples, one koi at
+      pond. Behavior otherwise as before (nibbling, ripples, one koi at
       the letters at a time). *Owner (2026-10-26) asked whether only the
-      palette's colours were used:* they were, in four close shades each.
-      Now a scene can also blend between two palette colours
+      palette's colors were used:* they were, in four close shades each.
+      Now a scene can also blend between two palette colors
       (`blend`, eight steps), so the koi shade into a darker palette
-      colour at their sides, are lit down the back, and have fins that
-      turn from the body's colour into the fin's, with faint rays. *Owner:
+      color at their sides, are lit down the back, and have fins that
+      turn from the body's color into the fin's, with faint rays. *Owner:
       more fidelity for the ripples too.* Each ripple is now three
       spreading waves (a light crest, a faint dark trough), fading into
       the water as it spreads and ages, adding up where ripples cross;
@@ -2468,7 +2468,7 @@ one at a time.*
             speck. *Owner, 2026-10-26: "a marked improvement"*
       - [x] Lava lamp *(2026-10-26)*: 2px cells; the wax is shaded as
             domes (lit from the upper left, darker underneath, the accent
-            blended towards bright and dark), with soft bumps where blobs
+            blended toward bright and dark), with soft bumps where blobs
             merge, a thin darker rim and a faint warm glow fading into the
             background; a fine dither hides the steps between shades. A
             first try capped the wax's height and left a flat disc in each
@@ -2494,8 +2494,8 @@ one at a time.*
       - [x] Life *(2026-10-27)*: drawn as a mosaic (after the owner's
             daoho.dev reference) on 1px cells, each living cell a 4×4
             tile with a 1px gap and soft corners; cells swell in when
-            born and fade out when they die, so generations flow; colour
-            by age from the accent through pale grey to a deeper grey
+            born and fade out when they die, so generations flow; color
+            by age from the accent through pale gray to a deeper gray
             (through white they vanished on a light background). A Life
             cell is 5px, coarser than the 3px before: 3px tiles looked
             like tiny plus signs. *Owner, 2026-10-27: "I dig it"*
@@ -2534,7 +2534,7 @@ one at a time.*
       glowing and streaking; far behind, faint dust twinkles in place and
       three very faint nebula clouds (two in the accent) drift. Every
       35–60 s it goes to warp for about 6 s (long streaks, the icon nods
-      as it starts). The pointer pulls the vanishing point towards it,
+      as it starts). The pointer pulls the vanishing point toward it,
       like steering. On a light page it brings its own night sky (below).
       *Owner, 2026-10-27: "they look good to me"*
 - [x] Fireworks, a new screensaver *(owner, 2026-10-27, as above)*.
@@ -2543,7 +2543,7 @@ one at a time.*
       chrysanthemum (sparks drawing trails), a tilted ring, a willow (long
       drooping golden trails) or a crackle (sparks popping into tiny
       flashes); now and then a salvo of three. Sparks start white-hot,
-      cool to the shell's colours (mostly the accent) and fade, the old
+      cool to the shell's colors (mostly the accent) and fade, the old
       ones glittering; each burst lights a soft flash and leaves faint
       smoke drifting up. Farther shells are smaller and dimmer, behind.
       Every 45 s a shell bursts into the app's M above the icon, which
@@ -2553,16 +2553,16 @@ one at a time.*
       *(2026-10-27, found while building them)*: white stars and sparks
       vanished on a light background. A scene can ask for one (`night`);
       on a light page the canvas paints a gradient in the palette's
-      darkest colour (grey for Mono, deep blue for Ocean, purple for
+      darkest color (gray for Mono, deep blue for Ocean, purple for
       Dusk), drawn solid rather than at the glass's see-through-ness
-      (which washed it out to pale grey), and the empty state's icon and
+      (which washed it out to pale gray), and the empty state's icon and
       words switch to light text so they still read. Dark pages are
       unchanged. Checked in WebKit (`tests/browser/screensaver-night.spec.ts`).
       *Owner, 2026-10-27: approved with the two scenes*
 - [x] The toys too *(owner, 2026-10-26: "likely even the 'games'")*:
       Pond, Bubble wrap, Sky *(2026-10-27)*
       - [x] Pond: the water is simulated (the wave equation on a grid of
-            2px cells, coloured by the Toybox palette), so the rings
+            2px cells, colored by the Toybox palette), so the rings
             reflect off the edges of the area and off the icon and each
             line of the words, bend round them and add up where they
             cross *(owner: "have the ripples interact with the edges of
@@ -3316,7 +3316,7 @@ to fix what's real and medium-to-high risk and call the rest good enough:
 ## Milestone 14: Open the code
 
 *Done when: the code is public on the owner's GitHub under an
-open-source licence, with nothing personal in it; the README makes
+open-source license, with nothing personal in it; the README makes
 people want to try it; and every change reaches `main` through a pull
 request that GitHub Actions, code scanning and an AI reviewer have
 checked. Owner request (2026-10-25): "a dope README and pipelines",
@@ -3329,7 +3329,7 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       publishing *(owner request, 2026-10-30; done 2026-10-31: docs,
       README, three icon comments and the lockfile's package name. Still
       to do in the history rewrite below: commit messages)*
-- [x] Owner: choose the licence. GPL-3.0 suggested (nobody can sell a
+- [x] Owner: choose the license. GPL-3.0 suggested (nobody can sell a
       closed copy; respected by a technical audience); MIT and the
       Functional Source License compared in `docs/RELEASE.md` →
       Choices that keep the doors open
@@ -3344,11 +3344,11 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       files and a fixture's encoded body now use `.example`; a search of
       the tree found no real company domain, no real addresses, no personal
       paths, no screenshots of mail. Remaining: the commit history
-- [x] Dependency licences checked with `cargo-deny` (and the same for
+- [x] Dependency licenses checked with `cargo-deny` (and the same for
       the JavaScript packages): every crate and package must be allowed
-      in the chosen licence (GPL-3.0 can't include some licences).
+      in the chosen license (GPL-3.0 can't include some licenses).
       Kept as a CI check afterwards
-      *Done 2026-10-31: `deny.toml` (allow-list of GPL-3.0-compatible licences, advisories, sources) passes; it found and fixed advisories in `ammonia` (the email sanitizer), `rustls`, `rustls-webpki` and `pulldown-cmark` by updating them. `bun audit --prod` is clean. Both run in `.github/workflows/audit.yml`, untested in Actions until the repository exists.*
+      *Done 2026-10-31: `deny.toml` (allow-list of GPL-3.0-compatible licenses, advisories, sources) passes; it found and fixed advisories in `ammonia` (the email sanitizer), `rustls`, `rustls-webpki` and `pulldown-cmark` by updating them. `bun audit --prod` is clean. Both run in `.github/workflows/audit.yml`, untested in Actions until the repository exists.*
 - [x] Publish a clean history *(2026-10-31)*: the history of `main` was cleaned and checked, images included, and the original private repository is kept offline as the archive. The README says that commit hashes quoted in older docs come from it
 - [x] Push the clean history to the new GitHub repository (owner's OK
       first), then make it the working repository
@@ -3370,7 +3370,7 @@ Copilot reviews, "and whatever other GitHub bells and whistles".*
       - A hero image or short GIF of Mailboat at work (from Demo mode,
         or a cut of the trailer once it exists), in light and dark
         (GitHub shows the one matching the reader's theme)
-      - One line on what it is, then badges: build status, licence,
+      - One line on what it is, then badges: build status, license,
         latest release, downloads
       - Download buttons for Mac and Windows, then the credentials
         setup in short, linking to the full guide
@@ -3424,7 +3424,7 @@ builds are attached to each run as artifacts.*
       WebKit and Chromium (Chromium for the Windows-only ones).*
 - [x] Unsigned test builds attached to each pull request, so a change
       can be tried before it's merged
-- [x] `cargo-deny` (licences, known vulnerable crates) and
+- [x] `cargo-deny` (licenses, known vulnerable crates) and
       `bun audit` for the JavaScript packages
 - [x] Actions pinned to exact versions, with the least permissions
       each needs (a public repository's workflows are an attack target)
@@ -3491,7 +3491,7 @@ builds are attached to each run as artifacts.*
 - [x] `CONTRIBUTING.md`: bug reports and ideas welcome; outside code
       not accepted (an email client is an attractive target for a
       malicious change, and it keeps the copyright with the owner so
-      the licence can change later)
+      the license can change later)
 - [x] Issue forms for bugs (version, Mac or Windows, steps) and ideas;
       labels; a pull request template for the owner's own PRs
       *Done 2026-11-02: the forms use the repository's `bug` and
@@ -3725,7 +3725,7 @@ again every seven days until the project is published.*
       pinned the old wording. The notice, the avatar menu and Settings →
       Accounts later gave up any stated cause, 2026-11-04: see the
       notice item below)*
-- [x] Take the red status text out of the sidebar: the line centred under
+- [x] Take the red status text out of the sidebar: the line centered under
       an account ("Google signed you out · sign in again", from
       `accounts.ts` and `sidebarParts.tsx`). Keep the red dot on the
       account's avatar, and put the message in the popup that the avatar
@@ -3756,7 +3756,7 @@ again every seven days until the project is published.*
       it, in the OS notification and in a dismissal)*
 - [x] Tests: a signed-out account raises the notice and the
       notification once, and clears them when it signs in again; the
-      sidebar shows the red dot and no centred text (a browser test);
+      sidebar shows the red dot and no centered text (a browser test);
       demo mode can show it with a made-up account that signs out
       *(2026-11-04. Tested: the once-per-sign-out rule (Rust, with a retry in
       between), the notice's dismissal rules (Vitest), `tests/browser/signed-out.spec.ts` for the sidebar,
@@ -3795,7 +3795,7 @@ download it.*
       Chromium, so the window's glass is imitated over a chosen
       wallpaper rather than macOS's own; music or a voiceover come from
       the owner (cuts can be timed to a chosen track). Check Remotion's
-      licence (free for individuals and small companies) when starting,
+      license (free for individuals and small companies) when starting,
       and record it in ARCHITECTURE
 
 - [ ] Website link on the repository, and the repository pinned on the
@@ -3856,7 +3856,7 @@ download it.*
 
 ### Privacy and security by default *(owner, 2026-11-06)*
 
-The website and Google's verification read the app's behaviour against what
+The website and Google's verification read the app's behavior against what
 the privacy policy says, so the safest default is the one that needs the
 least explaining. Each item below picks the more private or more secure
 setting for a fresh install and keeps the other as an option. The options
@@ -3975,7 +3975,7 @@ steps are those of Plan 1 there.*
       `docs/GOOGLE-VERIFICATION.md` → Status). Tick this when Google approves.*
 - [ ] The client's ID and secret only in official builds, added when
       building; never in the public code
-- [ ] Polar store and licence keys (up to 2 devices), with a sandbox
+- [ ] Polar store and license keys (up to 2 devices), with a sandbox
       purchase first; price decided then (it buys setup-free sign-in,
       not features, so it may be below Plan 1's price)
 - [ ] First launch offers both: "Use your own Google credentials
@@ -4184,6 +4184,33 @@ One pull request each.
       confirm it uses the request and permission the app already has; if it
       needs anything new, it moves to "Held or later"
 
+### Writing
+
+- [x] American English in the writing rules, the public docs and the app's
+      text *(owner, 2026-11-08, added to the spike)*: `AGENTS.md` ("Writing
+      for people") now asks for American spelling, and for the `unslop`
+      pass on the app's own text as well as the docs. The docs were brought
+      into line, and so was the text the app shows (Color, Minimize,
+      Canceled, recognize, organization, and three words in the demo mail).
+      Left on purpose: the three pages Google is reviewing (see the next
+      item), code comments and variable names, CSS keywords, API values
+      like Google's `"cancelled"` calendar status, the subject list in
+      `mail::codes`, which holds both spellings to match real mail, and the
+      `cargo-deny (licences, advisories)` check name, since renaming a
+      required check would block merges
+- [ ] After Google's answer: American spelling on the home page, privacy
+      policy and terms (`website/index.html`, `website/privacy.html`,
+      `website/terms.html`), which Google is reviewing and which are left
+      alone until then. Their "Last updated" dates move with the text, and
+      two strings the policy check pins change with the policy
+      (`SCOPE_LABELS`, "organise", and a `CLAIMS` sentence, "summarised", in
+      `scripts/policy.ts`, and the label in `scripts/policy.test.ts`)
+- [ ] Regenerate the Toybox screensaver screenshots, which still show the
+      old "Colours" and "accent colour" labels: `screensaver-settings-light`
+      and `-dark`, in `docs/images/features` and in `website/images` (cards
+      and full size). Needs the screenshot pipeline, which waits on Screen
+      Recording permission (see the features gallery plan)
+
 ### Held or later
 
 Held so the spike stays clear of Google's review and stays about polish and
@@ -4267,7 +4294,7 @@ again until the next spike.*
       into its answer. Both come from the Spam-and-reply fix of
       2026-10-21, which added them so a one-line reply isn't ignored. To
       fix: describe the case without a quoted example ("even when it's a
-      brief acknowledgement") and without echoing the label, or mark the
+      brief acknowledgment") and without echoing the label, or mark the
       newest message another way; and have a test (or a check on the
       answer) that fails when a bullet repeats the label or the example.
       The owner's screenshot shows a single visible message, so also check
@@ -4312,12 +4339,12 @@ again until the next spike.*
       address headings in the dropdown are nearly white on a white
       background, while the options under them read fine. Likely cause:
       it's Windows' own dropdown, which keeps a white background while the
-      headings take the light text colour from our dark theme. Fix by
+      headings take the light text color from our dark theme. Fix by
       styling the dropdown (or the headings) for dark mode, or by using
       the app's own menu there *(fixed 2026-10-29: the existing Windows
-      rule that gives a dropdown's choices solid theme colours now covers
+      rule that gives a dropdown's choices solid theme colors now covers
       its group headings too (`optgroup`). A Chromium test checks that
-      headings and choices get the same colours; it fails without the
+      headings and choices get the same colors; it fails without the
       fix. Owner to try on Windows)*
 
 - [x] The compose window's AI button shows even when no AI is set up
@@ -4342,7 +4369,7 @@ again until the next spike.*
 - [ ] Email images show larger than in Gmail *(owner report, 2026-10-29)*:
       the same email in Gmail and in Mailboat: the logo and the illustration are wider in Mailboat. Likely the sizes the sender sets (width and height
       attributes, or styles, often for images made at twice the size)
-      aren't honoured, or images are stretched to the column. Compare how
+      aren't honored, or images are stretched to the column. Compare how
       Gmail sizes them and match it, checking this email and a few other
       newsletters. Not investigated yet
 
@@ -4394,7 +4421,7 @@ again until the next spike.*
         text inside was turned light. Such inline colors now move into a
         rule of their own, as strong as before against the email's own
         sheets (light mode unchanged) but below the dark remap (some emails)
-      - a bank: by design rather than a bug (its pale grey page becomes
+      - a bank: by design rather than a bug (its pale gray page becomes
         see-through, its white boxes darker cards); its logo is dark text
         in a transparent image, which no color remap can fix. "Original
         colors" is the way out
@@ -4406,7 +4433,7 @@ again until the next spike.*
       reader skipped it, so the boxes stayed white while their text was
       turned light. HTML color attributes now take hex without `#` too
       (a small share of cached HTML emails have one). Checked on the email
-      itself: before, the grey page and some white boxes were left out
+      itself: before, the gray page and some white boxes were left out
       of the dark colors; now all the colored boxes adapt. *Owner to try:
       reopen it with Adapted colors*
 
@@ -4431,7 +4458,7 @@ again until the next spike.*
 - [ ] Pin more of the privacy policy's claims in `check:website`
       (`scripts/policy.ts`) *(from the review of the first check,
       2026-11-07)*: it covers the Google permissions and the stated
-      defaults, but not the policy's behaviour claims: Spam never loads
+      defaults, but not the policy's behavior claims: Spam never loads
       remote images and Trash doesn't unless the sender is allowed, known
       tracking pixels are always removed, sign-in tokens are kept in the
       keychain and never in a file, AI apps can never send and never share
@@ -4439,7 +4466,7 @@ again until the next spike.*
       Each is easy to pin to the code that does it (`mail/images.rs`,
       `auth/tokens.rs`, `mcp/`), or to the test that already proves it. The
       update check's version and machine details are harder, as they are
-      behaviour of the updater, not a setting. The owner decided on
+      behavior of the updater, not a setting. The owner decided on
       2026-11-07 that this is a follow-up, after the Polish Spike's first
       check lands, and not part of the spike
 
@@ -4682,7 +4709,7 @@ niche or extra", so Windows and the Release Spike come first)
   notification, set in System Settings → Notifications → Mailboat
 
 Turning off conversation grouping (Gmail is conversations); fonts for the
-list and messages, fixed-width plain text and coloured quote levels;
+list and messages, fixed-width plain text and colored quote levels;
 automatically Cc/Bcc myself; full addresses while writing and "smart
 addresses"; link previews; extensions; split view in full screen; a
 downloads folder choice and removing unedited downloads; large

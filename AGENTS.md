@@ -39,7 +39,7 @@ What counts as real mail:
 
 What to do instead:
 
-- Describe the behaviour in general terms: "a newsletter that declares
+- Describe the behavior in general terms: "a newsletter that declares
   light-only but forces a white page", "a bank notice with a white box set
   inline", "a mailing list with a long recipient line". Keep what is needed
   to reproduce it, never who sent it.
@@ -111,14 +111,28 @@ Anything a person will read goes through the `unslop` skill before it is
 committed: `README.md`, everything in `docs/`, `CONTRIBUTING.md`,
 `SECURITY.md`, the other READMEs, the issue and pull request templates,
 and the website's text (`website/`: every page's visible copy, its
-`<title>` and description, and image `alt` text).
-Run it on the whole file when you write a new one or change one a lot, and
-on the changed passages when you touch a long log (`docs/ROADMAP.md`,
-`docs/ARCHITECTURE.md`, `docs/RELEASE.md`). It repairs only what is clearly
-wrong, so read the diff afterwards: no fact, number, link, quoted string,
-"never" or "must", or recorded decision may change. Files written for
-agents (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`) are
-exempt. A docs-only commit still needs `bun run check:privacy`.
+`<title>` and description, and image `alt` text), and the text the app
+shows: labels, buttons, tooltips, messages, errors, notifications,
+onboarding, the demo's mail, and the instructions that ask a model to write
+for the user.
+Run it on the whole file when you write a new one or change one a lot, on
+the changed passages when you touch a long log (`docs/ROADMAP.md`,
+`docs/ARCHITECTURE.md`, `docs/RELEASE.md`), and on the strings you add or
+change in the app. It repairs only what is clearly wrong, so read the diff
+afterwards: no fact, number, link, quoted string, "never" or "must", or
+recorded decision may change. Files written for agents (`AGENTS.md`,
+`CLAUDE.md`, `.github/copilot-instructions.md`) are exempt from the pass,
+not from the spelling rule below. A docs-only commit still needs
+`bun run check:privacy`.
+
+Spell in American English everywhere a person reads it (all of the above):
+color, behavior, organize, summarize, center, gray, license, canceled,
+toward. Write it that way from the start, and fix it in the `unslop` pass.
+Leave as they are an identifier or an API value (`CoreError::Cancelled`,
+Google's `"cancelled"` calendar status), a CSS keyword, a quoted name such
+as a required status check (`cargo-deny (licences, advisories)`), and
+`CHANGELOG.md`, which is generated. Code comments and variable names are
+not part of this rule.
 
 ## Conventions
 
@@ -390,15 +404,15 @@ When it does:
   Fixtures and test data are always made up (see "Real mail never goes in the
   repository").
 - Frontend logic: Vitest, files named `*.test.ts(x)` next to the code.
-- UI behaviour unit tests can't see (animation, layout, scrolling):
+- UI behavior unit tests can't see (animation, layout, scrolling):
   Playwright in WebKit (the macOS web view's engine), `tests/browser/`.
   `harness.tsx` mounts real components with the Rust side faked by
   Tauri's `mockIPC`, answering with demo mode's mail (`demo/mail.json`,
   via `tests/browser/demoMail.ts`); pick the setup by URL (`?mode=…`). Measure what's
   painted: sample in a `ResizeObserver` created after the component's,
   not at the start of a frame. Before trusting a new test, put the old
-  behaviour back and see it fail. One-time setup: `bunx playwright install webkit`.
-- Windows-only behaviour: `tests/browser/windows-*.spec.ts` run in Chromium
+  behavior back and see it fail. One-time setup: `bunx playwright install webkit`.
+- Windows-only behavior: `tests/browser/windows-*.spec.ts` run in Chromium
   (WebView2's engine) with `data-platform="windows"` set; the rest stay in
   WebKit. One-time setup: `bunx playwright install chromium`.
 

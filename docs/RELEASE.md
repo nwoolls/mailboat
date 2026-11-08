@@ -36,7 +36,7 @@ accounts (GitHub, social media, Apple).
 | Google verification and security assessment | Required (yearly) | **None** | Only when the paid version starts |
 | Users before Google approves | 100 in total | No limit | No limit (free) |
 | Income | A subscription | Tips at most | Tips, then subscriptions |
-| Payments and licences | Polar | None | Polar, added later |
+| Payments and licenses | Polar | None | Polar, added later |
 | Code | Private | Public | Public |
 | Yearly fixed costs | Signing, hosting, and the assessment if required | Signing, or none if unsigned | Signing, then as Plan 1 |
 | Reach | Anyone with Gmail | Technical people | Technical people, then anyone |
@@ -162,11 +162,11 @@ verified; it's paperwork and waiting (weeks to months).
       notice by email, refunds for unused time, and the app keeps working
       with mail already downloaded
 - Polar store: one product, a monthly or yearly price, 14-day trial with
-      a card, a licence-key benefit limited to 2 device activations.
+      a card, a license-key benefit limited to 2 device activations.
       First a sandbox purchase, to confirm the key works during the trial
-      and is revoked when it's cancelled or a payment fails (Polar's docs
+      and is revoked when it's canceled or a payment fails (Polar's docs
       say so for subscriptions, not trials specifically)
-- In the app: enter the licence key (or open a link from checkout),
+- In the app: enter the license key (or open a link from checkout),
       activate it with Polar's public API (made for desktop apps; no
       server of ours), check again now and then with a few days' grace
       offline, lock to a "Subscribe" screen when revoked. Settings shows
@@ -261,7 +261,7 @@ A setup screen in the app (part of Onboarding), not just a web page:
       archive, so commit hashes quoted in older docs may not match
 - Check first that fixtures and examples hold no real mail, and that
       nothing personal is left in docs
-- Licence: see "Choices that keep the doors open". GPL-3.0 suggested
+- License: see "Choices that keep the doors open". GPL-3.0 suggested
 - Contributions: bug reports and ideas welcome; outside code not
       accepted. An email client is an attractive target for a malicious
       change, and every change would need careful review. Say so in
@@ -317,7 +317,7 @@ flowchart LR
   build time. The public code has none. Someone could pull them out of an
   official build and use them in their own, as with any desktop app;
   that breaks Google's terms, and it's accepted as rare.
-- **The licence check is public code too.** Anyone could remove it from
+- **The license check is public code too.** Anyone could remove it from
   their own build, but their build still needs their own credentials, so
   they're back to Plan 2. That is fine.
 
@@ -328,7 +328,7 @@ Plan 2, in full.
 ### Stage B (only if Stage A's checkpoint says yes)
 
 - Plan 1's Google verification (all of it), for Mailboat's own client
-- Plan 1's Polar store and in-app licence, used only when the user
+- Plan 1's Polar store and in-app license, used only when the user
       picks "Subscribe"
 - Price to decide then: the paid option buys setup-free sign-in, not
       features, so it may need to be lower than Plan 1's price
@@ -347,9 +347,9 @@ Decide these before the first public release, whatever the plan:
   users.
 - **Keep the copyright in one pair of hands.** If only the owner's
   project adds code (no outside contributions, or contributors sign an
-  agreement), the owner can change the licence later, or sell paid
+  agreement), the owner can change the license later, or sell paid
   builds under any terms.
-- **Licence, if open source:**
+- **License, if open source:**
   - **GPL-3.0** (suggested): anyone who distributes a changed copy must
     publish their source too, so nobody can sell a closed copy. Widely
     respected by a technical audience.
@@ -410,7 +410,7 @@ own.
 - [Google: sensitive and restricted scopes](https://support.google.com/cloud/answer/13464325)
 - [Google: test users' sign-ins expire after 7 days](https://support.google.com/cloud/answer/15549945)
 - [Google forum: restricted scope in a client-only app](https://discuss.google.dev/t/restricted-gmail-scope-in-a-client-only-app-is-a-security-assessment-required/404126)
-- [Polar: licence keys](https://polar.sh/docs/features/benefits/license-keys)
+- [Polar: license keys](https://polar.sh/docs/features/benefits/license-keys)
 - [Polar: managing subscriptions](https://polar.sh/docs/features/subscriptions/manage)
 - [Polar: Affonso integration](https://polar.sh/docs/features/integrations/affonso)
 - [Microsoft: code signing options](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options)

@@ -19,7 +19,7 @@ settings work from the app, and keep working when it is closed.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/features/rules-dark.png">
-  <img src="images/features/rules-light.png" alt="The rule editor over the list of rules: mail from a sender is starred and labelled Travel, with a count of the conversations that match now" width="800">
+  <img src="images/features/rules-light.png" alt="The rule editor over the list of rules: mail from a sender is starred and labeled Travel, with a count of the conversations that match now" width="800">
 </picture>
 
 Your Gmail filters, edited in the app. Match on who sent it, who it is to, the subject, words, size or an attachment, then star it, label it, skip the Inbox, mark it read or mark it important. The editor says how many conversations match now, and can apply the rule to them. Google runs the rules, so they work with Mailboat closed.
@@ -146,7 +146,7 @@ It follows the time of day, with the sun or tonight's moon on its way across.
 
 *Animated:* [GIF](images/loops/koi-pond.gif) · [MP4](images/loops/koi-pond.mp4)
 
-Ten pixel-art scenes (sandscape, envelope flock, life, rain on glass, koi pond, fireflies, lava lamp, jellyfish, starfield and fireworks) in six colour schemes, or a random one. Start one from the command palette while the view is empty.
+Ten pixel-art scenes (sandscape, envelope flock, life, rain on glass, koi pond, fireflies, lava lamp, jellyfish, starfield and fireworks) in six color schemes, or a random one. Start one from the command palette while the view is empty.
 
 ### Toybox settings
 
@@ -159,16 +159,16 @@ Ten pixel-art scenes (sandscape, envelope flock, life, rain on glass, koi pond, 
 
 The glow, the screensavers and the toy behind an empty view.
 
-### Screensaver scenes and colours
+### Screensaver scenes and colors
 
-**Ten screensaver scenes, six colour schemes.**
+**Ten screensaver scenes, six color schemes.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/features/screensaver-settings-dark.png">
-  <img src="images/features/screensaver-settings-light.png" alt="Settings, Toybox, scrolled to the list of screensaver scenes and colour schemes" width="800">
+  <img src="images/features/screensaver-settings-light.png" alt="Settings, Toybox, scrolled to the list of screensaver scenes and color schemes" width="800">
 </picture>
 
-Pick one scene or a random one, and a colour scheme: mono with your accent colour, accent, ocean, desert, dusk or forest.
+Pick one scene or a random one, and a color scheme: mono with your accent color, accent, ocean, desert, dusk or forest.
 
 ## Reading and finding mail
 
@@ -181,7 +181,7 @@ Pick one scene or a random one, and a colour scheme: mono with your accent colou
   <img src="images/features/inbox-light.png" alt="The unified inbox of two Gmail accounts, with one-line summaries and a sign-in code on a row" width="800">
 </picture>
 
-Every account in one list, each with its own colour. Threads never merge across accounts, and every action uses the account the mail belongs to.
+Every account in one list, each with its own color. Threads never merge across accounts, and every action uses the account the mail belongs to.
 
 ### Sign-in codes
 
@@ -255,11 +255,11 @@ Gmail's own keys (j and k, e, #, g then i, c, r) plus the extras, in a sheet one
 
 ### Appearance
 
-**Light, dark, your accent colour, and your own app icon.**
+**Light, dark, your accent color, and your own app icon.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/features/appearance-dark.png">
-  <img src="images/features/appearance-light.png" alt="Settings, Appearance: theme, accent colour, text size and a choice of app icons" width="800">
+  <img src="images/features/appearance-light.png" alt="Settings, Appearance: theme, accent color, text size and a choice of app icons" width="800">
 </picture>
 
-Light, dark or follow macOS; seven accent colours; four text sizes; seventeen app icons for the Dock; and a transparency control for how much of what's behind the window shows through.
+Light, dark or follow macOS; seven accent colors; four text sizes; seventeen app icons for the Dock; and a transparency control for how much of what's behind the window shows through.

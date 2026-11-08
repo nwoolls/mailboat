@@ -57,9 +57,9 @@ export function YoursStage({ onFinish }: { onFinish: () => void }) {
             disabled={!settings}
           />
         </Choice>
-        <Choice label="Accent colour">
+        <Choice label="Accent color">
           <Swatches
-            label="Accent colour"
+            label="Accent color"
             value={appearance.accent}
             options={ACCENTS.map((a) => ({ value: a.id, label: a.label, color: a.color }))}
             onChange={(accent) => setAppearance({ ...appearance, accent })}

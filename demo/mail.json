@@ -172,7 +172,7 @@
           "brief": [
             "Casa Azul is available 16–23 May.",
             "Check-in from 3 pm; Tomás meets you with the keys.",
-            "A neighbourhood guide (bakeries, viewpoint, fado) is attached."
+            "A neighborhood guide (bakeries, viewpoint, fado) is attached."
           ],
           "reply": "Obrigado, Alex! See you in May. Tomás",
           "messages": [
@@ -180,7 +180,7 @@
               "from": "tomas",
               "ago": "5h",
               "subject": "Your stay at Casa Azul",
-              "text": "Olá Alex,\n\nThank you for your interest in Casa Azul! The apartment is available 16–23 May. Check-in is from 3 pm; I'll meet you at the door with the keys.\n\nI attached a short guide to the neighbourhood: bakeries, the best viewpoint, and where to hear fado.\n\nAté breve,\nTomás",
+              "text": "Olá Alex,\n\nThank you for your interest in Casa Azul! The apartment is available 16–23 May. Check-in is from 3 pm; I'll meet you at the door with the keys.\n\nI attached a short guide to the neighborhood: bakeries, the best viewpoint, and where to hear fado.\n\nAté breve,\nTomás",
               "attachments": [
                 {
                   "name": "Casa Azul guide.pdf",
@@ -449,7 +449,7 @@
               "from": "me",
               "cc": ["jordan"],
               "ago": "2d",
-              "text": "Hi Lena,\n\nWonderful, B is my favourite too. I'll warm up the green and mock it up on cups, bags and the sign.\n\nJordan is copied in for the timeline.\n\nAlex"
+              "text": "Hi Lena,\n\nWonderful, B is my favorite too. I'll warm up the green and mock it up on cups, bags and the sign.\n\nJordan is copied in for the timeline.\n\nAlex"
             },
             {
               "from": "lena",
@@ -500,7 +500,7 @@
                 {
                   "name": "Fernhill type specimen.pdf",
                   "type": "application/pdf",
-                  "text": "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 267 >>\nstream\nBT\n/F1 20 Tf\n56 760 Td\n(Fernhill - type specimen) Tj\n/F1 11 Tf\n0 -30 Td\n(FERNHILL COFFEE) Tj\n0 -16 Td\n(Fernhill Coffee Roasters) Tj\n0 -16 Td\n(Fresh from the hill, every morning.) Tj\n0 -16 Td\n(Wordmark tracking: +40) Tj\n0 -16 Td\n(Body: 11/16, warm grey) Tj\n0 -16 Td\nET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000241 00000 n \n0000000559 00000 n \ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n629\n%%EOF\n"
+                  "text": "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n4 0 obj\n<< /Length 267 >>\nstream\nBT\n/F1 20 Tf\n56 760 Td\n(Fernhill - type specimen) Tj\n/F1 11 Tf\n0 -30 Td\n(FERNHILL COFFEE) Tj\n0 -16 Td\n(Fernhill Coffee Roasters) Tj\n0 -16 Td\n(Fresh from the hill, every morning.) Tj\n0 -16 Td\n(Wordmark tracking: +40) Tj\n0 -16 Td\n(Body: 11/16, warm gray) Tj\n0 -16 Td\nET\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000241 00000 n \n0000000559 00000 n \ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n629\n%%EOF\n"
                 }
               ]
             }

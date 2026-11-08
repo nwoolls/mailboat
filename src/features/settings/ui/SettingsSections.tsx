@@ -262,11 +262,11 @@ function AccountGroup({
       }
     >
       <Row
-        label="Colour"
+        label="Color"
         description="Marks its conversations where several accounts show together."
       >
         <Swatches
-          label="Account colour"
+          label="Account color"
           value={account.color.toLowerCase()}
           options={colors.map((c) => ({ value: c.toLowerCase(), label: c, color: c }))}
           onChange={(color) =>
@@ -276,7 +276,7 @@ function AccountGroup({
                 onError: (e) =>
                   showToast({
                     tone: "error",
-                    message: `Couldn’t change the colour: ${errorText(e)}`,
+                    message: `Couldn’t change the color: ${errorText(e)}`,
                   }),
               },
             )
@@ -950,11 +950,11 @@ export function AppearanceSection({
           />
         </Row>
         <Row
-          label="Accent colour"
+          label="Accent color"
           description="Buttons, switches, the focused conversation and other highlights."
         >
           <Swatches
-            label="Accent colour"
+            label="Accent color"
             value={appearance.accent}
             options={ACCENTS.map((a) => ({ value: a.id, label: a.label, color: a.color }))}
             onChange={(accent) => setAppearance({ ...appearance, accent })}
@@ -1208,14 +1208,14 @@ export function ToyboxSection() {
             />
           </div>
           <div className="px-4 pb-2">
-            <div className="text-[13px] font-medium text-content">Colours</div>
+            <div className="text-[13px] font-medium text-content">Colors</div>
             <div className="mt-1 text-[12px] leading-relaxed text-content/45">
-              “Mono + accent” and “Accent” follow the accent colour in Appearance.
+              “Mono + accent” and “Accent” follow the accent color in Appearance.
             </div>
           </div>
           <div className="px-4 pb-3.5">
             <ChoiceGrid
-              label="Colours"
+              label="Colors"
               columns={3}
               value={prefs.palette}
               options={PALETTES.map((p) => ({
@@ -1234,7 +1234,7 @@ export function ToyboxSection() {
 
 const SLOT_NAMES = ["dark", "mid", "light", "bright", "accent"];
 
-/** A palette's five colours as a row of pixel squares. */
+/** A palette's five colors as a row of pixel squares. */
 function PaletteStrip({ id }: { id: PaletteId }) {
   const accent = parseColor(
     getComputedStyle(document.documentElement).getPropertyValue("--color-accent"),
