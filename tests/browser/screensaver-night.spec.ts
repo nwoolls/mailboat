@@ -8,11 +8,17 @@ import { expect, type Page, test } from "@playwright/test";
 async function start(page: Page, scene: string) {
   await page.goto("/tests/browser/harness.html?mode=empty&screensaver");
   await expect(page.getByText("All caught up")).toBeVisible();
-  await page.evaluate(
-    (id) => window.dispatchEvent(new CustomEvent("app:screensaver", { detail: id })),
-    scene,
-  );
-  await expect(page.locator("canvas.screensaver")).toBeVisible();
+  // The screensaver listens for this from an effect, which can run after the
+  // words are already on screen: an event sent too early is lost, so send it
+  // again until the canvas is up (it once failed here in about one run in
+  // two hundred).
+  await expect(async () => {
+    await page.evaluate(
+      (id) => window.dispatchEvent(new CustomEvent("app:screensaver", { detail: id })),
+      scene,
+    );
+    await expect(page.locator("canvas.screensaver")).toBeVisible({ timeout: 500 });
+  }).toPass({ timeout: 10_000 });
   // Past the start's fade-in.
   await page.waitForTimeout(1200);
 }
@@ -29,11 +35,24 @@ const wordsLightness = (page: Page) =>
       return (r! + g! + b!) / 3;
     });
 
-/** How dark the canvas's sky is in its top-left corner, 0 (black) to 255. */
+/**
+ * How dark the canvas's sky is in its top-left corner, 0 (black) to 255: the
+ * median over a small patch, not one pixel. A star (or a spark) can sit on
+ * any single pixel for a frame, which read as a bright sky in about one run
+ * in forty; it covers a few pixels of a patch, and the median ignores them.
+ */
 const skyLightness = (page: Page) =>
   page.locator("canvas.screensaver").evaluate((c: HTMLCanvasElement) => {
-    const [r, g, b, a] = c.getContext("2d")!.getImageData(2, 2, 1, 1).data;
-    return { light: (r! + g! + b!) / 3, alpha: a! };
+    const size = 11;
+    const { data } = c.getContext("2d")!.getImageData(2, 2, size, size);
+    const median = (values: number[]) => values.sort((a, b) => a - b)[values.length >> 1]!;
+    const light: number[] = [];
+    const alpha: number[] = [];
+    for (let i = 0; i < data.length; i += 4) {
+      light.push((data[i]! + data[i + 1]! + data[i + 2]!) / 3);
+      alpha.push(data[i + 3]!);
+    }
+    return { light: median(light), alpha: median(alpha) };
   });
 
 /** How opaque the canvas is drawn, once its fade-in is done. */
