@@ -3871,7 +3871,10 @@ security fixes).
       (the rule is in `AGENTS.md`). A check backs it: `check:website` reads
       `SCOPES` in `crates/core/src/auth/oauth.rs` and fails when a
       permission has no matching line in the policy, and a test pins the
-      defaults the policy states
+      defaults the policy states *(2026-11-07: the check is built, in its
+      pull request: `scripts/policy.ts`, run by `check:website`, with a
+      label for each permission and a table of the stated defaults. Tick
+      this item when it has merged)*
 - [ ] Cloud AI is manual by default: with Claude or ChatGPT chosen, the
       summary above a conversation waits for the Summarize button, so every
       transfer is one the person started. Automatic stays an option, and
@@ -4090,7 +4093,8 @@ and a tick.
 - [ ] `check:website` reads `SCOPES` and fails when a permission has no
       matching line in the policy, and a test pins the defaults the policy
       states (the first "Privacy and security by default" item). This guards
-      the claims Google is checking
+      the claims Google is checking *(built 2026-11-07, in its pull request;
+      ticked in Milestone 16 once it has merged)*
 - [ ] Clear the open security alerts (the Milestone 14 item "Look through
       the first code-scanning findings"): Scorecard's SAST alert (accepted:
       dismiss it with the reason that CodeQL skips docs-only changes on
@@ -4391,6 +4395,21 @@ again until the next spike.*
       Adapted colors forgets it. It was per message, until the app quit
 
 ## Later / unscheduled
+
+- [ ] Pin more of the privacy policy's claims in `check:website`
+      (`scripts/policy.ts`) *(from the review of the first check,
+      2026-11-07)*: it covers the Google permissions and the stated
+      defaults, but not the policy's behaviour claims: Spam never loads
+      remote images and Trash doesn't unless the sender is allowed, known
+      tracking pixels are always removed, sign-in tokens are kept in the
+      keychain and never in a file, AI apps can never send and never share
+      Spam or Trash, and removing an account deletes its cache and sign-in.
+      Each is easy to pin to the code that does it (`mail/images.rs`,
+      `auth/tokens.rs`, `mcp/`), or to the test that already proves it. The
+      update check's version and machine details are harder, as they are
+      behaviour of the updater, not a setting. The owner decided on
+      2026-11-07 that this is a follow-up, after the Polish Spike's first
+      check lands, and not part of the spike
 
 - [ ] Fuzz the code that reads untrusted text: the email HTML cleaner and
       the MIME and `mailto:` parsers (Scorecard's "Fuzzing" check; cargo-fuzz

@@ -5,7 +5,9 @@
 // own files, and the basics each page needs. Every .html and .css file under
 // website/ is read, folders included. The rules are in scripts/website.ts,
 // where scripts/website.test.ts tests them (the security contact file,
-// .well-known/security.txt, included). Run by `bun run check:web`.
+// .well-known/security.txt, included). The policy is also checked against the
+// code (scripts/policy.ts): the Google permissions and the defaults it states.
+// Run by `bun run check:website`, which `bun run check:web` includes.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import {
   checkSite,
@@ -15,6 +17,7 @@ import {
   type Pages,
   type Sheets,
 } from "./website";
+import { claimProblems, parseScopes, POLICY_SOURCES, scopeProblems } from "./policy";
 
 const root = new URL("../website/", import.meta.url).pathname;
 const read = (name: string) =>
@@ -35,9 +38,27 @@ const securityTxt = existsSync(`${root}${SECURITY_TXT_PATH}`)
   ? readFileSync(`${root}${SECURITY_TXT_PATH}`, "utf8")
   : undefined;
 
+// The policy against the code: the Google permissions asked for, and the
+// defaults it states (scripts/policy.ts).
+const repoFile = (path: string) =>
+  readFileSync(new URL(`../${path}`, import.meta.url).pathname, "utf8");
+const policyChecks = (): string[] => {
+  try {
+    const policy = pages["privacy.html"] ?? "";
+    const sources = Object.fromEntries(POLICY_SOURCES.map((path) => [path, repoFile(path)]));
+    return [
+      ...scopeProblems(parseScopes(repoFile("crates/core/src/auth/oauth.rs")), policy),
+      ...claimProblems(policy, sources),
+    ];
+  } catch (e) {
+    return [`policy: ${e instanceof Error ? e.message : String(e)}`];
+  }
+};
+
 const problems = [
   ...checkSite(pages, (path) => existsSync(`${root}${path}`), read("_headers"), sheets),
   ...securityTxtProblems(securityTxt),
+  ...policyChecks(),
 ];
 
 if (problems.length) {
