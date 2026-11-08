@@ -10,6 +10,10 @@ pub mod notify;
 pub mod original;
 pub mod prefetch;
 pub mod sanitize;
+/// Checks the cleaner's output is safe: for the property tests, and the fuzz
+/// target in `fuzz/` (built with the `fuzzing` feature). Not in the app.
+#[cfg(any(test, feature = "fuzzing"))]
+pub mod sanitize_check;
 pub mod saved_image;
 pub mod stylesheet;
 

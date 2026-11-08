@@ -114,6 +114,13 @@ The browser tests (`tests/browser`, Playwright) need WebKit and Chromium once:
 bunx playwright install webkit chromium
 ```
 
+### Fuzzing
+
+The code that reads untrusted email is also fuzzed with cargo-fuzz, which
+needs the nightly toolchain: see `fuzz/README.md`. You don't need it for the
+checks above. The same safety checks run as property tests in `cargo test`,
+and a weekly job (`.github/workflows/fuzz.yml`) fuzzes for longer.
+
 ## A signed Windows installer
 
 The Windows build above is unsigned unless you ask. Signing uses Azure

@@ -9,6 +9,7 @@
     "bun.lock",
     "src/platform/tauri/bindings.ts",
     "tests/browser/fixtures",
+    "fuzz/seeds",
     "*.md"
   ]
 }
