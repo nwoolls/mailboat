@@ -93,7 +93,19 @@ export function SettingsPage({
             header()
           )}
           {section === "general" && <GeneralSection />}
-          {section === "privacy" && <PrivacySection accounts={accounts} onSelect={onSelect} />}
+          {section === "privacy" && (
+            <PrivacySection
+              accounts={accounts}
+              onSelect={(next) => {
+                onSelect(next);
+                // The button that was pressed goes away with the section: put
+                // focus on the new section's title, so a keyboard user isn't left behind.
+                requestAnimationFrame(() =>
+                  document.querySelector<HTMLElement>("[aria-label^='Settings: '] h1")?.focus(),
+                );
+              }}
+            />
+          )}
           {section === "notifications" && <NotificationsSection />}
           {section === "list" && <ListSection />}
           {section === "viewing" && <ViewingSection />}

@@ -181,7 +181,10 @@ export function PrivacySection({
   return (
     <>
       <Group title="Leaves this computer">
-        {leavesRows(settings, accounts.length).map((r) => (
+        {leavesRows(
+          settings,
+          accounts.map((a) => a.id),
+        ).map((r) => (
           <Row
             key={r.id}
             label={r.where}
@@ -193,7 +196,12 @@ export function PrivacySection({
               </>
             }
           >
-            <Button onClick={() => onSelect(r.section)}>Change in {r.sectionLabel}</Button>
+            <Button
+              label={`${r.where}: change in ${r.sectionLabel}`}
+              onClick={() => onSelect(r.section)}
+            >
+              Change in {r.sectionLabel}
+            </Button>
           </Row>
         ))}
       </Group>
