@@ -13,6 +13,12 @@ How the owner and the writing agent use it:
   from one branch to the next.
 - The owner may run it with more than one reviewer. Each returns one Markdown
   block.
+- Always hand over the "How to report" section word for word, even in a lean
+  prompt for a small change. A shortened version ("return one Markdown
+  block") let a reviewer answer with loose headings and several fences, which
+  can't be copied back in one go. Keep "What the writing agent already ran"
+  too: it is short, and it stops reviewers repeating checks or claiming a
+  green run they did not make.
 - The writing agent checks every finding against the code before acting on
   it: it fixes it, rejects it with evidence, or asks the owner. A finding is
   not true because a reviewer said so. Rejected findings and the reasons go
@@ -147,9 +153,11 @@ see the worktree rules above). Never claim something passes without having run
 it.
 
 ## How to report
-Return the whole review as ONE Markdown code fence (a single block starting
-with three backticks and `md`, ending with three backticks, and nothing
-outside it). Inside it use these sections:
+Return the whole review as ONE Markdown code fence: a single block, and
+nothing outside it, not even a line of introduction or a sign-off. Open it
+with FOUR backticks and `md` and close it with four backticks, so that any
+code snippet inside the review, which uses three, can't end the block early.
+Do not split the review into several fences. Inside it use these sections:
 
 1. **Verdict**: one line: ready to push / ready after the listed fixes / needs
    rework.
