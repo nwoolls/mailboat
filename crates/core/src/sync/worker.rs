@@ -24,6 +24,8 @@ pub trait SyncEvents: Send + Sync {
     fn log(&self, _account: AccountId, _line: &str) {}
     /// The account's From addresses (Gmail "Send mail as") were refreshed.
     fn identities_changed(&self, _account: AccountId) {}
+    /// The account's own details (its name or picture) changed.
+    fn account_changed(&self, _account: AccountId) {}
     /// New unread mail arrived (for notifications): `inbox` in the
     /// account's Inbox, `all` anywhere but Spam and Trash (Inbox included).
     fn new_mail(
@@ -41,6 +43,14 @@ pub struct WorkerTiming {
     pub backoff_base: Duration,
     pub backoff_max: Duration,
     pub error_retry: Duration,
+    /// How often the account's Google profile (name and picture) is read
+    /// again while the app runs, and after a launch first.
+    pub profile_every: Duration,
+    /// When reading it failed for a reason that may pass (offline).
+    pub profile_retry: Duration,
+    /// The longest a profile read may hold up the mail sync pass it comes
+    /// before: a slow or silent profile endpoint must not delay the mail.
+    pub profile_timeout: Duration,
 }
 
 impl Default for WorkerTiming {
@@ -50,6 +60,9 @@ impl Default for WorkerTiming {
             backoff_base: Duration::from_secs(30),
             backoff_max: Duration::from_secs(15 * 60),
             error_retry: Duration::from_secs(5 * 60),
+            profile_every: Duration::from_secs(24 * 3600),
+            profile_retry: Duration::from_secs(3600),
+            profile_timeout: Duration::from_secs(20),
         }
     }
 }
@@ -169,6 +182,8 @@ async fn run_worker(
     // failed for a reason that may pass (offline, Gmail busy).
     let mut identities_fresh = false;
     let mut contacts_fresh = false;
+    // The Google profile (name, picture) at each launch, then once a day.
+    let mut profile_due = tokio::time::Instant::now();
     loop {
         set_status(&db, &*events, account, SyncStatus::Syncing, None);
         // The quick things first (owner, 2026-10-29: a message written
@@ -179,6 +194,16 @@ async fn run_worker(
         }
         if !contacts_fresh {
             contacts_fresh = load_contacts(&db, &gmail, &*events, account).await;
+        }
+        if tokio::time::Instant::now() >= profile_due {
+            let done =
+                refresh_profile(&db, &gmail, &*events, account, timing.profile_timeout).await;
+            profile_due = tokio::time::Instant::now()
+                + if done {
+                    timing.profile_every
+                } else {
+                    timing.profile_retry
+                };
         }
         let progress_events = events.clone();
         let progress = move |p: SyncProgress| {
@@ -315,6 +340,54 @@ async fn load_identities(
                 ),
             );
             false
+        }
+    }
+}
+
+/// Reads the account's Google profile again and saves a changed name or
+/// picture, so a new photo shows without signing in again. A failure keeps
+/// what was saved. Gives up after `limit` (it runs before the mail pass, and
+/// the client's own retries could take minutes). Returns whether to wait the
+/// full period: false only after a failure that may pass (offline, too
+/// slow), so it tries again sooner.
+async fn refresh_profile(
+    db: &Db,
+    gmail: &GmailClient,
+    events: &dyn SyncEvents,
+    account: AccountId,
+    limit: Duration,
+) -> bool {
+    let read = match tokio::time::timeout(limit, gmail.user_profile()).await {
+        Ok(read) => read,
+        Err(_) => Err(CoreError::Network("the profile took too long".into())),
+    };
+    match read {
+        Ok(profile) => {
+            let saved = crate::db::accounts::set_profile(
+                &db.conn(),
+                account,
+                profile.name.as_deref(),
+                profile.picture.as_deref(),
+            );
+            match saved {
+                Ok(true) => {
+                    events.log(account, "profile refreshed");
+                    events.account_changed(account);
+                }
+                Ok(false) => {}
+                Err(e) => events.log(
+                    account,
+                    &format!("could not save the profile ({}): {}", e.kind(), e.for_log()),
+                ),
+            }
+            true
+        }
+        Err(e) => {
+            events.log(
+                account,
+                &format!("profile unavailable ({}): {}", e.kind(), e.for_log()),
+            );
+            !e.is_transient()
         }
     }
 }

@@ -272,6 +272,7 @@ async fn fetch_body_downloads_once_then_uses_cache() {
 struct Recorder {
     statuses: Mutex<Vec<AccountSyncState>>,
     changed: Mutex<Vec<AccountId>>,
+    profile_changed: Mutex<Vec<AccountId>>,
     lines: Mutex<Vec<String>>,
 }
 
@@ -285,6 +286,9 @@ impl SyncEvents for Recorder {
     }
     fn log(&self, _: AccountId, line: &str) {
         self.lines.lock().unwrap().push(line.to_string());
+    }
+    fn account_changed(&self, a: AccountId) {
+        self.profile_changed.lock().unwrap().push(a);
     }
 }
 
@@ -937,4 +941,207 @@ async fn sending_goes_ahead_while_a_first_sync_waits_on_its_quota() {
     assert!(sent.is_some());
     assert!(!sync.is_finished());
     sync.abort();
+}
+
+/// An account's Google profile is read again (owner request, 2026-10-27):
+/// a new picture shows without signing in again, it is asked for at each
+/// launch and then not again within the period (many passes, one request);
+/// a refresh that fails or finds less keeps what was saved (next test, and
+/// `accounts::set_profile`).
+#[tokio::test]
+async fn a_new_profile_picture_is_saved_and_asked_for_once_per_period() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch())
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1/userinfo"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "sub": "a", "name": "Ada Lovelace", "picture": "https://x.example/new.png"
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let db = Arc::new(Db::open_in_memory().unwrap());
+    let account = accounts::upsert(
+        &db.conn(),
+        &accounts::NewAccount {
+            google_sub: "a",
+            email: "a@x.example",
+            display_name: Some("Ada"),
+            avatar_url: Some("https://x.example/old.png"),
+            oauth_client: "default",
+        },
+    )
+    .unwrap()
+    .id;
+    let events = Arc::new(Recorder::default());
+    let supervisor = Supervisor::new(
+        tokio::runtime::Handle::current(),
+        db.clone(),
+        events.clone(),
+        config(),
+        WorkerTiming {
+            // Many passes inside the period.
+            poll_interval: Duration::from_millis(60),
+            profile_every: Duration::from_secs(3600),
+            ..WorkerTiming::default()
+        },
+    );
+    supervisor.start(account, client(&server.uri()).0);
+
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let a = accounts::get(&db.conn(), account).unwrap();
+        if a.avatar_url.as_deref() == Some("https://x.example/new.png") {
+            assert_eq!(a.display_name.as_deref(), Some("Ada Lovelace"));
+            break;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "the picture never changed"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(*events.profile_changed.lock().unwrap(), vec![account]);
+    // Several more passes: no second request (the mock expects exactly one,
+    // checked when the server drops).
+    tokio::time::sleep(Duration::from_millis(400)).await;
+    supervisor.stop(account);
+    drop(server);
+}
+
+#[tokio::test]
+async fn a_profile_that_cant_be_read_keeps_the_saved_picture() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch())
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1/userinfo"))
+        .respond_with(ResponseTemplate::new(403).set_body_json(serde_json::json!({
+            "error": { "code": 403, "message": "Request had insufficient authentication scopes." }
+        })))
+        .mount(&server)
+        .await;
+
+    let db = Arc::new(Db::open_in_memory().unwrap());
+    let account = accounts::upsert(
+        &db.conn(),
+        &accounts::NewAccount {
+            google_sub: "a",
+            email: "a@x.example",
+            display_name: Some("Ada"),
+            avatar_url: Some("https://x.example/old.png"),
+            oauth_client: "default",
+        },
+    )
+    .unwrap()
+    .id;
+    let events = Arc::new(Recorder::default());
+    let supervisor = Supervisor::new(
+        tokio::runtime::Handle::current(),
+        db.clone(),
+        events.clone(),
+        config(),
+        WorkerTiming {
+            poll_interval: Duration::from_secs(3600),
+            ..WorkerTiming::default()
+        },
+    );
+    supervisor.start(account, client(&server.uri()).0);
+
+    // The pass finishes (its status is Idle) and says why the profile wasn't read.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    while events.last_status(account) != Some(SyncStatus::Idle) {
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "the pass never finished"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(
+        events
+            .lines
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|l| l.starts_with("profile unavailable")),
+        "{:?}",
+        events.lines.lock().unwrap()
+    );
+    let a = accounts::get(&db.conn(), account).unwrap();
+    assert_eq!(a.avatar_url.as_deref(), Some("https://x.example/old.png"));
+    assert_eq!(a.display_name.as_deref(), Some("Ada"));
+    assert!(events.profile_changed.lock().unwrap().is_empty());
+}
+
+/// A profile endpoint that answers slowly (or not at all) must not hold up
+/// the mail: the pass starts after the profile read's own short deadline.
+#[tokio::test]
+async fn a_slow_profile_does_not_hold_up_the_mail() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch())
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1/userinfo"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_delay(Duration::from_secs(30))
+                .set_body_json(serde_json::json!({ "picture": "https://x.example/late.png" })),
+        )
+        .mount(&server)
+        .await;
+
+    let db = Arc::new(Db::open_in_memory().unwrap());
+    let account = add_account(&db, "a");
+    let events = Arc::new(Recorder::default());
+    let supervisor = Supervisor::new(
+        tokio::runtime::Handle::current(),
+        db.clone(),
+        events.clone(),
+        config(),
+        WorkerTiming {
+            poll_interval: Duration::from_secs(3600),
+            profile_timeout: Duration::from_millis(150),
+            ..WorkerTiming::default()
+        },
+    );
+    supervisor.start(account, client(&server.uri()).0);
+
+    // The mail arrives long before the 30-second answer would have.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(8);
+    while events.last_status(account) != Some(SyncStatus::Idle) {
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "the mail waited for the profile"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(inbox(&db, AccountFilter::Only(vec![account])).len(), 2);
+    assert!(
+        events
+            .lines
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|l| l.starts_with("profile unavailable (network)")),
+        "{:?}",
+        events.lines.lock().unwrap()
+    );
+    assert!(accounts::get(&db.conn(), account)
+        .unwrap()
+        .avatar_url
+        .is_none());
 }
