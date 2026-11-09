@@ -4413,6 +4413,19 @@ again until the next spike.*
       and the full summary refused by Apple's safety guardrails), where the
       long tracking links in the text the model reads are a suspect, not a
       finding)*
+      *(2026-11-09, more evidence, from a second verification email and a
+      screenshot from the owner; nothing of either is kept here: the list
+      line said the status was verified and that no action was needed, and
+      the full summary said the code had been entered, though it hadn't.
+      The pattern: the model reads an email that hands over a code as an
+      event that already happened, not an action waiting on the reader.
+      Ideas to try, none of them proven offline: when a code is found in the
+      email, the list line says something fixed, like "Sign-in code" (the
+      row already shows the code itself), instead of a model-written one;
+      the summary instructions say that an email with a code asks the reader
+      to enter it, so it is neither done nor verified; and the text the model
+      reads leaves out long tracking links, which may also be what Apple's
+      guardrails objected to)*
 - [x] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01; fixed 2026-11-08, see below)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the
