@@ -65,6 +65,22 @@ async function startSampling(page: Page) {
 }
 
 /**
+ * Stretches the card's nudge (420 ms in the app) to 1.5 s in the test. The
+ * sampler finds the nudge when its `animationstart` arrives, and steps
+ * through it by hand, so its length changes nothing that is measured; but a
+ * page that stalls for longer than the nudge (a busy CI machine: the click
+ * itself once took 467 ms) delivers the event after the animation has
+ * ended, with nothing left to step, and the nudge read as 0. The opening
+ * fade stays as it is (the first of the two durations).
+ */
+async function slowNudge(page: Page) {
+  await page.addStyleTag({
+    content:
+      ".nudge-left-0, .nudge-left-1, .nudge-right-0, .nudge-right-1 { animation-duration: 180ms, 1500ms !important; }",
+  });
+}
+
+/**
  * Waits until every animation that can finish has finished. Endless ones
  * (a spinner, the sync ring) never will, and are left out; a finished one
  * that still holds its end state (fill forwards) counts as done.
@@ -114,6 +130,7 @@ for (const [spot, opensOn] of [
     page,
   }) => {
     await page.goto(`/tests/browser/harness.html?mode=card&spot=${spot}`);
+    await slowNudge(page);
     const form = page.locator('section.compose-card form[aria-label="New message"]');
     await expect(form).toBeVisible();
     // Let the card's own entrance settle.
@@ -199,7 +216,7 @@ test("inline reply: opening and closing the panel many times never moves the rep
     await expect
       .poll(async () => Math.abs((await top()) - start), {
         message: `after toggle ${i + 1}`,
-        timeout: 3000,
+        timeout: 10_000,
       })
       .toBeLessThan(1);
   }
@@ -227,11 +244,18 @@ test("inline reply: stays put when the page stalls mid-animation", async ({ page
         while (performance.now() < end);
       }, 90);
     });
-    // Each toggle settles before the next (not measured at once: before the
-    // click is applied, the reply is still where it started).
+    // Each toggle settles before the next. Not measured at once (before the
+    // click is applied, the reply is still where it started), and not after
+    // a fixed wait: a slow machine can still be finishing the animation, so
+    // it is polled until the reply is back where it began.
     // oxlint-disable-next-line no-await-in-loop -- measured after each toggle
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(600);
     // oxlint-disable-next-line no-await-in-loop -- measured after each toggle
-    expect(Math.abs((await top()) - start), `after toggle ${i + 1}`).toBeLessThan(1);
+    await expect
+      .poll(async () => Math.abs((await top()) - start), {
+        message: `after toggle ${i + 1}`,
+        timeout: 10_000,
+      })
+      .toBeLessThan(1);
   }
 });
