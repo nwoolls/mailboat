@@ -296,3 +296,50 @@ async fn reply_ideas_are_saved_until_new_mail() {
         .is_none());
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// A conversation that is a sign-in code gets a fixed line, with no request
+/// to a model (models read such an email as already done); one in Spam, where
+/// a code is bait, is left to the usual rules.
+#[tokio::test]
+async fn a_sign_in_code_gets_a_fixed_line_and_asks_no_model() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a", "a@x.example");
+    let mut code = message("m1", 1_000, &["INBOX"]);
+    code.subject = "Your login code".into();
+    let thread = put_thread(
+        &db,
+        a,
+        vec![code],
+        "alpha Your login code is 482913. It expires in 10 minutes.",
+    );
+    let (programs, dir) = fake_apple();
+    let r = tasks::summarize(
+        &db,
+        None,
+        &programs,
+        AiProvider::Apple,
+        line(thread),
+        &|_| {},
+    )
+    .await
+    .unwrap();
+    assert!(matches!(&r, Summarized::Done(s, answer)
+        if s.text == tasks::SIGN_IN_LINE && answer.text.is_empty()));
+    // No request was made, so nothing was counted.
+    let used = usage::report(&db.conn(), 0).unwrap();
+    assert!(
+        used.iter().all(|p| p.last_30_days.requests == 0),
+        "{used:?}"
+    );
+
+    // The same email in Spam is not given the line, and is not summarized
+    // automatically either.
+    let mut bait = message("m2", 2_000, &["SPAM"]);
+    bait.subject = "Your login code".into();
+    let spam = put_thread(&db, a, vec![bait], "alpha Your login code is 482913.");
+    let r = tasks::summarize(&db, None, &programs, AiProvider::Apple, line(spam), &|_| {})
+        .await
+        .unwrap();
+    assert!(matches!(r, Summarized::NotNeeded));
+    let _ = std::fs::remove_dir_all(dir);
+}

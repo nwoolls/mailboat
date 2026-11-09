@@ -236,7 +236,7 @@ pub fn render(thread: &ThreadText, budget: usize) -> String {
             break;
         }
         let room = cap.saturating_sub(header.len()).max(80);
-        let body = shorten(&m.text, room);
+        let body = shorten(&without_long_links(&m.text), room);
         left = left.saturating_sub(header.len() + body.len() + 8);
         parts.push(format!("{header}{body}"));
     }
@@ -247,6 +247,29 @@ pub fn render(thread: &ThreadText, budget: usize) -> String {
     }
     out.push_str(&parts.join("\n\n---\n\n"));
     out
+}
+
+/// Links longer than this many characters are tracking or sign-in links: no
+/// use to a model, and a lot of text for it to read.
+const LONG_LINK: usize = 100;
+
+/// The text with each long web link replaced by "[link]". A short link, which
+/// says something about where it goes, stays.
+pub fn without_long_links(text: &str) -> String {
+    text.split_inclusive(char::is_whitespace)
+        .map(|word| {
+            let trimmed = word.trim_end();
+            let core = trimmed.trim_matches(|c: char| "()<>[]\"'".contains(c));
+            let long = (core.starts_with("http://") || core.starts_with("https://"))
+                && core.chars().count() > LONG_LINK;
+            if long {
+                // Keep the brackets and the space or line break around it.
+                trimmed.replacen(core, "[link]", 1) + &word[trimmed.len()..]
+            } else {
+                word.to_string()
+            }
+        })
+        .collect()
 }
 
 /// At most `max` characters, cut at a word, with "…" when cut.
@@ -268,6 +291,21 @@ pub fn shorten(text: &str, max: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_long_link_becomes_a_marker_and_a_short_one_stays() {
+        let long = format!("https://track.x.example/c/{}", "a1b2".repeat(40));
+        let text =
+            format!("Verify here ({long}) or see https://x.example/help\nthen <{long}> done");
+        assert_eq!(
+            without_long_links(&text),
+            "Verify here ([link]) or see https://x.example/help\nthen <[link]> done"
+        );
+        assert_eq!(
+            without_long_links("No links, just words.\n"),
+            "No links, just words.\n"
+        );
+    }
+
     use super::*;
 
     #[test]

@@ -58,6 +58,21 @@ async fn ask_recorded(
     result
 }
 
+/// The line shown for a conversation that is a sign-in code.
+pub const SIGN_IN_LINE: &str = "Sign-in code";
+
+/// Whether the newest email of the conversation holds a sign-in code, outside
+/// Spam and Trash.
+fn has_sign_in_code(db: &Db, thread: ThreadId, text: &ThreadText) -> Result<bool> {
+    let Some(last) = text.messages.last() else {
+        return Ok(false);
+    };
+    if summaries::in_spam_or_trash(&db.conn(), thread)? {
+        return Ok(false);
+    }
+    Ok(crate::mail::codes::find(&text.subject, &last.text).is_some())
+}
+
 /// What a summary request came back with.
 pub enum Summarized {
     Done(Summary, Answer),
@@ -106,6 +121,14 @@ pub async fn summarize(
     };
     if automatic && kind == SummaryKind::Full && text.length() < AUTO_SUMMARY_MIN_CHARS {
         return Ok(Summarized::NotNeeded);
+    }
+    // A conversation whose newest email hands over a sign-in code gets a fixed
+    // line, not a model-written one: models read such an email as something
+    // already done, and the row shows the code itself. Never in Spam or Trash,
+    // where a code is bait.
+    if kind == SummaryKind::Line && has_sign_in_code(db, thread, &text)? {
+        let summary = summaries::store(&db.conn(), thread, kind, provider, newest, SIGN_IN_LINE)?;
+        return Ok(Summarized::Done(summary, Answer::default()));
     }
     let (prompt, purpose) = match kind {
         SummaryKind::Line => (prompts::list_line(&text, provider), Purpose::ListSummary),
