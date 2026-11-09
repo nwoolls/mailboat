@@ -363,6 +363,19 @@ public until the owner publishes the draft.
    version-packages`: it applies the pending changesets, bumps `package.json`
    and writes the `## <version>` section of `CHANGELOG.md`, which becomes the
    release notes. Either way, open a pull request and merge it.
+   **A test release (a beta) of the next version** uses Changesets' pre-release
+   mode, so nothing is written by hand: on a `changeset-release/<something>`
+   branch run `bunx changeset pre enter beta`, then `bun run version-packages`.
+   The pending changesets are moved into `.changeset/pre/`, `package.json`
+   becomes `0.2.0-beta.0` (the first is `.0`, the next `.1`, and so on), and
+   `CHANGELOG.md` gets a `## 0.2.0-beta.0` section, which becomes the release
+   notes; tag it `v0.2.0-beta.0`. While the mode is on, pull requests still add
+   changesets, and each `version-packages` makes the next beta. To ship the
+   finished version, run `bunx changeset pre exit` and then `bun run
+   version-packages` on a new release branch: that makes `0.2.0` from all of the
+   changesets, betas included. Changesets asks you to review the files in `.changeset/pre/` first
+   (they become the notes of the normal version), and check that the
+   `CHANGELOG.md` section lists what the release changed.
 2. Tag the merged commit on `main` and push the tag as yourself:
    `git tag v<version> <commit> && git push origin v<version>` (the first test
    release is `v0.0.1`). The tag must be `v` and the version in `package.json`,
@@ -401,7 +414,7 @@ offered only on the Beta update channel (see Updates).
 The version is written once, in `package.json` (`0.x` until the owner calls
 it 1.0). Rust reads it at build time (`mail_core::brand::VERSION`) and
 `tauri.conf.json` points at it, so nothing else needs editing. A
-pre-release version (`0.2.0-beta.1`) has not been tried: the macOS bundle
+pre-release version (`0.2.0-beta.0`) has not been tried: the macOS bundle
 strips the tag, and the Windows installer may not accept it, so check
 that the first time one is used.
 
