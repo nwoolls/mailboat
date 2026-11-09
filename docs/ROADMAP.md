@@ -4217,7 +4217,8 @@ One pull request each.
 - [x] A summary's first bullet repeats the prompt's own example (needs a test
       that fails when a bullet repeats the label or the example) *(2026-11-08:
       fixed; see the Bug backlog entry)*
-- [ ] Email images show larger than in Gmail
+- [x] Email images show larger than in Gmail *(2026-11-08: fixed; see the Bug
+      backlog entry)*
 - [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
       the email; an agent works from a made-up fixture of the same shape,
       never the real one) *(2026-11-08: detection fixed; the list row,
@@ -4509,12 +4510,27 @@ again until the next spike.*
       polish: Settings → AI's intro line names Apple Intelligence on
       Windows)*
 
-- [ ] Email images show larger than in Gmail *(owner report, 2026-10-29)*:
+- [x] Email images show larger than in Gmail *(owner report, 2026-10-29; fixed
+      2026-11-08, see below)*:
       the same email in Gmail and in Mailboat: the logo and the illustration are wider in Mailboat. Likely the sizes the sender sets (width and height
       attributes, or styles, often for images made at twice the size)
       aren't honored, or images are stretched to the column. Compare how
       Gmail sizes them and match it, checking this email and a few other
       newsletters. Not investigated yet
+      *(Fixed 2026-11-08, with a second email and a screenshot of each app
+      from the owner; nothing of them is kept here. Cause: the reader's page
+      sheet said `img{max-width:100%;height:auto}`, and an author rule beats
+      an image's `height` attribute, so an image sized by only a height (a
+      logo and an illustration, in that email) showed at its natural size,
+      about twice what the sender asked for, where Gmail honors the
+      attribute. Now `img{max-width:100%}`, with `height:auto` only for
+      images that have a width (kept as weak as a plain `img`, so an email's
+      own style sheet still wins), so a narrow cell still keeps an image's
+      shape. A browser test shows made-up images sized by only a
+      height, only a width, both, neither and one in a narrow cell, as the
+      Rust sanitizer gave them, and measures each; it fails with the old
+      rule. An image with only a height that is wider than its column is
+      squeezed in width and keeps its height, a rare case left as it is)*
 
 - [x] Periodically refresh each account's Google profile image *(owner
       request, 2026-10-27; for the next bug spike; built 2026-11-08, see the
