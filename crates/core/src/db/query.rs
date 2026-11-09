@@ -301,6 +301,9 @@ fn list(conn: &Connection, query: &ListQuery, visible: bool) -> Result<ThreadPag
     } else {
         None
     };
+    for t in &mut threads {
+        add_code_from_body(conn, t);
+    }
     Ok(ThreadPage {
         threads,
         next_cursor,
@@ -321,14 +324,35 @@ fn fts_query(text: &str) -> Option<String> {
     }
 }
 
+/// A row's sign-in code from the newest message's downloaded body, when the
+/// subject and snippet show none: only for a conversation whose subject says
+/// or hints at a code, and only inside the window a code is shown, so this
+/// reads a body for a few rows at most.
+fn add_code_from_body(conn: &Connection, t: &mut ThreadSummary) {
+    use crate::mail::codes;
+    if t.sign_in_code.is_some()
+        || t.in_spam
+        || crate::db::now_millis() - t.last_message_at >= CODE_SHOWN_FOR_MS
+        || !(codes::subject_says_code(&t.subject) || codes::subject_hints_code(&t.subject))
+    {
+        return;
+    }
+    if let Some(message) = codes::latest_message(conn, t.id) {
+        t.sign_in_code = codes::find_cached(conn, &t.subject, &t.snippet, message);
+    }
+}
+
 pub fn thread_summary(conn: &Connection, id: ThreadId) -> Result<ThreadSummary> {
-    conn.query_row(
-        &format!("SELECT {THREAD_COLUMNS} FROM threads t WHERE t.id = ?1"),
-        [id],
-        thread_from_row,
-    )
-    .optional()?
-    .ok_or_else(|| CoreError::NotFound(format!("thread {}", id.0)))
+    let mut summary = conn
+        .query_row(
+            &format!("SELECT {THREAD_COLUMNS} FROM threads t WHERE t.id = ?1"),
+            [id],
+            thread_from_row,
+        )
+        .optional()?
+        .ok_or_else(|| CoreError::NotFound(format!("thread {}", id.0)))?;
+    add_code_from_body(conn, &mut summary);
+    Ok(summary)
 }
 
 /// A conversation as it is outside Spam and Trash: its subject, snippet,

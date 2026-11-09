@@ -4441,6 +4441,13 @@ again until the next spike.*
       and the full summary refused by Apple's safety guardrails), where the
       long tracking links in the text the model reads are a suspect, not a
       finding)*
+      *(2026-11-09, the row and the banner: both now read the downloaded body
+      when the snippet shows no code, for a subject that says or hints at one
+      (`codes::find_cached`; the row only inside the day a code is shown and
+      never in Spam). A banner for a message that may hold a code in its body
+      waits for the body (ten seconds at most) and then leads with the code;
+      the lists refresh when the body gave one. The two summary problems are
+      still open)*
       *(2026-11-09, more evidence, from a second verification email and a
       screenshot from the owner; nothing of either is kept here: the list
       line said the status was verified and that no action was needed, and

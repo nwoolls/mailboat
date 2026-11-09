@@ -108,39 +108,58 @@ impl SyncEvents for TauriSyncEvents {
         all: &[mail_core::model::MessageId],
     ) {
         use mail_core::settings::NotifyFor;
-        // Sign-in codes go to the window whether or not notifications are on.
-        if !inbox.is_empty() {
-            crate::codes::arrived(&self.app, &self.db, inbox);
-        }
         // Settings → Notifications: on or off, which mail, quiet hours.
         let settings = {
             let conn = self.db.conn();
             mail_core::settings::load(&conn).unwrap_or_default()
         };
-        if !settings.new_mail_notifications || settings.quiet_hours.covers_now() {
-            return;
-        }
-        let messages = match settings.notify_for {
-            NotifyFor::Inbox => inbox,
-            NotifyFor::AllNew => all,
-        };
-        if messages.is_empty() {
-            return;
-        }
+        let wanted: Vec<mail_core::model::MessageId> =
+            if settings.new_mail_notifications && !settings.quiet_hours.covers_now() {
+                match settings.notify_for {
+                    NotifyFor::Inbox => inbox,
+                    NotifyFor::AllNew => all,
+                }
+                .to_vec()
+            } else {
+                Vec::new()
+            };
         // The account's address, when there's more than one to tell apart.
-        let label = {
+        let label = if wanted.is_empty() {
+            None
+        } else {
             let conn = self.db.conn();
             let all = mail_core::db::accounts::list(&conn).unwrap_or_default();
             (all.len() > 1)
                 .then(|| all.into_iter().find(|a| a.id == account).map(|a| a.email))
                 .flatten()
         };
-        let notices = {
-            let conn = self.db.conn();
-            mail_core::mail::notify::notices(&conn, account, messages, label.as_deref())
-                .unwrap_or_default()
+        // Sign-in codes go to the window whether or not notifications are on.
+        // A message that may hold one in its body is waited for (a few
+        // seconds at most), so its banner can lead with the code.
+        let waiting = if inbox.is_empty() {
+            Vec::new()
+        } else {
+            let (app, db, label, wanted) = (
+                self.app.clone(),
+                self.db.clone(),
+                label.clone(),
+                wanted.clone(),
+            );
+            crate::codes::arrived(&self.app, &self.db, inbox, move |read| {
+                let later: Vec<_> = wanted
+                    .iter()
+                    .copied()
+                    .filter(|m| read.contains(m))
+                    .collect();
+                show_notices(&app, &db, account, &later, label.as_deref());
+            })
         };
-        crate::notifications::show(&self.app, notices);
+        let now: Vec<_> = wanted
+            .iter()
+            .copied()
+            .filter(|m| !waiting.contains(m))
+            .collect();
+        show_notices(&self.app, &self.db, account, &now, label.as_deref());
     }
     fn identities_changed(&self, account_id: AccountId) {
         let _ = IdentitiesChangedEvent { account_id }.emit(&self.app);
@@ -157,3 +176,21 @@ pub struct MailtoEvent;
 /// A command chosen in the menu bar, by its ID (`features/commands`).
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct MenuCommandEvent(pub String);
+
+/// Banners for these new messages (none for none).
+fn show_notices(
+    app: &AppHandle,
+    db: &std::sync::Arc<mail_core::db::Db>,
+    account: AccountId,
+    messages: &[mail_core::model::MessageId],
+    label: Option<&str>,
+) {
+    if messages.is_empty() {
+        return;
+    }
+    let notices = {
+        let conn = db.conn();
+        mail_core::mail::notify::notices(&conn, account, messages, label).unwrap_or_default()
+    };
+    crate::notifications::show(app, notices);
+}

@@ -51,8 +51,9 @@ pub fn notices(
             } else {
                 subject
             };
-            // A sign-in code leads, so it can be read off the banner.
-            let notice = match super::codes::find(&subject, &snippet) {
+            // A sign-in code leads, so it can be read off the banner. From the
+            // body too, when it has been downloaded, since the snippet is short.
+            let notice = match super::codes::find_cached(conn, &subject, &snippet, m) {
                 Some(code) => Notice {
                     title: format!("{code} · {who}"),
                     body: format!("Sign-in code · {subject}{suffix}"),
