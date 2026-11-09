@@ -3942,9 +3942,11 @@ security fixes).
       just before Advanced, after the pages it links to; the rows are
       read from the real settings (`features/settings/model/privacy.ts`).
       The website's feature card isn't updated, since the home page is
-      held while Google reviews)*
-- [ ] The onboarding points to Settings → Privacy *(split from the item
-      above, 2026-11-09)*
+      held while Google reviews. The idea of pointing to the page from
+      the onboarding was dropped the same day: its last screen can't open
+      Settings, so a sentence naming a page that isn't on screen made no
+      sense there, and a link to the privacy policy belongs with the held
+      website pages)*
 - [ ] Summaries kept only as long as needed: they are cached in the local
       database until new mail arrives. Options are a switch to not keep
       them, or clearing them on quit
@@ -4220,7 +4222,7 @@ and a tick.
       commit, and the release goes out only after that edit has merged
 - [x] Settings → Privacy, one page listing every way data leaves the
       computer with its current setting *(2026-11-09: done, see Milestone
-      16; the onboarding pointer is its own open item there)*
+      16, which also records why the onboarding pointer was dropped)*
 - [ ] Summaries kept only as long as needed: a switch to not keep them, or
       clearing them on quit (its own Milestone 16 item, so it is ticked on
       its own)
