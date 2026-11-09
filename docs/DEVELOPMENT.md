@@ -340,48 +340,97 @@ private key that matches the public one in the config.
   installs an older version. The manifest isn't signed, so the channel gets no
   more trust than Stable: only an update signed by the app's key, for the
   version announced, installs.
-- **Trying an update before shipping it.** Install the newest release, set the
-  channel to Beta, then publish a pre-release numbered above it (set the
-  version in `package.json`, tag `v<version>-beta.1`, approve the builds, read
-  the draft, publish it). Within a minute of publishing, "Check for updates"
-  finds it; install it to try the real path (download, signature check,
-  restart) with no development build. The check needs the second redirect
-  rule above, in place once; the first pre-release also shows whether the
-  Windows installers accept a pre-release version.
+- **Trying an update before shipping it.** See Releasing. It needs the second
+  redirect rule above, in place once. The first beta also shows whether the
+  Windows installer and the macOS bundle accept a pre-release version.
 
 ## Releasing
 
 A release is a version tag. The workflow (`.github/workflows/release.yml`)
 builds everything, checks it, and makes a **draft** GitHub Release; nothing is
-public until the owner publishes the draft.
+public until the owner publishes the draft. There are two kinds:
 
-**Cutting one**
-1. The test releases `0.0.1` and `0.0.2` have no generated bump: set the
-   version in `package.json`, write the `## <version>` section of
-   `CHANGELOG.md` by hand, and don't run `version-packages`. Starting with
-   `0.1.0`, use a branch named `changeset-release/<something>` and run `bun run
-   version-packages`: it applies the pending changesets, bumps `package.json`
-   and writes the `## <version>` section of `CHANGELOG.md`, which becomes the
-   release notes. Either way, open a pull request and merge it.
-2. Tag the merged commit on `main` and push the tag as yourself:
-   `git tag v<version> <commit> && git push origin v<version>` (the first test
-   release is `v0.0.1`). The tag must be `v` and the version in `package.json`,
-   and be on `main`; the workflow's first
+- A **beta** (`v0.2.0-beta.0`) is a test version. It is marked as a
+  pre-release on GitHub, so Stable installs never see it, and Beta installs
+  are offered it (Settings → About → Update channel; see Updates). Use one to
+  try a change, or the update path itself, on a real install before everyone
+  gets it.
+- A **stable** release (`v0.2.0`) goes to everyone.
+
+Versions come only from Changesets, never by hand (`0.0.1` and `0.0.2` were
+the two exceptions). The owner decides when to cut a release, and tags and
+publishes it; an agent prepares the branch and says what is left.
+
+**Where the repository is.** If `.changeset/pre.json` exists with
+`"mode": "pre"` (or `"exit"`, between `pre exit` and `version-packages`),
+the repository is in beta mode: `bun run version-packages`
+makes the next beta, not a stable version. Leave beta mode only to ship a
+stable release (below), and only when the owner says to.
+
+**A beta** (the first beta of a version, or the next one)
+1. Branch `changeset-release/<version>-beta` from an up-to-date `main`.
+2. For the first beta of a version, run `bunx changeset pre enter beta`. For
+   a later one, skip this: the mode is already on.
+3. Run `bun run version-packages`. The pending changesets move into
+   `.changeset/pre/`, `package.json` becomes `0.2.0-beta.0` (then `.1`, and so
+   on), and `CHANGELOG.md` gets a section for that version, which becomes the
+   release notes. Never edit either by hand. A later beta needs at least one
+   changeset added since the last one that asks for a release (a `patch` or
+   more; an empty one doesn't): the archived ones in `.changeset/pre/` don't
+   count again. If none was added, `version-packages` changes nothing, so
+   there is no new beta. Read the version it wrote in `package.json`; that is
+   the version, and the tag, of this beta.
+4. Run `bun run check`, commit, and open a pull request (CI asks no changeset
+   of a `changeset-release/…` branch). Merge it.
+5. Tag, build and publish (steps below), with the tag `v` plus the version
+   from step 3 (`v0.2.0-beta.0`, then `v0.2.0-beta.1`, and so on). A tag
+   that already exists is never moved or forced: make a new version instead.
+
+While beta mode is on, every pull request still adds a changeset, as always.
+
+**A stable release**
+1. Branch `changeset-release/<version>` from an up-to-date `main`.
+2. If the repository is in beta mode, run `bunx changeset pre exit`. Changesets
+   then asks you to review the files in `.changeset/pre/`, which become the
+   notes of the stable version, so keep only what that release should list.
+   Don't commit this step alone: until step 3 has run, `.changeset/pre.json`
+   says `"mode": "exit"` and the repository looks as if beta mode were off.
+3. Run `bun run version-packages`. It makes `0.2.0` from every changeset,
+   betas included, and writes the `## 0.2.0` section of `CHANGELOG.md`. Read
+   the section: it is the release notes, and it should list what the release
+   changed.
+4. Run `bun run check`, commit, open a pull request, merge it.
+5. Tag, build and publish (steps below), with the tag `v` plus the version
+   from step 3 (`v0.2.0`).
+
+**Tag, build and publish** (the same for both)
+1. Tag the merged commit on `main` and push the tag as yourself:
+   `git tag v<version> <commit> && git push origin v<version>`. The tag must be
+   `v` and the version in `package.json`, and be on `main`; the workflow's first
    job fails in seconds otherwise, before any build.
-3. Open the run on the Actions tab, **Review deployments**, and approve the
+2. Open the run on the Actions tab, **Review deployments**, and approve the
    three build jobs. They take about 10 to 15 minutes. Then approve **publish**,
    which waits for its own approval and has none of the signing secrets.
-4. The publish job checks every update signature against the public key in the
+3. The publish job checks every update signature against the public key in the
    app and for this version (and makes nothing if one is wrong), writes
    `latest.json` and `SHA256SUMS`, attests where the files came from, and makes
    the draft release.
-5. Read the draft on GitHub (files, notes), then **Publish release**. Only a
-   published release is what the update address redirects to.
+4. Read the draft on GitHub (files, notes), then **Publish release**. Only a
+   published release is what the update addresses redirect to. Publishing
+   also runs `update-channel.yml`, which points the Beta channel at it.
+5. Check the result: `curl -sI https://getmailboat.app/updates/latest.json`
+   and `.../updates/beta/latest.json` each answer 302, and the file behind the
+   one for this release's channel has its version. Then "Check for updates" on
+   an install of that channel.
+
+**Trying an update before shipping it.** Install the newest release by hand
+once and set Update channel to Beta. Cut a beta numbered above it, as above.
+Within a minute of publishing, "Check for updates" finds it; install it to
+try the real path (download, signature check, restart) without a development
+build. Betas after that arrive through the updater.
 
 A run started by hand ("Run workflow") makes the same builds as artifacts and
-publishes nothing, to try the builds without a tag. A pre-release tag
-(`v0.2.0-beta.1`) is marked as a pre-release, so it is never "latest" and is
-offered only on the Beta update channel (see Updates).
+publishes nothing, to try the builds without a tag.
 
 **One-time setup** (repository settings, not in the code)
 - Environment `release` must allow tags `v*` as well as `main`: `gh api -X POST
@@ -401,9 +450,12 @@ offered only on the Beta update channel (see Updates).
 The version is written once, in `package.json` (`0.x` until the owner calls
 it 1.0). Rust reads it at build time (`mail_core::brand::VERSION`) and
 `tauri.conf.json` points at it, so nothing else needs editing. A
-pre-release version (`0.2.0-beta.1`) has not been tried: the macOS bundle
-strips the tag, and the Windows installer may not accept it, so check
-that the first time one is used.
+pre-release version (`0.2.0-beta.0`) can't be built into a Windows MSI
+(Tauri rejects a pre-release tag that isn't a number up to 65535), so Windows
+builds only the NSIS installer (`bundle.targets` in
+`src-tauri/tauri.windows.conf.json`), which is also the only one released.
+Whether that installer and the macOS bundle take the tag is checked by the
+first beta.
 
 Each pull request adds a changeset, a small file in `.changeset/` made with
 `bun run changeset` (`--empty` when people won't notice the change); CI
