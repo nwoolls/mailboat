@@ -4612,6 +4612,17 @@ again until the next spike.*
       duration, a short zone name, and no zone at all when it is the
       computer's own. Check how an all-day meeting and one that crosses
       midnight read. Made-up example data only in the tests.
+- [ ] Archiving with the preview collapsed re-opens it *(owner request,
+      2026-11-09; minor)*: after collapsing the preview panel by hand,
+      moving through the list with the keyboard leaves it collapsed, but
+      archiving the selected message previews the next one, which reopens
+      it. The two should agree. After a manual collapse, archiving (and the
+      other actions that move the selection on, such as delete or snooze,
+      if they do the same) should still pick the next message the way
+      Settings says, and select it, but leave the preview collapsed until
+      the person opens it again. Find where the next message is chosen and
+      why it opens the preview, and test that the choice and the collapsed
+      state are separate.
 
 ## Later / unscheduled
 
