@@ -21,6 +21,21 @@ pub const MAX_SEPARATE: usize = 3;
 
 /// The notifications for new mail in one account. `account_label` (its
 /// address) is added when there's more than one account.
+/// Which of the messages to notify about show at once and which wait for
+/// their body (`waiting`: it may hold a sign-in code the banner should lead
+/// with). A batch big enough to collapse into one summary shows as one, now:
+/// splitting it would make two summaries, or separate banners where there
+/// should be one, and a summary never leads with a code.
+pub fn split_for_body(
+    wanted: &[MessageId],
+    waiting: &[MessageId],
+) -> (Vec<MessageId>, Vec<MessageId>) {
+    if wanted.len() > MAX_SEPARATE {
+        return (wanted.to_vec(), Vec::new());
+    }
+    wanted.iter().partition(|m| !waiting.contains(m))
+}
+
 pub fn notices(
     conn: &Connection,
     account: AccountId,
@@ -113,6 +128,27 @@ pub fn signed_out_notice(email: &str) -> Notice {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_few_messages_split_into_those_to_show_now_and_those_waiting_for_a_body() {
+        let ids = |v: &[i64]| v.iter().map(|&n| MessageId(n)).collect::<Vec<_>>();
+        let (now, later) = split_for_body(&ids(&[1, 2, 3]), &ids(&[2]));
+        assert_eq!((now, later), (ids(&[1, 3]), ids(&[2])));
+        // None waiting: everything now.
+        let (now, later) = split_for_body(&ids(&[1, 2]), &[]);
+        assert_eq!((now, later), (ids(&[1, 2]), vec![]));
+        // A waiting message that isn't to be notified about is no one's concern.
+        let (now, later) = split_for_body(&ids(&[1]), &ids(&[9]));
+        assert_eq!((now, later), (ids(&[1]), vec![]));
+    }
+
+    #[test]
+    fn a_batch_that_collapses_into_one_summary_is_never_split() {
+        let ids: Vec<MessageId> = (1..=(MAX_SEPARATE as i64 + 1)).map(MessageId).collect();
+        let (now, later) = split_for_body(&ids, &ids[..1]);
+        assert_eq!(now, ids);
+        assert!(later.is_empty());
+    }
+
     use super::*;
     use crate::db::store::{upsert_thread, IncomingMessage, IncomingThread};
     use crate::db::{accounts, Db};

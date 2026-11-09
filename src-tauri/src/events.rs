@@ -146,19 +146,14 @@ impl SyncEvents for TauriSyncEvents {
                 wanted.clone(),
             );
             crate::codes::arrived(&self.app, &self.db, inbox, move |read| {
-                let later: Vec<_> = wanted
-                    .iter()
-                    .copied()
-                    .filter(|m| read.contains(m))
-                    .collect();
-                show_notices(&app, &db, account, &later, label.as_deref());
+                let (_, later) = mail_core::mail::notify::split_for_body(&wanted, read);
+                // The settings may have changed during the wait.
+                if notifications_wanted(&db) {
+                    show_notices(&app, &db, account, &later, label.as_deref());
+                }
             })
         };
-        let now: Vec<_> = wanted
-            .iter()
-            .copied()
-            .filter(|m| !waiting.contains(m))
-            .collect();
+        let (now, _) = mail_core::mail::notify::split_for_body(&wanted, &waiting);
         show_notices(&self.app, &self.db, account, &now, label.as_deref());
     }
     fn identities_changed(&self, account_id: AccountId) {
@@ -193,4 +188,13 @@ fn show_notices(
         mail_core::mail::notify::notices(&conn, account, messages, label).unwrap_or_default()
     };
     crate::notifications::show(app, notices);
+}
+
+/// Whether new-mail banners are on right now: the switch, and not quiet hours.
+fn notifications_wanted(db: &std::sync::Arc<mail_core::db::Db>) -> bool {
+    let settings = {
+        let conn = db.conn();
+        mail_core::settings::load(&conn).unwrap_or_default()
+    };
+    settings.new_mail_notifications && !settings.quiet_hours.covers_now()
 }

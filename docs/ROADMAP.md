@@ -4248,9 +4248,9 @@ One pull request each.
       backlog entry)*
 - [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
       the email; an agent works from a made-up fixture of the same shape,
-      never the real one) *(2026-11-08: detection fixed; the list row,
-      the macOS banner and the two summary problems are still open: see the
-      Bug backlog entry)*
+      never the real one) *(2026-11-08: detection fixed; 2026-11-09: the
+      list row and the macOS banner read the body too; the two summary
+      problems are still open: see the Bug backlog entry)*
 - [x] A sideways swipe on the trackpad drags the whole app *(2026-11-08:
       fixed; see the Bug backlog entry)*
 - [ ] Bug: the screenshot zoom flashes at full size before it animates (the

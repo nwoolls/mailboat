@@ -509,12 +509,14 @@ pub fn find_cached(
     find(subject, &body)
 }
 
-/// The newest message of a conversation, whose snippet its row shows.
-pub fn latest_message(conn: &Connection, thread: ThreadId) -> Option<MessageId> {
+/// The newest message of a conversation, whose snippet its row shows, with its
+/// own subject (the conversation's is the first message's).
+pub fn latest_message(conn: &Connection, thread: ThreadId) -> Option<(MessageId, String)> {
     conn.query_row(
-        "SELECT id FROM messages WHERE thread_id = ?1 ORDER BY internal_date DESC, id DESC LIMIT 1",
+        "SELECT id, subject FROM messages WHERE thread_id = ?1
+         ORDER BY internal_date DESC, id DESC LIMIT 1",
         [thread],
-        |r| r.get(0),
+        |r| Ok((r.get(0)?, r.get(1)?)),
     )
     .optional()
     .ok()?
@@ -1108,6 +1110,74 @@ mod tests {
         );
         assert_eq!(
             find_cached(&db.conn(), "Your weekly digest", "4821 or Confirm", m),
+            None
+        );
+    }
+
+    #[test]
+    fn a_reply_that_quotes_the_code_does_not_bring_the_pill_back() {
+        use crate::db::query::thread_summary;
+        use crate::db::store::{upsert_thread, IncomingMessage, IncomingThread};
+        let db = crate::db::Db::open_in_memory().unwrap();
+        let (m, thread) = seed_hinting_message(&db, "INBOX");
+        download_body(&db, m);
+        let account = thread_summary(&db.conn(), thread).unwrap().account_id;
+        assert_eq!(
+            thread_summary(&db.conn(), thread)
+                .unwrap()
+                .sign_in_code
+                .as_deref(),
+            Some("4821")
+        );
+        // A reply in the same conversation, whose body quotes the original.
+        let now = crate::db::now_millis();
+        let original = format!(" 4821 or Confirm Address ( {:.60}", link());
+        upsert_thread(
+            &mut db.conn(),
+            account,
+            &IncomingThread {
+                gmail_thread_id: "t1".into(),
+                messages: vec![
+                    IncomingMessage {
+                        gmail_message_id: "m1".into(),
+                        label_ids: vec!["INBOX".into()],
+                        internal_date: now - 1_000,
+                        subject: SET_APART_SUBJECT.into(),
+                        snippet: original,
+                        ..Default::default()
+                    },
+                    IncomingMessage {
+                        gmail_message_id: "m2".into(),
+                        label_ids: vec!["INBOX".into()],
+                        internal_date: now,
+                        subject: format!("Re: {SET_APART_SUBJECT}"),
+                        snippet: "Thanks, that worked.".into(),
+                        ..Default::default()
+                    },
+                ],
+            },
+        )
+        .unwrap();
+        let reply: MessageId = db
+            .conn()
+            .query_row(
+                "SELECT id FROM messages WHERE gmail_message_id = 'm2'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        crate::db::store::set_body(
+            &mut db.conn(),
+            reply,
+            &crate::db::store::StoredBody {
+                html: None,
+                text: Some(format!("Thanks, that worked.\n\n> {}", set_apart_text())),
+            },
+            &[],
+        )
+        .unwrap();
+        assert_eq!(
+            thread_summary(&db.conn(), thread).unwrap().sign_in_code,
             None
         );
     }

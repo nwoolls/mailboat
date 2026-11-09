@@ -301,8 +301,11 @@ fn list(conn: &Connection, query: &ListQuery, visible: bool) -> Result<ThreadPag
     } else {
         None
     };
+    let mut lookups = 0;
     for t in &mut threads {
-        add_code_from_body(conn, t);
+        if lookups < MAX_BODY_LOOKUPS && add_code_from_body(conn, t) {
+            lookups += 1;
+        }
     }
     Ok(ThreadPage {
         threads,
@@ -324,22 +327,32 @@ fn fts_query(text: &str) -> Option<String> {
     }
 }
 
+/// The most rows of a page that may read a body for a sign-in code: the
+/// subject and the age already narrow it to a few, and this keeps a page of
+/// many recent verification emails from reading all their bodies at once.
+const MAX_BODY_LOOKUPS: usize = 20;
+
 /// A row's sign-in code from the newest message's downloaded body, when the
-/// subject and snippet show none: only for a conversation whose subject says
-/// or hints at a code, and only inside the window a code is shown, so this
-/// reads a body for a few rows at most.
-fn add_code_from_body(conn: &Connection, t: &mut ThreadSummary) {
+/// subject and snippet show none: only for a conversation whose newest
+/// message's subject says or hints at a code (a conversation's own subject is
+/// its first message's, and a reply under it, quoting the code, is not one),
+/// and only inside the window a code is shown. Returns whether it read a body.
+fn add_code_from_body(conn: &Connection, t: &mut ThreadSummary) -> bool {
     use crate::mail::codes;
     if t.sign_in_code.is_some()
         || t.in_spam
         || crate::db::now_millis() - t.last_message_at >= CODE_SHOWN_FOR_MS
-        || !(codes::subject_says_code(&t.subject) || codes::subject_hints_code(&t.subject))
     {
-        return;
+        return false;
     }
-    if let Some(message) = codes::latest_message(conn, t.id) {
-        t.sign_in_code = codes::find_cached(conn, &t.subject, &t.snippet, message);
+    let Some((message, subject)) = codes::latest_message(conn, t.id) else {
+        return false;
+    };
+    if !(codes::subject_says_code(&subject) || codes::subject_hints_code(&subject)) {
+        return false;
     }
+    t.sign_in_code = codes::find_cached(conn, &subject, &t.snippet, message);
+    true
 }
 
 pub fn thread_summary(conn: &Connection, id: ThreadId) -> Result<ThreadSummary> {
@@ -351,7 +364,7 @@ pub fn thread_summary(conn: &Connection, id: ThreadId) -> Result<ThreadSummary> 
         )
         .optional()?
         .ok_or_else(|| CoreError::NotFound(format!("thread {}", id.0)))?;
-    add_code_from_body(conn, &mut summary);
+    let _ = add_code_from_body(conn, &mut summary);
     Ok(summary)
 }
 
