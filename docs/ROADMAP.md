@@ -4622,6 +4622,17 @@ again until the next spike.*
       archived and kept quiet as they sync (only while Mailboat runs; the
       Gmail phone app would still notify). Offered, not chosen yet*
 
+### Reading
+
+- [ ] A card on hover for each person in an email's Details *(owner idea,
+      2026-11-08, from the Details button; maybe for the Polish Spike, not
+      likely)*: hovering over a name or address floats a small card with
+      their name and address, which can be clicked (to start a new message
+      to them) or copied. To decide: whether the card shows anything the
+      email itself doesn't say (Google Contacts data is already read for
+      suggestions; the card must ask for no new permission), and how it
+      works with the keyboard and with a touchpad, where there is no hover.
+
 ### Writing (was Milestone 9; moved here, owner, 2026-10-24: "fairly
 niche or extra", so Windows and the Release Spike come first)
 
@@ -4642,6 +4653,17 @@ niche or extra", so Windows and the Release Spike come first)
       embedded images; to decide: resizing in the editor (Gmail offers
       small / best fit / original), and a large image's share of
       Gmail's 25 MB limit
+- [ ] Clone a sent email *(owner request, 2026-11-08; maybe for the Polish
+      Spike, not likely)*: find an email you sent before and open it in a
+      new composer with the same recipients, subject and body, to send the
+      same message again. Useful before templates (above), which remain
+      planned; it starts from a sent email already in the cache, fetching
+      its body if that isn't saved yet. To decide: where the action lives
+      (the email's menu, a command in the palette, or both), whether Cc,
+      Bcc and attachments come along (attachments would have to be
+      downloaded again, and the cache keeps no Bcc), and whether the
+      signature is kept or added again. The clone is a new draft; the
+      original is untouched.
 
 ### From the AI Spike (moved unbuilt when it closed, 2026-10-21)
 
