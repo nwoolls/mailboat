@@ -253,23 +253,44 @@ pub fn render(thread: &ThreadText, budget: usize) -> String {
 /// use to a model, and a lot of text for it to read.
 const LONG_LINK: usize = 100;
 
+/// Where the web link that starts at `start` ends: at white space or a
+/// bracket or quote, less the punctuation that closes a sentence.
+fn link_end(text: &str, start: usize) -> usize {
+    let rest = &text[start..];
+    let stop = rest
+        .find(|c: char| c.is_whitespace() || "<>()[]\"'".contains(c))
+        .unwrap_or(rest.len());
+    let link = rest[..stop].trim_end_matches(['.', ',', ';', ':', '!', '?']);
+    start + link.len()
+}
+
 /// The text with each long web link replaced by "[link]". A short link, which
-/// says something about where it goes, stays.
+/// says something about where it goes, stays, and so do the words, brackets
+/// and punctuation beside any link.
 pub fn without_long_links(text: &str) -> String {
-    text.split_inclusive(char::is_whitespace)
-        .map(|word| {
-            let trimmed = word.trim_end();
-            let core = trimmed.trim_matches(|c: char| "()<>[]\"'".contains(c));
-            let long = (core.starts_with("http://") || core.starts_with("https://"))
-                && core.chars().count() > LONG_LINK;
-            if long {
-                // Keep the brackets and the space or line break around it.
-                trimmed.replacen(core, "[link]", 1) + &word[trimmed.len()..]
-            } else {
-                word.to_string()
-            }
-        })
-        .collect()
+    let lower = text.to_ascii_lowercase();
+    let mut out = String::with_capacity(text.len());
+    let mut at = 0;
+    while let Some(found) = ["http://", "https://"]
+        .iter()
+        .filter_map(|scheme| lower[at..].find(scheme).map(|i| at + i))
+        .min()
+    {
+        let end = link_end(text, found);
+        out.push_str(&text[at..found]);
+        if text[found..end].chars().count() > LONG_LINK {
+            out.push_str("[link]");
+        } else {
+            out.push_str(&text[found..end]);
+        }
+        // A scheme with nothing after it must still move the scan on.
+        at = end.max(found + 1);
+        if at > text.len() {
+            break;
+        }
+    }
+    out.push_str(&text[at.min(text.len())..]);
+    out
 }
 
 /// At most `max` characters, cut at a word, with "…" when cut.

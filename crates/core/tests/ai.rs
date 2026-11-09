@@ -55,11 +55,21 @@ fn message(id: &str, date: i64, labels: &[&str]) -> IncomingMessage {
 
 /// Stores thread "t1" with the given messages; gives each a body.
 fn put_thread(db: &Db, account: AccountId, messages: Vec<IncomingMessage>, body: &str) -> ThreadId {
+    put_thread_named(db, account, "t1", messages, body)
+}
+
+fn put_thread_named(
+    db: &Db,
+    account: AccountId,
+    gmail_thread_id: &str,
+    messages: Vec<IncomingMessage>,
+    body: &str,
+) -> ThreadId {
     let thread = store::upsert_thread(
         &mut db.conn(),
         account,
         &IncomingThread {
-            gmail_thread_id: "t1".into(),
+            gmail_thread_id: gmail_thread_id.into(),
             messages,
         },
     )
@@ -298,8 +308,7 @@ async fn reply_ideas_are_saved_until_new_mail() {
 }
 
 /// A conversation that is a sign-in code gets a fixed line, with no request
-/// to a model (models read such an email as already done); one in Spam, where
-/// a code is bait, is left to the usual rules.
+/// to a model (models read such an email as already done).
 #[tokio::test]
 async fn a_sign_in_code_gets_a_fixed_line_and_asks_no_model() {
     let db = Db::open_in_memory().unwrap();
@@ -331,15 +340,103 @@ async fn a_sign_in_code_gets_a_fixed_line_and_asks_no_model() {
         used.iter().all(|p| p.last_30_days.requests == 0),
         "{used:?}"
     );
+    let _ = std::fs::remove_dir_all(dir);
+}
 
-    // The same email in Spam is not given the line, and is not summarized
-    // automatically either.
-    let mut bait = message("m2", 2_000, &["SPAM"]);
+/// Only the newest email counts, read under its own subject and not when the
+/// owner wrote it: a reply under a conversation titled with the code, or the
+/// owner's own message with a number in it, is summarized as usual.
+#[tokio::test]
+async fn a_reply_or_the_owners_own_message_is_not_a_sign_in_code() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a", "a@x.example");
+    let (programs, dir) = fake_apple();
+    // The conversation is titled by the first message, which holds a code;
+    // the newest message is a plain reply under its own subject.
+    let mut first = message("m1", 1_000, &["INBOX"]);
+    first.subject = "Your login code is 482913".into();
+    let mut reply = message("m2", 2_000, &["INBOX"]);
+    reply.subject = "Thanks".into();
+    let t1 = put_thread_named(
+        &db,
+        a,
+        "r1",
+        vec![first, reply],
+        "alpha I'm signed in, thanks.",
+    );
+    // The owner's own message under a code-word subject, with a number in it.
+    let mut mine = message("m3", 3_000, &["INBOX"]);
+    mine.subject = "Your login code".into();
+    mine.from = Some(Address {
+        name: None,
+        email: "a@x.example".into(),
+    });
+    let t2 = put_thread_named(&db, a, "r2", vec![mine], "alpha Room 12045 works for me.");
+    for t in [t1, t2] {
+        let r = tasks::summarize(&db, None, &programs, AiProvider::Apple, line(t), &|_| {})
+            .await
+            .unwrap();
+        assert!(
+            matches!(&r, Summarized::Done(s, _) if s.text == "Alpha summary"),
+            "{t:?}"
+        );
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// In Spam a code is bait: no fixed line, even when the owner asks for a
+/// summary; and a fixed line cached before the conversation moved there is
+/// no longer shown.
+#[tokio::test]
+async fn a_sign_in_code_in_spam_gets_no_fixed_line() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a", "a@x.example");
+    let (programs, dir) = fake_apple();
+    let mut bait = message("m1", 1_000, &["SPAM"]);
     bait.subject = "Your login code".into();
-    let spam = put_thread(&db, a, vec![bait], "alpha Your login code is 482913.");
+    let spam = put_thread_named(&db, a, "s1", vec![bait], "alpha Your login code is 482913.");
+    let asked = SummaryRequest {
+        automatic: false,
+        ..line(spam)
+    };
+    let r = tasks::summarize(&db, None, &programs, AiProvider::Apple, asked, &|_| {})
+        .await
+        .unwrap();
+    assert!(matches!(&r, Summarized::Done(s, _) if s.text == "Alpha summary"));
+    // Automatic requests skip Spam altogether.
     let r = tasks::summarize(&db, None, &programs, AiProvider::Apple, line(spam), &|_| {})
         .await
         .unwrap();
-    assert!(matches!(r, Summarized::NotNeeded));
+    assert!(matches!(r, Summarized::Done(..) | Summarized::NotNeeded));
+
+    // A conversation that was a code in the Inbox, then moved to Spam.
+    let mut code = message("m2", 2_000, &["INBOX"]);
+    code.subject = "Your login code".into();
+    let moved = put_thread_named(&db, a, "s2", vec![code], "alpha Your login code is 482913.");
+    tasks::summarize(
+        &db,
+        None,
+        &programs,
+        AiProvider::Apple,
+        line(moved),
+        &|_| {},
+    )
+    .await
+    .unwrap();
+    let shown = |thread: ThreadId| {
+        summaries::current_lines(&db.conn(), &[thread])
+            .unwrap()
+            .first()
+            .map(|s| s.text.clone())
+    };
+    assert_eq!(shown(moved).as_deref(), Some(tasks::SIGN_IN_LINE));
+    db.conn()
+        .execute(
+            "INSERT INTO thread_labels (account_id, thread_id, label_id)
+             SELECT ?2, ?1, id FROM labels WHERE account_id = ?2 AND gmail_label_id = 'SPAM'",
+            rusqlite::params![moved, a],
+        )
+        .unwrap();
+    assert_eq!(shown(moved), None);
     let _ = std::fs::remove_dir_all(dir);
 }

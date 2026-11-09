@@ -4453,7 +4453,8 @@ again until the next spike.*
       email holds a sign-in code (outside Spam and Trash) gets the fixed list
       line "Sign-in code" with no request to a model; both summary prompts
       say that an email giving a code, link or button asks the reader to use
-      it, never that it was done, entered, verified or confirmed; and links
+      it, and isn't to be called done, entered, verified or confirmed unless a
+      later message says so; and links
       over 100 characters are replaced by "[link]" in the text a model reads.
       Still to see: whether Apple's guardrails still refuse such an email's
       full summary, which needs a try on a real one by the owner)*
