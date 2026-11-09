@@ -4618,6 +4618,27 @@ again until the next spike.*
       email to Original colors now applies to every email from that
       address, in any account (kept like the per-sender image choice);
       Adapted colors forgets it. It was per message, until the app quit
+- [ ] Meeting dates and times could be easier to read *(owner request,
+      2026-11-09; minor)*: the meeting panels (the invitation card at the
+      top of an email, `InviteCard.tsx` via `whenText`, and any other meeting
+      panel) show the time as a stamp such as "2026-11-27 10:00 (Central
+      Standard Time)", with the numeric date and the long time zone name.
+      Show it the way a person says it: the weekday, the month spelled out,
+      the time in the person's own style (12 or 24 hour), the end time or
+      duration, a short zone name, and no zone at all when it is the
+      computer's own. Check how an all-day meeting and one that crosses
+      midnight read. Made-up example data only in the tests.
+- [ ] Archiving with the preview collapsed re-opens it *(owner request,
+      2026-11-09; minor)*: after collapsing the preview panel by hand,
+      moving through the list with the keyboard leaves it collapsed, but
+      archiving the selected message previews the next one, which reopens
+      it. The two should agree. After a manual collapse, archiving (and the
+      other actions that move the selection on, such as delete or snooze,
+      if they do the same) should still pick the next message the way
+      Settings says, and select it, but leave the preview collapsed until
+      the person opens it again. Find where the next message is chosen and
+      why it opens the preview, and test that the choice and the collapsed
+      state are separate.
 
 ## Later / unscheduled
 
