@@ -3864,7 +3864,7 @@ are decided when each is picked up. Settled defaults stay as they are until
 then (remote images load by default, owner 2026-10-15; update checks on, for
 security fixes).
 
-- [ ] The website stays true to the app: `website/privacy.html` and the
+- [x] The website stays true to the app: `website/privacy.html` and the
       feature cards match what the app does, and a change to what leaves
       the device, the Google permissions asked for, what is stored or
       deleted, or a default in Settings updates them in the same commit
@@ -3873,8 +3873,8 @@ security fixes).
       permission has no matching line in the policy, and a test pins the
       defaults the policy states *(2026-11-07: the check is built, in its
       pull request: `scripts/policy.ts`, run by `check:website`, with a
-      label for each permission and a table of the stated defaults. Tick
-      this item when it has merged)*
+      label for each permission and a table of the stated defaults. It
+      merged the same day, in #48)*
 - [ ] Cloud AI is manual by default: with Claude or ChatGPT chosen, the
       summary above a conversation waits for the Summarize button, so every
       transfer is one the person started. Automatic stays an option, and
@@ -3924,13 +3924,15 @@ security fixes).
 - [ ] Summaries kept only as long as needed: they are cached in the local
       database until new mail arrives. Options are a switch to not keep
       them, or clearing them on quit
-- [ ] The security contact on the website: `/.well-known/security.txt`
+- [x] The security contact on the website: `/.well-known/security.txt`
       (RFC 9116) naming `security@getmailboat.app` and `SECURITY.md`, and a
       Security link in the footer *(2026-11-07: built, in its pull request:
       the file and the footer link are in `website/`, `check:website`
       requires both, and the file's `Expires` date, a year ahead, has to be
-      renewed; see the Architecture decisions. Tick it once it is live and
-      the owner has tried it)*
+      renewed; see the Architecture decisions. 2026-11-08: live. The file
+      answers at `getmailboat.app/.well-known/security.txt` and the footer
+      links to the security policy; the owner confirmed the site is
+      deployed)*
 - [ ] Optional, later: require Touch ID or Windows Hello to open the app,
       for shared computers
 
@@ -4083,21 +4085,20 @@ default" (Milestone 16) unless the bullet names another place. Each
 bullet is one pull request, except the alerts, which are GitHub settings
 and a tick.
 
-- [ ] `security.txt` and a Security link in the footer. Tiny and site-only;
+- [x] `security.txt` and a Security link in the footer. Tiny and site-only;
       `check:website` should require both *(built 2026-11-07, in its pull
-      request; ticked in Milestone 16 once it is live and the owner has
-      tried it)*
+      request; live 2026-11-08, ticked in Milestone 16)*
 - [ ] The note in Settings → AI recommending that model training be turned
       off for the chosen provider (Milestone 16 item). The policy already
       says it; the app should say it where the provider is chosen *(built
       2026-11-07, in its pull request; ticked in Milestone 16 once the owner
       has tried it)*
-- [ ] `check:website` reads `SCOPES` and fails when a permission has no
+- [x] `check:website` reads `SCOPES` and fails when a permission has no
       matching line in the policy, and a test pins the defaults the policy
       states (the first "Privacy and security by default" item). This guards
-      the claims Google is checking *(built 2026-11-07, in its pull request;
-      ticked in Milestone 16 once it has merged)*
-- [ ] Clear the open security alerts (the Milestone 14 item "Look through
+      the claims Google is checking *(built 2026-11-07, in its pull request,
+      #48, which merged the same day; ticked in Milestone 16)*
+- [x] Clear the open security alerts (the Milestone 14 item "Look through
       the first code-scanning findings"): Scorecard's SAST alert (accepted:
       dismiss it with the reason that CodeQL skips docs-only changes on
       purpose, see "Decided" above) and the `glib`
@@ -4677,6 +4678,21 @@ again until the next spike.*
       to be Mailboat's own: a "Muted" label it adds, with later replies
       archived and kept quiet as they sync (only while Mailboat runs; the
       Gmail phone app would still notify). Offered, not chosen yet*
+
+- [ ] What's new in an available update *(owner idea, 2026-11-08; maybe for
+      the Polish Spike, not likely)*: when the update notice says a version
+      is available, let the person read what changed in it before installing.
+      The Tauri updater supports release notes: its manifest (`latest.json`)
+      can carry them, and the plugin hands them back with the update
+      (`Update::body`). The app leaves them out on purpose: only the
+      download is signed, not the manifest, so a tampered manifest could put
+      any text in the window (`updates.rs` and `releaseFiles.ts` say so), and
+      the release notes themselves come from `CHANGELOG.md` and go on the
+      GitHub release. To decide: a "What's new" link in the notice that opens
+      that version's release page in the browser (simplest: nothing is shown
+      in the window, and the address follows from the version), notes signed
+      the way the download is and checked against the public key before the
+      app shows them as plain text (never HTML), or both.
 
 ### Reading
 
