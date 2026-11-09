@@ -4602,6 +4602,16 @@ again until the next spike.*
       email to Original colors now applies to every email from that
       address, in any account (kept like the per-sender image choice);
       Adapted colors forgets it. It was per message, until the app quit
+- [ ] Meeting dates and times could be easier to read *(owner request,
+      2026-11-09; minor)*: the meeting panels (the invitation card at the
+      top of an email, `InviteCard.tsx` via `whenText`, and any other meeting
+      panel) show the time as a stamp such as "2026-11-27 10:00 (Central
+      Standard Time)", with the numeric date and the long time zone name.
+      Show it the way a person says it: the weekday, the month spelled out,
+      the time in the person's own style (12 or 24 hour), the end time or
+      duration, a short zone name, and no zone at all when it is the
+      computer's own. Check how an all-day meeting and one that crosses
+      midnight read. Made-up example data only in the tests.
 
 ## Later / unscheduled
 
