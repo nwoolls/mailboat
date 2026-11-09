@@ -4387,6 +4387,19 @@ again until the next spike.*
       on screen, so an early event is lost. The test now sends it again until
       the canvas is up)*
 
+- [x] Two browser tests in `ai-panel.spec.ts` failed by chance in CI on a
+      pull request that touched no front-end code (2026-11-08): the
+      floating card's nudge measured 0, and the inline reply ended one pixel
+      from where it began after the fourth toggle. Both are timing
+      measurements that a slow runner upsets. Fixed in the tests only: the
+      nudge is stretched from 420 ms to 1.5 s in the test (the sampler
+      steps through it by hand, so what it measures is the same, and a
+      stalled page can no longer deliver its start event after it has
+      ended: CI's trace showed a click that took 467 ms); the inline
+      reply's checks wait for it to settle (polling, up to 10 seconds)
+      instead of after a fixed wait. Under heavy CPU load the file failed
+      2 of 24 runs before and passed 24 of 24 after
+
 - [x] On Windows in dark mode, the From list in a new message is hard to
       read *(owner report, 2026-10-29, with a screenshot)*: the two
       address headings in the dropdown are nearly white on a white
