@@ -1,0 +1,71 @@
+name: Update channel
+
+# Keeps the manifest the app's Beta channel reads current. When a release is
+# published, test versions included, its `latest.json` is copied to one
+# release that never changes address (`updates-beta`), so the project's own
+# domain can redirect `/updates/beta/latest.json` to it. GitHub's "latest"
+# release, which the Stable address follows, skips test versions; this one
+# doesn't. It only ever moves forward: an older release published later
+# leaves it alone. A finished release is copied too, so a Beta install is offered it
+# once it is newer than the test version in use.
+#
+# Runs only on a person publishing a release (not a draft, and not on a
+# schedule), and uploads nothing but the manifest the release workflow made
+# and checked. The manifest isn't signed: what it points at is, and the app
+# refuses an update that isn't signed by its key for the announced version.
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+concurrency:
+  group: update-channel
+  cancel-in-progress: false
+
+jobs:
+  beta-manifest:
+    name: Point the Beta channel at this release
+    # The channel's own release is not a version.
+    if: github.event.release.tag_name != 'updates-beta'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # to update the `updates-beta` release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+          no-cache: true
+      - name: Copy latest.json to the updates-beta release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir manifest
+          gh release download "$TAG" --repo "$REPO" --pattern latest.json --dir manifest
+          test -s manifest/latest.json
+          if gh release view updates-beta --repo "$REPO" >/dev/null 2>&1; then
+            mkdir current
+            gh release download updates-beta --repo "$REPO" --pattern latest.json --dir current || true
+          else
+            gh release create updates-beta --repo "$REPO" --prerelease \
+              --title "Beta update channel" \
+              --notes "The update manifest the app's Beta channel reads. It is replaced when a newer release is published; there is nothing to install here." \
+              --target "$SHA"
+          fi
+          # Runs can finish out of order: never move the channel backward.
+          current=current/latest.json
+          [ -s "$current" ] || current=none
+          if [ "$(bun scripts/keep-newer-manifest.ts "$current" manifest/latest.json)" = replace ]; then
+            gh release upload updates-beta manifest/latest.json --repo "$REPO" --clobber
+          else
+            echo "The channel already points at a newer release; leaving it."
+          fi

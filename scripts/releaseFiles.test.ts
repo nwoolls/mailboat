@@ -4,6 +4,7 @@ import {
   buildManifest,
   changelogSection,
   checksumLines,
+  compareVersions,
   isInstaller,
   isPrerelease,
   isVersion,
@@ -210,5 +211,24 @@ describe("whether a tag can release", () => {
   it("can't without release notes, or for something that isn't a version", () => {
     expect(tagProblem("v0.1.0", "0.1.0", "# Changelog\n")).toMatch(/no section/);
     expect(tagProblem("vlatest", "latest", changelog)).toMatch(/isn't a version/);
+  });
+});
+
+describe("version order", () => {
+  it("follows semver, so a Beta install moves up and never down", () => {
+    const order = [
+      "0.2.0-beta.1",
+      "0.2.0-beta.2",
+      "0.2.0-beta.10",
+      "0.2.0",
+      "0.2.1-beta.1",
+      "0.10.0",
+      "1.0.0",
+    ];
+    for (let i = 0; i < order.length; i++) {
+      for (let j = 0; j < order.length; j++) {
+        expect(Math.sign(compareVersions(order[i], order[j]))).toBe(Math.sign(i - j));
+      }
+    }
   });
 });

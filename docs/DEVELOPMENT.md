@@ -322,6 +322,33 @@ private key that matches the public one in the config.
   *published* the address answers 404 and a check says it couldn't reach the
   update server: a draft isn't visible to it.
 
+- **Update channels.** Settings → About → "Update channel" is Stable (the
+  default) or Beta. Stable reads the address above, which follows GitHub's
+  "latest" release and so never sees a pre-release. Beta reads
+  `https://getmailboat.app/updates/beta/latest.json` (the same address with
+  `beta/` before the file name, made in `src-tauri/src/updates.rs`), a second
+  Cloudflare redirect rule (302) to
+  `https://github.com/<owner>/<repo>/releases/download/updates-beta/latest.json`.
+  That file is kept by `.github/workflows/update-channel.yml`: each time a
+  release is published, pre-release or not, it copies the release's
+  `latest.json` to the one release tagged `updates-beta` (created the first
+  time), unless the channel already points at a newer version (runs can finish out of order, and an older release can be published later: `scripts/keep-newer-manifest.ts` decides), so a Beta install is offered the newest published release, and a
+  finished release once it is newer than the test version in use. Versions
+  compare as semver: `0.2.0-beta.1` < `0.2.0-beta.2` < `0.2.0`, and
+  `0.2.0-beta.1` is *older* than an installed `0.2.0`, so a test version
+  has to be numbered above what is installed. Choosing Stable again never
+  installs an older version. The manifest isn't signed, so the channel gets no
+  more trust than Stable: only an update signed by the app's key, for the
+  version announced, installs.
+- **Trying an update before shipping it.** Install the newest release, set the
+  channel to Beta, then publish a pre-release numbered above it (set the
+  version in `package.json`, tag `v<version>-beta.1`, approve the builds, read
+  the draft, publish it). Within a minute of publishing, "Check for updates"
+  finds it; install it to try the real path (download, signature check,
+  restart) with no development build. The check needs the second redirect
+  rule above, in place once; the first pre-release also shows whether the
+  Windows installers accept a pre-release version.
+
 ## Releasing
 
 A release is a version tag. The workflow (`.github/workflows/release.yml`)
@@ -353,8 +380,8 @@ public until the owner publishes the draft.
 
 A run started by hand ("Run workflow") makes the same builds as artifacts and
 publishes nothing, to try the builds without a tag. A pre-release tag
-(`v0.2.0-beta.1`) is marked as a pre-release, so it is never "latest" and never
-offered as an update.
+(`v0.2.0-beta.1`) is marked as a pre-release, so it is never "latest" and is
+offered only on the Beta update channel (see Updates).
 
 **One-time setup** (repository settings, not in the code)
 - Environment `release` must allow tags `v*` as well as `main`: `gh api -X POST

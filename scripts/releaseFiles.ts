@@ -68,6 +68,37 @@ export function isVersion(text: string): boolean {
   return SEMVER.test(text);
 }
 
+/**
+ * Semver order: negative when `a` is older than `b`. A pre-release is older
+ * than its release (0.2.0-beta.2 < 0.2.0), numeric parts compare as numbers,
+ * and 0.2.0-beta.2 < 0.2.0-beta.10.
+ */
+export function compareVersions(a: string, b: string): number {
+  const split = (v: string) => {
+    const [core, pre] = v.split("+")[0].split("-", 2);
+    return { core: core.split(".").map(Number), pre: pre === undefined ? null : pre.split(".") };
+  };
+  const x = split(a);
+  const y = split(b);
+  for (let i = 0; i < 3; i++) {
+    if (x.core[i] !== y.core[i]) return x.core[i] < y.core[i] ? -1 : 1;
+  }
+  if (x.pre === null || y.pre === null) return x.pre === y.pre ? 0 : x.pre === null ? 1 : -1;
+  for (let i = 0; i < Math.max(x.pre.length, y.pre.length); i++) {
+    const p = x.pre[i];
+    const q = y.pre[i];
+    if (p === undefined) return -1;
+    if (q === undefined) return 1;
+    if (p === q) continue;
+    const pn = /^\d+$/.test(p);
+    const qn = /^\d+$/.test(q);
+    if (pn && qn) return Number(p) < Number(q) ? -1 : 1;
+    if (pn !== qn) return pn ? -1 : 1;
+    return p < q ? -1 : 1;
+  }
+  return 0;
+}
+
 /** A pre-release (0.2.0-beta.1) is published as one, so it isn't "latest". */
 export function isPrerelease(version: string): boolean {
   return version.includes("-");
