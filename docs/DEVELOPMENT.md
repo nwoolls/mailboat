@@ -342,7 +342,7 @@ private key that matches the public one in the config.
   version announced, installs.
 - **Trying an update before shipping it.** See Releasing. It needs the second
   redirect rule above, in place once. The first beta also shows whether the
-  Windows installers accept a pre-release version.
+  Windows installer and the macOS bundle accept a pre-release version.
 
 ## Releasing
 
@@ -450,9 +450,12 @@ publishes nothing, to try the builds without a tag.
 The version is written once, in `package.json` (`0.x` until the owner calls
 it 1.0). Rust reads it at build time (`mail_core::brand::VERSION`) and
 `tauri.conf.json` points at it, so nothing else needs editing. A
-pre-release version (`0.2.0-beta.0`) has not been tried: the macOS bundle
-strips the tag, and the Windows installer may not accept it, so check
-that the first time one is used.
+pre-release version (`0.2.0-beta.0`) can't be built into a Windows MSI
+(Tauri rejects a pre-release tag that isn't a number up to 65535), so Windows
+builds only the NSIS installer (`bundle.targets` in
+`src-tauri/tauri.windows.conf.json`), which is also the only one released.
+Whether that installer and the macOS bundle take the tag is checked by the
+first beta.
 
 Each pull request adds a changeset, a small file in `.changeset/` made with
 `bun run changeset` (`--empty` when people won't notice the change); CI
