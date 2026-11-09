@@ -3933,10 +3933,18 @@ security fixes).
       and costs little speed. Until then the cache relies on the
       computer's disk encryption (FileVault, BitLocker), and the policy
       says only what is true. Decide whether it is worth the dependency
-- [ ] Settings → Privacy, one page that lists every way data leaves the
+- [x] Settings → Privacy, one page that lists every way data leaves the
       computer (Google, update checks, remote images, AI providers, AI
-      apps over MCP) with its current setting and a switch, and a short
-      "what stays on this computer" line. The onboarding can point to it
+      apps over MCP) with its current setting, and a short "what stays on
+      this computer" list *(2026-11-09: built. Decided with the owner:
+      read-only, each row with a "Change in …" button to the section that
+      has the switch, so each choice still lives in one place; it sits
+      just before Advanced, after the pages it links to; the rows are
+      read from the real settings (`features/settings/model/privacy.ts`).
+      The website's feature card isn't updated, since the home page is
+      held while Google reviews)*
+- [ ] The onboarding points to Settings → Privacy *(split from the item
+      above, 2026-11-09)*
 - [ ] Summaries kept only as long as needed: they are cached in the local
       database until new mail arrives. Options are a switch to not keep
       them, or clearing them on quit
@@ -4210,8 +4218,9 @@ and a tick.
       for the Summarize button with Claude or ChatGPT; Apple Intelligence
       stays automatic). A default changes, so the policy changes in the same
       commit, and the release goes out only after that edit has merged
-- [ ] Settings → Privacy, one page listing every way data leaves the
-      computer with its current setting. The onboarding can point to it
+- [x] Settings → Privacy, one page listing every way data leaves the
+      computer with its current setting *(2026-11-09: done, see Milestone
+      16; the onboarding pointer is its own open item there)*
 - [ ] Summaries kept only as long as needed: a switch to not keep them, or
       clearing them on quit (its own Milestone 16 item, so it is ticked on
       its own)

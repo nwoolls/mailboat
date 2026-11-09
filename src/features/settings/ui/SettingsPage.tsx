@@ -14,6 +14,7 @@ import {
   KeyboardSection,
   ListSection,
   NotificationsSection,
+  PrivacySection,
   ToyboxSection,
   AdvancedSection,
   ViewingSection,
@@ -29,12 +30,14 @@ export function SettingsPage({
   accounts,
   syncStates,
   onAccountRemoved,
+  onSelect,
   onClose,
 }: {
   section: SettingsSectionId;
   accounts: Account[];
   syncStates: AccountSyncState[];
   onAccountRemoved: (id: AccountId) => void;
+  onSelect: (section: SettingsSectionId) => void;
   onClose: () => void;
 }) {
   const onCloseRef = useRef(onClose);
@@ -90,6 +93,7 @@ export function SettingsPage({
             header()
           )}
           {section === "general" && <GeneralSection />}
+          {section === "privacy" && <PrivacySection accounts={accounts} onSelect={onSelect} />}
           {section === "notifications" && <NotificationsSection />}
           {section === "list" && <ListSection />}
           {section === "viewing" && <ViewingSection />}

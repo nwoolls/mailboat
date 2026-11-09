@@ -1234,6 +1234,7 @@ export function Shell() {
                 accounts={accountList}
                 syncStates={syncStates}
                 onAccountRemoved={onAccountRemoved}
+                onSelect={setSettings}
                 onClose={() => setSettings(null)}
               />
             </div>

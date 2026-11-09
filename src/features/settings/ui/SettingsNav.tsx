@@ -10,6 +10,7 @@ import {
   KeyboardIcon,
   ListIcon,
   NotificationIcon,
+  PrivacyIcon,
   RulesIcon,
   SignatureIcon,
   ToyboxIcon,
@@ -21,6 +22,7 @@ import { SETTINGS_SECTIONS, type SettingsSectionId } from "../model/sections";
 const ICONS: Record<SettingsSectionId, (props: IconProps) => React.ReactNode> = {
   general: GeneralIcon,
   accounts: AccountsIcon,
+  privacy: PrivacyIcon,
   notifications: NotificationIcon,
   appearance: AppearanceIcon,
   list: ListIcon,
