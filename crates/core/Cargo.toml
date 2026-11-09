@@ -43,7 +43,7 @@ chrono = "0.4"
 mail-parser = "1.0.0"
 # The MCP server for AI apps (`mcp`): the official Rust SDK. Client too,
 # for the app's `--mcp` proxy that forwards to the running app.
-rmcp = { version = "3.7", features = ["server", "client", "macros", "schemars", "transport-io", "transport-async-rw"] }
+rmcp = { version = "3.9", features = ["server", "client", "macros", "schemars", "transport-io", "transport-async-rw"] }
 schemars = "1.1"
 
 [features]
