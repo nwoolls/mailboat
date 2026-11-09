@@ -193,9 +193,13 @@ on the Beta update channel) and for a stable release. For agents: the owner
 decides when to release, and tags, approves the builds and publishes; an agent
 prepares the `changeset-release/…` branch and says what is left. If
 `.changeset/pre.json` has `"mode": "pre"`, the repository is in beta mode and
-`bun run version-packages` makes the next beta; never enter or exit beta mode
+`bun run version-packages` makes the next beta (only when a changeset added
+since the last one asks for a release; read the version it wrote, and tag
+that); `"mode": "exit"` means `pre exit` was run but `version-packages` has
+not yet, so never commit one without the other. Never enter or exit beta mode
 without the owner saying so. Versions and `CHANGELOG.md` are made only by
-`bun run version-packages`, never by hand.
+`bun run version-packages`, never by hand (the exception for 0.0.1 and 0.0.2
+under "Versions" is history, not a method).
 
 ### Pull requests (once the repository's ruleset is on)
 

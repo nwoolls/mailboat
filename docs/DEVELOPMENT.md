@@ -362,7 +362,8 @@ the two exceptions). The owner decides when to cut a release, and tags and
 publishes it; an agent prepares the branch and says what is left.
 
 **Where the repository is.** If `.changeset/pre.json` exists with
-`"mode": "pre"`, the repository is in beta mode: `bun run version-packages`
+`"mode": "pre"` (or `"exit"`, between `pre exit` and `version-packages`),
+the repository is in beta mode: `bun run version-packages`
 makes the next beta, not a stable version. Leave beta mode only to ship a
 stable release (below), and only when the owner says to.
 
@@ -373,10 +374,17 @@ stable release (below), and only when the owner says to.
 3. Run `bun run version-packages`. The pending changesets move into
    `.changeset/pre/`, `package.json` becomes `0.2.0-beta.0` (then `.1`, and so
    on), and `CHANGELOG.md` gets a section for that version, which becomes the
-   release notes. Never edit either by hand.
+   release notes. Never edit either by hand. A later beta needs at least one
+   changeset added since the last one that asks for a release (a `patch` or
+   more; an empty one doesn't): the archived ones in `.changeset/pre/` don't
+   count again. If none was added, `version-packages` changes nothing, so
+   there is no new beta. Read the version it wrote in `package.json`; that is
+   the version, and the tag, of this beta.
 4. Run `bun run check`, commit, and open a pull request (CI asks no changeset
    of a `changeset-release/…` branch). Merge it.
-5. Tag, build and publish (steps below), with the tag `v0.2.0-beta.0`.
+5. Tag, build and publish (steps below), with the tag `v` plus the version
+   from step 3 (`v0.2.0-beta.0`, then `v0.2.0-beta.1`, and so on). A tag
+   that already exists is never moved or forced: make a new version instead.
 
 While beta mode is on, every pull request still adds a changeset, as always.
 
@@ -385,12 +393,15 @@ While beta mode is on, every pull request still adds a changeset, as always.
 2. If the repository is in beta mode, run `bunx changeset pre exit`. Changesets
    then asks you to review the files in `.changeset/pre/`, which become the
    notes of the stable version, so keep only what that release should list.
+   Don't commit this step alone: until step 3 has run, `.changeset/pre.json`
+   says `"mode": "exit"` and the repository looks as if beta mode were off.
 3. Run `bun run version-packages`. It makes `0.2.0` from every changeset,
    betas included, and writes the `## 0.2.0` section of `CHANGELOG.md`. Read
    the section: it is the release notes, and it should list what the release
    changed.
 4. Run `bun run check`, commit, open a pull request, merge it.
-5. Tag, build and publish (steps below), with the tag `v0.2.0`.
+5. Tag, build and publish (steps below), with the tag `v` plus the version
+   from step 3 (`v0.2.0`).
 
 **Tag, build and publish** (the same for both)
 1. Tag the merged commit on `main` and push the tag as yourself:
