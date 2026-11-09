@@ -39,6 +39,8 @@
  *                                 account (`account_remove`) empties the list
  *   ?mode=search                  the title bar's search, with three recent
  *                                 searches saved
+ *   ?mode=sizes                   the reader with an email of images sized by
+ *                                 only a height, only a width, both or neither
  *   ?mode=trackers&images=1|0     the reader with an email full of trackers,
  *                                 as the Rust sanitizer gave it (images
  *                                 loading or held back), `fixtures/`
@@ -58,6 +60,7 @@ import {
   threadOf,
 } from "./demoMail";
 import trackers from "./fixtures/trackers.json";
+import imageSizes from "./fixtures/image-sizes.json";
 
 // Demo mode's made-up mail (`demo/mail.json`): Maya's "Lisbon in May?",
 // five emails, as conversation 7 with emails 10 to 14.
@@ -258,6 +261,20 @@ mockIPC((cmd, args) => {
       };
     }
     case "message_open": {
+      // `?mode=sizes`: made-up images sized by only a height, only a width,
+      // both and neither, as the Rust sanitizer gave them.
+      if (harnessMode === "sizes") {
+        return {
+          messageId: (args as { messageId: number }).messageId,
+          accountId: 1,
+          senderEmail: maya.email,
+          imagesAllowed: true,
+          imagePolicy: "loadedByDefault",
+          attachments: [],
+          originalColors: false,
+          ...imageSizes.loaded,
+        };
+      }
       if (harnessMode === "trackers") {
         const loading = new URLSearchParams(location.search).get("images") === "1";
         return {

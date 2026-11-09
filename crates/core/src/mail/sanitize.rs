@@ -966,7 +966,8 @@ fn wrap_document(
         r#"<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="{csp}"><meta name="referrer" content="no-referrer"><style>
 html{{overflow-y:hidden;overflow-x:auto}}
 body{{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;overflow-wrap:break-word}}
-img{{max-width:100%;height:auto}}
+img{{max-width:100%}}
+img:where([width]){{height:auto}}
 img[data-safe-fixed]{{max-width:none}}
 img[data-safe-blocked],img[data-safe-inline]{{display:inline-block;min-width:24px;min-height:24px;background:#f1f1f3;border-radius:4px}}
 .safe-plain{{white-space:pre-wrap;font-family:inherit}}
@@ -1048,6 +1049,26 @@ mod tests {
         assert!(out
             .document
             .contains("img[data-safe-fixed]{max-width:none}"));
+    }
+
+    /// Regression (owner report, 2026-10-29: logos and pictures wider than in
+    /// Gmail): `img{height:auto}` in the page sheet beat an image's `height`
+    /// attribute, so one sized by only a height showed at its natural size.
+    /// The height is left to the sender's attribute unless there is a width
+    /// (then `auto` keeps the shape when a narrow cell squeezes the width) or
+    /// no height at all. Measured in a browser: `tests/browser/image-sizes.spec.ts`.
+    #[test]
+    fn images_keep_the_height_their_sender_gave_them() {
+        let doc =
+            sanitize_html(r#"<img src="https://x.example/a.png" height="48">"#, true).document;
+        assert!(doc.contains("img{max-width:100%}"), "{doc}");
+        // `:where()` keeps the rule as weak as a plain `img`: an email's own
+        // sheet (`.logo{height:50px}`) must still beat it, as it beat the
+        // old `img{height:auto}` (review found a stronger selector didn't).
+        assert!(doc.contains("img:where([width]){height:auto}"), "{doc}");
+        assert!(!doc.contains("img[width]"), "{doc}");
+        assert!(!doc.contains("img{max-width:100%;height:auto}"), "{doc}");
+        assert!(doc.contains(" height=\"48\""), "the attribute stays: {doc}");
     }
 
     #[test]
