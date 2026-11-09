@@ -186,6 +186,17 @@ one, except Dependabot's and the release pull request (branch
 `CHANGELOG.md` by hand, except for the test releases 0.0.1 and 0.0.2
 (decided 2026-11-05), which have no generated bump.
 
+### Releases
+
+`docs/DEVELOPMENT.md` → Releasing is the runbook, for a beta (a test version
+on the Beta update channel) and for a stable release. For agents: the owner
+decides when to release, and tags, approves the builds and publishes; an agent
+prepares the `changeset-release/…` branch and says what is left. If
+`.changeset/pre.json` has `"mode": "pre"`, the repository is in beta mode and
+`bun run version-packages` makes the next beta; never enter or exit beta mode
+without the owner saying so. Versions and `CHANGELOG.md` are made only by
+`bun run version-packages`, never by hand.
+
 ### Pull requests (once the repository's ruleset is on)
 
 Nothing goes to `main` directly. For each piece of work:
