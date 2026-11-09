@@ -17,6 +17,7 @@ import { useTextZoom } from "../../settings/ui/textSize";
 import { EmailContextMenu } from "./EmailContextMenu";
 import { ThreadSummaryCard } from "../../ai/ui/ThreadSummaryCard";
 import { MessageFrame } from "./MessageFrame";
+import { detailLines } from "../model/recipients";
 
 /**
  * Messages expanded when a thread opens: unread ones plus the newest.
@@ -106,6 +107,8 @@ function ThreadBody({
   // each email zooms itself (`MessageFrame`).
   const zoom = useTextZoom();
   const [expanded, setExpanded] = useState<Set<MessageId>>(() => initiallyExpanded(data.messages));
+  // The emails whose Details (everyone, in full) are showing.
+  const [detailed, setDetailed] = useState<Set<MessageId>>(() => new Set());
   // Every message opened so far; its body stays mounted when closed.
   const [opened, setOpened] = useState<Set<MessageId>>(expanded);
   if ([...expanded].some((id) => !opened.has(id))) setOpened(new Set([...opened, ...expanded]));
@@ -220,9 +223,10 @@ function ThreadBody({
                   type="button"
                   // Block, not the button default (inline), which left a
                   // descender gap under collapsed cards. Collapsed cards are
-                  // tighter; the padding eases open with the message.
+                  // tighter; the padding eases open with the message. Open, the
+                  // bottom gap belongs under the addressing line below.
                   className={`block w-full px-4 text-left transition-[padding] duration-200 ease-out motion-reduce:transition-none ${
-                    isOpen ? "py-3" : "py-2"
+                    isOpen ? "pt-3 pb-0" : "py-2"
                   }`}
                   onClick={toggle}
                   aria-expanded={isOpen}
@@ -254,14 +258,50 @@ function ThreadBody({
                       {formatListDate(m.internalDate)}
                     </span>
                   </div>
-                  <Fold open={isOpen}>
-                    <div className="truncate pl-10 text-xs text-content/45">
-                      {m.from.email} → {m.to.map((a) => displayName(a, selfEmails)).join(", ")}
-                      {m.cc.length > 0 &&
-                        `, cc ${m.cc.map((a) => displayName(a, selfEmails)).join(", ")}`}
-                    </div>
-                  </Fold>
                 </button>
+                {/* Who it went to, cut off to one line; Details shows
+                  everyone in full (a sent email's long list couldn't
+                  be read without widening the window). Outside the button
+                  above, which a button can't hold. */}
+                <Fold open={isOpen}>
+                  <div className="px-4 pb-3 text-xs text-content/45" style={{ zoom }}>
+                    <div className="flex items-baseline gap-2 pl-10">
+                      <div className="min-w-0 flex-1 truncate">
+                        {m.from.email} → {m.to.map((a) => displayName(a, selfEmails)).join(", ")}
+                        {m.cc.length > 0 &&
+                          `, cc ${m.cc.map((a) => displayName(a, selfEmails)).join(", ")}`}
+                      </div>
+                      <button
+                        type="button"
+                        className="shrink-0 rounded px-1 text-content/55 hover:bg-selection hover:text-content"
+                        aria-expanded={detailed.has(m.id)}
+                        aria-controls={`details-${m.id}`}
+                        onClick={() =>
+                          setDetailed((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(m.id)) next.delete(m.id);
+                            else next.add(m.id);
+                            return next;
+                          })
+                        }
+                      >
+                        Details
+                      </button>
+                    </div>
+                    <Fold open={detailed.has(m.id)}>
+                      <dl id={`details-${m.id}`} className="selectable space-y-1 pt-2 pl-10">
+                        {detailLines(m).map((line) => (
+                          <div key={line.label} className="flex gap-2">
+                            <dt className="w-7 shrink-0 text-content/45">{line.label}</dt>
+                            <dd className="min-w-0 break-words text-content/75">
+                              {line.people.join(", ")}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </Fold>
+                  </div>
+                </Fold>
                 {/* Stays loaded after the first open, so closing animates too. */}
                 <Fold open={isOpen}>
                   {opened.has(m.id) && (
