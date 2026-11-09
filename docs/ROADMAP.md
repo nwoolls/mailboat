@@ -4213,8 +4213,9 @@ One pull request each.
 
 - [x] A sent email's full recipient list can't be seen without resizing
       *(2026-11-08: fixed; see the Bug backlog entry)*
-- [ ] A summary's first bullet repeats the prompt's own example (needs a test
-      that fails when a bullet repeats the label or the example)
+- [x] A summary's first bullet repeats the prompt's own example (needs a test
+      that fails when a bullet repeats the label or the example) *(2026-11-08:
+      fixed; see the Bug backlog entry)*
 - [ ] Email images show larger than in Gmail
 - [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
       the email; an agent works from a made-up fixture of the same shape,
@@ -4343,8 +4344,9 @@ again until the next spike.*
       browser: the owner to try the swipe on macOS, and on a Windows
       touchpad)*
 
-- [ ] A summary's first bullet repeats the prompt's own example
-      *(owner report, 2026-11-06, with a screenshot)*: the summary of a
+- [x] A summary's first bullet repeats the prompt's own example
+      *(owner report, 2026-11-06, with a screenshot; fixed 2026-11-08, see
+      below)*: the summary of a
       marketing email began with the bullet `Newest message: "Sounds
       good."`, though nothing in the email says it; another summary began
       with a bullet reading just "Agreed". The rest of the summary was
@@ -4364,6 +4366,14 @@ again until the next spike.*
       conversations of two or more). Nothing from the email is needed
       to reproduce it: a made-up thread with a long first message and a
       one-line reply will do
+      *(Fixed 2026-11-08: the summary instructions no longer quote an
+      example reply or name the label, and ask for the conversation in the
+      model's own words; the newest message is marked in its date line
+      (`Date: … (latest message)`, `context::LATEST_MARK`) instead of a
+      "Newest message:" line of its own. A test fails if the instructions or
+      the text hold the old example or label. Whether Apple's model now
+      stops copying can't be checked offline: the owner to try with a short
+      reply on a long email, and an email with a single message)*
 
 - [ ] A sign-in code in a verification email isn't surfaced, and its
       summaries are wrong *(owner report, 2026-11-04)*: an identity
