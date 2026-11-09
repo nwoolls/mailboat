@@ -4220,7 +4220,9 @@ One pull request each.
 - [ ] Email images show larger than in Gmail
 - [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
       the email; an agent works from a made-up fixture of the same shape,
-      never the real one)
+      never the real one) *(2026-11-08: detection fixed; the list row,
+      the macOS banner and the two summary problems are still open: see the
+      Bug backlog entry)*
 - [x] A sideways swipe on the trackpad drags the whole app *(2026-11-08:
       fixed; see the Bug backlog entry)*
 - [ ] Bug: the screenshot zoom flashes at full size before it animates (the
@@ -4392,6 +4394,25 @@ again until the next spike.*
       builds a made-up fixture with the same structure (an invented sender
       on a reserved domain, the same layout and wording shape) for the
       test. Nothing from the real email goes into the repository
+      *(2026-11-08: detection fixed, working from the owner's email read
+      locally; nothing of it is kept here, and the tests use a made-up email
+      of the same shape. The email set a bare number at the top beside a
+      button's label, a tracking link of several hundred characters followed,
+      and the only wording was a line saying the code expires, which no code
+      word matched; the link also used up most of the 800 characters the
+      detector reads. Now links are left out of the text first, a line
+      saying a code expires makes the nearest number within 250 bytes a
+      code (only under a subject with "verify" or "verification" in it,
+      and not near words for lockers, tickets, bookings, parking or the
+      like, so that mail isn't caught), and a subject
+      that only hints at verification makes the body worth downloading
+      (`subject_hints_code`), so the in-window notice shows it. Still open:
+      the list row's pill and the macOS banner read only Gmail's snippet, which for this shape holds the number and the
+      start of the link but not the expiry line, so they still show no code;
+      and the two summary problems (the list line saying nothing was needed,
+      and the full summary refused by Apple's safety guardrails), where the
+      long tracking links in the text the model reads are a suspect, not a
+      finding)*
 - [x] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01; fixed 2026-11-08, see below)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the

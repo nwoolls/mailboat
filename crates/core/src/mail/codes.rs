@@ -43,6 +43,27 @@ const CODE_WORDS: &[&str] = &[
     "your code is",
 ];
 
+/// Words that say a code is short-lived, for emails that name no kind of
+/// code ("This code will expire in 10 minutes") and set the number apart,
+/// often with only a button's label beside it. Only the words, never the
+/// number they sit near, make it a code.
+const EXPIRY_CUES: &[&str] = &[
+    "this code will expire",
+    "this code expires",
+    "this code is valid for",
+    "this code is only valid",
+    "the code will expire",
+    "the code expires",
+    "code will expire in",
+    "code expires in",
+    "code is valid for",
+];
+
+/// How far from an expiry cue a number may stand and still be its code, in
+/// bytes of the text (about as many characters, for the mostly ASCII text of
+/// these emails).
+const CUE_REACH: usize = 250;
+
 /// Codes come first in these emails; looking further only finds numbers
 /// in the small print.
 const BODY_LIMIT: usize = 800;
@@ -71,6 +92,33 @@ const NOT_SIGN_IN: &[&str] = &[
     "dial",
     "conference",
 ];
+
+/// More words that rule a number out, for the expiry cue only. A cue is
+/// weaker evidence than a code word, and the same line sits in mail about
+/// codes that open or claim something. Kept apart from `NOT_SIGN_IN`, which
+/// the code-word path also uses: there, "your ticket account verification
+/// code is 4831" is a sign-in code.
+const CUE_NOT_SIGN_IN: &[&str] = &[
+    "locker",
+    "parking",
+    "pickup",
+    "pick-up",
+    "parcel",
+    "wi-fi",
+    "wifi",
+    "ticket",
+    "entry code",
+    "door code",
+    "gift card",
+    "room code",
+    "booking",
+    "reservation",
+    "luggage",
+    "reference",
+];
+
+/// How far either list's words reach around a number on the cue path.
+const CUE_EXCLUDE_REACH: usize = 80;
 
 /// A word that's only an HTML entity, like "&zwnj;" or "&#8204;".
 fn is_entity(word: &str) -> bool {
@@ -106,9 +154,10 @@ pub fn find(subject: &str, text: &str) -> Option<String> {
     if NOT_A_CODE.iter().any(|p| s.starts_with(p)) {
         return None;
     }
-    // Preheader padding (invisible joiners and spaces) can push the code
-    // past the limit; leave it out first.
-    let visible: String = text
+    // Links (tracking links run to hundreds of characters) and preheader
+    // padding (invisible joiners and spaces) can push the code past the
+    // limit; leave them out first.
+    let visible: String = strip_links(text)
         .chars()
         .filter(|c| {
             !matches!(
@@ -131,6 +180,15 @@ pub fn find(subject: &str, text: &str) -> Option<String> {
             return Some(code);
         }
     }
+    // No word names the code, but the email says it expires soon, with a
+    // number set apart nearby. Only when the subject already points to a
+    // verification or code: an expiry line alone also sits in mail about
+    // lockers, parking, tickets and meeting passcodes.
+    if subject_unlocks_cue(subject) {
+        if let Some(code) = near_expiry_cue(text) {
+            return Some(code);
+        }
+    }
     // The subject says it's a code but the body sets it apart, sentences
     // away ("…expire in 15 minutes. 320641", Disney+): the code-like
     // number nearest the word "code".
@@ -145,6 +203,97 @@ pub fn find(subject: &str, text: &str) -> Option<String> {
             .map(|(_, code)| code);
     }
     None
+}
+
+/// `text` without its web addresses (up to the next space, line break,
+/// quote, angle bracket or comma, less any closing punctuation). A link is
+/// never a code, and a long one hides what follows. One pass: each address
+/// is found by "http" and checked, and the search carries on after it.
+fn strip_links(text: &str) -> String {
+    let lower = text.to_ascii_lowercase();
+    let mut out = String::with_capacity(text.len());
+    let mut from = 0;
+    while let Some(at) = lower[from..].find("http").map(|i| from + i) {
+        let after = &lower[at + 4..];
+        let scheme = if after.starts_with("://") {
+            7
+        } else if after.starts_with("s://") {
+            8
+        } else {
+            // "http" in a word: not an address; look on past it.
+            out.push_str(&text[from..at + 4]);
+            from = at + 4;
+            continue;
+        };
+        out.push_str(&text[from..at]);
+        let rest = &text[at + scheme..];
+        let end = rest
+            .find(|c: char| c.is_whitespace() || matches!(c, '"' | '<' | '>' | ','))
+            .unwrap_or(rest.len());
+        // Closing punctuation belongs to the sentence, not the address.
+        let link = rest[..end].trim_end_matches(['.', ';', ':', '!', '?', ')', ']', '}', '\'']);
+        out.push(' ');
+        from = at + scheme + link.len();
+    }
+    out.push_str(&text[from..]);
+    out
+}
+
+/// Whether the number at `at` is a length of time or a count ("in 1500
+/// minutes", "for 3 days"): an expiry line holds one, and it is never the code.
+fn is_duration(lower: &str, at: usize, code: &str) -> bool {
+    // The token's end in the text: `code` has its inner spaces removed.
+    let mut wanted = code.chars().filter(|c| !c.is_whitespace()).count();
+    let mut end = at;
+    for (i, c) in lower[at..].char_indices() {
+        if wanted == 0 {
+            break;
+        }
+        if !c.is_whitespace() {
+            wanted -= 1;
+        }
+        end = at + i + c.len_utf8();
+    }
+    // The word right after the number, whole: "mins", "days", not "daylight".
+    let word = lower[end..]
+        .trim_start()
+        .split(|c: char| !c.is_alphabetic())
+        .next()
+        .unwrap_or("");
+    [
+        "s", "sec", "secs", "second", "seconds", "min", "mins", "minute", "minutes", "h", "hr",
+        "hrs", "hour", "hours", "day", "days", "week", "weeks", "month", "months",
+    ]
+    .contains(&word)
+}
+
+/// The code-like number nearest an expiry cue ("This code will expire in 10
+/// minutes"), within `CUE_REACH`, unless the cue is about a promo or the
+/// like.
+fn near_expiry_cue(text: &str) -> Option<String> {
+    let lower = text.to_ascii_lowercase();
+    // The offsets below are `text`'s only if lowering kept its length.
+    if lower.len() != text.len() {
+        return None;
+    }
+    let cues: Vec<usize> = EXPIRY_CUES
+        .iter()
+        .flat_map(|cue| lower.match_indices(cue).map(|(i, _)| i))
+        .filter(|&i| !cue_excluded(&lower, i))
+        .collect();
+    if cues.is_empty() {
+        return None;
+    }
+    candidates(text)
+        .into_iter()
+        .filter(|(at, _)| !cue_excluded(&lower, *at))
+        .filter(|(at, code)| !is_duration(&lower, *at, code))
+        .filter_map(|(at, code)| {
+            let reach = cues.iter().map(|c| c.abs_diff(at)).min()?;
+            (reach <= CUE_REACH).then_some((reach, code))
+        })
+        .min_by_key(|(reach, _)| *reach)
+        .map(|(_, code)| code)
 }
 
 fn find_in(text: &str, about_code: bool) -> Option<String> {
@@ -201,10 +350,20 @@ fn is_whole_word(lower: &str, at: usize, len: usize) -> bool {
 }
 
 fn sign_in_excluded(lower: &str, at: usize) -> bool {
-    let start = floor_boundary(lower, at.saturating_sub(30));
-    let end = ceil_boundary(lower, (at + 30).min(lower.len()));
+    near_any(lower, at, 30, NOT_SIGN_IN)
+}
+
+/// On the cue path: either list's words, further out.
+fn cue_excluded(lower: &str, at: usize) -> bool {
+    near_any(lower, at, CUE_EXCLUDE_REACH, NOT_SIGN_IN)
+        || near_any(lower, at, CUE_EXCLUDE_REACH, CUE_NOT_SIGN_IN)
+}
+
+fn near_any(lower: &str, at: usize, reach: usize, words: &[&str]) -> bool {
+    let start = floor_boundary(lower, at.saturating_sub(reach));
+    let end = ceil_boundary(lower, (at + reach).min(lower.len()));
     let near = &lower[start..end];
-    NOT_SIGN_IN.iter().any(|w| near.contains(w))
+    words.iter().any(|w| near.contains(w))
 }
 
 /// Up to `len` bytes after (or before) `at`, stopping at the end of the
@@ -388,11 +547,43 @@ pub fn in_messages(
                 sender: name.filter(|n| !n.trim().is_empty()).unwrap_or(email),
                 subject,
             }),
-            None if !has_body && subject_says_code(&subject) => needs_body.push(m),
+            None if !has_body && (subject_says_code(&subject) || subject_hints_code(&subject)) => {
+                needs_body.push(m)
+            }
             None => {}
         }
     }
     Ok((found, needs_body))
+}
+
+/// Whether the subject lets an expiry line in the body count: it says there
+/// is a code, or points to a verification ("verify", "verification"; not
+/// "passcode" or "one-time", which also name meeting and access codes).
+fn subject_unlocks_cue(subject: &str) -> bool {
+    let s = subject.to_ascii_lowercase();
+    let points = ["verify", "verification"].iter().any(|w| s.contains(w))
+        && !NOT_SIGN_IN.iter().any(|w| s.contains(w))
+        && !CUE_NOT_SIGN_IN.iter().any(|w| s.contains(w))
+        && !["re:", "fw:", "fwd:"]
+            .iter()
+            .any(|p| s.trim_start().starts_with(p));
+    points || subject_says_code(subject)
+}
+
+/// The subject only hints that the email may hold a sign-in code ("Please
+/// verify your address"). Never a claim: it makes the body worth downloading
+/// to look for one, and lets an expiry line in the body count; the body has
+/// to say so itself. "Verified" and "unverified" don't hint.
+pub fn subject_hints_code(subject: &str) -> bool {
+    let s = subject.to_ascii_lowercase();
+    ["verify", "verification", "one-time", "one time", "passcode"]
+        .iter()
+        .any(|w| s.contains(w))
+        && !NOT_SIGN_IN.iter().any(|w| s.contains(w))
+        && !CUE_NOT_SIGN_IN.iter().any(|w| s.contains(w))
+        && !["re:", "fw:", "fwd:"]
+            .iter()
+            .any(|p| s.trim_start().starts_with(p))
 }
 
 /// The subject says the email holds a sign-in code.
@@ -472,6 +663,353 @@ mod tests {
         for (subject, text) in cases {
             assert_eq!(find(subject, text), None, "{subject} / {text}");
         }
+    }
+
+    /// A made-up email shaped like one the owner reported: the number alone
+    /// at the top with a button's label beside it, a link of hundreds of
+    /// characters, and only then a line saying the code expires. Nothing in
+    /// it names the kind of code.
+    fn link() -> String {
+        format!(
+            "http://links.x.example/ls/click?upn={}",
+            "Ab3d-2B".repeat(130)
+        )
+    }
+
+    fn set_apart_text() -> String {
+        format!(
+            " 4821 or Confirm Address ( {} )\n\nNote: this code expires in 15 minutes. If this wasn't you, ignore this message.\nNobody reads replies sent to this mailbox.\n\nSent by Example Mail Checks\n{} ( {} )",
+            link(),
+            link(),
+            link()
+        )
+    }
+
+    const SET_APART_SUBJECT: &str = "Please verify your address";
+
+    #[test]
+    fn finds_a_code_set_apart_with_only_an_expiry_line() {
+        assert_eq!(
+            find(SET_APART_SUBJECT, &set_apart_text()),
+            Some("4821".into())
+        );
+    }
+
+    #[test]
+    fn finds_it_in_the_html_too() {
+        let html = format!(
+            "<html><head><style>body {{ font-size: 14px; }}</style></head><body><table>\
+             <tr><td><img src=\"https://img.x.example/logo\"/></td></tr>\
+             <tr><td class=\"big\">4821</td></tr><tr><td>or</td></tr>\
+             <tr><td><a href=\"{}\">Confirm Address</a></td></tr>\
+             <tr><td>Note:</td></tr>\
+             <tr><td>This code expires in 15 minutes.</td></tr>\
+             <tr><td>If this wasn't you, ignore this message.</td></tr>\
+             </table></body></html>",
+            link()
+        );
+        let text = crate::gmail::parse::html_to_text(&html);
+        assert_eq!(find(SET_APART_SUBJECT, &text), Some("4821".into()));
+    }
+
+    #[test]
+    fn a_long_link_does_not_hide_the_code_words_behind_it() {
+        let text = format!(
+            "Open the page ( {} ) to continue.\nYour verification code is 5512",
+            link()
+        );
+        assert!(text.len() > BODY_LIMIT);
+        assert_eq!(find("", &text), Some("5512".into()));
+    }
+
+    #[test]
+    fn an_expiry_line_alone_does_not_make_a_number_a_code() {
+        let far = format!(
+            "1234 {}This code will expire in 10 minutes",
+            "word ".repeat(120)
+        );
+        let cases = [
+            (
+                "Your coupon",
+                "Use coupon SAVE2026X. This code will expire in 10 days.",
+            ),
+            (
+                "Your offer",
+                "Take 15% off with the discount code SPRING24. This code will expire on Friday.",
+            ),
+            (
+                "Order shipped",
+                "Order 48213 shipped. Tracking number 77120934 is on its way.",
+            ),
+            ("Welcome", "This code will expire in 10 minutes"),
+            ("Email verification", far.as_str()),
+            (
+                "Invitation: Standup",
+                "Dial in with 482913. This code will expire in 10 minutes.",
+            ),
+        ];
+        for (subject, text) in cases {
+            assert_eq!(find(subject, text), None, "{subject} / {text:.40}");
+        }
+    }
+
+    /// The expiry line alone must not make a number a code: it also sits in
+    /// mail about lockers, parking, tickets, gift cards and meeting
+    /// passcodes. It counts only when the subject points to a verification.
+    #[test]
+    fn an_expiry_line_counts_only_under_a_subject_that_points_to_a_verification() {
+        let without_a_hint = [
+            ("Your locker pickup", "Locker code 4821 is ready.\nThis code expires in 3 days."),
+            ("Delivery access", "Door code for the courier: 551234\nThis code is valid for today only."),
+            ("Parking permit", "Your parking code 99102\nThe code expires at 6pm."),
+            ("Gift card ready", "Card code 847291.\nThanks for shopping.\nThis code is valid for 90 days."),
+            ("Your tickets", "Event entry code: 229184\nShow this at the door.\nThis code expires after the event."),
+            ("Order ready for pickup", "Pick-up code: 4410\nThis code will expire in 2 hours."),
+            ("Guest Wi-Fi", "WiFi code 33881\nThis code expires when you check out."),
+            ("Member reward", "Use 7721 at checkout. Terms apply to every order placed this season, in store or online. This code will expire in 10 days."),
+            // A meeting passcode, with no "Invitation:" and nothing near it.
+            ("Standup tomorrow", "Access code: 482913\n\nJoin five minutes early if you can.\nThis code will expire in 10 minutes."),
+        ];
+        for (subject, text) in without_a_hint {
+            assert_eq!(find(subject, text), None, "{subject}");
+        }
+        // The same body under a subject that points to a verification.
+        assert_eq!(
+            find(
+                "Please verify your address",
+                "Access code: 482913\n\nJoin five minutes early if you can.\nThis code will expire in 10 minutes."
+            ),
+            Some("482913".into())
+        );
+        // And a hinting subject still doesn't override what the words near the number say.
+        for (subject, text) in [
+            (
+                "Please verify",
+                "Locker code 4821 is ready.\nThis code expires in 3 days.",
+            ),
+            (
+                "Please verify",
+                "Gift card 847291 is yours.\nThis code is valid for 90 days.",
+            ),
+        ] {
+            assert_eq!(find(subject, text), None, "{subject} / {text:.30}");
+        }
+    }
+
+    /// Words that only the expiry cue needs to rule out must not cost the
+    /// code-word path a code it found before ("your ticket account
+    /// verification code is …").
+    #[test]
+    fn the_cue_s_extra_exclusions_leave_the_code_word_path_alone() {
+        for (subject, text) in [
+            ("Welcome", "Your ticket account verification code is 4831."),
+            (
+                "",
+                "Have your ticket ready. Your verification code is 4831.",
+            ),
+            ("", "Acme Locker Co verification code: 4831"),
+            ("", "Your parking garage verification code is 4831"),
+            ("", "Connect to wifi first. Your login code is 4831."),
+        ] {
+            assert_eq!(find(subject, text), Some("4831".into()), "{text}");
+        }
+    }
+
+    /// A subject that points to a verification still doesn't turn a booking,
+    /// a room or an access code into a sign-in code, and only "verify" and
+    /// "verification" unlock the cue: "passcode" and "one-time" also name
+    /// meeting and access codes.
+    #[test]
+    fn a_pointing_subject_does_not_turn_other_codes_into_sign_in_codes() {
+        let meeting = "Access code: 482913\n\nJoin five minutes early if you can.\nThis code will expire in 10 minutes.";
+        for (subject, text) in [
+            ("Please verify", "Your booking is ready. Collect your luggage at the desk. 4821\nThis code expires in 3 days."),
+            ("Please verify your visit", "Room code 5512\nThis code expires in 2 hours."),
+            ("Verify your reservation", "Booking reference 884421\nThis code will expire in 24 hours if unused."),
+            ("Standup passcode", meeting),
+            ("Your passcode for today", "551234\nThis code is valid for today only."),
+            ("Your one-time access", "551234\nThis code is valid for today only."),
+        ] {
+            assert_eq!(find(subject, text), None, "{subject} / {text:.30}");
+        }
+        // Whereas the same shape under a plain verification subject is a code.
+        assert_eq!(
+            find(
+                "Please verify your address",
+                "551234\nThis code is valid for today only."
+            ),
+            Some("551234".into())
+        );
+    }
+
+    /// Abbreviated units count as a length of time, as whole words.
+    #[test]
+    fn abbreviated_times_are_times_too() {
+        let subject = "Please verify your address";
+        for text in [
+            "This code expires in 1500 mins.",
+            "This code expires in 1500 hrs.",
+            "This code expires in 9000 secs.",
+        ] {
+            assert_eq!(find(subject, text), None, "{text}");
+        }
+        // A word that only starts like a unit ("daylight") doesn't make it one.
+        assert_eq!(
+            find(
+                subject,
+                "Code: 4821 daylight. This code expires soon, in the evening."
+            ),
+            Some("4821".into()),
+        );
+    }
+
+    /// The length of time in the expiry line is never the code.
+    #[test]
+    fn the_time_in_an_expiry_line_is_not_the_code() {
+        let subject = "Please verify your address";
+        for text in [
+            "Access is available now. This code expires in 1500 minutes. Your code: 4831",
+            "Your code: 4831. Access is available now. This code expires in 1500 minutes.",
+            "Code 4831 (good for 2 hours)\nThis code will expire in 120 minutes.",
+        ] {
+            assert_eq!(find(subject, text), Some("4831".into()), "{text}");
+        }
+        assert_eq!(
+            find(
+                subject,
+                "Access is available now. This code expires in 1500 minutes."
+            ),
+            None
+        );
+    }
+
+    /// A link comes out; the sentence around it stays.
+    #[test]
+    fn links_leave_the_words_beside_them() {
+        for (text, code) in [
+            ("Read https://x.example,verification code 4831", "4831"),
+            (
+                "Go to https://x.example/a/b. Your verification code is 5512",
+                "5512",
+            ),
+            ("(https://x.example/p) Your login code is 7781", "7781"),
+            (
+                "See <https://x.example/q> then use your login code 9034",
+                "9034",
+            ),
+            ("the xhttp5555 page. Your login code is 8811", "8811"),
+            ("HTTPS://X.EXAMPLE/Z Your verification code: 6120", "6120"),
+        ] {
+            assert_eq!(find("", text), Some(code.into()), "{text}");
+        }
+        assert!(!strip_links("a https://x.example/long?q=1 b").contains("example"));
+        assert_eq!(
+            strip_links("no links, http alone, https:// or httpx"),
+            "no links, http alone, https:// or httpx".replace("https://", " ")
+        );
+    }
+
+    /// Taking out links is one pass: a body of tens of thousands of them
+    /// (the database is held while it is read) takes no time to read.
+    #[test]
+    fn a_body_of_thousands_of_links_is_read_in_one_pass() {
+        let body = "see http://a.example/x ".repeat(50_000);
+        let started = std::time::Instant::now();
+        let stripped = strip_links(&body);
+        assert!(started.elapsed() < std::time::Duration::from_secs(3));
+        assert!(!stripped.contains("example"));
+        assert_eq!(find("Please verify", &body), None);
+    }
+
+    #[test]
+    fn a_subject_that_hints_at_a_code_is_worth_a_look_but_never_a_claim() {
+        for yes in [
+            "Please verify your address",
+            "Verify your email",
+            "Your one-time link",
+            "Confirm: passcode inside",
+        ] {
+            assert!(subject_hints_code(yes), "{yes}");
+        }
+        for no in [
+            "Weekly digest",
+            "Account verified successfully",
+            "UNVERIFIED sender report",
+            "Re: email verification",
+            "Fwd: Verify your email",
+            "Verify your coupon offer",
+            "Invitation: verification meeting",
+        ] {
+            assert!(!subject_hints_code(no), "{no}");
+        }
+        // And a hint alone finds nothing.
+        assert_eq!(find("Verify your email", "Click the button below."), None);
+    }
+
+    #[test]
+    fn a_hinting_subject_asks_for_the_body_and_then_finds_the_code() {
+        use crate::db::store::{
+            set_body, upsert_thread, IncomingMessage, IncomingThread, StoredBody,
+        };
+        use crate::db::{accounts, Db};
+        use crate::model::Address;
+        let db = Db::open_in_memory().unwrap();
+        let account = accounts::upsert(
+            &db.conn(),
+            &accounts::NewAccount {
+                google_sub: "a",
+                email: "a@x.example",
+                display_name: None,
+                avatar_url: None,
+                oauth_client: "default",
+            },
+        )
+        .unwrap()
+        .id;
+        let mut conn = db.conn();
+        upsert_thread(
+            &mut conn,
+            account,
+            &IncomingThread {
+                gmail_thread_id: "t1".into(),
+                messages: vec![IncomingMessage {
+                    gmail_message_id: "m1".into(),
+                    label_ids: vec!["INBOX".into()],
+                    internal_date: crate::db::now_millis(),
+                    subject: SET_APART_SUBJECT.into(),
+                    // What Gmail's snippet holds of it: the number and a link.
+                    snippet: format!(" 4821 or Confirm Address ( {:.60}", link()),
+                    from: Some(Address {
+                        name: None,
+                        email: "noreply@verify.x.example".into(),
+                    }),
+                    ..Default::default()
+                }],
+            },
+        )
+        .unwrap();
+        let m: MessageId = conn
+            .query_row("SELECT id FROM messages", [], |r| r.get(0))
+            .unwrap();
+        // Before the body: nothing to show, but worth downloading it.
+        let (found, needs_body) = in_messages(&conn, &[m]).unwrap();
+        assert!(found.is_empty());
+        assert_eq!(needs_body, vec![m]);
+        // With it: the code.
+        set_body(
+            &mut conn,
+            m,
+            &StoredBody {
+                html: None,
+                text: Some(set_apart_text()),
+            },
+            &[],
+        )
+        .unwrap();
+        let (found, needs_body) = in_messages(&conn, &[m]).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].code, "4821");
+        assert!(needs_body.is_empty());
     }
 
     #[test]
