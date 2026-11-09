@@ -4221,9 +4221,9 @@ One pull request each.
 - [ ] A sideways swipe on the trackpad drags the whole app
 - [ ] Bug: the screenshot zoom flashes at full size before it animates (the
       website; a browser test with an empty cache and a slowed network)
-- [ ] The browser test "starfield paints a night sky and lightens the words"
+- [x] The browser test "starfield paints a night sky and lightens the words"
       that failed once (done in the same browser-test session as the zoom
-      flash)
+      flash) *(2026-11-08: fixed; see the Bug backlog entry)*
 - [ ] Periodically refresh each account's Google profile image. First
       confirm it uses the request and permission the app already has; if it
       needs anything new, it moves to "Held or later"
@@ -4372,11 +4372,20 @@ again until the next spike.*
       Mail have. Not investigated yet; likely the header's fixed one-line
       layout
 
-- [ ] The browser test "starfield paints a night sky and lightens the
+- [x] The browser test "starfield paints a night sky and lightens the
       words" (`screensaver-night.spec.ts`) failed once in a full check
       (2026-10-31: a brightness reading over its limit, `toBeLessThan`),
       then passed 3 runs of 3 alone and in the next full check. Look into
       whether it measures before the sky is painted
+      *(Fixed 2026-11-08: it wasn't measuring too early. Repeated 40 times
+      it failed once, reading a lightness of 191 where the sky is dark: the
+      test read one pixel, and a star can sit on any single pixel for a
+      frame. It now takes the median of an 11 by 11 patch, which a star
+      covering a few pixels can't move. Repeated 240 times, one more run
+      failed, on the canvas not showing: the screensaver listens for the
+      test's start event from an effect, which can run after the words are
+      on screen, so an early event is lost. The test now sends it again until
+      the canvas is up)*
 
 - [x] On Windows in dark mode, the From list in a new message is hard to
       read *(owner report, 2026-10-29, with a screenshot)*: the two
