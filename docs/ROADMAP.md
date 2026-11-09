@@ -4415,7 +4415,13 @@ again until the next spike.*
       ended: CI's trace showed a click that took 467 ms); the inline
       reply's checks wait for it to settle (polling, up to 10 seconds)
       instead of after a fixed wait. Under heavy CPU load the file failed
-      2 of 24 runs before and passed 24 of 24 after
+      2 of 24 runs before and passed 24 of 24 after. A third test, in
+      `reply-scroll.spec.ts` ("Reply with AI, 360px reader"), failed in CI on
+      another pull request, with the reply 397 px below the reader after a
+      fixed 2.5-second wait for its smooth scroll; it now polls until the
+      reply is in view (up to 15 seconds) and then checks it stays there.
+      That one could not be made to fail locally, even under load, so its fix
+      rests on the CI log, not on a reproduction
 
 - [x] On Windows in dark mode, the From list in a new message is hard to
       read *(owner report, 2026-10-29, with a screenshot)*: the two
