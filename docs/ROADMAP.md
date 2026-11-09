@@ -4219,7 +4219,8 @@ One pull request each.
 - [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
       the email; an agent works from a made-up fixture of the same shape,
       never the real one)
-- [ ] A sideways swipe on the trackpad drags the whole app
+- [x] A sideways swipe on the trackpad drags the whole app *(2026-11-08:
+      fixed; see the Bug backlog entry)*
 - [ ] Bug: the screenshot zoom flashes at full size before it animates (the
       website; a browser test with an empty cache and a slowed network)
 - [x] The browser test "starfield paints a night sky and lightens the words"
@@ -4319,8 +4320,8 @@ again until the next spike.*
       Mailboat data" stays reachable from the same page, and the mail pane
       shows an empty state that points back to Settings
 
-- [ ] A sideways swipe on the trackpad drags the whole app *(owner report,
-      2026-11-06)*: with nothing left in the inbox (inbox zero), swiping
+- [x] A sideways swipe on the trackpad drags the whole app *(owner report,
+      2026-11-06; fixed 2026-11-08, see below)*: with nothing left in the inbox (inbox zero), swiping
       side to side pulls the entire app's contents sideways inside the
       window, as if the page were scrollable; other apps don't do this. It
       matters most when archiving by swipe: the swipe archives the message,
@@ -4333,6 +4334,14 @@ again until the next spike.*
       check on macOS first, and on Windows' touchpad too. A browser test
       could assert that a sideways wheel event with an empty list moves
       nothing
+      *(Fixed 2026-11-08: `overscroll-behavior: none` on the root, for every
+      platform (Windows had it already), so what a list leaves over when a
+      swipe archives its last row no longer rubber-bands the page. A browser
+      test checks the root's overscroll setting, that the page doesn't scroll
+      sideways, and that a sideways wheel over an empty list moves nothing; it
+      fails without the rule. The bounce itself can't be made in a headless
+      browser: the owner to try the swipe on macOS, and on a Windows
+      touchpad)*
 
 - [ ] A summary's first bullet repeats the prompt's own example
       *(owner report, 2026-11-06, with a screenshot)*: the summary of a
