@@ -28,10 +28,20 @@ for (const height of [640, 360])
       }, height);
       await page.getByRole("button", { name: button, exact: true }).click();
       await expect(page.locator('section[aria-label="Reply"]')).toBeVisible();
-      // Long enough for the smooth scroll and the panel's reveal to finish.
-      await page.waitForTimeout(2500);
+      // The smooth scroll and the panel's reveal take a moment, longer on a
+      // slow machine (CI): not a fixed wait then one look (it once found the
+      // reply 397 px above the reader mid-scroll), but polled until the reply
+      // is in view: its end (the Send button) always, all of it when it fits.
+      const inView = async () => {
+        const { top, bottom, fits } = await replyInView(page);
+        return bottom >= -1 && (!fits || top >= -1);
+      };
+      await expect
+        .poll(inView, { message: "the reply scrolls into view", timeout: 15_000 })
+        .toBe(true);
+      // And it stays there: a scroll that overshot or came back would show now.
+      await page.waitForTimeout(600);
       const { top, bottom, fits } = await replyInView(page);
-      // The end of the reply (its Send button) always shows.
       expect(bottom).toBeGreaterThanOrEqual(-1);
       if (fits) expect(top).toBeGreaterThanOrEqual(-1);
     });
