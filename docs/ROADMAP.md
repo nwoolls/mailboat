@@ -3593,7 +3593,7 @@ published the same day through the same workflow (`docs/DEVELOPMENT.md`,
       in the password manager and the `release` environment. Decided with the
       owner: the app looks at launch and about daily, on by default with a
       switch, and never installs without a click (open drafts are saved
-      first); no update channel yet. The unsigned manifest's release notes are
+      first); no update channel at first (Beta channel added 2026-11-09, below). The unsigned manifest's release notes are
       not shown, and `requireSignedVersion` is on, so a crafted manifest can't
       force a downgrade. Checked 2026-11-05 with a throwaway key: Tauri's
       signature carries `version:`, and both the Mac tarball and a signed
@@ -3604,6 +3604,22 @@ published the same day through the same workflow (`docs/DEVELOPMENT.md`,
       0.0.1 reported up to date on the Mac and Windows ARM64, then found
       0.0.2 and installed it (a button press on the Mac, the launch-time
       notice on Windows). Windows x64 isn't tried on a real PC)*
+- [x] Beta update channel *(owner request, 2026-11-09: to try an update
+      end to end before shipping it, without a development build or a
+      manual install)*: Settings → About → "Update channel", Stable by
+      default. Beta also offers test versions (`v0.2.0-beta.1`, which the
+      release workflow already marks as a pre-release). Built 2026-11-09:
+      the app reads `getmailboat.app/updates/beta/latest.json` instead of
+      the Stable address, and the new `update-channel.yml` workflow copies
+      each published release's `latest.json` to a fixed `updates-beta`
+      release, so a Beta install is also offered a finished release once it
+      is newer than the test version in use. Choosing Stable again never
+      downgrades. Two steps are the owner's, outside the repository: a
+      second Cloudflare redirect rule (302) from `/updates/beta/latest.json`
+      to `https://github.com/<owner>/<repo>/releases/download/updates-beta/latest.json`,
+      and, once, trying a first pre-release (see `docs/DEVELOPMENT.md` →
+      Updates, "Trying an update before shipping it"). Not yet verified:
+      whether the Windows installers accept a pre-release version.
 - [x] Version numbers and changelog *(owner, 2026-10-25: semversioner
       if that's the usual thing, or the option and alternatives)*.
       Semantic versioning (1.4.2: big, feature, fix) is the convention,

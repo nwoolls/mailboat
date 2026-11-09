@@ -24,6 +24,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
+use mail_core::settings::UpdateChannel;
 use mail_core::CoreError;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -104,13 +105,50 @@ fn friendly(e: tauri_plugin_updater::Error) -> CoreError {
     CoreError::Other(words)
 }
 
+/// The address of the manifest the Beta channel reads: the Stable one in
+/// `tauri.conf.json` with `beta/` before the file name. Like it, a redirect
+/// rule on the project's own domain, to a file the release workflow keeps
+/// current (`update-channel.yml`): the newest published release, test
+/// versions included.
+fn beta_endpoint(stable: &str) -> Option<String> {
+    let (folder, file) = stable.rsplit_once('/')?;
+    stable
+        .starts_with("https://")
+        .then(|| format!("{folder}/beta/{file}"))
+}
+
+/// The Stable address, as configured for the updater plugin.
+fn stable_endpoint() -> Option<String> {
+    let conf: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json")).ok()?;
+    Some(
+        conf["plugins"]["updater"]["endpoints"][0]
+            .as_str()?
+            .to_string(),
+    )
+}
+
+/// The channel the person chose. A settings problem means Stable, the one
+/// that can't surprise anybody.
+fn channel(app: &AppHandle) -> UpdateChannel {
+    let Some(state) = app.try_state::<AppState>() else {
+        return UpdateChannel::Stable;
+    };
+    let settings = mail_core::settings::load(&state.db.conn());
+    settings.map(|s| s.update_channel).unwrap_or_default()
+}
+
 async fn look(app: &AppHandle) -> Result<Option<Update>, CoreError> {
     ensure_enabled(app)?;
-    let updater = app
-        .updater_builder()
-        .timeout(REQUEST_TIMEOUT)
-        .build()
-        .map_err(friendly)?;
+    let mut builder = app.updater_builder().timeout(REQUEST_TIMEOUT);
+    // Stable uses the address in `tauri.conf.json`.
+    if channel(app) == UpdateChannel::Beta {
+        let url = stable_endpoint()
+            .and_then(|stable| beta_endpoint(&stable))
+            .and_then(|beta| beta.parse().ok())
+            .ok_or_else(|| CoreError::Other("The update failed.".into()))?;
+        builder = builder.endpoints(vec![url]).map_err(friendly)?;
+    }
+    let updater = builder.build().map_err(friendly)?;
     updater.check().await.map_err(friendly)
 }
 
@@ -254,6 +292,26 @@ mod tests {
         let words = said(E::Io(std::io::Error::other("a path and details")));
         assert_eq!(words, "The update failed.");
         assert_eq!(said(E::EmptyEndpoints), "The update failed.");
+    }
+
+    #[test]
+    fn the_beta_address_is_the_stable_one_with_beta_before_the_file() {
+        assert_eq!(
+            beta_endpoint("https://updates.x.example/updates/latest.json").as_deref(),
+            Some("https://updates.x.example/updates/beta/latest.json")
+        );
+        // Only a secure address is ever used.
+        assert_eq!(beta_endpoint("http://updates.x.example/latest.json"), None);
+        assert_eq!(beta_endpoint("latest.json"), None);
+    }
+
+    #[test]
+    fn the_configured_address_gives_a_beta_address_that_parses() {
+        let stable = stable_endpoint().expect("tauri.conf.json has an updater address");
+        let beta = beta_endpoint(&stable).expect("a secure address");
+        assert_ne!(beta, stable);
+        assert!(beta.ends_with("/beta/latest.json"));
+        beta.parse::<tauri::Url>().expect("a valid address");
     }
 
     #[test]

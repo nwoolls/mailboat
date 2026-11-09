@@ -4,6 +4,7 @@ import {
   type Account,
   type AccountId,
   type AccountSyncState,
+  type UpdateChannel,
 } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { showToast } from "../../../shared/lib/toast";
@@ -108,6 +109,31 @@ export function GeneralSection() {
               Check for updates
             </Button>
           )}
+        </Row>
+        <Row
+          label="Update channel"
+          description="Stable gets finished releases only. Beta also gets test versions first, which may have bugs. Going back to Stable doesn’t install an older version: it waits for the next finished release."
+        >
+          <select
+            aria-label="Update channel"
+            value={settings?.updateChannel ?? "stable"}
+            disabled={!settings}
+            onChange={(e) =>
+              settings &&
+              save.mutate(
+                { ...settings, updateChannel: e.target.value as UpdateChannel },
+                {
+                  onSuccess: () => void checkForUpdates(),
+                  onError: (err) =>
+                    showToast({ tone: "error", message: `Couldn’t save: ${errorText(err)}` }),
+                },
+              )
+            }
+            className={SELECT_CLASS}
+          >
+            <option value="stable">Stable</option>
+            <option value="beta">Beta</option>
+          </select>
         </Row>
         <Row
           label="Check for updates automatically"

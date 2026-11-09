@@ -594,6 +594,12 @@ export type AppSettings_Deserialize = {
 	 *  looks and tells: installing is always the person's click.
 	 */
 	autoCheckUpdates?: boolean,
+	/**
+	 *  Whether test versions are offered as updates too. Choosing Stable
+	 *  again never goes back to an older version: it only waits for a
+	 *  finished release newer than the one installed.
+	 */
+	updateChannel?: UpdateChannel,
 };
 
 export type AppSettings_Serialize = {
@@ -636,6 +642,12 @@ export type AppSettings_Serialize = {
 	 *  looks and tells: installing is always the person's click.
 	 */
 	autoCheckUpdates: boolean,
+	/**
+	 *  Whether test versions are offered as updates too. Choosing Stable
+	 *  again never goes back to an older version: it only waits for a
+	 *  finished release newer than the one installed.
+	 */
+	updateChannel: UpdateChannel,
 };
 
 /**  What applying a rule to mail already received changed. */
@@ -1586,6 +1598,12 @@ export type TranslateAnswer = {
 
 /**  A look that nobody asked for found an update. Told once per version. */
 export type UpdateAvailableEvent = UpdateInfo;
+
+/**
+ *  Which releases the updater offers: only finished ones (the default), or
+ *  test versions ("betas") too, which come first and may have bugs.
+ */
+export type UpdateChannel = "stable" | "beta";
 
 /**  An update that can be installed. */
 export type UpdateInfo = {

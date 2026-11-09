@@ -26,6 +26,16 @@ pub enum Theme {
     Dark,
 }
 
+/// Which releases the updater offers: only finished ones (the default), or
+/// test versions ("betas") too, which come first and may have bugs.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateChannel {
+    #[default]
+    Stable,
+    Beta,
+}
+
 /// What the number on the Dock icon counts, named after the folders it
 /// matches: unread in All Inboxes (the default), everything in Unread, or
 /// nothing.
@@ -123,6 +133,10 @@ pub struct AppSettings {
     /// Look for a new version at launch and about once a day. It only
     /// looks and tells: installing is always the person's click.
     pub auto_check_updates: bool,
+    /// Whether test versions are offered as updates too. Choosing Stable
+    /// again never goes back to an older version: it only waits for a
+    /// finished release newer than the one installed.
+    pub update_channel: UpdateChannel,
 }
 
 /// Which accounts AI apps may use through the MCP server (`crate::mcp`),
@@ -210,6 +224,7 @@ impl Default for AppSettings {
             ai: AiSettings::default(),
             mcp: McpSettings::default(),
             auto_check_updates: true,
+            update_channel: UpdateChannel::Stable,
         }
     }
 }
@@ -278,6 +293,7 @@ mod tests {
             image_prefetch: false,
             image_cache_mb: 1000,
             auto_check_updates: false,
+            update_channel: UpdateChannel::Beta,
             ai: AiSettings {
                 connected: vec![AiProvider::Claude],
                 list_summaries: None,
@@ -322,6 +338,7 @@ mod tests {
         assert!(!loaded.quiet_hours.on);
         // Settings saved before the switch existed look for updates, as new ones do.
         assert!(loaded.auto_check_updates);
+        assert_eq!(loaded.update_channel, UpdateChannel::Stable);
     }
 
     #[test]
