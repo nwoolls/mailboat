@@ -117,7 +117,9 @@ export function GeneralSection() {
           <select
             aria-label="Update channel"
             value={settings?.updateChannel ?? "stable"}
-            disabled={!settings}
+            // Not while a look or an install is running: its answer would be
+            // for the channel the person just left.
+            disabled={!settings || !canCheck(update)}
             onChange={(e) =>
               settings &&
               save.mutate(
