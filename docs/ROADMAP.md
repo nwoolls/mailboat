@@ -4248,9 +4248,9 @@ One pull request each.
       backlog entry)*
 - [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
       the email; an agent works from a made-up fixture of the same shape,
-      never the real one) *(2026-11-08: detection fixed; the list row,
-      the macOS banner and the two summary problems are still open: see the
-      Bug backlog entry)*
+      never the real one) *(2026-11-08: detection fixed; 2026-11-09: the
+      list row and the macOS banner read the body too; the two summary
+      problems are still open: see the Bug backlog entry)*
 - [x] A sideways swipe on the trackpad drags the whole app *(2026-11-08:
       fixed; see the Bug backlog entry)*
 - [ ] Bug: the screenshot zoom flashes at full size before it animates (the
@@ -4441,6 +4441,13 @@ again until the next spike.*
       and the full summary refused by Apple's safety guardrails), where the
       long tracking links in the text the model reads are a suspect, not a
       finding)*
+      *(2026-11-09, the row and the banner: both now read the downloaded body
+      when the snippet shows no code, for a subject that says or hints at one
+      (`codes::find_cached`; the row only inside the day a code is shown and
+      never in Spam). A banner for a message that may hold a code in its body
+      waits for the body (ten seconds at most) and then leads with the code;
+      the lists refresh when the body gave one. The two summary problems are
+      still open)*
       *(2026-11-09, more evidence, from a second verification email and a
       screenshot from the owner; nothing of either is kept here: the list
       line said the status was verified and that no action was needed, and
