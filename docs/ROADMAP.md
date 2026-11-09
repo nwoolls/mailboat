@@ -4448,6 +4448,16 @@ again until the next spike.*
       waits for the body (ten seconds at most) and then leads with the code;
       the lists refresh when the body gave one. The two summary problems are
       still open)*
+      *(2026-11-09, the two summary problems, built from the ideas below,
+      not proven against a real model offline: a conversation whose newest
+      email holds a sign-in code (outside Spam and Trash) gets the fixed list
+      line "Sign-in code" with no request to a model; both summary prompts
+      say that an email giving a code, link or button asks the reader to use
+      it, and isn't to be called done, entered, verified or confirmed unless a
+      later message says so; and links
+      over 100 characters are replaced by "[link]" in the text a model reads.
+      Still to see: whether Apple's guardrails still refuse such an email's
+      full summary, which needs a try on a real one by the owner)*
       *(2026-11-09, more evidence, from a second verification email and a
       screenshot from the owner; nothing of either is kept here: the list
       line said the status was verified and that no action was needed, and

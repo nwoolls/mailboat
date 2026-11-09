@@ -52,12 +52,17 @@ pub fn newest_message(conn: &Connection, thread: ThreadId) -> Result<Option<Mess
         .optional()?)
 }
 
-/// The cached summary, if it still covers the newest message.
+/// The line shown for a conversation that is a sign-in code (`tasks::summarize`).
+pub const SIGN_IN_LINE: &str = "Sign-in code";
+
+/// The cached summary, if it still covers the newest message. A fixed
+/// sign-in line is not kept for a conversation that has since moved to Spam
+/// or Trash, where a code is bait.
 pub fn current(conn: &Connection, thread: ThreadId, kind: SummaryKind) -> Result<Option<Summary>> {
     let Some(newest) = newest_message(conn, thread)? else {
         return Ok(None);
     };
-    Ok(conn
+    let cached = conn
         .query_row(
             "SELECT text, provider, created_at FROM ai_summaries
              WHERE thread_id = ?1 AND kind = ?2 AND newest_message_id = ?3",
@@ -78,7 +83,13 @@ pub fn current(conn: &Connection, thread: ThreadId, kind: SummaryKind) -> Result
                 provider: AiProvider::parse(&provider)?,
                 created_at,
             })
-        }))
+        });
+    match cached {
+        Some(s) if kind == SummaryKind::Line && s.text == SIGN_IN_LINE => {
+            Ok((!in_spam_or_trash(conn, thread)?).then_some(s))
+        }
+        other => Ok(other),
+    }
 }
 
 /// Current one-line summaries for these conversations (those without one

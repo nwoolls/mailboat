@@ -58,6 +58,27 @@ async fn ask_recorded(
     result
 }
 
+pub use super::summaries::SIGN_IN_LINE;
+
+/// Whether the newest email of the conversation holds a sign-in code: one
+/// the owner didn't write, read under its own subject (the conversation's is
+/// the first message's, which a later reply doesn't repeat), outside Spam and
+/// Trash.
+fn has_sign_in_code(db: &Db, thread: ThreadId, text: &ThreadText) -> Result<bool> {
+    let Some(last) = text.messages.last() else {
+        return Ok(false);
+    };
+    if last.mine || summaries::in_spam_or_trash(&db.conn(), thread)? {
+        return Ok(false);
+    }
+    let subject: String = db.conn().query_row(
+        "SELECT subject FROM messages WHERE id = ?1",
+        [last.id],
+        |r| r.get(0),
+    )?;
+    Ok(crate::mail::codes::find(&subject, &last.text).is_some())
+}
+
 /// What a summary request came back with.
 pub enum Summarized {
     Done(Summary, Answer),
@@ -106,6 +127,14 @@ pub async fn summarize(
     };
     if automatic && kind == SummaryKind::Full && text.length() < AUTO_SUMMARY_MIN_CHARS {
         return Ok(Summarized::NotNeeded);
+    }
+    // A conversation whose newest email hands over a sign-in code gets a fixed
+    // line, not a model-written one: models read such an email as something
+    // already done, and the row shows the code itself. Never in Spam or Trash,
+    // where a code is bait.
+    if kind == SummaryKind::Line && has_sign_in_code(db, thread, &text)? {
+        let summary = summaries::store(&db.conn(), thread, kind, provider, newest, SIGN_IN_LINE)?;
+        return Ok(Summarized::Done(summary, Answer::default()));
     }
     let (prompt, purpose) = match kind {
         SummaryKind::Line => (prompts::list_line(&text, provider), Purpose::ListSummary),

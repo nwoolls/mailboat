@@ -236,7 +236,7 @@ pub fn render(thread: &ThreadText, budget: usize) -> String {
             break;
         }
         let room = cap.saturating_sub(header.len()).max(80);
-        let body = shorten(&m.text, room);
+        let body = shorten(&without_long_links(&m.text), room);
         left = left.saturating_sub(header.len() + body.len() + 8);
         parts.push(format!("{header}{body}"));
     }
@@ -246,6 +246,50 @@ pub fn render(thread: &ThreadText, budget: usize) -> String {
         out.push_str(&format!("({dropped} earlier messages left out.)\n\n"));
     }
     out.push_str(&parts.join("\n\n---\n\n"));
+    out
+}
+
+/// Links longer than this many characters are tracking or sign-in links: no
+/// use to a model, and a lot of text for it to read.
+const LONG_LINK: usize = 100;
+
+/// Where the web link that starts at `start` ends: at white space or a
+/// bracket or quote, less the punctuation that closes a sentence.
+fn link_end(text: &str, start: usize) -> usize {
+    let rest = &text[start..];
+    let stop = rest
+        .find(|c: char| c.is_whitespace() || "<>()[]\"'".contains(c))
+        .unwrap_or(rest.len());
+    let link = rest[..stop].trim_end_matches(['.', ',', ';', ':', '!', '?']);
+    start + link.len()
+}
+
+/// The text with each long web link replaced by "[link]". A short link, which
+/// says something about where it goes, stays, and so do the words, brackets
+/// and punctuation beside any link.
+pub fn without_long_links(text: &str) -> String {
+    let lower = text.to_ascii_lowercase();
+    let mut out = String::with_capacity(text.len());
+    let mut at = 0;
+    while let Some(found) = ["http://", "https://"]
+        .iter()
+        .filter_map(|scheme| lower[at..].find(scheme).map(|i| at + i))
+        .min()
+    {
+        let end = link_end(text, found);
+        out.push_str(&text[at..found]);
+        if text[found..end].chars().count() > LONG_LINK {
+            out.push_str("[link]");
+        } else {
+            out.push_str(&text[found..end]);
+        }
+        // A scheme with nothing after it must still move the scan on.
+        at = end.max(found + 1);
+        if at > text.len() {
+            break;
+        }
+    }
+    out.push_str(&text[at.min(text.len())..]);
     out
 }
 
@@ -268,6 +312,21 @@ pub fn shorten(text: &str, max: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_long_link_becomes_a_marker_and_a_short_one_stays() {
+        let long = format!("https://track.x.example/c/{}", "a1b2".repeat(40));
+        let text =
+            format!("Verify here ({long}) or see https://x.example/help\nthen <{long}> done");
+        assert_eq!(
+            without_long_links(&text),
+            "Verify here ([link]) or see https://x.example/help\nthen <[link]> done"
+        );
+        assert_eq!(
+            without_long_links("No links, just words.\n"),
+            "No links, just words.\n"
+        );
+    }
+
     use super::*;
 
     #[test]
