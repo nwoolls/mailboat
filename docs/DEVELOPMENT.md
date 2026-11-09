@@ -332,7 +332,7 @@ private key that matches the public one in the config.
   That file is kept by `.github/workflows/update-channel.yml`: each time a
   release is published, pre-release or not, it copies the release's
   `latest.json` to the one release tagged `updates-beta` (created the first
-  time), so a Beta install is offered the newest published release, and a
+  time), unless the channel already points at a newer version (runs can finish out of order, and an older release can be published later: `scripts/keep-newer-manifest.ts` decides), so a Beta install is offered the newest published release, and a
   finished release once it is newer than the test version in use. Versions
   compare as semver: `0.2.0-beta.1` < `0.2.0-beta.2` < `0.2.0`, and
   `0.2.0-beta.1` is *older* than an installed `0.2.0`, so a test version
