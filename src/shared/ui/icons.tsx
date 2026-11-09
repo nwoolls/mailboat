@@ -6,6 +6,7 @@ import SquareLock02 from "@hugeicons/core-free-icons/SquareLock02Icon";
 import CommandLine from "@hugeicons/core-free-icons/CommandLineIcon";
 import FileUpload from "@hugeicons/core-free-icons/FileUploadIcon";
 import SourceCode from "@hugeicons/core-free-icons/SourceCodeIcon";
+import ShieldKey from "@hugeicons/core-free-icons/ShieldKeyIcon";
 import Wrench01 from "@hugeicons/core-free-icons/Wrench01Icon";
 import LeftToRightListDash from "@hugeicons/core-free-icons/LeftToRightListDashIcon";
 import AlertCircle from "@hugeicons/core-free-icons/AlertCircleIcon";
@@ -153,6 +154,8 @@ export const AppearanceIcon = wrap(Palette);
 export const KeyboardIcon = wrap(Keyboard);
 export const RulesIcon = wrap(Filter);
 export const ToyboxIcon = wrap(Pacman01);
+/** Settings → Privacy. */
+export const PrivacyIcon = wrap(ShieldKey);
 export const AdvancedIcon = wrap(Wrench01);
 export const ListIcon = wrap(LeftToRightListDash);
 export const SignatureIcon = wrap(Signature);

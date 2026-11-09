@@ -84,6 +84,8 @@ import { iconSetting, shownIcon } from "../model/appIcon";
 import { defaultMailAppRow } from "../model/mailApp";
 import { describeImageCache, IMAGE_CACHE_SIZES } from "../model/imageCache";
 import { APP_NAME } from "../../../shared/lib/brand";
+import { leavesRows, STAYS_ON_THIS_COMPUTER } from "../model/privacy";
+import type { SettingsSectionId } from "../model/sections";
 import { canCheck, describeUpdate } from "../../updates/model/update";
 import { checkForUpdates, installUpdate, useUpdateState } from "../../updates/ui/updateStore";
 
@@ -157,6 +159,56 @@ export function GeneralSection() {
             }
           />
         </Row>
+      </Group>
+    </>
+  );
+}
+
+/**
+ * Everything that leaves this computer and the setting behind it, read from
+ * the real settings. Read-only: each row links to the section where it is
+ * changed, so there is still one place to change each thing.
+ */
+export function PrivacySection({
+  accounts,
+  onSelect,
+}: {
+  accounts: Account[];
+  onSelect: (section: SettingsSectionId) => void;
+}) {
+  const settings = useAppSettings().data;
+  if (!settings) return null;
+  return (
+    <>
+      <Group title="Leaves this computer">
+        {leavesRows(
+          settings,
+          accounts.map((a) => a.id),
+        ).map((r) => (
+          <Row
+            key={r.id}
+            label={r.where}
+            description={
+              <>
+                <span className="block">{r.gets}</span>
+                <span className="block">{r.when}</span>
+                <span className="mt-1 block text-content/70">{r.now}</span>
+              </>
+            }
+          >
+            <Button
+              label={`${r.where}: change in ${r.sectionLabel}`}
+              onClick={() => onSelect(r.section)}
+            >
+              Change in {r.sectionLabel}
+            </Button>
+          </Row>
+        ))}
+      </Group>
+      <Group title="Stays on this computer">
+        {STAYS_ON_THIS_COMPUTER.map((line) => (
+          <Row key={line} label={line} />
+        ))}
       </Group>
     </>
   );

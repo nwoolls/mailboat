@@ -18,7 +18,10 @@ export function PageHeader({
   return (
     <header className="flex items-end gap-4 pb-6">
       <div className="min-w-0 flex-1">
-        <h1 className="text-lg font-semibold text-content">{title}</h1>
+        {/* Focusable by script, so a button that opens a section can move focus here. */}
+        <h1 tabIndex={-1} className="text-lg font-semibold text-content outline-none">
+          {title}
+        </h1>
         <p className="mt-1 text-[13px] text-content/50">{description}</p>
       </div>
       {action && <div className="shrink-0">{action}</div>}
@@ -121,15 +124,19 @@ export function Button({
   onClick,
   danger = false,
   disabled = false,
+  label,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   danger?: boolean;
   disabled?: boolean;
+  /** An accessible name, when the visible text alone doesn't say enough. */
+  label?: string;
 }) {
   return (
     <button
       type="button"
+      aria-label={label}
       onClick={onClick}
       disabled={disabled}
       className={`rounded-md border border-content/10 px-2.5 py-1 text-[12px] transition-colors duration-[120ms] disabled:opacity-40 ${

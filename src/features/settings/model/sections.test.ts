@@ -17,6 +17,7 @@ describe("settings sections", () => {
       "vacation",
       "keyboard",
       "toybox",
+      "privacy",
       "advanced",
     ]);
   });

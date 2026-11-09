@@ -18,6 +18,7 @@ export type SettingsSectionId =
   | "vacation"
   | "keyboard"
   | "toybox"
+  | "privacy"
   | "advanced";
 
 export type SettingsSection = { id: SettingsSectionId; label: string; description: string };
@@ -76,6 +77,11 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     id: "toybox",
     label: "Toybox",
     description: "Playful extras, just for fun.",
+  },
+  {
+    id: "privacy",
+    label: "Privacy",
+    description: "Everything that leaves this computer, and the setting that decides it.",
   },
   {
     id: "advanced",
