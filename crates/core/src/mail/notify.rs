@@ -19,8 +19,6 @@ pub struct Notice {
 /// Beyond this many at once, one summary instead of one each.
 pub const MAX_SEPARATE: usize = 3;
 
-/// The notifications for new mail in one account. `account_label` (its
-/// address) is added when there's more than one account.
 /// Which of the messages to notify about show at once and which wait for
 /// their body (`waiting`: it may hold a sign-in code the banner should lead
 /// with). A batch big enough to collapse into one summary shows as one, now:
@@ -36,6 +34,8 @@ pub fn split_for_body(
     wanted.iter().partition(|m| !waiting.contains(m))
 }
 
+/// The notifications for new mail in one account. `account_label` (its
+/// address) is added when there's more than one account.
 pub fn notices(
     conn: &Connection,
     account: AccountId,

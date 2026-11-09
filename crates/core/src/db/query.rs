@@ -84,11 +84,6 @@ fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
     let snippet: String = row.get(3)?;
     let last_message_at: i64 = row.get(5)?;
     let in_spam: bool = row.get(14)?;
-    // From the subject and Gmail's snippet (the body may not be downloaded
-    // yet); never in Spam, where codes are bait.
-    let sign_in_code = (!in_spam && crate::db::now_millis() - last_message_at < CODE_SHOWN_FOR_MS)
-        .then(|| crate::mail::codes::find(&subject, &snippet))
-        .flatten();
     Ok(ThreadSummary {
         id: row.get(0)?,
         account_id: row.get(1)?,
@@ -110,7 +105,8 @@ fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
             .collect(),
         only_draft: row.get(13)?,
         in_spam,
-        sign_in_code,
+        // Filled in by `add_code`, which needs the newest message.
+        sign_in_code: None,
     })
 }
 
@@ -301,11 +297,9 @@ fn list(conn: &Connection, query: &ListQuery, visible: bool) -> Result<ThreadPag
     } else {
         None
     };
-    let mut lookups = 0;
+    let mut body_reads = MAX_BODY_READS;
     for t in &mut threads {
-        if lookups < MAX_BODY_LOOKUPS && add_code_from_body(conn, t) {
-            lookups += 1;
-        }
+        add_code(conn, t, &mut body_reads);
     }
     Ok(ThreadPage {
         threads,
@@ -330,29 +324,27 @@ fn fts_query(text: &str) -> Option<String> {
 /// The most rows of a page that may read a body for a sign-in code: the
 /// subject and the age already narrow it to a few, and this keeps a page of
 /// many recent verification emails from reading all their bodies at once.
-const MAX_BODY_LOOKUPS: usize = 20;
+const MAX_BODY_READS: usize = 20;
 
-/// A row's sign-in code from the newest message's downloaded body, when the
-/// subject and snippet show none: only for a conversation whose newest
-/// message's subject says or hints at a code (a conversation's own subject is
-/// its first message's, and a reply under it, quoting the code, is not one),
-/// and only inside the window a code is shown. Returns whether it read a body.
-fn add_code_from_body(conn: &Connection, t: &mut ThreadSummary) -> bool {
+/// A row's sign-in code, from the conversation's newest message: its subject
+/// and Gmail's snippet (the one the row shows) and, when its subject says or
+/// hints at a code and the snippet shows none, its downloaded body (while
+/// `body_reads` lasts). The newest message's own subject is used, not the
+/// conversation's (the first message's): a reply that quotes the code is not
+/// one. Only inside the window a code is shown, never in Spam.
+fn add_code(conn: &Connection, t: &mut ThreadSummary, body_reads: &mut usize) {
     use crate::mail::codes;
-    if t.sign_in_code.is_some()
-        || t.in_spam
-        || crate::db::now_millis() - t.last_message_at >= CODE_SHOWN_FOR_MS
-    {
-        return false;
+    if t.in_spam || crate::db::now_millis() - t.last_message_at >= CODE_SHOWN_FOR_MS {
+        return;
     }
     let Some((message, subject)) = codes::latest_message(conn, t.id) else {
-        return false;
+        return;
     };
-    if !(codes::subject_says_code(&subject) || codes::subject_hints_code(&subject)) {
-        return false;
+    t.sign_in_code = codes::find(&subject, &t.snippet);
+    if t.sign_in_code.is_none() && codes::may_hold_code(&subject) && *body_reads > 0 {
+        *body_reads -= 1;
+        t.sign_in_code = codes::find_cached(conn, &subject, &t.snippet, message);
     }
-    t.sign_in_code = codes::find_cached(conn, &subject, &t.snippet, message);
-    true
 }
 
 pub fn thread_summary(conn: &Connection, id: ThreadId) -> Result<ThreadSummary> {
@@ -364,7 +356,7 @@ pub fn thread_summary(conn: &Connection, id: ThreadId) -> Result<ThreadSummary> 
         )
         .optional()?
         .ok_or_else(|| CoreError::NotFound(format!("thread {}", id.0)))?;
-    let _ = add_code_from_body(conn, &mut summary);
+    add_code(conn, &mut summary, &mut 1);
     Ok(summary)
 }
 

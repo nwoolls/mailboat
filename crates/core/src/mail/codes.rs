@@ -494,7 +494,7 @@ pub fn find_cached(
     if let Some(code) = find(subject, snippet) {
         return Some(code);
     }
-    if !(subject_says_code(subject) || subject_hints_code(subject)) {
+    if !may_hold_code(subject) {
         return None;
     }
     let (text, html): (Option<String>, Option<String>) = conn
@@ -507,6 +507,14 @@ pub fn find_cached(
         .ok()??;
     let body = text.or_else(|| html.as_deref().map(crate::gmail::parse::html_to_text))?;
     find(subject, &body)
+}
+
+/// Whether the subject makes the body worth reading for a code: it says or
+/// hints at one, and isn't a reply or forward (people writing about a code).
+pub fn may_hold_code(subject: &str) -> bool {
+    let s = subject.trim_start().to_ascii_lowercase();
+    !["re:", "fw:", "fwd:"].iter().any(|p| s.starts_with(p))
+        && (subject_says_code(subject) || subject_hints_code(subject))
 }
 
 /// The newest message of a conversation, whose snippet its row shows, with its
@@ -1180,6 +1188,127 @@ mod tests {
             thread_summary(&db.conn(), thread).unwrap().sign_in_code,
             None
         );
+    }
+
+    #[test]
+    fn a_reply_with_a_code_word_subject_and_a_quoted_snippet_shows_no_pill() {
+        use crate::db::query::thread_summary;
+        use crate::db::store::{upsert_thread, IncomingMessage, IncomingThread};
+        let db = crate::db::Db::open_in_memory().unwrap();
+        let (_, thread) = seed_hinting_message(&db, "INBOX");
+        let account = thread_summary(&db.conn(), thread).unwrap().account_id;
+        let now = crate::db::now_millis();
+        let subject = "Your example account security code";
+        let message = |id: &str, at: i64, subject: String, snippet: &str| IncomingMessage {
+            gmail_message_id: id.into(),
+            label_ids: vec!["INBOX".into()],
+            internal_date: at,
+            subject,
+            snippet: snippet.into(),
+            ..Default::default()
+        };
+        // The conversation's own subject is the first message's: a code word
+        // that would show a pill on the quoted code in the reply's snippet.
+        upsert_thread(
+            &mut db.conn(),
+            account,
+            &IncomingThread {
+                gmail_thread_id: "t2".into(),
+                messages: vec![
+                    message("n1", now - 1_000, subject.into(), "Security code: 4920817"),
+                    message(
+                        "n2",
+                        now,
+                        format!("Re: {subject}"),
+                        "> Security code: 4920817 Thanks, that worked.",
+                    ),
+                ],
+            },
+        )
+        .unwrap();
+        let id: ThreadId = db
+            .conn()
+            .query_row(
+                "SELECT thread_id FROM messages WHERE gmail_message_id = 'n2'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(thread_summary(&db.conn(), id).unwrap().sign_in_code, None);
+        // The first message alone does show one.
+        db.conn()
+            .execute("DELETE FROM messages WHERE gmail_message_id = 'n2'", [])
+            .unwrap();
+        assert_eq!(
+            thread_summary(&db.conn(), id)
+                .unwrap()
+                .sign_in_code
+                .as_deref(),
+            Some("4920817")
+        );
+    }
+
+    #[test]
+    fn only_so_many_rows_of_a_page_read_a_body() {
+        use crate::db::query::list_threads;
+        use crate::db::store::{upsert_thread, IncomingMessage, IncomingThread};
+        use crate::model::{AccountFilter, ListQuery, MailView, SystemLabel};
+        let db = crate::db::Db::open_in_memory().unwrap();
+        let (_, first) = seed_hinting_message(&db, "INBOX");
+        let account = crate::db::query::thread_summary(&db.conn(), first)
+            .unwrap()
+            .account_id;
+        let now = crate::db::now_millis();
+        // Twenty-four more, each a verification email whose snippet shows
+        // no code and whose body has one.
+        for n in 0..24 {
+            upsert_thread(
+                &mut db.conn(),
+                account,
+                &IncomingThread {
+                    gmail_thread_id: format!("many{n}"),
+                    messages: vec![IncomingMessage {
+                        gmail_message_id: format!("many{n}"),
+                        label_ids: vec!["INBOX".into()],
+                        internal_date: now - n,
+                        subject: SET_APART_SUBJECT.into(),
+                        snippet: "Confirm Address".into(),
+                        ..Default::default()
+                    }],
+                },
+            )
+            .unwrap();
+        }
+        let ids: Vec<MessageId> = db
+            .conn()
+            .prepare("SELECT id FROM messages")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        for id in ids {
+            download_body(&db, id);
+        }
+        let page = list_threads(
+            &db.conn(),
+            &ListQuery {
+                accounts: AccountFilter::All,
+                view: MailView::System {
+                    label: SystemLabel::Inbox,
+                },
+                cursor: None,
+                limit: 100,
+            },
+        )
+        .unwrap();
+        assert_eq!(page.threads.len(), 25);
+        let shown = page
+            .threads
+            .iter()
+            .filter(|t| t.sign_in_code.is_some())
+            .count();
+        assert_eq!(shown, 20, "a page reads 20 bodies, no more");
     }
 
     #[test]
