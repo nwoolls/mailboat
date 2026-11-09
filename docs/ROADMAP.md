@@ -3818,7 +3818,7 @@ download it.*
       Also the deploy workflow (a deploy token that can only edit Workers, in a `website` environment, pushes to `main` only) and the app's workflows
       skipping site-only pull requests, as the Architecture decision of
       2026-11-06 describes
-- [ ] A note in Settings → AI recommending that model training be turned
+- [x] A note in Settings → AI recommending that model training be turned
       off *(owner, 2026-11-06)*: when Claude or ChatGPT is chosen for a
       feature, a short line says the provider may train on what it receives,
       depending on the account's settings, and recommends turning that off
@@ -3828,7 +3828,7 @@ download it.*
       Writing, each with a blue information icon, next to the choice it is
       about and naming only the
       providers that are connected and chosen there, and not shown while
-      everything stays on the Mac. Tick it once the owner has tried it)*
+      everything stays on the Mac. The owner tried it, 2026-11-08)*
 - [ ] First-timer trial of the onboarding *(moved from Milestone 12,
       2026-10-30, then from Milestone 15, 2026-11-05)*: someone who has
       never used Google Cloud installs a real build from GitHub and gets
@@ -4088,11 +4088,11 @@ and a tick.
 - [x] `security.txt` and a Security link in the footer. Tiny and site-only;
       `check:website` should require both *(built 2026-11-07, in its pull
       request; live 2026-11-08, ticked in Milestone 16)*
-- [ ] The note in Settings → AI recommending that model training be turned
+- [x] The note in Settings → AI recommending that model training be turned
       off for the chosen provider (Milestone 16 item). The policy already
       says it; the app should say it where the provider is chosen *(built
-      2026-11-07, in its pull request; ticked in Milestone 16 once the owner
-      has tried it)*
+      2026-11-07, in its pull request; the owner tried it, 2026-11-08, and it
+      is ticked in Milestone 16)*
 - [x] `check:website` reads `SCOPES` and fails when a permission has no
       matching line in the policy, and a test pins the defaults the policy
       states (the first "Privacy and security by default" item). This guards
