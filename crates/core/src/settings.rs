@@ -190,6 +190,12 @@ pub struct AiSettings {
     /// Which ChatGPT model writes (a Codex catalog slug); `None` is
     /// Codex's default.
     pub chatgpt_model: Option<String>,
+    /// Keep saved summaries (the default): each is reused until new mail
+    /// arrives in its conversation, and stays on this computer until it is
+    /// written again or cleared. Off: they are forgotten when the app quits
+    /// and at the next launch (`ai::summaries::forget_unless_kept`), so one
+    /// lives only as long as the app stays open.
+    pub keep_summaries: bool,
 }
 
 impl Default for AiSettings {
@@ -205,6 +211,7 @@ impl Default for AiSettings {
             writing_provider: AiProvider::Apple,
             writing_quality: Quality::Best,
             chatgpt_model: None,
+            keep_summaries: true,
         }
     }
 }
@@ -288,6 +295,7 @@ mod tests {
         "ai.readerSummary",
         "ai.readerProvider",
         "ai.writingProvider",
+        "ai.keepSummaries",
         "mcp.read",
         "mcp.drafts",
     ];
@@ -380,6 +388,7 @@ mod tests {
                 writing_provider: AiProvider::ChatGpt,
                 writing_quality: Quality::Strongest,
                 chatgpt_model: Some("gpt-6-astra".into()),
+                keep_summaries: false,
             },
             mcp: McpSettings {
                 read: vec![AccountId(1), AccountId(2)],
@@ -417,6 +426,14 @@ mod tests {
         // Settings saved before the switch existed look for updates, as new ones do.
         assert!(loaded.auto_check_updates);
         assert_eq!(loaded.update_channel, UpdateChannel::Stable);
+        // Settings saved before the switch existed keep their summaries.
+        assert!(loaded.ai.keep_summaries);
+        conn.execute(
+            "UPDATE app_settings SET value = '{\"ai\":{\"connected\":[]}}' WHERE key = 'app'",
+            [],
+        )
+        .unwrap();
+        assert!(load(&conn).unwrap().ai.keep_summaries);
     }
 
     #[test]

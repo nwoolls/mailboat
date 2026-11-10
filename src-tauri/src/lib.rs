@@ -334,6 +334,10 @@ pub fn run() {
             // Before the window first paints, so it opens in the chosen theme.
             let saved = mail_core::settings::load(&db.conn()).unwrap_or_default();
             theme::apply(app.handle(), saved.theme);
+            // Summaries the person chose not to keep: forget what an exit that
+            // never ran (a crash, a power cut) left behind, before sync, the
+            // window or the AI queue can read or write one.
+            let _ = mail_core::ai::summaries::forget_unless_kept(&db.conn());
             state.resume_all_accounts()?;
             app.manage(state);
             app.manage(updates::UpdatesEnabled(
@@ -365,6 +369,9 @@ pub fn run() {
                 for url in urls {
                     mail_handler::open(app, url.as_str());
                 }
+            }
+            if let tauri::RunEvent::Exit = event {
+                ai::forget_unkept_summaries(app);
             }
             if let tauri::RunEvent::Ready = event {
                 let choice = app

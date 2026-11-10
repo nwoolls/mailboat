@@ -122,3 +122,30 @@ describe("AiSection's summary above a conversation", () => {
     expect(saved()).toMatchObject({ readerProvider: "apple", readerSummary: "auto" });
   });
 });
+
+describe("AiSection's Keep saved summaries switch", () => {
+  const keep = () => screen.getByRole("switch", { name: "Keep saved summaries" });
+
+  it("is on by default and on when saved on", () => {
+    for (const settings of [{}, { keepSummaries: true }] as AiSettings[]) {
+      ai = settings;
+      render(<AiSection />);
+      expect(keep().getAttribute("aria-checked")).toBe("true");
+      cleanup();
+    }
+  });
+
+  it("is off when saved off, and flipping it saves the choice", () => {
+    ai = { keepSummaries: false };
+    render(<AiSection />);
+    expect(keep().getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(keep());
+    expect(saved()).toMatchObject({ keepSummaries: true });
+    cleanup();
+    save.mockClear();
+    ai = {};
+    render(<AiSection />);
+    fireEvent.click(keep());
+    expect(saved()).toMatchObject({ keepSummaries: false });
+  });
+});

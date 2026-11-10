@@ -140,6 +140,17 @@ pub fn in_spam_or_trash(conn: &Connection, thread: ThreadId) -> Result<bool> {
     )?)
 }
 
+/// Forgets every summary and suggestion when the person chose not to keep them
+/// (Settings → AI → Saved summaries). Called at launch, for what an exit that
+/// never ran left, and at quit. Returns whether it cleared.
+pub fn forget_unless_kept(conn: &Connection) -> Result<bool> {
+    if crate::settings::load(conn)?.ai.keep_summaries {
+        return Ok(false);
+    }
+    clear(conn)?;
+    Ok(true)
+}
+
 /// Removes every cached summary and suggestion (Settings → AI → Clear).
 pub fn clear(conn: &Connection) -> Result<()> {
     conn.execute("DELETE FROM ai_summaries", [])?;

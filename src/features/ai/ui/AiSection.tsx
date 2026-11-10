@@ -16,7 +16,7 @@ import {
   useSaveAppSettings,
 } from "../../../shared/lib/queries";
 import { showToast } from "../../../shared/lib/toast";
-import { Button, Group, Row, Segmented } from "../../settings/ui/controls";
+import { Button, Group, Row, Segmented, Toggle } from "../../settings/ui/controls";
 import {
   type AiChoices,
   aiChoices,
@@ -141,9 +141,17 @@ export function AiSection() {
           </Row>
         )}
         <Row
-          label="Saved summaries"
-          description="Summaries are kept until new mail arrives in the conversation. Clear them to have them written again."
+          label="Keep saved summaries"
+          description="On: a saved summary is reused until new mail arrives in its conversation, and stays on this computer until it is written again or cleared. Off: summaries are forgotten when the app quits, so each lives only while it stays open and is written again the next time it is needed (sent again, if Claude or ChatGPT writes it)."
         >
+          <Toggle
+            label="Keep saved summaries"
+            on={ai.keepSummaries}
+            disabled={!settings}
+            onChange={(keepSummaries) => update({ keepSummaries })}
+          />
+        </Row>
+        <Row label="Saved summaries" description="Clear them now to have them written again.">
           <Button
             onClick={() =>
               void unwrap(commands.aiSummariesClear())

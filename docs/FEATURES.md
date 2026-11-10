@@ -83,7 +83,7 @@ Say how to reply, or tap a reply idea, and the assistant drafts it from the conv
   <img src="images/features/conversation-light.png" alt="A conversation with a short summary above the messages, marked as written by Apple Intelligence" width="800">
 </picture>
 
-A few points above a long conversation, and a one-line summary in place of each row's first words. They are written on your Mac and kept until new mail arrives.
+A few points above a long conversation, and a one-line summary in place of each row's first words. They are written on your Mac and reused until new mail arrives; they stay saved on your computer until they are written again or cleared, or forgotten at quit if you turn off Keep saved summaries in Settings → AI.
 
 ### AI apps (MCP)
 

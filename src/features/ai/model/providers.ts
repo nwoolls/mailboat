@@ -22,6 +22,7 @@ export const AI_DEFAULTS: AiChoices = {
   writingProvider: "apple",
   writingQuality: "best",
   chatgptModel: null,
+  keepSummaries: true,
 };
 
 export function aiChoices(settings: AppSettings | undefined): AiChoices {
@@ -34,6 +35,7 @@ export function aiChoices(settings: AppSettings | undefined): AiChoices {
     writingProvider: ai.writingProvider ?? AI_DEFAULTS.writingProvider,
     writingQuality: ai.writingQuality ?? AI_DEFAULTS.writingQuality,
     chatgptModel: ai.chatgptModel ?? AI_DEFAULTS.chatgptModel,
+    keepSummaries: ai.keepSummaries ?? AI_DEFAULTS.keepSummaries,
   };
 }
 

@@ -3,7 +3,7 @@ import type {
   AiSettings,
   AppSettings_Serialize as AppSettings,
 } from "../../../platform/tauri/bindings";
-import { cloudUses, isCloudProvider, leavesRows } from "./privacy";
+import { cloudUses, isCloudProvider, leavesRows, STAYS_ON_THIS_COMPUTER } from "./privacy";
 
 // Only the fields the page reads; the rest of the settings don't matter here.
 function settings(over: Partial<AppSettings> = {}): AppSettings {
@@ -155,5 +155,13 @@ describe("what leaves the computer", () => {
       cloudAi: "ai",
       aiApps: "ai",
     });
+  });
+});
+
+describe("what stays on the computer", () => {
+  it("says how long saved summaries stay, and what the switch changes", () => {
+    expect(STAYS_ON_THIS_COMPUTER).toContain(
+      "Saved summaries stay until they are written again or cleared, or until you quit if you turn off Keep saved summaries.",
+    );
   });
 });

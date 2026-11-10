@@ -3954,9 +3954,16 @@ security fixes).
       Settings, so a sentence naming a page that isn't on screen made no
       sense there, and a link to the privacy policy belongs with the held
       website pages)*
-- [ ] Summaries kept only as long as needed: they are cached in the local
-      database until new mail arrives. Options are a switch to not keep
-      them, or clearing them on quit
+- [x] Summaries kept only as long as needed: they are cached in the local
+      database, reused until new mail arrives, and kept until written again
+      or cleared (a stale one is only ignored, not deleted). Options are a
+      switch to not keep them, or clearing them on quit *(2026-11-09: built, small enough for 0.2.0. Settings → AI → "Keep saved
+      summaries", on by default. Off, the saved summaries and reply ideas are
+      forgotten when the app quits and again at the next launch (for an exit
+      that never ran): `ai::summaries::forget_unless_kept`, called at the
+      start of setup, before sync and the AI queue, and from the run loop's
+      exit. The existing "Clear" button stays. The policy says nothing of
+      this yet; it goes into the policy edit after 0.2.0 stable is published)*
 - [x] The security contact on the website: `/.well-known/security.txt`
       (RFC 9116) naming `security@getmailboat.app` and `SECURITY.md`, and a
       Security link in the footer *(2026-11-07: built, in its pull request:
@@ -4163,8 +4170,8 @@ Checked 2026-11-09, so a new session need not repeat it:
       sentence about automatic summaries is pinned in `CLAIMS`
       (`scripts/policy.ts`) and changes with the code. The policy's AI-apps
       paragraph already says that server is off by default and never sends
-- [ ] Summaries kept only as long as needed (the item in the Hardening list
-      above): in 0.2.0 if it is small, since it supports Google's "retention"
+- [x] Summaries kept only as long as needed (the item in the Hardening list
+      above; built 2026-11-09, see that item): in 0.2.0 if it is small, since it supports Google's "retention"
       row; if it is not, it follows 0.2.0 and the policy says only what the
       code does
 - [ ] The privacy policy, brought up to date with 0.2.0 and into American
@@ -4347,9 +4354,9 @@ and a tick.
 - [x] Settings → Privacy, one page listing every way data leaves the
       computer with its current setting *(2026-11-09: done, see Milestone
       16, which also records why the onboarding pointer was dropped)*
-- [ ] Summaries kept only as long as needed: a switch to not keep them, or
+- [x] Summaries kept only as long as needed: a switch to not keep them, or
       clearing them on quit (its own Milestone 16 item, so it is ticked on
-      its own)
+      its own; built 2026-11-09, see there)
 - [ ] Strip tracking codes (`utm_` and the like) from links, next to the
       tracking pixels already removed (from the GotEmail and bytemail ideas
       under "Later / unscheduled"; a sub-point of a ticked research item, so
