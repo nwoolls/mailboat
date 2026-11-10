@@ -346,6 +346,14 @@ mod tests {
         // Settings saved before the switch existed look for updates, as new ones do.
         assert!(loaded.auto_check_updates);
         assert_eq!(loaded.update_channel, UpdateChannel::Stable);
+        // Settings saved before the switch existed keep their summaries.
+        assert!(loaded.ai.keep_summaries);
+        conn.execute(
+            "UPDATE app_settings SET value = '{\"ai\":{\"connected\":[]}}' WHERE key = 'app'",
+            [],
+        )
+        .unwrap();
+        assert!(load(&conn).unwrap().ai.keep_summaries);
     }
 
     #[test]

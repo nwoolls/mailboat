@@ -470,10 +470,14 @@ async fn summaries_are_forgotten_only_when_the_person_chose_not_to_keep_them() {
             .len()
     };
     assert_eq!(shown(&db), 1);
+    summaries::store_ideas(&db.conn(), thread, false, &["Sounds good".to_string()]).unwrap();
+    let ideas = |db: &Db| summaries::current_ideas(&db.conn(), thread, false).unwrap();
+    assert_eq!(ideas(&db), Some(vec!["Sounds good".to_string()]));
 
     // Kept by default: nothing happens.
     assert!(!summaries::forget_unless_kept(&db.conn()).unwrap());
     assert_eq!(shown(&db), 1);
+    assert!(ideas(&db).is_some());
 
     // Not kept: they go.
     let mut settings = mail_core::settings::load(&db.conn()).unwrap();
@@ -481,5 +485,6 @@ async fn summaries_are_forgotten_only_when_the_person_chose_not_to_keep_them() {
     mail_core::settings::save(&db.conn(), &settings).unwrap();
     assert!(summaries::forget_unless_kept(&db.conn()).unwrap());
     assert_eq!(shown(&db), 0);
+    assert_eq!(ideas(&db), None);
     let _ = std::fs::remove_dir_all(dir);
 }

@@ -660,6 +660,18 @@ pub fn forget_unkept_summaries(app: &AppHandle) {
     let Some(state) = app.try_state::<AppState>() else {
         return;
     };
+    let kept = mail_core::settings::load(&state.db.conn())
+        .map(|s| s.ai.keep_summaries)
+        .unwrap_or(true);
+    if kept {
+        return;
+    }
+    // Stop what is being written first, as "Clear" does, so a request still
+    // running doesn't save one just after (the one being written at that
+    // moment can still finish: the next launch clears it).
+    if let Some(ai) = app.try_state::<AiState>() {
+        ai.stop_all();
+    }
     let _ = summaries::forget_unless_kept(&state.db.conn());
 }
 
