@@ -341,8 +341,8 @@ private key that matches the public one in the config.
   more trust than Stable: only an update signed by the app's key, for the
   version announced, installs.
 - **Trying an update before shipping it.** See Releasing. It needs the second
-  redirect rule above, in place once. The first beta also shows whether the
-  Windows installer and the macOS bundle accept a pre-release version.
+  redirect rule above, in place once. Tried 2026-11-10: a hand-installed
+  `0.2.0-beta.0` on macOS and Windows updated in the app to `0.2.0-beta.1`.
 
 ## Releasing
 
@@ -454,8 +454,8 @@ pre-release version (`0.2.0-beta.0`) can't be built into a Windows MSI
 (Tauri rejects a pre-release tag that isn't a number up to 65535), so Windows
 builds only the NSIS installer (`bundle.targets` in
 `src-tauri/tauri.windows.conf.json`), which is also the only one released.
-Whether that installer and the macOS bundle take the tag is checked by the
-first beta.
+That installer and the macOS bundle both take the tag: checked 2026-11-10,
+when `0.2.0-beta.0` updated in the app to `0.2.0-beta.1` on both.
 
 Each pull request adds a changeset, a small file in `.changeset/` made with
 `bun run changeset` (`--empty` when people won't notice the change); CI

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0-beta.1
+
+### Minor Changes
+
+- Settings → AI has a switch, "Keep saved summaries". Turn it off and summaries are forgotten when the app quits instead of staying saved until they are written again or cleared.
+
+- Settings has a new Privacy page that lists everything that leaves your computer (Google, image hosts, update checks, Claude or ChatGPT, AI apps) with its current setting and a button to the place where you change it.
+
+### Patch Changes
+
+- An email that is a sign-in code now gets the list line "Sign-in code" instead of a summary that could say it was already verified, summaries no longer say a code was already used, and long tracking links are left out of what summaries read.
+
+- A sign-in code that Gmail's short preview cuts off now also shows on the conversation's row and in the new-mail banner, once the email's text has been downloaded.
+
+- Choosing Claude or ChatGPT to summarize a conversation now starts the summary as a Summarize button, so nothing is sent until you press it. You can still choose Automatically.
+
+- Settings → Privacy now says how much of the downloaded images is kept and what happens beyond that.
+
 ## 0.2.0-beta.0
 
 ### Minor Changes
