@@ -142,7 +142,7 @@ export function AiSection() {
         )}
         <Row
           label="Keep saved summaries"
-          description="On: a summary is kept until new mail arrives in its conversation. Off: summaries are forgotten when the app quits, so each lives only while it stays open and is written again the next time it is needed (sent again, if Claude or ChatGPT writes it)."
+          description="On: a saved summary is reused until new mail arrives in its conversation, and stays on this computer until it is written again or cleared. Off: summaries are forgotten when the app quits, so each lives only while it stays open and is written again the next time it is needed (sent again, if Claude or ChatGPT writes it)."
         >
           <Toggle
             label="Keep saved summaries"

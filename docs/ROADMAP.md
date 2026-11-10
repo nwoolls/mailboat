@@ -3955,8 +3955,9 @@ security fixes).
       sense there, and a link to the privacy policy belongs with the held
       website pages)*
 - [x] Summaries kept only as long as needed: they are cached in the local
-      database until new mail arrives. Options are a switch to not keep
-      them, or clearing them on quit *(2026-11-09: built, small enough for 0.2.0. Settings → AI → "Keep saved
+      database, reused until new mail arrives, and kept until written again
+      or cleared (a stale one is only ignored, not deleted). Options are a
+      switch to not keep them, or clearing them on quit *(2026-11-09: built, small enough for 0.2.0. Settings → AI → "Keep saved
       summaries", on by default. Off, the saved summaries and reply ideas are
       forgotten when the app quits and again at the next launch (for an exit
       that never ran): `ai::summaries::forget_unless_kept`, called at the
