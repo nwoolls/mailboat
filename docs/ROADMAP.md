@@ -4061,9 +4061,11 @@ the first email was due within 3 to 5 days). Until it ends:
 
 - Don't change `SCOPES` (`crates/core/src/auth/oauth.rs`), the app's
   publishing status or user type in Google Cloud, or its logo: each can delay
-  or restart the review. So "Ask for Google permissions when they are first
-  needed" waits for Google's answer, and its plan should be written with the
-  verified result in hand.
+  or restart the review. The one change to `SCOPES` planned is narrowing the
+  calendar permission (see "For 0.2.0: what helps the review pass" below),
+  which goes the way Google's checklist asks. So "Ask for Google permissions
+  when they are first needed" waits for Google's answer, and its plan should
+  be written with the verified result in hand.
 - A change to what leaves the computer, what is stored or deleted, or a
   default in Settings updates `website/privacy.html` in the same commit (the
   rule in `AGENTS.md`), and a site change redeploys the website on merge.
@@ -4093,6 +4095,117 @@ Decided:
   pane shows an empty state that points back to Settings.
 - Use Opus for the two fuzzing items and the two account-removal items
   (token revocation and deleting data across accounts); Sonnet for the rest.
+
+### For 0.2.0: what helps the review pass (owner, 2026-11-09)
+
+Google's automated checklist email arrived on 2026-11-09. The Verification
+Center shows the homepage and branding checks passed, the privacy policy
+under review, and app functionality, appropriate data access, minimum scopes
+and additional requirements still to come. The owner plans to release 0.2.0
+stable any day. It should carry what helps the review pass; the owner
+leans toward the website matching the latest `main` (Google's email invites
+updates), and the American-spelling pass goes with it. Settled with the
+owner, taking the agent's recommendation. The facts that decide each item
+are below.
+
+What stays true while this is built: `SCOPES` changes only as the calendar
+item says, the publishing status, user type and logo stay as they are, and
+the site never describes a build that visitors can't download (so the policy
+edit merges right after 0.2.0 stable is published, not before).
+
+Checked 2026-11-09, so a new session need not repeat it:
+
+- Google's Calendar API description (revision 20261109) lists
+  `calendar.events.owned` ("See, create, change, and delete events on Google
+  calendars you own"), and it is accepted by every method the app calls:
+  `events.list`, `get`, `patch`, `import` and `delete`. The app only uses the
+  primary calendar (`calendars/primary/…`), which the user owns. The only
+  narrower scope, `calendar.events.owned.readonly`, can't record an answer.
+- Every AI job defaults to Apple Intelligence, which stays on the Mac
+  (`AiSettings::default`; elsewhere the list summaries start off); nothing
+  goes to Claude or ChatGPT unless the user picks one. With a cloud provider chosen, the summary above a conversation
+  still starts automatic (`ReaderSummary::Auto`). The AI-apps (MCP) server is
+  off for every account until turned on.
+- The stable release is `v0.1.0`; account removal that ends the Google
+  sign-in, "Delete all data", the last-account fix and Settings → Privacy
+  are in `v0.2.0-beta.0` only. The policy is accurate for `v0.1.0` and
+  behind for 0.2.0.
+- Google's guidance on a desktop app's client secret is not consistent
+  (older documentation says an installed app's secret is not treated as a
+  secret; other guidance says to protect the file): check the current Google
+  Auth Platform documentation before relying on either.
+
+- [ ] Narrow the calendar permission from `calendar.events` to
+      `calendar.events.owned` (a new item). Opus: it touches sign-in. The
+      code: `CALENDAR_SCOPE` in `crates/core/src/auth/oauth.rs`, and the
+      permission check (`missing()` in `crates/core/src/db/accounts.rs`),
+      which must accept either scope so an account that already granted
+      `calendar.events` keeps working with no new sign-in. The policy: the
+      calendar line and `SCOPE_LABELS` in `scripts/policy.ts` (and its test)
+      change with it, and the line says "calendars you own". The console:
+      Data Access swaps the permission, and the calendar justification is
+      rewritten to match. The consent screen in the new video shows the new
+      line. Not known: whether changing Data Access during a review affects
+      it. Google invites updates, and this narrows, so the plan is to change
+      the console and publish 0.2.0 the same day, and to ask Google in the
+      reply. Add a decisions-table row when built
+- [ ] Cloud AI is manual by default (the item in the Hardening list above,
+      moved into 0.2.0): with a cloud provider chosen, the summary above a
+      conversation starts as the Summarize button, so every transfer is one
+      the person started. Apple Intelligence stays automatic. The policy's
+      sentence about automatic summaries is pinned in `CLAIMS`
+      (`scripts/policy.ts`) and changes with the code. The policy's AI-apps
+      paragraph already says that server is off by default and never sends
+- [ ] Summaries kept only as long as needed (the item in the Hardening list
+      above): in 0.2.0 if it is small, since it supports Google's "retention"
+      row; if it is not, it follows 0.2.0 and the policy says only what the
+      code does
+- [ ] The privacy policy, brought up to date with 0.2.0 and into American
+      spelling in one edit (the item under "Writing", retimed from "after
+      Google's answer"), merged right after 0.2.0 stable is published. It
+      says what removal and "Delete all data" do and leave, how data is
+      protected (including that the app doesn't encrypt the local files and
+      disk encryption does), how long data is kept, Settings → Privacy, and
+      the AI wording (cloud use is the person's choice, the app warns that
+      the provider may train and recommends turning that off, the AI-apps
+      server is off by default). Home page, terms and the pinned strings
+      follow the spelling. Written from the code at the time, not from this
+      list
+- [ ] A reviewer test kit (a new item): a section in
+      `docs/GOOGLE-VERIFICATION.md`, "How a reviewer tests Mailboat". The app
+      is In production, so a reviewer signs in with any Google account (the
+      demo account's login is not shared). 0.2.0 ships without a client file,
+      so the file goes by a private link in the Verification Center's
+      "Additional info" box or in the reply, never on GitHub or the website.
+      The steps are written from the real screens once 0.2.0 is out:
+      download, first launch, drop the file, add the account, Continue, tick
+      Select all. After the review, rotate the client secret (the console's
+      "Add secret", then disable the old one). The owner picks the link's
+      channel
+- [ ] A new demo video, recorded on stable 0.2.0 (a new item), from a
+      script that answers Google's checklist rows; the "Demo video" section
+      of `docs/GOOGLE-VERIFICATION.md` is rewritten to match first. The
+      consent screen with every scope expanded; each feature captioned with
+      the permission it uses; Gmail's web view after each write (archive,
+      label, send, draft, filter, signature, vacation reply, and a message moved
+      to Trash) and Calendar's after each answer (Google's "source account impact");
+      "Other contacts" shown as its own source; Settings → Privacy;
+      removing an account and "Delete all data"; the publishing status left
+      "In production" ("live apps"). The recording notes from the first
+      takes stay in that section
+- [ ] The console and the reply (owner's, tracked here): Data Access and the
+      calendar justification, the new video link, the test instructions in
+      "Additional info", then one reply in the thread once the items above are
+      live: the policy's new date, the video, how to test, the AI safeguards
+      (every job on-device by default, cloud use opt-in, manual summaries,
+      the warning, AI apps off by default), the security-assessment stance
+      (no server of ours), and the calendar narrowing with the question about
+      changing Data Access
+
+Not in 0.2.0, on purpose: "Ask for Google permissions when first needed" (a
+larger change to the consent flow and the video, not asked for by Google's
+checklist) and encrypting the local cache (only if Google insists on the
+security assessment).
 
 ### Step 0: bring this file up to date (documentation only)
 
@@ -4220,6 +4333,7 @@ and a tick.
       for the Summarize button with Claude or ChatGPT; Apple Intelligence
       stays automatic). A default changes, so the policy changes in the same
       commit, and the release goes out only after that edit has merged
+      *(2026-11-09: in 0.2.0; see "For 0.2.0" above)*
 - [x] Settings → Privacy, one page listing every way data leaves the
       computer with its current setting *(2026-11-09: done, see Milestone
       16, which also records why the onboarding pointer was dropped)*
@@ -4284,10 +4398,12 @@ One pull request each.
       `mail::codes`, which holds both spellings to match real mail, and the
       `cargo-deny (licences, advisories)` check name, since renaming a
       required check would block merges
-- [ ] After Google's answer: American spelling on the home page, privacy
-      policy and terms (`website/index.html`, `website/privacy.html`,
-      `website/terms.html`), which Google is reviewing and which are left
-      alone until then. Their "Last updated" dates move with the text, and
+- [ ] With 0.2.0 *(owner, 2026-11-09: retimed from "after Google's answer",
+      to go in the policy edit under "For 0.2.0" above)*: American spelling
+      on the home page, privacy policy and terms (`website/index.html`,
+      `website/privacy.html`, `website/terms.html`), which Google is
+      reviewing and which were left alone until now. Their "Last updated"
+      dates move with the text, and
       two strings the policy check pins change with the policy
       (`SCOPE_LABELS`, "organise", and a `CLAIMS` sentence, "summarised", in
       `scripts/policy.ts`, and the label in `scripts/policy.test.ts`)
