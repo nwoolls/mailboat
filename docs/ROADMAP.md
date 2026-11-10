@@ -3959,8 +3959,9 @@ security fixes).
       them, or clearing them on quit *(2026-11-09: built, small enough for 0.2.0. Settings → AI → "Keep saved
       summaries", on by default. Off, the saved summaries and reply ideas are
       forgotten when the app quits and again at the next launch (for an exit
-      that never ran): `ai::summaries::forget_unless_kept`, called from the
-      run loop. The existing "Clear" button stays. The policy says nothing of
+      that never ran): `ai::summaries::forget_unless_kept`, called at the
+      start of setup, before sync and the AI queue, and from the run loop's
+      exit. The existing "Clear" button stays. The policy says nothing of
       this yet; it goes into the policy edit after 0.2.0 stable is published)*
 - [x] The security contact on the website: `/.well-known/security.txt`
       (RFC 9116) naming `security@getmailboat.app` and `SECURITY.md`, and a

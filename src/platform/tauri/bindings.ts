@@ -520,7 +520,7 @@ export type AiSettings = {
 	/**
 	 *  Keep saved summaries until new mail arrives in their conversation (the
 	 *  default). Off: they are forgotten when the app quits and at the next
-	 *  launch (`ai::summaries::forget_unless_kept`), so one lives only as long
+	 *  launch (at the start of setup) (`ai::summaries::forget_unless_kept`), so one lives only as long
 	 *  as the app stays open.
 	 */
 	keepSummaries?: boolean,
