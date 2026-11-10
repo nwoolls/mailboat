@@ -537,6 +537,11 @@ mod tests {
         assert_eq!(q["redirect_uri"], "http://127.0.0.1:5555");
         assert_eq!(q["response_type"], "code");
         assert!(q["scope"].contains("gmail.modify") && q["scope"].contains("openid"));
+        // The calendar permission asked for is the narrow one, not the broader
+        // one an earlier version asked for (compared as whole scopes).
+        let asked: Vec<&str> = q["scope"].split(' ').collect();
+        assert!(asked.contains(&CALENDAR_SCOPE));
+        assert!(!asked.contains(&LEGACY_CALENDAR_SCOPE));
         assert_eq!(q["access_type"], "offline");
         assert_eq!(q["login_hint"], "me@gmail.com");
         assert!(

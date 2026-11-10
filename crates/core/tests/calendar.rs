@@ -211,7 +211,7 @@ async fn an_account_without_the_calendar_permission_is_asked_to_sign_in_again() 
     let granted: Vec<&str> = SCOPES
         .iter()
         .copied()
-        .filter(|s| *s != CALENDAR_SCOPE && *s != LEGACY_CALENDAR_SCOPE)
+        .filter(|s| *s != CALENDAR_SCOPE)
         .collect();
     let (db, m2) = setup(&granted);
     let server = MockServer::start().await;

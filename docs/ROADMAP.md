@@ -4118,7 +4118,7 @@ Checked 2026-11-09, so a new session need not repeat it:
 - Google's Calendar API description (revision 20261109) lists
   `calendar.events.owned` ("See, create, change, and delete events on Google
   calendars you own"), and it is accepted by every method the app calls:
-  `events.list`, `get`, `patch`, `import` and `delete`. The app only uses the
+  `events.list`, `patch`, `import` and `delete`. The app only uses the
   primary calendar (`calendars/primary/…`), which the user owns. The only
   narrower scope, `calendar.events.owned.readonly`, can't record an answer.
 - Every AI job defaults to Apple Intelligence, which stays on the Mac
