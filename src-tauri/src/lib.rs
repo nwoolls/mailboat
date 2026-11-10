@@ -366,7 +366,11 @@ pub fn run() {
                     mail_handler::open(app, url.as_str());
                 }
             }
+            if let tauri::RunEvent::Exit = event {
+                ai::forget_unkept_summaries(app);
+            }
             if let tauri::RunEvent::Ready = event {
+                ai::forget_unkept_summaries(app);
                 let choice = app
                     .try_state::<AppState>()
                     .and_then(|state| mail_core::settings::load(&state.db.conn()).ok())

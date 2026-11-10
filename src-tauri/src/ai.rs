@@ -653,6 +653,16 @@ pub fn ai_apple_settings_open() -> CmdResult<()> {
     Ok(())
 }
 
+/// Forgets the saved summaries when the person chose not to keep them
+/// (Settings → AI → Saved summaries): at launch, for what an exit that never
+/// ran left behind, and at quit.
+pub fn forget_unkept_summaries(app: &AppHandle) {
+    let Some(state) = app.try_state::<AppState>() else {
+        return;
+    };
+    let _ = summaries::forget_unless_kept(&state.db.conn());
+}
+
 /// Forgets every summary (they're written again as needed).
 #[tauri::command]
 #[specta::specta]

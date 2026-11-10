@@ -190,6 +190,11 @@ pub struct AiSettings {
     /// Which ChatGPT model writes (a Codex catalog slug); `None` is
     /// Codex's default.
     pub chatgpt_model: Option<String>,
+    /// Keep saved summaries until new mail arrives in their conversation (the
+    /// default). Off: they are forgotten when the app quits and at the next
+    /// launch (`ai::summaries::forget_unless_kept`), so one lives only as long
+    /// as the app stays open.
+    pub keep_summaries: bool,
 }
 
 impl Default for AiSettings {
@@ -205,6 +210,7 @@ impl Default for AiSettings {
             writing_provider: AiProvider::Apple,
             writing_quality: Quality::Best,
             chatgpt_model: None,
+            keep_summaries: true,
         }
     }
 }
@@ -302,6 +308,7 @@ mod tests {
                 writing_provider: AiProvider::ChatGpt,
                 writing_quality: Quality::Strongest,
                 chatgpt_model: Some("gpt-6-astra".into()),
+                keep_summaries: false,
             },
             mcp: McpSettings {
                 read: vec![AccountId(1), AccountId(2)],
