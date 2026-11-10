@@ -27,6 +27,7 @@ import {
   PROVIDER_TOOLS,
   PROVIDERS,
   qualityChoices,
+  readerChoice,
   statusLine,
   statusOf,
   summaryTrainingProviders,
@@ -107,7 +108,7 @@ export function AiSection() {
         </Row>
         <Row
           label="Above a conversation"
-          description="A few points above the messages. Automatically: for conversations long enough to need one. With a button: only when you ask."
+          description="A few points above the messages. Automatically: for conversations long enough to need one. With a button: only when you ask. Choosing Claude or ChatGPT below starts it as a button."
         >
           <Segmented
             label="Summary above a conversation"
@@ -135,7 +136,7 @@ export function AiSection() {
               value={ai.readerProvider}
               options={choices}
               disabled={!settings}
-              onChange={(p) => p && update({ readerProvider: p })}
+              onChange={(p) => p && update(readerChoice(ai, p))}
             />
           </Row>
         )}

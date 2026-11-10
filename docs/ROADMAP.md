@@ -3891,12 +3891,19 @@ security fixes).
       pull request: `scripts/policy.ts`, run by `check:website`, with a
       label for each permission and a table of the stated defaults. It
       merged the same day, in #48)*
-- [ ] Cloud AI is manual by default: with Claude or ChatGPT chosen, the
+- [x] Cloud AI is manual by default: with Claude or ChatGPT chosen, the
       summary above a conversation waits for the Summarize button, so every
       transfer is one the person started. Automatic stays an option, and
       stays the default for Apple Intelligence, which never leaves the Mac.
       Summaries in the list with a cloud provider stay off until turned on,
-      with the existing warning at the switch
+      with the existing warning at the switch *(2026-11-09: built. Choosing Claude or ChatGPT for "Summarize with"
+      (Settings → AI) turns an automatic summary into the Summarize button
+      (`readerChoice` in `features/ai/model/providers.ts`); Apple Intelligence
+      leaves it as it was, "Off" and a button stay as they are, and the person
+      can still pick "Automatically". A saved choice is not rewritten: someone
+      who already had a cloud provider with automatic summaries keeps it. The
+      policy sentence about automatic summaries still describes the released
+      version and changes in the policy edit after 0.2.0 stable is published)*
 - [ ] Ask for Google permissions when they are first needed: sign-in asks
       for what mail needs, and Calendar, Contacts and Gmail settings are
       requested when the person first uses invitations, address suggestions,
@@ -4149,8 +4156,8 @@ Checked 2026-11-09, so a new session need not repeat it:
       it. Google invites updates, and this narrows, so the plan is to change
       the console and publish 0.2.0 the same day, and to ask Google in the
       reply. Add a decisions-table row when built
-- [ ] Cloud AI is manual by default (the item in the Hardening list above,
-      moved into 0.2.0): with a cloud provider chosen, the summary above a
+- [x] Cloud AI is manual by default (the item in the Hardening list above,
+      moved into 0.2.0; built 2026-11-09, see that item): with a cloud provider chosen, the summary above a
       conversation starts as the Summarize button, so every transfer is one
       the person started. Apple Intelligence stays automatic. The policy's
       sentence about automatic summaries is pinned in `CLAIMS`
@@ -4332,11 +4339,11 @@ and a tick.
       first-run welcome. A browser test mounts the whole window
       (`?mode=shell`) with a fake account list that empties when the account
       is removed)*
-- [ ] Cloud AI is manual by default (the summary above a conversation waits
+- [x] Cloud AI is manual by default (the summary above a conversation waits
       for the Summarize button with Claude or ChatGPT; Apple Intelligence
-      stays automatic). A default changes, so the policy changes in the same
-      commit, and the release goes out only after that edit has merged
-      *(2026-11-09: in 0.2.0; see "For 0.2.0" above)*
+      stays automatic). A default changes, so the policy changes with it:
+      in the one policy edit after 0.2.0 stable is published (see "For
+      0.2.0" above), not in the same commit *(2026-11-09: in 0.2.0; built)*
 - [x] Settings → Privacy, one page listing every way data leaves the
       computer with its current setting *(2026-11-09: done, see Milestone
       16, which also records why the onboarding pointer was dropped)*

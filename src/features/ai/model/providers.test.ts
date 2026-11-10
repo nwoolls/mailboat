@@ -9,6 +9,7 @@ import {
   leavesMac,
   offered,
   qualityChoices,
+  readerChoice,
   statusLine,
   trainingNote,
   summaryTrainingProviders,
@@ -154,5 +155,28 @@ describe("the model-training note", () => {
     expect(trainingNote(["chatgpt", "claude"])).toBe(
       "ChatGPT and Claude may use what they receive to train their models, depending on your accounts’ settings. We recommend turning that off in each one’s privacy settings.",
     );
+  });
+});
+
+describe("choosing a provider for the summary above a conversation", () => {
+  it("makes an automatic summary a button for Claude or ChatGPT, so each transfer is the person's", () => {
+    for (const provider of ["claude", "chatgpt"] as const) {
+      expect(readerChoice({ readerSummary: "auto" }, provider)).toEqual({
+        readerProvider: provider,
+        readerSummary: "button",
+      });
+    }
+  });
+
+  it("leaves Apple Intelligence, which stays on the Mac, automatic", () => {
+    expect(readerChoice({ readerSummary: "auto" }, "apple")).toEqual({
+      readerProvider: "apple",
+      readerSummary: "auto",
+    });
+  });
+
+  it("keeps a summary that is off or already a button as it was", () => {
+    expect(readerChoice({ readerSummary: "off" }, "claude").readerSummary).toBe("off");
+    expect(readerChoice({ readerSummary: "button" }, "chatgpt").readerSummary).toBe("button");
   });
 });
