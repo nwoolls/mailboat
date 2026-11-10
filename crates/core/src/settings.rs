@@ -295,6 +295,7 @@ mod tests {
         "ai.readerSummary",
         "ai.readerProvider",
         "ai.writingProvider",
+        "ai.keepSummaries",
         "mcp.read",
         "mcp.drafts",
     ];
