@@ -4170,7 +4170,10 @@ Checked 2026-11-09, so a new session need not repeat it:
       the provider may train and recommends turning that off, the AI-apps
       server is off by default). Home page, terms and the pinned strings
       follow the spelling. Written from the code at the time, not from this
-      list
+      list. A draft of the removal, protection and retention text is parked
+      on the local branch `policy-for-google-review` (commit `b73a44b`,
+      written before the spelling, AI and calendar decisions): use it as a
+      starting point, redo it against the code, don't merge it as is
 - [ ] A reviewer test kit (a new item): a section in
       `docs/GOOGLE-VERIFICATION.md`, "How a reviewer tests Mailboat". The app
       is In production, so a reviewer signs in with any Google account (the

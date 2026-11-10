@@ -115,19 +115,54 @@ Unlisted on YouTube, in English, recorded on a screen with the browser's
 address bar visible. Use a dedicated test Google account with made-up mail
 (never anyone's real mailbox), and keep the real account out of the frame.
 
-1. Add an account. Show the whole Google sign-in address with the **client ID
-   in it**, the app name and logo, the list of permissions, and the grant.
-2. The inbox loads. Archive one conversation, label another, write a message
-   and send it, then save another as a draft. (Gmail permission.)
-3. Settings → Rules: edit a rule. Signatures: change one. Vacation responder:
-   turn it on and off. (Gmail settings permission.)
-4. Open a meeting invitation, answer Yes, then show the event on Google
-   Calendar. (Calendar permission.)
-5. Write a message and type a name: the suggestions appear. (Contacts
-   permissions.)
-6. Show the account's address and picture in the sidebar. (Basic permissions.)
-7. Show Settings → AI with the providers, the privacy policy page, and
-   removing the account.
+The script answers the rows of Google's checklist email (2026-11-09): the
+consent screen with every permission expanded, each permission's use shown,
+and, for every write, the result in the Google account itself. Record it on
+the stable 0.2.0, so it shows what the policy describes. About 9 to 11
+minutes, with a caption naming the permission in each scene.
+
+0. A title card (about 5 seconds) listing the permissions the app asks for.
+1. The website: the home page, the privacy policy link and the Download
+   buttons (not clicked). This is the entry point.
+2. First launch: give the app the client file, Add account, Sign in. At the
+   account chooser, expand the address bar so `client_id=` shows. Then the
+   "hasn't verified this app" screen, then the consent screen with **every
+   permission expanded**, Select all, Continue, and the account syncing.
+3. Gmail, read and change (`gmail.modify`): archive, label, send, save a
+   draft, move to Trash. After each, cut to Gmail on the web: All Mail, the
+   label, Sent, Drafts, Trash.
+4. Gmail settings (`gmail.settings.basic`): edit a rule, change the
+   signature, turn the vacation reply on and off. Cut to Gmail's Settings:
+   Filters, the signature, the vacation responder.
+5. Calendar (`calendar.events.owned`): answer an invitation; answer one
+   that isn't on the calendar yet, which the app adds first and then
+   records the answer; remove a cancelled one. Cut to Google Calendar after
+   each.
+6. Contacts (`contacts.readonly`, `contacts.other.readonly`): write a
+   message and type a name from saved contacts, then a name that is only in
+   Other contacts. Cut to Google Contacts and its "Other contacts" page,
+   showing both people.
+7. Basic profile (`openid`, `email`, `profile`): the address and picture in
+   the sidebar.
+8. Settings → Privacy, and Settings → AI: Apple Intelligence on the Mac by
+   default, a cloud provider only if chosen (with the warning that it may
+   train), AI apps off.
+9. Settings → Accounts → Remove, then "Delete all data". Cut to
+   `myaccount.google.com/permissions`: the app no longer appears.
+
+Set up before recording:
+
+- Remove the app's access at `myaccount.google.com/permissions`, so the
+  consent list is full.
+- Seed the demo mailbox: an invitation that isn't on the calendar yet, a
+  cancelled invitation, a saved contact, and a contact that appears only
+  under Other contacts.
+- Windows sized alike (the app, the browser), Do Not Disturb on, a recording
+  with a fixed length.
+
+Captions: make each as a PNG banner (Pillow) and overlay it with `ffmpeg`
+(`overlay` with `enable='between(t,a,b)'`), since `ffmpeg` here has no text
+filter. Note the time of each scene while recording.
 
 ### What recording it taught
 
@@ -151,8 +186,40 @@ The first two takes were redone, so this is what to do next time:
   the idle end.
 - Settings edits (a rule, a signature, the vacation reply) stay in the demo
   mailbox, so use a new value in each take.
-- Settings → Accounts → Remove is the last scene. It leaves the app at the
-  "Make it yours" onboarding step (a known bug).
+- In the first takes, removing the last account left the app at the "Make it
+  yours" onboarding step. That is fixed: it now stays in Settings →
+  Accounts with an empty list.
+
+## How a reviewer tests Mailboat
+
+Written for Google's "active test credentials" and "clear integration access"
+rows. The app is In production, so a reviewer signs in with any Google
+account and sees the "hasn't verified this app" screen; Continue goes on.
+No test login is shared, and the demo account's password stays private.
+
+1. Download 0.2.0 from the website (`getmailboat.app`), install it and open
+   it.
+2. The app has no Google client of its own, so it needs ours. The owner
+   shares it privately, never on GitHub or the website: either the client
+   file, or the Client ID and Client secret as text. In the app's first-run
+   "Google Cloud" step, drop the file on the window, or choose "Paste ID and
+   secret" and paste the two values.
+3. "Add your Gmail accounts", then "Sign in with Google". In the browser
+   choose an account, Continue past the unverified-app screen, tick Select
+   all, Continue. The account syncs in the app.
+4. To see each permission at work, with the result in the Google account:
+   archive, label, send and draft a message (Gmail); Settings → Rules,
+   Signatures, Vacation responder (Gmail settings); answer an invitation
+   (Calendar); type a name in a new message (Contacts); Settings → Privacy.
+5. Settings → Accounts → Remove ends the sign-in at Google: the app
+   disappears from `myaccount.google.com/permissions`.
+
+The steps are written from the real screens: check them against 0.2.0 once it
+is out, before they go to Google. The private link, or the reply carrying the
+two values, is the owner's to send. After the review, rotate the client
+secret (the console's "Add secret", then disable the old one). Google's
+guidance on whether a desktop app's client secret is confidential is not
+consistent, so check its current documentation.
 
 ## Status
 
