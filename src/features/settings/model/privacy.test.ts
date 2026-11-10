@@ -10,6 +10,7 @@ function settings(over: Partial<AppSettings> = {}): AppSettings {
   return {
     remoteImages: "load",
     imagePrefetch: true,
+    imageCacheMb: 500,
     autoCheckUpdates: true,
     updateChannel: "stable",
     ai: {
@@ -97,6 +98,12 @@ describe("what leaves the computer", () => {
     expect(held.now).toContain("Images are blocked until you allow a sender.");
     const later = row(settings({ remoteImages: "block", imagePrefetch: false }), "images");
     expect(later.when).toBe("Only when you open an email from a sender you've allowed.");
+  });
+
+  it("says how much of the downloaded images is kept, and what happens beyond it", () => {
+    const now = row(settings({ imageCacheMb: 1000 }), "images").now;
+    expect(now).toContain("kept up to 1000 MB");
+    expect(now).toContain("least recently shown are removed and load again");
   });
 
   it("always mentions Spam, Trash and the sender's own choice", () => {

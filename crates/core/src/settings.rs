@@ -279,6 +279,84 @@ mod tests {
     use super::*;
     use crate::db::Db;
 
+    /// Every setting is decided to be, or not to be, about privacy
+    /// (what leaves the computer, or how long it is kept). The ones that are
+    /// have a line on Settings → Privacy (`src/features/settings/model/privacy.ts`),
+    /// read from that setting. A new setting fails this test until it is
+    /// listed in one of the two lists below, so adding one means deciding.
+    /// Nested settings are named `group.field`, at any depth.
+    const ON_THE_PRIVACY_PAGE: &[&str] = &[
+        "remoteImages",
+        "imagePrefetch",
+        "imageCacheMb",
+        "autoCheckUpdates",
+        "updateChannel",
+        "ai.listSummaries",
+        "ai.readerSummary",
+        "ai.readerProvider",
+        "ai.writingProvider",
+        "mcp.read",
+        "mcp.drafts",
+    ];
+    const NOT_ABOUT_PRIVACY: &[&str] = &[
+        "newMailNotifications",
+        "notifyFor",
+        "quietHours.on",
+        "quietHours.start",
+        "quietHours.end",
+        "theme",
+        "appIcon",
+        "dockBadge",
+        "ai.connected",
+        "ai.writingQuality",
+        "ai.chatgptModel",
+    ];
+
+    #[test]
+    fn every_setting_is_decided_to_be_on_the_privacy_page_or_not() {
+        // Every field, however deeply nested (`quietHours.start`, `ai.readerSummary`).
+        // Nothing here is skipped when serialized (no `skip_serializing_if`), so
+        // the default's JSON shows them all; a field that was would need adding
+        // by hand.
+        fn leaves(prefix: &str, value: &serde_json::Value, out: &mut Vec<String>) {
+            match value.as_object() {
+                Some(fields) => {
+                    for (key, inner) in fields {
+                        let name = if prefix.is_empty() {
+                            key.clone()
+                        } else {
+                            format!("{prefix}.{key}")
+                        };
+                        leaves(&name, inner, out);
+                    }
+                }
+                None => out.push(prefix.to_string()),
+            }
+        }
+        let json = serde_json::to_value(AppSettings::default()).unwrap();
+        let mut keys: Vec<String> = Vec::new();
+        leaves("", &json, &mut keys);
+        keys.sort();
+        let mut decided: Vec<String> = ON_THE_PRIVACY_PAGE
+            .iter()
+            .chain(NOT_ABOUT_PRIVACY)
+            .map(|k| k.to_string())
+            .collect();
+        decided.sort();
+        // A setting is in one list, once: a key in both (or twice) is no decision.
+        let twice: Vec<_> = decided.windows(2).filter(|w| w[0] == w[1]).collect();
+        assert!(twice.is_empty(), "Listed more than once: {twice:?}");
+        let unlisted: Vec<_> = keys.iter().filter(|k| !decided.contains(k)).collect();
+        let stale: Vec<_> = decided.iter().filter(|k| !keys.contains(k)).collect();
+        assert!(
+            unlisted.is_empty() && stale.is_empty(),
+            "Settings and the Privacy page's lists disagree. Not listed: {unlisted:?}. \
+             Listed but gone: {stale:?}. Add a new setting to ON_THE_PRIVACY_PAGE (and \
+             to `privacy.ts` and its test) if it decides what leaves the computer or how \
+             long data is kept, else to NOT_ABOUT_PRIVACY."
+        );
+    }
+
     #[test]
     fn defaults_until_saved_then_what_was_saved() {
         let db = Db::open_in_memory().unwrap();

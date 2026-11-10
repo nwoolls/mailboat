@@ -101,6 +101,16 @@ How this is enforced:
   schedule in `src-tauri/src/updates.rs`). A new permission needs a line in
   `SCOPE_LABELS`; a new stated default needs an entry in `CLAIMS`, which also
   names the file (`POLICY_SOURCES`).
+- Settings → Privacy (`src/features/settings/model/privacy.ts`, with its
+  test): the page in the app that lists everything that leaves the computer
+  and the setting behind each part, read from the real settings, and says what
+  stays on the computer. A change to what leaves the device, to a setting that
+  decides it (a new setting, a changed default or choice), or to what is kept
+  or for how long, updates this page in the same commit as the policy and the
+  cards, and says only what the code does. A test in
+  `crates/core/src/settings.rs` backs it: every setting must be listed as on
+  the page or as not about privacy, so a new setting fails until someone
+  decides which, and the page's wording for each row has tests of its own.
 - `README.md`: what it is and why, for people. Setup and running live in
   `docs/DEVELOPMENT.md`, Google credentials in `docs/GOOGLE-SETUP.md`, AI in
   `docs/AI.md`.
