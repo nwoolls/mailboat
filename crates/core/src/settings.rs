@@ -277,11 +277,11 @@ mod tests {
     /// have a line on Settings → Privacy (`src/features/settings/model/privacy.ts`),
     /// read from that setting. A new setting fails this test until it is
     /// listed in one of the two lists below, so adding one means deciding.
-    /// Nested settings are named `group.field` (`ai` and `mcp`); a new nested
-    /// group needs its own arm in the loop below, in the same change.
+    /// Nested settings are named `group.field`, at any depth.
     const ON_THE_PRIVACY_PAGE: &[&str] = &[
         "remoteImages",
         "imagePrefetch",
+        "imageCacheMb",
         "autoCheckUpdates",
         "updateChannel",
         "ai.listSummaries",
@@ -294,11 +294,12 @@ mod tests {
     const NOT_ABOUT_PRIVACY: &[&str] = &[
         "newMailNotifications",
         "notifyFor",
-        "quietHours",
+        "quietHours.on",
+        "quietHours.start",
+        "quietHours.end",
         "theme",
         "appIcon",
         "dockBadge",
-        "imageCacheMb",
         "ai.connected",
         "ai.writingQuality",
         "ai.chatgptModel",
@@ -306,16 +307,28 @@ mod tests {
 
     #[test]
     fn every_setting_is_decided_to_be_on_the_privacy_page_or_not() {
-        let json = serde_json::to_value(AppSettings::default()).unwrap();
-        let mut keys: Vec<String> = Vec::new();
-        for (key, value) in json.as_object().unwrap() {
-            match (key.as_str(), value.as_object()) {
-                ("ai" | "mcp", Some(group)) => {
-                    keys.extend(group.keys().map(|k| format!("{key}.{k}")));
+        // Every field, however deeply nested (`quietHours.start`, `ai.readerSummary`).
+        // Nothing here is skipped when serialized (no `skip_serializing_if`), so
+        // the default's JSON shows them all; a field that was would need adding
+        // by hand.
+        fn leaves(prefix: &str, value: &serde_json::Value, out: &mut Vec<String>) {
+            match value.as_object() {
+                Some(fields) => {
+                    for (key, inner) in fields {
+                        let name = if prefix.is_empty() {
+                            key.clone()
+                        } else {
+                            format!("{prefix}.{key}")
+                        };
+                        leaves(&name, inner, out);
+                    }
                 }
-                _ => keys.push(key.clone()),
+                None => out.push(prefix.to_string()),
             }
         }
+        let json = serde_json::to_value(AppSettings::default()).unwrap();
+        let mut keys: Vec<String> = Vec::new();
+        leaves("", &json, &mut keys);
         keys.sort();
         let mut decided: Vec<String> = ON_THE_PRIVACY_PAGE
             .iter()

@@ -102,7 +102,7 @@ export function leavesRows(
       where: "The sender's image host",
       gets: "A request for each remote image, which tells the sender the email arrived.",
       when: imagesWhen,
-      now: `${imagesNow}. A choice you saved for a sender wins, except in Spam, which is always blocked. In Trash, only allowed senders load.`,
+      now: `${imagesNow}. A choice you saved for a sender wins, except in Spam, which is always blocked. In Trash, only allowed senders load. Downloaded images are kept up to ${settings.imageCacheMb} MB, then the least recently shown are removed and load again when you open the email.`,
       section: "viewing",
       sectionLabel: "Viewing",
     },
