@@ -3618,8 +3618,11 @@ published the same day through the same workflow (`docs/DEVELOPMENT.md`,
       second Cloudflare redirect rule (302) from `/updates/beta/latest.json`
       to `https://github.com/<owner>/<repo>/releases/download/updates-beta/latest.json`,
       and, once, trying a first pre-release (see `docs/DEVELOPMENT.md` →
-      Updates, "Trying an update before shipping it"). Not yet verified:
-      whether the Windows installers accept a pre-release version.
+      Updates, "Trying an update before shipping it"). Verified
+      2026-11-10 by the owner: `0.2.0-beta.0` installed by hand on macOS and
+      Windows was updated in the app to `0.2.0-beta.1`, so the redirect rule,
+      the workflow, the signature check and the Windows and macOS packages
+      all work with a pre-release version.
 - [x] Version numbers and changelog *(owner, 2026-10-25: semversioner
       if that's the usual thing, or the option and alternatives)*.
       Semantic versioning (1.4.2: big, feature, fix) is the convention,
