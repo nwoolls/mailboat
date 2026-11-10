@@ -132,6 +132,24 @@ export function leavesMac(provider: AiProvider): boolean {
 }
 
 /**
+ * What choosing `provider` for the summary above a conversation changes. A
+ * provider off the Mac makes an automatic summary a Summarize button, so every
+ * transfer of a conversation is one the person started; Apple Intelligence,
+ * which stays on the Mac, leaves the mode alone, and so does a summary that is
+ * off or already a button. The person can still choose "Automatically" after.
+ */
+export function readerChoice(
+  ai: Pick<AiChoices, "readerSummary">,
+  provider: AiProvider,
+): Pick<AiChoices, "readerProvider" | "readerSummary"> {
+  const manual = leavesMac(provider) && ai.readerSummary === "auto";
+  return {
+    readerProvider: provider,
+    readerSummary: manual ? "button" : ai.readerSummary,
+  };
+}
+
+/**
  * The providers, in the usual order, that may train on what a feature sends
  * them: ones off the Mac that are connected and chosen for it.
  */
