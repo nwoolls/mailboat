@@ -22,6 +22,7 @@ export const AI_DEFAULTS: AiChoices = {
   writingProvider: "apple",
   writingQuality: "best",
   chatgptModel: null,
+  keepSummaries: true,
 };
 
 export function aiChoices(settings: AppSettings | undefined): AiChoices {
@@ -34,6 +35,7 @@ export function aiChoices(settings: AppSettings | undefined): AiChoices {
     writingProvider: ai.writingProvider ?? AI_DEFAULTS.writingProvider,
     writingQuality: ai.writingQuality ?? AI_DEFAULTS.writingQuality,
     chatgptModel: ai.chatgptModel ?? AI_DEFAULTS.chatgptModel,
+    keepSummaries: ai.keepSummaries ?? AI_DEFAULTS.keepSummaries,
   };
 }
 
@@ -129,6 +131,24 @@ export function statusLine(status: ProviderStatus | undefined, connected: boolea
 /** Whether the app sends mail off the Mac when using it. */
 export function leavesMac(provider: AiProvider): boolean {
   return provider !== "apple";
+}
+
+/**
+ * What choosing `provider` for the summary above a conversation changes. A
+ * provider off the Mac makes an automatic summary a Summarize button, so every
+ * transfer of a conversation is one the person started; Apple Intelligence,
+ * which stays on the Mac, leaves the mode alone, and so does a summary that is
+ * off or already a button. The person can still choose "Automatically" after.
+ */
+export function readerChoice(
+  ai: Pick<AiChoices, "readerSummary">,
+  provider: AiProvider,
+): Pick<AiChoices, "readerProvider" | "readerSummary"> {
+  const manual = leavesMac(provider) && ai.readerSummary === "auto";
+  return {
+    readerProvider: provider,
+    readerSummary: manual ? "button" : ai.readerSummary,
+  };
 }
 
 /**

@@ -16,7 +16,7 @@ import {
   useSaveAppSettings,
 } from "../../../shared/lib/queries";
 import { showToast } from "../../../shared/lib/toast";
-import { Button, Group, Row, Segmented } from "../../settings/ui/controls";
+import { Button, Group, Row, Segmented, Toggle } from "../../settings/ui/controls";
 import {
   type AiChoices,
   aiChoices,
@@ -27,6 +27,7 @@ import {
   PROVIDER_TOOLS,
   PROVIDERS,
   qualityChoices,
+  readerChoice,
   statusLine,
   statusOf,
   summaryTrainingProviders,
@@ -107,7 +108,7 @@ export function AiSection() {
         </Row>
         <Row
           label="Above a conversation"
-          description="A few points above the messages. Automatically: for conversations long enough to need one. With a button: only when you ask."
+          description="A few points above the messages. Automatically: for conversations long enough to need one. With a button: only when you ask. Choosing Claude or ChatGPT below starts it as a button."
         >
           <Segmented
             label="Summary above a conversation"
@@ -135,14 +136,22 @@ export function AiSection() {
               value={ai.readerProvider}
               options={choices}
               disabled={!settings}
-              onChange={(p) => p && update({ readerProvider: p })}
+              onChange={(p) => p && update(readerChoice(ai, p))}
             />
           </Row>
         )}
         <Row
-          label="Saved summaries"
-          description="Summaries are kept until new mail arrives in the conversation. Clear them to have them written again."
+          label="Keep saved summaries"
+          description="On: a saved summary is reused until new mail arrives in its conversation, and stays on this computer until it is written again or cleared. Off: summaries are forgotten when the app quits, so each lives only while it stays open and is written again the next time it is needed (sent again, if Claude or ChatGPT writes it)."
         >
+          <Toggle
+            label="Keep saved summaries"
+            on={ai.keepSummaries}
+            disabled={!settings}
+            onChange={(keepSummaries) => update({ keepSummaries })}
+          />
+        </Row>
+        <Row label="Saved summaries" description="Clear them now to have them written again.">
           <Button
             onClick={() =>
               void unwrap(commands.aiSummariesClear())

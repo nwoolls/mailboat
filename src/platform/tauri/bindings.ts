@@ -517,6 +517,14 @@ export type AiSettings = {
 	 *  Codex's default.
 	 */
 	chatgptModel?: string | null,
+	/**
+	 *  Keep saved summaries (the default): each is reused until new mail
+	 *  arrives in its conversation, and stays on this computer until it is
+	 *  written again or cleared. Off: they are forgotten when the app quits
+	 *  and at the next launch (`ai::summaries::forget_unless_kept`), so one
+	 *  lives only as long as the app stays open.
+	 */
+	keepSummaries?: boolean,
 };
 
 /**  Part of an answer as it's written: the whole text so far. */

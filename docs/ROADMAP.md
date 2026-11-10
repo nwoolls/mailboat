@@ -3891,12 +3891,19 @@ security fixes).
       pull request: `scripts/policy.ts`, run by `check:website`, with a
       label for each permission and a table of the stated defaults. It
       merged the same day, in #48)*
-- [ ] Cloud AI is manual by default: with Claude or ChatGPT chosen, the
+- [x] Cloud AI is manual by default: with Claude or ChatGPT chosen, the
       summary above a conversation waits for the Summarize button, so every
       transfer is one the person started. Automatic stays an option, and
       stays the default for Apple Intelligence, which never leaves the Mac.
       Summaries in the list with a cloud provider stay off until turned on,
-      with the existing warning at the switch
+      with the existing warning at the switch *(2026-11-09: built. Choosing Claude or ChatGPT for "Summarize with"
+      (Settings → AI) turns an automatic summary into the Summarize button
+      (`readerChoice` in `features/ai/model/providers.ts`); Apple Intelligence
+      leaves it as it was, "Off" and a button stay as they are, and the person
+      can still pick "Automatically". A saved choice is not rewritten: someone
+      who already had a cloud provider with automatic summaries keeps it. The
+      policy sentence about automatic summaries still describes the released
+      version and changes in the policy edit after 0.2.0 stable is published)*
 - [ ] Ask for Google permissions when they are first needed: sign-in asks
       for what mail needs, and Calendar, Contacts and Gmail settings are
       requested when the person first uses invitations, address suggestions,
@@ -3947,9 +3954,16 @@ security fixes).
       Settings, so a sentence naming a page that isn't on screen made no
       sense there, and a link to the privacy policy belongs with the held
       website pages)*
-- [ ] Summaries kept only as long as needed: they are cached in the local
-      database until new mail arrives. Options are a switch to not keep
-      them, or clearing them on quit
+- [x] Summaries kept only as long as needed: they are cached in the local
+      database, reused until new mail arrives, and kept until written again
+      or cleared (a stale one is only ignored, not deleted). Options are a
+      switch to not keep them, or clearing them on quit *(2026-11-09: built, small enough for 0.2.0. Settings → AI → "Keep saved
+      summaries", on by default. Off, the saved summaries and reply ideas are
+      forgotten when the app quits and again at the next launch (for an exit
+      that never ran): `ai::summaries::forget_unless_kept`, called at the
+      start of setup, before sync and the AI queue, and from the run loop's
+      exit. The existing "Clear" button stays. The policy says nothing of
+      this yet; it goes into the policy edit after 0.2.0 stable is published)*
 - [x] The security contact on the website: `/.well-known/security.txt`
       (RFC 9116) naming `security@getmailboat.app` and `SECURITY.md`, and a
       Security link in the footer *(2026-11-07: built, in its pull request:
@@ -4159,15 +4173,15 @@ Checked 2026-11-09, so a new session need not repeat it:
         the code does. `docs/GOOGLE-VERIFICATION.md` names the new scope.
         Decisions-table row added. The console change is still to do, on the
         day 0.2.0 is published.
-- [ ] Cloud AI is manual by default (the item in the Hardening list above,
-      moved into 0.2.0): with a cloud provider chosen, the summary above a
+- [x] Cloud AI is manual by default (the item in the Hardening list above,
+      moved into 0.2.0; built 2026-11-09, see that item): with a cloud provider chosen, the summary above a
       conversation starts as the Summarize button, so every transfer is one
       the person started. Apple Intelligence stays automatic. The policy's
       sentence about automatic summaries is pinned in `CLAIMS`
       (`scripts/policy.ts`) and changes with the code. The policy's AI-apps
       paragraph already says that server is off by default and never sends
-- [ ] Summaries kept only as long as needed (the item in the Hardening list
-      above): in 0.2.0 if it is small, since it supports Google's "retention"
+- [x] Summaries kept only as long as needed (the item in the Hardening list
+      above; built 2026-11-09, see that item): in 0.2.0 if it is small, since it supports Google's "retention"
       row; if it is not, it follows 0.2.0 and the policy says only what the
       code does
 - [ ] The privacy policy, brought up to date with 0.2.0 and into American
@@ -4180,7 +4194,10 @@ Checked 2026-11-09, so a new session need not repeat it:
       the provider may train and recommends turning that off, the AI-apps
       server is off by default). Home page, terms and the pinned strings
       follow the spelling. Written from the code at the time, not from this
-      list
+      list. A draft of the removal, protection and retention text is parked
+      on the local branch `policy-for-google-review` (commit `b73a44b`,
+      written before the spelling, AI and calendar decisions): use it as a
+      starting point, redo it against the code, don't merge it as is
 - [ ] A reviewer test kit (a new item): a section in
       `docs/GOOGLE-VERIFICATION.md`, "How a reviewer tests Mailboat". The app
       is In production, so a reviewer signs in with any Google account (the
@@ -4339,17 +4356,17 @@ and a tick.
       first-run welcome. A browser test mounts the whole window
       (`?mode=shell`) with a fake account list that empties when the account
       is removed)*
-- [ ] Cloud AI is manual by default (the summary above a conversation waits
+- [x] Cloud AI is manual by default (the summary above a conversation waits
       for the Summarize button with Claude or ChatGPT; Apple Intelligence
-      stays automatic). A default changes, so the policy changes in the same
-      commit, and the release goes out only after that edit has merged
-      *(2026-11-09: in 0.2.0; see "For 0.2.0" above)*
+      stays automatic). A default changes, so the policy changes with it:
+      in the one policy edit after 0.2.0 stable is published (see "For
+      0.2.0" above), not in the same commit *(2026-11-09: in 0.2.0; built)*
 - [x] Settings → Privacy, one page listing every way data leaves the
       computer with its current setting *(2026-11-09: done, see Milestone
       16, which also records why the onboarding pointer was dropped)*
-- [ ] Summaries kept only as long as needed: a switch to not keep them, or
+- [x] Summaries kept only as long as needed: a switch to not keep them, or
       clearing them on quit (its own Milestone 16 item, so it is ticked on
-      its own)
+      its own; built 2026-11-09, see there)
 - [ ] Strip tracking codes (`utm_` and the like) from links, next to the
       tracking pixels already removed (from the GotEmail and bytemail ideas
       under "Later / unscheduled"; a sub-point of a ticked research item, so

@@ -3,13 +3,14 @@ import type {
   AiSettings,
   AppSettings_Serialize as AppSettings,
 } from "../../../platform/tauri/bindings";
-import { cloudUses, isCloudProvider, leavesRows } from "./privacy";
+import { cloudUses, isCloudProvider, leavesRows, STAYS_ON_THIS_COMPUTER } from "./privacy";
 
 // Only the fields the page reads; the rest of the settings don't matter here.
 function settings(over: Partial<AppSettings> = {}): AppSettings {
   return {
     remoteImages: "load",
     imagePrefetch: true,
+    imageCacheMb: 500,
     autoCheckUpdates: true,
     updateChannel: "stable",
     ai: {
@@ -99,6 +100,12 @@ describe("what leaves the computer", () => {
     expect(later.when).toBe("Only when you open an email from a sender you've allowed.");
   });
 
+  it("says how much of the downloaded images is kept, and what happens beyond it", () => {
+    const now = row(settings({ imageCacheMb: 1000 }), "images").now;
+    expect(now).toContain("kept up to 1000 MB");
+    expect(now).toContain("least recently shown are removed and load again");
+  });
+
   it("always mentions Spam, Trash and the sender's own choice", () => {
     for (const remoteImages of ["load", "correspondents", "block"] as const) {
       const now = row(settings({ remoteImages }), "images").now;
@@ -148,5 +155,13 @@ describe("what leaves the computer", () => {
       cloudAi: "ai",
       aiApps: "ai",
     });
+  });
+});
+
+describe("what stays on the computer", () => {
+  it("says how long saved summaries stay, and what the switch changes", () => {
+    expect(STAYS_ON_THIS_COMPUTER).toContain(
+      "Saved summaries stay until they are written again or cleared, or until you quit if you turn off Keep saved summaries.",
+    );
   });
 });
