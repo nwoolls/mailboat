@@ -1,14 +1,15 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AiSettings, ProviderStatus } from "../../../platform/tauri/bindings";
 
 let ai: AiSettings = {};
+const save = vi.fn();
 const ready = (provider: ProviderStatus["provider"]): ProviderStatus =>
   ({ provider, state: "ready", account: null }) as ProviderStatus;
 
 vi.mock("../../../shared/lib/queries", () => ({
   useAppSettings: () => ({ data: { ai } }),
-  useSaveAppSettings: () => ({ mutate: vi.fn() }),
+  useSaveAppSettings: () => ({ mutate: (...a: unknown[]) => save(...a) }),
   useAiStatus: () => ({ data: [ready("apple"), ready("claude"), ready("chatgpt")] }),
   useAiConnect: () => ({ mutate: vi.fn(), isPending: false }),
   useAiDisconnect: () => ({ mutate: vi.fn() }),
@@ -20,7 +21,10 @@ vi.mock("../../mcp/ui/AiAppsGroups", () => ({ AiAppsGroups: () => null }));
 
 const { AiSection } = await import("./AiSection");
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  save.mockClear();
+});
 
 /** The heading of the group a note sits directly under. */
 function groupAbove(note: HTMLElement): string | null {
@@ -86,5 +90,35 @@ describe("AiSection's model-training notes", () => {
     expect(noteAt(0).textContent).toContain("ChatGPT and Claude may use");
     expect(groupAbove(noteAt(1))).toBe("Writing");
     expect(noteAt(1).textContent).toMatch(/^Claude may use/);
+  });
+});
+
+/** What the last save wrote for AI. */
+function saved(): AiSettings {
+  const call = save.mock.calls[0];
+  if (!call) throw new Error("Nothing was saved");
+  return (call[0] as { ai: AiSettings }).ai;
+}
+
+describe("AiSection's summary above a conversation", () => {
+  const chooseReader = (value: string) =>
+    fireEvent.change(screen.getByLabelText("Summarize with"), { target: { value } });
+
+  it("starts as a button when Claude or ChatGPT is chosen for it", () => {
+    for (const provider of ["claude", "chatgpt"] as const) {
+      ai = { connected: ["claude", "chatgpt"], readerSummary: "auto", readerProvider: "apple" };
+      render(<AiSection />);
+      chooseReader(provider);
+      expect(saved()).toMatchObject({ readerProvider: provider, readerSummary: "button" });
+      cleanup();
+      save.mockClear();
+    }
+  });
+
+  it("stays automatic when Apple Intelligence is chosen", () => {
+    ai = { connected: ["claude"], readerSummary: "auto", readerProvider: "claude" };
+    render(<AiSection />);
+    chooseReader("apple");
+    expect(saved()).toMatchObject({ readerProvider: "apple", readerSummary: "auto" });
   });
 });

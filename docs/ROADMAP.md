@@ -4338,9 +4338,9 @@ and a tick.
       is removed)*
 - [x] Cloud AI is manual by default (the summary above a conversation waits
       for the Summarize button with Claude or ChatGPT; Apple Intelligence
-      stays automatic). A default changes, so the policy changes in the same
-      commit, and the release goes out only after that edit has merged
-      *(2026-11-09: in 0.2.0; see "For 0.2.0" above)*
+      stays automatic). A default changes, so the policy changes with it:
+      in the one policy edit after 0.2.0 stable is published (see "For
+      0.2.0" above), not in the same commit *(2026-11-09: in 0.2.0; built)*
 - [x] Settings → Privacy, one page listing every way data leaves the
       computer with its current setting *(2026-11-09: done, see Milestone
       16, which also records why the onboarding pointer was dropped)*

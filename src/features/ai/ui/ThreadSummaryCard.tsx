@@ -28,8 +28,17 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
   const requests = useSummaryRequests(threadId);
   // A summary covers the conversation up to its newest message.
   const newest = detail.messages.findLast((m) => !m.draft)?.id ?? 0;
-  const [pressed, setPressed] = useState(false);
-  const asked = pressed || requests > 0;
+  // Asked for the conversation as it is now: a button press or a menu request
+  // covers the newest message it was made at, so mail that arrives afterwards
+  // goes back to waiting for a new ask (a cloud summary is a transfer the
+  // person starts each time, not one that follows them as mail comes in).
+  const [askedFor, setAskedFor] = useState<number | null>(requests > 0 ? newest : null);
+  const [seenRequests, setSeenRequests] = useState(requests);
+  if (requests !== seenRequests) {
+    setSeenRequests(requests);
+    setAskedFor(newest);
+  }
+  const asked = askedFor === newest;
   // Hidden until the next request from a menu.
   const [hiddenAt, setHiddenAt] = useState<number | null>(null);
   const hidden = hiddenAt === requests;
@@ -70,7 +79,7 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
       <div className="px-4 pb-2" style={{ zoom }}>
         <button
           type="button"
-          onClick={() => setPressed(true)}
+          onClick={() => setAskedFor(newest)}
           title={`Summarize with ${PROVIDER_NAMES[provider]}`}
           className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs text-content/60 ring-1 ring-stroke ring-inset hover:bg-selection hover:text-content"
         >
@@ -110,7 +119,7 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
                 // Asked for now: a new request (its own query) if the
                 // first was automatic, else this one again.
                 if (asked) void query.refetch();
-                else setPressed(true);
+                else setAskedFor(newest);
               }}
               className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-selection hover:text-content"
             >

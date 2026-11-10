@@ -31,16 +31,23 @@ const { requestSummary } = await import("./summaryRequests");
 
 afterEach(cleanup);
 
-const detail = (id: number) =>
-  ({ thread: { id }, messages: [{ id: 5, draft: false }], labels: [] }) as unknown as ThreadDetail;
+const detail = (id: number, newest = 5) =>
+  ({
+    thread: { id },
+    messages: [{ id: newest, draft: false }],
+    labels: [],
+  }) as unknown as ThreadDetail;
 
-function show(id: number) {
+function show(id: number, newest = 5) {
   const client = new QueryClient();
-  render(
+  const tree = (newestId: number) => (
     <QueryClientProvider client={client}>
-      <ThreadSummaryCard detail={detail(id)} zoom={1} />
-    </QueryClientProvider>,
+      <ThreadSummaryCard detail={detail(id, newestId)} zoom={1} />
+    </QueryClientProvider>
   );
+  const view = render(tree(newest));
+  // New mail arriving in the open conversation.
+  return { newMail: (newestId: number) => view.rerender(tree(newestId)) };
 }
 
 describe("ThreadSummaryCard", () => {
@@ -73,6 +80,28 @@ describe("ThreadSummaryCard", () => {
 
     await act(async () => requestSummary(8));
     expect(await screen.findByText("Invoice is due")).toBeTruthy();
+  });
+
+  it("waits for another ask when new mail arrives after one", async () => {
+    aiThreadSummary.mockClear();
+    aiThreadSummary.mockResolvedValue({
+      status: "ok",
+      data: { threadId: 11, text: "- Plans confirmed", provider: "claude", createdAt: 0 },
+    });
+    const { newMail } = show(11);
+    fireEvent.click(screen.getByText("Summarize"));
+    expect(await screen.findByText("Plans confirmed")).toBeTruthy();
+    expect(aiThreadSummary).toHaveBeenCalledTimes(1);
+
+    // A newer message: back to the button, and nothing is sent by itself.
+    await act(async () => newMail(6));
+    expect(screen.getByText("Summarize")).toBeTruthy();
+    expect(aiThreadSummary).toHaveBeenCalledTimes(1);
+
+    // Asked again, it is summarized.
+    fireEvent.click(screen.getByText("Summarize"));
+    expect(await screen.findByText("Plans confirmed")).toBeTruthy();
+    expect(aiThreadSummary).toHaveBeenCalledTimes(2);
   });
 
   it("leaves other conversations alone", () => {
