@@ -1,7 +1,9 @@
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use super::now_millis;
-use crate::auth::oauth::{CALENDAR_SCOPE, CONTACTS_SCOPE, GMAIL_SETTINGS_SCOPE};
+use crate::auth::oauth::{
+    CALENDAR_SCOPE, CONTACTS_SCOPE, GMAIL_SETTINGS_SCOPE, LEGACY_CALENDAR_SCOPE,
+};
 use crate::error::{CoreError, Result};
 use crate::model::{Account, AccountId, Permission};
 
@@ -34,18 +36,25 @@ fn from_row(row: &Row<'_>) -> rusqlite::Result<Account> {
 
 /// The optional permissions not among `granted` (space-separated, as
 /// stored). Not known yet (`None`, until the first token refresh after
-/// updating) counts as none granted.
+/// updating) counts as none granted. Any one of a permission's scopes
+/// grants it: Calendar is either the scope asked for now or the broader
+/// one asked for before (`LEGACY_CALENDAR_SCOPE`), so an account that
+/// granted the old one isn't asked to sign in again.
 fn missing(granted: Option<&str>) -> Vec<Permission> {
     let granted: Vec<&str> = granted.unwrap_or("").split_whitespace().collect();
-    [
-        (Permission::Contacts, CONTACTS_SCOPE),
-        (Permission::Calendar, CALENDAR_SCOPE),
-        (Permission::GmailSettings, GMAIL_SETTINGS_SCOPE),
-    ]
-    .into_iter()
-    .filter(|(_, scope)| !granted.contains(scope))
-    .map(|(p, _)| p)
-    .collect()
+    let permissions: [(Permission, &[&str]); 3] = [
+        (Permission::Contacts, &[CONTACTS_SCOPE]),
+        (
+            Permission::Calendar,
+            &[CALENDAR_SCOPE, LEGACY_CALENDAR_SCOPE],
+        ),
+        (Permission::GmailSettings, &[GMAIL_SETTINGS_SCOPE]),
+    ];
+    permissions
+        .into_iter()
+        .filter(|(_, scopes)| !scopes.iter().any(|s| granted.contains(s)))
+        .map(|(p, _)| p)
+        .collect()
 }
 
 /// Records the permissions an account's sign-in carries (from Google's
@@ -370,6 +379,57 @@ mod tests {
         ]
         .concat();
         set_granted_scopes(&conn, a.id, &all).unwrap();
+        assert!(get(&conn, a.id).unwrap().missing_permissions.is_empty());
+    }
+
+    #[test]
+    fn calendar_counts_as_granted_with_either_calendar_scope() {
+        let with = |calendar: &[&str]| {
+            let mut scopes = vec![
+                "openid",
+                "https://www.googleapis.com/auth/gmail.modify",
+                CONTACTS_SCOPE,
+                GMAIL_SETTINGS_SCOPE,
+            ];
+            scopes.extend_from_slice(calendar);
+            missing(Some(&scopes.join(" ")))
+        };
+        // Signed in before the narrower scope: not asked to sign in again.
+        assert!(with(&[LEGACY_CALENDAR_SCOPE]).is_empty());
+        // Signed in (or refreshed) with only the scope asked for now.
+        assert!(with(&[CALENDAR_SCOPE]).is_empty());
+        assert!(with(&[CALENDAR_SCOPE, LEGACY_CALENDAR_SCOPE]).is_empty());
+        // Neither: only Calendar is missing.
+        assert_eq!(with(&[]), vec![Permission::Calendar]);
+        // A calendar scope alone grants nothing else.
+        assert_eq!(
+            missing(Some(LEGACY_CALENDAR_SCOPE)),
+            vec![Permission::Contacts, Permission::GmailSettings]
+        );
+        assert_eq!(
+            missing(Some(CALENDAR_SCOPE)),
+            vec![Permission::Contacts, Permission::GmailSettings]
+        );
+        // Close is not enough: scopes match exactly.
+        assert_eq!(
+            with(&["https://www.googleapis.com/auth/calendar.events.owned.readonly"]),
+            vec![Permission::Calendar]
+        );
+    }
+
+    #[test]
+    fn an_account_that_granted_the_old_calendar_scope_keeps_calendar() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        let a = upsert(&conn, &new("sub-1", "a@example.com")).unwrap();
+        let old = vec![
+            "openid".to_string(),
+            "https://www.googleapis.com/auth/gmail.modify".into(),
+            CONTACTS_SCOPE.into(),
+            LEGACY_CALENDAR_SCOPE.into(),
+            GMAIL_SETTINGS_SCOPE.into(),
+        ];
+        set_granted_scopes(&conn, a.id, &old).unwrap();
         assert!(get(&conn, a.id).unwrap().missing_permissions.is_empty());
     }
 }

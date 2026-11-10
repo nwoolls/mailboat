@@ -20,7 +20,8 @@ export const SCOPE_LABELS: Record<string, string> = {
   profile: "Your name, email address and profile picture",
   "https://www.googleapis.com/auth/gmail.modify": "Gmail (read, organise, draft and send)",
   "https://www.googleapis.com/auth/gmail.settings.basic": "Gmail settings",
-  "https://www.googleapis.com/auth/calendar.events": "Google Calendar events",
+  "https://www.googleapis.com/auth/calendar.events.owned":
+    "Google Calendar events on calendars you own",
   "https://www.googleapis.com/auth/contacts.readonly": "Google Contacts (read only)",
   "https://www.googleapis.com/auth/contacts.other.readonly": "Other contacts (read only)",
 };

@@ -41,7 +41,8 @@ pub const SCOPES: [&str; 8] = [
     "https://www.googleapis.com/auth/contacts.readonly",
     "https://www.googleapis.com/auth/contacts.other.readonly",
     // Answering meeting invitations through Google Calendar, as Gmail
-    // does: read your events (and clashes) and set your answer.
+    // does: read your events (and clashes) and set your answer. Only on
+    // calendars you own (the app only uses the primary calendar).
     CALENDAR_SCOPE,
     // Gmail's settings: rules (filters), signatures, vacation responder
     // (Milestone 6). Asked for together with Calendar so each account
@@ -50,7 +51,13 @@ pub const SCOPES: [&str; 8] = [
 ];
 
 pub const GMAIL_MODIFY_SCOPE: &str = "https://www.googleapis.com/auth/gmail.modify";
-pub const CALENDAR_SCOPE: &str = "https://www.googleapis.com/auth/calendar.events";
+pub const CALENDAR_SCOPE: &str = "https://www.googleapis.com/auth/calendar.events.owned";
+/// The broader calendar permission asked for before 2026-11-09 (events on
+/// every calendar you can see, not only your own). No longer asked for:
+/// Google's minimum-scopes check wants the narrowest one that works, and
+/// the app only uses the primary calendar. Still counts as the Calendar
+/// permission when an account granted it, so nobody has to sign in again.
+pub const LEGACY_CALENDAR_SCOPE: &str = "https://www.googleapis.com/auth/calendar.events";
 pub const GMAIL_SETTINGS_SCOPE: &str = "https://www.googleapis.com/auth/gmail.settings.basic";
 pub const CONTACTS_SCOPE: &str = "https://www.googleapis.com/auth/contacts.readonly";
 
@@ -499,6 +506,13 @@ mod tests {
         assert!(SCOPES.contains(&GMAIL_MODIFY_SCOPE));
         assert!(!SCOPES.iter().any(|s| s.ends_with("gmail.compose")));
         assert_eq!(SCOPES.len(), 8);
+    }
+
+    #[test]
+    fn calendar_is_asked_for_only_on_calendars_you_own() {
+        assert!(SCOPES.contains(&CALENDAR_SCOPE));
+        assert!(CALENDAR_SCOPE.ends_with("/calendar.events.owned"));
+        assert!(!SCOPES.contains(&LEGACY_CALENDAR_SCOPE));
     }
 
     #[test]

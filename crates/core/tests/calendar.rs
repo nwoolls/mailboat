@@ -5,7 +5,7 @@
 mod common;
 
 use common::*;
-use mail_core::auth::oauth::{CALENDAR_SCOPE, SCOPES};
+use mail_core::auth::oauth::{CALENDAR_SCOPE, LEGACY_CALENDAR_SCOPE, SCOPES};
 use mail_core::calendar::{self, CalendarState};
 use mail_core::db::{accounts, store, Db};
 use mail_core::gmail::parse;
@@ -179,11 +179,39 @@ async fn shows_the_invitation_your_answer_and_clashes_then_answers() {
 }
 
 #[tokio::test]
+async fn an_account_that_granted_the_old_calendar_scope_still_reads_the_calendar() {
+    // Signed in before the app asked only for calendars you own.
+    let granted: Vec<&str> = SCOPES
+        .iter()
+        .map(|s| {
+            if *s == CALENDAR_SCOPE {
+                LEGACY_CALENDAR_SCOPE
+            } else {
+                s
+            }
+        })
+        .collect();
+    let (db, m2) = setup(&granted);
+    let server = MockServer::start().await;
+    serve_invitation(&server).await;
+    serve_lookup(&server, vec![event("needsAction")]).await;
+    serve_range(&server).await;
+    let (gmail, _) = client(&server.uri());
+    fetch_body(&db, &gmail, m2).await.unwrap();
+    let card = calendar::card_for(&db, &gmail, m2).await.unwrap().unwrap();
+    assert!(
+        matches!(card.calendar, CalendarState::OnCalendar { .. }),
+        "expected the event on the calendar, got {:?}",
+        card.calendar
+    );
+}
+
+#[tokio::test]
 async fn an_account_without_the_calendar_permission_is_asked_to_sign_in_again() {
     let granted: Vec<&str> = SCOPES
         .iter()
         .copied()
-        .filter(|s| *s != CALENDAR_SCOPE)
+        .filter(|s| *s != CALENDAR_SCOPE && *s != LEGACY_CALENDAR_SCOPE)
         .collect();
     let (db, m2) = setup(&granted);
     let server = MockServer::start().await;
