@@ -179,6 +179,8 @@ describe("choosing a provider for the summary above a conversation", () => {
   it("keeps a summary that is off or already a button as it was", () => {
     expect(readerChoice({ readerSummary: "off" }, "claude").readerSummary).toBe("off");
     expect(readerChoice({ readerSummary: "button" }, "chatgpt").readerSummary).toBe("button");
+  });
+});
 
 describe("the AI choices with their defaults filled in", () => {
   it("keeps saved summaries unless the setting says otherwise", () => {
