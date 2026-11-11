@@ -149,10 +149,22 @@ export function ComposeForm({
     const stop = () => growing.disconnect();
     const byHand = ["wheel", "pointerdown", "keydown", "touchstart"] as const;
     for (const type of byHand) window.addEventListener(type, stop, { capture: true, once: true });
+    // A wheel or a touch over an email (a sandboxed frame of its own, whose
+    // input never reaches this window) shows only as the reader scrolling.
+    // Following only ever scrolls down to the reply, so the reader moving up
+    // is the person reading: stop.
+    let lastTop = scroller?.scrollTop ?? 0;
+    const onScroll = () => {
+      if (!scroller) return;
+      if (scroller.scrollTop < lastTop - 4) stop();
+      lastTop = scroller.scrollTop;
+    };
+    scroller?.addEventListener("scroll", onScroll, { passive: true });
     const settled = window.setTimeout(stop, REPLY_FOLLOW_MS);
     return () => {
       stop();
       window.clearTimeout(settled);
+      scroller?.removeEventListener("scroll", onScroll);
       for (const type of byHand) window.removeEventListener(type, stop, { capture: true });
     };
   }, [editor, draft.kind, entry.focusKey]);

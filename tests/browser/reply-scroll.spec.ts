@@ -74,3 +74,33 @@ test("Reply with AI, 360px reader, slow machine: the reply still scrolls into vi
     })
     .toBeGreaterThanOrEqual(-1);
 });
+
+/**
+ * Scrolling up over the email itself (a sandboxed frame, whose input never
+ * reaches the app's window: the reader just scrolls) stops the follow, so
+ * the reader doesn't snap back to the reply while the person reads.
+ */
+test("Reply with AI: scrolling up to read stops the reply being followed", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await expect(page.getByTitle("Message content")).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
+  });
+  await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
+  await expect
+    .poll(async () => (await replyInView(page)).bottom, { timeout: 15_000 })
+    .toBeGreaterThanOrEqual(-1);
+  // The reader moved up, as a wheel over the email moves it, then the reply
+  // grows (as a signature arriving would): the reader stays where it is.
+  const scrollTop = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    reader.scrollTop = 0;
+    await new Promise((done) => setTimeout(done, 100));
+    const extra = document.createElement("div");
+    extra.style.height = "60px";
+    document.querySelector('section[aria-label="Reply"] form')!.append(extra);
+    await new Promise((done) => setTimeout(done, 800));
+    return reader.scrollTop;
+  });
+  expect(scrollTop).toBe(0);
+});

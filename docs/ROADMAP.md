@@ -4809,9 +4809,10 @@ again until the next spike.*
       reply is kept in view while it lays out (the email above measured, the
       assistant opening, the signature), but only for a fixed second and a
       half. On a slow machine the layout finished after that and the reply
-      was left below. It is now followed until the person scrolls or types,
-      or for ten seconds at most, as the reader already does when it opens on
-      an email. A browser test slows the animations to stand in for a slow
+      was left below. It is now followed until the person scrolls or types
+      (scrolling up over an email counts, though its input never reaches the
+      app: the reader moving up stops it), or for ten seconds at most; the
+      same hand input stops the reader's landing on an email when it opens. A browser test slows the animations to stand in for a slow
       machine: the reply's end was left 4 px below the reader before the fix.
 
 ## Later / unscheduled
