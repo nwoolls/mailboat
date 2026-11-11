@@ -4473,7 +4473,7 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
-- [ ] Turning the vacation reply off erases its message in Gmail *(found
+- [x] Turning the vacation reply off erases its message in Gmail *(found
       in the demo video dry run, 2026-11-11)*: with the reply on and a
       message saved from the app, turning it off in Settings → Vacation
       responder and saving left the message empty, in the app and in Gmail
@@ -4487,7 +4487,12 @@ again until the next spike.*
       message on the next save. To fix: derive the plain text from the HTML
       when Gmail's is empty, with a test using a made-up Gmail response of
       that shape that fails today. Proposed for 0.2.0 (it loses what the
-      person wrote)
+      person wrote) *(fixed 2026-11-11: the cause was as above, confirmed by
+      tests that failed before the fix. When Gmail's plain text is empty,
+      `from_gmail` now makes it from the HTML, a line per line break or
+      block, so the form keeps the message. Tests in `vacation.rs` and
+      `crates/core/tests/gmail_settings.rs` turn an HTML-only reply off, then
+      on again, and check that both saves send the message)*
 - [ ] The vacation message box only takes a click on its first line *(found
       in the same dry run)*: clicking the empty part of the box in Settings
       → Vacation responder doesn't place the cursor; only a click on the

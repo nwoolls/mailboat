@@ -63,6 +63,15 @@ describe("vacation form", () => {
     expect(toSettings(form).bodyHtml).toBe("");
   });
 
+  it("keeps the message when the reply is turned off", () => {
+    const form = { ...formFromSettings(settings, 0), enabled: false };
+    expect(toSettings(form)).toMatchObject({
+      enabled: false,
+      bodyHtml: settings.bodyHtml,
+      bodyText: settings.bodyText,
+    });
+  });
+
   it("describes its state", () => {
     const during = startOfDay("2026-10-22")!;
     expect(vacationStatus(settings, during)).toBe("On until the end of Sat, Oct 24");
