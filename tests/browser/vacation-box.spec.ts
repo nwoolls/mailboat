@@ -26,7 +26,7 @@ test("a click on the empty part of the message box starts typing there", async (
 
   // A long message still stops at the box's height and scrolls in it.
   const before = area.height;
-  for (let i = 0; i < 20; i++) await page.keyboard.press("Enter");
+  await page.keyboard.type("\n".repeat(20));
   await expect.poll(() => box.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
   const after = await box.boundingBox();
   expect(after?.height).toBeGreaterThan(before);
