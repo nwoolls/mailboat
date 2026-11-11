@@ -4473,13 +4473,13 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
-- [ ] Turning the vacation reply off erases its message in Gmail *(found
+- [x] Turning the vacation reply off erases its message in Gmail *(found
       in the demo video dry run, 2026-11-11)*: with the reply on and a
       message saved from the app, turning it off in Settings → Vacation
       responder and saving left the message empty, in the app and in Gmail
       on the web (whose box also switched to plain text); the subject
       survived. The next time someone turns it on, their message is gone.
-      Likely cause, from reading the code, not yet confirmed: after the app
+      Likely cause, from reading the code: after the app
       saves an HTML message, Gmail returns it with an empty plain-text part;
       `from_gmail` (`crates/core/src/vacation.rs`) keeps that empty text, and
       the form (`src/features/vacation/model/vacationForm.ts`, where the
@@ -4487,7 +4487,16 @@ again until the next spike.*
       message on the next save. To fix: derive the plain text from the HTML
       when Gmail's is empty, with a test using a made-up Gmail response of
       that shape that fails today. Proposed for 0.2.0 (it loses what the
-      person wrote)
+      person wrote) *(fixed 2026-11-11: tests with a made-up Gmail response
+      of that shape failed before the fix, so the app erased the message
+      whenever Gmail answers that way; that Gmail did so in the dry run is
+      not yet checked against a real account. When Gmail's plain text is empty,
+      `from_gmail` now makes it from the HTML, a line per line break or
+      block, so the form keeps the message. A test in `vacation.rs` reads an
+      HTML-only reply and turns it off; one in
+      `crates/core/tests/gmail_settings.rs` turns it off, then on again, and
+      checks that both saves send the message. A reply with no text at all,
+      only an image, still loses its message on the next save, as before)*
 - [ ] The vacation message box only takes a click on its first line *(found
       in the same dry run)*: clicking the empty part of the box in Settings
       → Vacation responder doesn't place the cursor; only a click on the

@@ -171,6 +171,60 @@ async fn reads_and_saves_the_vacation_responder() {
 }
 
 #[tokio::test]
+async fn an_html_only_reply_keeps_its_message_off_and_on_again() {
+    // Gmail can return a reply saved as HTML with an empty plain-text part.
+    // Turning it off, then on again, must send the message back each time.
+    let html = "<div>Away until Monday</div><div>Maya</div>";
+    let gmail_says = |on: bool| {
+        json!({
+            "enableAutoReply": on, "responseSubject": "Away",
+            "responseBodyPlainText": "", "responseBodyHtml": html
+        })
+    };
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/settings/vacation"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(gmail_says(true)))
+        .mount(&server)
+        .await;
+    for on in [false, true] {
+        Mock::given(method("PUT"))
+            .and(path("/gmail/v1/users/me/settings/vacation"))
+            .and(body_json(json!({
+                "enableAutoReply": on,
+                "responseSubject": "Away",
+                "responseBodyPlainText": "Away until Monday\nMaya",
+                "responseBodyHtml": html,
+                "restrictToContacts": false,
+                "restrictToDomain": false
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(gmail_says(on)))
+            .expect(1)
+            .mount(&server)
+            .await;
+    }
+    let (db, a) = setup("me@gmail.com");
+    let (gmail, _) = client(&server.uri());
+
+    let VacationState::Ready { mut settings, .. } =
+        vacation::get(&db, &gmail, a).await.unwrap().state
+    else {
+        panic!("not ready");
+    };
+    assert_eq!(settings.body_text, "Away until Monday\nMaya");
+    for on in [false, true] {
+        settings.enabled = on;
+        let saved = vacation::set(&db, &gmail, a, &settings).await.unwrap();
+        let VacationState::Ready { settings: next, .. } = saved.state else {
+            panic!("not ready");
+        };
+        assert_eq!(next.body_html, html);
+        assert_eq!(next.body_text, "Away until Monday\nMaya");
+        settings = next;
+    }
+}
+
+#[tokio::test]
 async fn vacation_without_the_permission_asks_to_sign_in_again() {
     let server = MockServer::start().await;
     let (db, a) = setup("a@x.example");
