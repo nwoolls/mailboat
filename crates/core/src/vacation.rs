@@ -114,13 +114,14 @@ fn html_lines(html: &str) -> String {
     while let Some(open) = rest.find('<') {
         line.push_str(&rest[..open]);
         let tag = &rest[open..];
-        let end = tag.find('>').map_or(tag.len(), |e| e + 1);
+        let end = tag_end(tag);
         let name = tag[1..end]
             .trim_start()
             .chars()
-            .take_while(|c| c.is_ascii_alphanumeric() || *c == '/')
-            .collect::<String>()
-            .to_ascii_lowercase();
+            .enumerate()
+            .take_while(|(i, c)| c.is_ascii_alphanumeric() || (*i == 0 && *c == '/'))
+            .map(|(_, c)| c.to_ascii_lowercase())
+            .collect::<String>();
         let breaks = matches!(
             name.as_str(),
             "br" | "/p" | "/div" | "/li" | "/tr" | "/blockquote"
@@ -131,13 +132,29 @@ fn html_lines(html: &str) -> String {
             lines.push(html_to_text(&line));
             line.clear();
         } else {
-            line.push_str(&tag[..end]);
+            // The name alone: `html_to_text` doesn't read quoted attributes.
+            line.push_str(&format!("<{name}>"));
         }
         rest = &tag[end..];
     }
     line.push_str(rest);
     lines.push(html_to_text(&line));
     lines.join("\n").trim().to_string()
+}
+
+/// Where the tag starting `tag` ends: after its `>`, skipping any inside a
+/// quoted attribute, or the end of the string.
+fn tag_end(tag: &str) -> usize {
+    let mut quote = None;
+    for (i, c) in tag.char_indices() {
+        match (quote, c) {
+            (None, '"' | '\'') => quote = Some(c),
+            (Some(q), _) if c == q => quote = None,
+            (None, '>') => return i + 1,
+            _ => {}
+        }
+    }
+    tag.len()
 }
 
 fn to_gmail(s: &VacationSettings, can_limit_to_domain: bool) -> Result<Vacation> {
@@ -288,6 +305,24 @@ mod tests {
             sent.response_body_plain_text.as_deref(),
             Some("Away & offline\nBack Monday\n\nMaya")
         );
+    }
+
+    #[test]
+    fn html_lines_breaks_lines_and_reads_tags_whole() {
+        assert_eq!(
+            html_lines("a<br/>b<BR/>c<br />d<Br class=\"x\">e"),
+            "a\nb\nc\nd\ne"
+        );
+        assert_eq!(
+            html_lines("<div title=\"a>b\">Away</div><p alt='>'>Back</p>"),
+            "Away\nBack"
+        );
+        assert_eq!(
+            html_lines("<h2>Away</h2>Back <b>Monday</b>"),
+            "Away\nBack Monday"
+        );
+        assert_eq!(html_lines("你好<br>世界"), "你好\n世界");
+        assert_eq!(html_lines("<style type=\"x\">p{}</style>Away"), "Away");
     }
 
     #[test]

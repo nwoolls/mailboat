@@ -4479,7 +4479,7 @@ again until the next spike.*
       responder and saving left the message empty, in the app and in Gmail
       on the web (whose box also switched to plain text); the subject
       survived. The next time someone turns it on, their message is gone.
-      Likely cause, from reading the code, not yet confirmed: after the app
+      Cause (first read from the code, then confirmed by tests): after the app
       saves an HTML message, Gmail returns it with an empty plain-text part;
       `from_gmail` (`crates/core/src/vacation.rs`) keeps that empty text, and
       the form (`src/features/vacation/model/vacationForm.ts`, where the
@@ -4490,9 +4490,11 @@ again until the next spike.*
       person wrote) *(fixed 2026-11-11: the cause was as above, confirmed by
       tests that failed before the fix. When Gmail's plain text is empty,
       `from_gmail` now makes it from the HTML, a line per line break or
-      block, so the form keeps the message. Tests in `vacation.rs` and
-      `crates/core/tests/gmail_settings.rs` turn an HTML-only reply off, then
-      on again, and check that both saves send the message)*
+      block, so the form keeps the message. A test in `vacation.rs` reads an
+      HTML-only reply and turns it off; one in
+      `crates/core/tests/gmail_settings.rs` turns it off, then on again, and
+      checks that both saves send the message. A reply with no text at all,
+      only an image, still loses its message on the next save, as before)*
 - [ ] The vacation message box only takes a click on its first line *(found
       in the same dry run)*: clicking the empty part of the box in Settings
       → Vacation responder doesn't place the cursor; only a click on the
