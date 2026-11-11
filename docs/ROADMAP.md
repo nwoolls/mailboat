@@ -4488,10 +4488,14 @@ again until the next spike.*
       when Gmail's is empty, with a test using a made-up Gmail response of
       that shape that fails today. Proposed for 0.2.0 (it loses what the
       person wrote)
-- [ ] The vacation message box only takes a click on its first line *(found
+- [x] The vacation message box only takes a click on its first line *(found
       in the same dry run)*: clicking the empty part of the box in Settings
       → Vacation responder doesn't place the cursor; only a click on the
-      first line does
+      first line does *(fixed 2026-11-11: the editor was only as tall as its
+      text inside a taller box; it now fills the box, padding included. A
+      browser test, `tests/browser/vacation-box.spec.ts`, clicks the empty
+      part near the corner and types, and checks that a long message still
+      scrolls in the box)*
 - [ ] The "Remove account" row in Settings → Accounts says it "Stops syncing
       it and deletes its mail saved on this Mac. Nothing changes in Gmail."
       but not that it also asks Google to end the sign-in, which the app does
