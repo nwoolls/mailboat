@@ -135,6 +135,16 @@ recorded decision may change. Files written for agents (`AGENTS.md`,
 not from the spelling rule below. A docs-only commit still needs
 `bun run check:privacy`.
 
+Before the `unslop` pass, run the `declauding` skill on the same text, and
+also on commit messages and pull request descriptions. Write the draft first
+without it loaded, then run it: it turns model-shaped sentences (staged
+reveals, verdict headers, aphoristic closers, flat-certainty words) into plain
+statements and checks with its diff script that no claim was lost or
+invented. When you wrote the draft, its structural review step runs in a
+subagent, since the writer can't judge its own prose. Its rules give way to
+facts: no claim, number, link, pinned sentence (`CLAIMS`) or "never" or "must"
+may change in a declauding edit.
+
 Spell in American English everywhere a person reads it (all of the above):
 color, behavior, organize, summarize, center, gray, license, canceled,
 toward. Write it that way from the start, and fix it in the `unslop` pass.
