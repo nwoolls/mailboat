@@ -4492,11 +4492,13 @@ again until the next spike.*
       in the same dry run)*: clicking the empty part of the box in Settings
       → Vacation responder doesn't place the cursor; only a click on the
       first line does
-- [ ] The "Remove account" row in Settings → Accounts says it "Stops syncing
+- [x] The "Remove account" row in Settings → Accounts says it "Stops syncing
       it and deletes its mail saved on this Mac. Nothing changes in Gmail."
       but not that it also asks Google to end the sign-in, which the app does
       (the confirmation dialog says so) *(found in the same dry run)*. A
-      wording change, in `SettingsSections.tsx`
+      wording change, in `SettingsSections.tsx` *(fixed 2026-11-11: the row
+      now reads "Stops syncing it, asks Google to end its sign-in, and
+      deletes its mail saved on this Mac. Nothing changes in Gmail.")*
 
 - [x] Removing the last account throws you out of Settings *(owner report,
       2026-11-07; fixed 2026-11-08, see the Polish Spike item)*: in Settings → Accounts, removing the only account
