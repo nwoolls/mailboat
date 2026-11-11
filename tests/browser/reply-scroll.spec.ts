@@ -52,120 +52,28 @@ for (const height of [640, 360])
  * the reply had stopped being followed, and left it part way below the
  * reader. Slowed animations stand in for the slow machine here.
  */
-// TEMPORARY (diagnosis): repeated, so one CI run gives several samples.
-for (let run = 1; run <= 10; run++)
-  test(`Reply with AI, 360px reader, slow machine: the reply still scrolls into view (run ${run})`, async ({
-    page,
-  }) => {
-    await page.goto("/tests/browser/harness.html?mode=inline");
-    await expect(page.getByTitle("Message content")).toBeVisible();
-    await page.addStyleTag({
-      content: "*{animation-duration:2500ms!important;transition-duration:2500ms!important}",
-    });
-    await page.evaluate(() => {
-      document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
-    });
-    await recordFollow(page);
-    await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
-    await expect(page.locator('section[aria-label="Reply"]')).toBeVisible();
-    // Past the slowed animations and the old second-and-a-half window.
-    await page.waitForTimeout(4000);
-    const deadline = Date.now() + 5_000;
-    let bottom = (await replyInView(page)).bottom;
-    while (bottom < -1 && Date.now() < deadline) {
-      await page.waitForTimeout(100);
-      bottom = (await replyInView(page)).bottom;
-    }
-    if (bottom < -1)
-      throw new Error(
-        `the reply's end is ${-bottom}px below the reader. What happened, in ms since the click:\n` +
-          (await page.evaluate(() => {
-            const trace: { t: number; scroll: number; end: number; size?: string }[] = (
-              window as any
-            ).followTrace;
-            const scrolls = trace.filter((e) => !e.size && !("asked" in e));
-            const ups = scrolls.filter((e, i) => i > 0 && e.scroll < (scrolls[i - 1]?.scroll ?? 0));
-            return JSON.stringify(
-              {
-                lastScroll: scrolls.at(-1),
-                lastSize: trace.filter((e) => e.size).at(-1),
-                asks: trace.filter((e) => "asked" in e).slice(-15),
-                head: trace.slice(0, 15),
-                upward: ups.slice(0, 20),
-                tail: trace.slice(-40),
-              },
-              null,
-              1,
-            );
-          })),
-      );
+test("Reply with AI, 360px reader, slow machine: the reply still scrolls into view", async ({
+  page,
+}) => {
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await expect(page.getByTitle("Message content")).toBeVisible();
+  await page.addStyleTag({
+    content: "*{animation-duration:2500ms!important;transition-duration:2500ms!important}",
   });
-
-/**
- * TEMPORARY (diagnosis): records, from the click on, every scroll of the
- * reader (where it is and how far it can go) and every size change of the
- * reply and the reader's content, so a failure in CI shows why the reply
- * wasn't followed.
- */
-async function recordFollow(page: Page) {
   await page.evaluate(() => {
-    const w = window as any;
-    w.followTrace = [];
-    let t0 = 0;
-    const scroller = document.querySelector<HTMLElement>(".reader-scroll")!;
-    const t = () => Math.round(performance.now() - t0);
-    // Only what changed: a size observer reports every frame of an animation.
-    const last = new Map<string, string>();
-    const push = (key: string, entry: Record<string, unknown>) => {
-      const { t: _, ...rest } = entry;
-      const seen = JSON.stringify(rest);
-      if (last.get(key) === seen) return;
-      last.set(key, seen);
-      w.followTrace.push(entry);
-    };
-    document.addEventListener("pointerdown", () => (t0 = performance.now()), {
-      capture: true,
-      once: true,
-    });
-    scroller.addEventListener("scroll", () =>
-      push("scroll", {
-        t: t(),
-        scroll: Math.round(scroller.scrollTop),
-        end: scroller.scrollHeight - scroller.clientHeight,
-      }),
-    );
-    const sizes = new ResizeObserver((entries) => {
-      for (const e of entries)
-        push(e.target === scroller.firstElementChild ? "content" : "reply", {
-          t: t(),
-          size: e.target === scroller.firstElementChild ? "content" : "reply",
-          h: Math.round(e.contentRect.height),
-          scroll: Math.round(scroller.scrollTop),
-          end: scroller.scrollHeight - scroller.clientHeight,
-        });
-    });
-    sizes.observe(scroller.firstElementChild!);
-    // Every scroll the app asks of the reader, with where it was asked to go.
-    const scrollTo = scroller.scrollTo.bind(scroller);
-    scroller.scrollTo = ((options: ScrollToOptions) => {
-      w.followTrace.push({
-        t: t(),
-        asked: Math.round(options.top ?? -1),
-        how: options.behavior,
-        scroll: Math.round(scroller.scrollTop),
-        end: scroller.scrollHeight - scroller.clientHeight,
-      });
-      scrollTo(options);
-    }) as typeof scroller.scrollTo;
-    new MutationObserver(() => {
-      const reply = document.querySelector('section[aria-label="Reply"]');
-      if (reply && !(reply as any).watched) {
-        (reply as any).watched = true;
-        sizes.observe(reply);
-      }
-    }).observe(scroller, { childList: true, subtree: true });
+    document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
   });
-}
+  await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
+  await expect(page.locator('section[aria-label="Reply"]')).toBeVisible();
+  // Past the slowed animations and the old second-and-a-half window.
+  await page.waitForTimeout(4000);
+  await expect
+    .poll(async () => (await replyInView(page)).bottom, {
+      message: "the reply's end (its Send button) is in view",
+      timeout: 5_000,
+    })
+    .toBeGreaterThanOrEqual(-1);
+});
 
 /**
  * Scrolling up over the email itself (a sandboxed frame, whose input never

@@ -4684,17 +4684,25 @@ again until the next spike.*
       `tests/browser/signature-box.spec.ts`, clicks the empty part near the
       corner and types, and checks that a long signature still scrolls in
       the box
-- [ ] On a slow machine, a new reply sometimes stops being followed before
+- [x] On a slow machine, a new reply sometimes stops being followed before
       it has laid out *(found 2026-11-11, by the browser test "Reply with
       AI, 360px reader, slow machine" failing in CI on two pull requests that
-      didn't touch it, and passing when run again and every time locally)*:
-      the reply's end was left 3 px, then 223 px, below the reader, and
-      stayed there, so the follow (ComposeForm, #93/#94) had stopped. Two
-      possible causes: the reader's scroll position clamped down when its
-      content shrank for a moment, taken for the person scrolling up; or the
-      10-second window ending before the last layout on a slow machine. The
-      test now records the reader's scrolls and size changes and prints them
-      when it fails, so CI can tell which. To fix the cause it shows
+      didn't touch it, and passing when run again and every time locally;
+      fixed the same day)*: the reply's end was left a few pixels (once 223)
+      below the reader, and stayed there. Neither first guess was it (the
+      reader's position clamping, taken for the person scrolling up; the
+      follow's 10-second window running out). A recording added to the test
+      for CI showed the follow asking the reader to scroll a pixel or two,
+      smoothly, again and again as the reply grew, and the reader not
+      moving: WebKit left such short smooth scrolls undone. Up to 40 px the
+      follow (ComposeForm) now scrolls at once, which looks the same. With
+      the test run ten times per CI run, it failed in all five runs before
+      the change (about one sample in five) and in none of three after it
+      (30 samples). The test only fails on a slow machine, so it stays as it
+      was and guards it in CI; a local test that grows the reply a pixel at
+      a time passed with and without the change, and was not kept. One
+      earlier failure left the reply 223 px below, which this doesn't
+      explain; it didn't come back in the 80 samples run since
 - [x] Two browser tests in `ai-panel.spec.ts` failed by chance in CI on a
       pull request that touched no front-end code (2026-11-08): the
       floating card's nudge measured 0, and the inline reply ended one pixel
