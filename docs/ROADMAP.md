@@ -4675,6 +4675,15 @@ again until the next spike.*
       on screen, so an early event is lost. The test now sends it again until
       the canvas is up)*
 
+- [x] The signature box only takes a click on its first line *(found
+      while fixing the vacation message box, 2026-11-11; fixed the same
+      day)*: in Settings → Signatures, clicking the empty part of the
+      editor's box didn't place the cursor, for the same reason as the
+      vacation box (the editor was only as tall as its text). It now fills
+      the box, padding included. A browser test,
+      `tests/browser/signature-box.spec.ts`, clicks the empty part near the
+      corner and types, and checks that a long signature still scrolls in
+      the box
 - [x] Two browser tests in `ai-panel.spec.ts` failed by chance in CI on a
       pull request that touched no front-end code (2026-11-08): the
       floating card's nudge measured 0, and the inline reply ended one pixel
