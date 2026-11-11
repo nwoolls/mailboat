@@ -83,12 +83,14 @@ for (let run = 1; run <= 10; run++)
             const trace: { t: number; scroll: number; end: number; size?: string }[] = (
               window as any
             ).followTrace;
-            const scrolls = trace.filter((e) => !e.size);
+            const scrolls = trace.filter((e) => !e.size && !("asked" in e));
             const ups = scrolls.filter((e, i) => i > 0 && e.scroll < (scrolls[i - 1]?.scroll ?? 0));
             return JSON.stringify(
               {
                 lastScroll: scrolls.at(-1),
                 lastSize: trace.filter((e) => e.size).at(-1),
+                asks: trace.filter((e) => "asked" in e).slice(-15),
+                head: trace.slice(0, 15),
                 upward: ups.slice(0, 20),
                 tail: trace.slice(-40),
               },
@@ -143,6 +145,18 @@ async function recordFollow(page: Page) {
         });
     });
     sizes.observe(scroller.firstElementChild!);
+    // Every scroll the app asks of the reader, with where it was asked to go.
+    const scrollTo = scroller.scrollTo.bind(scroller);
+    scroller.scrollTo = ((options: ScrollToOptions) => {
+      w.followTrace.push({
+        t: t(),
+        asked: Math.round(options.top ?? -1),
+        how: options.behavior,
+        scroll: Math.round(scroller.scrollTop),
+        end: scroller.scrollHeight - scroller.clientHeight,
+      });
+      scrollTo(options);
+    }) as typeof scroller.scrollTo;
     new MutationObserver(() => {
       const reply = document.querySelector('section[aria-label="Reply"]');
       if (reply && !(reply as any).watched) {

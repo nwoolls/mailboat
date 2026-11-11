@@ -54,6 +54,8 @@ const PINNED_FOOT_HEIGHT = 96;
 const REPLY_FOLLOW_MS = 10_000;
 /** How far the reader has to move up for that to be the person reading. */
 const REPLY_FOLLOW_UP_PX = 8;
+/** As far as following scrolls at once rather than smoothly. */
+const REPLY_FOLLOW_AT_ONCE_PX = 40;
 
 export function ComposeForm({
   entry,
@@ -149,7 +151,13 @@ export function ComposeForm({
       if (box.height > view.height || box.bottom > view.bottom) by = box.bottom - view.bottom;
       else if (box.top < view.top) by = box.top - view.top;
       target = scroller.scrollTop + by;
-      scroller.scrollTo({ top: target, behavior: "smooth" });
+      // WebKit leaves a smooth scroll of a pixel or two undone, so the
+      // reply, growing a little at a time, ended a few pixels below the
+      // reader. A short way (looks the same) goes at once.
+      scroller.scrollTo({
+        top: target,
+        behavior: Math.abs(by) <= REPLY_FOLLOW_AT_ONCE_PX ? "instant" : "smooth",
+      });
     };
     // The reader may still be landing on an email it just opened (a draft
     // reply resumes by itself): the reply takes over from it.
