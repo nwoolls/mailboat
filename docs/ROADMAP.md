@@ -4688,11 +4688,11 @@ again until the next spike.*
       `tests/browser/signature-box.spec.ts`, clicks the empty part near the
       corner and types, and checks that a long signature still scrolls in
       the box
-- [x] On a slow machine, a new reply sometimes stops being followed before
+- [ ] On a slow machine, a new reply sometimes stops being followed before
       it has laid out *(found 2026-11-11, by the browser test "Reply with
       AI, 360px reader, slow machine" failing in CI on two pull requests that
       didn't touch it, and passing when run again and every time locally;
-      fixed the same day)*: the reply's end was left a few pixels below the
+      partly fixed the same day)*: the reply's end was left a few pixels below the
       reader, and stayed there. Neither first guess was it (the
       reader's position clamping, taken for the person scrolling up; the
       follow's 10-second window running out). A recording added to the test
@@ -4702,11 +4702,19 @@ again until the next spike.*
       follow (ComposeForm) now scrolls at once, which looks the same. With
       the test run ten times per CI run, it failed in all five runs before
       the change (about one sample in five) and in none of three after it
-      (30 samples). The test only fails on a slow machine, so it stays as it
-      was and guards it in CI; a local test that grows the reply a pixel at
-      a time passed with and without the change, and was not kept. One
+      (30 samples). The test only fails on a slow machine; a local test that
+      grows the reply a pixel at a time passed with and without the change,
+      and was not kept. One
       earlier failure left the reply 223 px below, which this doesn't
-      explain; it didn't come back in the 80 samples run since
+      explain; it didn't come back in the 80 samples run since. It did on
+      this pull request's own CI run, with the change in: 341 px below. So
+      the few-pixel misses are fixed and the large ones aren't. The owner
+      chose (2026-11-11) to turn the test off for now (`test.fixme`) rather
+      than keep chasing the cause. Still open: rethink how a new reply is
+      shown, so nothing needs following once it opens (for example, open it
+      at its final size, with space kept for the signature and the
+      assistant, and scroll once); a design for the owner to lead, with a
+      mockup first. Turn the test back on with it
 - [x] Two browser tests in `ai-panel.spec.ts` failed by chance in CI on a
       pull request that touched no front-end code (2026-11-08): the
       floating card's nudge measured 0, and the inline reply ended one pixel
