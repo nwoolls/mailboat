@@ -122,6 +122,11 @@ pub async fn summarize(
         return Ok(Summarized::NotNeeded);
     }
     let text = read_thread(db, gmail, thread).await?;
+    // Reading can wait on downloading bodies, and the conversation may have
+    // moved to Spam or Trash meanwhile: nothing from there is sent on its own.
+    if automatic && summaries::in_spam_or_trash(&db.conn(), thread)? {
+        return Ok(Summarized::NotNeeded);
+    }
     let Some(newest) = text.newest() else {
         return Ok(Summarized::NotNeeded);
     };
