@@ -4528,6 +4528,15 @@ again until the next spike.*
       Mailboat data" stays reachable from the same page, and the mail pane
       shows an empty state that points back to Settings
 
+- [x] A new message only takes a click on its first line *(found while
+      fixing the vacation and signature boxes, 2026-11-11; fixed the same
+      day)*: in the floating composer, clicking the empty space under a new
+      message's text didn't place the cursor, because the editor was only as
+      tall as its text. With nothing under it (no signature, no quoted
+      text), the editor now fills the space; with a signature or quoted text
+      it stays as tall as its text. A browser test,
+      `tests/browser/compose-box.spec.ts`, clicks near the bottom corner and
+      types, and checks that a long message still scrolls in the same space
 - [x] A sideways swipe on the trackpad drags the whole app *(owner report,
       2026-11-06; fixed 2026-11-08, see below)*: with nothing left in the inbox (inbox zero), swiping
       side to side pulls the entire app's contents sideways inside the
