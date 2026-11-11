@@ -4803,6 +4803,19 @@ again until the next spike.*
       the person opens it again. Find where the next message is chosen and
       why it opens the preview, and test that the choice and the collapsed
       state are separate.
+- [x] Reply with AI in a short reader could leave the reply part way below
+      the fold *(found 2026-11-10, when a browser test failed once on CI with
+      the reader stopped well short of the reply; fixed the same day)*: a new
+      reply is kept in view while it lays out (the email above measured, the
+      assistant opening, the signature), but only for a fixed second and a
+      half. On a slow machine the layout finished after that and the reply
+      was left below. It is now followed until the person scrolls or types
+      (scrolling up over an email counts, though its input never reaches the
+      app: the reader moving up by more than a few pixels in all stops it),
+      or for ten seconds at most. The same hand input stops the reader's
+      landing on an email when it opens, and so does a reply starting to be
+      followed (a resumed draft opens with no hand input). A browser test slows the animations to stand in for a slow
+      machine: the reply's end was left 4 px below the reader before the fix.
 - [x] A conversation moved to Spam or Trash while its summary is being
       read could still be summarized automatically *(found in review of the
       privacy policy, 2026-11-10; fixed the same day)*: `tasks::summarize`
