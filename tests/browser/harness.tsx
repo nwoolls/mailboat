@@ -181,6 +181,28 @@ mockIPC((cmd, args) => {
       return [];
     case "labels_list":
       return [];
+    case "vacation_list":
+      // A one-line reply, so most of the message box is empty.
+      return [
+        {
+          accountId: account.id,
+          state: {
+            kind: "ready",
+            settings: {
+              enabled: false,
+              subject: "Away",
+              bodyHtml: "<p>Back Monday</p>",
+              bodyText: "Back Monday",
+              contactsOnly: false,
+              domainOnly: false,
+              start: null,
+              end: null,
+            },
+            canLimitToDomain: false,
+            active: false,
+          },
+        },
+      ];
     case "settings_get":
       return { ai: { writingProvider: "apple" } };
     case "ai_status":
