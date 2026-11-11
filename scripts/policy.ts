@@ -282,13 +282,13 @@ export const CLAIMS: Claim[] = [
     lines: ["const LOOK_EVERY: Duration = Duration::from_secs(24 * 60 * 60);"],
   },
   {
-    says: ["AI features, only if you turn them on."],
+    says: ["Nothing goes to Claude or ChatGPT unless you choose one in Settings → AI."],
     file: SETTINGS_RS,
     item: APP_DEFAULT,
     lines: ["ai: AiSettings::default(),"],
   },
   {
-    says: ["AI features, only if you turn them on."],
+    says: ["Nothing goes to Claude or ChatGPT unless you choose one in Settings → AI."],
     file: SETTINGS_RS,
     item: AI_DEFAULT,
     lines: [
@@ -309,6 +309,17 @@ export const CLAIMS: Claim[] = [
     lines: [],
     exact:
       'export function readerChoice( ai: Pick<AiChoices, "readerSummary">, provider: AiProvider, ): Pick<AiChoices, "readerProvider" | "readerSummary"> { const manual = leavesMac(provider) && ai.readerSummary === "auto"; return { readerProvider: provider, readerSummary: manual ? "button" : ai.readerSummary, }; }',
+  },
+  {
+    // readerChoice's rule depends on which providers count as off the Mac.
+    says: [
+      "Choosing Claude or ChatGPT for the summary above a conversation changes an automatic summary to a Summarize button, so nothing is sent until you press it.",
+    ],
+    file: PROVIDERS_TS,
+    item: "export function leavesMac(",
+    lines: [],
+    exact:
+      'export function leavesMac(provider: AiProvider): boolean { return provider !== "apple"; }',
   },
   {
     says: [

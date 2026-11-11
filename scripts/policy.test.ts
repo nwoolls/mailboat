@@ -231,7 +231,7 @@ describe("the defaults the policy states", () => {
         "writing_provider: AiProvider::Apple,",
         "writing_provider: AiProvider::Claude,",
       ),
-    ).toEqual([expect.stringContaining("AI features, only if you turn them on")]);
+    ).toEqual([expect.stringContaining("Nothing goes to Claude or ChatGPT unless you choose one")]);
     expect(
       changed(SETTINGS_PATH, "mcp: McpSettings::default(),", "mcp: McpSettings { read: vec![] },"),
     ).toEqual([expect.stringContaining("AI apps, only if you turn them on")]);
@@ -252,6 +252,10 @@ describe("the defaults the policy states", () => {
         'readerSummary: manual ? "button" : ai.readerSummary,',
         "readerSummary: ai.readerSummary,",
       ),
+    ).toEqual(said);
+    // It depends on which providers count as off the Mac.
+    expect(
+      changed(PROVIDERS_PATH, 'return provider !== "apple";', 'return provider === "claude";'),
     ).toEqual(said);
     // A copy of its lines kept as text, with the real function changed, still fails.
     const real = SOURCES[PROVIDERS_PATH]!;
@@ -279,7 +283,7 @@ ${real.slice(end)}`;
   it("fail when AppSettings takes its AI defaults from somewhere else", () => {
     expect(
       changed(SETTINGS_PATH, "ai: AiSettings::default(),", "ai: cloud_ai_defaults(),"),
-    ).toEqual([expect.stringContaining("AI features, only if you turn them on")]);
+    ).toEqual([expect.stringContaining("Nothing goes to Claude or ChatGPT unless you choose one")]);
   });
 
   it("don't count a line that is only commented out", () => {
