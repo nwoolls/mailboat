@@ -204,6 +204,8 @@ export function ComposeForm({
   const discard = () => (hasChanges(draft) ? setConfirming(true) : onDiscard());
   const account = accounts.find((a) => a.id === draft.accountId);
   const message = problem ?? error;
+  // Nothing (signature, quoted text) under the message: it can fill the space.
+  const fills = !(draft.quote || draft.signature);
 
   // The AI's draft: Insert adds it where the cursor was (the editor keeps
   // its selection while the chat has focus), Replace puts it in place of
@@ -324,10 +326,20 @@ export function ComposeForm({
         )}
         {/* Never squeezed below a few lines by what's under it (a long
           list of attachments, say); that scrolls instead. */}
-        <div className={inline ? "" : "min-h-28 flex-1 overflow-y-auto"}>
+        {/* With nothing under it, the editor fills the space, so a click
+          anywhere below the text puts the cursor in the message. */}
+        <div
+          className={
+            inline ? "" : `min-h-28 flex-1 overflow-y-auto ${fills ? "flex flex-col" : ""}`
+          }
+        >
           <EditorBody
             editor={editor}
-            className={draft.quote || draft.signature ? "" : "min-h-40"}
+            className={
+              fills
+                ? `flex min-h-40 flex-col [&>.ProseMirror]:flex-1 ${inline ? "" : "flex-1"}`
+                : ""
+            }
             // Shown in the starting font it will be sent in (Settings → Composing).
             style={{ fontFamily: style.font || undefined, fontSize: style.size || undefined }}
           />
