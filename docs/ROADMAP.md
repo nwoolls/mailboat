@@ -4684,6 +4684,17 @@ again until the next spike.*
       `tests/browser/signature-box.spec.ts`, clicks the empty part near the
       corner and types, and checks that a long signature still scrolls in
       the box
+- [ ] On a slow machine, a new reply sometimes stops being followed before
+      it has laid out *(found 2026-11-11, by the browser test "Reply with
+      AI, 360px reader, slow machine" failing in CI on two pull requests that
+      didn't touch it, and passing when run again and every time locally)*:
+      the reply's end was left 3 px, then 223 px, below the reader, and
+      stayed there, so the follow (ComposeForm, #93/#94) had stopped. Two
+      possible causes: the reader's scroll position clamped down when its
+      content shrank for a moment, taken for the person scrolling up; or the
+      10-second window ending before the last layout on a slow machine. The
+      test now records the reader's scrolls and size changes and prints them
+      when it fails, so CI can tell which. To fix the cause it shows
 - [x] Two browser tests in `ai-panel.spec.ts` failed by chance in CI on a
       pull request that touched no front-end code (2026-11-08): the
       floating card's nudge measured 0, and the inline reply ended one pixel
