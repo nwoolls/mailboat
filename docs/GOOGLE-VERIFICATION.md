@@ -122,22 +122,37 @@ the stable 0.2.0, so it shows what the policy describes. About 9 to 11
 minutes, with a caption naming the permission in each scene.
 
 0. A title card (about 5 seconds) listing the permissions the app asks for.
-1. The website: the home page, the privacy policy link and the Download
-   buttons (not clicked). This is the entry point.
-2. First launch: give the app the client file, Add account, Sign in. At the
+1. The website: the home page, the Download buttons (not clicked), then the
+   privacy policy, scrolled through with a pause on the list of Google
+   permissions, "How your data is stored and protected", "Retention and
+   deletion" and the Limited Use statement (the headings of the policy
+   update in pull request #92, live once 0.2.0 ships). This is the entry
+   point.
+2. First launch: the app opens on "Guide me", so press **Change**, then "I
+   already have my OAuth credentials", then **Choose file…** and pick the
+   client file. "Add your Gmail accounts", "Sign in with Google". At the
    account chooser, expand the address bar so `client_id=` shows. Then the
    "hasn't verified this app" screen, then the consent screen with **every
    permission expanded**, Select all, Continue, and the account syncing.
+   Right after onboarding, set Settings → Appearance → Transparency to 0%
+   (a clean start resets it), so nothing shows through the window.
 3. Gmail, read and change (`gmail.modify`): archive, label, send, save a
    draft, move to Trash. After each, cut to Gmail on the web: All Mail, the
-   label, Sent, Drafts, Trash.
+   label, Sent, Drafts, and the trashed message found by searching Trash
+   (`in:trash` and its subject), never the whole Trash list.
 4. Gmail settings (`gmail.settings.basic`): edit a rule, change the
    signature, turn the vacation reply on and off. Cut to Gmail's Settings:
-   Filters, the signature, the vacation responder.
+   Filters, the signature, the vacation responder. Reload Gmail's settings
+   page after each change: it doesn't refresh by itself. Gmail can hold
+   several named signatures; the app edits the one Gmail uses for new mail
+   (its "For new emails use" default), so select that one in the list.
 5. Calendar (`calendar.events.owned`): answer an invitation; answer one
    that isn't on the calendar yet, which the app adds first and then
-   records the answer; remove a cancelled one. Cut to Google Calendar after
-   each.
+   records the answer. Cut to Google Calendar after each (the card's "Open
+   in Calendar" opens the event). A canceled meeting can only be removed
+   while it is still on the calendar; Google removes it from a guest's
+   calendar when the organizer cancels, so the app shows it as Canceled with
+   no button. Leave that part out unless it is set up and tried first.
 6. Contacts (`contacts.readonly`, `contacts.other.readonly`): write a
    message and type a name from saved contacts, then a name that is only in
    Other contacts. Cut to Google Contacts and its "Other contacts" page,
@@ -145,20 +160,33 @@ minutes, with a caption naming the permission in each scene.
 7. Basic profile (`openid`, `email`, `profile`): the address and picture in
    the sidebar.
 8. Settings → Privacy, and Settings → AI: Apple Intelligence on the Mac by
-   default, a cloud provider only if chosen (with the warning that it may
-   train), AI apps off.
-9. Settings → Accounts → Remove, then "Delete all data". Cut to
-   `myaccount.google.com/permissions`: the app no longer appears.
+   default, a cloud provider only if chosen, AI apps off. The warning that a
+   provider may train only shows once one is chosen, so choose ChatGPT or
+   Claude for one job, let the warning show, and set it back.
+9. Settings → Accounts → Remove (the dialog says it asks Google to end the
+   sign-in), then "Delete all data". Cut to the demo account's third-party
+   access page: the app no longer appears.
+
+Who does what: the agent drives the app, the browser and the recording,
+including the Google sign-in clicks and the policy scroll, after checking that
+the account on screen is the demo account; it stops and hands over if Google
+asks for a password or to confirm it's you. The owner only picks the client
+file in the file dialog.
 
 Set up before recording:
 
 - Remove the app's access at `myaccount.google.com/permissions`, so the
-  consent list is full.
+  consent list is full. That page lists every app the account ever linked:
+  remove any that has nothing to do with Mailboat, or it shows on screen.
+- Sign every other account out of the demo browser profile, so the account
+  chooser lists the demo account only.
 - Seed the demo mailbox: an invitation that isn't on the calendar yet, a
   cancelled invitation, a saved contact, and a contact that appears only
   under Other contacts.
 - Windows sized alike (the app, the browser), Do Not Disturb on, a recording
-  with a fixed length.
+  with a fixed length. Hide the browser whenever the app is in front, and
+  bring the browser's sign-in and Calendar pop-ups to the front when they
+  open (Arc can open them behind its main window).
 
 Captions: make each as a PNG banner (Pillow) and overlay it with `ffmpeg`
 (`overlay` with `enable='between(t,a,b)'`), since `ffmpeg` here has no text
@@ -189,6 +217,13 @@ The first two takes were redone, so this is what to do next time:
 - In the first takes, removing the last account left the app at the "Make it
   yours" onboarding step. That is fixed: it now stays in Settings →
   Accounts with an empty list.
+- A dry run on 2026-11-11, on a build with the narrower calendar permission
+  and the updated policy and run against a personal Google project, went
+  through every scene above except "Delete all data" and the invitation the
+  app adds first. Every permission worked and was checked in the Google
+  account. The setup notes and scene details above come from it. Gmail on the
+  web ignored synthetic clicks; real mouse events worked. Give the app a real
+  click before typing after any pause, as focus may have moved elsewhere.
 
 ## How a reviewer tests Mailboat
 
@@ -201,8 +236,10 @@ No test login is shared, and the demo account's password stays private.
    it.
 2. The app has no Google client of its own, so it needs ours. The owner
    shares it privately, never on GitHub or the website: either the client
-   file, or the Client ID and Client secret as text. In the app's first-run
-   "Google Cloud" step, drop the file on the window, or choose "Paste ID and
+   file, or the Client ID and Client secret as text. The app's first-run
+   "Google Cloud" step opens on "Guide me": press **Change**, choose "I
+   already have my OAuth credentials", then **Choose file…** and pick the
+   file (it needn't be named `client_secret_….json`), or "Paste ID and
    secret" and paste the two values.
 3. "Add your Gmail accounts", then "Sign in with Google". In the browser
    choose an account, Continue past the unverified-app screen, tick Select
