@@ -4816,6 +4816,13 @@ again until the next spike.*
       landing on an email when it opens, and so does a reply starting to be
       followed (a resumed draft opens with no hand input). A browser test slows the animations to stand in for a slow
       machine: the reply's end was left 4 px below the reader before the fix.
+- [x] A conversation moved to Spam or Trash while its summary is being
+      read could still be summarized automatically *(found in review of the
+      privacy policy, 2026-11-10; fixed the same day)*: `tasks::summarize`
+      checked Spam and Trash before reading the conversation, and reading can
+      wait on downloading bodies. It now checks again right after reading, so
+      an automatic summary of a conversation that moved meanwhile asks no
+      model. A test moves a conversation to Spam while its body downloads.
 
 ## Later / unscheduled
 

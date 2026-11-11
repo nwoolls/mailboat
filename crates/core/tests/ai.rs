@@ -3,6 +3,8 @@
 //! accounts with the same Gmail IDs keep their own.
 #![cfg(unix)]
 
+mod common;
+
 use mail_core::ai::summaries::{self, SummaryKind};
 use mail_core::ai::tasks::{self, Summarized, SummaryRequest};
 use mail_core::ai::usage;
@@ -486,5 +488,77 @@ async fn summaries_are_forgotten_only_when_the_person_chose_not_to_keep_them() {
     assert!(summaries::forget_unless_kept(&db.conn()).unwrap());
     assert_eq!(shown(&db), 0);
     assert_eq!(ideas(&db), None);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// A conversation moved to Spam while its body is still downloading is not
+/// summarized automatically: the check runs again once it has been read, so
+/// nothing from Spam or Trash reaches a model on its own.
+#[tokio::test]
+async fn a_conversation_moved_to_spam_while_it_is_read_is_not_summarized() {
+    use std::sync::Arc;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let db = Arc::new(Db::open_in_memory().unwrap());
+    let a = add_account(&db, "a", "a@x.example");
+    // In the Inbox, with no body downloaded yet.
+    let mut m = message("m3", 1_000, &["INBOX"]);
+    m.snippet = "alpha".into();
+    let thread = store::upsert_thread(
+        &mut db.conn(),
+        a,
+        &IncomingThread {
+            gmail_thread_id: "t2".into(),
+            messages: vec![m],
+        },
+    )
+    .unwrap();
+    // Google answers slowly, and the conversation moves to Spam meanwhile.
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m3"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(common::fixture("message_m3_full.json"))
+                .set_delay(std::time::Duration::from_millis(400)),
+        )
+        .mount(&server)
+        .await;
+    let (gmail, _) = common::client(&server.uri());
+    let mover = {
+        let db = db.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            store::set_thread_label(&mut db.conn(), thread, "SPAM", true).unwrap();
+        })
+    };
+    let (programs, dir) = fake_apple();
+    let r = tasks::summarize(
+        &db,
+        Some(&gmail),
+        &programs,
+        AiProvider::Apple,
+        line(thread),
+        &|_| {},
+    )
+    .await
+    .unwrap();
+    mover.await.unwrap();
+    let spam = summaries::in_spam_or_trash(&db.conn(), thread).unwrap();
+    assert!(
+        matches!(r, Summarized::NotNeeded),
+        "summarized: {}; in spam: {spam}",
+        match &r {
+            Summarized::Done(s, _) => s.text.clone(),
+            Summarized::NotNeeded => "not needed".into(),
+        }
+    );
+    // No request was made.
+    let used = usage::report(&db.conn(), 0).unwrap();
+    assert!(
+        used.iter().all(|p| p.last_30_days.requests == 0),
+        "{used:?}"
+    );
     let _ = std::fs::remove_dir_all(dir);
 }
