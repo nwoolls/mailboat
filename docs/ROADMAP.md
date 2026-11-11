@@ -4714,7 +4714,14 @@ again until the next spike.*
       shown, so nothing needs following once it opens (for example, open it
       at its final size, with space kept for the signature and the
       assistant, and scroll once); a design for the owner to lead, with a
-      mockup first. Turn the test back on with it
+      mockup first. Turn the test back on with it. The next CI run failed
+      another test in the file the same way ("scrolling up slowly", 401 px,
+      before it scrolled at all): it had clicked Reply with AI while the
+      email above was still laying out on the slow machine. The owner's call:
+      a person clicks Reply after the conversation has loaded, so the tests
+      now wait until it has kept the same height for half a second before
+      clicking. Clicking while it still loads is a separate case, for tests
+      of its own later
 - [x] Two browser tests in `ai-panel.spec.ts` failed by chance in CI on a
       pull request that touched no front-end code (2026-11-08): the
       floating card's nudge measured 0, and the inline reply ended one pixel

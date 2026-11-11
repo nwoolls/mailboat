@@ -18,6 +18,32 @@ async function replyInView(page: Page) {
   });
 }
 
+/**
+ * Waits until the conversation has finished laying out (its height the same
+ * for half a second), as it has long before a person clicks Reply. On a slow
+ * machine (CI) the email above was still being measured after the click,
+ * and the reply was sometimes left out of view. Clicking while it is still
+ * loading is a separate case, for tests of its own later (docs/ROADMAP.md,
+ * Bug backlog).
+ */
+async function contentSettled(page: Page) {
+  await page.evaluate(async () => {
+    const content = document.querySelector(".reader-scroll")!.firstElementChild!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    let height = content.getBoundingClientRect().height;
+    let since = performance.now();
+    const start = since;
+    while (performance.now() - since < 500 && performance.now() - start < 15_000) {
+      await frame();
+      const now = content.getBoundingClientRect().height;
+      if (now !== height) {
+        height = now;
+        since = performance.now();
+      }
+    }
+  });
+}
+
 for (const height of [640, 360])
   for (const button of ["Reply", "Reply with AI"]) {
     test(`${button}, ${height}px reader: the reply scrolls into view`, async ({ page }) => {
@@ -26,6 +52,7 @@ for (const height of [640, 360])
       await page.evaluate((h) => {
         document.querySelector<HTMLElement>("#root > div")!.style.height = `${h}px`;
       }, height);
+      await contentSettled(page);
       await page.getByRole("button", { name: button, exact: true }).click();
       await expect(page.locator('section[aria-label="Reply"]')).toBeVisible();
       // The smooth scroll and the panel's reveal take a moment, longer on a
@@ -67,6 +94,7 @@ test.fixme("Reply with AI, 360px reader, slow machine: the reply still scrolls i
   await page.evaluate(() => {
     document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
   });
+  await contentSettled(page);
   await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
   await expect(page.locator('section[aria-label="Reply"]')).toBeVisible();
   // Past the slowed animations and the old second-and-a-half window.
@@ -90,6 +118,7 @@ test("Reply with AI: scrolling up to read stops the reply being followed", async
   await page.evaluate(() => {
     document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
   });
+  await contentSettled(page);
   await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
   await expect
     .poll(async () => (await replyInView(page)).bottom, { timeout: 15_000 })
@@ -116,6 +145,7 @@ test("Reply with AI: scrolling up slowly stops the reply being followed", async 
   await page.evaluate(() => {
     document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
   });
+  await contentSettled(page);
   await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
   await expect
     .poll(async () => (await replyInView(page)).bottom, { timeout: 15_000 })
