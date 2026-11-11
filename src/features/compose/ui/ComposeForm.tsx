@@ -49,6 +49,9 @@ export const KIND_LABELS: Record<ReplyKind, string> = {
 /** About how tall the pinned formatting and Send bar is, in pixels. */
 const PINNED_FOOT_HEIGHT = 96;
 
+/** The longest a newly opened reply is kept in view while it lays out. */
+const REPLY_FOLLOW_MS = 10_000;
+
 export function ComposeForm({
   entry,
   identities,
@@ -139,10 +142,18 @@ export function ComposeForm({
     // Inline, the reader's content too: whatever grows above moves it.
     const content = scroller?.firstElementChild;
     if (content) growing.observe(content);
-    const settled = window.setTimeout(() => growing.disconnect(), 1500);
+    // Followed until the person scrolls or types (where they are then wins),
+    // or for REPLY_FOLLOW_MS at most. A fixed second and a half wasn't enough
+    // on a slow machine: the email above, the assistant and the signature
+    // finished laying out after it, and the reply was left part way below.
+    const stop = () => growing.disconnect();
+    const byHand = ["wheel", "pointerdown", "keydown", "touchstart"] as const;
+    for (const type of byHand) window.addEventListener(type, stop, { capture: true, once: true });
+    const settled = window.setTimeout(stop, REPLY_FOLLOW_MS);
     return () => {
-      growing.disconnect();
+      stop();
       window.clearTimeout(settled);
+      for (const type of byHand) window.removeEventListener(type, stop, { capture: true });
     };
   }, [editor, draft.kind, entry.focusKey]);
 
