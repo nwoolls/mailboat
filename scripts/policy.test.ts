@@ -21,6 +21,7 @@ const OAUTH = read("crates/core/src/auth/oauth.rs");
 const SOURCES = Object.fromEntries(POLICY_SOURCES.map((path) => [path, read(path)]));
 const SETTINGS_PATH = "crates/core/src/settings.rs";
 const UPDATES_PATH = "src-tauri/src/updates.rs";
+const PROVIDERS_PATH = "src/features/ai/model/providers.ts";
 const TAURI_CONF_PATH = "src-tauri/tauri.conf.json";
 
 const OAUTH_FIXTURE = `
@@ -34,7 +35,7 @@ pub const GMAIL_SCOPE: &str = "https://www.googleapis.com/auth/gmail.modify";
 pub const UNUSED: &str = "https://www.googleapis.com/auth/unused";
 `;
 
-const policy = (items: string[]) => `<h2>Google data the app uses, and why</h2>
+const policy = (items: string[]) => `<h2>Google data the app uses and why</h2>
 <p>Asks for these:</p><ul>${items.map((i) => `<li><strong>${i}:</strong> why.</li>`).join("")}</ul>
 <h2>Where your data is kept</h2><ul><li><strong>Not this one:</strong> x</li></ul>`;
 
@@ -110,7 +111,7 @@ describe("scopeProblems", () => {
   const scopes = parseScopes(OAUTH_FIXTURE);
   const labels = [
     "Your name, email address and profile picture",
-    "Gmail (read, organise, draft and send)",
+    "Gmail (read, organize, draft and send)",
     "Google Calendar events on calendars you own",
   ];
   // The fixture asks for openid alone; the real list asks for all three identity scopes.
@@ -218,13 +219,12 @@ describe("the defaults the policy states", () => {
     expect(
       changed(SETTINGS_PATH, "auto_check_updates: true,", "auto_check_updates: false,"),
     ).toEqual([expect.stringContaining("When it starts and about once a day")]);
-    expect(
-      changed(
-        SETTINGS_PATH,
-        "reader_summary: ReaderSummary::Auto,",
-        "reader_summary: ReaderSummary::Off,",
-      ),
-    ).toEqual([expect.stringContaining("With Claude or ChatGPT chosen for summaries")]);
+    expect(changed(SETTINGS_PATH, "keep_summaries: true,", "keep_summaries: false,")).toEqual([
+      expect.stringContaining("If you turn off Keep saved summaries"),
+    ]);
+    expect(changed(SETTINGS_PATH, "image_cache_mb: 500,", "image_cache_mb: 1000,")).toEqual([
+      expect.stringContaining("Images the app downloads are kept in a cache"),
+    ]);
     expect(
       changed(
         SETTINGS_PATH,
@@ -235,6 +235,35 @@ describe("the defaults the policy states", () => {
     expect(
       changed(SETTINGS_PATH, "mcp: McpSettings::default(),", "mcp: McpSettings { read: vec![] },"),
     ).toEqual([expect.stringContaining("AI apps, only if you turn them on")]);
+  });
+
+  it("fail when a newly chosen cloud provider stops starting as a button", () => {
+    const said = [expect.stringContaining("Choosing Claude or ChatGPT for the summary above")];
+    expect(
+      changed(
+        PROVIDERS_PATH,
+        'const manual = leavesMac(provider) && ai.readerSummary === "auto";',
+        "const manual = false;",
+      ),
+    ).toEqual(said);
+    expect(
+      changed(
+        PROVIDERS_PATH,
+        'readerSummary: manual ? "button" : ai.readerSummary,',
+        "readerSummary: ai.readerSummary,",
+      ),
+    ).toEqual(said);
+    // A copy of its lines kept as text, with the real function changed, still fails.
+    const real = SOURCES[PROVIDERS_PATH]!;
+    const start = real.indexOf("export function readerChoice(");
+    const end = real.indexOf("\n}\n", start) + 3;
+    const decoy = `${real.slice(0, start)}export function readerChoice(ai, provider) {
+  const text = \`// \${"\`"}
+  ${real.slice(start, end)}\`;
+  return { readerProvider: provider, readerSummary: ai.readerSummary };
+}
+${real.slice(end)}`;
+    expect(claimProblems(POLICY, { ...SOURCES, [PROVIDERS_PATH]: decoy })).toEqual(said);
   });
 
   it("fail when the schedule for update checks changes, not only the on/off default", () => {

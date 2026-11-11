@@ -4201,6 +4201,16 @@ Checked 2026-11-09, so a new session need not repeat it:
       on the local branch `policy-for-google-review` (commit `b73a44b`,
       written before the spelling, AI and calendar decisions): use it as a
       starting point, redo it against the code, don't merge it as is
+      *(2026-11-10: written lean, on the branch `policy-lean`, not merged
+      until 0.2.0 stable is published. Four review rounds on a fuller draft
+      (`policy-edit`, kept for reference) kept finding sentences too exact to
+      stay true, so the owner chose the least text that is accurate, readable
+      and covers what Google's policy pages ask for: what is accessed, used,
+      stored, shared and protected, how long it is kept and how it is
+      deleted, the Limited Use statement, and that the data isn't used to
+      train AI models. Detail lives in Settings → Privacy. It starts from
+      `main` without #84, so the calendar line is rebased onto it; the date
+      at the top changes when it is published)*
 - [ ] A reviewer test kit (a new item): a section in
       `docs/GOOGLE-VERIFICATION.md`, "How a reviewer tests Mailboat". The app
       is In production, so a reviewer signs in with any Google account (the
