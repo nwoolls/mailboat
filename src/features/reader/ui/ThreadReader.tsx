@@ -17,6 +17,7 @@ import { useTextZoom } from "../../settings/ui/textSize";
 import { EmailContextMenu } from "./EmailContextMenu";
 import { ThreadSummaryCard } from "../../ai/ui/ThreadSummaryCard";
 import { MessageFrame } from "./MessageFrame";
+import { REPLY_FOLLOW_EVENT } from "../../../shared/lib/replyFollow";
 import { detailLines } from "../model/recipients";
 
 /**
@@ -343,10 +344,14 @@ function useLandOn(messageId: MessageId | null) {
     const settled = window.setTimeout(stop, LANDING_SETTLE_MS);
     const byHand = ["wheel", "pointerdown", "keydown", "touchstart"] as const;
     for (const type of byHand) window.addEventListener(type, stop, { capture: true, once: true });
+    // A reply opening (a resumed draft, with no hand input) keeps itself in
+    // view from then on.
+    scroller.addEventListener(REPLY_FOLLOW_EVENT, stop, { once: true });
     return () => {
       stop();
       window.clearTimeout(settled);
       for (const type of byHand) window.removeEventListener(type, stop, { capture: true });
+      scroller.removeEventListener(REPLY_FOLLOW_EVENT, stop);
     };
   }, [messageId]);
   return ref;

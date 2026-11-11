@@ -4811,8 +4811,10 @@ again until the next spike.*
       half. On a slow machine the layout finished after that and the reply
       was left below. It is now followed until the person scrolls or types
       (scrolling up over an email counts, though its input never reaches the
-      app: the reader moving up stops it), or for ten seconds at most; the
-      same hand input stops the reader's landing on an email when it opens. A browser test slows the animations to stand in for a slow
+      app: the reader moving up by more than a few pixels in all stops it),
+      or for ten seconds at most. The same hand input stops the reader's
+      landing on an email when it opens, and so does a reply starting to be
+      followed (a resumed draft opens with no hand input). A browser test slows the animations to stand in for a slow
       machine: the reply's end was left 4 px below the reader before the fix.
 
 ## Later / unscheduled

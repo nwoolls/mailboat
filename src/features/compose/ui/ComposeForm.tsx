@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { REPLY_FOLLOW_EVENT } from "../../../shared/lib/replyFollow";
 import type { Account, Address, Identity } from "../../../platform/tauri/bindings";
 import { type AddressLine, moveAddress } from "../model/addresses";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
@@ -51,6 +52,8 @@ const PINNED_FOOT_HEIGHT = 96;
 
 /** The longest a newly opened reply is kept in view while it lays out. */
 const REPLY_FOLLOW_MS = 10_000;
+/** How far the reader has to move up for that to be the person reading. */
+const REPLY_FOLLOW_UP_PX = 8;
 
 export function ComposeForm({
   entry,
@@ -136,6 +139,9 @@ export function ComposeForm({
         whole.getBoundingClientRect().height > scroller.getBoundingClientRect().height;
       whole.scrollIntoView({ block: taller ? "end" : "nearest", behavior: "smooth" });
     };
+    // The reader may still be landing on an email it just opened (a draft
+    // reply resumes by itself): the reply takes over from it.
+    scroller?.dispatchEvent(new Event(REPLY_FOLLOW_EVENT));
     show();
     const growing = new ResizeObserver(show);
     growing.observe(whole);
@@ -153,11 +159,13 @@ export function ComposeForm({
     // input never reaches this window) shows only as the reader scrolling.
     // Following only ever scrolls down to the reply, so the reader moving up
     // is the person reading: stop.
-    let lastTop = scroller?.scrollTop ?? 0;
+    // Measured from the furthest down it has been, so slow scrolling in
+    // small steps adds up.
+    let furthest = scroller?.scrollTop ?? 0;
     const onScroll = () => {
       if (!scroller) return;
-      if (scroller.scrollTop < lastTop - 4) stop();
-      lastTop = scroller.scrollTop;
+      furthest = Math.max(furthest, scroller.scrollTop);
+      if (scroller.scrollTop < furthest - REPLY_FOLLOW_UP_PX) stop();
     };
     scroller?.addEventListener("scroll", onScroll, { passive: true });
     const settled = window.setTimeout(stop, REPLY_FOLLOW_MS);

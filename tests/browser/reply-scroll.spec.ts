@@ -104,3 +104,33 @@ test("Reply with AI: scrolling up to read stops the reply being followed", async
   });
   expect(scrollTop).toBe(0);
 });
+
+/** Scrolling up slowly, a few pixels at a time, adds up and stops it too. */
+test("Reply with AI: scrolling up slowly stops the reply being followed", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await expect(page.getByTitle("Message content")).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
+  });
+  await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
+  await expect
+    .poll(async () => (await replyInView(page)).bottom, { timeout: 15_000 })
+    .toBeGreaterThanOrEqual(-1);
+  const moved = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    // Twenty steps of 3 px, each its own scroll event.
+    for (let i = 0; i < 20; i++) {
+      reader.scrollTop -= 3;
+      await frame();
+      await frame();
+    }
+    const read = reader.scrollTop;
+    const extra = document.createElement("div");
+    extra.style.height = "60px";
+    document.querySelector('section[aria-label="Reply"] form')!.append(extra);
+    await new Promise((done) => setTimeout(done, 800));
+    return reader.scrollTop - read;
+  });
+  expect(moved).toBe(0);
+});
