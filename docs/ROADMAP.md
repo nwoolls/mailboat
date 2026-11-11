@@ -4473,13 +4473,13 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
-- [ ] Turning the vacation reply off erases its message in Gmail *(found
+- [x] Turning the vacation reply off erases its message in Gmail *(found
       in the demo video dry run, 2026-11-11)*: with the reply on and a
       message saved from the app, turning it off in Settings → Vacation
       responder and saving left the message empty, in the app and in Gmail
       on the web (whose box also switched to plain text); the subject
       survived. The next time someone turns it on, their message is gone.
-      Likely cause, from reading the code, not yet confirmed: after the app
+      Likely cause, from reading the code: after the app
       saves an HTML message, Gmail returns it with an empty plain-text part;
       `from_gmail` (`crates/core/src/vacation.rs`) keeps that empty text, and
       the form (`src/features/vacation/model/vacationForm.ts`, where the
@@ -4487,16 +4487,31 @@ again until the next spike.*
       message on the next save. To fix: derive the plain text from the HTML
       when Gmail's is empty, with a test using a made-up Gmail response of
       that shape that fails today. Proposed for 0.2.0 (it loses what the
-      person wrote)
-- [ ] The vacation message box only takes a click on its first line *(found
+      person wrote) *(fixed 2026-11-11: tests with a made-up Gmail response
+      of that shape failed before the fix, so the app erased the message
+      whenever Gmail answers that way; that Gmail did so in the dry run is
+      not yet checked against a real account. When Gmail's plain text is empty,
+      `from_gmail` now makes it from the HTML, a line per line break or
+      block, so the form keeps the message. A test in `vacation.rs` reads an
+      HTML-only reply and turns it off; one in
+      `crates/core/tests/gmail_settings.rs` turns it off, then on again, and
+      checks that both saves send the message. A reply with no text at all,
+      only an image, still loses its message on the next save, as before)*
+- [x] The vacation message box only takes a click on its first line *(found
       in the same dry run)*: clicking the empty part of the box in Settings
       → Vacation responder doesn't place the cursor; only a click on the
-      first line does
-- [ ] The "Remove account" row in Settings → Accounts says it "Stops syncing
+      first line does *(fixed 2026-11-11: the editor was only as tall as its
+      text inside a taller box; it now fills the box, padding included. A
+      browser test, `tests/browser/vacation-box.spec.ts`, clicks the empty
+      part near the corner and types, and checks that a long message still
+      scrolls in the box)*
+- [x] The "Remove account" row in Settings → Accounts says it "Stops syncing
       it and deletes its mail saved on this Mac. Nothing changes in Gmail."
       but not that it also asks Google to end the sign-in, which the app does
       (the confirmation dialog says so) *(found in the same dry run)*. A
-      wording change, in `SettingsSections.tsx`
+      wording change, in `SettingsSections.tsx` *(fixed 2026-11-11: the row
+      now reads "Stops syncing it, asks Google to end its sign-in, and
+      deletes its mail saved on this Mac. Nothing changes in Gmail.")*
 
 - [x] Removing the last account throws you out of Settings *(owner report,
       2026-11-07; fixed 2026-11-08, see the Polish Spike item)*: in Settings → Accounts, removing the only account
@@ -4673,6 +4688,49 @@ again until the next spike.*
       on screen, so an early event is lost. The test now sends it again until
       the canvas is up)*
 
+- [x] The signature box only takes a click on its first line *(found
+      while fixing the vacation message box, 2026-11-11; fixed the same
+      day)*: in Settings → Signatures, clicking the empty part of the
+      editor's box didn't place the cursor, for the same reason as the
+      vacation box (the editor was only as tall as its text). It now fills
+      the box, padding included. A browser test,
+      `tests/browser/signature-box.spec.ts`, clicks the empty part near the
+      corner and types, and checks that a long signature still scrolls in
+      the box
+- [ ] On a slow machine, a new reply sometimes stops being followed before
+      it has laid out *(found 2026-11-11, by the browser test "Reply with
+      AI, 360px reader, slow machine" failing in CI on two pull requests that
+      didn't touch it, and passing when run again and every time locally;
+      partly fixed the same day)*: the reply's end was left a few pixels below the
+      reader, and stayed there. Neither first guess was it (the
+      reader's position clamping, taken for the person scrolling up; the
+      follow's 10-second window running out). A recording added to the test
+      for CI showed the follow asking the reader to scroll a pixel or two,
+      smoothly, again and again as the reply grew, and the reader not
+      moving: WebKit left such short smooth scrolls undone. Up to 40 px the
+      follow (ComposeForm) now scrolls at once, which looks the same. With
+      the test run ten times per CI run, it failed in all five runs before
+      the change (about one sample in five) and in none of three after it
+      (30 samples). The test only fails on a slow machine; a local test that
+      grows the reply a pixel at a time passed with and without the change,
+      and was not kept. One
+      earlier failure left the reply 223 px below, which this doesn't
+      explain; it didn't come back in the 80 samples run since. It did on
+      this pull request's own CI run, with the change in: 341 px below. So
+      the few-pixel misses are fixed and the large ones aren't. The owner
+      chose (2026-11-11) to turn the test off for now (`test.fixme`) rather
+      than keep chasing the cause. Still open: rethink how a new reply is
+      shown, so nothing needs following once it opens (for example, open it
+      at its final size, with space kept for the signature and the
+      assistant, and scroll once); a design for the owner to lead, with a
+      mockup first. Turn the test back on with it. The next CI run failed
+      another test in the file the same way ("scrolling up slowly", 401 px,
+      before it scrolled at all): it had clicked Reply with AI while the
+      email above was still laying out on the slow machine. The owner's call:
+      a person clicks Reply after the conversation has loaded, so the tests
+      now wait until it has kept the same height for half a second before
+      clicking. Clicking while it still loads is a separate case, for tests
+      of its own later
 - [x] Two browser tests in `ai-panel.spec.ts` failed by chance in CI on a
       pull request that touched no front-end code (2026-11-08): the
       floating card's nudge measured 0, and the inline reply ended one pixel

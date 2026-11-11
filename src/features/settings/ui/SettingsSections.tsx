@@ -434,7 +434,7 @@ function AccountGroup({
       </Row>
       <Row
         label="Remove account"
-        description="Stops syncing it and deletes its mail saved on this Mac. Nothing changes in Gmail."
+        description="Stops syncing it, asks Google to end its sign-in, and deletes its mail saved on this Mac. Nothing changes in Gmail."
       >
         <Button danger onClick={onRemove}>
           Remove…
