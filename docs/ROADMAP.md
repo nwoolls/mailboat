@@ -4473,6 +4473,31 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [ ] Turning the vacation reply off erases its message in Gmail *(found
+      in the demo video dry run, 2026-11-11)*: with the reply on and a
+      message saved from the app, turning it off in Settings → Vacation
+      responder and saving left the message empty, in the app and in Gmail
+      on the web (whose box also switched to plain text); the subject
+      survived. The next time someone turns it on, their message is gone.
+      Likely cause, from reading the code, not yet confirmed: after the app
+      saves an HTML message, Gmail returns it with an empty plain-text part;
+      `from_gmail` (`crates/core/src/vacation.rs`) keeps that empty text, and
+      the form (`src/features/vacation/model/vacationForm.ts`, where the
+      HTML is kept only when the plain text isn't empty) then sends an empty
+      message on the next save. To fix: derive the plain text from the HTML
+      when Gmail's is empty, with a test using a made-up Gmail response of
+      that shape that fails today. Proposed for 0.2.0 (it loses what the
+      person wrote)
+- [ ] The vacation message box only takes a click on its first line *(found
+      in the same dry run)*: clicking the empty part of the box in Settings
+      → Vacation responder doesn't place the cursor; only a click on the
+      first line does
+- [ ] The "Remove account" row in Settings → Accounts says it "Stops syncing
+      it and deletes its mail saved on this Mac. Nothing changes in Gmail."
+      but not that it also asks Google to end the sign-in, which the app does
+      (the confirmation dialog says so) *(found in the same dry run)*. A
+      wording change, in `SettingsSections.tsx`
+
 - [x] Removing the last account throws you out of Settings *(owner report,
       2026-11-07; fixed 2026-11-08, see the Polish Spike item)*: in Settings → Accounts, removing the only account
       leaves you on the "Make it yours" onboarding screen instead of in
