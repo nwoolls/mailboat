@@ -157,8 +157,13 @@ function SignatureEditor({ identity, onClose }: { identity: Identity; onClose: (
         <div className="border-b border-stroke py-1">
           <FormatBar editor={editor} />
         </div>
-        <div className="max-h-72 min-h-32 overflow-y-auto px-3">
-          <EditorBody editor={editor} />
+        {/* The editor fills the box, padding included, so a click on its
+          empty part puts the cursor in the signature. */}
+        <div className="flex max-h-72 min-h-32 flex-col overflow-y-auto">
+          <EditorBody
+            editor={editor}
+            className="flex flex-1 flex-col [&>.ProseMirror]:flex-1 [&>.ProseMirror]:px-3"
+          />
         </div>
       </div>
       {save.error && <p className="selectable mt-3 text-xs text-danger">{save.error.message}</p>}

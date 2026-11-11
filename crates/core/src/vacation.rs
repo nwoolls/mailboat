@@ -7,6 +7,7 @@ use specta::Type;
 
 use crate::db::{accounts, Db};
 use crate::error::{CoreError, Result};
+use crate::gmail::parse::html_to_text;
 use crate::gmail::types::Vacation;
 use crate::gmail::GmailClient;
 use crate::model::{AccountId, Permission};
@@ -78,7 +79,15 @@ fn escape(text: &str) -> String {
 }
 
 fn from_gmail(v: &Vacation) -> VacationSettings {
-    let text = v.response_body_plain_text.clone().unwrap_or_default();
+    // Gmail can return a reply saved as HTML with an empty plain-text part.
+    // Keep a text version of it: the form treats an empty text as an emptied
+    // message and would save the reply without it.
+    let text = v
+        .response_body_plain_text
+        .clone()
+        .filter(|t| !t.trim().is_empty())
+        .or_else(|| v.response_body_html.as_deref().map(html_lines))
+        .unwrap_or_default();
     let html = v
         .response_body_html
         .clone()
@@ -95,6 +104,57 @@ fn from_gmail(v: &Vacation) -> VacationSettings {
         start: time(&v.start_time),
         end: time(&v.end_time),
     }
+}
+
+/// The text of a reply's HTML, a line per line break or block.
+fn html_lines(html: &str) -> String {
+    let mut lines = Vec::new();
+    let mut line = String::new();
+    let mut rest = html;
+    while let Some(open) = rest.find('<') {
+        line.push_str(&rest[..open]);
+        let tag = &rest[open..];
+        let end = tag_end(tag);
+        let name = tag[1..end]
+            .trim_start()
+            .chars()
+            .enumerate()
+            .take_while(|(i, c)| c.is_ascii_alphanumeric() || (*i == 0 && *c == '/'))
+            .map(|(_, c)| c.to_ascii_lowercase())
+            .collect::<String>();
+        let breaks = matches!(
+            name.as_str(),
+            "br" | "/p" | "/div" | "/li" | "/tr" | "/blockquote"
+        ) || (name.len() == 3
+            && name.starts_with("/h")
+            && name.ends_with(|c: char| c.is_ascii_digit()));
+        if breaks {
+            lines.push(html_to_text(&line));
+            line.clear();
+        } else {
+            // The name alone: `html_to_text` doesn't read quoted attributes.
+            line.push_str(&format!("<{name}>"));
+        }
+        rest = &tag[end..];
+    }
+    line.push_str(rest);
+    lines.push(html_to_text(&line));
+    lines.join("\n").trim().to_string()
+}
+
+/// Where the tag starting `tag` ends: after its `>`, skipping any inside a
+/// quoted attribute, or the end of the string.
+fn tag_end(tag: &str) -> usize {
+    let mut quote = None;
+    for (i, c) in tag.char_indices() {
+        match (quote, c) {
+            (None, '"' | '\'') => quote = Some(c),
+            (Some(q), _) if c == q => quote = None,
+            (None, '>') => return i + 1,
+            _ => {}
+        }
+    }
+    tag.len()
 }
 
 fn to_gmail(s: &VacationSettings, can_limit_to_domain: bool) -> Result<Vacation> {
@@ -218,6 +278,51 @@ mod tests {
             ..on()
         };
         assert!(!is_active(&off, 150));
+    }
+
+    #[test]
+    fn html_only_replies_get_their_plain_text() {
+        // Gmail can return a reply saved as HTML with an empty plain-text part.
+        let v = Vacation {
+            enable_auto_reply: true,
+            response_body_html: Some(
+                "<div>Away &amp; offline<br>Back <b>Monday</b></div><p></p><p>Maya</p>".into(),
+            ),
+            response_body_plain_text: Some(String::new()),
+            ..Default::default()
+        };
+        let s = from_gmail(&v);
+        assert_eq!(s.body_text, "Away & offline\nBack Monday\n\nMaya");
+        assert_eq!(s.body_html, v.response_body_html.clone().unwrap());
+
+        let off = VacationSettings {
+            enabled: false,
+            ..s.clone()
+        };
+        let sent = to_gmail(&off, false).unwrap();
+        assert_eq!(sent.response_body_html, v.response_body_html);
+        assert_eq!(
+            sent.response_body_plain_text.as_deref(),
+            Some("Away & offline\nBack Monday\n\nMaya")
+        );
+    }
+
+    #[test]
+    fn html_lines_breaks_lines_and_reads_tags_whole() {
+        assert_eq!(
+            html_lines("a<br/>b<BR/>c<br />d<Br class=\"x\">e"),
+            "a\nb\nc\nd\ne"
+        );
+        assert_eq!(
+            html_lines("<div title=\"a>b\">Away</div><p alt='>'>Back</p>"),
+            "Away\nBack"
+        );
+        assert_eq!(
+            html_lines("<h2>Away</h2>Back <b>Monday</b>"),
+            "Away\nBack Monday"
+        );
+        assert_eq!(html_lines("你好<br>世界"), "你好\n世界");
+        assert_eq!(html_lines("<style type=\"x\">p{}</style>Away"), "Away");
     }
 
     #[test]
