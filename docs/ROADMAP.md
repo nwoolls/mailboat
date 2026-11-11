@@ -4803,6 +4803,13 @@ again until the next spike.*
       the person opens it again. Find where the next message is chosen and
       why it opens the preview, and test that the choice and the collapsed
       state are separate.
+- [x] A conversation moved to Spam or Trash while its summary is being
+      read could still be summarized automatically *(found in review of the
+      privacy policy, 2026-11-10; fixed the same day)*: `tasks::summarize`
+      checked Spam and Trash before reading the conversation, and reading can
+      wait on downloading bodies. It now checks again right after reading, so
+      an automatic summary of a conversation that moved meanwhile asks no
+      model. A test moves a conversation to Spam while its body downloads.
 
 ## Later / unscheduled
 
