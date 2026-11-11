@@ -4688,8 +4688,8 @@ again until the next spike.*
       it has laid out *(found 2026-11-11, by the browser test "Reply with
       AI, 360px reader, slow machine" failing in CI on two pull requests that
       didn't touch it, and passing when run again and every time locally;
-      fixed the same day)*: the reply's end was left a few pixels (once 223)
-      below the reader, and stayed there. Neither first guess was it (the
+      fixed the same day)*: the reply's end was left a few pixels below the
+      reader, and stayed there. Neither first guess was it (the
       reader's position clamping, taken for the person scrolling up; the
       follow's 10-second window running out). A recording added to the test
       for CI showed the follow asking the reader to scroll a pixel or two,
