@@ -133,11 +133,23 @@ export function ComposeForm({
     // Taller than the reader (the AI chat above it, say), its end shows:
     // "nearest" showed its top, the chat, with the reply out of sight.
     const scroller = whole.closest(".reader-scroll");
+    // Where the follow is taking the reader, so its own scrolling (up too,
+    // when the reply's end is already in view) isn't taken for the person's.
+    let target = scroller?.scrollTop ?? 0;
     const show = () => {
-      const taller =
-        scroller !== null &&
-        whole.getBoundingClientRect().height > scroller.getBoundingClientRect().height;
-      whole.scrollIntoView({ block: taller ? "end" : "nearest", behavior: "smooth" });
+      if (!scroller) {
+        whole.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        return;
+      }
+      const view = scroller.getBoundingClientRect();
+      const box = whole.getBoundingClientRect();
+      // Taller than the reader: its end at the bottom. Otherwise the least
+      // movement that shows all of it.
+      let by = 0;
+      if (box.height > view.height || box.bottom > view.bottom) by = box.bottom - view.bottom;
+      else if (box.top < view.top) by = box.top - view.top;
+      target = scroller.scrollTop + by;
+      scroller.scrollTo({ top: target, behavior: "smooth" });
     };
     // The reader may still be landing on an email it just opened (a draft
     // reply resumes by itself): the reply takes over from it.
@@ -165,7 +177,8 @@ export function ComposeForm({
     const onScroll = () => {
       if (!scroller) return;
       furthest = Math.max(furthest, scroller.scrollTop);
-      if (scroller.scrollTop < furthest - REPLY_FOLLOW_UP_PX) stop();
+      // Up past both the furthest point and where the follow is heading.
+      if (scroller.scrollTop < Math.min(furthest, target) - REPLY_FOLLOW_UP_PX) stop();
     };
     scroller?.addEventListener("scroll", onScroll, { passive: true });
     const settled = window.setTimeout(stop, REPLY_FOLLOW_MS);

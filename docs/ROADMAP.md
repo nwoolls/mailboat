@@ -4814,7 +4814,11 @@ again until the next spike.*
       app: the reader moving up by more than a few pixels in all stops it),
       or for ten seconds at most. The same hand input stops the reader's
       landing on an email when it opens, and so does a reply starting to be
-      followed (a resumed draft opens with no hand input). A browser test slows the animations to stand in for a slow
+      followed (a resumed draft opens with no hand input). Later the same day the
+      slow-machine test failed once on CI with the follow stopped early: its
+      own scrolling, which can move the reader up, was taken for the person
+      scrolling up. The follow now scrolls to a target it computes, and only
+      movement up past that target counts. A browser test slows the animations to stand in for a slow
       machine: the reply's end was left 4 px below the reader before the fix.
 - [x] A conversation moved to Spam or Trash while its summary is being
       read could still be summarized automatically *(found in review of the
