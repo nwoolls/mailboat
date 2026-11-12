@@ -91,7 +91,11 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
 
   // Short conversations (automatic) get none.
   if (query.data === null) return null;
-  const text = query.isFetching ? streamed : (query.data?.text ?? "");
+  // Asked again (mail changed), the summary shown stays until new text
+  // arrives: Rust usually answers from its cache with the same one, and
+  // dropping to the one-line placeholder meanwhile made the card shrink
+  // and grow back, moving a reply being written below it.
+  const text = (query.isFetching && streamed) || (query.data?.text ?? "");
   const points = summaryPoints(text);
 
   return (

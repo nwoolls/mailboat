@@ -626,3 +626,77 @@ fn a_deleted_email_takes_the_threads_ai_results_with_it() {
         assert_eq!(cached, 0, "by_history={by_history}");
     }
 }
+
+/// A draft leaving a conversation (each save replaces its message, and a
+/// discarded one goes) doesn't touch its AI summary or reply ideas: both
+/// leave drafts out. Forgetting them made every save of a reply throw the
+/// summary away, so it was written again (a cloud request for Claude or
+/// ChatGPT) the next time it was needed.
+#[test]
+fn a_draft_leaving_keeps_the_threads_ai_results() {
+    use mail_core::db::store::{IncomingMessage, IncomingThread};
+    for by_history in [false, true] {
+        let db = Db::open_in_memory().unwrap();
+        let a = add_account(&db, "a");
+        let email = |id: &str, at: i64, label: &str| IncomingMessage {
+            gmail_message_id: id.into(),
+            label_ids: vec![label.into()],
+            internal_date: at,
+            subject: "Plans".into(),
+            snippet: format!("{id} words"),
+            from: Some(Address {
+                name: None,
+                email: "probe@example.com".into(),
+            }),
+            ..Default::default()
+        };
+        let store = |messages: Vec<IncomingMessage>| {
+            store::upsert_thread(
+                &mut db.conn(),
+                a,
+                &IncomingThread {
+                    gmail_thread_id: "t".into(),
+                    messages,
+                },
+            )
+            .unwrap()
+        };
+        let thread = store(vec![
+            email("older", 1_000, "INBOX"),
+            email("newest", 2_000, "INBOX"),
+            email("draft1", 3_000, "DRAFT"),
+        ]);
+        // Saved results for the conversation, written in SQL alone (no
+        // values from the test's code go into it).
+        db.conn()
+            .execute_batch(
+                "INSERT INTO ai_summaries (account_id, thread_id, kind, provider, newest_message_id, text, created_at)
+                   SELECT account_id, thread_id, 'full', 'apple', id, 'covers both', 0
+                   FROM messages WHERE gmail_message_id = 'newest';
+                 INSERT INTO ai_reply_ideas (account_id, thread_id, forward, newest_message_id, ideas, created_at)
+                   SELECT account_id, thread_id, 0, id, '[\"covers both\"]', 0
+                   FROM messages WHERE gmail_message_id = 'newest';",
+            )
+            .unwrap();
+        if by_history {
+            store::delete_messages(&mut db.conn(), a, &["draft1".to_string()]).unwrap();
+        } else {
+            // The draft saved again: Gmail gave it a new message.
+            store(vec![
+                email("older", 1_000, "INBOX"),
+                email("newest", 2_000, "INBOX"),
+                email("draft2", 3_500, "DRAFT"),
+            ]);
+        }
+        let cached: i64 = db
+            .conn()
+            .query_row(
+                "SELECT (SELECT COUNT(*) FROM ai_summaries WHERE thread_id = ?1)
+                      + (SELECT COUNT(*) FROM ai_reply_ideas WHERE thread_id = ?1)",
+                [thread],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(cached, 2, "by_history={by_history}");
+    }
+}

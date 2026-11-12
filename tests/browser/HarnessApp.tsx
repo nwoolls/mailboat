@@ -25,7 +25,12 @@ import {
 import { systemSelection } from "../../src/features/mailbox/model/views";
 import { Onboarding } from "../../src/features/onboarding/ui/Onboarding";
 import { Shell } from "../../src/app/Shell";
-import { useAccounts, useOAuthSetup, useSyncStates } from "../../src/shared/lib/queries";
+import {
+  useAccounts,
+  useMailEvents,
+  useOAuthSetup,
+  useSyncStates,
+} from "../../src/shared/lib/queries";
 import {
   setCardSpot,
   updateDraft,
@@ -57,6 +62,8 @@ export function Harness({
   const notices = useSignedOutNotices([account], states);
   const actions = useComposeActions([account]);
   const mode = params.get("mode");
+  // `&summary=live`: mail events refresh queries as Shell's do.
+  useMailEvents();
   // Once: the actions object is new on every render.
   const started = useRef(false);
   useEffect(() => {

@@ -416,10 +416,7 @@ pub async fn threads_load_older(
         let (db, view, app) = (state.db.clone(), view.clone(), app.clone());
         tasks.spawn(async move {
             let on_chunk = || {
-                let _ = MailChangedEvent {
-                    account_id: account,
-                }
-                .emit(&app);
+                let _ = MailChangedEvent::mail(account).emit(&app);
             };
             let result = load_older(
                 &db,
@@ -700,7 +697,7 @@ pub async fn label_create(
 ) -> CmdResult<Label> {
     let gmail = state.gmail_for(account_id)?.interactive();
     let label = mail_core::labels::create(&state.db, &gmail, account_id, &name).await?;
-    let _ = MailChangedEvent { account_id }.emit(&app);
+    let _ = MailChangedEvent::mail(account_id).emit(&app);
     Ok(label)
 }
 
@@ -721,10 +718,7 @@ pub async fn label_rename(
         &name,
     )
     .await?;
-    let _ = MailChangedEvent {
-        account_id: account,
-    }
-    .emit(&app);
+    let _ = MailChangedEvent::mail(account).emit(&app);
     Ok(())
 }
 
@@ -743,10 +737,7 @@ pub async fn label_delete(
         label_id,
     )
     .await?;
-    let _ = MailChangedEvent {
-        account_id: account,
-    }
-    .emit(&app);
+    let _ = MailChangedEvent::mail(account).emit(&app);
     Ok(())
 }
 
@@ -1049,10 +1040,7 @@ pub async fn message_send(
             );
         }
     }
-    let _ = MailChangedEvent {
-        account_id: message.account_id,
-    }
-    .emit(&app);
+    let _ = MailChangedEvent::mail(message.account_id).emit(&app);
     Ok(thread)
 }
 
@@ -1073,7 +1061,7 @@ pub async fn draft_save(
         &state.attachments_dir,
     )
     .await?;
-    let id = compose::save_draft_with_files(
+    let saved = compose::save_draft_with_files(
         &state.db,
         |account| state.gmail_for(account),
         draft,
@@ -1081,12 +1069,15 @@ pub async fn draft_save(
         &files,
     )
     .await?;
-    // The saved draft is cached already: lists (Drafts) refresh now.
-    let _ = MailChangedEvent {
-        account_id: message.account_id,
-    }
-    .emit(&app);
-    Ok(id)
+    // The saved draft is cached already: lists (Drafts) refresh now. Only
+    // drafts changed, unless caching it brought in other mail too.
+    let event = if saved.other_mail_changed {
+        MailChangedEvent::mail(message.account_id)
+    } else {
+        MailChangedEvent::drafts(message.account_id)
+    };
+    let _ = event.emit(&app);
+    Ok(saved.id)
 }
 
 /// Deletes a saved draft (discarded), from Gmail too, and lists refresh
@@ -1101,7 +1092,7 @@ pub async fn draft_delete(
     let account =
         compose::delete_draft(&state.db, &|account| state.gmail_for(account), draft).await?;
     if let Some(account_id) = account {
-        let _ = MailChangedEvent { account_id }.emit(&app);
+        let _ = MailChangedEvent::drafts(account_id).emit(&app);
     }
     Ok(())
 }
@@ -1131,10 +1122,7 @@ pub async fn draft_discard(
     let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
     let gmail = state.gmail_for(account)?.interactive();
     compose::discard_draft_message(&state.db, &gmail, message_id).await?;
-    let _ = MailChangedEvent {
-        account_id: account,
-    }
-    .emit(&app);
+    let _ = MailChangedEvent::drafts(account).emit(&app);
     Ok(())
 }
 
@@ -1573,10 +1561,7 @@ pub async fn cache_clear(app: AppHandle, state: State<'_, AppState>) -> CmdResul
         .map_err(CoreError::from)?;
     state.resume_all_accounts()?;
     for account in &all {
-        let _ = MailChangedEvent {
-            account_id: account.id,
-        }
-        .emit(&app);
+        let _ = MailChangedEvent::mail(account.id).emit(&app);
     }
     Ok(())
 }
@@ -1600,7 +1585,7 @@ pub async fn spam_empty(
     let done =
         mail_core::actions::empty_spam(&state.db, |account| state.gmail_for(account), &ids).await?;
     for account_id in ids {
-        let _ = MailChangedEvent { account_id }.emit(&app);
+        let _ = MailChangedEvent::mail(account_id).emit(&app);
     }
     Ok(done)
 }

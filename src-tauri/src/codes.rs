@@ -85,10 +85,7 @@ async fn read_bodies(app: &AppHandle, db: &Arc<Db>, needs_body: Vec<MessageId>) 
         if let Ok((found, _)) = again {
             // The conversation's row can show the code now: have the lists look again.
             if !found.is_empty() {
-                let _ = crate::events::MailChangedEvent {
-                    account_id: account,
-                }
-                .emit(app);
+                let _ = crate::events::MailChangedEvent::mail(account).emit(app);
             }
             for code in found {
                 let _ = SignInCodeEvent(code).emit(app);

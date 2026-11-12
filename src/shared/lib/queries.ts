@@ -578,7 +578,7 @@ export function useMailEvents() {
           upsertSyncState(list ?? [], e.payload),
         );
       }),
-      events.mailChangedEvent.listen(() => {
+      events.mailChangedEvent.listen((e) => {
         // Lists are cheap local queries, so refresh all of them.
         void qc.invalidateQueries({ queryKey: ["threads"] });
         void qc.invalidateQueries({ queryKey: ["thread"] });
@@ -588,7 +588,9 @@ export function useMailEvents() {
         // An open conversation's AI summary and reply ideas are asked
         // again: Rust answers from its cache unless the conversation
         // changed (an email arrived or left; code review R9-02). A request
-        // still being written isn't interrupted.
+        // still being written isn't interrupted. Not when only drafts
+        // changed (a reply saving as it's typed): both leave drafts out.
+        if (e.payload.draftsOnly) return;
         for (const queryKey of [["aiSummary"], ["aiReplyIdeas"]])
           void qc.invalidateQueries({ queryKey }, { cancelRefetch: false });
       }),
