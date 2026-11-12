@@ -4498,15 +4498,14 @@ again until the next spike.*
 - [ ] After pasting a long text into the message box and adding a few new
       lines, a click in the text doesn't put the cursor where the click was
       *(owner report, 2026-11-11, writing a long reply on 0.2.0)*. Not looked
-      into yet. To settle first: which writing box it was (the floating new
-      message or a reply in the conversation), where the cursor goes instead
-      (the end, the nearest line, nowhere), and whether it depends on the box
-      having scrolled. A lead, not confirmed: the change of the same day that
-      lets the editor fill the space under a short message
-      (`ComposeForm.tsx`, flex layout around the editor, #101) is the newest
-      change to how clicks land in the box. A browser test with a long pasted
-      text, scrolled, that clicks mid-line and types should fail before the
-      fix
+      into yet. It was the reply box inside the conversation (not the
+      floating new message), the box had scrolled, and the cursor landed near
+      the click but a few lines higher. An offset that grows with scrolling
+      suggests the click's position is mapped to the text without the
+      scroll taken into account, for example by a scrolling or transformed
+      container around the editor; not confirmed. A browser test with a long
+      pasted reply, scrolled down, that clicks mid-line and types should fail
+      before the fix
 
 - [x] Turning the vacation reply off erases its message in Gmail *(found
       in the demo video dry run, 2026-11-11)*: with the reply on and a
