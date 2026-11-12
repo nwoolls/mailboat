@@ -4187,7 +4187,7 @@ Checked 2026-11-09, so a new session need not repeat it:
       above; built 2026-11-09, see that item): in 0.2.0 if it is small, since it supports Google's "retention"
       row; if it is not, it follows 0.2.0 and the policy says only what the
       code does
-- [ ] The privacy policy, brought up to date with 0.2.0 and into American
+- [x] The privacy policy, brought up to date with 0.2.0 and into American
       spelling in one edit (the item under "Writing", retimed from "after
       Google's answer"), merged right after 0.2.0 stable is published. It
       says what removal and "Delete all data" do and leave, how data is
@@ -4210,7 +4210,9 @@ Checked 2026-11-09, so a new session need not repeat it:
       deleted, the Limited Use statement, and that the data isn't used to
       train AI models. Detail lives in Settings → Privacy. It starts from
       `main` without #84, so the calendar line is rebased onto it; the date
-      at the top changes when it is published)*
+      at the top changes when it is published)* *(2026-11-11: 0.2.0 is
+      published; rebased on `main` with #84's calendar line, dated
+      11 November 2026, and merged)*
 - [ ] A reviewer test kit (a new item): a section in
       `docs/GOOGLE-VERIFICATION.md`, "How a reviewer tests Mailboat". The app
       is In production, so a reviewer signs in with any Google account (the
