@@ -398,7 +398,9 @@ While beta mode is on, every pull request still adds a changeset, as always.
 3. Run `bun run version-packages`. It makes `0.2.0` from every changeset,
    betas included, and writes the `## 0.2.0` section of `CHANGELOG.md`. Read
    the section: it is the release notes, and it should list what the release
-   changed.
+   changed. For a new major or minor version, also change the version on the
+   home page (the chip at the top of `website/index.html`, `v0.2 · …`):
+   `bun run check` fails until it matches `package.json`.
 4. Run `bun run check`, commit, open a pull request, merge it.
 5. Tag, build and publish (steps below), with the tag `v` plus the version
    from step 3 (`v0.2.0`).

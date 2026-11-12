@@ -7,6 +7,8 @@
 // where scripts/website.test.ts tests them (the security contact file,
 // .well-known/security.txt, included). The policy is also checked against the
 // code (scripts/policy.ts): the Google permissions and the defaults it states.
+// And the version on the home page against package.json, for a stable
+// version (versionChipProblems).
 // Run by `bun run check:website`, which `bun run check:web` includes.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import {
@@ -16,6 +18,7 @@ import {
   securityTxtProblems,
   type Pages,
   type Sheets,
+  versionChipProblems,
 } from "./website";
 import { claimProblems, parseScopes, POLICY_SOURCES, scopeProblems } from "./policy";
 
@@ -59,6 +62,8 @@ const problems = [
   ...checkSite(pages, (path) => existsSync(`${root}${path}`), read("_headers"), sheets),
   ...securityTxtProblems(securityTxt),
   ...policyChecks(),
+  // The home page's version against the app's (a stable release must match).
+  ...versionChipProblems(pages["index.html"], JSON.parse(repoFile("package.json")).version),
 ];
 
 if (problems.length) {

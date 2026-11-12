@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { checkSite, securityTxtDaysLeft, securityTxtProblems, type Pages } from "./website";
+import {
+  checkSite,
+  securityTxtDaysLeft,
+  securityTxtProblems,
+  type Pages,
+  versionChipProblems,
+} from "./website";
 
 const HEAD = `<!doctype html><html lang="en"><head><title>T</title>
 <meta name="description" content="D" /><link rel="stylesheet" href="site.css" />
@@ -427,5 +433,30 @@ describe("securityTxtProblems", () => {
   it("counts the days left, for a warning ahead of the deadline", () => {
     expect(securityTxtDaysLeft(file("2026-12-07T12:00:00Z"), NOW)).toBe(30);
     expect(securityTxtDaysLeft("Contact: mailto:a@x.example\n", NOW)).toBeUndefined();
+  });
+});
+
+describe("versionChipProblems", () => {
+  const chip = (v: string) =>
+    `<main><p class="chip" data-reveal>${v} · macOS and Windows · free and open source</p></main>`;
+
+  it("passes when the chip names the released major and minor", () => {
+    expect(versionChipProblems(chip("v0.2"), "0.2.0")).toEqual([]);
+    expect(versionChipProblems(chip("v0.2"), "0.2.3")).toEqual([]);
+  });
+
+  it("fails a stable version the chip doesn't name", () => {
+    expect(versionChipProblems(chip("v0.1"), "0.2.0")).toEqual([
+      "index.html: the chip says v0.1 but package.json is 0.2.0: change it to v0.2",
+    ]);
+    expect(versionChipProblems(chip("v0.2"), "1.0.0")).toHaveLength(1);
+  });
+
+  it("skips a beta: the site names the stable version until it ships", () => {
+    expect(versionChipProblems(chip("v0.2"), "0.3.0-beta.0")).toEqual([]);
+  });
+
+  it("fails when the chip is gone", () => {
+    expect(versionChipProblems("<main><p>macOS and Windows</p></main>", "0.2.0")).toHaveLength(1);
   });
 });
