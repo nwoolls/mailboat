@@ -4493,8 +4493,8 @@ again until the next spike.*
       stepping some loaded picture is always at least half visible. Against
       the old `site.js` all four failed, with 65 to 91 bad frames each. From
       review: closing while a step loads goes back to the screenshot shown
-      and its button, and a step during a crossfade lets the picture
-      leaving fade on from where it is; a browser test each.)*
+      and its button, and in a step during a crossfade the picture
+      leaving continues from its current opacity and position; a browser test each.)*
 
 - [x] After pasting a long text into the message box and adding a few
       new lines, a click in the text doesn't put the cursor where the

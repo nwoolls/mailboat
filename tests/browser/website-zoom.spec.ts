@@ -230,10 +230,23 @@ test("website zoom: a step during a crossfade doesn't snap the leaving picture b
     const next = document.querySelector<HTMLButtonElement>(".lightbox-next")!;
     const frame = () => new Promise((done) => requestAnimationFrame(done));
     next.click();
-    // Part way into the first crossfade.
-    for (let i = 0; i < 4; i++) await frame();
+    // The first crossfade under way: the incoming picture's animation
+    // running. Held at its midpoint, so the second step comes part way in
+    // whatever the machine's speed (code review: a fixed few frames could
+    // land before it began or after it ended).
     const figures = () => [...document.querySelectorAll<HTMLElement>("dialog.lightbox figure")];
-    const sliding = figures().find((f) => !f.hasAttribute("aria-hidden"))!;
+    let sliding: HTMLElement | undefined;
+    for (let i = 0; i < 300 && !sliding; i++) {
+      await frame();
+      sliding = figures().find(
+        (f) => !f.hasAttribute("aria-hidden") && f.getAnimations().length > 0,
+      );
+    }
+    if (!sliding) return [];
+    for (const a of sliding.getAnimations()) {
+      a.pause();
+      a.currentTime = 120;
+    }
     next.click();
     // Its opacity on every frame from when it starts leaving (marked
     // aria-hidden) until it's gone.
