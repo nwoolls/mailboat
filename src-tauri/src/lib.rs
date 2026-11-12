@@ -454,10 +454,7 @@ fn watch_other_copies(app: tauri::AppHandle, db: Arc<Db>) {
             }
             let accounts = mail_core::db::accounts::list(&db.conn()).unwrap_or_default();
             for account in accounts {
-                let _ = MailChangedEvent {
-                    account_id: account.id,
-                }
-                .emit(&app);
+                let _ = MailChangedEvent::mail(account.id).emit(&app);
             }
             let _ = AccountsChangedEvent.emit(&app);
         }

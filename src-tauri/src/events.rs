@@ -20,6 +20,29 @@ pub struct SyncProgressEvent(pub SyncProgress);
 #[serde(rename_all = "camelCase")]
 pub struct MailChangedEvent {
     pub account_id: AccountId,
+    /// Only drafts changed (saved, deleted or discarded). AI summaries and
+    /// reply ideas leave drafts out, so they aren't asked again for it:
+    /// asking again while a reply was typed made the summary above it
+    /// blink, which moved the reply under the person's cursor.
+    pub drafts_only: bool,
+}
+
+impl MailChangedEvent {
+    /// Mail changed (a sync, an action, a send): every list refreshes.
+    pub fn mail(account_id: AccountId) -> Self {
+        Self {
+            account_id,
+            drafts_only: false,
+        }
+    }
+
+    /// Only drafts changed.
+    pub fn drafts(account_id: AccountId) -> Self {
+        Self {
+            account_id,
+            drafts_only: true,
+        }
+    }
 }
 
 /// An account's From addresses (Gmail "Send mail as") changed.
@@ -96,7 +119,7 @@ impl SyncEvents for TauriSyncEvents {
         let _ = SyncProgressEvent(progress).emit(&self.app);
     }
     fn mail_changed(&self, account_id: AccountId) {
-        let _ = MailChangedEvent { account_id }.emit(&self.app);
+        let _ = MailChangedEvent::mail(account_id).emit(&self.app);
     }
     fn log(&self, account: AccountId, line: &str) {
         self.log.write(account, line);

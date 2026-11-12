@@ -28,11 +28,8 @@ impl Host for AppHost {
         self.app.state::<AppState>().gmail_for(account)
     }
 
-    fn mail_changed(&self, account: AccountId) {
-        let _ = MailChangedEvent {
-            account_id: account,
-        }
-        .emit(&self.app);
+    fn draft_saved(&self, account: AccountId) {
+        let _ = MailChangedEvent::drafts(account).emit(&self.app);
     }
 }
 

@@ -1006,6 +1006,13 @@ export type ListQuery = {
 /**  Cached mail for this account changed; refresh lists that include it. */
 export type MailChangedEvent = {
 	accountId: AccountId,
+	/**
+	 *  Only drafts changed (saved, deleted or discarded). AI summaries and
+	 *  reply ideas leave drafts out, so they aren't asked again for it:
+	 *  asking again while a reply was typed made the summary above it
+	 *  blink, which moved the reply under the person's cursor.
+	 */
+	draftsOnly: boolean,
 };
 
 /**  What a list view shows. */

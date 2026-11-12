@@ -31,10 +31,10 @@ use crate::model::{
 use crate::settings::{self, McpSettings};
 
 /// What the app does for the server: Gmail clients (for bodies not yet
-/// downloaded, and drafts) and telling the window that mail changed.
+/// downloaded, and drafts) and telling the window that a draft was saved.
 pub trait Host: Send + Sync + 'static {
     fn gmail(&self, account: AccountId) -> Result<GmailClient>;
-    fn mail_changed(&self, account: AccountId);
+    fn draft_saved(&self, account: AccountId);
 }
 
 /// Told to the AI app when it connects.
@@ -666,7 +666,7 @@ impl MailServer {
         compose::save_draft(&self.db, |a| host.gmail(a), None, &message)
             .await
             .map_err(fail)?;
-        self.host.mail_changed(account);
+        self.host.draft_saved(account);
         Ok(DraftSaved {
             account: owner.email.clone(),
             subject,

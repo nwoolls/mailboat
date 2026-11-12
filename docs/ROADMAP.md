@@ -4479,24 +4479,34 @@ again until the next spike.*
       animation starts
       *(moved from Milestone 16 when it closed, 2026-11-11)*
 
-- [ ] After pasting a long text into the message box and adding a few
+- [x] After pasting a long text into the message box and adding a few
       new lines, a click in the text doesn't put the cursor where the
-      click was *(owner report, 2026-11-11, in a long reply on 0.2.0)*.
-      Not looked into yet. It was the reply box inside the conversation
+      click was *(owner report, 2026-11-11, in a long reply on 0.2.0;
+      fixed 2026-11-12)*. It was the reply box inside the conversation
       (not the floating new message), the box had scrolled, and the
       cursor landed near the click but a few lines higher. The owner
       also saw the reader move the reply on its own after they had
-      scrolled. The likely cause, not confirmed: the follow that keeps a
-      new reply in view as it grows (`ComposeForm`, #93 and #94) scrolls
-      the reader after the person did, so the text moves between
-      pressing and placing the cursor. That ties it to the open item
-      about rethinking how a new reply is followed, further down this
-      backlog; a fix belongs with that rethink. The owner's rule for it
-      (2026-11-11): the follow stops for good once the person starts
-      typing in the reply; after that the app never moves the reader on
-      its own. A browser test with a long pasted reply, scrolled by
-      hand, that clicks mid-line and types, and checks that the reader
-      stays where it was scrolled, should fail before the fix
+      scrolled. The follow that keeps a new reply in view (`ComposeForm`,
+      #93 and #94) already stops at the first key press, click or wheel,
+      and a test of that sequence passed, so it was not the cause. The AI
+      summary above the conversation caused it, as the owner suspected.
+      Every "mail changed" event asked for it again,
+      and every draft save (2.5 s after typing stops) sent one. While the
+      answer came back (from Rust's cache, the same summary), the card
+      dropped to its one-line placeholder and then grew back. Near the end
+      of the reader, where a reply is typed, WebKit couldn't keep the text
+      in place: the reader's position was clamped and not given back, so
+      the reply moved a few lines and a click landed in another line.
+      Fixed in two places: the card keeps the summary it shows until new
+      text arrives, and a change to drafts only
+      (`MailChangedEvent.draftsOnly`) no longer asks for the summary or
+      reply ideas again, since both leave drafts out.
+      `tests/browser/reply-summary-shift.spec.ts`, with the harness's
+      `&summary=live`, failed before the fix (the line moved 73.5 px, the
+      click typed in another line, a draft save asked again). The owner's
+      rule (2026-11-11) still holds: the follow stops for good once the
+      person starts typing in the reply, and after that the app never
+      moves the reader on its own
 
 - [x] Turning the vacation reply off erases its message in Gmail *(found
       in the demo video dry run, 2026-11-11)*: with the reply on and a
@@ -4756,7 +4766,9 @@ again until the next spike.*
       a person clicks Reply after the conversation has loaded, so the tests
       now wait until it has kept the same height for half a second before
       clicking. Clicking while it still loads is a separate case, for tests
-      of its own later
+      of its own later. The follow didn't cause the cursor bug filed in #109
+      (2026-11-12, see that item), so this item stays open and the test
+      stays `test.fixme`
 - [x] Two browser tests in `ai-panel.spec.ts` failed by chance in CI on a
       pull request that touched no front-end code (2026-11-08): the
       floating card's nudge measured 0, and the inline reply ended one pixel

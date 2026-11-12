@@ -37,7 +37,7 @@ impl Host for FakeHost {
         }
     }
 
-    fn mail_changed(&self, account: AccountId) {
+    fn draft_saved(&self, account: AccountId) {
         self.changed.lock().unwrap().push(account);
     }
 }

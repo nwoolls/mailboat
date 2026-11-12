@@ -47,7 +47,7 @@ function show(id: number, newest = 5) {
   );
   const view = render(tree(newest));
   // New mail arriving in the open conversation.
-  return { newMail: (newestId: number) => view.rerender(tree(newestId)) };
+  return { client, newMail: (newestId: number) => view.rerender(tree(newestId)) };
 }
 
 describe("ThreadSummaryCard", () => {
@@ -102,6 +102,24 @@ describe("ThreadSummaryCard", () => {
     fireEvent.click(screen.getByText("Summarize"));
     expect(await screen.findByText("Plans confirmed")).toBeTruthy();
     expect(aiThreadSummary).toHaveBeenCalledTimes(2);
+  });
+
+  // Asked again when mail changed, the card fell back to its one-line
+  // placeholder until the (usually identical) answer came: it shrank and
+  // grew back, moving a reply being written below it.
+  it("keeps showing its summary while it is asked again", async () => {
+    aiThreadSummary.mockResolvedValue({
+      status: "ok",
+      data: { threadId: 12, text: "- Tickets booked", provider: "apple", createdAt: 0 },
+    });
+    const { client } = show(12);
+    fireEvent.click(screen.getByText("Summarize"));
+    expect(await screen.findByText("Tickets booked")).toBeTruthy();
+
+    aiThreadSummary.mockReturnValue(new Promise(() => {}));
+    await act(async () => void client.invalidateQueries({ queryKey: ["aiSummary"] }));
+    expect(screen.getByRole("region", { name: "Summary" }).getAttribute("aria-busy")).toBe("true");
+    expect(screen.getByText("Tickets booked")).toBeTruthy();
   });
 
   it("leaves other conversations alone", () => {
