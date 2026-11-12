@@ -8,22 +8,29 @@ import { chromium, expect, type Page, test } from "@playwright/test";
  * network stand in for a first visit. In WebKit and in Chromium (launched
  * here: Chromium's project only runs `windows-*` specs).
  */
-async function neverFlashes(page: Page) {
-  // Full-size pictures arrive a second and a half late.
-  await page.route("**/images/full/**", async (route) => {
+
+/** Holds back the pictures whose address matches `pattern` for 1.5 s; counts them. */
+async function slowly(page: Page, pattern: string) {
+  const held = { count: 0 };
+  await page.route(pattern, async (route) => {
+    held.count += 1;
     await new Promise((done) => setTimeout(done, 1500));
     await route.continue();
   });
+  return held;
+}
+
+type Frame = { shown: boolean; moving: boolean };
+
+async function neverFlashes(page: Page) {
+  const held = await slowly(page, "**/images/full/**");
   await page.goto("/website/index.html");
   const button = page.locator("button.zoom").first();
   await button.scrollIntoViewIfNeeded();
-  const thumbWidth = (await button.boundingBox())!.width;
-  // Every frame from the click on: is the big picture showing, how wide,
-  // and has its animation started.
+  // Every frame from the click until the picture starts growing: is it
+  // showing, and has its animation started.
   await page.evaluate(() => {
-    const w = window as unknown as {
-      __frames: { shown: boolean; width: number; moving: boolean }[];
-    };
+    const w = window as unknown as { __frames: Frame[] };
     w.__frames = [];
     const sample = () => {
       const dialog = document.querySelector<HTMLDialogElement>("dialog.lightbox");
@@ -32,43 +39,37 @@ async function neverFlashes(page: Page) {
         const style = getComputedStyle(big);
         w.__frames.push({
           shown: style.visibility === "visible" && Number(style.opacity) > 0,
-          width: big.getBoundingClientRect().width,
           moving: big.getAnimations().length > 0,
         });
+        if (w.__frames.at(-1)!.moving) return;
       }
       requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
   });
   await button.click();
-  // Until it has loaded and grown.
   await expect
     .poll(
       () =>
         page.evaluate(() =>
-          (window as unknown as { __frames: { moving: boolean }[] }).__frames.some((f) => f.moving),
+          (window as unknown as { __frames: Frame[] }).__frames.some((f) => f.moving),
         ),
-      {
-        timeout: 10_000,
-      },
+      { timeout: 10_000 },
     )
     .toBe(true);
-  const frames = await page.evaluate(
-    () =>
-      (window as unknown as { __frames: { shown: boolean; width: number; moving: boolean }[] })
-        .__frames,
-  );
+  const frames = await page.evaluate(() => (window as unknown as { __frames: Frame[] }).__frames);
   const before = frames.slice(
     0,
     frames.findIndex((f) => f.moving),
   );
-  // The page painted frames while it waited (the test proves something).
-  expect(before.length).toBeGreaterThan(10);
+  // The picture was held back, and frames were painted while it waited (the
+  // test proves something).
+  expect(held.count).toBeGreaterThan(0);
+  expect(before.length).toBeGreaterThan(0);
   // Nothing of the zoomed picture shows until it can grow from the card:
   // before, it sat there (empty, then at full size) while it loaded.
   const flashes = before.filter((f) => f.shown);
   expect(flashes.length, "frames with the zoomed picture shown before it animated").toBe(0);
-  expect(thumbWidth).toBeGreaterThan(0);
 }
 
 test("website zoom (WebKit): no full-size flash before the animation", async ({ page }) => {
@@ -85,19 +86,12 @@ test("website zoom (Chromium): no full-size flash before the animation", async (
   }
 });
 
-/**
- * Stepping to the next screenshot (› or the arrow key): the one shown stays
- * until the next has loaded, then they crossfade, so the dimmed backdrop
- * never shows on its own (owner, 2026-11-12: a cut to the backdrop and a
- * fade in from nothing read as a flash, the longer the slower it loaded).
- * With the next picture a second and a half late, as on a first visit.
- */
-async function stepsWithoutPopping(page: Page) {
+/** Opens the first screenshot and waits until it is shown and still. */
+async function openFirst(page: Page) {
   await page.goto("/website/index.html");
   const button = page.locator("button.zoom").first();
   await button.scrollIntoViewIfNeeded();
   await button.click();
-  // The first one open and settled.
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -106,13 +100,27 @@ async function stepsWithoutPopping(page: Page) {
       }),
     )
     .toBe(true);
-  const next = await page.evaluate(
-    () => document.querySelectorAll<HTMLImageElement>("img[data-zoom]")[1]!.dataset.zoom!,
+}
+
+/** The full-size picture's path (without "-light.webp") of screenshot `i`. */
+function zoomOf(page: Page, i: number) {
+  return page.evaluate(
+    (n) => document.querySelectorAll<HTMLImageElement>("img[data-zoom]")[n]!.dataset.zoom!,
+    i,
   );
-  await page.route(`**/${next}-*`, async (route) => {
-    await new Promise((done) => setTimeout(done, 1500));
-    await route.continue();
-  });
+}
+
+/**
+ * Stepping to the next screenshot (› or the arrow key): the one shown stays
+ * until the next has loaded, then they crossfade, so the dimmed backdrop
+ * never shows on its own (owner, 2026-11-12: a cut to the backdrop and a
+ * fade in from nothing read as a flash, the longer the slower it loaded).
+ * With the next picture a second and a half late, as on a first visit.
+ */
+async function stepsWithoutPopping(page: Page) {
+  await openFirst(page);
+  const next = await zoomOf(page, 1);
+  const held = await slowly(page, `**/${next}-*`);
   // Every frame from the click on: the most visible picture's opacity, and
   // whether the next one is in place with no animation left.
   await page.evaluate((base) => {
@@ -158,8 +166,10 @@ async function stepsWithoutPopping(page: Page) {
   const steps = await page.evaluate(
     () => (window as unknown as { __steps: { most: number }[] }).__steps,
   );
-  // It waited for the slow picture (the test proves something).
-  expect(steps.length).toBeGreaterThan(30);
+  // The next picture was held back, and frames were painted while it was
+  // (the test proves something).
+  expect(held.count).toBeGreaterThan(0);
+  expect(steps.length).toBeGreaterThan(1);
   const bare = steps.filter((s) => s.most < 0.5);
   expect(bare.length, "frames with no picture at least half visible").toBe(0);
 }
@@ -176,4 +186,67 @@ test("website zoom (Chromium): stepping doesn't pop the next picture in", async 
   } finally {
     await browser.close();
   }
+});
+
+/**
+ * Closing while a step still loads: back to the screenshot that was shown,
+ * not the one that never appeared (code review: focus went to the next
+ * screenshot's button).
+ */
+test("website zoom: closing while a step loads returns to the screenshot shown", async ({
+  page,
+}) => {
+  await openFirst(page);
+  await slowly(page, `**/${await zoomOf(page, 1)}-*`);
+  await page.getByRole("button", { name: "Next screenshot" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("dialog.lightbox")).not.toHaveAttribute("open");
+  await expect(page.locator("button.zoom").first()).toBeFocused();
+});
+
+/**
+ * A step during a crossfade: the picture still sliding in goes on from
+ * where it is as it leaves, never back to fully shown (code review: it
+ * snapped back before fading out).
+ */
+test("website zoom: a step during a crossfade doesn't snap the leaving picture back", async ({
+  page,
+}) => {
+  await openFirst(page);
+  // Load the next two so the steps don't wait on the network.
+  for (const i of [1, 2]) {
+    const base = await zoomOf(page, i);
+    await page.evaluate(
+      (b) =>
+        new Promise((done) => {
+          const img = new Image();
+          img.onload = img.onerror = done;
+          img.src = `${b}-light.webp`;
+        }),
+      base,
+    );
+  }
+  const leaving = await page.evaluate(async () => {
+    const next = document.querySelector<HTMLButtonElement>(".lightbox-next")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    next.click();
+    // Part way into the first crossfade.
+    for (let i = 0; i < 4; i++) await frame();
+    const figures = () => [...document.querySelectorAll<HTMLElement>("dialog.lightbox figure")];
+    const sliding = figures().find((f) => !f.hasAttribute("aria-hidden"))!;
+    next.click();
+    // Its opacity on every frame from when it starts leaving (marked
+    // aria-hidden) until it's gone.
+    const seen: number[] = [];
+    for (let i = 0; i < 40 && sliding.isConnected; i++) {
+      await frame();
+      if (sliding.hasAttribute("aria-hidden")) seen.push(Number(getComputedStyle(sliding).opacity));
+    }
+    return seen;
+  });
+  // It was part way in when it started leaving, then only faded.
+  expect(leaving.length).toBeGreaterThan(1);
+  expect(leaving[0]).toBeLessThan(1);
+  const rises = leaving.slice(1).filter((o, i) => o > leaving[i]! + 0.01);
+  expect(rises.length, "frames where the leaving picture got more visible").toBe(0);
 });

@@ -4376,8 +4376,9 @@ One pull request each.
       problems are still open: see the Bug backlog entry)*
 - [x] A sideways swipe on the trackpad drags the whole app *(2026-11-08:
       fixed; see the Bug backlog entry)*
-- [ ] Bug: the screenshot zoom flashes at full size before it animates (the
+- [x] Bug: the screenshot zoom flashes at full size before it animates (the
       website; a browser test with an empty cache and a slowed network)
+      *(2026-11-12: fixed; see the Bug backlog entry)*
 - [x] The browser test "starfield paints a night sky and lightens the words"
       that failed once (done in the same browser-test session as the zoom
       flash) *(2026-11-08: fixed; see the Bug backlog entry)*
@@ -4490,7 +4491,10 @@ again until the next spike.*
       in WebKit and Chromium with the full-size pictures held back 1.5 s:
       nothing of the zoomed picture shows before it grows, and while
       stepping some loaded picture is always at least half visible. Against
-      the old `site.js` all four failed, with 65 to 91 bad frames each.)*
+      the old `site.js` all four failed, with 65 to 91 bad frames each. From
+      review: closing while a step loads goes back to the screenshot shown
+      and its button, and a step during a crossfade lets the picture
+      leaving fade on from where it is; a browser test each.)*
 
 - [x] After pasting a long text into the message box and adding a few
       new lines, a click in the text doesn't put the cursor where the

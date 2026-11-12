@@ -93,12 +93,17 @@ if (zoomables.length && typeof HTMLDialogElement === "function") {
   let index = 0;
   let closing = false;
 
+  // The screenshot asked for last: ahead of `index` (the one shown) while
+  // a step loads, so steps in a row count from where the person is headed.
+  let target = 0;
+
   const buttons = []; // each screenshot's button, in the same order as zoomables
   const thumb = () => zoomables[index];
+  const wrap = (i) => (i + zoomables.length) % zoomables.length;
 
-  function show(i, into = current) {
-    index = (i + zoomables.length) % zoomables.length;
-    const img = thumb();
+  // Puts screenshot `at` into a slot: its picture, alt text and caption.
+  function show(at, into = current) {
+    const img = zoomables[at];
     const base = img.dataset.zoom;
     into.darkSource.srcset = `${base}-dark.webp`;
     into.big.src = `${base}-light.webp`;
@@ -143,7 +148,8 @@ if (zoomables.length && typeof HTMLDialogElement === "function") {
   }
 
   async function open(i) {
-    show(i);
+    index = target = wrap(i);
+    show(index);
     closing = false;
     document.documentElement.classList.add("is-zoomed");
     // The dimmed backdrop shows at once; the picture once it can grow.
@@ -214,16 +220,25 @@ if (zoomables.length && typeof HTMLDialogElement === "function") {
     const incoming = slot();
     extras.add(incoming);
     current.figure.after(incoming.figure);
-    show(index + by, incoming);
+    // The one shown (`index`) changes only once this one is ready: closing
+    // meanwhile goes back into its thumbnail and focuses its button.
+    const at = (target = wrap(target + by));
+    show(at, incoming);
     if (!(await revealWhenReady(incoming))) {
       if (extras.has(incoming)) drop(incoming);
       return;
     }
+    index = at;
     const leaving = current;
     current = incoming;
     extras.delete(incoming);
     extras.add(leaving);
-    if (reduceMotion.matches) return drop(leaving);
+    // Read once, not twice, while the two cross.
+    leaving.figure.setAttribute("aria-hidden", "true");
+    // Never shown (a step while the view was still opening): nothing to fade.
+    if (reduceMotion.matches || leaving.figure.style.visibility === "hidden") {
+      return drop(leaving);
+    }
     const timing = { duration: 240, easing: EASE };
     incoming.figure.animate(
       [
@@ -232,11 +247,13 @@ if (zoomables.length && typeof HTMLDialogElement === "function") {
       ],
       timing,
     );
+    // From where it is now: still sliding in from a step a moment ago, it
+    // goes on from there rather than snapping back to fully shown.
+    const now = getComputedStyle(leaving.figure);
+    const from = { opacity: Number(now.opacity), transform: now.transform };
+    for (const a of leaving.figure.getAnimations()) a.cancel();
     const out = leaving.figure.animate(
-      [
-        { opacity: 1, transform: "none" },
-        { opacity: 0, transform: `translateX(${by * -24}px)` },
-      ],
+      [from, { opacity: 0, transform: `translateX(${by * -24}px)` }],
       { ...timing, fill: "forwards" },
     );
     await out.finished.catch(() => {});
