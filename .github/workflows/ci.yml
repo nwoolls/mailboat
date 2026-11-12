@@ -88,6 +88,10 @@ jobs:
           CHECK_PRIVACY_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
       - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site'
         run: bun run test
+      # The website's own checks count as a site change, so a site run tests
+      # them (an app run's `bun run test` includes them already).
+      - if: needs.changes.outputs.kind != 'docs'
+        run: bunx vitest run scripts/website.test.ts scripts/policy.test.ts
       # Each pull request carries a changeset (an empty one when people
       # won't notice the change). Dependabot's don't, and neither does a
       # release pull request: it turns the changesets into the version and
