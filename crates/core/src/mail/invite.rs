@@ -230,7 +230,14 @@ fn moment(value: DatePerhapsTime) -> Option<Moment> {
         },
         DatePerhapsTime::DateTime(CalendarDateTime::Floating(time)) => local(time, None),
         DatePerhapsTime::DateTime(CalendarDateTime::WithTimezone { date_time, tzid }) => {
-            match tzid.parse::<chrono_tz::Tz>() {
+            // An IANA name, or a Windows one as Outlook writes them
+            // ("Eastern Standard Time"), placed through CLDR's table.
+            let zone = tzid.parse::<chrono_tz::Tz>().or_else(|e| {
+                super::windows_zones::iana_for(&tzid)
+                    .ok_or(e)
+                    .and_then(str::parse::<chrono_tz::Tz>)
+            });
+            match zone {
                 // A time that doesn't exist (in a spring-forward gap) has
                 // no answer; ambiguous ones (fall back) take the earlier.
                 Ok(zone) => match zone.from_local_datetime(&date_time).earliest() {
@@ -365,15 +372,22 @@ END:VCALENDAR\r
         );
         assert_eq!(invite.title, None);
 
-        let outlook = GOOGLE.replace(
+        // Outlook names the zone the Windows way: placed through CLDR's
+        // table, it is the same moment as the IANA name gives.
+        let outlook = GOOGLE.replace("TZID=America/New_York:", "TZID=Eastern Standard Time:");
+        let (written, placed) = (parse(&outlook, &[]).unwrap(), parse(GOOGLE, &[]).unwrap());
+        assert_eq!(written.start, placed.start);
+        assert_eq!(written.end, placed.end);
+        // A zone neither knows is kept as written.
+        let unknown = GOOGLE.replace(
             "TZID=America/New_York:20261020T140000",
-            "TZID=Eastern Standard Time:20261020T140000",
+            "TZID=Lunar Standard Time:20261020T140000",
         );
         assert_eq!(
-            parse(&outlook, &[]).unwrap().start,
+            parse(&unknown, &[]).unwrap().start,
             Moment::Local {
                 time: "2026-10-20T14:00:00".into(),
-                zone: Some("Eastern Standard Time".into()),
+                zone: Some("Lunar Standard Time".into()),
             }
         );
     }

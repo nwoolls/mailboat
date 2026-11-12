@@ -16,6 +16,7 @@ pub mod sanitize;
 pub mod sanitize_check;
 pub mod saved_image;
 pub mod stylesheet;
+mod windows_zones;
 
 use std::collections::HashMap;
 

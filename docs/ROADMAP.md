@@ -4967,8 +4967,8 @@ and new bugs still come here.*
       email to Original colors now applies to every email from that
       address, in any account (kept like the per-sender image choice);
       Adapted colors forgets it. It was per message, until the app quit
-- [ ] Meeting dates and times could be easier to read *(owner request,
-      2026-11-09; minor)*: the meeting panels (the invitation card at the
+- [x] Meeting dates and times could be easier to read *(owner request,
+      2026-11-09; minor; fixed 2026-11-12, and the owner tried it)*: the meeting panels (the invitation card at the
       top of an email, `InviteCard.tsx` via `whenText`, and any other meeting
       panel) show the time as a stamp such as "2026-11-27 10:00 (Central
       Standard Time)", with the numeric date and the long time zone name.
@@ -4976,7 +4976,25 @@ and new bugs still come here.*
       the time in the person's own style (12 or 24 hour), the end time or
       duration, a short zone name, and no zone at all when it is the
       computer's own. Check how an all-day meeting and one that crosses
-      midnight read. Made-up example data only in the tests.
+      midnight read. Made-up example data only in the tests. *(Fixed: the
+      stamp came from invitations whose time zone has a Windows name, as
+      Outlook writes them ("Central Standard Time"): `chrono-tz` knows only
+      IANA names, so those times were shown as written, with no end time.
+      They are now placed through Unicode CLDR's Windows-to-IANA table
+      (`mail::windows_zones`, see the Architecture decisions), so they read
+      like other invitations: in the computer's own zone, with no zone
+      named, the weekday, a short month, the time as the system's region
+      writes it, and the end time ("Thu, Nov 27 · 11:00 AM – 12:00 PM"). The owner
+      chose this over keeping the organizer's time. A zone neither knows is
+      read the same way, with its name after it. All-day meetings and ones
+      that cross midnight already read this way ("Sun, Nov 1 · all day",
+      "Tue, Oct 20, 11:00 PM – Wed, Oct 21, 1:00 AM"; tested). The only
+      other meeting time shown, the card's line about clashes, already
+      formats Calendar's times the same way. Not checked: whether the
+      card follows macOS's 24-hour setting when it differs from the
+      region's. Tests: an
+      Outlook-named zone gives the same moment as its IANA name, and the
+      fallback format; both failed before the fix.)*
 - [ ] Archiving with the preview collapsed re-opens it *(owner request,
       2026-11-09; minor)*: after collapsing the preview panel by hand,
       moving through the list with the keyboard leaves it collapsed, but

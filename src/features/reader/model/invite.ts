@@ -14,6 +14,19 @@ function sameDay(a: Date, b: Date): boolean {
   return a.toDateString() === b.toDateString();
 }
 
+/**
+ * A `YYYY-MM-DDTHH:MM:SS` time as written, held as that time in UTC and
+ * formatted in UTC (`asWritten`), so this computer's own clock changes
+ * can't move it (2:30 AM in its spring-forward hour showed as 3:30 AM).
+ */
+function wallClock(time: string): Date {
+  const [date = "", clock = ""] = time.split("T");
+  const [y, m, d] = date.split("-").map(Number);
+  const [h, min, sec] = clock.split(":").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!, h ?? 0, min ?? 0, sec ?? 0));
+}
+const asWritten = { timeZone: "UTC" } as const;
+
 /** A `YYYY-MM-DD` date, read as that day wherever you are. */
 function localDate(date: string): Date {
   const [y, m, d] = date.split("-").map(Number);
@@ -21,10 +34,11 @@ function localDate(date: string): Date {
 }
 
 /**
- * When the event is, in your time zone: "Tue, Oct 20 · 2:00 – 2:30 PM",
+ * When the event is, in your time zone: "Tue, Oct 20 · 2:00 PM – 2:30 PM",
  * "Sun, Nov 1 · all day", or across days "Tue, Oct 20, 11:00 PM – Wed,
- * Oct 21, 1:00 AM". A time in a zone the app can't place is shown as written,
- * with the zone's name.
+ * Oct 21, 1:00 AM". A time in a zone the app can't place (Rust places IANA
+ * and Windows names) is shown as written, read the same way, with the
+ * zone's name: "Tue, Oct 20 · 2:00 PM – 2:30 PM (Lunar Standard Time)".
  */
 export function whenText(start: Moment, end: Moment | null, locale?: string): string {
   if (start.kind === "allDay") {
@@ -38,8 +52,18 @@ export function whenText(start: Moment, end: Moment | null, locale?: string): st
       : `${day(first)} · all day`;
   }
   if (start.kind === "local") {
-    const [date, time] = start.time.split("T");
-    return `${date} ${time?.slice(0, 5)}${start.zone ? ` (${start.zone})` : ""}`;
+    // Read as written (the zone couldn't be placed), formatted as the rest
+    // are, with the zone's name after it. The end only when it is in the
+    // same zone and after the start.
+    const from = wallClock(start.time);
+    const until = end?.kind === "local" && end.zone === start.zone ? wallClock(end.time) : null;
+    const to = until && until > from ? until : null;
+    const day = (d: Date) => d.toLocaleDateString(locale, { ...dayFormat, ...asWritten });
+    const time = (d: Date) => d.toLocaleTimeString(locale, { ...timeFormat, ...asWritten });
+    const zone = start.zone ? ` (${start.zone})` : "";
+    if (!to) return `${day(from)} · ${time(from)}${zone}`;
+    if (day(from) === day(to)) return `${day(from)} · ${time(from)} – ${time(to)}${zone}`;
+    return `${day(from)}, ${time(from)} – ${day(to)}, ${time(to)}${zone}`;
   }
   const from = new Date(start.ms);
   const day = from.toLocaleDateString(locale, dayFormat);
