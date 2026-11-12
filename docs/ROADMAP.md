@@ -4369,11 +4369,14 @@ One pull request each.
       fixed; see the Bug backlog entry)*
 - [x] Email images show larger than in Gmail *(2026-11-08: fixed; see the Bug
       backlog entry)*
-- [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
+- [x] A sign-in code in a verification email isn't surfaced (the owner keeps
       the email; an agent works from a made-up fixture of the same shape,
       never the real one) *(2026-11-08: detection fixed; 2026-11-09: the
-      list row and the macOS banner read the body too; the two summary
-      problems are still open: see the Bug backlog entry)*
+      list row and the macOS banner read the body too, and the two summary
+      problems were addressed the same day (a fixed list line, prompt
+      wording, long links left out of what the model reads); what is left
+      is the owner trying a real verification email: see the Bug backlog
+      entry, and Bug Spike 3)*
 - [x] A sideways swipe on the trackpad drags the whole app *(2026-11-08:
       fixed; see the Bug backlog entry)*
 - [ ] Bug: the screenshot zoom flashes at full size before it animates (the
@@ -4455,12 +4458,49 @@ Items that call for a browser test (the zoom flash, the starfield flake) run
 `bun run test:browser` in a session that owns port 1436, never alongside
 another agent's browser tests.
 
+## Bug Spike 3: toward 0.2.1-beta.0
+
+*Started 2026-11-12 at the owner's request, to fix what is cheap in the Bug
+backlog before a 0.2.1-beta.0. Done when: each item below is built, the owner
+has tried it, and it is ticked in the Bug backlog, where each keeps its full
+text; this section only orders and scopes them, as the Polish Spike does.
+The beta itself is the owner's to cut (`docs/DEVELOPMENT.md` → Releasing);
+the repository is not in beta mode, so it starts with `pre enter beta`, on
+the owner's word.*
+
+1. [x] The reply moving under the cursor after a draft save (the AI summary
+   above it blinking), #112.
+2. [x] The line being typed hidden under the pinned Send bar in a narrow
+   reader, #113.
+3. [x] Archiving with the preview collapsed re-opens it (the owner tried
+   the fix, 2026-11-12; branch `archive-keeps-collapsed`).
+4. [x] Meeting dates and times could be easier to read. Example formats go
+   to the owner to choose from before any code. (The owner chose showing
+   Outlook invitations in the computer's own time zone and tried it,
+   2026-11-12; branch `invite-windows-zones`, #116.)
+5. [x] The website's screenshot zoom flashes at full size before it
+   animates. (Stepping with ‹ › now crossfades too, the owner's choice; the
+   owner tried both, 2026-11-12; branch `website-zoom-flash`.)
+6. [x] A sign-in code in a verification email isn't surfaced: built, and
+   waiting on the owner trying a real verification email (whether Apple
+   Intelligence still refuses its full summary). (The owner tried a
+   made-up email of the same shape, 2026-11-12: the code showed and the
+   full summary was written; see the Bug backlog entry.)
+7. [x] The browser tests all ran in Chromium in a checkout whose path has
+   "windows-" in it (found during item 4; fixed, branch `playwright-match`).
+
+Not in the spike: rethinking how a new reply is followed (and the
+slow-machine test kept as `test.fixme`). It is a design for the owner to
+lead, with a mockup first.
+
 ## Bug backlog
 
 *Bugs found in passing (started 2026-10-19 at the owner's request).
 Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
-again until the next spike.*
+again until the next spike. Bug Spike 3 (started 2026-11-12) lists the
+items it covers without moving them: they stay here with their full text,
+and new bugs still come here.*
 
 - [ ] Bug: the screenshot zoom flashes at full size before it animates
       *(owner report, 2026-11-07)*: the first time each screenshot is
@@ -4634,8 +4674,9 @@ again until the next spike.*
       stops copying can't be checked offline: the owner to try with a short
       reply on a long email, and an email with a single message)*
 
-- [ ] A sign-in code in a verification email isn't surfaced, and its
-      summaries are wrong *(owner report, 2026-11-04)*: an identity
+- [x] A sign-in code in a verification email isn't surfaced, and its
+      summaries are wrong *(owner report, 2026-11-04; the owner tried the
+      fixes 2026-11-12, see the last note)*: an identity
       verification email showed a short numeric code in large styled text
       beside a "Verify" button. The list row and the reader didn't offer the
       code, the list's one-line summary said no action was needed, and the
@@ -4699,6 +4740,13 @@ again until the next spike.*
       to enter it, so it is neither done nor verified; and the text the model
       reads leaves out long tracking links, which may also be what Apple's
       guardrails objected to)*
+      *(2026-11-12, tried: the owner sent themselves a made-up email of the
+      same shape (a bare number beside a button's label, a tracking link
+      of several hundred characters, then a line saying the code expires,
+      under a subject asking to verify an address). The row and the banner
+      showed the code, the list line said "Sign-in code", and Apple
+      Intelligence wrote the full summary without refusing it or saying
+      the code had been used)*
 - [x] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01; fixed 2026-11-08, see below)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the
@@ -4919,8 +4967,8 @@ again until the next spike.*
       email to Original colors now applies to every email from that
       address, in any account (kept like the per-sender image choice);
       Adapted colors forgets it. It was per message, until the app quit
-- [ ] Meeting dates and times could be easier to read *(owner request,
-      2026-11-09; minor)*: the meeting panels (the invitation card at the
+- [x] Meeting dates and times could be easier to read *(owner request,
+      2026-11-09; minor; fixed 2026-11-12, and the owner tried it)*: the meeting panels (the invitation card at the
       top of an email, `InviteCard.tsx` via `whenText`, and any other meeting
       panel) show the time as a stamp such as "2026-11-27 10:00 (Central
       Standard Time)", with the numeric date and the long time zone name.
@@ -4928,7 +4976,25 @@ again until the next spike.*
       the time in the person's own style (12 or 24 hour), the end time or
       duration, a short zone name, and no zone at all when it is the
       computer's own. Check how an all-day meeting and one that crosses
-      midnight read. Made-up example data only in the tests.
+      midnight read. Made-up example data only in the tests. *(Fixed: the
+      stamp came from invitations whose time zone has a Windows name, as
+      Outlook writes them ("Central Standard Time"): `chrono-tz` knows only
+      IANA names, so those times were shown as written, with no end time.
+      They are now placed through Unicode CLDR's Windows-to-IANA table
+      (`mail::windows_zones`, see the Architecture decisions), so they read
+      like other invitations: in the computer's own zone, with no zone
+      named, the weekday, a short month, the time as the system's region
+      writes it, and the end time ("Thu, Nov 27 · 11:00 AM – 12:00 PM"). The owner
+      chose this over keeping the organizer's time. A zone neither knows is
+      read the same way, with its name after it. All-day meetings and ones
+      that cross midnight already read this way ("Sun, Nov 1 · all day",
+      "Tue, Oct 20, 11:00 PM – Wed, Oct 21, 1:00 AM"; tested). The only
+      other meeting time shown, the card's line about clashes, already
+      formats Calendar's times the same way. Not checked: whether the
+      card follows macOS's 24-hour setting when it differs from the
+      region's. Tests: an
+      Outlook-named zone gives the same moment as its IANA name, and the
+      fallback format; both failed before the fix.)*
 - [x] Archiving with the preview collapsed re-opens it *(owner request,
       2026-11-09; minor; fixed 2026-11-12, and the owner tried it)*: after collapsing the preview panel by hand,
       moving through the list with the keyboard leaves it collapsed, but
