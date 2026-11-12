@@ -20,7 +20,9 @@ jobs:
   # whole workflow would not do: it would leave them waiting forever.
   #   docs  only docs, changesets and top-level Markdown changed: formatting,
   #         the brand and privacy checks and the changeset check run.
-  #   site  also the website: those, plus lint and the website check.
+  #   site  also the website or its own checks (scripts/website.ts,
+  #         check-website.ts, policy.ts and their tests): those, plus lint,
+  #         the website check and those scripts' tests.
   #   app   anything else: everything.
   # Every gate below is written "kind is not docs/site", so if this job fails
   # or says nothing, everything runs rather than nothing.

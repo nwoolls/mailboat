@@ -24,7 +24,7 @@ fi
 not_docs='^(docs/|\.changeset/|[^/]+\.md$)'
 # The website's own checks count as the site: a site run tests them (CI, the
 # "Web checks" job runs their Vitest files).
-not_site='^(website/|scripts/build-website-images\.sh$|scripts/(website|check-website|policy)(\.test)?\.ts$)'
+not_site='^(website/|scripts/build-website-images\.sh$|scripts/(website|website\.test|check-website|policy|policy\.test)\.ts$)'
 # Anything that is neither docs nor site makes it an app change.
 other=$(printf '%s\n' "$files" | grep -vE "$not_docs" | grep -vE "$not_site" || true)
 if [ -n "$other" ]; then

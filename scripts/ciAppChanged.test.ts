@@ -71,6 +71,7 @@ describe("ci-app-changed.sh", () => {
     expect(answer(() => write("scripts/website.ts"))).toBe("site");
     expect(answer(() => write("scripts/check-website.ts"))).toBe("site");
     expect(answer(() => write("scripts/policy.ts"))).toBe("site");
+    expect(answer(() => write("scripts/website.test.ts"))).toBe("site");
     expect(answer(() => write("scripts/policy.test.ts"))).toBe("site");
     expect(
       answer(() => {
@@ -97,6 +98,8 @@ describe("ci-app-changed.sh", () => {
     expect(answer(() => write("scripts/check-brand.ts"))).toBe("app");
     expect(answer(() => write("scripts/websites.ts"))).toBe("app");
     expect(answer(() => write("scripts/policy-extra.ts"))).toBe("app");
+    // A test file the site run's Vitest step doesn't list must run in the full suite.
+    expect(answer(() => write("scripts/check-website.test.ts"))).toBe("app");
     expect(answer(() => write(".github/workflows/ci.yml"))).toBe("app");
     expect(answer(() => write(".github/website/wrangler.jsonc"))).toBe("app");
     expect(answer(() => write("package.json"))).toBe("app");
