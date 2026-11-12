@@ -4474,13 +4474,17 @@ the owner's word.*
    reader, #113.
 3. [x] Archiving with the preview collapsed re-opens it (the owner tried
    the fix, 2026-11-12; branch `archive-keeps-collapsed`).
-4. [ ] Meeting dates and times could be easier to read. Example formats go
-   to the owner to choose from before any code.
+4. [x] Meeting dates and times could be easier to read. Example formats go
+   to the owner to choose from before any code. (The owner chose showing
+   Outlook invitations in the computer's own time zone and tried it,
+   2026-11-12; branch `invite-windows-zones`, #116.)
 5. [ ] The website's screenshot zoom flashes at full size before it
    animates.
 6. [ ] A sign-in code in a verification email isn't surfaced: built, and
    waiting on the owner trying a real verification email (whether Apple
    Intelligence still refuses its full summary).
+7. [x] The browser tests all ran in Chromium in a checkout whose path has
+   "windows-" in it (found during item 4; fixed, branch `playwright-match`).
 
 Not in the spike: rethinking how a new reply is followed (and the
 slow-machine test kept as `test.fixme`). It is a design for the owner to
