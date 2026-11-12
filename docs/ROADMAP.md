@@ -3788,6 +3788,13 @@ again every seven days until the project is published.*
 
 ## Milestone 16: Website
 
+**Closed (owner, 2026-11-11).** The site is live: it explains Mailboat,
+shows it and lets people download it, as the "Done when" line asks. The items
+left open moved, each with a note: the website's zoom bug to the Bug backlog,
+and the teaser trailer and four privacy items to "Later / unscheduled", to
+plan. Google's verification is tracked in Milestone 18; it was never part of
+this milestone.
+
 *Done when: `getmailboat.app` explains Mailboat, shows it, and lets people
 download it.*
 
@@ -3804,23 +3811,10 @@ download it.*
       stays in the repository for anyone who wants the steps in writing.
       The short screen recording of the setup moves to the first-timer
       trial below: make it only if the trial shows people get stuck
-- [ ] Teaser trailer *(owner, 2026-10-22; moved from the Release
-      Spike)*: a short video made in code with Remotion (videos written
-      in React), drawing Mailboat's real components with the demo data, as
-      the browser tests do. Scripted camera moves, a gliding cursor,
-      typing, the AI panel opening, mail arriving; rendered to MP4 at
-      16:9, square and vertical. Not AI-generated video: it garbles text
-      and invents UI that isn't Mailboat's. Limits: it renders in
-      Chromium, so the window's glass is imitated over a chosen
-      wallpaper rather than macOS's own; music or a voiceover come from
-      the owner (cuts can be timed to a chosen track). Check Remotion's
-      license (free for individuals and small companies) when starting,
-      and record it in ARCHITECTURE
 
-- [ ] Website link on the repository, and the repository pinned on the
+- [x] Website link on the repository, and the repository pinned on the
       owner's profile *(moved from Milestone 14, 2026-11-04)* *(2026-11-07:
-      the website link is set; pinning the repository is left, and it is the
-      owner's to do)*
+      the website link is set; 2026-11-11: the owner pinned the repository)*
 - [x] Cloudflare setup for the site *(owner, 2026-11-06)*:
       *(2026-11-07: done: the Worker, the deploy token, the GitHub
       `website` environment, the first deploy, the route that attaches the
@@ -3848,7 +3842,7 @@ download it.*
       about and naming only the
       providers that are connected and chosen there, and not shown while
       everything stays on the Mac. The owner tried it, 2026-11-08)*
-- [ ] First-timer trial of the onboarding *(moved from Milestone 12,
+- [x] First-timer trial of the onboarding *(moved from Milestone 12,
       2026-10-30, then from Milestone 15, 2026-11-05)*: someone who has
       never used Google Cloud installs a real build from GitHub and gets
       from nothing to their mail following only what the app says (using
@@ -3856,22 +3850,9 @@ download it.*
       about 15 minutes).
       Needs the signed builds (Milestone 15, done) and a real download,
       so the installer's own warnings don't become part of the test
-
-- [ ] Bug: the screenshot zoom flashes at full size before it animates
-      *(owner report, 2026-11-07)*: the first time each screenshot is
-      zoomed, it appears large for a moment and then the grow-from-the-card
-      animation plays; once that screenshot's full-size picture is cached,
-      every later zoom is smooth. Cause, from reading `website/site.js`:
-      `open()` shows the dialog first and only then waits for the full-size
-      picture to load and decode, so the picture sits on screen at its final
-      size until the animation can start. Fix ideas, to choose among when it
-      is picked up: keep the picture hidden until it has decoded (the dimmed
-      backdrop can show at once); start the animation from the card's
-      already-loaded smaller picture while the large one loads; fetch the
-      large picture when the pointer or focus reaches a card. A browser test
-      in WebKit and Chromium, with an empty cache and a slowed network,
-      should check that the picture is never painted large before the
-      animation starts
+      *(2026-11-11: a friend of the owner installed it and didn't report
+      getting stuck; not timed. Google's reviewers are trying the install
+      too, for the verification)*
 
 ### Privacy and security by default *(owner, 2026-11-06)*
 
@@ -3907,14 +3888,6 @@ security fixes).
       who already had a cloud provider with automatic summaries keeps it. The
       policy sentence about automatic summaries still describes the released
       version and changes in the policy edit after 0.2.0 stable is published)*
-- [ ] Ask for Google permissions when they are first needed: sign-in asks
-      for what mail needs, and Calendar, Contacts and Gmail settings are
-      requested when the person first uses invitations, address suggestions,
-      rules, signatures or the vacation reply. The consent screen shrinks
-      from eight permissions to a few, and each remaining permission maps
-      to a feature Google's reviewers can see. Needs care for accounts
-      already signed in (one more consent, as when a permission was added
-      before) and for the seven-day sign-in in Testing
 - [x] Removing an account cleans up fully: revoke the refresh token at
       Google (best effort; say so when offline), delete that account's
       downloaded remote images (next item), and offer "Delete all Mailboat
@@ -3934,15 +3907,6 @@ security fixes).
       alone) covers it *(2026-11-08: built with the item above, in the
       Polish Spike, as a per-account cache instead of a link table (see
       there); the policy line is the one open part, held for Google)*
-- [ ] Fewer hosts contacted before a message is opened: options are
-      remote images for people you've written to by default, prefetching
-      images only for those people or not at all, or both. Prefetch is
-      on today, so the image host is contacted when mail arrives
-- [ ] Encrypt the local cache at rest: a key in the keychain and an
-      encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
-      and costs little speed. Until then the cache relies on the
-      computer's disk encryption (FileVault, BitLocker), and the policy
-      says only what is true. Decide whether it is worth the dependency
 - [x] Settings → Privacy, one page that lists every way data leaves the
       computer (Google, update checks, remote images, AI providers, AI
       apps over MCP) with its current setting, and a short "what stays on
@@ -3976,8 +3940,6 @@ security fixes).
       answers at `getmailboat.app/.well-known/security.txt` and the footer
       links to the security policy; the owner confirmed the site is
       deployed)*
-- [ ] Optional, later: require Touch ID or Windows Hello to open the app,
-      for shared computers
 
 ## Milestone 17: Launch
 
@@ -3985,16 +3947,20 @@ security fixes).
 owner has decided, from what happened, whether Milestone 18 is worth
 starting.*
 
-- [ ] Social accounts: the owner's personal ones are fine for an open
+- [x] Social accounts: the owner's personal ones are fine for an open
       source launch. Optionally reserve `mailboatapp` on X, Bluesky and
       GitHub anyway, so the name is there if a paid version comes.
       Reddit filters new accounts with no history: take part in a few
-      communities for some weeks before posting
+      communities for some weeks before posting *(2026-11-11: the owner's
+      personal accounts were used)*
 - [ ] Launch posts, once: Show HN; r/macapps (app posts allowed under
       its rules); Claude and MCP communities (the AI and AI-apps
       features are the pitch for a technical audience); "Mimestream,
       but on Windows too" for Windows users. Each post links to the
-      website and GitHub
+      website and GitHub *(by 2026-11-11: the owner posted on X and Reddit,
+      with some interest so far: likes on the posts, and stars and forks
+      on GitHub. The other places are to be decided; the owner doesn't
+      frequent them)*
 - [ ] Optional *(moved from Milestone 15, 2026-11-05)*: a Homebrew tap of
       the owner's own (the main Homebrew list needs an app to be popular
       first) and `winget` for Windows
@@ -4004,7 +3970,8 @@ starting.*
 - [ ] Checkpoint, about a month later, with the owner: downloads
       (GitHub counts them), stars, issues from people who finished the
       setup, and whether people say they'd pay to skip it. Decide:
-      Mailboat stays free and open source, or Milestone 18 begins
+      Mailboat stays free and open source, or Milestone 18 begins *(the
+      first posts went out by 2026-11-11, so about mid-December 2026)*
 
 ## Milestone 18: Paid option (only if the Milestone 17 checkpoint says yes)
 
@@ -4392,7 +4359,7 @@ and a tick.
 
 ### Bugs, in order (small and visible first)
 
-Full text of each is in the Bug backlog (or, for the zoom bug, Milestone 16).
+Full text of each is in the Bug backlog.
 One pull request each.
 
 - [x] A sent email's full recipient list can't be seen without resizing
@@ -4494,6 +4461,23 @@ another agent's browser tests.
 Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
+
+- [ ] Bug: the screenshot zoom flashes at full size before it animates
+      *(owner report, 2026-11-07)*: the first time each screenshot is
+      zoomed, it appears large for a moment and then the grow-from-the-card
+      animation plays; once that screenshot's full-size picture is cached,
+      every later zoom is smooth. Cause, from reading `website/site.js`:
+      `open()` shows the dialog first and only then waits for the full-size
+      picture to load and decode, so the picture sits on screen at its final
+      size until the animation can start. Fix ideas, to choose among when it
+      is picked up: keep the picture hidden until it has decoded (the dimmed
+      backdrop can show at once); start the animation from the card's
+      already-loaded smaller picture while the large one loads; fetch the
+      large picture when the pointer or focus reaches a card. A browser test
+      in WebKit and Chromium, with an empty cache and a slowed network,
+      should check that the picture is never painted large before the
+      animation starts
+      *(moved from Milestone 16 when it closed, 2026-11-11)*
 
 - [ ] After pasting a long text into the message box and adding a few
       new lines, a click in the text doesn't put the cursor where the
@@ -4964,6 +4948,48 @@ again until the next spike.*
 
 ## Later / unscheduled
 
+- [ ] Ask for Google permissions when they are first needed: sign-in asks
+      for what mail needs, and Calendar, Contacts and Gmail settings are
+      requested when the person first uses invitations, address suggestions,
+      rules, signatures or the vacation reply. The consent screen shrinks
+      from eight permissions to a few, and each remaining permission maps
+      to a feature Google's reviewers can see. Needs care for accounts
+      already signed in (one more consent, as when a permission was added
+      before) and for the seven-day sign-in in Testing
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan;
+      still waits for Google's answer on the verification)*
+
+- [ ] Teaser trailer *(owner, 2026-10-22; moved from the Release
+      Spike)*: a short video made in code with Remotion (videos written
+      in React), drawing Mailboat's real components with the demo data, as
+      the browser tests do. Scripted camera moves, a gliding cursor,
+      typing, the AI panel opening, mail arriving; rendered to MP4 at
+      16:9, square and vertical. Not AI-generated video: it garbles text
+      and invents UI that isn't Mailboat's. Limits: it renders in
+      Chromium, so the window's glass is imitated over a chosen
+      wallpaper rather than macOS's own; music or a voiceover come from
+      the owner (cuts can be timed to a chosen track). Check Remotion's
+      license (free for individuals and small companies) when starting,
+      and record it in ARCHITECTURE
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+
+- [ ] Fewer hosts contacted before a message is opened: options are
+      remote images for people you've written to by default, prefetching
+      images only for those people or not at all, or both. Prefetch is
+      on today, so the image host is contacted when mail arrives
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+
+- [ ] Encrypt the local cache at rest: a key in the keychain and an
+      encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
+      and costs little speed. Until then the cache relies on the
+      computer's disk encryption (FileVault, BitLocker), and the policy
+      says only what is true. Decide whether it is worth the dependency
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+
+- [ ] Optional, later: require Touch ID or Windows Hello to open the app,
+      for shared computers
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+
 - [ ] Images from local or private hosts *(raised by the review of the
       image-address fix, 2026-11-07)*: an email's remote image may name a
       loopback or private-network host (`127.0.0.1`, `*.localhost`,
@@ -5055,6 +5081,10 @@ again until the next spike.*
       a "nice-to-have" there, never started)*: Tauri builds for Linux,
       but nothing has been tried; the Windows work (`shared/lib/platform`,
       Ctrl shortcuts, the named-pipe MCP) would mostly carry over
+      *(2026-11-11: a friend of the owner asked for an Arch Linux package, in
+      the AUR, which needs a Linux build to point at first. The owner wants to take up Linux soon: after clearing some bugs, and together with a few
+      features from this list, such as "add to Todoist and archive" and
+      "Clone a sent email")*
 
 - [ ] Keep translations after Mailboat quits *(known limitation, owner,
       2026-10-26: "for later")*: a translation in an email lives only in
