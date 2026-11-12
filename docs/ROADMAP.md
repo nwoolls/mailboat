@@ -4977,6 +4977,16 @@ again until the next spike.*
       clear. `tests/browser/reply-caret-clear.spec.ts` types 30 lines at
       760, 560 and 440 px; before the fix the line ended 17.5 px under the
       bar at 560 and 440 px.
+- [x] In a checkout whose path has "windows-" in it, the browser tests all
+      ran in Chromium and none in WebKit *(found 2026-11-12, when three
+      WebKit-only scroll tests failed in a worktree named after a Windows
+      time zone fix; fixed the same day)*: `playwright.config.ts` picked the
+      Windows-only tests with `/windows-.*\.spec\.ts/`, which Playwright
+      matches against the whole path, not the file name. The pattern is now
+      anchored to the file name (`WINDOWS_ONLY`). Checked with
+      `playwright test --list` in a checkout under a "windows-" folder:
+      before, all 97 tests were in the Chromium project; after, 95 in WebKit
+      and 2 in Chromium, as in any other folder.
 
 ## Later / unscheduled
 
