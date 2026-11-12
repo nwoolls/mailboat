@@ -64,10 +64,15 @@ describe("ci-app-changed.sh", () => {
     expect(answer(() => write("src/café.rs"))).toBe("app");
   });
 
-  it("says site when the website or its image script changes, with or without docs", () => {
+  it("says site when the website, its image script or its own checks change, with or without docs", () => {
     expect(answer(() => write("website/a.html", "changed\n"))).toBe("site");
     expect(answer(() => write("website/images/new.webp"))).toBe("site");
     expect(answer(() => write("scripts/build-website-images.sh"))).toBe("site");
+    expect(answer(() => write("scripts/website.ts"))).toBe("site");
+    expect(answer(() => write("scripts/check-website.ts"))).toBe("site");
+    expect(answer(() => write("scripts/policy.ts"))).toBe("site");
+    expect(answer(() => write("scripts/website.test.ts"))).toBe("site");
+    expect(answer(() => write("scripts/policy.test.ts"))).toBe("site");
     expect(
       answer(() => {
         write("website/a.html", "changed\n");
@@ -88,10 +93,13 @@ describe("ci-app-changed.sh", () => {
     ).toBe("app");
   });
 
-  it("says app for files that only look like docs or site: a nested Markdown file, other scripts, workflows, the website's own scripts and config", () => {
+  it("says app for files that only look like docs or site: a nested Markdown file, other scripts (even with a similar name), workflows, the website's deploy config", () => {
     expect(answer(() => write("crates/core/README.md"))).toBe("app");
     expect(answer(() => write("scripts/check-brand.ts"))).toBe("app");
-    expect(answer(() => write("scripts/website.ts"))).toBe("app");
+    expect(answer(() => write("scripts/websites.ts"))).toBe("app");
+    expect(answer(() => write("scripts/policy-extra.ts"))).toBe("app");
+    // A test file the site run's Vitest step doesn't list must run in the full suite.
+    expect(answer(() => write("scripts/check-website.test.ts"))).toBe("app");
     expect(answer(() => write(".github/workflows/ci.yml"))).toBe("app");
     expect(answer(() => write(".github/website/wrangler.jsonc"))).toBe("app");
     expect(answer(() => write("package.json"))).toBe("app");

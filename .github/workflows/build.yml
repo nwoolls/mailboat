@@ -10,6 +10,11 @@ on:
       - ".changeset/**"
       - "website/**"
       - "scripts/build-website-images.sh"
+      - "scripts/website.ts"
+      - "scripts/website.test.ts"
+      - "scripts/check-website.ts"
+      - "scripts/policy.ts"
+      - "scripts/policy.test.ts"
       - "*.md"
 
 permissions:

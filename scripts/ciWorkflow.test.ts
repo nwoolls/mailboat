@@ -107,6 +107,7 @@ const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
       "bun run check:website": unlessDocs,
       "bun run check:privacy": always,
       "bun run test": appOnly,
+      "bunx vitest run scripts/website.test.ts scripts/policy.test.ts": unlessDocs,
       'bun run changeset status --since="origin/$BASE_REF"': always,
     },
   },
@@ -192,10 +193,17 @@ describe("the CI's skips, evaluated", () => {
     expect(build).toEqual(
       expect.arrayContaining(["docs/**", ".changeset/**", "website/**", "*.md"]),
     );
-    // (the one file under scripts/ that is not code: the website's image script)
-    for (const pattern of [...codeql, ...build].filter(
-      (p) => p !== "scripts/build-website-images.sh",
-    )) {
+    // (under scripts/, only the website's image script and its own checks,
+    // which a site run tests)
+    const siteScripts = new Set([
+      "scripts/build-website-images.sh",
+      "scripts/website.ts",
+      "scripts/website.test.ts",
+      "scripts/check-website.ts",
+      "scripts/policy.ts",
+      "scripts/policy.test.ts",
+    ]);
+    for (const pattern of [...codeql, ...build].filter((p) => !siteScripts.has(p))) {
       expect(pattern).not.toMatch(/^(scripts|\.github|src|src-tauri|crates)\b/);
     }
   });

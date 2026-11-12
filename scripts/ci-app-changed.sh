@@ -3,7 +3,9 @@
 # "What changed" job) reads the answer:
 #
 #   docs  only docs/, .changeset/ and top-level Markdown files changed
-#   site  also website/ or the website's image script, nothing else
+#   site  also website/, the website's image script, or the website's own
+#         checks (scripts/website.ts, check-website.ts, policy.ts and their
+#         tests), nothing else
 #   app   anything else: the app, its scripts, the workflows, the tooling
 #
 # It fails safe: if the changed files can't be listed, the answer is app.
@@ -20,7 +22,9 @@ if ! files=$(git -c core.quotepath=off diff --name-only --no-renames "$base...$h
   exit 0
 fi
 not_docs='^(docs/|\.changeset/|[^/]+\.md$)'
-not_site='^(website/|scripts/build-website-images\.sh$)'
+# The website's own checks count as the site: a site run tests them (CI, the
+# "Web checks" job runs their Vitest files).
+not_site='^(website/|scripts/build-website-images\.sh$|scripts/(website|website\.test|check-website|policy|policy\.test)\.ts$)'
 # Anything that is neither docs nor site makes it an app change.
 other=$(printf '%s\n' "$files" | grep -vE "$not_docs" | grep -vE "$not_site" || true)
 if [ -n "$other" ]; then
