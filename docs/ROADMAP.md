@@ -4369,7 +4369,7 @@ One pull request each.
       fixed; see the Bug backlog entry)*
 - [x] Email images show larger than in Gmail *(2026-11-08: fixed; see the Bug
       backlog entry)*
-- [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
+- [x] A sign-in code in a verification email isn't surfaced (the owner keeps
       the email; an agent works from a made-up fixture of the same shape,
       never the real one) *(2026-11-08: detection fixed; 2026-11-09: the
       list row and the macOS banner read the body too, and the two summary
@@ -4480,9 +4480,11 @@ the owner's word.*
    2026-11-12; branch `invite-windows-zones`, #116.)
 5. [ ] The website's screenshot zoom flashes at full size before it
    animates.
-6. [ ] A sign-in code in a verification email isn't surfaced: built, and
+6. [x] A sign-in code in a verification email isn't surfaced: built, and
    waiting on the owner trying a real verification email (whether Apple
-   Intelligence still refuses its full summary).
+   Intelligence still refuses its full summary). (The owner tried a
+   made-up email of the same shape, 2026-11-12: the code showed and the
+   full summary was written; see the Bug backlog entry.)
 7. [x] The browser tests all ran in Chromium in a checkout whose path has
    "windows-" in it (found during item 4; fixed, branch `playwright-match`).
 
@@ -4671,8 +4673,9 @@ and new bugs still come here.*
       stops copying can't be checked offline: the owner to try with a short
       reply on a long email, and an email with a single message)*
 
-- [ ] A sign-in code in a verification email isn't surfaced, and its
-      summaries are wrong *(owner report, 2026-11-04)*: an identity
+- [x] A sign-in code in a verification email isn't surfaced, and its
+      summaries are wrong *(owner report, 2026-11-04; the owner tried the
+      fixes 2026-11-12, see the last note)*: an identity
       verification email showed a short numeric code in large styled text
       beside a "Verify" button. The list row and the reader didn't offer the
       code, the list's one-line summary said no action was needed, and the
@@ -4736,6 +4739,13 @@ and new bugs still come here.*
       to enter it, so it is neither done nor verified; and the text the model
       reads leaves out long tracking links, which may also be what Apple's
       guardrails objected to)*
+      *(2026-11-12, tried: the owner sent themselves a made-up email of the
+      same shape (a bare number beside a button's label, a tracking link
+      of several hundred characters, then a line saying the code expires,
+      under a subject asking to verify an address). The row and the banner
+      showed the code, the list line said "Sign-in code", and Apple
+      Intelligence wrote the full summary without refusing it or saying
+      the code had been used)*
 - [x] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01; fixed 2026-11-08, see below)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the
