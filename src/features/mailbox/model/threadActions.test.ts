@@ -13,6 +13,7 @@ import {
   labelState,
   labelToggle,
   leavesView,
+  moveAfterRemoval,
   nextAfterRemoval,
   selectionAfterUndo,
   toggleFor,
@@ -280,5 +281,46 @@ describe("selection after undo", () => {
   it("doesn't open a conversation that wasn't open (a swipe, or Inbox Zero)", () => {
     expect(selectionAfterUndo(null, [id(1)], null)).toBeNull();
     expect(selectionAfterUndo(id(3), [id(1)], id(3))).toBe(3);
+  });
+});
+
+describe("moveAfterRemoval", () => {
+  const list = [thread(1), thread(2), thread(3), thread(4)];
+  const ids = (...n: number[]) => new Set(n as unknown as ThreadId[]);
+
+  it("with a preview showing, previews the next conversation", () => {
+    expect(
+      moveAfterRemoval(list, ids(2), { previewed: id(2), selected: null, previewing: true }),
+    ).toEqual({ previewed: 3, selected: null });
+  });
+
+  // Owner request, 2026-11-09: after collapsing the preview by hand,
+  // archiving reopened it on the next conversation, though moving with the
+  // keyboard leaves it collapsed. The next one is chosen the same way, and
+  // selected without being previewed.
+  it("with the preview collapsed, selects the next conversation without previewing it", () => {
+    // Collapsed with its button or Esc: the conversation stays chosen.
+    expect(
+      moveAfterRemoval(list, ids(2), { previewed: id(2), selected: null, previewing: false }),
+    ).toEqual({ previewed: null, selected: 3 });
+    // Moved to with j/k while collapsed.
+    expect(
+      moveAfterRemoval(list, ids(3), { previewed: null, selected: id(3), previewing: false }),
+    ).toEqual({ previewed: null, selected: 4 });
+    // Settings → Viewing: the one above.
+    expect(
+      moveAfterRemoval(
+        list,
+        ids(2),
+        { previewed: id(2), selected: null, previewing: false },
+        "above",
+      ),
+    ).toEqual({ previewed: null, selected: 1 });
+  });
+
+  it("leaves the choice alone when another conversation is removed", () => {
+    expect(
+      moveAfterRemoval(list, ids(4), { previewed: id(2), selected: null, previewing: false }),
+    ).toEqual({ previewed: 2, selected: null });
   });
 });

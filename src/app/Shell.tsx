@@ -49,7 +49,7 @@ import {
   inverse,
   labelToggle,
   leavesView,
-  nextAfterRemoval,
+  moveAfterRemoval,
   selectionAfterUndo,
   type ThreadAction,
   deleteKeyAction,
@@ -423,10 +423,14 @@ export function Shell() {
       if (ids.length === 0) return;
       const openBefore = openNow.current;
       if (leavesView(action, selection.view)) {
-        const removed = new Set(ids);
-        const { afterRemoval } = viewingPrefs.get();
-        setSelectedId((current) => nextAfterRemoval(threads, removed, current, afterRemoval));
-        setCursorId((current) => nextAfterRemoval(threads, removed, current, afterRemoval));
+        const moved = moveAfterRemoval(
+          threads,
+          new Set(ids),
+          { previewed: selectedId, selected: cursorId, previewing: readerOpen },
+          viewingPrefs.get().afterRemoval,
+        );
+        setSelectedId(moved.previewed);
+        setCursorId(moved.selected);
         setChecked(NONE);
       }
       const message = actionMessage(action, ids.length);
@@ -457,7 +461,7 @@ export function Shell() {
         },
       );
     },
-    [mutateThreads, selection.view, threads],
+    [mutateThreads, selection.view, threads, selectedId, cursorId, readerOpen],
   );
   const lastUndo = toast?.action;
   const { startNew: openNew } = compose;

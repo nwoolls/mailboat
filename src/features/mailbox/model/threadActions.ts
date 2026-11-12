@@ -292,6 +292,28 @@ export function nextAfterRemoval(
 }
 
 /**
+ * The previewed and the selected conversation after `removed` leave the
+ * view (archived, deleted, moved): each moves on to the next one that
+ * stays, as Settings → Viewing says. With the preview collapsed (by hand:
+ * its button or Esc), the next one is selected without being previewed,
+ * as j/k do then, so the preview stays collapsed (owner request,
+ * 2026-11-09).
+ */
+export function moveAfterRemoval(
+  threads: Pick<ThreadSummary, "id">[],
+  removed: ReadonlySet<ThreadId>,
+  at: { previewed: ThreadId | null; selected: ThreadId | null; previewing: boolean },
+  after: AfterRemoval = "below",
+): { previewed: ThreadId | null; selected: ThreadId | null } {
+  if (!at.previewing && at.previewed !== null && removed.has(at.previewed))
+    return { previewed: null, selected: nextAfterRemoval(threads, removed, at.previewed, after) };
+  return {
+    previewed: nextAfterRemoval(threads, removed, at.previewed, after),
+    selected: nextAfterRemoval(threads, removed, at.selected, after),
+  };
+}
+
+/**
  * What's open after Undo brings conversations back: the one that was open
  * before the action, if it's among them (archiving the open conversation
  * moved on; Undo goes back to it). Otherwise whatever is open now stays,
