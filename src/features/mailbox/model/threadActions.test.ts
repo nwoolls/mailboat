@@ -284,9 +284,10 @@ describe("selection after undo", () => {
   });
 });
 
+const ids = (...n: number[]) => new Set(n.map(id));
+
 describe("moveAfterRemoval", () => {
   const list = [thread(1), thread(2), thread(3), thread(4)];
-  const ids = (...n: number[]) => new Set(n as unknown as ThreadId[]);
 
   it("with a preview showing, previews the next conversation", () => {
     expect(
@@ -316,6 +317,19 @@ describe("moveAfterRemoval", () => {
         "above",
       ),
     ).toEqual({ previewed: null, selected: 1 });
+    // Several removed at once, the collapsed one among them.
+    expect(
+      moveAfterRemoval(list, ids(2, 3), { previewed: id(2), selected: null, previewing: false }),
+    ).toEqual({ previewed: null, selected: 4 });
+    // Settings → Viewing: go back to the list.
+    expect(
+      moveAfterRemoval(
+        list,
+        ids(2),
+        { previewed: id(2), selected: null, previewing: false },
+        "none",
+      ),
+    ).toEqual({ previewed: null, selected: null });
   });
 
   it("leaves the choice alone when another conversation is removed", () => {

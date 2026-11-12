@@ -4946,8 +4946,8 @@ again until the next spike.*
       (`threadActions.ts`): with the preview collapsed, the next
       conversation is chosen the same way (Settings → Viewing) and selected
       without being previewed, as j/k do then. With the preview open,
-      nothing changes. Undo goes back to the conversation that was chosen,
-      still collapsed. A unit test of the collapsed case failed before the
+      nothing changes. Undo after archiving the conversation the preview was
+      collapsed on goes back to it, still collapsed. A unit test of the collapsed case failed before the
       fix.)*
 - [x] Reply with AI in a short reader could leave the reply part way below
       the fold *(found 2026-11-10, when a browser test failed once on CI with

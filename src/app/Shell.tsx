@@ -50,6 +50,7 @@ import {
   labelToggle,
   leavesView,
   moveAfterRemoval,
+  nextAfterRemoval,
   selectionAfterUndo,
   type ThreadAction,
   deleteKeyAction,
@@ -414,8 +415,10 @@ export function Shell() {
   }, [readerOpen]);
   /**
    * Runs an action on the chosen conversations (or `ids`). If they leave
-   * the current view, the next conversation opens, as in Mail. Archive,
-   * trash and labels say what happened, with Undo; errors always show.
+   * the current view, the next conversation is chosen as Settings → Viewing
+   * says: previewed when the preview shows, only selected when it was
+   * collapsed. Archive, trash and labels say what happened, with Undo;
+   * errors always show.
    */
   const act = useCallback(
     // Named, so Undo can call it again.
@@ -423,14 +426,25 @@ export function Shell() {
       if (ids.length === 0) return;
       const openBefore = openNow.current;
       if (leavesView(action, selection.view)) {
-        const moved = moveAfterRemoval(
-          threads,
-          new Set(ids),
-          { previewed: selectedId, selected: cursorId, previewing: readerOpen },
-          viewingPrefs.get().afterRemoval,
-        );
-        setSelectedId(moved.previewed);
-        setCursorId(moved.selected);
+        const removed = new Set(ids);
+        const { afterRemoval } = viewingPrefs.get();
+        if (undoable) {
+          const moved = moveAfterRemoval(
+            threads,
+            removed,
+            { previewed: selectedId, selected: cursorId, previewing: readerOpen },
+            afterRemoval,
+          );
+          setSelectedId(moved.previewed);
+          setCursorId(moved.selected);
+        } else {
+          // Undo, from a toast made in an earlier render: what this render
+          // knew is chosen may have changed since (code review), so each
+          // moves on from what it is now, as before the collapsed preview
+          // was kept.
+          setSelectedId((current) => nextAfterRemoval(threads, removed, current, afterRemoval));
+          setCursorId((current) => nextAfterRemoval(threads, removed, current, afterRemoval));
+        }
         setChecked(NONE);
       }
       const message = actionMessage(action, ids.length);
