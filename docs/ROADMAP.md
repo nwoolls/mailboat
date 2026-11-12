@@ -4506,7 +4506,10 @@ again until the next spike.*
       (`ComposeForm`, #93 and #94) scrolling the reader after the person did,
       so the text moves between pressing and placing the cursor. That ties it
       to the open item about rethinking how a new reply is followed, further
-      down this backlog; a fix belongs with that rethink. A browser test with
+      down this backlog; a fix belongs with that rethink. The owner's rule
+      for it (2026-11-11): the follow stops for good once the person starts
+      typing in the reply; after that the app never moves the reader on its
+      own. A browser test with
       a long pasted reply, scrolled by hand, that clicks mid-line and types,
       and checks that the reader stays where it was scrolled, should fail
       before the fix
