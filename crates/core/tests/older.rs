@@ -666,23 +666,17 @@ fn a_draft_leaving_keeps_the_threads_ai_results() {
             email("newest", 2_000, "INBOX"),
             email("draft1", 3_000, "DRAFT"),
         ]);
-        let newest: i64 = db
-            .conn()
-            .query_row(
-                "SELECT id FROM messages WHERE gmail_message_id = 'newest'",
-                [],
-                |r| r.get(0),
-            )
-            .unwrap();
+        // Saved results for the conversation, written in SQL alone (no
+        // values from the test's code go into it).
         db.conn()
-            .execute_batch(&format!(
+            .execute_batch(
                 "INSERT INTO ai_summaries (account_id, thread_id, kind, provider, newest_message_id, text, created_at)
-                   VALUES ({a}, {t}, 'full', 'apple', {newest}, 'covers both', 0);
+                   SELECT account_id, thread_id, 'full', 'apple', id, 'covers both', 0
+                   FROM messages WHERE gmail_message_id = 'newest';
                  INSERT INTO ai_reply_ideas (account_id, thread_id, forward, newest_message_id, ideas, created_at)
-                   VALUES ({a}, {t}, 0, {newest}, '[\"covers both\"]', 0);",
-                a = a.0,
-                t = thread.0
-            ))
+                   SELECT account_id, thread_id, 0, id, '[\"covers both\"]', 0
+                   FROM messages WHERE gmail_message_id = 'newest';",
+            )
             .unwrap();
         if by_history {
             store::delete_messages(&mut db.conn(), a, &["draft1".to_string()]).unwrap();
