@@ -195,9 +195,10 @@ Set up before recording:
 Making the captions: make each one a PNG banner (Pillow) and overlay it with `ffmpeg`
 (`overlay` with `enable='between(t,a,b)'`), since `ffmpeg` here has no text
 filter. Note the time of each scene while recording. The banners are burned
-into the video, so reviewers see them with YouTube's captions off, and the
-same text and times go into an English `.srt` file uploaded to YouTube as
-captions.
+into the video, so reviewers see them whatever their caption setting. Don't
+also upload the `.srt` to YouTube as captions: with captions on, YouTube draws
+them over the bottom of the picture, on top of the banners. Keep the `.srt`
+beside the video in case burned-in captions are ever not enough.
 
 ### Captions
 
@@ -292,6 +293,31 @@ The first two takes were redone, so this is what to do next time:
   account. The setup notes and scene details above come from it. Gmail on the
   web ignored synthetic clicks; real mouse events worked. Give the app a real
   click before typing after any pause, as focus may have moved elsewhere.
+- The take of 2026-11-11, on the released 0.2.0 against the submitted project:
+  - YouTube caps uploads at 15 minutes until the channel's phone number is
+    verified (youtube.com/verify), and links in the description need a
+    further identity check; leave the link out. The take ran about 17
+    minutes.
+  - Arc's address field is too narrow to show the whole sign-in address.
+    Copy it to find where `client_id=` sits, then move the caret there with
+    the arrow keys so the ID is in view; the up arrow picks a suggestion
+    instead.
+  - In production, the "hasn't verified this app" screen hides the way on
+    behind Advanced, then "Go to Mailboat (unsafe)".
+  - A clean start's transparency starts at 94% (window) and 66% (list); drag
+    both sliders to 0%, as the keyboard's Home key scrolls the page instead.
+  - For the invitation the app adds first, set the demo account's Google
+    Calendar to add invitations only when answered (Settings → Event
+    settings), send it, leave it unanswered, and set the option back after
+    the take. Answer the other invitation as Maybe on the web first, so the
+    app's Yes shows as a change.
+  - Choosing Claude or ChatGPT in Settings → AI needs Connect, which signs in
+    to that provider; the training warning was left out of the take, and the
+    AI page's own text (on this Mac by default, a cloud provider starts as a
+    button, AI apps off) carries the scene.
+  - The recording started before the first scene and ran on a fixed timer
+    (`screencapture -v -V 1200`). Gmail on the web, Calendar, Contacts and
+    the linked-apps page were all reached by typing their address into Arc.
 
 ## How a reviewer tests Mailboat
 
@@ -310,8 +336,9 @@ No test login is shared, and the demo account's password stays private.
    file (it needn't be named `client_secret_….json`), or "Paste ID and
    secret" and paste the two values.
 3. "Add your Gmail accounts", then "Sign in with Google". In the browser
-   choose an account, Continue past the unverified-app screen, tick Select
-   all, Continue. The account syncs in the app.
+   choose an account. On "Google hasn't verified this app", press Advanced,
+   then "Go to Mailboat (unsafe)" (the production form of the warning). Tick
+   Select all, Continue. The account syncs in the app.
 4. To see each permission at work, with the result in the Google account:
    archive, label, send and draft a message (Gmail); Settings → Rules,
    Signatures, Vacation responder (Gmail settings); answer an invitation
@@ -347,6 +374,18 @@ Updated as each piece is done.
   back to Testing or change the user type meanwhile: Google warns that it
   can delay the review, and a logo change after branding is verified needs
   a new review.
+- [x] Google's checklist email (2026-11-09), answered on 2026-11-11. Before
+  replying: the calendar permission narrowed to `calendar.events.owned` in
+  Data Access, with its justification rewritten (Google re-reviewed the
+  homepage and branding the same day and they passed again); 0.2.0 released
+  with the narrower permission; the privacy policy brought up to date; a
+  new demo video, on 0.2.0 against this project, linked in Data Access in
+  place of the first. The reply, in the email thread, covered least
+  privilege, the video, the policy, the AI safeguards, test access and the
+  security assessment. Test access needs the OAuth client, which the verification
+  request has no field for while under review, so the reply carries a private,
+  expiring link to it, never the values themselves. Rotate the client
+  secret after the review.
 - [ ] Google's answer on a security assessment (exempt, or required and by when)
 - [ ] Google's final decision on the permissions
 
