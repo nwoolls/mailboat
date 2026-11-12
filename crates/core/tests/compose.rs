@@ -439,10 +439,12 @@ async fn drafts_are_created_once_then_updated_and_deleted() {
     msg.cc = vec![addr("bob")];
     let id = compose::save_draft(&db, gmail_for, None, &msg)
         .await
-        .unwrap();
+        .unwrap()
+        .id;
     let again = compose::save_draft(&db, gmail_for, Some(id), &msg)
         .await
-        .unwrap();
+        .unwrap()
+        .id;
     assert_eq!(id, again, "the same draft is updated, not a new one made");
 
     let requests = server.received_requests().await.unwrap();
@@ -474,10 +476,12 @@ async fn a_draft_moves_when_from_changes_account() {
 
     let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.example", None))
         .await
-        .unwrap();
+        .unwrap()
+        .id;
     let moved = compose::save_draft(&db, gmail_for, Some(id), &outgoing(b, "b@x.example", None))
         .await
-        .unwrap();
+        .unwrap()
+        .id;
     // (SQLite may reuse the freed row number; the UI always keeps the ID
     // returned by the latest save.)
     let _ = id;
@@ -517,7 +521,8 @@ async fn a_draft_that_cannot_move_stays_where_it_was() {
 
     let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.example", None))
         .await
-        .unwrap();
+        .unwrap()
+        .id;
     let moved =
         compose::save_draft(&db, gmail_for, Some(id), &outgoing(b, "b@x.example", None)).await;
     assert!(moved.is_err());
@@ -657,7 +662,8 @@ async fn a_saved_draft_is_cached_at_once() {
     let gmail_for = |_| Ok(client(&uri).0);
     let id = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.example", None))
         .await
-        .unwrap();
+        .unwrap()
+        .id;
     let linked: Option<i64> = db
         .conn()
         .query_row(
@@ -709,7 +715,8 @@ async fn saving_a_draft_again_leaves_one_copy() {
     let msg = outgoing(a, "a@x.example", None);
     let id = compose::save_draft(&db, gmail_for, None, &msg)
         .await
-        .unwrap();
+        .unwrap()
+        .id;
     compose::save_draft(&db, gmail_for, Some(id), &msg)
         .await
         .unwrap();
@@ -929,4 +936,83 @@ async fn a_quote_carries_the_originals_embedded_images() {
     assert!(raw.contains("Content-ID: <logo@x>"), "{raw}");
     assert!(raw.contains("cid:logo@x"), "{raw}");
     let _ = std::fs::remove_dir_all(&cache);
+}
+
+/// Saving a draft brings its whole conversation into the cache, so it can
+/// also bring in mail that changed in Gmail since the last sync: an older
+/// email gone, a new one arrived. The save says so, so the window asks for
+/// the conversation's AI summary and reply ideas again (code review of
+/// the draft-only mail event); a save that changed only the draft doesn't.
+#[tokio::test]
+async fn saving_a_draft_says_when_other_mail_changed_with_it() {
+    use mail_core::db::store::{IncomingMessage, IncomingThread};
+    let email = |id: &str, at: i64| IncomingMessage {
+        gmail_message_id: id.into(),
+        label_ids: vec!["INBOX".into()],
+        internal_date: at,
+        ..Default::default()
+    };
+    let gmail_email = |id: &str, at: i64, label: &str| {
+        serde_json::json!({ "id": id, "threadId": "t", "labelIds": [label],
+                            "internalDate": at.to_string(), "payload": { "headers": [] } })
+    };
+    let cases = [
+        (
+            "only the draft",
+            vec![
+                gmail_email("older", 1_000, "INBOX"),
+                gmail_email("newest", 2_000, "INBOX"),
+            ],
+            false,
+        ),
+        (
+            "an older email gone",
+            vec![gmail_email("newest", 2_000, "INBOX")],
+            true,
+        ),
+        (
+            "a new email arrived",
+            vec![
+                gmail_email("older", 1_000, "INBOX"),
+                gmail_email("newest", 2_000, "INBOX"),
+                gmail_email("newer", 2_500, "INBOX"),
+            ],
+            true,
+        ),
+    ];
+    for (case, mut in_gmail, expected) in cases {
+        let server = MockServer::start().await;
+        let draft = serde_json::json!({ "id": "d1", "message": { "id": "dm", "threadId": "t" } });
+        Mock::given(method("POST"))
+            .and(path("/upload/gmail/v1/users/me/drafts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(draft))
+            .mount(&server)
+            .await;
+        in_gmail.push(gmail_email("dm", 3_000, "DRAFT"));
+        Mock::given(method("GET"))
+            .and(path("/gmail/v1/users/me/threads/t"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({ "id": "t", "messages": in_gmail })),
+            )
+            .mount(&server)
+            .await;
+        let db = Db::open_in_memory().unwrap();
+        let a = add_account(&db, "a");
+        store::upsert_thread(
+            &mut db.conn(),
+            a,
+            &IncomingThread {
+                gmail_thread_id: "t".into(),
+                messages: vec![email("older", 1_000), email("newest", 2_000)],
+            },
+        )
+        .unwrap();
+        let uri = server.uri();
+        let gmail_for = |_| Ok(client(&uri).0);
+        let saved = compose::save_draft(&db, gmail_for, None, &outgoing(a, "a@x.example", None))
+            .await
+            .unwrap();
+        assert_eq!(saved.other_mail_changed, expected, "{case}");
+    }
 }

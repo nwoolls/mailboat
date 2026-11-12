@@ -1061,7 +1061,7 @@ pub async fn draft_save(
         &state.attachments_dir,
     )
     .await?;
-    let id = compose::save_draft_with_files(
+    let saved = compose::save_draft_with_files(
         &state.db,
         |account| state.gmail_for(account),
         draft,
@@ -1069,9 +1069,15 @@ pub async fn draft_save(
         &files,
     )
     .await?;
-    // The saved draft is cached already: lists (Drafts) refresh now.
-    let _ = MailChangedEvent::drafts(message.account_id).emit(&app);
-    Ok(id)
+    // The saved draft is cached already: lists (Drafts) refresh now. Only
+    // drafts changed, unless caching it brought in other mail too.
+    let event = if saved.other_mail_changed {
+        MailChangedEvent::mail(message.account_id)
+    } else {
+        MailChangedEvent::drafts(message.account_id)
+    };
+    let _ = event.emit(&app);
+    Ok(saved.id)
 }
 
 /// Deletes a saved draft (discarded), from Gmail too, and lists refresh

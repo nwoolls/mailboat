@@ -372,13 +372,14 @@ fn prepare(
 /// and shows in Gmail's Drafts. The first save creates it; later saves
 /// replace it. If From moved to another account, the draft moves too: the
 /// old account's copy is deleted and the new account gets its own.
-/// Returns the local draft ID (Gmail's draft IDs stay in Rust).
+/// Returns the local draft ID (Gmail's draft IDs stay in Rust) and whether
+/// caching it also brought other mail in ([`SavedDraft`]).
 pub async fn save_draft(
     db: &Db,
     gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
     existing: Option<DraftId>,
     msg: &OutgoingMessage,
-) -> Result<DraftId> {
+) -> Result<SavedDraft> {
     save_draft_with_files(db, gmail_for, existing, msg, &Carried::default()).await
 }
 
@@ -389,7 +390,7 @@ pub async fn save_draft_with_files(
     existing: Option<DraftId>,
     msg: &OutgoingMessage,
     carried: &Carried,
-) -> Result<DraftId> {
+) -> Result<SavedDraft> {
     if !identities::owns(&db.conn(), msg.account_id, &msg.from.email)? {
         return Err(CoreError::Invalid(format!(
             "{} isn't an address this account can send from.",
@@ -431,11 +432,14 @@ pub async fn save_draft_with_files(
                 "UPDATE drafts SET updated_at = ?2 WHERE id = ?1",
                 params![id, now_millis()],
             )?;
-            cache_draft(db, &gmail, account, id, &saved).await;
+            let other_mail_changed = cache_draft(db, &gmail, account, id, &saved).await;
             if let Some(old) = replaced.filter(|old| *old != saved.message.id) {
                 store::delete_messages(&mut db.conn(), account, &[old])?;
             }
-            return Ok(id);
+            return Ok(SavedDraft {
+                id,
+                other_mail_changed,
+            });
         }
         // From changed account: the draft moves with it (below).
         moving_from = Some(id);
@@ -450,7 +454,7 @@ pub async fn save_draft_with_files(
         )?;
         DraftId(conn.last_insert_rowid())
     };
-    cache_draft(db, &gmail, msg.account_id, id, &created).await;
+    let other_mail_changed = cache_draft(db, &gmail, msg.account_id, id, &created).await;
     // The old account's copy goes only once the new one is saved, so a
     // failure on either side never leaves the draft saved nowhere. If it
     // can't go now, it stays in that account's Drafts: a spare copy the
@@ -458,31 +462,55 @@ pub async fn save_draft_with_files(
     if let Some(old) = moving_from {
         let _ = delete_draft(db, &gmail_for, old).await;
     }
-    Ok(id)
+    Ok(SavedDraft {
+        id,
+        other_mail_changed,
+    })
+}
+
+/// A saved draft: its local ID, and whether saving it also brought other
+/// mail into the cache (see [`cache_draft`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SavedDraft {
+    pub id: DraftId,
+    /// Emails other than drafts arrived in or left the draft's conversation
+    /// (Gmail had them before the next sync did): the window treats the
+    /// save as a mail change, not a drafts-only one.
+    pub other_mail_changed: bool,
 }
 
 /// Brings a just-saved draft's conversation into the cache, so it shows in
 /// Drafts (and its conversation) at once rather than after the next sync,
 /// and links the draft to its message. Best effort: sync catches up anyway.
+///
+/// The whole conversation is stored, so mail that changed in Gmail since
+/// the last sync comes in with it. Says whether its emails other than
+/// drafts changed (one arrived or left).
 async fn cache_draft(
     db: &Db,
     gmail: &GmailClient,
     account: AccountId,
     id: DraftId,
     saved: &DraftRef,
-) {
+) -> bool {
     let Ok(Some(thread)) = gmail.thread_metadata(&saved.message.thread_id).await else {
-        return;
+        return false;
     };
     let mut conn = db.conn();
-    if store::upsert_thread(&mut conn, account, &parse::thread_to_incoming(&thread)).is_ok() {
-        let _ = conn.execute(
-            "UPDATE drafts SET message_id =
-               (SELECT id FROM messages WHERE account_id = ?2 AND gmail_message_id = ?3)
-             WHERE id = ?1",
-            params![id, account, saved.message.id],
-        );
+    let gmail_thread = &saved.message.thread_id;
+    let before = store::thread_emails(&conn, account, gmail_thread).unwrap_or_default();
+    if store::upsert_thread(&mut conn, account, &parse::thread_to_incoming(&thread)).is_err() {
+        return false;
     }
+    let _ = conn.execute(
+        "UPDATE drafts SET message_id =
+           (SELECT id FROM messages WHERE account_id = ?2 AND gmail_message_id = ?3)
+         WHERE id = ?1",
+        params![id, account, saved.message.id],
+    );
+    // Unreadable (it can't be, just written): treated as changed, so the
+    // window asks again rather than keep something stale.
+    store::thread_emails(&conn, account, gmail_thread).map_or(true, |after| after != before)
 }
 
 /// The Gmail ID of the message a draft is cached as, if it's linked.

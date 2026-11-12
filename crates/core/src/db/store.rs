@@ -223,9 +223,18 @@ pub fn upsert_thread(
     } else {
         values.extend(kept.iter().map(|k| k as &dyn rusqlite::ToSql));
     }
+    // Whether any of them is an email, not a draft (a draft's message is
+    // replaced on every save).
+    let emails_sql = format!(
+        "SELECT EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = ? AND m.id NOT IN ({})
+           AND NOT EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                           WHERE ml.message_id = m.id AND l.gmail_label_id = 'DRAFT'))",
+        placeholders(kept.len().max(1))
+    );
+    let email_left: bool = tx.query_row(&emails_sql, values.as_slice(), |r| r.get(0))?;
     let dropped = tx.execute(&sql, values.as_slice())?;
     if dropped > 0 {
-        forget_derived(&tx, thread_id)?;
+        forget_derived(&tx, thread_id, email_left)?;
     }
 
     if kept.is_empty() {
@@ -236,7 +245,7 @@ pub fn upsert_thread(
     // A thread an email moved out of: its Gmail hits may have been for
     // that email, and its counts change; gone if nothing's left.
     for previous in left {
-        forget_derived(&tx, previous)?;
+        forget_derived(&tx, previous, true)?;
         let remaining: i64 = tx.query_row(
             "SELECT COUNT(*) FROM messages WHERE thread_id = ?1",
             [previous],
@@ -344,13 +353,17 @@ fn refresh_thread(conn: &Connection, account: AccountId, thread: ThreadId) -> Re
 /// Forgets what was worked out from a thread's emails once one has left
 /// it: what Gmail's searches found there (a hit doesn't say which email
 /// matched, so it may have been the one that's gone; code review R6-05),
-/// and its cached AI summary and reply ideas, which covered it and are only
-/// rechecked against the newest email (R8-04, R9-01). All are found or
-/// written again when next needed.
-fn forget_derived(conn: &Connection, thread: ThreadId) -> Result<()> {
+/// and, when an email (not a draft) left, its cached AI summary and reply
+/// ideas, which covered it and are only rechecked against the newest email
+/// (R8-04, R9-01). Both leave drafts out, so a draft leaving (replaced on
+/// every save, or discarded) keeps them. All are found or written again
+/// when next needed.
+fn forget_derived(conn: &Connection, thread: ThreadId, email_left: bool) -> Result<()> {
     conn.execute("DELETE FROM search_hits WHERE thread_id = ?1", [thread])?;
-    conn.execute("DELETE FROM ai_summaries WHERE thread_id = ?1", [thread])?;
-    conn.execute("DELETE FROM ai_reply_ideas WHERE thread_id = ?1", [thread])?;
+    if email_left {
+        conn.execute("DELETE FROM ai_summaries WHERE thread_id = ?1", [thread])?;
+        conn.execute("DELETE FROM ai_reply_ideas WHERE thread_id = ?1", [thread])?;
+    }
     Ok(())
 }
 
@@ -372,11 +385,20 @@ pub fn delete_messages(
             )
             .optional()?;
         if let Some(thread) = thread {
+            let draft: bool = tx.query_row(
+                "SELECT EXISTS (SELECT 1 FROM messages m
+                   JOIN message_labels ml ON ml.message_id = m.id
+                   JOIN labels l ON l.id = ml.label_id
+                   WHERE m.account_id = ?1 AND m.gmail_message_id = ?2
+                     AND l.gmail_label_id = 'DRAFT')",
+                params![account, gid],
+                |r| r.get(0),
+            )?;
             tx.execute(
                 "DELETE FROM messages WHERE account_id = ?1 AND gmail_message_id = ?2",
                 params![account, gid],
             )?;
-            forget_derived(&tx, thread)?;
+            forget_derived(&tx, thread, !draft)?;
             touched.insert(thread);
         }
     }
@@ -394,6 +416,26 @@ pub fn delete_messages(
     }
     tx.commit()?;
     Ok(())
+}
+
+/// The Gmail IDs of a cached conversation's emails, drafts left out, in
+/// order: what its AI summary and reply ideas cover.
+pub fn thread_emails(
+    conn: &Connection,
+    account: AccountId,
+    gmail_thread_id: &str,
+) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare(
+        "SELECT m.gmail_message_id FROM messages m JOIN threads t ON t.id = m.thread_id
+         WHERE t.account_id = ?1 AND t.gmail_thread_id = ?2
+           AND NOT EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                           WHERE ml.message_id = m.id AND l.gmail_label_id = 'DRAFT')
+         ORDER BY m.gmail_message_id",
+    )?;
+    let ids = stmt
+        .query_map(params![account, gmail_thread_id], |r| r.get(0))?
+        .collect::<rusqlite::Result<_>>()?;
+    Ok(ids)
 }
 
 /// Removes a thread Gmail says no longer exists.

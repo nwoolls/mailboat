@@ -34,7 +34,9 @@ use crate::settings::{self, McpSettings};
 /// downloaded, and drafts) and telling the window that a draft was saved.
 pub trait Host: Send + Sync + 'static {
     fn gmail(&self, account: AccountId) -> Result<GmailClient>;
-    fn draft_saved(&self, account: AccountId);
+    /// `other_mail_changed`: saving it also brought other mail into the
+    /// cache ([`compose::SavedDraft`]).
+    fn draft_saved(&self, account: AccountId, other_mail_changed: bool);
 }
 
 /// Told to the AI app when it connects.
@@ -663,10 +665,10 @@ impl MailServer {
             replying_to,
         };
         let host = self.host.clone();
-        compose::save_draft(&self.db, |a| host.gmail(a), None, &message)
+        let saved = compose::save_draft(&self.db, |a| host.gmail(a), None, &message)
             .await
             .map_err(fail)?;
-        self.host.draft_saved(account);
+        self.host.draft_saved(account, saved.other_mail_changed);
         Ok(DraftSaved {
             account: owner.email.clone(),
             subject,

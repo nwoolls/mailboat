@@ -1007,8 +1007,10 @@ export type ListQuery = {
 export type MailChangedEvent = {
 	accountId: AccountId,
 	/**
-	 *  Only drafts changed (saved, deleted or discarded). AI summaries and
-	 *  reply ideas leave drafts out, so they aren't asked again for it:
+	 *  Only drafts changed (saved, deleted or discarded), and no other mail
+	 *  came into the cache with them (`SavedDraft::other_mail_changed`).
+	 *  AI summaries and reply ideas leave drafts out, so they aren't asked
+	 *  again for it:
 	 *  asking again while a reply was typed made the summary above it
 	 *  blink, which moved the reply under the person's cursor.
 	 */

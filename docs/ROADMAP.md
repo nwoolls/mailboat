@@ -4500,7 +4500,14 @@ again until the next spike.*
       Fixed in two places: the card keeps the summary it shows until new
       text arrives, and a change to drafts only
       (`MailChangedEvent.draftsOnly`) no longer asks for the summary or
-      reply ideas again, since both leave drafts out.
+      reply ideas again, since both leave drafts out. A save counts as
+      drafts-only when the conversation's other emails stayed the same.
+      Saving brings the whole conversation in from Gmail, so if an email
+      arrived or left since the last sync, the save counts as a mail change
+      (found in review). Every save also replaced the draft's message, and
+      a message leaving made the cache forget the conversation's saved
+      summary and reply ideas, so asking again wrote the summary again. Now
+      only an email leaving does that.
       `tests/browser/reply-summary-shift.spec.ts`, with the harness's
       `&summary=live`, failed before the fix (the line moved 73.5 px, the
       click typed in another line, a draft save asked again). The owner's
