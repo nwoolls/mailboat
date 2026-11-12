@@ -61,12 +61,45 @@ describe("invitation card", () => {
         "en-US",
       ),
     ).toBe("Sun, Nov 1 – Tue, Nov 3 · all day");
+    // A zone the app can't place (Rust converts IANA names and Windows
+    // ones): as written, read the same way, with the zone's name.
     expect(
-      whenText({ kind: "local", time: "2026-10-20T14:00:00", zone: "Eastern Standard Time" }, null),
-    ).toBe("2026-10-20 14:00 (Eastern Standard Time)");
+      whenText(
+        { kind: "local", time: "2026-10-20T14:00:00", zone: "Lunar Standard Time" },
+        { kind: "local", time: "2026-10-20T14:30:00", zone: "Lunar Standard Time" },
+        "en-US",
+      ),
+    ).toBe("Tue, Oct 20 · 2:00 PM – 2:30 PM (Lunar Standard Time)");
+    // Overnight, in the same zone: both days, as for other times.
+    expect(
+      whenText(
+        { kind: "local", time: "2026-10-20T23:00:00", zone: "Lunar Standard Time" },
+        { kind: "local", time: "2026-10-21T01:00:00", zone: "Lunar Standard Time" },
+        "en-US",
+      ),
+    ).toBe("Tue, Oct 20, 11:00 PM – Wed, Oct 21, 1:00 AM (Lunar Standard Time)");
+    // No zone at all (a "floating" time): as written.
+    expect(
+      whenText({ kind: "local", time: "2026-10-20T14:00:00", zone: null }, null, "en-US"),
+    ).toBe("Tue, Oct 20 · 2:00 PM");
     expect(whenText(at(2026, 10, 20, 23), at(2026, 10, 21, 1), "en-US")).toBe(
       "Tue, Oct 20, 11:00 PM – Wed, Oct 21, 1:00 AM",
     );
+  });
+
+  // A time as written that doesn't exist on this computer's clock (its
+  // spring-forward hour; here New York's) is still shown as written, not
+  // moved by an hour (code review).
+  it("shows a time as written even in the computer's spring-forward hour", () => {
+    const before = process.env.TZ;
+    process.env.TZ = "America/New_York";
+    try {
+      expect(
+        whenText({ kind: "local", time: "2027-03-14T02:30:00", zone: null }, null, "en-US"),
+      ).toBe("Sun, Mar 14 · 2:30 AM");
+    } finally {
+      process.env.TZ = before;
+    }
   });
 
   it("takes your answer from Calendar when it has the event", () => {
