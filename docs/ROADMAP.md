@@ -4489,8 +4489,9 @@ again until the next spike.*
       that shape that fails today. Proposed for 0.2.0 (it loses what the
       person wrote) *(fixed 2026-11-11: tests with a made-up Gmail response
       of that shape failed before the fix, so the app erased the message
-      whenever Gmail answers that way; that Gmail did so in the dry run is
-      not yet checked against a real account. When Gmail's plain text is empty,
+      whenever Gmail answers that way. Tried on a real account with
+      0.2.0-beta.2 (2026-11-11): turning the reply off, then on again, kept
+      the message, in the app and in Gmail on the web. When Gmail's plain text is empty,
       `from_gmail` now makes it from the HTML, a line per line break or
       block, so the form keeps the message. A test in `vacation.rs` reads an
       HTML-only reply and turns it off; one in
