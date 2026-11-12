@@ -422,13 +422,13 @@ export function Shell() {
    */
   const act = useCallback(
     // Named, so Undo can call it again.
-    function run(action: ThreadAction, ids: ThreadId[], undoable = true) {
+    function run(action: ThreadAction, ids: ThreadId[], fromUndo = false) {
       if (ids.length === 0) return;
       const openBefore = openNow.current;
       if (leavesView(action, selection.view)) {
         const removed = new Set(ids);
         const { afterRemoval } = viewingPrefs.get();
-        if (undoable) {
+        if (!fromUndo) {
           const moved = moveAfterRemoval(
             threads,
             removed,
@@ -451,11 +451,11 @@ export function Shell() {
       if (message)
         showToast({
           message,
-          action: undoable
+          action: !fromUndo
             ? {
                 label: "Undo",
                 run: () => {
-                  run(inverse(action), ids, false);
+                  run(inverse(action), ids, true);
                   // Back to the conversation that was open, if this moved
                   // on from it; one that wasn't open (a swipe) stays closed.
                   if (leavesView(action, selection.view))
