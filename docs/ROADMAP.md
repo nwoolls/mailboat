@@ -4495,6 +4495,19 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
+- [ ] After pasting a long text into the message box and adding a few new
+      lines, a click in the text doesn't put the cursor where the click was
+      *(owner report, 2026-11-11, writing a long reply on 0.2.0)*. Not looked
+      into yet. To settle first: which writing box it was (the floating new
+      message or a reply in the conversation), where the cursor goes instead
+      (the end, the nearest line, nowhere), and whether it depends on the box
+      having scrolled. A lead, not confirmed: the change of the same day that
+      lets the editor fill the space under a short message
+      (`ComposeForm.tsx`, flex layout around the editor, #101) is the newest
+      change to how clicks land in the box. A browser test with a long pasted
+      text, scrolled, that clicks mid-line and types should fail before the
+      fix
+
 - [x] Turning the vacation reply off erases its message in Gmail *(found
       in the demo video dry run, 2026-11-11)*: with the reply on and a
       message saved from the app, turning it off in Settings → Vacation
