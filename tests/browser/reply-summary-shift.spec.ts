@@ -133,3 +133,41 @@ test("saving the reply as it's typed doesn't ask for the summary again", async (
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => (window as unknown as HarnessWindow).__summaries)).toBe(asked);
 });
+
+/**
+ * The same, with nothing but typing (owner report, 2026-11-12): new lines
+ * typed at the end of a reply, then a pause, and the draft saves. The
+ * summary blinking moved the reader to its very end, where the pinned
+ * formatting and Send bar dropped back into place under the reply.
+ */
+test("typing at the end of a reply, then pausing: the reader and the pinned bar stay put", async ({
+  page,
+}) => {
+  await page.goto("/tests/browser/harness.html?mode=inline&summary=live");
+  await expect(page.getByRole("region", { name: "Summary" }).getByRole("listitem")).toHaveCount(4);
+  await page.getByRole("button", { name: "Reply", exact: true }).click();
+  const editor = page
+    .locator('section[aria-label="Reply"]')
+    .getByRole("textbox", { name: "Message" });
+  await expect(editor).toBeFocused();
+  for (let i = 0; i < 30; i++) {
+    await page.keyboard.press("Enter");
+    await page.keyboard.type(`Line ${i + 1}`);
+  }
+  await page.waitForTimeout(300);
+  const read = () =>
+    page.evaluate(() => ({
+      top: document.querySelector(".reader-scroll")!.scrollTop,
+      pinned: document.querySelector(".reader-foot")!.hasAttribute("data-stuck"),
+      saves: ((window as unknown as HarnessWindow).__order ?? []).filter((c) => c === "draft_save")
+        .length,
+    }));
+  const before = await read();
+  expect(before.pinned).toBe(true);
+  // The draft saves 2.5 s after the typing stops.
+  await expect.poll(async () => (await read()).saves, { timeout: 6000 }).toBeGreaterThan(0);
+  await page.waitForTimeout(1000);
+  const after = await read();
+  expect(after.top).toBe(before.top);
+  expect(after.pinned).toBe(true);
+});
