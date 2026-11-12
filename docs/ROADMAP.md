@@ -4379,8 +4379,9 @@ One pull request each.
       entry, and Bug Spike 3)*
 - [x] A sideways swipe on the trackpad drags the whole app *(2026-11-08:
       fixed; see the Bug backlog entry)*
-- [ ] Bug: the screenshot zoom flashes at full size before it animates (the
+- [x] Bug: the screenshot zoom flashes at full size before it animates (the
       website; a browser test with an empty cache and a slowed network)
+      *(2026-11-12: fixed; see the Bug backlog entry)*
 - [x] The browser test "starfield paints a night sky and lightens the words"
       that failed once (done in the same browser-test session as the zoom
       flash) *(2026-11-08: fixed; see the Bug backlog entry)*
@@ -4502,8 +4503,8 @@ again until the next spike. Bug Spike 3 (started 2026-11-12) lists the
 items it covers without moving them: they stay here with their full text,
 and new bugs still come here.*
 
-- [ ] Bug: the screenshot zoom flashes at full size before it animates
-      *(owner report, 2026-11-07)*: the first time each screenshot is
+- [x] Bug: the screenshot zoom flashes at full size before it animates
+      *(owner report, 2026-11-07; fixed 2026-11-12, and the owner tried it)*: the first time each screenshot is
       zoomed, it appears large for a moment and then the grow-from-the-card
       animation plays; once that screenshot's full-size picture is cached,
       every later zoom is smooth. Cause, from reading `website/site.js`:
@@ -4518,6 +4519,22 @@ and new bugs still come here.*
       should check that the picture is never painted large before the
       animation starts
       *(moved from Milestone 16 when it closed, 2026-11-11)*
+      *(Fixed: the dimmed backdrop shows at once, and the picture and its
+      caption stay hidden, still laid out, until the full-size picture has
+      decoded, then appear as the grow animation starts. Stepping with ‹ ›
+      had the same problem (the next picture popped in after its
+      animation), and the owner also saw a flash in its design: the picture
+      shown went at once, the backdrop showed on its own, and the next one
+      faded in from nothing. The owner chose a crossfade: the picture shown
+      stays while the next loads out of sight in the same place, then one
+      slides out as the other slides in. `tests/browser/website-zoom.spec.ts`,
+      in WebKit and Chromium with the full-size pictures held back 1.5 s:
+      nothing of the zoomed picture shows before it grows, and while
+      stepping some loaded picture is always at least half visible. Against
+      the old `site.js` all four failed, with 65 to 91 bad frames each. From
+      review: closing while a step loads goes back to the screenshot shown
+      and its button, and in a step during a crossfade the picture
+      leaving continues from its current opacity and position; a browser test each.)*
 
 - [x] After pasting a long text into the message box and adding a few
       new lines, a click in the text doesn't put the cursor where the

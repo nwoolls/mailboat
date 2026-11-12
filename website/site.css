@@ -741,6 +741,8 @@ section {
   backdrop-filter: blur(14px);
 }
 .lightbox figure {
+  /* All in the one cell: two are stacked while stepping crossfades. */
+  grid-area: 1 / 1;
   margin: 0;
   max-width: min(1600px, calc(100vw - 144px));
   text-align: center;
