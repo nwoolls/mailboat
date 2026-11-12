@@ -4462,8 +4462,8 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
-- [ ] Bug: the screenshot zoom flashes at full size before it animates
-      *(owner report, 2026-11-07)*: the first time each screenshot is
+- [x] Bug: the screenshot zoom flashes at full size before it animates
+      *(owner report, 2026-11-07; fixed 2026-11-12, and the owner tried it)*: the first time each screenshot is
       zoomed, it appears large for a moment and then the grow-from-the-card
       animation plays; once that screenshot's full-size picture is cached,
       every later zoom is smooth. Cause, from reading `website/site.js`:
@@ -4478,6 +4478,19 @@ again until the next spike.*
       should check that the picture is never painted large before the
       animation starts
       *(moved from Milestone 16 when it closed, 2026-11-11)*
+      *(Fixed: the dimmed backdrop shows at once, and the picture and its
+      caption stay hidden, still laid out, until the full-size picture has
+      decoded, then appear as the grow animation starts. Stepping with ‹ ›
+      had the same problem (the next picture popped in after its
+      animation), and the owner also saw a flash in its design: the picture
+      shown went at once, the backdrop showed on its own, and the next one
+      faded in from nothing. The owner chose a crossfade: the picture shown
+      stays while the next loads out of sight in the same place, then one
+      slides out as the other slides in. `tests/browser/website-zoom.spec.ts`,
+      in WebKit and Chromium with the full-size pictures held back 1.5 s:
+      nothing of the zoomed picture shows before it grows, and while
+      stepping some loaded picture is always at least half visible. Against
+      the old `site.js` all four failed, with 65 to 91 bad frames each.)*
 
 - [x] After pasting a long text into the message box and adding a few
       new lines, a click in the text doesn't put the cursor where the
