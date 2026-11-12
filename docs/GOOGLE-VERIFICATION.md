@@ -188,9 +188,73 @@ Set up before recording:
   bring the browser's sign-in and Calendar pop-ups to the front when they
   open (Arc can open them behind its main window).
 
-Captions: make each as a PNG banner (Pillow) and overlay it with `ffmpeg`
+Making the captions: make each one a PNG banner (Pillow) and overlay it with `ffmpeg`
 (`overlay` with `enable='between(t,a,b)'`), since `ffmpeg` here has no text
-filter. Note the time of each scene while recording.
+filter. Note the time of each scene while recording. The banners are burned
+into the video, so reviewers see them with YouTube's captions off, and the
+same text and times go into an English `.srt` file uploaded to YouTube as
+captions.
+
+### Captions
+
+Approved by the owner on 2026-11-11. One banner at a time along the bottom
+edge; "then" marks the cut to Google's own page. Keep each claim to what the
+code does; if the app changes before the take, change the caption with it.
+
+0. Title card: "Mailboat, a desktop email app for Gmail. This video shows each
+   Google permission it asks for, and the result in the Google account." It
+   also lists the eight permissions.
+1. Website:
+   - "getmailboat.app: the home page and downloads."
+   - "The privacy policy: the Google data the app uses, how it is stored and
+     protected, how long it is kept, and the Limited Use statement."
+2. First launch and sign-in:
+   - "First launch: the app signs in through the Mailboat Google Cloud
+     project's OAuth client."
+   - "Sign-in happens in the browser. The address shows the client ID
+     (client_id=)."
+   - "Google's consent screen, with every permission the app asks for."
+   - "Signed in. Mail syncs from Gmail to this computer."
+3. `gmail.modify`:
+   - "gmail.modify: archive a conversation." then "In Gmail: out of the
+     Inbox, in All Mail."
+   - "gmail.modify: add a label." then "In Gmail: the label is on the
+     conversation."
+   - "gmail.modify: send a message." then "In Gmail: in Sent."
+   - "gmail.modify: save a draft." then "In Gmail: in Drafts."
+   - "gmail.modify: move a conversation to Trash." then "In Gmail: in Trash."
+4. `gmail.settings.basic`:
+   - "gmail.settings.basic: create a rule (a Gmail filter)." then "In Gmail
+     settings: the new filter."
+   - "gmail.settings.basic: change the signature." then "In Gmail settings:
+     the new signature."
+   - "gmail.settings.basic: turn the vacation reply on, then off." then "In
+     Gmail settings: the vacation reply."
+5. `calendar.events.owned`:
+   - "calendar.events.owned: answer a meeting invitation, on the person's own
+     calendar." then "In Google Calendar: the answer."
+   - "An invitation not yet on the calendar: the app adds it, then records the
+     answer." then "In Google Calendar: the event, with the answer."
+6. Contacts:
+   - "contacts.readonly: address suggestions from saved contacts."
+   - "contacts.other.readonly: suggestions from Other contacts, the addresses
+     Google saved automatically." then "In Google Contacts: the saved contact,
+     and Other contacts."
+7. Basic profile: "openid, email, profile: the account's address and picture,
+   in the sidebar."
+8. Privacy and AI:
+   - "Settings → Privacy: everything that leaves the computer, and the setting
+     behind each."
+   - "Settings → AI: Apple Intelligence, on this Mac, by default. Claude or
+     ChatGPT only if the person chooses one, with a warning that the provider
+     may train on what it receives."
+   - "AI apps: off for every account until turned on."
+9. Removal:
+   - "Remove account: deletes its mail and images on this computer, and asks
+     Google to end the sign-in."
+   - "Delete all data: removes every account and everything else the app keeps
+     on this computer, except the Google client file."
+   - then "In the Google Account: the app no longer has access."
 
 ### What recording it taught
 
