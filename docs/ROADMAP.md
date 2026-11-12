@@ -4495,24 +4495,24 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike.*
 
-- [ ] After pasting a long text into the message box and adding a few new
-      lines, a click in the text doesn't put the cursor where the click was
-      *(owner report, 2026-11-11, writing a long reply on 0.2.0)*. Not looked
-      into yet. It was the reply box inside the conversation (not the
-      floating new message), the box had scrolled, and the cursor landed near
-      the click but a few lines higher. The owner also saw the reader move
-      the reply on its own after they had scrolled. The likely cause, not
-      confirmed: the follow that keeps a new reply in view as it grows
-      (`ComposeForm`, #93 and #94) scrolling the reader after the person did,
-      so the text moves between pressing and placing the cursor. That ties it
-      to the open item about rethinking how a new reply is followed, further
-      down this backlog; a fix belongs with that rethink. The owner's rule
-      for it (2026-11-11): the follow stops for good once the person starts
-      typing in the reply; after that the app never moves the reader on its
-      own. A browser test with
-      a long pasted reply, scrolled by hand, that clicks mid-line and types,
-      and checks that the reader stays where it was scrolled, should fail
-      before the fix
+- [ ] After pasting a long text into the message box and adding a few
+      new lines, a click in the text doesn't put the cursor where the
+      click was *(owner report, 2026-11-11, in a long reply on 0.2.0)*.
+      Not looked into yet. It was the reply box inside the conversation
+      (not the floating new message), the box had scrolled, and the
+      cursor landed near the click but a few lines higher. The owner
+      also saw the reader move the reply on its own after they had
+      scrolled. The likely cause, not confirmed: the follow that keeps a
+      new reply in view as it grows (`ComposeForm`, #93 and #94) scrolls
+      the reader after the person did, so the text moves between
+      pressing and placing the cursor. That ties it to the open item
+      about rethinking how a new reply is followed, further down this
+      backlog; a fix belongs with that rethink. The owner's rule for it
+      (2026-11-11): the follow stops for good once the person starts
+      typing in the reply; after that the app never moves the reader on
+      its own. A browser test with a long pasted reply, scrolled by
+      hand, that clicks mid-line and types, and checks that the reader
+      stays where it was scrolled, should fail before the fix
 
 - [x] Turning the vacation reply off erases its message in Gmail *(found
       in the demo video dry run, 2026-11-11)*: with the reply on and a
