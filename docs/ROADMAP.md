@@ -4372,8 +4372,11 @@ One pull request each.
 - [ ] A sign-in code in a verification email isn't surfaced (the owner keeps
       the email; an agent works from a made-up fixture of the same shape,
       never the real one) *(2026-11-08: detection fixed; 2026-11-09: the
-      list row and the macOS banner read the body too; the two summary
-      problems are still open: see the Bug backlog entry)*
+      list row and the macOS banner read the body too, and the two summary
+      problems were addressed the same day (a fixed list line, prompt
+      wording, long links left out of what the model reads); what is left
+      is the owner trying a real verification email: see the Bug backlog
+      entry, and Bug Spike 3)*
 - [x] A sideways swipe on the trackpad drags the whole app *(2026-11-08:
       fixed; see the Bug backlog entry)*
 - [ ] Bug: the screenshot zoom flashes at full size before it animates (the
@@ -4487,7 +4490,9 @@ lead, with a mockup first.
 *Bugs found in passing (started 2026-10-19 at the owner's request).
 Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
-again until the next spike.*
+again until the next spike. Bug Spike 3 (started 2026-11-12) lists the
+items it covers without moving them: they stay here with their full text,
+and new bugs still come here.*
 
 - [ ] Bug: the screenshot zoom flashes at full size before it animates
       *(owner report, 2026-11-07)*: the first time each screenshot is
