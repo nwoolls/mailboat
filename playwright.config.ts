@@ -6,6 +6,14 @@ import { defineConfig } from "@playwright/test";
  * runs in (and Chromium for Windows' web view, `windows-*.spec.ts`). Real components, a faked Rust side (tests/browser/harness.tsx).
  * As MonoCode's playwright.config.ts.
  */
+/**
+ * The Windows-only tests, by file name. Playwright matches against the whole
+ * path, so an unanchored pattern also matched a checkout whose folder had
+ * "windows-" in its name, and every test then ran in Chromium, none in
+ * WebKit (2026-11-12).
+ */
+const WINDOWS_ONLY = /(^|[\\/])windows-[^\\/]*\.spec\.ts$/;
+
 export default defineConfig({
   testDir: "./tests/browser",
   workers: 1,
@@ -15,10 +23,10 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "webkit", use: { browserName: "webkit" }, testIgnore: /windows-.*\.spec\.ts/ },
+    { name: "webkit", use: { browserName: "webkit" }, testIgnore: WINDOWS_ONLY },
     // Windows' web view (WebView2) is Chromium: `windows-*.spec.ts` test
     // what only goes wrong there.
-    { name: "windows", use: { browserName: "chromium" }, testMatch: /windows-.*\.spec\.ts/ },
+    { name: "windows", use: { browserName: "chromium" }, testMatch: WINDOWS_ONLY },
   ],
   webServer: {
     command: "bunx vite --host 127.0.0.1 --port 1436 --strictPort",
