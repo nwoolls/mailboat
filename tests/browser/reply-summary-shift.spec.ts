@@ -164,8 +164,11 @@ test("typing at the end of a reply, then pausing: the reader and the pinned bar 
     }));
   const before = await read();
   expect(before.pinned).toBe(true);
-  // The draft saves 2.5 s after the typing stops.
-  await expect.poll(async () => (await read()).saves, { timeout: 6000 }).toBeGreaterThan(0);
+  // The draft saves 2.5 s after the typing stops. A save during the typing
+  // (a slow machine pausing) may already have happened: wait for the next.
+  await expect
+    .poll(async () => (await read()).saves, { timeout: 6000 })
+    .toBeGreaterThan(before.saves);
   await page.waitForTimeout(1000);
   const after = await read();
   expect(after.top).toBe(before.top);
