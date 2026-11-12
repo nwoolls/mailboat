@@ -4478,8 +4478,9 @@ the owner's word.*
    to the owner to choose from before any code. (The owner chose showing
    Outlook invitations in the computer's own time zone and tried it,
    2026-11-12; branch `invite-windows-zones`, #116.)
-5. [ ] The website's screenshot zoom flashes at full size before it
-   animates.
+5. [x] The website's screenshot zoom flashes at full size before it
+   animates. (Stepping with ‹ › now crossfades too, the owner's choice; the
+   owner tried both, 2026-11-12; branch `website-zoom-flash`.)
 6. [x] A sign-in code in a verification email isn't surfaced: built, and
    waiting on the owner trying a real verification email (whether Apple
    Intelligence still refuses its full summary). (The owner tried a
