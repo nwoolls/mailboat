@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.0-beta.2
+
+### Patch Changes
+
+- A click anywhere under a new message's text now puts the cursor in the message.
+
+- A new reply no longer stops being kept in view because of its own scrolling.
+
+- The "Remove account" setting now says that it also asks Google to end the account's sign-in.
+
+- A new reply no longer ends a few pixels below the bottom of the reader on a slower computer.
+
+- A reply opened with Reply with AI on a slow computer no longer stops part way below the bottom of the reader.
+
+- A click anywhere in the signature editor's box now puts the cursor in the signature.
+
+- A conversation moved to Spam or Trash while its automatic summary is being prepared is now checked again before anything is sent to an AI provider.
+
+- A click anywhere in the vacation reply's message box now puts the cursor in the message.
+
+- Turning the vacation reply off or on again no longer erases the text of its message.
+
 ## 0.2.0-beta.1
 
 ### Minor Changes
