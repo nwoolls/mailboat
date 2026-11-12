@@ -4472,7 +4472,8 @@ the owner's word.*
    above it blinking), #112.
 2. [x] The line being typed hidden under the pinned Send bar in a narrow
    reader, #113.
-3. [ ] Archiving with the preview collapsed re-opens it.
+3. [x] Archiving with the preview collapsed re-opens it (the owner tried
+   the fix, 2026-11-12; branch `archive-keeps-collapsed`).
 4. [ ] Meeting dates and times could be easier to read. Example formats go
    to the owner to choose from before any code.
 5. [ ] The website's screenshot zoom flashes at full size before it
