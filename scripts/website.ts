@@ -348,3 +348,24 @@ export function securityTxtDaysLeft(text: string, now: Date = new Date()): numbe
   const when = m ? parseExpires(m[1]) : undefined;
   return when === undefined ? undefined : Math.floor((when - now.getTime()) / DAY);
 }
+
+/**
+ * The home page's chip names the released version ("v0.2 · macOS and
+ * Windows · …"), typed by hand: nothing updates it when a version is
+ * released. So a stable version in package.json (what `version-packages`
+ * writes in a release pull request) must match the chip's major and minor.
+ * A beta (a version with a pre-release part, `0.3.0-beta.0`) is skipped:
+ * the site names the stable version until it ships.
+ */
+export function versionChipProblems(index: string, version: string): string[] {
+  const chip = /<p class="chip"[^>]*>\s*v(\d+)\.(\d+)\b/.exec(index);
+  if (!chip) return ['index.html: no version chip (`<p class="chip">v0.2 · …`) found'];
+  const release = /^(\d+)\.(\d+)\.\d+$/.exec(version);
+  if (!release) return [];
+  const [, major, minor] = release;
+  return chip[1] === major && chip[2] === minor
+    ? []
+    : [
+        `index.html: the chip says v${chip[1]}.${chip[2]} but package.json is ${version}: change it to v${major}.${minor}`,
+      ];
+}

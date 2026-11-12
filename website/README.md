@@ -6,6 +6,10 @@ step and no backend. It is meant to be served by Cloudflare as it is (decided
 
 - `index.html`, `privacy.html`, `terms.html`: the pages. The header and
   footer are repeated in each page; change them in all of them.
+- The chip at the top of `index.html` names the released version
+  (`v0.2 · …`), by hand. `bun run check:website` fails when `package.json`
+  holds a stable version with another major or minor, so a release pull
+  request changes it too; a beta is skipped.
 - `site.css`: the one stylesheet. Colors follow the visitor's system theme.
 - `site.js`: fades sections in as they scroll into view, lifts the header
   once the page scrolls, and opens a screenshot in a zoomed view (a native
