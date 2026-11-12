@@ -4945,6 +4945,19 @@ again until the next spike.*
       wait on downloading bodies. It now checks again right after reading, so
       an automatic summary of a conversation that moved meanwhile asks no
       model. A test moves a conversation to Spam while its body downloads.
+- [x] In a narrow reader, typing new lines at the end of a reply put the
+      line being typed under the pinned formatting and Send bar *(owner
+      report, 2026-11-12, on 0.2.0; fixed the same day, and the owner tried
+      it)*: the reader scrolled as the reply grew,
+      but the caret ended up hidden behind the bar. The editor kept a fixed
+      96 px clear of the reader's bottom edge (`PINNED_FOOT_HEIGHT` in
+      `ComposeForm`), sized for one row of formatting. In a narrow reader
+      the formatting wraps onto a second row and the bar is taller (110 px
+      in the browser test), so the line sat partly under it. The bar is now
+      measured as it changes, and the editor keeps its height plus 16 px
+      clear. `tests/browser/reply-caret-clear.spec.ts` types 30 lines at
+      760, 560 and 440 px; before the fix the line ended 17.5 px under the
+      bar at 560 and 440 px.
 
 ## Later / unscheduled
 

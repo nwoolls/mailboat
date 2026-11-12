@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { REPLY_FOLLOW_EVENT } from "../../../shared/lib/replyFollow";
 import type { Account, Address, Identity } from "../../../platform/tauri/bindings";
 import { type AddressLine, moveAddress } from "../model/addresses";
@@ -47,8 +47,13 @@ export const KIND_LABELS: Record<ReplyKind, string> = {
  * To/Cc/Bcc, Subject (new messages), the text, then Send and Discard.
  * ⌘↩ sends. Shared by the floating card and inline replies.
  */
-/** About how tall the pinned formatting and Send bar is, in pixels. */
-const PINNED_FOOT_HEIGHT = 96;
+/**
+ * How much of the reader's bottom edge the pinned formatting and Send bar
+ * covers before it has been measured, in pixels: one row of formatting.
+ */
+const PINNED_FOOT_HEIGHT = 80;
+/** Room kept between the line being typed and that bar, in pixels. */
+const ABOVE_FOOT_GAP = 16;
 
 /** The longest a newly opened reply is kept in view while it lays out. */
 const REPLY_FOLLOW_MS = 10_000;
@@ -100,6 +105,21 @@ export function ComposeForm({
   const [dropping, setDropping] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [footMarker, footStuck] = useStuck();
+  // The pinned bar's height as it is: in a narrow reader the formatting
+  // wraps onto more rows, and a fixed guess left the line being typed
+  // under the bar (owner report, 2026-11-12).
+  const [footHeight, setFootHeight] = useState(PINNED_FOOT_HEIGHT);
+  const measureFoot = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!el || !inline) return;
+      const measured = new ResizeObserver(() =>
+        setFootHeight(Math.ceil(el.getBoundingClientRect().height)),
+      );
+      measured.observe(el);
+      return () => measured.disconnect();
+    },
+    [inline],
+  );
   // Loaded once with the draft's opening HTML (the quote, for replies);
   // a different draft gets a fresh form (keyed by draft ID).
   const editor = useRichEditor(
@@ -107,7 +127,7 @@ export function ComposeForm({
     ({ html, text, edited }) => onChange((d) => ({ ...d, html, text, edited: d.edited || edited })),
     // Inline, the pinned Send bar covers the reader's bottom edge: keep
     // the line being typed above it.
-    inline ? { keepClearBelow: PINNED_FOOT_HEIGHT } : undefined,
+    inline ? { keepClearBelow: footHeight + ABOVE_FOOT_GAP } : undefined,
   );
 
   // Replies start in the text, above the quote (new messages and
@@ -390,6 +410,7 @@ export function ComposeForm({
       {/* Inline in the reader, formatting and Send stay at the bottom of
         the window while a long reply or forward scrolls under them. */}
       <div
+        ref={measureFoot}
         className={inline ? "reader-foot reader-foot-in-card pt-2" : ""}
         data-stuck={(inline && footStuck) || undefined}
       >
