@@ -18,7 +18,7 @@ export const SCOPE_LABELS: Record<string, string> = {
   openid: "Your name, email address and profile picture",
   email: "Your name, email address and profile picture",
   profile: "Your name, email address and profile picture",
-  "https://www.googleapis.com/auth/gmail.modify": "Gmail (read, organise, draft and send)",
+  "https://www.googleapis.com/auth/gmail.modify": "Gmail (read, organize, draft and send)",
   "https://www.googleapis.com/auth/gmail.settings.basic": "Gmail settings",
   "https://www.googleapis.com/auth/calendar.events.owned":
     "Google Calendar events on calendars you own",
@@ -140,7 +140,7 @@ export function parseScopes(scopesSource: string): string[] {
  * can't be found under its heading.
  */
 export function policyPermissionItems(policyHtml: string): (string | null)[] | undefined {
-  const section = /<h2>Google data the app uses, and why<\/h2>([\s\S]*?)<h2>/.exec(policyHtml);
+  const section = /<h2>Google data the app uses and why<\/h2>([\s\S]*?)<h2>/.exec(policyHtml);
   const list = section && /<ul>([\s\S]*?)<\/ul>/.exec(section[1]!);
   if (!list) return undefined;
   return [...list[1]!.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)].map((item) => {
@@ -209,11 +209,23 @@ function rustItem(source: string, header: string): string | undefined {
   return source.slice(start, end === -1 ? undefined : end + 3);
 }
 
+/**
+ * A function's text with comments gone and white space collapsed, so a claim
+ * can pin the whole of a small function: any change to it fails the check, and
+ * nothing written to look like one of its lines can stand in for it.
+ */
+export function itemText(source: string, header: string): string | undefined {
+  const item = rustItem(withoutComments(source), header);
+  return item === undefined ? undefined : item.replace(/\s+/g, " ").trim();
+}
+
 /** Where the code decides a default, as a path from the repository's root. */
 const SETTINGS_RS = "crates/core/src/settings.rs";
 const UPDATES_RS = "src-tauri/src/updates.rs";
 const TAURI_CONF = "src-tauri/tauri.conf.json";
-export const POLICY_SOURCES = [SETTINGS_RS, UPDATES_RS, TAURI_CONF];
+// TypeScript: the Settings → AI rule a policy sentence depends on.
+const PROVIDERS_TS = "src/features/ai/model/providers.ts";
+export const POLICY_SOURCES = [SETTINGS_RS, UPDATES_RS, TAURI_CONF, PROVIDERS_TS];
 
 type Claim = {
   /**
@@ -227,6 +239,11 @@ type Claim = {
   item: string;
   /** Lines the item must contain. */
   lines: string[];
+  /**
+   * For a small function: its whole text (`itemText`), which must be exactly
+   * this. `lines` is then not used.
+   */
+  exact?: string;
 };
 
 const APP_DEFAULT = "impl Default for AppSettings {";
@@ -265,13 +282,13 @@ export const CLAIMS: Claim[] = [
     lines: ["const LOOK_EVERY: Duration = Duration::from_secs(24 * 60 * 60);"],
   },
   {
-    says: ["AI features, only if you turn them on."],
+    says: ["Nothing goes to Claude or ChatGPT unless you choose one in Settings → AI."],
     file: SETTINGS_RS,
     item: APP_DEFAULT,
     lines: ["ai: AiSettings::default(),"],
   },
   {
-    says: ["AI features, only if you turn them on."],
+    says: ["Nothing goes to Claude or ChatGPT unless you choose one in Settings → AI."],
     file: SETTINGS_RS,
     item: AI_DEFAULT,
     lines: [
@@ -282,12 +299,43 @@ export const CLAIMS: Claim[] = [
     ],
   },
   {
+    // The rule lives in the Settings → AI screen, not in Rust's defaults, so it
+    // is pinned whole; that the screen calls it is tested in AiSection.test.tsx.
     says: [
-      "With Claude or ChatGPT chosen for summaries, a long conversation is summarised when you open it (Settings → AI can change this to a Summarize button, so nothing is sent until you press it), and if you also choose one for the summaries in the list, each conversation that scrolls into view is sent.",
+      "Choosing Claude or ChatGPT for the summary above a conversation changes an automatic summary to a Summarize button, so nothing is sent until you press it.",
+    ],
+    file: PROVIDERS_TS,
+    item: "export function readerChoice(",
+    lines: [],
+    exact:
+      'export function readerChoice( ai: Pick<AiChoices, "readerSummary">, provider: AiProvider, ): Pick<AiChoices, "readerProvider" | "readerSummary"> { const manual = leavesMac(provider) && ai.readerSummary === "auto"; return { readerProvider: provider, readerSummary: manual ? "button" : ai.readerSummary, }; }',
+  },
+  {
+    // readerChoice's rule depends on which providers count as off the Mac.
+    says: [
+      "Choosing Claude or ChatGPT for the summary above a conversation changes an automatic summary to a Summarize button, so nothing is sent until you press it.",
+    ],
+    file: PROVIDERS_TS,
+    item: "export function leavesMac(",
+    lines: [],
+    exact:
+      'export function leavesMac(provider: AiProvider): boolean { return provider !== "apple"; }',
+  },
+  {
+    says: [
+      "If you turn off Keep saved summaries in Settings → AI, they are cleared when the app quits and when it next starts.",
     ],
     file: SETTINGS_RS,
     item: AI_DEFAULT,
-    lines: ["reader_summary: ReaderSummary::Auto,"],
+    lines: ["keep_summaries: true,"],
+  },
+  {
+    says: [
+      "Images the app downloads are kept in a cache of limited size, 500 MB unless you change it in Settings → Viewing.",
+    ],
+    file: SETTINGS_RS,
+    item: APP_DEFAULT,
+    lines: ["image_cache_mb: 500,"],
   },
   {
     says: [
@@ -394,6 +442,17 @@ export function claimProblems(policyHtml: string, sources: Record<string, string
       }
     }
     const text = sources[claim.file];
+    if (claim.exact !== undefined) {
+      const now = text === undefined ? undefined : itemText(text, claim.item);
+      if (now === undefined) {
+        report(`${claim.file}: can't find "${claim.item}" for the policy's "${claim.says[0]}"`);
+      } else if (now !== claim.exact) {
+        report(
+          `the policy says "${claim.says[0]!.slice(0, 70)}…", but ${claim.file} (${claim.item}) changed: change the code and the policy together, then update CLAIMS`,
+        );
+      }
+      continue;
+    }
     const item = text === undefined ? undefined : rustItem(withoutComments(text), claim.item);
     if (item === undefined) {
       report(`${claim.file}: can't find "${claim.item}" for the policy's "${claim.says[0]}"`);
