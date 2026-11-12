@@ -4500,11 +4500,15 @@ again until the next spike.*
       *(owner report, 2026-11-11, writing a long reply on 0.2.0)*. Not looked
       into yet. It was the reply box inside the conversation (not the
       floating new message), the box had scrolled, and the cursor landed near
-      the click but a few lines higher. An offset that grows with scrolling
-      suggests the click's position is mapped to the text without the
-      scroll taken into account, for example by a scrolling or transformed
-      container around the editor; not confirmed. A browser test with a long
-      pasted reply, scrolled down, that clicks mid-line and types should fail
+      the click but a few lines higher. The owner also saw the reader move
+      the reply on its own after they had scrolled. The likely cause, not
+      confirmed: the follow that keeps a new reply in view as it grows
+      (`ComposeForm`, #93 and #94) scrolling the reader after the person did,
+      so the text moves between pressing and placing the cursor. That ties it
+      to the open item about rethinking how a new reply is followed, further
+      down this backlog; a fix belongs with that rethink. A browser test with
+      a long pasted reply, scrolled by hand, that clicks mid-line and types,
+      and checks that the reader stays where it was scrolled, should fail
       before the fix
 
 - [x] Turning the vacation reply off erases its message in Gmail *(found
