@@ -4455,6 +4455,33 @@ Items that call for a browser test (the zoom flash, the starfield flake) run
 `bun run test:browser` in a session that owns port 1436, never alongside
 another agent's browser tests.
 
+## Bug Spike 3: toward 0.2.1-beta.0
+
+*Started 2026-11-12 at the owner's request, to fix what is cheap in the Bug
+backlog before a 0.2.1-beta.0. Done when: each item below is built, the owner
+has tried it, and it is ticked in the Bug backlog, where each keeps its full
+text; this section only orders and scopes them, as the Polish Spike does.
+The beta itself is the owner's to cut (`docs/DEVELOPMENT.md` → Releasing);
+the repository is not in beta mode, so it starts with `pre enter beta`, on
+the owner's word.*
+
+1. [x] The reply moving under the cursor after a draft save (the AI summary
+   above it blinking), #112.
+2. [x] The line being typed hidden under the pinned Send bar in a narrow
+   reader, #113.
+3. [ ] Archiving with the preview collapsed re-opens it.
+4. [ ] Meeting dates and times could be easier to read. Example formats go
+   to the owner to choose from before any code.
+5. [ ] The website's screenshot zoom flashes at full size before it
+   animates.
+6. [ ] A sign-in code in a verification email isn't surfaced: built, and
+   waiting on the owner trying a real verification email (whether Apple
+   Intelligence still refuses its full summary).
+
+Not in the spike: rethinking how a new reply is followed (and the
+slow-machine test kept as `test.fixme`). It is a design for the owner to
+lead, with a mockup first.
+
 ## Bug backlog
 
 *Bugs found in passing (started 2026-10-19 at the owner's request).
