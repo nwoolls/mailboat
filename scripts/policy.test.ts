@@ -28,7 +28,7 @@ pub const SCOPES: [&str; 3] = [
     "openid",
     // A comment, with a "quoted" word and a URL: https://example.com/x
     GMAIL_SCOPE,
-    "https://www.googleapis.com/auth/calendar.events", // trailing comment
+    "https://www.googleapis.com/auth/calendar.events.owned", // trailing comment
 ];
 pub const GMAIL_SCOPE: &str = "https://www.googleapis.com/auth/gmail.modify";
 pub const UNUSED: &str = "https://www.googleapis.com/auth/unused";
@@ -73,7 +73,7 @@ describe("parseScopes", () => {
     expect(parseScopes(OAUTH_FIXTURE)).toEqual([
       "openid",
       "https://www.googleapis.com/auth/gmail.modify",
-      "https://www.googleapis.com/auth/calendar.events",
+      "https://www.googleapis.com/auth/calendar.events.owned",
     ]);
   });
 
@@ -111,7 +111,7 @@ describe("scopeProblems", () => {
   const labels = [
     "Your name, email address and profile picture",
     "Gmail (read, organise, draft and send)",
-    "Google Calendar events",
+    "Google Calendar events on calendars you own",
   ];
   // The fixture asks for openid alone; the real list asks for all three identity scopes.
   const identity = [
@@ -119,7 +119,7 @@ describe("scopeProblems", () => {
     "email",
     "profile",
     "https://www.googleapis.com/auth/gmail.modify",
-    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.events.owned",
   ];
 
   it("accepts a policy that lists exactly what is asked for", () => {
@@ -138,7 +138,7 @@ describe("scopeProblems", () => {
 
   it("fails a permission the policy doesn't list", () => {
     expect(scopeProblems(identity, policy(labels.slice(0, 2)))).toEqual([
-      'SCOPES asks for a permission the policy doesn\'t list: "Google Calendar events"',
+      'SCOPES asks for a permission the policy doesn\'t list: "Google Calendar events on calendars you own"',
     ]);
   });
 

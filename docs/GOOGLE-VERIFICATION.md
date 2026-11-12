@@ -59,8 +59,12 @@ state, so the main window can show that it is on; and the filters, when the
 user opens Settings → Rules. It writes only when the user saves a change in
 Settings → Rules, Signatures or Vacation responder.
 
-**`https://www.googleapis.com/auth/calendar.events`** (sensitive)
-Answers meeting invitations in the email, as Gmail does. When a message holds
+**`https://www.googleapis.com/auth/calendar.events.owned`** (sensitive)
+Answers meeting invitations in the email, as Gmail does. It covers events on
+calendars the user owns only, and the app uses only the primary calendar.
+Since 2026-11-09 the app asks for this instead of the broader
+`calendar.events`, which accounts that signed in earlier may still hold; the
+app accepts either, so those accounts don't have to sign in again. When a message holds
 a calendar invitation, the app finds the event on the user's primary
 calendar by its iCalendar ID, shows the user's current answer and any events
 it clashes with, and sets the answer (Yes, Maybe or No) when the user

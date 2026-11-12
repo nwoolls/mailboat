@@ -4135,7 +4135,7 @@ Checked 2026-11-09, so a new session need not repeat it:
 - Google's Calendar API description (revision 20261109) lists
   `calendar.events.owned` ("See, create, change, and delete events on Google
   calendars you own"), and it is accepted by every method the app calls:
-  `events.list`, `get`, `patch`, `import` and `delete`. The app only uses the
+  `events.list`, `patch`, `import` and `delete`. The app only uses the
   primary calendar (`calendars/primary/…`), which the user owns. The only
   narrower scope, `calendar.events.owned.readonly`, can't record an answer.
 - Every AI job defaults to Apple Intelligence, which stays on the Mac
@@ -4152,7 +4152,7 @@ Checked 2026-11-09, so a new session need not repeat it:
   secret; other guidance says to protect the file): check the current Google
   Auth Platform documentation before relying on either.
 
-- [ ] Narrow the calendar permission from `calendar.events` to
+- [x] Narrow the calendar permission from `calendar.events` to
       `calendar.events.owned` (a new item). Opus: it touches sign-in. The
       code: `CALENDAR_SCOPE` in `crates/core/src/auth/oauth.rs`, and the
       permission check (`missing()` in `crates/core/src/db/accounts.rs`),
@@ -4166,6 +4166,16 @@ Checked 2026-11-09, so a new session need not repeat it:
       it. Google invites updates, and this narrows, so the plan is to change
       the console and publish 0.2.0 the same day, and to ask Google in the
       reply. Add a decisions-table row when built
+      - Built (2026-11-09): `CALENDAR_SCOPE` is `calendar.events.owned`, and
+        the old scope is kept as `LEGACY_CALENDAR_SCOPE`, which `missing()`
+        accepts in its place, so an account that granted it isn't asked to
+        sign in again (unit tests for old only, new only, both and neither,
+        plus a Calendar test with the old scope). The policy's calendar line
+        and its label in `SCOPE_LABELS` say "calendars you own", and the line
+        now also names adding an invitation and removing a canceled one, as
+        the code does. `docs/GOOGLE-VERIFICATION.md` names the new scope.
+        Decisions-table row added. The console change is still to do, on the
+        day 0.2.0 is published.
 - [x] Cloud AI is manual by default (the item in the Hardening list above,
       moved into 0.2.0; built 2026-11-09, see that item): with a cloud provider chosen, the summary above a
       conversation starts as the Summarize button, so every transfer is one
