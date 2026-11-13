@@ -20,6 +20,13 @@ import {
 import { Splitter } from "../features/layout/ui/Splitter";
 import { useElementWidth } from "../features/layout/ui/useElementWidth";
 import { panels, setSavedReaderOpen, setSidebarOpen } from "../features/layout/ui/panels";
+import {
+  type Kept,
+  keepRead,
+  keptAfter,
+  NOTHING_KEPT,
+  withKept,
+} from "../features/mailbox/model/unreadKept";
 import { Onboarding } from "../features/onboarding/ui/Onboarding";
 import { onboarding, updateProgress } from "../features/onboarding/ui/progress";
 import {
@@ -257,10 +264,25 @@ export function Shell() {
   const showAccount = spansAccounts(selection, accountList.length);
 
   const threadsQuery = useThreads(selection);
-  const threads = useMemo(
+  const listed = useMemo(
     () => threadsQuery.data?.pages.flatMap((p) => p.threads) ?? [],
     [threadsQuery.data],
   );
+  // In Unread, conversations read during this visit stay, shown as read,
+  // until the view changes (unreadKept.ts). Adjusted during render.
+  const inUnread = selection.view.kind === "system" && selection.view.label === "unread";
+  const visit = JSON.stringify(selection);
+  const [kept, setKept] = useState<{ visit: string; rows: Kept }>(() => ({
+    visit,
+    rows: NOTHING_KEPT,
+  }));
+  if (kept.visit !== visit) setKept({ visit, rows: NOTHING_KEPT });
+  else if (inUnread) {
+    const rows = keepRead(kept.rows, listed);
+    if (rows !== kept.rows) setKept({ visit, rows });
+  }
+  const keptRows = inUnread && kept.visit === visit ? kept.rows : NOTHING_KEPT;
+  const threads = useMemo(() => withKept(listed, keptRows), [listed, keptRows]);
   const [selectedId, setSelectedId] = useState<ThreadId | null>(null);
   // The row selected without being previewed: closed with Esc, or moved
   // to with j/k while no preview shows. It stays highlighted, the buttons
@@ -425,6 +447,7 @@ export function Shell() {
     function run(action: ThreadAction, ids: ThreadId[], fromUndo = false) {
       if (ids.length === 0) return;
       const openBefore = openNow.current;
+      setKept((k) => ({ ...k, rows: keptAfter(k.rows, ids, action) }));
       if (leavesView(action, selection.view)) {
         const removed = new Set(ids);
         const { afterRemoval } = viewingPrefs.get();

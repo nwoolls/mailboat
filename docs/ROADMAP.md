@@ -5032,6 +5032,19 @@ and new bugs still come here.*
       nothing changes. Undo after archiving the conversation the preview was
       collapsed on goes back to it, still collapsed. A unit test of the collapsed case failed before the
       fix.)*
+- [x] In the Unread view, a conversation disappears from the list as soon
+      as it's opened *(owner report, 2026-11-12; fixed the same day, and the
+      owner tried it)*: opening marks it read,
+      and the list, which only brings unread conversations, refreshed
+      without it, from under the pointer and the selection. The code meant
+      it to stay until the list refreshed, but mail changing refreshes the
+      list almost at once. The owner chose: conversations read during a
+      visit to Unread stay in the list, shown as read, until the person
+      leaves the view, and the next visit lists only what is unread.
+      `unreadKept.ts` keeps them (a row in the Unread list that shows as
+      read was read during this visit) and puts them back in their place;
+      archiving, deleting or labeling one away lets it go, and marking it
+      unread shows it unread. Unit tests for each.
 - [x] Reply with AI in a short reader could leave the reply part way below
       the fold *(found 2026-11-10, when a browser test failed once on CI with
       the reader stopped well short of the reply; fixed the same day)*: a new
