@@ -59,6 +59,17 @@ const page = (...threads: ThreadSummary[]) => ({
 });
 
 describe("toggleFor", () => {
+  // A trashed conversation isn't in the Inbox (as in Gmail), so the archive
+  // button would offer Move to Inbox while it stays in Trash. None is
+  // offered, as the swipe does; Restore is the action there (code review).
+  it("offers no archive action for a conversation in Trash", () => {
+    expect(toggleFor("archive", [thread(1, { inInbox: false, inTrash: true })])).toBeNull();
+    expect(
+      toggleFor("archive", [thread(1), thread(2, { inInbox: false, inTrash: true })]),
+    ).toBeNull();
+    expect(toggleFor("archive", [thread(1)])).toEqual({ kind: "archive", archived: true });
+  });
+
   it("does the action unless every conversation already has it", () => {
     const starred = thread(1, { starred: true });
     const plain = thread(2);

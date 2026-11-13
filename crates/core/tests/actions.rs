@@ -146,6 +146,31 @@ async fn refused_change_is_undone_locally() {
     assert_eq!(after.thread, before.thread);
 }
 
+/// A trash Gmail refuses is undone locally: INBOX, which trashing removes
+/// from the cached copy, comes back, and TRASH goes (code review).
+#[tokio::test]
+async fn refused_trash_is_undone_locally() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(
+            ResponseTemplate::new(400).set_body_raw(fixture("error_404.json"), "application/json"),
+        )
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1(&db, a);
+    assert!(query::thread_summary(&db.conn(), t1).unwrap().in_inbox);
+
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+    assert!(actions::set_trashed(&db, gmail_for, &[t1], true)
+        .await
+        .is_err());
+    let summary = query::thread_summary(&db.conn(), t1).unwrap();
+    assert!(summary.in_inbox && !summary.in_trash);
+    assert_eq!(in_view(&db, a, INBOX), vec![t1]);
+}
+
 fn in_view(db: &Db, account: AccountId, view: MailView) -> Vec<ThreadId> {
     query::list_threads(
         &db.conn(),

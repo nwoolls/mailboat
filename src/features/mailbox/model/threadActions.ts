@@ -52,6 +52,10 @@ export function toggleFor(
     case "read":
       return { kind, read: threads.some((t) => t.unread) };
     case "archive":
+      // Nothing for a conversation in Trash: it isn't in the Inbox (as in
+      // Gmail), and Move to Inbox would leave it in Trash. Restore is the
+      // action there, as for a swipe.
+      if (threads.some((t) => t.inTrash)) return null;
       return { kind, archived: threads.some((t) => t.inInbox) };
     case "star":
       return { kind, starred: threads.some((t) => !t.starred) };
