@@ -44,6 +44,20 @@ test("the pond ripples where it's clicked, then settles", async ({ page }) => {
   await page.mouse.click(120, 400);
   await page.waitForTimeout(400);
   expect(await inked(page)).toBeGreaterThan(100);
+  // Chunky blocks, drawn sharp: neighboring screen pixels inside a block match.
+  const blocky = await page.locator("canvas").evaluate((c: HTMLCanvasElement) => {
+    const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+    let inked = 0;
+    let same = 0;
+    for (let i = 0; i < d.length - 4; i += 4) {
+      if (d[i + 3]! === 0) continue;
+      inked++;
+      if (d[i + 3] === d[i + 7] && d[i] === d[i + 4]) same++;
+    }
+    return { sharp: c.width >= c.clientWidth, share: same / Math.max(1, inked) };
+  });
+  expect(blocky.sharp).toBe(true);
+  expect(blocky.share).toBeGreaterThan(0.6);
   await page.waitForTimeout(3500);
   expect(await inked(page)).toBe(0);
 });

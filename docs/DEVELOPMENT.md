@@ -41,6 +41,7 @@ from the defaults so they can be copied into the code
 `GLOW_MOTION_DEFAULTS` in `src/features/mailbox/model/glow.ts`,
 `SKY_SCENE_DEFAULTS` in `src/features/emptyToys/model/skyScene.ts`,
 `ASCII_POND_DEFAULTS` in `src/features/emptyToys/model/asciiPond.ts`,
+`PIXEL_POND_DEFAULTS` in `src/features/emptyToys/model/pixelPond.ts`,
 `POND_STIR_DEFAULTS` in `src/features/emptyToys/model/pond.ts`). The app
 itself always uses the defaults.
 

@@ -108,7 +108,6 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
         areaRef={anchorRef}
         iconRef={iconRef}
         wordsRef={wordsRef}
-        palette={palette}
         style={style}
       />
       {screensaver !== "off" && (

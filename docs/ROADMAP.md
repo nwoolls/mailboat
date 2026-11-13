@@ -4644,6 +4644,16 @@ between pixel art and ASCII art for the screensavers.*
       first try that switched to a tight follow once close showed the
       switch and still couldn't catch a moving pointer. This works the same
       in the pixel and ASCII styles. *Owner: "much better"*
+- [x] The pond in chunky pixel art *(owner, 2026-11-13: "and then the
+      pond for pixel art style")*. It draws the same water in 5px blocks,
+      on the same grid that the glow and the sky use. The sides of the
+      ripples that face the light get four stepped bands of the accent
+      color with dithered edges; the sides that face away get two faint,
+      darker bands (toward the text color on a light page, so the rings
+      keep their shape). Droplets are bright blocks, and the plop is a
+      quick burst of them with a soft glow. It now uses the accent color,
+      like the glow and the sky, instead of the Toybox palette, which is
+      left to the screensavers. *Owner: "LGTM"*
 - [ ] Chunkier pixel art for the other toys and the screensavers *(owner,
       2026-11-13: "for pixel art in general, I am thinking chunkier
       pixels … retro NES / SNES HD-2D")*: one scene at a time, the glow and

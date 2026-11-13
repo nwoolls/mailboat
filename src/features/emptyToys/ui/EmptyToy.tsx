@@ -10,17 +10,12 @@ import {
   sheetFor,
 } from "../model/bubbles";
 import type { Rect } from "../../screensaver/model/scene";
-import {
-  colorTable,
-  type PaletteId,
-  paletteColors,
-  parseColor,
-} from "../../screensaver/model/palettes";
 import { PLOP_SECONDS, pondStir, PondToy } from "../model/pond";
 import { asciiPondTuning, pondChars, pondLook, strongest } from "../model/asciiPond";
 import type { ToyboxStyle } from "../model/style";
 import { asciiGlowTuning } from "../../mailbox/model/asciiGlow";
-import { asciiCell, AsciiPainter, GLYPH_ON_HOT, readAsciiColors } from "./asciiPaint";
+import { asciiCell, AsciiPainter, GLYPH_ON_HOT, mix, readAsciiColors } from "./asciiPaint";
+import { pixelPondTuning, pondBand } from "../model/pixelPond";
 import { AsciiSkyLayer } from "./AsciiSky";
 import { PixelSkyLayer } from "./PixelSky";
 import type { ToyId } from "../model/toys";
@@ -46,7 +41,6 @@ export function EmptyToy({
   areaRef,
   iconRef,
   wordsRef,
-  palette,
   style = "pixel",
 }: {
   toy: ToyId;
@@ -54,8 +48,6 @@ export function EmptyToy({
   /** The empty state's icon and words: the pond's waves reflect off them. */
   iconRef: RefObject<HTMLElement | null>;
   wordsRef: RefObject<HTMLElement | null>;
-  /** The Toybox palette, which the toys share with the screensavers. */
-  palette: PaletteId;
   /** Pixel art or ASCII art (Settings → Toybox → Style); the pond and the sky have both. */
   style?: ToyboxStyle;
 }) {
@@ -96,9 +88,7 @@ export function EmptyToy({
         />
       )}
       {toy === "ripples" && style === "ascii" && <AsciiPondLayer areaRef={areaRef} box={box} />}
-      {toy === "ripples" && style !== "ascii" && (
-        <PondLayer areaRef={areaRef} box={box} palette={palette} />
-      )}
+      {toy === "ripples" && style !== "ascii" && <PondLayer areaRef={areaRef} box={box} />}
       {toy === "bubbles" && <BubbleLayer areaRef={areaRef} box={box} />}
     </div>
   );
@@ -176,70 +166,119 @@ function useCanvas(box: Box) {
 /** Screen pixels per cell for the pixel-art toys, as the finer screensavers. */
 const TOY_CELL_PX = 2;
 
-/** The palette's colours for every value a toy draws, with the current accent. */
-function useColors(palette: PaletteId): Uint32Array {
-  const [colors, setColors] = useState<Uint32Array>(() => new Uint32Array(0));
-  const [madeFor, setMadeFor] = useState<PaletteId | null>(null);
-  if (madeFor !== palette) {
-    setMadeFor(palette);
-    const accent = getComputedStyle(document.documentElement).getPropertyValue("--color-accent");
-    setColors(colorTable(paletteColors(palette, parseColor(accent))));
-  }
-  return colors;
-}
-
 /**
- * The pond, in pixel art (`model/pond.ts`): a click drops a stone. It
- * draws only while something moves, then clears and stops.
+ * The pond, in chunky pixel art (`model/pixelPond.ts`): the water drawn in
+ * blocks on the same grid as the glow and the sky, lined up with it across
+ * the card. A click drops a stone. It draws only while something moves,
+ * then clears and stops.
  */
-function PondLayer({
-  areaRef,
-  box,
-  palette,
-}: {
-  areaRef: RefObject<HTMLElement | null>;
-  box: Box;
-  palette: PaletteId;
-}) {
+function PondLayer({ areaRef, box }: { areaRef: RefObject<HTMLElement | null>; box: Box }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const colors = useColors(palette);
-  const colorsRef = useRef(colors);
-  useEffect(() => {
-    colorsRef.current = colors;
-  }, [colors]);
   const pondRef = useRef<PondToy | null>(null);
-  const { clear } = box;
+  const { clear, width, height, left, top } = box;
   const clearRef = useRef(clear);
-  const cols = Math.max(1, Math.floor(box.width / TOY_CELL_PX));
-  const rows = Math.max(1, Math.floor(box.height / TOY_CELL_PX));
+  const placeRef = useRef({ left, top });
+  useEffect(() => {
+    placeRef.current = { left, top };
+  }, [left, top]);
+  const cols = Math.max(1, Math.floor(width / TOY_CELL_PX));
+  const rows = Math.max(1, Math.floor(height / TOY_CELL_PX));
   useEffect(() => {
     const area = areaRef.current;
     const canvas = ref.current;
     const ctx = canvas?.getContext("2d");
     if (!area || !canvas || !ctx) return;
-    canvas.width = cols;
-    canvas.height = rows;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
     const pond = new PondToy(cols, rows);
     pond.setSolids(inCells(clearRef.current));
     pondRef.current = pond;
-    const image = ctx.createImageData(cols, rows);
-    const pixels = new Uint32Array(image.data.buffer);
-    const cells = new Uint8Array(cols * rows);
-    const opacity = new Uint8Array(cols * rows);
     let frame = 0;
     let last = 0;
     const tick = (now: number) => {
       pond.frame(Math.min((now - last) / 1000, 0.1));
       last = now;
-      opacity.fill(255);
-      pond.draw(cells, opacity);
-      const table = colorsRef.current;
-      for (let i = 0; i < cells.length; i++) {
-        const c = cells[i] ? (table[cells[i]!] ?? 0) : 0;
-        const a = opacity[i]!;
-        pixels[i] = a === 255 ? c : ((c & 0xffffff) | (((a * (c >>> 24)) / 255) << 24)) >>> 0;
+      const t = pixelPondTuning();
+      const px = Math.max(1, Math.round(t.pixel));
+      const colors = readAsciiColors(0.6, 0.45);
+      const [ar, ag, ab] = colors.accent;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Blocks on the card's grid (the glow's and sky's), not the area's.
+      const { left: l, top: tp } = placeRef.current;
+      const ox = -(((l % px) + px) % px);
+      const oy = -(((tp % px) + px) % px);
+      const block = (x: number, y: number, rgb: readonly number[], a: number) => {
+        if (a <= 0.005) return;
+        ctx.fillStyle = `rgb(${rgb[0]} ${rgb[1]} ${rgb[2]} / ${Math.min(1, a)})`;
+        const x0 = Math.round(x * dpr);
+        const y0 = Math.round(y * dpr);
+        ctx.fillRect(x0, y0, Math.round((x + px) * dpr) - x0, Math.round((y + px) * dpr) - y0);
+      };
+      const solid = clearRef.current;
+      // Water facing away: darker than the page either way, so the rings
+      // keep their light and shadow on a light page too.
+      const deep = colors.dark
+        ? mix(colors.accent, colors.base, 0.55)
+        : mix(colors.accent, colors.content, 0.5);
+      for (let y = oy, by = 0; y < height; y += px, by++)
+        for (let x = ox, bx = 0; x < width; x += px, bx++) {
+          const mx = x + px / 2;
+          const my = y + px / 2;
+          if (solid.some((b) => mx >= b.x0 && mx <= b.x1 && my >= b.y0 && my <= b.y1)) continue;
+          const look = pondBand(pond.shading(mx / TOY_CELL_PX, my / TOY_CELL_PX), bx, by, t);
+          if (!look) continue;
+          if (look.kind === "crest") {
+            const k = look.band / t.crestBands;
+            block(
+              x,
+              y,
+              mix(colors.accent, colors.hot, Math.max(0, k - 0.25)),
+              t.crestPeak * (0.3 + 0.7 * k),
+            );
+          } else block(x, y, deep, t.troughPeak * (look.band / t.troughBands));
+        }
+      // The cell under a point in the area's pixels.
+      const at = (cx: number, cy: number) => ({
+        x: ox + Math.floor((cx - ox) / px) * px,
+        y: oy + Math.floor((cy - oy) / px) * px,
+      });
+      const glows: { x: number; y: number; r: number; a: number }[] = [];
+      // The plop: a quick burst of bright blocks, flattened.
+      for (const p of pond.plops) {
+        const fade = 1 - p.age / PLOP_SECONDS;
+        const c = at(p.x * TOY_CELL_PX, p.y * TOY_CELL_PX);
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -3; dx <= 3; dx++) {
+            if (Math.hypot(dx / 3.5, dy / 1.5) > 1) continue;
+            block(c.x + dx * px, c.y + dy * px, colors.hot, fade * 0.95);
+          }
+        glows.push({ x: c.x + px / 2, y: c.y + px / 2, r: px * 9, a: fade });
       }
-      ctx.putImageData(image, 0, 0);
+      // Droplets: a bright block, and a faint one behind it.
+      for (const d of pond.droplets) {
+        const bead = at(d.x * TOY_CELL_PX, d.y * TOY_CELL_PX);
+        const tail = at((d.x - d.vx * 0.03) * TOY_CELL_PX, (d.y - d.vy * 0.03) * TOY_CELL_PX);
+        if (tail.x !== bead.x || tail.y !== bead.y) block(tail.x, tail.y, colors.accent, 0.45);
+        block(bead.x, bead.y, colors.hot, 1);
+        glows.push({ x: bead.x + px / 2, y: bead.y + px / 2, r: px * 3, a: 0.6 });
+      }
+      // The light: a soft glow around the splash.
+      if (t.bloom > 0 && glows.length) {
+        ctx.globalCompositeOperation = colors.dark ? "lighter" : "source-over";
+        for (const g of glows) {
+          const cx = g.x * dpr;
+          const cy = g.y * dpr;
+          const rr = g.r * dpr;
+          const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr);
+          grad.addColorStop(0, `rgb(${ar} ${ag} ${ab} / ${0.35 * t.bloom * g.a})`);
+          grad.addColorStop(1, `rgb(${ar} ${ag} ${ab} / 0)`);
+          ctx.fillStyle = grad;
+          ctx.fillRect(cx - rr, cy - rr, rr * 2, rr * 2);
+        }
+        ctx.globalCompositeOperation = "source-over";
+      }
       // Once still, the last frame drawn was empty: stop.
       frame = pond.active ? requestAnimationFrame(tick) : 0;
     };
@@ -261,21 +300,16 @@ function PondLayer({
       stopStirring();
       cancelAnimationFrame(frame);
     };
-  }, [areaRef, cols, rows]);
-  // The icon and each line of the words stand in the water, the words
-  // measured round the letters, not their wider box, so the water
-  // reaches right up to them. Updated in place when they move (after
-  // rising in, say), so the water keeps its waves.
+  }, [areaRef, cols, rows, width, height]);
+  // The icon, each line of the words and the title stand in the water,
+  // measured around the letters, so the water reaches right up to them.
+  // Updated in place when they move (after rising in, say), so the water
+  // keeps its waves.
   useEffect(() => {
     clearRef.current = clear;
     pondRef.current?.setSolids(inCells(clear));
   }, [clear]);
-  return (
-    <canvas
-      ref={ref}
-      style={{ width: cols * TOY_CELL_PX, height: rows * TOY_CELL_PX, imageRendering: "pixelated" }}
-    />
-  );
+  return <canvas ref={ref} style={{ width, height }} />;
 }
 
 /**

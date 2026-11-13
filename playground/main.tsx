@@ -28,6 +28,11 @@ import {
   setPixelGlowTuning,
 } from "../src/features/mailbox/model/pixelGlow";
 import {
+  PIXEL_POND_DEFAULTS,
+  type PixelPondTuning,
+  setPixelPondTuning,
+} from "../src/features/emptyToys/model/pixelPond";
+import {
   ASCII_POND_DEFAULTS,
   type AsciiPondTuning,
   setAsciiPondTuning,
@@ -255,6 +260,24 @@ const SKY_DIALS: Sections<AsciiSkyTuning> = [
   },
 ];
 
+const PIXEL_POND_DIALS: Sections<PixelPondTuning> = [
+  {
+    title: "Pixels",
+    dials: [
+      { key: "pixel", min: 2, max: 14, step: 1, hint: "pixel size, px" },
+      { key: "crestBands", min: 1, max: 10, step: 1, hint: "lit water, bands" },
+      { key: "troughBands", min: 0, max: 6, step: 1, hint: "dark water, bands" },
+      { key: "crestGain", min: 0.5, max: 12, step: 0.1, hint: "lit slopes, brightness" },
+      { key: "troughGain", min: 0, max: 12, step: 0.1, hint: "dark slopes, strength" },
+      { key: "cutoff", min: 0, max: 0.5, step: 0.01, hint: "calmest water drawn" },
+      { key: "dither", min: 0, max: 1.5, step: 0.05, hint: "dithering" },
+      { key: "crestPeak", min: 0, max: 1, step: 0.01, hint: "brightest lit band" },
+      { key: "troughPeak", min: 0, max: 1, step: 0.01, hint: "darkest dark band" },
+      { key: "bloom", min: 0, max: 1.5, step: 0.05, hint: "glow around the splash" },
+    ],
+  },
+];
+
 const POND_FIELDS: readonly Field<AsciiPondTuning>[] = [
   { key: "crestRamp", hint: "lit water, faint → dense (first is empty)" },
   { key: "troughRamp", hint: "dark water, faint → dense (first is empty)" },
@@ -316,6 +339,7 @@ const pixelGlowStart = saved("playground.pixelGlow", PIXEL_GLOW_DEFAULTS, setPix
 const motionStart = saved("playground.glowMotion", GLOW_MOTION_DEFAULTS, setGlowMotion);
 const pondStart = saved("playground.asciiPond", ASCII_POND_DEFAULTS, setAsciiPondTuning);
 const stirStart = saved("playground.pondStir", POND_STIR_DEFAULTS, setPondStir);
+const pixelPondStart = saved("playground.pixelPond", PIXEL_POND_DEFAULTS, setPixelPondTuning);
 // The hour is the playground's own (`SkyHour`), never saved.
 const skyStart = saved("playground.asciiSky", ASCII_SKY_DEFAULTS, setAsciiSkyTuning);
 const sceneStart = saved("playground.skyScene", SKY_SCENE_DEFAULTS, setSkySceneTuning);
@@ -471,12 +495,6 @@ function Playground() {
       </div>
 
       <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto">
-        {style === "pixel" && look === "pond" && (
-          <p className="rounded-md border border-stroke bg-selection-subtle p-2 text-content/70">
-            Showing pixel art. The pond&rsquo;s pixel look has no dials yet; these tune its ASCII
-            look (the pointer ripples apply to both).
-          </p>
-        )}
         {look === "glow" && style === "pixel" ? (
           <Panel
             key="pixelGlow"
@@ -525,6 +543,17 @@ function Playground() {
               sections={SKY_DIALS}
             />
           </>
+        ) : style === "pixel" ? (
+          <Panel
+            key="pixelPond"
+            title="Pixel pond"
+            storageKey="playground.pixelPond"
+            defaults={PIXEL_POND_DEFAULTS}
+            start={pixelPondStart}
+            apply={setPixelPondTuning}
+            fields={[]}
+            sections={PIXEL_POND_DIALS}
+          />
         ) : (
           <Panel
             key="pond"
