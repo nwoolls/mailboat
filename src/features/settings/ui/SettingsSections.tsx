@@ -1254,7 +1254,7 @@ export function ToyboxSection() {
     <>
       <Group
         title="Style"
-        description="ASCII art draws the glow in characters on a faint grid. Screensavers and toys stay pixel art either way."
+        description="ASCII art draws the glow and the pond in characters on a faint grid. The screensavers, bubble wrap and sky stay pixel art either way."
       >
         <div className="px-4 py-3.5">
           <ChoiceGrid

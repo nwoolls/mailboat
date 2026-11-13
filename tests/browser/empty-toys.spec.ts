@@ -67,3 +67,20 @@ test("the sky sits behind the view with the sun or moon in it", async ({ page })
   expect(background).toContain("linear-gradient");
   await expect(layer(page).locator(".rounded-full")).toHaveCount(1);
 });
+
+test("the pond in ASCII art ripples in characters, then settles", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=empty&toy=ripples&style=ascii");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  await stayClearOfTitle(page);
+  expect(await inked(page)).toBe(0);
+  await page.mouse.click(120, 400);
+  await page.waitForTimeout(400);
+  expect(await inked(page)).toBeGreaterThan(100);
+  // Drawn sharp, as characters, not on the pixel pond's 2px cells.
+  const sharp = await page
+    .locator("canvas")
+    .evaluate((c: HTMLCanvasElement) => c.width >= c.clientWidth);
+  expect(sharp).toBe(true);
+  await page.waitForTimeout(3500);
+  expect(await inked(page)).toBe(0);
+});

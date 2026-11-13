@@ -30,11 +30,15 @@ bun run playground
 ```
 
 Opens the empty view in your browser (http://localhost:1437/playground/),
-drawn by the app's own code, with sliders for each number the ASCII
-glow's look depends on, light and dark, and the accent colors. It lists
-the values changed from the defaults so they can be copied into the code
-(`ASCII_GLOW_DEFAULTS` in `src/features/mailbox/model/asciiGlow.ts`). The
-app itself always uses the defaults.
+drawn by the app's own code, with sliders for each number the ASCII glow's
+and the pond's looks depend on, and for how the pointer stirs the pond.
+It has light and dark, the accent colors, and switches to hide the icon
+and words or to drop stones by themselves. It lists the values changed
+from the defaults so they can be copied into the code
+(`ASCII_GLOW_DEFAULTS` in `src/features/mailbox/model/asciiGlow.ts`,
+`ASCII_POND_DEFAULTS` in `src/features/emptyToys/model/asciiPond.ts`,
+`POND_STIR_DEFAULTS` in `src/features/emptyToys/model/pond.ts`). The app
+itself always uses the defaults.
 
 ### Demo mode
 

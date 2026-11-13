@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { allPopped, bubbleAt, pop, sheetFor } from "./bubbles";
-import { PondToy, SETTLE_SECONDS } from "./pond";
+import { POND_STIR_DEFAULTS, PondToy, SETTLE_SECONDS } from "./pond";
 import { moonPath, moonPhase, nightness, skyAt, starsFor } from "./sky";
 import { parseToy } from "./toys";
 
@@ -121,5 +121,33 @@ describe("sky at night", () => {
       expect(s.x).toBeLessThanOrEqual(100);
       expect(s.y).toBeLessThanOrEqual(80);
     }
+  });
+});
+
+describe("pond stirring", () => {
+  const on = POND_STIR_DEFAULTS;
+
+  it("is on in the app, and does nothing when its depth is 0", () => {
+    expect(on.stirDepth).toBeGreaterThan(0);
+    const pond = new PondToy(200, 120, () => 0.5);
+    pond.stir(100, 60, 1000, { ...on, stirDepth: 0 });
+    expect(pond.active).toBe(false);
+  });
+
+  it("stirs faintly, far less than a stone, and deeper the faster the pointer", () => {
+    const peak = (setup: (p: PondToy) => void) => {
+      const pond = new PondToy(200, 120, () => 0.5);
+      setup(pond);
+      pond.frame(1 / 60);
+      let most = 0;
+      for (let x = 80; x <= 120; x++) most = Math.max(most, Math.abs(pond.heightAt(x, 60)));
+      return most;
+    };
+    const slow = peak((p) => p.stir(100, 60, on.stirFullSpeed / 4, on));
+    const fast = peak((p) => p.stir(100, 60, on.stirFullSpeed, on));
+    const stone = peak((p) => p.drop(100, 60));
+    expect(slow).toBeGreaterThan(0);
+    expect(fast).toBeGreaterThan(slow);
+    expect(fast).toBeLessThan(stone / 4);
   });
 });

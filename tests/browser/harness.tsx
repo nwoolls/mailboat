@@ -31,6 +31,7 @@
  *                                 List's density and preview lines
  *   ?mode=empty&toy=…             an empty Inbox with a Toybox toy
  *     &glow=pixel|ascii            and the glow, in that Toybox style
+ *     &style=pixel|ascii           the Toybox style without the glow
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
  *   &ai=none                      (card, inline) no AI set up
  *   &summary=live                 (inline) the AI summary above the
@@ -425,7 +426,7 @@ if (harnessMode === "empty") {
     "prefs.featureFlags",
     JSON.stringify({ emptyGlow: glow !== null, screensavers: params.has("screensaver") }),
   );
-  localStorage.setItem("prefs.toyboxStyle", JSON.stringify(glow ?? "pixel"));
+  localStorage.setItem("prefs.toyboxStyle", JSON.stringify(glow ?? params.get("style") ?? "pixel"));
 }
 
 // Imported after the mock, so the app sees a Tauri window (IS_TAURI).

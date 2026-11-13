@@ -21,7 +21,7 @@ export const FEATURE_FLAGS: readonly { id: FeatureFlagId; label: string; descrip
     id: "emptyGlow",
     label: "Glow",
     description:
-      "A soft glow drifts behind the empty view and follows the pointer. Hidden while the screensaver plays.",
+      "A soft glow drifts behind the empty view and follows the pointer. Hidden while the screensaver plays, and when there’s something to play with.",
   },
   {
     id: "screensavers",

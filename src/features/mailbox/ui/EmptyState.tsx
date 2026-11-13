@@ -63,12 +63,15 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
 export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey: string }) {
   const Icon = ICONS[state.icon];
   const flags = useFeatureFlags();
-  const { anchorRef, pullRef, glowRef } = useGlowPull(flags.emptyGlow);
+  const toy = emptyToy.use();
+  // The glow or a toy, not both: two things following the pointer and
+  // drawing behind the icon compete (owner, 2026-11-13).
+  const glow = flags.emptyGlow && toy === "none";
+  const { anchorRef, pullRef, glowRef } = useGlowPull(glow);
   const iconRef = useRef<HTMLDivElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
   const { phase: screensaver, scene } = useScreensaver(flags.screensavers);
   const { palette } = screensaverPrefs.use();
-  const toy = emptyToy.use();
   const style = toyboxStyle.use();
   const [shrugs, setShrugs] = useState(0);
   const shrug = useCallback(() => setShrugs((n) => n + 1), []);
@@ -78,7 +81,7 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
     <div ref={anchorRef} className="flex flex-1 items-center justify-center px-8">
       {/* Positioned against the card (.panel), not this box, so it can
           reach under the title row; z-index -1 keeps it behind text. */}
-      {flags.emptyGlow && (
+      {glow && (
         <div
           ref={pullRef}
           aria-hidden
@@ -90,7 +93,7 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
         </div>
       )}
       {/* Settings → Toybox → Style: the same glow, drawn in characters. */}
-      {flags.emptyGlow && style === "ascii" && (
+      {glow && style === "ascii" && (
         <AsciiGlow
           glowRef={glowRef}
           pullRef={pullRef}
@@ -107,6 +110,7 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
         iconRef={iconRef}
         wordsRef={wordsRef}
         palette={palette}
+        style={style}
       />
       {screensaver !== "off" && (
         <ScreensaverCanvas

@@ -11,13 +11,12 @@ import {
   shimmer,
   wake,
 } from "../model/asciiGlow";
-import { parseColor, type Rgb } from "../../screensaver/model/palettes";
-
-const MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
-/** Character colors from the accent (0) to the hot color (STEPS - 1), then one in the page's own color. */
-const STEPS = 4;
-/** Tile colors from the accent to the hot color. */
-const TILE_STEPS = 8;
+import {
+  asciiCell,
+  AsciiPainter,
+  GLYPH_ON_HOT,
+  readAsciiColors,
+} from "../../emptyToys/ui/asciiPaint";
 
 /**
  * The glow as ASCII art (`model/asciiGlow.ts`). It doesn't move on its
@@ -36,7 +35,7 @@ export function AsciiGlow({
 }: {
   glowRef: React.RefObject<HTMLDivElement | null>;
   pullRef: React.RefObject<HTMLDivElement | null>;
-  /** The icon and words: kept clear of characters, so they still read. */
+  /** The icon and words: the glow thins out around them, so they still read. */
   iconRef: React.RefObject<HTMLDivElement | null>;
   wordsRef: React.RefObject<HTMLDivElement | null>;
   hidden: boolean;
@@ -48,6 +47,7 @@ export function AsciiGlow({
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const painter = new AsciiPainter(ctx);
 
     let t: AsciiGlowTuning = asciiGlowTuning();
     let frame = 0;
@@ -61,28 +61,14 @@ export function AsciiGlow({
     let heat = new Float32Array(0);
     let seed = new Float32Array(0);
     let clock = new Float32Array(0);
-    let dark = true;
-    let atlas: HTMLCanvasElement | null = null;
-    let tiles: string[] = [];
-    let lookKey = "";
     let gridKey = "";
-
     // Colors come from the page, so they follow the accent and light or
     // dark; read again now and then, not every frame.
-    const readColors = () => {
-      const root = getComputedStyle(document.documentElement);
-      const accent = parseColor(root.getPropertyValue("--color-accent")) ?? [80, 140, 240];
-      const content = parseColor(root.getPropertyValue("--color-content")) ?? [235, 235, 238];
-      const base = parseColor(root.getPropertyValue("--color-background-base")) ?? [22, 22, 24];
-      dark = luma(content) > luma(base);
-      const hot = mix(accent, content, dark ? t.hotMixDark : t.hotMixLight);
-      return { accent, content, base, hot };
-    };
-    let colors = readColors();
+    let colors = readAsciiColors(t.hotMixDark, t.hotMixLight);
 
-    // What the glow clears round (`clearing`): the icon's box and each
-    // line of the words, measured round the letters themselves as the pond
-    // does. Re-measured now and then, as they rise in.
+    // What the glow clears around (`clearing`): the icon's box and each
+    // line of the words, measured around the letters themselves as the
+    // pond does. Re-measured now and then, as they rise in.
     let shapes: ClearShape[] = [];
     const measure = () => {
       const box = canvas.getBoundingClientRect();
@@ -112,18 +98,16 @@ export function AsciiGlow({
     const layout = () => {
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
-      const nextDpr = Math.min(2, window.devicePixelRatio || 1);
-      ctx.font = `${t.fontPx}px ${MONO}`;
-      const nextCw = Math.ceil(ctx.measureText("M").width);
-      const nextCh = Math.round(t.fontPx * t.lineHeight);
-      const nextCols = Math.ceil(w / nextCw);
-      const nextRows = Math.ceil(h / nextCh);
-      const pxW = Math.round(w * nextDpr);
-      const pxH = Math.round(h * nextDpr);
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      ({ cw, ch } = asciiCell(ctx, t.fontPx, t.lineHeight));
+      const pxW = Math.round(w * dpr);
+      const pxH = Math.round(h * dpr);
       if (canvas.width !== pxW || canvas.height !== pxH) {
         canvas.width = pxW;
         canvas.height = pxH;
       }
+      const nextCols = Math.ceil(w / cw);
+      const nextRows = Math.ceil(h / ch);
       if (nextCols !== cols || nextRows !== rows) {
         cols = nextCols;
         rows = nextRows;
@@ -136,30 +120,12 @@ export function AsciiGlow({
           clock[i] = Math.random();
         }
       }
-      dpr = nextDpr;
-      cw = nextCw;
-      ch = nextCh;
-      const key = [
-        cw,
-        ch,
-        dpr,
-        t.ramp,
-        t.fontPx,
-        ...colors.accent,
-        ...colors.hot,
-        ...colors.base,
-      ].join();
-      if (key !== lookKey) {
-        lookKey = key;
-        atlas = buildAtlas(t, cw, ch, dpr, colors.accent, colors.hot, colors.base);
-        tiles = Array.from({ length: TILE_STEPS }, (_, k) =>
-          rgb(mix(colors.accent, colors.hot, k / (TILE_STEPS - 1))),
-        );
-      }
-      const grid = `${cw}/${ch}/${dark ? t.gridDark : t.gridLight}/${colors.content.join()}`;
-      if (grid !== gridKey) {
-        gridKey = grid;
-        const line = `rgb(${colors.content.join(" ")} / ${dark ? t.gridDark : t.gridLight})`;
+      painter.prepare(cw, ch, dpr, t.fontPx, t.ramp, colors);
+      const grid = colors.dark ? t.gridDark : t.gridLight;
+      const key = `${cw}/${ch}/${grid}/${colors.content.join()}`;
+      if (key !== gridKey) {
+        gridKey = key;
+        const line = `rgb(${colors.content.join(" ")} / ${grid})`;
         canvas.style.backgroundImage = `linear-gradient(to right, ${line} 1px, transparent 1px), linear-gradient(to bottom, ${line} 1px, transparent 1px)`;
         canvas.style.backgroundSize = `${cw}px ${ch}px`;
       }
@@ -171,7 +137,7 @@ export function AsciiGlow({
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       t = asciiGlowTuning();
-      if (count++ % 30 === 0) colors = readColors();
+      if (count++ % 30 === 0) colors = readAsciiColors(t.hotMixDark, t.hotMixLight);
       layout();
       if (count % 15 === 1) measure();
 
@@ -179,7 +145,7 @@ export function AsciiGlow({
       const pull = pullRef.current;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!glow || !pull || !atlas) return;
+      if (!glow || !pull) return;
 
       // Where the (invisible) gradient glow is, and how strong.
       const box = canvas.getBoundingClientRect();
@@ -217,27 +183,17 @@ export function AsciiGlow({
             clock[i] = sh.clock;
             notch = sh.notch;
           }
-          const look = cellLook(v, seed[i]!, notch, dark, t);
+          const look = cellLook(v, seed[i]!, notch, colors.dark, t);
           if (!look) continue;
-          const x = col * cw * dpr;
-          const y = row * ch * dpr;
-          ctx.globalAlpha = look.tileAlpha * fade;
-          ctx.fillStyle = look.hot
-            ? tiles[TILE_STEPS - 1]!
-            : tiles[Math.round(look.warmth * (TILE_STEPS - 1))]!;
-          ctx.fillRect(x + dpr * 0.5, y + dpr * 0.5, (cw - 1) * dpr, (ch - 1) * dpr);
-          const step = look.hot ? STEPS : v > 0.6 ? 2 : 1;
-          ctx.globalAlpha = look.glyphAlpha * fade;
-          ctx.drawImage(
-            atlas,
-            look.glyph * cw * dpr,
-            step * ch * dpr,
-            cw * dpr,
-            ch * dpr,
+          const x = col * cw;
+          const y = row * ch;
+          painter.tile(x, y, look.warmth, look.tileAlpha * fade);
+          painter.glyph(
             x,
             y,
-            cw * dpr,
-            ch * dpr,
+            t.ramp[look.glyph]!,
+            look.hot ? GLYPH_ON_HOT : v > 0.6 ? 2 : 1,
+            look.glyphAlpha * fade,
           );
         }
       }
@@ -255,51 +211,4 @@ export function AsciiGlow({
       data-screensaver={hidden || undefined}
     />
   );
-}
-
-/**
- * Every ramp character, once per color: rows 0 to STEPS - 1 run from the
- * accent to the hot color, row STEPS is the page's background color (for
- * a character on a pale tile). Column k is the ramp's k-th character.
- */
-function buildAtlas(
-  t: AsciiGlowTuning,
-  cw: number,
-  ch: number,
-  dpr: number,
-  accent: Rgb,
-  hot: Rgb,
-  base: Rgb,
-): HTMLCanvasElement {
-  const atlas = document.createElement("canvas");
-  atlas.width = Math.ceil(t.ramp.length * cw * dpr);
-  atlas.height = Math.ceil((STEPS + 1) * ch * dpr);
-  const a = atlas.getContext("2d");
-  if (!a) return atlas;
-  a.scale(dpr, dpr);
-  a.font = `${t.fontPx}px ${MONO}`;
-  a.textAlign = "center";
-  a.textBaseline = "middle";
-  for (let row = 0; row <= STEPS; row++) {
-    a.fillStyle = row === STEPS ? rgb(base) : rgb(mix(accent, hot, row / (STEPS - 1)));
-    for (let k = 1; k < t.ramp.length; k++)
-      a.fillText(t.ramp[k]!, k * cw + cw / 2, row * ch + ch / 2 + 0.5);
-  }
-  return atlas;
-}
-
-function mix(a: Rgb, b: Rgb, k: number): Rgb {
-  return [
-    Math.round(a[0] + (b[0] - a[0]) * k),
-    Math.round(a[1] + (b[1] - a[1]) * k),
-    Math.round(a[2] + (b[2] - a[2]) * k),
-  ];
-}
-
-function rgb(c: Rgb): string {
-  return `rgb(${c[0]} ${c[1]} ${c[2]})`;
-}
-
-function luma(c: Rgb): number {
-  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 }

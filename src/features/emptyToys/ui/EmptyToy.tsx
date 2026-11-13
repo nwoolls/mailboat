@@ -16,7 +16,11 @@ import {
   paletteColors,
   parseColor,
 } from "../../screensaver/model/palettes";
-import { PondToy } from "../model/pond";
+import { PLOP_SECONDS, pondStir, PondToy } from "../model/pond";
+import { asciiPondTuning, pondChars, pondLook, strongest } from "../model/asciiPond";
+import type { ToyboxStyle } from "../model/style";
+import { asciiGlowTuning } from "../../mailbox/model/asciiGlow";
+import { asciiCell, AsciiPainter, GLYPH_ON_HOT, readAsciiColors } from "./asciiPaint";
 import { moonPath, moonPhase, nightness, skyAt, starsFor } from "../model/sky";
 import type { ToyId } from "../model/toys";
 
@@ -42,6 +46,7 @@ export function EmptyToy({
   iconRef,
   wordsRef,
   palette,
+  style = "pixel",
 }: {
   toy: ToyId;
   areaRef: RefObject<HTMLElement | null>;
@@ -50,14 +55,19 @@ export function EmptyToy({
   wordsRef: RefObject<HTMLElement | null>;
   /** The Toybox palette, which the toys share with the screensavers. */
   palette: PaletteId;
+  /** Pixel art or ASCII art (Settings → Toybox → Style); so far the pond has both. */
+  style?: ToyboxStyle;
 }) {
   const box = useAreaBox(areaRef, iconRef, wordsRef, toy !== "none");
   if (toy === "none" || !box) return null;
-  const style = { left: box.left, top: box.top, width: box.width, height: box.height };
+  const place = { left: box.left, top: box.top, width: box.width, height: box.height };
   return (
-    <div aria-hidden className="pointer-events-none absolute overflow-hidden" style={style}>
+    <div aria-hidden className="pointer-events-none absolute overflow-hidden" style={place}>
       {toy === "sky" && <SkyLayer areaRef={areaRef} />}
-      {toy === "ripples" && <PondLayer areaRef={areaRef} box={box} palette={palette} />}
+      {toy === "ripples" && style === "ascii" && <AsciiPondLayer areaRef={areaRef} box={box} />}
+      {toy === "ripples" && style !== "ascii" && (
+        <PondLayer areaRef={areaRef} box={box} palette={palette} />
+      )}
       {toy === "bubbles" && <BubbleLayer areaRef={areaRef} box={box} />}
     </div>
   );
@@ -195,18 +205,22 @@ function PondLayer({
       // Once still, the last frame drawn was empty: stop.
       frame = pond.active ? requestAnimationFrame(tick) : 0;
     };
+    const wake = () => {
+      if (frame) return;
+      last = performance.now();
+      frame = requestAnimationFrame(tick);
+    };
     const down = (e: PointerEvent) => {
       if (e.button !== 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       const r = area.getBoundingClientRect();
       pond.drop((e.clientX - r.left) / TOY_CELL_PX, (e.clientY - r.top) / TOY_CELL_PX);
-      if (!frame) {
-        last = performance.now();
-        frame = requestAnimationFrame(tick);
-      }
+      wake();
     };
     area.addEventListener("pointerdown", down);
+    const stopStirring = stirOnMove(area, pond, wake);
     return () => {
       area.removeEventListener("pointerdown", down);
+      stopStirring();
       cancelAnimationFrame(frame);
     };
   }, [areaRef, cols, rows]);
@@ -224,6 +238,180 @@ function PondLayer({
       style={{ width: cols * TOY_CELL_PX, height: rows * TOY_CELL_PX, imageRendering: "pixelated" }}
     />
   );
+}
+
+/**
+ * The pond in ASCII art (`model/asciiPond.ts`): the same water as in pixel
+ * art, drawn on the glow's grid of characters, lined up with it across the
+ * card. Draws only while something moves, then clears and stops.
+ */
+function AsciiPondLayer({ areaRef, box }: { areaRef: RefObject<HTMLElement | null>; box: Box }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const pondRef = useRef<PondToy | null>(null);
+  const { clear, width, height, left, top } = box;
+  const clearRef = useRef(clear);
+  const placeRef = useRef({ left, top });
+  useEffect(() => {
+    placeRef.current = { left, top };
+  }, [left, top]);
+  const cols = Math.max(1, Math.floor(width / TOY_CELL_PX));
+  const rows = Math.max(1, Math.floor(height / TOY_CELL_PX));
+  useEffect(() => {
+    const area = areaRef.current;
+    const canvas = ref.current;
+    const ctx = canvas?.getContext("2d");
+    if (!area || !canvas || !ctx) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    const painter = new AsciiPainter(ctx);
+    const pond = new PondToy(cols, rows);
+    pond.setSolids(inCells(clearRef.current));
+    pondRef.current = pond;
+    let seeds = new Float32Array(0);
+    let frame = 0;
+    let last = 0;
+    let colors = readAsciiColors(asciiGlowTuning().hotMixDark, asciiGlowTuning().hotMixLight);
+    const tick = (now: number) => {
+      pond.frame(Math.min((now - last) / 1000, 0.1));
+      last = now;
+      const g = asciiGlowTuning();
+      const t = asciiPondTuning();
+      colors = readAsciiColors(g.hotMixDark, g.hotMixLight);
+      const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
+      painter.prepare(cw, ch, dpr, g.fontPx, pondChars(t), colors);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Cells on the card's grid (the glow's), not the area's.
+      const { left: l, top: tp } = placeRef.current;
+      const ox = -(((l % cw) + cw) % cw);
+      const oy = -(((tp % ch) + ch) % ch);
+      const across = Math.ceil((width - ox) / cw);
+      const down = Math.ceil((height - oy) / ch);
+      if (seeds.length !== across * down)
+        seeds = Float32Array.from({ length: across * down }, Math.random);
+      const solid = clearRef.current;
+      for (let r = 0; r < down; r++) {
+        const y = oy + r * ch;
+        for (let c = 0; c < across; c++) {
+          const x = ox + c * cw;
+          const mx = x + cw / 2;
+          // Nothing drawn over the icon or a line of the words.
+          if (
+            solid.some((b) => mx >= b.x0 && mx <= b.x1 && y + ch / 2 >= b.y0 && y + ch / 2 <= b.y1)
+          )
+            continue;
+          const shade = strongest((py) => pond.shading(mx / TOY_CELL_PX, py / TOY_CELL_PX), y, ch);
+          const look = pondLook(shade, seeds[r * across + c]!, colors.dark, t);
+          if (!look) continue;
+          if (look.kind === "trough") {
+            painter.glyph(x, y, look.char, 0, look.glyphAlpha);
+            continue;
+          }
+          painter.tile(x, y, look.warmth, look.tileAlpha);
+          painter.glyph(
+            x,
+            y,
+            look.char,
+            look.hot ? GLYPH_ON_HOT : look.v > 0.6 ? 2 : 1,
+            look.glyphAlpha,
+          );
+        }
+      }
+      // The cell under a point in the area's pixels.
+      const cellAt = (px: number, py: number) => ({
+        x: ox + Math.floor((px - ox) / cw) * cw,
+        y: oy + Math.floor((py - oy) / ch) * ch,
+      });
+      // The plop: a quick burst of pale tiles, flattened.
+      for (const p of pond.plops) {
+        const fade = 1 - p.age / PLOP_SECONDS;
+        const at = cellAt(p.x * TOY_CELL_PX, p.y * TOY_CELL_PX);
+        for (let dy = -t.plopRows; dy <= t.plopRows; dy++)
+          for (let dx = -t.plopCols; dx <= t.plopCols; dx++) {
+            const reach = Math.hypot(dx / (t.plopCols + 0.5), dy / (t.plopRows + 0.5));
+            if (reach > 1) continue;
+            const a = fade * (1 - reach * 0.6);
+            painter.tile(at.x + dx * cw, at.y + dy * ch, 1, a * 0.85);
+            painter.glyph(at.x + dx * cw, at.y + dy * ch, t.plopChar, GLYPH_ON_HOT, a);
+          }
+      }
+      // Droplets: a bright bead, and a tick behind it.
+      for (const d of pond.droplets) {
+        const bead = cellAt(d.x * TOY_CELL_PX, d.y * TOY_CELL_PX);
+        const tail = cellAt((d.x - d.vx * 0.03) * TOY_CELL_PX, (d.y - d.vy * 0.03) * TOY_CELL_PX);
+        if (tail.x !== bead.x || tail.y !== bead.y)
+          painter.glyph(tail.x, tail.y, t.trailChar, 2, 0.6);
+        painter.tile(bead.x, bead.y, 0.8, 0.5);
+        painter.glyph(bead.x, bead.y, t.dropletChar, 3, 1);
+      }
+      ctx.globalAlpha = 1;
+      // Once still, the last frame drawn was empty: stop.
+      frame = pond.active ? requestAnimationFrame(tick) : 0;
+    };
+    const wake = () => {
+      if (frame) return;
+      last = performance.now();
+      frame = requestAnimationFrame(tick);
+    };
+    const down = (e: PointerEvent) => {
+      if (e.button !== 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const r = area.getBoundingClientRect();
+      pond.drop((e.clientX - r.left) / TOY_CELL_PX, (e.clientY - r.top) / TOY_CELL_PX);
+      wake();
+    };
+    area.addEventListener("pointerdown", down);
+    const stopStirring = stirOnMove(area, pond, wake);
+    return () => {
+      area.removeEventListener("pointerdown", down);
+      stopStirring();
+      cancelAnimationFrame(frame);
+    };
+  }, [areaRef, cols, rows, width, height]);
+  useEffect(() => {
+    clearRef.current = clear;
+    pondRef.current?.setSolids(inCells(clear));
+  }, [clear]);
+  return <canvas ref={ref} style={{ width, height }} />;
+}
+
+/**
+ * The pointer stirring the pond as it moves (`PondStir`, off unless its
+ * depth is set): a faint push every few cells it travels, deeper the faster
+ * it goes, waking the pond if it was still. Returns the cleanup.
+ */
+function stirOnMove(area: HTMLElement, pond: PondToy, wake: () => void): () => void {
+  let from: { x: number; y: number; t: number } | null = null;
+  const move = (e: PointerEvent) => {
+    const t = pondStir();
+    if (t.stirDepth <= 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      from = null;
+      return;
+    }
+    const r = area.getBoundingClientRect();
+    const x = (e.clientX - r.left) / TOY_CELL_PX;
+    const y = (e.clientY - r.top) / TOY_CELL_PX;
+    const now = performance.now();
+    if (!from) {
+      from = { x, y, t: now };
+      return;
+    }
+    const moved = Math.hypot(x - from.x, y - from.y);
+    if (moved < t.stirEvery) return;
+    const speed = moved / Math.max(0.016, (now - from.t) / 1000);
+    from = { x, y, t: now };
+    pond.stir(x, y, speed, t);
+    if (pond.active) wake();
+  };
+  const leave = () => {
+    from = null;
+  };
+  area.addEventListener("pointermove", move);
+  area.addEventListener("pointerleave", leave);
+  return () => {
+    area.removeEventListener("pointermove", move);
+    area.removeEventListener("pointerleave", leave);
+  };
 }
 
 /** Boxes in the area's pixels, in the pixel-art toys' cells. */

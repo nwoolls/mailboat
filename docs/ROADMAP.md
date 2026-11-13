@@ -4555,7 +4555,28 @@ between pixel art and ASCII art for the screensavers.*
       switches to hide the icon and words. It lists the values changed
       from the defaults, to paste back into the code. Development only;
       the app always uses the defaults. Other toys join it as they're tuned
-- [ ] The pond's ripples in ASCII art
+- [x] The pond's ripples in ASCII art *(owner, 2026-11-13: "next
+      please")*. The same water as in pixel art, drawn on the glow's grid
+      and lined up with it across the card: a slope facing the light is a
+      tile with a character picked by brightness (the brightest flipping
+      to a pale tile), a slope facing away only a faint `~` or `-` with no
+      tile, a stone's plop a quick burst of pale `@` tiles, and each
+      droplet a bright `o` with a `'` behind it. The tiles and characters
+      are drawn by one painter shared with the glow
+      (`emptyToys/ui/asciiPaint.ts`), which the screensavers can use too.
+      In the playground, with its own sliders
+- [x] The glow or a toy, not both *(owner, 2026-11-13: "they should be
+      mutually exclusive", in the app too)*: while a toy is chosen, the
+      glow steps aside, in pixel art and ASCII art alike; its switch keeps
+      its own setting
+- [x] The pointer stirs the pond *(owner, 2026-11-13: "extremely subtle
+      ripples that follow the mouse, but clicking still disturbs the water
+      more")*: a faint push every few cells the pointer moves over the
+      water, a little deeper the faster it goes and well under a stone's
+      splash, in pixel art and ASCII art alike; a click still drops a
+      stone. Tried in the playground (which can also drop stones by
+      itself, off by default). *Owner: liked it without stones and
+      without the glow; the playground's depth became the default*
 - [ ] The screensavers in ASCII art: likely one way of drawing every
       scene's palette cells as characters on tiles, then tuning each
       scene, starting with the jellyfish

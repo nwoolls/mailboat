@@ -20,7 +20,8 @@ import { blend, ink, type Rect, SLOT } from "../../screensaver/model/scene";
 type Droplet = { x: number; y: number; vx: number; vy: number; ground: number };
 type Plop = { x: number; y: number; age: number };
 
-/** Seen at an angle: the water is drawn this much as tall as it is wide. */
+/** How long a stone's plop lasts, in seconds. */
+export /** Seen at an angle: the water is drawn this much as tall as it is wide. */
 const FLAT = 0.62;
 /** Simulation steps per second, and the waves' speed (cells per step, squared; over 0.5 blows up). */
 const STEPS_PER_SECOND = 240;
@@ -33,7 +34,45 @@ const CALM = 0.012;
 const STONE = 6.4;
 const STONE_RADIUS = 5;
 const GRAVITY = 140;
-const PLOP_SECONDS = 0.25;
+/** How long a stone's plop lasts, in seconds. */
+export const PLOP_SECONDS = 0.25;
+/**
+ * The pointer stirring the water as it moves over it (owner, 2026-11-13:
+ * "extremely subtle ripples that follow the mouse, but clicking still
+ * disturbs the water more"). Off when `stirDepth` is 0. Shared by pixel
+ * and ASCII art, since the water is the same; the playground can dial it.
+ */
+export type PondStir = {
+  /** How deep each stir pushes, at full speed (a stone is 6.4). 0 is off. */
+  stirDepth: number;
+  /** How wide each stir is, in cells (2px each). */
+  stirRadius: number;
+  /** How far the pointer moves between stirs, in cells. */
+  stirEvery: number;
+  /** Pointer speed, in cells per second, that stirs at full depth. */
+  stirFullSpeed: number;
+};
+
+export const POND_STIR_DEFAULTS: PondStir = {
+  // Tried in the playground and chosen by the owner (2026-11-13).
+  stirDepth: 0.6,
+  stirRadius: 2.2,
+  stirEvery: 6,
+  stirFullSpeed: 400,
+};
+
+let stirTuning: PondStir = POND_STIR_DEFAULTS;
+
+/** How the pointer stirs the pond; the defaults unless the playground changed it. */
+export function pondStir(): PondStir {
+  return stirTuning;
+}
+
+/** For the playground only. */
+export function setPondStir(next: PondStir) {
+  stirTuning = next;
+}
+
 /** Calm by now at the latest, however it was disturbed (for tests). */
 export const SETTLE_SECONDS = 4;
 
@@ -46,7 +85,7 @@ export class PondToy {
   /** 1 where the icon or a line of the words stands in the water. */
   private readonly solid: Uint8Array;
   readonly droplets: Droplet[] = [];
-  private readonly plops: Plop[] = [];
+  readonly plops: Plop[] = [];
   private owed = 0;
   private moving = false;
 
@@ -95,6 +134,16 @@ export class PondToy {
       });
     }
     if (this.droplets.length > 80) this.droplets.splice(0, this.droplets.length - 80);
+  }
+
+  /**
+   * The pointer passing over (x, y) in screen cells at `speed` cells per
+   * second: a faint dip, deeper the faster it moves, up to `stirDepth`.
+   */
+  stir(x: number, y: number, speed: number, t: PondStir = stirTuning) {
+    if (t.stirDepth <= 0) return;
+    const depth = t.stirDepth * Math.min(1, speed / t.stirFullSpeed);
+    if (depth > 0.01) this.push(x, y, depth, t.stirRadius);
   }
 
   /** Pushes the water down in a soft round dip at (x, y) in screen cells. */
@@ -173,27 +222,39 @@ export class PondToy {
     return biggest;
   }
 
+  /**
+   * How the surface catches the light at (x, y) in screen cells: negative
+   * on a slope facing the light (top left, bright), positive facing away
+   * (dark), 0 on still water. Measured over two cells, which smooths the
+   * grid's finest ripples (a grainy wake behind each wave front).
+   */
+  shading(x: number, y: number): number {
+    const { cols, w, h, now } = this;
+    if (!this.moving) return 0;
+    const xi = Math.round(x);
+    if (xi < 1 || xi >= cols - 1) return 0;
+    // Between two of the simulation's rows, blended (picking the nearest
+    // one drew in streaks).
+    const fy = Math.min(h - 3, Math.max(1, y / FLAT));
+    const sy = Math.floor(fy);
+    const t = fy - sy;
+    const at = (xx: number, yy: number) =>
+      now[yy * w + xx]! * (1 - t) + now[(yy + 1) * w + xx]! * t;
+    const x0 = Math.max(0, xi - 2);
+    const x1 = Math.min(cols - 1, xi + 2);
+    const y0 = Math.max(0, sy - 2);
+    const y1 = Math.min(h - 2, sy + 2);
+    return (at(x0, sy) - at(x1, sy) + (at(xi, y0) - at(xi, y1))) * 0.5;
+  }
+
   draw(out: Uint8Array, opacity: Uint8Array) {
-    const { cols, rows, w, h, now } = this;
+    const { cols, rows } = this;
     out.fill(0);
     if (this.moving)
       for (let y = 0; y < rows; y++) {
-        // Between two of the simulation's rows, blended (picking the
-        // nearest one drew in streaks).
-        const fy = Math.min(h - 3, Math.max(1, y / FLAT));
-        const sy = Math.floor(fy);
-        const t = fy - sy;
-        const at = (x: number, yy: number) =>
-          now[yy * w + x]! * (1 - t) + now[(yy + 1) * w + x]! * t;
         for (let x = 1; x < cols - 1; x++) {
-          // Lit from the top left: slopes facing it are bright, facing away
-          // dark. Measured over two cells, which smooths the grid's finest
-          // ripples (a grainy wake behind each wave front).
-          const x0 = Math.max(0, x - 2);
-          const x1 = Math.min(cols - 1, x + 2);
-          const y0 = Math.max(0, sy - 2);
-          const y1 = Math.min(h - 2, sy + 2);
-          const slope = (at(x0, sy) - at(x1, sy) + (at(x, y0) - at(x, y1))) * 0.5;
+          // Lit from the top left: slopes facing it are bright, facing away dark.
+          const slope = this.shading(x, y);
           if (Math.abs(slope) < 0.03) continue;
           const j = y * cols + x;
           out[j] = slope < 0 ? blend(SLOT.accent, SLOT.bright, 0.25) : ink(SLOT.dark);

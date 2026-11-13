@@ -10,7 +10,8 @@ export const TOYS: readonly { id: ToyId; label: string; description: string }[] 
   {
     id: "ripples",
     label: "Pond",
-    description: "Click the empty view and rings spread out, like a stone dropped in still water.",
+    description:
+      "Move the pointer over the empty view and the water stirs faintly. Click and rings spread out, like a stone dropped in still water.",
   },
   {
     id: "bubbles",
