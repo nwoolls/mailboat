@@ -112,7 +112,8 @@ export function updateSummary(action: ThreadAction, t: ThreadSummary): ThreadSum
     case "star":
       return { ...t, starred: action.starred };
     case "trash":
-      return { ...t, inTrash: action.trashed };
+      // Gmail drops INBOX when it trashes, and untrash leaves it out.
+      return { ...t, inTrash: action.trashed, inInbox: action.trashed ? false : t.inInbox };
     case "spam":
       return { ...t, inSpam: action.spam, inInbox: !action.spam };
     case "labels": {

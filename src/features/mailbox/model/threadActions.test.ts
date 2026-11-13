@@ -115,6 +115,17 @@ describe("leavesView", () => {
   });
 });
 
+// Gmail drops INBOX when it trashes a conversation, and untrash doesn't
+// bring it back (checked by the owner in Gmail, 2026-11-12).
+describe("updateSummary for Trash", () => {
+  it("takes a trashed conversation out of the Inbox, and a restore leaves it out", () => {
+    const trashed = updateSummary({ kind: "trash", trashed: true }, thread(1, { inInbox: true }));
+    expect([trashed.inTrash, trashed.inInbox]).toEqual([true, false]);
+    const restored = updateSummary({ kind: "trash", trashed: false }, trashed);
+    expect([restored.inTrash, restored.inInbox]).toEqual([false, false]);
+  });
+});
+
 describe("withAction", () => {
   it("drops rows that leave the view and leaves the original untouched", () => {
     const data = page(thread(1), thread(2));

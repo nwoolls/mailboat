@@ -190,7 +190,9 @@ pub async fn set_starred(
 
 /// Moves threads to the Trash, or takes them out. Gmail empties the Trash
 /// itself after 30 days; deleting forever needs a broader scope than
-/// the app asks for.
+/// the app asks for. The cached copy mirrors what Gmail does: trashing
+/// drops INBOX, and taking a thread out of the Trash doesn't bring it
+/// back, so it is in All Mail only (checked in Gmail, 2026-11-12).
 pub async fn set_trashed(
     db: &Db,
     gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
@@ -198,7 +200,7 @@ pub async fn set_trashed(
     trashed: bool,
 ) -> Result<Vec<AccountId>> {
     if trashed {
-        let plans = system_plan(db, threads, &[TRASH], &[])?;
+        let plans = system_plan(db, threads, &[TRASH], &[INBOX])?;
         apply(db, gmail_for, plans, Remote::Trash).await
     } else {
         let plans = system_plan(db, threads, &[], &[TRASH])?;

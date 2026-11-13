@@ -262,9 +262,10 @@ async fn trash_uses_gmails_trash_call_and_hides_the_thread_from_other_views() {
     };
     assert_eq!(in_view(&db, a, trash.clone()), vec![t1]);
     let summary = query::thread_summary(&db.conn(), t1).unwrap();
-    assert!(summary.in_trash && summary.in_inbox);
-    // It keeps its INBOX label (as in Gmail) but no longer shows there, nor
-    // in its user label, nor in the Inbox unread count.
+    // Gmail drops INBOX when it trashes a conversation (checked by the owner
+    // in Gmail, 2026-11-12), so the cached copy does too. It no longer
+    // shows in its user label, nor in the Inbox unread count.
+    assert!(summary.in_trash && !summary.in_inbox);
     assert!(in_view(&db, a, INBOX).is_empty());
     assert!(in_view(
         &db,
@@ -283,7 +284,11 @@ async fn trash_uses_gmails_trash_call_and_hides_the_thread_from_other_views() {
         .await
         .unwrap();
     assert!(in_view(&db, a, trash).is_empty());
-    assert_eq!(in_view(&db, a, INBOX), vec![t1]);
+    // Gmail's untrash doesn't bring INBOX back (checked by the owner, for a
+    // conversation trashed from the Inbox and for one archived first): it
+    // is in All Mail only.
+    assert!(in_view(&db, a, INBOX).is_empty());
+    assert_eq!(in_view(&db, a, MailView::AllMail), vec![t1]);
 }
 
 fn label_id_of(db: &Db, account: AccountId, gmail_label_id: &str) -> LabelId {
