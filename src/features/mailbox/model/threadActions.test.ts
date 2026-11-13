@@ -151,6 +151,29 @@ describe("withAction", () => {
     )!;
     expect(next.pages[0]!.threads.map((t) => t.unread)).toEqual([true, false]);
   });
+
+  // In a search that includes Spam and Trash, a conversation moved to
+  // either stays, showing where it is now, so Restore / Not spam is on
+  // offer (code review).
+  it("keeps a row moved to Trash or Spam in a search that includes them", () => {
+    const everywhere = { kind: "search", text: "plans", withSpamTrash: true } as const;
+    const trashed = withAction(
+      page(thread(1)),
+      new Set([1]),
+      { kind: "trash", trashed: true },
+      everywhere,
+    )!.pages[0]!.threads;
+    expect(trashed.map((t) => [t.id, t.inTrash])).toEqual([[1, true]]);
+    expect(toggleFor("trash", trashed)).toEqual({ kind: "trash", trashed: false });
+    const spammed = withAction(
+      page(thread(1)),
+      new Set([1]),
+      { kind: "spam", spam: true },
+      everywhere,
+    )!.pages[0]!.threads;
+    expect(spammed.map((t) => [t.id, t.inSpam])).toEqual([[1, true]]);
+    expect(toggleFor("spam", spammed)).toEqual({ kind: "spam", spam: false });
+  });
 });
 
 describe("withDetailAction", () => {

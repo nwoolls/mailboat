@@ -5083,7 +5083,7 @@ and new bugs still come here.*
       to the next result and opened the preview *(found in review of the
       archive fix, #114, 2026-11-12; reproduced by the owner the same day;
       fixed the same day, and the owner tried it)*:
-      with "Include Spam and Trash" on (Settings → Viewing), restoring a
+      with "Include Spam and Trash" on (Settings → Viewing → Search), restoring a
       trashed result and pressing Undo moved on to the next conversation and
       opened the preview, even when it had been collapsed. `leavesView`
       counted moving to Trash or Spam as leaving every view but those
