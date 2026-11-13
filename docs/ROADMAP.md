@@ -4578,6 +4578,17 @@ between pixel art and ASCII art for the screensavers.*
       carries over once: the glow on with no toy becomes Glow, the glow off
       becomes None, and a chosen toy stays. Bubble wrap stays for now (the
       owner may replace it with the glow: "we'll see")
+- [x] The list's title treated like the words *(owner, 2026-11-13, with
+      screenshots: "it is treated differently by each toy. We should be
+      uniform")*: the glow, which spans the title row, thins out around the
+      title's letters as it does around the words, so it stays readable.
+      The pond's water runs up under the title row to the card's top edge
+      (no hard edge below the title), with the title's letters standing in
+      it as the words do; the title row still gets its clicks. The glow now
+      clears whole cells, measured from each cell's nearest edge, so no tile
+      overlaps a letter. *Owner: "LGTM"*
+- [ ] Rethink Settings → Toybox *(owner, 2026-11-13: "as a last step we'll
+      rethink the settings screen")*
 - [x] The pointer stirs the pond *(owner, 2026-11-13: "extremely subtle
       ripples that follow the mouse, but clicking still disturbs the water
       more")*: a faint push every few cells the pointer moves over the

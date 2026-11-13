@@ -143,7 +143,7 @@ export function Harness({
           flexDirection: "column",
         }}
       >
-        <button type="button" style={{ height: 40 }}>
+        <button type="button" data-card-title style={{ height: 40 }}>
           Inbox
         </button>
         <EmptyState state={{ icon: "caughtUp", title: "All caught up" }} swapKey="inbox" />

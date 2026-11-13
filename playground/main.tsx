@@ -331,8 +331,10 @@ function Playground() {
             overflow: "hidden",
           }}
         >
-          <div className="flex h-11 shrink-0 items-center px-4 text-[14px] font-semibold">
-            Inbox
+          <div className="flex h-11 shrink-0 items-center px-4">
+            <h2 data-card-title className="text-[14px] font-semibold">
+              Inbox
+            </h2>
           </div>
           <EmptyState
             state={{

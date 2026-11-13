@@ -116,3 +116,12 @@ describe("cleared", () => {
     }
   });
 });
+
+describe("clearing a whole cell", () => {
+  it("clears a cell that only overlaps a letter at its edge", () => {
+    const words = { kind: "words", x0: 100, y0: 100, x1: 160, y1: 116 } as const;
+    // A cell centered 3px past the letters' right edge, 8px wide.
+    expect(clearing(163, 108, [words], T)).toBeGreaterThan(0);
+    expect(clearing(163, 108, [words], T, 4, 7.5)).toBe(0);
+  });
+});

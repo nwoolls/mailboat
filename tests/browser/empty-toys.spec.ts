@@ -16,6 +16,18 @@ const inked = (page: Page) =>
 
 const layer = (page: Page) => page.locator('[aria-hidden="true"].pointer-events-none').first();
 
+/**
+ * The pond's water runs up under the title row to the card's top edge
+ * (owner, 2026-11-13: no hard edge below the title), yet the title row
+ * still gets its clicks.
+ */
+async function reachUnderTitle(page: Page) {
+  const box = await layer(page).boundingBox();
+  const title = await page.getByRole("button", { name: "Inbox" }).boundingBox();
+  expect(box!.y).toBeLessThanOrEqual(title!.y + 0.5);
+  await page.getByRole("button", { name: "Inbox" }).click({ trial: true });
+}
+
 async function stayClearOfTitle(page: Page) {
   const box = await layer(page).boundingBox();
   const title = await page.getByRole("button", { name: "Inbox" }).boundingBox();
@@ -27,7 +39,7 @@ async function stayClearOfTitle(page: Page) {
 test("the pond ripples where it's clicked, then settles", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=empty&toy=ripples");
   await expect(page.getByText("All caught up")).toBeVisible();
-  await stayClearOfTitle(page);
+  await reachUnderTitle(page);
   expect(await inked(page)).toBe(0);
   await page.mouse.click(120, 400);
   await page.waitForTimeout(400);
@@ -71,7 +83,7 @@ test("the sky sits behind the view with the sun or moon in it", async ({ page })
 test("the pond in ASCII art ripples in characters, then settles", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=empty&toy=ripples&style=ascii");
   await expect(page.getByText("All caught up")).toBeVisible();
-  await stayClearOfTitle(page);
+  await reachUnderTitle(page);
   expect(await inked(page)).toBe(0);
   await page.mouse.click(120, 400);
   await page.waitForTimeout(400);

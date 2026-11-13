@@ -232,22 +232,35 @@ export function roundedBoxDistance(px: number, py: number, b: ClearShape, radius
 }
 
 /**
- * How much of the glow is left at (px, py) near the icon and words: 1 far
- * away, down to the shape's floor close in, with a smooth edge between.
- * The nearest shape decides.
+ * How much of the glow is left in the cell centered at (px, py) near the
+ * icon and words: 1 far away, down to the shape's floor close in, with a
+ * smooth edge between. Measured from the cell's nearest edge (`halfW`,
+ * `halfH` are half its size), so no tile overlaps a letter. The nearest
+ * shape decides.
  */
 export function clearing(
   px: number,
   py: number,
   shapes: readonly ClearShape[],
   t: AsciiGlowTuning,
+  halfW = 0,
+  halfH = 0,
 ): number {
   let left = 1;
-  for (const b of shapes) {
-    const icon = b.kind === "icon";
+  for (const shape of shapes) {
+    const icon = shape.kind === "icon";
     const pad = icon ? t.iconPad : t.wordsPad;
     const feather = icon ? t.iconFeather : t.wordsFeather;
     const floor = icon ? t.iconFloor : t.wordsFloor;
+    // The shape grown by half a cell each way: the cell's center is within
+    // it exactly when some of the cell is within the shape.
+    const b = {
+      ...shape,
+      x0: shape.x0 - halfW,
+      y0: shape.y0 - halfH,
+      x1: shape.x1 + halfW,
+      y1: shape.y1 + halfH,
+    };
     const d = roundedBoxDistance(px, py, b, icon ? t.iconRadius : t.wordsRadius);
     if (d >= pad + feather) continue;
     const k = feather > 0 ? Math.max(0, Math.min(1, (d - pad) / feather)) : d >= pad ? 1 : 0;

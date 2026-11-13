@@ -58,7 +58,9 @@ export function EmptyToy({
   /** Pixel art or ASCII art (Settings → Toybox → Style); so far the pond has both. */
   style?: ToyboxStyle;
 }) {
-  const box = useAreaBox(areaRef, iconRef, wordsRef, toy !== "none");
+  // The pond's water runs up under the title row to the card's top edge,
+  // so it has no hard edge there; the other toys keep to the empty area.
+  const box = useAreaBox(areaRef, iconRef, wordsRef, toy !== "none", toy === "ripples");
   if (toy === "none" || !box) return null;
   const place = { left: box.left, top: box.top, width: box.width, height: box.height };
   return (
@@ -79,6 +81,8 @@ function useAreaBox(
   iconRef: RefObject<HTMLElement | null>,
   wordsRef: RefObject<HTMLElement | null>,
   on: boolean,
+  /** Reach up under the title row to the card's top edge, its title standing in the way. */
+  reachTop: boolean,
 ): Box | null {
   const [box, setBox] = useState<Box | null>(null);
   useEffect(() => {
@@ -88,19 +92,24 @@ function useAreaBox(
     const measure = () => {
       const a = area.getBoundingClientRect();
       const c = card.getBoundingClientRect();
-      const clear = [iconRef.current?.getBoundingClientRect(), ...textLines(wordsRef.current)]
+      const top = reachTop ? c.top : a.top;
+      const clear = [
+        iconRef.current?.getBoundingClientRect(),
+        ...textLines(wordsRef.current),
+        ...(reachTop ? titleLines(card) : []),
+      ]
         .filter((r): r is DOMRect => !!r)
         .map((r) => ({
           x0: r.left - a.left,
-          y0: r.top - a.top,
+          y0: r.top - top,
           x1: r.right - a.left,
-          y1: r.bottom - a.top,
+          y1: r.bottom - top,
         }));
       const next = {
         left: a.left - c.left,
-        top: a.top - c.top,
+        top: top - c.top,
         width: a.width,
-        height: a.height,
+        height: a.bottom - top,
         clear,
       };
       // Unchanged, keep the old one, so the toys don't start over.
@@ -117,7 +126,7 @@ function useAreaBox(
       observer.disconnect();
       area.removeEventListener("animationend", measure);
     };
-  }, [areaRef, iconRef, wordsRef, on]);
+  }, [areaRef, iconRef, wordsRef, on, reachTop]);
   return box;
 }
 
@@ -212,12 +221,12 @@ function PondLayer({
     };
     const down = (e: PointerEvent) => {
       if (e.button !== 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      const r = area.getBoundingClientRect();
+      const r = canvas.getBoundingClientRect();
       pond.drop((e.clientX - r.left) / TOY_CELL_PX, (e.clientY - r.top) / TOY_CELL_PX);
       wake();
     };
     area.addEventListener("pointerdown", down);
-    const stopStirring = stirOnMove(area, pond, wake);
+    const stopStirring = stirOnMove(area, canvas, pond, wake);
     return () => {
       area.removeEventListener("pointerdown", down);
       stopStirring();
@@ -356,12 +365,12 @@ function AsciiPondLayer({ areaRef, box }: { areaRef: RefObject<HTMLElement | nul
     };
     const down = (e: PointerEvent) => {
       if (e.button !== 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      const r = area.getBoundingClientRect();
+      const r = canvas.getBoundingClientRect();
       pond.drop((e.clientX - r.left) / TOY_CELL_PX, (e.clientY - r.top) / TOY_CELL_PX);
       wake();
     };
     area.addEventListener("pointerdown", down);
-    const stopStirring = stirOnMove(area, pond, wake);
+    const stopStirring = stirOnMove(area, canvas, pond, wake);
     return () => {
       area.removeEventListener("pointerdown", down);
       stopStirring();
@@ -380,7 +389,12 @@ function AsciiPondLayer({ areaRef, box }: { areaRef: RefObject<HTMLElement | nul
  * depth is set): a faint push every few cells it travels, deeper the faster
  * it goes, waking the pond if it was still. Returns the cleanup.
  */
-function stirOnMove(area: HTMLElement, pond: PondToy, wake: () => void): () => void {
+function stirOnMove(
+  area: HTMLElement,
+  layer: HTMLElement,
+  pond: PondToy,
+  wake: () => void,
+): () => void {
   let from: { x: number; y: number; t: number } | null = null;
   const move = (e: PointerEvent) => {
     const t = pondStir();
@@ -388,7 +402,7 @@ function stirOnMove(area: HTMLElement, pond: PondToy, wake: () => void): () => v
       from = null;
       return;
     }
-    const r = area.getBoundingClientRect();
+    const r = layer.getBoundingClientRect();
     const x = (e.clientX - r.left) / TOY_CELL_PX;
     const y = (e.clientY - r.top) / TOY_CELL_PX;
     const now = performance.now();
@@ -422,6 +436,15 @@ function inCells(boxes: Rect[]): Rect[] {
     x1: r.x1 / TOY_CELL_PX,
     y1: r.y1 / TOY_CELL_PX,
   }));
+}
+
+/** The card's title (`data-card-title`), as tight boxes around its letters. */
+function titleLines(card: HTMLElement): DOMRect[] {
+  const title = card.querySelector<HTMLElement>("[data-card-title]");
+  if (!title) return [];
+  const range = document.createRange();
+  range.selectNodeContents(title);
+  return [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
 }
 
 /** Each line of text inside `el`, as tight boxes round the letters. */

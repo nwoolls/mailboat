@@ -35,7 +35,7 @@ export function AsciiGlow({
 }: {
   glowRef: React.RefObject<HTMLDivElement | null>;
   pullRef: React.RefObject<HTMLDivElement | null>;
-  /** The icon and words: the glow thins out around them, so they still read. */
+  /** The icon and words: the glow thins out around them (and the card's title), so they still read. */
   iconRef: React.RefObject<HTMLDivElement | null>;
   wordsRef: React.RefObject<HTMLDivElement | null>;
   hidden: boolean;
@@ -82,12 +82,15 @@ export function AsciiGlow({
       shapes = [];
       const icon = iconRef.current?.getBoundingClientRect();
       if (icon && icon.width > 0) shapes.push(shape("icon", icon));
-      const words = wordsRef.current;
-      if (words) {
+      // The words, and the card's title as they are (`data-card-title`):
+      // the glow spans the title row too.
+      const title = canvas.closest(".panel")?.querySelector<HTMLElement>("[data-card-title]");
+      for (const el of [wordsRef.current, title]) {
+        if (!el) continue;
         // Each text node on its own: a range over the whole element also
         // returns its paragraphs' boxes, as wide as the words' column.
         const range = document.createRange();
-        const walker = document.createTreeWalker(words, NodeFilter.SHOW_TEXT);
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
         for (let node = walker.nextNode(); node; node = walker.nextNode()) {
           range.selectNodeContents(node);
           for (const r of range.getClientRects()) if (r.width > 0) shapes.push(shape("words", r));
@@ -173,7 +176,7 @@ export function AsciiGlow({
           if (glowing < t.cutoff) continue;
           const { v, fade } = cleared(
             glowing,
-            clearing((col + 0.5) * cw, (row + 0.5) * ch, shapes, t),
+            clearing((col + 0.5) * cw, (row + 0.5) * ch, shapes, t, cw / 2, ch / 2),
             t,
           );
           if (v < t.cutoff || fade <= 0.01) continue;

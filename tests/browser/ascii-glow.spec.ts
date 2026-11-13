@@ -107,3 +107,26 @@ test("another toy shows no glow: the glow is a toy of its own", async ({ page })
   await expect(page.locator(".empty-glow-pull")).toHaveCount(0);
   await expect(page.locator("canvas.empty-ascii")).toHaveCount(0);
 });
+
+test("the ASCII glow keeps the card's title clear, as it does the words", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=empty&glow=ascii");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  const canvas = (await page.locator("canvas.empty-ascii").boundingBox())!;
+  // The title's letters (its button is wider than they are).
+  const title = await page.locator("[data-card-title]").evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const r = range.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+  // Draw the glow up onto the title.
+  await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
+  await page.mouse.move(title.x + title.width / 2, title.y + title.height / 2, { steps: 10 });
+  await page.waitForTimeout(1500);
+  const on = await inkIn(page, title.x - canvas.x, title.y - canvas.y, title.width, title.height);
+  expect(on).toBe(0);
+  // Beside the letters, it's drawn.
+  expect(
+    await inkIn(page, title.x - canvas.x + title.width + 40, title.y - canvas.y, 30, title.height),
+  ).toBeGreaterThan(100);
+});
