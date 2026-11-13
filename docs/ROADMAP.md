@@ -4794,6 +4794,9 @@ and new bugs still come here.*
       archives it. Tests cover the order of the two calls, a refused
       untrash, a refused add after the untrash, a partly trashed
       conversation, and a trash Gmail refuses (Inbox comes back locally).
+      The owner then asked for swipe left in Trash, which did nothing, to
+      do the same Move to Inbox (Settings → List and the site's Swipes card
+      say so).
 - [x] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01; fixed 2026-11-08, see below)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the

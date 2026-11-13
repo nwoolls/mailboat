@@ -2,6 +2,7 @@ import { useId } from "react";
 import {
   ArchiveIcon,
   MarkUnreadIcon,
+  MoveToInboxIcon,
   RestoreIcon,
   SpamIcon,
   StarIcon,
@@ -198,7 +199,8 @@ export function SwipeButton({
 }
 
 function ActionIcon({ action }: { action: ThreadAction }) {
-  if (action.kind === "archive") return <ArchiveIcon size={13} />;
+  if (action.kind === "archive")
+    return action.archived ? <ArchiveIcon size={13} /> : <MoveToInboxIcon size={13} />;
   if (action.kind === "trash")
     return action.trashed ? <TrashIcon size={13} /> : <RestoreIcon size={13} />;
   if (action.kind === "star") return <StarIcon size={13} />;

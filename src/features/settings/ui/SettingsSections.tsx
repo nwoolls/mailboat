@@ -666,7 +666,7 @@ export function ListSection() {
         {choice(
           "swipeLeft",
           "Swipe left",
-          "Two fingers to the left on a conversation. Archive moves to Trash where there’s no Inbox to leave.",
+          "Two fingers to the left on a conversation. Archive moves to Trash where there’s no Inbox to leave, and back to the Inbox from Trash.",
         )}
         {choice(
           "swipeRight",
