@@ -127,8 +127,8 @@ export function sameSelection(a: Selection, b: Selection): boolean {
  * does, and the preview and selection stay (owner, 2026-11-12; as in Apple
  * Mail). It used to clear them too.
  */
-export function staysOnFolderClick(shown: Selection, clicked: Selection): boolean {
-  return sameSelection(shown, clicked);
+export function staysOnFolderClick(shownKey: string, clicked: Selection): boolean {
+  return selectionKey(clicked) === shownKey;
 }
 
 /** True when rows may come from more than one account, so each row needs an account marker. */

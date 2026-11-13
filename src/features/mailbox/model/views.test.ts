@@ -156,10 +156,16 @@ describe("selectionNeedsAccount", () => {
 describe("staysOnFolderClick", () => {
   const archive = viewSelection({ kind: "archive" }, 2);
   it("stays on the folder already shown", () => {
-    expect(staysOnFolderClick(archive, viewSelection({ kind: "archive" }, 2))).toBe(true);
+    expect(staysOnFolderClick(selectionKey(archive), viewSelection({ kind: "archive" }, 2))).toBe(
+      true,
+    );
   });
   it("goes to another folder, or another account's", () => {
-    expect(staysOnFolderClick(archive, viewSelection({ kind: "allMail" }, 2))).toBe(false);
-    expect(staysOnFolderClick(archive, viewSelection({ kind: "archive" }, 3))).toBe(false);
+    expect(staysOnFolderClick(selectionKey(archive), viewSelection({ kind: "allMail" }, 2))).toBe(
+      false,
+    );
+    expect(staysOnFolderClick(selectionKey(archive), viewSelection({ kind: "archive" }, 3))).toBe(
+      false,
+    );
   });
 });

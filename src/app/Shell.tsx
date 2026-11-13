@@ -325,17 +325,20 @@ export function Shell() {
   }, [settingsOpen]);
   // When `g` was pressed, for Gmail's "go to" keys (0: not waiting).
   const goPending = useRef(0);
+  // A string, stable from render to render (the one-account default is a new
+  // object each time), so `goTo` and the listeners using it stay put.
+  const shownKey = selectionKey(baseSelection);
   const goTo = useCallback(
     (s: Selection) => {
       // The folder already shown: only a search is cleared, as its clear
       // button does; the preview and selection stay.
-      if (staysOnFolderClick(baseSelection, s)) return setSearch("");
+      if (staysOnFolderClick(shownKey, s)) return setSearch("");
       setChosen(s);
       setSearch("");
       setSelectedId(null);
       setCursorId(null);
     },
-    [baseSelection],
+    [shownKey],
   );
   const { mutate: mutateThreads } = useThreadAction();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
