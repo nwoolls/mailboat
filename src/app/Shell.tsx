@@ -271,14 +271,15 @@ export function Shell() {
   // In Unread, conversations read during this visit stay, shown as read,
   // until the view changes (unreadKept.ts). Adjusted during render.
   const inUnread = selection.view.kind === "system" && selection.view.label === "unread";
-  const visit = JSON.stringify(selection);
+  const visit = selectionKey(selection);
   const [kept, setKept] = useState<{ visit: string; rows: Kept }>(() => ({
     visit,
     rows: NOTHING_KEPT,
   }));
   if (kept.visit !== visit) setKept({ visit, rows: NOTHING_KEPT });
   else if (inUnread) {
-    const rows = keepRead(kept.rows, listed);
+    // Not from the previous view's rows, shown while Unread loads.
+    const rows = keepRead(kept.rows, listed, { placeholder: threadsQuery.isPlaceholderData });
     if (rows !== kept.rows) setKept({ visit, rows });
   }
   const keptRows = inUnread && kept.visit === visit ? kept.rows : NOTHING_KEPT;
@@ -447,7 +448,7 @@ export function Shell() {
     function run(action: ThreadAction, ids: ThreadId[], fromUndo = false) {
       if (ids.length === 0) return;
       const openBefore = openNow.current;
-      setKept((k) => ({ ...k, rows: keptAfter(k.rows, ids, action) }));
+      setKept((k) => ({ ...k, rows: keptAfter(k.rows, ids, action, selection.view) }));
       if (leavesView(action, selection.view)) {
         const removed = new Set(ids);
         const { afterRemoval } = viewingPrefs.get();

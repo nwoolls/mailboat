@@ -5042,9 +5042,12 @@ and new bugs still come here.*
       visit to Unread stay in the list, shown as read, until the person
       leaves the view, and the next visit lists only what is unread.
       `unreadKept.ts` keeps them (a row in the Unread list that shows as
-      read was read during this visit) and puts them back in their place;
-      archiving, deleting or labeling one away lets it go, and marking it
-      unread shows it unread. Unit tests for each.
+      read was read during this visit, not counting the previous view's
+      rows shown while Unread loads) and puts them back in their place. A
+      kept row follows the same rule as the others there: moving it to
+      Trash or Spam lets it go, and starring, labeling, archiving or
+      marking it unread shows the change. Unit tests cover the logic, not
+      `Shell`'s wiring.
 - [x] Reply with AI in a short reader could leave the reply part way below
       the fold *(found 2026-11-10, when a browser test failed once on CI with
       the reader stopped well short of the reply; fixed the same day)*: a new
