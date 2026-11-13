@@ -17,6 +17,7 @@ import {
   nextAfterRemoval,
   selectionAfterUndo,
   toggleFor,
+  undoActions,
   updateSummary,
   withAction,
   withDetailAction,
@@ -358,5 +359,26 @@ describe("moveAfterRemoval", () => {
     expect(
       moveAfterRemoval(list, ids(4), { previewed: id(2), selected: null, previewing: false }),
     ).toEqual({ previewed: 2, selected: null });
+  });
+});
+
+// Owner, 2026-11-12: Move to Inbox on a conversation in Trash takes it out of
+// the Trash and into the Inbox, so Undo puts it back in the Trash (which also
+// takes it out of the Inbox), not into the archive.
+describe("undoActions", () => {
+  const toInbox = { kind: "archive", archived: false } as const;
+  it("puts conversations moved out of the Trash back in it, and archives the rest", () => {
+    expect(undoActions(toInbox, [id(1), id(2)], new Set([id(2)]))).toEqual([
+      { action: { kind: "trash", trashed: true }, ids: [id(2)] },
+      { action: { kind: "archive", archived: true }, ids: [id(1)] },
+    ]);
+  });
+  it("undoes anything else with its inverse", () => {
+    expect(undoActions({ kind: "star", starred: true }, [id(1)], new Set([id(1)]))).toEqual([
+      { action: { kind: "star", starred: false }, ids: [id(1)] },
+    ]);
+    expect(undoActions(toInbox, [id(1)], new Set())).toEqual([
+      { action: { kind: "archive", archived: true }, ids: [id(1)] },
+    ]);
   });
 });

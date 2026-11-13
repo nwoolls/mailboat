@@ -4784,9 +4784,9 @@ and new bugs still come here.*
       The owner chose to make it Gmail's move: for a conversation in Trash
       it now calls untrash, then adds INBOX, and the cached copy and the
       list take it out of the Trash and into the Inbox at once (rolled back
-      if Gmail refuses). Undo of that move archives it rather than putting
-      it back in Trash. A test also covers a trash Gmail refuses: Inbox
-      comes back locally.
+      if Gmail refuses). Undo puts what came out of the Trash back in it
+      (which also takes it out of the Inbox) and archives the rest. A test
+      also covers a trash Gmail refuses: Inbox comes back locally.
 - [x] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01; fixed 2026-11-08, see below)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the

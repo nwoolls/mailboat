@@ -188,6 +188,29 @@ export function withDetailAction(
   }
 }
 
+/**
+ * What Undo runs for `action` on `ids`: its inverse, except for Move to
+ * Inbox, which takes conversations in the Trash (`wasInTrash`, noted when
+ * it ran) out of it too: those go back to the Trash, which also takes them
+ * out of the Inbox; the rest are archived (owner, 2026-11-12).
+ */
+export function undoActions(
+  action: ThreadAction,
+  ids: readonly ThreadId[],
+  wasInTrash: ReadonlySet<ThreadId>,
+): { action: ThreadAction; ids: ThreadId[] }[] {
+  if (action.kind !== "archive" || action.archived)
+    return [{ action: inverse(action), ids: [...ids] }];
+  const trashed = ids.filter((i) => wasInTrash.has(i));
+  const rest = ids.filter((i) => !wasInTrash.has(i));
+  return [
+    ...(trashed.length > 0
+      ? [{ action: { kind: "trash", trashed: true } as const, ids: trashed }]
+      : []),
+    ...(rest.length > 0 ? [{ action: inverse(action), ids: rest }] : []),
+  ];
+}
+
 /** The action that puts things back (for Undo). */
 export function inverse(action: ThreadAction): ThreadAction {
   switch (action.kind) {
