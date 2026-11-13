@@ -52,6 +52,8 @@ export function toggleFor(
     case "read":
       return { kind, read: threads.some((t) => t.unread) };
     case "archive":
+      // A conversation in Trash isn't in the Inbox (as in Gmail), so this
+      // offers Move to Inbox, which takes it out of the Trash too.
       return { kind, archived: threads.some((t) => t.inInbox) };
     case "star":
       return { kind, starred: threads.some((t) => !t.starred) };
@@ -84,7 +86,8 @@ export function leavesView(action: ThreadAction, view: MailView): boolean {
   const showsSpamTrash = view.kind === "search" && view.withSpamTrash === true;
   switch (action.kind) {
     case "archive":
-      return action.archived ? system === "inbox" : view.kind === "archive";
+      // Move to Inbox takes a conversation out of the Trash too.
+      return action.archived ? system === "inbox" : view.kind === "archive" || system === "trash";
     case "trash":
       if (showsSpamTrash) return false;
       return action.trashed ? system !== "trash" : system === "trash";
@@ -113,11 +116,13 @@ export function updateSummary(action: ThreadAction, t: ThreadSummary): ThreadSum
         senders: t.senders.map((s) => ({ ...s, unread: !action.read })),
       };
     case "archive":
-      return { ...t, inInbox: !action.archived };
+      // Move to Inbox takes it out of the Trash too, as Gmail's move does.
+      return { ...t, inInbox: !action.archived, inTrash: action.archived ? t.inTrash : false };
     case "star":
       return { ...t, starred: action.starred };
     case "trash":
-      return { ...t, inTrash: action.trashed };
+      // Gmail drops INBOX when it trashes, and untrash leaves it out.
+      return { ...t, inTrash: action.trashed, inInbox: action.trashed ? false : t.inInbox };
     case "spam":
       return { ...t, inSpam: action.spam, inInbox: !action.spam };
     case "labels": {
@@ -188,6 +193,29 @@ export function withDetailAction(
     default:
       return { ...detail, thread };
   }
+}
+
+/**
+ * What Undo runs for `action` on `ids`: its inverse, except for Move to
+ * Inbox, which takes conversations in the Trash (`wasInTrash`, noted when
+ * it ran) out of it too: those go back to the Trash, which also takes them
+ * out of the Inbox; the rest are archived (owner, 2026-11-12).
+ */
+export function undoActions(
+  action: ThreadAction,
+  ids: readonly ThreadId[],
+  wasInTrash: ReadonlySet<ThreadId>,
+): { action: ThreadAction; ids: ThreadId[] }[] {
+  if (action.kind !== "archive" || action.archived)
+    return [{ action: inverse(action), ids: [...ids] }];
+  const trashed = ids.filter((i) => wasInTrash.has(i));
+  const rest = ids.filter((i) => !wasInTrash.has(i));
+  return [
+    ...(trashed.length > 0
+      ? [{ action: { kind: "trash", trashed: true } as const, ids: trashed }]
+      : []),
+    ...(rest.length > 0 ? [{ action: inverse(action), ids: rest }] : []),
+  ];
 }
 
 /** The action that puts things back (for Undo). */

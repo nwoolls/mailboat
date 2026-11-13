@@ -47,7 +47,7 @@ import {
 import {
   actionMessage,
   actionVerb,
-  inverse,
+  undoActions,
   labelToggle,
   leavesView,
   moveAfterRemoval,
@@ -473,6 +473,10 @@ export function Shell() {
         }
         setChecked(NONE);
       }
+      // Which were in the Trash, for Undo of a Move to Inbox (undoActions).
+      const wasInTrash = new Set(
+        threads.filter((t) => t.inTrash && ids.includes(t.id)).map((t) => t.id),
+      );
       const message = actionMessage(action, ids.length);
       if (message)
         showToast({
@@ -481,7 +485,8 @@ export function Shell() {
             ? {
                 label: "Undo",
                 run: () => {
-                  run(inverse(action), ids, true);
+                  for (const undo of undoActions(action, ids, wasInTrash))
+                    run(undo.action, undo.ids, true);
                   // Back to the conversation that was open, if this moved
                   // on from it; one that wasn't open (a swipe) stays closed.
                   if (leavesView(action, selection.view))

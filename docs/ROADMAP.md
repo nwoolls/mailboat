@@ -4840,6 +4840,39 @@ and new bugs still come here.*
       showed the code, the list line said "Sign-in code", and Apple
       Intelligence wrote the full summary without refusing it or saying
       the code had been used)*
+- [x] A trashed conversation still counted as in the Inbox until the next
+      sync *(found in review of the search fix, #120, 2026-11-12; fixed the
+      same day, and the owner tried it)*: moving
+      a conversation to Trash only added TRASH to the cached copy, and an
+      old test asserted it kept INBOX "as in Gmail". The owner checked in
+      Gmail: trashing drops INBOX (the trashed email shows only a Trash
+      tag; none of the trashed mail in the owner's cache had INBOX either),
+      and untrash doesn't bring it back, whether the conversation was in
+      the Inbox before or archived (both land in All Mail only). So a
+      trashed row could offer Archive next to Restore, and a restored one
+      showed in the Inbox until the next sync took it out. The cached copy
+      and the list's immediate update now do what Gmail does: trashing
+      removes INBOX, restoring removes only TRASH. Demo mode's stand-in for
+      Gmail does the same. The old test now asserts Gmail's behavior, and a
+      unit test covers the list; both failed before the fix. From review:
+      a trashed conversation's archive button offers Move to Inbox, which
+      only added INBOX and left it in Trash (on `main` too, once synced).
+      The owner chose to make it Gmail's move: for a conversation in Trash
+      it now calls untrash, then adds INBOX, and the cached copy and the
+      list take it out of the Trash and into the Inbox at once. If Gmail
+      refuses the untrash, nothing changes; if it takes the untrash but
+      refuses the add, only the Inbox change is rolled back, so the cached
+      copy matches Gmail (All Mail). Undo puts what came out of the Trash
+      back in it (which also takes it out of the Inbox) and archives the
+      rest. Round 2 of review: "in Trash" here means every message, as the
+      list counts it, so a conversation with only some messages trashed
+      gets the plain add, its trashed messages stay trashed, and Undo
+      archives it. Tests cover the order of the two calls, a refused
+      untrash, a refused add after the untrash, a partly trashed
+      conversation, and a trash Gmail refuses (Inbox comes back locally).
+      The owner then asked for swipe left in Trash, which did nothing, to
+      do the same Move to Inbox (Settings → List and the site's Swipes card
+      say so).
 - [x] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01; fixed 2026-11-08, see below)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the

@@ -352,7 +352,8 @@ impl FakeGoogle {
                         strings(&body["addLabelIds"]),
                         strings(&body["removeLabelIds"]),
                     ),
-                    "trash" => (vec!["TRASH".to_string()], Vec::new()),
+                    // As Gmail: trashing drops INBOX; untrash leaves it out.
+                    "trash" => (vec!["TRASH".to_string()], vec!["INBOX".to_string()]),
                     "untrash" => (Vec::new(), vec!["TRASH".to_string()]),
                     _ => return Err(not_found()),
                 };

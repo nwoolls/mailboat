@@ -204,7 +204,8 @@ type SwipeRow = Pick<ThreadSummary, "unread" | "inInbox" | "inTrash" | "starred"
 
 /**
  * What a swipe choice does to a conversation. Archive archives from the
- * Inbox and trashes elsewhere (nothing in Trash); the others toggle, as
+ * Inbox, moves back to the Inbox from Trash (owner, 2026-11-12, as the
+ * toolbar's button does there), and trashes elsewhere; the others toggle, as
  * their keys do (Restore in Trash, Not spam in Spam, Unstar if starred).
  */
 export function swipeAction(choice: SwipeChoice, t: SwipeRow): ThreadAction | null {
@@ -213,7 +214,7 @@ export function swipeAction(choice: SwipeChoice, t: SwipeRow): ThreadAction | nu
       return t.inInbox
         ? { kind: "archive", archived: true }
         : t.inTrash
-          ? null
+          ? { kind: "archive", archived: false }
           : { kind: "trash", trashed: true };
     case "none":
       return null;
