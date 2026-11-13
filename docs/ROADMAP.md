@@ -4654,6 +4654,20 @@ between pixel art and ASCII art for the screensavers.*
       quick burst of them with a soft glow. It now uses the accent color,
       like the glow and the sky, instead of the Toybox palette, which is
       left to the screensavers. *Owner: "LGTM"*
+- [x] Bubble wrap, with joyful pops, in pixel art and ASCII art *(owner,
+      2026-11-13: "an actual joyful animation for pops, not just a switch
+      from unpopped to popped")*. A popped bubble squashes for a moment,
+      then bursts: a bright ring flashes outward, confetti flies out and
+      arcs down (in the accent color, a hue on either side of it and a
+      warm spark color), and puffs of air rise. Nearby bubbles wobble with the shock,
+      and the crumpled film drops into place with a small bounce. Quick
+      pops in a row burst bigger. Popping the last bubble sends confetti up
+      from every film; the sheet blows away and a fresh one inflates from
+      the middle out. Pixel art draws it in 5px blocks with a soft glow on
+      each burst; ASCII art draws each bubble as a small circle of
+      characters on the glow's grid, with `* + x` confetti and `_~_` film.
+      The animation has tests (`emptyToys/model/bubblePop.ts`),
+      and tunable in the playground. *Owner: "much better"*
 - [ ] Chunkier pixel art for the other toys and the screensavers *(owner,
       2026-11-13: "for pixel art in general, I am thinking chunkier
       pixels … retro NES / SNES HD-2D")*: one scene at a time, the glow and

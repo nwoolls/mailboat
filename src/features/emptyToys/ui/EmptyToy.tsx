@@ -1,14 +1,4 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
-import {
-  allPopped,
-  bubbleAt,
-  crumple,
-  pop,
-  POP_MS,
-  REFILL_MS,
-  type Sheet,
-  sheetFor,
-} from "../model/bubbles";
 import type { Rect } from "../../screensaver/model/scene";
 import { PLOP_SECONDS, pondStir, PondToy } from "../model/pond";
 import { asciiPondTuning, pondChars, pondLook, strongest } from "../model/asciiPond";
@@ -18,6 +8,7 @@ import { asciiCell, AsciiPainter, GLYPH_ON_HOT, mix, readAsciiColors } from "./a
 import { pixelPondTuning, pondBand } from "../model/pixelPond";
 import { AsciiSkyLayer } from "./AsciiSky";
 import { PixelSkyLayer } from "./PixelSky";
+import { BubbleWrapLayer } from "./BubbleWrap";
 import type { ToyId } from "../model/toys";
 
 type Box = {
@@ -48,7 +39,7 @@ export function EmptyToy({
   /** The empty state's icon and words: the pond's waves reflect off them. */
   iconRef: RefObject<HTMLElement | null>;
   wordsRef: RefObject<HTMLElement | null>;
-  /** Pixel art or ASCII art (Settings → Toybox → Style); the pond and the sky have both. */
+  /** Pixel art or ASCII art (Settings → Toybox → Style); every toy has both. */
   style?: ToyboxStyle;
 }) {
   // The pond's water and the ASCII sky run up under the title row to the
@@ -89,7 +80,17 @@ export function EmptyToy({
       )}
       {toy === "ripples" && style === "ascii" && <AsciiPondLayer areaRef={areaRef} box={box} />}
       {toy === "ripples" && style !== "ascii" && <PondLayer areaRef={areaRef} box={box} />}
-      {toy === "bubbles" && <BubbleLayer areaRef={areaRef} box={box} />}
+      {toy === "bubbles" && (
+        <BubbleWrapLayer
+          areaRef={areaRef}
+          width={box.width}
+          height={box.height}
+          left={box.left}
+          top={box.top}
+          clear={box.clear}
+          style={style}
+        />
+      )}
     </div>
   );
 }
@@ -147,20 +148,6 @@ function useAreaBox(
     };
   }, [areaRef, iconRef, wordsRef, on, reachTop]);
   return box;
-}
-
-/** A canvas the size of the box, sharp on Retina screens. */
-function useCanvas(box: Box) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(box.width * dpr);
-    canvas.height = Math.round(box.height * dpr);
-    canvas.getContext("2d")?.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }, [box.width, box.height]);
-  return ref;
 }
 
 /** Screen pixels per cell for the pixel-art toys, as the finer screensavers. */
@@ -518,171 +505,4 @@ function textLines(el: HTMLElement | null): DOMRect[] {
     range.selectNodeContents(p);
     return [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
   });
-}
-
-/**
- * A sheet of bubble wrap round the icon and words. A click pops the
- * bubble under it; holding the button and dragging pops a row. Each
- * bubble is lit from the top left with a shadow below; a pop bursts
- * (the bubble snaps flat with a ring of slivers) and leaves crumpled film.
- */
-function BubbleLayer({ areaRef, box }: { areaRef: RefObject<HTMLElement | null>; box: Box }) {
-  const canvas = useCanvas(box);
-  const [sheet, setSheet] = useState<Sheet>(() => sheetFor(box.width, box.height, box.clear));
-  // A new size is a new sheet (worked out here, not in an effect).
-  const [sizedFor, setSizedFor] = useState(box);
-  if (sizedFor.width !== box.width || sizedFor.height !== box.height) {
-    setSizedFor(box);
-    setSheet(sheetFor(box.width, box.height, box.clear));
-  }
-  /** When each bursting bubble popped (performance.now()). */
-  const bursts = useRef(new Map<number, number>());
-  const popAt = (x: number, y: number) => {
-    const i = bubbleAt(sheet, x, y);
-    if (i === null) return;
-    bursts.current.set(i, performance.now());
-    setSheet(pop(sheet, i));
-  };
-  const popRef = useRef(popAt);
-  useEffect(() => {
-    popRef.current = popAt;
-  });
-  useEffect(() => {
-    const area = areaRef.current;
-    if (!area) return;
-    const at = (e: PointerEvent) => {
-      const r = area.getBoundingClientRect();
-      popRef.current(e.clientX - r.left, e.clientY - r.top);
-    };
-    const down = (e: PointerEvent) => e.button === 0 && at(e);
-    const move = (e: PointerEvent) => (e.buttons & 1) === 1 && at(e);
-    // Dragging to pop shouldn't select the words.
-    const noSelect = (e: MouseEvent) => e.button === 0 && e.preventDefault();
-    area.addEventListener("pointerdown", down);
-    area.addEventListener("pointermove", move);
-    area.addEventListener("mousedown", noSelect);
-    return () => {
-      area.removeEventListener("pointerdown", down);
-      area.removeEventListener("pointermove", move);
-      area.removeEventListener("mousedown", noSelect);
-    };
-  }, [areaRef]);
-  const done = allPopped(sheet);
-  useEffect(() => {
-    if (!done) return;
-    const timer = window.setTimeout(() => {
-      bursts.current.clear();
-      setSheet(sheetFor(box.width, box.height, box.clear));
-    }, REFILL_MS);
-    return () => window.clearTimeout(timer);
-  }, [done, box]);
-  useEffect(() => {
-    const el = canvas.current;
-    const ctx = el?.getContext("2d");
-    if (!el || !ctx) return;
-    const ink = getComputedStyle(el).color;
-    let frame = 0;
-    const draw = (now: number) => {
-      ctx.clearRect(0, 0, box.width, box.height);
-      for (const [n, t] of bursts.current) if (now - t > POP_MS) bursts.current.delete(n);
-      sheet.centres.forEach((c, n) => {
-        const r = sheet.radius * (0.92 + 0.12 * sheet.quirks[n]!);
-        const burst = bursts.current.get(n);
-        if (sheet.popped[n]) drawFilm(ctx, ink, c, r, sheet.quirks[n]!);
-        if (burst !== undefined) drawBurst(ctx, ink, c, r, (now - burst) / POP_MS);
-        else if (!sheet.popped[n]) drawBubble(ctx, ink, c, r);
-      });
-      ctx.globalAlpha = 1;
-      frame = bursts.current.size ? requestAnimationFrame(draw) : 0;
-    };
-    draw(performance.now());
-    return () => cancelAnimationFrame(frame);
-  }, [sheet, box.width, box.height, canvas]);
-  return <canvas ref={canvas} className="h-full w-full text-content" />;
-}
-
-type Point = { x: number; y: number };
-
-/** A whole bubble: a soft shadow, a dome lit from the top left, a rim and a glint. */
-function drawBubble(ctx: CanvasRenderingContext2D, ink: string, c: Point, r: number) {
-  ctx.fillStyle = ink;
-  ctx.strokeStyle = ink;
-  ctx.lineWidth = 1;
-  // Shadow, below and right.
-  ctx.globalAlpha = 0.06;
-  ctx.beginPath();
-  ctx.ellipse(c.x + 2, c.y + 3, r, r * 0.9, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // The dome: clear in the middle, denser towards the lit edge.
-  const dome = ctx.createRadialGradient(c.x - r * 0.35, c.y - r * 0.35, r * 0.1, c.x, c.y, r);
-  dome.addColorStop(0, "transparent");
-  dome.addColorStop(1, ink);
-  ctx.globalAlpha = 0.14;
-  ctx.fillStyle = dome;
-  ctx.beginPath();
-  ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 0.2;
-  ctx.stroke();
-  // A curved glint at the top left, and a faint bounce of light bottom right.
-  ctx.lineCap = "round";
-  ctx.lineWidth = 2;
-  ctx.globalAlpha = 0.45;
-  ctx.beginPath();
-  ctx.arc(c.x, c.y, r * 0.62, Math.PI * 1.08, Math.PI * 1.42);
-  ctx.stroke();
-  ctx.lineWidth = 1;
-  ctx.globalAlpha = 0.18;
-  ctx.beginPath();
-  ctx.arc(c.x, c.y, r * 0.7, Math.PI * 0.15, Math.PI * 0.4);
-  ctx.stroke();
-}
-
-/** A popping bubble, `t` from 0 to 1: it snaps flat as slivers fly out and fade. */
-function drawBurst(ctx: CanvasRenderingContext2D, ink: string, c: Point, r: number, t: number) {
-  const ease = 1 - (1 - t) ** 3;
-  ctx.strokeStyle = ink;
-  ctx.fillStyle = ink;
-  // The dome collapsing.
-  ctx.globalAlpha = 0.18 * (1 - ease);
-  ctx.beginPath();
-  ctx.ellipse(c.x, c.y + ease * 2, r * (1 + ease * 0.1), r * (1 - ease * 0.5), 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Slivers of film and air flying out.
-  ctx.lineCap = "round";
-  ctx.lineWidth = 1.5;
-  ctx.globalAlpha = 0.5 * (1 - t);
-  for (let k = 0; k < 8; k++) {
-    const a = (k / 8) * Math.PI * 2 + 0.3;
-    const from = r * (0.9 + ease * 0.5);
-    const to = from + 3 + ease * 4;
-    ctx.beginPath();
-    ctx.moveTo(c.x + Math.cos(a) * from, c.y + Math.sin(a) * from);
-    ctx.lineTo(c.x + Math.cos(a) * to, c.y + Math.sin(a) * to);
-    ctx.stroke();
-  }
-}
-
-/** What's left after a pop: crumpled film lying flat. */
-function drawFilm(ctx: CanvasRenderingContext2D, ink: string, c: Point, r: number, quirk: number) {
-  const points = crumple(quirk, r);
-  ctx.strokeStyle = ink;
-  ctx.fillStyle = ink;
-  ctx.lineWidth = 1;
-  ctx.lineJoin = "round";
-  ctx.beginPath();
-  points.forEach((p, k) =>
-    k ? ctx.lineTo(c.x + p.x, c.y + p.y) : ctx.moveTo(c.x + p.x, c.y + p.y),
-  );
-  ctx.closePath();
-  ctx.globalAlpha = 0.07;
-  ctx.fill();
-  ctx.globalAlpha = 0.2;
-  ctx.stroke();
-  // A crease or two across it.
-  ctx.globalAlpha = 0.1;
-  ctx.beginPath();
-  ctx.moveTo(c.x + points[1]!.x * 0.8, c.y + points[1]!.y * 0.8);
-  ctx.lineTo(c.x + points[5]!.x * 0.6, c.y + points[5]!.y * 0.6);
-  ctx.stroke();
 }

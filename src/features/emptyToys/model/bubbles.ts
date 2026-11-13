@@ -13,10 +13,6 @@ export type Sheet = {
 /** Bubble size and spacing, in px. */
 export const BUBBLE_RADIUS = 16.5;
 export const BUBBLE_PITCH = 45;
-/** After the last pop, the fresh sheet comes this much later (ms). */
-export const REFILL_MS = 900;
-/** A pop's burst lasts this long (ms). */
-export const POP_MS = 260;
 
 /**
  * A full sheet for an area, rows offset by half a bubble as real wrap
@@ -53,6 +49,48 @@ export function sheetFor(
   };
 }
 
+/**
+ * A sheet for ASCII art: bubbles on the character grid (`cw` × `ch` px
+ * cells), each 5 columns by 3 rows, rows offset by half a bubble, so every
+ * bubble is drawn the same and none overlap. Centres are cell centres.
+ */
+export function gridSheetFor(
+  width: number,
+  height: number,
+  keepClear: Rect[],
+  cw: number,
+  ch: number,
+  ox: number,
+  oy: number,
+): Sheet {
+  const centres: { x: number; y: number }[] = [];
+  const across = 6;
+  const down = 3;
+  const cols = Math.floor((width - ox) / cw);
+  const rows = Math.floor((height - oy) / ch);
+  const gap = cw * 1.5;
+  const clear = (x: number, y: number) =>
+    !keepClear.some(
+      (r) =>
+        x > r.x0 - gap - cw * 2.5 &&
+        x < r.x1 + gap + cw * 2.5 &&
+        y > r.y0 - ch * 2 &&
+        y < r.y1 + ch * 2,
+    );
+  for (let r = 1, line = 0; r < rows - 1; r += down, line++)
+    for (let c = 2 + (line % 2 ? across / 2 : 0); c < cols - 2; c += across) {
+      const x = ox + (c + 0.5) * cw;
+      const y = oy + (r + 0.5) * ch;
+      if (clear(x, y)) centres.push({ x, y });
+    }
+  return {
+    centres,
+    popped: centres.map(() => false),
+    radius: cw * 2.5,
+    quirks: centres.map((c) => hash(Math.round(c.x) * 7919 + Math.round(c.y) * 104729)),
+  };
+}
+
 /** The unpopped bubble under a point, if any. */
 export function bubbleAt(sheet: Sheet, x: number, y: number): number | null {
   const i = sheet.centres.findIndex(
@@ -68,18 +106,6 @@ export function pop(sheet: Sheet, i: number): Sheet {
 
 export function allPopped(sheet: Sheet): boolean {
   return sheet.popped.length > 0 && sheet.popped.every(Boolean);
-}
-
-/** A flattened bubble's crumpled outline: points round its centre, offsets in px. */
-export function crumple(quirk: number, radius: number): { x: number; y: number }[] {
-  const points: { x: number; y: number }[] = [];
-  const n = 9;
-  for (let k = 0; k < n; k++) {
-    const a = (k / n) * Math.PI * 2;
-    const r = radius * (0.72 + 0.3 * hash(quirk * 1000 + k));
-    points.push({ x: Math.cos(a) * r, y: Math.sin(a) * r * 0.55 + 2 });
-  }
-  return points;
 }
 
 /** A steady pseudo-random number in [0, 1) for a seed. */

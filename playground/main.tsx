@@ -53,6 +53,11 @@ import {
   type SkySceneTuning,
   setSkySceneTuning,
 } from "../src/features/emptyToys/model/skyScene";
+import {
+  BUBBLE_DEFAULTS,
+  type BubbleTuning,
+  setBubbleTuning,
+} from "../src/features/emptyToys/model/bubblePop";
 import { emptyToy, toyboxStyle } from "../src/features/emptyToys/ui/prefs";
 import { setFeatureFlag } from "../src/shared/lib/featureFlags";
 import { ACCENTS } from "../src/features/settings/model/appearance";
@@ -278,6 +283,45 @@ const PIXEL_POND_DIALS: Sections<PixelPondTuning> = [
   },
 ];
 
+const BUBBLE_DIALS: Sections<BubbleTuning> = [
+  {
+    title: "The pop",
+    dials: [
+      { key: "pixel", min: 2, max: 14, step: 1, hint: "pixel size, px (pixel art)" },
+      { key: "squashSeconds", min: 0, max: 0.3, step: 0.01, hint: "squash before bursting, s" },
+      { key: "flashSeconds", min: 0.02, max: 1, step: 0.01, hint: "flash ring, s" },
+      { key: "bloom", min: 0, max: 1.5, step: 0.05, hint: "glow around the burst" },
+    ],
+  },
+  {
+    title: "Confetti",
+    dials: [
+      { key: "confetti", min: 0, max: 40, step: 1, hint: "pieces per pop" },
+      { key: "speed", min: 50, max: 800, step: 10, hint: "thrown out, px/s" },
+      { key: "gravity", min: 0, max: 3000, step: 50, hint: "gravity, px/s²" },
+      { key: "confettiSeconds", min: 0.2, max: 3, step: 0.05, hint: "lasts, s" },
+      { key: "puffs", min: 0, max: 10, step: 1, hint: "puffs of air" },
+    ],
+  },
+  {
+    title: "Neighbors and streaks",
+    dials: [
+      { key: "jiggle", min: 0, max: 0.5, step: 0.01, hint: "neighbors wobble" },
+      { key: "jiggleReach", min: 0, max: 6, step: 0.25, hint: "wobble reaches, spacings" },
+      { key: "streakSeconds", min: 0, max: 2, step: 0.05, hint: "a streak keeps going within, s" },
+      { key: "streakBoost", min: 0, max: 1, step: 0.02, hint: "bigger per streak step" },
+      { key: "streakMax", min: 0, max: 15, step: 1, hint: "streak steps, at most" },
+    ],
+  },
+  {
+    title: "Finale",
+    dials: [
+      { key: "refillSeconds", min: 0.2, max: 4, step: 0.1, hint: "fresh sheet after, s" },
+      { key: "inflateSeconds", min: 0.1, max: 3, step: 0.05, hint: "inflating ripple, s" },
+    ],
+  },
+];
+
 const POND_FIELDS: readonly Field<AsciiPondTuning>[] = [
   { key: "crestRamp", hint: "lit water, faint → dense (first is empty)" },
   { key: "troughRamp", hint: "dark water, faint → dense (first is empty)" },
@@ -339,16 +383,18 @@ const pixelGlowStart = saved("playground.pixelGlow", PIXEL_GLOW_DEFAULTS, setPix
 const motionStart = saved("playground.glowMotion", GLOW_MOTION_DEFAULTS, setGlowMotion);
 const pondStart = saved("playground.asciiPond", ASCII_POND_DEFAULTS, setAsciiPondTuning);
 const stirStart = saved("playground.pondStir", POND_STIR_DEFAULTS, setPondStir);
+const bubbleStart = saved("playground.bubbles", BUBBLE_DEFAULTS, setBubbleTuning);
 const pixelPondStart = saved("playground.pixelPond", PIXEL_POND_DEFAULTS, setPixelPondTuning);
 // The hour is the playground's own (`SkyHour`), never saved.
 const skyStart = saved("playground.asciiSky", ASCII_SKY_DEFAULTS, setAsciiSkyTuning);
 const sceneStart = saved("playground.skyScene", SKY_SCENE_DEFAULTS, setSkySceneTuning);
 
-type Look = "glow" | "pond" | "sky";
-const TOY_FOR: Record<Look, "glow" | "ripples" | "sky"> = {
+type Look = "glow" | "pond" | "sky" | "bubbles";
+const TOY_FOR: Record<Look, "glow" | "ripples" | "sky" | "bubbles"> = {
   glow: "glow",
   pond: "ripples",
   sky: "sky",
+  bubbles: "bubbles",
 };
 
 function Playground() {
@@ -401,9 +447,9 @@ function Playground() {
       `}</style>
       <div ref={cardRef} className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {(["glow", "pond", "sky"] as const).map((l) => (
+          {(["glow", "pond", "sky", "bubbles"] as const).map((l) => (
             <button key={l} type="button" className={chip(look === l)} onClick={() => setLook(l)}>
-              {l === "glow" ? "Glow" : l === "pond" ? "Pond" : "Sky"}
+              {{ glow: "Glow", pond: "Pond", sky: "Sky", bubbles: "Bubbles" }[l]}
             </button>
           ))}
           <span className="w-2" />
@@ -516,6 +562,18 @@ function Playground() {
             apply={setAsciiGlowTuning}
             fields={GLOW_FIELDS}
             sections={GLOW_DIALS}
+          />
+        ) : look === "bubbles" ? (
+          <Panel
+            key="bubbles"
+            title="Bubble wrap"
+            note="Click a bubble, or hold and drag across a row. Pop them all for the finale. Pixel size is for pixel art; ASCII uses the glow's grid."
+            storageKey="playground.bubbles"
+            defaults={BUBBLE_DEFAULTS}
+            start={bubbleStart}
+            apply={setBubbleTuning}
+            fields={[]}
+            sections={BUBBLE_DIALS}
           />
         ) : look === "sky" ? (
           <>

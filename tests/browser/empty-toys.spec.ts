@@ -1,5 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
-import { POP_MS, sheetFor } from "../../src/features/emptyToys/model/bubbles";
+import { sheetFor } from "../../src/features/emptyToys/model/bubbles";
+import { BUBBLE_DEFAULTS } from "../../src/features/emptyToys/model/bubblePop";
+
+/** Long enough for a pop's confetti to land and its film to settle. */
+const POP_DONE_MS = BUBBLE_DEFAULTS.confettiSeconds * 1.25 * 1000 + 300;
 
 /**
  * Settings → Toybox → Something to play with (Milestone 8, empty states):
@@ -47,14 +51,14 @@ test("the pond ripples where it's clicked, then settles", async ({ page }) => {
   // Chunky blocks, drawn sharp: neighboring screen pixels inside a block match.
   const blocky = await page.locator("canvas").evaluate((c: HTMLCanvasElement) => {
     const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
-    let inked = 0;
+    let lit = 0;
     let same = 0;
     for (let i = 0; i < d.length - 4; i += 4) {
-      if (d[i + 3]! === 0) continue;
-      inked++;
+      if (d[i + 3] === 0) continue;
+      lit++;
       if (d[i + 3] === d[i + 7] && d[i] === d[i + 4]) same++;
     }
-    return { sharp: c.width >= c.clientWidth, share: same / Math.max(1, inked) };
+    return { sharp: c.width >= c.clientWidth, share: same / Math.max(1, lit) };
   });
   expect(blocky.sharp).toBe(true);
   expect(blocky.share).toBeGreaterThan(0.6);
@@ -62,24 +66,45 @@ test("the pond ripples where it's clicked, then settles", async ({ page }) => {
   expect(await inked(page)).toBe(0);
 });
 
-test("bubble wrap pops the bubble clicked, and only it", async ({ page }) => {
+test("bubble wrap pops the bubble clicked with a burst, and only it", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=empty&toy=bubbles");
   await expect(page.getByText("All caught up")).toBeVisible();
   await stayClearOfTitle(page);
+  // The fresh sheet inflates first.
+  await page.waitForTimeout(1200);
   const before = await inked(page);
   expect(before).toBeGreaterThan(1000);
   // The first bubble, where the sheet's own layout puts it.
   const box = (await layer(page).boundingBox())!;
   const first = sheetFor(box.width, box.height).centres[0]!;
   await page.mouse.click(box.x + first.x, box.y + first.y);
-  // Past the pop's burst.
-  await page.waitForTimeout(POP_MS + 100);
+  // A burst: the flash ring and confetti cover more than the bubble did.
+  await page.waitForTimeout(110);
+  expect(await inked(page)).toBeGreaterThan(before);
+  // Once the confetti has landed, crumpled film is left: less than a bubble.
+  await page.waitForTimeout(POP_DONE_MS);
   const once = await inked(page);
   expect(once).toBeLessThan(before);
   // Clicking it again finds nothing left to pop.
   await page.mouse.click(box.x + first.x, box.y + first.y);
-  await page.waitForTimeout(POP_MS + 100);
+  await page.waitForTimeout(POP_DONE_MS);
   expect(await inked(page)).toBe(once);
+});
+
+test("bubble wrap in ASCII art draws and pops on the character grid", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=empty&toy=bubbles&style=ascii");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  await page.waitForTimeout(1200);
+  const before = await inked(page);
+  expect(before).toBeGreaterThan(1000);
+  // Drag across the top row of bubbles.
+  const box = (await layer(page).boundingBox())!;
+  await page.mouse.move(box.x + 20, box.y + 52);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 20, box.y + 52, { steps: 30 });
+  await page.mouse.up();
+  await page.waitForTimeout(POP_DONE_MS);
+  expect(await inked(page)).toBeLessThan(before);
 });
 
 test("the pixel sky is drawn in chunky pixels, under the title but behind it", async ({ page }) => {

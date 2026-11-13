@@ -22,7 +22,7 @@ export const TOYS: readonly { id: ToyId; label: string; description: string }[] 
     id: "bubbles",
     label: "Bubble wrap",
     description:
-      "A sheet of bubbles to pop, one click each, or hold and drag across a row. Pop them all and a fresh sheet comes.",
+      "A sheet of bubbles to pop. Click one, or hold and drag across a row. Each pop bursts into confetti, quick pops in a row burst bigger, and when they're all popped a fresh sheet inflates.",
   },
   {
     id: "sky",
