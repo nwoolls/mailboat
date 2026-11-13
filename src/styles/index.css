@@ -379,7 +379,7 @@ html.resizing .panel-slide {
   position: absolute;
   /* As see-through as the list card's glass it sits on, following
      Settings → Appearance → Transparency. */
-  opacity: var(--glass-panel-strength);
+  opacity: var(--screensaver-opacity, var(--glass-panel-strength));
   z-index: -1;
   pointer-events: none;
   image-rendering: pixelated;

@@ -110,6 +110,24 @@ export const SCREENSAVER_ROTATE_MINUTES = 60;
  */
 export const SCREENSAVER_EVENT = "app:screensaver";
 
+/** Window event that ends a running screensaver (the playground's Stop). */
+export const SCREENSAVER_STOP_EVENT = "app:screensaver-stop";
+
+/**
+ * For the playground only: a running screensaver isn't ended by a click,
+ * key or scroll (only by `SCREENSAVER_STOP_EVENT`), so its controls can be
+ * used while it plays. The app never sets this.
+ */
+let sticky = false;
+
+export function screensaverSticky(): boolean {
+  return sticky;
+}
+
+export function setScreensaverSticky(on: boolean) {
+  sticky = on;
+}
+
 /** Which screensaver plays, and in which colours (Settings → Toybox). */
 export type ScreensaverPrefs = { choice: SceneId | "random"; palette: PaletteId };
 export const DEFAULT_SCREENSAVER_PREFS: ScreensaverPrefs = {

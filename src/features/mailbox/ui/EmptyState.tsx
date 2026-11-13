@@ -118,6 +118,7 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
           iconRef={iconRef}
           wordsRef={wordsRef}
           closing={screensaver === "closing"}
+          style={style}
           onNod={shrug}
         />
       )}

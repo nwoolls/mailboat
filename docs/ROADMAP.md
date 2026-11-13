@@ -4673,9 +4673,44 @@ between pixel art and ASCII art for the screensavers.*
       pixels … retro NES / SNES HD-2D")*: one scene at a time, the glow and
       the pond next. The owner approved the screensavers' finer cells in UX
       Spike 4, so each screensaver's change is the owner's call
-- [ ] The screensavers in ASCII art: likely one way of drawing every
-      scene's palette cells as characters on tiles, then tuning each
-      scene, starting with the jellyfish
+- [ ] The screensavers in pixel art and ASCII art, one at a time
+      *(owner, 2026-11-13: "let's do the screensavers one at a time")*. A
+      scene still paints its fine grid of palette cells. A restyled scene
+      follows Settings → Toybox → Style: chunky blocks, each in the most
+      common color of its cells, or characters on the glow's grid. Each
+      character is chosen by how much of its cell is covered and sits on
+      a tile in that cell's color. Only scenes on an approved list switch
+      (`screensaver/model/looks.ts`); the rest keep their original
+      fine-grid look. A restyled scene is drawn more solid than the
+      fine-grid look, which is as see-through as the card's glass. To try
+      them, open the playground's Screensavers tab: a click starts one,
+      more clicks keep it playing, and Stop ends it. The first version
+      needed two clicks, because a click ended the one playing, as it
+      does in the app
+      - [x] Jellyfish *(the owner shared ASCII jellyfish and manta ray
+            examples, screen-recorded together from X, then the source of
+            one. It is licensed for personal use only, so it was read for
+            ideas and none of its code is used)*. It has its own drawing
+            instead of a conversion of the old scene: a few big jellies
+            at different depths, each blending two hues from the palette.
+            Each has a bell with a glowing rim, four rings in a clover
+            inside and bulbs along the rim, then four thick oral arms and
+            long, thin tentacles. Arms and tentacles are chains of points
+            that keep some momentum and hold their spacing. So they trail
+            behind any movement, flare as the bell squeezes, and undulate
+            as a wave travels down each one. Glowing specks drift around
+            them. The jellies surge up as the bell squeezes and then
+            coast, lean only slightly, and are pushed (never turned) by
+            the pointer, the icon and the edges. They are painted as soft
+            light first, then converted to characters (bright parts dense,
+            thin tips faint) or chunky blocks. On a light page they bring
+            a deep-sea backdrop and light text. Approaches the owner
+            rejected: small jellies converted from the old scene; heading
+            changes that spun them "like a clock arm", with tentacles
+            leading the turn (they lagged the wrong way, and the test for
+            it had the direction reversed too, so it passed); and
+            tentacles drawn by formula, which only flared out and in.
+            *Owner: "much better"*
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well

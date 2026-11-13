@@ -6,6 +6,8 @@ import {
   pickScene,
   SCREENSAVER_EVENT,
   SCREENSAVER_IDLE_SECONDS,
+  SCREENSAVER_STOP_EVENT,
+  screensaverSticky,
   SCREENSAVER_ROTATE_MINUTES,
   type SceneId,
 } from "../model/catalog";
@@ -19,6 +21,25 @@ import {
 import { blend, ink, type Pointer, type Rect, type Scene, SLOT } from "../model/scene";
 import { isRealMove } from "../../../shared/lib/pointer";
 import { screensaverPrefs } from "./prefs";
+import { deepJellyTuning, makeSwarm, step, type Swarm } from "../model/deepJellies";
+import { drawDeepJellies } from "./deepJelliesDraw";
+import {
+  chunkCells,
+  coverageChar,
+  dominantInk,
+  lookFor,
+  screensaverLookTuning,
+} from "../model/looks";
+import type { Rgb } from "../model/palettes";
+import type { ToyboxStyle } from "../../emptyToys/model/style";
+import { asciiGlowTuning, type ClearShape } from "../../mailbox/model/asciiGlow";
+import {
+  asciiCell,
+  AsciiPainter,
+  GLYPH_ON_HOT,
+  mix,
+  readAsciiColors,
+} from "../../emptyToys/ui/asciiPaint";
 
 export type ScreensaverPhase = "off" | "on" | "closing";
 const CLOSE_MS = 450;
@@ -98,8 +119,15 @@ export function useScreensaver(enabled: boolean): { phase: ScreensaverPhase; sce
     }
     if (phase === "on") {
       const close = () => setPhase("closing");
-      const events = ["keydown", "pointerdown", "wheel"] as const;
+      // The playground keeps it playing through clicks (`screensaverSticky`).
+      const events = screensaverSticky() ? [] : (["keydown", "pointerdown", "wheel"] as const);
       for (const e of events) window.addEventListener(e, close, { passive: true });
+      // Asked for another while one plays: switch to it.
+      const onSwitch = (e: Event) => {
+        if (e instanceof CustomEvent && isSceneId(e.detail)) setScene(e.detail);
+      };
+      window.addEventListener(SCREENSAVER_EVENT, onSwitch);
+      window.addEventListener(SCREENSAVER_STOP_EVENT, close);
       const rotate = window.setInterval(() => {
         if (rotating.current && screensaverPrefs.get().choice === "random")
           setScene((prev) => pickScene(null, "random", prev, Math.random));
@@ -107,6 +135,8 @@ export function useScreensaver(enabled: boolean): { phase: ScreensaverPhase; sce
       return () => {
         window.clearInterval(rotate);
         for (const e of events) window.removeEventListener(e, close);
+        window.removeEventListener(SCREENSAVER_EVENT, onSwitch);
+        window.removeEventListener(SCREENSAVER_STOP_EVENT, close);
       };
     }
     timer = window.setTimeout(() => setPhase("off"), CLOSE_MS);
@@ -132,6 +162,7 @@ export function ScreensaverCanvas({
   wordsRef,
   closing,
   onNod,
+  style = "pixel",
 }: {
   sceneId: SceneId;
   palette: PaletteId;
@@ -140,17 +171,23 @@ export function ScreensaverCanvas({
   wordsRef: RefObject<HTMLElement | null>;
   closing: boolean;
   onNod: () => void;
+  /** Settings → Toybox → Style; a scene follows it once restyled (`model/looks.ts`). */
+  style?: ToyboxStyle;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nodRef = useRef(onNod);
   const colorsRef = useRef<Uint32Array>(new Uint32Array(0));
+  /** The palette's five colors, for ASCII art's characters. */
+  const slotsRef = useRef<Rgb[]>([]);
   useEffect(() => {
     nodRef.current = onNod;
   }, [onNod]);
   // Recoloured at once when the palette changes, without restarting.
   useEffect(() => {
     const accent = getComputedStyle(document.documentElement).getPropertyValue("--color-accent");
-    colorsRef.current = colorTable(paletteColors(palette, parseColor(accent)));
+    const slots = paletteColors(palette, parseColor(accent));
+    colorsRef.current = colorTable(slots);
+    slotsRef.current = [...slots];
   }, [palette]);
 
   useEffect(() => {
@@ -161,6 +198,14 @@ export function ScreensaverCanvas({
     if (!area || !canvas || !card || !ctx) return;
 
     const px = cellPxOf(sceneId);
+    const look = lookFor(sceneId, style);
+    // The jellyfish has its own drawing in the Toybox's styles: big jellies,
+    // drawn from their own shapes (`model/deepJellies.ts`), not from cells.
+    const deep = sceneId === "jellyfish" && look !== "fine";
+    let swarm: Swarm | null = null;
+    let deepNight = false;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const painter = new AsciiPainter(ctx);
     let scene: Scene | null = null;
     let image: ImageData | null = null;
     let pixels: Uint32Array | null = null;
@@ -186,8 +231,19 @@ export function ScreensaverCanvas({
         width: `${cols * px}px`,
         height: `${rows * px}px`,
       });
-      canvas.width = cols;
-      canvas.height = rows;
+      // A restyled scene is drawn more solid than a fine one (`solidity`).
+      if (look === "fine") canvas.style.removeProperty("--screensaver-opacity");
+      else
+        canvas.style.setProperty("--screensaver-opacity", String(screensaverLookTuning().solidity));
+      // ASCII art draws characters at the screen's own resolution; the
+      // other looks draw one canvas pixel per cell, scaled up sharp.
+      const sharp = look === "ascii" || deep;
+      canvas.width = sharp ? Math.round(cols * px * dpr) : cols;
+      canvas.height = sharp ? Math.round(rows * px * dpr) : rows;
+      if (deep) {
+        swarm = makeSwarm(cols * px, rows * px, deepJellyTuning(), Math.random);
+        return;
+      }
       image = ctx.createImageData(cols, rows);
       pixels = new Uint32Array(image.data.buffer);
       cells = new Uint8Array(cols * rows);
@@ -208,6 +264,11 @@ export function ScreensaverCanvas({
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
+      if (deep && swarm) {
+        drawDeep(swarm, dt);
+        frame = requestAnimationFrame(tick);
+        return;
+      }
       if (scene && image && pixels && cells && opacity) {
         const result = scene.frame(dt, pointer);
         if (result.nod) nodRef.current();
@@ -217,12 +278,16 @@ export function ScreensaverCanvas({
         opacity.fill(255);
         scene.draw(cells, opacity);
         const colors = colorsRef.current;
+        if (look === "chunky")
+          chunk(cells, opacity, image.width, image.height, chunkCells(px, screensaverLookTuning()));
         const night = !!scene.night && light.matches;
         if (night !== nightShown) {
           nightShown = night;
           setNight([iconRef.current, wordsRef.current, canvas], night);
         }
-        if (night) {
+        if (look === "ascii") {
+          drawAscii(cells, opacity, image.width, image.height, colors, night);
+        } else if (night) {
           // A night sky in the palette's darkest colour, a little lighter low down.
           const top = colors[ink(SLOT.dark, 0)] ?? 0;
           const bottom = colors[blend(SLOT.dark, SLOT.mid, 0.25)] ?? top;
@@ -234,9 +299,154 @@ export function ScreensaverCanvas({
             // The colours are solid; a see-through cell scales the alpha byte.
             pixels[i] = a === 255 ? c : ((c & 0xffffff) | (((a * (c >>> 24)) / 255) << 24)) >>> 0;
           }
-        ctx.putImageData(image, 0, 0);
+        if (look !== "ascii") ctx.putImageData(image, 0, 0);
       }
       frame = requestAnimationFrame(tick);
+    };
+
+    // The jellyfish in the Toybox's styles: their own motion and shapes.
+    const drawDeep = (s: Swarm, dt: number) => {
+      const t = deepJellyTuning();
+      const g = asciiGlowTuning();
+      const page = readAsciiColors(g.hotMixDark, g.hotMixLight);
+      const a = area.getBoundingClientRect();
+      const c = card.getBoundingClientRect();
+      const box = (el: HTMLElement | null) => {
+        const r = el?.getBoundingClientRect();
+        return r
+          ? { x0: r.left - a.left, y0: r.top - a.top, x1: r.right - a.left, y1: r.bottom - a.top }
+          : null;
+      };
+      const icon = box(iconRef.current);
+      const words = box(wordsRef.current);
+      const keep = [icon, words].filter((b): b is NonNullable<typeof b> => b !== null);
+      const p = pointer ? { x: pointer.x * px, y: pointer.y * px } : null;
+      if (step(s, dt, p, keep, t, Math.random)) nodRef.current();
+      // On a light page, a deep-sea backdrop, and light text on it.
+      const night = light.matches;
+      if (night !== deepNight) {
+        deepNight = night;
+        setNight([iconRef.current, wordsRef.current, canvas], night);
+      }
+      const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
+      const shapes: ClearShape[] = [];
+      if (icon) shapes.push({ kind: "icon", ...icon });
+      if (wordsRef.current) {
+        const range = document.createRange();
+        const walker = document.createTreeWalker(wordsRef.current, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          range.selectNodeContents(n);
+          for (const r of range.getClientRects())
+            if (r.width > 0)
+              shapes.push({
+                kind: "words",
+                x0: r.left - a.left,
+                y0: r.top - a.top,
+                x1: r.right - a.left,
+                y1: r.bottom - a.top,
+              });
+        }
+      }
+      drawDeepJellies({
+        ctx,
+        swarm: s,
+        look: look === "ascii" ? "ascii" : "chunky",
+        dpr,
+        ox: -((((a.left - c.left) % cw) + cw) % cw),
+        oy: -((((a.top - c.top) % ch) + ch) % ch),
+        cw,
+        ch,
+        glow: g,
+        fontPx: g.fontPx,
+        page,
+        slots: slotsRef.current,
+        shapes,
+        backdrop: night,
+        t,
+      });
+    };
+
+    // ASCII art: a character per cell of the glow's grid (lined up with it
+    // across the card), picked by how much of it the scene covers, on a
+    // tile in the covered cells' average color.
+    const drawAscii = (
+      cellInks: Uint8Array,
+      cellOpacity: Uint8Array,
+      cols: number,
+      rows: number,
+      colors: Uint32Array,
+      night: boolean,
+    ) => {
+      const t = screensaverLookTuning();
+      const g = asciiGlowTuning();
+      const page = readAsciiColors(g.hotMixDark, g.hotMixLight);
+      const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
+      const slots = slotsRef.current;
+      const glyphRows = slots.map((c) => mix(c, page.content, t.glyphLift));
+      painter.prepare(cw, ch, dpr, g.fontPx, t.ramp, page, glyphRows);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (night) {
+        const top = rgbOf(colors[ink(SLOT.dark, 0)] ?? 0);
+        const bottom = rgbOf(colors[blend(SLOT.dark, SLOT.mid, 0.25)] ?? 0);
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, `rgb(${top.join(" ")})`);
+        grad.addColorStop(1, `rgb(${bottom.join(" ")})`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      const a = area.getBoundingClientRect();
+      const c = card.getBoundingClientRect();
+      const ox = -((((a.left - c.left) % cw) + cw) % cw);
+      const oy = -((((a.top - c.top) % ch) + ch) % ch);
+      const width = cols * px;
+      const height = rows * px;
+      for (let y = oy; y < height; y += ch)
+        for (let x = ox; x < width; x += cw) {
+          const c0 = Math.max(0, Math.floor(x / px));
+          const c1 = Math.min(cols, Math.ceil((x + cw) / px));
+          const r0 = Math.max(0, Math.floor(y / px));
+          const r1 = Math.min(rows, Math.ceil((y + ch) / px));
+          let sum = 0;
+          let n = 0;
+          let rr = 0;
+          let gg = 0;
+          let bb = 0;
+          for (let r = r0; r < r1; r++)
+            for (let k = c0; k < c1; k++) {
+              n++;
+              const i = r * cols + k;
+              if (!cellInks[i]) continue;
+              const w = cellOpacity[i]! / 255;
+              const col = colors[cellInks[i]!] ?? 0;
+              sum += w;
+              rr += (col & 255) * w;
+              gg += ((col >>> 8) & 255) * w;
+              bb += ((col >>> 16) & 255) * w;
+            }
+          if (n === 0 || sum === 0) continue;
+          const coverage = sum / n;
+          const glyph = coverageChar(coverage, t);
+          if (!glyph) continue;
+          const avg: Rgb = [rr / sum, gg / sum, bb / sum];
+          const bright = (0.2126 * avg[0] + 0.7152 * avg[1] + 0.0722 * avg[2]) / 255;
+          if (coverage * t.gain > t.hotAt && bright > t.hotBright) {
+            painter.tileIn(x, y, mix(avg, [255, 255, 255], 0.5), 0.85);
+            painter.glyph(x, y, glyph, GLYPH_ON_HOT, 1);
+            continue;
+          }
+          const base = page.dark ? t.tileBaseDark : t.tileBaseLight;
+          const gain = page.dark ? t.tileGainDark : t.tileGainLight;
+          painter.tileIn(x, y, avg, base + gain * coverage);
+          painter.glyph(
+            x,
+            y,
+            glyph,
+            GLYPH_ON_HOT + 1 + nearest(slots, avg),
+            0.45 + 0.55 * Math.min(1, coverage * t.gain),
+          );
+        }
+      ctx.globalAlpha = 1;
     };
     const play = () => {
       if (frame || document.hidden) return;
@@ -277,7 +487,7 @@ export function ScreensaverCanvas({
       setWordsHidden(words, false);
       setNight([icon, words, canvas], false);
     };
-  }, [sceneId, areaRef, iconRef, wordsRef]);
+  }, [sceneId, areaRef, iconRef, wordsRef, style]);
 
   return (
     <canvas
@@ -422,4 +632,49 @@ function toCells(
       if (inked) mask[cy * cols + cx] = 1;
     }
   return mask;
+}
+
+/**
+ * Pixel art's chunky blocks: each `k` × `k` block of cells takes its most
+ * common ink and its cells' average opacity, in place.
+ */
+function chunk(inks: Uint8Array, opacity: Uint8Array, cols: number, rows: number, k: number) {
+  if (k <= 1) return;
+  const blockInks: number[] = [];
+  const blockOpacity: number[] = [];
+  for (let by = 0; by < rows; by += k)
+    for (let bx = 0; bx < cols; bx += k) {
+      blockInks.length = 0;
+      blockOpacity.length = 0;
+      for (let y = by; y < Math.min(rows, by + k); y++)
+        for (let x = bx; x < Math.min(cols, bx + k); x++) {
+          blockInks.push(inks[y * cols + x]!);
+          blockOpacity.push(opacity[y * cols + x]!);
+        }
+      const { ink: dominant, opacity: solid } = dominantInk(blockInks, blockOpacity);
+      for (let y = by; y < Math.min(rows, by + k); y++)
+        for (let x = bx; x < Math.min(cols, bx + k); x++) {
+          inks[y * cols + x] = dominant;
+          opacity[y * cols + x] = dominant ? solid : 255;
+        }
+    }
+}
+
+/** The index of the color in `colors` nearest `c`. */
+function nearest(colors: readonly Rgb[], c: Rgb): number {
+  let best = 0;
+  let bestD = Infinity;
+  colors.forEach((k, i) => {
+    const d = (k[0] - c[0]) ** 2 + (k[1] - c[1]) ** 2 + (k[2] - c[2]) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  });
+  return best;
+}
+
+/** A color from the color table (little-endian RGBA) as numbers. */
+function rgbOf(c: number): Rgb {
+  return [c & 255, (c >>> 8) & 255, (c >>> 16) & 255];
 }

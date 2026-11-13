@@ -59,11 +59,33 @@ import {
   setBubbleTuning,
 } from "../src/features/emptyToys/model/bubblePop";
 import { emptyToy, toyboxStyle } from "../src/features/emptyToys/ui/prefs";
+import {
+  SCREENSAVER_EVENT,
+  SCREENSAVER_STOP_EVENT,
+  SCREENSAVERS,
+  type SceneId,
+  setScreensaverSticky,
+} from "../src/features/screensaver/model/catalog";
+import { PALETTES } from "../src/features/screensaver/model/palettes";
+import { screensaverPrefs } from "../src/features/screensaver/ui/prefs";
+import {
+  DEEP_JELLY_DEFAULTS,
+  type DeepJellyTuning,
+  setDeepJellyTuning,
+} from "../src/features/screensaver/model/deepJellies";
+import {
+  RESTYLED,
+  SCREENSAVER_LOOK_DEFAULTS,
+  type ScreensaverLookTuning,
+  setScreensaverLookTuning,
+} from "../src/features/screensaver/model/looks";
 import { setFeatureFlag } from "../src/shared/lib/featureFlags";
 import { ACCENTS } from "../src/features/settings/model/appearance";
 
 // ASCII art, and no screensaver taking over after a minute.
 setFeatureFlag("screensavers", false);
+// A screensaver keeps playing through clicks here, so its controls work.
+setScreensaverSticky(true);
 toyboxStyle.set("ascii");
 
 /** One dial: a number in a tuning, its range and what it does. */
@@ -322,6 +344,51 @@ const BUBBLE_DIALS: Sections<BubbleTuning> = [
   },
 ];
 
+const JELLY_DIALS: Sections<DeepJellyTuning> = [
+  {
+    title: "Jellyfish (restart to see some)",
+    dials: [
+      { key: "count", min: 1, max: 10, step: 1, hint: "how many (restart)" },
+      { key: "size", min: 0.04, max: 0.3, step: 0.005, hint: "bell size" },
+      { key: "tentacles", min: 0, max: 20, step: 1, hint: "tentacles" },
+      { key: "tentacleLength", min: 0.5, max: 8, step: 0.1, hint: "tentacle length, bells" },
+      { key: "sway", min: 0, max: 80, step: 1, hint: "tentacle sway, px" },
+      { key: "armLength", min: 0, max: 4, step: 0.1, hint: "oral arms, bells" },
+      { key: "pulseSeconds", min: 1, max: 10, step: 0.1, hint: "pulse, s" },
+      { key: "drift", min: 0, max: 60, step: 1, hint: "rising, px/s" },
+      { key: "depthFade", min: 0, max: 1, step: 0.05, hint: "farther dimmer, smaller" },
+      { key: "motes", min: 0, max: 200, step: 2, hint: "glowing specks (restart)" },
+      { key: "glow", min: 0, max: 1, step: 0.02, hint: "glow behind bells" },
+      { key: "core", min: 0, max: 1, step: 0.05, hint: "warm core" },
+      { key: "pixel", min: 2, max: 14, step: 1, hint: "pixel size (pixel art)" },
+    ],
+  },
+];
+
+const LOOK_DIALS: Sections<ScreensaverLookTuning> = [
+  {
+    title: "Pixel art",
+    dials: [
+      { key: "solidity", min: 0.1, max: 1, step: 0.05, hint: "how solid (restart to see)" },
+      { key: "chunkPx", min: 2, max: 14, step: 1, hint: "block size, px" },
+    ],
+  },
+  {
+    title: "ASCII art",
+    dials: [
+      { key: "cutoff", min: 0, max: 0.5, step: 0.01, hint: "faintest cell drawn" },
+      { key: "gain", min: 0.3, max: 4, step: 0.05, hint: "coverage boost" },
+      { key: "tileBaseDark", min: 0, max: 0.6, step: 0.01, hint: "tile, faint, dark" },
+      { key: "tileGainDark", min: 0, max: 1, step: 0.01, hint: "tile, covered, dark" },
+      { key: "tileBaseLight", min: 0, max: 0.6, step: 0.01, hint: "tile, faint, light" },
+      { key: "tileGainLight", min: 0, max: 1, step: 0.01, hint: "tile, covered, light" },
+      { key: "hotAt", min: 0.3, max: 1.5, step: 0.01, hint: "flip above coverage" },
+      { key: "hotBright", min: 0, max: 1, step: 0.02, hint: "flip only if this bright" },
+      { key: "glyphLift", min: 0, max: 1, step: 0.05, hint: "characters, toward the text color" },
+    ],
+  },
+];
+
 const POND_FIELDS: readonly Field<AsciiPondTuning>[] = [
   { key: "crestRamp", hint: "lit water, faint → dense (first is empty)" },
   { key: "troughRamp", hint: "dark water, faint → dense (first is empty)" },
@@ -384,23 +451,33 @@ const motionStart = saved("playground.glowMotion", GLOW_MOTION_DEFAULTS, setGlow
 const pondStart = saved("playground.asciiPond", ASCII_POND_DEFAULTS, setAsciiPondTuning);
 const stirStart = saved("playground.pondStir", POND_STIR_DEFAULTS, setPondStir);
 const bubbleStart = saved("playground.bubbles", BUBBLE_DEFAULTS, setBubbleTuning);
+const jellyStart = saved("playground.deepJellies", DEEP_JELLY_DEFAULTS, setDeepJellyTuning);
+const looksStart = saved(
+  "playground.screensaverLooks",
+  SCREENSAVER_LOOK_DEFAULTS,
+  setScreensaverLookTuning,
+);
 const pixelPondStart = saved("playground.pixelPond", PIXEL_POND_DEFAULTS, setPixelPondTuning);
 // The hour is the playground's own (`SkyHour`), never saved.
 const skyStart = saved("playground.asciiSky", ASCII_SKY_DEFAULTS, setAsciiSkyTuning);
 const sceneStart = saved("playground.skyScene", SKY_SCENE_DEFAULTS, setSkySceneTuning);
 
-type Look = "glow" | "pond" | "sky" | "bubbles";
-const TOY_FOR: Record<Look, "glow" | "ripples" | "sky" | "bubbles"> = {
+type Look = "glow" | "pond" | "sky" | "bubbles" | "screensavers";
+const TOY_FOR: Record<Look, "glow" | "ripples" | "sky" | "bubbles" | "none"> = {
   glow: "glow",
   pond: "ripples",
   sky: "sky",
   bubbles: "bubbles",
+  screensavers: "none",
 };
 
 function Playground() {
   const [look, setLook] = useState<Look>("glow");
   // Pixel or ASCII art, as Settings → Toybox → Style, to compare the two.
   const style = toyboxStyle.use();
+  const { palette } = screensaverPrefs.use();
+  // The screensaver playing, to highlight its button.
+  const [playing, setPlaying] = useState<SceneId | null>(null);
   const [theme, setTheme] = useState<Theme>(() =>
     window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark",
   );
@@ -415,6 +492,8 @@ function Playground() {
   useEffect(() => {
     // One look at a time: the glow, or the pond on its own.
     emptyToy.set(TOY_FOR[look]);
+    // Screensavers only on their own tab, so one doesn't start over a toy after a minute.
+    setFeatureFlag("screensavers", look === "screensavers");
   }, [look]);
   useEffect(() => {
     if (look !== "pond" || !stones) return;
@@ -447,9 +526,17 @@ function Playground() {
       `}</style>
       <div ref={cardRef} className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {(["glow", "pond", "sky", "bubbles"] as const).map((l) => (
+          {(["glow", "pond", "sky", "bubbles", "screensavers"] as const).map((l) => (
             <button key={l} type="button" className={chip(look === l)} onClick={() => setLook(l)}>
-              {{ glow: "Glow", pond: "Pond", sky: "Sky", bubbles: "Bubbles" }[l]}
+              {
+                {
+                  glow: "Glow",
+                  pond: "Pond",
+                  sky: "Sky",
+                  bubbles: "Bubbles",
+                  screensavers: "Screensavers",
+                }[l]
+              }
             </button>
           ))}
           <span className="w-2" />
@@ -563,6 +650,76 @@ function Playground() {
             fields={GLOW_FIELDS}
             sections={GLOW_DIALS}
           />
+        ) : look === "screensavers" ? (
+          <>
+            <section className="flex flex-col gap-2">
+              <h2 className="text-[11px] tracking-wide text-content/50 uppercase">Start one</h2>
+              <div className="flex flex-wrap gap-1">
+                {SCREENSAVERS.map((sv) => (
+                  <button
+                    key={sv.id}
+                    type="button"
+                    className={chip(playing === sv.id)}
+                    onClick={() => {
+                      setPlaying(sv.id);
+                      window.dispatchEvent(new CustomEvent(SCREENSAVER_EVENT, { detail: sv.id }));
+                    }}
+                  >
+                    {sv.label}
+                    {RESTYLED.has(sv.id) ? " ✦" : ""}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={chip(false)}
+                  onClick={() => {
+                    setPlaying(null);
+                    window.dispatchEvent(new Event(SCREENSAVER_STOP_EVENT));
+                  }}
+                >
+                  Stop
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {PALETTES.map((pal) => (
+                  <button
+                    key={pal.id}
+                    type="button"
+                    className={chip(palette === pal.id)}
+                    onClick={() =>
+                      screensaverPrefs.set({ ...screensaverPrefs.get(), palette: pal.id })
+                    }
+                  >
+                    {pal.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-content/50">
+                ✦ marks the restyled ones; the rest draw as before in either style. Here a
+                screensaver keeps playing through clicks; Stop ends it.
+              </p>
+            </section>
+            <Panel
+              key="jellies"
+              title="Jellyfish"
+              storageKey="playground.deepJellies"
+              defaults={DEEP_JELLY_DEFAULTS}
+              start={jellyStart}
+              apply={setDeepJellyTuning}
+              fields={[]}
+              sections={JELLY_DIALS}
+            />
+            <Panel
+              key="looks"
+              title="Screensaver looks"
+              storageKey="playground.screensaverLooks"
+              defaults={SCREENSAVER_LOOK_DEFAULTS}
+              start={looksStart}
+              apply={setScreensaverLookTuning}
+              fields={[{ key: "ramp", hint: "ASCII ramp, faint → dense (first is empty)" }]}
+              sections={LOOK_DIALS}
+            />
+          </>
         ) : look === "bubbles" ? (
           <Panel
             key="bubbles"

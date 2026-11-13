@@ -20,5 +20,5 @@ try {
 /** Which toy the empty view has (the glow among them); window-only, like the Toybox switches. */
 export const emptyToy = localStore(TOY_PREFS_KEY, parseToy);
 
-/** Pixel art or ASCII art (the toys follow it; the screensavers don't yet). */
+/** Pixel art or ASCII art (the toys follow it, and the screensavers one at a time). */
 export const toyboxStyle = localStore(TOYBOX_STYLE_KEY, parseStyle);

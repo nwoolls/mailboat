@@ -1,8 +1,8 @@
 /**
  * How the Toybox is drawn (Settings → Toybox → Style). Pixel art is how
  * everything began; ASCII art draws in monospace characters on tiles. So
- * far every toy has an ASCII look; the screensavers are pixel art either
- * way.
+ * far every toy has an ASCII look, and the screensavers follow one at a
+ * time (`screensaver/model/looks.ts`).
  */
 export type ToyboxStyle = "pixel" | "ascii";
 
