@@ -5121,6 +5121,20 @@ and new bugs still come here.*
       region's. Tests: an
       Outlook-named zone gives the same moment as its IANA name, and the
       fallback format; both failed before the fix.)*
+- [ ] Tooltips don't show when the app's window is on another desktop than
+      the one the app is assigned to *(owner report, 2026-11-12, macOS)*:
+      with the Dock icon's Options → Assign To set to "This Desktop",
+      moving the window to another desktop (Space) stops the tooltips
+      showing; with "None" they show on any desktop. Another app tried the
+      same way kept its tooltips. The app's tooltips are native ones
+      (`title` attributes, 126 of them), which macOS draws in windows of
+      their own. Likely cause, not confirmed: an app assigned to one desktop
+      opens its new windows there, so they appear out of sight.
+      Options: leave it (setting "None" avoids it), or draw the tooltips in
+      the page instead, with one shared handler that takes over every
+      `title` (a visible change, so the owner leads it, with mockups first:
+      the bubble's look and its delay; keep each button's accessible name).
+      Held for later (owner, 2026-11-12)
 - [x] Archiving with the preview collapsed re-opens it *(owner request,
       2026-11-09; minor; fixed 2026-11-12, and the owner tried it)*: after collapsing the preview panel by hand,
       moving through the list with the keyboard leaves it collapsed, but
