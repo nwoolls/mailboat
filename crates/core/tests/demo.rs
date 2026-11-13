@@ -305,7 +305,7 @@ async fn searches_labels_and_actions_work_like_gmail() {
         .unwrap();
     assert_eq!(labelled.threads.len(), 1);
 
-    let drafts = gmail.list_drafts().await.unwrap();
+    let drafts = gmail.list_drafts(None).await.unwrap();
     assert!(drafts.drafts.is_empty(), "the work account has no drafts");
     // The work account starts with the demo's own rules.
     let filters = gmail.filters().await.unwrap();

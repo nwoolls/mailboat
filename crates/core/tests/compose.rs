@@ -620,6 +620,47 @@ async fn a_draft_in_the_trash_is_found() {
     assert_eq!(gmail_id, "dTrashed");
 }
 
+/// The lookup reads every page of Gmail's drafts, not only the first
+/// (code review: with Spam and Trash included, a draft can fall past it).
+#[tokio::test]
+async fn a_draft_on_a_later_page_is_found() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/drafts"))
+        .and(query_param("pageToken", "p2"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "drafts": [{ "id": "dLater", "message": { "id": "m2", "threadId": "t1" } }]
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/drafts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "drafts": [{ "id": "dOther", "message": { "id": "zz", "threadId": "t9" } }],
+            "nextPageToken": "p2"
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    load_t1(&db, a);
+    let m2 = message_id(&db, a, "m2");
+    let (gmail, _) = client(&server.uri());
+
+    let id = compose::draft_for_message(&db, &gmail, m2).await.unwrap();
+    let gmail_id: String = db
+        .conn()
+        .query_row(
+            "SELECT gmail_draft_id FROM drafts WHERE id = ?1",
+            [id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(gmail_id, "dLater");
+}
+
 #[tokio::test]
 async fn deleting_a_draft_takes_it_out_of_its_conversation_at_once() {
     let server = MockServer::start().await;

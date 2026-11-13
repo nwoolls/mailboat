@@ -4514,7 +4514,11 @@ and new bugs still come here.*
       (the owner checked), so the app now asks for them too
       (`includeSpamTrash`), and the draft opens in the composer. Saving it
       reloads its conversation from Gmail, so the list shows whatever Gmail
-      does with it then. A wiremock test fails without the change.
+      does with it then. A wiremock test fails without the change. From
+      review: the lookup read only the first page of drafts (500), and with
+      Spam and Trash included a draft could fall past it, so it now reads
+      every page until the draft is found; a second test finds one on the
+      next page.
 - [x] Bug: the screenshot zoom flashes at full size before it animates
       *(owner report, 2026-11-07; fixed 2026-11-12, and the owner tried it)*: the first time each screenshot is
       zoomed, it appears large for a moment and then the grow-from-the-card

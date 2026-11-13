@@ -784,12 +784,27 @@ pub async fn draft_for_message(
     if let Some(id) = known {
         return Ok(id);
     }
-    let list = gmail.list_drafts().await?;
-    let found = list
-        .drafts
-        .into_iter()
-        .find(|d| d.message.id == gmail_message_id)
-        .ok_or_else(|| CoreError::NotFound("that draft is no longer in Gmail".into()))?;
+    // Every page, until it's found (code review: with Spam and Trash
+    // included, it can fall past the first).
+    let mut page_token: Option<String> = None;
+    let found = loop {
+        let list = gmail.list_drafts(page_token.as_deref()).await?;
+        if let Some(d) = list
+            .drafts
+            .into_iter()
+            .find(|d| d.message.id == gmail_message_id)
+        {
+            break d;
+        }
+        match list.next_page_token {
+            Some(next) => page_token = Some(next),
+            None => {
+                return Err(CoreError::NotFound(
+                    "that draft is no longer in Gmail".into(),
+                ))
+            }
+        }
+    };
     let conn = db.conn();
     conn.execute(
         "INSERT INTO drafts (account_id, gmail_draft_id, message_id, updated_at) VALUES (?1, ?2, ?3, ?4)
