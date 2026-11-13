@@ -5032,8 +5032,9 @@ and new bugs still come here.*
       nothing changes. Undo after archiving the conversation the preview was
       collapsed on goes back to it, still collapsed. A unit test of the collapsed case failed before the
       fix.)*
-- [ ] In the Unread view, a conversation disappears from the list as soon
-      as it's opened *(owner report, 2026-11-12)*: opening marks it read,
+- [x] In the Unread view, a conversation disappears from the list as soon
+      as it's opened *(owner report, 2026-11-12; fixed the same day, and the
+      owner tried this version)*: opening marks it read,
       and the list, which only brings unread conversations, refreshed
       without it, from under the pointer and the selection. The code meant
       it to stay until the list refreshed, but mail changing refreshes the
