@@ -132,11 +132,13 @@ export function withAction(
   ids: ReadonlySet<ThreadId>,
   action: ThreadAction,
   view: MailView,
-): InfiniteData<ThreadPage> | undefined {
+): (InfiniteData<ThreadPage> & { local?: true }) | undefined {
   if (!data) return data;
   const leaves = leavesView(action, view);
   return {
     ...data,
+    // The app's own update: the Unread list takes it as it is (unreadList.ts).
+    local: true,
     pages: data.pages.map((page) => ({
       ...page,
       threads: page.threads.flatMap((t) =>

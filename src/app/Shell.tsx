@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { commands, events } from "../platform/tauri/bindings";
-import type { AccountId, ThreadId, ThreadSummary } from "../platform/tauri/bindings";
+import type { AccountId, MailView, ThreadId, ThreadSummary } from "../platform/tauri/bindings";
+import { useQueryClient } from "@tanstack/react-query";
 import { IS_TAURI, unwrap } from "../platform/tauri/ipc";
 import { indexAccounts, syncAttention } from "../features/accounts/model/accounts";
 import { Sidebar } from "../features/accounts/ui/Sidebar";
@@ -20,13 +21,6 @@ import {
 import { Splitter } from "../features/layout/ui/Splitter";
 import { useElementWidth } from "../features/layout/ui/useElementWidth";
 import { panels, setSavedReaderOpen, setSidebarOpen } from "../features/layout/ui/panels";
-import {
-  type Kept,
-  keepRead,
-  keptAfter,
-  NOTHING_KEPT,
-  withKept,
-} from "../features/mailbox/model/unreadKept";
 import { Onboarding } from "../features/onboarding/ui/Onboarding";
 import { onboarding, updateProgress } from "../features/onboarding/ui/progress";
 import {
@@ -264,26 +258,25 @@ export function Shell() {
   const showAccount = spansAccounts(selection, accountList.length);
 
   const threadsQuery = useThreads(selection);
-  const listed = useMemo(
+  const threads = useMemo(
     () => threadsQuery.data?.pages.flatMap((p) => p.threads) ?? [],
     [threadsQuery.data],
   );
-  // In Unread, conversations read during this visit stay, shown as read,
-  // until the view changes (unreadKept.ts). Adjusted during render.
+  // In Unread, conversations read during a visit stay, shown as read, until
+  // the view changes (unreadList.ts keeps them in the list's data). Leaving
+  // the view forgets its list, so the next visit lists only what is unread.
   const inUnread = selection.view.kind === "system" && selection.view.label === "unread";
-  const visit = selectionKey(selection);
-  const [kept, setKept] = useState<{ visit: string; rows: Kept }>(() => ({
-    visit,
-    rows: NOTHING_KEPT,
-  }));
-  if (kept.visit !== visit) setKept({ visit, rows: NOTHING_KEPT });
-  else if (inUnread) {
-    // Not from the previous view's rows, shown while Unread loads.
-    const rows = keepRead(kept.rows, listed, { placeholder: threadsQuery.isPlaceholderData });
-    if (rows !== kept.rows) setKept({ visit, rows });
-  }
-  const keptRows = inUnread && kept.visit === visit ? kept.rows : NOTHING_KEPT;
-  const threads = useMemo(() => withKept(listed, keptRows), [listed, keptRows]);
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (inUnread) return;
+    queryClient.removeQueries({
+      queryKey: ["threads"],
+      predicate: ({ queryKey }) => {
+        const view = queryKey[2] as MailView | undefined;
+        return view?.kind === "system" && view.label === "unread";
+      },
+    });
+  }, [inUnread, queryClient]);
   const [selectedId, setSelectedId] = useState<ThreadId | null>(null);
   // The row selected without being previewed: closed with Esc, or moved
   // to with j/k while no preview shows. It stays highlighted, the buttons
@@ -448,7 +441,6 @@ export function Shell() {
     function run(action: ThreadAction, ids: ThreadId[], fromUndo = false) {
       if (ids.length === 0) return;
       const openBefore = openNow.current;
-      setKept((k) => ({ ...k, rows: keptAfter(k.rows, ids, action, selection.view) }));
       if (leavesView(action, selection.view)) {
         const removed = new Set(ids);
         const { afterRemoval } = viewingPrefs.get();
