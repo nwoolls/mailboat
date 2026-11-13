@@ -582,6 +582,44 @@ async fn a_draft_made_elsewhere_is_found_and_discarded() {
     assert_eq!(left, 0, "gone from the cache at once");
 }
 
+/// A draft in the Trash opens in the composer, as in Gmail on the web:
+/// Gmail lists it only when asked to include Spam and Trash (owner report,
+/// 2026-11-12: "that draft is no longer in Gmail").
+#[tokio::test]
+async fn a_draft_in_the_trash_is_found() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/drafts"))
+        .and(query_param("includeSpamTrash", "true"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "drafts": [{ "id": "dTrashed", "message": { "id": "m2", "threadId": "t1" } }]
+        })))
+        .mount(&server)
+        .await;
+    // Without it, Gmail leaves drafts in the Trash out.
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/drafts"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    load_t1(&db, a);
+    let m2 = message_id(&db, a, "m2");
+    let (gmail, _) = client(&server.uri());
+
+    let id = compose::draft_for_message(&db, &gmail, m2).await.unwrap();
+    let gmail_id: String = db
+        .conn()
+        .query_row(
+            "SELECT gmail_draft_id FROM drafts WHERE id = ?1",
+            [id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(gmail_id, "dTrashed");
+}
+
 #[tokio::test]
 async fn deleting_a_draft_takes_it_out_of_its_conversation_at_once() {
     let server = MockServer::start().await;

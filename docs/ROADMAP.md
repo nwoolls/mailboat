@@ -4503,6 +4503,18 @@ again until the next spike. Bug Spike 3 (started 2026-11-12) lists the
 items it covers without moving them: they stay here with their full text,
 and new bugs still come here.*
 
+- [x] A draft in Trash can't be opened *(owner report, 2026-11-12; fixed
+      the same day, and the owner tried it)*: clicking one showed
+      "Couldn't open the draft: not found: that draft is no longer in
+      Gmail", though it was still there, in Gmail's Trash. A draft lands in
+      the Trash when its conversation is deleted rather than the draft
+      discarded. To open a draft the app finds it in Gmail's list of drafts
+      (`drafts.list`), which leaves out drafts in Spam and Trash unless
+      asked to include them. Gmail on the web opens one in the composer
+      (the owner checked), so the app now asks for them too
+      (`includeSpamTrash`), and the draft opens in the composer. Saving it
+      reloads its conversation from Gmail, so the list shows whatever Gmail
+      does with it then. A wiremock test fails without the change.
 - [x] Bug: the screenshot zoom flashes at full size before it animates
       *(owner report, 2026-11-07; fixed 2026-11-12, and the owner tried it)*: the first time each screenshot is
       zoomed, it appears large for a moment and then the grow-from-the-card

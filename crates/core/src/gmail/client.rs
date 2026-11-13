@@ -559,11 +559,13 @@ impl GmailClient {
     }
 
     /// `drafts.list`: every draft's ID with its message (one page of up to
-    /// 500; more drafts than that are rare).
+    /// 500; more drafts than that are rare). Drafts in the Trash too, which
+    /// Gmail otherwise leaves out: one there opens in the composer, as in
+    /// Gmail on the web.
     pub async fn list_drafts(&self) -> Result<DraftList> {
         self.get_json(
             &self.url("drafts"),
-            &[("maxResults", "500")],
+            &[("maxResults", "500"), ("includeSpamTrash", "true")],
             cost::DRAFTS_LIST,
         )
         .await
