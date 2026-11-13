@@ -138,7 +138,7 @@ export function withAction(
   return {
     ...data,
     // The app's own update: the Unread list takes it as it is (unreadList.ts).
-    local: true,
+    ...(view.kind === "system" && view.label === "unread" && { local: true as const }),
     pages: data.pages.map((page) => ({
       ...page,
       threads: page.threads.flatMap((t) =>

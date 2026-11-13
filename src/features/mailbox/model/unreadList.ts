@@ -1,5 +1,6 @@
 import { type InfiniteData, replaceEqualDeep } from "@tanstack/react-query";
 import type { ThreadPage, ThreadSummary } from "../../../platform/tauri/bindings";
+import { updateSummary } from "./threadActions";
 
 /**
  * The Unread view keeps what was read during a visit (owner, 2026-11-12).
@@ -39,14 +40,22 @@ export function keepReadRows(prev: ListData | undefined, next: ListData): ListDa
     return replaceEqualDeep(prev, data);
   }
   if (!prev) return next;
-  const present = new Set(next.pages.flatMap((p) => p.threads.map((t) => t.id)));
+  const fresh = dropRepeats(next);
+  const present = new Set(fresh.pages.flatMap((p) => p.threads.map((t) => t.id)));
+  // Only what the refresh covered: with more pages to come, a row past the
+  // last one it brought was pushed down a page (a newer one arrived), not
+  // read; the next page brings it back (code review).
+  const lastPage = fresh.pages.at(-1);
+  const lastRow = lastPage?.threads.at(-1);
+  const covered = (t: ThreadSummary) => !lastPage?.nextCursor || !lastRow || !before(lastRow, t);
   const missing = prev.pages
     .flatMap((p) => p.threads)
-    .filter((t) => !present.has(t.id))
-    .map((t) => (t.unread ? { ...t, unread: false } : t))
+    .filter((t) => !present.has(t.id) && covered(t))
+    // Read, as the app marks one read (its senders too).
+    .map((t) => (t.unread ? updateSummary({ kind: "read", read: true }, t) : t))
     .toSorted((a, b) => (before(a, b) ? -1 : 1));
-  if (missing.length === 0 || next.pages.length === 0) return replaceEqualDeep(prev, next);
-  const pages = next.pages.map((p) => ({ ...p, threads: [...p.threads] }));
+  if (missing.length === 0 || fresh.pages.length === 0) return replaceEqualDeep(prev, fresh);
+  const pages = fresh.pages.map((p) => ({ ...p, threads: [...p.threads] }));
   for (const row of missing) {
     // Before the first row it comes before; when that's the first row of a
     // page, at the end of the page before it. At the very end when it comes
@@ -62,5 +71,27 @@ export function keepReadRows(prev: ListData | undefined, next: ListData): ListDa
     }
     if (!placed) pages.at(-1)!.threads.push(row);
   }
-  return replaceEqualDeep(prev, { ...next, pages });
+  return replaceEqualDeep(prev, { ...fresh, pages });
+}
+
+/**
+ * `data` with each conversation once: a later page's copy wins (a row kept
+ * as read, then brought by the next page because it's unread again).
+ */
+function dropRepeats(data: ListData): ListData {
+  const ids = data.pages.flatMap((p) => p.threads.map((t) => t.id));
+  if (new Set(ids).size === ids.length) return data;
+  // Walking back from the last page, the first copy seen of each stays.
+  const seen = new Set<ThreadSummary["id"]>();
+  const pages: ThreadPage[] = [];
+  for (const page of data.pages.toReversed()) {
+    const kept: ThreadSummary[] = [];
+    for (const t of page.threads.toReversed()) {
+      if (seen.has(t.id)) continue;
+      seen.add(t.id);
+      kept.push(t);
+    }
+    pages.unshift({ ...page, threads: kept.toReversed() });
+  }
+  return { ...data, pages };
 }

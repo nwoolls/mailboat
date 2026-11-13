@@ -100,3 +100,54 @@ describe("the Unread list keeps what was read during the visit", () => {
     expect(shown(next)[0]).toBe(a);
   });
 });
+
+// Code review, round 3.
+describe("the Unread list across pages and senders", () => {
+  /** Pages that say more come after them (a cursor), as loaded ones do. */
+  const paged = (...pages: ThreadSummary[][]): ListData => ({
+    pages: pages.map((threads, i) => ({
+      threads,
+      nextCursor:
+        i < pages.length - 1 || threads.length > 0
+          ? { lastMessageAt: 0, threadId: 0 as never }
+          : null,
+    })),
+    pageParams: pages.map(() => null),
+  });
+
+  it("doesn't keep a row a newer one pushed to the next page, nor show it twice", () => {
+    const before = paged([row(1, 300), row(2, 200), row(3, 100)]);
+    // A newer conversation arrived: the first page now ends at 2, and 3
+    // (still unread) is on the next page, not read.
+    const refreshed = keepReadRows(before, paged([row(0, 400), row(1, 300), row(2, 200)]));
+    expect(ids(refreshed)).toEqual([0, 1, 2]);
+    // The next page brings it, once, unread.
+    const more = keepReadRows(refreshed, {
+      ...refreshed,
+      pages: [...refreshed.pages, { threads: [row(3, 100)], nextCursor: null }],
+      pageParams: [...refreshed.pageParams, null],
+    });
+    expect(ids(more)).toEqual([0, 1, 2, 3]);
+    expect(shown(more).at(-1)!.unread).toBe(true);
+  });
+
+  it("shows a conversation once when the next page brings back one kept as read", () => {
+    const kept = paged([row(1, 300), row(2, 200, false)]);
+    const more = keepReadRows(kept, {
+      ...kept,
+      pages: [...kept.pages, { threads: [row(2, 200)], nextCursor: null }],
+      pageParams: [...kept.pageParams, null],
+    });
+    expect(ids(more)).toEqual([1, 2]);
+    expect(shown(more)[1]!.unread).toBe(true);
+  });
+
+  it("shows a kept row's senders as read too", () => {
+    const withSender = {
+      ...row(2, 200),
+      senders: [{ name: "Maya Chen", email: "maya@x.example", unread: true }],
+    } as unknown as ThreadSummary;
+    const kept = keepReadRows(list([row(1, 300), withSender]), list([row(1, 300)]));
+    expect(shown(kept)[1]!.senders.map((s) => s.unread)).toEqual([false]);
+  });
+});

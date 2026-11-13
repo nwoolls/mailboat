@@ -5048,8 +5048,13 @@ and new bugs still come here.*
       as they are. So Mark unread, star, archive and labels change such a
       row at once, a failed action rolls back, and Trash or Spam takes it
       out, as for any row. Leaving the view removes its cached list, so the
-      next visit fetches only what is unread (and Unread no longer comes
-      back scrolled where it was left). A first version kept these rows in
+      next visit fetches only what is unread (its loaded pages go too, so it
+      comes back scrolled at most as far as its first page reaches). A
+      refresh keeps only rows within the range it covered (one pushed to
+      the next page by a newer arrival comes back with that page), a later
+      page's copy replaces a kept one, a kept row's senders show as read
+      too, and a failed action's rollback writes only into the list it came
+      from, never into a forgotten Unread list (code review). A first version kept these rows in
       a separate copy; two review rounds found that the copy missed Undo,
       rollback and immediate updates, and the owner chose this design
       instead. Two things stay as they are: Undo of Trash on a read row
