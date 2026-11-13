@@ -4469,26 +4469,33 @@ The beta itself is the owner's to cut (`docs/DEVELOPMENT.md` → Releasing);
 the repository is not in beta mode, so it starts with `pre enter beta`, on
 the owner's word.*
 
+**Closed (owner, 2026-11-12).** All seven items are done and the owner
+tried each: six were built and merged (#112, #113, #114, #116, #117,
+#118; #115 is this plan), and the sign-in code item, built earlier,
+needed only the owner's try. Next is 0.2.1-beta.0, on the owner's word.
+Rethinking how a new reply is followed was left out and stays open in the
+Bug backlog.
+
 1. [x] The reply moving under the cursor after a draft save (the AI summary
    above it blinking), #112.
 2. [x] The line being typed hidden under the pinned Send bar in a narrow
    reader, #113.
 3. [x] Archiving with the preview collapsed re-opens it (the owner tried
-   the fix, 2026-11-12; branch `archive-keeps-collapsed`).
+   the fix, 2026-11-12; #114).
 4. [x] Meeting dates and times could be easier to read. Example formats go
    to the owner to choose from before any code. (The owner chose showing
    Outlook invitations in the computer's own time zone and tried it,
-   2026-11-12; branch `invite-windows-zones`, #116.)
+   2026-11-12; #116.)
 5. [x] The website's screenshot zoom flashes at full size before it
    animates. (Stepping with ‹ › now crossfades too, the owner's choice; the
-   owner tried both, 2026-11-12; branch `website-zoom-flash`.)
+   owner tried both, 2026-11-12; #118.)
 6. [x] A sign-in code in a verification email isn't surfaced: built, and
    waiting on the owner trying a real verification email (whether Apple
    Intelligence still refuses its full summary). (The owner tried a
    made-up email of the same shape, 2026-11-12: the code showed and the
    full summary was written; see the Bug backlog entry.)
 7. [x] The browser tests all ran in Chromium in a checkout whose path has
-   "windows-" in it (found during item 4; fixed, branch `playwright-match`).
+   "windows-" in it (found during item 4; fixed, #117).
 
 Not in the spike: rethinking how a new reply is followed (and the
 slow-machine test kept as `test.fixme`). It is a design for the owner to
