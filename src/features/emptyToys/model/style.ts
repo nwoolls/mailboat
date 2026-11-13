@@ -1,8 +1,8 @@
 /**
  * How the Toybox is drawn (Settings → Toybox → Style). Pixel art is how
  * everything began; ASCII art draws in monospace characters on tiles. So
- * far the glow and the pond have an ASCII look; the screensavers, bubble
- * wrap and sky are pixel art either way.
+ * far the glow, the pond and the sky have an ASCII look; the screensavers
+ * and bubble wrap are pixel art either way.
  */
 export type ToyboxStyle = "pixel" | "ascii";
 

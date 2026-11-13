@@ -71,8 +71,31 @@ export class AsciiPainter {
 
   constructor(private readonly ctx: CanvasRenderingContext2D) {}
 
-  prepare(cw: number, ch: number, dpr: number, fontPx: number, chars: string, c: AsciiColors) {
-    const key = [cw, ch, dpr, fontPx, chars, ...c.accent, ...c.hot, ...c.base].join();
+  /**
+   * `extra` adds color rows of its own after GLYPH_ON_HOT (row
+   * GLYPH_ON_HOT + 1 is `extra[0]`), for a scene with colors beyond the
+   * accent (the sky's).
+   */
+  prepare(
+    cw: number,
+    ch: number,
+    dpr: number,
+    fontPx: number,
+    chars: string,
+    c: AsciiColors,
+    extra: readonly Rgb[] = [],
+  ) {
+    const key = [
+      cw,
+      ch,
+      dpr,
+      fontPx,
+      chars,
+      ...c.accent,
+      ...c.hot,
+      ...c.base,
+      ...extra.flat(),
+    ].join();
     this.cw = cw;
     this.ch = ch;
     this.dpr = dpr;
@@ -85,16 +108,20 @@ export class AsciiPainter {
     );
     const sheet = document.createElement("canvas");
     sheet.width = Math.max(1, Math.ceil(unique.length * cw * dpr));
-    sheet.height = Math.ceil((GLYPH_STEPS + 1) * ch * dpr);
+    sheet.height = Math.ceil((GLYPH_STEPS + 1 + extra.length) * ch * dpr);
     const a = sheet.getContext("2d");
     if (a) {
       a.scale(dpr, dpr);
       a.font = `${fontPx}px ${ASCII_FONT}`;
       a.textAlign = "center";
       a.textBaseline = "middle";
-      for (let row = 0; row <= GLYPH_STEPS; row++) {
+      for (let row = 0; row <= GLYPH_STEPS + extra.length; row++) {
         a.fillStyle =
-          row === GLYPH_ON_HOT ? rgb(c.base) : rgb(mix(c.accent, c.hot, row / (GLYPH_STEPS - 1)));
+          row > GLYPH_ON_HOT
+            ? rgb(extra[row - GLYPH_ON_HOT - 1]!)
+            : row === GLYPH_ON_HOT
+              ? rgb(c.base)
+              : rgb(mix(c.accent, c.hot, row / (GLYPH_STEPS - 1)));
         unique.forEach((g, k) => a.fillText(g, k * cw + cw / 2, row * ch + ch / 2 + 0.5));
       }
     }
@@ -108,6 +135,28 @@ export class AsciiPainter {
     ctx.globalAlpha = Math.min(1, alpha);
     ctx.fillStyle = this.tiles[Math.round(clamp01(warmth) * (TILE_STEPS - 1))]!;
     ctx.fillRect((x + 0.5) * dpr, (y + 0.5) * dpr, (cw - 1) * dpr, (ch - 1) * dpr);
+  }
+
+  /** A tile at (x, y) in any color. */
+  tileIn(x: number, y: number, color: Rgb, alpha: number) {
+    const { ctx, cw, ch, dpr } = this;
+    if (alpha <= 0.005) return;
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.fillStyle = rgb(color);
+    ctx.fillRect((x + 0.5) * dpr, (y + 0.5) * dpr, (cw - 1) * dpr, (ch - 1) * dpr);
+  }
+
+  /** The whole cell at (x, y) in a color, with no gap: a wash rather than a tile. */
+  fill(x: number, y: number, color: Rgb, alpha: number) {
+    const { ctx, cw, ch, dpr } = this;
+    if (alpha <= 0.005) return;
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.fillStyle = rgb(color);
+    // Edges rounded the same way on both sides, so neighbors meet exactly
+    // (an overlap would draw twice and show as a grid).
+    const x0 = Math.round(x * dpr);
+    const y0 = Math.round(y * dpr);
+    ctx.fillRect(x0, y0, Math.round((x + cw) * dpr) - x0, Math.round((y + ch) * dpr) - y0);
   }
 
   /** A character at (x, y) in color row `row` (0 accent … GLYPH_STEPS - 1 hot, or GLYPH_ON_HOT). */
@@ -138,7 +187,7 @@ export function mix(a: Rgb, b: Rgb, k: number): Rgb {
   ];
 }
 
-function rgb(c: Rgb): string {
+export function rgb(c: Rgb): string {
   return `rgb(${c[0]} ${c[1]} ${c[2]})`;
 }
 

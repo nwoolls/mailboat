@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { allPopped, bubbleAt, pop, sheetFor } from "./bubbles";
 import { POND_STIR_DEFAULTS, PondToy, SETTLE_SECONDS } from "./pond";
-import { moonPath, moonPhase, nightness, skyAt, starsFor } from "./sky";
+import { moonPhase, nightness, skyAt } from "./sky";
 import { moveGlowSwitch, parseToy } from "./toys";
 
 describe("parseToy", () => {
@@ -130,22 +130,6 @@ describe("sky at night", () => {
     expect(moonPhase(new Date(full))).toBeCloseTo(0.5, 1);
     const fresh = moonPhase(new Date(full + 14.77 * 86_400_000));
     expect(Math.min(fresh, 1 - fresh)).toBeLessThan(0.03);
-  });
-  it("lights the right side waxing, the left waning, all of it when full", () => {
-    // Full: two half circles, the whole disc.
-    expect(moonPath(0.5, 20)).toBe("M 10 0 A 10 10 0 0 0 10 20 A 10 10 0 0 0 10 0 Z");
-    // First quarter: the right half, closed by a straight line.
-    expect(moonPath(0.25, 20)).toBe("M 10 0 A 10 10 0 0 1 10 20 A 0 10 0 0 0 10 0 Z");
-    expect(moonPath(0.75, 20)).toContain("A 10 10 0 0 0 10 20");
-  });
-  it("scatters the same stars each time, inside the sky", () => {
-    const stars = starsFor(40);
-    expect(stars).toEqual(starsFor(40));
-    for (const s of stars) {
-      expect(s.x).toBeGreaterThanOrEqual(0);
-      expect(s.x).toBeLessThanOrEqual(100);
-      expect(s.y).toBeLessThanOrEqual(80);
-    }
   });
 });
 

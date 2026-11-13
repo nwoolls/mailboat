@@ -27,6 +27,17 @@ import {
   type PondStir,
   setPondStir,
 } from "../src/features/emptyToys/model/pond";
+import {
+  ASCII_SKY_DEFAULTS,
+  type AsciiSkyTuning,
+  setAsciiSkyTuning,
+} from "../src/features/emptyToys/model/asciiSky";
+import { setSkyHourOverride } from "../src/features/emptyToys/model/sky";
+import {
+  SKY_SCENE_DEFAULTS,
+  type SkySceneTuning,
+  setSkySceneTuning,
+} from "../src/features/emptyToys/model/skyScene";
 import { emptyToy, toyboxStyle } from "../src/features/emptyToys/ui/prefs";
 import { setFeatureFlag } from "../src/shared/lib/featureFlags";
 import { ACCENTS } from "../src/features/settings/model/appearance";
@@ -155,6 +166,55 @@ const POND_DIALS: Sections<AsciiPondTuning> = [
   },
 ];
 
+const SCENE_DIALS: Sections<SkySceneTuning> = [
+  {
+    title: "Pixels",
+    dials: [
+      { key: "pixel", min: 2, max: 12, step: 1, hint: "pixel size, px (pixel art)" },
+      { key: "opacityDark", min: 0.2, max: 1, step: 0.02, hint: "how solid, dark" },
+      { key: "opacityLight", min: 0.2, max: 1, step: 0.02, hint: "how solid, light" },
+      { key: "skyBands", min: 2, max: 16, step: 1, hint: "sky bands" },
+      { key: "dither", min: 0, max: 1.5, step: 0.05, hint: "dithering" },
+      { key: "bloom", min: 0, max: 1.5, step: 0.05, hint: "glow around lights" },
+    ],
+  },
+  {
+    title: "Land",
+    dials: [
+      { key: "mountainsAt", min: 0.3, max: 0.95, step: 0.01, hint: "mountains begin, from top" },
+      { key: "mountainHeight", min: 0, max: 0.4, step: 0.01, hint: "mountain height" },
+      { key: "hillsAt", min: 0.3, max: 0.98, step: 0.01, hint: "hills begin" },
+      { key: "grassAt", min: 0.3, max: 1, step: 0.01, hint: "grass begins" },
+      { key: "parallax", min: 0, max: 8, step: 0.25, hint: "depth with the pointer, cells" },
+    ],
+  },
+  {
+    title: "Sky",
+    dials: [
+      { key: "clouds", min: 0, max: 14, step: 1, hint: "clouds" },
+      { key: "cloudSize", min: 6, max: 80, step: 1, hint: "cloud size, cells" },
+      { key: "cloudWind", min: 0, max: 6, step: 0.1, hint: "drift, cells/s" },
+      { key: "stars", min: 0, max: 80, step: 1, hint: "stars per 1000 cells" },
+      { key: "sparkles", min: 0, max: 1, step: 0.02, hint: "share that sparkle" },
+      { key: "sunRadius", min: 2, max: 16, step: 0.5, hint: "sun radius, cells" },
+      { key: "moonRadius", min: 2, max: 16, step: 0.5, hint: "moon radius, cells" },
+    ],
+  },
+];
+
+const SKY_DIALS: Sections<AsciiSkyTuning> = [
+  {
+    title: "ASCII",
+    dials: [
+      { key: "washDark", min: 0, max: 1, step: 0.02, hint: "sky wash, dark" },
+      { key: "washLight", min: 0, max: 1, step: 0.02, hint: "sky wash, light" },
+      { key: "tileDark", min: 0, max: 1, step: 0.02, hint: "tiles, dark" },
+      { key: "tileLight", min: 0, max: 1, step: 0.02, hint: "tiles, light" },
+      { key: "glyphLift", min: 0, max: 1, step: 0.05, hint: "characters, toward the text color" },
+    ],
+  },
+];
+
 const POND_FIELDS: readonly Field<AsciiPondTuning>[] = [
   { key: "crestRamp", hint: "lit water, faint → dense (first is empty)" },
   { key: "troughRamp", hint: "dark water, faint → dense (first is empty)" },
@@ -214,11 +274,21 @@ function saved<T extends object>(key: string, defaults: T, apply: (t: T) => void
 const glowStart = saved("playground.asciiGlow", ASCII_GLOW_DEFAULTS, setAsciiGlowTuning);
 const pondStart = saved("playground.asciiPond", ASCII_POND_DEFAULTS, setAsciiPondTuning);
 const stirStart = saved("playground.pondStir", POND_STIR_DEFAULTS, setPondStir);
+// The hour is the playground's own (`SkyHour`), never saved.
+const skyStart = saved("playground.asciiSky", ASCII_SKY_DEFAULTS, setAsciiSkyTuning);
+const sceneStart = saved("playground.skyScene", SKY_SCENE_DEFAULTS, setSkySceneTuning);
 
-type Look = "glow" | "pond";
+type Look = "glow" | "pond" | "sky";
+const TOY_FOR: Record<Look, "glow" | "ripples" | "sky"> = {
+  glow: "glow",
+  pond: "ripples",
+  sky: "sky",
+};
 
 function Playground() {
   const [look, setLook] = useState<Look>("glow");
+  // Pixel or ASCII art, as Settings → Toybox → Style, to compare the two.
+  const style = toyboxStyle.use();
   const [theme, setTheme] = useState<Theme>(() =>
     window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark",
   );
@@ -232,7 +302,7 @@ function Playground() {
   useEffect(() => applyTheme(theme, accent), [theme, accent]);
   useEffect(() => {
     // One look at a time: the glow, or the pond on its own.
-    emptyToy.set(look === "pond" ? "ripples" : "glow");
+    emptyToy.set(TOY_FOR[look]);
   }, [look]);
   useEffect(() => {
     if (look !== "pond" || !stones) return;
@@ -265,9 +335,20 @@ function Playground() {
       `}</style>
       <div ref={cardRef} className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {(["glow", "pond"] as const).map((l) => (
+          {(["glow", "pond", "sky"] as const).map((l) => (
             <button key={l} type="button" className={chip(look === l)} onClick={() => setLook(l)}>
-              {l === "glow" ? "Glow" : "Pond"}
+              {l === "glow" ? "Glow" : l === "pond" ? "Pond" : "Sky"}
+            </button>
+          ))}
+          <span className="w-2" />
+          {(["pixel", "ascii"] as const).map((st) => (
+            <button
+              key={st}
+              type="button"
+              className={chip(style === st)}
+              onClick={() => toyboxStyle.set(st)}
+            >
+              {st === "pixel" ? "Pixel" : "ASCII"}
             </button>
           ))}
           <span className="w-2" />
@@ -348,6 +429,12 @@ function Playground() {
       </div>
 
       <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto">
+        {style === "pixel" && (
+          <p className="rounded-md border border-stroke bg-selection-subtle p-2 text-content/70">
+            Showing pixel art. These dials tune the ASCII look (the pond&rsquo;s pointer ripples and
+            the time of day apply to both).
+          </p>
+        )}
         {look === "glow" ? (
           <Panel
             key="glow"
@@ -359,6 +446,32 @@ function Playground() {
             fields={GLOW_FIELDS}
             sections={GLOW_DIALS}
           />
+        ) : look === "sky" ? (
+          <>
+            <SkyHour />
+            <Panel
+              key="scene"
+              title="Sky scene"
+              note="The scene both styles draw. Click for a shooting star at night, or a small cloud by day."
+              storageKey="playground.skyScene"
+              defaults={SKY_SCENE_DEFAULTS}
+              start={sceneStart}
+              apply={setSkySceneTuning}
+              fields={[]}
+              sections={SCENE_DIALS}
+            />
+            <Panel
+              key="sky"
+              title="ASCII sky"
+              note="The character size and grid are the glow's (Glow → Grid)."
+              storageKey="playground.asciiSky"
+              defaults={ASCII_SKY_DEFAULTS}
+              start={skyStart}
+              apply={setAsciiSkyTuning}
+              fields={[]}
+              sections={SKY_DIALS}
+            />
+          </>
         ) : (
           <Panel
             key="pond"
@@ -387,6 +500,59 @@ function Playground() {
         )}
       </aside>
     </div>
+  );
+}
+
+/** The time of day the sky shows: now, or an hour picked to see dawn, noon, dusk or night. */
+function SkyHour() {
+  const [hour, setHour] = useState<number | null>(null);
+  // The real hour when the page opened, for the slider's place while it's "Now".
+  const [opened] = useState(() => {
+    const d = new Date();
+    return d.getHours() + d.getMinutes() / 60;
+  });
+  const pick = (h: number | null) => {
+    setHour(h);
+    setSkyHourOverride(h);
+  };
+  const shown = hour ?? opened;
+  const clock = `${Math.floor(shown)}:${String(Math.round((shown % 1) * 60) % 60).padStart(2, "0")}`;
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[11px] tracking-wide text-content/50 uppercase">Time of day</h2>
+        <button type="button" className={chip(hour === null)} onClick={() => pick(null)}>
+          Now
+        </button>
+      </div>
+      <label className="grid grid-cols-[1fr_auto] items-center gap-x-2">
+        <span className="text-content/70">hour</span>
+        <span className="font-mono text-content/50 tabular-nums">{clock}</span>
+        <input
+          className="col-span-2"
+          type="range"
+          min={0}
+          max={23.75}
+          step={0.25}
+          value={shown}
+          onChange={(e) => pick(Number(e.target.value))}
+        />
+      </label>
+      <div className="flex flex-wrap gap-1">
+        {(
+          [
+            ["Dawn", 6.5],
+            ["Noon", 12.5],
+            ["Dusk", 19.25],
+            ["Night", 23],
+          ] as const
+        ).map(([label, h]) => (
+          <button key={label} type="button" className={chip(hour === h)} onClick={() => pick(h)}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 

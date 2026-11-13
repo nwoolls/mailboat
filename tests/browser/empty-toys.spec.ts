@@ -68,16 +68,26 @@ test("bubble wrap pops the bubble clicked, and only it", async ({ page }) => {
   expect(await inked(page)).toBe(once);
 });
 
-test("the sky sits behind the view with the sun or moon in it", async ({ page }) => {
+test("the pixel sky is drawn in chunky pixels, under the title but behind it", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=empty&toy=sky");
   await expect(page.getByText("All caught up")).toBeVisible();
-  await stayClearOfTitle(page);
-  const background = await layer(page)
-    .locator("div")
-    .first()
-    .evaluate((el) => getComputedStyle(el).backgroundImage);
-  expect(background).toContain("linear-gradient");
-  await expect(layer(page).locator(".rounded-full")).toHaveCount(1);
+  await reachUnderTitle(page);
+  await page.waitForTimeout(300);
+  expect(await inked(page)).toBeGreaterThan(5000);
+  // Chunky: neighboring screen pixels within a block are the same color.
+  const blocky = await page.locator("canvas").evaluate((c: HTMLCanvasElement) => {
+    const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+    let same = 0;
+    let pairs = 0;
+    for (let i = 0; i < d.length - 8; i += 4 * 7) {
+      pairs++;
+      if (d[i] === d[i + 4] && d[i + 1] === d[i + 5] && d[i + 2] === d[i + 6]) same++;
+    }
+    return same / pairs;
+  });
+  expect(blocky).toBeGreaterThan(0.6);
+  // Behind the card's content, so the title row stays on top of it.
+  expect(await layer(page).evaluate((el) => getComputedStyle(el).zIndex)).toBe("-1");
 });
 
 test("the pond in ASCII art ripples in characters, then settles", async ({ page }) => {
@@ -95,4 +105,15 @@ test("the pond in ASCII art ripples in characters, then settles", async ({ page 
   expect(sharp).toBe(true);
   await page.waitForTimeout(3500);
   expect(await inked(page)).toBe(0);
+});
+
+test("the sky in ASCII art draws on a canvas reaching under the title", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=empty&toy=sky&style=ascii");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  await reachUnderTitle(page);
+  await page.waitForTimeout(300);
+  // Whatever the hour, the sky's wash and the sun or moon are drawn.
+  expect(await inked(page)).toBeGreaterThan(5000);
+  // Not the pixel sky's gradient and puffs.
+  await expect(layer(page).locator(".rounded-full")).toHaveCount(0);
 });

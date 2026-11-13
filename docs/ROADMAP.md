@@ -4597,6 +4597,42 @@ between pixel art and ASCII art for the screensavers.*
       stone. Tried in the playground (which can also drop stones by
       itself, off by default). *Owner: liked it without stones and
       without the glow; the playground's depth became the default*
+- [x] The sky, redrawn *(owner, 2026-11-13: "I don't love sky either";
+      "it's the fish eye effect that bugs me most"; then, with two
+      pixel-art references, a sunny valley and a night meadow: "Something
+      much closer to this. And then an ASCII version")*. The scene is
+      described once, in `emptyToys/model/skyScene.ts`, and drawn two ways. In pixel
+      art: chunky pixels (5px blocks by default, for the owner's "retro
+      NES / SNES HD-2D"), a sky in dithered bands following the time of
+      day, a pixel sun or tonight's moon in its phase, stepped clouds in
+      three shades, stars and four-point sparkles at night, and land in
+      front: mountains with lit and shaded faces, hills lit along their
+      tops, grass with patches, tufts and, at night, small pale flowers. A
+      soft glow surrounds the sun, moon, sparkles and shooting stars, and
+      the land shifts slightly with the pointer, for depth. In ASCII art,
+      the same scene in characters on the glow's grid: ridgelines `^ / \`,
+      grass `" ,` over `w`, clouds `: - .`, a smooth sky wash. Both reach
+      up under the title row, without the oval fade at the edges that
+      looked like a fish-eye lens. The icon, words and title turn light on
+      a night sky and dark on a day sky, whatever the theme, and the toys' layer now sits behind the
+      card's content so it never covers the title. A click sends a
+      shooting star at night or a small cloud by day. The old pixel sky
+      (gradient, CSS clouds, SVG moon) is gone. The playground has it, with
+      a Pixel/ASCII switch and a time-of-day control. *Owner: "this one is
+      good"*
+- [ ] Weather in the sky *(owner, 2026-11-13: "Any way to include weather
+      without an API key (or with one?)")*. Suggested, not yet decided.
+      First the look (rain, snow, fog, a storm), with no network. Later,
+      real weather from MET Norway (no key needed, commercial use
+      allowed), off by default: the user types a place in Settings, and
+      its coordinates are rounded before they're sent. That part waits
+      until Google's review is done, because it changes what leaves the
+      computer
+- [ ] Chunkier pixel art for the other toys and the screensavers *(owner,
+      2026-11-13: "for pixel art in general, I am thinking chunkier
+      pixels … retro NES / SNES HD-2D")*: one scene at a time, the glow and
+      the pond next. The owner approved the screensavers' finer cells in UX
+      Spike 4, so each screensaver's change is the owner's call
 - [ ] The screensavers in ASCII art: likely one way of drawing every
       scene's palette cells as characters on tiles, then tuning each
       scene, starting with the jellyfish

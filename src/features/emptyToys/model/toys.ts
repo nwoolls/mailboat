@@ -28,7 +28,7 @@ export const TOYS: readonly { id: ToyId; label: string; description: string }[] 
     id: "sky",
     label: "Sky",
     description:
-      "A quiet sky behind the view that follows the time of day: dawn, noon, dusk and night, with the sun or tonight's moon on its way across. Click for a shooting star, or a cloud by day.",
+      "Mountains and fields under a sky that follows the time of day: dawn, noon, dusk and night, with the sun or tonight's moon moving across it. Click for a shooting star at night, or a cloud by day.",
   },
 ];
 

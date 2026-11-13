@@ -20,5 +20,5 @@ try {
 /** Which toy the empty view has (the glow among them); window-only, like the Toybox switches. */
 export const emptyToy = localStore(TOY_PREFS_KEY, parseToy);
 
-/** Pixel art or ASCII art (so far the glow and the pond follow it). */
+/** Pixel art or ASCII art (so far the glow, the pond and the sky follow it). */
 export const toyboxStyle = localStore(TOYBOX_STYLE_KEY, parseStyle);

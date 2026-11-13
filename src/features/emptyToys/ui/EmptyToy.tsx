@@ -21,7 +21,8 @@ import { asciiPondTuning, pondChars, pondLook, strongest } from "../model/asciiP
 import type { ToyboxStyle } from "../model/style";
 import { asciiGlowTuning } from "../../mailbox/model/asciiGlow";
 import { asciiCell, AsciiPainter, GLYPH_ON_HOT, readAsciiColors } from "./asciiPaint";
-import { moonPath, moonPhase, nightness, skyAt, starsFor } from "../model/sky";
+import { AsciiSkyLayer } from "./AsciiSky";
+import { PixelSkyLayer } from "./PixelSky";
 import type { ToyId } from "../model/toys";
 
 type Box = {
@@ -55,17 +56,45 @@ export function EmptyToy({
   wordsRef: RefObject<HTMLElement | null>;
   /** The Toybox palette, which the toys share with the screensavers. */
   palette: PaletteId;
-  /** Pixel art or ASCII art (Settings → Toybox → Style); so far the pond has both. */
+  /** Pixel art or ASCII art (Settings → Toybox → Style); the pond and the sky have both. */
   style?: ToyboxStyle;
 }) {
-  // The pond's water runs up under the title row to the card's top edge,
-  // so it has no hard edge there; the other toys keep to the empty area.
-  const box = useAreaBox(areaRef, iconRef, wordsRef, toy !== "none", toy === "ripples");
+  // The pond's water and the ASCII sky run up under the title row to the
+  // card's top edge, so they have no hard edge there; the other toys keep
+  // to the empty area.
+  const reachTop = toy === "ripples" || toy === "sky";
+  const box = useAreaBox(areaRef, iconRef, wordsRef, toy !== "none", reachTop);
   if (toy === "none" || !box) return null;
   const place = { left: box.left, top: box.top, width: box.width, height: box.height };
   return (
-    <div aria-hidden className="pointer-events-none absolute overflow-hidden" style={place}>
-      {toy === "sky" && <SkyLayer areaRef={areaRef} />}
+    // Behind the card's content (z-index −1, as the glow is), so a toy that
+    // reaches up under the title row never covers the title.
+    <div
+      aria-hidden
+      className="pointer-events-none absolute overflow-hidden"
+      style={{ ...place, zIndex: -1 }}
+    >
+      {toy === "sky" && style !== "ascii" && (
+        <PixelSkyLayer
+          areaRef={areaRef}
+          iconRef={iconRef}
+          wordsRef={wordsRef}
+          width={box.width}
+          height={box.height}
+        />
+      )}
+      {toy === "sky" && style === "ascii" && (
+        <AsciiSkyLayer
+          areaRef={areaRef}
+          iconRef={iconRef}
+          wordsRef={wordsRef}
+          width={box.width}
+          height={box.height}
+          left={box.left}
+          top={box.top}
+          clear={box.clear}
+        />
+      )}
       {toy === "ripples" && style === "ascii" && <AsciiPondLayer areaRef={areaRef} box={box} />}
       {toy === "ripples" && style !== "ascii" && (
         <PondLayer areaRef={areaRef} box={box} palette={palette} />
@@ -622,193 +651,4 @@ function drawFilm(ctx: CanvasRenderingContext2D, ink: string, c: Point, r: numbe
   ctx.moveTo(c.x + points[1]!.x * 0.8, c.y + points[1]!.y * 0.8);
   ctx.lineTo(c.x + points[5]!.x * 0.6, c.y + points[5]!.y * 0.6);
   ctx.stroke();
-}
-
-const STARS = starsFor(70);
-/** Drifting clouds: height (% from the top), size (px), seconds to cross, head start. */
-const CLOUDS = [
-  { top: 14, size: 70, seconds: 150, delay: -40 },
-  { top: 30, size: 46, seconds: 210, delay: -150 },
-  { top: 72, size: 58, seconds: 180, delay: -95 },
-];
-
-type Flourish = { id: number; x: number; y: number; kind: "shooting" | "puff" };
-
-/**
- * The sky for now, checked each minute: by day the sun (warmer near the
- * horizon) and slow clouds; at night the moon in tonight's phase, with
- * the dark side faintly visible, and twinkling stars, the two crossing
- * over through dusk and dawn. A click sends a shooting star across at
- * night, or leaves a small cloud drifting by day.
- */
-function SkyLayer({ areaRef }: { areaRef: RefObject<HTMLElement | null> }) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const hour = now.getHours() + now.getMinutes() / 60;
-  const sky = skyAt(hour);
-  const night = nightness(hour);
-  const [flourishes, setFlourishes] = useState<Flourish[]>([]);
-  const nightRef = useRef(night);
-  useEffect(() => {
-    nightRef.current = night;
-  }, [night]);
-  useEffect(() => {
-    const area = areaRef.current;
-    if (!area) return;
-    let id = 0;
-    const down = (e: PointerEvent) => {
-      if (e.button !== 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      const r = area.getBoundingClientRect();
-      const kind = nightRef.current > 0.5 ? "shooting" : "puff";
-      const f = { id: ++id, x: e.clientX - r.left, y: e.clientY - r.top, kind } as const;
-      setFlourishes((all) => [...all.slice(-5), f]);
-    };
-    area.addEventListener("pointerdown", down);
-    return () => area.removeEventListener("pointerdown", down);
-  }, [areaRef]);
-  const done = (id: number) => setFlourishes((all) => all.filter((f) => f.id !== id));
-  // Low in the sky the sun reddens and its glow spreads.
-  const low = 1 - Math.min(1, sky.height / 0.35);
-  const sun = `rgb(255 ${Math.round(236 - low * 70)} ${Math.round(170 - low * 90)})`;
-  const phase = moonPhase(now);
-  const MOON = 34;
-  return (
-    <div
-      className="absolute inset-0 opacity-45"
-      style={{
-        background: `linear-gradient(to bottom, ${sky.top}, ${sky.horizon})`,
-        // Fades into the card at the edges rather than ending in a box.
-        maskImage: "radial-gradient(ellipse at 50% 55%, black 35%, transparent 80%)",
-      }}
-    >
-      {night > 0 &&
-        STARS.map((star) => (
-          <div
-            key={`${star.x}:${star.y}`}
-            className="sky-star absolute bg-white"
-            style={{
-              left: `${star.x}%`,
-              top: `${star.y}%`,
-              width: star.size,
-              height: star.size,
-              borderRadius: star.size,
-              opacity: night,
-              animationDelay: `${-star.delay}s`,
-            }}
-          />
-        ))}
-      {night < 1 &&
-        CLOUDS.map((cloud) => (
-          <Cloud
-            key={cloud.top}
-            className="sky-cloud"
-            style={{
-              top: `${cloud.top}%`,
-              opacity: 1 - night,
-              animationDuration: `${cloud.seconds}s`,
-              animationDelay: `${cloud.delay}s`,
-            }}
-            size={cloud.size}
-          />
-        ))}
-      <div
-        className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{
-          left: `${10 + sky.along * 80}%`,
-          top: `${85 - sky.height * 65}%`,
-          width: sky.body === "sun" ? 40 : MOON,
-          height: sky.body === "sun" ? 40 : MOON,
-          background:
-            sky.body === "sun"
-              ? `radial-gradient(circle, rgb(255 250 230), ${sun} 70%)`
-              : "rgb(236 238 250 / 0.1)",
-          boxShadow:
-            sky.body === "sun"
-              ? `0 0 ${40 + low * 30}px ${12 + low * 10}px ${sun.replace(")", " / 0.7)")}`
-              : `0 0 24px ${2 + 6 * Math.sin(phase * Math.PI)}px rgb(236 238 250 / ${0.1 + 0.3 * Math.sin(phase * Math.PI)})`,
-        }}
-      >
-        {sky.body === "moon" && (
-          <svg width={MOON} height={MOON} viewBox={`0 0 ${MOON} ${MOON}`} className="block">
-            <path d={moonPath(phase, MOON)} fill="rgb(236 238 250)" />
-          </svg>
-        )}
-      </div>
-      {flourishes.map((f) =>
-        f.kind === "shooting" ? (
-          <div
-            key={f.id}
-            className="sky-shooting absolute"
-            style={{ left: f.x, top: f.y }}
-            onAnimationEnd={() => done(f.id)}
-          />
-        ) : (
-          <Cloud
-            key={f.id}
-            className="sky-puff"
-            style={{ left: f.x, top: f.y }}
-            size={36}
-            onAnimationEnd={() => done(f.id)}
-          />
-        ),
-      )}
-    </div>
-  );
-}
-
-/**
- * White fading out at its edge, so a cloud is soft without a CSS blur
- * (WebKit left a stray coloured line beside a blurred cloud as it moved).
- */
-const SOFT_WHITE = "radial-gradient(closest-side, white 55%, rgb(255 255 255 / 0))";
-
-/** A soft cloud: three overlapping puffs on a flat base. */
-function Cloud({
-  className,
-  style,
-  size,
-  onAnimationEnd,
-}: {
-  className: string;
-  style: React.CSSProperties;
-  size: number;
-  onAnimationEnd?: () => void;
-}) {
-  const puff = (left: number, top: number, d: number) => (
-    <div
-      className="absolute bg-white"
-      style={{
-        left: left * size,
-        top: top * size,
-        width: d * size,
-        height: d * size,
-        borderRadius: size,
-      }}
-    />
-  );
-  return (
-    <div
-      className={`absolute ${className}`}
-      style={{ width: size * 1.6, height: size * 0.7, ...style }}
-      onAnimationEnd={onAnimationEnd}
-    >
-      {puff(0, 0.25, 0.45)}
-      {puff(0.3, 0, 0.65)}
-      {puff(0.8, 0.15, 0.5)}
-      <div
-        className="absolute"
-        style={{
-          left: size * 0.15,
-          top: size * 0.4,
-          width: size * 1.2,
-          height: size * 0.3,
-          borderRadius: size,
-          background: SOFT_WHITE,
-        }}
-      />
-    </div>
-  );
 }
