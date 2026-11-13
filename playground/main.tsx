@@ -18,6 +18,16 @@ import {
   setAsciiGlowTuning,
 } from "../src/features/mailbox/model/asciiGlow";
 import {
+  GLOW_MOTION_DEFAULTS,
+  type GlowMotion,
+  setGlowMotion,
+} from "../src/features/mailbox/model/glow";
+import {
+  PIXEL_GLOW_DEFAULTS,
+  type PixelGlowTuning,
+  setPixelGlowTuning,
+} from "../src/features/mailbox/model/pixelGlow";
+import {
   ASCII_POND_DEFAULTS,
   type AsciiPondTuning,
   setAsciiPondTuning,
@@ -120,6 +130,36 @@ const GLOW_DIALS: Sections<AsciiGlowTuning> = [
       { key: "wordsFloor", min: 0, max: 1, step: 0.05, hint: "left inside (0 = none)" },
       { key: "wordsRadius", min: 0, max: 30, step: 1, hint: "corner roundness, px" },
       { key: "thin", min: 0, max: 1, step: 0.05, hint: "thin (1) or fade (0), both" },
+    ],
+  },
+];
+
+const MOTION_DIALS: Sections<GlowMotion> = [
+  {
+    title: "Following the pointer",
+    dials: [
+      { key: "glideSeconds", min: 0.02, max: 0.6, step: 0.01, hint: "arriving: glide, s" },
+      { key: "holdSeconds", min: 0, max: 0.3, step: 0.005, hint: "holding: looseness, s" },
+      { key: "catchSeconds", min: 0, max: 2, step: 0.05, hint: "glide → hold over, s" },
+      { key: "lingerSeconds", min: 0, max: 5, step: 0.1, hint: "lingers after leaving, s" },
+      { key: "returnSeconds", min: 0.1, max: 3, step: 0.05, hint: "drifting home, s" },
+    ],
+  },
+];
+
+const PIXEL_GLOW_DIALS: Sections<PixelGlowTuning> = [
+  {
+    title: "Pixels",
+    dials: [
+      { key: "pixel", min: 2, max: 14, step: 1, hint: "pixel size, px" },
+      { key: "bands", min: 2, max: 12, step: 1, hint: "bands" },
+      { key: "dither", min: 0, max: 1.5, step: 0.05, hint: "dithering" },
+      { key: "peakDark", min: 0, max: 1, step: 0.01, hint: "brightest, dark" },
+      { key: "peakLight", min: 0, max: 1, step: 0.01, hint: "brightest, light" },
+      { key: "radiusScale", min: 0.4, max: 2, step: 0.05, hint: "size, × the glow's" },
+      { key: "bloom", min: 0, max: 1.5, step: 0.05, hint: "soft glow underneath" },
+      { key: "wakeSeconds", min: 0, max: 3, step: 0.05, hint: "trail fade, s" },
+      { key: "wakeStrength", min: 0, max: 1, step: 0.05, hint: "trail brightness" },
     ],
   },
 ];
@@ -272,6 +312,8 @@ function saved<T extends object>(key: string, defaults: T, apply: (t: T) => void
 }
 
 const glowStart = saved("playground.asciiGlow", ASCII_GLOW_DEFAULTS, setAsciiGlowTuning);
+const pixelGlowStart = saved("playground.pixelGlow", PIXEL_GLOW_DEFAULTS, setPixelGlowTuning);
+const motionStart = saved("playground.glowMotion", GLOW_MOTION_DEFAULTS, setGlowMotion);
 const pondStart = saved("playground.asciiPond", ASCII_POND_DEFAULTS, setAsciiPondTuning);
 const stirStart = saved("playground.pondStir", POND_STIR_DEFAULTS, setPondStir);
 // The hour is the playground's own (`SkyHour`), never saved.
@@ -429,13 +471,24 @@ function Playground() {
       </div>
 
       <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto">
-        {style === "pixel" && (
+        {style === "pixel" && look === "pond" && (
           <p className="rounded-md border border-stroke bg-selection-subtle p-2 text-content/70">
-            Showing pixel art. These dials tune the ASCII look (the pond&rsquo;s pointer ripples and
-            the time of day apply to both).
+            Showing pixel art. The pond&rsquo;s pixel look has no dials yet; these tune its ASCII
+            look (the pointer ripples apply to both).
           </p>
         )}
-        {look === "glow" ? (
+        {look === "glow" && style === "pixel" ? (
+          <Panel
+            key="pixelGlow"
+            title="Pixel glow"
+            storageKey="playground.pixelGlow"
+            defaults={PIXEL_GLOW_DEFAULTS}
+            start={pixelGlowStart}
+            apply={setPixelGlowTuning}
+            fields={[]}
+            sections={PIXEL_GLOW_DIALS}
+          />
+        ) : look === "glow" ? (
           <Panel
             key="glow"
             title="ASCII glow"
@@ -483,6 +536,19 @@ function Playground() {
             apply={setAsciiPondTuning}
             fields={POND_FIELDS}
             sections={POND_DIALS}
+          />
+        )}
+        {look === "glow" && (
+          <Panel
+            key="motion"
+            title="Glow motion"
+            note="How the glow moves, in every style: on a spring that glides over to the pointer, then tightens to hold on. Smaller is tighter."
+            storageKey="playground.glowMotion"
+            defaults={GLOW_MOTION_DEFAULTS}
+            start={motionStart}
+            apply={setGlowMotion}
+            fields={[]}
+            sections={MOTION_DIALS}
           />
         )}
         {look === "pond" && (

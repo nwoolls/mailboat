@@ -4628,6 +4628,22 @@ between pixel art and ASCII art for the screensavers.*
       its coordinates are rounded before they're sent. That part waits
       until Google's review is done, because it changes what leaves the
       computer
+- [x] The glow in chunky pixel art *(owner, 2026-11-13: "let's revisit
+      the glow")*. The glow, once a smooth CSS gradient, is now drawn on the
+      sky's grid of 5px blocks, in four stepped rings of the accent color with
+      dithered edges, over a faint smooth glow (like the soft lighting in HD-2D games), with a
+      short fading trail. Tunable in the playground. *Owner: "the pixel
+      glow is dope"*
+- [x] The glow follows the pointer on a spring *(owner, 2026-11-13: its
+      lag "almost feels like application lag rather than by-design")*. It
+      still glides to the pointer when the pointer arrives, but no longer slows down
+      as it gets close, so it catches a moving pointer. Over its first
+      0.6 s the spring tightens from a glide to a hold, with no visible
+      moment of locking on. It holds loosely, trailing a moving pointer by a
+      short distance and settling on a still one. A
+      first try that switched to a tight follow once close showed the
+      switch and still couldn't catch a moving pointer. This works the same
+      in the pixel and ASCII styles. *Owner: "much better"*
 - [ ] Chunkier pixel art for the other toys and the screensavers *(owner,
       2026-11-13: "for pixel art in general, I am thinking chunkier
       pixels … retro NES / SNES HD-2D")*: one scene at a time, the glow and

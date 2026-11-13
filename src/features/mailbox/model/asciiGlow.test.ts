@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseStyle } from "../../emptyToys/model/style";
+import { bandAlpha, glowBand, PIXEL_GLOW_DEFAULTS } from "./pixelGlow";
 import {
   ASCII_GLOW_DEFAULTS as T,
   cellLook,
@@ -123,5 +124,27 @@ describe("clearing a whole cell", () => {
     // A cell centered 3px past the letters' right edge, 8px wide.
     expect(clearing(163, 108, [words], T)).toBeGreaterThan(0);
     expect(clearing(163, 108, [words], T, 4, 7.5)).toBe(0);
+  });
+});
+
+describe("the pixel glow's bands", () => {
+  const P = PIXEL_GLOW_DEFAULTS;
+  it("steps from none at the edge to every band in the middle", () => {
+    expect(glowBand(0, 3, 3, P)).toBe(0);
+    expect(glowBand(1, 3, 3, P)).toBe(P.bands);
+    expect(glowBand(0.5, 3, 3, { ...P, dither: 0 })).toBe(Math.floor(0.5 * P.bands + 0.5));
+  });
+
+  it("dithers a step between neighboring blocks", () => {
+    // Exactly on the edge between the first and second bands.
+    const v = 1.5 / P.bands;
+    const seen = new Set<number>();
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) seen.add(glowBand(v, x, y, P));
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it("is brightest at the top band, in proportion below", () => {
+    expect(bandAlpha(P.bands, true, P)).toBe(P.peakDark);
+    expect(bandAlpha(P.bands / 2, false, P)).toBeCloseTo(P.peakLight / 2, 5);
   });
 });

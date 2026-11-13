@@ -297,13 +297,14 @@ html.resizing .panel-slide {
 .empty-glow-pull[data-screensaver] .empty-glow {
   animation-play-state: paused;
 }
-/* Toybox → Style → ASCII art: the gradient stays (invisible) so it still
-   moves as before; AsciiGlow reads where it is and draws it in characters
-   on a canvas across the card, with a faint grid as its background. */
-.empty-glow-pull[data-style="ascii"] .empty-glow {
+/* The glow is drawn on a canvas across the card, in pixel art
+   (PixelGlow) or ASCII art (AsciiGlow, with a faint grid behind). The
+   gradient stays, invisible, so it still moves as before: the canvas
+   reads where it is. */
+.empty-glow-pull[data-style] .empty-glow {
   background: none;
 }
-.empty-ascii {
+.empty-glow-canvas {
   position: absolute;
   inset: 0;
   z-index: -1;
@@ -313,7 +314,7 @@ html.resizing .panel-slide {
   border-radius: inherit;
   transition: opacity 0.8s ease-out;
 }
-.empty-ascii[data-screensaver] {
+.empty-glow-canvas[data-screensaver] {
   opacity: 0;
 }
 @keyframes empty-drift {

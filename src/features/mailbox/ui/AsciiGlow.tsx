@@ -210,7 +210,7 @@ export function AsciiGlow({
     <canvas
       ref={canvasRef}
       aria-hidden
-      className="empty-ascii"
+      className="empty-glow-canvas empty-ascii"
       data-screensaver={hidden || undefined}
     />
   );

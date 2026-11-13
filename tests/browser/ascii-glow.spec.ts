@@ -9,15 +9,15 @@ import { expect, type Page, test } from "@playwright/test";
 /** Painted pixels in a box of the canvas, in CSS pixels from the canvas's corner. */
 const inkIn = (page: Page, x: number, y: number, w: number, h: number) =>
   page.locator("canvas.empty-ascii").evaluate(
-    (c: HTMLCanvasElement, [x, y, w, h]) => {
+    (c: HTMLCanvasElement, [bx, by, bw, bh]) => {
       const k = c.width / c.clientWidth;
       const data = c
         .getContext("2d")!
         .getImageData(
-          Math.round(x! * k),
-          Math.round(y! * k),
-          Math.round(w! * k),
-          Math.round(h! * k),
+          Math.round(bx! * k),
+          Math.round(by! * k),
+          Math.round(bw! * k),
+          Math.round(bh! * k),
         ).data;
       let n = 0;
       for (let i = 3; i < data.length; i += 4) n += data[i]! > 0 ? 1 : 0;
@@ -70,14 +70,33 @@ test("the ASCII glow keeps the icon clear", async ({ page }) => {
   ).toBeGreaterThan(200);
 });
 
-test("the pixel-art glow draws no characters", async ({ page }) => {
+test("the pixel-art glow draws in chunky blocks that follow the pointer", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=empty&glow=pixel");
   await expect(page.getByText("All caught up")).toBeVisible();
   await expect(page.locator("canvas.empty-ascii")).toHaveCount(0);
+  const canvas = page.locator("canvas.empty-pixel");
+  await expect(canvas).toBeVisible();
+  // The gradient is still there to move, but doesn't paint.
   const gradient = await page
     .locator(".empty-glow")
     .evaluate((el) => getComputedStyle(el).backgroundImage);
-  expect(gradient).toContain("radial-gradient");
+  expect(gradient).toBe("none");
+  const box = (await canvas.boundingBox())!;
+  const corner = () =>
+    canvas.evaluate((c: HTMLCanvasElement) => {
+      const k = c.width / c.clientWidth;
+      const d = c
+        .getContext("2d")!
+        .getImageData(10 * k, (c.clientHeight - 90) * k, 80 * k, 80 * k).data;
+      let n = 0;
+      for (let i = 3; i < d.length; i += 4) n += d[i]! > 0 ? 1 : 0;
+      return n;
+    });
+  const before = await corner();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.move(box.x + 50, box.y + box.height - 50, { steps: 10 });
+  await page.waitForTimeout(1200);
+  expect(await corner()).toBeGreaterThan(before + 1000);
 });
 
 test("the ASCII glow clears round the words' letters, not their whole column", async ({ page }) => {
@@ -129,4 +148,34 @@ test("the ASCII glow keeps the card's title clear, as it does the words", async 
   expect(
     await inkIn(page, title.x - canvas.x + title.width + 40, title.y - canvas.y, 30, title.height),
   ).toBeGreaterThan(100);
+});
+
+test("the glow glides over to the pointer, then holds on loosely", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=empty&glow=pixel");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  const card = (await page.locator(".panel").boundingBox())!;
+  const centre = async () => {
+    const g = (await page.locator(".empty-glow").boundingBox())!;
+    return { x: g.x + g.width / 2, y: g.y + g.height / 2 };
+  };
+  const gap = async (p: { x: number; y: number }) => {
+    const c = await centre();
+    return Math.hypot(c.x - p.x, c.y - p.y);
+  };
+  // Arriving: it glides rather than jumping there.
+  const at = { x: card.x + 80, y: card.y + card.height - 80 };
+  await page.mouse.move(at.x, at.y);
+  await page.waitForTimeout(50);
+  expect(await gap(at)).toBeGreaterThan(20);
+  // On a still pointer it settles right on it.
+  await page.waitForTimeout(1500);
+  expect(await gap(at)).toBeLessThan(6);
+  // A quick move: loose, not stuck to the pointer, a frame later...
+  const next = { x: at.x + 160, y: at.y - 80 };
+  await page.mouse.move(next.x, next.y);
+  await page.waitForTimeout(20);
+  expect(await gap(next)).toBeGreaterThan(30);
+  // ...and with it again a moment after.
+  await page.waitForTimeout(400);
+  expect(await gap(next)).toBeLessThan(8);
 });
