@@ -339,9 +339,11 @@ Settings are stored in one of three places:
 - **Gmail keeps it** (Rules, Signatures, Vacation responder): read from
   and saved to the account's Gmail settings each time, never copied into
   SQLite (see "Rules" and "Signatures and vacation responder" below).
-  Toybox's switches (glow, screensavers) are window-only, in
-  `localStorage` under their original feature-flag key, as are its other
-  choices (the style, the toy, the screensaver and its colors).
+  Toybox's switch for the screensavers is window-only, in `localStorage`
+  under its original feature-flag key, as are its other choices (the
+  style, the toy, the screensaver and its colors). The glow was a switch
+  there too until it became one of the toys (UX Spike 5); its old setting
+  is carried over once, at startup (`moveGlowSwitch`).
 
 The theme (System, Light, Dark) is a Rust setting because it's set on the
 app itself (`src-tauri/src/theme.rs`, at launch and when changed): macOS

@@ -4424,7 +4424,8 @@ One pull request each.
       old "Colours" and "accent colour" labels: `screensaver-settings-light`
       and `-dark`, in `docs/images/features` and in `website/images` (cards
       and full size). The `toybox` screenshots too, which don't show the
-      Style choice added in UX Spike 5. Needs the screenshot pipeline, which waits on Screen
+      Style choice added in UX Spike 5 and still show the Glow switch,
+      now one of the toys. Needs the screenshot pipeline, which waits on Screen
       Recording permission (see the features gallery plan)
 
 ### Held or later
@@ -4569,6 +4570,14 @@ between pixel art and ASCII art for the screensavers.*
       mutually exclusive", in the app too)*: while a toy is chosen, the
       glow steps aside, in pixel art and ASCII art alike; its switch keeps
       its own setting
+- [x] The glow is one of the toys *(owner, 2026-11-13: "Glow should be
+      one of the options for a toy … it's so similar to the water one")*:
+      Settings → Toybox → Something to play with lists None, Glow, Pond,
+      Bubble wrap and Sky, and the glow's own switch is gone. Glow is the
+      default, as the glow was on by default before. An earlier setting
+      carries over once: the glow on with no toy becomes Glow, the glow off
+      becomes None, and a chosen toy stays. Bubble wrap stays for now (the
+      owner may replace it with the glow: "we'll see")
 - [x] The pointer stirs the pond *(owner, 2026-11-13: "extremely subtle
       ripples that follow the mouse, but clicking still disturbs the water
       more")*: a faint push every few cells the pointer moves over the

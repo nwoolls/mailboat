@@ -2,14 +2,39 @@ import { describe, expect, it } from "vitest";
 import { allPopped, bubbleAt, pop, sheetFor } from "./bubbles";
 import { POND_STIR_DEFAULTS, PondToy, SETTLE_SECONDS } from "./pond";
 import { moonPath, moonPhase, nightness, skyAt, starsFor } from "./sky";
-import { parseToy } from "./toys";
+import { moveGlowSwitch, parseToy } from "./toys";
 
 describe("parseToy", () => {
-  it("keeps a known toy, else none", () => {
+  it("keeps a known toy, else the glow", () => {
     expect(parseToy('"bubbles"')).toBe("bubbles");
-    expect(parseToy('"kites"')).toBe("none");
-    expect(parseToy(null)).toBe("none");
-    expect(parseToy("{oops")).toBe("none");
+    expect(parseToy('"none"')).toBe("none");
+    expect(parseToy('"kites"')).toBe("glow");
+    expect(parseToy(null)).toBe("glow");
+    expect(parseToy("{oops")).toBe("glow");
+  });
+});
+
+describe("moveGlowSwitch", () => {
+  it("makes the glow the toy where it was on and no toy was chosen", () => {
+    expect(moveGlowSwitch(null, '{"emptyGlow":true,"screensavers":false}')).toEqual({
+      toy: "glow",
+      flags: '{"screensavers":false}',
+    });
+    expect(moveGlowSwitch('"none"', '{"emptyGlow":true}')?.toy).toBe("glow");
+  });
+
+  it("leaves none where the glow was off", () => {
+    expect(moveGlowSwitch(null, '{"emptyGlow":false}')?.toy).toBe("none");
+  });
+
+  it("keeps a toy that was chosen", () => {
+    expect(moveGlowSwitch('"ripples"', '{"emptyGlow":true}')?.toy).toBe("ripples");
+  });
+
+  it("happens once: nothing to move without the old switch", () => {
+    expect(moveGlowSwitch('"none"', '{"screensavers":true}')).toBeNull();
+    expect(moveGlowSwitch(null, null)).toBeNull();
+    expect(moveGlowSwitch(null, "{oops")).toBeNull();
   });
 });
 
@@ -135,14 +160,6 @@ describe("pond stirring", () => {
   });
 
   it("stirs faintly, far less than a stone, and deeper the faster the pointer", () => {
-    const peak = (setup: (p: PondToy) => void) => {
-      const pond = new PondToy(200, 120, () => 0.5);
-      setup(pond);
-      pond.frame(1 / 60);
-      let most = 0;
-      for (let x = 80; x <= 120; x++) most = Math.max(most, Math.abs(pond.heightAt(x, 60)));
-      return most;
-    };
     const slow = peak((p) => p.stir(100, 60, on.stirFullSpeed / 4, on));
     const fast = peak((p) => p.stir(100, 60, on.stirFullSpeed, on));
     const stone = peak((p) => p.drop(100, 60));
@@ -151,3 +168,13 @@ describe("pond stirring", () => {
     expect(fast).toBeLessThan(stone / 4);
   });
 });
+
+/** The highest wave near (100, 60) a frame after `setup` disturbs a fresh pond. */
+function peak(setup: (p: PondToy) => void): number {
+  const pond = new PondToy(200, 120, () => 0.5);
+  setup(pond);
+  pond.frame(1 / 60);
+  let most = 0;
+  for (let x = 80; x <= 120; x++) most = Math.max(most, Math.abs(pond.heightAt(x, 60)));
+  return most;
+}

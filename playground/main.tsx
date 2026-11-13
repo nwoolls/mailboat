@@ -232,8 +232,7 @@ function Playground() {
   useEffect(() => applyTheme(theme, accent), [theme, accent]);
   useEffect(() => {
     // One look at a time: the glow, or the pond on its own.
-    emptyToy.set(look === "pond" ? "ripples" : "none");
-    setFeatureFlag("emptyGlow", look === "glow");
+    emptyToy.set(look === "pond" ? "ripples" : "glow");
   }, [look]);
   useEffect(() => {
     if (look !== "pond" || !stones) return;

@@ -11,11 +11,11 @@ describe("feature flags", () => {
   it("defaults anything missing or unreadable", () => {
     expect(parseFlags(null)).toEqual(DEFAULT_FLAGS);
     expect(parseFlags("not json")).toEqual(DEFAULT_FLAGS);
-    expect(parseFlags('{"emptyGlow":"yes","other":true}')).toEqual(DEFAULT_FLAGS);
+    expect(parseFlags('{"screensavers":"yes","other":true}')).toEqual(DEFAULT_FLAGS);
   });
 
   it("keeps saved choices", () => {
-    expect(parseFlags('{"emptyGlow":false}')).toEqual({ ...DEFAULT_FLAGS, emptyGlow: false });
+    expect(parseFlags('{"screensavers":false}')).toEqual({ ...DEFAULT_FLAGS, screensavers: false });
   });
 
   it("remembers a change", () => {

@@ -101,7 +101,7 @@ test("the ASCII glow clears round the words' letters, not their whole column", a
   expect(await inkIn(page, besideX, title.y - canvas.y, 24, title.height)).toBeGreaterThan(100);
 });
 
-test("the glow steps aside while there's a toy to play with", async ({ page }) => {
+test("another toy shows no glow: the glow is a toy of its own", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=empty&glow=ascii&toy=ripples");
   await expect(page.getByText("All caught up")).toBeVisible();
   await expect(page.locator(".empty-glow-pull")).toHaveCount(0);

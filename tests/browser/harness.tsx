@@ -30,7 +30,7 @@
  *   ?mode=list&density=…&lines=…  the demo's Inbox, with Settings →
  *                                 List's density and preview lines
  *   ?mode=empty&toy=…             an empty Inbox with a Toybox toy
- *     &glow=pixel|ascii            and the glow, in that Toybox style
+ *     &glow=pixel|ascii            the glow (a toy), in that Toybox style
  *     &style=pixel|ascii           the Toybox style without the glow
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
  *   &ai=none                      (card, inline) no AI set up
@@ -416,15 +416,15 @@ if (harnessMode === "search")
   );
 if (harnessMode === "empty") {
   const params = new URLSearchParams(location.search);
-  const toy = params.get("toy") ?? "none";
-  localStorage.setItem("prefs.emptyToy", JSON.stringify(toy));
-  // No glow unless asked for (`&glow=pixel|ascii`, the Toybox style), and
-  // no screensaver unless asked for (`&screensaver`): only the toy, glow or
-  // screensaver is under test.
+  // The glow is a toy: `&glow=pixel|ascii` chooses it, in that Toybox
+  // style. No toy otherwise unless asked for (`&toy=…`), and no
+  // screensaver unless asked for (`&screensaver`): only what's under test.
   const glow = params.get("glow");
+  const toy = params.get("toy") ?? (glow ? "glow" : "none");
+  localStorage.setItem("prefs.emptyToy", JSON.stringify(toy));
   localStorage.setItem(
     "prefs.featureFlags",
-    JSON.stringify({ emptyGlow: glow !== null, screensavers: params.has("screensaver") }),
+    JSON.stringify({ screensavers: params.has("screensaver") }),
   );
   localStorage.setItem("prefs.toyboxStyle", JSON.stringify(glow ?? params.get("style") ?? "pixel"));
 }

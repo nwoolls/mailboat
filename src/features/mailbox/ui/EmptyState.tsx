@@ -42,8 +42,8 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
 };
 
 /**
- * What an empty list shows: an icon, a line of copy and a drifting glow.
- * The glow spans the whole list card (title row included, behind its text)
+ * What an empty list shows: an icon, a line of copy and, if it's the toy
+ * chosen in Settings → Toybox (the default), a drifting glow. The glow spans the whole list card (title row included, behind its text)
  * and rests behind the icon. With the pointer anywhere over the card it
  * centres on the cursor; when the pointer leaves it lingers there a moment,
  * then eases back to its path.
@@ -56,17 +56,17 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
  *
  * After a minute without input a screensaver plays over it
  * (`features/screensaver`), playing with the icon and words; the icon
- * nods when a scene asks. The glow fades out while it plays. Both are behind
- * Toybox switches (Settings → Toybox), and Toybox → Style can draw the glow
- * as ASCII art (`AsciiGlow`).
+ * nods when a scene asks. The glow fades out while it plays, and any other
+ * toy is put away. Screensavers have a Toybox switch, and Toybox → Style can
+ * draw the glow as ASCII art (`AsciiGlow`).
  */
 export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey: string }) {
   const Icon = ICONS[state.icon];
   const flags = useFeatureFlags();
   const toy = emptyToy.use();
-  // The glow or a toy, not both: two things following the pointer and
-  // drawing behind the icon compete (owner, 2026-11-13).
-  const glow = flags.emptyGlow && toy === "none";
+  // The glow is one of the toys (owner, 2026-11-13), so it's never shown
+  // with another: two things following the pointer behind the icon compete.
+  const glow = toy === "glow";
   const { anchorRef, pullRef, glowRef } = useGlowPull(glow);
   const iconRef = useRef<HTMLDivElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
@@ -105,7 +105,7 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
       {/* Settings → Toybox: something to play with, put away while a
           screensaver plays. */}
       <EmptyToy
-        toy={screensaver === "off" ? toy : "none"}
+        toy={screensaver === "off" && toy !== "glow" ? toy : "none"}
         areaRef={anchorRef}
         iconRef={iconRef}
         wordsRef={wordsRef}
