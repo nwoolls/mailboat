@@ -24,7 +24,8 @@ import { useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { ScreensaverCanvas, useScreensaver } from "../../screensaver/ui/ScreensaverCanvas";
 import { screensaverPrefs } from "../../screensaver/ui/prefs";
 import { EmptyToy } from "../../emptyToys/ui/EmptyToy";
-import { emptyToy } from "../../emptyToys/ui/prefs";
+import { emptyToy, toyboxStyle } from "../../emptyToys/ui/prefs";
+import { AsciiGlow } from "./AsciiGlow";
 
 const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
   caughtUp: ThumbsUpIcon,
@@ -56,7 +57,8 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
  * After a minute without input a screensaver plays over it
  * (`features/screensaver`), playing with the icon and words; the icon
  * nods when a scene asks. The glow fades out while it plays. Both are behind
- * Toybox switches (Settings → Toybox).
+ * Toybox switches (Settings → Toybox), and Toybox → Style can draw the glow
+ * as ASCII art (`AsciiGlow`).
  */
 export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey: string }) {
   const Icon = ICONS[state.icon];
@@ -67,6 +69,7 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
   const { phase: screensaver, scene } = useScreensaver(flags.screensavers);
   const { palette } = screensaverPrefs.use();
   const toy = emptyToy.use();
+  const style = toyboxStyle.use();
   const [shrugs, setShrugs] = useState(0);
   const shrug = useCallback(() => setShrugs((n) => n + 1), []);
   const iconMotion =
@@ -81,9 +84,20 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
           aria-hidden
           className="empty-glow-pull"
           data-screensaver={screensaver !== "off" || undefined}
+          data-style={style}
         >
           <div ref={glowRef} className="empty-glow" />
         </div>
+      )}
+      {/* Settings → Toybox → Style: the same glow, drawn in characters. */}
+      {flags.emptyGlow && style === "ascii" && (
+        <AsciiGlow
+          glowRef={glowRef}
+          pullRef={pullRef}
+          iconRef={iconRef}
+          wordsRef={wordsRef}
+          hidden={screensaver !== "off"}
+        />
       )}
       {/* Settings → Toybox: something to play with, put away while a
           screensaver plays. */}

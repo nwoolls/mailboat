@@ -23,6 +23,19 @@ bun tauri dev
 The first sync of an account takes a while (Gmail's per-user quota limits
 the pace); the inbox fills in first. Later syncs only fetch changes.
 
+### Toybox playground
+
+```sh
+bun run playground
+```
+
+Opens the empty view in your browser (http://localhost:1437/playground/),
+drawn by the app's own code, with sliders for each number the ASCII
+glow's look depends on, light and dark, and the accent colors. It lists
+the values changed from the defaults so they can be copied into the code
+(`ASCII_GLOW_DEFAULTS` in `src/features/mailbox/model/asciiGlow.ts`). The
+app itself always uses the defaults.
+
 ### Demo mode
 
 ```sh

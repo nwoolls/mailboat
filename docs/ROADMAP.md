@@ -4423,7 +4423,8 @@ One pull request each.
 - [ ] Regenerate the Toybox screensaver screenshots, which still show the
       old "Colours" and "accent colour" labels: `screensaver-settings-light`
       and `-dark`, in `docs/images/features` and in `website/images` (cards
-      and full size). Needs the screenshot pipeline, which waits on Screen
+      and full size). The `toybox` screenshots too, which don't show the
+      Style choice added in UX Spike 5. Needs the screenshot pipeline, which waits on Screen
       Recording permission (see the features gallery plan)
 
 ### Held or later
@@ -4516,6 +4517,52 @@ seen during the spike are tracked in Flaky tests (#124).
 Not in the spike: rethinking how a new reply is followed (and the
 slow-machine test kept as `test.fixme`). It is a design for the owner to
 lead, with a mockup first.
+
+## UX Spike 5: ASCII Toybox
+
+*Started by the owner, 2026-11-13, while Google reviews the app and the
+owner tests 0.2.1-beta.0: a choice between pixel art and ASCII art for
+the Toybox, with the aim that the toys look great, not just better. The
+owner's references are ASCII-art jellyfish and manta rays drawn as
+characters on tiles. As in UX Spike 4, each item is built to try and
+settled with the owner one at a time. Moved here from Later: the switch
+between pixel art and ASCII art for the screensavers.*
+
+- [x] The glow in ASCII art *(owner, 2026-11-13: "let's pick one to start
+      with, maybe the glow")*. Settings → Toybox → Style chooses Pixel art
+      (the default) or ASCII art. In ASCII art the glow is drawn on a grid
+      of monospace cells. Each lit cell is a square tile that gets lighter
+      as the glow brightens, with a character picked by brightness from
+      `. ' : ; o t % S X 8 @`; most of the brightest cells flip to a pale
+      tile with a dark character. Moving the glow leaves a short fading
+      trail, and the characters shimmer a little. A faint grid covers the
+      card (2% of the text color on dark, 4% on light, the owner's
+      values). The glow thins out around the icon and each line of the
+      words, so they still read: the characters step down to lighter ones
+      and fade, over a soft, rounded edge. It moves exactly as the
+      gradient glow does, because it reads where that glow is (see the
+      Architecture decisions). Tried first as a mockup with four looks:
+      the owner chose the tiles; a flickering look of mixed letters was
+      too distracting; falling "rain" belongs in a screensaver. *Owner,
+      with screenshots: the first cutout around the icon and words was a
+      hard rectangle, and the words' one was as wide as their column. Both
+      fixed. "We're good here"*
+- [x] A playground for tuning the Toybox *(owner, 2026-11-13: "if we had a
+      webpage I could load up that had dials … it may be easier to tweak
+      in the future")*. `bun run playground` opens the empty view in a
+      browser, drawn by the app's own code, with a slider for every number
+      the ASCII glow's look depends on, light and dark, the accents, and
+      switches to hide the icon and words. It lists the values changed
+      from the defaults, to paste back into the code. Development only;
+      the app always uses the defaults. Other toys join it as they're tuned
+- [ ] The pond's ripples in ASCII art
+- [ ] The screensavers in ASCII art: likely one way of drawing every
+      scene's palette cells as characters on tiles, then tuning each
+      scene, starting with the jellyfish
+- Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
+  Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
+  retiring the envelope flock and bubble wrap, which don't land as well
+  as the others
 
 ## Flaky tests
 
@@ -5423,9 +5470,10 @@ and new bugs still come here.*
       one is needed. One idea if it comes up: "Run setup again" in
       Settings → Advanced, reopening the Google Cloud stage
 
-- [ ] A switch between pixel art and ASCII art for the screensavers
-      *(owner, 2026-10-26: "we may also do a toggle"; moved from UX
-      Spike 4 when it closed, 2026-10-27, never started)*
+- A switch between pixel art and ASCII art for the screensavers
+  *(owner, 2026-10-26: "we may also do a toggle"; moved from UX Spike 4
+  when it closed, 2026-10-27)*: *moved to UX Spike 5 (owner,
+  2026-11-13)*
 
 - [ ] Linux *(moved from Milestone 9 when it closed, 2026-10-25; it was
       a "nice-to-have" there, never started)*: Tauri builds for Linux,

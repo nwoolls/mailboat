@@ -297,6 +297,25 @@ html.resizing .panel-slide {
 .empty-glow-pull[data-screensaver] .empty-glow {
   animation-play-state: paused;
 }
+/* Toybox → Style → ASCII art: the gradient stays (invisible) so it still
+   moves as before; AsciiGlow reads where it is and draws it in characters
+   on a canvas across the card, with a faint grid as its background. */
+.empty-glow-pull[data-style="ascii"] .empty-glow {
+  background: none;
+}
+.empty-ascii {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  border-radius: inherit;
+  transition: opacity 0.8s ease-out;
+}
+.empty-ascii[data-screensaver] {
+  opacity: 0;
+}
 @keyframes empty-drift {
   0% {
     transform: translate(-30%, -25%) scale(1);
