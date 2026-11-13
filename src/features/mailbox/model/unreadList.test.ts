@@ -101,20 +101,20 @@ describe("the Unread list keeps what was read during the visit", () => {
   });
 });
 
+/** Pages that say more come after them (a cursor), as loaded ones do. */
+const paged = (...pages: ThreadSummary[][]): ListData => ({
+  pages: pages.map((threads, i) => ({
+    threads,
+    nextCursor:
+      i < pages.length - 1 || threads.length > 0
+        ? { lastMessageAt: 0, threadId: 0 as never }
+        : null,
+  })),
+  pageParams: pages.map(() => null),
+});
+
 // Code review, round 3.
 describe("the Unread list across pages and senders", () => {
-  /** Pages that say more come after them (a cursor), as loaded ones do. */
-  const paged = (...pages: ThreadSummary[][]): ListData => ({
-    pages: pages.map((threads, i) => ({
-      threads,
-      nextCursor:
-        i < pages.length - 1 || threads.length > 0
-          ? { lastMessageAt: 0, threadId: 0 as never }
-          : null,
-    })),
-    pageParams: pages.map(() => null),
-  });
-
   it("doesn't keep a row a newer one pushed to the next page, nor show it twice", () => {
     const before = paged([row(1, 300), row(2, 200), row(3, 100)]);
     // A newer conversation arrived: the first page now ends at 2, and 3
@@ -129,6 +129,14 @@ describe("the Unread list across pages and senders", () => {
     });
     expect(ids(more)).toEqual([0, 1, 2, 3]);
     expect(shown(more).at(-1)!.unread).toBe(true);
+  });
+
+  it("keeps a row already read even when a newer arrival pushes it past the refresh", () => {
+    // 3 was read here (the app's own update), then two newer ones arrived.
+    const before = paged([row(1, 300), row(2, 200), row(3, 100, false)]);
+    const refreshed = keepReadRows(before, paged([row(0, 400), row(1, 300), row(2, 200)]));
+    expect(ids(refreshed)).toEqual([0, 1, 2, 3]);
+    expect(shown(refreshed).at(-1)!.unread).toBe(false);
   });
 
   it("shows a conversation once when the next page brings back one kept as read", () => {

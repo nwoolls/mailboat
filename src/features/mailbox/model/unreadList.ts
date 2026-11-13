@@ -42,15 +42,17 @@ export function keepReadRows(prev: ListData | undefined, next: ListData): ListDa
   if (!prev) return next;
   const fresh = dropRepeats(next);
   const present = new Set(fresh.pages.flatMap((p) => p.threads.map((t) => t.id)));
-  // Only what the refresh covered: with more pages to come, a row past the
-  // last one it brought was pushed down a page (a newer one arrived), not
-  // read; the next page brings it back (code review).
+  // A row still unread only if the refresh covered it: with more pages to
+  // come, one past the last row it brought was pushed down a page (a newer
+  // one arrived), not read, and the next page brings it back. A row already
+  // read is kept wherever it is: the server won't list it again (code
+  // review).
   const lastPage = fresh.pages.at(-1);
   const lastRow = lastPage?.threads.at(-1);
   const covered = (t: ThreadSummary) => !lastPage?.nextCursor || !lastRow || !before(lastRow, t);
   const missing = prev.pages
     .flatMap((p) => p.threads)
-    .filter((t) => !present.has(t.id) && covered(t))
+    .filter((t) => !present.has(t.id) && (!t.unread || covered(t)))
     // Read, as the app marks one read (its senders too).
     .map((t) => (t.unread ? updateSummary({ kind: "read", read: true }, t) : t))
     .toSorted((a, b) => (before(a, b) ? -1 : 1));
