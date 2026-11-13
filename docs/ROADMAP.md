@@ -4503,6 +4503,18 @@ again until the next spike. Bug Spike 3 (started 2026-11-12) lists the
 items it covers without moving them: they stay here with their full text,
 and new bugs still come here.*
 
+- [x] Clicking the folder you're already in closes the preview and clears
+      the selection *(owner question, 2026-11-12; fixed the same day, and the
+      owner tried it)*: a click on a folder in
+      the sidebar ran the same steps as going to another folder (clear the
+      search, the preview and the selected row), with nothing for the
+      folder already shown. The owner chose Apple Mail's behavior: the
+      click only clears a search, as the search box's clear button does,
+      and the preview and selection stay (first built to leave a search
+      the old way; the owner asked for it to match the clear button).
+      `staysOnFolderClick` (`views.ts`) decides, for the sidebar, the `g`
+      keys and the menus alike; unit tests for both cases.
+
 - [x] Bug: the screenshot zoom flashes at full size before it animates
       *(owner report, 2026-11-07; fixed 2026-11-12, and the owner tried it)*: the first time each screenshot is
       zoomed, it appears large for a moment and then the grow-from-the-card

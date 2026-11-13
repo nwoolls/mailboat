@@ -42,7 +42,9 @@
  *                                 `window.__summaries`
  *   ?mode=onboarding&stage=…     first-launch onboarding at a stage
  *     &path=…&done=a,b&accounts=0|1&configured=1
- *   ?mode=shell                   the whole window (`Shell`) with one account,
+ *   ?mode=shell                   the whole window (`Shell`) with one account
+ *                                 (`&rows=1`: the demo's Inbox listed in every
+ *                                 view and search),
  *                                 `&accounts=0` for none; removing the
  *                                 account (`account_remove`) empties the list
  *   ?mode=search                  the title bar's search, with three recent
@@ -67,6 +69,7 @@ import {
   me,
   messagesOf,
   threadOf,
+  inbox,
 } from "./demoMail";
 import trackers from "./fixtures/trackers.json";
 import imageSizes from "./fixtures/image-sizes.json";
@@ -197,6 +200,9 @@ mockIPC(
         shellAccountRemoved = true;
         return { revoked: true };
       case "threads_list":
+        // `?mode=shell&rows=1`: the demo's Inbox, for every view and search.
+        if (harnessMode === "shell" && onboardingParams.has("rows"))
+          return { threads: inbox(), nextCursor: null };
         return { threads: [], nextCursor: null };
       case "threads_load_older":
         // As Rust with no account to ask: nothing older, and not an error.

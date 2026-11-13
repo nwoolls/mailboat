@@ -8,6 +8,7 @@ import {
   viewTitle,
   labelSelection,
   sameSelection,
+  staysOnFolderClick,
   selectionKey,
   selectionNeedsAccount,
   selectionTitle,
@@ -146,5 +147,25 @@ describe("selectionNeedsAccount", () => {
         [workLabel],
       ),
     ).toBe(false);
+  });
+});
+
+// Owner, 2026-11-12: clicking the folder you're in cleared the preview and
+// the selection. Now it only clears a search (as the search box's clear
+// button does) and leaves them, as in Apple Mail.
+describe("staysOnFolderClick", () => {
+  const archive = viewSelection({ kind: "archive" }, 2);
+  it("stays on the folder already shown", () => {
+    expect(staysOnFolderClick(selectionKey(archive), viewSelection({ kind: "archive" }, 2))).toBe(
+      true,
+    );
+  });
+  it("goes to another folder, or another account's", () => {
+    expect(staysOnFolderClick(selectionKey(archive), viewSelection({ kind: "allMail" }, 2))).toBe(
+      false,
+    );
+    expect(staysOnFolderClick(selectionKey(archive), viewSelection({ kind: "archive" }, 3))).toBe(
+      false,
+    );
   });
 });
