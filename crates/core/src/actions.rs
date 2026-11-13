@@ -6,7 +6,7 @@
 //! 2. Apply the change to the local cache first, so the UI updates at once.
 //! 3. Tell Gmail. If Gmail refuses, put that thread back as it was.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::db::{store, Db};
 use crate::error::{CoreError, Result};
@@ -20,7 +20,7 @@ const TRASH: &str = "TRASH";
 const SPAM: &str = "SPAM";
 
 /// Which Gmail call carries the change.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Remote {
     /// `threads.modify` with the plan's labels.
     Modify,
@@ -28,6 +28,10 @@ enum Remote {
     Trash,
     /// `threads.untrash` (Gmail removes TRASH itself).
     Untrash,
+    /// Gmail's Move to Inbox: `threads.untrash` first for the threads in
+    /// the Trash (it doesn't bring INBOX back), then `threads.modify`
+    /// adding INBOX.
+    ToInbox { trashed: BTreeSet<ThreadId> },
 }
 
 /// The label change for one account's threads, as Gmail label IDs.
@@ -125,10 +129,21 @@ async fn apply(
         let add: Vec<&str> = plan.add.iter().map(String::as_str).collect();
         let remove: Vec<&str> = plan.remove.iter().map(String::as_str).collect();
         for (thread, gmail_id) in &plan.threads {
-            let result = match remote {
+            let result = match &remote {
                 Remote::Modify => gmail.modify_thread(gmail_id, &add, &remove).await,
                 Remote::Trash => gmail.trash_thread(gmail_id).await,
                 Remote::Untrash => gmail.untrash_thread(gmail_id).await,
+                Remote::ToInbox { trashed } => {
+                    let untrashed = if trashed.contains(thread) {
+                        gmail.untrash_thread(gmail_id).await
+                    } else {
+                        Ok(())
+                    };
+                    match untrashed {
+                        Ok(()) => gmail.modify_thread(gmail_id, &[INBOX], &[]).await,
+                        Err(e) => Err(e),
+                    }
+                }
             };
             if let Err(e) = result {
                 restore(thread)?;
@@ -165,12 +180,35 @@ pub async fn set_archived(
     threads: &[ThreadId],
     archived: bool,
 ) -> Result<Vec<AccountId>> {
-    let plans = if archived {
-        system_plan(db, threads, &[], &[INBOX])?
-    } else {
-        system_plan(db, threads, &[INBOX], &[])?
-    };
-    apply(db, gmail_for, plans, Remote::Modify).await
+    if archived {
+        let plans = system_plan(db, threads, &[], &[INBOX])?;
+        return apply(db, gmail_for, plans, Remote::Modify).await;
+    }
+    // Move to Inbox: a thread in the Trash comes out of it too, as Gmail's
+    // move does (owner's choice, 2026-11-12); untrash alone would leave it
+    // in All Mail only.
+    let trashed = in_trash(db, threads)?;
+    let plans = system_plan(db, threads, &[INBOX], &[TRASH])?;
+    apply(db, gmail_for, plans, Remote::ToInbox { trashed }).await
+}
+
+/// The threads with a message in the Trash.
+fn in_trash(db: &Db, threads: &[ThreadId]) -> Result<BTreeSet<ThreadId>> {
+    let conn = db.conn();
+    let mut stmt = conn.prepare(
+        "SELECT EXISTS (SELECT 1 FROM messages m
+           JOIN message_labels ml ON ml.message_id = m.id
+           JOIN labels l ON l.id = ml.label_id
+           WHERE m.thread_id = ?1 AND l.gmail_label_id = 'TRASH')",
+    )?;
+    let mut trashed = BTreeSet::new();
+    for &thread in threads {
+        let found: bool = stmt.query_row([thread], |r| r.get(0))?;
+        if found {
+            trashed.insert(thread);
+        }
+    }
+    Ok(trashed)
 }
 
 /// Stars or unstars threads (every message, as `threads.modify` does).

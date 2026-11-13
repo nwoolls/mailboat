@@ -52,10 +52,8 @@ export function toggleFor(
     case "read":
       return { kind, read: threads.some((t) => t.unread) };
     case "archive":
-      // Nothing for a conversation in Trash: it isn't in the Inbox (as in
-      // Gmail), and Move to Inbox would leave it in Trash. Restore is the
-      // action there, as for a swipe.
-      if (threads.some((t) => t.inTrash)) return null;
+      // A conversation in Trash isn't in the Inbox (as in Gmail), so this
+      // offers Move to Inbox, which takes it out of the Trash too.
       return { kind, archived: threads.some((t) => t.inInbox) };
     case "star":
       return { kind, starred: threads.some((t) => !t.starred) };
@@ -85,7 +83,8 @@ export function leavesView(action: ThreadAction, view: MailView): boolean {
   const system = view.kind === "system" ? view.label : null;
   switch (action.kind) {
     case "archive":
-      return action.archived ? system === "inbox" : view.kind === "archive";
+      // Move to Inbox takes a conversation out of the Trash too.
+      return action.archived ? system === "inbox" : view.kind === "archive" || system === "trash";
     case "trash":
       return action.trashed ? system !== "trash" : system === "trash";
     case "spam":
@@ -112,7 +111,8 @@ export function updateSummary(action: ThreadAction, t: ThreadSummary): ThreadSum
         senders: t.senders.map((s) => ({ ...s, unread: !action.read })),
       };
     case "archive":
-      return { ...t, inInbox: !action.archived };
+      // Move to Inbox takes it out of the Trash too, as Gmail's move does.
+      return { ...t, inInbox: !action.archived, inTrash: action.archived ? t.inTrash : false };
     case "star":
       return { ...t, starred: action.starred };
     case "trash":

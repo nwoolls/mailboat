@@ -4779,10 +4779,14 @@ and new bugs still come here.*
       removes INBOX, restoring removes only TRASH. Demo mode's stand-in for
       Gmail does the same. The old test now asserts Gmail's behavior, and a
       unit test covers the list; both failed before the fix. From review:
-      with Inbox gone, the archive button on a trashed conversation offered
-      Move to Inbox, which would leave it in Trash; it now offers nothing
-      there (as a swipe already did), so Restore is the action. A test also
-      covers a trash Gmail refuses: Inbox comes back locally.
+      a trashed conversation's archive button offers Move to Inbox, which
+      only added INBOX and left it in Trash (on `main` too, once synced).
+      The owner chose to make it Gmail's move: for a conversation in Trash
+      it now calls untrash, then adds INBOX, and the cached copy and the
+      list take it out of the Trash and into the Inbox at once (rolled back
+      if Gmail refuses). Undo of that move archives it rather than putting
+      it back in Trash. A test also covers a trash Gmail refuses: Inbox
+      comes back locally.
 - [x] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01; fixed 2026-11-08, see below)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the
