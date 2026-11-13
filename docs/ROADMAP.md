@@ -4469,26 +4469,49 @@ The beta itself is the owner's to cut (`docs/DEVELOPMENT.md` → Releasing);
 the repository is not in beta mode, so it starts with `pre enter beta`, on
 the owner's word.*
 
+**Closed (owner, 2026-11-12).** All twelve items are done and the owner
+tried each. The first seven were the plan (#115): six were built and
+merged (#112, #113, #114, #116, #117, #118), and the sign-in code item,
+built earlier, needed only the owner's try. Items 8 to 12 were found while
+the spike ran and the owner added them to it (#120, #121, #122, #123,
+#125). Every fix is a patch, so the next version
+is 0.2.1-beta.0, on the owner's word. Rethinking how a new reply is
+followed was left out and stays open in the Bug backlog. The flaky tests
+seen during the spike are tracked in Flaky tests (#124).
+
 1. [x] The reply moving under the cursor after a draft save (the AI summary
    above it blinking), #112.
 2. [x] The line being typed hidden under the pinned Send bar in a narrow
    reader, #113.
 3. [x] Archiving with the preview collapsed re-opens it (the owner tried
-   the fix, 2026-11-12; branch `archive-keeps-collapsed`).
+   the fix, 2026-11-12; #114).
 4. [x] Meeting dates and times could be easier to read. Example formats go
    to the owner to choose from before any code. (The owner chose showing
    Outlook invitations in the computer's own time zone and tried it,
-   2026-11-12; branch `invite-windows-zones`, #116.)
+   2026-11-12; #116.)
 5. [x] The website's screenshot zoom flashes at full size before it
    animates. (Stepping with ‹ › now crossfades too, the owner's choice; the
-   owner tried both, 2026-11-12; branch `website-zoom-flash`.)
+   owner tried both, 2026-11-12; #118.)
 6. [x] A sign-in code in a verification email isn't surfaced: built, and
    waiting on the owner trying a real verification email (whether Apple
    Intelligence still refuses its full summary). (The owner tried a
    made-up email of the same shape, 2026-11-12: the code showed and the
    full summary was written; see the Bug backlog entry.)
 7. [x] The browser tests all ran in Chromium in a checkout whose path has
-   "windows-" in it (found during item 4; fixed, branch `playwright-match`).
+   "windows-" in it (found during item 4; fixed, #117).
+8. [x] In a search that includes Spam and Trash, undoing a restore moved on
+   from the conversation (found in review; #120).
+9. [x] In the Unread view, a conversation disappears as soon as it's read
+   (owner report; it now stays, shown as read, until the view changes;
+   #121).
+10. [x] Clicking the folder already shown closes the preview (owner report;
+    it now leaves it, and during a search only clears the search; #122).
+11. [x] A trashed conversation still counted as in the Inbox until the next
+    sync (found in review of #120). With it, Move to Inbox from Trash does
+    Gmail's move, Undo puts it back, and swipe left in Trash does the same
+    (owner's choices; #123).
+12. [x] A draft in Trash can't be opened (owner report; it opens in the
+    composer, as in Gmail; #125).
 
 Not in the spike: rethinking how a new reply is followed (and the
 slow-machine test kept as `test.fixme`). It is a design for the owner to
@@ -4527,7 +4550,7 @@ stretching the measured animation.
         https://github.com/nwoolls/mailboat/actions/runs/43354683199:
         "toggle 1 animated", expected more than 2 painted frames in 0.9 s,
         received 2. The branch passed the test file 20 runs of 20 locally;
-        the failed job was run again.
+        the failed job was run again and passed, with every other job.
 - [ ] `ai-panel.spec.ts`: "floating card at bottom-right: the panel opens on
       the left, the whole card bounces, the form stays". Back after the
       2026-11-08 fix.
@@ -4535,6 +4558,16 @@ stretching the measured animation.
         wasn't visible within 5 s (`toBeVisible`, element not found), before
         the panel was opened at all. It passed 5 runs of 5 locally (the
         bottom-left one too).
+- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader: the reply
+      scrolls into view" (line 49, the normal-speed version of the test
+      below).
+      - 2026-11-12, CI on #125 (branch `trashed-draft-opens`, Rust and docs
+        only),
+        https://github.com/nwoolls/mailboat/actions/runs/43365259589: "the
+        reply scrolls into view", still false after polling for 15 s (the
+        Send button or the reply's top never came into the reader). The
+        failed job was run again and passed, with every other job. Likely
+        the same cause as the slow-machine test below, on a slow runner.
 - [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
       the reply still scrolls into view". Turned off (`test.fixme`, line 86)
       by the owner on 2026-11-11, until the reply-follow redesign; turn it
