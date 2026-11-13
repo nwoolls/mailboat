@@ -4494,6 +4494,70 @@ Not in the spike: rethinking how a new reply is followed (and the
 slow-machine test kept as `test.fixme`). It is a design for the owner to
 lead, with a mockup first.
 
+## Flaky tests
+
+*Started 2026-11-12 at the owner's request, to track tests that fail and
+then pass with no change to the code, and to close them in Flaky Test
+Spikes of their own (on the owner's word, like the bug spikes). Every such
+failure, in CI or locally, is added here when it is seen: a new entry for
+a new test, or a dated line on the test's entry if it has one. Each line
+says where it failed (a CI run's link, or a local `bun run check` and its
+branch), the error as the log gives it, and what happened when it was run
+again. A failure is only called flaky once the logs show it has nothing
+to do with the change being tested (`AGENTS.md`). An entry is ticked when
+a fix is in and the test has been run many times without failing; the
+entry says how many.*
+
+Fixed before this list existed, kept in the Bug backlog: the starfield test
+(`screensaver-night.spec.ts`, fixed 2026-11-08), and the two
+`ai-panel.spec.ts` timing tests below, first fixed 2026-11-08 by
+stretching the measured animation.
+
+- [ ] `ai-panel.spec.ts`: "inline reply: opening and closing the panel many
+      times never moves the reply". Back after the 2026-11-08 fix.
+      - 2026-11-12, local full check on branch `trash-leaves-inbox` (a
+        change to Trash, nothing near the reply or the panel): the reply
+        was 445 px from its start on toggle 1 (`toBeLessThanOrEqual(2)`,
+        received 445.375). It passed 5 runs of 5 alone and in the next full
+        check. Unlike the CI failure below, the reply did move, so this
+        may be a real jump when the machine is busy rather than a
+        measurement problem.
+      - 2026-11-12, CI on #122 (branch `same-folder-click`, which touches
+        neither the panel nor the reply),
+        https://github.com/nwoolls/mailboat/actions/runs/43354683199:
+        "toggle 1 animated", expected more than 2 painted frames in 0.9 s,
+        received 2. The branch passed the test file 20 runs of 20 locally;
+        the failed job was run again.
+- [ ] `ai-panel.spec.ts`: "floating card at bottom-right: the panel opens on
+      the left, the whole card bounces, the form stays". Back after the
+      2026-11-08 fix.
+      - 2026-11-12, CI on #122, the same run as above: the new message form
+        wasn't visible within 5 s (`toBeVisible`, element not found), before
+        the panel was opened at all. It passed 5 runs of 5 locally (the
+        bottom-left one too).
+- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
+      the reply still scrolls into view". Turned off (`test.fixme`, line 86)
+      by the owner on 2026-11-11, until the reply-follow redesign; turn it
+      back on with that. The full story is in the Bug backlog ("On a slow
+      machine, a new reply sometimes stops being followed"). Its failures:
+      - 2026-11-10, CI: the reader stopped well short of the reply. Fixed
+        that day by following the reply until the person scrolls or types.
+      - 2026-11-10, CI, later: the follow stopped early, taking its own
+        scrolling for the person scrolling up. Fixed by scrolling to a
+        computed target.
+      - 2026-11-11, CI on two pull requests that didn't touch it: the
+        reply's end a few pixels below the reader. With the test run ten
+        times per CI run, it failed in all five runs before the fix (short
+        smooth scrolls now jump) and in none of three after it.
+      - One earlier run (date not recorded) left the reply 223 px below,
+        and the fix's own CI run, 2026-11-11, 341 px below, with the fix in. Not explained;
+        the test was turned off.
+      - 2026-11-11, CI: another test in the file, "scrolling up slowly",
+        failed the same way (401 px, before it scrolled at all): it clicked
+        Reply with AI while the email above was still laying out. The tests
+        now wait for the conversation to keep its height for half a second
+        before clicking.
+
 ## Bug backlog
 
 *Bugs found in passing (started 2026-10-19 at the owner's request).
