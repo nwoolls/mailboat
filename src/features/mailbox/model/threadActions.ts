@@ -79,12 +79,17 @@ export function deleteKeyAction(
 /** Does a conversation drop out of this view after the action? */
 export function leavesView(action: ThreadAction, view: MailView): boolean {
   const system = view.kind === "system" ? view.label : null;
+  // A search that includes Spam and Trash (Settings → Viewing) shows them:
+  // moving to or out of either keeps the conversation in the results.
+  const showsSpamTrash = view.kind === "search" && view.withSpamTrash === true;
   switch (action.kind) {
     case "archive":
       return action.archived ? system === "inbox" : view.kind === "archive";
     case "trash":
+      if (showsSpamTrash) return false;
       return action.trashed ? system !== "trash" : system === "trash";
     case "spam":
+      if (showsSpamTrash) return false;
       return action.spam ? system !== "spam" : system === "spam";
     case "star":
       return !action.starred && system === "starred";

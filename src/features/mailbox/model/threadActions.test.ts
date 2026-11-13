@@ -113,6 +113,25 @@ describe("leavesView", () => {
       false,
     );
   });
+
+  // Settings → Viewing → "Include Spam and Trash": such a search shows them,
+  // so moving a conversation to or out of Trash or Spam keeps it in the
+  // results. Undoing a restore there moved on to the next conversation and
+  // opened the preview the person had collapsed.
+  it("keeps conversations in a search that includes Spam and Trash", () => {
+    const everywhere = { kind: "search", text: "plans", withSpamTrash: true } as const;
+    for (const action of [
+      { kind: "trash", trashed: true },
+      { kind: "trash", trashed: false },
+      { kind: "spam", spam: true },
+      { kind: "spam", spam: false },
+    ] as const)
+      expect(leavesView(action, everywhere), JSON.stringify(action)).toBe(false);
+    // An ordinary search leaves them out.
+    const ordinary = { kind: "search", text: "plans" } as const;
+    expect(leavesView({ kind: "trash", trashed: true }, ordinary)).toBe(true);
+    expect(leavesView({ kind: "spam", spam: true }, ordinary)).toBe(true);
+  });
 });
 
 describe("withAction", () => {
@@ -131,6 +150,29 @@ describe("withAction", () => {
       inbox,
     )!;
     expect(next.pages[0]!.threads.map((t) => t.unread)).toEqual([true, false]);
+  });
+
+  // In a search that includes Spam and Trash, a conversation moved to
+  // either stays, showing where it is now, so Restore / Not spam is on
+  // offer (code review).
+  it("keeps a row moved to Trash or Spam in a search that includes them", () => {
+    const everywhere = { kind: "search", text: "plans", withSpamTrash: true } as const;
+    const trashed = withAction(
+      page(thread(1)),
+      new Set([1]),
+      { kind: "trash", trashed: true },
+      everywhere,
+    )!.pages[0]!.threads;
+    expect(trashed.map((t) => [t.id, t.inTrash])).toEqual([[1, true]]);
+    expect(toggleFor("trash", trashed)).toEqual({ kind: "trash", trashed: false });
+    const spammed = withAction(
+      page(thread(1)),
+      new Set([1]),
+      { kind: "spam", spam: true },
+      everywhere,
+    )!.pages[0]!.threads;
+    expect(spammed.map((t) => [t.id, t.inSpam])).toEqual([[1, true]]);
+    expect(toggleFor("spam", spammed)).toEqual({ kind: "spam", spam: false });
   });
 });
 
