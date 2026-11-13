@@ -1,5 +1,7 @@
 import {
   type InfiniteData,
+  type Query,
+  type QueryClient,
   type QueryKey,
   useMutation,
   useQueryClient,
@@ -16,7 +18,26 @@ import { keys } from "../../../shared/lib/queries";
 import { type ThreadAction, withAction, withDetailAction } from "../model/threadActions";
 
 export type ActionVars = { ids: ThreadId[]; action: ThreadAction };
-type Snapshot = [QueryKey, unknown][];
+/**
+ * What an action changed, to put back if Gmail refuses: each query's key,
+ * its data before, and the query itself, so a rollback only writes into the
+ * query it came from.
+ */
+type Snapshot = [QueryKey, unknown, Query | undefined][];
+
+/**
+ * Puts a failed action's snapshot back, into the queries it came from only:
+ * one removed meanwhile (the Unread list, forgotten when the person left
+ * it) stays gone rather than coming back with the old rows, even if a new
+ * visit has since made a query with the same key (code review).
+ */
+export function rollback(qc: QueryClient, snapshot: Snapshot) {
+  for (const [key, data, query] of snapshot) {
+    if (qc.getQueryCache().find({ queryKey: key, exact: true }) === query) {
+      qc.setQueryData(key, data);
+    }
+  }
+}
 
 function run({ ids, action }: ActionVars): Promise<null> {
   switch (action.kind) {
@@ -53,11 +74,14 @@ export function useThreadAction() {
     onMutate: async ({ ids, action }) => {
       await qc.cancelQueries({ queryKey: ["threads"] });
       const lists = qc.getQueriesData<InfiniteData<ThreadPage>>({ queryKey: ["threads"] });
+      const cache = qc.getQueryCache();
+      const query = (key: QueryKey) => cache.find({ queryKey: key, exact: true });
       const snapshot: Snapshot = [
-        ...lists,
-        ...ids.map((id): [QueryKey, unknown] => [
+        ...lists.map(([key, data]): Snapshot[number] => [key, data, query(key)]),
+        ...ids.map((id): Snapshot[number] => [
           keys.thread(id),
           qc.getQueryData(keys.thread(id)),
+          query(keys.thread(id)),
         ]),
       ];
       const set = new Set(ids);
@@ -71,9 +95,7 @@ export function useThreadAction() {
       }
       return snapshot;
     },
-    onError: (_error, _vars, snapshot) => {
-      for (const [key, data] of snapshot ?? []) qc.setQueryData(key, data);
-    },
+    onError: (_error, _vars, snapshot) => rollback(qc, snapshot ?? []),
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ["threads"] });
       void qc.invalidateQueries({ queryKey: ["thread"] });

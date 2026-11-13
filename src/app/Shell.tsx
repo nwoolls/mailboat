@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { commands, events } from "../platform/tauri/bindings";
-import type { AccountId, ThreadId, ThreadSummary } from "../platform/tauri/bindings";
+import type { AccountId, MailView, ThreadId, ThreadSummary } from "../platform/tauri/bindings";
+import { useQueryClient } from "@tanstack/react-query";
 import { IS_TAURI, unwrap } from "../platform/tauri/ipc";
 import { indexAccounts, syncAttention } from "../features/accounts/model/accounts";
 import { Sidebar } from "../features/accounts/ui/Sidebar";
@@ -261,6 +262,21 @@ export function Shell() {
     () => threadsQuery.data?.pages.flatMap((p) => p.threads) ?? [],
     [threadsQuery.data],
   );
+  // In Unread, conversations read during a visit stay, shown as read, until
+  // the view changes (unreadList.ts keeps them in the list's data). Leaving
+  // the view forgets its list, so the next visit lists only what is unread.
+  const inUnread = selection.view.kind === "system" && selection.view.label === "unread";
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (inUnread) return;
+    queryClient.removeQueries({
+      queryKey: ["threads"],
+      predicate: ({ queryKey }) => {
+        const view = queryKey[2] as MailView | undefined;
+        return view?.kind === "system" && view.label === "unread";
+      },
+    });
+  }, [inUnread, queryClient]);
   const [selectedId, setSelectedId] = useState<ThreadId | null>(null);
   // The row selected without being previewed: closed with Esc, or moved
   // to with j/k while no preview shows. It stays highlighted, the buttons

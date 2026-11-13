@@ -5032,6 +5032,36 @@ and new bugs still come here.*
       nothing changes. Undo after archiving the conversation the preview was
       collapsed on goes back to it, still collapsed. A unit test of the collapsed case failed before the
       fix.)*
+- [x] In the Unread view, a conversation disappears from the list as soon
+      as it's opened *(owner report, 2026-11-12; fixed the same day, and the
+      owner tried this version)*: opening marks it read,
+      and the list, which only brings unread conversations, refreshed
+      without it, from under the pointer and the selection. The code meant
+      it to stay until the list refreshed, but mail changing refreshes the
+      list almost at once. The owner chose: conversations read during a
+      visit to Unread stay in the list, shown as read, until the person
+      leaves the view, and the next visit lists only what is unread.
+      They are kept in the Unread list's own cached data (`unreadList.ts`,
+      the query's `structuralSharing`): while the view is open, a refresh
+      keeps the conversations it leaves out, marked read, in their place,
+      and the app's own updates (`withAction`, marked as local) are taken
+      as they are. So Mark unread, star, archive and labels change such a
+      row at once, a failed action rolls back, and Trash or Spam takes it
+      out, as for any row. Leaving the view removes its cached list, so the
+      next visit fetches only what is unread (its loaded pages go too, so it
+      comes back scrolled at most as far as its first page reaches). A
+      refresh keeps only rows within the range it covered (one pushed to
+      the next page by a newer arrival comes back with that page), a later
+      page's copy replaces a kept one, a kept row's senders show as read
+      too, and a failed action's rollback writes only into the list it came
+      from, never into a forgotten Unread list (code review). A first version kept these rows in
+      a separate copy; two review rounds found that the copy missed Undo,
+      rollback and immediate updates, and the owner chose this design
+      instead. Two things stay as they are: Undo of Trash on a read row
+      brings it out of the Trash but not back into Unread (it's read), and
+      a conversation archived or deleted on another device stays until the
+      view is left. Unit tests cover the merge with the real immediate
+      update; `Shell`'s removal on leaving is not unit-tested.
 - [x] Reply with AI in a short reader could leave the reply part way below
       the fold *(found 2026-11-10, when a browser test failed once on CI with
       the reader stopped well short of the reply; fixed the same day)*: a new
