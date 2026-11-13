@@ -28,10 +28,10 @@ enum Remote {
     Trash,
     /// `threads.untrash` (Gmail removes TRASH itself).
     Untrash,
-    /// Gmail's Move to Inbox: `threads.untrash` first for the threads in
-    /// the Trash (it doesn't bring INBOX back), then `threads.modify`
-    /// adding INBOX.
-    ToInbox { trashed: BTreeSet<ThreadId> },
+    /// Gmail's Move to Inbox for threads wholly in the Trash:
+    /// `threads.untrash` first (it doesn't bring INBOX back), then
+    /// `threads.modify` adding INBOX.
+    ToInbox,
 }
 
 /// The label change for one account's threads, as Gmail label IDs.
@@ -106,9 +106,13 @@ async fn apply(
             snapshots.insert(*thread, saved);
         }
     }
-    let restore = |thread: &ThreadId| -> Result<()> {
+    // Puts a thread's labels back as they were: all of them, or only the
+    // one named.
+    let restore = |thread: &ThreadId, only: Option<&str>| -> Result<()> {
         for snapshot in &snapshots[thread] {
-            store::restore_label_snapshot(&mut db.conn(), snapshot)?;
+            if only.is_none_or(|label| snapshot.gmail_label_id == label) {
+                store::restore_label_snapshot(&mut db.conn(), snapshot)?;
+            }
         }
         Ok(())
     };
@@ -120,7 +124,7 @@ async fn apply(
             Ok(g) => g.interactive(),
             Err(e) => {
                 for (thread, _) in &plan.threads {
-                    restore(thread)?;
+                    restore(thread, None)?;
                 }
                 first_error.get_or_insert(e);
                 continue;
@@ -129,24 +133,23 @@ async fn apply(
         let add: Vec<&str> = plan.add.iter().map(String::as_str).collect();
         let remove: Vec<&str> = plan.remove.iter().map(String::as_str).collect();
         for (thread, gmail_id) in &plan.threads {
-            let result = match &remote {
-                Remote::Modify => gmail.modify_thread(gmail_id, &add, &remove).await,
-                Remote::Trash => gmail.trash_thread(gmail_id).await,
-                Remote::Untrash => gmail.untrash_thread(gmail_id).await,
-                Remote::ToInbox { trashed } => {
-                    let untrashed = if trashed.contains(thread) {
-                        gmail.untrash_thread(gmail_id).await
-                    } else {
-                        Ok(())
-                    };
-                    match untrashed {
-                        Ok(()) => gmail.modify_thread(gmail_id, &[INBOX], &[]).await,
-                        Err(e) => Err(e),
-                    }
-                }
+            // On failure, which labels go back: all of them, or only INBOX
+            // when the untrash went through and only the add failed (the
+            // thread is out of the Trash in Gmail too).
+            let (result, only) = match &remote {
+                Remote::Modify => (gmail.modify_thread(gmail_id, &add, &remove).await, None),
+                Remote::Trash => (gmail.trash_thread(gmail_id).await, None),
+                Remote::Untrash => (gmail.untrash_thread(gmail_id).await, None),
+                Remote::ToInbox => match gmail.untrash_thread(gmail_id).await {
+                    Err(e) => (Err(e), None),
+                    Ok(()) => (
+                        gmail.modify_thread(gmail_id, &[INBOX], &[]).await,
+                        Some(INBOX),
+                    ),
+                },
             };
             if let Err(e) = result {
-                restore(thread)?;
+                restore(thread, only)?;
                 first_error.get_or_insert(e);
             }
         }
@@ -186,25 +189,52 @@ pub async fn set_archived(
     }
     // Move to Inbox: a thread in the Trash comes out of it too, as Gmail's
     // move does (owner's choice, 2026-11-12); untrash alone would leave it
-    // in All Mail only.
-    let trashed = in_trash(db, threads)?;
-    let plans = system_plan(db, threads, &[INBOX], &[TRASH])?;
-    apply(db, gmail_for, plans, Remote::ToInbox { trashed }).await
+    // in All Mail only. "In the Trash" means every message, as the list's
+    // `inTrash` does, so Undo (back to the Trash) matches; a thread with
+    // only some messages trashed gets the plain move, and those stay
+    // trashed (code review).
+    let (trashed, rest): (Vec<ThreadId>, Vec<ThreadId>) = {
+        let wholly = wholly_in_trash(db, threads)?;
+        threads.iter().partition(|t| wholly.contains(t))
+    };
+    let mut first_error = None;
+    let mut accounts = BTreeSet::new();
+    for (part, remove, remote) in [
+        (trashed, &[TRASH][..], Remote::ToInbox),
+        (rest, &[][..], Remote::Modify),
+    ] {
+        if part.is_empty() {
+            continue;
+        }
+        let plans = system_plan(db, &part, &[INBOX], remove)?;
+        match apply(db, &gmail_for, plans, remote).await {
+            Ok(touched) => accounts.extend(touched),
+            Err(e) => {
+                first_error.get_or_insert(e);
+            }
+        }
+    }
+    match first_error {
+        Some(e) => Err(e),
+        None => Ok(accounts.into_iter().collect()),
+    }
 }
 
-/// The threads with a message in the Trash.
-fn in_trash(db: &Db, threads: &[ThreadId]) -> Result<BTreeSet<ThreadId>> {
+/// The threads whose every message is in the Trash.
+fn wholly_in_trash(db: &Db, threads: &[ThreadId]) -> Result<BTreeSet<ThreadId>> {
     let conn = db.conn();
     let mut stmt = conn.prepare(
-        "SELECT EXISTS (SELECT 1 FROM messages m
-           JOIN message_labels ml ON ml.message_id = m.id
-           JOIN labels l ON l.id = ml.label_id
-           WHERE m.thread_id = ?1 AND l.gmail_label_id = 'TRASH')",
+        "SELECT EXISTS (SELECT 1 FROM messages WHERE thread_id = ?1)
+           AND NOT EXISTS (SELECT 1 FROM messages m
+             WHERE m.thread_id = ?1 AND NOT EXISTS (
+               SELECT 1 FROM message_labels ml
+               JOIN labels l ON l.id = ml.label_id
+               WHERE ml.message_id = m.id AND l.gmail_label_id = 'TRASH'))",
     )?;
     let mut trashed = BTreeSet::new();
     for &thread in threads {
-        let found: bool = stmt.query_row([thread], |r| r.get(0))?;
-        if found {
+        let wholly: bool = stmt.query_row([thread], |r| r.get(0))?;
+        if wholly {
             trashed.insert(thread);
         }
     }
