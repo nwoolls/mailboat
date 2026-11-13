@@ -4565,7 +4565,8 @@ stretching the measured animation.
         only),
         https://github.com/nwoolls/mailboat/actions/runs/43365259589: "the
         reply scrolls into view", still false after polling for 15 s (the
-        Send button or the reply's top never came into the reader). Likely
+        Send button or the reply's top never came into the reader). The
+        failed job was run again and passed, with every other job. Likely
         the same cause as the slow-machine test below, on a slow runner.
 - [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
       the reply still scrolls into view". Turned off (`test.fixme`, line 86)
