@@ -111,7 +111,7 @@ describe("reading the trackpad", () => {
 });
 
 describe("what each side does", () => {
-  it("archives from the Inbox, trashes elsewhere, nothing in Trash", () => {
+  it("archives from the Inbox, moves back to it from Trash, trashes elsewhere", () => {
     const inbox = { unread: true, inInbox: true, inTrash: false, starred: false, inSpam: false };
     expect(swipeActions(inbox)).toEqual({
       left: { kind: "archive", archived: true },
@@ -121,7 +121,10 @@ describe("what each side does", () => {
       kind: "trash",
       trashed: true,
     });
-    expect(swipeActions({ ...inbox, inInbox: false, inTrash: true }).left).toBeNull();
+    expect(swipeActions({ ...inbox, inInbox: false, inTrash: true }).left).toEqual({
+      kind: "archive",
+      archived: false,
+    });
     expect(swipeActions({ ...inbox, unread: false }).right).toEqual({ kind: "read", read: false });
   });
 

@@ -47,7 +47,7 @@ import {
 import {
   actionMessage,
   actionVerb,
-  inverse,
+  undoActions,
   labelToggle,
   leavesView,
   moveAfterRemoval,
@@ -74,6 +74,7 @@ import {
   selectionNeedsAccount,
   selectionTitle,
   spansAccounts,
+  staysOnFolderClick,
   systemSelection,
 } from "../features/mailbox/model/views";
 import { emptyStateFor, emptyStateKey, isFirstSync } from "../features/mailbox/model/emptyState";
@@ -340,12 +341,21 @@ export function Shell() {
   }, [settingsOpen]);
   // When `g` was pressed, for Gmail's "go to" keys (0: not waiting).
   const goPending = useRef(0);
-  const goTo = useCallback((s: Selection) => {
-    setChosen(s);
-    setSearch("");
-    setSelectedId(null);
-    setCursorId(null);
-  }, []);
+  // A string, stable from render to render (the one-account default is a new
+  // object each time), so `goTo` and the listeners using it stay put.
+  const shownKey = selectionKey(baseSelection);
+  const goTo = useCallback(
+    (s: Selection) => {
+      // The folder already shown: only a search is cleared, as its clear
+      // button does; the preview and selection stay.
+      if (staysOnFolderClick(shownKey, s)) return setSearch("");
+      setChosen(s);
+      setSearch("");
+      setSelectedId(null);
+      setCursorId(null);
+    },
+    [shownKey],
+  );
   const { mutate: mutateThreads } = useThreadAction();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   // Past the last cached page, ask Gmail for older mail. Not while the
@@ -463,6 +473,10 @@ export function Shell() {
         }
         setChecked(NONE);
       }
+      // Which were in the Trash, for Undo of a Move to Inbox (undoActions).
+      const wasInTrash = new Set(
+        threads.filter((t) => t.inTrash && ids.includes(t.id)).map((t) => t.id),
+      );
       const message = actionMessage(action, ids.length);
       if (message)
         showToast({
@@ -471,7 +485,8 @@ export function Shell() {
             ? {
                 label: "Undo",
                 run: () => {
-                  run(inverse(action), ids, true);
+                  for (const undo of undoActions(action, ids, wasInTrash))
+                    run(undo.action, undo.ids, true);
                   // Back to the conversation that was open, if this moved
                   // on from it; one that wasn't open (a swipe) stays closed.
                   if (leavesView(action, selection.view))

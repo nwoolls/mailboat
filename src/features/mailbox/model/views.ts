@@ -121,6 +121,16 @@ export function sameSelection(a: Selection, b: Selection): boolean {
   return selectionKey(a) === selectionKey(b);
 }
 
+/**
+ * Whether a click on a folder in the sidebar is on the folder already
+ * shown: then it only clears a search, as the search box's clear button
+ * does, and the preview and selection stay (owner, 2026-11-12; as in Apple
+ * Mail). It used to clear them too.
+ */
+export function staysOnFolderClick(shownKey: string, clicked: Selection): boolean {
+  return selectionKey(clicked) === shownKey;
+}
+
 /** True when rows may come from more than one account, so each row needs an account marker. */
 export function spansAccounts(s: Selection, accountCount: number): boolean {
   if (s.accounts.kind === "all") return accountCount > 1;

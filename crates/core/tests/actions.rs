@@ -146,6 +146,226 @@ async fn refused_change_is_undone_locally() {
     assert_eq!(after.thread, before.thread);
 }
 
+/// Move to Inbox on a conversation in Trash is Gmail's move: out of the
+/// Trash (untrash, which doesn't bring INBOX back) and into the Inbox
+/// (owner's choice, 2026-11-12).
+#[tokio::test]
+async fn moving_a_trashed_thread_to_the_inbox_takes_it_out_of_the_trash() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1(&db, a);
+    let trashed = expect_post("/gmail/v1/users/me/threads/t1/trash", None).await;
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&trashed.uri()).0);
+    actions::set_trashed(&db, gmail_for, &[t1], true)
+        .await
+        .unwrap();
+
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/gmail/v1/users/me/threads/t1/untrash"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("{}"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/gmail/v1/users/me/threads/t1/modify"))
+        .and(body_json(
+            serde_json::json!({ "addLabelIds": ["INBOX"], "removeLabelIds": [] }),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_string("{}"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+    actions::set_archived(&db, gmail_for, &[t1], false)
+        .await
+        .unwrap();
+    // Untrash first, then the add (code review).
+    assert_eq!(
+        posted(&server).await,
+        [
+            "/gmail/v1/users/me/threads/t1/untrash",
+            "/gmail/v1/users/me/threads/t1/modify"
+        ]
+    );
+    let summary = query::thread_summary(&db.conn(), t1).unwrap();
+    assert!(summary.in_inbox && !summary.in_trash);
+    assert_eq!(in_view(&db, a, INBOX), vec![t1]);
+    let trash = MailView::System {
+        label: SystemLabel::Trash,
+    };
+    assert!(in_view(&db, a, trash).is_empty());
+}
+
+/// Moving a conversation that isn't in Trash to the Inbox stays one
+/// `modify`, with no untrash call.
+#[tokio::test]
+async fn moving_to_the_inbox_outside_the_trash_is_one_modify() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/gmail/v1/users/me/threads/t1/untrash"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("{}"))
+        .expect(0)
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/gmail/v1/users/me/threads/t1/modify"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("{}"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1(&db, a);
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+    actions::set_archived(&db, gmail_for, &[t1], false)
+        .await
+        .unwrap();
+    assert_eq!(in_view(&db, a, INBOX), vec![t1]);
+}
+
+/// A trash Gmail refuses is undone locally: INBOX, which trashing removes
+/// from the cached copy, comes back, and TRASH goes (code review).
+#[tokio::test]
+async fn refused_trash_is_undone_locally() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(
+            ResponseTemplate::new(400).set_body_raw(fixture("error_404.json"), "application/json"),
+        )
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1(&db, a);
+    assert!(query::thread_summary(&db.conn(), t1).unwrap().in_inbox);
+
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+    assert!(actions::set_trashed(&db, gmail_for, &[t1], true)
+        .await
+        .is_err());
+    let summary = query::thread_summary(&db.conn(), t1).unwrap();
+    assert!(summary.in_inbox && !summary.in_trash);
+    assert_eq!(in_view(&db, a, INBOX), vec![t1]);
+}
+
+/// Loads fixture thread t1 with each message's labels replaced.
+fn load_t1_labeled(db: &Db, account: AccountId, labels: [&[&str]; 2]) -> ThreadId {
+    let mut json: serde_json::Value = serde_json::from_str(&fixture("thread_t1.json")).unwrap();
+    for (message, ids) in json["messages"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .zip(labels)
+    {
+        message["labelIds"] = serde_json::json!(ids);
+    }
+    let t: Thread = serde_json::from_value(json).unwrap();
+    store::upsert_thread(&mut db.conn(), account, &parse::thread_to_incoming(&t)).unwrap()
+}
+
+/// The paths POSTed to `server`, in order.
+async fn posted(server: &MockServer) -> Vec<String> {
+    server
+        .received_requests()
+        .await
+        .unwrap()
+        .iter()
+        .map(|r| r.url.path().to_string())
+        .collect()
+}
+
+const TRASH: MailView = MailView::System {
+    label: SystemLabel::Trash,
+};
+
+/// A refused untrash sends no add and changes nothing locally: the
+/// conversation stays in the Trash (code review).
+#[tokio::test]
+async fn refused_untrash_on_move_to_inbox_changes_nothing() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .respond_with(
+            ResponseTemplate::new(400).set_body_raw(fixture("error_404.json"), "application/json"),
+        )
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1_labeled(&db, a, [&["TRASH"], &["TRASH", "UNREAD"]]);
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+    assert!(actions::set_archived(&db, gmail_for, &[t1], false)
+        .await
+        .is_err());
+    assert_eq!(
+        posted(&server).await,
+        ["/gmail/v1/users/me/threads/t1/untrash"]
+    );
+    assert_eq!(in_view(&db, a, TRASH), vec![t1]);
+    assert!(in_view(&db, a, INBOX).is_empty());
+}
+
+/// When the untrash goes through and the add is refused, only the Inbox
+/// change is undone: Gmail has the conversation out of the Trash, in All
+/// Mail, and so does the cache (code review).
+#[tokio::test]
+async fn refused_add_after_untrash_leaves_it_in_all_mail() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/gmail/v1/users/me/threads/t1/untrash"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("{}"))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/gmail/v1/users/me/threads/t1/modify"))
+        .respond_with(
+            ResponseTemplate::new(400).set_body_raw(fixture("error_404.json"), "application/json"),
+        )
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1_labeled(&db, a, [&["TRASH"], &["TRASH", "UNREAD"]]);
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+    assert!(actions::set_archived(&db, gmail_for, &[t1], false)
+        .await
+        .is_err());
+    let summary = query::thread_summary(&db.conn(), t1).unwrap();
+    assert!(!summary.in_inbox && !summary.in_trash);
+    assert_eq!(in_view(&db, a, MailView::AllMail), vec![t1]);
+}
+
+/// A conversation with only some messages in the Trash isn't "in the
+/// Trash" (as the list counts it): Move to Inbox is the plain add, and the
+/// trashed message stays trashed (code review).
+#[tokio::test]
+async fn moving_a_partly_trashed_thread_to_the_inbox_is_the_plain_add() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/gmail/v1/users/me/threads/t1/modify"))
+        .and(body_json(
+            serde_json::json!({ "addLabelIds": ["INBOX"], "removeLabelIds": [] }),
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_string("{}"))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let t1 = load_t1_labeled(&db, a, [&[], &["TRASH", "UNREAD"]]);
+    let gmail_for = |_: AccountId| Ok::<GmailClient, CoreError>(client(&server.uri()).0);
+    actions::set_archived(&db, gmail_for, &[t1], false)
+        .await
+        .unwrap();
+    assert_eq!(
+        posted(&server).await,
+        ["/gmail/v1/users/me/threads/t1/modify"]
+    );
+    let trashed = store::label_snapshot(&db.conn(), t1, "TRASH").unwrap();
+    assert_eq!(trashed.messages_with_label.len(), 1);
+    assert_eq!(in_view(&db, a, INBOX), vec![t1]);
+}
+
 fn in_view(db: &Db, account: AccountId, view: MailView) -> Vec<ThreadId> {
     query::list_threads(
         &db.conn(),
@@ -262,9 +482,10 @@ async fn trash_uses_gmails_trash_call_and_hides_the_thread_from_other_views() {
     };
     assert_eq!(in_view(&db, a, trash.clone()), vec![t1]);
     let summary = query::thread_summary(&db.conn(), t1).unwrap();
-    assert!(summary.in_trash && summary.in_inbox);
-    // It keeps its INBOX label (as in Gmail) but no longer shows there, nor
-    // in its user label, nor in the Inbox unread count.
+    // Gmail drops INBOX when it trashes a conversation (checked by the owner
+    // in Gmail, 2026-11-12), so the cached copy does too. It no longer
+    // shows in its user label, nor in the Inbox unread count.
+    assert!(summary.in_trash && !summary.in_inbox);
     assert!(in_view(&db, a, INBOX).is_empty());
     assert!(in_view(
         &db,
@@ -283,7 +504,11 @@ async fn trash_uses_gmails_trash_call_and_hides_the_thread_from_other_views() {
         .await
         .unwrap();
     assert!(in_view(&db, a, trash).is_empty());
-    assert_eq!(in_view(&db, a, INBOX), vec![t1]);
+    // Gmail's untrash doesn't bring INBOX back (checked by the owner, for a
+    // conversation trashed from the Inbox and for one archived first): it
+    // is in All Mail only.
+    assert!(in_view(&db, a, INBOX).is_empty());
+    assert_eq!(in_view(&db, a, MailView::AllMail), vec![t1]);
 }
 
 fn label_id_of(db: &Db, account: AccountId, gmail_label_id: &str) -> LabelId {
