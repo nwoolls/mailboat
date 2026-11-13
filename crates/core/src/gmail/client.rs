@@ -558,15 +558,17 @@ impl GmailClient {
         response.json().await.map_err(net_error)
     }
 
-    /// `drafts.list`: every draft's ID with its message (one page of up to
-    /// 500; more drafts than that are rare).
-    pub async fn list_drafts(&self) -> Result<DraftList> {
-        self.get_json(
-            &self.url("drafts"),
-            &[("maxResults", "500")],
-            cost::DRAFTS_LIST,
-        )
-        .await
+    /// `drafts.list`: one page (up to 500) of drafts, each ID with its
+    /// message, from `page_token` on. Drafts in Spam and Trash too, which
+    /// Gmail otherwise leaves out: one in the Trash opens in the composer,
+    /// as in Gmail on the web.
+    pub async fn list_drafts(&self, page_token: Option<&str>) -> Result<DraftList> {
+        let mut query = vec![("maxResults", "500"), ("includeSpamTrash", "true")];
+        if let Some(token) = page_token {
+            query.push(("pageToken", token));
+        }
+        self.get_json(&self.url("drafts"), &query, cost::DRAFTS_LIST)
+            .await
     }
 
     /// `drafts.delete`. A draft that's already gone counts as deleted.

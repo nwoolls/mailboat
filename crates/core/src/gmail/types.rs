@@ -186,9 +186,12 @@ pub struct DraftRef {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DraftList {
     #[serde(default)]
     pub drafts: Vec<DraftRef>,
+    /// Set when more drafts follow on another page.
+    pub next_page_token: Option<String>,
 }
 
 /// A page of People API contacts (saved ones come as `connections`,
