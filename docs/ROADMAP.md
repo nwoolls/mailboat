@@ -5012,8 +5012,8 @@ and new bugs still come here.*
       region's. Tests: an
       Outlook-named zone gives the same moment as its IANA name, and the
       fallback format; both failed before the fix.)*
-- [ ] Archiving with the preview collapsed re-opens it *(owner request,
-      2026-11-09; minor)*: after collapsing the preview panel by hand,
+- [x] Archiving with the preview collapsed re-opens it *(owner request,
+      2026-11-09; minor; fixed 2026-11-12, and the owner tried it)*: after collapsing the preview panel by hand,
       moving through the list with the keyboard leaves it collapsed, but
       archiving the selected message previews the next one, which reopens
       it. The two should agree. After a manual collapse, archiving (and the
@@ -5022,7 +5022,16 @@ and new bugs still come here.*
       Settings says, and select it, but leave the preview collapsed until
       the person opens it again. Find where the next message is chosen and
       why it opens the preview, and test that the choice and the collapsed
-      state are separate.
+      state are separate. *(Fixed: every action goes through `act` in
+      `Shell.tsx`, which previewed the next conversation when one left the
+      view, and the reader reopens whenever a different conversation is
+      previewed. The choice is now `moveAfterRemoval`
+      (`threadActions.ts`): with the preview collapsed, the next
+      conversation is chosen the same way (Settings → Viewing) and selected
+      without being previewed, as j/k do then. With the preview open,
+      nothing changes. Undo after archiving the conversation the preview was
+      collapsed on goes back to it, still collapsed. A unit test of the collapsed case failed before the
+      fix.)*
 - [x] Reply with AI in a short reader could leave the reply part way below
       the fold *(found 2026-11-10, when a browser test failed once on CI with
       the reader stopped well short of the reply; fixed the same day)*: a new
