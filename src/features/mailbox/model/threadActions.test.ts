@@ -17,6 +17,7 @@ import {
   nextAfterRemoval,
   selectionAfterUndo,
   toggleFor,
+  undoActions,
   updateSummary,
   withAction,
   withDetailAction,
@@ -59,6 +60,17 @@ const page = (...threads: ThreadSummary[]) => ({
 });
 
 describe("toggleFor", () => {
+  // Move to Inbox on a conversation in Trash is Gmail's move: out of the
+  // Trash and into the Inbox (owner's choice, 2026-11-12).
+  it("offers Move to Inbox for a conversation in Trash, which takes it out of the Trash", () => {
+    const trashed = thread(1, { inInbox: false, inTrash: true });
+    const action = toggleFor("archive", [trashed]);
+    expect(action).toEqual({ kind: "archive", archived: false });
+    const moved = updateSummary(action!, trashed);
+    expect([moved.inInbox, moved.inTrash]).toEqual([true, false]);
+    expect(leavesView(action!, { kind: "system", label: "trash" })).toBe(true);
+  });
+
   it("does the action unless every conversation already has it", () => {
     const starred = thread(1, { starred: true });
     const plain = thread(2);
@@ -113,6 +125,36 @@ describe("leavesView", () => {
       false,
     );
   });
+
+  // Settings → Viewing → "Include Spam and Trash": such a search shows them,
+  // so moving a conversation to or out of Trash or Spam keeps it in the
+  // results. Undoing a restore there moved on to the next conversation and
+  // opened the preview the person had collapsed.
+  it("keeps conversations in a search that includes Spam and Trash", () => {
+    const everywhere = { kind: "search", text: "plans", withSpamTrash: true } as const;
+    for (const action of [
+      { kind: "trash", trashed: true },
+      { kind: "trash", trashed: false },
+      { kind: "spam", spam: true },
+      { kind: "spam", spam: false },
+    ] as const)
+      expect(leavesView(action, everywhere), JSON.stringify(action)).toBe(false);
+    // An ordinary search leaves them out.
+    const ordinary = { kind: "search", text: "plans" } as const;
+    expect(leavesView({ kind: "trash", trashed: true }, ordinary)).toBe(true);
+    expect(leavesView({ kind: "spam", spam: true }, ordinary)).toBe(true);
+  });
+});
+
+// Gmail drops INBOX when it trashes a conversation, and untrash doesn't
+// bring it back (checked by the owner in Gmail, 2026-11-12).
+describe("updateSummary for Trash", () => {
+  it("takes a trashed conversation out of the Inbox, and a restore leaves it out", () => {
+    const trashed = updateSummary({ kind: "trash", trashed: true }, thread(1, { inInbox: true }));
+    expect([trashed.inTrash, trashed.inInbox]).toEqual([true, false]);
+    const restored = updateSummary({ kind: "trash", trashed: false }, trashed);
+    expect([restored.inTrash, restored.inInbox]).toEqual([false, false]);
+  });
 });
 
 describe("withAction", () => {
@@ -131,6 +173,29 @@ describe("withAction", () => {
       inbox,
     )!;
     expect(next.pages[0]!.threads.map((t) => t.unread)).toEqual([true, false]);
+  });
+
+  // In a search that includes Spam and Trash, a conversation moved to
+  // either stays, showing where it is now, so Restore / Not spam is on
+  // offer (code review).
+  it("keeps a row moved to Trash or Spam in a search that includes them", () => {
+    const everywhere = { kind: "search", text: "plans", withSpamTrash: true } as const;
+    const trashed = withAction(
+      page(thread(1)),
+      new Set([1]),
+      { kind: "trash", trashed: true },
+      everywhere,
+    )!.pages[0]!.threads;
+    expect(trashed.map((t) => [t.id, t.inTrash])).toEqual([[1, true]]);
+    expect(toggleFor("trash", trashed)).toEqual({ kind: "trash", trashed: false });
+    const spammed = withAction(
+      page(thread(1)),
+      new Set([1]),
+      { kind: "spam", spam: true },
+      everywhere,
+    )!.pages[0]!.threads;
+    expect(spammed.map((t) => [t.id, t.inSpam])).toEqual([[1, true]]);
+    expect(toggleFor("spam", spammed)).toEqual({ kind: "spam", spam: false });
   });
 });
 
@@ -336,5 +401,26 @@ describe("moveAfterRemoval", () => {
     expect(
       moveAfterRemoval(list, ids(4), { previewed: id(2), selected: null, previewing: false }),
     ).toEqual({ previewed: 2, selected: null });
+  });
+});
+
+// Owner, 2026-11-12: Move to Inbox on a conversation in Trash takes it out of
+// the Trash and into the Inbox, so Undo puts it back in the Trash (which also
+// takes it out of the Inbox), not into the archive.
+describe("undoActions", () => {
+  const toInbox = { kind: "archive", archived: false } as const;
+  it("puts conversations moved out of the Trash back in it, and archives the rest", () => {
+    expect(undoActions(toInbox, [id(1), id(2)], new Set([id(2)]))).toEqual([
+      { action: { kind: "trash", trashed: true }, ids: [id(2)] },
+      { action: { kind: "archive", archived: true }, ids: [id(1)] },
+    ]);
+  });
+  it("undoes anything else with its inverse", () => {
+    expect(undoActions({ kind: "star", starred: true }, [id(1)], new Set([id(1)]))).toEqual([
+      { action: { kind: "star", starred: false }, ids: [id(1)] },
+    ]);
+    expect(undoActions(toInbox, [id(1)], new Set())).toEqual([
+      { action: { kind: "archive", archived: true }, ids: [id(1)] },
+    ]);
   });
 });

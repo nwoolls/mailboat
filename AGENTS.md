@@ -447,6 +447,14 @@ When it does:
   painted: sample in a `ResizeObserver` created after the component's,
   not at the start of a frame. Before trusting a new test, put the old
   behavior back and see it fail. One-time setup: `bunx playwright install webkit`.
+- Flaky tests: a test that fails and then passes with no change to the
+  code, in CI or locally, is recorded in `docs/ROADMAP.md` → Flaky tests
+  in the same session it is seen (a new entry, or a dated line on the
+  test's entry): where it failed (the CI run's link, or the local check
+  and branch), the error from the log, and what happened when it was run
+  again. Read the log first; a failure is never called flaky until the log
+  shows it has nothing to do with the change. Flaky Test Spikes close the
+  entries, on the owner's word.
 - Windows-only behavior: `tests/browser/windows-*.spec.ts` run in Chromium
   (WebView2's engine) with `data-platform="windows"` set; the rest stay in
   WebKit. One-time setup: `bunx playwright install chromium`.

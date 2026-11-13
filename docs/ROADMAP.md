@@ -4501,6 +4501,70 @@ Not in the spike: rethinking how a new reply is followed (and the
 slow-machine test kept as `test.fixme`). It is a design for the owner to
 lead, with a mockup first.
 
+## Flaky tests
+
+*Started 2026-11-12 at the owner's request, to track tests that fail and
+then pass with no change to the code, and to close them in Flaky Test
+Spikes of their own (on the owner's word, like the bug spikes). Every such
+failure, in CI or locally, is added here when it is seen: a new entry for
+a new test, or a dated line on the test's entry if it has one. Each line
+says where it failed (a CI run's link, or a local `bun run check` and its
+branch), the error as the log gives it, and what happened when it was run
+again. A failure is only called flaky once the logs show it has nothing
+to do with the change being tested (`AGENTS.md`). An entry is ticked when
+a fix is in and the test has been run many times without failing; the
+entry says how many.*
+
+Fixed before this list existed, kept in the Bug backlog: the starfield test
+(`screensaver-night.spec.ts`, fixed 2026-11-08), and the two
+`ai-panel.spec.ts` timing tests below, first fixed 2026-11-08 by
+stretching the measured animation.
+
+- [ ] `ai-panel.spec.ts`: "inline reply: opening and closing the panel many
+      times never moves the reply". Back after the 2026-11-08 fix.
+      - 2026-11-12, local full check on branch `trash-leaves-inbox` (a
+        change to Trash, nothing near the reply or the panel): the reply
+        was 445 px from its start on toggle 1 (`toBeLessThanOrEqual(2)`,
+        received 445.375). It passed 5 runs of 5 alone and in the next full
+        check. Unlike the CI failure below, the reply did move, so this
+        may be a real jump when the machine is busy rather than a
+        measurement problem.
+      - 2026-11-12, CI on #122 (branch `same-folder-click`, which touches
+        neither the panel nor the reply),
+        https://github.com/nwoolls/mailboat/actions/runs/43354683199:
+        "toggle 1 animated", expected more than 2 painted frames in 0.9 s,
+        received 2. The branch passed the test file 20 runs of 20 locally;
+        the failed job was run again.
+- [ ] `ai-panel.spec.ts`: "floating card at bottom-right: the panel opens on
+      the left, the whole card bounces, the form stays". Back after the
+      2026-11-08 fix.
+      - 2026-11-12, CI on #122, the same run as above: the new message form
+        wasn't visible within 5 s (`toBeVisible`, element not found), before
+        the panel was opened at all. It passed 5 runs of 5 locally (the
+        bottom-left one too).
+- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
+      the reply still scrolls into view". Turned off (`test.fixme`, line 86)
+      by the owner on 2026-11-11, until the reply-follow redesign; turn it
+      back on with that. The full story is in the Bug backlog ("On a slow
+      machine, a new reply sometimes stops being followed"). Its failures:
+      - 2026-11-10, CI: the reader stopped well short of the reply. Fixed
+        that day by following the reply until the person scrolls or types.
+      - 2026-11-10, CI, later: the follow stopped early, taking its own
+        scrolling for the person scrolling up. Fixed by scrolling to a
+        computed target.
+      - 2026-11-11, CI on two pull requests that didn't touch it: the
+        reply's end a few pixels below the reader. With the test run ten
+        times per CI run, it failed in all five runs before the fix (short
+        smooth scrolls now jump) and in none of three after it.
+      - One earlier run (date not recorded) left the reply 223 px below,
+        and the fix's own CI run, 2026-11-11, 341 px below, with the fix in. Not explained;
+        the test was turned off.
+      - 2026-11-11, CI: another test in the file, "scrolling up slowly",
+        failed the same way (401 px, before it scrolled at all): it clicked
+        Reply with AI while the email above was still laying out. The tests
+        now wait for the conversation to keep its height for half a second
+        before clicking.
+
 ## Bug backlog
 
 *Bugs found in passing (started 2026-10-19 at the owner's request).
@@ -4509,6 +4573,18 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 again until the next spike. Bug Spike 3 (started 2026-11-12) lists the
 items it covers without moving them: they stay here with their full text,
 and new bugs still come here.*
+
+- [x] Clicking the folder you're already in closes the preview and clears
+      the selection *(owner question, 2026-11-12; fixed the same day, and the
+      owner tried it)*: a click on a folder in
+      the sidebar ran the same steps as going to another folder (clear the
+      search, the preview and the selected row), with nothing for the
+      folder already shown. The owner chose Apple Mail's behavior: the
+      click only clears a search, as the search box's clear button does,
+      and the preview and selection stay (first built to leave a search
+      the old way; the owner asked for it to match the clear button).
+      `staysOnFolderClick` (`views.ts`) decides, for the sidebar, the `g`
+      keys and the menus alike; unit tests for both cases.
 
 - [x] Bug: the screenshot zoom flashes at full size before it animates
       *(owner report, 2026-11-07; fixed 2026-11-12, and the owner tried it)*: the first time each screenshot is
@@ -4771,6 +4847,39 @@ and new bugs still come here.*
       showed the code, the list line said "Sign-in code", and Apple
       Intelligence wrote the full summary without refusing it or saying
       the code had been used)*
+- [x] A trashed conversation still counted as in the Inbox until the next
+      sync *(found in review of the search fix, #120, 2026-11-12; fixed the
+      same day, and the owner tried it)*: moving
+      a conversation to Trash only added TRASH to the cached copy, and an
+      old test asserted it kept INBOX "as in Gmail". The owner checked in
+      Gmail: trashing drops INBOX (the trashed email shows only a Trash
+      tag; none of the trashed mail in the owner's cache had INBOX either),
+      and untrash doesn't bring it back, whether the conversation was in
+      the Inbox before or archived (both land in All Mail only). So a
+      trashed row could offer Archive next to Restore, and a restored one
+      showed in the Inbox until the next sync took it out. The cached copy
+      and the list's immediate update now do what Gmail does: trashing
+      removes INBOX, restoring removes only TRASH. Demo mode's stand-in for
+      Gmail does the same. The old test now asserts Gmail's behavior, and a
+      unit test covers the list; both failed before the fix. From review:
+      a trashed conversation's archive button offers Move to Inbox, which
+      only added INBOX and left it in Trash (on `main` too, once synced).
+      The owner chose to make it Gmail's move: for a conversation in Trash
+      it now calls untrash, then adds INBOX, and the cached copy and the
+      list take it out of the Trash and into the Inbox at once. If Gmail
+      refuses the untrash, nothing changes; if it takes the untrash but
+      refuses the add, only the Inbox change is rolled back, so the cached
+      copy matches Gmail (All Mail). Undo puts what came out of the Trash
+      back in it (which also takes it out of the Inbox) and archives the
+      rest. Round 2 of review: "in Trash" here means every message, as the
+      list counts it, so a conversation with only some messages trashed
+      gets the plain add, its trashed messages stay trashed, and Undo
+      archives it. Tests cover the order of the two calls, a refused
+      untrash, a refused add after the untrash, a partly trashed
+      conversation, and a trash Gmail refuses (Inbox comes back locally).
+      The owner then asked for swipe left in Trash, which did nothing, to
+      do the same Move to Inbox (Settings → List and the site's Swipes card
+      say so).
 - [x] A sent email's full recipient list can't be seen without resizing
       *(owner report, 2026-11-01; fixed 2026-11-08, see below)*: in the reader, the recipients of a
       message you sent (To and Cc) are cut off with an ellipsis, and the
@@ -5039,6 +5148,36 @@ and new bugs still come here.*
       nothing changes. Undo after archiving the conversation the preview was
       collapsed on goes back to it, still collapsed. A unit test of the collapsed case failed before the
       fix.)*
+- [x] In the Unread view, a conversation disappears from the list as soon
+      as it's opened *(owner report, 2026-11-12; fixed the same day, and the
+      owner tried this version)*: opening marks it read,
+      and the list, which only brings unread conversations, refreshed
+      without it, from under the pointer and the selection. The code meant
+      it to stay until the list refreshed, but mail changing refreshes the
+      list almost at once. The owner chose: conversations read during a
+      visit to Unread stay in the list, shown as read, until the person
+      leaves the view, and the next visit lists only what is unread.
+      They are kept in the Unread list's own cached data (`unreadList.ts`,
+      the query's `structuralSharing`): while the view is open, a refresh
+      keeps the conversations it leaves out, marked read, in their place,
+      and the app's own updates (`withAction`, marked as local) are taken
+      as they are. So Mark unread, star, archive and labels change such a
+      row at once, a failed action rolls back, and Trash or Spam takes it
+      out, as for any row. Leaving the view removes its cached list, so the
+      next visit fetches only what is unread (its loaded pages go too, so it
+      comes back scrolled at most as far as its first page reaches). A
+      refresh keeps only rows within the range it covered (one pushed to
+      the next page by a newer arrival comes back with that page), a later
+      page's copy replaces a kept one, a kept row's senders show as read
+      too, and a failed action's rollback writes only into the list it came
+      from, never into a forgotten Unread list (code review). A first version kept these rows in
+      a separate copy; two review rounds found that the copy missed Undo,
+      rollback and immediate updates, and the owner chose this design
+      instead. Two things stay as they are: Undo of Trash on a read row
+      brings it out of the Trash but not back into Unread (it's read), and
+      a conversation archived or deleted on another device stays until the
+      view is left. Unit tests cover the merge with the real immediate
+      update; `Shell`'s removal on leaving is not unit-tested.
 - [x] Reply with AI in a short reader could leave the reply part way below
       the fold *(found 2026-11-10, when a browser test failed once on CI with
       the reader stopped well short of the reply; fixed the same day)*: a new
@@ -5086,6 +5225,20 @@ and new bugs still come here.*
       `playwright test --list` in a checkout under a "windows-" folder:
       before, all 97 tests were in the Chromium project; after, 95 in WebKit
       and 2 in Chromium, as in any other folder.
+- [x] In a search that includes Spam and Trash, undoing a restore moved on
+      to the next result and opened the preview *(found in review of the
+      archive fix, #114, 2026-11-12; reproduced by the owner the same day;
+      fixed the same day, and the owner tried it)*:
+      with "Include Spam and Trash" on (Settings → Viewing → Search), restoring a
+      trashed result and pressing Undo moved on to the next conversation and
+      opened the preview, even when it had been collapsed. `leavesView`
+      counted moving to Trash or Spam as leaving every view but those
+      folders, though such a search shows them; Undo then took its older
+      path, which moves on. It now knows such a search keeps them, so
+      restoring, undoing, trashing and marking spam there keep the
+      conversation in the results (updated, with Restore or Not spam on
+      offer) and leave the preview as it was. A unit test failed before the
+      fix.
 
 ## Later / unscheduled
 

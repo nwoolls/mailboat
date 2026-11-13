@@ -25,6 +25,7 @@ import { IS_TAURI, unwrap } from "../../platform/tauri/ipc";
 import { newRequestId } from "../../features/ai/ui/stream";
 import { upsertSyncState } from "../../features/accounts/model/accounts";
 import { type Selection, selectionKey, toListQuery } from "../../features/mailbox/model/views";
+import { keepReadRows, type ListData } from "../../features/mailbox/model/unreadList";
 
 export const keys = {
   accounts: ["accounts"] as const,
@@ -112,6 +113,12 @@ export function useThreads(selection: Selection) {
     // leaving), so a view comes back scrolled as far down as it was left
     // (`ThreadList`). Not searches: each typed letter is a new one.
     gcTime: selection.view.kind === "search" ? undefined : Infinity,
+    // Unread keeps what was read during a visit (unreadList.ts).
+    structuralSharing:
+      selection.view.kind === "system" && selection.view.label === "unread"
+        ? (prev: unknown, next: unknown) =>
+            keepReadRows(prev as ListData | undefined, next as ListData)
+        : true,
   });
 }
 

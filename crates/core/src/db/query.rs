@@ -193,8 +193,8 @@ fn list(conn: &Connection, query: &ListQuery, visible: bool) -> Result<ThreadPag
             });
             values.push(Value::Text(label.gmail_id().into()));
             // As in Gmail, every view but Spam and Trash leaves out
-            // conversations that are wholly in Spam or Trash (a trashed
-            // thread can keep its INBOX label).
+            // conversations that are wholly in Spam or Trash (a label row
+            // from older cached data can still sit on a trashed thread).
             if !matches!(label, SystemLabel::Spam | SystemLabel::Trash) {
                 clauses.push(IN_ALL_MAIL.into());
             }
