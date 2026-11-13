@@ -73,6 +73,7 @@ import {
   selectionNeedsAccount,
   selectionTitle,
   spansAccounts,
+  staysOnFolderClick,
   systemSelection,
 } from "../features/mailbox/model/views";
 import { emptyStateFor, emptyStateKey, isFirstSync } from "../features/mailbox/model/emptyState";
@@ -324,12 +325,18 @@ export function Shell() {
   }, [settingsOpen]);
   // When `g` was pressed, for Gmail's "go to" keys (0: not waiting).
   const goPending = useRef(0);
-  const goTo = useCallback((s: Selection) => {
-    setChosen(s);
-    setSearch("");
-    setSelectedId(null);
-    setCursorId(null);
-  }, []);
+  const goTo = useCallback(
+    (s: Selection) => {
+      // The folder already shown: only a search is cleared, as its clear
+      // button does; the preview and selection stay.
+      if (staysOnFolderClick(baseSelection, s)) return setSearch("");
+      setChosen(s);
+      setSearch("");
+      setSelectedId(null);
+      setCursorId(null);
+    },
+    [baseSelection],
+  );
   const { mutate: mutateThreads } = useThreadAction();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
   // Past the last cached page, ask Gmail for older mail. Not while the
