@@ -5079,6 +5079,20 @@ and new bugs still come here.*
       `playwright test --list` in a checkout under a "windows-" folder:
       before, all 97 tests were in the Chromium project; after, 95 in WebKit
       and 2 in Chromium, as in any other folder.
+- [x] In a search that includes Spam and Trash, undoing a restore moved on
+      to the next result and opened the preview *(found in review of the
+      archive fix, #114, 2026-11-12; reproduced by the owner the same day;
+      fixed the same day, and the owner tried it)*:
+      with "Include Spam and Trash" on (Settings → Viewing), restoring a
+      trashed result and pressing Undo moved on to the next conversation and
+      opened the preview, even when it had been collapsed. `leavesView`
+      counted moving to Trash or Spam as leaving every view but those
+      folders, though such a search shows them; Undo then took its older
+      path, which moves on. It now knows such a search keeps them, so
+      restoring, undoing, trashing and marking spam there keep the
+      conversation in the results (updated, with Restore or Not spam on
+      offer) and leave the preview as it was. A unit test failed before the
+      fix.
 
 ## Later / unscheduled
 

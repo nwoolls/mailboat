@@ -113,6 +113,25 @@ describe("leavesView", () => {
       false,
     );
   });
+
+  // Settings → Viewing → "Include Spam and Trash": such a search shows them,
+  // so moving a conversation to or out of Trash or Spam keeps it in the
+  // results. Undoing a restore there moved on to the next conversation and
+  // opened the preview the person had collapsed.
+  it("keeps conversations in a search that includes Spam and Trash", () => {
+    const everywhere = { kind: "search", text: "plans", withSpamTrash: true } as const;
+    for (const action of [
+      { kind: "trash", trashed: true },
+      { kind: "trash", trashed: false },
+      { kind: "spam", spam: true },
+      { kind: "spam", spam: false },
+    ] as const)
+      expect(leavesView(action, everywhere), JSON.stringify(action)).toBe(false);
+    // An ordinary search leaves them out.
+    const ordinary = { kind: "search", text: "plans" } as const;
+    expect(leavesView({ kind: "trash", trashed: true }, ordinary)).toBe(true);
+    expect(leavesView({ kind: "spam", spam: true }, ordinary)).toBe(true);
+  });
 });
 
 describe("withAction", () => {
