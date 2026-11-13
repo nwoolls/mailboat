@@ -4558,6 +4558,15 @@ stretching the measured animation.
         wasn't visible within 5 s (`toBeVisible`, element not found), before
         the panel was opened at all. It passed 5 runs of 5 locally (the
         bottom-left one too).
+- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader: the reply
+      scrolls into view" (line 49, the normal-speed version of the test
+      below).
+      - 2026-11-12, CI on #125 (branch `trashed-draft-opens`, Rust and docs
+        only),
+        https://github.com/nwoolls/mailboat/actions/runs/43365259589: "the
+        reply scrolls into view", still false after polling for 15 s (the
+        Send button or the reply's top never came into the reader). Likely
+        the same cause as the slow-machine test below, on a slow runner.
 - [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
       the reply still scrolls into view". Turned off (`test.fixme`, line 86)
       by the owner on 2026-11-11, until the reply-follow redesign; turn it
