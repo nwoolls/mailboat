@@ -4840,6 +4840,26 @@ between pixel art and ASCII art for the screensavers.*
             blank on every step of a drag (owner: "crazy flashing when
             resizing"). With this, every screensaver but the envelope flock
             has both styles
+      - [x] Flock, which replaces the envelope flock *(owner, 2026-11-13:
+            "any ideas to make the envelope flock not suck")*. A murmuration
+            of 2000 birds flying in three dimensions, so parts of the flock
+            pass in front of and behind others, nearer birds bigger, bolder
+            and lighter (darker on a light page), farther ones hazier, in
+            the palette's colors. Each bird follows only its seven nearest
+            neighbors, as a starling does: following everyone in sight
+            pulled the flock into one ball. The pointer scatters them, the
+            icon and words part them, the flock splits in two now and then,
+            and it roosts in the icon (the icon nods). Pixel art is a block
+            a bird; ASCII art shows how many birds share a cell, a lone near
+            one pointing its way. Dropped along the way, on the owner's
+            word: envelopes among the birds, and a falcon that cut through
+            ("just confusing at this resolution"). The neighbor search is
+            plain arrays: lists of objects took longer than a frame at this
+            count. The id stays `envelopes`, so a saved choice still plays
+      - [x] Every screensaver reaches up under the card's title row, which
+            no longer leaves a dark band along the top (owner). Their marks
+            thin out round the title's letters, and on a night scene on a
+            light page the title takes light text with the icon and words
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well

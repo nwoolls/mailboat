@@ -35,6 +35,14 @@ import { LavaScene } from "../model/lava";
 import { SandscapeScene } from "../model/sand";
 import { drawShadedAscii } from "./shadedAscii";
 import { drawCodeRain, pixelCell } from "./codeRainDraw";
+import {
+  makeMurmuration,
+  type Murmuration,
+  murmurationTuning,
+  resizeMurmuration,
+  stepMurmuration,
+} from "../model/murmuration";
+import { drawMurmuration } from "./murmurationDraw";
 import { deepLifeTuning } from "../model/deepLife";
 import { LifeScene } from "../model/life";
 import { drawLife } from "./lifeDraw";
@@ -228,6 +236,15 @@ export function ScreensaverCanvas({
     const card = area?.closest<HTMLElement>(".panel");
     const ctx = canvas?.getContext("2d");
     if (!area || !canvas || !card || !ctx) return;
+    // The screensaver's stage: the empty area, reaching up under the
+    // card's title row to its top edge, so no dark band is left along the
+    // top (owner, 2026-11-13). The title stands in the way, like the words.
+    const stageRect = () => {
+      const r = area.getBoundingClientRect();
+      const top = card.getBoundingClientRect().top;
+      return new DOMRect(r.left, top, r.width, r.bottom - top);
+    };
+    const title = card.querySelector<HTMLElement>("[data-card-title]");
 
     const look = lookFor(sceneId, style);
     // The koi are drawn larger in the Toybox's styles (owner, 2026-11-13:
@@ -256,7 +273,8 @@ export function ScreensaverCanvas({
         sceneId === "rain" ||
         sceneId === "code" ||
         sceneId === "fireflies" ||
-        sceneId === "life") &&
+        sceneId === "life" ||
+        sceneId === "envelopes") &&
       look !== "fine";
     let swarm: Swarm | null = null;
     let stars: Starfield | null = null;
@@ -265,6 +283,7 @@ export function ScreensaverCanvas({
     let code: CodeRain | null = null;
     let flies: FireflyScene | null = null;
     let life: LifeScene | null = null;
+    let flock: Murmuration | null = null;
     let deepNight = false;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const painter = new AsciiPainter(ctx);
@@ -286,7 +305,7 @@ export function ScreensaverCanvas({
 
     // (Re)starts the scene to fit the area, with the icon and words in it.
     const layout = () => {
-      const a = area.getBoundingClientRect();
+      const a = stageRect();
       const c = card.getBoundingClientRect();
       const cols = Math.max(1, Math.floor(a.width / px));
       const rows = Math.max(1, Math.floor(a.height / px));
@@ -310,7 +329,10 @@ export function ScreensaverCanvas({
       if (deep) {
         const w = cols * px;
         const h = rows * px;
-        if (sceneId === "life") {
+        if (sceneId === "envelopes") {
+          if (flock) resizeMurmuration(flock, w, h);
+          else flock = makeMurmuration(w, h, murmurationTuning(), Math.random);
+        } else if (sceneId === "life") {
           // Each Life cell a character of the glow's grid (lined up with it
           // across the card), or a chunky tile.
           const { solid, letters } = solidMask(
@@ -444,7 +466,7 @@ export function ScreensaverCanvas({
         const night = !!scene.night && light.matches;
         if (night !== nightShown) {
           nightShown = night;
-          setNight([iconRef.current, wordsRef.current, canvas], night);
+          setNight([iconRef.current, wordsRef.current, title, canvas], night);
         }
         if (look === "ascii") {
           if (
@@ -462,7 +484,7 @@ export function ScreensaverCanvas({
             } else ripples.fill(0);
             const g = asciiGlowTuning();
             const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
-            const a = area.getBoundingClientRect();
+            const a = stageRect();
             const c = card.getBoundingClientRect();
             const page = readAsciiColors(g.hotMixDark, g.hotMixLight);
             drawShadedAscii({
@@ -505,8 +527,9 @@ export function ScreensaverCanvas({
     };
 
     /**
-     * Where characters thin out so the icon and words stay readable: the
-     * icon's box and each line of the words, in pixels of the area.
+     * Where characters thin out so the icon, words and title stay
+     * readable: the icon's box and each line of the words and the title,
+     * in pixels of the stage.
      */
     const clearShapes = (a: DOMRect): ClearShape[] => {
       const shapes: ClearShape[] = [];
@@ -519,9 +542,10 @@ export function ScreensaverCanvas({
           x1: icon.right - a.left,
           y1: icon.bottom - a.top,
         });
-      if (wordsRef.current) {
+      for (const el of [wordsRef.current, title]) {
+        if (!el) continue;
         const range = document.createRange();
-        const walker = document.createTreeWalker(wordsRef.current, NodeFilter.SHOW_TEXT);
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
         for (let n = walker.nextNode(); n; n = walker.nextNode()) {
           range.selectNodeContents(n);
           for (const r of range.getClientRects())
@@ -542,7 +566,7 @@ export function ScreensaverCanvas({
     const drawDeep = (dt: number) => {
       const g = asciiGlowTuning();
       const page = readAsciiColors(g.hotMixDark, g.hotMixLight);
-      const a = area.getBoundingClientRect();
+      const a = stageRect();
       const c = card.getBoundingClientRect();
       const box = (el: HTMLElement | null) => {
         const r = el?.getBoundingClientRect();
@@ -560,6 +584,12 @@ export function ScreensaverCanvas({
       if (rain && rain.frame(dt, pointer).nod) nodRef.current();
       if (flies) flies.pace = deepFireflyTuning().flashes / USUAL_FLASHES;
       if (flies && flies.frame(dt, pointer).nod) nodRef.current();
+      if (flock) {
+        // It roosts in the icon.
+        const roost = icon ? { x: (icon.x0 + icon.x1) / 2, y: (icon.y0 + icon.y1) / 2 } : null;
+        if (stepMurmuration(flock, dt, p, roost, murmurationTuning(), Math.random, keep))
+          nodRef.current();
+      }
       if (life) {
         const result = life.frame(dt, pointer);
         if (result.nod) nodRef.current();
@@ -568,10 +598,10 @@ export function ScreensaverCanvas({
       if (code && stepCodeRain(code, dt, codeRainTuning(), Math.random)) nodRef.current();
       // On a light page, a dark backdrop (deep sea, night sky), and light
       // text on it; rain stays on the page's own glass.
-      const night = light.matches && !rain && !life;
+      const night = light.matches && !rain && !life && !flock;
       if (night !== deepNight) {
         deepNight = night;
-        setNight([iconRef.current, wordsRef.current, canvas], night);
+        setNight([iconRef.current, wordsRef.current, title, canvas], night);
       }
       const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
       const shapes = clearShapes(a);
@@ -627,6 +657,7 @@ export function ScreensaverCanvas({
           height: canvas.height / dpr,
           t: deepLifeTuning(),
         });
+      if (flock) drawMurmuration({ ...common, flock, t: murmurationTuning() });
       if (code) {
         const pixel = pixelCell(codeRainTuning());
         drawCodeRain({
@@ -670,7 +701,7 @@ export function ScreensaverCanvas({
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-      const a = area.getBoundingClientRect();
+      const a = stageRect();
       const c = card.getBoundingClientRect();
       const ox = -((((a.left - c.left) % cw) + cw) % cw);
       const oy = -((((a.top - c.top) % ch) + ch) % ch);
@@ -734,7 +765,7 @@ export function ScreensaverCanvas({
     };
 
     const onMove = (e: PointerEvent) => {
-      const a = area.getBoundingClientRect();
+      const a = stageRect();
       const inside =
         e.clientX >= a.left && e.clientX < a.right && e.clientY >= a.top && e.clientY < a.bottom;
       pointer = inside ? { x: (e.clientX - a.left) / px, y: (e.clientY - a.top) / px } : null;
@@ -767,7 +798,7 @@ export function ScreensaverCanvas({
       card.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("visibilitychange", onVisibility);
       setWordsHidden(words, false);
-      setNight([icon, words, canvas], false);
+      setNight([icon, words, title, canvas], false);
     };
   }, [sceneId, areaRef, iconRef, wordsRef, style]);
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SCREENSAVERS } from "./catalog";
 import {
   chunkCells,
   coverageChar,
@@ -9,6 +10,10 @@ import {
 } from "./looks";
 
 describe("which screensavers are restyled", () => {
+  it("covers every screensaver: each is drawn in the chosen style", () => {
+    for (const { id } of SCREENSAVERS) expect(RESTYLED.has(id)).toBe(true);
+  });
+
   it("draws restyled scenes in the chosen style, the rest as they were", () => {
     expect(lookFor("jellyfish", "pixel")).toBe("chunky");
     expect(lookFor("jellyfish", "ascii")).toBe("ascii");
@@ -21,8 +26,7 @@ describe("which screensavers are restyled", () => {
     expect(lookFor("lava", "ascii")).toBe("ascii");
     expect(lookFor("life", "pixel")).toBe("chunky");
     expect(lookFor("sandscape", "ascii")).toBe("ascii");
-    expect(lookFor("envelopes", "ascii")).toBe("fine");
-    expect(RESTYLED.has("envelopes")).toBe(false);
+    expect(lookFor("envelopes", "pixel")).toBe("chunky");
   });
 });
 

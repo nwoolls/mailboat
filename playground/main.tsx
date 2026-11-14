@@ -104,6 +104,11 @@ import {
   setDeepLifeTuning,
 } from "../src/features/screensaver/model/deepLife";
 import {
+  MURMURATION_DEFAULTS,
+  type MurmurationTuning,
+  setMurmurationTuning,
+} from "../src/features/screensaver/model/murmuration";
+import {
   RESTYLED,
   SCREENSAVER_LOOK_DEFAULTS,
   type ScreensaverLookTuning,
@@ -479,6 +484,27 @@ const LIFE_DIALS: Sections<DeepLifeTuning> = [
   },
 ];
 
+const FLOCK_DIALS: Sections<MurmurationTuning> = [
+  {
+    title: "Murmuration (restart to see the count)",
+    dials: [
+      { key: "count", min: 50, max: 4000, step: 10, hint: "birds (restart)" },
+      { key: "speed", min: 30, max: 300, step: 5, hint: "speed, px/s" },
+      { key: "sight", min: 8, max: 80, step: 1, hint: "how far a bird sees, px" },
+      { key: "spacing", min: 2, max: 30, step: 0.5, hint: "distance kept, px" },
+      { key: "align", min: 0, max: 10, step: 0.1, hint: "turning with neighbors" },
+      { key: "cohere", min: 0, max: 4, step: 0.05, hint: "keeping near neighbors" },
+      { key: "home", min: 0, max: 2, step: 0.05, hint: "pull to the wandering point" },
+      { key: "fear", min: 0, max: 250, step: 5, hint: "fleeing the pointer, px" },
+      { key: "roostEvery", min: 10, max: 180, step: 5, hint: "roost in the icon every, s" },
+      { key: "neighbors", min: 2, max: 30, step: 1, hint: "nearest neighbors followed" },
+      { key: "splitEvery", min: 5, max: 90, step: 1, hint: "split in two every, s" },
+      { key: "jitter", min: 0, max: 15, step: 0.25, hint: "restlessness" },
+      { key: "pixel", min: 1, max: 8, step: 1, hint: "pixel size (pixel art)" },
+    ],
+  },
+];
+
 const LOOK_DIALS: Sections<ScreensaverLookTuning> = [
   {
     title: "Pixel art",
@@ -571,6 +597,7 @@ const rainStart = saved("playground.deepRain", DEEP_RAIN_DEFAULTS, setDeepRainTu
 const codeStart = saved("playground.codeRain", CODE_RAIN_DEFAULTS, setCodeRainTuning);
 const fireflyStart = saved("playground.deepFireflies", DEEP_FIREFLY_DEFAULTS, setDeepFireflyTuning);
 const lifeStart = saved("playground.deepLife", DEEP_LIFE_DEFAULTS, setDeepLifeTuning);
+const flockStart = saved("playground.murmuration", MURMURATION_DEFAULTS, setMurmurationTuning);
 const fireworkStart = saved(
   "playground.deepFireworks",
   DEEP_FIREWORK_DEFAULTS,
@@ -905,6 +932,18 @@ function Playground() {
                 apply={setDeepLifeTuning}
                 fields={[]}
                 sections={LIFE_DIALS}
+              />
+            )}
+            {playing === "envelopes" && (
+              <Panel
+                key="flock"
+                title="Murmuration"
+                storageKey="playground.murmuration"
+                defaults={MURMURATION_DEFAULTS}
+                start={flockStart}
+                apply={setMurmurationTuning}
+                fields={[]}
+                sections={FLOCK_DIALS}
               />
             )}
             <Panel

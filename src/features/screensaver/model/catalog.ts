@@ -22,7 +22,8 @@ export const SCREENSAVERS = [
   },
   {
     id: "envelopes",
-    label: "Envelope flock",
+    // The id stays, so a saved choice of it still plays.
+    label: "Flock",
     make: (s: SceneSetup) => new EnvelopeScene(s),
     // Finer than the rest: at 3px the flock moved in visible steps.
     cellPx: 2,

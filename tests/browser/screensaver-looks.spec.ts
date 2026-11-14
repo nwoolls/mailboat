@@ -145,12 +145,13 @@ test("the sandscape: shaded characters in ASCII art, bigger grains in pixel art"
   expect(pixel.width).toBeGreaterThan(pixel.cssWidth / 4 - 2);
 });
 
-test("a screensaver not yet restyled draws as before, whatever the style", async ({ page }) => {
-  // (Not Life: its cells are a screen pixel, so its canvas is always full size.)
-  await start(page, "envelopes", "ascii");
-  const info = await canvasInfo(page);
-  // One canvas pixel per cell: not the ASCII look's full resolution.
-  expect(info.sharp).toBe(false);
+test("the flock in either style draws its own birds, at full resolution", async ({ page }) => {
+  for (const style of ["ascii", "pixel"]) {
+    await start(page, "envelopes", style);
+    const info = await canvasInfo(page);
+    expect(info.sharp).toBe(true);
+    expect(info.inked).toBeGreaterThan(200);
+  }
 });
 
 test("a screensaver stays drawn while the window is resized, without flashing blank", async ({

@@ -1254,7 +1254,7 @@ export function ToyboxSection() {
     <>
       <Group
         title="Style"
-        description="ASCII art draws the toys and every screensaver but the envelope flock with text characters. The envelope flock stays pixel art for now."
+        description="ASCII art draws the toys and the screensavers with text characters."
       >
         <div className="px-4 py-3.5">
           <ChoiceGrid

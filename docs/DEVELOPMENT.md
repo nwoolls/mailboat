@@ -51,6 +51,7 @@ from the defaults so they can be copied into the code
 `CODE_RAIN_DEFAULTS` in `src/features/screensaver/model/codeRain.ts`,
 `DEEP_FIREFLY_DEFAULTS` in `src/features/screensaver/model/deepFireflies.ts`,
 `DEEP_LIFE_DEFAULTS` in `src/features/screensaver/model/deepLife.ts`,
+`MURMURATION_DEFAULTS` in `src/features/screensaver/model/murmuration.ts`,
 `POND_STIR_DEFAULTS` in `src/features/emptyToys/model/pond.ts`). The app
 itself always uses the defaults.
 
