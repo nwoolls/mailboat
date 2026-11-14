@@ -377,7 +377,8 @@ these rules. Keep it passing.
   Spam (always blocked, even for allowed senders) and Trash (blocked unless
   the sender is allowed). A per-sender "load" or "block" choice is
   remembered by address (global, not per account) and wins outside Spam.
-  Known tracking pixels are always removed. The rule lives in
+  Known tracking pixels are always removed, and so are images on the
+  reader's own computer or network (`mail::local_hosts`). The rule lives in
   `mail_core::mail::images`. Images of new mail that the rule would load
   are downloaded as mail arrives (`mail::prefetch`, on by default, like
   Apple Mail), so opening an email normally makes no request (an image that

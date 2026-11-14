@@ -5,6 +5,7 @@ pub mod colors;
 pub mod images;
 pub mod invite;
 pub mod links;
+pub mod local_hosts;
 pub mod mailto;
 pub mod notify;
 pub mod original;

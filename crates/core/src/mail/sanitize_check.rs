@@ -16,7 +16,9 @@
 //!   browser reads it (entities decoded, tabs and line breaks dropped);
 //! - every image address (`<img src>`, a `background`, a CSS `url()`) uses
 //!   `http`, `https`, `cid` or `data:image/…`, and never the app's own link
-//!   address (loading one would open its link with no click);
+//!   address (loading one would open its link with no click), nor a host on
+//!   the reader's own computer or network (`127.0.0.1`, `192.168.…`,
+//!   `*.local`, a name with no dot), whatever the image setting;
 //! - with remote images held back, no image that points at another server.
 //!
 //! What the cleaner leaves to the Content-Security-Policy on purpose is left
@@ -168,6 +170,57 @@ fn is_app_link_host(host: &str) -> bool {
     host == "email-link.localhost" || host.ends_with(".email-link.localhost")
 }
 
+/// Whether a host (as `url` writes it: lowercased, IPv6 in brackets, a
+/// numeric IPv4 one as dotted digits) is on the reader's own computer or
+/// network: loopback, private, shared (`100.64/10`), link-local,
+/// unspecified, broadcast or multicast addresses, IPv6 unique-local,
+/// link-local and site-local ones, a local IPv4 one inside IPv6
+/// (compatible, mapped, translated or NAT64), and local names.
+fn is_local_network_host(host: &str) -> bool {
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+    let v4 = |ip: Ipv4Addr| {
+        let [a, b, ..] = ip.octets();
+        ip.is_loopback()
+            || ip.is_private()
+            || ip.is_link_local()
+            || ip.is_broadcast()
+            || ip.is_multicast()
+            || a == 0
+            || (a == 100 && (64..128).contains(&b))
+    };
+    let v6 = |ip: Ipv6Addr| {
+        let s = ip.segments();
+        let [.., a, b, c, d] = ip.octets();
+        // IPv4 inside IPv6: compatible, mapped, translated, NAT64.
+        let embedded = [
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0xffff],
+            [0, 0, 0, 0, 0xffff, 0],
+            [0x64, 0xff9b, 0, 0, 0, 0],
+        ]
+        .contains(&[s[0], s[1], s[2], s[3], s[4], s[5]]);
+        if embedded {
+            return v4(Ipv4Addr::new(a, b, c, d));
+        }
+        ip.is_multicast()
+            || (s[0] & 0xfe00) == 0xfc00
+            || (s[0] & 0xffc0) == 0xfe80
+            || (s[0] & 0xffc0) == 0xfec0
+    };
+    let bare = host.trim_start_matches('[').trim_end_matches(']');
+    match bare.parse::<IpAddr>() {
+        Ok(IpAddr::V4(ip)) => v4(ip),
+        Ok(IpAddr::V6(ip)) => v6(ip),
+        Err(_) => {
+            let name = host.trim_end_matches('.');
+            !name.contains('.')
+                || [".localhost", ".local", ".internal", ".home.arpa", ".lan"]
+                    .iter()
+                    .any(|suffix| format!(".{name}").ends_with(suffix))
+        }
+    }
+}
+
 /// Whether an address points at another server, parsed as a browser parses
 /// it (the `url` crate follows the URL Standard): absolute if it can be (so
 /// `https:host/x` is `https://host/x`, as the frame's base isn't a web
@@ -232,6 +285,9 @@ fn address_problem(place: &str, url: &str, image: bool, allow_images: bool) -> O
     }
     if image && web_host(url).is_some_and(|h| is_app_link_host(&h)) {
         return Some(format!("{place} loads the app's link host as an image"));
+    }
+    if image && web_host(url).is_some_and(|h| is_local_network_host(&h)) {
+        return Some(format!("{place} loads an image from the reader's network"));
     }
     match scheme(url) {
         None | Some("http" | "https" | "cid") => {}
@@ -482,6 +538,38 @@ mod tests {
         let mut wrong_csp = document("", false);
         wrong_csp.document = wrong_csp.document.replace("img-src data:", "img-src *");
         assert_ne!(problems(&wrong_csp, false), Vec::<String>::new());
+    }
+
+    #[test]
+    fn the_checker_catches_images_on_the_readers_network_with_images_allowed() {
+        for body in [
+            r#"<img src="https://127.0.0.1/a.png">"#,
+            r#"<img src="https://2130706433/a.png">"#,
+            r#"<img src="//192.168.1.1/a.png">"#,
+            r#"<img src="https://[::1]/a.png">"#,
+            r#"<img src="https://[::ffff:10.0.0.1]/a.png">"#,
+            r#"<img src="https://[::ffff:0:192.168.1.1]/a.png">"#,
+            r#"<img src="https://[64:ff9b::127.0.0.1]/a.png">"#,
+            r#"<img src="https://[fec0::1]/a.png">"#,
+            r#"<td background="https://printer.local/a.png">"#,
+            r#"<p style="background:url(https://router/a.png)">"#,
+            "<style>p{background:url('https://localhost/a.png')}</style>",
+        ] {
+            assert_ne!(
+                problems(&document(body, true), true),
+                Vec::<String>::new(),
+                "{body}"
+            );
+        }
+        // An IPv4 address written inside an IPv6 one counts as that address.
+        let public = r#"<img src="https://[::8.8.8.8]/a.png">"#;
+        assert_eq!(
+            problems(&document(public, true), true),
+            Vec::<String>::new()
+        );
+        // A link to one is only followed if clicked: not an image.
+        let link = r#"<a href="https://192.168.1.1/">router</a>"#;
+        assert_eq!(problems(&document(link, true), true), Vec::<String>::new());
     }
 
     #[test]

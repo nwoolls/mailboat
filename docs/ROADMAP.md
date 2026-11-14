@@ -5720,7 +5720,7 @@ built, the owner has tried it, and the owner has published 0.3.0
       *(moved from the Polish Spike when it closed, owner, 2026-11-14;
       never started)*
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
-- [ ] Images from local or private hosts *(raised by the review of the
+- [x] Images from local or private hosts *(raised by the review of the
       image-address fix, 2026-11-07)*: an email's remote image may name a
       loopback or private-network host (`127.0.0.1`, `*.localhost`,
       `192.168.…`), which loads like any other when images are allowed, and
@@ -5730,6 +5730,12 @@ built, the owner has tried it, and the owner has published 0.3.0
       hosts (the app's own link host already is), and record the choice in
       the Architecture decisions. Owner to schedule
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      *(2026-11-14: refused. The cleaner removes an image on the reader's
+      own computer or network whatever the image setting. The downloader
+      fails on a public name that resolves only to local addresses, and
+      stops at a redirect to a local host (`mail::local_hosts`; see the
+      Architecture decisions, which also say what the web view still
+      can't check))*
 
 ### Bugs
 
