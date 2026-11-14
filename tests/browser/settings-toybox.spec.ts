@@ -39,6 +39,17 @@ const tilePixels = (page: import("@playwright/test").Page, name: string) =>
     .locator("canvas")
     .evaluate((c: HTMLCanvasElement) => c.toDataURL());
 
+/**
+ * Waits until a scene's still picture has its frame: it plays out of sight
+ * (hidden) until then. A fixed wait isn't enough on a slow machine, where
+ * frames come slower than the scene's clock and the picture is still
+ * playing when the wait ends.
+ */
+const untilStill = (page: import("@playwright/test").Page, name: string) =>
+  expect(page.getByRole("radio", { name }).locator("canvas")).toHaveCSS("visibility", "visible", {
+    timeout: 30_000,
+  });
+
 test("a still picture is never seen moving: it shows only once it has its frame", async ({
   page,
 }) => {
@@ -66,8 +77,8 @@ test("choosing another screensaver stops the last one where it is, without start
 
 test("changing the colors recolors every picture, the still ones too", async ({ page }) => {
   await page.goto(open);
-  await page.waitForTimeout(3000);
   // A still picture (not the chosen scene), once it has stopped.
+  await untilStill(page, "Koi pond");
   const before = await tilePixels(page, "Koi pond");
   await page.getByRole("radio", { name: "Forest" }).click();
   await page.waitForTimeout(200);
@@ -78,8 +89,7 @@ test("a still picture stays as it is when the page is resized, without starting 
   page,
 }) => {
   await page.goto(open);
-  // Koi pond's still is ready after about a second and a half.
-  await page.waitForTimeout(3000);
+  await untilStill(page, "Koi pond");
   const before = await tilePixels(page, "Koi pond");
   // Narrower, as a narrower Settings window makes the tiles.
   await page
@@ -123,7 +133,7 @@ test("repainting a still picture doesn't move it on: new colors and back give th
 }) => {
   await page.goto(open);
   // The sandscape's still, mid-pour: a step would move its falling grains.
-  await page.waitForTimeout(9500);
+  await untilStill(page, "Sandscape");
   const colors = page.getByRole("radiogroup", { name: "Colors" });
   const first = colors.locator('[aria-checked="true"]');
   const name = (await first.textContent())!.trim();
