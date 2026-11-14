@@ -18,7 +18,8 @@ import {
  * Drawn finer than the other scenes (2px cells, see the catalog), and each
  * koi as a shape rather than a row of dots: a body that is round at the
  * nose and thins to the tail, shaded darker at its sides, patches that
- * move with it, flapping fins, a forked tail and eyes. It swims with a
+ * move with it, flapping fins and a forked tail that ripple as waves run
+ * along them (owner, 2026-11-13), and eyes. It swims with a
  * slight side-to-side wave that runs down the body.
  */
 
@@ -52,6 +53,12 @@ type Fish = {
   target: { x: number; y: number; icon: boolean } | null;
   nibble: number;
   rest: number;
+  /**
+   * How far the tail swings past the body's bend, eased: set at once, it
+   * flicked with every turn (owner, 2026-11-13: "koi are a little more
+   * chill").
+   */
+  tailBend: number;
 };
 /** A ripple: its centre, how far its front has spread, how much is left of it (1 to 0), and how strong it started. */
 type Ripple = { x: number; y: number; r: number; life: number; strength: number };
@@ -132,7 +139,8 @@ export class KoiScene implements Scene {
     const { cols, rows, rng } = s;
     s.letters.forEach((v, i) => v && this.letterCells.push(i));
     // Smaller in a small pond, so a narrow list still has room to swim.
-    const scale = clamp(Math.min(cols, rows) / 200, 0.55, 1);
+    // (In cells of its usual size, however zoomed it is drawn.)
+    const scale = clamp((Math.min(cols, rows) * (s.zoom ?? 1)) / 200, 0.55, 1);
     for (let i = 0; i < COUNT; i++) {
       const x = cols * (0.15 + rng() * 0.7);
       const y = rows * (0.15 + rng() * 0.7);
@@ -159,6 +167,7 @@ export class KoiScene implements Scene {
         target: null,
         nibble: 0,
         rest: 6 + rng() * 14,
+        tailBend: 0,
       });
     }
   }
@@ -192,12 +201,13 @@ export class KoiScene implements Scene {
       f.turn += (rng() - 0.5) * dt * 2;
       f.turn *= 0.97;
       let speed = f.speed;
-      // Unhurried koi turn in wide arcs; a startled one turns fast.
-      let turnRate = 1.5;
+      // Unhurried koi turn in wide, slow arcs; a startled one turns faster.
+      let turnRate = 1.1;
       if (f.nibble > 0) {
         f.nibble -= dt;
         speed = 2;
-        want = f.heading + Math.sin(this.t * 14) * 0.3;
+        // A gentle sway while it nibbles; a quick wiggle read as a flick.
+        want = f.heading + Math.sin(this.t * 4) * 0.12;
         if (f.nibble <= 0) {
           f.target = null;
           f.rest = 10 + rng() * 20;
@@ -234,7 +244,7 @@ export class KoiScene implements Scene {
         if (Math.hypot(dx, dy) < 28) {
           want = Math.atan2(dy, dx);
           speed = f.speed * 2.6;
-          turnRate = 3;
+          turnRate = 2.2;
           // A startled koi dives.
           f.dive = 1;
           sink = 0.6;
@@ -249,8 +259,10 @@ export class KoiScene implements Scene {
       f.heading += clamp(diff, -turnRate * dt, turnRate * dt);
       // The head sways a little either side of its heading, faster when it
       // hurries; the body following it carries the sway down to the tail.
-      f.wave += dt * (2 + speed / f.size / 6);
-      f.flap += dt * (1.5 + speed / f.size / 10);
+      // Capped, so a darting koi swims harder without thrashing.
+      const pace = Math.min(speed / f.size, 24);
+      f.wave += dt * (2 + pace / 8);
+      f.flap += dt * (1.5 + pace / 12);
       const sway = f.heading + Math.sin(f.wave) * 0.28;
       head.x += Math.cos(sway) * speed * dt;
       head.y += Math.sin(sway) * speed * dt;
@@ -268,6 +280,13 @@ export class KoiScene implements Scene {
         b.y = a.y - Math.sin(angle) * gap;
         ahead = angle;
       }
+      // The tail follows the body's bend near it, a little behind.
+      const sp = f.spine;
+      const n = sp.length - 1;
+      const back = Math.atan2(sp[n]!.y - sp[n - 2]!.y, sp[n]!.x - sp[n - 2]!.x);
+      const before = Math.atan2(sp[n - 2]!.y - sp[n - 5]!.y, sp[n - 2]!.x - sp[n - 5]!.x);
+      const bend = Math.atan2(Math.sin(back - before), Math.cos(back - before));
+      f.tailBend += (bend - f.tailBend) * Math.min(1, dt * 2.5);
     }
     for (const r of this.ripples) {
       r.r += dt * 13;
@@ -324,10 +343,15 @@ export class KoiScene implements Scene {
     }
   }
 
-  draw(out: Uint8Array, opacity: Uint8Array) {
+  /**
+   * Draws the pond; `parts` leaves out the ripples or the koi, for a
+   * drawing that treats them differently (ASCII art's koi).
+   */
+  draw(out: Uint8Array, opacity: Uint8Array, parts = { ripples: true, koi: true }) {
     out.fill(0);
     const { cols, rows } = this.s;
-    this.drawRipples(out, opacity);
+    if (parts.ripples) this.drawRipples(out, opacity);
+    if (!parts.koi) return;
     // Deepest first, so the koi nearer the surface swim over them.
     const order = this.fish
       .map((_, n) => n)
@@ -438,7 +462,15 @@ function drawKoi(
 
   // Fins: pectoral (big, near the head) and pelvic (small, mid-body), each
   // side, swept back and flapping.
-  const fins: { x: number; y: number; dx: number; dy: number; len: number; w: number }[] = [];
+  const fins: {
+    x: number;
+    y: number;
+    dx: number;
+    dy: number;
+    len: number;
+    w: number;
+    phase: number;
+  }[] = [];
   for (const [u, l, wide, beat] of [
     [0.22, FIN, 2.3, 0],
     [0.5, FIN * 0.55, 1.4, 1.3],
@@ -458,15 +490,15 @@ function drawKoi(
         dy: -fwd.y * Math.cos(a) + ny * Math.sin(a),
         len: l * f.size,
         w: wide * f.size,
+        phase: beat + (side > 0 ? 0 : 0.8),
       });
     }
   }
-  // The tail swings further than the body bends, like a trailing veil.
+  // The tail swings a little further than the body bends, like a trailing
+  // veil, easing after it (`tailBend`).
   const tip = sp[segs]!;
   const back = dir(tip, sp[segs - 2]!);
-  const before = dir(sp[segs - 2]!, sp[segs - 5]!);
-  const bend = Math.atan2(back.y, back.x) - Math.atan2(before.y, before.x);
-  const swing = Math.atan2(back.y, back.x) + Math.atan2(Math.sin(bend), Math.cos(bend)) * 0.9;
+  const swing = Math.atan2(back.y, back.x) + f.tailBend * 0.45;
   const tail = { x: Math.cos(swing), y: Math.sin(swing), len: TAIL * f.size };
 
   const pad = W + FIN * f.size + tail.len;
@@ -524,7 +556,9 @@ function drawKoi(
         const tx = cx - tip.x;
         const ty = cy - tip.y;
         const s = tx * tail.x + ty * tail.y;
-        const q = Math.abs(ty * tail.x - tx * tail.y);
+        // A wave runs out along the tail, so it ripples like a veil.
+        const ripple = Math.sin(f.wave - (s / tail.len) * 2.6) * Math.max(0, s) * 0.12;
+        const q = Math.abs(ty * tail.x - tx * tail.y - ripple);
         if (s > -1 && q <= 1 + Math.max(0, s) * 1.05) {
           const reach = tail.len * (0.6 + 0.4 * Math.min(1, q / (tail.len * 0.6)));
           if (s <= reach) {
@@ -538,8 +572,10 @@ function drawKoi(
             const py = cy - fn.y;
             const along = px * fn.dx + py * fn.dy;
             if (along < 0 || along > fn.len) continue;
-            const across = Math.abs(py * fn.dx - px * fn.dy);
             const r = along / fn.len;
+            // A wave runs out along the fin as it flaps, the tip moving most.
+            const wave = Math.sin(f.flap * 2.2 - r * 4.5 + fn.phase) * r * r * fn.w * 0.9;
+            const across = Math.abs(py * fn.dx - px * fn.dy - wave);
             const half = fn.w * Math.sqrt(r) * (1 - r ** 3) + 0.5;
             if (across <= half) {
               const ray = Math.floor((across / half) * 3) % 2 === 1;

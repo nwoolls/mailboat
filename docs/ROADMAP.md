@@ -4784,6 +4784,23 @@ between pixel art and ASCII art for the screensavers.*
             font drawn in blocks. On a light page it brings a night
             backdrop. Named for what it is, not the film. *Owner: "they
             look great"*
+      - [x] Koi pond. The koi are drawn larger in these styles (owner:
+            "i'm fine with larger fish"), 1.5 times in pixel art and twice
+            in ASCII art, where at their usual size a koi was a dozen
+            characters long; they keep their size in cells of the usual
+            scale (`zoom`). Pixel art is the general conversion, which
+            keeps their shading, patches and tails at this size. In ASCII
+            art each character takes the koi's color and a shading
+            character by how solid and bright it is, bold, on a faint tile
+            of that color and the faint grid, thinning out round the icon
+            and words; ripples are `~`. The mixed characters of the general
+            conversion read as noise, and the first ramp, with its light
+            characters, was not solid enough. Their fins and tails ripple as
+            waves run along them. Calmer, as the owner asked ("koi are a
+            little more chill"): the tail eases after a turn and swings
+            only a little past the body, the swimming wave is capped when a
+            koi hurries, turns are slower, and a nibbling koi sways gently
+            instead of wiggling. *Owner: "LGTM"*
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well

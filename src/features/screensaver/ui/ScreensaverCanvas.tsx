@@ -30,6 +30,8 @@ import {
   resizeCodeRain,
   stepCodeRain,
 } from "../model/codeRain";
+import { KoiScene } from "../model/koi";
+import { drawKoiAscii } from "./koiAscii";
 import { drawCodeRain, pixelCell } from "./codeRainDraw";
 import { deepRainTuning } from "../model/deepRain";
 import { RainScene } from "../model/rain";
@@ -219,8 +221,12 @@ export function ScreensaverCanvas({
     const ctx = canvas?.getContext("2d");
     if (!area || !canvas || !card || !ctx) return;
 
-    const px = cellPxOf(sceneId);
     const look = lookFor(sceneId, style);
+    // The koi are drawn larger in the Toybox's styles (owner, 2026-11-13:
+    // "i'm fine with larger fish"): in ASCII art a koi at its usual size is
+    // only a dozen characters long, too few to read as a fish.
+    const zoom = sceneId === "koi" ? (look === "ascii" ? 2 : look === "chunky" ? 1.5 : 1) : 1;
+    const px = cellPxOf(sceneId) * zoom;
     // Some scenes have their own drawing in the Toybox's styles, from their
     // own shapes rather than from cells: the jellyfish
     // (`model/deepJellies.ts`) and the starfield (`model/deepStars.ts`).
@@ -244,6 +250,9 @@ export function ScreensaverCanvas({
     let pixels: Uint32Array | null = null;
     let cells: Uint8Array | null = null;
     let opacity: Uint8Array | null = null;
+    // The koi in ASCII art: the ripples drawn apart from the koi.
+    let ripples: Uint8Array | null = null;
+    let rippleOpacity: Uint8Array | null = null;
     let pointer: Pointer = null;
     let frame = 0;
     // Whether the page is light now (Settings → Appearance → Theme).
@@ -281,10 +290,10 @@ export function ScreensaverCanvas({
         if (sceneId === "code") {
           // A character grid: the glow's in ASCII art, the pixel font's in pixel art.
           const g = asciiGlowTuning();
-          const cell =
+          const charCell =
             look === "ascii" ? asciiCell(ctx, g.fontPx, g.lineHeight) : pixelCell(codeRainTuning());
-          const gc = Math.ceil(w / cell.cw) + 1;
-          const gr = Math.ceil(h / cell.ch) + 1;
+          const gc = Math.ceil(w / charCell.cw) + 1;
+          const gr = Math.ceil(h / charCell.ch) + 1;
           if (code) resizeCodeRain(code, gc, gr, Math.random);
           else code = makeCodeRain(gc, gr, codeRainTuning(), Math.random);
         } else if (sceneId === "jellyfish") {
@@ -328,6 +337,8 @@ export function ScreensaverCanvas({
       pixels = new Uint32Array(image.data.buffer);
       cells = new Uint8Array(cols * rows);
       opacity = new Uint8Array(cols * rows);
+      ripples = new Uint8Array(cols * rows);
+      rippleOpacity = new Uint8Array(cols * rows);
       const { solid, letters } = solidMask(a, cols, rows, px, iconRef.current, wordsRef.current);
       scene = makeScene(sceneId, {
         cols,
@@ -338,6 +349,7 @@ export function ScreensaverCanvas({
         // The words' box is wider than the text; use the letters' extent.
         words: boundsOf(letters, cols),
         rng: Math.random,
+        zoom,
       });
     };
 
@@ -366,7 +378,38 @@ export function ScreensaverCanvas({
           setNight([iconRef.current, wordsRef.current, canvas], night);
         }
         if (look === "ascii") {
-          drawAscii(cells, opacity, image.width, image.height, colors, night);
+          if (scene instanceof KoiScene && ripples && rippleOpacity) {
+            scene.draw(cells, opacity, { ripples: false, koi: true });
+            rippleOpacity.fill(255);
+            scene.draw(ripples, rippleOpacity, { ripples: true, koi: false });
+            const g = asciiGlowTuning();
+            const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
+            const a = area.getBoundingClientRect();
+            const c = card.getBoundingClientRect();
+            const page = readAsciiColors(g.hotMixDark, g.hotMixLight);
+            drawKoiAscii({
+              ctx,
+              koi: cells,
+              koiOpacity: opacity,
+              ripples,
+              rippleOpacity,
+              cols: image.width,
+              rows: image.height,
+              px,
+              colors,
+              crest: ink(SLOT.light),
+              dpr,
+              ox: -((((a.left - c.left) % cw) + cw) % cw),
+              oy: -((((a.top - c.top) % ch) + ch) % ch),
+              cw,
+              ch,
+              fontPx: g.fontPx,
+              page,
+              grid: page.dark ? g.gridDark : g.gridLight,
+              shapes: clearShapes(a),
+              glow: g,
+            });
+          } else drawAscii(cells, opacity, image.width, image.height, colors, night);
         } else if (night) {
           // A night sky in the palette's darkest colour, a little lighter low down.
           const top = colors[ink(SLOT.dark, 0)] ?? 0;
@@ -382,6 +425,40 @@ export function ScreensaverCanvas({
         if (look !== "ascii") ctx.putImageData(image, 0, 0);
       }
       frame = requestAnimationFrame(tick);
+    };
+
+    /**
+     * Where characters thin out so the icon and words stay readable: the
+     * icon's box and each line of the words, in pixels of the area.
+     */
+    const clearShapes = (a: DOMRect): ClearShape[] => {
+      const shapes: ClearShape[] = [];
+      const icon = iconRef.current?.getBoundingClientRect();
+      if (icon)
+        shapes.push({
+          kind: "icon",
+          x0: icon.left - a.left,
+          y0: icon.top - a.top,
+          x1: icon.right - a.left,
+          y1: icon.bottom - a.top,
+        });
+      if (wordsRef.current) {
+        const range = document.createRange();
+        const walker = document.createTreeWalker(wordsRef.current, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          range.selectNodeContents(n);
+          for (const r of range.getClientRects())
+            if (r.width > 0)
+              shapes.push({
+                kind: "words",
+                x0: r.left - a.left,
+                y0: r.top - a.top,
+                x1: r.right - a.left,
+                y1: r.bottom - a.top,
+              });
+        }
+      }
+      return shapes;
     };
 
     // A scene with its own motion and drawing (the jellyfish, the starfield).
@@ -413,24 +490,7 @@ export function ScreensaverCanvas({
         setNight([iconRef.current, wordsRef.current, canvas], night);
       }
       const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
-      const shapes: ClearShape[] = [];
-      if (icon) shapes.push({ kind: "icon", ...icon });
-      if (wordsRef.current) {
-        const range = document.createRange();
-        const walker = document.createTreeWalker(wordsRef.current, NodeFilter.SHOW_TEXT);
-        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-          range.selectNodeContents(n);
-          for (const r of range.getClientRects())
-            if (r.width > 0)
-              shapes.push({
-                kind: "words",
-                x0: r.left - a.left,
-                y0: r.top - a.top,
-                x1: r.right - a.left,
-                y1: r.bottom - a.top,
-              });
-        }
-      }
+      const shapes = clearShapes(a);
       const common = {
         ctx,
         look: look === "ascii" ? ("ascii" as const) : ("chunky" as const),

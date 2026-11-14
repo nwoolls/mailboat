@@ -98,8 +98,15 @@ test("code rain in either style draws its characters, at full resolution", async
   }
 });
 
-test("a screensaver not yet restyled draws as before, whatever the style", async ({ page }) => {
+test("the koi in ASCII art are shaded characters, at full resolution", async ({ page }) => {
   await start(page, "koi", "ascii");
+  const info = await canvasInfo(page);
+  expect(info.sharp).toBe(true);
+  expect(info.inked).toBeGreaterThan(500);
+});
+
+test("a screensaver not yet restyled draws as before, whatever the style", async ({ page }) => {
+  await start(page, "lava", "ascii");
   const info = await canvasInfo(page);
   // One canvas pixel per cell: not the ASCII look's full resolution.
   expect(info.sharp).toBe(false);

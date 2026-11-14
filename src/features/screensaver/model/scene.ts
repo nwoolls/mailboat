@@ -27,6 +27,12 @@ export type SceneSetup = {
   /** The words' box, if shown. */
   words: Rect | null;
   rng: Rng;
+  /**
+   * How many times larger than its usual cells the scene is drawn (the koi
+   * in the Toybox's styles); a scene sized by its cells can keep to its
+   * usual size on screen. 1 when unset.
+   */
+  zoom?: number;
 };
 
 /** The pointer's tip in cells, or null when it's off the area. */
