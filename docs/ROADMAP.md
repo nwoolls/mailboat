@@ -5635,7 +5635,7 @@ niche or extra", so Windows and the Release Spike come first)
 - [ ] Schedule send. No Gmail API either: a draft Mailboat sends at the time,
       only while it's running. Design to agree first
 - "Send mail as" aliases and forwarding: *moved to "Gmail and Google features
-  not built yet" below (2026-11-14)*
+  not built yet" below, under "Workspace administrators only" (2026-11-14)*
 - Inbox category tabs (Promotions, Social…): *moved to "Gmail and Google
   features not built yet" below (2026-11-14)*
 
@@ -5657,7 +5657,7 @@ lists are tagged with three things:
   verification.
 - **Competitors:** which other apps offer it, from their websites, help
   pages and reviews, checked 2026-11-14 without trying the apps. Gmail
-  (web and phone apps) offers every item.
+  (web and phone apps) offers every item unless its entry says otherwise.
 - **Effort:** *low* is a small change in one place, *medium* touches sync
   or the reader and needs a design, *high* is new infrastructure or a long
   Google review.
@@ -5733,7 +5733,9 @@ Settings → Privacy, as `AGENTS.md` says.
       found outside Gmail. Effort: low
 - [ ] Import `.eml` or mbox files into Gmail. `messages.import` adds an
       email to the mailbox with Gmail's spam and filter checks;
-      `messages.insert` adds it without them.
+      `messages.insert` adds it without them. Gmail's own apps can't import
+      a file: it takes a mail app that can, or Google's sample importer,
+      which uses this API.
       Permission: existing (`gmail.modify` covers both). Competitors: none
       found that import into Gmail itself. Effort: medium (parse mbox, keep
       to the quota, choose labels and dates)
@@ -5754,8 +5756,10 @@ Settings → Privacy, as `AGENTS.md` says.
       administrator must turn on hosted S/MIME for the domain first.
       Permission: existing (`gmail.settings.basic` covers the primary
       address; a custom send-as address would need
-      `gmail.settings.sharing`). Competitors: Outlook and Apple Mail (S/MIME
-      with certificates installed on the computer). Effort: high
+      `gmail.settings.sharing`, which Google describes as administrator-only,
+      so likely not reachable either; to check on a Workspace account).
+      Competitors: Outlook and Apple Mail (S/MIME with certificates
+      installed on the computer). Effort: high
 
 #### Needing a new permission
 
