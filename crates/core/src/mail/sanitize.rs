@@ -85,8 +85,19 @@ const TRACKER_PATHS: &[&str] = &[
 /// `super::links::is_link_host`) is never a remote image: loading one would
 /// ask the app to open a link with no click. So it isn't downloaded ahead
 /// of time, and as an image it is removed like any unsafe address.
+///
+/// Nor is a host on the reader's own computer or network (`127.0.0.1`,
+/// `192.168.…`, `*.local`: `super::local_hosts`): no email needs one, and
+/// loading it would have the reader's computer make a request the sender
+/// chose to a device on their network. It is removed the same way, whatever
+/// the image setting.
 fn remote_address(raw: &str) -> Option<url::Url> {
-    web_address(raw).filter(|u| !u.host_str().is_some_and(super::links::is_link_host))
+    web_address(raw).filter(|u| {
+        !u.host_str().is_some_and(super::links::is_link_host)
+            && !u
+                .host()
+                .is_some_and(|h| super::local_hosts::is_local_host(&h))
+    })
 }
 
 fn web_address(raw: &str) -> Option<url::Url> {
@@ -1326,6 +1337,61 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// An image on the reader's own computer or network never loads, and is
+    /// never downloaded as mail arrives, whatever the image setting.
+    #[test]
+    fn images_on_the_readers_own_network_never_load() {
+        let hosts = [
+            "127.0.0.1",
+            "2130706433",
+            "192.168.1.1",
+            "10.0.0.5:8080",
+            "169.254.169.254",
+            "[::1]",
+            "[::ffff:0:192.168.1.1]",
+            "[64:ff9b::127.0.0.1]",
+            "localhost",
+            "printer.local",
+            "router",
+        ];
+        for allow_images in [true, false] {
+            for host in hosts {
+                for address in [format!("https://{host}/a.png"), format!("//{host}/a.png")] {
+                    for html in [
+                        format!(r#"<img src="{address}" width="100">"#),
+                        format!(r#"<table background="{address}"><tr><td>x</td></tr></table>"#),
+                        format!(r#"<div style="background:url({address})">x</div>"#),
+                        format!(
+                            "<style>.a{{background:url(\"{address}\")}}</style><div class=a>x</div>"
+                        ),
+                        format!(
+                            r#"<div style="background-image:image-set(url({address}) 1x)">x</div>"#
+                        ),
+                    ] {
+                        let out = sanitize_html(&html, allow_images);
+                        let body = out.document.split("<body>").nth(1).unwrap_or_default();
+                        assert!(
+                            !body.contains("a.png"),
+                            "images {allow_images}: {html}\n{body}"
+                        );
+                        assert_eq!(out.loaded_images, 0, "{html}");
+                    }
+                    assert_eq!(
+                        remote_image_urls(&format!(r#"<img src="{address}" width="100">"#)),
+                        Vec::<String>::new(),
+                        "{address}"
+                    );
+                }
+            }
+        }
+        // A public image beside them still loads.
+        let out = sanitize_html(
+            r#"<img src="https://images.x.example/a.png" width="100">"#,
+            true,
+        );
+        assert_eq!(out.loaded_images, 1);
     }
 
     /// Found by the fuzzing checks: ammonia keeps a quote's `cite` address
