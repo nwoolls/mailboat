@@ -78,9 +78,14 @@ How this is enforced:
 
 ## Docs to keep current
 
-- `docs/ROADMAP.md`: every milestone item, ticked when done. Update it in the
-  same commit as the work. If something moves between milestones, move it
-  there with a note; nothing may silently drop off.
+- `docs/ROADMAP.md`: every item of a release (or a milestone), ticked when
+  done. Update it in the same commit as the work. Since 2026-11-14, work is
+  planned by release: a section per release (`## 0.3.0`) holds the items
+  pulled into it from "Later / unscheduled", and a milestone is kept only
+  for a project that spans releases and waits on something of its own
+  (Milestone 18 waits on Google). If something moves between releases,
+  milestones or the backlog, move it there with a note; nothing may
+  silently drop off.
 - `docs/ARCHITECTURE.md`: how the app works, plus a dated decisions table.
   Add a row when you make a choice a future agent might second-guess
   (a library, a limit, a security trade-off).

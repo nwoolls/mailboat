@@ -295,10 +295,9 @@ for everyone.
 
 ```mermaid
 flowchart LR
-  A["Stage A: Plan 2, open source"] --> C{"Do people want it?"}
-  C -->|"No"| K["Stays a free open-source app"]
-  C -->|"Yes"| G["Google verification for Mailboat's own client (submitted early, 2026-11-07)"]
-  G --> B["Stage B: optional subscription for no-setup sign-in"]
+  A["Stage A: Plan 2, open source"] --> G{"Google verification for Mailboat's own client (submitted 2026-11-07): approved?"}
+  G -->|"No"| K["Stays a free open-source app"]
+  G -->|"Yes"| B["Stage B: optional subscription for no-setup sign-in"]
 ```
 
 ### How the app works in both stages
@@ -325,7 +324,12 @@ flowchart LR
 
 Plan 2, in full.
 
-### Stage B (only if Stage A's checkpoint says yes)
+### Stage B (once Google approves Mailboat's own client)
+
+*Update 2026-11-14: the owner dropped Stage A's checkpoint (Plan 2 →
+Checkpoint). Stage B no longer waits on how the free release is taken up,
+only on Google's decision on the verification; if Google approves, the
+owner decides from there.*
 
 - Plan 1's Google verification (all of it), for Mailboat's own client
 - Plan 1's Polar store and in-app license, used only when the user
