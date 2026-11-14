@@ -4938,6 +4938,27 @@ stretching the measured animation.
 The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
 2026-11-14)*, with their full text. New ones are still added here.
 
+- [ ] `settings-toybox.spec.ts`: "repainting a still picture doesn't move it
+      on: new colors and back give the same picture" (added in #128).
+      - 2026-11-14, CI on `main` after #128 merged, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43626606206: the
+        Sandscape tile's picture after switching colors and back wasn't the
+        one before (`toBe`, two different PNGs). Decoded, about 4% of the
+        tile's pixels differ, spread over most of it, so the sand moved on
+        rather than a color being off. It passed in attempt 2 on the same
+        commit. Not yet known whether the still wasn't reached in the test's
+        9.5 s wait on a slow runner, or a repaint really moves the scene on,
+        which is what the test guards against.
+- [ ] `reply-scroll.spec.ts`: "Reply with AI: scrolling up to read stops the
+      reply being followed" (line 115).
+      - 2026-11-14, same run, attempt 2 (`main` after #128, which touches
+        neither the reply nor the follow): the first check, before any
+        scrolling, timed out after 15 s with the reply's end 365 px below the
+        reader (`toBeGreaterThanOrEqual(-1)`, line 125). It passed in
+        attempt 1. The same symptom as the reply-scroll entries in "Later /
+        unscheduled" → Flaky tests: the reply never came into view on a
+        slow runner, likely the same cause.
+
 ## Bug backlog
 
 *Bugs found in passing (started 2026-10-19 at the owner's request).
