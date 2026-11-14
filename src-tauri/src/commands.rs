@@ -553,9 +553,7 @@ pub async fn message_print(
 #[tauri::command]
 #[specta::specta]
 pub fn window_print(window: tauri::WebviewWindow) -> CmdResult<()> {
-    window
-        .print()
-        .map_err(|e| CoreError::Other(format!("print: {e}")))?;
+    crate::print::print(&window).map_err(|e| CoreError::Other(format!("print: {e}")))?;
     Ok(())
 }
 

@@ -14,6 +14,7 @@ mod mcp;
 mod menu;
 mod mode;
 mod notifications;
+mod print;
 mod state;
 mod sync_log;
 mod theme;

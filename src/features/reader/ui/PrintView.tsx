@@ -103,6 +103,10 @@ function PrintedEmail({
           className="print-frame"
           style={{ height }}
           onLoad={(e) => {
+            // The white card's inner space, made for the reader, would set
+            // the text in from its header on paper; Gmail lines them up.
+            const body = e.currentTarget.contentDocument?.body;
+            if (body) body.style.padding = "4px 0 0";
             setHeight(contentHeight(e.currentTarget));
             onLoaded();
           }}
