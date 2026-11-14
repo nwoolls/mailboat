@@ -150,9 +150,15 @@ function ridge(x: number, scale: number, seed: number): number {
 
 /** What a laid-out scene depends on: when this changes, lay it out again. */
 export function sceneKey(cols: number, rows: number, t: SkySceneTuning): string {
+  return [cols, rows, sceneTuningKey(t)].join("/");
+}
+
+/**
+ * The tuning a scene is laid out from: when this changes it starts over;
+ * when only the size does, it carries on (`resizeScene`).
+ */
+export function sceneTuningKey(t: SkySceneTuning): string {
   return [
-    cols,
-    rows,
     t.clouds,
     t.cloudSize,
     t.cloudWind,
@@ -164,7 +170,12 @@ export function sceneKey(cols: number, rows: number, t: SkySceneTuning): string 
   ].join("/");
 }
 
-/** Lays out a scene of `cols` × `rows` cells, the same each time for the same size. */
+/** A fixed random number (0–1) for slot `i` of a series: the same whatever the area's size. */
+function slot(i: number, series: number): number {
+  const v = Math.sin(i * 127.1 + series * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+}
+
 export function buildScene(cols: number, rows: number, t: SkySceneTuning): Scene {
   const span = cols + t.parallax * 8;
   const mountain = new Float32Array(span);
@@ -172,22 +183,20 @@ export function buildScene(cols: number, rows: number, t: SkySceneTuning): Scene
   const grass = new Float32Array(span);
   const mountainFace = new Int8Array(span);
   const hillFace = new Int8Array(span);
-  let seed = 5;
-  const rnd = () => {
-    seed = (seed * 16807) % 2147483647;
-    return seed / 2147483647;
-  };
   // Mountains: peaks, each a triangle with two faces, as in pixel art.
-  const peaks = Array.from({ length: Math.max(3, Math.round(span / 16)) }, () => ({
-    x: rnd() * span,
-    h: rows * t.mountainHeight * (0.45 + rnd() * 0.55),
-    k: 0.7 + rnd() * 0.5,
+  // One to a slot of fixed width from the left, so a wider area adds peaks
+  // at the right instead of moving them all (the scene keeps its shape
+  // while the window is resized).
+  const peaks = Array.from({ length: Math.ceil(span / 16) + 2 }, (_, i) => ({
+    x: (i - 1 + slot(i, 1)) * 16,
+    h: rows * t.mountainHeight * (0.45 + slot(i, 2) * 0.55),
+    k: 0.7 + slot(i, 3) * 0.5,
   }));
   // Hills: rounded humps.
-  const humps = Array.from({ length: Math.max(2, Math.round(span / 26)) }, () => ({
-    x: rnd() * span,
-    h: rows * (0.03 + rnd() * 0.05),
-    w: 14 + rnd() * 22,
+  const humps = Array.from({ length: Math.ceil(span / 26) + 2 }, (_, i) => ({
+    x: (i - 1 + slot(i, 4)) * 26,
+    h: rows * (0.03 + slot(i, 5) * 0.05),
+    w: 14 + slot(i, 6) * 22,
   }));
   for (let x = 0; x < span; x++) {
     let top = 0;
@@ -219,16 +228,43 @@ export function buildScene(cols: number, rows: number, t: SkySceneTuning): Scene
     const tuft = noise(x * 0.9, 40.5) > 0.72 ? 1 : 0;
     grass[x] = rows * (t.grassAt - 0.02 * ridge(x, 40, 21.7)) - tuft;
   }
+  // A star's seed is its cell's own, so stars stay put as the area resizes.
   const starSeed = new Float32Array(cols * rows);
+  for (let iy = 0; iy < rows; iy++)
+    for (let ix = 0; ix < cols; ix++) starSeed[iy * cols + ix] = slot(ix * 7919 + iy, 7);
   let s = 11;
   const rand = () => {
     s = (s * 16807) % 2147483647;
     return s / 2147483647;
   };
-  for (let i = 0; i < starSeed.length; i++) starSeed[i] = rand();
   const clouds: Cloud[] = [];
   for (let k = 0; k < t.clouds; k++) clouds.push(makeCloud(rand, rows, t, rand() * cols));
   return { cols, rows, mountain, hill, grass, mountainFace, hillFace, starSeed, clouds };
+}
+
+/**
+ * The scene for a resized area, carrying on from `old`: the land and stars
+ * stay where they were (they're laid out the same way whatever the size),
+ * and the same clouds keep drifting, at the same share of the way across.
+ */
+export function resizeScene(old: Scene, cols: number, rows: number, t: SkySceneTuning): Scene {
+  const scene = buildScene(cols, rows, t);
+  // The same cloud objects, moved: a puff left by a click is let go by
+  // identity later (`SkyInput`).
+  for (const c of old.clouds) {
+    c.x = ((c.x + c.w) / (old.cols + c.w * 2)) * (cols + c.w * 2) - c.w;
+    c.y = (c.y / old.rows) * rows;
+  }
+  scene.clouds = old.clouds;
+  return scene;
+}
+
+/** Moves the clouds on by `dt` seconds, wrapping round past the edges. */
+export function driftClouds(scene: Scene, dt: number) {
+  for (const c of scene.clouds) {
+    const wrap = scene.cols + c.w * 2;
+    c.x = ((((c.x + c.w + c.speed * dt) % wrap) + wrap) % wrap) - c.w;
+  }
 }
 
 export function makeCloud(rand: () => number, rows: number, t: SkySceneTuning, x: number): Cloud {
@@ -287,6 +323,18 @@ export type Palette = ReturnType<typeof landColors> & {
 export function paletteFor(hour: number): Palette {
   const { top, horizon } = skyColorsAt(hour);
   return { ...landColors(hour), top, horizon, night: nightness(hour) };
+}
+
+/**
+ * Whether the sky behind the icon and words (about halfway between the top
+ * and the horizon) is dark enough that light text reads better than dark.
+ * By its brightness, not by how far into night it is: at dusk the sky is
+ * already dark while `night` is still low, and dark text on it was hard to
+ * read.
+ */
+export function skyIsDark(p: Palette): boolean {
+  const lum = (c: Rgb) => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+  return (lum(p.top) + lum(p.horizon)) / 2 < 0.48;
 }
 
 function cell(material: Material, color: Rgb, edge = 0, slope = 0, glow = 0): Cell {
@@ -383,10 +431,9 @@ export function sceneAt(
 
   // Clouds, drifting and wrapping around.
   for (const c of scene.clouds) {
+    // Drifted by `driftClouds`; leaning with the pointer here.
     const wrap = cols + c.w * 2;
-    const cx =
-      ((((c.x + state.seconds * c.speed + state.lookX * t.parallax * 0.3) % wrap) + wrap) % wrap) -
-      c.w;
+    const cx = ((((c.x + c.w + state.lookX * t.parallax * 0.3) % wrap) + wrap) % wrap) - c.w;
     const ux = x - cx;
     if (Math.abs(ux) > c.w) continue;
     const uy = y - c.y;

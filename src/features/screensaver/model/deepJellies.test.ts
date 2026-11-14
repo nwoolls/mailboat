@@ -9,6 +9,7 @@ import {
   jellyBounds,
   jellyHues,
   makeSwarm,
+  resizeSwarm,
   step,
   type Swarm,
 } from "./deepJellies";
@@ -203,5 +204,23 @@ describe("hues", () => {
   it("differ between jellies, so a swarm isn't one color", () => {
     const s = makeSwarm(800, 600, T, rng);
     expect(new Set(s.jellies.map((j) => j.hue.toFixed(2))).size).toBeGreaterThan(1);
+  });
+});
+
+describe("resizing", () => {
+  it("carries on: each jelly keeps its place as a share of the area, tentacles moved, not stretched", () => {
+    const s = makeSwarm(800, 600, T, rng);
+    run(s, 2);
+    const j = s.jellies[0]!;
+    const [x, y, time] = [j.x, j.y, s.time];
+    const tip = j.tentacles[0]!.links.at(-1)!;
+    const offset = [tip.x - j.x, tip.y - j.y];
+    resizeSwarm(s, 1200, 900);
+    expect(s.time).toBe(time);
+    expect(j.x).toBeCloseTo(x * 1.5, 5);
+    expect(j.y).toBeCloseTo(y * 1.5, 5);
+    expect(tip.x - j.x).toBeCloseTo(offset[0]!, 5);
+    expect(tip.y - j.y).toBeCloseTo(offset[1]!, 5);
+    expect([s.width, s.height]).toEqual([1200, 900]);
   });
 });

@@ -82,9 +82,8 @@ export class SkyInput {
     }
     const nowMs = performance.now();
     const cloud = makeCloud(Math.random, scene.rows, { ...t, cloudSize: t.cloudSize * 0.5 }, 0);
-    // Clouds drift from the clock's start: place it so it's under the
-    // pointer now (`sceneAt` adds the drift and half its width back).
-    cloud.x = x + cloud.w - (nowMs / 1000) * cloud.speed;
+    // Under the pointer now; it drifts on from here (`driftClouds`).
+    cloud.x = x;
     cloud.y = y;
     scene.clouds.push(cloud);
     this.puffs.push({ at: nowMs, cloud });
@@ -92,18 +91,18 @@ export class SkyInput {
 }
 
 /**
- * The sky behind the icon, words and title is dark at night and bright by
- * day, whatever the page's theme, so their text follows the sky: light on
+ * The sky behind the icon, words and title is dark at dusk and night and
+ * bright by day (`skyIsDark`), whatever the page's theme, so their text follows the sky: light on
  * a night sky (`data-scene-night`, as the screensavers' night skies do),
  * dark on a day sky (`data-scene-day`). Only where it differs from the
  * page's own text. Returns what it set, to set again only on a change.
  */
 export function skyText(
   els: (HTMLElement | null | undefined)[],
-  night: number,
+  skyDark: boolean,
   pageDark: boolean,
 ): "night" | "day" | null {
-  const mode = night > 0.5 ? (pageDark ? null : "night") : pageDark ? "day" : null;
+  const mode = skyDark ? (pageDark ? null : "night") : pageDark ? "day" : null;
   for (const el of els) {
     if (!el) continue;
     if (mode === "night") el.dataset.sceneNight = "";

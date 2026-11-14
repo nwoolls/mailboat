@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   bodyAt,
   buildScene,
+  driftClouds,
   type Material,
   paletteFor,
+  resizeScene,
   sceneAt,
   type SceneState,
   SKY_SCENE_DEFAULTS as T,
+  skyIsDark,
 } from "./skyScene";
 
 const COLS = 150;
@@ -73,5 +76,49 @@ describe("the sky scene", () => {
       if (c.material === "mountain") colors.add(c.color.join());
     }
     expect(colors.size).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("the text over the sky", () => {
+  it("is dark by day, and turns light at dusk, before night has fully come", () => {
+    expect(skyIsDark(paletteFor(13))).toBe(false);
+    // Dusk: night is only beginning, but the sky behind the words is dark.
+    expect(paletteFor(19).night).toBeLessThan(0.5);
+    expect(skyIsDark(paletteFor(19))).toBe(true);
+    expect(skyIsDark(paletteFor(23))).toBe(true);
+  });
+});
+
+describe("resizing the sky", () => {
+  it("keeps the land and stars where they were, adding more at the right", () => {
+    const small = buildScene(120, 80, T);
+    const wide = buildScene(160, 80, T);
+    for (let x = 0; x < 120; x++) {
+      expect(wide.mountain[x]).toBeCloseTo(small.mountain[x]!, 5);
+      expect(wide.hill[x]).toBeCloseTo(small.hill[x]!, 5);
+    }
+    for (let y = 0; y < 80; y++)
+      for (let x = 0; x < 120; x++)
+        expect(wide.starSeed[y * 160 + x]).toBe(small.starSeed[y * 120 + x]);
+  });
+
+  it("carries the same clouds on, at the same share of the way across", () => {
+    const old = buildScene(120, 80, T);
+    driftClouds(old, 30);
+    const cloud = old.clouds[0]!;
+    const share = (cloud.x + cloud.w) / (120 + cloud.w * 2);
+    const scene = resizeScene(old, 180, 80, T);
+    expect(scene.clouds[0]).toBe(cloud);
+    expect((cloud.x + cloud.w) / (180 + cloud.w * 2)).toBeCloseTo(share, 6);
+  });
+
+  it("drifts clouds on and round past the edge", () => {
+    const scene = buildScene(120, 80, T);
+    const cloud = scene.clouds[0]!;
+    const x = cloud.x;
+    driftClouds(scene, 1);
+    expect(cloud.x).toBeCloseTo(x + cloud.speed, 6);
+    driftClouds(scene, (120 + cloud.w * 2) / cloud.speed);
+    expect(cloud.x).toBeCloseTo(x + cloud.speed, 3);
   });
 });

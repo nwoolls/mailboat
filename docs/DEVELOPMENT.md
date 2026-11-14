@@ -45,6 +45,7 @@ from the defaults so they can be copied into the code
 `BUBBLE_DEFAULTS` in `src/features/emptyToys/model/bubblePop.ts`,
 `SCREENSAVER_LOOK_DEFAULTS` in `src/features/screensaver/model/looks.ts`,
 `DEEP_JELLY_DEFAULTS` in `src/features/screensaver/model/deepJellies.ts`,
+`DEEP_STAR_DEFAULTS` in `src/features/screensaver/model/deepStars.ts`,
 `POND_STIR_DEFAULTS` in `src/features/emptyToys/model/pond.ts`). The app
 itself always uses the defaults.
 

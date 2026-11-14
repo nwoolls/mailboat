@@ -5,10 +5,14 @@ import {
   buildScene,
   mixRgb,
   paletteFor,
+  skyIsDark,
   type Scene,
   sceneAt,
   type SceneState,
   sceneKey,
+  sceneTuningKey,
+  resizeScene,
+  driftClouds,
   skyColorAt,
   skySceneTuning,
 } from "../model/skyScene";
@@ -68,6 +72,7 @@ export function AsciiSkyLayer({
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     let scene: Scene | null = null;
     let builtFor = "";
+    let tunedFor = "";
     let seeds = new Float32Array(0);
     let night = 0;
     let frame = 0;
@@ -97,12 +102,21 @@ export function AsciiSkyLayer({
       const t = asciiSkyTuning();
       const g = asciiGlowTuning();
       const unit = unitNow();
-      const key = sceneKey(Math.ceil(width / unit), Math.ceil(height / unit), st);
+      const cols = Math.ceil(width / unit);
+      const rows = Math.ceil(height / unit);
+      const key = sceneKey(cols, rows, st);
       if (key !== builtFor || !scene) {
         builtFor = key;
-        scene = buildScene(Math.ceil(width / unit), Math.ceil(height / unit), st);
-        input.reset();
+        // A new size carries the scene on; new tuning starts it over.
+        const tuning = sceneTuningKey(st);
+        if (scene && tuning === tunedFor) scene = resizeScene(scene, cols, rows, st);
+        else {
+          scene = buildScene(cols, rows, st);
+          input.reset();
+        }
+        tunedFor = tuning;
       }
+      driftClouds(scene, reduce.matches ? 0 : dt);
       const colors = readAsciiColors(g.hotMixDark, g.hotMixLight);
       const dark = colors.dark;
       if (count++ % 30 === 0)
@@ -124,11 +138,11 @@ export function AsciiSkyLayer({
       const palette = paletteFor(hour);
       night = palette.night;
       input.step(dt, scene, nowMs);
-      const mode = night > 0.5 ? "night" : "day";
+      const mode = skyIsDark(palette) ? "night" : "day";
       // Again now and then too, should the page's theme change.
       if (mode !== textMode || count % 30 === 1) {
         textMode = mode;
-        skyText(textEls(), night, readAsciiColors(0.5, 0.5).dark);
+        skyText(textEls(), mode === "night", readAsciiColors(0.5, 0.5).dark);
       }
 
       // Characters take their own color rows: each material's color, lifted
@@ -231,7 +245,7 @@ export function AsciiSkyLayer({
     return () => {
       input.dispose();
       cancelAnimationFrame(frame);
-      skyText(textEls(), 0, false);
+      skyText(textEls(), false, false);
     };
   }, [areaRef, iconRef, wordsRef, width, height]);
 

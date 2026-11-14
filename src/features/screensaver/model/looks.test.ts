@@ -12,6 +12,7 @@ describe("which screensavers are restyled", () => {
   it("draws restyled scenes in the chosen style, the rest as they were", () => {
     expect(lookFor("jellyfish", "pixel")).toBe("chunky");
     expect(lookFor("jellyfish", "ascii")).toBe("ascii");
+    expect(lookFor("starfield", "pixel")).toBe("chunky");
     expect(lookFor("koi", "ascii")).toBe("fine");
     expect(RESTYLED.has("koi")).toBe(false);
   });

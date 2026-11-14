@@ -20,7 +20,7 @@ import type { SceneId } from "./catalog";
 export type ScreensaverLook = "fine" | "chunky" | "ascii";
 
 /** The scenes restyled so far; the rest stay fine in either style. */
-export const RESTYLED: ReadonlySet<SceneId> = new Set<SceneId>(["jellyfish"]);
+export const RESTYLED: ReadonlySet<SceneId> = new Set<SceneId>(["jellyfish", "starfield"]);
 
 /** How a scene is drawn in the chosen style. */
 export function lookFor(scene: SceneId, style: "pixel" | "ascii"): ScreensaverLook {

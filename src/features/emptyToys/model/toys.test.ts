@@ -57,6 +57,19 @@ describe("pond", () => {
     expect(out.every((v) => v === 0)).toBe(true);
   });
 
+  it("keeps its ripples through a resize, where they were, and keeps settling", () => {
+    const old = new PondToy(200, 120, () => 0.5);
+    old.drop(100, 60);
+    for (let i = 0; i < 30; i++) old.frame(1 / 60);
+    const before = old.heightAt(130, 60);
+    const pond = PondToy.resized(old, 260, 100);
+    expect(pond.active).toBe(true);
+    expect(pond.heightAt(130, 60)).toBeCloseTo(before, 6);
+    expect(pond.droplets.length).toBe(old.droplets.length);
+    for (let i = 0; i < 60 * SETTLE_SECONDS * 2 && pond.active; i++) pond.frame(1 / 60);
+    expect(pond.active).toBe(false);
+  });
+
   it("holds still where something stands in it, and shelters the water behind", () => {
     const open = new PondToy(200, 120, () => 0.5);
     const walled = new PondToy(200, 120, () => 0.5);

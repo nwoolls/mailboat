@@ -74,6 +74,11 @@ import {
   setDeepJellyTuning,
 } from "../src/features/screensaver/model/deepJellies";
 import {
+  DEEP_STAR_DEFAULTS,
+  type DeepStarTuning,
+  setDeepStarTuning,
+} from "../src/features/screensaver/model/deepStars";
+import {
   RESTYLED,
   SCREENSAVER_LOOK_DEFAULTS,
   type ScreensaverLookTuning,
@@ -365,6 +370,25 @@ const JELLY_DIALS: Sections<DeepJellyTuning> = [
   },
 ];
 
+const STAR_DIALS: Sections<DeepStarTuning> = [
+  {
+    title: "Starfield (restart to see some)",
+    dials: [
+      { key: "stars", min: 20, max: 800, step: 10, hint: "stars (restart)" },
+      { key: "dust", min: 0, max: 400, step: 10, hint: "still dust (restart)" },
+      { key: "speed", min: 0.02, max: 1, step: 0.01, hint: "cruising speed" },
+      { key: "warpSpeed", min: 0.2, max: 4, step: 0.05, hint: "warp speed" },
+      { key: "warpEvery", min: 3, max: 120, step: 1, hint: "a warp every, s" },
+      { key: "warpSeconds", min: 1, max: 20, step: 0.5, hint: "warp lasts, s" },
+      { key: "streak", min: 0, max: 30, step: 0.5, hint: "streak length" },
+      { key: "steer", min: 0, max: 1, step: 0.05, hint: "steering with the pointer" },
+      { key: "glow", min: 0, max: 1.5, step: 0.05, hint: "glow round the nearest" },
+      { key: "nebula", min: 0, max: 0.6, step: 0.01, hint: "nebulas" },
+      { key: "pixel", min: 2, max: 12, step: 1, hint: "pixel size (pixel art)" },
+    ],
+  },
+];
+
 const LOOK_DIALS: Sections<ScreensaverLookTuning> = [
   {
     title: "Pixel art",
@@ -452,6 +476,7 @@ const pondStart = saved("playground.asciiPond", ASCII_POND_DEFAULTS, setAsciiPon
 const stirStart = saved("playground.pondStir", POND_STIR_DEFAULTS, setPondStir);
 const bubbleStart = saved("playground.bubbles", BUBBLE_DEFAULTS, setBubbleTuning);
 const jellyStart = saved("playground.deepJellies", DEEP_JELLY_DEFAULTS, setDeepJellyTuning);
+const starStart = saved("playground.deepStars", DEEP_STAR_DEFAULTS, setDeepStarTuning);
 const looksStart = saved(
   "playground.screensaverLooks",
   SCREENSAVER_LOOK_DEFAULTS,
@@ -699,16 +724,30 @@ function Playground() {
                 screensaver keeps playing through clicks; Stop ends it.
               </p>
             </section>
-            <Panel
-              key="jellies"
-              title="Jellyfish"
-              storageKey="playground.deepJellies"
-              defaults={DEEP_JELLY_DEFAULTS}
-              start={jellyStart}
-              apply={setDeepJellyTuning}
-              fields={[]}
-              sections={JELLY_DIALS}
-            />
+            {playing === "jellyfish" && (
+              <Panel
+                key="jellies"
+                title="Jellyfish"
+                storageKey="playground.deepJellies"
+                defaults={DEEP_JELLY_DEFAULTS}
+                start={jellyStart}
+                apply={setDeepJellyTuning}
+                fields={[]}
+                sections={JELLY_DIALS}
+              />
+            )}
+            {playing === "starfield" && (
+              <Panel
+                key="stars"
+                title="Starfield"
+                storageKey="playground.deepStars"
+                defaults={DEEP_STAR_DEFAULTS}
+                start={starStart}
+                apply={setDeepStarTuning}
+                fields={[]}
+                sections={STAR_DIALS}
+              />
+            )}
             <Panel
               key="looks"
               title="Screensaver looks"

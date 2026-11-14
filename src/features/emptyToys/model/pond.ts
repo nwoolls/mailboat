@@ -101,6 +101,39 @@ export class PondToy {
     this.solid = new Uint8Array(this.w * this.h);
   }
 
+  /**
+   * A pond of `cols` × `rows` that carries on from `old` (when there is
+   * one): its waves where they were, cell for cell from the top left, as
+   * much as fits, and its splashes. So resizing the area doesn't wipe the
+   * ripples away.
+   */
+  static resized(old: PondToy | null, cols: number, rows: number): PondToy {
+    const pond = new PondToy(cols, rows, old?.rng);
+    if (!old) return pond;
+    // Water past the old edges, when it grew, starts flat: ripples there
+    // had bounced off the old edge and spread into it from there. (Filling
+    // it with their mirror image was tried: resizing comes in many small
+    // steps, and mirroring at each piled up into a grainy checkerboard.)
+    const w = Math.min(old.w, pond.w);
+    const h = Math.min(old.h, pond.h);
+    for (let y = 0; y < h; y++) {
+      pond.now.set(old.now.subarray(y * old.w, y * old.w + w), y * pond.w);
+      pond.before.set(old.before.subarray(y * old.w, y * old.w + w), y * pond.w);
+    }
+    // The edges hold the water still and are never stepped: a wave copied
+    // onto a new edge would stay there for good, so they start flat.
+    const { now, before } = pond;
+    for (let x = 0; x < pond.w; x++)
+      for (const y of [0, pond.h - 1]) now[y * pond.w + x] = before[y * pond.w + x] = 0;
+    for (let y = 0; y < pond.h; y++)
+      for (const x of [0, pond.w - 1]) now[y * pond.w + x] = before[y * pond.w + x] = 0;
+    pond.droplets.push(...old.droplets);
+    pond.plops.push(...old.plops);
+    pond.moving = old.moving;
+    pond.owed = old.owed;
+    return pond;
+  }
+
   /** What stands in the water (boxes in screen cells): waves reflect off them. */
   setSolids(boxes: Rect[]) {
     const { w, h, solid } = this;

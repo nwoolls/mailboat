@@ -178,7 +178,8 @@ function PondLayer({ areaRef, box }: { areaRef: RefObject<HTMLElement | null>; b
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
-    const pond = new PondToy(cols, rows);
+    // A resize carries the waves over rather than starting a still pond.
+    const pond = PondToy.resized(pondRef.current, cols, rows);
     pond.setSolids(inCells(clearRef.current));
     pondRef.current = pond;
     let frame = 0;
@@ -281,6 +282,11 @@ function PondLayer({ areaRef, box }: { areaRef: RefObject<HTMLElement | null>; b
       wake();
     };
     area.addEventListener("pointerdown", down);
+    // Still moving from before a resize (which cleared the canvas): draw it at once.
+    if (pond.active) {
+      last = performance.now();
+      tick(last);
+    }
     const stopStirring = stirOnMove(area, canvas, pond, wake);
     return () => {
       area.removeEventListener("pointerdown", down);
@@ -324,7 +330,8 @@ function AsciiPondLayer({ areaRef, box }: { areaRef: RefObject<HTMLElement | nul
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
     const painter = new AsciiPainter(ctx);
-    const pond = new PondToy(cols, rows);
+    // A resize carries the waves over rather than starting a still pond.
+    const pond = PondToy.resized(pondRef.current, cols, rows);
     pond.setSolids(inCells(clearRef.current));
     pondRef.current = pond;
     let seeds = new Float32Array(0);
@@ -420,6 +427,11 @@ function AsciiPondLayer({ areaRef, box }: { areaRef: RefObject<HTMLElement | nul
       wake();
     };
     area.addEventListener("pointerdown", down);
+    // Still moving from before a resize (which cleared the canvas): draw it at once.
+    if (pond.active) {
+      last = performance.now();
+      tick(last);
+    }
     const stopStirring = stirOnMove(area, canvas, pond, wake);
     return () => {
       area.removeEventListener("pointerdown", down);

@@ -21,8 +21,16 @@ import {
 import { blend, ink, type Pointer, type Rect, type Scene, SLOT } from "../model/scene";
 import { isRealMove } from "../../../shared/lib/pointer";
 import { screensaverPrefs } from "./prefs";
-import { deepJellyTuning, makeSwarm, step, type Swarm } from "../model/deepJellies";
+import { deepJellyTuning, makeSwarm, resizeSwarm, step, type Swarm } from "../model/deepJellies";
 import { drawDeepJellies } from "./deepJelliesDraw";
+import {
+  deepStarTuning,
+  makeStarfield,
+  resizeStarfield,
+  type Starfield,
+  stepStars,
+} from "../model/deepStars";
+import { drawDeepStars } from "./deepStarsDraw";
 import {
   chunkCells,
   coverageChar,
@@ -199,10 +207,12 @@ export function ScreensaverCanvas({
 
     const px = cellPxOf(sceneId);
     const look = lookFor(sceneId, style);
-    // The jellyfish has its own drawing in the Toybox's styles: big jellies,
-    // drawn from their own shapes (`model/deepJellies.ts`), not from cells.
-    const deep = sceneId === "jellyfish" && look !== "fine";
+    // Some scenes have their own drawing in the Toybox's styles, from their
+    // own shapes rather than from cells: the jellyfish
+    // (`model/deepJellies.ts`) and the starfield (`model/deepStars.ts`).
+    const deep = (sceneId === "jellyfish" || sceneId === "starfield") && look !== "fine";
     let swarm: Swarm | null = null;
+    let stars: Starfield | null = null;
     let deepNight = false;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const painter = new AsciiPainter(ctx);
@@ -240,8 +250,22 @@ export function ScreensaverCanvas({
       const sharp = look === "ascii" || deep;
       canvas.width = sharp ? Math.round(cols * px * dpr) : cols;
       canvas.height = sharp ? Math.round(rows * px * dpr) : rows;
+      // These scenes fit themselves to a resized area and carry on; the
+      // others start over (their cells are laid out around the icon).
       if (deep) {
-        swarm = makeSwarm(cols * px, rows * px, deepJellyTuning(), Math.random);
+        const w = cols * px;
+        const h = rows * px;
+        if (sceneId === "jellyfish") {
+          if (swarm) resizeSwarm(swarm, w, h);
+          else swarm = makeSwarm(w, h, deepJellyTuning(), Math.random);
+        } else {
+          // The vanishing point rests behind the icon.
+          const icon = iconRef.current?.getBoundingClientRect();
+          const restX = icon ? icon.left + icon.width / 2 - a.left : w / 2;
+          const restY = icon ? icon.top + icon.height / 2 - a.top : h / 2;
+          if (stars) resizeStarfield(stars, w, h, restX, restY);
+          else stars = makeStarfield(w, h, restX, restY, deepStarTuning(), Math.random);
+        }
         return;
       }
       image = ctx.createImageData(cols, rows);
@@ -264,8 +288,8 @@ export function ScreensaverCanvas({
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
-      if (deep && swarm) {
-        drawDeep(swarm, dt);
+      if (deep) {
+        drawDeep(dt);
         frame = requestAnimationFrame(tick);
         return;
       }
@@ -304,9 +328,8 @@ export function ScreensaverCanvas({
       frame = requestAnimationFrame(tick);
     };
 
-    // The jellyfish in the Toybox's styles: their own motion and shapes.
-    const drawDeep = (s: Swarm, dt: number) => {
-      const t = deepJellyTuning();
+    // A scene with its own motion and drawing (the jellyfish, the starfield).
+    const drawDeep = (dt: number) => {
       const g = asciiGlowTuning();
       const page = readAsciiColors(g.hotMixDark, g.hotMixLight);
       const a = area.getBoundingClientRect();
@@ -321,8 +344,9 @@ export function ScreensaverCanvas({
       const words = box(wordsRef.current);
       const keep = [icon, words].filter((b): b is NonNullable<typeof b> => b !== null);
       const p = pointer ? { x: pointer.x * px, y: pointer.y * px } : null;
-      if (step(s, dt, p, keep, t, Math.random)) nodRef.current();
-      // On a light page, a deep-sea backdrop, and light text on it.
+      if (swarm && step(swarm, dt, p, keep, deepJellyTuning(), Math.random)) nodRef.current();
+      if (stars && stepStars(stars, dt, p, deepStarTuning(), Math.random)) nodRef.current();
+      // On a light page, a dark backdrop (deep sea, night sky), and light text on it.
       const night = light.matches;
       if (night !== deepNight) {
         deepNight = night;
@@ -347,10 +371,9 @@ export function ScreensaverCanvas({
               });
         }
       }
-      drawDeepJellies({
+      const common = {
         ctx,
-        swarm: s,
-        look: look === "ascii" ? "ascii" : "chunky",
+        look: look === "ascii" ? ("ascii" as const) : ("chunky" as const),
         dpr,
         ox: -((((a.left - c.left) % cw) + cw) % cw),
         oy: -((((a.top - c.top) % ch) + ch) % ch),
@@ -362,8 +385,9 @@ export function ScreensaverCanvas({
         slots: slotsRef.current,
         shapes,
         backdrop: night,
-        t,
-      });
+      };
+      if (swarm) drawDeepJellies({ ...common, swarm, t: deepJellyTuning() });
+      if (stars) drawDeepStars({ ...common, field: stars, t: deepStarTuning() });
     };
 
     // ASCII art: a character per cell of the glow's grid (lined up with it
@@ -471,7 +495,13 @@ export function ScreensaverCanvas({
 
     layout();
     play();
-    const resize = new ResizeObserver(() => layout());
+    // A resize lands after this frame's drawing and before it's shown, and
+    // resizing the canvas clears it, so the scenes that carry on through a
+    // resize are drawn again at once (else they'd be blank while dragging).
+    const resize = new ResizeObserver(() => {
+      layout();
+      if (deep) drawDeep(0);
+    });
     resize.observe(area);
     card.addEventListener("pointermove", onMove);
     card.addEventListener("pointerleave", onLeave);

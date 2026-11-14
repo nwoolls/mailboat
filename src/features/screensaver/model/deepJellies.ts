@@ -455,3 +455,32 @@ export function mix(a: Rgb, b: Rgb, k: number): Rgb {
     Math.round(a[2] + (b[2] - a[2]) * k),
   ];
 }
+
+/**
+ * Fits the swarm to a resized area without starting over: each jelly keeps
+ * its place as a share of the area, its tentacles moving with it (not
+ * stretched), and the motes too. Sizes follow the area on their own.
+ */
+export function resizeSwarm(s: Swarm, width: number, height: number) {
+  const kx = width / Math.max(1, s.width);
+  const ky = height / Math.max(1, s.height);
+  for (const j of s.jellies) {
+    const dx = j.x * (kx - 1);
+    const dy = j.y * (ky - 1);
+    j.x += dx;
+    j.y += dy;
+    for (const t of j.tentacles)
+      for (const q of t.links) {
+        q.x += dx;
+        q.y += dy;
+        q.px += dx;
+        q.py += dy;
+      }
+  }
+  for (const m of s.motes) {
+    m.x *= kx;
+    m.y *= ky;
+  }
+  s.width = width;
+  s.height = height;
+}

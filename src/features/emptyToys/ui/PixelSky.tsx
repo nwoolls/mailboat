@@ -3,10 +3,14 @@ import {
   bodyAt,
   buildScene,
   paletteFor,
+  skyIsDark,
   type Scene,
   sceneAt,
   type SceneState,
   sceneKey,
+  sceneTuningKey,
+  resizeScene,
+  driftClouds,
   skySceneTuning,
 } from "../model/skyScene";
 import { moonPhase, skyHourOverride } from "../model/sky";
@@ -54,6 +58,7 @@ export function PixelSkyLayer({
     let image: ImageData | null = null;
     let pixels = new Uint32Array(0);
     let builtFor = "";
+    let tunedFor = "";
     let night = 0;
     let frame = 0;
     let last = performance.now();
@@ -84,13 +89,20 @@ export function PixelSkyLayer({
       const key = sceneKey(cols, rows, t);
       if (key !== builtFor || !scene || !image) {
         builtFor = key;
-        scene = buildScene(cols, rows, t);
+        // A new size carries the scene on; new tuning starts it over.
+        const tuning = sceneTuningKey(t);
+        if (scene && tuning === tunedFor) scene = resizeScene(scene, cols, rows, t);
+        else {
+          scene = buildScene(cols, rows, t);
+          input.reset();
+        }
+        tunedFor = tuning;
         low.width = cols;
         low.height = rows;
         image = lowCtx.createImageData(cols, rows);
         pixels = new Uint32Array(image.data.buffer);
-        input.reset();
       }
+      driftClouds(scene, reduce.matches ? 0 : dt);
       if (count++ % 30 === 0)
         canvas.style.opacity = String(
           readAsciiColors(0.5, 0.5).dark ? t.opacityDark : t.opacityLight,
@@ -112,11 +124,11 @@ export function PixelSkyLayer({
       const palette = paletteFor(hour);
       night = palette.night;
       input.step(dt, scene, nowMs);
-      const mode = night > 0.5 ? "night" : "day";
+      const mode = skyIsDark(palette) ? "night" : "day";
       // Again now and then too, should the page's theme change.
       if (mode !== textMode || count % 30 === 1) {
         textMode = mode;
-        skyText(textEls(), night, readAsciiColors(0.5, 0.5).dark);
+        skyText(textEls(), mode === "night", readAsciiColors(0.5, 0.5).dark);
       }
 
       for (let y = 0; y < rows; y++)
@@ -203,7 +215,7 @@ export function PixelSkyLayer({
     return () => {
       input.dispose();
       cancelAnimationFrame(frame);
-      skyText(textEls(), 0, false);
+      skyText(textEls(), false, false);
     };
   }, [areaRef, iconRef, wordsRef, width, height]);
 

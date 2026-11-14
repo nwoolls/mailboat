@@ -4711,6 +4711,39 @@ between pixel art and ASCII art for the screensavers.*
             it had the direction reversed too, so it passed); and
             tentacles drawn by formula, which only flared out and in.
             *Owner: "much better"*
+      - [x] Starfield. It has its own drawing: stars stream out from a
+            point behind the icon, nearer ones brighter and the fastest
+            leaving streaks. Faint dust twinkles in place behind them, and
+            soft nebulas drift. Every so often it goes to warp: the speed
+            surges for a few seconds and the streaks lengthen, and the icon
+            nods as it starts. The pointer pulls the vanishing point toward
+            it, like steering. On a light page it brings a night backdrop
+            and light text, as the jellyfish do. The ASCII version took
+            three tries. Each star drawn in its own cell hopped from cell
+            to cell ("too jumpy"). Painting the stars as soft light and
+            easing each cell's brightness made them "fuzzy, like I'm
+            drunk". So each star is now one sharp character that stays in
+            its cell until it nears the edge, then fades out of that cell
+            as it fades into the next. Streaks are painted as fading lines
+            and drawn as characters pointing away from the vanishing point.
+            *Owner: "this is better"*
+      - [x] Resizing the window no longer restarts a scene *(owner,
+            2026-11-13)*. The jellyfish and starfield fit themselves to the
+            new size and carry on, and are drawn again right away (resizing
+            a canvas clears it, so they had been blank while dragging). The
+            sky's land and stars are laid out the same at any width, so a
+            wider window adds more at the right, and the same clouds keep
+            drifting. The pond keeps its ripples. Where it grew, the water
+            starts still: mirroring the waves into it was tried, and piled
+            up into a grainy checkerboard over a drag's many small steps.
+            Bubble wrap still starts over, which the owner finds pleasant.
+            Screensavers not yet restyled still start over too
+      - [x] Text over the sky turns light at dusk *(owner, 2026-11-13)*.
+            It switched only once night was half in, while the sky behind
+            the words was already dark. It now follows the sky's own
+            brightness
+      - [x] The playground shows the dials only for the screensaver
+            playing
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well

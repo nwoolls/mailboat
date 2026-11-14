@@ -55,6 +55,15 @@ test("on a light page the jellyfish brings a deep-sea backdrop and light text", 
   expect(night).toBe(true);
 });
 
+test("the starfield in either style draws its own stars, at full resolution", async ({ page }) => {
+  for (const style of ["ascii", "pixel"]) {
+    await start(page, "starfield", style);
+    const info = await canvasInfo(page);
+    expect(info.sharp).toBe(true);
+    expect(info.inked).toBeGreaterThan(500);
+  }
+});
+
 test("a screensaver not yet restyled draws as before, whatever the style", async ({ page }) => {
   await start(page, "koi", "ascii");
   const info = await canvasInfo(page);
