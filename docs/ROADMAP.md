@@ -4744,6 +4744,21 @@ between pixel art and ASCII art for the screensavers.*
             brightness
       - [x] The playground shows the dials only for the screensaver
             playing
+      - [x] Fireworks. Its rockets, bursts and the boat-shaped burst are
+            the scene's own motion, drawn its own way instead of converted
+            from the fine grid. In pixel art each spark is a chunky block
+            that starts white-hot, cools to the palette's color and fades,
+            with a dithered trail; in ASCII art it goes `*`, `+`, `.`, with
+            a trail of characters that follow its path, and rockets climb
+            as `^`. Only sparks that have just burst get a plus of blocks
+            or a pale tile: on every bright spark a burst read as a lattice
+            of crosses. Each burst flashes and lights the sky, young sparks
+            glow, and smoke drifts up. It carries on through a resize. New
+            shell *(owner, 2026-11-13: "the kind that explode sort of like
+            weeping willows and trail further down to the ground")*: a
+            weeping willow, whose sparks sink slowly for about five to six
+            seconds with long strands above them, most of the way to the
+            ground. *Owner: "those look amazing", "looks great"*
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well

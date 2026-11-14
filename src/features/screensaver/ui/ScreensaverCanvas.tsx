@@ -23,6 +23,9 @@ import { isRealMove } from "../../../shared/lib/pointer";
 import { screensaverPrefs } from "./prefs";
 import { deepJellyTuning, makeSwarm, resizeSwarm, step, type Swarm } from "../model/deepJellies";
 import { drawDeepJellies } from "./deepJelliesDraw";
+import { deepFireworkTuning } from "../model/deepFireworks";
+import { FireworksScene } from "../model/fireworks";
+import { drawDeepFireworks } from "./deepFireworksDraw";
 import {
   deepStarTuning,
   makeStarfield,
@@ -210,9 +213,12 @@ export function ScreensaverCanvas({
     // Some scenes have their own drawing in the Toybox's styles, from their
     // own shapes rather than from cells: the jellyfish
     // (`model/deepJellies.ts`) and the starfield (`model/deepStars.ts`).
-    const deep = (sceneId === "jellyfish" || sceneId === "starfield") && look !== "fine";
+    const deep =
+      (sceneId === "jellyfish" || sceneId === "starfield" || sceneId === "fireworks") &&
+      look !== "fine";
     let swarm: Swarm | null = null;
     let stars: Starfield | null = null;
+    let fireworks: FireworksScene | null = null;
     let deepNight = false;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const painter = new AsciiPainter(ctx);
@@ -258,6 +264,27 @@ export function ScreensaverCanvas({
         if (sceneId === "jellyfish") {
           if (swarm) resizeSwarm(swarm, w, h);
           else swarm = makeSwarm(w, h, deepJellyTuning(), Math.random);
+        } else if (sceneId === "fireworks") {
+          // The fireworks' own motion, on the fine grid it was made for.
+          const { solid, letters } = solidMask(
+            a,
+            cols,
+            rows,
+            px,
+            iconRef.current,
+            wordsRef.current,
+          );
+          const setup = {
+            cols,
+            rows,
+            solid,
+            letters,
+            icon: rectOf(iconRef.current, a, cols, rows, px),
+            words: boundsOf(letters, cols),
+            rng: Math.random,
+          };
+          if (fireworks) fireworks.resize(setup);
+          else fireworks = new FireworksScene(setup);
         } else {
           // The vanishing point rests behind the icon.
           const icon = iconRef.current?.getBoundingClientRect();
@@ -346,6 +373,7 @@ export function ScreensaverCanvas({
       const p = pointer ? { x: pointer.x * px, y: pointer.y * px } : null;
       if (swarm && step(swarm, dt, p, keep, deepJellyTuning(), Math.random)) nodRef.current();
       if (stars && stepStars(stars, dt, p, deepStarTuning(), Math.random)) nodRef.current();
+      if (fireworks && fireworks.frame(dt, pointer).nod) nodRef.current();
       // On a light page, a dark backdrop (deep sea, night sky), and light text on it.
       const night = light.matches;
       if (night !== deepNight) {
@@ -388,6 +416,15 @@ export function ScreensaverCanvas({
       };
       if (swarm) drawDeepJellies({ ...common, swarm, t: deepJellyTuning() });
       if (stars) drawDeepStars({ ...common, field: stars, t: deepStarTuning() });
+      if (fireworks)
+        drawDeepFireworks({
+          ...common,
+          scene: fireworks,
+          px,
+          width: canvas.width / dpr,
+          height: canvas.height / dpr,
+          t: deepFireworkTuning(),
+        });
     };
 
     // ASCII art: a character per cell of the glow's grid (lined up with it

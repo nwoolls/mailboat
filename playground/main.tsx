@@ -79,6 +79,11 @@ import {
   setDeepStarTuning,
 } from "../src/features/screensaver/model/deepStars";
 import {
+  DEEP_FIREWORK_DEFAULTS,
+  type DeepFireworkTuning,
+  setDeepFireworkTuning,
+} from "../src/features/screensaver/model/deepFireworks";
+import {
   RESTYLED,
   SCREENSAVER_LOOK_DEFAULTS,
   type ScreensaverLookTuning,
@@ -389,6 +394,19 @@ const STAR_DIALS: Sections<DeepStarTuning> = [
   },
 ];
 
+const FIREWORK_DIALS: Sections<DeepFireworkTuning> = [
+  {
+    title: "Fireworks",
+    dials: [
+      { key: "bloom", min: 0, max: 1.5, step: 0.05, hint: "glow round young sparks" },
+      { key: "flash", min: 0, max: 1.5, step: 0.05, hint: "a burst's flash" },
+      { key: "smoke", min: 0, max: 2, step: 0.05, hint: "smoke" },
+      { key: "trail", min: 0.2, max: 2, step: 0.05, hint: "trail length" },
+      { key: "pixel", min: 2, max: 12, step: 1, hint: "pixel size (pixel art)" },
+    ],
+  },
+];
+
 const LOOK_DIALS: Sections<ScreensaverLookTuning> = [
   {
     title: "Pixel art",
@@ -477,6 +495,11 @@ const stirStart = saved("playground.pondStir", POND_STIR_DEFAULTS, setPondStir);
 const bubbleStart = saved("playground.bubbles", BUBBLE_DEFAULTS, setBubbleTuning);
 const jellyStart = saved("playground.deepJellies", DEEP_JELLY_DEFAULTS, setDeepJellyTuning);
 const starStart = saved("playground.deepStars", DEEP_STAR_DEFAULTS, setDeepStarTuning);
+const fireworkStart = saved(
+  "playground.deepFireworks",
+  DEEP_FIREWORK_DEFAULTS,
+  setDeepFireworkTuning,
+);
 const looksStart = saved(
   "playground.screensaverLooks",
   SCREENSAVER_LOOK_DEFAULTS,
@@ -746,6 +769,18 @@ function Playground() {
                 apply={setDeepStarTuning}
                 fields={[]}
                 sections={STAR_DIALS}
+              />
+            )}
+            {playing === "fireworks" && (
+              <Panel
+                key="fireworks"
+                title="Fireworks"
+                storageKey="playground.deepFireworks"
+                defaults={DEEP_FIREWORK_DEFAULTS}
+                start={fireworkStart}
+                apply={setDeepFireworkTuning}
+                fields={[]}
+                sections={FIREWORK_DIALS}
               />
             )}
             <Panel

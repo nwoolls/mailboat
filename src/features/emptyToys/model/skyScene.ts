@@ -333,8 +333,12 @@ export function paletteFor(hour: number): Palette {
  * read.
  */
 export function skyIsDark(p: Palette): boolean {
-  const lum = (c: Rgb) => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
   return (lum(p.top) + lum(p.horizon)) / 2 < 0.48;
+}
+
+/** How bright a color looks, 0–1. */
+function lum(c: Rgb): number {
+  return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
 }
 
 function cell(material: Material, color: Rgb, edge = 0, slope = 0, glow = 0): Cell {

@@ -34,4 +34,39 @@ describe("FireworksScene", () => {
     const aimed = scene.rockets.find((r) => Math.abs(r.x - 104) < 6);
     expect(aimed).toBeDefined();
   });
+
+  it("carries on through a resize: the same sparks, where they were", () => {
+    const scene = new FireworksScene(testSetup(450, 300, seeded(2)));
+    for (let i = 0; i < 60 * 4; i++) scene.frame(1 / 60, null);
+    const before = scene.sparks.map((p) => [p.x, p.y]);
+    const bursts = scene.bursts;
+    scene.resize(testSetup(600, 360, seeded(3)));
+    expect(scene.sparks.map((p) => [p.x, p.y])).toEqual(before);
+    expect(scene.bursts).toBe(bursts);
+    for (let i = 0; i < 60 * 4; i++) scene.frame(1 / 60, null);
+    expect(scene.bursts).toBeGreaterThan(bursts);
+  });
+
+  it("has a weeping willow: its sparks sink slowly, most of the way to the ground", () => {
+    const rows = 300;
+    const scene = new FireworksScene(testSetup(450, rows, seeded(2)));
+    const quiet = scene as unknown as {
+      nextLaunch: number;
+      nextLogo: number;
+      launch: (x: number, y: number, shell: string, depth: number) => void;
+    };
+    quiet.nextLaunch = Infinity;
+    quiet.nextLogo = Infinity;
+    quiet.launch(225, 60, "weeping", 0);
+    while (scene.rockets.length) scene.frame(1 / 60, null);
+    const burstY = Math.min(...scene.sparks.filter((p) => !p.small).map((p) => p.y));
+    for (let i = 0; i < 60 * 4; i++) scene.frame(1 / 60, null);
+    const strands = scene.sparks.filter((p) => !p.small);
+    // Four seconds on, still burning, and well down toward the ground.
+    expect(strands.length).toBeGreaterThan(50);
+    const lowest = Math.max(...strands.map((p) => p.y));
+    expect(lowest - burstY).toBeGreaterThan(rows * 0.35);
+    // Each hangs a long trail above it.
+    expect(Math.max(...strands.map((p) => p.trail.length))).toBeGreaterThan(60);
+  });
 });

@@ -157,7 +157,7 @@ Ten pixel-art scenes (sandscape, envelope flock, life, rain on glass, koi pond, 
   <img src="images/features/toybox-light.png" alt="Settings, Toybox: glow, screensavers, and the choice of toy for the empty view" width="800">
 </picture>
 
-The screensavers, and something to play with behind an empty view: the glow, a pond, bubble wrap or the sky. Each toy can be drawn as pixel art or ASCII art, and so can the jellyfish and starfield screensavers.
+The screensavers, and something to play with behind an empty view: the glow, a pond, bubble wrap or the sky. Each toy can be drawn as pixel art or ASCII art, and so can the jellyfish, starfield and fireworks screensavers.
 
 ### Screensaver scenes and colors
 
