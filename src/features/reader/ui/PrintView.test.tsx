@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MessageMeta, ThreadDetail } from "../../../platform/tauri/bindings";
 
@@ -64,15 +65,45 @@ const opened = (id: number) => ({
   recolorable: false,
 });
 
-function setup(client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+/** The app's own query defaults (`app/App.tsx`): a failed query is tried once more. */
+const appClient = () =>
+  new QueryClient({ defaultOptions: { queries: { retry: 1, retryDelay: 0 } } });
+
+function setup(client = appClient(), { strict = false } = {}) {
   messagePrint.mockImplementation(async (id: number) => opened(id));
   windowPrint.mockResolvedValue({ status: "ok", data: null });
-  const view = (run: number) => (
-    <QueryClientProvider client={client}>
-      <PrintView threadId={7} run={run} />
-    </QueryClientProvider>
-  );
+  const view = (run: number) => {
+    const tree = (
+      <QueryClientProvider client={client}>
+        <PrintView threadId={7} run={run} />
+      </QueryClientProvider>
+    );
+    return strict ? <StrictMode>{tree}</StrictMode> : tree;
+  };
   return { client, view };
+}
+
+/**
+ * Animation frames that run only when the test says, so a run can be
+ * replaced at each step between being ready and printing.
+ */
+function handRunFrames() {
+  const pending = new Map<number, FrameRequestCallback>();
+  let next = 0;
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+    pending.set(++next, cb);
+    return next;
+  });
+  vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => pending.delete(id));
+  return {
+    pending,
+    run: () =>
+      act(() => {
+        const due = [...pending.values()];
+        pending.clear();
+        for (const cb of due) cb(0);
+      }),
+  };
 }
 
 const frames = () => [...document.querySelectorAll<HTMLIFrameElement>(".print-root iframe")];
@@ -84,6 +115,7 @@ async function loadFrames(count: number) {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   for (const f of [threadGet, messagePrint, windowPrint, showToast]) f.mockReset();
 });
 
@@ -137,40 +169,58 @@ describe("printing a conversation", () => {
     expect(frames()).toHaveLength(1);
   });
 
-  it("never prints a run that a newer one replaced", async () => {
-    // Animation frames run only when the test says, so the first run can
-    // be replaced between being ready and printing.
-    const pending = new Map<number, FrameRequestCallback>();
-    let next = 0;
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
-      pending.set(++next, cb);
-      return next;
+  for (const framesRun of [0, 1]) {
+    it(`never prints a run replaced after ${framesRun} of its two frames`, async () => {
+      const frames2 = handRunFrames();
+      const { view } = setup();
+      threadGet.mockResolvedValue(detail([1]));
+      const { rerender } = render(view(1));
+      await loadFrames(1);
+      await waitFor(() => expect(frames2.pending.size).toBeGreaterThan(0));
+      for (let i = 0; i < framesRun; i++) frames2.run();
+      let second!: () => void;
+      messagePrint.mockReturnValue(new Promise((done) => (second = () => done(opened(1)))));
+      rerender(view(2));
+      frames2.run();
+      frames2.run();
+      expect(windowPrint).not.toHaveBeenCalled();
+      act(() => second());
+      await waitFor(() => expect(frames2.pending.size).toBeGreaterThan(0));
+      frames2.run();
+      frames2.run();
+      await waitFor(() => expect(windowPrint).toHaveBeenCalledTimes(1));
     });
-    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => pending.delete(id));
-    const runFrames = () =>
-      act(() => {
-        const due = [...pending.values()];
-        pending.clear();
-        for (const cb of due) cb(0);
-      });
+  }
 
-    const { view } = setup();
-    threadGet.mockResolvedValue(detail([1]));
-    const { rerender } = render(view(1));
-    await loadFrames(1);
-    await waitFor(() => expect(pending.size).toBeGreaterThan(0));
-    let second!: () => void;
-    messagePrint.mockReturnValue(new Promise((done) => (second = () => done(opened(1)))));
-    rerender(view(2));
-    runFrames();
-    runFrames();
-    expect(windowPrint).not.toHaveBeenCalled();
-    act(() => second());
-    await waitFor(() => expect(pending.size).toBeGreaterThan(0));
-    runFrames();
-    runFrames();
+  it("prints once under React's development double run", async () => {
+    const { view } = setup(appClient(), { strict: true });
+    threadGet.mockResolvedValue(detail([1, 2]));
+    render(view(1));
     await waitFor(() => expect(windowPrint).toHaveBeenCalledTimes(1));
-    vi.restoreAllMocks();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(windowPrint).toHaveBeenCalledTimes(1);
+  });
+
+  it("says why when the conversation itself doesn't load", async () => {
+    const { view } = setup();
+    threadGet.mockRejectedValue(new Error("offline"));
+    render(view(1));
+    await waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
+    expect(showToast.mock.calls[0]![0]).toEqual({
+      message: "Couldn't print: the conversation didn't load.",
+    });
+    expect(windowPrint).not.toHaveBeenCalled();
+  });
+
+  it("says when there's nothing to print", async () => {
+    const { view } = setup();
+    threadGet.mockResolvedValue({ ...detail([1]), messages: [{ ...meta(1), draft: true }] });
+    render(view(1));
+    await waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
+    expect(showToast.mock.calls[0]![0]).toEqual({
+      message: "There's nothing to print in this conversation yet.",
+    });
+    expect(windowPrint).not.toHaveBeenCalled();
   });
 
   it("says so instead of printing when an email fails to load", async () => {
@@ -182,6 +232,13 @@ describe("printing a conversation", () => {
     });
     render(view(1));
     await waitFor(() => expect(showToast).toHaveBeenCalledTimes(1));
+    expect(showToast.mock.calls[0]![0]).toEqual({
+      message: "Couldn't print: an email in this conversation didn't load.",
+    });
+    // Not tried again behind the toast (the app's queries retry once), so
+    // no dialog opens after it said it couldn't print.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(messagePrint.mock.calls.filter(([id]) => id === 2)).toHaveLength(1);
     expect(windowPrint).not.toHaveBeenCalled();
   });
 });

@@ -31,6 +31,9 @@ export function PrintView({ threadId, run }: { threadId: ThreadId; run: number }
     queryFn: () => unwrap(commands.threadGet(threadId)),
     staleTime: Infinity,
     gcTime: 0,
+    // A failure is final: it says so and doesn't print. A retry that
+    // worked after that would be a print nobody is waiting for.
+    retry: false,
   });
   const messages = printedMessages(thread.data?.messages ?? []);
   const bodies = useQueries({
@@ -39,24 +42,24 @@ export function PrintView({ threadId, run }: { threadId: ThreadId; run: number }
       queryFn: () => unwrap(commands.messagePrint(m.id)),
       staleTime: Infinity,
       gcTime: 0,
+      retry: false,
     })),
   });
   const [loaded, setLoaded] = useState<ReadonlySet<number>>(new Set());
   const printed = useRef(false);
 
-  const failed =
-    thread.isError || bodies.some((b) => b.isError) || (thread.isSuccess && !messages.length);
+  const failure = thread.isError
+    ? "Couldn't print: the conversation didn't load."
+    : bodies.some((b) => b.isError)
+      ? "Couldn't print: an email in this conversation didn't load."
+      : thread.isSuccess && !messages.length
+        ? "There's nothing to print in this conversation yet."
+        : null;
   const ready =
     thread.isSuccess &&
     messages.length > 0 &&
     bodies.every((b) => b.isSuccess) &&
     messages.every((m) => loaded.has(m.id));
-
-  const failure = !failed
-    ? null
-    : messages.length
-      ? "Couldn't print: an email in this conversation didn't load."
-      : "There's nothing to print in this conversation yet.";
   useEffect(() => {
     if (!failure || printed.current) return;
     printed.current = true;

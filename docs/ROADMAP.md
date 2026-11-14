@@ -5644,7 +5644,8 @@ built, the owner has tried it, and the owner has published 0.3.0
       left out, each under its sender, recipients and date, in its original
       colors on white, with its attachments named; images as on screen.
       No footer: WebKit can't number pages from CSS, and macOS's print
-      dialog can add its own headers and footers)*
+      dialog can add its own headers and footers. The owner checked it on
+      paper on macOS and in Windows' print preview)*
 - [ ] Clone a sent email *(owner request, 2026-11-08; maybe for the Polish
       Spike, not likely)*: find an email you sent before and open it in a
       new composer with the same recipients, subject and body, to send the
