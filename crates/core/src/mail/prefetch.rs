@@ -99,10 +99,9 @@ fn client_builder() -> reqwest::ClientBuilder {
         .redirect(reqwest::redirect::Policy::custom(|attempt| {
             if attempt.url().host().is_some_and(|h| is_local_host(&h)) {
                 attempt.error("a redirect to the local network")
-            } else if attempt.previous().len() >= 10 {
-                attempt.stop()
             } else {
-                attempt.follow()
+                // reqwest's own rule: up to 10 redirects, then an error.
+                reqwest::redirect::Policy::default().redirect(attempt)
             }
         }))
 }
@@ -115,16 +114,23 @@ impl reqwest::dns::Resolve for PublicOnly {
     fn resolve(&self, name: reqwest::dns::Name) -> reqwest::dns::Resolving {
         let name = name.as_str().to_string();
         Box::pin(async move {
-            let public: Vec<SocketAddr> = tokio::net::lookup_host((name.as_str(), 0))
-                .await?
-                .filter(|addr| !is_local_ip(addr.ip()))
-                .collect();
-            if public.is_empty() {
-                return Err("the name only reaches the local network".into());
-            }
+            let found = tokio::net::lookup_host((name.as_str(), 0)).await?;
+            let public = public_addresses(found)?;
             Ok(Box::new(public.into_iter()) as reqwest::dns::Addrs)
         })
     }
+}
+
+/// The public addresses among a lookup's answers, or an error if there are
+/// none.
+fn public_addresses(
+    found: impl Iterator<Item = SocketAddr>,
+) -> std::result::Result<Vec<SocketAddr>, Box<dyn std::error::Error + Send + Sync>> {
+    let public: Vec<SocketAddr> = found.filter(|addr| !is_local_ip(addr.ip())).collect();
+    if public.is_empty() {
+        return Err("the name only reaches the local network".into());
+    }
+    Ok(public)
 }
 
 /// What one pass did, for the sync log (counts only).
@@ -504,6 +510,60 @@ mod tests {
         assert!(lookup.is_err());
         let lookup = PublicOnly.resolve("127.0.0.1".parse().unwrap()).await;
         assert!(lookup.is_err());
+    }
+
+    /// A name that resolves to both kinds keeps only its public addresses.
+    #[test]
+    fn a_lookup_keeps_only_public_addresses() {
+        let addr = |s: &str| s.parse::<SocketAddr>().unwrap();
+        let found = [
+            addr("192.168.1.1:0"),
+            addr("93.184.215.14:0"),
+            addr("[::1]:0"),
+            addr("[2606:2800::1]:0"),
+        ];
+        assert_eq!(
+            public_addresses(found.into_iter()).unwrap(),
+            vec![addr("93.184.215.14:0"), addr("[2606:2800::1]:0")]
+        );
+        assert!(public_addresses([addr("10.0.0.1:0")].into_iter()).is_err());
+    }
+
+    /// Redirects between public addresses follow reqwest's own limit: ten,
+    /// then an error (not the redirect itself handed back as the answer).
+    #[tokio::test]
+    async fn public_redirects_follow_the_usual_limit() {
+        let server = server().await;
+        for hop in 0..11 {
+            Mock::given(method("GET"))
+                .and(path(format!("/hop{hop}")))
+                .respond_with(ResponseTemplate::new(302).insert_header(
+                    "location",
+                    format!("{}/hop{}", base(&server), hop + 1).as_str(),
+                ))
+                .mount(&server)
+                .await;
+        }
+        // The last hop lands on the image.
+        Mock::given(method("GET"))
+            .and(path("/hop11"))
+            .respond_with(
+                ResponseTemplate::new(302)
+                    .insert_header("location", format!("{}/a.png", base(&server)).as_str()),
+            )
+            .mount(&server)
+            .await;
+        let dir = tempdir();
+        let http = prefetch(&dir, &server).http;
+        // From /hop2: ten redirects (hop2 … hop11, then a.png).
+        let ten = format!("{}/hop2", base(&server));
+        let (bytes, _, _) = fetch_web_image(&http, &ten, MAX_IMAGE_BYTES).await.unwrap();
+        assert_eq!(bytes, vec![1u8, 2, 3]);
+        // From /hop1: eleven, one too many.
+        let eleven = format!("{}/hop1", base(&server));
+        assert!(fetch_web_image(&http, &eleven, MAX_IMAGE_BYTES)
+            .await
+            .is_err());
     }
 
     /// A public image that redirects to the reader's own network isn't

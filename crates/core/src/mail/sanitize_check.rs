@@ -189,9 +189,10 @@ fn is_local_network_host(host: &str) -> bool {
     };
     let v6 = |ip: Ipv6Addr| {
         let s = ip.segments();
+        let [.., a, b, c, d] = ip.octets();
         ip.to_ipv4_mapped().is_some_and(v4)
+            || (s[..6].iter().all(|x| *x == 0) && v4(Ipv4Addr::new(a, b, c, d)))
             || ip.is_multicast()
-            || s[..6].iter().all(|x| *x == 0)
             || (s[0] & 0xfe00) == 0xfc00
             || (s[0] & 0xffc0) == 0xfe80
     };
@@ -546,6 +547,12 @@ mod tests {
                 "{body}"
             );
         }
+        // An IPv4 address written inside an IPv6 one counts as that address.
+        let public = r#"<img src="https://[::8.8.8.8]/a.png">"#;
+        assert_eq!(
+            problems(&document(public, true), true),
+            Vec::<String>::new()
+        );
         // A link to one is only followed if clicked: not an image.
         let link = r#"<a href="https://192.168.1.1/">router</a>"#;
         assert_eq!(problems(&document(link, true), true), Vec::<String>::new());

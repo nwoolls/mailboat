@@ -67,14 +67,14 @@ fn is_local_ipv6(ip: Ipv6Addr) -> bool {
     if let Some(v4) = ip.to_ipv4_mapped() {
         return is_local_ipv4(v4);
     }
+    // An IPv4 address written the old way (`::127.0.0.1`), `::1` and `::`
+    // included: judged as that IPv4 address.
+    if ip.segments()[..6].iter().all(|s| *s == 0) {
+        let [.., a, b, c, d] = ip.octets();
+        return is_local_ipv4(Ipv4Addr::new(a, b, c, d));
+    }
     let first = ip.segments()[0];
-    ip.is_loopback()
-        || ip.is_unspecified()
-        || ip.is_multicast()
-        || (first & 0xfe00) == 0xfc00
-        || (first & 0xffc0) == 0xfe80
-        // An IPv4 address written the old way (`::127.0.0.1`).
-        || ip.segments()[..6].iter().all(|s| *s == 0)
+    ip.is_multicast() || (first & 0xfe00) == 0xfc00 || (first & 0xffc0) == 0xfe80
 }
 
 #[cfg(test)]
@@ -133,6 +133,7 @@ mod tests {
             "https://100.128.0.1/a.png",
             "https://[2001:db8::1]/a.png",
             "https://[::ffff:8.8.8.8]/a.png",
+            "https://[::8.8.8.8]/a.png",
             "https://localhost.x.example/a.png",
             "https://local.x.example/a.png",
         ] {

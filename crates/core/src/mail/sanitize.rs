@@ -1361,6 +1361,12 @@ mod tests {
                         format!(r#"<img src="{address}" width="100">"#),
                         format!(r#"<table background="{address}"><tr><td>x</td></tr></table>"#),
                         format!(r#"<div style="background:url({address})">x</div>"#),
+                        format!(
+                            "<style>.a{{background:url(\"{address}\")}}</style><div class=a>x</div>"
+                        ),
+                        format!(
+                            r#"<div style="background-image:image-set(url({address}) 1x)">x</div>"#
+                        ),
                     ] {
                         let out = sanitize_html(&html, allow_images);
                         let body = out.document.split("<body>").nth(1).unwrap_or_default();
