@@ -1,3 +1,5 @@
+import { blend, type FrameResult, type Pointer, type Scene, type SceneSetup, SLOT } from "./scene";
+
 /**
  * The envelope flock, reworked as a murmuration (owner, 2026-11-13, of the
  * old flock of envelope icons: "any ideas to make the envelope flock not
@@ -413,4 +415,63 @@ export function birdChar(vx: number, vy: number): string {
   const a = Math.atan2(vy, vx);
   const o = Math.round((a / (Math.PI * 2)) * 4 + 4) % 4;
   return [">", "v", "<", "^"][o]!;
+}
+
+/** Screen pixels per cell of the fine grid the catalog gives a scene (`cellPx`). */
+const FINE_PX = 2;
+
+/**
+ * The flock on the fine grid of palette cells, for the scene catalog,
+ * which needs every scene to draw that way. The Toybox's styles draw
+ * the flock themselves (`ui/murmurationDraw.ts`), so this is only seen if
+ * that drawing is unavailable: each bird a cell, nearer ones brighter.
+ */
+export class FlockScene implements Scene {
+  private readonly flock: Murmuration;
+
+  constructor(private readonly s: SceneSetup) {
+    const t = murmurationTuning();
+    const w = s.cols * FINE_PX;
+    const h = s.rows * FINE_PX;
+    // As many birds as a list card's area holds, fewer in a smaller one
+    // (all of them crowded into a small area, each saw every other).
+    const count = Math.max(30, Math.round((t.count * w * h) / (720 * 450)));
+    this.flock = makeMurmuration(w, h, { ...t, count: Math.min(t.count, count) }, s.rng);
+  }
+
+  frame(dt: number, pointer: Pointer): FrameResult {
+    const { icon, words } = this.s;
+    const px = (r: { x0: number; y0: number; x1: number; y1: number }) => ({
+      x0: r.x0 * FINE_PX,
+      y0: r.y0 * FINE_PX,
+      x1: r.x1 * FINE_PX,
+      y1: r.y1 * FINE_PX,
+    });
+    const nod = stepMurmuration(
+      this.flock,
+      dt,
+      pointer ? { x: pointer.x * FINE_PX, y: pointer.y * FINE_PX } : null,
+      icon
+        ? { x: (icon.x0 + icon.x1) * (FINE_PX / 2), y: (icon.y0 + icon.y1) * (FINE_PX / 2) }
+        : null,
+      murmurationTuning(),
+      this.s.rng,
+      [icon, words].filter((r): r is NonNullable<typeof r> => r !== null).map(px),
+    );
+    return { nod };
+  }
+
+  draw(out: Uint8Array, opacity: Uint8Array) {
+    const { cols, rows } = this.s;
+    out.fill(0);
+    for (const b of this.flock.birds) {
+      if (b.roosting) continue;
+      const x = Math.floor(b.x / FINE_PX);
+      const y = Math.floor(b.y / FINE_PX);
+      if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
+      const i = y * cols + x;
+      out[i] = blend(SLOT.mid, SLOT.accent, 1 - b.depth);
+      opacity[i] = Math.round((0.35 + 0.65 * (1 - b.depth)) * 255);
+    }
+  }
 }

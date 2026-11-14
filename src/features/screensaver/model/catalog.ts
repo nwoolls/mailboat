@@ -1,11 +1,11 @@
 import { CodeRainScene } from "./codeRain";
-import { EnvelopeScene } from "./envelopes";
 import { FireflyScene } from "./fireflies";
 import { FireworksScene } from "./fireworks";
 import { JellyfishScene } from "./jellyfish";
 import { KoiScene } from "./koi";
 import { LavaScene } from "./lava";
 import { LifeScene } from "./life";
+import { FlockScene } from "./murmuration";
 import { DEFAULT_PALETTE, type PaletteId, paletteFor } from "./palettes";
 import { RainScene } from "./rain";
 import { SAND_CELL_PX, SandscapeScene } from "./sand";
@@ -22,10 +22,11 @@ export const SCREENSAVERS = [
   },
   {
     id: "envelopes",
-    // The id stays, so a saved choice of it still plays.
+    // Was the envelope flock; the id stays, so a saved choice of it still plays.
     label: "Flock",
-    make: (s: SceneSetup) => new EnvelopeScene(s),
-    // Finer than the rest: at 3px the flock moved in visible steps.
+    make: (s: SceneSetup) => new FlockScene(s),
+    // Finer than the rest, as the envelope flock was (at 3px it moved in
+    // visible steps); the Toybox's styles draw the birds themselves.
     cellPx: 2,
   },
   {
