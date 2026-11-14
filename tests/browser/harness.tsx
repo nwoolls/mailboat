@@ -21,6 +21,7 @@
  *                                 being written, and `&draftsave=fail` makes
  *                                 saving it fail. The order the commands were
  *                                 called in is in `window.__order`
+ *   ?mode=toybox                  Settings → Toybox
  *   ?mode=shortcuts               the `?` keyboard shortcuts sheet
  *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a
@@ -30,6 +31,8 @@
  *   ?mode=list&density=…&lines=…  the demo's Inbox, with Settings →
  *                                 List's density and preview lines
  *   ?mode=empty&toy=…             an empty Inbox with a Toybox toy
+ *     &glow=pixel|ascii            the glow (a toy), in that Toybox style
+ *     &style=pixel|ascii           the Toybox style without the glow
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
  *   &ai=none                      (card, inline) no AI set up
  *   &summary=live                 (inline) the AI summary above the
@@ -414,14 +417,17 @@ if (harnessMode === "search")
   );
 if (harnessMode === "empty") {
   const params = new URLSearchParams(location.search);
-  const toy = params.get("toy") ?? "none";
+  // The glow is a toy: `&glow=pixel|ascii` chooses it, in that Toybox
+  // style. No toy otherwise unless asked for (`&toy=…`), and no
+  // screensaver unless asked for (`&screensaver`): only what's under test.
+  const glow = params.get("glow");
+  const toy = params.get("toy") ?? (glow ? "glow" : "none");
   localStorage.setItem("prefs.emptyToy", JSON.stringify(toy));
-  // No glow, and no screensaver unless asked for (`&screensaver`): only
-  // the toy or the screensaver is under test.
   localStorage.setItem(
     "prefs.featureFlags",
-    JSON.stringify({ emptyGlow: false, screensavers: params.has("screensaver") }),
+    JSON.stringify({ screensavers: params.has("screensaver") }),
   );
+  localStorage.setItem("prefs.toyboxStyle", JSON.stringify(glow ?? params.get("style") ?? "pixel"));
 }
 
 // Imported after the mock, so the app sees a Tauri window (IS_TAURI).

@@ -14,7 +14,7 @@ import { CommandPalette } from "../../src/features/palette/ui/CommandPalette";
 import { TitleSearch } from "../../src/app/TitleSearch";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import { inbox } from "./demoMail";
-import { GeneralSection } from "../../src/features/settings/ui/SettingsSections";
+import { GeneralSection, ToyboxSection } from "../../src/features/settings/ui/SettingsSections";
 import { UpdateNotice } from "../../src/features/updates/ui/UpdateNotice";
 import { Sidebar } from "../../src/features/accounts/ui/Sidebar";
 import { useSignIn } from "../../src/features/accounts/ui/useSignIn";
@@ -108,6 +108,13 @@ export function Harness({
         </div>
       </div>
     );
+  // Settings → Toybox.
+  if (mode === "toybox")
+    return (
+      <div style={{ width: 720, padding: 16 }}>
+        <ToyboxSection />
+      </div>
+    );
   if (mode === "signedout")
     return (
       <div style={{ display: "flex", height: 600, width: 900 }}>
@@ -143,7 +150,7 @@ export function Harness({
           flexDirection: "column",
         }}
       >
-        <button type="button" style={{ height: 40 }}>
+        <button type="button" data-card-title style={{ height: 40 }}>
           Inbox
         </button>
         <EmptyState state={{ icon: "caughtUp", title: "All caught up" }} swapKey="inbox" />

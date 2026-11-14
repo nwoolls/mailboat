@@ -14,17 +14,14 @@ import {
   TrashIcon,
 } from "../../../shared/ui/icons";
 import type { EmptyIcon, EmptyState as EmptyStateModel } from "../model/emptyState";
-import {
-  approach,
-  GLOW_FOLLOW_SECONDS,
-  GLOW_LINGER_SECONDS,
-  GLOW_RETURN_SECONDS,
-} from "../model/glow";
+import { followSeconds, glowMotion, spring } from "../model/glow";
 import { useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { ScreensaverCanvas, useScreensaver } from "../../screensaver/ui/ScreensaverCanvas";
 import { screensaverPrefs } from "../../screensaver/ui/prefs";
 import { EmptyToy } from "../../emptyToys/ui/EmptyToy";
-import { emptyToy } from "../../emptyToys/ui/prefs";
+import { emptyToy, toyboxStyle } from "../../emptyToys/ui/prefs";
+import { AsciiGlow } from "./AsciiGlow";
+import { PixelGlow } from "./PixelGlow";
 
 const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
   caughtUp: ThumbsUpIcon,
@@ -41,8 +38,8 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
 };
 
 /**
- * What an empty list shows: an icon, a line of copy and a drifting glow.
- * The glow spans the whole list card (title row included, behind its text)
+ * What an empty list shows: an icon, a line of copy and, if it's the toy
+ * chosen in Settings → Toybox (the default), a drifting glow. The glow spans the whole list card (title row included, behind its text)
  * and rests behind the icon. With the pointer anywhere over the card it
  * centres on the cursor; when the pointer leaves it lingers there a moment,
  * then eases back to its path.
@@ -55,18 +52,23 @@ const ICONS: Record<EmptyIcon, (props: IconProps) => React.ReactNode> = {
  *
  * After a minute without input a screensaver plays over it
  * (`features/screensaver`), playing with the icon and words; the icon
- * nods when a scene asks. The glow fades out while it plays. Both are behind
- * Toybox switches (Settings → Toybox).
+ * nods when a scene asks. The glow fades out while it plays, and any other
+ * toy is put away. Screensavers have a Toybox switch, and Toybox → Style can
+ * draw the glow as ASCII art (`AsciiGlow`).
  */
 export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey: string }) {
   const Icon = ICONS[state.icon];
   const flags = useFeatureFlags();
-  const { anchorRef, pullRef, glowRef } = useGlowPull(flags.emptyGlow);
+  const toy = emptyToy.use();
+  // The glow is one of the toys (owner, 2026-11-13), so it's never shown
+  // with another: two things following the pointer behind the icon compete.
+  const glow = toy === "glow";
+  const { anchorRef, pullRef, glowRef } = useGlowPull(glow);
   const iconRef = useRef<HTMLDivElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
   const { phase: screensaver, scene } = useScreensaver(flags.screensavers);
   const { palette } = screensaverPrefs.use();
-  const toy = emptyToy.use();
+  const style = toyboxStyle.use();
   const [shrugs, setShrugs] = useState(0);
   const shrug = useCallback(() => setShrugs((n) => n + 1), []);
   const iconMotion =
@@ -75,24 +77,38 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
     <div ref={anchorRef} className="flex flex-1 items-center justify-center px-8">
       {/* Positioned against the card (.panel), not this box, so it can
           reach under the title row; z-index -1 keeps it behind text. */}
-      {flags.emptyGlow && (
+      {glow && (
         <div
           ref={pullRef}
           aria-hidden
           className="empty-glow-pull"
           data-screensaver={screensaver !== "off" || undefined}
+          data-style={style}
         >
           <div ref={glowRef} className="empty-glow" />
         </div>
       )}
+      {/* Settings → Toybox → Style: the glow drawn in chunky pixels or in characters. */}
+      {glow && style === "pixel" && (
+        <PixelGlow glowRef={glowRef} pullRef={pullRef} hidden={screensaver !== "off"} />
+      )}
+      {glow && style === "ascii" && (
+        <AsciiGlow
+          glowRef={glowRef}
+          pullRef={pullRef}
+          iconRef={iconRef}
+          wordsRef={wordsRef}
+          hidden={screensaver !== "off"}
+        />
+      )}
       {/* Settings → Toybox: something to play with, put away while a
           screensaver plays. */}
       <EmptyToy
-        toy={screensaver === "off" ? toy : "none"}
+        toy={screensaver === "off" && toy !== "glow" ? toy : "none"}
         areaRef={anchorRef}
         iconRef={iconRef}
         wordsRef={wordsRef}
-        palette={palette}
+        style={style}
       />
       {screensaver !== "off" && (
         <ScreensaverCanvas
@@ -102,6 +118,7 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
           iconRef={iconRef}
           wordsRef={wordsRef}
           closing={screensaver === "closing"}
+          style={style}
           onNod={shrug}
         />
       )}
@@ -132,8 +149,9 @@ export function EmptyState({ state, swapKey }: { state: EmptyStateModel; swapKey
  * animation frame it moves the glow's wrapper towards its target: while
  * the pointer is over the card, the pointer minus the drift animation's
  * current offset (so the glow centres on the cursor and only its gentle
- * size change carries on). After the pointer leaves it keeps that target
- * for GLOW_LINGER_SECONDS, then aims for zero, gliding back onto its usual
+ * size change carries on), on a spring that tightens from a glide to a
+ * hold (`spring`, `followSeconds`). After the pointer leaves it keeps that target
+ * for a moment (`lingerSeconds`), then aims for zero, gliding back onto its usual
  * path, after which the loop stops. Pointer moves only update the target,
  * so nothing re-renders and no transition restarts.
  */
@@ -147,7 +165,21 @@ function useGlowPull(enabled: boolean) {
     const pull = pullRef.current;
     const card = anchor?.closest<HTMLElement>(".panel");
     if (!enabled || !anchor || !pull || !card) return;
-    const m = { x: 0, y: 0, cx: 0, cy: 0, attracted: false, leftAt: 0, frame: 0, last: 0 };
+    const m = {
+      x: 0,
+      y: 0,
+      cx: 0,
+      cy: 0,
+      // The spring's speed, each way.
+      vx: 0,
+      vy: 0,
+      attracted: false,
+      // When the pointer arrived, for the spring tightening as it follows.
+      arrivedAt: 0,
+      leftAt: 0,
+      frame: 0,
+      last: 0,
+    };
 
     // Rest the glow behind the icon, which sits below the card's centre
     // by half the title row's height.
@@ -164,7 +196,8 @@ function useGlowPull(enabled: boolean) {
     const tick = (now: number) => {
       const dt = Math.min((now - m.last) / 1000, 0.1);
       m.last = now;
-      const lingering = !m.attracted && now - m.leftAt < GLOW_LINGER_SECONDS * 1000;
+      const motion = glowMotion();
+      const lingering = !m.attracted && now - m.leftAt < motion.lingerSeconds * 1000;
       if (!m.attracted && !lingering) pull.dataset.attracted = "false";
       let tx = 0;
       let ty = 0;
@@ -173,12 +206,26 @@ function useGlowPull(enabled: boolean) {
         tx = m.cx - drift.x;
         ty = m.cy - drift.y;
       }
-      const tau = m.attracted || lingering ? GLOW_FOLLOW_SECONDS : GLOW_RETURN_SECONDS;
-      m.x = approach(m.x, tx, dt, tau);
-      m.y = approach(m.y, ty, dt, tau);
+      const response = m.attracted
+        ? followSeconds((now - m.arrivedAt) / 1000, motion)
+        : lingering
+          ? motion.holdSeconds
+          : motion.returnSeconds;
+      const sx = spring(m.x, m.vx, tx, dt, response);
+      const sy = spring(m.y, m.vy, ty, dt, response);
+      m.x = sx.x;
+      m.vx = sx.v;
+      m.y = sy.x;
+      m.vy = sy.v;
       pull.style.transform = `translate3d(${m.x}px, ${m.y}px, 0)`;
       // While attracted the drift keeps moving, so keep following.
-      const settled = !m.attracted && !lingering && Math.abs(m.x) < 0.5 && Math.abs(m.y) < 0.5;
+      const settled =
+        !m.attracted &&
+        !lingering &&
+        Math.abs(m.x) < 0.5 &&
+        Math.abs(m.y) < 0.5 &&
+        Math.abs(m.vx) < 1 &&
+        Math.abs(m.vy) < 1;
       m.frame = settled ? 0 : requestAnimationFrame(tick);
     };
     const run = () => {
@@ -193,6 +240,7 @@ function useGlowPull(enabled: boolean) {
       const a = anchor.getBoundingClientRect();
       m.cx = e.clientX - (a.left + a.width / 2);
       m.cy = e.clientY - (a.top + a.height / 2);
+      if (!m.attracted) m.arrivedAt = performance.now();
       m.attracted = true;
       pull.dataset.attracted = "true";
       run();

@@ -23,7 +23,7 @@ import {
  * see-through between; a sliding drop stretches into a teardrop.
  */
 
-type Drop = {
+export type Drop = {
   x: number;
   y: number;
   /** Radius in cells; below BEAD it's a bead of condensation. */
@@ -37,7 +37,7 @@ type Drop = {
 
 const MAX_BEADS = 900;
 /** Drops smaller than this are beads: they never slide. */
-const BEAD = 1.5;
+export const BEAD = 1.5;
 /** The largest a drop grows by swallowing others. */
 const MAX_R = 7.5;
 const WIPE = 6;
@@ -45,21 +45,51 @@ const WIPE = 6;
 export class RainScene implements Scene {
   readonly drops: Drop[] = [];
   /** Trail left by sliding drops, fading from 1. */
-  private readonly trail: Float32Array;
+  trail: Float32Array;
   /** Where the pointer wiped, fading from 1; no fog forms there meanwhile. */
-  private readonly wiped: Float32Array;
+  wiped: Float32Array;
   /** How thick the fog is in each cell, a little uneven, fixed. */
-  private readonly mist: Float32Array;
+  mist: Float32Array;
   private last: Pointer = null;
   private t = 0;
   private lastNod = -Infinity;
 
-  constructor(private readonly s: SceneSetup) {
+  constructor(private s: SceneSetup) {
     this.trail = new Float32Array(s.cols * s.rows);
     this.wiped = new Float32Array(s.cols * s.rows);
     this.mist = new Float32Array(s.cols * s.rows);
     for (let i = 0; i < this.mist.length; i++) this.mist[i] = 0.75 + s.rng() * 0.5;
     for (let i = 0; i < MAX_BEADS / 2; i++) this.bead();
+  }
+
+  /** The grid it runs on, in cells. */
+  get size(): { cols: number; rows: number } {
+    return { cols: this.s.cols, rows: this.s.rows };
+  }
+
+  /** Seconds since it started. */
+  get time(): number {
+    return this.t;
+  }
+
+  /**
+   * Carries on in a resized area (`setup`): the drops stay where they are,
+   * in cells from the top left, and so do the fog, the trails and the
+   * wiped streak, as much as fits; new glass fogs over as the rest did.
+   */
+  resize(setup: SceneSetup) {
+    const old = this.s;
+    const carry = (from: Float32Array, fill: () => number) => {
+      const to = new Float32Array(setup.cols * setup.rows);
+      for (let y = 0; y < setup.rows; y++)
+        for (let x = 0; x < setup.cols; x++)
+          to[y * setup.cols + x] = x < old.cols && y < old.rows ? from[y * old.cols + x]! : fill();
+      return to;
+    };
+    this.trail = carry(this.trail, () => 0);
+    this.wiped = carry(this.wiped, () => 0);
+    this.mist = carry(this.mist, () => 0.75 + setup.rng() * 0.5);
+    this.s = setup;
   }
 
   private bead(

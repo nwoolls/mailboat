@@ -55,8 +55,9 @@ which has since shut down.
   ChatGPT subscription. No API keys, and nothing is sent without you seeing it.
 - **Works with your AI apps.** Let Claude Desktop or Claude Code search and read
   your mail, and save drafts, over MCP. Off by default; AI apps can only read mail and save drafts, never send.
-- **Inbox Zero, with toys.** An empty view can have a toy (a pond, bubble wrap to pop, or a
-  sky that follows the time of day) or one of ten pixel-art screensavers.
+- **Inbox Zero, with toys.** An empty view can have a toy (a glow that follows the pointer,
+  a pond, bubble wrap to pop, or a sky that follows the time of day) or one of eleven
+  screensavers, drawn in pixel art or ASCII art.
 
 ### A closer look
 
@@ -90,7 +91,7 @@ which has since shut down.
         <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/screensaver-dark.png">
         <img src="docs/images/features/screensaver-light.png" alt="A pixel-art koi pond swimming over an empty view">
       </picture>
-      <br><sub><b>Inbox Zero</b> has toys: a pond, bubble wrap, a sky, and ten screensavers.</sub>
+      <br><sub><b>Inbox Zero</b> has toys: a glow, a pond, bubble wrap, a sky, and eleven screensavers.</sub>
     </td>
   </tr>
   <tr>

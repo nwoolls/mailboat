@@ -1,6 +1,6 @@
 import { resetFeatureFlags } from "../../../shared/lib/featureFlags";
 import { composingPrefs } from "../../compose/ui/composingPrefs";
-import { emptyToy } from "../../emptyToys/ui/prefs";
+import { emptyToy, lastToy, toyboxStyle } from "../../emptyToys/ui/prefs";
 import { listPrefs } from "../../mailbox/ui/listPrefs";
 import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import { screensaverPrefs } from "../../screensaver/ui/prefs";
@@ -22,6 +22,8 @@ export function restoreWindowDefaults() {
   textSize.reset();
   screensaverPrefs.reset();
   emptyToy.reset();
+  lastToy.reset();
+  toyboxStyle.reset();
   resetFeatureFlags();
   localStorage.setItem(APPEARANCE_STORAGE_KEY, JSON.stringify(DEFAULT_APPEARANCE));
   applyAppearance(DEFAULT_APPEARANCE);

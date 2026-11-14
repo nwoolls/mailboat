@@ -54,6 +54,28 @@ export function skyAt(hour: number): Sky {
   };
 }
 
+/** The sky's two colors at `hour` as numbers (top, horizon), for drawing on a canvas. */
+export function skyColorsAt(hour: number): {
+  top: [number, number, number];
+  horizon: [number, number, number];
+} {
+  const h = ((hour % 24) + 24) % 24;
+  const i = STOPS.findIndex((s, n) => n > 0 && h < s.hour);
+  const a = STOPS[i - 1]!;
+  const b = STOPS[i]!;
+  const t = (h - a.hour) / (b.hour - a.hour);
+  const at = (x: number[], y: number[]) =>
+    x.map((v, k) => Math.round(v + (y[k]! - v) * t)) as [number, number, number];
+  return { top: at(a.top, b.top), horizon: at(a.horizon, b.horizon) };
+}
+
+/** How close it is to sunrise or sunset, 1 at either to 0 an hour and a half away. */
+export function duskiness(hour: number): number {
+  const h = ((hour % 24) + 24) % 24;
+  const near = Math.min(Math.abs(h - SUNRISE), Math.abs(h - SUNSET));
+  return Math.max(0, 1 - near / 1.5);
+}
+
 /** How dark it is, 0 by day to 1 at night, easing through dusk and dawn. */
 export function nightness(hour: number): number {
   const h = ((hour % 24) + 24) % 24;
@@ -73,44 +95,25 @@ export function moonPhase(date: Date): number {
 }
 
 /**
- * The lit part of the moon as an SVG path, in a box of `size`: the lit
- * limb's half circle, closed by the terminator (a half ellipse whose
- * width follows the phase). Waxing lights the right, waning the left,
- * as seen from the northern hemisphere.
+ * For the playground only: an hour both skies show instead of the real one
+ * (null for the real time), so pixel and ASCII art can be compared at
+ * dawn, noon, dusk or night. `subscribe` tells a sky to draw again.
  */
-export function moonPath(phase: number, size: number): string {
-  const r = size / 2;
-  const waxing = phase < 0.5;
-  // The terminator's width: r at new and full, 0 at the quarters.
-  const k = Math.cos(phase * 2 * Math.PI) * r;
-  const rx = Math.abs(k);
-  const limb = waxing ? 1 : 0;
-  // The terminator bulges towards the lit side before full (gibbous),
-  // away from it while a crescent.
-  const gibbous = phase > 0.25 && phase < 0.75;
-  const term = waxing === gibbous ? 1 : 0;
-  return `M ${f(r)} 0 A ${f(r)} ${f(r)} 0 0 ${limb} ${f(r)} ${f(size)} A ${f(rx)} ${f(r)} 0 0 ${term} ${f(r)} 0 Z`;
+let hourOverride: number | null = null;
+const hourListeners = new Set<() => void>();
+
+export function skyHourOverride(): number | null {
+  return hourOverride;
 }
 
-/** A number for an SVG path, to two places. */
-const f = (n: number) => Number(n.toFixed(2));
+export function setSkyHourOverride(hour: number | null) {
+  hourOverride = hour;
+  for (const listener of hourListeners) listener();
+}
 
-export type Star = { x: number; y: number; size: number; delay: number };
-
-/** A steady scatter of stars, in percent of the sky, denser up high. */
-export function starsFor(count: number): Star[] {
-  const stars: Star[] = [];
-  let seed = 7;
-  const rand = () => {
-    seed = (seed * 16807) % 2147483647;
-    return seed / 2147483647;
+export function subscribeSkyHour(listener: () => void): () => void {
+  hourListeners.add(listener);
+  return () => {
+    hourListeners.delete(listener);
   };
-  for (let i = 0; i < count; i++)
-    stars.push({
-      x: rand() * 100,
-      y: rand() ** 1.6 * 80,
-      size: rand() < 0.15 ? 2 : 1,
-      delay: rand() * 6,
-    });
-  return stars;
 }

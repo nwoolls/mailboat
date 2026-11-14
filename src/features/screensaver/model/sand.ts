@@ -107,6 +107,42 @@ export class SandBox {
     this.roll = new Uint8Array(cols * rows);
   }
 
+  /**
+   * Takes the sand of `old` (a box of another size) after a resize: the
+   * hanging ceiling stays at the top and everything else keeps to the
+   * floor, so hills don't float when the box grows taller; columns keep
+   * their place from the left. What no longer fits is gone.
+   */
+  carryFrom(old: SandBox) {
+    this.cells.fill(EMPTY);
+    this.roll.fill(0);
+    this.grains = 0;
+    this.held = 0;
+    const down = this.rows - old.rows;
+    for (let y = 0; y < old.rows; y++)
+      for (let x = 0; x < Math.min(this.cols, old.cols); x++) {
+        const v = old.cells[y * old.cols + x]!;
+        if (v < GRAIN) continue;
+        const ny = v & HELD ? y : y + down;
+        if (ny < 0 || ny >= this.rows) continue;
+        // Shrunk by more than the air under the ceiling, the floor's sand
+        // meets it: a grain already there (the ceiling, written first,
+        // from the top) stays and this one goes, so the counts stay true
+        // (a ceiling grain overwritten left `held` counting one that hung
+        // no more, and the frame never rested to turn over).
+        if (this.cells[ny * this.cols + x]! >= GRAIN) continue;
+        this.cells[ny * this.cols + x] = v;
+        this.grains++;
+        if (v & HELD) this.held++;
+      }
+    this.particles.length = 0;
+    for (const p of old.particles)
+      if (p.x < this.cols && p.y + down >= 0 && p.y + down < this.rows) {
+        this.particles.push({ ...p, y: p.y + down });
+        this.grains++;
+      }
+  }
+
   /** Marks cells sand can't enter (1 in `mask`); grains already there go. */
   setSolids(mask: Uint8Array) {
     for (let i = 0; i < this.cells.length; i++) {
@@ -477,6 +513,21 @@ export class SandShow {
     fillCeiling(this.box, rng);
   }
 
+  /** Carries on from `old` after a resize: its sand (`SandBox.carryFrom`) and where it is in its cycle. */
+  carryFrom(old: SandShow) {
+    this.box.carryFrom(old.box);
+    this.phase = old.phase;
+    this.turn = old.turn;
+    this.t = old.t;
+    this.quiet = old.quiet;
+    this.restLeft = old.restLeft;
+    this.lastShrug = old.lastShrug;
+    this.stuck = old.stuck;
+    this.leaks.length = 0;
+    for (const l of old.leaks) if (l.x < this.box.cols) this.leaks.push({ ...l });
+    this.layer = { ...old.layer };
+  }
+
   /**
    * Advances by `dt` seconds. `icon` is the icon's top edge and columns in
    * cells; returns true when it should shrug its heap off this frame.
@@ -650,6 +701,12 @@ export class SandscapeScene implements Scene {
     this.show = new SandShow(setup.cols, setup.rows, setup.rng);
     this.show.box.setSolids(setup.solid);
     if (setup.icon) this.icon = { x0: setup.icon.x0, x1: setup.icon.x1, top: setup.icon.y0 };
+  }
+
+  /** Carries on from `old` after a resize instead of starting over. */
+  carryFrom(old: SandscapeScene, setup: SceneSetup) {
+    this.show.carryFrom(old.show);
+    this.show.box.setSolids(setup.solid);
   }
 
   frame(dt: number, pointer: Pointer): FrameResult {

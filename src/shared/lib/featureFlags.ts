@@ -7,8 +7,6 @@ import { localStore } from "./localStore";
  * appearance settings, and every part of the window sees a change at once.
  */
 export type FeatureFlags = {
-  /** The soft glow drifting behind an empty list, drawn to the pointer. */
-  emptyGlow: boolean;
   /** Screensavers over an empty list (which one: Settings → Toybox). */
   screensavers: boolean;
 };
@@ -18,12 +16,6 @@ export type FeatureFlagId = keyof FeatureFlags;
 /** What Settings lists, in order. */
 export const FEATURE_FLAGS: readonly { id: FeatureFlagId; label: string; description: string }[] = [
   {
-    id: "emptyGlow",
-    label: "Glow",
-    description:
-      "A soft glow drifts behind the empty view and follows the pointer. Hidden while the screensaver plays.",
-  },
-  {
     id: "screensavers",
     label: "Screensavers",
     description:
@@ -31,7 +23,7 @@ export const FEATURE_FLAGS: readonly { id: FeatureFlagId; label: string; descrip
   },
 ];
 
-export const DEFAULT_FLAGS: FeatureFlags = { emptyGlow: true, screensavers: true };
+export const DEFAULT_FLAGS: FeatureFlags = { screensavers: true };
 
 export const FLAGS_STORAGE_KEY = "prefs.featureFlags";
 

@@ -1151,7 +1151,8 @@ export function Shell() {
               }}
             >
               <div className="flex h-10 shrink-0 items-center gap-2 px-4">
-                <h2 className="truncate text-sm font-semibold">
+                {/* The toys read the title (`data-card-title`) to keep it readable. */}
+                <h2 data-card-title className="truncate text-sm font-semibold">
                   {selectionTitle(selection, accountList, labels)}
                 </h2>
                 {checked.size === 0 &&

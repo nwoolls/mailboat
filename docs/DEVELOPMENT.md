@@ -23,6 +23,39 @@ bun tauri dev
 The first sync of an account takes a while (Gmail's per-user quota limits
 the pace); the inbox fills in first. Later syncs only fetch changes.
 
+### Toybox playground
+
+```sh
+bun run playground
+```
+
+Opens the empty view in your browser (http://localhost:1437/playground/),
+drawn by the app's own code, with sliders for every number that sets how the
+glow, the pond, the sky and bubble wrap look, for how the glow moves, and for how the
+pointer stirs the pond. A switch shows pixel art or ASCII art.
+It has light and dark, the accent colors, and switches to hide the icon
+and words or to drop stones by themselves. It lists the values changed
+from the defaults so they can be copied into the code
+(`ASCII_GLOW_DEFAULTS` in `src/features/mailbox/model/asciiGlow.ts`,
+`PIXEL_GLOW_DEFAULTS` in `src/features/mailbox/model/pixelGlow.ts`,
+`GLOW_MOTION_DEFAULTS` in `src/features/mailbox/model/glow.ts`,
+`SKY_SCENE_DEFAULTS` in `src/features/emptyToys/model/skyScene.ts`,
+`ASCII_SKY_DEFAULTS` in `src/features/emptyToys/model/asciiSky.ts`,
+`ASCII_POND_DEFAULTS` in `src/features/emptyToys/model/asciiPond.ts`,
+`PIXEL_POND_DEFAULTS` in `src/features/emptyToys/model/pixelPond.ts`,
+`BUBBLE_DEFAULTS` in `src/features/emptyToys/model/bubblePop.ts`,
+`SCREENSAVER_LOOK_DEFAULTS` in `src/features/screensaver/model/looks.ts`,
+`DEEP_JELLY_DEFAULTS` in `src/features/screensaver/model/deepJellies.ts`,
+`DEEP_STAR_DEFAULTS` in `src/features/screensaver/model/deepStars.ts`,
+`DEEP_FIREWORK_DEFAULTS` in `src/features/screensaver/model/deepFireworks.ts`,
+`DEEP_RAIN_DEFAULTS` in `src/features/screensaver/model/deepRain.ts`,
+`CODE_RAIN_DEFAULTS` in `src/features/screensaver/model/codeRain.ts`,
+`DEEP_FIREFLY_DEFAULTS` in `src/features/screensaver/model/deepFireflies.ts`,
+`DEEP_LIFE_DEFAULTS` in `src/features/screensaver/model/deepLife.ts`,
+`MURMURATION_DEFAULTS` in `src/features/screensaver/model/murmuration.ts`,
+`POND_STIR_DEFAULTS` in `src/features/emptyToys/model/pond.ts`). The app
+itself always uses the defaults.
+
 ### Demo mode
 
 ```sh

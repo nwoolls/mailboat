@@ -17,7 +17,7 @@ import {
  */
 
 /** A fly: where it is and goes, where it is in its flash cycle, and how far away (0 near, 1 far). */
-type Fly = {
+export type Fly = {
   x: number;
   y: number;
   vx: number;
@@ -43,9 +43,21 @@ export class FireflyScene implements Scene {
   /** Points of the boat, one per fly, while they gather. */
   private targets: { x: number; y: number }[] | null = null;
 
-  constructor(private readonly s: SceneSetup) {
+  /** How many flies (the Toybox's styles can ask for fewer or more). */
+  readonly count: number;
+  /**
+   * How often they flash, as a share of their usual pace (about one flash
+   * every two seconds each); the Toybox's styles set it from their dials.
+   */
+  pace = 1;
+
+  constructor(
+    private s: SceneSetup,
+    count = COUNT,
+  ) {
+    this.count = Math.max(1, Math.round(count));
     const { cols, rows, rng } = s;
-    for (let i = 0; i < COUNT; i++)
+    for (let i = 0; i < this.count; i++)
       this.flies.push({
         x: rng() * cols,
         y: rng() * rows,
@@ -55,6 +67,26 @@ export class FireflyScene implements Scene {
         rate: 0.45 + rng() * 0.1,
         far: rng(),
       });
+  }
+
+  /** Seconds since it started. */
+  get time(): number {
+    return this.t;
+  }
+
+  /** The grid it flies in, in cells. */
+  get size(): { cols: number; rows: number } {
+    return { cols: this.s.cols, rows: this.s.rows };
+  }
+
+  /**
+   * Carries on in a resized area (`setup`): the flies stay where they are,
+   * in cells from the top left (kept inside it as they move), and a boat
+   * being formed re-forms above the icon where it is now.
+   */
+  resize(setup: SceneSetup) {
+    this.s = setup;
+    if (this.targets) this.targets = logoPoints(setup, this.count);
   }
 
   get gathering(): boolean {
@@ -67,7 +99,7 @@ export class FireflyScene implements Scene {
     this.t += dt;
     let nod = false;
     if (!this.targets && this.t >= this.gatherAt) {
-      this.targets = logoPoints(s, COUNT);
+      this.targets = logoPoints(s, this.count);
       this.nodded = false;
     } else if (this.targets && this.t >= this.gatherAt + GATHER_SECONDS) {
       this.targets = null;
@@ -79,7 +111,7 @@ export class FireflyScene implements Scene {
     }
     const flashed: Fly[] = [];
     this.flies.forEach((f, i) => {
-      f.phase += f.rate * dt;
+      f.phase += f.rate * this.pace * dt;
       if (f.phase >= 1) {
         f.phase -= 1;
         flashed.push(f);
@@ -120,7 +152,7 @@ export class FireflyScene implements Scene {
         (n, f, i) => n + Math.hypot(f.x - this.targets![i]!.x, f.y - this.targets![i]!.y),
         0,
       );
-      if (off / COUNT < 2.2) {
+      if (off / this.count < 2.2) {
         this.nodded = true;
         nod = true;
       }
@@ -132,7 +164,7 @@ export class FireflyScene implements Scene {
    * How bright a fly is now, 0 to 1: a flash that swells quickly and fades,
    * then dark. Gathered in the boat, they glow steadily, shimmering a little.
    */
-  private glow(f: Fly): number {
+  glow(f: Fly): number {
     if (this.targets) return 0.75 + 0.25 * Math.sin(this.t * 3 + f.x);
     if (f.phase < 0.05) return f.phase / 0.05;
     return Math.max(0, 1 - (f.phase - 0.05) * 2.6) ** 1.5;

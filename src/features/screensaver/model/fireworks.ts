@@ -15,7 +15,9 @@ import {
  * Fireworks (owner, 2026-10-27). Rockets climb from the bottom trailing
  * golden sparks, slow, and burst at the top: a peony (a round burst,
  * denser at the rim, like a sphere seen from the front), a chrysanthemum
- * (its sparks draw trails), a ring, a willow (long drooping golden trails)
+ * (its sparks draw trails), a ring, a willow (long drooping golden trails),
+ * a weeping willow (its sparks sink slowly, trailing long glittering
+ * strands most of the way to the ground; owner, 2026-11-13)
  * or a crackle (its sparks pop into tiny flashes as they die). Sparks
  * start white-hot, cool to the shell's colour and fade; each burst lights
  * a brief soft flash and leaves faint smoke drifting up. Farther shells are
@@ -26,8 +28,8 @@ import {
  * Drawn on 2px cells (see the catalog). Distances are in cells.
  */
 
-type Shell = "peony" | "chrysanthemum" | "ring" | "willow" | "crackle" | "logo";
-type Spark = {
+export type Shell = "peony" | "chrysanthemum" | "ring" | "willow" | "weeping" | "crackle" | "logo";
+export type Spark = {
   x: number;
   y: number;
   vx: number;
@@ -51,7 +53,7 @@ type Spark = {
   /** A tiny flash or rocket trail: no glow, quick. */
   small: boolean;
 };
-type Rocket = {
+export type Rocket = {
   x: number;
   y: number;
   vx: number;
@@ -61,7 +63,7 @@ type Rocket = {
   slots: [Slot, Slot];
 };
 /** A soft round glow: a burst's flash, or its smoke. */
-type Puff = {
+export type Puff = {
   x: number;
   y: number;
   r: number;
@@ -74,7 +76,7 @@ type Puff = {
   depth: number;
 };
 
-const SHELLS: Shell[] = ["peony", "chrysanthemum", "ring", "willow", "crackle"];
+const SHELLS: Shell[] = ["peony", "chrysanthemum", "ring", "willow", "weeping", "crackle"];
 /** Each shell's two colours: mostly the accent, sometimes plain. */
 const COLOURS: [Slot, Slot][] = [
   [SLOT.accent, SLOT.accent],
@@ -91,7 +93,7 @@ export class FireworksScene implements Scene {
   readonly night = true;
   readonly rockets: Rocket[] = [];
   readonly sparks: Spark[] = [];
-  private readonly puffs: Puff[] = [];
+  readonly puffs: Puff[] = [];
   private t = 0;
   private nextLaunch = 0.4;
   private nextLogo = LOGO_EVERY * 0.5;
@@ -101,7 +103,21 @@ export class FireworksScene implements Scene {
   /** Bursts so far (for tests). */
   bursts = 0;
 
-  constructor(private readonly s: SceneSetup) {}
+  constructor(private s: SceneSetup) {}
+
+  /** Seconds since it started. */
+  get time(): number {
+    return this.t;
+  }
+
+  /**
+   * Carries on in a resized area (`setup`): rockets, sparks and smoke stay
+   * where they are, in cells from the top left, and new rockets fit the new
+   * size. For the drawings that carry on through a resize.
+   */
+  resize(setup: SceneSetup) {
+    this.s = setup;
+  }
 
   /** Sizes scale with the pond's height, so a small one still fits. */
   private get scale(): number {
@@ -317,7 +333,18 @@ export class FireworksScene implements Scene {
         vy = Math.sin(t) * flat * radius * 3;
       }
       const slot = k % 2 ? a : b;
-      if (r.shell === "willow")
+      if (r.shell === "weeping") {
+        // Heavy drag stops the burst soon; then each spark sinks at a slow,
+        // steady pace (fall over drag), its trail hanging above it.
+        const sink = this.s.rows * 0.11 * size;
+        add(vx * 0.75, vy * 0.75, SLOT.light, {
+          life: 4.6 + rng() * 1.4,
+          max: 6,
+          drag: 1.6,
+          fall: sink * 1.6,
+          tail: 80,
+        });
+      } else if (r.shell === "willow")
         add(vx * 0.8, vy * 0.8, SLOT.light, {
           life: 2.8 + rng() * 0.8,
           max: 3.6,

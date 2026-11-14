@@ -297,6 +297,26 @@ html.resizing .panel-slide {
 .empty-glow-pull[data-screensaver] .empty-glow {
   animation-play-state: paused;
 }
+/* The glow is drawn on a canvas across the card, in pixel art
+   (PixelGlow) or ASCII art (AsciiGlow, with a faint grid behind). The
+   gradient stays, invisible, so it still moves as before: the canvas
+   reads where it is. */
+.empty-glow-pull[data-style] .empty-glow {
+  background: none;
+}
+.empty-glow-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  border-radius: inherit;
+  transition: opacity 0.8s ease-out;
+}
+.empty-glow-canvas[data-screensaver] {
+  opacity: 0;
+}
 @keyframes empty-drift {
   0% {
     transform: translate(-30%, -25%) scale(1);
@@ -359,7 +379,7 @@ html.resizing .panel-slide {
   position: absolute;
   /* As see-through as the list card's glass it sits on, following
      Settings → Appearance → Transparency. */
-  opacity: var(--glass-panel-strength);
+  opacity: var(--screensaver-opacity, var(--glass-panel-strength));
   z-index: -1;
   pointer-events: none;
   image-rendering: pixelated;
@@ -384,6 +404,14 @@ html.resizing .panel-slide {
   color: var(--color-content);
   transition: color 0.6s ease-out;
 }
+/* On the Sky toy's daytime sky (dark page), the light theme's dark text. */
+[data-scene-day] {
+  --color-content: hsl(var(--theme-hue) var(--theme-saturation) 12%);
+  --color-stroke: color-mix(in srgb, var(--color-content) 8%, transparent);
+  --color-selection-subtle: color-mix(in srgb, var(--color-content) 4%, transparent);
+  color: var(--color-content);
+  transition: color 0.6s ease-out;
+}
 /* A scene can fade the words out (Life turns them into cells). */
 .empty-words p {
   transition: opacity 0.8s ease-out;
@@ -391,81 +419,8 @@ html.resizing .panel-slide {
 .empty-words[data-scene-hidden] p {
   opacity: 0;
 }
-/* The Sky toy (features/emptyToys): twinkling stars, drifting clouds,
-   and what a click leaves: a shooting star at night, a cloud by day. */
-.sky-star {
-  animation: sky-twinkle 5s ease-in-out infinite;
-}
-@keyframes sky-twinkle {
-  0%,
-  100% {
-    filter: brightness(1);
-    scale: 1;
-  }
-  50% {
-    filter: brightness(0.4);
-    scale: 0.6;
-  }
-}
-.sky-cloud {
-  animation: sky-drift linear infinite;
-}
-@keyframes sky-drift {
-  from {
-    left: -25%;
-  }
-  to {
-    left: 105%;
-  }
-}
-.sky-puff {
-  translate: -50% -50%;
-  animation: sky-puff 14s ease-in-out forwards;
-}
-@keyframes sky-puff {
-  0% {
-    opacity: 0;
-    scale: 0.4;
-  }
-  12% {
-    opacity: 0.8;
-    scale: 1;
-  }
-  70% {
-    opacity: 0.6;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(60px);
-  }
-}
-.sky-shooting {
-  width: 90px;
-  height: 1.5px;
-  border-radius: 1px;
-  background: linear-gradient(to right, transparent, white);
-  transform-origin: right center;
-  translate: -100% 0;
-  rotate: 25deg;
-  animation: sky-shooting 0.9s ease-out forwards;
-}
-@keyframes sky-shooting {
-  0% {
-    opacity: 0;
-    transform: translateX(-60px) scaleX(0.2);
-  }
-  25% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(80px) scaleX(1);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .empty-glow,
-  .sky-star,
-  .sky-cloud,
   .empty-rise,
   .empty-swap,
   .empty-nod {

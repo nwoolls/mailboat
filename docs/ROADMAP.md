@@ -4423,7 +4423,9 @@ One pull request each.
 - [ ] Regenerate the Toybox screensaver screenshots, which still show the
       old "Colours" and "accent colour" labels: `screensaver-settings-light`
       and `-dark`, in `docs/images/features` and in `website/images` (cards
-      and full size). Needs the screenshot pipeline, which waits on Screen
+      and full size). The `toybox` screenshots too, which don't show the
+      Style choice added in UX Spike 5 and still show the Glow switch,
+      now one of the toys. Needs the screenshot pipeline, which waits on Screen
       Recording permission (see the features gallery plan)
 
 ### Held or later
@@ -4516,6 +4518,370 @@ seen during the spike are tracked in Flaky tests (#124).
 Not in the spike: rethinking how a new reply is followed (and the
 slow-machine test kept as `test.fixme`). It is a design for the owner to
 lead, with a mockup first.
+
+## UX Spike 5: ASCII Toybox
+
+*Started by the owner, 2026-11-13, while Google reviews the app and the
+owner tests 0.2.1-beta.0: a choice between pixel art and ASCII art for
+the Toybox, with the aim that the toys look great, not just better. The
+owner's references are ASCII-art jellyfish and manta rays drawn as
+characters on tiles. As in UX Spike 4, each item is built to try and
+settled with the owner one at a time. Moved here from Later: the switch
+between pixel art and ASCII art for the screensavers.*
+
+- [x] The glow in ASCII art *(owner, 2026-11-13: "let's pick one to start
+      with, maybe the glow")*. Settings → Toybox → Style chooses Pixel art
+      (the default) or ASCII art. In ASCII art the glow is drawn on a grid
+      of monospace cells. Each lit cell is a square tile that gets lighter
+      as the glow brightens, with a character picked by brightness from
+      `. ' : ; o t % S X 8 @`; most of the brightest cells flip to a pale
+      tile with a dark character. Moving the glow leaves a short fading
+      trail, and the characters shimmer a little. A faint grid covers the
+      card (2% of the text color on dark, 4% on light, the owner's
+      values). The glow thins out around the icon and each line of the
+      words, so they still read: the characters step down to lighter ones
+      and fade, over a soft, rounded edge. It moves exactly as the
+      gradient glow does, because it reads where that glow is (see the
+      Architecture decisions). Tried first as a mockup with four looks:
+      the owner chose the tiles; a flickering look of mixed letters was
+      too distracting; falling "rain" belongs in a screensaver. *Owner,
+      with screenshots: the first cutout around the icon and words was a
+      hard rectangle, and the words' one was as wide as their column. Both
+      fixed. "We're good here"*
+- [x] A playground for tuning the Toybox *(owner, 2026-11-13: "if we had a
+      webpage I could load up that had dials … it may be easier to tweak
+      in the future")*. `bun run playground` opens the empty view in a
+      browser, drawn by the app's own code, with a slider for every number
+      the ASCII glow's look depends on, light and dark, the accents, and
+      switches to hide the icon and words. It lists the values changed
+      from the defaults, to paste back into the code. Development only;
+      the app always uses the defaults. Other toys join it as they're tuned
+- [x] The pond's ripples in ASCII art *(owner, 2026-11-13: "next
+      please")*. The same water as in pixel art, drawn on the glow's grid
+      and lined up with it across the card: a slope facing the light is a
+      tile with a character picked by brightness (the brightest flipping
+      to a pale tile), a slope facing away only a faint `~` or `-` with no
+      tile, a stone's plop a quick burst of pale `@` tiles, and each
+      droplet a bright `o` with a `'` behind it. The tiles and characters
+      are drawn by one painter shared with the glow
+      (`emptyToys/ui/asciiPaint.ts`), which the screensavers can use too.
+      In the playground, with its own sliders
+- [x] The glow or a toy, not both *(owner, 2026-11-13: "they should be
+      mutually exclusive", in the app too)*: while a toy is chosen, the
+      glow steps aside, in pixel art and ASCII art alike; its switch keeps
+      its own setting
+- [x] The glow is one of the toys *(owner, 2026-11-13: "Glow should be
+      one of the options for a toy … it's so similar to the water one")*:
+      Settings → Toybox → Something to play with lists None, Glow, Pond,
+      Bubble wrap and Sky, and the glow's own switch is gone. Glow is the
+      default, as the glow was on by default before. An earlier setting
+      carries over once: the glow on with no toy becomes Glow, the glow off
+      becomes None, and a chosen toy stays. Bubble wrap stays for now (the
+      owner may replace it with the glow: "we'll see")
+- [x] The list's title treated like the words *(owner, 2026-11-13, with
+      screenshots: "it is treated differently by each toy. We should be
+      uniform")*: the glow, which spans the title row, thins out around the
+      title's letters as it does around the words, so it stays readable.
+      The pond's water runs up under the title row to the card's top edge
+      (no hard edge below the title), with the title's letters standing in
+      it as the words do; the title row still gets its clicks. The glow now
+      clears whole cells, measured from each cell's nearest edge, so no tile
+      overlaps a letter. *Owner: "LGTM"*
+- [x] Rethink Settings → Toybox *(owner, 2026-11-13: "as a last step we'll
+      rethink the settings screen")*. Each card's switch sits in its
+      header beside what it turns on: the toy's replaces a "None" choice
+      (switched on again, the toy it had comes back), and the screensaver's
+      left the "Inbox Zero" card, which is gone. Style is two pictures of
+      the koi pond, one in each style, instead of two buttons, and each
+      screensaver is a picture of itself in the chosen style and colors:
+      the real scene, drawn at about a list card's size and scaled down, so
+      it is a true miniature (drawn at a tile's size, most were hard to
+      make out). Only the chosen one moves; the others play a moment out of
+      sight and show a still frame, which a change of colors redraws.
+      Random is four squares in the palette's colors. A mockup came first,
+      and the owner asked for no icon or words in the pictures. Without
+      words to start from, Life now starts from the middle. Still to do:
+      the features gallery's Toybox pictures show the old page. *Owner:
+      "nailed it, much better"*
+- [x] The pointer stirs the pond *(owner, 2026-11-13: "extremely subtle
+      ripples that follow the mouse, but clicking still disturbs the water
+      more")*: a faint push every few cells the pointer moves over the
+      water, a little deeper the faster it goes and well under a stone's
+      splash, in pixel art and ASCII art alike; a click still drops a
+      stone. Tried in the playground (which can also drop stones by
+      itself, off by default). *Owner: liked it without stones and
+      without the glow; the playground's depth became the default*
+- [x] The sky, redrawn *(owner, 2026-11-13: "I don't love sky either";
+      "it's the fish eye effect that bugs me most"; then, with two
+      pixel-art references, a sunny valley and a night meadow: "Something
+      much closer to this. And then an ASCII version")*. The scene is
+      described once, in `emptyToys/model/skyScene.ts`, and drawn two ways. In pixel
+      art: chunky pixels (5px blocks by default, for the owner's "retro
+      NES / SNES HD-2D"), a sky in dithered bands following the time of
+      day, a pixel sun or tonight's moon in its phase, stepped clouds in
+      three shades, stars and four-point sparkles at night, and land in
+      front: mountains with lit and shaded faces, hills lit along their
+      tops, grass with patches, tufts and, at night, small pale flowers. A
+      soft glow surrounds the sun, moon, sparkles and shooting stars, and
+      the land shifts slightly with the pointer, for depth. In ASCII art,
+      the same scene in characters on the glow's grid: ridgelines `^ / \`,
+      grass `" ,` over `w`, clouds `: - .`, a smooth sky wash. Both reach
+      up under the title row, without the oval fade at the edges that
+      looked like a fish-eye lens. The icon, words and title turn light on
+      a night sky and dark on a day sky, whatever the theme, and the toys' layer now sits behind the
+      card's content so it never covers the title. A click sends a
+      shooting star at night or a small cloud by day. The old pixel sky
+      (gradient, CSS clouds, SVG moon) is gone. The playground has it, with
+      a Pixel/ASCII switch and a time-of-day control. *Owner: "this one is
+      good"*
+- [ ] Weather in the sky *(owner, 2026-11-13: "Any way to include weather
+      without an API key (or with one?)")*. Suggested, not yet decided.
+      First the look (rain, snow, fog, a storm), with no network. Later,
+      real weather from MET Norway (no key needed, commercial use
+      allowed), off by default: the user types a place in Settings, and
+      its coordinates are rounded before they're sent. That part waits
+      until Google's review is done, because it changes what leaves the
+      computer
+- [x] The glow in chunky pixel art *(owner, 2026-11-13: "let's revisit
+      the glow")*. The glow, once a smooth CSS gradient, is now drawn on the
+      sky's grid of 5px blocks, in four stepped rings of the accent color with
+      dithered edges, over a faint smooth glow (like the soft lighting in HD-2D games), with a
+      short fading trail. Tunable in the playground. *Owner: "the pixel
+      glow is dope"*
+- [x] The glow follows the pointer on a spring *(owner, 2026-11-13: its
+      lag "almost feels like application lag rather than by-design")*. It
+      still glides to the pointer when the pointer arrives, but no longer slows down
+      as it gets close, so it catches a moving pointer. Over its first
+      0.6 s the spring tightens from a glide to a hold, with no visible
+      moment of locking on. It holds loosely, trailing a moving pointer by a
+      short distance and settling on a still one. A
+      first try that switched to a tight follow once close showed the
+      switch and still couldn't catch a moving pointer. This works the same
+      in the pixel and ASCII styles. *Owner: "much better"*
+- [x] The pond in chunky pixel art *(owner, 2026-11-13: "and then the
+      pond for pixel art style")*. It draws the same water in 5px blocks,
+      on the same grid that the glow and the sky use. The sides of the
+      ripples that face the light get four stepped bands of the accent
+      color with dithered edges; the sides that face away get two faint,
+      darker bands (toward the text color on a light page, so the rings
+      keep their shape). Droplets are bright blocks, and the plop is a
+      quick burst of them with a soft glow. It now uses the accent color,
+      like the glow and the sky, instead of the Toybox palette, which is
+      left to the screensavers. *Owner: "LGTM"*
+- [x] Bubble wrap, with joyful pops, in pixel art and ASCII art *(owner,
+      2026-11-13: "an actual joyful animation for pops, not just a switch
+      from unpopped to popped")*. A popped bubble squashes for a moment,
+      then bursts: a bright ring flashes outward, confetti flies out and
+      arcs down (in the accent color, a hue on either side of it and a
+      warm spark color), and puffs of air rise. Nearby bubbles wobble with the shock,
+      and the crumpled film drops into place with a small bounce. Quick
+      pops in a row burst bigger. Popping the last bubble sends confetti up
+      from every film; the sheet blows away and a fresh one inflates from
+      the middle out. Pixel art draws it in 5px blocks with a soft glow on
+      each burst; ASCII art draws each bubble as a small circle of
+      characters on the glow's grid, with `* + x` confetti and `_~_` film.
+      The animation has tests (`emptyToys/model/bubblePop.ts`),
+      and tunable in the playground. *Owner: "much better"*
+- [x] Chunkier pixel art for the other toys and the screensavers *(owner,
+      2026-11-13: "for pixel art in general, I am thinking chunkier
+      pixels … retro NES / SNES HD-2D")*: one scene at a time, the glow and
+      the pond next. The owner approved the screensavers' finer cells in UX
+      Spike 4, so each screensaver's change is the owner's call. Done: every
+      toy and every screensaver, each approved by the owner (below)
+- [x] The screensavers in pixel art and ASCII art, one at a time
+      *(owner, 2026-11-13: "let's do the screensavers one at a time")*. A
+      scene still paints its fine grid of palette cells. A restyled scene
+      follows Settings → Toybox → Style: chunky blocks, each in the most
+      common color of its cells, or characters on the glow's grid. Each
+      character is chosen by how much of its cell is covered and sits on
+      a tile in that cell's color. Only scenes on an approved list switch
+      (`screensaver/model/looks.ts`); the rest keep their original
+      fine-grid look. A restyled scene is drawn more solid than the
+      fine-grid look, which is as see-through as the card's glass. To try
+      them, open the playground's Screensavers tab: a click starts one,
+      more clicks keep it playing, and Stop ends it. The first version
+      needed two clicks, because a click ended the one playing, as it
+      does in the app. Now every scene is on the list: koi, lava lamp and
+      sandscape are drawn from their cells, the rest draw themselves
+      - [x] Jellyfish *(the owner shared ASCII jellyfish and manta ray
+            examples, screen-recorded together from X, then the source of
+            one. It is licensed for personal use only, so it was read for
+            ideas and none of its code is used)*. It has its own drawing
+            instead of a conversion of the old scene: a few big jellies
+            at different depths, each blending two hues from the palette.
+            Each has a bell with a glowing rim, four rings in a clover
+            inside and bulbs along the rim, then four thick oral arms and
+            long, thin tentacles. Arms and tentacles are chains of points
+            that keep some momentum and hold their spacing. So they trail
+            behind any movement, flare as the bell squeezes, and undulate
+            as a wave travels down each one. Glowing specks drift around
+            them. The jellies surge up as the bell squeezes and then
+            coast, lean only slightly, and are pushed (never turned) by
+            the pointer, the icon and the edges. They are painted as soft
+            light first, then converted to characters (bright parts dense,
+            thin tips faint) or chunky blocks. On a light page they bring
+            a deep-sea backdrop and light text. Approaches the owner
+            rejected: small jellies converted from the old scene; heading
+            changes that spun them "like a clock arm", with tentacles
+            leading the turn (they lagged the wrong way, and the test for
+            it had the direction reversed too, so it passed); and
+            tentacles drawn by formula, which only flared out and in.
+            *Owner: "much better"*
+      - [x] Starfield. It has its own drawing: stars stream out from a
+            point behind the icon, nearer ones brighter and the fastest
+            leaving streaks. Faint dust twinkles in place behind them, and
+            soft nebulas drift. Every so often it goes to warp: the speed
+            surges for a few seconds and the streaks lengthen, and the icon
+            nods as it starts. The pointer pulls the vanishing point toward
+            it, like steering. On a light page it brings a night backdrop
+            and light text, as the jellyfish do. The ASCII version took
+            three tries. Each star drawn in its own cell hopped from cell
+            to cell ("too jumpy"). Painting the stars as soft light and
+            easing each cell's brightness made them "fuzzy, like I'm
+            drunk". So each star is now one sharp character that stays in
+            its cell until it nears the edge, then fades out of that cell
+            as it fades into the next. Streaks are painted as fading lines
+            and drawn as characters pointing away from the vanishing point.
+            *Owner: "this is better"*
+      - [x] Resizing the window no longer restarts a scene *(owner,
+            2026-11-13)*. The jellyfish and starfield fit themselves to the
+            new size and carry on, and are drawn again right away (resizing
+            a canvas clears it, so they had been blank while dragging). The
+            sky's land and stars are laid out the same at any width, so a
+            wider window adds more at the right, and the same clouds keep
+            drifting. The pond keeps its ripples. Where it grew, the water
+            starts still: mirroring the waves into it was tried, and piled
+            up into a grainy checkerboard over a drag's many small steps.
+            Bubble wrap still starts over, which the owner finds pleasant.
+            Screensavers not yet restyled still started over then; the koi
+            pond and lava lamp still do (they build a new scene)
+      - [x] Text over the sky turns light at dusk *(owner, 2026-11-13)*.
+            It switched only once night was half in, while the sky behind
+            the words was already dark. It now follows the sky's own
+            brightness
+      - [x] The playground shows the dials only for the screensaver
+            playing
+      - [x] Fireworks. Its rockets, bursts and the boat-shaped burst are
+            the scene's own motion, drawn its own way instead of converted
+            from the fine grid. In pixel art each spark is a chunky block
+            that starts white-hot, cools to the palette's color and fades,
+            with a dithered trail; in ASCII art it goes `*`, `+`, `.`, with
+            a trail of characters that follow its path, and rockets climb
+            as `^`. Only sparks that have just burst get a plus of blocks
+            or a pale tile: on every bright spark a burst read as a lattice
+            of crosses. Each burst flashes and lights the sky, young sparks
+            glow, and smoke drifts up. It carries on through a resize. New
+            shell *(owner, 2026-11-13: "the kind that explode sort of like
+            weeping willows and trail further down to the ground")*: a
+            weeping willow, whose sparks sink slowly for about five to six
+            seconds with long strands above them, most of the way to the
+            ground. *Owner: "those look amazing", "looks great"*
+      - [x] Rain on glass. Its fog, beads, sliding drops and wet trails,
+            the puddle on the icon and the pointer's wipe are the scene's
+            own motion, drawn its own way. In pixel art (3px blocks, the
+            owner's pick) the glass is a misty pane, a drop is a lens of
+            blocks with a white glint and a dark rim, and a cleared trail
+            runs behind it. In ASCII art the fog is a faint, still speckle,
+            a wet trail is a line of `|`, and a drop is `. o O @` by its
+            size, the biggest between `(` and `)`. Drops sat on the line
+            between two columns flipped back and forth, because the scene
+            nudges a sliding drop sideways every frame, so each drop keeps
+            its column until it is well into the next. On a light page the
+            palette's light color nearly vanished, so darker ones are used
+            there. It carries on through a resize. *Owner: "they look
+            great"*
+      - [x] Code rain, a new screensaver *(owner, 2026-11-13: the Matrix
+            rain from the glow's mockup, as a screensaver of its own)*.
+            Columns of characters fall at their own pace, each with a near
+            white head that glows and a trail fading in the accent color,
+            the characters changing as they fall. Every 40 seconds or so a
+            cascade starts down every column at once and the icon nods. The
+            pointer is a flashlight: the code shows faintly round it. In
+            ASCII art it is text characters; in pixel art a 3 × 5 pixel
+            font drawn in blocks. On a light page it brings a night
+            backdrop. Named for what it is, not the film. *Owner: "they
+            look great"*
+      - [x] Koi pond. The koi are drawn larger in these styles (owner:
+            "i'm fine with larger fish"), 1.5 times in pixel art and twice
+            in ASCII art, where at their usual size a koi was a dozen
+            characters long; they keep their size in cells of the usual
+            scale (`zoom`). Pixel art is the general conversion, which
+            keeps their shading, patches and tails at this size. In ASCII
+            art each character takes the koi's color and a shading
+            character by how solid and bright it is, bold, on a faint tile
+            of that color and the faint grid, thinning out round the icon
+            and words; ripples are `~`. The mixed characters of the general
+            conversion read as noise, and the first ramp, with its light
+            characters, was not solid enough. Their fins and tails ripple as
+            waves run along them. Calmer, as the owner asked ("koi are a
+            little more chill"): the tail eases after a turn and swings
+            only a little past the body, the swimming wave is capped when a
+            koi hurries, turns are slower, and a nibbling koi sways gently
+            instead of wiggling. *Owner: "LGTM"*
+      - [x] Fireflies. Their drifting, blinking into step, gathering
+            into the boat and drifting to the pointer are the scene's own
+            motion, drawn its own way: each flash a field of light on the
+            grid, `@ # * + : .` from its heart out in ASCII art, bands of
+            blocks dithered at their edges in pixel art (softer there, as
+            solid blocks flashed too bright), with a soft bloom; a faint
+            speck between flashes; a grass silhouette swaying along the
+            bottom; and a dusk sky on a light page. Fewer, calmer and
+            smaller than the fine scene, from the owner's playground dials:
+            26 fireflies, a flash about every three seconds each, light
+            reaching 0.65 of the scene's own. It carries on through a
+            resize. *Owner: "the new defaults are good"*
+      - [x] Lava lamp. Pixel art is the general conversion: the wax is
+            big and smooth enough to keep its shading and glow in chunky
+            blocks. ASCII art is the koi's drawing, now shared
+            (`ui/shadedAscii.ts`): each character in the wax's color, by how
+            solid and bright it is, bold on a faint tile and the faint grid.
+            *Owner: "looks good"*
+      - [x] Life. Its rules and cycle are the scene's own, drawn its own
+            way: each cell a character on the glow's grid in ASCII art
+            (newborn `@` in the accent, then `O`, `o` and a gray `.`), or a
+            chunky tile with its corners cut in pixel art (8px), easing in
+            and out, newborns glowing softly. The Life grid's tiles now take
+            any size and origin, to match a character's cell. Big tiles
+            needed a richer seed: the words made few of them and a thin
+            sprinkle settled into a few blinkers within seconds, so they
+            get a wide, dense soup, and "died down" scales with the grid. It
+            carries on through a resize. *Owner: "lgtm"*
+      - [x] Sandscape. Pixel art is the sand itself with grains twice the
+            size (4px), not a conversion, so its fine layers stay crisp.
+            ASCII art is the shared shaded drawing. Through a resize the
+            sand carries over: the hanging ceiling stays at the top,
+            everything else keeps to the floor (hills don't float when it
+            grows taller), columns keep their place, and the cycle goes on.
+            Every scene, this one included, is now drawn again at once
+            after a resize: the ones still drawn on their fine grid flashed
+            blank on every step of a drag (owner: "crazy flashing when
+            resizing"). With this, every screensaver but the envelope flock
+            had both styles; the flock (below) completed them
+      - [x] Flock, which replaces the envelope flock *(owner, 2026-11-13:
+            "any ideas to make the envelope flock not suck")*. A murmuration
+            of 2000 birds flying in three dimensions, so parts of the flock
+            pass in front of and behind others, nearer birds bigger, bolder
+            and lighter (darker on a light page), farther ones hazier, in
+            the palette's colors. Each bird follows only its seven nearest
+            neighbors, as a starling does: following everyone in sight
+            pulled the flock into one ball. The pointer scatters them, the
+            icon and words part them, the flock splits in two now and then,
+            and it roosts in the icon (the icon nods). Pixel art is a block
+            a bird; ASCII art shows how many birds share a cell, a lone near
+            one pointing its way. Dropped along the way, on the owner's
+            word: envelopes among the birds, and a falcon that cut through
+            ("just confusing at this resolution"). The neighbor search is
+            plain arrays: lists of objects took longer than a frame at this
+            count. The id stays `envelopes`, so a saved choice still plays
+      - [x] Every screensaver reaches up under the card's title row, which
+            no longer leaves a dark band along the top (owner). Their marks
+            thin out round the title's letters, and on a night scene on a
+            light page the title takes light text with the icon and words
+- Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
+  Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
+  retiring the envelope flock and bubble wrap, which don't land as well
+  as the others. Since done: the rain is Code rain, and the envelope flock
+  became Flock. Still open: 3D pipes, and bubble wrap's future
 
 ## Flaky tests
 
@@ -5423,9 +5789,10 @@ and new bugs still come here.*
       one is needed. One idea if it comes up: "Run setup again" in
       Settings → Advanced, reopening the Google Cloud stage
 
-- [ ] A switch between pixel art and ASCII art for the screensavers
-      *(owner, 2026-10-26: "we may also do a toggle"; moved from UX
-      Spike 4 when it closed, 2026-10-27, never started)*
+- A switch between pixel art and ASCII art for the screensavers
+  *(owner, 2026-10-26: "we may also do a toggle"; moved from UX Spike 4
+  when it closed, 2026-10-27)*: *moved to UX Spike 5 (owner,
+  2026-11-13)*
 
 - [ ] Linux *(moved from Milestone 9 when it closed, 2026-10-25; it was
       a "nice-to-have" there, never started)*: Tauri builds for Linux,

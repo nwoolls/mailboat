@@ -1,10 +1,11 @@
-import { EnvelopeScene } from "./envelopes";
+import { CodeRainScene } from "./codeRain";
 import { FireflyScene } from "./fireflies";
 import { FireworksScene } from "./fireworks";
 import { JellyfishScene } from "./jellyfish";
 import { KoiScene } from "./koi";
 import { LavaScene } from "./lava";
 import { LifeScene } from "./life";
+import { FlockScene } from "./murmuration";
 import { DEFAULT_PALETTE, type PaletteId, paletteFor } from "./palettes";
 import { RainScene } from "./rain";
 import { SAND_CELL_PX, SandscapeScene } from "./sand";
@@ -21,9 +22,11 @@ export const SCREENSAVERS = [
   },
   {
     id: "envelopes",
-    label: "Envelope flock",
-    make: (s: SceneSetup) => new EnvelopeScene(s),
-    // Finer than the rest: at 3px the flock moved in visible steps.
+    // Was the envelope flock; the id stays, so a saved choice of it still plays.
+    label: "Flock",
+    make: (s: SceneSetup) => new FlockScene(s),
+    // Finer than the rest, as the envelope flock was (at 3px it moved in
+    // visible steps); the Toybox's styles draw the birds themselves.
     cellPx: 2,
   },
   {
@@ -81,6 +84,12 @@ export const SCREENSAVERS = [
     make: (s: SceneSetup) => new FireworksScene(s),
     cellPx: 2,
   },
+  {
+    id: "code",
+    label: "Code rain",
+    make: (s: SceneSetup) => new CodeRainScene(s),
+    cellPx: 2,
+  },
 ] as const satisfies readonly {
   id: string;
   label: string;
@@ -109,6 +118,24 @@ export const SCREENSAVER_ROTATE_MINUTES = 60;
  * Its `detail` may name a scene; otherwise the chosen one plays.
  */
 export const SCREENSAVER_EVENT = "app:screensaver";
+
+/** Window event that ends a running screensaver (the playground's Stop). */
+export const SCREENSAVER_STOP_EVENT = "app:screensaver-stop";
+
+/**
+ * For the playground only: a running screensaver isn't ended by a click,
+ * key or scroll (only by `SCREENSAVER_STOP_EVENT`), so its controls can be
+ * used while it plays. The app never sets this.
+ */
+let sticky = false;
+
+export function screensaverSticky(): boolean {
+  return sticky;
+}
+
+export function setScreensaverSticky(on: boolean) {
+  sticky = on;
+}
 
 /** Which screensaver plays, and in which colours (Settings → Toybox). */
 export type ScreensaverPrefs = { choice: SceneId | "random"; palette: PaletteId };
