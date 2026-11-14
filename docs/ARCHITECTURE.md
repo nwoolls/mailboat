@@ -323,7 +323,9 @@ fresh one; small parts come with the message and have no ID at all.
    dialog). Each email
    is the reader's own sandboxed frame, sized to its content, from
    `message_print`: as `message_open`, but always light (original colors on
-   white, plain text too).
+   white, plain text too). Each print reads the conversation afresh under
+   query keys of its own, never the reader's cache, so mail arriving after
+   the dialog opens doesn't load into the printout.
 
 ## Settings
 

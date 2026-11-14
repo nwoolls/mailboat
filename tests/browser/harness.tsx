@@ -340,7 +340,7 @@ mockIPC(
         const id = (args as { messageId: number }).messageId;
         record(`message_print ${id}`);
         const text = lisbon.messages[id - 10]?.text ?? "";
-        return {
+        const printed = {
           messageId: id,
           accountId: 1,
           senderEmail: maya.email,
@@ -348,17 +348,27 @@ mockIPC(
           imagePolicy: "loadedByDefault",
           attachments: [],
           originalColors: false,
-          document: `<!doctype html><html><body style="margin:0;padding:20px 24px;background:#fff;color:#1f1f1f;font:14px/1.5 sans-serif">${longBody(text)}</body></html>`,
+          // Email 13 has an image the print test serves late, so its frame
+          // finishes loading well after its body arrives.
+          document: `<!doctype html><html><body style="margin:0;padding:20px 24px;background:#fff;color:#1f1f1f;font:14px/1.5 sans-serif">${id === 13 ? '<img src="/print-slow-image.png" width="40" height="40">' : ""}${longBody(text)}</body></html>`,
           blockedImages: 0,
           loadedImages: 0,
           trackersRemoved: 0,
           adaptive: false,
           recolorable: false,
         };
+        // One email answers late, so the dialog has something to wait for.
+        if (id === 12) return new Promise((done) => setTimeout(() => done(printed), 400));
+        return printed;
       }
-      case "window_print":
-        record("window_print");
+      case "window_print": {
+        // How many of the printout's frames had grown to their email when
+        // the dialog was asked for.
+        const frames = [...document.querySelectorAll<HTMLIFrameElement>(".print-root iframe")];
+        const tall = frames.filter((f) => f.getBoundingClientRect().height > 100).length;
+        record(`window_print ${tall}/${frames.length}`);
         return null;
+      }
       case "message_open": {
         // `?mode=sizes`: made-up images sized by only a height, only a width,
         // both and neither, as the Rust sanitizer gave them.

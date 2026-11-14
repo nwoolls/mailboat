@@ -8,6 +8,17 @@ import { expect, test } from "@playwright/test";
  */
 test("prints the whole conversation, and only it", async ({ page }) => {
   await page.setViewportSize({ width: 1200, height: 800 });
+  // An image in one email arrives late: its frame loads only then.
+  await page.route("**/print-slow-image.png", async (route) => {
+    await new Promise((done) => setTimeout(done, 600));
+    await route.fulfill({
+      contentType: "image/png",
+      body: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "base64",
+      ),
+    });
+  });
   await page.goto("/tests/browser/harness.html?mode=shell&rows=1&conversation=all");
   await page.getByRole("option").first().click();
   await expect(page.locator(".reader-scroll")).toBeVisible();
@@ -15,14 +26,13 @@ test("prints the whole conversation, and only it", async ({ page }) => {
   await page.getByTitle("More", { exact: true }).click();
   await page.getByRole("menuitem", { name: "Print…" }).click();
 
-  // The dialog opens once, after all five emails were asked for.
-  await expect
-    .poll(() => page.evaluate(() => (window as unknown as { __order?: string[] }).__order ?? []))
-    .toContain("window_print");
-  const order = await page.evaluate(() => (window as unknown as { __order: string[] }).__order);
-  const printAt = order.indexOf("window_print");
-  expect(order.slice(0, printAt).filter((c) => c.startsWith("message_print"))).toHaveLength(5);
-  expect(order.filter((c) => c === "window_print")).toHaveLength(1);
+  // The dialog opens once, with all five emails loaded and grown to their
+  // content (one of them answers late).
+  const order = () =>
+    page.evaluate(() => (window as unknown as { __order?: string[] }).__order ?? []);
+  await expect.poll(order).toContain("window_print 5/5");
+  await page.waitForTimeout(200);
+  expect((await order()).filter((c) => c.startsWith("window_print"))).toHaveLength(1);
 
   // Out of sight on screen.
   const root = page.locator(".print-root");

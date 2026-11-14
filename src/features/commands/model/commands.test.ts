@@ -57,6 +57,21 @@ describe("conversationCommands", () => {
 const byId = (rows: ReturnType<typeof row>[], o = none) =>
   new Map(conversationCommands(rows, o).map((c) => [c.id, c]));
 
+describe("Print", () => {
+  it("prints one conversation with mail in it, even while typing", () => {
+    expect(byId([row()]).get("print")?.enabled).toBe(true);
+    expect(byId([row()], { ...none, editing: true }).get("print")?.enabled).toBe(true);
+    expect(byId([row(), row()]).get("print")?.enabled).toBe(false);
+    // Drafts aren't printed, so a draft alone has nothing to print.
+    expect(byId([row({ onlyDraft: true })]).get("print")?.enabled).toBe(false);
+  });
+
+  it("is in the File menu, with Mail's shortcut", () => {
+    expect(MENU_BAR.find((m) => m.title === "File")?.items).toContain("print");
+    expect(byId([row()]).get("print")?.accel).toBe("Cmd+P");
+  });
+});
+
 describe("AI commands", () => {
   it("summarize and reply with AI for one conversation while AI is ready", () => {
     expect(byId([row()]).get("summarize")?.enabled).toBe(true);

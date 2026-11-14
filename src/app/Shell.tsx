@@ -1425,7 +1425,7 @@ export function Shell() {
       {originalFor !== null && (
         <ShowOriginalDialog threadId={originalFor} onClose={() => setOriginalFor(null)} />
       )}
-      {printFor && <PrintView key={printFor.run} threadId={printFor.threadId} />}
+      {printFor && <PrintView key={printFor.run} run={printFor.run} threadId={printFor.threadId} />}
       {ruleEditor && (
         <RuleEditor
           target={ruleEditor}

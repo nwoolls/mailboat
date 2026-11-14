@@ -4,7 +4,6 @@ import { createPortal } from "react-dom";
 import { commands } from "../../../platform/tauri/bindings";
 import type { MessageMeta, OpenedMessage, ThreadId } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
-import { keys } from "../../../shared/lib/queries";
 import { showToast } from "../../../shared/lib/toast";
 import { messageCount, printedHeader, printedMessages } from "../model/print";
 import { contentHeight } from "./MessageFrame";
@@ -18,49 +17,72 @@ import { contentHeight } from "./MessageFrame";
  *
  * It stays mounted after the dialog opens: macOS draws the pages as the
  * dialog previews them, so taking the layout away would blank them. The
- * next print replaces it.
+ * next print replaces it (`run` counts prints).
+ *
+ * Each print reads the conversation afresh under keys of its own (`run`),
+ * never from the reader's cache, and never again: the reader's cache can be
+ * out of date when Print… is chosen, and mail arriving later refreshes the
+ * reader's keys (`useMailEvents`), which would load new emails into a
+ * printout nobody asked to update.
  */
-export function PrintView({ threadId }: { threadId: ThreadId }) {
+export function PrintView({ threadId, run }: { threadId: ThreadId; run: number }) {
   const thread = useQuery({
-    queryKey: keys.thread(threadId),
+    queryKey: ["print", run, "thread", threadId] as const,
     queryFn: () => unwrap(commands.threadGet(threadId)),
+    staleTime: Infinity,
+    gcTime: 0,
   });
   const messages = printedMessages(thread.data?.messages ?? []);
   const bodies = useQueries({
     queries: messages.map((m) => ({
-      queryKey: ["print", m.id] as const,
+      queryKey: ["print", run, "message", m.id] as const,
       queryFn: () => unwrap(commands.messagePrint(m.id)),
-      staleTime: 0,
+      staleTime: Infinity,
       gcTime: 0,
     })),
   });
   const [loaded, setLoaded] = useState<ReadonlySet<number>>(new Set());
   const printed = useRef(false);
 
-  const failed = thread.isError || bodies.some((b) => b.isError);
+  const failed =
+    thread.isError || bodies.some((b) => b.isError) || (thread.isSuccess && !messages.length);
   const ready =
     thread.isSuccess &&
     messages.length > 0 &&
     bodies.every((b) => b.isSuccess) &&
     messages.every((m) => loaded.has(m.id));
 
+  const failure = !failed
+    ? null
+    : messages.length
+      ? "Couldn't print: an email in this conversation didn't load."
+      : "There's nothing to print in this conversation yet.";
   useEffect(() => {
-    if (!failed || printed.current) return;
+    if (!failure || printed.current) return;
     printed.current = true;
-    showToast({ message: "Couldn't print: an email in this conversation didn't load." });
-  }, [failed]);
+    showToast({ message: failure });
+  }, [failure]);
 
   useEffect(() => {
     if (!ready || printed.current) return;
-    printed.current = true;
-    // After the measured heights are painted.
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
+    // After the measured heights are painted. A print that replaces this
+    // one before then cancels it, so the dialog never opens on a layout
+    // that is still loading. Marked printed only once it runs: React runs
+    // effects twice in development, cancelling the first.
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => {
+        if (printed.current) return;
+        printed.current = true;
         void commands.windowPrint().then((r) => {
           if (r.status === "error") showToast({ message: `Couldn't print: ${r.error.message}` });
         });
-      }),
-    );
+      });
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
   }, [ready]);
 
   return createPortal(

@@ -16,7 +16,7 @@ export type PrintedHeader = {
  * ones too, oldest first. Unsent drafts are left out: they aren't mail yet.
  */
 export function printedMessages(messages: MessageMeta[]): MessageMeta[] {
-  return messages.filter((m) => !m.draft).sort((a, b) => a.internalDate - b.internalDate);
+  return messages.filter((m) => !m.draft).toSorted((a, b) => a.internalDate - b.internalDate);
 }
 
 function names(list: Address[]): string {

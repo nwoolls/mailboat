@@ -89,5 +89,12 @@ mod tests {
         // On screen, plain text still follows the app's scheme.
         let shown = safe_message(&body(None, Some("Hi Maya")), false, &none, &none, true);
         assert!(shown.adaptive);
+        // An email the reader recolors for dark mode keeps its own colors
+        // on paper.
+        let colored = body(Some(r#"<p style="color:#333333">Hi Maya</p>"#), None);
+        assert!(safe_message(&colored, false, &none, &none, false).adaptive);
+        let printed = printable_message(&colored, false, &none, &none);
+        assert!(!printed.adaptive);
+        assert!(!printed.document.contains("prefers-color-scheme:dark"));
     }
 }

@@ -552,8 +552,10 @@ pub async fn message_print(
 /// print layout when printed (`@media print`), so that is what prints.
 #[tauri::command]
 #[specta::specta]
-pub fn window_print(window: tauri::WebviewWindow) -> CmdResult<()> {
-    crate::print::print(&window).map_err(|e| CoreError::Other(format!("print: {e}")))?;
+pub async fn window_print(window: tauri::WebviewWindow) -> CmdResult<()> {
+    crate::print::print(&window)
+        .await
+        .map_err(CoreError::Other)?;
     Ok(())
 }
 
