@@ -5752,7 +5752,17 @@ built, the owner has tried it, and the owner has published 0.3.0
 
 ### Bugs
 
-*None picked yet: the open bugs are in "Later / unscheduled" → Open bugs.*
+*The open bugs not picked are in "Later / unscheduled" → Open bugs.*
+
+- [ ] A narrow window: the toolbar overlaps the search, and the window
+      can't be made narrower *(owner, 2026-11-14, with a screenshot)*. At
+      the window's narrowest, the first toolbar button (Archive) sits over
+      the right end of the search field. The search field and the toolbar's
+      buttons also seem to be what keeps the window from getting narrower
+      (`minWidth` is 820 in `tauri.conf.json`). At least: nothing overlaps
+      at any width. Then, if it works: as the window narrows, toolbar
+      buttons move into the More ("…") menu, starting from the end, so the
+      window can be made narrower
 
 ## Later / unscheduled
 
