@@ -4682,12 +4682,13 @@ between pixel art and ASCII art for the screensavers.*
       characters on the glow's grid, with `* + x` confetti and `_~_` film.
       The animation has tests (`emptyToys/model/bubblePop.ts`),
       and tunable in the playground. *Owner: "much better"*
-- [ ] Chunkier pixel art for the other toys and the screensavers *(owner,
+- [x] Chunkier pixel art for the other toys and the screensavers *(owner,
       2026-11-13: "for pixel art in general, I am thinking chunkier
       pixels … retro NES / SNES HD-2D")*: one scene at a time, the glow and
       the pond next. The owner approved the screensavers' finer cells in UX
-      Spike 4, so each screensaver's change is the owner's call
-- [ ] The screensavers in pixel art and ASCII art, one at a time
+      Spike 4, so each screensaver's change is the owner's call. Done: every
+      toy and every screensaver, each approved by the owner (below)
+- [x] The screensavers in pixel art and ASCII art, one at a time
       *(owner, 2026-11-13: "let's do the screensavers one at a time")*. A
       scene still paints its fine grid of palette cells. A restyled scene
       follows Settings → Toybox → Style: chunky blocks, each in the most
@@ -4877,7 +4878,8 @@ between pixel art and ASCII art for the screensavers.*
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well
-  as the others
+  as the others. Since done: the rain is Code rain, and the envelope flock
+  became Flock. Still open: 3D pipes, and bubble wrap's future
 
 ## Flaky tests
 
