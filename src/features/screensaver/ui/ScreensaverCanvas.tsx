@@ -203,6 +203,9 @@ export function ScreensaverCanvas({
   closing,
   onNod,
   style = "pixel",
+  still = false,
+  stillAt = 1.5,
+  shrink = 1,
 }: {
   sceneId: SceneId;
   palette: PaletteId;
@@ -213,6 +216,20 @@ export function ScreensaverCanvas({
   onNod: () => void;
   /** Settings → Toybox → Style; a scene follows it once restyled (`model/looks.ts`). */
   style?: ToyboxStyle;
+  /**
+   * A still picture (Settings' previews of the scenes not chosen): it
+   * plays `stillAt` seconds out of sight and shows that frame, without
+   * moving. Becoming still, it stops on the frame it shows; no longer
+   * still, it plays on from there (neither starts it over).
+   */
+  still?: boolean;
+  stillAt?: number;
+  /**
+   * How much smaller than its laid-out size it shows (a preview drawn at a
+   * card's size and scaled down to fit a tile), so it sizes itself to the
+   * laid-out size.
+   */
+  shrink?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nodRef = useRef(onNod);
@@ -222,12 +239,25 @@ export function ScreensaverCanvas({
   useEffect(() => {
     nodRef.current = onNod;
   }, [onNod]);
-  // Recoloured at once when the palette changes, without restarting.
+  const stillRef = useRef(still);
+  const stillAtRef = useRef(stillAt);
+  /** Plays on (after being still), from the running scene. */
+  const resumeRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    stillRef.current = still;
+    stillAtRef.current = stillAt;
+    if (!still) resumeRef.current?.();
+  }, [still, stillAt]);
+  /** Draws the scene's current frame again, without moving it on (a recolor). */
+  const redrawRef = useRef<(() => void) | null>(null);
+  // Recoloured at once when the palette changes, without restarting; a
+  // still picture (stopped) is drawn again in the new colors.
   useEffect(() => {
     const accent = getComputedStyle(document.documentElement).getPropertyValue("--color-accent");
     const slots = paletteColors(palette, parseColor(accent));
     colorsRef.current = colorTable(slots);
     slotsRef.current = [...slots];
+    redrawRef.current?.();
   }, [palette]);
 
   useEffect(() => {
@@ -242,7 +272,8 @@ export function ScreensaverCanvas({
     const stageRect = () => {
       const r = area.getBoundingClientRect();
       const top = card.getBoundingClientRect().top;
-      return new DOMRect(r.left, top, r.width, r.bottom - top);
+      // Drawn shrunk (`shrink`): sized as it is laid out, not as it shows.
+      return new DOMRect(r.left, top, r.width / shrink, (r.bottom - top) / shrink);
     };
     const title = card.querySelector<HTMLElement>("[data-card-title]");
 
@@ -442,11 +473,26 @@ export function ScreensaverCanvas({
         scene.carryFrom(before, setup);
     };
 
+    let played = 0;
+    // A still picture plays out of sight until its frame, so it never
+    // seems to move and stop.
+    let shown = !stillRef.current;
+    if (!shown) canvas.style.visibility = "hidden";
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
       if (deep) drawDeep(dt);
       else drawFine(dt);
+      played += dt;
+      if (stillRef.current && played >= stillAtRef.current) {
+        // A still picture: stop here, keeping this frame.
+        frame = 0;
+        if (!shown) {
+          shown = true;
+          canvas.style.removeProperty("visibility");
+        }
+        return;
+      }
       frame = requestAnimationFrame(tick);
     };
 
@@ -756,8 +802,21 @@ export function ScreensaverCanvas({
     };
     const play = () => {
       if (frame || document.hidden) return;
+      // A still picture that has stopped stays stopped.
+      if (stillRef.current && played >= stillAtRef.current) return;
       last = performance.now();
       frame = requestAnimationFrame(tick);
+    };
+    redrawRef.current = () => {
+      if (deep) drawDeep(0);
+      else drawFine(0);
+    };
+    resumeRef.current = () => {
+      if (!shown) {
+        shown = true;
+        canvas.style.removeProperty("visibility");
+      }
+      play();
     };
     const pause = () => {
       cancelAnimationFrame(frame);
@@ -792,6 +851,8 @@ export function ScreensaverCanvas({
     const words = wordsRef.current;
     const icon = iconRef.current;
     return () => {
+      resumeRef.current = null;
+      redrawRef.current = null;
       pause();
       resize.disconnect();
       card.removeEventListener("pointermove", onMove);
@@ -800,7 +861,7 @@ export function ScreensaverCanvas({
       setWordsHidden(words, false);
       setNight([icon, words, title, canvas], false);
     };
-  }, [sceneId, areaRef, iconRef, wordsRef, style]);
+  }, [sceneId, areaRef, iconRef, wordsRef, style, shrink]);
 
   return (
     <canvas

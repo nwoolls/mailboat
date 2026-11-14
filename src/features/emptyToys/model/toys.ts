@@ -34,6 +34,18 @@ export const TOYS: readonly { id: ToyId; label: string; description: string }[] 
 
 export const TOY_PREFS_KEY = "prefs.emptyToy";
 
+/**
+ * The toy to bring back when "Something to play with" is switched on
+ * again (Settings → Toybox): the one it had when switched off.
+ */
+export const LAST_TOY_KEY = "prefs.emptyToyLast";
+
+/** The saved toy to bring back; never "none", the glow if there isn't one. */
+export function parseLastToy(raw: string | null): ToyId {
+  const toy = parseToy(raw);
+  return toy === "none" ? DEFAULT_TOY : toy;
+}
+
 /** What an empty list has until another toy is chosen, as it had the glow before it was a toy. */
 export const DEFAULT_TOY: ToyId = "glow";
 

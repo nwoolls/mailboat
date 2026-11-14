@@ -4587,8 +4587,22 @@ between pixel art and ASCII art for the screensavers.*
       it as the words do; the title row still gets its clicks. The glow now
       clears whole cells, measured from each cell's nearest edge, so no tile
       overlaps a letter. *Owner: "LGTM"*
-- [ ] Rethink Settings → Toybox *(owner, 2026-11-13: "as a last step we'll
-      rethink the settings screen")*
+- [x] Rethink Settings → Toybox *(owner, 2026-11-13: "as a last step we'll
+      rethink the settings screen")*. Each card's switch sits in its
+      header beside what it turns on: the toy's replaces a "None" choice
+      (switched on again, the toy it had comes back), and the screensaver's
+      left the "Inbox Zero" card, which is gone. Style is two pictures of
+      the koi pond, one in each style, instead of two buttons, and each
+      screensaver is a picture of itself in the chosen style and colors:
+      the real scene, drawn at about a list card's size and scaled down, so
+      it is a true miniature (drawn at a tile's size, most were hard to
+      make out). Only the chosen one moves; the others play a moment out of
+      sight and show a still frame, which a change of colors redraws.
+      Random is four squares in the palette's colors. A mockup came first,
+      and the owner asked for no icon or words in the pictures. Without
+      words to start from, Life now starts from the middle. Still to do:
+      the features gallery's Toybox pictures show the old page. *Owner:
+      "nailed it, much better"*
 - [x] The pointer stirs the pond *(owner, 2026-11-13: "extremely subtle
       ripples that follow the mouse, but clicking still disturbs the water
       more")*: a faint push every few cells the pointer moves over the

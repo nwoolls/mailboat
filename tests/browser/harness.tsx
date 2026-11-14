@@ -21,6 +21,7 @@
  *                                 being written, and `&draftsave=fail` makes
  *                                 saving it fail. The order the commands were
  *                                 called in is in `window.__order`
+ *   ?mode=toybox                  Settings → Toybox
  *   ?mode=shortcuts               the `?` keyboard shortcuts sheet
  *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a

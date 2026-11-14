@@ -57,12 +57,13 @@ import {
   parseColor,
 } from "../../screensaver/model/palettes";
 import { screensaverPrefs } from "../../screensaver/ui/prefs";
+import { RandomPreview, ScenePreview } from "../../screensaver/ui/ScenePreview";
 import type { AfterRemoval } from "../../mailbox/model/threadActions";
 import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import { listPrefs } from "../../mailbox/ui/listPrefs";
 import { TOYS } from "../../emptyToys/model/toys";
 import { TOYBOX_STYLES } from "../../emptyToys/model/style";
-import { emptyToy, toyboxStyle } from "../../emptyToys/ui/prefs";
+import { emptyToy, setToyOn, toyboxStyle } from "../../emptyToys/ui/prefs";
 import { type Density, SWIPE_CHOICES, type SwipeChoice } from "../../mailbox/model/listPrefs";
 import {
   MARK_READ_DELAY_MS,
@@ -77,7 +78,7 @@ import { composingPrefs } from "../../compose/ui/composingPrefs";
 import { TEXT_SIZES } from "../model/textSize";
 import { minutesOf, timeValue } from "../model/quietHours";
 import { textSize } from "./textSize";
-import { FEATURE_FLAGS, setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
+import { setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
 import { IS_MAC } from "../../../shared/lib/platform";
@@ -1243,102 +1244,141 @@ export function AdvancedSection() {
   );
 }
 
-/** Settings → Toybox: the empty list's glow and screensavers. */
+/**
+ * Settings → Toybox: how the toys and screensavers are drawn, the empty
+ * list's toy and the screensaver. Each card's switch sits in its header,
+ * beside what it turns on (owner, 2026-11-13: "toggles that are in the
+ * same cards as their selections"): the toy's replaces a "None" choice,
+ * and the screensaver's left a card of its own. The style is two pictures
+ * of the same scene, and each screensaver a picture of itself in the
+ * chosen style, the chosen one live.
+ */
 export function ToyboxSection() {
   const flags = useFeatureFlags();
   const prefs = screensaverPrefs.use();
   const toy = emptyToy.use();
   const style = toyboxStyle.use();
+  const toyOn = toy !== "none";
   const toyInfo = TOYS.find((t) => t.id === toy);
   return (
     <>
-      <Group
-        title="Style"
-        description="ASCII art draws the toys and the screensavers with text characters."
-      >
+      <Group title="Style" description="How the toys and the screensavers are drawn.">
         <div className="px-4 py-3.5">
           <ChoiceGrid
             label="Style"
+            columns={2}
             value={style}
-            options={TOYBOX_STYLES.map((s) => ({ value: s.id, label: s.label }))}
+            options={TOYBOX_STYLES.map((s) => ({
+              value: s.id,
+              label: s.label,
+              picture: (
+                <ScenePreview sceneId="koi" palette={prefs.palette} style={s.id} live={false} />
+              ),
+            }))}
             onChange={(id) => toyboxStyle.set(id)}
           />
         </div>
       </Group>
       <Group
-        title="Inbox Zero"
-        description="When a view has no mail: your Inbox, a label or a search."
-      >
-        {FEATURE_FLAGS.map((flag) => (
-          <Row key={flag.id} label={flag.label} description={flag.description}>
-            <Toggle
-              label={flag.label}
-              on={flags[flag.id]}
-              onChange={(on) => setFeatureFlag(flag.id, on)}
-            />
-          </Row>
-        ))}
-      </Group>
-      <Group
         title="Something to play with"
         description="In any view with no mail, behind the icon and words. Put away while a screensaver plays."
+        action={
+          <Toggle label="Something to play with" on={toyOn} onChange={(on) => setToyOn(on)} />
+        }
       >
-        <div className="px-4 py-3.5">
-          <ChoiceGrid
-            label="Something to play with"
-            value={toy}
-            options={TOYS.map((t) => ({ value: t.id, label: t.label }))}
-            onChange={(id) => emptyToy.set(id)}
-          />
-          {toyInfo && (
-            <p className="mt-2 text-[12px] leading-relaxed text-content/45">
-              {toyInfo.description}
-            </p>
-          )}
-        </div>
-      </Group>
-      {flags.screensavers && (
-        <Group
-          title="Screensaver"
-          description="Plays at Inbox Zero. To try one now, open a view with no mail and use “Start screensaver” in the command palette."
-        >
+        {toyOn && (
           <div className="px-4 py-3.5">
             <ChoiceGrid
-              label="Screensaver"
-              value={prefs.choice}
-              options={[
-                { value: "random", label: "Random" },
-                ...SCREENSAVERS.map((s) => ({ value: s.id, label: s.label })),
-              ]}
-              onChange={(choice) => screensaverPrefs.set({ ...prefs, choice })}
-            />
-          </div>
-          <div className="px-4 pb-2">
-            <div className="text-[13px] font-medium text-content">Colors</div>
-            <div className="mt-1 text-[12px] leading-relaxed text-content/45">
-              “Mono + accent” and “Accent” follow the accent color in Appearance.
-            </div>
-          </div>
-          <div className="px-4 pb-3.5">
-            <ChoiceGrid
-              label="Colors"
-              columns={3}
-              value={prefs.palette}
-              options={PALETTES.map((p) => ({
-                value: p.id,
-                label: p.label,
-                picture: <PaletteStrip id={p.id} />,
+              label="Something to play with"
+              value={toy}
+              options={TOYS.filter((t) => t.id !== "none").map((t) => ({
+                value: t.id,
+                label: t.label,
               }))}
-              onChange={(palette) => screensaverPrefs.set({ ...prefs, palette })}
+              onChange={(id) => emptyToy.set(id)}
             />
+            {toyInfo && (
+              <p className="mt-2 text-[12px] leading-relaxed text-content/45">
+                {toyInfo.description}
+              </p>
+            )}
           </div>
-        </Group>
-      )}
+        )}
+      </Group>
+      <Group
+        title="Screensaver"
+        description="After a minute without input at Inbox Zero. Also “Start screensaver” in the command palette."
+        action={
+          <Toggle
+            label="Screensaver"
+            on={flags.screensavers}
+            onChange={(on) => setFeatureFlag("screensavers", on)}
+          />
+        }
+      >
+        {flags.screensavers && (
+          <>
+            <div className="px-4 py-3.5">
+              <ChoiceGrid
+                label="Screensaver"
+                value={prefs.choice}
+                options={[
+                  {
+                    value: "random" as const,
+                    label: "Random",
+                    picture: <RandomPreview colors={paletteSwatches(prefs.palette)} />,
+                  },
+                  ...SCREENSAVERS.map((s) => ({
+                    value: s.id,
+                    label: s.label,
+                    picture: (
+                      <ScenePreview
+                        sceneId={s.id}
+                        palette={prefs.palette}
+                        style={style}
+                        live={prefs.choice === s.id}
+                      />
+                    ),
+                  })),
+                ]}
+                onChange={(choice) => screensaverPrefs.set({ ...prefs, choice })}
+              />
+            </div>
+            <div className="px-4 pb-2">
+              <div className="text-[13px] font-medium text-content">Colors</div>
+              <div className="mt-1 text-[12px] leading-relaxed text-content/45">
+                “Mono + accent” and “Accent” follow the accent color in Appearance.
+              </div>
+            </div>
+            <div className="px-4 pb-3.5">
+              <ChoiceGrid
+                label="Colors"
+                columns={3}
+                value={prefs.palette}
+                options={PALETTES.map((p) => ({
+                  value: p.id,
+                  label: p.label,
+                  picture: <PaletteStrip id={p.id} />,
+                }))}
+                onChange={(palette) => screensaverPrefs.set({ ...prefs, palette })}
+              />
+            </div>
+          </>
+        )}
+      </Group>
     </>
   );
 }
 
 const SLOT_NAMES = ["dark", "mid", "light", "bright", "accent"];
+
+/** A palette's colors as CSS colors, the accent following Appearance's. */
+function paletteSwatches(id: PaletteId): string[] {
+  const accent = parseColor(
+    getComputedStyle(document.documentElement).getPropertyValue("--color-accent"),
+  );
+  return paletteColors(id, accent).map((c) => `rgb(${c.join(" ")})`);
+}
 
 /** A palette's five colors as a row of pixel squares. */
 function PaletteStrip({ id }: { id: PaletteId }) {

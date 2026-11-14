@@ -85,14 +85,21 @@ export class LifeScene implements Scene {
     // settled into a few blinkers within seconds.
     const big = tiles.w * tiles.h > 25;
     const band = big ? 7 : 2;
-    if (s.words)
-      for (let y = s.words.y0 - band * tiles.h; y <= s.words.y1 + band * tiles.h; y += tiles.h)
-        for (
-          let x = s.words.x0 - (big ? 10 * tiles.w : 0);
-          x <= s.words.x1 + (big ? 10 * tiles.w : 0);
-          x += tiles.w
-        )
-          if (s.rng() < (big ? 0.4 : 0.12)) this.setAt(x, y);
+    // Round the words, or the middle where there are none to read (a
+    // preview too small for its words to count as letters).
+    const around = s.words ?? {
+      x0: s.cols * 0.4,
+      y0: s.rows * 0.45,
+      x1: s.cols * 0.6,
+      y1: s.rows * 0.55,
+    };
+    for (let y = around.y0 - band * tiles.h; y <= around.y1 + band * tiles.h; y += tiles.h)
+      for (
+        let x = around.x0 - (big ? 10 * tiles.w : 0);
+        x <= around.x1 + (big ? 10 * tiles.w : 0);
+        x += tiles.w
+      )
+        if (s.rng() < (big ? 0.4 : 0.12)) this.setAt(x, y);
     this.age.fill(0);
   }
 
