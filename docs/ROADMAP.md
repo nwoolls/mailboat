@@ -2,7 +2,18 @@
 
 The single list of what is done, in progress and planned. Every piece of
 work updates this file in the same commit: tick what you finished, and when
-something moves between milestones, move it here and say why.
+something moves between releases, milestones or the backlog, move it here
+and say why.
+
+**How it's organized (owner, 2026-11-14).** Milestones 1 to 17 and the
+earlier spikes built the app and are closed; they stay as history. From 0.3.0 on,
+work is planned by release: each release has a section (`## 0.3.0`) holding
+the items pulled into it from "Later / unscheduled", with their full text,
+and is closed when the owner publishes it. A patch release is usually a
+round of fixes from the Bug backlog; a minor one adds features. A milestone
+is kept only for a project that spans releases and waits on something of
+its own: Milestone 18 waits on Google. New bugs go to the Bug backlog and
+new flaky tests to Flaky tests, as before.
 
 `[x]` done · `[ ]` to do · *(moved from Mx)* notes where an item came from.
 
@@ -2610,6 +2621,9 @@ first sync runs.*
 and, inside the app, get from nothing to their mail in about 15
 minutes. Details: `docs/RELEASE.md` → Plan 2.*
 
+**Closed (owner, 2026-11-14).** Everything is done except one small item
+held until it becomes a problem, which moved to "Later / unscheduled".
+
 - [x] Onboarding *(owner request, 2026-10-17; moved from the Release
       Spike)*: a first-launch flow instead of today's single Welcome
       screen. At least: set up Google credentials (below), then add one
@@ -2815,10 +2829,9 @@ minutes. Details: `docs/RELEASE.md` → Plan 2.*
       (2026-10-30). The part that needs someone who has never seen the
       app moved to Milestone 15, where builds exist for others)*
 
-- [ ] "Use a different file" on "Google Cloud is set up" goes back to
-      the start of the walkthrough *(owner, 2026-10-30: fine for now;
-      look again if it becomes a problem)* *(held out of the Polish Spike,
-      2026-11-07: only if it becomes a problem)*
+- *Moved to "Later / unscheduled" when the milestone closed (owner,
+  2026-11-14): "Use a different file" going back to the start of the
+  walkthrough.*
 
 ## Milestone 13: Independent code review
 
@@ -3512,6 +3525,8 @@ builds are attached to each run as artifacts.*
       *Not for now (owner, 2026-11-04): no donations. Look again at the
       Milestone 17 checkpoint, together with the paid-option decision
       (Milestone 18), so the two don't muddy each other.*
+      *(2026-11-14: the checkpoint was dropped; look again with the
+      paid-option decision, once Google answers.)*
 
 ## Milestone 15: Signed builds and automatic updates
 
@@ -3945,7 +3960,12 @@ security fixes).
 
 *Done when: Mailboat has been announced once in the right places, and the
 owner has decided, from what happened, whether Milestone 18 is worth
-starting.*
+starting. (Superseded 2026-11-14: the checkpoint was dropped and Milestone
+18 waits on Google; see below.)*
+
+**Closed (owner, 2026-11-14).** The owner promotes Mailboat on social
+media; the optional packaging and the badge moved to "Later /
+unscheduled", and the checkpoint was dropped (see below).
 
 - [x] Social accounts: the owner's personal ones are fine for an open
       source launch. Optionally reserve `mailboatapp` on X, Bluesky and
@@ -3953,32 +3973,32 @@ starting.*
       Reddit filters new accounts with no history: take part in a few
       communities for some weeks before posting *(2026-11-11: the owner's
       personal accounts were used)*
-- [ ] Launch posts, once: Show HN; r/macapps (app posts allowed under
+- [x] Launch posts, once: Show HN; r/macapps (app posts allowed under
       its rules); Claude and MCP communities (the AI and AI-apps
       features are the pitch for a technical audience); "Mimestream,
       but on Windows too" for Windows users. Each post links to the
       website and GitHub *(by 2026-11-11: the owner posted on X and Reddit,
       with some interest so far: likes on the posts, and stars and forks
       on GitHub. The other places are to be decided; the owner doesn't
-      frequent them)*
-- [ ] Optional *(moved from Milestone 15, 2026-11-05)*: a Homebrew tap of
-      the owner's own (the main Homebrew list needs an app to be popular
-      first) and `winget` for Windows
-- [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
-      bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
-      paperwork, best done once there are releases to point at
-- [ ] Checkpoint, about a month later, with the owner: downloads
-      (GitHub counts them), stars, issues from people who finished the
-      setup, and whether people say they'd pay to skip it. Decide:
-      Mailboat stays free and open source, or Milestone 18 begins *(the
-      first posts went out by 2026-11-11, so about mid-December 2026)*
+      frequent them)* *(closed 2026-11-14: the owner promotes it on social
+      media and decides where; no more posts are tracked here)*
+- *Moved to "Later / unscheduled" (owner, 2026-11-14): the Homebrew tap
+  and `winget`, and the OpenSSF Best Practices badge.*
+- *Dropped (owner, 2026-11-14): the checkpoint about a month after the
+  launch (downloads, stars, setup issues, whether people would pay to skip
+  the setup). Milestone 18 now waits on Google's decision on the
+  verification instead, not on how the free release is taken up.*
 
-## Milestone 18: Paid option (only if the Milestone 17 checkpoint says yes)
+## Milestone 18: Paid option (once Google approves Mailboat's own client)
 
 *Done when: people can subscribe to sign in with Mailboat's own
 Google-verified credentials and no setup, in the same app as the free
 route. Plan 3, Stage B, in `docs/RELEASE.md`; its Google and Polar
 steps are those of Plan 1 there.*
+
+*Waits on Google's decision on the verification, not on a checkpoint
+(owner, 2026-11-14; it was "only if the Milestone 17 checkpoint says
+yes"). If Google approves, the owner decides from there.*
 
 - [ ] Google verification for Mailboat's own OAuth client: domain verified
       in Search Console, consent screen (name, logo, home page, privacy
@@ -4007,7 +4027,8 @@ steps are those of Plan 1 there.*
 
 *Proposed by the owner 2026-11-07, to run alongside the Milestone 16
 leftovers or after them, in its own session. Scope settled the same day;
-building not started. Done when: each
+building not started (as of 2026-11-07; it has since closed, see
+below). Done when: each
 item picked below is built, the owner has tried it, and its entry is ticked
 in the place it came from (each item below says where: the Bug backlog,
 Milestone 12, 14 or 16, or "Later / unscheduled"; they keep the full text,
@@ -4017,6 +4038,11 @@ tick, and an item marked conditional that never becomes necessary doesn't
 hold the spike open. Apart from step 0, nothing here is new work: it
 collects the open bugs and the hardening items that are cheap, safe while Google reviews the
 app, and make the privacy story easier to defend.*
+
+**Closed (owner, 2026-11-14).** Every item is done except two, which
+moved to "Later / unscheduled" with their full text and then, the same
+day, into 0.3.0: stripping tracking codes from links, and new Toybox
+screensaver screenshots, taken with the 0.3.0 release.
 
 ### Read first
 
@@ -4180,7 +4206,7 @@ Checked 2026-11-09, so a new session need not repeat it:
       at the top changes when it is published)* *(2026-11-11: 0.2.0 is
       published; rebased on `main` with #84's calendar line, dated
       11 November 2026, and merged)*
-- [ ] A reviewer test kit (a new item): a section in
+- [x] A reviewer test kit (a new item): a section in
       `docs/GOOGLE-VERIFICATION.md`, "How a reviewer tests Mailboat". The app
       is In production, so a reviewer signs in with any Google account (the
       demo account's login is not shared). 0.2.0 ships without a client file,
@@ -4191,7 +4217,11 @@ Checked 2026-11-09, so a new session need not repeat it:
       Select all. After the review, rotate the client secret (the console's
       "Add secret", then disable the old one). The owner picks the link's
       channel
-- [ ] A new demo video, recorded on stable 0.2.0 (a new item), from a
+      *(done: `docs/GOOGLE-VERIFICATION.md` → "How a reviewer tests
+      Mailboat"; the reply of 2026-11-11 carried a private, expiring link to
+      the client file. Rotating the secret waits for the review's end; noted
+      there under Status)*
+- [x] A new demo video, recorded on stable 0.2.0 (a new item), from a
       script that answers Google's checklist rows; the "Demo video" section
       of `docs/GOOGLE-VERIFICATION.md` is rewritten to match first. The
       consent screen with every scope expanded; each feature captioned with
@@ -4202,7 +4232,10 @@ Checked 2026-11-09, so a new session need not repeat it:
       removing an account and "Delete all data"; the publishing status left
       "In production" ("live apps"). The recording notes from the first
       takes stay in that section
-- [ ] The console and the reply (owner's, tracked here): Data Access and the
+      *(done: recorded on 0.2.0 and linked in Data Access in place of the
+      first, before the reply of 2026-11-11; `docs/GOOGLE-VERIFICATION.md` →
+      Status)*
+- [x] The console and the reply (owner's, tracked here): Data Access and the
       calendar justification, the new video link, the test instructions in
       "Additional info", then one reply in the thread once the items above are
       live: the policy's new date, the video, how to test, the AI safeguards
@@ -4210,6 +4243,9 @@ Checked 2026-11-09, so a new session need not repeat it:
       the warning, AI apps off by default), the security-assessment stance
       (no server of ours), and the calendar narrowing with the question about
       changing Data Access
+      *(done 2026-11-11: Data Access narrowed and justified, the new video
+      linked, and the reply sent in the email thread; `docs/GOOGLE-VERIFICATION.md`
+      → Status)*
 
 Not in 0.2.0, on purpose: "Ask for Google permissions when first needed" (a
 larger change to the consent flow and the video, not asked for by Google's
@@ -4349,13 +4385,9 @@ and a tick.
 - [x] Summaries kept only as long as needed: a switch to not keep them, or
       clearing them on quit (its own Milestone 16 item, so it is ticked on
       its own; built 2026-11-09, see there)
-- [ ] Strip tracking codes (`utm_` and the like) from links, next to the
-      tracking pixels already removed (from the GotEmail and bytemail ideas
-      under "Later / unscheduled"; a sub-point of a ticked research item, so
-      when it is done, add a dated "done" note to that sub-point instead of
-      ticking). Adds no permission. The policy says
-      known tracking pixels are removed, so it gets a line for links in the
-      same commit
+- Strip tracking codes from links: not built; moved to "Later /
+  unscheduled" when the spike closed, and from there into 0.3.0 (owner,
+  2026-11-14).
 
 ### Bugs, in order (small and visible first)
 
@@ -4411,7 +4443,7 @@ One pull request each.
       `mail::codes`, which holds both spellings to match real mail, and the
       `cargo-deny (licences, advisories)` check name, since renaming a
       required check would block merges
-- [ ] With 0.2.0 *(owner, 2026-11-09: retimed from "after Google's answer",
+- [x] With 0.2.0 *(owner, 2026-11-09: retimed from "after Google's answer",
       to go in the policy edit under "For 0.2.0" above)*: American spelling
       on the home page, privacy policy and terms (`website/index.html`,
       `website/privacy.html`, `website/terms.html`), which Google is
@@ -4420,13 +4452,11 @@ One pull request each.
       two strings the policy check pins change with the policy
       (`SCOPE_LABELS`, "organise", and a `CLAIMS` sentence, "summarised", in
       `scripts/policy.ts`, and the label in `scripts/policy.test.ts`)
-- [ ] Regenerate the Toybox screensaver screenshots, which still show the
-      old "Colours" and "accent colour" labels: `screensaver-settings-light`
-      and `-dark`, in `docs/images/features` and in `website/images` (cards
-      and full size). The `toybox` screenshots too, which don't show the
-      Style choice added in UX Spike 5 and still show the Glow switch,
-      now one of the toys. Needs the screenshot pipeline, which waits on Screen
-      Recording permission (see the features gallery plan)
+      *(done: the policy edit, #92; the three pages have no British
+      spellings left)*
+- Regenerate the Toybox screensaver screenshots: not built; moved to
+  "Later / unscheduled" when the spike closed, and from there into 0.3.0
+  (owner, 2026-11-14).
 
 ### Held or later
 
@@ -4436,14 +4466,16 @@ privacy:
 - Ask for Google permissions when first needed: after Google's answer (see
   above).
 - Remove an address from compose suggestions ("Later / unscheduled" →
-  Writing). It touches the Contacts data Google is reviewing, so it must
+  Writing; in 0.3.0 since 2026-11-14). It touches the Contacts data Google is reviewing, so it must
   ask for no new permission.
 - Warn about outside recipients (addresses not ending with chosen
-  domains are marked while writing; "Later / unscheduled" → Writing). Not a
+  domains are marked while writing; "Later / unscheduled" → Writing; in 0.3.0
+  since 2026-11-14). Not a
   bug or a privacy item; held to keep the scope small.
 - Only if it becomes a problem: "Use a different file" on "Google Cloud
   is set up" goes back to the start of the walkthrough (Milestone 12;
-  the owner said it was fine for now).
+  the owner said it was fine for now; in "Later / unscheduled" since
+  2026-11-14).
 - Contacting fewer image hosts before a message is opened (prefetch only for
   people you've written to, or not at all): a design decision for the owner.
 - Encrypting the local cache at rest, and Touch ID or Windows Hello: decide,
@@ -4479,7 +4511,8 @@ the spike ran and the owner added them to it (#120, #121, #122, #123,
 #125). Every fix is a patch, so the next version
 is 0.2.1-beta.0, on the owner's word. Rethinking how a new reply is
 followed was left out and stays open in the Bug backlog. The flaky tests
-seen during the spike are tracked in Flaky tests (#124).
+seen during the spike are tracked in Flaky tests (#124). (2026-11-14: both
+moved to "Later / unscheduled" → Open bugs and → Flaky tests.)
 
 1. [x] The reply moving under the cursor after a draft save (the AI summary
    above it blinking), #112.
@@ -4902,60 +4935,29 @@ Fixed before this list existed, kept in the Bug backlog: the starfield test
 `ai-panel.spec.ts` timing tests below, first fixed 2026-11-08 by
 stretching the measured animation.
 
-- [ ] `ai-panel.spec.ts`: "inline reply: opening and closing the panel many
-      times never moves the reply". Back after the 2026-11-08 fix.
-      - 2026-11-12, local full check on branch `trash-leaves-inbox` (a
-        change to Trash, nothing near the reply or the panel): the reply
-        was 445 px from its start on toggle 1 (`toBeLessThanOrEqual(2)`,
-        received 445.375). It passed 5 runs of 5 alone and in the next full
-        check. Unlike the CI failure below, the reply did move, so this
-        may be a real jump when the machine is busy rather than a
-        measurement problem.
-      - 2026-11-12, CI on #122 (branch `same-folder-click`, which touches
-        neither the panel nor the reply),
-        https://github.com/nwoolls/mailboat/actions/runs/43354683199:
-        "toggle 1 animated", expected more than 2 painted frames in 0.9 s,
-        received 2. The branch passed the test file 20 runs of 20 locally;
-        the failed job was run again and passed, with every other job.
-- [ ] `ai-panel.spec.ts`: "floating card at bottom-right: the panel opens on
-      the left, the whole card bounces, the form stays". Back after the
-      2026-11-08 fix.
-      - 2026-11-12, CI on #122, the same run as above: the new message form
-        wasn't visible within 5 s (`toBeVisible`, element not found), before
-        the panel was opened at all. It passed 5 runs of 5 locally (the
-        bottom-left one too).
-- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader: the reply
-      scrolls into view" (line 49, the normal-speed version of the test
-      below).
-      - 2026-11-12, CI on #125 (branch `trashed-draft-opens`, Rust and docs
-        only),
-        https://github.com/nwoolls/mailboat/actions/runs/43365259589: "the
-        reply scrolls into view", still false after polling for 15 s (the
-        Send button or the reply's top never came into the reader). The
-        failed job was run again and passed, with every other job. Likely
-        the same cause as the slow-machine test below, on a slow runner.
-- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
-      the reply still scrolls into view". Turned off (`test.fixme`, line 86)
-      by the owner on 2026-11-11, until the reply-follow redesign; turn it
-      back on with that. The full story is in the Bug backlog ("On a slow
-      machine, a new reply sometimes stops being followed"). Its failures:
-      - 2026-11-10, CI: the reader stopped well short of the reply. Fixed
-        that day by following the reply until the person scrolls or types.
-      - 2026-11-10, CI, later: the follow stopped early, taking its own
-        scrolling for the person scrolling up. Fixed by scrolling to a
-        computed target.
-      - 2026-11-11, CI on two pull requests that didn't touch it: the
-        reply's end a few pixels below the reader. With the test run ten
-        times per CI run, it failed in all five runs before the fix (short
-        smooth scrolls now jump) and in none of three after it.
-      - One earlier run (date not recorded) left the reply 223 px below,
-        and the fix's own CI run, 2026-11-11, 341 px below, with the fix in. Not explained;
-        the test was turned off.
-      - 2026-11-11, CI: another test in the file, "scrolling up slowly",
-        failed the same way (401 px, before it scrolled at all): it clicked
-        Reply with AI while the email above was still laying out. The tests
-        now wait for the conversation to keep its height for half a second
-        before clicking.
+The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
+2026-11-14)*, with their full text. New ones are still added here.
+
+- [ ] `settings-toybox.spec.ts`: "repainting a still picture doesn't move it
+      on: new colors and back give the same picture" (added in #128).
+      - 2026-11-14, CI on `main` after #128 merged, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43626606206: the
+        Sandscape tile's picture after switching colors and back wasn't the
+        one before (`toBe`, two different PNGs). Decoded, about 4% of the
+        tile's pixels differ, spread over most of it, so the sand moved on
+        rather than a color being off. It passed in attempt 2 on the same
+        commit. Not yet known whether the still wasn't reached in the test's
+        9.5 s wait on a slow runner, or a repaint really moves the scene on,
+        which is what the test guards against.
+- [ ] `reply-scroll.spec.ts`: "Reply with AI: scrolling up to read stops the
+      reply being followed" (line 115).
+      - 2026-11-14, same run, attempt 2 (`main` after #128, which touches
+        neither the reply nor the follow): the first check, before any
+        scrolling, timed out after 15 s with the reply's end 365 px below the
+        reader (`toBeGreaterThanOrEqual(-1)`, line 125). It passed in
+        attempt 1. The same symptom as the reply-scroll entries in "Later /
+        unscheduled" → Flaky tests: the reply never came into view on a
+        slow runner, likely the same cause.
 
 ## Bug backlog
 
@@ -4964,7 +4966,8 @@ Open ones moved to Bug Spike 1 (2026-10-19) and Bug Spike 2
 (2026-10-21). Bug Spike 2 closed 2026-10-24, so new bugs come here
 again until the next spike. Bug Spike 3 (started 2026-11-12) lists the
 items it covers without moving them: they stay here with their full text,
-and new bugs still come here.*
+and new bugs still come here. The open bugs left after it moved to "Later /
+unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
 - [x] A draft in Trash can't be opened *(owner report, 2026-11-12; fixed
       the same day, and the owner tried it)*: clicking one showed
@@ -5329,42 +5332,6 @@ and new bugs still come here.*
       `tests/browser/signature-box.spec.ts`, clicks the empty part near the
       corner and types, and checks that a long signature still scrolls in
       the box
-- [ ] On a slow machine, a new reply sometimes stops being followed before
-      it has laid out *(found 2026-11-11, by the browser test "Reply with
-      AI, 360px reader, slow machine" failing in CI on two pull requests that
-      didn't touch it, and passing when run again and every time locally;
-      partly fixed the same day)*: the reply's end was left a few pixels below the
-      reader, and stayed there. Neither first guess was it (the
-      reader's position clamping, taken for the person scrolling up; the
-      follow's 10-second window running out). A recording added to the test
-      for CI showed the follow asking the reader to scroll a pixel or two,
-      smoothly, again and again as the reply grew, and the reader not
-      moving: WebKit left such short smooth scrolls undone. Up to 40 px the
-      follow (ComposeForm) now scrolls at once, which looks the same. With
-      the test run ten times per CI run, it failed in all five runs before
-      the change (about one sample in five) and in none of three after it
-      (30 samples). The test only fails on a slow machine; a local test that
-      grows the reply a pixel at a time passed with and without the change,
-      and was not kept. One
-      earlier failure left the reply 223 px below, which this doesn't
-      explain; it didn't come back in the 80 samples run since. It did on
-      this pull request's own CI run, with the change in: 341 px below. So
-      the few-pixel misses are fixed and the large ones aren't. The owner
-      chose (2026-11-11) to turn the test off for now (`test.fixme`) rather
-      than keep chasing the cause. Still open: rethink how a new reply is
-      shown, so nothing needs following once it opens (for example, open it
-      at its final size, with space kept for the signature and the
-      assistant, and scroll once); a design for the owner to lead, with a
-      mockup first. Turn the test back on with it. The next CI run failed
-      another test in the file the same way ("scrolling up slowly", 401 px,
-      before it scrolled at all): it had clicked Reply with AI while the
-      email above was still laying out on the slow machine. The owner's call:
-      a person clicks Reply after the conversation has loaded, so the tests
-      now wait until it has kept the same height for half a second before
-      clicking. Clicking while it still loads is a separate case, for tests
-      of its own later. The follow didn't cause the cursor bug filed in #109
-      (2026-11-12, see that item), so this item stays open and the test
-      stays `test.fixme`
 - [x] Two browser tests in `ai-panel.spec.ts` failed by chance in CI on a
       pull request that touched no front-end code (2026-11-08): the
       floating card's nudge measured 0, and the inline reply ended one pixel
@@ -5536,20 +5503,6 @@ and new bugs still come here.*
       region's. Tests: an
       Outlook-named zone gives the same moment as its IANA name, and the
       fallback format; both failed before the fix.)*
-- [ ] Tooltips don't show when the app's window is on another desktop than
-      the one the app is assigned to *(owner report, 2026-11-12, macOS)*:
-      with the Dock icon's Options → Assign To set to "This Desktop",
-      moving the window to another desktop (Space) stops the tooltips
-      showing; with "None" they show on any desktop. Another app tried the
-      same way kept its tooltips. The app's tooltips are native ones
-      (`title` attributes, 126 of them), which macOS draws in windows of
-      their own. Likely cause, not confirmed: an app assigned to one desktop
-      opens its new windows there, so they appear out of sight.
-      Options: leave it (setting "None" avoids it), or draw the tooltips in
-      the page instead, with one shared handler that takes over every
-      `title` (a visible change, so the owner leads it, with mockups first:
-      the bubble's look and its delay; keep each button's accessible name).
-      Held for later (owner, 2026-11-12)
 - [x] Archiving with the preview collapsed re-opens it *(owner request,
       2026-11-09; minor; fixed 2026-11-12, and the owner tried it)*: after collapsing the preview panel by hand,
       moving through the list with the keyboard leaves it collapsed, but
@@ -5662,6 +5615,116 @@ and new bugs still come here.*
       offer) and leave the preview as it was. A unit test failed before the
       fix.
 
+## 0.3.0
+
+*Opened 2026-11-14, the first release planned by release (see the top of
+this file). A minor release: a full round of polish on the Toybox, and small new
+features and enhancements the owner picked from "Later / unscheduled"
+(2026-11-14); bugs to fix are still to be picked. None needs a new Google
+permission, and none sends data anywhere the privacy policy's "When data
+leaves your computer" doesn't already list (label changes go to Gmail;
+"What's new" must stay within the update check's hosts, or update the
+policy, whichever option is chosen). Done when: each item below is
+built, the owner has tried it, and the owner has published 0.3.0
+(`docs/DEVELOPMENT.md` → Releasing).*
+
+### New features
+
+- [ ] Print an email or a conversation. Needs no API, but Gmail has it and
+      the app doesn't. Competitors: Apple Mail, Outlook, Spark (the latest
+      email or the whole conversation), Mimestream. Effort: low (print the
+      reader's sanitized HTML; check that the web view can print on macOS
+      and Windows)
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+- [ ] Clone a sent email *(owner request, 2026-11-08; maybe for the Polish
+      Spike, not likely)*: find an email you sent before and open it in a
+      new composer with the same recipients, subject and body, to send the
+      same message again. Useful before templates (in "Later / unscheduled" → Writing), which remain
+      planned; it starts from a sent email already in the cache, fetching
+      its body if that isn't saved yet. To decide: where the action lives
+      (the email's menu, a command in the palette, or both), whether Cc,
+      Bcc and attachments come along (attachments would have to be
+      downloaded again, and the cache keeps no Bcc), and whether the
+      signature is kept or added again. The clone is a new draft; the
+      original is untouched.
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+- [ ] Warn about outside recipients (addresses not ending with chosen
+      domains are marked while writing) *(held out of the Polish Spike,
+      2026-11-07)*
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+
+### Enhancements to existing features
+
+- [x] UX Spike 5, the ASCII Toybox (#128): new and reworked screensavers,
+      every toy and screensaver in pixel art or ASCII art, and Settings →
+      Toybox reworked, with the switch between pixel art and ASCII art
+      (moved from "Later / unscheduled" into the spike by #128). Its items
+      are in the spike's own section
+      *(#128 merged 2026-11-14. "Weather in the sky" stays open in the
+      spike, undecided; its real-weather part waits for Google's review)*
+- [ ] Regenerate the Toybox screensaver screenshots, which still show the
+      old "Colours" and "accent colour" labels: `screensaver-settings-light`
+      and `-dark`, in `docs/images/features` and in `website/images` (cards
+      and full size). The `toybox` screenshots too, which don't show the
+      Style choice added in UX Spike 5 and still show the Glow switch,
+      now one of the toys (#128). Needs the screenshot pipeline, which waits
+      on Screen Recording permission (see the features gallery plan)
+      *(moved from the Polish Spike when it closed, owner, 2026-11-14:
+      wait until the new screensavers, #128, are merged, and time it with
+      the 0.3.0 release, so the pictures show what that release ships)*
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+- [ ] Label color and visibility. `labels.patch` takes `color`,
+      `labelListVisibility` and `messageListVisibility`; the app only
+      renames (`rename_label` sends `name`). Pick a label's color from
+      Gmail's palette and hide or show it in the sidebar, kept in sync
+      with Gmail.
+      Permission: existing (`gmail.modify`). Competitors: Mimestream
+      (colors and visibility, synced with Gmail). Effort: low
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+- [ ] Remove an address from compose suggestions *(held out of the Polish
+      Spike, 2026-11-07: it touches the Contacts data Google is reviewing,
+      so it must ask for no new permission)*
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+- [ ] What's new in an available update *(owner idea, 2026-11-08; maybe for
+      the Polish Spike, not likely)*: when the update notice says a version
+      is available, let the person read what changed in it before installing.
+      The Tauri updater supports release notes: its manifest (`latest.json`)
+      can carry them, and the plugin hands them back with the update
+      (`Update::body`). The app leaves them out on purpose: only the
+      download is signed, not the manifest, so a tampered manifest could put
+      any text in the window (`updates.rs` and `releaseFiles.ts` say so), and
+      the release notes themselves come from `CHANGELOG.md` and go on the
+      GitHub release. To decide: a "What's new" link in the notice that opens
+      that version's release page in the browser (simplest: nothing is shown
+      in the window, and the address follows from the version), notes signed
+      the way the download is and checked against the public key before the
+      app shows them as plain text (never HTML), or both.
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+- [ ] Strip tracking codes (`utm_` and the like) from links, next to the
+      tracking pixels already removed (from the GotEmail and bytemail ideas
+      under "Later / unscheduled"; a sub-point of a ticked research item, so
+      when it is done, add a dated "done" note to that sub-point instead of
+      ticking). Adds no permission. The policy says
+      known tracking pixels are removed, so it gets a line for links in the
+      same commit
+      *(moved from the Polish Spike when it closed, owner, 2026-11-14;
+      never started)*
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+- [ ] Images from local or private hosts *(raised by the review of the
+      image-address fix, 2026-11-07)*: an email's remote image may name a
+      loopback or private-network host (`127.0.0.1`, `*.localhost`,
+      `192.168.…`), which loads like any other when images are allowed, and
+      is downloaded by the app itself as mail arrives (`mail::prefetch`).
+      That lets a sender make a request to a device on the reader's own
+      network. Decide whether the cleaner and prefetch should refuse such
+      hosts (the app's own link host already is), and record the choice in
+      the Architecture decisions. Owner to schedule
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+
+### Bugs
+
+*None picked yet: the open bugs are in "Later / unscheduled" → Open bugs.*
+
 ## Later / unscheduled
 
 - [ ] Ask for Google permissions when they are first needed: sign-in asks
@@ -5706,16 +5769,6 @@ and new bugs still come here.*
       for shared computers
       *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
 
-- [ ] Images from local or private hosts *(raised by the review of the
-      image-address fix, 2026-11-07)*: an email's remote image may name a
-      loopback or private-network host (`127.0.0.1`, `*.localhost`,
-      `192.168.…`), which loads like any other when images are allowed, and
-      is downloaded by the app itself as mail arrives (`mail::prefetch`).
-      That lets a sender make a request to a device on the reader's own
-      network. Decide whether the cleaner and prefetch should refuse such
-      hosts (the app's own link host already is), and record the choice in
-      the Architecture decisions. Owner to schedule
-
 - [ ] Pin more of the privacy policy's claims in `check:website`
       (`scripts/policy.ts`) *(from the review of the first check,
       2026-11-07)*: it covers the Google permissions and the stated
@@ -5757,8 +5810,8 @@ and new bugs still come here.*
       own, so this needs Windows' own API
 
 - [ ] Task-app integrations: "add to Todoist and archive" *(owner idea,
-      2026-10-29; wanted soon after the first release, he'd use it
-      often)*: one way he keeps an empty inbox is turning an email that
+      2026-10-29; wanted soon after the first release, the owner would use
+      it often)*: one way the owner keeps an empty inbox is turning an email that
       needs action into a task in Todoist, then archiving it. A button on
       an email creates the task and archives the email. With AI on, the
       task's title and description are derived from the email (shown to
@@ -5779,6 +5832,15 @@ and new bugs still come here.*
       Tasks has one but would add a Google permission. Open: what goes to
       the AI provider (only if the owner chose it for the feature), undo
       for the archive
+      It asks for no new Google permission, but it sends part of an email
+      (the subject, a snippet, or a title and description written by AI) to
+      Todoist. That is Google user data going to another app, so the privacy
+      policy's "When data leaves your computer" list and its Limited Use
+      paragraph, the feature card and Settings → Privacy would change in the
+      same commit (`AGENTS.md` → Docs to keep current), and Google is
+      reviewing that policy
+      *(planned for 0.3.0 and moved back here the same day, owner,
+      2026-11-14: held until Google answers the verification)*
 
 - [ ] Settings → Accounts shows which Google Cloud credentials each
       account uses and lets the user replace the file *(moved from
@@ -5835,20 +5897,131 @@ and new bugs still come here.*
       archived and kept quiet as they sync (only while Mailboat runs; the
       Gmail phone app would still notify). Offered, not chosen yet*
 
-- [ ] What's new in an available update *(owner idea, 2026-11-08; maybe for
-      the Polish Spike, not likely)*: when the update notice says a version
-      is available, let the person read what changed in it before installing.
-      The Tauri updater supports release notes: its manifest (`latest.json`)
-      can carry them, and the plugin hands them back with the update
-      (`Update::body`). The app leaves them out on purpose: only the
-      download is signed, not the manifest, so a tampered manifest could put
-      any text in the window (`updates.rs` and `releaseFiles.ts` say so), and
-      the release notes themselves come from `CHANGELOG.md` and go on the
-      GitHub release. To decide: a "What's new" link in the notice that opens
-      that version's release page in the browser (simplest: nothing is shown
-      in the window, and the address follows from the version), notes signed
-      the way the download is and checked against the public key before the
-      app shows them as plain text (never HTML), or both.
+- [ ] Optional *(moved from Milestone 15, 2026-11-05; moved from
+      Milestone 17 when it closed, owner, 2026-11-14)*: a Homebrew tap of
+      the owner's own (the main Homebrew list needs an app to be popular
+      first) and `winget` for Windows
+
+- [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
+      bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
+      paperwork, best done once there are releases to point at
+      *(moved from Milestone 17 when it closed, owner, 2026-11-14)*
+
+- [ ] "Use a different file" on "Google Cloud is set up" goes back to
+      the start of the walkthrough *(owner, 2026-10-30: fine for now;
+      look again if it becomes a problem)* *(held out of the Polish Spike,
+      2026-11-07: only if it becomes a problem)*
+      *(moved from Milestone 12 when it closed, owner, 2026-11-14)*
+
+### Open bugs (moved from the Bug backlog, owner, 2026-11-14)
+
+- [ ] On a slow machine, a new reply sometimes stops being followed before
+      it has laid out *(found 2026-11-11, by the browser test "Reply with
+      AI, 360px reader, slow machine" failing in CI on two pull requests that
+      didn't touch it, and passing when run again and every time locally;
+      partly fixed the same day)*: the reply's end was left a few pixels below the
+      reader, and stayed there. Neither first guess was it (the
+      reader's position clamping, taken for the person scrolling up; the
+      follow's 10-second window running out). A recording added to the test
+      for CI showed the follow asking the reader to scroll a pixel or two,
+      smoothly, again and again as the reply grew, and the reader not
+      moving: WebKit left such short smooth scrolls undone. Up to 40 px the
+      follow (ComposeForm) now scrolls at once, which looks the same. With
+      the test run ten times per CI run, it failed in all five runs before
+      the change (about one sample in five) and in none of three after it
+      (30 samples). The test only fails on a slow machine; a local test that
+      grows the reply a pixel at a time passed with and without the change,
+      and was not kept. One
+      earlier failure left the reply 223 px below, which this doesn't
+      explain; it didn't come back in the 80 samples run since. It did on
+      this pull request's own CI run, with the change in: 341 px below. So
+      the few-pixel misses are fixed and the large ones aren't. The owner
+      chose (2026-11-11) to turn the test off for now (`test.fixme`) rather
+      than keep chasing the cause. Still open: rethink how a new reply is
+      shown, so nothing needs following once it opens (for example, open it
+      at its final size, with space kept for the signature and the
+      assistant, and scroll once); a design for the owner to lead, with a
+      mockup first. Turn the test back on with it. The next CI run failed
+      another test in the file the same way ("scrolling up slowly", 401 px,
+      before it scrolled at all): it had clicked Reply with AI while the
+      email above was still laying out on the slow machine. The owner's call:
+      a person clicks Reply after the conversation has loaded, so the tests
+      now wait until it has kept the same height for half a second before
+      clicking. Clicking while it still loads is a separate case, for tests
+      of its own later. The follow didn't cause the cursor bug filed in #109
+      (2026-11-12, see that item), so this item stays open and the test
+      stays `test.fixme`
+- [ ] Tooltips don't show when the app's window is on another desktop than
+      the one the app is assigned to *(owner report, 2026-11-12, macOS)*:
+      with the Dock icon's Options → Assign To set to "This Desktop",
+      moving the window to another desktop (Space) stops the tooltips
+      showing; with "None" they show on any desktop. Another app tried the
+      same way kept its tooltips. The app's tooltips are native ones
+      (`title` attributes, 126 of them), which macOS draws in windows of
+      their own. Likely cause, not confirmed: an app assigned to one desktop
+      opens its new windows there, so they appear out of sight.
+      Options: leave it (setting "None" avoids it), or draw the tooltips in
+      the page instead, with one shared handler that takes over every
+      `title` (a visible change, so the owner leads it, with mockups first:
+      the bubble's look and its delay; keep each button's accessible name).
+      Held for later (owner, 2026-11-12)
+
+### Flaky tests (moved from the Flaky tests section, owner, 2026-11-14)
+
+- [ ] `ai-panel.spec.ts`: "inline reply: opening and closing the panel many
+      times never moves the reply". Back after the 2026-11-08 fix.
+      - 2026-11-12, local full check on branch `trash-leaves-inbox` (a
+        change to Trash, nothing near the reply or the panel): the reply
+        was 445 px from its start on toggle 1 (`toBeLessThanOrEqual(2)`,
+        received 445.375). It passed 5 runs of 5 alone and in the next full
+        check. Unlike the CI failure below, the reply did move, so this
+        may be a real jump when the machine is busy rather than a
+        measurement problem.
+      - 2026-11-12, CI on #122 (branch `same-folder-click`, which touches
+        neither the panel nor the reply),
+        https://github.com/nwoolls/mailboat/actions/runs/43354683199:
+        "toggle 1 animated", expected more than 2 painted frames in 0.9 s,
+        received 2. The branch passed the test file 20 runs of 20 locally;
+        the failed job was run again and passed, with every other job.
+- [ ] `ai-panel.spec.ts`: "floating card at bottom-right: the panel opens on
+      the left, the whole card bounces, the form stays". Back after the
+      2026-11-08 fix.
+      - 2026-11-12, CI on #122, the same run as above: the new message form
+        wasn't visible within 5 s (`toBeVisible`, element not found), before
+        the panel was opened at all. It passed 5 runs of 5 locally (the
+        bottom-left one too).
+- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader: the reply
+      scrolls into view" (line 49, the normal-speed version of the test
+      below).
+      - 2026-11-12, CI on #125 (branch `trashed-draft-opens`, Rust and docs
+        only),
+        https://github.com/nwoolls/mailboat/actions/runs/43365259589: "the
+        reply scrolls into view", still false after polling for 15 s (the
+        Send button or the reply's top never came into the reader). The
+        failed job was run again and passed, with every other job. Likely
+        the same cause as the slow-machine test below, on a slow runner.
+- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
+      the reply still scrolls into view". Turned off (`test.fixme`, line 86)
+      by the owner on 2026-11-11, until the reply-follow redesign; turn it
+      back on with that. The full story is under Open bugs above ("On a slow
+      machine, a new reply sometimes stops being followed"). Its failures:
+      - 2026-11-10, CI: the reader stopped well short of the reply. Fixed
+        that day by following the reply until the person scrolls or types.
+      - 2026-11-10, CI, later: the follow stopped early, taking its own
+        scrolling for the person scrolling up. Fixed by scrolling to a
+        computed target.
+      - 2026-11-11, CI on two pull requests that didn't touch it: the
+        reply's end a few pixels below the reader. With the test run ten
+        times per CI run, it failed in all five runs before the fix (short
+        smooth scrolls now jump) and in none of three after it.
+      - One earlier run (date not recorded) left the reply 223 px below,
+        and the fix's own CI run, 2026-11-11, 341 px below, with the fix in. Not explained;
+        the test was turned off.
+      - 2026-11-11, CI: another test in the file, "scrolling up slowly",
+        failed the same way (401 px, before it scrolled at all): it clicked
+        Reply with AI while the email above was still laying out. The tests
+        now wait for the conversation to keep its height for half a second
+        before clicking.
 
 ### Reading
 
@@ -5866,12 +6039,6 @@ niche or extra", so Windows and the Release Spike come first)
 
 - [ ] Templates: saved replies to insert while writing (Gmail's own
       templates aren't in its API, so these would be Mailboat's)
-- [ ] Warn about outside recipients (addresses not ending with chosen
-      domains are marked while writing) *(held out of the Polish Spike,
-      2026-11-07)*
-- [ ] Remove an address from compose suggestions *(held out of the Polish
-      Spike, 2026-11-07: it touches the Contacts data Google is reviewing,
-      so it must ask for no new permission)*
 - [ ] Images inline in the email being written, as Gmail does *(owner
       request, 2026-10-22)*: dropping (or pasting) an image into the
       composer puts it in the body where it lands, while other files
@@ -5881,18 +6048,6 @@ niche or extra", so Windows and the Release Spike come first)
       embedded images; to decide: resizing in the editor (Gmail offers
       small / best fit / original), and a large image's share of
       Gmail's 25 MB limit
-- [ ] Clone a sent email *(owner request, 2026-11-08; maybe for the Polish
-      Spike, not likely)*: find an email you sent before and open it in a
-      new composer with the same recipients, subject and body, to send the
-      same message again. Useful before templates (above), which remain
-      planned; it starts from a sent email already in the cache, fetching
-      its body if that isn't saved yet. To decide: where the action lives
-      (the email's menu, a command in the palette, or both), whether Cc,
-      Bcc and attachments come along (attachments would have to be
-      downloaded again, and the cache keeps no Bcc), and whether the
-      signature is kept or added again. The clone is a new draft; the
-      original is untouched.
-
 ### From the AI Spike (moved unbuilt when it closed, 2026-10-21)
 
 - MCP server: moved to AI Spike 2 (owner, 2026-10-24)
@@ -6035,18 +6190,6 @@ Settings → Privacy, as `AGENTS.md` says.
 
 #### With the permissions the app already has
 
-- [ ] Label color and visibility. `labels.patch` takes `color`,
-      `labelListVisibility` and `messageListVisibility`; the app only
-      renames (`rename_label` sends `name`). Pick a label's color from
-      Gmail's palette and hide or show it in the sidebar, kept in sync
-      with Gmail.
-      Permission: existing (`gmail.modify`). Competitors: Mimestream
-      (colors and visibility, synced with Gmail). Effort: low
-- [ ] Print an email or a conversation. Needs no API, but Gmail has it and
-      the app doesn't. Competitors: Apple Mail, Outlook, Spark (the latest
-      email or the whole conversation), Mimestream. Effort: low (print the
-      reader's sanitized HTML; check that the web view can print on macOS
-      and Windows)
 - [ ] Inbox category tabs (Promotions, Social, Updates, Forums) *(moved
       from "From Milestone 6", 2026-11-14)*. Gmail sorts mail into
       categories itself and exposes them as the `CATEGORY_*` labels, which
