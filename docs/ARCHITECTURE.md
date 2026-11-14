@@ -315,6 +315,14 @@ fresh one; small parts come with the message and have no ID at all.
    so the email stays put. A `mailto:` link opens a new message in Mailboat
    instead (see Compose). Other links are made inert.
 
+5. Printing (`reader/ui/PrintView.tsx`) lays the conversation out for
+   paper in a layer that waits out of sight on screen and is all that shows
+   in `@media print`, then asks Rust to open the system's print dialog for
+   the window (`window_print`, Tauri's `WebviewWindow::print`). Each email
+   is the reader's own sandboxed frame, sized to its content, from
+   `message_print`: as `message_open`, but always light (original colors on
+   white, plain text too).
+
 ## Settings
 
 A page in the main window, not a separate window (owner's choice, as in
@@ -789,3 +797,4 @@ made-up mail.
 | 2026-11-13 | Screensavers take the Toybox's styles (`screensaver/model/looks.ts`, `RESTYLED`, now every scene), each approved by the owner one at a time. Koi, lava lamp and sandscape are drawn from the scene's own cells (chunky blocks, or the shaded characters of `ui/shadedAscii.ts`; the sandscape's pixel art runs its sand at 4px grains instead); the jellyfish, starfield, fireworks, rain on glass, code rain, fireflies, Life and flock have their own motion or drawing (`deep*`, `codeRain*`, `lifeDraw`, `murmuration*`) | Each scene was approved in UX Spike 4 in its original fine-grid look, so none changed until the owner approved it. Drawing from the cells gives a scene both styles without rewriting it, and suits big, smooth shapes. Small or thin things (stars, sparks, tentacles, birds) were lost or blurred that way, so those scenes draw themselves. |
 | 2026-11-13 | The jellyfish in the Toybox's styles has its own motion and drawing (`model/deepJellies.ts`, `ui/deepJelliesDraw.ts`): tentacles as chains of points, and the jellies painted as two-color light on a small canvas, then converted to characters or blocks | Converting the old scene's small cells couldn't make the big, deliberate shapes of the owner's references. Formula-drawn tentacles couldn't trail or undulate believably, and rotating whole jellies looked like spinning. The approach comes from a template the owner licensed for personal use only. It was read for ideas; none of its code is in the repository, which is public. |
 | 2026-11-14 | The paid option (Milestone 18, Plan 3's Stage B in `docs/RELEASE.md`) waits on Google's decision on the verification of Mailboat's own client, not on a checkpoint about a month after the launch; Milestone 17 closed without one | The verification was already submitted (2026-11-07 row), and the owner promotes the app on social media without tracking it in the roadmap. Whether the paid option goes ahead is decided once Google answers, not from download counts or stars |
+| 2026-11-14 | Printing prints the main window with a print-only layout (`@media print`) instead of opening a second window, keeps each email in its sandboxed frame instead of copying its HTML into the page, and leaves the layout in place after the dialog opens | One window means one print call on both platforms (WebKit's print operation on macOS, WebView2's print dialog on Windows) and no window to manage. The frames keep each email's own styles and its CSP apart from the app, as in the reader; each frame is first made as tall as its email, so the frame itself clips nothing. macOS draws the pages while its dialog previews them, so the layout must still be there; the next print replaces it. |

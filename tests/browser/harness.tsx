@@ -94,7 +94,11 @@ const longBody = (text: string) => {
   return Array.from({ length: 60 }, (_, i) => paragraphs[i % paragraphs.length]).join("");
 };
 const harnessMode = new URLSearchParams(location.search).get("mode");
-const unreadMode = harnessMode === "unread" || harnessMode === "original";
+// `&conversation=all` (with `?mode=shell`): the conversation has all five emails.
+const unreadMode =
+  harnessMode === "unread" ||
+  harnessMode === "original" ||
+  new URLSearchParams(location.search).get("conversation") === "all";
 const colorsMode = new URLSearchParams(location.search).get("colors");
 // `&recipients=many`: an email you sent, to a long list (the reader's
 // addressing line cuts it off; Details shows everyone).
@@ -331,6 +335,30 @@ mockIPC(
           size: 140_000,
         };
       }
+      case "message_print": {
+        // As Rust gives it for paper: the email's text on white.
+        const id = (args as { messageId: number }).messageId;
+        record(`message_print ${id}`);
+        const text = lisbon.messages[id - 10]?.text ?? "";
+        return {
+          messageId: id,
+          accountId: 1,
+          senderEmail: maya.email,
+          imagesAllowed: true,
+          imagePolicy: "loadedByDefault",
+          attachments: [],
+          originalColors: false,
+          document: `<!doctype html><html><body style="margin:0;padding:20px 24px;background:#fff;color:#1f1f1f;font:14px/1.5 sans-serif">${longBody(text)}</body></html>`,
+          blockedImages: 0,
+          loadedImages: 0,
+          trackersRemoved: 0,
+          adaptive: false,
+          recolorable: false,
+        };
+      }
+      case "window_print":
+        record("window_print");
+        return null;
       case "message_open": {
         // `?mode=sizes`: made-up images sized by only a height, only a width,
         // both and neither, as the Rust sanitizer gave them.

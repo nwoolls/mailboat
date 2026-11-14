@@ -44,3 +44,50 @@ pub fn safe_message(
         _ => sanitize::text_document(""),
     }
 }
+
+/// A message for printing: as `safe_message` with original colors, and a
+/// plain-text one on white too, since a printed page is never dark.
+pub fn printable_message(
+    body: &StoredBody,
+    allow_images: bool,
+    inline_images: &HashMap<String, String>,
+    cached_images: &HashMap<String, String>,
+) -> SafeMessage {
+    match (&body.html, &body.text) {
+        (Some(html), _) if !html.trim().is_empty() => {
+            sanitize::sanitize_html_colors(html, allow_images, inline_images, cached_images, true)
+        }
+        (_, Some(text)) => sanitize::text_document_on_white(text),
+        _ => sanitize::text_document_on_white(""),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn body(html: Option<&str>, text: Option<&str>) -> StoredBody {
+        StoredBody {
+            html: html.map(str::to_string),
+            text: text.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn printed_messages_are_never_dark() {
+        let none = HashMap::new();
+        for b in [
+            body(None, Some("Hi Maya")),
+            body(Some("<p>Hi <b>Maya</b></p>"), None),
+            body(None, None),
+        ] {
+            let printed = printable_message(&b, false, &none, &none);
+            assert!(!printed.adaptive, "{:?}", b.html);
+            assert!(printed.document.contains("color-scheme:light!important"));
+            assert!(!printed.document.contains("prefers-color-scheme:dark"));
+        }
+        // On screen, plain text still follows the app's scheme.
+        let shown = safe_message(&body(None, Some("Hi Maya")), false, &none, &none, true);
+        assert!(shown.adaptive);
+    }
+}

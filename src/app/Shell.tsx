@@ -100,6 +100,7 @@ import {
 import { criteriaLikeThreads, senderToBlock } from "../features/rules/model/likeThis";
 import { BlockSenderDialog } from "../features/rules/ui/BlockSenderDialog";
 import { RuleEditor, type RuleEditorTarget } from "../features/rules/ui/RuleEditor";
+import { PrintView } from "../features/reader/ui/PrintView";
 import { ShowOriginalDialog } from "../features/reader/ui/ShowOriginalDialog";
 import { VacationBanner } from "../features/vacation/ui/VacationBanner";
 import type { SettingsSectionId } from "../features/settings/model/sections";
@@ -319,6 +320,8 @@ export function Shell() {
   // A rule being made from mail ("Filter messages like these").
   const [ruleEditor, setRuleEditor] = useState<RuleEditorTarget | null>(null);
   const [originalFor, setOriginalFor] = useState<ThreadId | null>(null);
+  // The conversation being printed (`run` tells two prints of it apart).
+  const [printFor, setPrintFor] = useState<{ threadId: ThreadId; run: number } | null>(null);
   // A sender about to be blocked (a rule sending their mail to the Trash).
   const [blocking, setBlocking] = useState<{ accountId: AccountId; email: string } | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -669,6 +672,12 @@ export function Shell() {
       }
       case "original":
         setOriginalFor(ids[0] ?? null);
+        return;
+      case "print":
+        if (ids[0] !== undefined) {
+          const threadId = ids[0];
+          setPrintFor((p) => ({ threadId, run: (p?.run ?? 0) + 1 }));
+        }
         return;
       case "translate": {
         // What's selected in an email; the translation shows under it.
@@ -1361,6 +1370,8 @@ export function Shell() {
             if (reply.includes(c.id) && !c.enabled) return null;
             // About text selected in an email, not the row.
             if (c.id === "translate") return null;
+            // Rarely used: in the toolbar's More menu instead (owner).
+            if (c.id === "print") return null;
             const line =
               (c.id === "archive" && list[0]?.enabled) ||
               c.id === "filterLike" ||
@@ -1388,7 +1399,7 @@ export function Shell() {
       {moreAnchor && targets.length > 0 && (
         <Menu anchor={moreAnchor} onClose={() => setMoreAnchor(null)} label="More">
           {conversationList
-            .filter((c) => c.id === "filterLike" || c.id === "block" || c.id === "original")
+            .filter((c) => ["filterLike", "block", "original", "print"].includes(c.id))
             .map((c) => (
               <MenuItem
                 key={c.id}
@@ -1414,6 +1425,7 @@ export function Shell() {
       {originalFor !== null && (
         <ShowOriginalDialog threadId={originalFor} onClose={() => setOriginalFor(null)} />
       )}
+      {printFor && <PrintView key={printFor.run} threadId={printFor.threadId} />}
       {ruleEditor && (
         <RuleEditor
           target={ruleEditor}
