@@ -161,7 +161,7 @@ The screensavers, and something to play with behind an empty view: the glow, a p
 
 ### Screensaver scenes and colors
 
-**Ten screensaver scenes, six color schemes.**
+**Eleven screensaver scenes, six color schemes.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/features/screensaver-settings-dark.png">
