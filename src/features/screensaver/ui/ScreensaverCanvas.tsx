@@ -34,6 +34,9 @@ import { KoiScene } from "../model/koi";
 import { LavaScene } from "../model/lava";
 import { drawShadedAscii } from "./shadedAscii";
 import { drawCodeRain, pixelCell } from "./codeRainDraw";
+import { deepLifeTuning } from "../model/deepLife";
+import { LifeScene } from "../model/life";
+import { drawLife } from "./lifeDraw";
 import { deepFireflyTuning, USUAL_FLASHES } from "../model/deepFireflies";
 import { FireflyScene } from "../model/fireflies";
 import { drawDeepFireflies } from "./deepFirefliesDraw";
@@ -240,7 +243,8 @@ export function ScreensaverCanvas({
         sceneId === "fireworks" ||
         sceneId === "rain" ||
         sceneId === "code" ||
-        sceneId === "fireflies") &&
+        sceneId === "fireflies" ||
+        sceneId === "life") &&
       look !== "fine";
     let swarm: Swarm | null = null;
     let stars: Starfield | null = null;
@@ -248,6 +252,7 @@ export function ScreensaverCanvas({
     let rain: RainScene | null = null;
     let code: CodeRain | null = null;
     let flies: FireflyScene | null = null;
+    let life: LifeScene | null = null;
     let deepNight = false;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const painter = new AsciiPainter(ctx);
@@ -293,7 +298,42 @@ export function ScreensaverCanvas({
       if (deep) {
         const w = cols * px;
         const h = rows * px;
-        if (sceneId === "code") {
+        if (sceneId === "life") {
+          // Each Life cell a character of the glow's grid (lined up with it
+          // across the card), or a chunky tile.
+          const { solid, letters } = solidMask(
+            a,
+            cols,
+            rows,
+            px,
+            iconRef.current,
+            wordsRef.current,
+          );
+          const setup = {
+            cols,
+            rows,
+            solid,
+            letters,
+            icon: rectOf(iconRef.current, a, cols, rows, px),
+            words: boundsOf(letters, cols),
+            rng: Math.random,
+          };
+          const g = asciiGlowTuning();
+          const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
+          const tile = Math.max(3, Math.round(deepLifeTuning().pixel));
+          const tiles =
+            look === "ascii"
+              ? {
+                  w: cw / px,
+                  h: ch / px,
+                  ox: -((((a.left - c.left) % cw) + cw) % cw) / px,
+                  oy: -((((a.top - c.top) % ch) + ch) % ch) / px,
+                }
+              : { w: tile / px, h: tile / px, ox: 0, oy: 0 };
+          const next = new LifeScene(setup, tiles);
+          if (life && life.tiles.w === tiles.w && life.tiles.h === tiles.h) next.carryFrom(life);
+          life = next;
+        } else if (sceneId === "code") {
           // A character grid: the glow's in ASCII art, the pixel font's in pixel art.
           const g = asciiGlowTuning();
           const charCell =
@@ -499,10 +539,15 @@ export function ScreensaverCanvas({
       if (rain && rain.frame(dt, pointer).nod) nodRef.current();
       if (flies) flies.pace = deepFireflyTuning().flashes / USUAL_FLASHES;
       if (flies && flies.frame(dt, pointer).nod) nodRef.current();
+      if (life) {
+        const result = life.frame(dt, pointer);
+        if (result.nod) nodRef.current();
+        if (result.hideWords !== undefined) setWordsHidden(wordsRef.current, result.hideWords);
+      }
       if (code && stepCodeRain(code, dt, codeRainTuning(), Math.random)) nodRef.current();
       // On a light page, a dark backdrop (deep sea, night sky), and light
       // text on it; rain stays on the page's own glass.
-      const night = light.matches && !rain;
+      const night = light.matches && !rain && !life;
       if (night !== deepNight) {
         deepNight = night;
         setNight([iconRef.current, wordsRef.current, canvas], night);
@@ -552,6 +597,14 @@ export function ScreensaverCanvas({
           width: canvas.width / dpr,
           height: canvas.height / dpr,
           t: deepFireflyTuning(),
+        });
+      if (life)
+        drawLife({
+          ...common,
+          life,
+          width: canvas.width / dpr,
+          height: canvas.height / dpr,
+          t: deepLifeTuning(),
         });
       if (code) {
         const pixel = pixelCell(codeRainTuning());

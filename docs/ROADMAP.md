@@ -4819,6 +4819,16 @@ between pixel art and ASCII art for the screensavers.*
             (`ui/shadedAscii.ts`): each character in the wax's color, by how
             solid and bright it is, bold on a faint tile and the faint grid.
             *Owner: "looks good"*
+      - [x] Life. Its rules and cycle are the scene's own, drawn its own
+            way: each cell a character on the glow's grid in ASCII art
+            (newborn `@` in the accent, then `O`, `o` and a grey `.`), or a
+            chunky tile with its corners cut in pixel art (8px), easing in
+            and out, newborns glowing softly. The Life grid's tiles now take
+            any size and origin, to match a character's cell. Big tiles
+            needed a richer seed: the words made few of them and a thin
+            sprinkle settled into a few blinkers within seconds, so they
+            get a wide, dense soup, and "died down" scales with the grid. It
+            carries on through a resize. *Owner: "lgtm"*
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well

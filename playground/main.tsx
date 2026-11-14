@@ -99,6 +99,11 @@ import {
   setDeepFireflyTuning,
 } from "../src/features/screensaver/model/deepFireflies";
 import {
+  DEEP_LIFE_DEFAULTS,
+  type DeepLifeTuning,
+  setDeepLifeTuning,
+} from "../src/features/screensaver/model/deepLife";
+import {
   RESTYLED,
   SCREENSAVER_LOOK_DEFAULTS,
   type ScreensaverLookTuning,
@@ -464,6 +469,16 @@ const FIREFLY_DIALS: Sections<DeepFireflyTuning> = [
   },
 ];
 
+const LIFE_DIALS: Sections<DeepLifeTuning> = [
+  {
+    title: "Life (restart for the tile size)",
+    dials: [
+      { key: "pixel", min: 3, max: 16, step: 1, hint: "tile size, px (pixel art)" },
+      { key: "glow", min: 0, max: 1.5, step: 0.05, hint: "glow round newborn cells" },
+    ],
+  },
+];
+
 const LOOK_DIALS: Sections<ScreensaverLookTuning> = [
   {
     title: "Pixel art",
@@ -555,6 +570,7 @@ const starStart = saved("playground.deepStars", DEEP_STAR_DEFAULTS, setDeepStarT
 const rainStart = saved("playground.deepRain", DEEP_RAIN_DEFAULTS, setDeepRainTuning);
 const codeStart = saved("playground.codeRain", CODE_RAIN_DEFAULTS, setCodeRainTuning);
 const fireflyStart = saved("playground.deepFireflies", DEEP_FIREFLY_DEFAULTS, setDeepFireflyTuning);
+const lifeStart = saved("playground.deepLife", DEEP_LIFE_DEFAULTS, setDeepLifeTuning);
 const fireworkStart = saved(
   "playground.deepFireworks",
   DEEP_FIREWORK_DEFAULTS,
@@ -877,6 +893,18 @@ function Playground() {
                 apply={setDeepFireflyTuning}
                 fields={[]}
                 sections={FIREFLY_DIALS}
+              />
+            )}
+            {playing === "life" && (
+              <Panel
+                key="life"
+                title="Life"
+                storageKey="playground.deepLife"
+                defaults={DEEP_LIFE_DEFAULTS}
+                start={lifeStart}
+                apply={setDeepLifeTuning}
+                fields={[]}
+                sections={LIFE_DIALS}
               />
             )}
             <Panel

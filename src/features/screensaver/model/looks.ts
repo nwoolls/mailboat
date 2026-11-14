@@ -29,6 +29,7 @@ export const RESTYLED: ReadonlySet<SceneId> = new Set<SceneId>([
   "koi",
   "fireflies",
   "lava",
+  "life",
 ]);
 
 /** How a scene is drawn in the chosen style. */

@@ -122,6 +122,15 @@ test("the lava lamp in ASCII art is shaded characters, at full resolution", asyn
   expect(info.inked).toBeGreaterThan(500);
 });
 
+test("Life in either style draws its own cells, at full resolution", async ({ page }) => {
+  for (const style of ["ascii", "pixel"]) {
+    await start(page, "life", style);
+    const info = await canvasInfo(page);
+    expect(info.sharp).toBe(true);
+    expect(info.inked).toBeGreaterThan(200);
+  }
+});
+
 test("a screensaver not yet restyled draws as before, whatever the style", async ({ page }) => {
   // (Not Life: its cells are a screen pixel, so its canvas is always full size.)
   await start(page, "envelopes", "ascii");
