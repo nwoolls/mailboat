@@ -35,6 +35,8 @@ import {
 } from "./asciiPaint";
 
 /** How long after a pop it still moves the bubbles around it, in seconds. */
+/** A pop's age that shows it done (squashed, flashed, its film lying flat), with less motion. */
+const SETTLED = 60;
 const SHOCK_SECONDS = 0.8;
 const ASCII_CHARS = "()'-~_.*+xo";
 
@@ -145,19 +147,24 @@ export function BubbleWrapLayer({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // The finale: the old sheet blows away, then a fresh one inflates.
+      // With less motion asked for (read each frame, so a change applies at
+      // once): no squash, flash or settling film (a pop shows as done), no
+      // jiggle of the neighbors, and a fresh sheet replaces the old one
+      // without blowing away or inflating.
+      const still = reduce.matches;
       let sheetFade = 1;
       if (finaleAt !== null) {
         const since = now - finaleAt;
-        sheetFade = Math.max(0, 1 - since / (t.refillSeconds * 0.8));
+        if (!still) sheetFade = Math.max(0, 1 - since / (t.refillSeconds * 0.8));
         if (since >= t.refillSeconds) {
           sheet = freshSheet();
           poppedAt.clear();
           finaleAt = null;
-          inflatingAt = now;
+          inflatingAt = still ? null : now;
           streak = 0;
         }
       }
-      const shocks = [...poppedAt].filter(([, at]) => now - at < SHOCK_SECONDS);
+      const shocks = still ? [] : [...poppedAt].filter(([, at]) => now - at < SHOCK_SECONDS);
 
       const looks = sheet.centres.map((c, n) => {
         const quirk = sheet.quirks[n]!;
@@ -168,10 +175,11 @@ export function BubbleWrapLayer({
           const o = sheet.centres[i]!;
           scale += jiggle(Math.hypot(o.x - c.x, o.y - c.y), now - at, BUBBLE_PITCH, t);
         }
-        if (inflatingAt !== null)
+        if (inflatingAt !== null && !still)
           scale *= inflate(now - inflatingAt, Math.hypot(c.x - mid.x, c.y - mid.y) / farthest, t);
         const at = poppedAt.get(n);
-        return { c, r, quirk, scale, age: at === undefined ? null : now - at };
+        const age = at === undefined ? null : still ? SETTLED : now - at;
+        return { c, r, quirk, scale, age };
       });
       if (inflatingAt !== null && now - inflatingAt > t.inflateSeconds + 0.1) inflatingAt = null;
 

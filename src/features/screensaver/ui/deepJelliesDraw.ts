@@ -95,6 +95,8 @@ export function drawDeepJellies(d: DeepDraw) {
 
   // Soft light behind the bells (HD-2D's glow), and the drifting specks.
   ctx.globalCompositeOperation = dark ? "lighter" : "source-over";
+  // Faded, like the cells, where they sit on the icon, words or title.
+  const keepAt = (x: number, y: number) => clearing(x, y, d.shapes, d.glow);
   for (const j of swarm.jellies) {
     const b = bellShape(swarm, j, t);
     softGlow(
@@ -103,12 +105,19 @@ export function drawDeepJellies(d: DeepDraw) {
       (b.y - b.r * 0.3) * dpr,
       b.r * 1.9 * dpr,
       mix(hueA, hueB, j.hue),
-      t.glow * depthLight(j, t),
+      t.glow * depthLight(j, t) * keepAt(b.x, b.y - b.r * 0.3),
     );
   }
   for (const m of swarm.motes) {
     const tw = 0.55 + 0.45 * Math.sin(swarm.time * 1.7 + m.phase);
-    softGlow(ctx, m.x * dpr, m.y * dpr, (6 + m.size * 10) * dpr, hueA, 0.35 * tw);
+    softGlow(
+      ctx,
+      m.x * dpr,
+      m.y * dpr,
+      (6 + m.size * 10) * dpr,
+      hueA,
+      0.35 * tw * keepAt(m.x, m.y),
+    );
   }
   ctx.globalCompositeOperation = "source-over";
 
@@ -324,9 +333,9 @@ function drawAscii(
   ctx.fillStyle = rgb(mix(hueA, [255, 255, 255], 0.5));
   for (const m of swarm.motes) {
     const tw = 0.55 + 0.45 * Math.sin(swarm.time * 1.7 + m.phase);
-    ctx.globalAlpha = tw;
     const x = ox + Math.floor((m.x - ox) / cw) * cw;
     const y = oy + Math.floor((m.y - oy) / ch) * ch;
+    ctx.globalAlpha = tw * clearing(x + cw / 2, y + ch / 2, d.shapes, d.glow, cw / 2, ch / 2);
     ctx.fillText(m.size > 0.7 ? "*" : ".", x + cw / 2, y + ch / 2 + 0.5);
   }
   ctx.globalAlpha = 1;

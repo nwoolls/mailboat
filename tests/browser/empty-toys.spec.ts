@@ -91,6 +91,30 @@ test("bubble wrap pops the bubble clicked with a burst, and only it", async ({ p
   expect(await inked(page)).toBe(once);
 });
 
+test("bubble wrap with less motion asked for: a pop shows done at once, and holds still", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/tests/browser/harness.html?mode=empty&toy=bubbles");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  await stayClearOfTitle(page);
+  await page.waitForTimeout(300);
+  const box = (await layer(page).boundingBox())!;
+  const first = sheetFor(box.width, box.height).centres[0]!;
+  await page.mouse.click(box.x + first.x, box.y + first.y);
+  // No squash, flash or settling: the same picture just after the click as
+  // once a pop would have finished.
+  await page.waitForTimeout(80);
+  const soon = await layer(page)
+    .locator("canvas")
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  await page.waitForTimeout(POP_DONE_MS);
+  const later = await layer(page)
+    .locator("canvas")
+    .evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  expect(later).toBe(soon);
+});
+
 test("bubble wrap in ASCII art draws and pops on the character grid", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=empty&toy=bubbles&style=ascii");
   await expect(page.getByText("All caught up")).toBeVisible();

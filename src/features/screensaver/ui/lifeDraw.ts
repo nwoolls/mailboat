@@ -64,11 +64,21 @@ export function drawLife(d: LifeDraw) {
         const i = ty * life.cols + tx;
         const show = life.shown[i]!;
         if (show < 0.1 || life.age[i]! > 3 || !life.alive[i]) continue;
+        // Faded under the title, as the cells are.
+        const keep = clearing(
+          ox + (tx + 0.5) * w,
+          oy + (ty + 0.5) * h,
+          d.shapes,
+          d.glow,
+          w / 2,
+          h / 2,
+        );
+        if (keep < 0.02) continue;
         const x = (ox + (tx + 0.5) * w) * dpr;
         const y = (oy + (ty + 0.5) * h) * dpr;
         const r = Math.max(w, h) * 1.4 * dpr;
         const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-        g.addColorStop(0, `rgb(${accent.join(" ")} / ${Math.min(1, t.glow * 0.25 * show)})`);
+        g.addColorStop(0, `rgb(${accent.join(" ")} / ${Math.min(1, t.glow * 0.25 * show * keep)})`);
         g.addColorStop(1, `rgb(${accent.join(" ")} / 0)`);
         ctx.fillStyle = g;
         ctx.fillRect(x - r, y - r, r * 2, r * 2);

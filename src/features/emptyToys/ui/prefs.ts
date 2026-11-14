@@ -1,6 +1,13 @@
 import { localStore } from "../../../shared/lib/localStore";
 import { parseStyle, TOYBOX_STYLE_KEY } from "../model/style";
-import { LAST_TOY_KEY, moveGlowSwitch, parseLastToy, parseToy, TOY_PREFS_KEY } from "../model/toys";
+import {
+  GLOW_MOVED_KEY,
+  LAST_TOY_KEY,
+  moveGlowSwitch,
+  parseLastToy,
+  parseToy,
+  TOY_PREFS_KEY,
+} from "../model/toys";
 import { FLAGS_STORAGE_KEY } from "../../../shared/lib/featureFlags";
 
 // The glow's old switch becomes the toy it now is, once (`moveGlowSwitch`).
@@ -8,10 +15,12 @@ try {
   const moved = moveGlowSwitch(
     localStorage.getItem(TOY_PREFS_KEY),
     localStorage.getItem(FLAGS_STORAGE_KEY),
+    localStorage.getItem(GLOW_MOVED_KEY) !== null,
   );
   if (moved) {
     localStorage.setItem(TOY_PREFS_KEY, JSON.stringify(moved.toy));
     localStorage.setItem(FLAGS_STORAGE_KEY, moved.flags);
+    localStorage.setItem(GLOW_MOVED_KEY, "1");
   }
 } catch {
   // Storage unavailable: the defaults apply.
@@ -34,5 +43,5 @@ export function setToyOn(on: boolean) {
   }
 }
 
-/** Pixel art or ASCII art (the toys follow it, and the screensavers one at a time). */
+/** Pixel art or ASCII art (the toys and the screensavers follow it). */
 export const toyboxStyle = localStore(TOYBOX_STYLE_KEY, parseStyle);

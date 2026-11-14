@@ -16,25 +16,32 @@ describe("parseToy", () => {
 
 describe("moveGlowSwitch", () => {
   it("makes the glow the toy where it was on and no toy was chosen", () => {
-    expect(moveGlowSwitch(null, '{"emptyGlow":true,"screensavers":false}')).toEqual({
+    expect(moveGlowSwitch(null, '{"emptyGlow":true,"screensavers":false}', false)).toEqual({
       toy: "glow",
       flags: '{"screensavers":false}',
     });
-    expect(moveGlowSwitch('"none"', '{"emptyGlow":true}')?.toy).toBe("glow");
+    expect(moveGlowSwitch('"none"', '{"emptyGlow":true}', false)?.toy).toBe("glow");
+  });
+
+  it("counts switches never saved as the glow on, its old default", () => {
+    // A toy turned off ("None") with the switches never touched: the glow
+    // was showing, and still does.
+    expect(moveGlowSwitch('"none"', null, false)?.toy).toBe("glow");
+    expect(moveGlowSwitch('"none"', '{"screensavers":true}', false)?.toy).toBe("glow");
+    expect(moveGlowSwitch('"none"', "{oops", false)?.toy).toBe("glow");
   });
 
   it("leaves none where the glow was off", () => {
-    expect(moveGlowSwitch(null, '{"emptyGlow":false}')?.toy).toBe("none");
+    expect(moveGlowSwitch(null, '{"emptyGlow":false}', false)?.toy).toBe("none");
   });
 
   it("keeps a toy that was chosen", () => {
-    expect(moveGlowSwitch('"ripples"', '{"emptyGlow":true}')?.toy).toBe("ripples");
+    expect(moveGlowSwitch('"ripples"', '{"emptyGlow":true}', false)?.toy).toBe("ripples");
   });
 
-  it("happens once: nothing to move without the old switch", () => {
-    expect(moveGlowSwitch('"none"', '{"screensavers":true}')).toBeNull();
-    expect(moveGlowSwitch(null, null)).toBeNull();
-    expect(moveGlowSwitch(null, "{oops")).toBeNull();
+  it("happens once: a None chosen after the move stays", () => {
+    expect(moveGlowSwitch('"none"', '{"screensavers":true}', true)).toBeNull();
+    expect(moveGlowSwitch('"none"', null, true)).toBeNull();
   });
 });
 

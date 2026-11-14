@@ -117,3 +117,20 @@ test("with less motion asked for, even the chosen scene's picture holds still", 
   await page.waitForTimeout(700);
   expect(await tilePixels(page, "Koi pond")).toBe(before);
 });
+
+test("repainting a still picture doesn't move it on: new colors and back give the same picture", async ({
+  page,
+}) => {
+  await page.goto(open);
+  // The sandscape's still, mid-pour: a step would move its falling grains.
+  await page.waitForTimeout(9500);
+  const colors = page.getByRole("radiogroup", { name: "Colors" });
+  const first = colors.locator('[aria-checked="true"]');
+  const name = (await first.textContent())!.trim();
+  const before = await tilePixels(page, "Sandscape");
+  await page.getByRole("radio", { name: "Forest" }).click();
+  await page.waitForTimeout(150);
+  await colors.getByRole("radio", { name, exact: true }).click();
+  await page.waitForTimeout(150);
+  expect(await tilePixels(page, "Sandscape")).toBe(before);
+});

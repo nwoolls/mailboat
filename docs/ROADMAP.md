@@ -4701,7 +4701,8 @@ between pixel art and ASCII art for the screensavers.*
       them, open the playground's Screensavers tab: a click starts one,
       more clicks keep it playing, and Stop ends it. The first version
       needed two clicks, because a click ended the one playing, as it
-      does in the app
+      does in the app. Now every scene is on the list: koi, lava lamp and
+      sandscape are drawn from their cells, the rest draw themselves
       - [x] Jellyfish *(the owner shared ASCII jellyfish and manta ray
             examples, screen-recorded together from X, then the source of
             one. It is licensed for personal use only, so it was read for
@@ -4752,7 +4753,8 @@ between pixel art and ASCII art for the screensavers.*
             starts still: mirroring the waves into it was tried, and piled
             up into a grainy checkerboard over a drag's many small steps.
             Bubble wrap still starts over, which the owner finds pleasant.
-            Screensavers not yet restyled still start over too
+            Screensavers not yet restyled still started over then; the koi
+            pond and lava lamp still do (they build a new scene)
       - [x] Text over the sky turns light at dusk *(owner, 2026-11-13)*.
             It switched only once night was half in, while the sky behind
             the words was already dark. It now follows the sky's own
@@ -4836,7 +4838,7 @@ between pixel art and ASCII art for the screensavers.*
             *Owner: "looks good"*
       - [x] Life. Its rules and cycle are the scene's own, drawn its own
             way: each cell a character on the glow's grid in ASCII art
-            (newborn `@` in the accent, then `O`, `o` and a grey `.`), or a
+            (newborn `@` in the accent, then `O`, `o` and a gray `.`), or a
             chunky tile with its corners cut in pixel art (8px), easing in
             and out, newborns glowing softly. The Life grid's tiles now take
             any size and origin, to match a character's cell. Big tiles
@@ -4854,7 +4856,7 @@ between pixel art and ASCII art for the screensavers.*
             after a resize: the ones still drawn on their fine grid flashed
             blank on every step of a drag (owner: "crazy flashing when
             resizing"). With this, every screensaver but the envelope flock
-            has both styles
+            had both styles; the flock (below) completed them
       - [x] Flock, which replaces the envelope flock *(owner, 2026-11-13:
             "any ideas to make the envelope flock not suck")*. A murmuration
             of 2000 birds flying in three dimensions, so parts of the flock

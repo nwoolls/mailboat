@@ -60,25 +60,32 @@ export function parseToy(raw: string | null): ToyId {
   return TOYS.find((t) => t.id === saved)?.id ?? DEFAULT_TOY;
 }
 
+/** Set once the glow's old switch has been moved into the toy (`moveGlowSwitch`). */
+export const GLOW_MOVED_KEY = "prefs.glowMoved";
+
 /**
  * The glow was a switch of its own (`emptyGlow` in the Toybox switches,
  * `prefs.featureFlags`) until it became a toy (owner, 2026-11-13). Given
- * the saved toy and switches as stored, what to store instead, or null
- * when there's nothing to move: a toy chosen stays; with none chosen, the
- * glow if it was on (or never turned off), else none. The switches are
- * stored again without `emptyGlow`, so this happens once.
+ * the saved toy and switches as stored, and whether this has run before
+ * (`GLOW_MOVED_KEY`), what to store instead, or null when it has run: a
+ * toy chosen stays; with none chosen, the glow if it was on, else none.
+ * The switch was on by default, so switches never saved (or unreadable)
+ * mean it was on: going by whether `emptyGlow` was saved missed those, and
+ * a "None" chosen with the switches untouched lost the glow it showed.
+ * The switches are stored again without `emptyGlow`.
  */
 export function moveGlowSwitch(
   toyRaw: string | null,
   flagsRaw: string | null,
+  moved: boolean,
 ): { toy: ToyId; flags: string } | null {
-  let flags: Record<string, unknown>;
+  if (moved) return null;
+  let flags: Record<string, unknown> = {};
   try {
     const parsed: unknown = flagsRaw ? JSON.parse(flagsRaw) : null;
-    if (!parsed || typeof parsed !== "object" || !("emptyGlow" in parsed)) return null;
-    flags = { ...(parsed as Record<string, unknown>) };
+    if (parsed && typeof parsed === "object") flags = { ...(parsed as Record<string, unknown>) };
   } catch {
-    return null;
+    // Unreadable: as if never saved, the defaults.
   }
   const glowWasOn = flags.emptyGlow !== false;
   delete flags.emptyGlow;

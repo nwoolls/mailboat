@@ -27,4 +27,17 @@ describe("the glow's old switch", () => {
     const { emptyToy } = await import("./prefs");
     expect(emptyToy.get()).toBe("none");
   });
+
+  it("keeps the glow showing where None was chosen and the switches never touched", async () => {
+    // The old glow switch was on by default and never saved.
+    localStorage.setItem("prefs.emptyToy", '"none"');
+    const { emptyToy } = await import("./prefs");
+    expect(emptyToy.get()).toBe("glow");
+
+    // A None chosen now stays None on the next start.
+    emptyToy.set("none");
+    vi.resetModules();
+    const again = await import("./prefs");
+    expect(again.emptyToy.get()).toBe("none");
+  });
 });
