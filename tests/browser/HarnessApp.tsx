@@ -256,7 +256,8 @@ function SearchBar() {
   return (
     <div style={{ width: 900 }}>
       <header className="relative h-10">
-        <TitleSearch value={text} onChange={setText} />
+        {/* Centered in the 900px bar at its widest, as the toolbar places it. */}
+        <TitleSearch value={text} onChange={setText} placement={{ left: 230, width: 440 }} />
       </header>
       <div className="panel" style={{ position: "relative", height: 400 }}>
         <output aria-label="Searching for">{text}</output>

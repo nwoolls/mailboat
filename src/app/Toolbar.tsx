@@ -1,4 +1,6 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import type { CommandId } from "../features/commands/model/commands";
+import { type SearchPlacement, searchPlacement } from "../features/layout/model/titleSearch";
 import type { ThreadAction } from "../features/mailbox/model/threadActions";
 import {
   ArchiveIcon,
@@ -88,6 +90,10 @@ export function Toolbar({
   canCompose,
   onCompose,
 }: Props) {
+  const barRef = useRef<HTMLElement>(null);
+  const leftRef = useRef<HTMLDivElement>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
+  const placement = useSearchPlacement(barRef, leftRef, rightRef);
   const many = count > 1 ? ` ${count} conversations` : "";
   const archive = actions.archive?.action;
   const trash = actions.trash?.action;
@@ -97,91 +103,96 @@ export function Toolbar({
   const unstar = star?.kind === "star" && !star.starred;
   return (
     <header
+      ref={barRef}
       data-tauri-drag-region
       className="relative flex h-10 shrink-0 items-center gap-0.5 pr-2"
       style={{ paddingLeft: TRAFFIC_LIGHTS_WIDTH }}
     >
-      <ToolButton
-        icon={SidebarToggleIcon}
-        label={names.sidebar ?? ""}
-        shortcut={accelLabel("Ctrl+Cmd+S")}
-        onClick={onToggleSidebar}
-        onHover={onSidebarHover}
-        pressed={sidebarOpen}
-        dot={sidebarOpen ? null : syncAttention}
-      />
+      <div ref={leftRef} data-toolbar-start className="flex">
+        <ToolButton
+          icon={SidebarToggleIcon}
+          label={names.sidebar ?? ""}
+          shortcut={accelLabel("Ctrl+Cmd+S")}
+          onClick={onToggleSidebar}
+          onHover={onSidebarHover}
+          pressed={sidebarOpen}
+          dot={sidebarOpen ? null : syncAttention}
+        />
+      </div>
       <div data-tauri-drag-region className="flex-1 self-stretch" />
-      <TitleSearch value={search} onChange={onSearch} />
+      <TitleSearch value={search} onChange={onSearch} placement={placement} />
       {/* Conversation actions dim with nothing chosen. */}
-      <ToolButton
-        icon={moveToInbox ? MoveToInboxIcon : ArchiveIcon}
-        label={(names.archive ?? "") + many}
-        shortcut="e"
-        onClick={actions.archive?.run}
-        disabled={!actions.archive}
-      />
-      <ToolButton
-        icon={restore ? RestoreIcon : TrashIcon}
-        label={(names.trash ?? "") + many}
-        shortcut="#"
-        onClick={actions.trash?.run}
-        disabled={!actions.trash}
-      />
-      <ToolButton
-        icon={SpamIcon}
-        label={(names.spam ?? "") + many}
-        shortcut="!"
-        onClick={actions.spam?.run}
-        disabled={!actions.spam}
-      />
-      <ToolButton
-        icon={MarkUnreadIcon}
-        label={(names.read ?? "") + many}
-        shortcut="u"
-        onClick={actions.read?.run}
-        disabled={!actions.read}
-      />
-      <ToolButton
-        icon={StarIcon}
-        label={(names.star ?? "") + many}
-        shortcut="s"
-        onClick={actions.star?.run}
-        disabled={!actions.star}
-        // Every chosen conversation is starred: the star lights up.
-        pressed={unstar}
-        tone={unstar ? "text-warn" : undefined}
-      />
-      <ToolButton
-        id={LABEL_BUTTON_ID}
-        icon={LabelIcon}
-        label={(names.labels ?? "") + many}
-        shortcut="l"
-        onClick={actions.label ?? undefined}
-        disabled={!actions.label}
-      />
-      <ToolButton
-        icon={MoreIcon}
-        label="More"
-        onClick={actions.more ?? undefined}
-        disabled={!actions.more}
-      />
-      <span className="mx-1.5 h-4 w-px bg-stroke" />
-      <ToolButton
-        icon={ComposeIcon}
-        label={names.new ?? ""}
-        shortcut="c"
-        onClick={onCompose}
-        disabled={!canCompose}
-      />
-      <span className="mx-1.5 h-4 w-px bg-stroke" />
-      <ToolButton
-        icon={ReaderToggleIcon}
-        label={!hasSelection ? "Reader opens with a conversation" : (names.reader ?? "")}
-        shortcut={accelLabel("Ctrl+Cmd+R")}
-        onClick={onToggleReader}
-        disabled={!hasSelection}
-        pressed={readerOpen}
-      />
+      <div ref={rightRef} data-toolbar-end className="flex items-center gap-0.5">
+        <ToolButton
+          icon={moveToInbox ? MoveToInboxIcon : ArchiveIcon}
+          label={(names.archive ?? "") + many}
+          shortcut="e"
+          onClick={actions.archive?.run}
+          disabled={!actions.archive}
+        />
+        <ToolButton
+          icon={restore ? RestoreIcon : TrashIcon}
+          label={(names.trash ?? "") + many}
+          shortcut="#"
+          onClick={actions.trash?.run}
+          disabled={!actions.trash}
+        />
+        <ToolButton
+          icon={SpamIcon}
+          label={(names.spam ?? "") + many}
+          shortcut="!"
+          onClick={actions.spam?.run}
+          disabled={!actions.spam}
+        />
+        <ToolButton
+          icon={MarkUnreadIcon}
+          label={(names.read ?? "") + many}
+          shortcut="u"
+          onClick={actions.read?.run}
+          disabled={!actions.read}
+        />
+        <ToolButton
+          icon={StarIcon}
+          label={(names.star ?? "") + many}
+          shortcut="s"
+          onClick={actions.star?.run}
+          disabled={!actions.star}
+          // Every chosen conversation is starred: the star lights up.
+          pressed={unstar}
+          tone={unstar ? "text-warn" : undefined}
+        />
+        <ToolButton
+          id={LABEL_BUTTON_ID}
+          icon={LabelIcon}
+          label={(names.labels ?? "") + many}
+          shortcut="l"
+          onClick={actions.label ?? undefined}
+          disabled={!actions.label}
+        />
+        <ToolButton
+          icon={MoreIcon}
+          label="More"
+          onClick={actions.more ?? undefined}
+          disabled={!actions.more}
+        />
+        <span className="mx-1.5 h-4 w-px bg-stroke" />
+        <ToolButton
+          icon={ComposeIcon}
+          label={names.new ?? ""}
+          shortcut="c"
+          onClick={onCompose}
+          disabled={!canCompose}
+        />
+        <span className="mx-1.5 h-4 w-px bg-stroke" />
+        <ToolButton
+          icon={ReaderToggleIcon}
+          label={!hasSelection ? "Reader opens with a conversation" : (names.reader ?? "")}
+          shortcut={accelLabel("Ctrl+Cmd+R")}
+          onClick={onToggleReader}
+          disabled={!hasSelection}
+          pressed={readerOpen}
+        />
+      </div>
     </header>
   );
 }
@@ -242,4 +253,31 @@ function ToolButton({
       )}
     </button>
   );
+}
+
+/**
+ * Where the search box goes (`searchPlacement`), measured from the bar and
+ * the button groups on either side, again whenever any of them resizes
+ * (the window, or a button changing). Null until first measured.
+ */
+function useSearchPlacement(
+  bar: React.RefObject<HTMLElement | null>,
+  left: React.RefObject<HTMLElement | null>,
+  right: React.RefObject<HTMLElement | null>,
+): SearchPlacement | null {
+  const [placement, setPlacement] = useState<SearchPlacement | null>(null);
+  useLayoutEffect(() => {
+    const [b, l, r] = [bar.current, left.current, right.current];
+    if (!b || !l || !r) return;
+    const measure = () => {
+      const next = searchPlacement(b.clientWidth, l.offsetLeft + l.offsetWidth, r.offsetLeft);
+      setPlacement((now) =>
+        now && now.left === next.left && now.width === next.width ? now : next,
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    for (const el of [b, l, r]) observer.observe(el);
+    return () => observer.disconnect();
+  }, [bar, left, right]);
+  return placement;
 }

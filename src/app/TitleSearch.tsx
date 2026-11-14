@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { SearchPlacement } from "../features/layout/model/titleSearch";
 import { forget, suggestions } from "../features/search/model/history";
 import { rememberSearch, searchHistory } from "../features/search/ui/history";
 import { ClearIcon, SearchIcon } from "../shared/ui/icons";
@@ -8,8 +9,10 @@ export const SEARCH_INPUT_ID = "title-search";
 
 /**
  * Search, centered in the title bar as in VS Code. It searches the view
- * picked in the sidebar (one account or all). Width shrinks with the window
- * so it never runs into the toolbar buttons.
+ * picked in the sidebar (one account or all). The toolbar measures where it
+ * fits (`placement`, from `searchPlacement`): it shrinks with the window,
+ * and moves left of center rather than run into the buttons. Until measured
+ * it is hidden, so it never shows over them.
  *
  * Focused, it offers recent searches below (those containing what's typed):
  * ↑/↓ and Return, or a click, pick one; Esc puts the list away; each can be
@@ -18,9 +21,11 @@ export const SEARCH_INPUT_ID = "title-search";
 export function TitleSearch({
   value,
   onChange,
+  placement,
 }: {
   value: string;
   onChange: (text: string) => void;
+  placement: SearchPlacement | null;
 }) {
   // Tracked in state rather than with :focus-within, which WebKit doesn't
   // always restyle when the window goes to the background and back.
@@ -71,9 +76,14 @@ export function TitleSearch({
   };
   return (
     <div
-      // z-30: the centring transform makes this its own layer, so without
-      // it the panels below would draw over the recent-searches list.
-      className={`absolute top-1/2 left-1/2 z-30 flex h-7 -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-md px-2.5 ring-1 transition-[background-color,box-shadow] duration-[120ms] [width:clamp(200px,calc(100vw-600px),440px)] ${
+      // z-30: the vertical centering transform makes this its own layer, so
+      // without it the panels below would draw over the recent-searches list.
+      style={
+        placement
+          ? { left: placement.left, width: placement.width }
+          : { left: 0, width: 0, visibility: "hidden" }
+      }
+      className={`absolute top-1/2 z-30 flex h-7 -translate-y-1/2 items-center gap-2 rounded-md px-2.5 ring-1 transition-[background-color,box-shadow] duration-[120ms] ${
         focused
           ? "search-glow bg-selection ring-accent/50"
           : "bg-selection-subtle ring-stroke hover:bg-selection"
