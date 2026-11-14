@@ -283,13 +283,15 @@ A setup screen in the app (part of Onboarding), not just a web page:
 - After about a month, with the owner: GitHub's download counts and
       stars, issues from people who finished setup, and whether people
       say they'd pay to skip it. This is the evidence Plan 3 needs
+      (dropped for Plan 3, 2026-11-14: see Plan 3 → Stage B)
 
 ---
 
 ## Plan 3: Hybrid, open source first, paid later (chosen)
 
-Chosen by the owner, 2026-10-25. Start exactly as Plan 2. If people want it,
-add a paid option whose value is **convenience**: Mailboat's own
+Chosen by the owner, 2026-10-25. Start exactly as Plan 2. If Google
+approves Mailboat's own client and the owner decides to go ahead (until
+2026-11-14: "if people want it"), add a paid option whose value is **convenience**: Mailboat's own
 Google-verified credentials, so no setup at all. Same app, same features
 for everyone.
 
@@ -297,7 +299,9 @@ for everyone.
 flowchart LR
   A["Stage A: Plan 2, open source"] --> G{"Google verification for Mailboat's own client (submitted 2026-11-07): approved?"}
   G -->|"No"| K["Stays a free open-source app"]
-  G -->|"Yes"| B["Stage B: optional subscription for no-setup sign-in"]
+  G -->|"Yes"| D{"The owner decides: go ahead?"}
+  D -->|"No"| K
+  D -->|"Yes"| B["Stage B: optional subscription for no-setup sign-in"]
 ```
 
 ### How the app works in both stages
@@ -322,7 +326,7 @@ flowchart LR
 
 ### Stage A
 
-Plan 2, in full.
+Plan 2, in full, without its checkpoint (dropped 2026-11-14: see Stage B).
 
 ### Stage B (once Google approves Mailboat's own client)
 

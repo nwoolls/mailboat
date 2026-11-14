@@ -3960,7 +3960,8 @@ security fixes).
 
 *Done when: Mailboat has been announced once in the right places, and the
 owner has decided, from what happened, whether Milestone 18 is worth
-starting.*
+starting. (Superseded 2026-11-14: the checkpoint was dropped and Milestone
+18 waits on Google; see below.)*
 
 **Closed (owner, 2026-11-14).** The owner promotes Mailboat on social
 media; the optional packaging and the badge moved to "Later /
@@ -4026,7 +4027,8 @@ yes"). If Google approves, the owner decides from there.*
 
 *Proposed by the owner 2026-11-07, to run alongside the Milestone 16
 leftovers or after them, in its own session. Scope settled the same day;
-building not started. Done when: each
+building not started (as of 2026-11-07; it has since closed, see
+below). Done when: each
 item picked below is built, the owner has tried it, and its entry is ticked
 in the place it came from (each item below says where: the Bug backlog,
 Milestone 12, 14 or 16, or "Later / unscheduled"; they keep the full text,
@@ -4464,14 +4466,16 @@ privacy:
 - Ask for Google permissions when first needed: after Google's answer (see
   above).
 - Remove an address from compose suggestions ("Later / unscheduled" →
-  Writing). It touches the Contacts data Google is reviewing, so it must
+  Writing; in 0.3.0 since 2026-11-14). It touches the Contacts data Google is reviewing, so it must
   ask for no new permission.
 - Warn about outside recipients (addresses not ending with chosen
-  domains are marked while writing; "Later / unscheduled" → Writing). Not a
+  domains are marked while writing; "Later / unscheduled" → Writing; in 0.3.0
+  since 2026-11-14). Not a
   bug or a privacy item; held to keep the scope small.
 - Only if it becomes a problem: "Use a different file" on "Google Cloud
   is set up" goes back to the start of the walkthrough (Milestone 12;
-  the owner said it was fine for now).
+  the owner said it was fine for now; in "Later / unscheduled" since
+  2026-11-14).
 - Contacting fewer image hosts before a message is opened (prefetch only for
   people you've written to, or not at all): a design decision for the owner.
 - Encrypting the local cache at rest, and Touch ID or Windows Hello: decide,
@@ -4507,7 +4511,8 @@ the spike ran and the owner added them to it (#120, #121, #122, #123,
 #125). Every fix is a patch, so the next version
 is 0.2.1-beta.0, on the owner's word. Rethinking how a new reply is
 followed was left out and stays open in the Bug backlog. The flaky tests
-seen during the spike are tracked in Flaky tests (#124).
+seen during the spike are tracked in Flaky tests (#124). (2026-11-14: both
+moved to "Later / unscheduled" → Open bugs and → Flaky tests.)
 
 1. [x] The reply moving under the cursor after a draft save (the AI summary
    above it blinking), #112.
@@ -5595,7 +5600,10 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 this file). A minor release: a full round of polish on the Toybox, and small new
 features and enhancements the owner picked from "Later / unscheduled"
 (2026-11-14); bugs to fix are still to be picked. None needs a new Google
-permission or changes what leaves the computer. Done when: each item below is
+permission, and none sends data anywhere the privacy policy's "When data
+leaves your computer" doesn't already list (label changes go to Gmail;
+"What's new" must stay within the update check's hosts, or update the
+policy, whichever option is chosen). Done when: each item below is
 built, the owner has tried it, and the owner has published 0.3.0
 (`docs/DEVELOPMENT.md` → Releasing).*
 
@@ -5610,7 +5618,7 @@ built, the owner has tried it, and the owner has published 0.3.0
 - [ ] Clone a sent email *(owner request, 2026-11-08; maybe for the Polish
       Spike, not likely)*: find an email you sent before and open it in a
       new composer with the same recipients, subject and body, to send the
-      same message again. Useful before templates (above), which remain
+      same message again. Useful before templates (in "Later / unscheduled" → Writing), which remain
       planned; it starts from a sent email already in the cache, fetching
       its body if that isn't saved yet. To decide: where the action lives
       (the email's menu, a command in the palette, or both), whether Cc,
@@ -5630,7 +5638,7 @@ built, the owner has tried it, and the owner has published 0.3.0
       every toy and screensaver in pixel art or ASCII art, and Settings →
       Toybox reworked, with the switch between pixel art and ASCII art
       (moved from "Later / unscheduled" into the spike by #128). Its items
-      are in the spike's own section; tick this when #128 merges
+      are in the spike's own section
       *(#128 merged 2026-11-14. "Weather in the sky" stays open in the
       spike, undecided; its real-weather part waits for Google's review)*
 - [ ] Regenerate the Toybox screensaver screenshots, which still show the
