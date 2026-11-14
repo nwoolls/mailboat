@@ -32,6 +32,7 @@ import {
 } from "../model/codeRain";
 import { KoiScene } from "../model/koi";
 import { LavaScene } from "../model/lava";
+import { SandscapeScene } from "../model/sand";
 import { drawShadedAscii } from "./shadedAscii";
 import { drawCodeRain, pixelCell } from "./codeRainDraw";
 import { deepLifeTuning } from "../model/deepLife";
@@ -232,7 +233,18 @@ export function ScreensaverCanvas({
     // The koi are drawn larger in the Toybox's styles (owner, 2026-11-13:
     // "i'm fine with larger fish"): in ASCII art a koi at its usual size is
     // only a dozen characters long, too few to read as a fish.
-    const zoom = sceneId === "koi" ? (look === "ascii" ? 2 : look === "chunky" ? 1.5 : 1) : 1;
+    // The sandscape's pixel art is its own sand with bigger grains, not a
+    // conversion, so its fine layers stay crisp.
+    const zoom =
+      sceneId === "koi"
+        ? look === "ascii"
+          ? 2
+          : look === "chunky"
+            ? 1.5
+            : 1
+        : sceneId === "sandscape" && look === "chunky"
+          ? 2
+          : 1;
     const px = cellPxOf(sceneId) * zoom;
     // Some scenes have their own drawing in the Toybox's styles, from their
     // own shapes rather than from cells: the jellyfish
@@ -389,7 +401,7 @@ export function ScreensaverCanvas({
       ripples = new Uint8Array(cols * rows);
       rippleOpacity = new Uint8Array(cols * rows);
       const { solid, letters } = solidMask(a, cols, rows, px, iconRef.current, wordsRef.current);
-      scene = makeScene(sceneId, {
+      const setup = {
         cols,
         rows,
         solid,
@@ -399,17 +411,25 @@ export function ScreensaverCanvas({
         words: boundsOf(letters, cols),
         rng: Math.random,
         zoom,
-      });
+      };
+      const before = scene;
+      scene = makeScene(sceneId, setup);
+      // The sandscape carries its sand through a resize; the others not
+      // yet restyled start over.
+      if (scene instanceof SandscapeScene && before instanceof SandscapeScene)
+        scene.carryFrom(before, setup);
     };
 
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
-      if (deep) {
-        drawDeep(dt);
-        frame = requestAnimationFrame(tick);
-        return;
-      }
+      if (deep) drawDeep(dt);
+      else drawFine(dt);
+      frame = requestAnimationFrame(tick);
+    };
+
+    // A scene drawn on its fine grid (and converted, if restyled so).
+    const drawFine = (dt: number) => {
       if (scene && image && pixels && cells && opacity) {
         const result = scene.frame(dt, pointer);
         if (result.nod) nodRef.current();
@@ -419,7 +439,7 @@ export function ScreensaverCanvas({
         opacity.fill(255);
         scene.draw(cells, opacity);
         const colors = colorsRef.current;
-        if (look === "chunky")
+        if (look === "chunky" && sceneId !== "sandscape")
           chunk(cells, opacity, image.width, image.height, chunkCells(px, screensaverLookTuning()));
         const night = !!scene.night && light.matches;
         if (night !== nightShown) {
@@ -428,7 +448,9 @@ export function ScreensaverCanvas({
         }
         if (look === "ascii") {
           if (
-            (scene instanceof KoiScene || scene instanceof LavaScene) &&
+            (scene instanceof KoiScene ||
+              scene instanceof LavaScene ||
+              scene instanceof SandscapeScene) &&
             ripples &&
             rippleOpacity
           ) {
@@ -480,7 +502,6 @@ export function ScreensaverCanvas({
           }
         if (look !== "ascii") ctx.putImageData(image, 0, 0);
       }
-      frame = requestAnimationFrame(tick);
     };
 
     /**
@@ -726,11 +747,12 @@ export function ScreensaverCanvas({
     layout();
     play();
     // A resize lands after this frame's drawing and before it's shown, and
-    // resizing the canvas clears it, so the scenes that carry on through a
-    // resize are drawn again at once (else they'd be blank while dragging).
+    // resizing the canvas clears it, so every scene is drawn again at once
+    // (else it would be blank, flashing, while dragging).
     const resize = new ResizeObserver(() => {
       layout();
       if (deep) drawDeep(0);
+      else drawFine(0);
     });
     resize.observe(area);
     card.addEventListener("pointermove", onMove);

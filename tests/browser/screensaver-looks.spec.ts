@@ -131,10 +131,55 @@ test("Life in either style draws its own cells, at full resolution", async ({ pa
   }
 });
 
+test("the sandscape: shaded characters in ASCII art, bigger grains in pixel art", async ({
+  page,
+}) => {
+  await start(page, "sandscape", "ascii");
+  const ascii = await canvasInfo(page);
+  expect(ascii.sharp).toBe(true);
+  expect(ascii.inked).toBeGreaterThan(500);
+  await start(page, "sandscape", "pixel");
+  const pixel = await canvasInfo(page);
+  // Its own sand at 4px a grain: a canvas pixel per grain, a quarter as wide as the page.
+  expect(pixel.width).toBeLessThanOrEqual(Math.ceil(pixel.cssWidth / 4));
+  expect(pixel.width).toBeGreaterThan(pixel.cssWidth / 4 - 2);
+});
+
 test("a screensaver not yet restyled draws as before, whatever the style", async ({ page }) => {
   // (Not Life: its cells are a screen pixel, so its canvas is always full size.)
   await start(page, "envelopes", "ascii");
   const info = await canvasInfo(page);
   // One canvas pixel per cell: not the ASCII look's full resolution.
   expect(info.sharp).toBe(false);
+});
+
+test("a screensaver stays drawn while the window is resized, without flashing blank", async ({
+  page,
+}) => {
+  await start(page, "sandscape", "pixel");
+  // Sampled in a resize observer made after the screensaver's, so each
+  // sample sees the canvas as it will be shown after that resize.
+  await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>("canvas.screensaver")!;
+    const w = window as unknown as { inked: number[] };
+    w.inked = [];
+    new ResizeObserver(() => {
+      const c = document.querySelector<HTMLCanvasElement>("canvas.screensaver")!;
+      const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+      let n = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i]! > 0) n++;
+      w.inked.push(n);
+    }).observe(canvas);
+  });
+  // Narrowed step by step, as dragging the window's edge does.
+  for (let k = 1; k <= 8; k++) {
+    await page.evaluate((step) => {
+      const box = document.querySelector<HTMLCanvasElement>("canvas.screensaver")!.parentElement!;
+      box.style.width = `${box.getBoundingClientRect().width - step}px`;
+    }, 12);
+    await page.waitForTimeout(50);
+  }
+  const inked = await page.evaluate(() => (window as unknown as { inked: number[] }).inked);
+  expect(inked.length).toBeGreaterThan(3);
+  for (const n of inked) expect(n).toBeGreaterThan(0);
 });

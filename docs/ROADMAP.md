@@ -4829,6 +4829,17 @@ between pixel art and ASCII art for the screensavers.*
             sprinkle settled into a few blinkers within seconds, so they
             get a wide, dense soup, and "died down" scales with the grid. It
             carries on through a resize. *Owner: "lgtm"*
+      - [x] Sandscape. Pixel art is the sand itself with grains twice the
+            size (4px), not a conversion, so its fine layers stay crisp.
+            ASCII art is the shared shaded drawing. Through a resize the
+            sand carries over: the hanging ceiling stays at the top,
+            everything else keeps to the floor (hills don't float when it
+            grows taller), columns keep their place, and the cycle goes on.
+            Every scene, this one included, is now drawn again at once
+            after a resize: the ones still drawn on their fine grid flashed
+            blank on every step of a drag (owner: "crazy flashing when
+            resizing"). With this, every screensaver but the envelope flock
+            has both styles
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well

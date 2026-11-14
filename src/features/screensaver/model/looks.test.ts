@@ -20,6 +20,7 @@ describe("which screensavers are restyled", () => {
     expect(lookFor("fireflies", "ascii")).toBe("ascii");
     expect(lookFor("lava", "ascii")).toBe("ascii");
     expect(lookFor("life", "pixel")).toBe("chunky");
+    expect(lookFor("sandscape", "ascii")).toBe("ascii");
     expect(lookFor("envelopes", "ascii")).toBe("fine");
     expect(RESTYLED.has("envelopes")).toBe(false);
   });

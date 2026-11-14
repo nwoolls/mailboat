@@ -268,3 +268,25 @@ describe("SandscapeScene", () => {
     expect(turned).toBe(true);
   });
 });
+
+describe("the sandscape through a resize", () => {
+  it("keeps its sand: the ceiling at the top, the rest on the floor, in the same columns", () => {
+    const old = new SandShow(60, 40, seeded(2));
+    for (let i = 0; i < 60 * 20; i++) old.frame(1 / 60);
+    const count = (show: SandShow, held: boolean) => {
+      let n = 0;
+      for (const v of show.box.cells) if (v >= GRAIN && ((v & HELD) !== 0) === held) n++;
+      return n;
+    };
+    const next = new SandShow(70, 50, seeded(3));
+    next.carryFrom(old);
+    expect(count(next, true)).toBe(count(old, true));
+    expect(count(next, false)).toBe(count(old, false));
+    expect(next.phase).toBe(old.phase);
+    // A grain on the old floor is on the new floor, in the same column.
+    for (let x = 0; x < 60; x++) {
+      const bottom = old.box.cells[39 * 60 + x]!;
+      if (bottom >= GRAIN && !(bottom & HELD)) expect(next.box.cells[49 * 70 + x]).toBe(bottom);
+    }
+  });
+});
