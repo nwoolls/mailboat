@@ -105,6 +105,16 @@ test("the koi in ASCII art are shaded characters, at full resolution", async ({ 
   expect(info.inked).toBeGreaterThan(500);
 });
 
+test("the fireflies in either style draw their own light, at full resolution", async ({ page }) => {
+  for (const style of ["ascii", "pixel"]) {
+    await start(page, "fireflies", style);
+    await page.waitForTimeout(1500);
+    const info = await canvasInfo(page);
+    expect(info.sharp).toBe(true);
+    expect(info.inked).toBeGreaterThan(500);
+  }
+});
+
 test("a screensaver not yet restyled draws as before, whatever the style", async ({ page }) => {
   await start(page, "lava", "ascii");
   const info = await canvasInfo(page);

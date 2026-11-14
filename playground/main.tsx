@@ -94,6 +94,11 @@ import {
   setCodeRainTuning,
 } from "../src/features/screensaver/model/codeRain";
 import {
+  DEEP_FIREFLY_DEFAULTS,
+  type DeepFireflyTuning,
+  setDeepFireflyTuning,
+} from "../src/features/screensaver/model/deepFireflies";
+import {
   RESTYLED,
   SCREENSAVER_LOOK_DEFAULTS,
   type ScreensaverLookTuning,
@@ -445,6 +450,20 @@ const CODE_DIALS: Sections<CodeRainTuning> = [
   },
 ];
 
+const FIREFLY_DIALS: Sections<DeepFireflyTuning> = [
+  {
+    title: "Fireflies (restart to see the count)",
+    dials: [
+      { key: "count", min: 4, max: 80, step: 1, hint: "how many (restart)" },
+      { key: "flashes", min: 0.05, max: 1.5, step: 0.01, hint: "flashes a second, each" },
+      { key: "reach", min: 0.2, max: 3, step: 0.05, hint: "how far a flash lights" },
+      { key: "bloom", min: 0, max: 1.5, step: 0.05, hint: "soft bloom" },
+      { key: "grass", min: 0, max: 0.4, step: 0.01, hint: "grass height" },
+      { key: "pixel", min: 2, max: 12, step: 1, hint: "pixel size (pixel art)" },
+    ],
+  },
+];
+
 const LOOK_DIALS: Sections<ScreensaverLookTuning> = [
   {
     title: "Pixel art",
@@ -535,6 +554,7 @@ const jellyStart = saved("playground.deepJellies", DEEP_JELLY_DEFAULTS, setDeepJ
 const starStart = saved("playground.deepStars", DEEP_STAR_DEFAULTS, setDeepStarTuning);
 const rainStart = saved("playground.deepRain", DEEP_RAIN_DEFAULTS, setDeepRainTuning);
 const codeStart = saved("playground.codeRain", CODE_RAIN_DEFAULTS, setCodeRainTuning);
+const fireflyStart = saved("playground.deepFireflies", DEEP_FIREFLY_DEFAULTS, setDeepFireflyTuning);
 const fireworkStart = saved(
   "playground.deepFireworks",
   DEEP_FIREWORK_DEFAULTS,
@@ -845,6 +865,18 @@ function Playground() {
                 apply={setCodeRainTuning}
                 fields={[]}
                 sections={CODE_DIALS}
+              />
+            )}
+            {playing === "fireflies" && (
+              <Panel
+                key="fireflies"
+                title="Fireflies"
+                storageKey="playground.deepFireflies"
+                defaults={DEEP_FIREFLY_DEFAULTS}
+                start={fireflyStart}
+                apply={setDeepFireflyTuning}
+                fields={[]}
+                sections={FIREFLY_DIALS}
               />
             )}
             <Panel

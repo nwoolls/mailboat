@@ -4801,6 +4801,18 @@ between pixel art and ASCII art for the screensavers.*
             only a little past the body, the swimming wave is capped when a
             koi hurries, turns are slower, and a nibbling koi sways gently
             instead of wiggling. *Owner: "LGTM"*
+      - [x] Fireflies. Their drifting, blinking into step, gathering
+            into the boat and drifting to the pointer are the scene's own
+            motion, drawn its own way: each flash a field of light on the
+            grid, `@ # * + : .` from its heart out in ASCII art, bands of
+            blocks dithered at their edges in pixel art (softer there, as
+            solid blocks flashed too bright), with a soft bloom; a faint
+            speck between flashes; a grass silhouette swaying along the
+            bottom; and a dusk sky on a light page. Fewer, calmer and
+            smaller than the fine scene, from the owner's playground dials:
+            26 fireflies, a flash about every three seconds each, light
+            reaching 0.65 of the scene's own. It carries on through a
+            resize. *Owner: "the new defaults are good"*
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well

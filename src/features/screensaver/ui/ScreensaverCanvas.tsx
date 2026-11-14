@@ -33,6 +33,9 @@ import {
 import { KoiScene } from "../model/koi";
 import { drawKoiAscii } from "./koiAscii";
 import { drawCodeRain, pixelCell } from "./codeRainDraw";
+import { deepFireflyTuning, USUAL_FLASHES } from "../model/deepFireflies";
+import { FireflyScene } from "../model/fireflies";
+import { drawDeepFireflies } from "./deepFirefliesDraw";
 import { deepRainTuning } from "../model/deepRain";
 import { RainScene } from "../model/rain";
 import { drawDeepRain } from "./deepRainDraw";
@@ -235,13 +238,15 @@ export function ScreensaverCanvas({
         sceneId === "starfield" ||
         sceneId === "fireworks" ||
         sceneId === "rain" ||
-        sceneId === "code") &&
+        sceneId === "code" ||
+        sceneId === "fireflies") &&
       look !== "fine";
     let swarm: Swarm | null = null;
     let stars: Starfield | null = null;
     let fireworks: FireworksScene | null = null;
     let rain: RainScene | null = null;
     let code: CodeRain | null = null;
+    let flies: FireflyScene | null = null;
     let deepNight = false;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const painter = new AsciiPainter(ctx);
@@ -299,7 +304,7 @@ export function ScreensaverCanvas({
         } else if (sceneId === "jellyfish") {
           if (swarm) resizeSwarm(swarm, w, h);
           else swarm = makeSwarm(w, h, deepJellyTuning(), Math.random);
-        } else if (sceneId === "fireworks" || sceneId === "rain") {
+        } else if (sceneId === "fireworks" || sceneId === "rain" || sceneId === "fireflies") {
           // Their own motion, on the fine grid it was made for.
           const { solid, letters } = solidMask(
             a,
@@ -321,6 +326,9 @@ export function ScreensaverCanvas({
           if (sceneId === "rain") {
             if (rain) rain.resize(setup);
             else rain = new RainScene(setup);
+          } else if (sceneId === "fireflies") {
+            if (flies) flies.resize(setup);
+            else flies = new FireflyScene(setup, deepFireflyTuning().count);
           } else if (fireworks) fireworks.resize(setup);
           else fireworks = new FireworksScene(setup);
         } else {
@@ -481,6 +489,8 @@ export function ScreensaverCanvas({
       if (stars && stepStars(stars, dt, p, deepStarTuning(), Math.random)) nodRef.current();
       if (fireworks && fireworks.frame(dt, pointer).nod) nodRef.current();
       if (rain && rain.frame(dt, pointer).nod) nodRef.current();
+      if (flies) flies.pace = deepFireflyTuning().flashes / USUAL_FLASHES;
+      if (flies && flies.frame(dt, pointer).nod) nodRef.current();
       if (code && stepCodeRain(code, dt, codeRainTuning(), Math.random)) nodRef.current();
       // On a light page, a dark backdrop (deep sea, night sky), and light
       // text on it; rain stays on the page's own glass.
@@ -525,6 +535,15 @@ export function ScreensaverCanvas({
           width: canvas.width / dpr,
           height: canvas.height / dpr,
           t: deepRainTuning(),
+        });
+      if (flies)
+        drawDeepFireflies({
+          ...common,
+          scene: flies,
+          px,
+          width: canvas.width / dpr,
+          height: canvas.height / dpr,
+          t: deepFireflyTuning(),
         });
       if (code) {
         const pixel = pixelCell(codeRainTuning());
