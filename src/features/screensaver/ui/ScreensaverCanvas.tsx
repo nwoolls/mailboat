@@ -31,7 +31,8 @@ import {
   stepCodeRain,
 } from "../model/codeRain";
 import { KoiScene } from "../model/koi";
-import { drawKoiAscii } from "./koiAscii";
+import { LavaScene } from "../model/lava";
+import { drawShadedAscii } from "./shadedAscii";
 import { drawCodeRain, pixelCell } from "./codeRainDraw";
 import { deepFireflyTuning, USUAL_FLASHES } from "../model/deepFireflies";
 import { FireflyScene } from "../model/fireflies";
@@ -386,19 +387,26 @@ export function ScreensaverCanvas({
           setNight([iconRef.current, wordsRef.current, canvas], night);
         }
         if (look === "ascii") {
-          if (scene instanceof KoiScene && ripples && rippleOpacity) {
-            scene.draw(cells, opacity, { ripples: false, koi: true });
-            rippleOpacity.fill(255);
-            scene.draw(ripples, rippleOpacity, { ripples: true, koi: false });
+          if (
+            (scene instanceof KoiScene || scene instanceof LavaScene) &&
+            ripples &&
+            rippleOpacity
+          ) {
+            // Smooth shapes as shaded characters; the koi's ripples apart.
+            if (scene instanceof KoiScene) {
+              scene.draw(cells, opacity, { ripples: false, koi: true });
+              rippleOpacity.fill(255);
+              scene.draw(ripples, rippleOpacity, { ripples: true, koi: false });
+            } else ripples.fill(0);
             const g = asciiGlowTuning();
             const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
             const a = area.getBoundingClientRect();
             const c = card.getBoundingClientRect();
             const page = readAsciiColors(g.hotMixDark, g.hotMixLight);
-            drawKoiAscii({
+            drawShadedAscii({
               ctx,
-              koi: cells,
-              koiOpacity: opacity,
+              shapesInk: cells,
+              shapesOpacity: opacity,
               ripples,
               rippleOpacity,
               cols: image.width,

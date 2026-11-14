@@ -4813,6 +4813,12 @@ between pixel art and ASCII art for the screensavers.*
             26 fireflies, a flash about every three seconds each, light
             reaching 0.65 of the scene's own. It carries on through a
             resize. *Owner: "the new defaults are good"*
+      - [x] Lava lamp. Pixel art is the general conversion: the wax is
+            big and smooth enough to keep its shading and glow in chunky
+            blocks. ASCII art is the koi's drawing, now shared
+            (`ui/shadedAscii.ts`): each character in the wax's color, by how
+            solid and bright it is, bold on a faint tile and the faint grid.
+            *Owner: "looks good"*
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well

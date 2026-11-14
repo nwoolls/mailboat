@@ -115,8 +115,16 @@ test("the fireflies in either style draw their own light, at full resolution", a
   }
 });
 
-test("a screensaver not yet restyled draws as before, whatever the style", async ({ page }) => {
+test("the lava lamp in ASCII art is shaded characters, at full resolution", async ({ page }) => {
   await start(page, "lava", "ascii");
+  const info = await canvasInfo(page);
+  expect(info.sharp).toBe(true);
+  expect(info.inked).toBeGreaterThan(500);
+});
+
+test("a screensaver not yet restyled draws as before, whatever the style", async ({ page }) => {
+  // (Not Life: its cells are a screen pixel, so its canvas is always full size.)
+  await start(page, "envelopes", "ascii");
   const info = await canvasInfo(page);
   // One canvas pixel per cell: not the ASCII look's full resolution.
   expect(info.sharp).toBe(false);

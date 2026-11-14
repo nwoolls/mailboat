@@ -4,27 +4,27 @@ import { type AsciiGlowTuning, type ClearShape, clearing } from "../../mailbox/m
 
 const MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
 
-/** Shading characters, faint to dense: how solid and bright a cell of koi is. */
-export const KOI_RAMP = ":=+*#%@";
+/** Shading characters, faint to dense: how solid and bright a cell of a shape is. */
+export const SHADE_RAMP = ":=+*#%@";
 
 /**
- * A character for a cell of koi: `cover` how much of it the koi fills,
- * `bright` how light the koi is there (0–1). The lit back is dense, the
- * shaded sides and the thin fins and tail lighter, so a koi looks round.
+ * A character for a cell of a shape (a koi, the lava lamp's wax): `cover`
+ * how much of it the shape fills, `bright` how light it is there (0–1). A
+ * lit back is dense, shaded sides and thin fins lighter, so it looks round.
  */
-export function koiChar(cover: number, bright: number): string | null {
+export function shadeChar(cover: number, bright: number): string | null {
   const v = cover * (0.5 + 0.5 * bright);
   if (v < 0.1) return null;
-  const top = KOI_RAMP.length - 1;
-  // Leaning dense, so a koi reads as solid (owner, 2026-11-13).
-  return KOI_RAMP[Math.min(top, Math.round(v ** 0.6 * top))]!;
+  const top = SHADE_RAMP.length - 1;
+  // Leaning dense, so a shape reads as solid (owner, 2026-11-13, of the koi).
+  return SHADE_RAMP[Math.min(top, Math.round(v ** 0.6 * top))]!;
 }
 
-export type KoiAsciiDraw = {
+export type ShadedAsciiDraw = {
   ctx: CanvasRenderingContext2D;
-  /** The koi alone, and the ripples alone, on the scene's fine grid. */
-  koi: Uint8Array;
-  koiOpacity: Uint8Array;
+  /** The shapes alone, and the ripples alone (empty for none), on the scene's fine grid. */
+  shapesInk: Uint8Array;
+  shapesOpacity: Uint8Array;
   ripples: Uint8Array;
   rippleOpacity: Uint8Array;
   cols: number;
@@ -50,14 +50,14 @@ export type KoiAsciiDraw = {
 };
 
 /**
- * The koi pond in ASCII art (Settings → Toybox → Style): each character
- * cell takes the koi's average color there, and a shading character by how
- * solid and bright it is (`koiChar`), in bold on a faint tile of that
- * color, so the koi read as solid, shaded fish of text with their markings in color, over the faint grid, thinning out
- * round the icon and words. A ripple's crest
- * is a `~`.
+ * Smooth shapes in ASCII art (Settings → Toybox → Style): the koi pond and
+ * the lava lamp. Each character cell takes the shapes' average color
+ * there, and a shading character by how solid and bright they are
+ * (`shadeChar`), in bold on a faint tile of that color, so they read as
+ * solid, shaded shapes of text in their own colors, over the faint grid,
+ * thinning out round the icon and words. A ripple's crest is a `~`.
  */
-export function drawKoiAscii(d: KoiAsciiDraw) {
+export function drawShadedAscii(d: ShadedAsciiDraw) {
   const { ctx, cols, rows, px, colors, cw, ch, ox, oy, dpr } = d;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
@@ -98,9 +98,9 @@ export function drawKoiAscii(d: KoiAsciiDraw) {
             if (d.ripples[i] === d.crest) crest += a;
             wet += a;
           }
-          if (!d.koi[i]) continue;
-          const w = d.koiOpacity[i]! / 255;
-          const col = colors[d.koi[i]!] ?? 0;
+          if (!d.shapesInk[i]) continue;
+          const w = d.shapesOpacity[i]! / 255;
+          const col = colors[d.shapesInk[i]!] ?? 0;
           cover += w;
           rr += (col & 255) * w;
           gg += ((col >>> 8) & 255) * w;
@@ -115,9 +115,9 @@ export function drawKoiAscii(d: KoiAsciiDraw) {
       if (cover > 0) {
         const avg: Rgb = [rr / cover, gg / cover, bb / cover];
         const bright = (0.2126 * avg[0] + 0.7152 * avg[1] + 0.0722 * avg[2]) / 255;
-        const char = koiChar(cover / n, bright);
+        const char = shadeChar(cover / n, bright);
         if (char) {
-          // A faint tile in the koi's color fills the gaps between characters.
+          // A faint tile in the shape's color fills the gaps between characters.
           ctx.globalAlpha = 0.22 * (cover / n) * keep;
           ctx.fillStyle = rgb(avg);
           ctx.fillRect(x, y, cw, ch);
@@ -131,7 +131,7 @@ export function drawKoiAscii(d: KoiAsciiDraw) {
           continue;
         }
       }
-      // A ripple's crest, where no koi is.
+      // A ripple's crest, where no shape is.
       if (crest / n > 0.12) {
         ctx.globalAlpha = Math.min(0.7, (crest / n) * 1.6) * keep;
         ctx.fillStyle = rgb(d.page.content);
