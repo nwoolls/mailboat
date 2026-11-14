@@ -5634,11 +5634,165 @@ niche or extra", so Windows and the Release Spike come first)
       differ from Gmail's own. Design to agree first
 - [ ] Schedule send. No Gmail API either: a draft Mailboat sends at the time,
       only while it's running. Design to agree first
-- [ ] "Send mail as" aliases and forwarding. Need the more sensitive
-      `gmail.settings.sharing` permission; for now they're set up in Gmail
-      (Settings → Accounts has "Open in Gmail")
-- [ ] Inbox category tabs (Promotions, Social…). Rules can already put
-      mail in a category
+- "Send mail as" aliases and forwarding: *moved to "Gmail and Google features
+  not built yet" below (2026-11-14)*
+- Inbox category tabs (Promotions, Social…): *moved to "Gmail and Google
+  features not built yet" below (2026-11-14)*
+
+### Gmail and Google features not built yet (API review, 2026-11-14)
+
+*(owner request, 2026-11-14: list everything Gmail or another Google API
+supports that Mailboat doesn't.)* Every item here is something Gmail or
+Google already provides, through a documented API. None of it would be
+unique to Mailboat. Each item is tagged with three things:
+
+- **Permission:** *existing* means a permission the app already asks for
+  (`SCOPES` in `crates/core/src/auth/oauth.rs`). *New* means another
+  Google permission: every account signs in again, and the change may
+  trigger a new Google verification (most Gmail permissions are
+  "restricted"). Hold all *new* items until Google answers the current
+  verification.
+- **Competitors:** which other apps offer it, from their websites, help
+  pages and reviews, checked 2026-11-14 without trying the apps. Gmail
+  (web and phone apps) offers every item.
+- **Effort:** *low* is a small change in one place, *medium* touches sync
+  or the reader and needs a design, *high* is new infrastructure or a long
+  Google review.
+
+A change to what leaves the computer (a new host contacted, a new
+permission) also updates the privacy policy, the website's cards and
+Settings → Privacy, as `AGENTS.md` says.
+
+#### With the permissions the app already has
+
+- [ ] Label color and visibility. `labels.patch` takes `color`,
+      `labelListVisibility` and `messageListVisibility`; the app only
+      renames (`rename_label` sends `name`). Pick a label's color from
+      Gmail's palette and hide or show it in the sidebar, kept in sync
+      with Gmail.
+      Permission: existing (`gmail.modify`). Competitors: Mimestream
+      (colors and visibility, synced with Gmail). Effort: low
+- [ ] Print an email or a conversation. Needs no API, but Gmail has it and
+      the app doesn't. Competitors: Apple Mail, Outlook, Spark (the latest
+      email or the whole conversation), Mimestream. Effort: low (print the
+      reader's sanitized HTML; check that the web view can print on macOS
+      and Windows)
+- [ ] Inbox category tabs (Promotions, Social, Updates, Forums) *(moved
+      from "From Milestone 6", 2026-11-14)*. Gmail sorts mail into
+      categories itself and exposes them as the `CATEGORY_*` labels, which
+      Rules can already set. Tabs or views would show Primary apart from
+      the rest.
+      Permission: existing. Competitors: Mimestream (Gmail's categories);
+      Notion Mail (views filtered by them); Superhuman (its own split
+      inbox). Effort: medium (whether the category labels are synced and
+      cached, the views across accounts, how unread counts work)
+- [ ] One-click unsubscribe. Mailing lists carry a `List-Unsubscribe`
+      header, and many also carry `List-Unsubscribe-Post` for one-click
+      (RFC 8058). An Unsubscribe button would send that request, or an
+      email for `mailto:` addresses. (Already noted in the bytemail ideas
+      above, never scheduled.)
+      Permission: existing (the header is in the message; sending uses
+      `gmail.modify`). Competitors: Apple Mail, Superhuman, Notion Mail.
+      Effort: medium (read and keep the header during sync; the one-click
+      request contacts the sender's server, which the privacy policy and
+      Settings → Privacy must then say; refuse local and private hosts as
+      in "Images from local or private hosts")
+- [ ] Act on one message in a conversation. Every action today works on
+      whole conversations. Gmail also lets you delete one message, mark
+      unread from a message on, and label one message. These use
+      `messages.trash`, `messages.untrash` and `messages.modify`.
+      Permission: existing. Competitors: Apple Mail and Outlook (message
+      by message), Mimestream. Effort: medium to high (per-message state in
+      the cache, the conversation's summary worked out again, menus in the
+      reader, undo)
+- [ ] Create a calendar event from an email. Gmail's "Create event" fills
+      the title, guests and description from the email. The app already
+      reads and answers invitations through Calendar.
+      Permission: existing if `calendar.events.owned` allows creating
+      events on the primary calendar (it should; to check). Competitors:
+      Superhuman (title, guests and a suggested time from the email).
+      Effort: medium (a small event form; AI could suggest the time if
+      the owner chose a provider for it)
+- [ ] Contact photos next to people. The People API returns contacts'
+      photos (`photos` in the read mask, also for "other contacts").
+      Shown in the list and the reader, alongside the "Sender logos" idea
+      above.
+      Permission: existing (`contacts.readonly`,
+      `contacts.other.readonly`). Competitors: Apple Mail (photos from
+      Contacts); others not confirmed. Effort: medium (download and cache
+      the photos; they come from a Google image host, which the privacy
+      policy and Settings → Privacy must then say)
+- [ ] IMAP, POP and language settings. Gmail's settings API reads and
+      changes them (`settings.imap`, `settings.pop`, `settings.language`).
+      Few people would need them in a client.
+      Permission: existing (`gmail.settings.basic`). Competitors: none
+      found outside Gmail. Effort: low
+- [ ] Import `.eml` or mbox files into Gmail. `messages.import` adds an
+      email to the mailbox with Gmail's spam and filter checks;
+      `messages.insert` adds it without them.
+      Permission: existing (`gmail.modify` covers both). Competitors: none
+      found that import into Gmail itself. Effort: medium (parse mbox, keep
+      to the quota, choose labels and dates)
+
+#### Needing a new permission
+
+- [ ] Delete forever and Empty Trash. `messages.delete`,
+      `messages.batchDelete` and `threads.delete` need the full
+      `https://mail.google.com/` permission. Today the app moves mail to
+      Trash, and Gmail deletes Trash after 30 days.
+      Permission: new, full mail access (restricted; the strictest
+      review). Competitors: Apple Mail and Outlook (over IMAP); Mimestream
+      not confirmed. Effort: low in code, high in review
+- [ ] "Send mail as" aliases and forwarding *(moved from "From Milestone
+      6", 2026-11-14)*. Adding and verifying an alias
+      (`settings.sendAs.create`, `verify`), forwarding addresses, automatic
+      forwarding and rules that forward. The app already reads the aliases
+      set up in Gmail and sends from them; Settings → Accounts has "Open in
+      Gmail" for the rest.
+      Permission: new (`gmail.settings.sharing`, restricted). Competitors:
+      none found that create Gmail aliases themselves. Effort: medium
+- [ ] Mail arriving by push instead of polling. Today each account checks
+      `history.list` every 60 seconds. `users.watch` makes Gmail announce
+      changes through Google Cloud Pub/Sub.
+      Permission: new (Pub/Sub, plus a topic in the Google Cloud project,
+      which for people who bring their own credentials is more setup).
+      Competitors: Gmail's phone apps, and apps with their own servers.
+      Effort: high
+- [ ] Google Drive: attach a file from Drive, save an attachment to Drive,
+      and send large files as Drive links (listed under "Considered, not
+      planned" below).
+      Permission: new (`drive.file` with Google's file picker, or a
+      broader, restricted Drive permission). Competitors: Spark (attach
+      from and save to Google Drive and others). Effort: high
+- [ ] Google Tasks: turn an email into a task, as Gmail's side panel does.
+      Ties in with "add to Todoist and archive" above.
+      Permission: new (`tasks`). Competitors: none confirmed. Effort:
+      medium
+- [ ] Save a sender to Google Contacts, or edit a contact.
+      Permission: new (`contacts`, which allows writing). Competitors:
+      Apple Mail (to the computer's Contacts, not Google's). Effort: low
+      to medium
+- [ ] Delegated mailboxes and S/MIME certificates (`settings.delegates`,
+      `settings.sendAs.smimeInfo`). Google Workspace only: delegation
+      needs the domain's administrator to set it up.
+      Permission: new (`gmail.settings.sharing`). Competitors: Outlook
+      (its own delegation and S/MIME). Effort: high
+
+#### Only in Gmail's own app (no API)
+
+Mailboat could only build its own versions of these, working while the app
+runs, as with Snooze and Schedule send above.
+
+- Mute: listed above ("Mute a conversation"). The API refuses Gmail's
+  MUTED label.
+- Report phishing: no API. Mailboat has Report spam; the "Phishing
+  warnings" idea in the bytemail notes is the nearest.
+- Confidential mode: can't be built outside Gmail, and such emails arrive
+  as a link to read in Gmail.
+- Templates: listed under "Writing" above.
+- Nudges (Gmail brings back mail you haven't answered): see "Remind me if
+  no reply" in the bytemail notes.
+- Smart Compose: the AI writing features cover a similar need.
 
 ### Considered, not planned (settings comparison, 2026-10-19)
 
