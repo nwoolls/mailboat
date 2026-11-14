@@ -173,8 +173,9 @@ fn is_app_link_host(host: &str) -> bool {
 /// Whether a host (as `url` writes it: lowercased, IPv6 in brackets, a
 /// numeric IPv4 one as dotted digits) is on the reader's own computer or
 /// network: loopback, private, shared (`100.64/10`), link-local,
-/// unspecified, broadcast or multicast addresses, IPv6 unique-local and
-/// link-local ones and IPv4 ones inside IPv6, and local names.
+/// unspecified, broadcast or multicast addresses, IPv6 unique-local,
+/// link-local and site-local ones, a local IPv4 one inside IPv6
+/// (compatible, mapped, translated or NAT64), and local names.
 fn is_local_network_host(host: &str) -> bool {
     use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     let v4 = |ip: Ipv4Addr| {
@@ -190,11 +191,21 @@ fn is_local_network_host(host: &str) -> bool {
     let v6 = |ip: Ipv6Addr| {
         let s = ip.segments();
         let [.., a, b, c, d] = ip.octets();
-        ip.to_ipv4_mapped().is_some_and(v4)
-            || (s[..6].iter().all(|x| *x == 0) && v4(Ipv4Addr::new(a, b, c, d)))
-            || ip.is_multicast()
+        // IPv4 inside IPv6: compatible, mapped, translated, NAT64.
+        let embedded = [
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0xffff],
+            [0, 0, 0, 0, 0xffff, 0],
+            [0x64, 0xff9b, 0, 0, 0, 0],
+        ]
+        .contains(&[s[0], s[1], s[2], s[3], s[4], s[5]]);
+        if embedded {
+            return v4(Ipv4Addr::new(a, b, c, d));
+        }
+        ip.is_multicast()
             || (s[0] & 0xfe00) == 0xfc00
             || (s[0] & 0xffc0) == 0xfe80
+            || (s[0] & 0xffc0) == 0xfec0
     };
     let bare = host.trim_start_matches('[').trim_end_matches(']');
     match bare.parse::<IpAddr>() {
@@ -537,6 +548,9 @@ mod tests {
             r#"<img src="//192.168.1.1/a.png">"#,
             r#"<img src="https://[::1]/a.png">"#,
             r#"<img src="https://[::ffff:10.0.0.1]/a.png">"#,
+            r#"<img src="https://[::ffff:0:192.168.1.1]/a.png">"#,
+            r#"<img src="https://[64:ff9b::127.0.0.1]/a.png">"#,
+            r#"<img src="https://[fec0::1]/a.png">"#,
             r#"<td background="https://printer.local/a.png">"#,
             r#"<p style="background:url(https://router/a.png)">"#,
             "<style>p{background:url('https://localhost/a.png')}</style>",

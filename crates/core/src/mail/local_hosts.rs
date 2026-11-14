@@ -14,8 +14,9 @@
 //! What counts as local:
 //! - addresses: loopback, private (RFC 1918), shared (`100.64.0.0/10`,
 //!   carrier-grade NAT and Tailscale), link-local, unspecified, broadcast
-//!   and multicast, IPv6 unique-local, link-local and multicast, and an IPv4
-//!   address written inside an IPv6 one;
+//!   and multicast, IPv6 unique-local, link-local, site-local and
+//!   multicast, and an IPv6 address that carries a local IPv4 one (the
+//!   compatible, mapped and translated forms, and NAT64's `64:ff9b::/96`);
 //! - names: `localhost` and names under it, and the names local networks
 //!   use but the public web can't (`.local`, `.internal`, `.home.arpa`,
 //!   `.lan`), plus a name with no dot at all (`http://router/`), which the
@@ -64,17 +65,25 @@ fn is_local_ipv4(ip: Ipv4Addr) -> bool {
 }
 
 fn is_local_ipv6(ip: Ipv6Addr) -> bool {
-    if let Some(v4) = ip.to_ipv4_mapped() {
-        return is_local_ipv4(v4);
-    }
-    // An IPv4 address written the old way (`::127.0.0.1`), `::1` and `::`
-    // included: judged as that IPv4 address.
-    if ip.segments()[..6].iter().all(|s| *s == 0) {
+    // An IPv4 address carried inside an IPv6 one is judged as that IPv4
+    // address: the old compatible form (`::127.0.0.1`, which takes in `::1`
+    // and `::`), mapped (`::ffff:a.b.c.d`), translated (`::ffff:0:a.b.c.d`)
+    // and NAT64's well-known prefix (`64:ff9b::a.b.c.d`).
+    let s = ip.segments();
+    let carries_ipv4 = matches!(
+        s[..6],
+        [0, 0, 0, 0, 0, 0]
+            | [0, 0, 0, 0, 0, 0xffff]
+            | [0, 0, 0, 0, 0xffff, 0]
+            | [0x64, 0xff9b, 0, 0, 0, 0]
+    );
+    if carries_ipv4 {
         let [.., a, b, c, d] = ip.octets();
         return is_local_ipv4(Ipv4Addr::new(a, b, c, d));
     }
-    let first = ip.segments()[0];
-    ip.is_multicast() || (first & 0xfe00) == 0xfc00 || (first & 0xffc0) == 0xfe80
+    // Multicast, unique-local (`fc00::/7`), link-local (`fe80::/10`) and the
+    // retired site-local (`fec0::/10`).
+    ip.is_multicast() || (s[0] & 0xfe00) == 0xfc00 || (s[0] & 0xff80) == 0xfe80
 }
 
 #[cfg(test)]
@@ -110,6 +119,11 @@ mod tests {
             "https://[::ffff:127.0.0.1]/a.png",
             "https://[::ffff:192.168.0.1]/a.png",
             "https://[::7f00:1]/a.png",
+            "https://[::ffff:0:127.0.0.1]/a.png",
+            "https://[::ffff:0:192.168.1.1]/a.png",
+            "https://[64:ff9b::7f00:1]/a.png",
+            "https://[64:ff9b::192.168.1.1]/a.png",
+            "https://[fec0::1]/a.png",
             "https://localhost/a.png",
             "https://LOCALHOST./a.png",
             "https://app.localhost/a.png",
@@ -134,6 +148,8 @@ mod tests {
             "https://[2001:db8::1]/a.png",
             "https://[::ffff:8.8.8.8]/a.png",
             "https://[::8.8.8.8]/a.png",
+            "https://[::ffff:0:8.8.8.8]/a.png",
+            "https://[64:ff9b::8.8.8.8]/a.png",
             "https://localhost.x.example/a.png",
             "https://local.x.example/a.png",
         ] {
