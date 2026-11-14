@@ -27,7 +27,7 @@ url = "2.5.8"
 # Decodes mailto: links; from the url crate's authors, already in the build.
 percent-encoding = "2.3.2"
 encoding_rs = "0.8.42"
-ammonia = "4.2.3"
+ammonia = "4.2.5"
 lol_html = "3.0.1"
 # Reads emails' style sheets (mail::stylesheet); Servo's, already in the
 # build through ammonia.
