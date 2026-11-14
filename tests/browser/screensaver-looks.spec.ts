@@ -77,6 +77,27 @@ test("the fireworks in either style draw their own sparks, at full resolution", 
   }
 });
 
+test("rain on glass in either style draws its own glass and drops, at full resolution", async ({
+  page,
+}) => {
+  for (const style of ["ascii", "pixel"]) {
+    await start(page, "rain", style);
+    await page.waitForTimeout(1500);
+    const info = await canvasInfo(page);
+    expect(info.sharp).toBe(true);
+    expect(info.inked).toBeGreaterThan(500);
+  }
+});
+
+test("code rain in either style draws its characters, at full resolution", async ({ page }) => {
+  for (const style of ["ascii", "pixel"]) {
+    await start(page, "code", style);
+    const info = await canvasInfo(page);
+    expect(info.sharp).toBe(true);
+    expect(info.inked).toBeGreaterThan(500);
+  }
+});
+
 test("a screensaver not yet restyled draws as before, whatever the style", async ({ page }) => {
   await start(page, "koi", "ascii");
   const info = await canvasInfo(page);

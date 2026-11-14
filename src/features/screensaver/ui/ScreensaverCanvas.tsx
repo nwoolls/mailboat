@@ -23,6 +23,17 @@ import { isRealMove } from "../../../shared/lib/pointer";
 import { screensaverPrefs } from "./prefs";
 import { deepJellyTuning, makeSwarm, resizeSwarm, step, type Swarm } from "../model/deepJellies";
 import { drawDeepJellies } from "./deepJelliesDraw";
+import {
+  type CodeRain,
+  codeRainTuning,
+  makeCodeRain,
+  resizeCodeRain,
+  stepCodeRain,
+} from "../model/codeRain";
+import { drawCodeRain, pixelCell } from "./codeRainDraw";
+import { deepRainTuning } from "../model/deepRain";
+import { RainScene } from "../model/rain";
+import { drawDeepRain } from "./deepRainDraw";
 import { deepFireworkTuning } from "../model/deepFireworks";
 import { FireworksScene } from "../model/fireworks";
 import { drawDeepFireworks } from "./deepFireworksDraw";
@@ -214,11 +225,17 @@ export function ScreensaverCanvas({
     // own shapes rather than from cells: the jellyfish
     // (`model/deepJellies.ts`) and the starfield (`model/deepStars.ts`).
     const deep =
-      (sceneId === "jellyfish" || sceneId === "starfield" || sceneId === "fireworks") &&
+      (sceneId === "jellyfish" ||
+        sceneId === "starfield" ||
+        sceneId === "fireworks" ||
+        sceneId === "rain" ||
+        sceneId === "code") &&
       look !== "fine";
     let swarm: Swarm | null = null;
     let stars: Starfield | null = null;
     let fireworks: FireworksScene | null = null;
+    let rain: RainScene | null = null;
+    let code: CodeRain | null = null;
     let deepNight = false;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const painter = new AsciiPainter(ctx);
@@ -261,11 +278,20 @@ export function ScreensaverCanvas({
       if (deep) {
         const w = cols * px;
         const h = rows * px;
-        if (sceneId === "jellyfish") {
+        if (sceneId === "code") {
+          // A character grid: the glow's in ASCII art, the pixel font's in pixel art.
+          const g = asciiGlowTuning();
+          const cell =
+            look === "ascii" ? asciiCell(ctx, g.fontPx, g.lineHeight) : pixelCell(codeRainTuning());
+          const gc = Math.ceil(w / cell.cw) + 1;
+          const gr = Math.ceil(h / cell.ch) + 1;
+          if (code) resizeCodeRain(code, gc, gr, Math.random);
+          else code = makeCodeRain(gc, gr, codeRainTuning(), Math.random);
+        } else if (sceneId === "jellyfish") {
           if (swarm) resizeSwarm(swarm, w, h);
           else swarm = makeSwarm(w, h, deepJellyTuning(), Math.random);
-        } else if (sceneId === "fireworks") {
-          // The fireworks' own motion, on the fine grid it was made for.
+        } else if (sceneId === "fireworks" || sceneId === "rain") {
+          // Their own motion, on the fine grid it was made for.
           const { solid, letters } = solidMask(
             a,
             cols,
@@ -283,7 +309,10 @@ export function ScreensaverCanvas({
             words: boundsOf(letters, cols),
             rng: Math.random,
           };
-          if (fireworks) fireworks.resize(setup);
+          if (sceneId === "rain") {
+            if (rain) rain.resize(setup);
+            else rain = new RainScene(setup);
+          } else if (fireworks) fireworks.resize(setup);
           else fireworks = new FireworksScene(setup);
         } else {
           // The vanishing point rests behind the icon.
@@ -374,8 +403,11 @@ export function ScreensaverCanvas({
       if (swarm && step(swarm, dt, p, keep, deepJellyTuning(), Math.random)) nodRef.current();
       if (stars && stepStars(stars, dt, p, deepStarTuning(), Math.random)) nodRef.current();
       if (fireworks && fireworks.frame(dt, pointer).nod) nodRef.current();
-      // On a light page, a dark backdrop (deep sea, night sky), and light text on it.
-      const night = light.matches;
+      if (rain && rain.frame(dt, pointer).nod) nodRef.current();
+      if (code && stepCodeRain(code, dt, codeRainTuning(), Math.random)) nodRef.current();
+      // On a light page, a dark backdrop (deep sea, night sky), and light
+      // text on it; rain stays on the page's own glass.
+      const night = light.matches && !rain;
       if (night !== deepNight) {
         deepNight = night;
         setNight([iconRef.current, wordsRef.current, canvas], night);
@@ -425,6 +457,27 @@ export function ScreensaverCanvas({
           height: canvas.height / dpr,
           t: deepFireworkTuning(),
         });
+      if (rain)
+        drawDeepRain({
+          ...common,
+          scene: rain,
+          px,
+          width: canvas.width / dpr,
+          height: canvas.height / dpr,
+          t: deepRainTuning(),
+        });
+      if (code) {
+        const pixel = pixelCell(codeRainTuning());
+        drawCodeRain({
+          ...common,
+          ...(look === "ascii" ? {} : { ...pixel, ox: 0, oy: 0 }),
+          rain: code,
+          width: canvas.width / dpr,
+          height: canvas.height / dpr,
+          pointer: p,
+          t: codeRainTuning(),
+        });
+      }
     };
 
     // ASCII art: a character per cell of the glow's grid (lined up with it

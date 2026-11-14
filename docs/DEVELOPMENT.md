@@ -47,6 +47,8 @@ from the defaults so they can be copied into the code
 `DEEP_JELLY_DEFAULTS` in `src/features/screensaver/model/deepJellies.ts`,
 `DEEP_STAR_DEFAULTS` in `src/features/screensaver/model/deepStars.ts`,
 `DEEP_FIREWORK_DEFAULTS` in `src/features/screensaver/model/deepFireworks.ts`,
+`DEEP_RAIN_DEFAULTS` in `src/features/screensaver/model/deepRain.ts`,
+`CODE_RAIN_DEFAULTS` in `src/features/screensaver/model/codeRain.ts`,
 `POND_STIR_DEFAULTS` in `src/features/emptyToys/model/pond.ts`). The app
 itself always uses the defaults.
 

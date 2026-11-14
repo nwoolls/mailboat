@@ -146,7 +146,7 @@ It follows the time of day, with the sun or tonight's moon on its way across.
 
 *Animated:* [GIF](images/loops/koi-pond.gif) · [MP4](images/loops/koi-pond.mp4)
 
-Ten pixel-art scenes (sandscape, envelope flock, life, rain on glass, koi pond, fireflies, lava lamp, jellyfish, starfield and fireworks) in six color schemes, or a random one. Start one from the command palette while the view is empty.
+Eleven scenes (sandscape, envelope flock, life, rain on glass, koi pond, fireflies, lava lamp, jellyfish, starfield, fireworks and code rain) in six color schemes, or a random one. Start one from the command palette while the view is empty.
 
 ### Toybox settings
 
@@ -157,7 +157,7 @@ Ten pixel-art scenes (sandscape, envelope flock, life, rain on glass, koi pond, 
   <img src="images/features/toybox-light.png" alt="Settings, Toybox: glow, screensavers, and the choice of toy for the empty view" width="800">
 </picture>
 
-The screensavers, and something to play with behind an empty view: the glow, a pond, bubble wrap or the sky. Each toy can be drawn as pixel art or ASCII art, and so can the jellyfish, starfield and fireworks screensavers.
+The screensavers, and something to play with behind an empty view: the glow, a pond, bubble wrap or the sky. Each toy can be drawn as pixel art or ASCII art, and so can the jellyfish, starfield, fireworks, rain and code rain screensavers.
 
 ### Screensaver scenes and colors
 

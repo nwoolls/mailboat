@@ -84,6 +84,16 @@ import {
   setDeepFireworkTuning,
 } from "../src/features/screensaver/model/deepFireworks";
 import {
+  DEEP_RAIN_DEFAULTS,
+  type DeepRainTuning,
+  setDeepRainTuning,
+} from "../src/features/screensaver/model/deepRain";
+import {
+  CODE_RAIN_DEFAULTS,
+  type CodeRainTuning,
+  setCodeRainTuning,
+} from "../src/features/screensaver/model/codeRain";
+import {
   RESTYLED,
   SCREENSAVER_LOOK_DEFAULTS,
   type ScreensaverLookTuning,
@@ -407,6 +417,34 @@ const FIREWORK_DIALS: Sections<DeepFireworkTuning> = [
   },
 ];
 
+const RAIN_DIALS: Sections<DeepRainTuning> = [
+  {
+    title: "Rain on glass",
+    dials: [
+      { key: "fog", min: 0, max: 3, step: 0.05, hint: "fog on the glass" },
+      { key: "trail", min: 0, max: 3, step: 0.05, hint: "wet trails" },
+      { key: "glint", min: 0, max: 2, step: 0.05, hint: "light round the glints" },
+      { key: "pixel", min: 2, max: 12, step: 1, hint: "pixel size (pixel art)" },
+    ],
+  },
+];
+
+const CODE_DIALS: Sections<CodeRainTuning> = [
+  {
+    title: "Code rain (restart for pixel size)",
+    dials: [
+      { key: "speed", min: 1, max: 30, step: 0.5, hint: "falling speed, rows/s" },
+      { key: "length", min: 3, max: 40, step: 1, hint: "trail length, rows" },
+      { key: "density", min: 1, max: 150, step: 1, hint: "new streams" },
+      { key: "flicker", min: 0, max: 5, step: 0.05, hint: "characters changing, /s" },
+      { key: "cascadeEvery", min: 3, max: 120, step: 1, hint: "a cascade every, s" },
+      { key: "flashlight", min: 0, max: 300, step: 5, hint: "flashlight round the pointer, px" },
+      { key: "glow", min: 0, max: 1.5, step: 0.05, hint: "glow round the heads" },
+      { key: "pixel", min: 1, max: 6, step: 1, hint: "pixel size (pixel art)" },
+    ],
+  },
+];
+
 const LOOK_DIALS: Sections<ScreensaverLookTuning> = [
   {
     title: "Pixel art",
@@ -495,6 +533,8 @@ const stirStart = saved("playground.pondStir", POND_STIR_DEFAULTS, setPondStir);
 const bubbleStart = saved("playground.bubbles", BUBBLE_DEFAULTS, setBubbleTuning);
 const jellyStart = saved("playground.deepJellies", DEEP_JELLY_DEFAULTS, setDeepJellyTuning);
 const starStart = saved("playground.deepStars", DEEP_STAR_DEFAULTS, setDeepStarTuning);
+const rainStart = saved("playground.deepRain", DEEP_RAIN_DEFAULTS, setDeepRainTuning);
+const codeStart = saved("playground.codeRain", CODE_RAIN_DEFAULTS, setCodeRainTuning);
 const fireworkStart = saved(
   "playground.deepFireworks",
   DEEP_FIREWORK_DEFAULTS,
@@ -781,6 +821,30 @@ function Playground() {
                 apply={setDeepFireworkTuning}
                 fields={[]}
                 sections={FIREWORK_DIALS}
+              />
+            )}
+            {playing === "rain" && (
+              <Panel
+                key="rain"
+                title="Rain on glass"
+                storageKey="playground.deepRain"
+                defaults={DEEP_RAIN_DEFAULTS}
+                start={rainStart}
+                apply={setDeepRainTuning}
+                fields={[]}
+                sections={RAIN_DIALS}
+              />
+            )}
+            {playing === "code" && (
+              <Panel
+                key="code"
+                title="Code rain"
+                storageKey="playground.codeRain"
+                defaults={CODE_RAIN_DEFAULTS}
+                start={codeStart}
+                apply={setCodeRainTuning}
+                fields={[]}
+                sections={CODE_DIALS}
               />
             )}
             <Panel

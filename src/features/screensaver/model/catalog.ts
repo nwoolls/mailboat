@@ -1,3 +1,4 @@
+import { CodeRainScene } from "./codeRain";
 import { EnvelopeScene } from "./envelopes";
 import { FireflyScene } from "./fireflies";
 import { FireworksScene } from "./fireworks";
@@ -79,6 +80,12 @@ export const SCREENSAVERS = [
     id: "fireworks",
     label: "Fireworks",
     make: (s: SceneSetup) => new FireworksScene(s),
+    cellPx: 2,
+  },
+  {
+    id: "code",
+    label: "Code rain",
+    make: (s: SceneSetup) => new CodeRainScene(s),
     cellPx: 2,
   },
 ] as const satisfies readonly {

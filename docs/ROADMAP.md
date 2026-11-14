@@ -4759,6 +4759,31 @@ between pixel art and ASCII art for the screensavers.*
             weeping willow, whose sparks sink slowly for about five to six
             seconds with long strands above them, most of the way to the
             ground. *Owner: "those look amazing", "looks great"*
+      - [x] Rain on glass. Its fog, beads, sliding drops and wet trails,
+            the puddle on the icon and the pointer's wipe are the scene's
+            own motion, drawn its own way. In pixel art (3px blocks, the
+            owner's pick) the glass is a misty pane, a drop is a lens of
+            blocks with a white glint and a dark rim, and a cleared trail
+            runs behind it. In ASCII art the fog is a faint, still speckle,
+            a wet trail is a line of `|`, and a drop is `. o O @` by its
+            size, the biggest between `(` and `)`. Drops sat on the line
+            between two columns flipped back and forth, because the scene
+            nudges a sliding drop sideways every frame, so each drop keeps
+            its column until it is well into the next. On a light page the
+            palette's light color nearly vanished, so darker ones are used
+            there. It carries on through a resize. *Owner: "they look
+            great"*
+      - [x] Code rain, a new screensaver *(owner, 2026-11-13: the Matrix
+            rain from the glow's mockup, as a screensaver of its own)*.
+            Columns of characters fall at their own pace, each with a near
+            white head that glows and a trail fading in the accent color,
+            the characters changing as they fall. Every 40 seconds or so a
+            cascade starts down every column at once and the icon nods. The
+            pointer is a flashlight: the code shows faintly round it. In
+            ASCII art it is text characters; in pixel art a 3 × 5 pixel
+            font drawn in blocks. On a light page it brings a night
+            backdrop. Named for what it is, not the film. *Owner: "they
+            look great"*
 - Ideas, not decided *(owner, 2026-11-13: "just getting ideas out")*: a
   Matrix-style rain screensaver (the mockup's rain), 3D pipes or similar;
   retiring the envelope flock and bubble wrap, which don't land as well

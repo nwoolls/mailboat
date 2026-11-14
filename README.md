@@ -56,7 +56,7 @@ which has since shut down.
 - **Works with your AI apps.** Let Claude Desktop or Claude Code search and read
   your mail, and save drafts, over MCP. Off by default; AI apps can only read mail and save drafts, never send.
 - **Inbox Zero, with toys.** An empty view can have a toy (a pond, bubble wrap to pop, or a
-  sky that follows the time of day) or one of ten pixel-art screensavers.
+  sky that follows the time of day) or one of eleven screensavers.
 
 ### A closer look
 
