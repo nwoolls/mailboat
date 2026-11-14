@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.1
+
+### Patch Changes
+
+- The library that cleans emails is updated with a security fix for math and drawing (SVG) markup. The app already removed that markup from emails, so nothing looks different.
+
+- With the preview collapsed, archiving or deleting a conversation selects the next one without opening the preview again.
+
+- Meeting invitations from Outlook now show their time in your own time zone, with the end time, like other invitations.
+
+- In a narrow window, the line you're typing in a reply no longer ends up hidden under the formatting and Send bar.
+
+- Clicking the folder you're already in no longer closes the preview and clears the selection; during a search it clears the search, as the search box's clear button does.
+
+- While you write a reply, the AI summary above the conversation no longer blinks each time the reply is saved, which moved the reply and put a click's cursor on the wrong line.
+
+- Moving a conversation to Trash now takes it out of the Inbox at once, and restoring it puts it in All Mail, as Gmail does, instead of briefly showing it in the Inbox again. Move to Inbox on a conversation in Trash now takes it out of the Trash too, and Undo puts it back. Swiping left in Trash now does the same.
+
+- A draft in Trash now opens in the composer, as in Gmail, instead of saying it's no longer in Gmail.
+
+- In a search that includes Spam and Trash, moving a conversation to Trash or Spam, restoring it, or undoing either now keeps it in the results and leaves the preview as it was.
+
+- In the Unread view, a conversation you open stays in the list, shown as read, until you leave the view, instead of disappearing as soon as you open it.
+
 ## 0.2.1-beta.0
 
 ### Patch Changes
