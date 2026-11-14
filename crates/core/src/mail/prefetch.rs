@@ -18,9 +18,18 @@
 //! images with it and nothing is keyed by an address alone (two accounts
 //! that got the same image each download it). The whole cache is trimmed to
 //! the size chosen in Settings, least recently shown first.
+//!
+//! Only the public web is asked: the cleaner leaves out images on the
+//! reader's own computer or network (`mail::local_hosts`), and the client
+//! here refuses a public name that resolves to such an address, or a
+//! redirect that leads to one, so a sender can't reach a device on the
+//! reader's network through either. Behind a proxy, the proxy looks names
+//! up instead, and the redirect check is what's left.
 
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 use base64::Engine;
@@ -28,6 +37,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use tokio::task::JoinSet;
 
 use super::images;
+use super::local_hosts::{is_local_host, is_local_ip};
 use super::sanitize::remote_image_urls;
 use super::saved_image::fetch_web_image;
 use crate::db::{now_millis, Db};
@@ -62,17 +72,57 @@ impl Prefetch {
     /// own image loads send, so a prefetch looks no different from opening
     /// the email; no cookies or referrer (reqwest sends neither).
     pub fn new(dir: PathBuf) -> Result<Self> {
-        let http = reqwest::Client::builder()
-            .user_agent(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
-            )
-            .timeout(Duration::from_secs(20))
+        Self::with_client(dir, client_builder())
+    }
+
+    fn with_client(dir: PathBuf, builder: reqwest::ClientBuilder) -> Result<Self> {
+        let http = builder
             .build()
             .map_err(|e| crate::CoreError::Other(format!("image client: {e}")))?;
         Ok(Self {
             dir,
             http,
             fetch_from: str::to_string,
+        })
+    }
+}
+
+/// The image client's settings: see `Prefetch::new`, and the top for the
+/// resolver and redirect rule.
+fn client_builder() -> reqwest::ClientBuilder {
+    reqwest::Client::builder()
+        .user_agent(
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        )
+        .timeout(Duration::from_secs(20))
+        .dns_resolver(Arc::new(PublicOnly))
+        .redirect(reqwest::redirect::Policy::custom(|attempt| {
+            if attempt.url().host().is_some_and(|h| is_local_host(&h)) {
+                attempt.error("a redirect to the local network")
+            } else if attempt.previous().len() >= 10 {
+                attempt.stop()
+            } else {
+                attempt.follow()
+            }
+        }))
+}
+
+/// Looks names up as the system does, keeping only public addresses: a
+/// name that resolves only to the reader's own computer or network fails.
+struct PublicOnly;
+
+impl reqwest::dns::Resolve for PublicOnly {
+    fn resolve(&self, name: reqwest::dns::Name) -> reqwest::dns::Resolving {
+        let name = name.as_str().to_string();
+        Box::pin(async move {
+            let public: Vec<SocketAddr> = tokio::net::lookup_host((name.as_str(), 0))
+                .await?
+                .filter(|addr| !is_local_ip(addr.ip()))
+                .collect();
+            if public.is_empty() {
+                return Err("the name only reaches the local network".into());
+            }
+            Ok(Box::new(public.into_iter()) as reqwest::dns::Addrs)
         })
     }
 }
@@ -418,21 +468,75 @@ mod tests {
     fn html(server: &MockServer) -> String {
         format!(
             r#"<img src="{0}/a.png" width="100"><img src="{0}/page" width="100"><img src="{0}/missing.png" width="100">"#,
-            server.uri()
+            base(server)
         )
+    }
+
+    /// A made-up public name for the stand-in server, which listens on the
+    /// loopback address the cleaner and the client refuse: the client is
+    /// told where the name lives (`prefetch`), as DNS would tell it.
+    const IMAGE_HOST: &str = "images.x.example";
+
+    fn base(server: &MockServer) -> String {
+        format!("http://{IMAGE_HOST}:{}", server.address().port())
     }
 
     /// The stand-in server is plain HTTP; addresses are upgraded to HTTPS
     /// (as the reader loads them), so fetch them back over HTTP.
-    fn prefetch(dir: &Path) -> Prefetch {
+    fn prefetch(dir: &Path, server: &MockServer) -> Prefetch {
+        let builder = client_builder().resolve(IMAGE_HOST, *server.address());
         Prefetch {
             fetch_from: |url| url.replacen("https://", "http://", 1),
-            ..Prefetch::new(dir.to_path_buf()).unwrap()
+            ..Prefetch::with_client(dir.to_path_buf(), builder).unwrap()
         }
     }
 
     async fn run_plain(db: &Db, prefetch: &Prefetch, account: AccountId) -> PrefetchReport {
         run(db, prefetch, account).await.unwrap()
+    }
+
+    /// A public-looking name that resolves to the reader's own computer is
+    /// refused by the lookup, before any connection.
+    #[tokio::test]
+    async fn a_name_that_resolves_to_the_local_network_is_refused() {
+        use reqwest::dns::Resolve;
+        let lookup = PublicOnly.resolve("localhost".parse().unwrap()).await;
+        assert!(lookup.is_err());
+        let lookup = PublicOnly.resolve("127.0.0.1".parse().unwrap()).await;
+        assert!(lookup.is_err());
+    }
+
+    /// A public image that redirects to the reader's own network isn't
+    /// followed there.
+    #[tokio::test]
+    async fn a_redirect_to_the_local_network_is_refused() {
+        let server = server().await;
+        let local = format!("{}/a.png", server.uri());
+        Mock::given(method("GET"))
+            .and(path("/moved.png"))
+            .respond_with(ResponseTemplate::new(302).insert_header("location", local.as_str()))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/elsewhere.png"))
+            .respond_with(
+                ResponseTemplate::new(302)
+                    .insert_header("location", format!("{}/a.png", base(&server)).as_str()),
+            )
+            .mount(&server)
+            .await;
+        let dir = tempdir();
+        let http = prefetch(&dir, &server).http;
+        let moved = format!("{}/moved.png", base(&server));
+        assert!(fetch_web_image(&http, &moved, MAX_IMAGE_BYTES)
+            .await
+            .is_err());
+        // A redirect to another public address is still followed.
+        let elsewhere = format!("{}/elsewhere.png", base(&server));
+        let (bytes, _, _) = fetch_web_image(&http, &elsewhere, MAX_IMAGE_BYTES)
+            .await
+            .unwrap();
+        assert_eq!(bytes, vec![1u8, 2, 3]);
     }
 
     #[tokio::test]
@@ -441,15 +545,20 @@ mod tests {
         let db = Db::open_in_memory().unwrap();
         let (account, _) = setup(&db, &["INBOX"], &html(&server), now_millis());
         let dir = tempdir();
-        let report = run_plain(&db, &prefetch(&dir), account).await;
+        let report = run_plain(&db, &prefetch(&dir, &server), account).await;
         assert_eq!(report.messages, 1);
         assert_eq!(report.images, 1, "the page and the 404 aren't images");
         assert_eq!(report.failed, 2);
-        let url = format!("{}/a.png", server.uri()).replacen("http://", "https://", 1);
+        let url = format!("{}/a.png", base(&server)).replacen("http://", "https://", 1);
         let shown = cached_for(&db.conn(), &dir, account, std::slice::from_ref(&url)).unwrap();
         assert_eq!(shown[&url], "data:image/png;base64,AQID");
         // Handled once: the next pass finds nothing to do.
-        assert_eq!(run_plain(&db, &prefetch(&dir), account).await.messages, 0);
+        assert_eq!(
+            run_plain(&db, &prefetch(&dir, &server), account)
+                .await
+                .messages,
+            0
+        );
     }
 
     #[tokio::test]
@@ -465,14 +574,24 @@ mod tests {
         ] {
             let db = Db::open_in_memory().unwrap();
             let (account, _) = setup(&db, labels, &html(&server), at);
-            assert_eq!(run_plain(&db, &prefetch(&dir), account).await.images, 0);
+            assert_eq!(
+                run_plain(&db, &prefetch(&dir, &server), account)
+                    .await
+                    .images,
+                0
+            );
         }
         let db = Db::open_in_memory().unwrap();
         let (account, _) = setup(&db, &["INBOX"], &html(&server), now_millis());
         let mut settings = crate::settings::load(&db.conn()).unwrap();
         settings.image_prefetch = false;
         crate::settings::save(&db.conn(), &settings).unwrap();
-        assert_eq!(run_plain(&db, &prefetch(&dir), account).await.messages, 0);
+        assert_eq!(
+            run_plain(&db, &prefetch(&dir, &server), account)
+                .await
+                .messages,
+            0
+        );
     }
 
     /// An account with one conversation. The Gmail IDs are the same for
@@ -560,14 +679,14 @@ mod tests {
                 .mount(&server)
                 .await;
         }
-        let img = |name: &str| format!(r#"<img src="{}/{name}.png" width="100">"#, server.uri());
+        let img = |name: &str| format!(r#"<img src="{}/{name}.png" width="100">"#, base(&server));
         let db = Db::open_in_memory().unwrap();
         let a = account_with_mail(&db, "sub-a", &format!("{}{}", img("shared"), img("only-a")));
         let b = account_with_mail(&db, "sub-b", &format!("{}{}", img("shared"), img("only-b")));
         let dir = tempdir();
-        assert_eq!(run_plain(&db, &prefetch(&dir), a).await.images, 2);
+        assert_eq!(run_plain(&db, &prefetch(&dir, &server), a).await.images, 2);
         assert_eq!(
-            run_plain(&db, &prefetch(&dir), b).await.images,
+            run_plain(&db, &prefetch(&dir, &server), b).await.images,
             2,
             "each account keeps its own copy of the shared image"
         );
@@ -576,7 +695,7 @@ mod tests {
 
         let urls: Vec<String> = ["shared", "only-a", "only-b"]
             .iter()
-            .map(|n| format!("{}/{n}.png", server.uri()).replacen("http://", "https://", 1))
+            .map(|n| format!("{}/{n}.png", base(&server)).replacen("http://", "https://", 1))
             .collect();
         // Each account sees its own copies, never the other's.
         let of_a = cached_for(&db.conn(), &dir, a, &urls).unwrap();
