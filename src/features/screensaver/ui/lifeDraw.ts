@@ -3,7 +3,7 @@ import type { LifeScene } from "../model/life";
 import type { Rgb } from "../model/palettes";
 import { SLOT } from "../model/scene";
 import type { AsciiColors } from "../../emptyToys/ui/asciiPaint";
-import type { AsciiGlowTuning } from "../../mailbox/model/asciiGlow";
+import { type AsciiGlowTuning, type ClearShape, clearing } from "../../mailbox/model/asciiGlow";
 
 const MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
 
@@ -18,6 +18,8 @@ export type LifeDraw = {
   glow: AsciiGlowTuning;
   page: AsciiColors;
   slots: readonly Rgb[];
+  /** What its cells thin out round (the title; Life grows over the words). */
+  shapes: ClearShape[];
   t: DeepLifeTuning;
 };
 
@@ -88,14 +90,16 @@ export function drawLife(d: LifeDraw) {
       const c = lifeColor(age, d.slots);
       const x = ox + tx * w;
       const y = oy + ty * h;
+      const keep = clearing(x + w / 2, y + h / 2, d.shapes, d.glow, w / 2, h / 2);
+      if (keep < 0.02) continue;
       ctx.fillStyle = rgb(c);
       if (d.look === "ascii") {
-        ctx.globalAlpha = Math.min(1, show);
+        ctx.globalAlpha = Math.min(1, show) * keep;
         ctx.fillText(lifeChar(age), x + w / 2, y + h / 2 + 0.5);
         continue;
       }
       // A tile with its corners cut, a pixel of gap round it.
-      ctx.globalAlpha = Math.min(1, show);
+      ctx.globalAlpha = Math.min(1, show) * keep;
       const p = Math.max(1, Math.round(w / 8));
       const x0 = Math.round(x * dpr);
       const y0 = Math.round(y * dpr);

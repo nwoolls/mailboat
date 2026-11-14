@@ -347,7 +347,17 @@ function drawBlocks(
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const block = (cx: number, cy: number, c: Rgb, a: number) => {
     if (a <= 0.01) return;
-    ctx.globalAlpha = Math.min(1, a);
+    // Thinned out round the icon, words and title, as ASCII art is.
+    const keep = clearing(
+      ox + (cx + 0.5) * px,
+      oy + (cy + 0.5) * px,
+      d.shapes,
+      d.glow,
+      px / 2,
+      px / 2,
+    );
+    if (keep < 0.02) return;
+    ctx.globalAlpha = Math.min(1, a * keep);
     ctx.fillStyle = rgb(c);
     const x0 = Math.round((ox + cx * px) * dpr);
     const y0 = Math.round((oy + cy * px) * dpr);

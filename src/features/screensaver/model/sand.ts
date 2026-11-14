@@ -125,13 +125,19 @@ export class SandBox {
         if (v < GRAIN) continue;
         const ny = v & HELD ? y : y + down;
         if (ny < 0 || ny >= this.rows) continue;
+        // Shrunk by more than the air under the ceiling, the floor's sand
+        // meets it: a grain already there (the ceiling, written first,
+        // from the top) stays and this one goes, so the counts stay true
+        // (a ceiling grain overwritten left `held` counting one that hung
+        // no more, and the frame never rested to turn over).
+        if (this.cells[ny * this.cols + x]! >= GRAIN) continue;
         this.cells[ny * this.cols + x] = v;
         this.grains++;
         if (v & HELD) this.held++;
       }
     this.particles.length = 0;
     for (const p of old.particles)
-      if (p.x < this.cols && p.y + down >= 0) {
+      if (p.x < this.cols && p.y + down >= 0 && p.y + down < this.rows) {
         this.particles.push({ ...p, y: p.y + down });
         this.grains++;
       }

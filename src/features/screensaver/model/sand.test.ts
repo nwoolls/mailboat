@@ -290,3 +290,30 @@ describe("the sandscape through a resize", () => {
     }
   });
 });
+
+describe("the sandscape shrunk by more than the air under its ceiling", () => {
+  it("keeps the ceiling's grains and their count true where the floor's sand meets it", () => {
+    const old = new SandBox(20, 60, seeded(1));
+    // A ceiling in the top rows, a heap on the floor.
+    for (let y = 0; y < 10; y++)
+      for (let x = 0; x < 20; x++) old.cells[y * 20 + x] = grainValue(0, 0) | HELD;
+    for (let y = 45; y < 60; y++)
+      for (let x = 0; x < 20; x++) old.cells[y * 20 + x] = grainValue(1, 0);
+    old.held = 200;
+    old.grains = 500;
+    // Shrunk from 60 rows to 20: the floor's heap (45–59) moves up to 5–19,
+    // over the ceiling's lower half.
+    const next = new SandBox(20, 20, seeded(2));
+    next.carryFrom(old);
+    let held = 0;
+    let grains = 0;
+    for (const v of next.cells)
+      if (v >= GRAIN) {
+        grains++;
+        if (v & HELD) held++;
+      }
+    expect(next.held).toBe(held);
+    expect(next.grains).toBe(grains);
+    expect(held).toBe(200);
+  });
+});

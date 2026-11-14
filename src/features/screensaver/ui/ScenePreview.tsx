@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ToyboxStyle } from "../../emptyToys/model/style";
 import type { SceneId } from "../model/catalog";
 import type { PaletteId } from "../model/palettes";
@@ -56,6 +56,20 @@ const STILL_AT: Partial<Record<SceneId, number>> = {
 const DRAWN_W = 720;
 const DRAWN_H = 450;
 
+const REDUCE = "(prefers-reduced-motion: reduce)";
+
+/** Whether the system asks for less motion, following it as it changes. */
+function useReducedMotion(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const query = window.matchMedia(REDUCE);
+      query.addEventListener("change", onChange);
+      return () => query.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(REDUCE).matches,
+  );
+}
+
 export function ScenePreview({
   sceneId,
   palette,
@@ -73,6 +87,9 @@ export function ScenePreview({
   const iconRef = useRef<HTMLElement>(null);
   const wordsRef = useRef<HTMLElement>(null);
   const [shrink, setShrink] = useState(0);
+  // With less motion asked for, every picture is still (played out of
+  // sight), the chosen one too, as the screensaver itself doesn't start.
+  const reduced = useReducedMotion();
   useEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
@@ -108,7 +125,7 @@ export function ScenePreview({
             wordsRef={wordsRef}
             closing={false}
             onNod={() => {}}
-            still={!live}
+            still={!live || reduced}
             stillAt={STILL_AT[sceneId] ?? 1.5}
             shrink={shrink}
           />

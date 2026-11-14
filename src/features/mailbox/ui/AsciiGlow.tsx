@@ -43,6 +43,9 @@ export function AsciiGlow({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    // Under a screensaver the glow is faded out and costs nothing: no
+    // frames until it shows again (its last frame stays for the fade).
+    if (hidden) return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
@@ -204,7 +207,7 @@ export function AsciiGlow({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [glowRef, pullRef, iconRef, wordsRef]);
+  }, [glowRef, pullRef, iconRef, wordsRef, hidden]);
 
   return (
     <canvas

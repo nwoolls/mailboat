@@ -2,6 +2,18 @@ import { makeCloud, type Scene, type SkySceneTuning } from "../model/skyScene";
 
 export type Shooting = { x: number; y: number; dx: number; dy: number; age: number };
 
+/**
+ * A sky carried through a resize (the layer's effect starts again at a new
+ * size, and without this the scene was laid out afresh: clouds jumped back
+ * and clicked ones went): the scene, the tuning it was laid out for, and
+ * what the pointer added.
+ */
+export type SkyCarry = { scene: Scene; tunedFor: string; held: SkyHeld };
+export type SkyHeld = {
+  shooting: Shooting[];
+  puffs: { at: number; cloud: Scene["clouds"][number] }[];
+};
+
 export const SHOOTING_SECONDS = 0.9;
 /** Scene cells per second. */
 export const SHOOTING_SPEED = 110;
@@ -16,7 +28,7 @@ const PUFF_SECONDS = 16;
 export class SkyInput {
   readonly look = { x: 0, y: 0, tx: 0, ty: 0 };
   shooting: Shooting[] = [];
-  private puffs: { at: number; cloud: Scene["clouds"][number] }[] = [];
+  private puffs: SkyHeld["puffs"] = [];
 
   constructor(
     private readonly card: HTMLElement,
@@ -48,6 +60,17 @@ export class SkyInput {
       const gone = this.puffs.shift()!.cloud;
       scene.clouds = scene.clouds.filter((c) => c !== gone);
     }
+  }
+
+  /** What it holds across a resize: the shooting stars and the clouds left by clicks. */
+  held(): SkyHeld {
+    return { shooting: this.shooting, puffs: this.puffs };
+  }
+
+  /** Takes on what an earlier one held, as the scene carries on through a resize. */
+  takeOn(held: SkyHeld) {
+    this.shooting = held.shooting;
+    this.puffs = held.puffs;
   }
 
   /** A scene was laid out afresh: earlier puffs are gone with the old one. */

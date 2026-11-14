@@ -22,7 +22,7 @@ import type { Rgb } from "../../screensaver/model/palettes";
 import { approach } from "../../mailbox/model/glow";
 import { asciiGlowTuning, type ClearShape, clearing } from "../../mailbox/model/asciiGlow";
 import { asciiCell, AsciiPainter, GLYPH_ON_HOT, readAsciiColors } from "./asciiPaint";
-import { SHOOTING_SECONDS, SHOOTING_SPEED, SkyInput, skyText } from "./skyInput";
+import { SHOOTING_SECONDS, SHOOTING_SPEED, type SkyCarry, SkyInput, skyText } from "./skyInput";
 
 /**
  * The sky in ASCII art (`model/asciiSky.ts`): the same scene as the pixel
@@ -54,6 +54,8 @@ export function AsciiSkyLayer({
   clear: Rect[];
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  // The sky carried from one size to the next (`SkyCarry`).
+  const carryRef = useRef<SkyCarry | null>(null);
   const placeRef = useRef({ left, top, clear });
   useEffect(() => {
     placeRef.current = { left, top, clear };
@@ -70,9 +72,10 @@ export function AsciiSkyLayer({
     canvas.height = Math.round(height * dpr);
     const painter = new AsciiPainter(ctx);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let scene: Scene | null = null;
+    const carried = carryRef.current;
+    let scene: Scene | null = carried?.scene ?? null;
     let builtFor = "";
-    let tunedFor = "";
+    let tunedFor = carried?.tunedFor ?? "";
     let seeds = new Float32Array(0);
     let night = 0;
     let frame = 0;
@@ -86,6 +89,7 @@ export function AsciiSkyLayer({
       unit: unitNow(),
       night,
     }));
+    if (carried) input.takeOn(carried.held);
 
     const textEls = () => [
       iconRef.current,
@@ -243,6 +247,7 @@ export function AsciiSkyLayer({
     };
     frame = requestAnimationFrame(tick);
     return () => {
+      carryRef.current = scene ? { scene, tunedFor, held: input.held() } : null;
       input.dispose();
       cancelAnimationFrame(frame);
       skyText(textEls(), false, false);

@@ -73,3 +73,47 @@ test("changing the colors recolors every picture, the still ones too", async ({ 
   await page.waitForTimeout(200);
   expect(await tilePixels(page, "Koi pond")).not.toBe(before);
 });
+
+test("a still picture stays as it is when the page is resized, without starting over", async ({
+  page,
+}) => {
+  await page.goto(open);
+  // Koi pond's still is ready after about a second and a half.
+  await page.waitForTimeout(3000);
+  const before = await tilePixels(page, "Koi pond");
+  // Narrower, as a narrower Settings window makes the tiles.
+  await page
+    .locator("#root > div")
+    .first()
+    .evaluate((el) => {
+      (el as HTMLElement).style.width = "560px";
+    });
+  await page.waitForTimeout(400);
+  const koi = page.getByRole("radio", { name: "Koi pond" }).locator("canvas");
+  await expect(koi).toHaveCSS("visibility", "visible");
+  expect(await tilePixels(page, "Koi pond")).toBe(before);
+});
+
+test("a scene left before its picture's moment stops at once, not later", async ({ page }) => {
+  await page.goto(open);
+  // The sandscape's still waits eight seconds; leave it after one.
+  await page.getByRole("radio", { name: "Sandscape" }).click();
+  await page.waitForTimeout(1000);
+  await page.getByRole("radio", { name: "Flock" }).click();
+  await page.waitForTimeout(150);
+  const before = await tilePixels(page, "Sandscape");
+  await page.waitForTimeout(700);
+  expect(await tilePixels(page, "Sandscape")).toBe(before);
+});
+
+test("with less motion asked for, even the chosen scene's picture holds still", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(open);
+  await page.getByRole("radio", { name: "Koi pond" }).click();
+  await page.waitForTimeout(3000);
+  const before = await tilePixels(page, "Koi pond");
+  await page.waitForTimeout(700);
+  expect(await tilePixels(page, "Koi pond")).toBe(before);
+});

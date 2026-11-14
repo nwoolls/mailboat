@@ -16,7 +16,7 @@ import {
 import { moonPhase, skyHourOverride } from "../model/sky";
 import { approach } from "../../mailbox/model/glow";
 import { readAsciiColors } from "./asciiPaint";
-import { SHOOTING_SECONDS, SHOOTING_SPEED, SkyInput, skyText } from "./skyInput";
+import { SHOOTING_SECONDS, SHOOTING_SPEED, type SkyCarry, SkyInput, skyText } from "./skyInput";
 
 /**
  * The sky in pixel art (`model/skyScene.ts`): the scene drawn one cell per
@@ -40,6 +40,8 @@ export function PixelSkyLayer({
   height: number;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  // The sky carried from one size to the next (`SkyCarry`).
+  const carryRef = useRef<SkyCarry | null>(null);
 
   useEffect(() => {
     const area = areaRef.current;
@@ -54,11 +56,12 @@ export function PixelSkyLayer({
     canvas.height = Math.round(height * dpr);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    let scene: Scene | null = null;
+    const carried = carryRef.current;
+    let scene: Scene | null = carried?.scene ?? null;
     let image: ImageData | null = null;
     let pixels = new Uint32Array(0);
     let builtFor = "";
-    let tunedFor = "";
+    let tunedFor = carried?.tunedFor ?? "";
     let night = 0;
     let frame = 0;
     let last = performance.now();
@@ -70,6 +73,7 @@ export function PixelSkyLayer({
       unit: unitNow(),
       night,
     }));
+    if (carried) input.takeOn(carried.held);
 
     const textEls = () => [
       iconRef.current,
@@ -213,6 +217,7 @@ export function PixelSkyLayer({
     };
     frame = requestAnimationFrame(tick);
     return () => {
+      carryRef.current = scene ? { scene, tunedFor, held: input.held() } : null;
       input.dispose();
       cancelAnimationFrame(frame);
       skyText(textEls(), false, false);

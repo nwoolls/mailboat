@@ -1,13 +1,14 @@
 import type { SceneId } from "./catalog";
 
 /**
- * Screensavers in the Toybox's styles (Settings → Toybox → Style), one
- * scene at a time as the owner approves each (owner, 2026-11-13: "let's do
- * the screensavers one at a time"). A scene still paints its fine grid of
- * palette cells; this decides how that grid is drawn:
+ * Screensavers in the Toybox's styles (Settings → Toybox → Style), added
+ * one scene at a time as the owner approved each (owner, 2026-11-13: "let's
+ * do the screensavers one at a time"); every scene has them now. A scene
+ * that doesn't draw itself paints its fine grid of palette cells, and this
+ * decides how that grid is drawn:
  *
- * - "fine": as it was, one screen block per cell (every scene not yet
- *   restyled, whatever the style);
+ * - "fine": one screen block per cell, as before the styles (a scene
+ *   missing from `RESTYLED`; none is now);
  * - "chunky": pixel art in chunky blocks (`chunkPx`), each block the most
  *   common color of the cells in it, as solid as they are on average;
  * - "ascii": a character per cell of the glow's grid, picked by how much of
@@ -19,7 +20,7 @@ import type { SceneId } from "./catalog";
  */
 export type ScreensaverLook = "fine" | "chunky" | "ascii";
 
-/** The scenes restyled so far; the rest stay fine in either style. */
+/** The scenes drawn in the Toybox's styles: every one (a scene left out would stay fine). */
 export const RESTYLED: ReadonlySet<SceneId> = new Set<SceneId>([
   "jellyfish",
   "starfield",

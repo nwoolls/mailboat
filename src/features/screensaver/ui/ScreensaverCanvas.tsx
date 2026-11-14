@@ -72,7 +72,7 @@ import {
 } from "../model/looks";
 import type { Rgb } from "../model/palettes";
 import type { ToyboxStyle } from "../../emptyToys/model/style";
-import { asciiGlowTuning, type ClearShape } from "../../mailbox/model/asciiGlow";
+import { asciiGlowTuning, type ClearShape, clearing } from "../../mailbox/model/asciiGlow";
 import {
   asciiCell,
   AsciiPainter,
@@ -239,14 +239,23 @@ export function ScreensaverCanvas({
   useEffect(() => {
     nodRef.current = onNod;
   }, [onNod]);
+  // Read when measuring, so a new scale (a preview's tile resized) never
+  // starts the scene over: its laid-out size, which it is drawn at, stays.
+  const shrinkRef = useRef(shrink);
+  useEffect(() => {
+    shrinkRef.current = shrink;
+  }, [shrink]);
   const stillRef = useRef(still);
   const stillAtRef = useRef(stillAt);
   /** Plays on (after being still), from the running scene. */
   const resumeRef = useRef<(() => void) | null>(null);
+  /** Stops at once on the frame it shows (live, then made still). */
+  const freezeRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     stillRef.current = still;
     stillAtRef.current = stillAt;
-    if (!still) resumeRef.current?.();
+    if (still) freezeRef.current?.();
+    else resumeRef.current?.();
   }, [still, stillAt]);
   /** Draws the scene's current frame again, without moving it on (a recolor). */
   const redrawRef = useRef<(() => void) | null>(null);
@@ -273,7 +282,8 @@ export function ScreensaverCanvas({
       const r = area.getBoundingClientRect();
       const top = card.getBoundingClientRect().top;
       // Drawn shrunk (`shrink`): sized as it is laid out, not as it shows.
-      return new DOMRect(r.left, top, r.width / shrink, (r.bottom - top) / shrink);
+      const k = shrinkRef.current;
+      return new DOMRect(r.left, top, r.width / k, (r.bottom - top) / k);
     };
     const title = card.querySelector<HTMLElement>("[data-card-title]");
 
@@ -477,6 +487,8 @@ export function ScreensaverCanvas({
     // A still picture plays out of sight until its frame, so it never
     // seems to move and stop.
     let shown = !stillRef.current;
+    /** Made still while showing: stopped where it was. */
+    let frozen = false;
     if (!shown) canvas.style.visibility = "hidden";
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1);
@@ -484,7 +496,7 @@ export function ScreensaverCanvas({
       if (deep) drawDeep(dt);
       else drawFine(dt);
       played += dt;
-      if (stillRef.current && played >= stillAtRef.current) {
+      if (stillRef.current && (frozen || played >= stillAtRef.current)) {
         // A still picture: stop here, keeping this frame.
         frame = 0;
         if (!shown) {
@@ -497,18 +509,25 @@ export function ScreensaverCanvas({
     };
 
     // A scene drawn on its fine grid (and converted, if restyled so).
-    const drawFine = (dt: number) => {
+    const drawFine = (dt: number, advance = true) => {
       if (scene && image && pixels && cells && opacity) {
-        const result = scene.frame(dt, pointer);
-        if (result.nod) nodRef.current();
-        if (result.hideWords !== undefined) setWordsHidden(wordsRef.current, result.hideWords);
-        // The sandscape's turn: the canvas rotates, then the grid is turned.
-        canvas.style.transform = result.turn ? `rotate(${result.turn}deg)` : "";
+        // Moved on a frame, unless only painted again (see `drawDeep`).
+        if (advance) {
+          const result = scene.frame(dt, pointer);
+          if (result.nod) nodRef.current();
+          if (result.hideWords !== undefined) setWordsHidden(wordsRef.current, result.hideWords);
+          // The sandscape's turn: the canvas rotates, then the grid is turned.
+          canvas.style.transform = result.turn ? `rotate(${result.turn}deg)` : "";
+        }
         opacity.fill(255);
         scene.draw(cells, opacity);
         const colors = colorsRef.current;
         if (look === "chunky" && sceneId !== "sandscape")
           chunk(cells, opacity, image.width, image.height, chunkCells(px, screensaverLookTuning()));
+        // Thinned out under the title, which the stage reaches up behind
+        // (ASCII art does this as it draws; these keep round the icon and
+        // words themselves).
+        if (look === "chunky") thinUnderTitle(cells, opacity, image.width, image.height);
         const night = !!scene.night && light.matches;
         if (night !== nightShown) {
           nightShown = night;
@@ -575,11 +594,13 @@ export function ScreensaverCanvas({
     /**
      * Where characters thin out so the icon, words and title stay
      * readable: the icon's box and each line of the words and the title,
-     * in pixels of the stage.
+     * in pixels of the stage. `titleOnly` for scenes that play with the
+     * icon and words themselves (Life grows over the words; koi, lava and
+     * sand keep round them), which still thin out under the title.
      */
-    const clearShapes = (a: DOMRect): ClearShape[] => {
+    const clearShapes = (a: DOMRect, titleOnly = false): ClearShape[] => {
       const shapes: ClearShape[] = [];
-      const icon = iconRef.current?.getBoundingClientRect();
+      const icon = titleOnly ? null : iconRef.current?.getBoundingClientRect();
       if (icon)
         shapes.push({
           kind: "icon",
@@ -588,7 +609,7 @@ export function ScreensaverCanvas({
           x1: icon.right - a.left,
           y1: icon.bottom - a.top,
         });
-      for (const el of [wordsRef.current, title]) {
+      for (const el of titleOnly ? [title] : [wordsRef.current, title]) {
         if (!el) continue;
         const range = document.createRange();
         const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -608,8 +629,27 @@ export function ScreensaverCanvas({
       return shapes;
     };
 
+    /** Fades the fine cells under the title's letters, as the drawings with their own clearing do. */
+    const thinUnderTitle = (inks: Uint8Array, alpha: Uint8Array, cols: number, rows: number) => {
+      const shapes = clearShapes(stageRect(), true);
+      if (!shapes.length) return;
+      const g = asciiGlowTuning();
+      const reach = g.wordsPad + g.wordsFeather + px;
+      const y0 = Math.max(0, Math.floor((Math.min(...shapes.map((b) => b.y0)) - reach) / px));
+      const y1 = Math.min(rows - 1, Math.ceil((Math.max(...shapes.map((b) => b.y1)) + reach) / px));
+      const x0 = Math.max(0, Math.floor((Math.min(...shapes.map((b) => b.x0)) - reach) / px));
+      const x1 = Math.min(cols - 1, Math.ceil((Math.max(...shapes.map((b) => b.x1)) + reach) / px));
+      for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++) {
+          const i = y * cols + x;
+          if (!inks[i]) continue;
+          const keep = clearing((x + 0.5) * px, (y + 0.5) * px, shapes, g, px / 2, px / 2);
+          if (keep < 1) alpha[i] = Math.round(alpha[i]! * keep);
+        }
+    };
+
     // A scene with its own motion and drawing (the jellyfish, the starfield).
-    const drawDeep = (dt: number) => {
+    const drawDeep = (dt: number, advance = true) => {
       const g = asciiGlowTuning();
       const page = readAsciiColors(g.hotMixDark, g.hotMixLight);
       const a = stageRect();
@@ -624,24 +664,29 @@ export function ScreensaverCanvas({
       const words = box(wordsRef.current);
       const keep = [icon, words].filter((b): b is NonNullable<typeof b> => b !== null);
       const p = pointer ? { x: pointer.x * px, y: pointer.y * px } : null;
-      if (swarm && step(swarm, dt, p, keep, deepJellyTuning(), Math.random)) nodRef.current();
-      if (stars && stepStars(stars, dt, p, deepStarTuning(), Math.random)) nodRef.current();
-      if (fireworks && fireworks.frame(dt, pointer).nod) nodRef.current();
-      if (rain && rain.frame(dt, pointer).nod) nodRef.current();
-      if (flies) flies.pace = deepFireflyTuning().flashes / USUAL_FLASHES;
-      if (flies && flies.frame(dt, pointer).nod) nodRef.current();
-      if (flock) {
-        // It roosts in the icon.
-        const roost = icon ? { x: (icon.x0 + icon.x1) / 2, y: (icon.y0 + icon.y1) / 2 } : null;
-        if (stepMurmuration(flock, dt, p, roost, murmurationTuning(), Math.random, keep))
-          nodRef.current();
+      // Moved on a frame, unless only painted again (a resize, a recolor):
+      // several scenes move even at no time (sand falls a grain, trails
+      // shift), so a repaint must not step them.
+      if (advance) {
+        if (swarm && step(swarm, dt, p, keep, deepJellyTuning(), Math.random)) nodRef.current();
+        if (stars && stepStars(stars, dt, p, deepStarTuning(), Math.random)) nodRef.current();
+        if (fireworks && fireworks.frame(dt, pointer).nod) nodRef.current();
+        if (rain && rain.frame(dt, pointer).nod) nodRef.current();
+        if (flies) flies.pace = deepFireflyTuning().flashes / USUAL_FLASHES;
+        if (flies && flies.frame(dt, pointer).nod) nodRef.current();
+        if (flock) {
+          // It roosts in the icon.
+          const roost = icon ? { x: (icon.x0 + icon.x1) / 2, y: (icon.y0 + icon.y1) / 2 } : null;
+          if (stepMurmuration(flock, dt, p, roost, murmurationTuning(), Math.random, keep))
+            nodRef.current();
+        }
+        if (life) {
+          const result = life.frame(dt, pointer);
+          if (result.nod) nodRef.current();
+          if (result.hideWords !== undefined) setWordsHidden(wordsRef.current, result.hideWords);
+        }
+        if (code && stepCodeRain(code, dt, codeRainTuning(), Math.random)) nodRef.current();
       }
-      if (life) {
-        const result = life.frame(dt, pointer);
-        if (result.nod) nodRef.current();
-        if (result.hideWords !== undefined) setWordsHidden(wordsRef.current, result.hideWords);
-      }
-      if (code && stepCodeRain(code, dt, codeRainTuning(), Math.random)) nodRef.current();
       // On a light page, a dark backdrop (deep sea, night sky), and light
       // text on it; rain stays on the page's own glass.
       const night = light.matches && !rain && !life && !flock;
@@ -698,6 +743,8 @@ export function ScreensaverCanvas({
       if (life)
         drawLife({
           ...common,
+          // Only the title: Life grows over the words, as it always has.
+          shapes: clearShapes(a, true),
           life,
           width: canvas.width / dpr,
           height: canvas.height / dpr,
@@ -803,15 +850,24 @@ export function ScreensaverCanvas({
     const play = () => {
       if (frame || document.hidden) return;
       // A still picture that has stopped stays stopped.
-      if (stillRef.current && played >= stillAtRef.current) return;
+      if (stillRef.current && (frozen || played >= stillAtRef.current)) return;
       last = performance.now();
       frame = requestAnimationFrame(tick);
     };
     redrawRef.current = () => {
-      if (deep) drawDeep(0);
-      else drawFine(0);
+      if (deep) drawDeep(0, false);
+      else drawFine(0, false);
+    };
+    freezeRef.current = () => {
+      // Already showing (it was live): stop now. One still playing out of
+      // sight carries on to its frame.
+      if (!shown) return;
+      frozen = true;
+      cancelAnimationFrame(frame);
+      frame = 0;
     };
     resumeRef.current = () => {
+      frozen = false;
       if (!shown) {
         shown = true;
         canvas.style.removeProperty("visibility");
@@ -841,8 +897,8 @@ export function ScreensaverCanvas({
     // (else it would be blank, flashing, while dragging).
     const resize = new ResizeObserver(() => {
       layout();
-      if (deep) drawDeep(0);
-      else drawFine(0);
+      if (deep) drawDeep(0, false);
+      else drawFine(0, false);
     });
     resize.observe(area);
     card.addEventListener("pointermove", onMove);
@@ -852,6 +908,7 @@ export function ScreensaverCanvas({
     const icon = iconRef.current;
     return () => {
       resumeRef.current = null;
+      freezeRef.current = null;
       redrawRef.current = null;
       pause();
       resize.disconnect();
@@ -861,7 +918,7 @@ export function ScreensaverCanvas({
       setWordsHidden(words, false);
       setNight([icon, words, title, canvas], false);
     };
-  }, [sceneId, areaRef, iconRef, wordsRef, style, shrink]);
+  }, [sceneId, areaRef, iconRef, wordsRef, style]);
 
   return (
     <canvas
