@@ -34,6 +34,9 @@ export function PrintView({ threadId, run }: { threadId: ThreadId; run: number }
     // A failure is final: it says so and doesn't print. A retry that
     // worked after that would be a print nobody is waiting for.
     retry: false,
+    // Read from the app's own cache, so it runs while the computer is
+    // offline too, instead of waiting with no dialog and no message.
+    networkMode: "always",
   });
   const messages = printedMessages(thread.data?.messages ?? []);
   const bodies = useQueries({
@@ -43,6 +46,7 @@ export function PrintView({ threadId, run }: { threadId: ThreadId; run: number }
       staleTime: Infinity,
       gcTime: 0,
       retry: false,
+      networkMode: "always",
     })),
   });
   const [loaded, setLoaded] = useState<ReadonlySet<number>>(new Set());

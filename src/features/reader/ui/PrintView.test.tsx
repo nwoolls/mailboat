@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -209,7 +209,22 @@ describe("printing a conversation", () => {
     expect(showToast.mock.calls[0]![0]).toEqual({
       message: "Couldn't print: the conversation didn't load.",
     });
+    // Not tried again behind the toast.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(threadGet).toHaveBeenCalledTimes(1);
     expect(windowPrint).not.toHaveBeenCalled();
+  });
+
+  it("prints while the computer is offline, from the app's own cache", async () => {
+    onlineManager.setOnline(false);
+    try {
+      const { view } = setup();
+      threadGet.mockResolvedValue(detail([1]));
+      render(view(1));
+      await waitFor(() => expect(windowPrint).toHaveBeenCalledTimes(1));
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 
   it("says when there's nothing to print", async () => {
