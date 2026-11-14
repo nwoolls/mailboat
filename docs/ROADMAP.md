@@ -5643,8 +5643,11 @@ niche or extra", so Windows and the Release Spike come first)
 
 *(owner request, 2026-11-14: list everything Gmail or another Google API
 supports that Mailboat doesn't.)* Every item here is something Gmail or
-Google already provides, through a documented API. None of it would be
-unique to Mailboat. Each item is tagged with three things:
+Google already provides, so none of it would be unique to Mailboat. The first
+two lists have a documented API (printing needs none). The last two hold
+what a person's own sign-in can't reach through the API (Workspace
+administrators only) and what has no API at all. Items in the first two
+lists are tagged with three things:
 
 - **Permission:** *existing* means a permission the app already asks for
   (`SCOPES` in `crates/core/src/auth/oauth.rs`). *New* means another
@@ -5691,8 +5694,9 @@ Settings → Privacy, as `AGENTS.md` says.
       (RFC 8058). An Unsubscribe button would send that request, or an
       email for `mailto:` addresses. (Already noted in the bytemail ideas
       above, never scheduled.)
-      Permission: existing (the header is in the message; sending uses
-      `gmail.modify`). Competitors: Apple Mail, Superhuman, Notion Mail.
+      Permission: existing. One-click is an HTTP request to the sender's
+      address, with no Google permission; a `mailto:` address is an email
+      sent with `gmail.modify`. Competitors: Apple Mail, Superhuman, Notion Mail.
       Effort: medium (read and keep the header during sync; the one-click
       request contacts the sender's server, which the privacy policy and
       Settings → Privacy must then say; refuse local and private hosts as
@@ -5708,8 +5712,8 @@ Settings → Privacy, as `AGENTS.md` says.
 - [ ] Create a calendar event from an email. Gmail's "Create event" fills
       the title, guests and description from the email. The app already
       reads and answers invitations through Calendar.
-      Permission: existing if `calendar.events.owned` allows creating
-      events on the primary calendar (it should; to check). Competitors:
+      Permission: existing (`events.insert` accepts
+      `calendar.events.owned`, and the primary calendar is one you own). Competitors:
       Superhuman (title, guests and a suggested time from the email).
       Effort: medium (a small event form; AI could suggest the time if
       the owner chose a provider for it)
@@ -5734,6 +5738,25 @@ Settings → Privacy, as `AGENTS.md` says.
       found that import into Gmail itself. Effort: medium (parse mbox, keep
       to the quota, choose labels and dates)
 
+- [ ] Mail arriving by push instead of polling. Today each account checks
+      `history.list` every 60 seconds. `users.watch` makes Gmail announce
+      changes through Google Cloud Pub/Sub.
+      Permission: existing for Gmail (`users.watch` accepts
+      `gmail.modify`). Receiving the announcements depends on the design:
+      a topic in the Google Cloud project that Gmail may publish to, and
+      either a server that receives them or the app pulling them, which
+      would need a Pub/Sub permission of its own (to check when planned).
+      For people who bring their own credentials it is also more setup.
+      Competitors: Gmail's phone apps, and apps with their own servers.
+      Effort: high
+- [ ] S/MIME certificate for the primary address
+      (`settings.sendAs.smimeInfo`). Google Workspace only, and an
+      administrator must turn on hosted S/MIME for the domain first.
+      Permission: existing (`gmail.settings.basic` covers the primary
+      address; a custom send-as address would need
+      `gmail.settings.sharing`). Competitors: Outlook and Apple Mail (S/MIME
+      with certificates installed on the computer). Effort: high
+
 #### Needing a new permission
 
 - [ ] Delete forever and Empty Trash. `messages.delete`,
@@ -5743,21 +5766,6 @@ Settings → Privacy, as `AGENTS.md` says.
       Permission: new, full mail access (restricted; the strictest
       review). Competitors: Apple Mail and Outlook (over IMAP); Mimestream
       not confirmed. Effort: low in code, high in review
-- [ ] "Send mail as" aliases and forwarding *(moved from "From Milestone
-      6", 2026-11-14)*. Adding and verifying an alias
-      (`settings.sendAs.create`, `verify`), forwarding addresses, automatic
-      forwarding and rules that forward. The app already reads the aliases
-      set up in Gmail and sends from them; Settings → Accounts has "Open in
-      Gmail" for the rest.
-      Permission: new (`gmail.settings.sharing`, restricted). Competitors:
-      none found that create Gmail aliases themselves. Effort: medium
-- [ ] Mail arriving by push instead of polling. Today each account checks
-      `history.list` every 60 seconds. `users.watch` makes Gmail announce
-      changes through Google Cloud Pub/Sub.
-      Permission: new (Pub/Sub, plus a topic in the Google Cloud project,
-      which for people who bring their own credentials is more setup).
-      Competitors: Gmail's phone apps, and apps with their own servers.
-      Effort: high
 - [ ] Google Drive: attach a file from Drive, save an attachment to Drive,
       and send large files as Drive links (listed under "Considered, not
       planned" below).
@@ -5772,11 +5780,28 @@ Settings → Privacy, as `AGENTS.md` says.
       Permission: new (`contacts`, which allows writing). Competitors:
       Apple Mail (to the computer's Contacts, not Google's). Effort: low
       to medium
-- [ ] Delegated mailboxes and S/MIME certificates (`settings.delegates`,
-      `settings.sendAs.smimeInfo`). Google Workspace only: delegation
-      needs the domain's administrator to set it up.
-      Permission: new (`gmail.settings.sharing`). Competitors: Outlook
-      (its own delegation and S/MIME). Effort: high
+#### Workspace administrators only (not reachable with a person's own sign-in)
+
+Google allows these methods only for a service account with domain-wide
+authority, which a Workspace administrator sets up. The app signs in as the
+person, so asking for `gmail.settings.sharing` would not make them work.
+For people, they stay in Gmail's own settings.
+
+- [ ] "Send mail as" aliases and forwarding *(moved from "From Milestone
+      6", 2026-11-14)*. Adding and verifying an alias
+      (`settings.sendAs.create`, `verify`), adding a forwarding address
+      and turning on automatic forwarding (`settings.forwardingAddresses`,
+      `updateAutoForwarding`) are administrator-only. The app already reads
+      the aliases set up in Gmail and sends from them; Settings → Accounts
+      has "Open in Gmail" for the rest. Rules that forward to an address
+      already verified in Gmail are a separate case: Google's filter guide
+      allows forwarding to a verified address, but `rules.rs` notes that
+      forwarding needs a more sensitive permission (to check).
+      Competitors: none found that create Gmail aliases themselves.
+      Effort: high (administrator setup)
+- [ ] Delegated mailboxes (`settings.delegates`): the delegate must be in
+      the same Workspace organization. Competitors: Outlook (its own
+      delegation). Effort: high (administrator setup)
 
 #### Only in Gmail's own app (no API)
 
