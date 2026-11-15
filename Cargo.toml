@@ -25,3 +25,10 @@ tokio = { version = "1", features = [
 ] }
 # Specta is pre-release; pin exactly as tauri-specta's docs require.
 specta = { version = "=2.0.0-rc.25", features = ["derive"] }
+
+# Release builds drop the symbol table as well as debug info (Cargo's
+# default keeps symbols), so a shipped binary names none of its functions
+# (DASA 1.8.2). A panic message still says what and where; its backtrace
+# would show addresses only, and the app collects none.
+[profile.release]
+strip = true
