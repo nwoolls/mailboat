@@ -1,4 +1,12 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { commands, events } from "../platform/tauri/bindings";
 import type { AccountId, MailView, ThreadId, ThreadSummary } from "../platform/tauri/bindings";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,6 +19,7 @@ import {
   LIST_SHARE,
   LIST_WIDTH,
   listShareFor,
+  paneMode,
   panelToggleFor,
   parseLayout,
   READER_MIN_WIDTH,
@@ -20,6 +29,8 @@ import {
 } from "../features/layout/model/panes";
 import { Splitter } from "../features/layout/ui/Splitter";
 import { useElementWidth } from "../features/layout/ui/useElementWidth";
+import { useWindowWidth } from "../features/layout/ui/useWindowWidth";
+import { OVERFLOW_ORDER } from "../features/layout/model/titleSearch";
 import { panels, setSavedReaderOpen, setSidebarOpen } from "../features/layout/ui/panels";
 import { Onboarding } from "../features/onboarding/ui/Onboarding";
 import { onboarding, updateProgress } from "../features/onboarding/ui/progress";
@@ -128,7 +139,8 @@ import { useFeatureFlags } from "../shared/lib/featureFlags";
 import { accelMatches, IS_MAC, primaryKey } from "../shared/lib/platform";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
 import { rememberSearch } from "../features/search/ui/history";
-import { LABEL_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
+import { LABEL_BUTTON_ID, MORE_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
+
 import {
   useAccounts,
   useAiStatus,
@@ -146,6 +158,28 @@ import { openAssistantForNextReply } from "../features/ai/ui/assistantOpen";
 import { requestSummary } from "../features/ai/ui/summaryRequests";
 import { translateInMessage } from "../features/ai/ui/translations";
 import { selectedInMessage } from "../features/reader/ui/MessageFrame";
+
+/**
+ * What the label picker opens under: the Labels button, or the More button
+ * once Labels has moved into its menu for want of room.
+ */
+function labelPickerButton(): HTMLElement | null {
+  return document.getElementById(LABEL_BUTTON_ID) ?? document.getElementById(MORE_BUTTON_ID);
+}
+
+/**
+ * Whether Return opens the chosen conversation from where the key was
+ * pressed: nothing focused, or the conversation list itself (focused on
+ * going back from a conversation that filled the window). A focused button
+ * or link keeps Return for itself.
+ */
+function enterOpens(target: EventTarget | null): boolean {
+  return (
+    target === document.body ||
+    (target instanceof HTMLElement &&
+      target.matches('[role="listbox"][aria-label="Conversations"]'))
+  );
+}
 
 /**
  * A file dropped outside a composer does nothing. (With Tauri's own file
@@ -391,7 +425,39 @@ export function Shell() {
   // changed (its button, Esc, Return, or a click bringing it back; owner,
   // 2026-10-24), so the next launch starts the way it was left.
   const sidebarOpen = panels.use().sidebarOpen;
+  // In a narrower window the sidebar folds away, then the list and the
+  // reader take turns (`paneMode`). The sidebar's own setting is kept, so
+  // it comes back as it was when the window widens.
+  const mode = paneMode(useWindowWidth(), sidebarWidth);
+  const sidebarDocked = sidebarOpen && mode === "full";
+  const single = mode === "single";
+  // Whether the sidebar is docked, for the hover timers made once.
+  const docked = useRef({ now: sidebarDocked });
+  useLayoutEffect(() => {
+    docked.current = { now: sidebarDocked };
+  });
+  // Toolbar buttons moved into the More menu for want of room (`Toolbar`).
+  const [overflow, setOverflow] = useState(0);
   const [readerOpen, setReaderOpen] = useState(() => panels.get().readerOpen);
+  // When the list and the reader take turns, focus follows the pane that
+  // shows: the way back once a conversation fills the window, the list on
+  // going back. Left alone when it's somewhere still shown (a reply).
+  const listShowing = !single || !(readerOpen && selectedId !== null);
+  const listShowed = useRef(listShowing);
+  useEffect(() => {
+    const was = listShowed.current;
+    listShowed.current = listShowing;
+    if (!single || was === listShowing) return;
+    const frame = requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (active && active !== document.body && !active.closest("[inert]")) return;
+      const target = listShowing
+        ? document.querySelector<HTMLElement>('[role="listbox"][aria-label="Conversations"]')
+        : document.querySelector<HTMLElement>("[data-reader-back]");
+      target?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [single, listShowing]);
   useEffect(() => setSavedReaderOpen(readerOpen), [readerOpen]);
   // Opening a different conversation (a click, or j/k while it shows)
   // brings a hidden reader back. Adjusted during render, not in an effect.
@@ -409,20 +475,27 @@ export function Shell() {
     window.clearTimeout(peekTimer.current);
     // (A docking peek finishes docking.)
     setPeek((p) => (p === "closed" || p === "docking" ? p : "leaving"));
-    peekTimer.current = window.setTimeout(
+  }, []);
+  // A peek put away (the pointer leaving, Esc, or the shortcut) slides
+  // out, then goes; coming back onto it meanwhile keeps it.
+  useEffect(() => {
+    if (peek !== "leaving") return;
+    const done = window.setTimeout(
       () => setPeek((p) => (p === "leaving" ? "closed" : p)),
       PEEK_SLIDE_OUT_MS,
     );
-  }, []);
+    return () => window.clearTimeout(done);
+  }, [peek]);
+  const peekShown = peek === "open";
   const hoverSidebar = useCallback(
     (inside: boolean) => {
       window.clearTimeout(peekTimer.current);
-      if (inside && !panels.get().sidebarOpen) {
+      if (inside && !docked.current.now) {
         // Back onto it while it slides out: it stays. Otherwise it opens
         // after a moment, unless the sidebar was pinned open meanwhile.
         setPeek((p) => (p === "leaving" ? "open" : p));
         peekTimer.current = window.setTimeout(
-          () => setPeek((p) => (panels.get().sidebarOpen ? "closed" : p === "closed" ? "open" : p)),
+          () => setPeek((p) => (docked.current.now ? "closed" : p === "closed" ? "open" : p)),
           PEEK_OPEN_MS,
         );
       } else if (!inside) {
@@ -431,14 +504,29 @@ export function Shell() {
     },
     [closePeek],
   );
+  const sidebarFits = mode === "full";
   const toggleSidebar = useCallback(() => {
+    if (!sidebarFits) {
+      // Folded: the button floats the sidebar over the list, or puts it
+      // away, leaving its own setting for when the window widens.
+      setPeek((p) => (p === "open" ? "leaving" : "open"));
+      return;
+    }
     const opening = !panels.get().sidebarOpen;
     // Pinning it open while peeking: the peek becomes the sidebar instead
     // of the sidebar sliding in a second time behind it.
     setPeek((p) => (opening && (p === "open" || p === "leaving") ? "docking" : "closed"));
     window.setTimeout(() => setPeek((p) => (p === "docking" ? "closed" : p)), PEEK_DOCK_MS);
     setSidebarOpen(opening);
-  }, []);
+  }, [sidebarFits]);
+  // The sidebar's button. Folded, hovering it already floats the sidebar,
+  // so a click only floats it (never puts it away, which fought the hover:
+  // owner, 2026-11-14); it goes when the pointer leaves, or with Esc. The
+  // keyboard shortcut still toggles it.
+  const clickSidebar = useCallback(() => {
+    if (sidebarFits) toggleSidebar();
+    else setPeek((p) => (p === "docking" ? p : "open"));
+  }, [sidebarFits, toggleSidebar]);
   const toggleReader = useCallback(() => {
     setReaderOpen(!readerOpen);
   }, [readerOpen]);
@@ -652,7 +740,7 @@ export function Shell() {
         if (command.action) act(command.action, ids);
         return;
       case "labels": {
-        const button = document.getElementById(LABEL_BUTTON_ID);
+        const button = labelPickerButton();
         const at = labelsAt ?? (button ? anchorBelow(button) : null);
         if (!at) return;
         setLabelFor(labelsAt ? ids : null);
@@ -798,11 +886,31 @@ export function Shell() {
         (e.target as HTMLElement).blur();
         return;
       }
+      // A floating sidebar goes first, wherever the focus is, and nothing
+      // under it (the reader) goes with the same press.
+      if (e.key === "Escape" && peekShown) {
+        e.preventDefault();
+        closePeek();
+        return;
+      }
       // Escape first drops picked conversations, then closes the open one
       // (and with it the reader).
       if (e.key === "Escape" && checked.size > 0) {
         e.preventDefault();
         setChecked(NONE);
+        return;
+      }
+      // ⌘[ (Mail's Back) goes back to the list while the reader fills the
+      // window, as Esc does.
+      if (
+        single &&
+        readerOpen &&
+        selectedId !== null &&
+        !isEditable(e.target) &&
+        accelMatches(e, "Cmd+[")
+      ) {
+        e.preventDefault();
+        setReaderOpen(false);
         return;
       }
       // Then hides the reader, exactly as its toolbar button does; the
@@ -881,7 +989,7 @@ export function Shell() {
       }
       if (plain && e.key === "l" && targets.length > 0) {
         e.preventDefault();
-        const button = document.getElementById(LABEL_BUTTON_ID);
+        const button = labelPickerButton();
         if (button) {
           setLabelFor(null);
           setLabelAnchor(anchorBelow(button));
@@ -912,7 +1020,7 @@ export function Shell() {
       // as its toolbar button does.
       if (
         plain &&
-        (e.key === "o" || (e.key === "Enter" && e.target === document.body)) &&
+        (e.key === "o" || (e.key === "Enter" && enterOpens(e.target))) &&
         chosenId !== null &&
         !(readerOpen && selectedId !== null)
       ) {
@@ -989,6 +1097,9 @@ export function Shell() {
     openSettings,
     commandsRef,
     runRef,
+    single,
+    peekShown,
+    closePeek,
   ]);
 
   if (accountsQuery.isPending) return null;
@@ -996,7 +1107,7 @@ export function Shell() {
     return <Onboarding setup={setup.data} accounts={accountList} />;
 
   // Settings shows its sections in the sidebar, so the sidebar shows too.
-  const sidebarShown = sidebarOpen || settings !== null;
+  const sidebarShown = sidebarDocked || settings !== null;
   const onAccountRemoved = (id: AccountId) => {
     // Leave views that only showed that account's mail, and close its
     // conversation if one was open.
@@ -1008,6 +1119,9 @@ export function Shell() {
   };
   // The reader only appears with a conversation to show.
   const readerVisible = readerOpen && selectedId !== null;
+  // At the narrowest, the list and the reader take turns: the open
+  // conversation fills the window, and going back shows the list.
+  const listShown = !single || !readerVisible;
   const targetIds = targets.map((t) => t.id);
   const toggle = (kind: "read" | "archive" | "star" | "trash" | "spam") => {
     const action = toggleFor(kind, targets);
@@ -1048,17 +1162,20 @@ export function Shell() {
           search={search}
           onSearch={setSearch}
           actions={toolbarActions}
-          sidebarOpen={sidebarOpen}
+          sidebarOpen={sidebarDocked}
           syncAttention={syncAttention(syncStates)}
           readerOpen={readerOpen}
           hasSelection={chosenId !== null}
           count={targets.length}
           names={Object.fromEntries(allCommands.map((c) => [c.id, c.title]))}
-          onToggleSidebar={toggleSidebar}
+          onToggleSidebar={clickSidebar}
           onSidebarHover={hoverSidebar}
           onToggleReader={toggleReader}
           canCompose={accountList.length > 0}
           onCompose={startNew}
+          showReaderToggle={!single}
+          overflow={overflow}
+          onOverflow={setOverflow}
         />
       )}
       <div className="flex min-h-0 flex-1 pr-2 pb-2">
@@ -1128,7 +1245,10 @@ export function Shell() {
             onPointerEnter={() => hoverSidebar(true)}
             onPointerLeave={() => hoverSidebar(false)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") closePeek();
+              if (e.key !== "Escape") return;
+              // Handled here, and not again by the window's own Esc.
+              e.stopPropagation();
+              closePeek();
             }}
           >
             <Sidebar
@@ -1154,10 +1274,17 @@ export function Shell() {
               reader hidden it grows to fill; growth animates with the reader. */}
             <section
               className="panel panel-slide flex min-w-0 flex-col overflow-hidden"
-              style={{
-                flex: `${readerVisible ? 0 : 1} 1 ${layout.listShare * 100}%`,
-                minWidth: LIST_WIDTH.min,
-              }}
+              style={
+                single
+                  ? // Taking turns: the whole width, or none while a
+                    // conversation shows (kept, so it returns as it was).
+                    { flex: listShown ? "1 1 0px" : "0 0 0px", minWidth: 0 }
+                  : {
+                      flex: `${readerVisible ? 0 : 1} 1 ${layout.listShare * 100}%`,
+                      minWidth: LIST_WIDTH.min,
+                    }
+              }
+              inert={!listShown}
             >
               <div className="flex h-10 shrink-0 items-center gap-2 px-4">
                 {/* The toys read the title (`data-card-title`) to keep it readable. */}
@@ -1248,21 +1375,23 @@ export function Shell() {
               className="panel-slide on-glass flex overflow-hidden"
               style={{
                 flex: `${readerVisible ? 1 : 0} 1 0px`,
-                minWidth: readerVisible ? SPLITTER_WIDTH + READER_MIN_WIDTH : 0,
+                minWidth: readerVisible && !single ? SPLITTER_WIDTH + READER_MIN_WIDTH : 0,
               }}
               inert={!readerVisible}
             >
               <div
                 className="panel-slide-content from-right flex flex-1"
                 data-open={readerVisible}
-                style={{ minWidth: SPLITTER_WIDTH + READER_MIN_WIDTH }}
+                style={{ minWidth: single ? 0 : SPLITTER_WIDTH + READER_MIN_WIDTH }}
               >
-                <Splitter
-                  label="Resize conversation list"
-                  width={Math.round(layout.listShare * panesWidth)}
-                  onResize={resizeList}
-                  onReset={() => saveLayout({ ...layout, listShare: LIST_SHARE.initial })}
-                />
+                {!single && (
+                  <Splitter
+                    label="Resize conversation list"
+                    width={Math.round(layout.listShare * panesWidth)}
+                    onResize={resizeList}
+                    onReset={() => saveLayout({ ...layout, listShare: LIST_SHARE.initial })}
+                  />
+                )}
                 {/* The reader sits on the glass like a right-hand sidebar. While
                   it slides closed it keeps showing the last conversation. */}
                 <main className="flex min-w-0 flex-1 flex-col">
@@ -1270,6 +1399,14 @@ export function Shell() {
                     <ThreadReader
                       threadId={shownId}
                       accounts={accounts}
+                      back={
+                        single
+                          ? {
+                              label: selectionTitle(selection, accountList, labels),
+                              onBack: () => setReaderOpen(false),
+                            }
+                          : undefined
+                      }
                       renderFooter={(detail) => (
                         <ReplyArea
                           detail={detail}
@@ -1398,21 +1535,32 @@ export function Shell() {
       )}
       {moreAnchor && targets.length > 0 && (
         <Menu anchor={moreAnchor} onClose={() => setMoreAnchor(null)} label="More">
-          {conversationList
-            .filter((c) => ["filterLike", "block", "original", "print"].includes(c.id))
-            .map((c) => (
+          {[
+            // Toolbar buttons that didn't fit, in the order they left it.
+            ...OVERFLOW_ORDER.slice(0, overflow).flatMap((id) =>
+              conversationList.filter((c) => c.id === id),
+            ),
+            ...conversationList.filter((c) =>
+              ["filterLike", "block", "original", "print"].includes(c.id),
+            ),
+          ].map((c, i) => (
+            <Fragment key={c.id}>
+              {c.id === "filterLike" && i > 0 && <MenuSeparator />}
               <MenuItem
-                key={c.id}
                 icon={COMMAND_ICONS[c.id] ?? MoreIcon}
                 disabled={!c.enabled}
+                hint={OVERFLOW_ORDER.some((o) => o === c.id) ? c.key : undefined}
                 onSelect={() => {
+                  const at = moreAnchor;
                   setMoreAnchor(null);
-                  runCommand(c.id);
+                  // Labels opens its picker where the menu was.
+                  runCommand(c.id, targets, c.id === "labels" ? at : undefined);
                 }}
               >
                 {c.title}
               </MenuItem>
-            ))}
+            </Fragment>
+          ))}
         </Menu>
       )}
       {blocking && (

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import tauriConf from "../../../../src-tauri/tauri.conf.json";
+import tauriWindowsConf from "../../../../src-tauri/tauri.windows.conf.json";
 import {
   clampWidth,
   DEFAULT_LAYOUT,
@@ -6,6 +8,7 @@ import {
   LIST_WIDTH,
   listMaxWidth,
   listShareFor,
+  paneMode,
   panelToggleFor,
   parseLayout,
   parsePanels,
@@ -14,6 +17,8 @@ import {
   READER_MIN_WIDTH,
   SIDEBAR_WIDTH,
   SPLITTER_WIDTH,
+  WINDOW_MIN_HEIGHT,
+  WINDOW_MIN_WIDTH,
 } from "./panes";
 
 describe("clampWidth", () => {
@@ -118,5 +123,32 @@ describe("parsePanels", () => {
   it("flips one fold", () => {
     expect(toggledFold(["a"], "b")).toEqual(["a", "b"]);
     expect(toggledFold(["a", "b"], "a")).toEqual(["b"]);
+  });
+});
+
+describe("how the window lays out its panes", () => {
+  it("shows everything while the sidebar fits beside the list and the reader", () => {
+    expect(paneMode(1280, SIDEBAR_WIDTH.initial)).toBe("full");
+    // The default sidebar fits down to about the old narrowest window.
+    expect(paneMode(808, SIDEBAR_WIDTH.initial)).toBe("full");
+    expect(paneMode(807, SIDEBAR_WIDTH.initial)).toBe("folded");
+  });
+
+  it("folds a wider sidebar sooner", () => {
+    expect(paneMode(900, SIDEBAR_WIDTH.max)).toBe("folded");
+    expect(paneMode(900, SIDEBAR_WIDTH.min)).toBe("full");
+  });
+
+  it("shows one pane at a time once the list and the reader don't fit", () => {
+    expect(paneMode(584, SIDEBAR_WIDTH.initial)).toBe("folded");
+    expect(paneMode(583, SIDEBAR_WIDTH.initial)).toBe("single");
+    expect(paneMode(WINDOW_MIN_WIDTH, SIDEBAR_WIDTH.initial)).toBe("single");
+  });
+
+  it("stops the window where the layout ends, on macOS and Windows", () => {
+    expect(tauriConf.app.windows[0]!.minWidth).toBe(WINDOW_MIN_WIDTH);
+    expect(tauriWindowsConf.app.windows[0]!.minWidth).toBe(WINDOW_MIN_WIDTH);
+    expect(tauriConf.app.windows[0]!.minHeight).toBe(WINDOW_MIN_HEIGHT);
+    expect(tauriWindowsConf.app.windows[0]!.minHeight).toBe(WINDOW_MIN_HEIGHT);
   });
 });

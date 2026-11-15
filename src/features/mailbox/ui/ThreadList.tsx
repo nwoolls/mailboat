@@ -163,6 +163,9 @@ export function ThreadList({
         setListEl(el);
       }}
       role="listbox"
+      // Focusable from code only (not a Tab stop): going back from a
+      // conversation that filled the window returns focus here.
+      tabIndex={-1}
       // Only a click on the list's own background (below the last row)
       // clears the selection; the gaps between rows belong to the rows'
       // container, so a slightly-off click there doesn't close the reader.

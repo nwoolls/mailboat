@@ -20,8 +20,8 @@
         "title": "Mailboat",
         "width": 1280,
         "height": 820,
-        "minWidth": 820,
-        "minHeight": 520,
+        "minWidth": 420,
+        "minHeight": 360,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "trafficLightPosition": {

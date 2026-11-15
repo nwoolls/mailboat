@@ -5752,7 +5752,48 @@ built, the owner has tried it, and the owner has published 0.3.0
 
 ### Bugs
 
-*None picked yet: the open bugs are in "Later / unscheduled" → Open bugs.*
+*The open bugs not picked are in "Later / unscheduled" → Open bugs.*
+
+- [x] A narrow window: the toolbar overlaps the search, and the window
+      can't be made narrower *(owner, 2026-11-14, with a screenshot)*. At
+      the window's narrowest, the first toolbar button (Archive) sits over
+      the right end of the search field. The search field and the toolbar's
+      buttons also seem to be what keeps the window from getting narrower
+      (`minWidth` is 820 in `tauri.conf.json`). At least: nothing overlaps
+      at any width. Then, if it works: as the window narrows, toolbar
+      buttons move into the More ("…") menu, starting from the end, so the
+      window can be made narrower
+      *(2026-11-14: the overlap is fixed. The search box's width assumed the
+      buttons took about 300px; they take about 330, so it ran into them at
+      every window up to about 1040px wide. The toolbar now measures both
+      button groups (`layout/model/titleSearch.ts`): the box stays centered
+      on the window while it fits between them, then sits just before the
+      right-hand ones, never within 12px of either side. What keeps the
+      window from getting narrower is the panes, not the toolbar: the
+      sidebar, list and reader need about 750px at their narrowest, and the
+      window stops at 820. A narrower window waits on the owner's choice of
+      what gives way first)*
+      *(2026-11-14, the owner's choice from a mockup: the sidebar folds,
+      then the list and the reader take turns. Built: once the sidebar no
+      longer fits beside the list and the reader (below about 810px with
+      its usual width), it folds away; its button and hover float it over
+      the list, and it comes back when the window widens unless it was
+      hidden by hand. Below about 585px only one pane shows: the list, or
+      the open conversation across the window with a link back (named
+      after the view) in a bar that stays at the top while the conversation
+      scrolls, Esc or ⌘[, and no reader button. The owner tried it: the link
+      was first above the subject, scrolled away with it and was small to
+      hit, so it got the pinned bar and a bigger target. The bar takes
+      the reply bar's dark tint only while the conversation scrolls under
+      it; scrolled to the top, it blends in (owner). Then (owner): with the
+      sidebar folded, its button only floats it (a click that also put it
+      away fought the hover, which floats it too); the keyboard shortcut
+      still toggles it. And the window's shortest went from 520px, the
+      first scaffold's default with no reason recorded, to 360px, where the
+      reader and the composer still work.
+      Toolbar buttons that don't fit move into the More menu, Labels first,
+      then Star, Mark read, Spam and Trash; Archive stays. The window now
+      goes down to 420px, where it used to stop at 820px)*
 
 ## Later / unscheduled
 
