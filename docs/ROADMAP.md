@@ -5993,6 +5993,17 @@ Privacy and the policy.*
       the keychain, which the app already uses. Build it only if the lab
       says the mail cache counts. Its 0.2.0 note said the same: only if Google
       insists on the assessment, which it now does)*
+- [ ] Scan the code ourselves before the lab does, so findings are fixed
+      or documented before the paid scans start. For a desktop app, a lab
+      runs a static scan (SAST) of the source code, and one lab's terms
+      say every finding must be fixed before the next scan, low-risk ones
+      included. Run Semgrep's open-source rules for Rust and TypeScript,
+      and Fluid Attacks, the scanner in the ADA's static-scan guide (check
+      which of our languages it covers; the ADA notes it doesn't cover
+      TypeScript or JavaScript). Read CodeQL's latest results too. Fix
+      what is real, and for each false positive write down why. Keep the
+      reports outside the repository, like the other evidence. Repeat once
+      the 0.3.0 fixes are in, just before the first paid scan.
 - [ ] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
