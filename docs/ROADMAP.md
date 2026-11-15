@@ -5873,8 +5873,9 @@ Privacy and the policy.*
       (signing, hardened runtime, SBOM); whether `cargo deny` and
       `bun audit` output count as the dependency scan; whether a mail
       cache kept in user-only folders, on a disk the OS encrypts, is
-      acceptable (DASA 1.2.2 asks for more); and what it accepts as the company name and address.
-      Both go on the public certificate.
+      acceptable (DASA 1.2.2 asks for more); and what it accepts as the
+      company name and address, which the ADA's AL1 questionnaire marks
+      as printed on the public certificate.
 - [ ] A security check that runs with the others (`bun run
       check:security`, part of `check:web` and `check:quick`), so the
       parts that can be checked mechanically can't regress. The rules come
@@ -5906,30 +5907,44 @@ Privacy and the policy.*
       request review sees. Only judgment stays with a person or an agent:
       what a notification may show, IDOR logic, the written answers.
 - [ ] A check of the built app in the release workflow, where the signed
-      builds exist (DASA 1.6.3, 2.1.x, 3.x): on macOS, the hardened runtime
-      on both binaries, no entitlements beyond the reviewed list (none
-      today), notarization (`spctl`), and no `LC_RPATH`; on Windows, the
-      executable's flags (`DYNAMICBASE`, `NXCOMPAT`, `HIGHENTROPYVA`,
-      `GUARD_CF`), next to the Authenticode check `check-windows-signature`
-      already does. The release fails if one is missing.
+      builds exist. On macOS: the hardened runtime on both binaries (DASA
+      3.3.1), no entitlements beyond the reviewed list, none today (3.3.2),
+      notarization with `spctl` (3.2.1), and no `LC_RPATH` (1.5.2). On
+      Windows: `DYNAMICBASE` and `NXCOMPAT` (2.1.1), `GUARD_CF` (2.1.2),
+      `HIGHENTROPYVA` (2.1.3) and a 64-bit build (2.1.4). The release fails
+      if one is missing. `check-windows-signature` checks that an
+      Authenticode signature is present, not that it is valid; DASA 2.2.1's
+      evidence is `signtool verify /pa` output, so add that check or
+      collect the output by hand.
 - [ ] A software bill of materials (CycloneDX) for the Rust and the
       JavaScript dependencies, made by the release workflow and attached to
       each release (DASA 1.5.1).
 - [ ] A setting for what new-mail notifications show (DASA 1.10.2: no
-      sensitive data in notifications). Today they show the sender, subject
-      and preview, and the sign-in code when the email has one. To decide:
+      sensitive data in notifications). Today the title is the sender and
+      the body is the subject, plus the account's address when there is
+      more than one account. When the email has a sign-in code (looked
+      for in the subject, the snippet and a downloaded body), the code
+      leads the title. The snippet itself is never shown, and more than
+      three new emails make one banner with a count. To decide:
       the choices (for example everything, sender only, or "New email"
       only) and the default. Settings → Privacy, the policy and the
       settings test change with it.
 - [ ] Control Flow Guard on Windows (DASA 2.1.2): `-Ccontrol-flow-guard`
       for the MSVC target. It covers the app's own code; Rust's prebuilt
       standard library isn't built with it, and the evidence says so.
-- [ ] Owner-only folders and files (DASA 1.2.1, 1.9.1): create the data,
-      cache and log folders as 0700 at startup, and the database 0600 (macOS
+- [ ] Owner-only folders and files (DASA 1.9.1): create the data, cache
+      and log folders as 0700 at startup, and the database 0600 (macOS
       already keeps `~/Library` private; Linux won't). The OAuth client
-      file is saved with `.mode(0o600)`, which only applies when the file
-      is created, so a file saved by an older version keeps its old mode:
-      set the mode after opening, as `sync_log.rs` does. Tests for both.
+      file: `config::save` writes a temporary file with `.mode(0o600)` and
+      renames it into place, so a saved file is 0600. A client file put
+      there by hand, or saved before onboarding did this (2026-10-27),
+      keeps the mode it has, and `.mode` doesn't change a temporary file
+      left behind by an earlier save. Set the mode at startup on the file
+      that is there, and after opening the temporary one. Tests for both.
+      The client secret in that file is plain text (DASA 1.2.1, no
+      plaintext secrets in configuration files): Google treats an
+      installed app's secret as not confidential, and the written answer
+      says so.
 - [ ] The Windows named pipe for AI apps (DASA 1.7.1, 2.3.1): give it an
       explicit security descriptor for the current user, rather than
       relying on the default, with a test (or capture `accesschk` output
@@ -5938,24 +5953,30 @@ Privacy and the policy.*
       stripping is a setting the evidence can show.
 - [ ] Tokens in memory (DASA 1.2.3), optional: keep access and refresh
       tokens in `secrecy`/`zeroize` types, so they are wiped when dropped.
-      The spec aims this at passwords the user types, which the app has
-      none of, so a written answer may be enough. Decide when the lab
-      answers.
-- [ ] The AI scratch folder: `ai/process.rs` makes a new `ai-helper-…`
-      folder in the temp directory for every request and never removes
-      it. Use `tempfile::TempDir`, which is created atomically, private
-      and removed afterward.
+      The requirement covers sensitive data the app handles itself (its
+      example is a password the user types), and the app handles these
+      tokens itself. The written answer describes how long each token
+      stays in memory and when it is dropped; whether to add the wiping
+      waits for the lab's answer.
+- [ ] The AI scratch folder: `ai/process.rs` makes a working folder in
+      the temp directory for every request, with `create_dir_all` (not
+      private). It removes it with `remove_dir` on the normal exits, which
+      fails if the helper wrote anything there, and not at all when the
+      program fails to start, a line handler returns an error, or the
+      request times out. Use `tempfile::TempDir`, which is created
+      atomically and private, and is removed on every exit.
 - [ ] Encrypt the local cache at rest: a key in the keychain and an
       encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
       and costs little speed. Until then the cache relies on the
       computer's disk encryption (FileVault, BitLocker), and the policy
       says only what is true. Decide whether it is worth the dependency
       *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
-      *(moved from "Later / unscheduled" into 0.3.0, 2026-11-15: it is
-      DASA 1.2.2's full answer (sensitive data not in a SQLite file
-      without more encryption). Its test procedure names tokens and keys,
-      which the keychain already covers, so build it only if the lab says
-      the mail cache counts. Its 0.2.0 note said the same: only if Google
+      *(moved from "Later / unscheduled" into 0.3.0, 2026-11-15: it
+      answers the second verification point of DASA 1.2.2, sensitive data
+      not kept in a SQLite file without more encryption. The first point,
+      credentials, tokens and keys in the platform's secure storage, is
+      the keychain, which the app already uses. Build it only if the lab
+      says the mail cache counts. Its 0.2.0 note said the same: only if Google
       insists on the assessment, which it now does)*
 - [ ] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
@@ -5963,8 +5984,9 @@ Privacy and the policy.*
       and SBOM, the signing and binary-flag output, a sync-log sample from
       a demo-account sign-in, a data-flow diagram, and a written answer
       for each test case (most are in `docs/ARCHITECTURE.md` already).
-      CodeQL already runs on every pull request, and its results can
-      be submitted as the static scan.
+      CodeQL already runs on pull requests and pushes to `main` that
+      change code, and weekly, and its results can be submitted as the
+      static scan.
 
 ### Bugs
 
