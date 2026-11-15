@@ -449,7 +449,13 @@ While beta mode is on, every pull request still adds a changeset, as always.
 3. The publish job checks every update signature against the public key in the
    app and for this version (and makes nothing if one is wrong), writes
    `latest.json` and `SHA256SUMS`, attests where the files came from, and makes
-   the draft release.
+   the draft release. The release also carries its software bill of materials,
+   `<App>_<version>.cdx.json` (CycloneDX: every Rust crate and JavaScript
+   package, with its license and hash), made by a read-only `sbom` job with
+   `scripts/make-sbom.ts`; without it the publish job makes nothing. CI makes
+   one on every pull request that changes the app, so a shipped dependency
+   without a license fails there first. To make one locally:
+   `bun scripts/make-sbom.ts --version <version> --out <folder>`.
 4. Read the draft on GitHub (files, notes), then **Publish release**. Only a
    published release is what the update addresses redirect to. Publishing
    also runs `update-channel.yml`, which points the Beta channel at it.

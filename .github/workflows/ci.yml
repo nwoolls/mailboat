@@ -144,6 +144,12 @@ jobs:
       # out of date (it doesn't depend on the platform, so macOS covers it).
       - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site' && runner.os != 'Windows'
         run: cargo test --workspace
+      # The release's software bill of materials, made as the release makes
+      # it: a dependency that ships without a license fails here, on the pull
+      # request that adds it, not on release day. Not kept (the version is a
+      # placeholder).
+      - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site' && runner.os != 'Windows'
+        run: bun scripts/make-sbom.ts --version 0.0.0 --out "$RUNNER_TEMP/sbom"
       # On Windows the app crate's test program can't start
       # (STATUS_ENTRYPOINT_NOT_FOUND): Tauri's test executables need an
       # application manifest there. The core crate holds the logic.

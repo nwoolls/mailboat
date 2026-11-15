@@ -304,10 +304,44 @@ jobs:
         if: always()
         run: az logout || true
 
+  # The software bill of materials (CycloneDX, DASA 1.5.1), made by our own
+  # script from the lockfiles (`scripts/sbom.ts`), in a job of its own:
+  # reading packages' licenses needs `bun install`, which the publish job,
+  # with its write access, shouldn't run.
+  sbom:
+    name: Software bill of materials
+    if: github.ref_type == 'tag'
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+          no-cache: true
+      # Packages' own install scripts don't run: only their files are read.
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - name: Make the bill of materials
+        env:
+          TAG: ${{ github.ref_name }}
+        run: bun scripts/make-sbom.ts --version "${TAG#v}" --out sbom
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: sbom/*
+          if-no-files-found: error
+          retention-days: 7
+
   publish:
     name: Publish (a draft release)
     if: github.ref_type == 'tag'
-    needs: [macos, windows]
+    needs: [macos, windows, sbom]
     runs-on: ubuntu-latest
     # Its own environment: an approval of its own, to publish what the builds
     # made, and none of the signing secrets, which this job never needs.
@@ -329,6 +363,10 @@ jobs:
         with:
           pattern: "*-signed*"
           merge-multiple: true
+          path: build-outputs
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sbom
           path: build-outputs
       - name: Make the release files
         env:

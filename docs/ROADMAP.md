@@ -5932,9 +5932,33 @@ Privacy and the policy.*
       Authenticode signature is present, not that it is valid; DASA 2.2.1's
       evidence is `signtool verify /v /pa` output, so add that check or
       collect the output by hand.
-- [ ] A software bill of materials (CycloneDX) for the Rust and the
+- [x] A software bill of materials (CycloneDX) for the Rust and the
       JavaScript dependencies, made by the release workflow and attached to
       each release (DASA 1.5.1).
+      *(2026-11-15: `scripts/make-sbom.ts` with `scripts/sbom.ts`, our own
+      code rather than a third-party generator, so nothing new runs in the
+      release (owner). It reads `cargo tree` for each platform the release
+      builds (macOS on Apple silicon, Windows x64 and ARM64), as the build
+      resolves features, with the checksums in `Cargo.lock`, and `bun.lock`
+      with each installed package's license, and writes CycloneDX 1.5 JSON:
+      name, version, package URL, license, hash, and a scope. "required"
+      is linked or bundled into the app, "optional" bundled but reached
+      only through an optional dependency, "excluded" only used to build
+      it (proc macros, build scripts' crates, JavaScript dev tools). Its
+      shipped Rust crates are exactly what `cargo tree -e
+      normal,no-proc-macro` lists for those platforms (review: a first
+      version read every dependency `cargo metadata` lists, including ones
+      no enabled feature turns on). A read-only `sbom` job makes it; the
+      publish job adds it to the release, checksummed and attested with
+      the rest, and refuses to make a release without it. A component
+      that ships without a license stops the job; a build-only platform
+      binary that isn't installed on the job's Linux runner has none.
+      Licenses are SPDX expressions when they follow SPDX's grammar, and
+      named as written otherwise. A crate from outside crates.io (git,
+      another registry) stops the job until the script describes it; the
+      app has none. CI's macOS Rust job makes it too, on every pull request
+      that changes the app, so a dependency without a license fails there
+      rather than on release day (both reviews))*
 - [ ] A setting for what new-mail notifications show (DASA 1.10.2: no
       sensitive data in notifications). Today the title is the sender and
       the body is the subject, plus the account's address when there is

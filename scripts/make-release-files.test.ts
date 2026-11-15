@@ -47,7 +47,13 @@ let key: Key;
 
 /** A folder of build outputs as the workflow's jobs leave them. */
 function setup(
-  opts: { signedBy?: Key; signedFor?: string | null; dropSig?: string; changelog?: string } = {},
+  opts: {
+    signedBy?: Key;
+    signedFor?: string | null;
+    dropSig?: string;
+    changelog?: string;
+    sboms?: string[];
+  } = {},
 ) {
   dir = mkdtempSync(join(tmpdir(), "release-files-"));
   key = newKey();
@@ -63,6 +69,7 @@ function setup(
   }
   writeFileSync(from("App_0.1.0_aarch64.dmg"), "a disk image");
   writeFileSync(from("App.app.zip"), "the checking zip: not published");
+  for (const name of opts.sboms ?? ["App_0.1.0.cdx.json"]) writeFileSync(from(name), "{}");
   writeFileSync(
     join(dir, "tauri.conf.json"),
     JSON.stringify({ plugins: { updater: { pubkey: key.pubkey } } }),
@@ -107,6 +114,7 @@ describe("making a release's files", () => {
     expect(readdirSync(join(dir, "to")).toSorted()).toEqual([
       "App.app.tar.gz",
       "App.app.tar.gz.sig",
+      "App_0.1.0.cdx.json",
       "App_0.1.0_aarch64.dmg",
       "App_0.1.0_arm64-setup.exe",
       "App_0.1.0_arm64-setup.exe.sig",
@@ -132,7 +140,7 @@ describe("making a release's files", () => {
       readFileSync(join(dir, "to", "SHA256SUMS"), "utf8")
         .trim()
         .split("\n"),
-    ).toHaveLength(11);
+    ).toHaveLength(12);
     expect(readFileSync(join(dir, "notes.md"), "utf8")).toBe("First release.\n");
   });
 
@@ -198,6 +206,20 @@ describe("a release that must not be made", () => {
     expect(code).toBe(1);
     expect(out).toContain("no installer ending in .dmg");
     expect(() => readdirSync(join(dir, "to"))).toThrow();
+  });
+
+  it("is refused, making nothing, without exactly one bill of materials for this version", () => {
+    for (const sboms of [
+      [],
+      ["App_0.0.9.cdx.json"],
+      ["App_0.1.0.cdx.json", "Other_0.1.0.cdx.json"],
+    ]) {
+      setup({ sboms });
+      const { code, out } = run();
+      expect(code, sboms.join()).toBe(1);
+      expect(out).toMatch(/software bill of materials/);
+      expect(() => readdirSync(join(dir, "to"))).toThrow();
+    }
   });
 
   it("is refused when a signature is by another key", () => {

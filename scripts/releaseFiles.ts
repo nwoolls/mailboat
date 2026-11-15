@@ -29,11 +29,12 @@ export function platformOf(file: string): Platform | null {
 
 /**
  * Whether a build output goes on the release: the disk image, each update
- * payload with its signature, and each Windows installer. Not the ditto zip
- * the Mac job keeps for checking.
+ * payload with its signature, each Windows installer, and the software bill
+ * of materials (`*.cdx.json`). Not the ditto zip the Mac job keeps for
+ * checking.
  */
 export function publishable(file: string): boolean {
-  if (file.endsWith(".dmg")) return true;
+  if (file.endsWith(".dmg") || isSbom(file)) return true;
   const payload = file.endsWith(".sig") ? file.slice(0, -".sig".length) : file;
   return platformOf(payload) !== null;
 }
@@ -49,6 +50,11 @@ export function stableName(file: string, version: string): string | null {
   const marker = `_${version}_`;
   if (!isInstaller(file) || !file.includes(marker)) return null;
   return file.replace(marker, "_");
+}
+
+/** The software bill of materials (`make-sbom.ts`). */
+export function isSbom(file: string): boolean {
+  return file.endsWith(".cdx.json");
 }
 
 /** The disk image and the two Windows installers: what a person downloads. */

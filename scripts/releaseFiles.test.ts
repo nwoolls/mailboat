@@ -39,6 +39,7 @@ describe("what goes on the release", () => {
       "App_0.1.0_x64-setup.exe.sig",
       "App_0.1.0_arm64-setup.exe",
       "App_0.1.0_arm64-setup.exe.sig",
+      "App_0.1.0.cdx.json",
     ]) {
       expect(publishable(file)).toBe(true);
     }
