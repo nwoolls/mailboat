@@ -4385,9 +4385,9 @@ and a tick.
 - [x] Summaries kept only as long as needed: a switch to not keep them, or
       clearing them on quit (its own Milestone 16 item, so it is ticked on
       its own; built 2026-11-09, see there)
-- Strip tracking codes from links: not built; moved to "Later /
-  unscheduled" when the spike closed, and from there into 0.3.0 (owner,
-  2026-11-14).
+- Strip tracking codes from links: not built in the spike; moved to
+  "Later / unscheduled" when the spike closed, and from there into 0.3.0
+  (owner, 2026-11-14). *(done 2026-11-14, in 0.3.0: see its item there)*
 
 ### Bugs, in order (small and visible first)
 
@@ -5772,7 +5772,9 @@ built, the owner has tried it, and the owner has published 0.3.0
       `fbclid`, `msclkid`, Mailchimp's `mc_cid` and `mc_eid`, HubSpot's
       `__hstc` and others: `TRACKING_PARAMS` in `mail/links.rs`), both in
       what a click opens and in the address shown on hover. The rest of
-      the address is kept exactly as written. Codes that identify the
+      the query is kept as written (the address is still read as a
+      browser reads it, so a host or a character may be written
+      differently). Codes that identify the
       reader to the site (unsubscribe and sign-in tokens, Marketo's
       `mkt_tok`, HubSpot's `_hsenc`) are left alone so links keep working.
       Always on, with no setting, like tracking pixels, and not counted in

@@ -166,6 +166,12 @@ mod tests {
                 "https://x.example/?utm%5Fsource=a&b=c",
                 "https://x.example/?b=c",
             ),
+            // Every listed name, and the rest's odd shapes (empty pairs, a
+            // name with no value, an `=` in a value) kept as they were.
+            (
+                "https://x.example/?a&&igshid=1&twclid=2&b=c=d&ttclid=3&yclid=4&gbraid=5&wbraid=6&dclid=7&gclsrc=8&__hssc=9&__hsfp=10&",
+                "https://x.example/?a&&b=c=d&",
+            ),
             // A mail link's query is the email itself.
             (
                 "mailto:a@b.example?subject=Hi&utm_source=x",

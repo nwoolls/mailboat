@@ -207,9 +207,14 @@
           images of new mail as it arrives, so the server that hosts them is contacted before you
           open the message. Spam never loads them, and Trash doesn't unless you've allowed the
           sender. Settings → Viewing can limit this to people you've written to, or block it. Known
-          tracking pixels are always removed, and so are tracking codes in links (such as
-          <code>utm_source</code>), so a site you open from an email isn't told which campaign sent
-          you.
+          tracking pixels are always removed.
+        </li>
+        <li>
+          <strong>Links in email.</strong> A link you click opens in your browser, which contacts
+          the site it goes to. Known tracking codes in the link's address (such as
+          <code>utm_source</code>) are removed first. A site can still learn where you came from in
+          other ways: a link that passes through a tracking address on its way, or one that carries
+          the campaign in the rest of its address, is opened as it is.
         </li>
         <li>
           <strong>Update checks.</strong> When it starts and about once a day, the app fetches one
