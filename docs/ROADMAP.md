@@ -4965,6 +4965,12 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         attempt 1. The same symptom as the reply-scroll entries in "Later /
         unscheduled" → Flaky tests: the reply never came into view on a
         slow runner, likely the same cause.
+      - 2026-11-15, CI on #145 (`ai-scratch-folder`), WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43745366359: the
+        same first check timed out after 15 s, the reply's end 429 px below
+        the reader (line 125); 162 others passed. #145 changes the AI
+        programs' working folder in Rust, not the reply or the reader.
+        Re-run requested.
 - [ ] `ascii-glow.spec.ts`: "the glow glides over to the pointer, then holds
       on loosely" (line 153, added in UX Spike 5).
       - 2026-11-14, CI on `main` after #135 merged, attempt 1,
