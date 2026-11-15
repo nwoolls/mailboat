@@ -5801,9 +5801,13 @@ built, the owner has tried it, and the owner has published 0.3.0
       arrow in it (`ArchiveArrowDown`); Move to Inbox an arrow going into
       the tray (`InboxDownload`; the old one pointed out of it); Mark as
       read an open envelope and Mark as unread a closed one, following
-      what it will do in the menus, ⌘K and the swipe (the toolbar's button
-      keeps one icon: opening an unread conversation marks it read at
-      once, and the icon changing then was distracting, owner);
+      what it will do in the toolbar, the menus, ⌘K and the swipe. The
+      toolbar's button switched on every click into an unread conversation
+      (opening marks it read at once), which was distracting; the owner's
+      rule: with Settings → Viewing marking mail read on open, a
+      conversation opened while unread shows Mark as unread from the
+      start, until it's marked read or unread by hand
+      (`readButtonShowsUnread`);
       All Mail a stack of envelopes (`Mails`), so it doesn't look like
       Unread; Important Gmail's tag-shaped marker (`LabelImportant`), not a
       flag. And, the owner's idea, motion: starring spins the toolbar's
@@ -5864,8 +5868,8 @@ built, the owner has tried it, and the owner has published 0.3.0
 - [ ] The read envelope's flap opening and closing *(owner, 2026-11-14,
       while reviewing icons: "can read / unread open / close the
       envelope? if not we can put a pin in that for later")*. Hugeicons
-      draws the open and closed envelopes as separate shapes, and in 0.3.0
-      the toolbar's read button keeps one icon (see the icon review). A
+      draws the open and closed envelopes as separate shapes, so in 0.3.0
+      the button swaps them without motion (see the icon review). A
       flap that swings needs an envelope drawn for the app, matched to
       Hugeicons' weight and size, and a moment for it that isn't opening
       a conversation

@@ -3,9 +3,9 @@ import { expect, type Page, test } from "@playwright/test";
 /**
  * Toolbar motion (0.3.0, owner): starring spins the star; only a change on
  * the same conversations plays it, not choosing another conversation or
- * the star coming back from the More menu. The read button keeps one icon
- * (opening an unread conversation marks it read at once, and an icon
- * changing then was distracting). Buttons moving into and out of the More
+ * the star coming back from the More menu. The read button shows Mark as
+ * unread from the start for an unread conversation opening marks read, so
+ * it doesn't switch on every click (owner). Buttons moving into and out of the More
  * menu as the window narrows and widens fade, rather than vanish.
  */
 const starIcon = (page: Page) =>
@@ -49,13 +49,30 @@ test("the star doesn't spin again when it comes back from the More menu", async 
   expect(await starIcon(page).getAttribute("class")).not.toMatch(/icon-spin/);
 });
 
-test("the read button keeps one icon when the conversation is marked read", async ({ page }) => {
-  await open(page);
-  const label = await readButton(page).getAttribute("aria-label");
-  const drawn = await readButton(page).locator("svg").innerHTML();
+test("the read button doesn't flicker when opening an unread conversation", async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 800 });
+  await page.goto("/tests/browser/harness.html?mode=shell&rows=1");
+  const rows = page.locator('[role="option"]');
+  const unread = rows.filter({ has: page.locator(".font-semibold") });
+  const read = rows.filter({ hasNot: page.locator(".font-semibold") });
+  const icon = () => readButton(page).locator("svg").innerHTML();
+  // A read conversation: Mark as unread, the closed envelope.
+  await read.first().click();
+  await expect(readButton(page)).toHaveAttribute("aria-label", /Mark as unread/);
+  const closed = await icon();
+  // An unread one, which opening marks read: the closed envelope from the
+  // start (the owner's rule, with "on open" reading), not the open one first.
+  await unread.first().click();
+  await expect(readButton(page)).toHaveAttribute("aria-label", /Mark as read/);
+  expect(await icon()).toBe(closed);
+  // Marked by hand from then on, the button follows what it will do: read
+  // now, then unread again, which shows Mark as read with the open one.
   await page.keyboard.press("u");
-  await expect(readButton(page)).not.toHaveAttribute("aria-label", label ?? "");
-  expect(await readButton(page).locator("svg").innerHTML()).toBe(drawn);
+  await expect(readButton(page)).toHaveAttribute("aria-label", /Mark as unread/);
+  expect(await icon()).toBe(closed);
+  await page.keyboard.press("u");
+  await expect(readButton(page)).toHaveAttribute("aria-label", /Mark as read/);
+  expect(await icon()).not.toBe(closed);
 });
 
 test("buttons fade out into the More menu and fade back in", async ({ page }) => {

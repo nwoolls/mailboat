@@ -283,7 +283,7 @@ export function Shell() {
   const baseSelection =
     chosen ?? (onlyAccount ? systemSelection("inbox", onlyAccount.id) : ALL_INBOXES);
   const [search, setSearch] = useState("");
-  const { searchSpamTrash } = viewingPrefs.use();
+  const { searchSpamTrash, markRead } = viewingPrefs.use();
   const selection: Selection = search.trim()
     ? {
         accounts: baseSelection.accounts,
@@ -461,9 +461,14 @@ export function Shell() {
   useEffect(() => setSavedReaderOpen(readerOpen), [readerOpen]);
   // Opening a different conversation (a click, or j/k while it shows)
   // brings a hidden reader back. Adjusted during render, not in an effect.
+  // The conversation opened while unread, which opening is about to mark
+  // read (Settings → Viewing), until the read button or `u` is used on it:
+  // the read button shows Mark as unread for it from the start.
+  const [openedUnread, setOpenedUnread] = useState<ThreadId | null>(null);
   if (selectedId !== null && selectedId !== shownId) {
     setShownId(selectedId);
     setReaderOpen(true);
+    setOpenedUnread(threads.find((t) => t.id === selectedId)?.unread ? selectedId : null);
   }
   // While the sidebar is hidden, hovering its toolbar button floats it over
   // the list (as Notion Calendar does); it stays while the pointer is on
@@ -541,6 +546,8 @@ export function Shell() {
     // Named, so Undo can call it again.
     function run(action: ThreadAction, ids: ThreadId[], fromUndo = false) {
       if (ids.length === 0) return;
+      // Marked read or unread by hand: the button follows that from now on.
+      if (action.kind === "read") setOpenedUnread(null);
       const openBefore = openNow.current;
       if (leavesView(action, selection.view)) {
         const removed = new Set(ids);
@@ -1174,6 +1181,13 @@ export function Shell() {
           canCompose={accountList.length > 0}
           onCompose={startNew}
           targetKey={targetIds.join(",")}
+          opening={
+            checked.size === 0 &&
+            readerVisible &&
+            targets.length === 1 &&
+            targets[0]!.id === openedUnread
+          }
+          markRead={markRead}
           showReaderToggle={!single}
           overflow={overflow}
           onOverflow={setOverflow}

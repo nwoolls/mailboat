@@ -1,4 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { readButtonShowsUnread } from "../features/mailbox/model/readButton";
+import type { MarkRead } from "../features/mailbox/model/viewingPrefs";
 import type { CommandId } from "../features/commands/model/commands";
 import {
   OVERFLOW_ORDER,
@@ -12,6 +14,7 @@ import {
   type IconProps,
   LabelIcon,
   MarkReadIcon,
+  MarkUnreadIcon,
   MoreIcon,
   MoveToInboxIcon,
   ReaderToggleIcon,
@@ -78,6 +81,13 @@ type Props = {
    * read state (not a change of conversations) plays the buttons' motion.
    */
   targetKey: string;
+  /**
+   * The one conversation shown was unread when opened, and hasn't been
+   * marked read or unread by hand since (`readButtonShowsUnread`).
+   */
+  opening: boolean;
+  /** Settings → Viewing: when an opened conversation is marked read. */
+  markRead: MarkRead;
   /** Whether the reader's button shows (not when the panes take turns). */
   showReaderToggle: boolean;
   /** How many buttons have moved into the More menu (`OVERFLOW_ORDER`). */
@@ -110,6 +120,8 @@ export function Toolbar({
   overflow,
   onOverflow,
   targetKey,
+  opening,
+  markRead,
 }: Props) {
   const barRef = useRef<HTMLElement>(null);
   const leftRef = useRef<HTMLDivElement>(null);
@@ -124,6 +136,12 @@ export function Toolbar({
   const restore = trash?.kind === "trash" && !trash.trashed;
   const unstar = star?.kind === "star" && !star.starred;
   const starTurns = useChanges(targetKey, star ? unstar : undefined);
+  const read = actions.read?.action;
+  const showsUnread = readButtonShowsUnread({
+    marksUnread: read?.kind === "read" && !read.read,
+    opening,
+    markRead,
+  });
   // Once the bar has been measured, buttons coming back from the More menu
   // fade in (not the ones there when the window opens).
   const settled = placement !== null;
@@ -182,10 +200,9 @@ export function Toolbar({
           <ToolButton
             overflowId="read"
             appear={settled}
-            // One icon whatever it will do: opening an unread conversation
-            // marks it read at once, and an icon that changed then too was
-            // distracting (owner). The menus and ⌘K show which it is.
-            icon={MarkReadIcon}
+            // Open for Mark as read, closed for Mark as unread; closed from
+            // the start for a conversation opening is about to mark read.
+            icon={showsUnread ? MarkUnreadIcon : MarkReadIcon}
             label={(names.read ?? "") + many}
             shortcut="u"
             onClick={actions.read?.run}
