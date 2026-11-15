@@ -237,11 +237,15 @@ mockIPC(
       case "contacts_list":
         // `&contacts=demo`: the demo's people, less those taken out.
         if (new URLSearchParams(location.search).get("contacts") === "demo")
-          return demoContacts.filter((c) => !hiddenContacts.includes(c.email));
+          return demoContacts.filter((c) => !hiddenContacts.includes(c.email.toLowerCase()));
         return [];
       case "contacts_hide":
       case "contacts_unhide": {
-        const email = (args as { email: string }).email;
+        // `&contacts-save=fail`: the database refuses the change.
+        if (new URLSearchParams(location.search).get("contacts-save") === "fail")
+          throw { kind: "db", message: "database is full" };
+        // By address in lower case, as Rust keeps them.
+        const email = (args as { email: string }).email.trim().toLowerCase();
         hiddenContacts = hiddenContacts.filter((e) => e !== email);
         if (cmd === "contacts_hide") hiddenContacts.unshift(email);
         return null;

@@ -447,7 +447,7 @@ ALTER TABLE sync_state ADD COLUMN labels_synced_at INTEGER NOT NULL DEFAULT 0;
 /// Addresses removed from compose's suggestions (`compose::contacts`),
 /// kept by address for every account, like `sender_image_prefs`: Google's
 /// contacts aren't changed (that would need a permission the app doesn't
-/// ask for), so this is the app's own list. Settings → Writing brings one
+/// ask for), so this is the app's own list. Settings → Composing brings one
 /// back.
 pub const MIGRATION_V23: &str = r#"
 CREATE TABLE hidden_contacts (

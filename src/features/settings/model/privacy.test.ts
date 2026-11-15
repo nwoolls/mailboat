@@ -164,4 +164,10 @@ describe("what stays on the computer", () => {
       "Saved summaries stay until they are written again or cleared, or until you quit if you turn off Keep saved summaries.",
     );
   });
+
+  it("says how long addresses removed from suggestions are kept", () => {
+    expect(STAYS_ON_THIS_COMPUTER).toContain(
+      "Addresses you removed from compose suggestions, for all your accounts, until you restore them or delete all data. Removing an account keeps them.",
+    );
+  });
 });

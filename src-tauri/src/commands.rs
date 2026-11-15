@@ -1128,7 +1128,7 @@ pub fn contacts_unhide(state: State<'_, AppState>, email: String) -> CmdResult<(
 }
 
 /// The addresses taken out of the suggestions, most recently first
-/// (Settings → Writing).
+/// (Settings → Composing).
 #[tauri::command]
 #[specta::specta]
 pub fn contacts_hidden(state: State<'_, AppState>) -> CmdResult<Vec<String>> {

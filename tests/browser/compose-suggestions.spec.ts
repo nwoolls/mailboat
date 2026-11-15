@@ -60,3 +60,28 @@ test("Shift+Delete takes the highlighted one out; Settings restores it", async (
   await to.pressSequentially("pri");
   await expect(options).toHaveCount(2);
 });
+
+test("a removal that can't be saved says so, and the suggestion stays", async ({ page }) => {
+  await page.goto(`${open}&contacts-save=fail`);
+  const to = page.getByRole("combobox", { name: "To" });
+  await to.click();
+  await to.pressSequentially("pri");
+  const options = page.getByRole("listbox").getByRole("option");
+  await expect(options).toHaveCount(2);
+  // Every text shown from here on, toasts that were replaced included.
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    (window as unknown as { seen: string[] }).seen = seen;
+    new MutationObserver(() => seen.push(document.body.innerText)).observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+  });
+  await page.getByRole("button", { name: "Remove priya@x.example from suggestions" }).click();
+  await expect(page.getByText("Couldn't remove priya@x.example: database is full")).toBeVisible();
+  // Never said it worked, even for a moment.
+  const seen = await page.evaluate(() => (window as unknown as { seen: string[] }).seen);
+  expect(seen.some((t) => t.includes("won't be suggested"))).toBe(false);
+  await expect(options).toHaveCount(2);
+});

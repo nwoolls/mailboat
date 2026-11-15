@@ -136,11 +136,10 @@ pub fn all(conn: &Connection) -> Result<Vec<Contact>> {
          FROM ranked r
          LEFT JOIN saved_names sn ON sn.key = r.key
          LEFT JOIN mail_names mn ON mn.key = r.key
-         WHERE r.key NOT IN (SELECT lower(email) FROM hidden_contacts)
-         AND (r.wrote >= 2 OR NOT (
+         WHERE r.wrote >= 2 OR NOT (
            r.key LIKE '%noreply%' OR r.key LIKE '%no-reply%' OR r.key LIKE '%donotreply%'
            OR r.key LIKE '%do-not-reply%' OR r.key LIKE 'notifications@%'
-           OR r.key LIKE 'mailer-daemon@%' OR r.key LIKE '%bounce%'))
+           OR r.key LIKE 'mailer-daemon@%' OR r.key LIKE '%bounce%')
          ORDER BY r.wrote DESC, r.score DESC, r.last_at DESC",
     )?;
     let rows = stmt.query_map(params![now_millis(), HALF_WEIGHT_AGE_MS], |r| {
@@ -150,7 +149,22 @@ pub fn all(conn: &Connection) -> Result<Vec<Contact>> {
             wrote: r.get::<_, i64>(2)? == 3,
         })
     })?;
-    Ok(rows.collect::<rusqlite::Result<_>>()?)
+    let contacts: Vec<Contact> = rows.collect::<rusqlite::Result<_>>()?;
+    // Addresses removed from the suggestions go here, compared in Rust:
+    // SQLite folds case only for ASCII letters, and an address may have
+    // others (`hide` stores the key as `address_key` makes it).
+    let removed: std::collections::HashSet<String> = hidden(conn)?.into_iter().collect();
+    Ok(contacts
+        .into_iter()
+        .filter(|c| !removed.contains(&address_key(&c.email)))
+        .collect())
+}
+
+/// How an address is compared for removal from the suggestions: trimmed,
+/// with every letter in lower case (not only ASCII ones, as SQLite would),
+/// as the compose window compares addresses (`sameEmail`).
+fn address_key(email: &str) -> String {
+    email.trim().to_lowercase()
 }
 
 /// Takes `email` out of the suggestions (`all`), for every account. Only
@@ -159,7 +173,7 @@ pub fn hide(conn: &Connection, email: &str) -> Result<()> {
     conn.execute(
         "INSERT INTO hidden_contacts (email, hidden_at) VALUES (?1, ?2)
          ON CONFLICT (email) DO UPDATE SET hidden_at = excluded.hidden_at",
-        params![email.trim(), now_millis()],
+        params![address_key(email), now_millis()],
     )?;
     Ok(())
 }
@@ -168,12 +182,13 @@ pub fn hide(conn: &Connection, email: &str) -> Result<()> {
 pub fn unhide(conn: &Connection, email: &str) -> Result<()> {
     conn.execute(
         "DELETE FROM hidden_contacts WHERE email = ?1",
-        [email.trim()],
+        [address_key(email)],
     )?;
     Ok(())
 }
 
-/// The addresses taken out of the suggestions, most recently first.
+/// The addresses taken out of the suggestions (as `address_key` writes
+/// them), most recently first.
 pub fn hidden(conn: &Connection) -> Result<Vec<String>> {
     let mut stmt =
         conn.prepare("SELECT email FROM hidden_contacts ORDER BY hidden_at DESC, email")?;
@@ -386,6 +401,26 @@ mod tests {
         unhide(&conn, "Priya@x.example").unwrap();
         assert_eq!(emails(&conn), ["priya@x.example"]);
         assert_eq!(hidden(&conn).unwrap(), ["jordan@x.example"]);
+
+        // Letters beyond ASCII too, which SQLite doesn't fold: two
+        // spellings seen in mail of two accounts are both removed, and
+        // restoring through either brings both back.
+        for (account, id, email) in [(a, "u1", "Élodie@x.example"), (b, "u2", "élodie@x.example")]
+        {
+            upsert_thread(
+                &mut conn,
+                account,
+                &message(id, &["INBOX"], addr("Élodie", email), vec![], now),
+            )
+            .unwrap();
+        }
+        let elodie =
+            |conn: &Connection| emails(conn).iter().filter(|e| e.contains("lodie")).count();
+        assert_eq!(elodie(&conn), 2);
+        hide(&conn, "ÉLODIE@x.example").unwrap();
+        assert_eq!(elodie(&conn), 0);
+        unhide(&conn, "élodie@X.example").unwrap();
+        assert_eq!(elodie(&conn), 2);
     }
 
     #[test]

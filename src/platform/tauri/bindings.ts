@@ -219,7 +219,7 @@ export const commands = {
 	contactsUnhide: (email: string) => typedError<null, AppError>(__TAURI_INVOKE("contacts_unhide", { email })),
 	/**
 	 *  The addresses taken out of the suggestions, most recently first
-	 *  (Settings → Writing).
+	 *  (Settings → Composing).
 	 */
 	contactsHidden: () => typedError<string[], AppError>(__TAURI_INVOKE("contacts_hidden")),
 	/**

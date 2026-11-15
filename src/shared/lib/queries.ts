@@ -22,6 +22,7 @@ import type {
   VacationSettings,
 } from "../../platform/tauri/bindings";
 import { IS_TAURI, unwrap } from "../../platform/tauri/ipc";
+import { showToast } from "./toast";
 import { newRequestId } from "../../features/ai/ui/stream";
 import { upsertSyncState } from "../../features/accounts/model/accounts";
 import { type Selection, selectionKey, toListQuery } from "../../features/mailbox/model/views";
@@ -196,7 +197,7 @@ export function useContacts() {
   });
 }
 
-/** The addresses taken out of the suggestions (Settings → Writing). */
+/** The addresses taken out of the suggestions (Settings → Composing). */
 export function useHiddenContacts() {
   return useQuery({
     queryKey: keys.hiddenContacts,
@@ -208,13 +209,21 @@ export function useHiddenContacts() {
 /**
  * Takes an address out of the suggestions (`hidden: true`) or puts it
  * back. Only the app's own list changes, never Google's contacts. The
- * suggestions and the list are read again after.
+ * suggestions and the list are read again after. A failure says so here,
+ * so it shows even when the composer that asked has closed (Undo).
  */
 export function useHideContact() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ email, hidden }: { email: string; hidden: boolean }) =>
       unwrap(hidden ? commands.contactsHide(email) : commands.contactsUnhide(email)),
+    onError: (error, { email, hidden }) =>
+      showToast({
+        tone: "error",
+        message: `Couldn't ${hidden ? "remove" : "restore"} ${email}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      }),
     onSettled: () => qc.invalidateQueries({ queryKey: keys.contacts }),
   });
 }

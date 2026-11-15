@@ -166,15 +166,21 @@ export function AddressField({
     if (text.trim()) add(parseAddresses(text));
   };
   const hideContact = useHideContact();
-  // Taken out of the suggestions for good (Settings → Writing brings it
+  // Taken out of the suggestions for good (Settings → Composing brings it
   // back), with Undo for a slip. The rest of the list moves up.
   const remove = (a: Address) => {
     const email = a.email;
-    hideContact.mutate({ email, hidden: true });
-    showToast({
-      message: `${email} won't be suggested`,
-      action: { label: "Undo", run: () => hideContact.mutate({ email, hidden: false }) },
-    });
+    // Said once it's saved (a failure says so instead: `useHideContact`).
+    hideContact.mutate(
+      { email, hidden: true },
+      {
+        onSuccess: () =>
+          showToast({
+            message: `${email} won't be suggested`,
+            action: { label: "Undo", run: () => hideContact.mutate({ email, hidden: false }) },
+          }),
+      },
+    );
   };
   const pick = (a: Address) => {
     // Just the address (suggestions carry ranking fields too).
