@@ -5968,14 +5968,19 @@ Privacy and the policy.*
       data, settings, cache and log folders are made 0700 on macOS and
       Linux, and a client file already there is made private. `Db::open`
       makes its folder 0700 and the database and its `-wal` and `-shm`
-      files 0600, including ones an earlier version left open. Saving the
-      client file sets 0600 through the opened temporary file too, so a
-      leftover from an earlier save doesn't keep its mode. On Windows the
-      client file gets a protected access list for this user alone (by
-      SID), set before the secret is written, and at startup; the folders
-      keep what they inherit from the user's profile. A link is never
-      followed. Tests for each, failing with the fix removed; the Windows
-      tests run in CI's Windows job)*
+      files 0600 there, including ones an earlier version left open.
+      Saving the client file sets 0600 through the opened temporary file
+      too, so a leftover from an earlier save doesn't keep its mode. These
+      set the mode bits only: an access list someone added by hand on
+      macOS stays. Changing a mode is best effort, so a folder owned by
+      another account still opens. On Windows the client file, which
+      holds the OAuth client secret, gets a protected access list for this
+      user alone (by SID), set before the secret is written and at
+      startup; the folders and the database keep what they inherit from
+      the user's profile (the user, SYSTEM and administrators), so backup
+      and antivirus still reach them. A link, to a file or a folder, is
+      left alone. Tests for each, failing with the fix removed; the
+      Windows tests run in CI's Windows job)*
 - [ ] The Windows named pipe for AI apps (DASA 1.7.1, 2.3.1): give it an
       explicit security descriptor for the current user, rather than
       relying on the default, with a test (or capture `accesschk` output

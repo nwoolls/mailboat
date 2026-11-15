@@ -1,63 +1,89 @@
 //! Folders and files only this user can open (DASA 1.9.1).
 //!
-//! On macOS and Linux: folders 0700, files 0600. A folder or file made by
-//! an earlier version keeps the mode it was made with until it is set, so
+//! On macOS and Linux: folders 0700, files 0600 (the mode bits; an access
+//! list someone added by hand on macOS stays). A folder or file made by an
+//! earlier version keeps the mode it was made with until it is set, so
 //! startup sets them again. macOS already keeps `~/Library` private; Linux
 //! doesn't keep `~/.local/share` so.
 //!
-//! On Windows the app's folders sit in the user's own profile and take its
-//! permissions. The Google client file, which holds the OAuth client
-//! secret, gets an access list of its own instead (`file`): this user
-//! alone, not inherited from the folder.
+//! On Windows the app's folders and files sit in the user's own profile
+//! and take its permissions (the user, SYSTEM and administrators, so
+//! backup and antivirus still work). Only a secret, the Google client
+//! file, gets an access list of its own (`secret_file`): this user alone,
+//! not inherited from the folder.
 
 use std::path::Path;
 
 /// Makes `dir` and any missing parents, then makes `dir` itself (not its
-/// parents) this user's only (0700 on macOS and Linux; on Windows it keeps
-/// what it inherits from the user's profile).
+/// parents) this user's only: 0700 on macOS and Linux; on Windows it keeps
+/// what it inherits from the user's profile. A link to a folder is left
+/// alone, and so is the folder it points at (someone put it there on
+/// purpose, perhaps to share it).
 pub fn dir(dir: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dir)?;
     #[cfg(unix)]
-    {
+    if std::fs::symlink_metadata(dir)?.file_type().is_dir() {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
     }
     Ok(())
 }
 
-/// Makes the file at `path`, if it's there, this user's only: 0600 on
-/// macOS and Linux, an access list for this user alone on Windows. A file
-/// that isn't there is fine. A link is left alone (and so is what it
-/// points at): the app makes none, so one there wasn't the app's.
+/// Makes the file at `path`, if it's there, this user's only on macOS and
+/// Linux (0600). On Windows it keeps what it inherits from the user's
+/// profile. A file that isn't there is fine. A link is left alone (and so
+/// is what it points at): the app makes none, so one there wasn't the
+/// app's.
 pub fn file(path: &Path) -> std::io::Result<()> {
+    if !regular_file(path)? {
+        return Ok(());
+    }
+    #[cfg(unix)]
+    restrict(path)?;
+    Ok(())
+}
+
+/// `file`, and on Windows an access list for this user alone as well
+/// (nothing inherited, not SYSTEM or administrators): for a file holding a
+/// secret (the Google client file).
+pub fn secret_file(path: &Path) -> std::io::Result<()> {
+    if !regular_file(path)? {
+        return Ok(());
+    }
+    #[cfg(unix)]
+    restrict(path)?;
+    #[cfg(windows)]
+    windows::owner_only(path)?;
+    Ok(())
+}
+
+/// Whether `path` is a regular file (not a link, not missing).
+fn regular_file(path: &Path) -> std::io::Result<bool> {
     match std::fs::symlink_metadata(path) {
-        Ok(meta) if meta.file_type().is_file() => restrict(path),
-        Ok(_) => Ok(()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Ok(meta) => Ok(meta.file_type().is_file()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(e) => Err(e),
     }
 }
 
 /// Sets the mode through an opened file, not the path, so a link swapped
-/// in between the check and here isn't followed (`O_NOFOLLOW`).
+/// in between the check and here isn't followed (`O_NOFOLLOW`). Opened
+/// for reading, or for writing when this user may only write it (0200).
 #[cfg(unix)]
 fn restrict(path: &Path) -> std::io::Result<()> {
     use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-    let file = std::fs::OpenOptions::new()
-        .read(true)
-        .custom_flags(libc::O_NOFOLLOW)
-        .open(path)?;
+    let open = |read: bool| {
+        std::fs::OpenOptions::new()
+            .read(read)
+            .write(!read)
+            .custom_flags(libc::O_NOFOLLOW)
+            .open(path)
+    };
+    let file = match open(true) {
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => open(false)?,
+        other => other?,
+    };
     file.set_permissions(std::fs::Permissions::from_mode(0o600))
-}
-
-#[cfg(windows)]
-fn restrict(path: &Path) -> std::io::Result<()> {
-    windows::owner_only(path)
-}
-
-#[cfg(not(any(unix, windows)))]
-fn restrict(_path: &Path) -> std::io::Result<()> {
-    Ok(())
 }
 
 /// Windows' access lists: a protected list (nothing inherited from the
@@ -98,7 +124,14 @@ pub(crate) mod windows {
             }
             let mut len = 0u32;
             GetTokenInformation(token, TokenUser, std::ptr::null_mut(), 0, &mut len);
-            let mut buf = vec![0u8; len as usize];
+            if len == 0 {
+                let e = last_error();
+                CloseHandle(token);
+                return Err(e);
+            }
+            // In `u64`s, so the buffer is aligned for `TOKEN_USER` (pointer
+            // alignment), which a byte buffer doesn't promise.
+            let mut buf = vec![0u64; (len as usize).div_ceil(8)];
             let ok = GetTokenInformation(token, TokenUser, buf.as_mut_ptr().cast(), len, &mut len);
             CloseHandle(token);
             if ok == 0 {
@@ -140,6 +173,9 @@ pub(crate) mod windows {
                 GetSecurityDescriptorDacl(descriptor, &mut present, &mut dacl, &mut defaulted);
             let status = if got == 0 {
                 Err(last_error())
+            } else if present == 0 || dacl.is_null() {
+                // Never set no list: on Windows that means anyone may open it.
+                Err(std::io::Error::other("the access list didn't build"))
             } else {
                 match SetNamedSecurityInfoW(
                     target.as_ptr(),
@@ -181,19 +217,32 @@ pub(crate) mod tests {
     }
 
     /// A folder made now, and one an earlier version made open, both end
-    /// up 0700; its parents are left as they were.
+    /// up 0700; its parent keeps the mode it had (set here, so the test
+    /// doesn't depend on the umask). A link to a folder is left alone, and
+    /// so is the folder it points at.
     #[cfg(unix)]
     #[test]
-    fn folders_become_this_users_only() {
+    fn folders_become_this_users_only_but_links_are_left_alone() {
         use std::os::unix::fs::PermissionsExt;
+        let open = || std::fs::Permissions::from_mode(0o755);
         let root = temp("dir");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::set_permissions(&root, open()).unwrap();
         let inner = root.join("inner");
         dir(&inner).unwrap();
         assert_eq!(mode(&inner), 0o700);
-        std::fs::set_permissions(&inner, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&inner, open()).unwrap();
         dir(&inner).unwrap();
         assert_eq!(mode(&inner), 0o700);
-        assert_ne!(mode(&root), 0o700, "a parent keeps its own mode");
+        assert_eq!(mode(&root), 0o755, "a parent keeps its own mode");
+
+        let shared = root.join("shared");
+        std::fs::create_dir(&shared).unwrap();
+        std::fs::set_permissions(&shared, open()).unwrap();
+        let link = root.join("linked");
+        std::os::unix::fs::symlink(&shared, &link).unwrap();
+        dir(&link).unwrap();
+        assert_eq!(mode(&shared), 0o755);
         std::fs::remove_dir_all(&root).unwrap();
     }
 
@@ -211,6 +260,10 @@ pub(crate) mod tests {
         file(&path).unwrap();
         assert_eq!(mode(&path), 0o600);
         file(&root.join("missing.json")).unwrap();
+        // One this user may only write is still made 0600.
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o200)).unwrap();
+        secret_file(&path).unwrap();
+        assert_eq!(mode(&path), 0o600);
 
         let elsewhere = root.join("elsewhere.txt");
         std::fs::write(&elsewhere, "x").unwrap();
@@ -222,22 +275,39 @@ pub(crate) mod tests {
         std::fs::remove_dir_all(&root).unwrap();
     }
 
-    /// On Windows the file's access list is protected (nothing inherited)
-    /// and names this user alone, with full access.
+    /// On Windows a secret's access list is protected (nothing inherited)
+    /// and names this user alone, with full access; an ordinary file keeps
+    /// what it inherits.
     #[cfg(windows)]
     #[test]
-    fn files_get_an_access_list_for_this_user_alone() {
+    fn secrets_get_an_access_list_for_this_user_alone() {
         let root = temp("acl");
         std::fs::create_dir_all(&root).unwrap();
         let path = root.join("a.json");
         std::fs::write(&path, "{}").unwrap();
+        let inherited = read_dacl(&path);
         file(&path).unwrap();
-        let sid = windows::user_sid().unwrap();
-        assert_eq!(read_dacl(&path), format!("D:P(A;;FA;;;{sid})"));
+        assert_eq!(read_dacl(&path), inherited);
+        secret_file(&path).unwrap();
+        assert_user_only(&read_dacl(&path));
         // Still this user's to read and write.
         std::fs::write(&path, "{\"a\":1}").unwrap();
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "{\"a\":1}");
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// The SDDL text of a protected list (`P` among the flags after `D:`,
+    /// which may include others such as `AI`) with one entry: full access
+    /// for this user.
+    #[cfg(windows)]
+    pub(crate) fn assert_user_only(sddl: &str) {
+        let sid = windows::user_sid().unwrap();
+        let (flags, entries) = sddl
+            .strip_prefix("D:")
+            .and_then(|rest| rest.split_once('('))
+            .unwrap_or_else(|| panic!("no entries: {sddl}"));
+        assert!(flags.contains('P'), "not protected: {sddl}");
+        assert_eq!(format!("({entries}"), format!("(A;;FA;;;{sid})"), "{sddl}");
     }
 
     /// The file's access list as SDDL text.

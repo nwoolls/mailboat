@@ -160,14 +160,14 @@ fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
 #[cfg(not(unix))]
 fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     std::fs::File::create(path)?;
-    crate::owner_only::file(path)?;
+    crate::owner_only::secret_file(path)?;
     std::fs::write(path, bytes)
 }
 
 /// Makes a client file already in `config_dir` this user's only: one put
 /// there by hand, or saved before saving did so. Called at startup.
 pub fn make_private(config_dir: &Path) -> std::io::Result<()> {
-    crate::owner_only::file(&client_file_path(config_dir))
+    crate::owner_only::secret_file(&client_file_path(config_dir))
 }
 
 /// The newest client file Google's console downloaded into `dir` in the
@@ -387,11 +387,9 @@ mod tests {
     fn a_saved_client_file_is_this_users_alone() {
         let dir = std::env::temp_dir().join(format!("client-acl-{}", fastrand::u64(..)));
         save(&dir, DESKTOP).unwrap();
-        let sid = crate::owner_only::windows::user_sid().unwrap();
-        assert_eq!(
-            crate::owner_only::tests::read_dacl(&client_file_path(&dir)),
-            format!("D:P(A;;FA;;;{sid})")
-        );
+        crate::owner_only::tests::assert_user_only(&crate::owner_only::tests::read_dacl(
+            &client_file_path(&dir),
+        ));
         std::fs::remove_dir_all(dir).unwrap();
     }
 

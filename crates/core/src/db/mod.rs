@@ -41,22 +41,24 @@ fn database_files(path: &Path) -> [std::path::PathBuf; 3] {
 }
 
 impl Db {
-    /// Opens (or makes) the database at `path`, in a folder only this
-    /// user can open, and makes the database and its write-ahead files
-    /// this user's only (`owner_only`), including ones an earlier version
-    /// made open. SQLite gives new write-ahead files the database's mode.
+    /// Opens (or makes) the database at `path`, and on macOS and Linux
+    /// makes its folder, the database and its write-ahead files this
+    /// user's only (`owner_only`), including ones an earlier version made
+    /// open. SQLite gives new write-ahead files the database's mode. That
+    /// part is best effort: a folder or file whose mode can't be changed
+    /// (owned by another account) still opens, as before.
     pub fn open(path: &Path) -> Result<Self> {
         if let Some(parent) = path.parent() {
-            crate::owner_only::dir(parent)
+            std::fs::create_dir_all(parent)
                 .map_err(|e| CoreError::Other(format!("create data dir: {e}")))?;
+            let _ = crate::owner_only::dir(parent);
         }
         let conn = Connection::open(path)?;
         conn.execute_batch(
             "PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;",
         )?;
         for file in database_files(path) {
-            crate::owner_only::file(&file)
-                .map_err(|e| CoreError::Other(format!("make the database private: {e}")))?;
+            let _ = crate::owner_only::file(&file);
         }
         Self::init(conn)
     }
