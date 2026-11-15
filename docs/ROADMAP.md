@@ -5984,9 +5984,9 @@ Privacy and the policy.*
       and SBOM, the signing and binary-flag output, a sync-log sample from
       a demo-account sign-in, a data-flow diagram, and a written answer
       for each test case (most are in `docs/ARCHITECTURE.md` already).
-      CodeQL already runs on pull requests and pushes to `main` that
-      change code, and weekly, and its results can be submitted as the
-      static scan.
+      CodeQL already scans every pull request and push to `main` that
+      changes code, plus a weekly run. Its results can be submitted as
+      the static scan.
 
 ### Bugs
 
