@@ -269,6 +269,14 @@ mockIPC(
         // A moment later, as from a model, so the stand-ins show first.
         return new Promise((done) => setTimeout(() => done(["Say yes", "Ask for details"]), 800));
       case "thread_get":
+        // `&threads=distinct`: answered as the conversation asked for, so
+        // moving to another one (j/k) shows a different conversation, as in
+        // the app. Not by default: the fake reply belongs to conversation 7.
+        if (new URLSearchParams(location.search).get("threads") === "distinct")
+          return {
+            ...detail,
+            thread: { ...detail.thread, id: (args as { threadId: number }).threadId },
+          };
         return detail;
       case "reply_source":
         return {

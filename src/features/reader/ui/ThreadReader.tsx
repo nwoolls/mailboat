@@ -430,9 +430,19 @@ function Fold({ open, children }: { open: boolean; children: React.ReactNode }) 
  * target big enough to hit easily (owner).
  */
 function BackBar({ back }: { back: ReaderBack }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  // A new one replaces the last when the conversation changes (j/k) or
+  // finishes loading; if focus went with the old one, it comes here.
+  // Focus somewhere still shown (a reply being written) stays put.
+  useEffect(() => {
+    const active = document.activeElement;
+    if (!active || active === document.body || active.closest("[inert]"))
+      ref.current?.focus({ preventScroll: true });
+  }, []);
   return (
     <div className="reader-back px-2 py-1">
       <button
+        ref={ref}
         type="button"
         onClick={back.onBack}
         aria-label={`Back to ${back.label}`}

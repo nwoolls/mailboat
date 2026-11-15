@@ -141,13 +141,6 @@ import { SEARCH_INPUT_ID } from "./TitleSearch";
 import { rememberSearch } from "../features/search/ui/history";
 import { LABEL_BUTTON_ID, MORE_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
 
-/**
- * What the label picker opens under: the Labels button, or the More button
- * once Labels has moved into its menu for want of room.
- */
-function labelPickerButton(): HTMLElement | null {
-  return document.getElementById(LABEL_BUTTON_ID) ?? document.getElementById(MORE_BUTTON_ID);
-}
 import {
   useAccounts,
   useAiStatus,
@@ -165,6 +158,28 @@ import { openAssistantForNextReply } from "../features/ai/ui/assistantOpen";
 import { requestSummary } from "../features/ai/ui/summaryRequests";
 import { translateInMessage } from "../features/ai/ui/translations";
 import { selectedInMessage } from "../features/reader/ui/MessageFrame";
+
+/**
+ * What the label picker opens under: the Labels button, or the More button
+ * once Labels has moved into its menu for want of room.
+ */
+function labelPickerButton(): HTMLElement | null {
+  return document.getElementById(LABEL_BUTTON_ID) ?? document.getElementById(MORE_BUTTON_ID);
+}
+
+/**
+ * Whether Return opens the chosen conversation from where the key was
+ * pressed: nothing focused, or the conversation list itself (focused on
+ * going back from a conversation that filled the window). A focused button
+ * or link keeps Return for itself.
+ */
+function enterOpens(target: EventTarget | null): boolean {
+  return (
+    target === document.body ||
+    (target instanceof HTMLElement &&
+      target.matches('[role="listbox"][aria-label="Conversations"]'))
+  );
+}
 
 /**
  * A file dropped outside a composer does nothing. (With Tauri's own file
@@ -1005,7 +1020,7 @@ export function Shell() {
       // as its toolbar button does.
       if (
         plain &&
-        (e.key === "o" || (e.key === "Enter" && e.target === document.body)) &&
+        (e.key === "o" || (e.key === "Enter" && enterOpens(e.target))) &&
         chosenId !== null &&
         !(readerOpen && selectedId !== null)
       ) {

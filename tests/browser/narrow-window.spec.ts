@@ -219,7 +219,9 @@ test("going back doesn't happen while typing, and Esc puts a floating sidebar aw
 });
 
 test("focus follows the pane that shows", async ({ page }) => {
-  await open(page, 480);
+  await page.setViewportSize({ width: 480, height: 700 });
+  // Each conversation its own, so j shows a different one.
+  await page.goto("/tests/browser/harness.html?mode=shell&rows=1&threads=distinct");
   await page.getByRole("option").first().click();
   await expect.poll(() => listHidden(page)).toBe(true);
   await expect(page.locator("[data-reader-back]")).toBeFocused();
@@ -227,4 +229,14 @@ test("focus follows the pane that shows", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect.poll(() => listHidden(page)).toBe(false);
   await expect(page.getByRole("listbox", { name: "Conversations" })).toBeFocused();
+  // Return opens the conversation again from the focused list.
+  await page.keyboard.press("Enter");
+  await expect.poll(() => listHidden(page)).toBe(true);
+  await expect(page.locator("[data-reader-back]")).toBeFocused();
+  // j moves to the next conversation, whose way back takes the focus.
+  const chosen = page.locator('[role="option"][aria-selected="true"]');
+  const first = await chosen.getAttribute("data-thread-id");
+  await page.keyboard.press("j");
+  await expect(chosen).not.toHaveAttribute("data-thread-id", first ?? "");
+  await expect(page.locator("[data-reader-back]")).toBeFocused();
 });
