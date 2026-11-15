@@ -5991,11 +5991,16 @@ Privacy and the policy.*
       out. Use `tempfile::TempDir`, which is created
       atomically and private, and is removed on every exit.
       *(2026-11-15: built. The working folder is a `tempfile::TempDir`,
-      made with a name no other program can claim first and with mode
-      0700 set explicitly (tempfile leaves it to the umask). It is removed
-      with anything in it when the request ends, however it ends. Tests
-      cover the program exiting, the answer coming in early, a line
-      handler failing and a timeout; they fail if the folder is kept)*
+      made with a name no other program can claim first. On macOS and
+      Linux its mode is set to 0700 (tempfile leaves it to the umask); on
+      Windows it takes the permissions of the temp folder it is made in
+      (`%TEMP%`, normally the user's own), with no owner-only ACL of its
+      own. It is removed with anything in it however the request ends,
+      and only after the program has stopped (review: on Windows a
+      running program's working folder can't be deleted). Tests cover the
+      program exiting, the answer coming in early, a line handler failing
+      and a timeout; they fail if the folder is kept or removed while the
+      program still runs)*
 - [ ] Encrypt the local cache at rest: a key in the keychain and an
       encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
       and costs little speed. Until then the cache relies on the
