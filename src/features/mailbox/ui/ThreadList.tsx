@@ -73,8 +73,11 @@ type Props = {
   onSwipe: (id: ThreadId, action: ThreadAction) => void;
 };
 
+/** No labels: one array for every render, not a new one each time. */
+const NO_LABELS: Label[] = [];
+
 export function ThreadList({
-  labels = [],
+  labels = NO_LABELS,
   viewingLabel = null,
   viewKey,
   placeholder,

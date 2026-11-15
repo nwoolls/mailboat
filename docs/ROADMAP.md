@@ -5696,9 +5696,9 @@ built, the owner has tried it, and the owner has published 0.3.0
       wait until the new screensavers, #128, are merged, and time it with
       the 0.3.0 release, so the pictures show what that release ships)*
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
-- [x] Label color and visibility. `labels.patch` takes `color`,
+- [x] Label color and visibility. Gmail keeps a label's `color`,
       `labelListVisibility` and `messageListVisibility`; the app only
-      renames (`rename_label` sends `name`). Pick a label's color from
+      renamed (`rename_label` sends `name`). Pick a label's color from
       Gmail's palette and hide or show it in the sidebar, kept in sync
       with Gmail.
       Permission: existing (`gmail.modify`). Competitors: Mimestream

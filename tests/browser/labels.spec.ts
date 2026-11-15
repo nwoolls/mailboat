@@ -134,6 +134,15 @@ test("submenus open on hover and with →, and ← or another item closes them",
   await item("Show in sidebar").hover();
   await expect(where).toBeVisible();
   await expect(colors).toHaveCount(0);
+  // Straight from one submenu's choices into the other's by clicking it:
+  // the first still closes.
+  await item("Color").click();
+  await expect(colors).toBeVisible();
+  await item("Show in sidebar").click();
+  await page.waitForTimeout(400);
+  await expect(where).toBeVisible();
+  await expect(colors).toHaveCount(0);
+  await page.keyboard.press("ArrowLeft");
   // ← closes just it, back on its item; Esc then closes the label's menu.
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowLeft");

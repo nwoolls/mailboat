@@ -442,3 +442,71 @@ async fn changes_to_one_label_take_turns() {
         .collect();
     assert_eq!(methods, ["GET", "PUT", "GET", "PUT"]);
 }
+
+/// Renaming a parent renames its children in their own turn: a change to a
+/// child already under way finishes first, so its whole-label write can't
+/// put the old name back after the rename (review).
+#[tokio::test]
+async fn renaming_a_parent_waits_for_a_change_to_its_child() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/labels/Label_10"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({
+                    "id": "Label_10", "name": "Work/Acme", "type": "user",
+                }))
+                .set_delay(std::time::Duration::from_millis(300)),
+        )
+        .mount(&server)
+        .await;
+    for (verb, id) in [
+        ("PUT", "Label_10"),
+        ("PATCH", "Label_9"),
+        ("PATCH", "Label_10"),
+    ] {
+        Mock::given(method(verb))
+            .and(path(format!("/gmail/v1/users/me/labels/{id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+            .mount(&server)
+            .await;
+    }
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db);
+    db.conn()
+        .execute(
+            "INSERT INTO labels (account_id, gmail_label_id, name, kind) VALUES
+               (?1, 'Label_9', 'Work', 'user'), (?1, 'Label_10', 'Work/Acme', 'user')",
+            [a],
+        )
+        .unwrap();
+    let work = label_named(&db, "Work").unwrap();
+    let acme = label_named(&db, "Work/Acme").unwrap();
+    let uri = server.uri();
+    let gmail_for = |_| Ok(client(&uri).0);
+    let change = labels::change(
+        &db,
+        gmail_for,
+        acme,
+        labels::LabelChange::Color(Some("#4a86e8".into())),
+    );
+    let rename = async {
+        // Starts once the child's change is under way.
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        labels::rename(&db, gmail_for, work, "Jobs").await
+    };
+    let (changed, renamed) = tokio::join!(change, rename);
+    changed.unwrap();
+    renamed.unwrap();
+    let child: Vec<String> = server
+        .received_requests()
+        .await
+        .unwrap()
+        .iter()
+        .filter(|r| r.url.path().ends_with("Label_10"))
+        .map(|r| r.method.to_string())
+        .collect();
+    // The rename's write comes after the change's, so the new name stands.
+    assert_eq!(child, ["GET", "PUT", "PATCH"]);
+    assert_eq!(label_named(&db, "Jobs/Acme"), Some(acme));
+}

@@ -169,6 +169,7 @@ impl SyncEngine<'_> {
                 outcome.changed_threads += after.changed_threads;
                 outcome.new_inbox = after.new_inbox;
                 outcome.new_unread = after.new_unread;
+                outcome.labels_changed |= after.labels_changed;
             }
             // Gmail kept no history that old: nothing to catch up on.
             Err(CoreError::HistoryExpired) => {}

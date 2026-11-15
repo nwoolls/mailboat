@@ -262,10 +262,19 @@ export function MenuSubmenu({
     if (!open || !parent) return;
     const onFocusIn = (e: FocusEvent) => {
       const to = e.target as HTMLElement;
-      window.clearTimeout(leaving.current);
-      if (to === item.current || sub.current?.contains(to)) return;
-      if (to.closest("[role=menu]") !== parent || !to.matches(ITEM)) return;
-      leaving.current = window.setTimeout(() => setOpen(false), 250);
+      // Back on this item or into this submenu: it stays.
+      if (to === item.current || sub.current?.contains(to)) {
+        window.clearTimeout(leaving.current);
+        leaving.current = 0;
+        return;
+      }
+      // Any other item of the parent, or of a sibling's submenu (focus
+      // can go straight into one): it goes, once, after a moment.
+      if (!to.matches(ITEM) || !parent.contains(to) || leaving.current) return;
+      leaving.current = window.setTimeout(() => {
+        leaving.current = 0;
+        setOpen(false);
+      }, 250);
     };
     parent.addEventListener("focusin", onFocusIn);
     return () => {

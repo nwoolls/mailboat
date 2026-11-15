@@ -132,8 +132,23 @@ pub async fn rename(
         )?;
         rows.collect::<rusqlite::Result<_>>()?
     };
-    for (child, child_gmail, child_name) in children {
-        let renamed = format!("{name}/{}", &child_name[prefix.len()..]);
+    for (child, child_gmail, _) in children {
+        // Each child's own turn too: a change to it rewrites its whole label,
+        // name included, so one in progress would undo this rename (review).
+        // Always parent first, then children, so turns can't deadlock.
+        let _child_turn = turn(child).await;
+        // Its name as it is now, which a change before this turn may not
+        // have left as it was when listed.
+        let now: Option<String> = db
+            .conn()
+            .query_row("SELECT name FROM labels WHERE id = ?1", [child], |r| {
+                r.get(0)
+            })
+            .optional()?;
+        let Some(rest) = now.as_deref().and_then(|n| n.strip_prefix(&prefix)) else {
+            continue;
+        };
+        let renamed = format!("{name}/{rest}");
         gmail.rename_label(&child_gmail, &renamed).await?;
         db.conn().execute(
             "UPDATE labels SET name = ?2 WHERE id = ?1",
