@@ -210,6 +210,13 @@
           tracking pixels are always removed.
         </li>
         <li>
+          <strong>Links in email.</strong> A link you click opens in your browser, which contacts
+          the site it goes to. Known tracking codes in the link's address (such as
+          <code>utm_source</code>) are removed first. A site can still learn where you came from in
+          other ways: a link that passes through a tracking address on its way, or one that carries
+          the campaign in the rest of its address, is opened as it is.
+        </li>
+        <li>
           <strong>Update checks.</strong> When it starts and about once a day, the app fetches one
           small file from getmailboat.app, which passes it on to GitHub, so both see your IP
           address. The version you run and your kind of computer aren't sent. When you install an

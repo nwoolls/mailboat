@@ -35,13 +35,76 @@ fn is_openable(url: &url::Url) -> bool {
     matches!(url.scheme(), "http" | "https" | "mailto")
 }
 
-/// The `email-link:` URL for an email link, or `None` if the link shouldn't
-/// be clickable at all (scripts, files, relative paths...).
+/// Query parameters that only tell a site or an ad network where a click
+/// came from, removed from every web link in an email (as known tracking
+/// pixels are). Matched by name, ignoring case. Only names that a page
+/// never needs to work are listed: codes that identify the reader to the
+/// site itself (an unsubscribe or sign-in token, Marketo's `mkt_tok`,
+/// HubSpot's `_hsenc`) stay, since taking them away can break the link.
+///
+/// In order: ad click IDs (Google, Microsoft, Meta, X, TikTok, Yandex),
+/// Instagram's share tag, Mailchimp's campaign and member tags on the
+/// landing page, and HubSpot's analytics cookies carried across sites.
+const TRACKING_PARAMS: &[&str] = &[
+    "gclid", "gclsrc", "dclid", "gbraid", "wbraid", "msclkid", "fbclid", "twclid", "ttclid",
+    "yclid", "igshid", "mc_cid", "mc_eid", "__hstc", "__hssc", "__hsfp",
+];
+
+/// Any parameter starting with this goes too: Google Analytics' campaign
+/// tags (`utm_source`, `utm_medium`, `utm_campaign`...).
+const TRACKING_PREFIX: &str = "utm_";
+
+fn is_tracking_param(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    name.starts_with(TRACKING_PREFIX) || TRACKING_PARAMS.contains(&name.as_str())
+}
+
+/// `url` without its tracking parameters (`TRACKING_PARAMS`). The rest of
+/// the query is kept as written, in order, so nothing else changes; a query
+/// left empty goes. Only web links: a `mailto:` link's query is the email.
+fn strip_tracking(url: &mut url::Url) {
+    if !matches!(url.scheme(), "http" | "https") {
+        return;
+    }
+    let Some(query) = url.query() else { return };
+    let kept: Vec<&str> = query
+        .split('&')
+        .filter(|pair| {
+            let name = pair.split('=').next().unwrap_or_default();
+            let name = url::form_urlencoded::parse(name.as_bytes())
+                .next()
+                .map(|(k, _)| k.into_owned())
+                .unwrap_or_default();
+            !is_tracking_param(&name)
+        })
+        .collect();
+    if kept.len() == query.split('&').count() {
+        return;
+    }
+    let kept = kept.join("&");
+    url.set_query((!kept.is_empty()).then_some(kept.as_str()));
+}
+
+/// The link an email link opens: an `http`, `https` or `mailto` address,
+/// without tracking parameters (`strip_tracking`), or `None` if it
+/// shouldn't be clickable at all (scripts, files, relative paths...).
+pub fn target(href: &str) -> Option<url::Url> {
+    let mut target = url::Url::parse(href.trim()).ok().filter(is_openable)?;
+    strip_tracking(&mut target);
+    Some(target)
+}
+
+/// The `email-link:` URL for an email link (`target`), or `None` if the link
+/// shouldn't be clickable at all.
 pub fn wrap(href: &str) -> Option<String> {
-    let target = url::Url::parse(href.trim()).ok().filter(is_openable)?;
+    target(href).map(|t| wrap_target(&t))
+}
+
+/// The `email-link:` URL that opens `target`, from `target`.
+pub fn wrap_target(target: &url::Url) -> String {
     let encoded: String =
         url::form_urlencoded::byte_serialize(target.as_str().as_bytes()).collect();
-    Some(format!("{}?u={encoded}", link_base()))
+    format!("{}?u={encoded}", link_base())
 }
 
 /// The real link carried by a `email-link:` request, if it's safe to open.
@@ -69,6 +132,54 @@ mod tests {
                 unwrap(&wrapped).unwrap(),
                 url::Url::parse(link).unwrap().as_str()
             );
+        }
+    }
+
+    #[test]
+    fn tracking_codes_are_removed_and_the_rest_kept_as_written() {
+        for (link, clean) in [
+            (
+                "https://shop.example/sale?utm_source=news&utm_medium=email&id=42",
+                "https://shop.example/sale?id=42",
+            ),
+            // Any case, anywhere in the query, and the rest's encoding untouched.
+            (
+                "https://x.example/a?q=one+two%20three&UTM_Campaign=x&fbclid=abc&page=2#top",
+                "https://x.example/a?q=one+two%20three&page=2#top",
+            ),
+            (
+                "https://x.example/?gclid=1&msclkid=2&mc_cid=3&mc_eid=4&__hstc=5",
+                "https://x.example/",
+            ),
+            // A name merely like one stays.
+            (
+                "https://x.example/?utm=1&my_utm_source=2&gclid_note=3",
+                "https://x.example/?utm=1&my_utm_source=2&gclid_note=3",
+            ),
+            // Codes a page needs to work stay.
+            (
+                "https://x.example/unsubscribe?mkt_tok=abc&_hsenc=def&token=ghi",
+                "https://x.example/unsubscribe?mkt_tok=abc&_hsenc=def&token=ghi",
+            ),
+            // An encoded name is still recognized.
+            (
+                "https://x.example/?utm%5Fsource=a&b=c",
+                "https://x.example/?b=c",
+            ),
+            // Every listed name, and the rest's odd shapes (empty pairs, a
+            // name with no value, an `=` in a value) kept as they were.
+            (
+                "https://x.example/?a&&igshid=1&twclid=2&b=c=d&ttclid=3&yclid=4&gbraid=5&wbraid=6&dclid=7&gclsrc=8&__hssc=9&__hsfp=10&",
+                "https://x.example/?a&&b=c=d&",
+            ),
+            // A mail link's query is the email itself.
+            (
+                "mailto:a@b.example?subject=Hi&utm_source=x",
+                "mailto:a@b.example?subject=Hi&utm_source=x",
+            ),
+        ] {
+            assert_eq!(target(link).unwrap().as_str(), clean, "{link}");
+            assert_eq!(unwrap(&wrap(link).unwrap()).unwrap(), clean, "{link}");
         }
     }
 

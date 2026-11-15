@@ -545,11 +545,12 @@ pub fn sanitize_html_colors(
                 // Route clicks through the app (see `mail::links`); links that
                 // must not open (javascript:, file:, relative...) go inert.
                 let href = attr(el, "href").unwrap_or_default();
-                match super::links::wrap(&href) {
-                    Some(wrapped) => {
-                        set_attr(el, "href", &wrapped)?;
+                // Tracking codes (`utm_` and the like) are taken off first.
+                match super::links::target(&href) {
+                    Some(target) => {
+                        set_attr(el, "href", &super::links::wrap_target(&target))?;
                         // Hovering shows where the link really goes.
-                        set_attr(el, "title", href.trim())?;
+                        set_attr(el, "title", target.as_str())?;
                     }
                     None => el.remove_attribute("href"),
                 }
@@ -1157,6 +1158,27 @@ mod tests {
         assert!(out
             .document
             .contains(r#"title="https://x.example/?a=1&amp;copy=2""#));
+    }
+
+    #[test]
+    fn links_lose_their_tracking_codes_on_click_and_on_hover() {
+        let out = sanitize_html(
+            r#"<a href="https://shop.example/sale?utm_source=news&amp;id=42&amp;fbclid=abc">Sale</a>"#,
+            false,
+        )
+        .document;
+        let wrapped = out
+            .split("href=\"")
+            .nth(1)
+            .and_then(|rest| rest.split('"').next())
+            .unwrap()
+            .replace("&amp;", "&");
+        assert_eq!(
+            super::super::links::unwrap(&wrapped).unwrap(),
+            "https://shop.example/sale?id=42"
+        );
+        assert!(out.contains(r#"title="https://shop.example/sale?id=42""#));
+        assert!(!out.contains("utm_source") && !out.contains("fbclid"));
     }
 
     #[test]
