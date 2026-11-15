@@ -75,7 +75,7 @@ import { useOlderMail } from "../features/mailbox/ui/useOlderMail";
 import { useThreadAction } from "../features/mailbox/ui/useThreadAction";
 import { anchorBelow, Menu, type MenuAnchor, MenuItem, MenuSeparator } from "../shared/ui/Menu";
 import { MoreIcon } from "../shared/ui/icons";
-import { COMMAND_ICONS } from "./commandIcons";
+import { commandIcon } from "./commandIcons";
 import { dismissToast, showToast, useToast } from "../shared/lib/toast";
 import { Toast } from "../shared/ui/Toast";
 import {
@@ -1173,6 +1173,7 @@ export function Shell() {
           onToggleReader={toggleReader}
           canCompose={accountList.length > 0}
           onCompose={startNew}
+          targetKey={targetIds.join(",")}
           showReaderToggle={!single}
           overflow={overflow}
           onOverflow={setOverflow}
@@ -1519,7 +1520,7 @@ export function Shell() {
               <Fragment key={c.id}>
                 {line && <MenuSeparator />}
                 <MenuItem
-                  icon={COMMAND_ICONS[c.id] ?? MoreIcon}
+                  icon={commandIcon(c) ?? MoreIcon}
                   disabled={!c.enabled}
                   hint={c.key}
                   onSelect={() => {
@@ -1549,7 +1550,7 @@ export function Shell() {
             <Fragment key={c.id}>
               {c.id === "filterLike" && i > 0 && <MenuSeparator />}
               <MenuItem
-                icon={COMMAND_ICONS[c.id] ?? MoreIcon}
+                icon={commandIcon(c) ?? MoreIcon}
                 disabled={!c.enabled}
                 hint={OVERFLOW_ORDER.some((o) => o === c.id) ? c.key : undefined}
                 onSelect={() => {

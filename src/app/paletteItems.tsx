@@ -3,7 +3,7 @@ import type { Selection } from "../features/mailbox/model/views";
 import type { Destination } from "../features/palette/model/destinations";
 import type { PaletteItem } from "../features/palette/ui/CommandPalette";
 import { InboxIcon, LabelIcon, SettingsIcon } from "../shared/ui/icons";
-import { COMMAND_ICONS } from "./commandIcons";
+import { commandIcon } from "./commandIcons";
 import { accelLabel } from "../shared/lib/platform";
 
 /** Where each command sits in the palette. */
@@ -44,7 +44,7 @@ export function paletteItems(p: {
       group: GROUPS[c.id] ?? "Conversation",
       title: c.title,
       shortcut: c.key,
-      icon: COMMAND_ICONS[c.id],
+      icon: commandIcon(c),
       run: () => p.run(c.id),
     }));
   if (p.screensavers.length) {

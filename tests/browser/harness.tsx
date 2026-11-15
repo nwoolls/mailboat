@@ -123,6 +123,8 @@ const rowLabelIds = [
   [101, 102, 103],
   [103, 105],
 ];
+/** `?mode=shell`: stars and read states changed by the app, by conversation. */
+const shellChanges = new Map<number, { starred?: boolean; unread?: boolean }>();
 // `&conversation=all` (with `?mode=shell`): the conversation has all five emails.
 const unreadMode =
   harnessMode === "unread" ||
@@ -239,12 +241,26 @@ mockIPC(
         // `?mode=shell&rows=1`: the demo's Inbox, for every view and search.
         if (harnessMode === "shell" && onboardingParams.has("rows"))
           return {
-            threads: withLabels
-              ? inbox().map((t, i) => ({ ...t, labelIds: rowLabelIds[i] ?? [] }))
-              : inbox(),
+            threads: inbox().map((t, i) => ({
+              ...t,
+              ...(withLabels ? { labelIds: rowLabelIds[i] ?? [] } : {}),
+              ...shellChanges.get(t.id),
+            })),
             nextCursor: null,
           };
         return { threads: [], nextCursor: null };
+      case "threads_set_starred":
+      case "threads_set_read": {
+        // Kept, so the list asked for again shows the change, as Rust's would.
+        const a = args as { threadIds: number[]; starred?: boolean; read?: boolean };
+        for (const id of a.threadIds) {
+          const now = shellChanges.get(id) ?? {};
+          if (a.starred !== undefined) now.starred = a.starred;
+          if (a.read !== undefined) now.unread = !a.read;
+          shellChanges.set(id, now);
+        }
+        return null;
+      }
       case "threads_load_older":
         // As Rust with no account to ask: nothing older, and not an error.
         return { added: 0, exhausted: true, failed: 0 };

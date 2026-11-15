@@ -1,4 +1,4 @@
-import type { CommandId } from "../features/commands/model/commands";
+import type { Command, CommandId } from "../features/commands/model/commands";
 import {
   AiIcon,
   ArchiveIcon,
@@ -8,6 +8,7 @@ import {
   ForwardIcon,
   type IconProps,
   LabelIcon,
+  MarkReadIcon,
   MarkUnreadIcon,
   PrintIcon,
   ReaderToggleIcon,
@@ -33,7 +34,7 @@ export const COMMAND_ICONS: Partial<Record<CommandId, (props: IconProps) => Reac
   translate: TranslateIcon,
   archive: ArchiveIcon,
   trash: TrashIcon,
-  read: MarkUnreadIcon,
+  read: MarkReadIcon,
   star: StarIcon,
   spam: SpamIcon,
   labels: LabelIcon,
@@ -47,3 +48,12 @@ export const COMMAND_ICONS: Partial<Record<CommandId, (props: IconProps) => Reac
   sidebar: SidebarToggleIcon,
   reader: ReaderToggleIcon,
 };
+
+/**
+ * A command's icon for what it will do now: Mark as read an open envelope,
+ * Mark as unread a closed one, as Gmail shows them.
+ */
+export function commandIcon(c: Pick<Command, "id" | "action">) {
+  if (c.id === "read" && c.action?.kind === "read" && !c.action.read) return MarkUnreadIcon;
+  return COMMAND_ICONS[c.id];
+}
