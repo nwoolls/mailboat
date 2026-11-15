@@ -5977,8 +5977,11 @@ Privacy and the policy.*
       and `aarch64-pc-windows-msvc`. Checked with a small program built
       the release's way (cargo-xwin on a Mac): `llvm-readobj` shows the
       `GUARD_CF` flag and `CF_INSTRUMENTED` for both, and no `GUARD_CF`
-      without the setting, so cargo-xwin keeps it. The app's own Windows
-      binary is checked by the release workflow item above, once built)*
+      without the setting, so cargo-xwin keeps it. C code built through
+      the `cc` crate gets it too. A `RUSTFLAGS` set in the environment
+      would replace it for a plain Cargo build; nothing sets one. The
+      app's own Windows binary is checked by the release workflow item
+      above, once built)*
 - [x] Owner-only folders and files (DASA 1.9.1): create the data, cache
       and log folders as 0700 at startup, and the database 0600 (macOS
       already keeps `~/Library` private; Linux won't). The OAuth client
