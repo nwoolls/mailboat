@@ -6051,6 +6051,16 @@ Privacy and the policy.*
       what is real, and for each false positive write down why. Keep the
       reports outside the repository, like the other evidence. Repeat once
       the 0.3.0 fixes are in, just before the first paid scan.
+      Run `osv-scanner` on the lockfiles as well *(owner, 2026-11-15)*:
+      OpenSSF Scorecard's Vulnerabilities check uses the same OSV data and
+      scores 3 of 10 with 7 known issues, while `cargo deny` and
+      `bun audit` find none. The likely gap is that `deny.toml` checks only
+      the macOS and Windows targets, and `Cargo.lock` also holds Tauri's
+      Linux GTK3 crates, several with RustSec advisories (not confirmed:
+      osv-scanner wasn't installed when this was found). Fix what can be
+      fixed; for what can't be until Tauri moves off GTK3, record each
+      with its reason in an `osv-scanner.toml` ignore list (check that
+      Scorecard reads it), and give the lab the same reasons.
 - [ ] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
@@ -6062,6 +6072,29 @@ Privacy and the policy.*
       CodeQL already scans every pull request and push to `main` that
       changes code, plus a weekly run. Its results can be submitted as
       the static scan.
+- [ ] The build provenance attached to each release as a file, so
+      OpenSSF Scorecard can see it. The publish job already attests the
+      release files (`actions/attest-build-provenance`), but GitHub keeps
+      that attestation in its own store, not on the release, and
+      Scorecard's Signed-Releases check reads only the release's files:
+      signed files score 8 of 10, and a provenance file named
+      `*.intoto.jsonl` scores 10. Write the action's bundle (its
+      `bundle-path` output) into `release/` as
+      `<App>_<version>.intoto.jsonl` after the attestation and before
+      `gh release create`. The check averages the last five releases, so
+      the score rises one release at a time. Not a CASA requirement; it is
+      here because it changes the same release job as the SBOM item above
+      *(owner, 2026-11-15)*
+- [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
+      bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
+      paperwork, best done once there are releases to point at
+      *(moved from Milestone 17 when it closed, owner, 2026-11-14)*
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-15:
+      fill it in after the evidence for the lab is gathered, since most of
+      what the passing level asks for will exist by then: static analysis,
+      dependency scanning, a way to report vulnerabilities (`SECURITY.md`,
+      `security.txt`), hardening and signed releases. Passing scores 5 of
+      10 on that check, which scores 0 today)*
 
 ### Bugs
 
@@ -6290,11 +6323,6 @@ Privacy and the policy.*
       Milestone 17 when it closed, owner, 2026-11-14)*: a Homebrew tap of
       the owner's own (the main Homebrew list needs an app to be popular
       first) and `winget` for Windows
-
-- [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
-      bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
-      paperwork, best done once there are releases to point at
-      *(moved from Milestone 17 when it closed, owner, 2026-11-14)*
 
 - [ ] "Use a different file" on "Google Cloud is set up" goes back to
       the start of the walkthrough *(owner, 2026-10-30: fine for now;
