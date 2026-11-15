@@ -5767,6 +5767,12 @@ built, the owner has tried it, and the owner has published 0.3.0
       Architecture decisions, which also say what the web view still
       can't check))*
 
+- [ ] A different icon for Spam *(owner, 2026-11-14: "a security shield
+      is the opposite of what we should show")*. Report spam (the toolbar,
+      menus, ⌘K) and the Spam view in the sidebar use a shield, which
+      reads as "safe" or "protected". To pick: an icon that says junk or
+      a warning instead, used everywhere Spam appears
+
 ### Bugs
 
 *The open bugs not picked are in "Later / unscheduled" → Open bugs.*
