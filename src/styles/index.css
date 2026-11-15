@@ -930,6 +930,23 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
   }
 }
 
+/* The way back to the list, while the reader fills a narrow window: it
+   stays at the top as the conversation scrolls under it, with the reader
+   foot's blurred tint so the email doesn't show through. */
+.reader-back {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(
+    in srgb,
+    var(--color-background-base) var(--glass-reader-foot-strength),
+    transparent
+  );
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+  backdrop-filter: blur(28px) saturate(1.6);
+  box-shadow: inset 0 -1px 0 var(--color-stroke);
+}
+
 /* Conversation rows glide to their new place when one leaves (archived,
    swiped away) or arrives, instead of jumping. A swiped-away row slides
    out and fades; one that stays in the view glides back. */

@@ -1,6 +1,11 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { CommandId } from "../features/commands/model/commands";
-import { type SearchPlacement, searchPlacement } from "../features/layout/model/titleSearch";
+import {
+  OVERFLOW_ORDER,
+  overflowCount,
+  type SearchPlacement,
+  searchPlacement,
+} from "../features/layout/model/titleSearch";
 import type { ThreadAction } from "../features/mailbox/model/threadActions";
 import {
   ArchiveIcon,
@@ -67,6 +72,12 @@ type Props = {
   /** Writing needs an account to write from. */
   canCompose: boolean;
   onCompose: () => void;
+  /** Whether the reader's button shows (not when the panes take turns). */
+  showReaderToggle: boolean;
+  /** How many buttons have moved into the More menu (`OVERFLOW_ORDER`). */
+  overflow: number;
+  /** The toolbar measured that a different number must move. */
+  onOverflow: (count: number) => void;
 };
 
 /**
@@ -89,11 +100,15 @@ export function Toolbar({
   onToggleReader,
   canCompose,
   onCompose,
+  showReaderToggle,
+  overflow,
+  onOverflow,
 }: Props) {
   const barRef = useRef<HTMLElement>(null);
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
-  const placement = useSearchPlacement(barRef, leftRef, rightRef);
+  const placement = useSearchPlacement(barRef, leftRef, rightRef, overflow, onOverflow);
+  const moved = new Set<string>(OVERFLOW_ORDER.slice(0, overflow));
   const many = count > 1 ? ` ${count} conversations` : "";
   const archive = actions.archive?.action;
   const trash = actions.trash?.action;
@@ -130,45 +145,55 @@ export function Toolbar({
           onClick={actions.archive?.run}
           disabled={!actions.archive}
         />
-        <ToolButton
-          icon={restore ? RestoreIcon : TrashIcon}
-          label={(names.trash ?? "") + many}
-          shortcut="#"
-          onClick={actions.trash?.run}
-          disabled={!actions.trash}
-        />
-        <ToolButton
-          icon={SpamIcon}
-          label={(names.spam ?? "") + many}
-          shortcut="!"
-          onClick={actions.spam?.run}
-          disabled={!actions.spam}
-        />
-        <ToolButton
-          icon={MarkUnreadIcon}
-          label={(names.read ?? "") + many}
-          shortcut="u"
-          onClick={actions.read?.run}
-          disabled={!actions.read}
-        />
-        <ToolButton
-          icon={StarIcon}
-          label={(names.star ?? "") + many}
-          shortcut="s"
-          onClick={actions.star?.run}
-          disabled={!actions.star}
-          // Every chosen conversation is starred: the star lights up.
-          pressed={unstar}
-          tone={unstar ? "text-warn" : undefined}
-        />
-        <ToolButton
-          id={LABEL_BUTTON_ID}
-          icon={LabelIcon}
-          label={(names.labels ?? "") + many}
-          shortcut="l"
-          onClick={actions.label ?? undefined}
-          disabled={!actions.label}
-        />
+        {!moved.has("trash") && (
+          <ToolButton
+            icon={restore ? RestoreIcon : TrashIcon}
+            label={(names.trash ?? "") + many}
+            shortcut="#"
+            onClick={actions.trash?.run}
+            disabled={!actions.trash}
+          />
+        )}
+        {!moved.has("spam") && (
+          <ToolButton
+            icon={SpamIcon}
+            label={(names.spam ?? "") + many}
+            shortcut="!"
+            onClick={actions.spam?.run}
+            disabled={!actions.spam}
+          />
+        )}
+        {!moved.has("read") && (
+          <ToolButton
+            icon={MarkUnreadIcon}
+            label={(names.read ?? "") + many}
+            shortcut="u"
+            onClick={actions.read?.run}
+            disabled={!actions.read}
+          />
+        )}
+        {!moved.has("star") && (
+          <ToolButton
+            icon={StarIcon}
+            label={(names.star ?? "") + many}
+            shortcut="s"
+            onClick={actions.star?.run}
+            disabled={!actions.star}
+            // Every chosen conversation is starred: the star lights up.
+            pressed={unstar}
+            tone={unstar ? "text-warn" : undefined}
+          />
+        )}
+        {!moved.has("labels") && (
+          <ToolButton
+            id={LABEL_BUTTON_ID}
+            icon={LabelIcon}
+            label={(names.labels ?? "") + many}
+            shortcut="l"
+            onClick={actions.label ?? undefined}
+            disabled={!actions.label}
+          />
+        )}
         <ToolButton
           icon={MoreIcon}
           label="More"
@@ -183,15 +208,19 @@ export function Toolbar({
           onClick={onCompose}
           disabled={!canCompose}
         />
-        <span className="mx-1.5 h-4 w-px bg-stroke" />
-        <ToolButton
-          icon={ReaderToggleIcon}
-          label={!hasSelection ? "Reader opens with a conversation" : (names.reader ?? "")}
-          shortcut={accelLabel("Ctrl+Cmd+R")}
-          onClick={onToggleReader}
-          disabled={!hasSelection}
-          pressed={readerOpen}
-        />
+        {showReaderToggle && (
+          <>
+            <span className="mx-1.5 h-4 w-px bg-stroke" />
+            <ToolButton
+              icon={ReaderToggleIcon}
+              label={!hasSelection ? "Reader opens with a conversation" : (names.reader ?? "")}
+              shortcut={accelLabel("Ctrl+Cmd+R")}
+              onClick={onToggleReader}
+              disabled={!hasSelection}
+              pressed={readerOpen}
+            />
+          </>
+        )}
       </div>
     </header>
   );
@@ -255,24 +284,47 @@ function ToolButton({
   );
 }
 
+/** What each of the buttons that can move takes in the bar: 28px and its gap. */
+const OVERFLOW_BUTTON_WIDTH = 30;
+
 /**
- * Where the search box goes (`searchPlacement`), measured from the bar and
- * the button groups on either side, again whenever any of them resizes
- * (the window, or a button changing). Null until first measured.
+ * Where the search box goes (`searchPlacement`), and how many buttons must
+ * move into the More menu for it to keep its narrowest (`overflowCount`),
+ * measured from the bar and the button groups on either side, again
+ * whenever any of them resizes (the window, or a button coming or going).
+ * Null until first measured.
  */
 function useSearchPlacement(
   bar: React.RefObject<HTMLElement | null>,
   left: React.RefObject<HTMLElement | null>,
   right: React.RefObject<HTMLElement | null>,
+  overflow: number,
+  onOverflow: (count: number) => void,
 ): SearchPlacement | null {
   const [placement, setPlacement] = useState<SearchPlacement | null>(null);
+  // Read by the observer, which outlives a render.
+  const latest = useRef({ overflow, onOverflow });
+  useLayoutEffect(() => {
+    latest.current = { overflow, onOverflow };
+  });
   useLayoutEffect(() => {
     const [b, l, r] = [bar.current, left.current, right.current];
     if (!b || !l || !r) return;
     const measure = () => {
-      const next = searchPlacement(b.clientWidth, l.offsetLeft + l.offsetWidth, r.offsetLeft);
-      setPlacement((now) =>
-        now && now.left === next.left && now.width === next.width ? now : next,
+      const leftEnd = l.offsetLeft + l.offsetWidth;
+      const now = latest.current;
+      // The right-hand buttons without the ones that can move.
+      const shown = OVERFLOW_ORDER.length - now.overflow;
+      const fixed = r.offsetWidth - shown * OVERFLOW_BUTTON_WIDTH;
+      const count = overflowCount(b.clientWidth, leftEnd, fixed, OVERFLOW_BUTTON_WIDTH);
+      if (count !== now.overflow) {
+        // Measured again once the buttons have moved.
+        now.onOverflow(count);
+        return;
+      }
+      const next = searchPlacement(b.clientWidth, leftEnd, r.offsetLeft);
+      setPlacement((was) =>
+        was && was.left === next.left && was.width === next.width ? was : next,
       );
     };
     const observer = new ResizeObserver(measure);

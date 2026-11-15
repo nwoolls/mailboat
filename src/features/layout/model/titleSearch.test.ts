@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { SEARCH_GAP, SEARCH_WIDTH, searchPlacement } from "./titleSearch";
+import {
+  OVERFLOW_ORDER,
+  overflowCount,
+  SEARCH_GAP,
+  SEARCH_WIDTH,
+  searchPlacement,
+} from "./titleSearch";
 
 /** The macOS title bar: traffic lights and the sidebar button on the left, ten buttons on the right. */
 const LEFT_END = 108;
@@ -50,5 +56,30 @@ describe("the title bar's search box", () => {
     const p = searchPlacement(500, 108, 300);
     expect(p.width).toBe(300 - 108 - 2 * SEARCH_GAP);
     expect(searchPlacement(300, 200, 210).width).toBe(0);
+  });
+});
+
+describe("toolbar buttons moving into More", () => {
+  // The macOS bar's right-hand buttons without the five that can move.
+  const fixed = 332 - 5 * 30;
+  const moved = (bar: number) => overflowCount(bar, LEFT_END, fixed, 30);
+
+  it("moves none while everything fits", () => {
+    expect(moved(1280)).toBe(0);
+    expect(moved(LEFT_END + fixed + 5 * 30 + 2 * SEARCH_GAP + SEARCH_WIDTH.min)).toBe(0);
+  });
+
+  it("moves them one at a time as the window narrows, and never more than there are", () => {
+    const widest = LEFT_END + fixed + 5 * 30 + 2 * SEARCH_GAP + SEARCH_WIDTH.min;
+    expect(moved(widest - 1)).toBe(1);
+    expect(moved(widest - 30)).toBe(1);
+    expect(moved(widest - 31)).toBe(2);
+    expect(moved(400)).toBe(OVERFLOW_ORDER.length);
+    expect(moved(100)).toBe(OVERFLOW_ORDER.length);
+  });
+
+  it("starts with Labels and keeps Archive", () => {
+    expect(OVERFLOW_ORDER[0]).toBe("labels");
+    expect(OVERFLOW_ORDER).not.toContain("archive");
   });
 });

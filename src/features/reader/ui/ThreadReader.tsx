@@ -7,6 +7,7 @@ import type {
 } from "../../../platform/tauri/bindings";
 import { useThread } from "../../../shared/lib/queries";
 import { AccountDot } from "../../../shared/ui/AccountDot";
+import { BackIcon } from "../../../shared/ui/icons";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { displayName, formatFullDate, formatListDate } from "../../mailbox/model/format";
 import { useThreadAction } from "../../mailbox/ui/useThreadAction";
@@ -64,15 +65,21 @@ export function landingMessage(
 /** How long the landing email is kept at the top while the emails above settle. */
 const LANDING_SETTLE_MS = 1500;
 
+/** A way back to the list, when the reader takes the whole window. */
+export type ReaderBack = { label: string; onBack: () => void };
+
 export function ThreadReader({
   threadId,
   accounts,
   renderFooter,
+  back,
 }: {
   threadId: ThreadId;
   accounts: AccountIndex;
   /** Under the last message: the reply buttons, or a reply being written. */
   renderFooter?: (detail: ThreadDetail) => React.ReactNode;
+  /** Shown above the subject while the list and reader take turns. */
+  back?: ReaderBack;
 }) {
   const thread = useThread(threadId);
   if (thread.error) return <div className="selectable p-8 text-danger">{thread.error.message}</div>;
@@ -87,6 +94,7 @@ export function ThreadReader({
       accounts={accounts}
       leaving={thread.isPlaceholderData}
       renderFooter={renderFooter}
+      back={back}
     />
   );
 }
@@ -96,11 +104,13 @@ function ThreadBody({
   accounts,
   leaving,
   renderFooter,
+  back,
 }: {
   detail: ThreadDetail;
   accounts: AccountIndex;
   leaving: boolean;
   renderFooter?: (detail: ThreadDetail) => React.ReactNode;
+  back?: ReaderBack;
 }) {
   const contentRef = useWholePixelHeight();
   // Settings → Appearance → Text size. Zoomed piece by piece, never around
@@ -167,7 +177,22 @@ function ThreadBody({
       }`}
     >
       <div ref={contentRef}>
-        <header className="px-4 pt-5 pb-3" style={{ zoom }}>
+        {back && (
+          // Pinned at the top while the conversation scrolls under it, so
+          // the way back is always in reach (owner).
+          <div className="reader-back px-2 py-1">
+            <button
+              type="button"
+              onClick={back.onBack}
+              title={`Back to ${back.label} (Esc)`}
+              className="flex min-h-8 items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-accent hover:bg-selection"
+            >
+              <BackIcon size={16} />
+              {back.label}
+            </button>
+          </div>
+        )}
+        <header className={`px-4 pb-3 ${back ? "pt-2" : "pt-5"}`} style={{ zoom }}>
           <h1 className="selectable text-lg leading-snug font-semibold">
             {data.thread.subject || "(no subject)"}
           </h1>

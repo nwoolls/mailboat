@@ -16,6 +16,29 @@ export const SPLITTER_WIDTH = 8;
 /** How far one arrow-key press moves a focused splitter. */
 export const KEYBOARD_STEP = 16;
 
+/** The window's own edge (its right-hand gutter). */
+const WINDOW_EDGE = 8;
+/** The window's narrowest (`minWidth` in `tauri.conf.json` must match). */
+export const WINDOW_MIN_WIDTH = 420;
+
+/**
+ * How the window lays out its panes, by its width (owner, 2026-11-14):
+ * - `full`: sidebar, list and reader side by side, as each is set to show;
+ * - `folded`: the sidebar no longer fits beside the list and the reader,
+ *   so it folds away (its button and hover float it over the list), and
+ *   comes back when the window widens again;
+ * - `single`: not even the list and the reader fit side by side, so they
+ *   take turns: the list, or the open conversation across the window.
+ */
+export type PaneMode = "full" | "folded" | "single";
+
+export function paneMode(windowWidth: number, sidebarWidth: number): PaneMode {
+  const listAndReader = LIST_WIDTH.min + SPLITTER_WIDTH + READER_MIN_WIDTH + WINDOW_EDGE;
+  if (windowWidth >= sidebarWidth + SPLITTER_WIDTH + listAndReader) return "full";
+  if (windowWidth >= SPLITTER_WIDTH + listAndReader) return "folded";
+  return "single";
+}
+
 export function clampWidth(width: number, min: number, max: number): number {
   return Math.round(Math.min(Math.max(width, min), Math.max(min, max)));
 }

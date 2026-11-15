@@ -5754,7 +5754,7 @@ built, the owner has tried it, and the owner has published 0.3.0
 
 *The open bugs not picked are in "Later / unscheduled" → Open bugs.*
 
-- [ ] A narrow window: the toolbar overlaps the search, and the window
+- [x] A narrow window: the toolbar overlaps the search, and the window
       can't be made narrower *(owner, 2026-11-14, with a screenshot)*. At
       the window's narrowest, the first toolbar button (Archive) sits over
       the right end of the search field. The search field and the toolbar's
@@ -5773,6 +5773,20 @@ built, the owner has tried it, and the owner has published 0.3.0
       sidebar, list and reader need about 750px at their narrowest, and the
       window stops at 820. A narrower window waits on the owner's choice of
       what gives way first)*
+      *(2026-11-14, the owner's choice from a mockup: the sidebar folds,
+      then the list and the reader take turns. Built: once the sidebar no
+      longer fits beside the list and the reader (below about 810px with
+      its usual width), it folds away; its button and hover float it over
+      the list, and it comes back when the window widens unless it was
+      hidden by hand. Below about 585px only one pane shows: the list, or
+      the open conversation across the window with a link back (named
+      after the view) in a bar that stays at the top while the conversation
+      scrolls, Esc or ⌘[, and no reader button. The owner tried it: the link
+      was first above the subject, scrolled away with it and was small to
+      hit, so it got the pinned bar and a bigger target.
+      Toolbar buttons that don't fit move into the More menu, Labels first,
+      then Star, Mark read, Spam and Trash; Archive stays. The window now
+      goes down to 420px, where it used to stop at 820px)*
 
 ## Later / unscheduled
 

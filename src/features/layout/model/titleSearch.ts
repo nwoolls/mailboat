@@ -26,3 +26,28 @@ export function searchPlacement(bar: number, leftEnd: number, rightStart: number
   const width = Math.min(SEARCH_WIDTH.min, room);
   return { left: rightStart - SEARCH_GAP - width, width };
 }
+
+/**
+ * The toolbar buttons that move into the More menu when the window is too
+ * narrow for them, in the order they go (owner, 2026-11-14): Labels first,
+ * Archive never.
+ */
+export const OVERFLOW_ORDER = ["labels", "star", "read", "spam", "trash"] as const;
+export type OverflowButton = (typeof OVERFLOW_ORDER)[number];
+
+/**
+ * How many of `OVERFLOW_ORDER` move into the More menu so the search box
+ * keeps its narrowest width between the buttons on both sides: none while
+ * everything fits, all of them at most. `fixedRight` is the right-hand
+ * buttons' width without any of these; `perButton` is what each adds.
+ */
+export function overflowCount(
+  bar: number,
+  leftEnd: number,
+  fixedRight: number,
+  perButton: number,
+): number {
+  const room = bar - leftEnd - fixedRight - 2 * SEARCH_GAP - SEARCH_WIDTH.min;
+  const fit = Math.max(0, Math.floor(room / perButton));
+  return Math.max(0, OVERFLOW_ORDER.length - fit);
+}
