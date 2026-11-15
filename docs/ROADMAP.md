@@ -5948,7 +5948,7 @@ Privacy and the policy.*
 - [ ] Control Flow Guard on Windows (DASA 2.1.2): `-Ccontrol-flow-guard`
       for the MSVC target. It covers the app's own code; Rust's prebuilt
       standard library isn't built with it, and the evidence says so.
-- [ ] Owner-only folders and files (DASA 1.9.1): create the data, cache
+- [x] Owner-only folders and files (DASA 1.9.1): create the data, cache
       and log folders as 0700 at startup, and the database 0600 (macOS
       already keeps `~/Library` private; Linux won't). The OAuth client
       file: on macOS and Linux, `config::save` writes a temporary file
@@ -5964,6 +5964,23 @@ Privacy and the policy.*
       plaintext secrets in configuration files): Google treats an
       installed app's secret as not confidential, and the written answer
       says so.
+      *(2026-11-15: built (`owner_only` in `crates/core`). At startup the
+      data, settings, cache and log folders are made 0700 on macOS and
+      Linux, and a client file already there is made private. `Db::open`
+      makes its folder 0700 and the database and its `-wal` and `-shm`
+      files 0600 there, including ones an earlier version left open.
+      Saving the client file sets 0600 through the opened temporary file
+      too, so a leftover from an earlier save doesn't keep its mode. These
+      set the mode bits only: an access list someone added by hand on
+      macOS stays. Changing a mode is best effort, so a folder owned by
+      another account still opens. On Windows the client file, which
+      holds the OAuth client secret, gets a protected access list for this
+      user alone (by SID), set before the secret is written and at
+      startup; the folders and the database keep what they inherit from
+      the user's profile (the user, SYSTEM and administrators), so backup
+      and antivirus still reach them. A link, to a file or a folder, is
+      left alone. Tests for each, failing with the fix removed; the
+      Windows tests run in CI's Windows job)*
 - [ ] The Windows named pipe for AI apps (DASA 1.7.1, 2.3.1): give it an
       explicit security descriptor for the current user, rather than
       relying on the default, with a test (or capture `accesschk` output

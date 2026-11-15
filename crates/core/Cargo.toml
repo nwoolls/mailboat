@@ -68,6 +68,19 @@ keyring = { version = "3.6", default-features = false, features = ["apple-native
 
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3.6", default-features = false, features = ["windows-native"] }
+# Owner-only access lists (`owner_only`): Microsoft's own bindings, already
+# in the build through other crates.
+windows-sys = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_System_Threading",
+] }
+
+[target.'cfg(unix)'.dependencies]
+# `O_NOFOLLOW` for `owner_only`, which the standard library doesn't name;
+# already in the build.
+libc = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 keyring = { version = "3.6", default-features = false, features = ["linux-native-sync-persistent", "crypto-rust"] }
