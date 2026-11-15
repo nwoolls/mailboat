@@ -3983,7 +3983,8 @@ unscheduled", and the checkpoint was dropped (see below).
       frequent them)* *(closed 2026-11-14: the owner promotes it on social
       media and decides where; no more posts are tracked here)*
 - *Moved to "Later / unscheduled" (owner, 2026-11-14): the Homebrew tap
-  and `winget`, and the OpenSSF Best Practices badge.*
+  and `winget`, and the OpenSSF Best Practices badge.* *(The badge moved
+  on into 0.3.0 → Security assessment (CASA), owner, 2026-11-15.)*
 - *Dropped (owner, 2026-11-14): the checkpoint about a month after the
   launch (downloads, stars, setup issues, whether people would pay to skip
   the setup). Milestone 18 now waits on Google's decision on the
@@ -6051,6 +6052,25 @@ Privacy and the policy.*
       what is real, and for each false positive write down why. Keep the
       reports outside the repository, like the other evidence. Repeat once
       the 0.3.0 fixes are in, just before the first paid scan.
+      Run `osv-scanner` on the lockfiles as well *(owner, 2026-11-15)*:
+      OpenSSF Scorecard's Vulnerabilities check uses the same OSV data and
+      scores 3 of 10 with 7 known issues, while `cargo deny` and
+      `bun audit` find none. The seven are RustSec advisories, none of them
+      a vulnerability: `rustix` 1.1.5 unsound (RUSTSEC-2026-0486, fixed in
+      1.1.6), `glib` unsound (RUSTSEC-2024-0429), and unmaintained `paste`
+      (RUSTSEC-2024-0436, already ignored in `deny.toml`),
+      `proc-macro-error` (RUSTSEC-2024-0370), `zvariant`, `zbus_names` and
+      `zvariant_derive` (RUSTSEC-2026-0370, -0371 and -0372). Scorecard
+      scans the whole `Cargo.lock`, while `cargo deny` checks only the
+      macOS and Windows targets in `deny.toml` (so it skips the Linux GTK3
+      and D-Bus crates) and by default reports an unsound advisory only
+      for the workspace's own crates, not a dependency's. That default is
+      how `rustix`, which the macOS build uses (through `tempfile`), got
+      past it. Update `rustix` to 1.1.6 or later, and decide whether
+      `cargo deny` should report unsound dependencies too. For the rest,
+      which can't be fixed until Tauri drops them, record each with its
+      reason in an `osv-scanner.toml` ignore list (Scorecard runs
+      osv-scanner, which reads it), and give the lab the same reasons.
 - [ ] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
@@ -6062,6 +6082,41 @@ Privacy and the policy.*
       CodeQL already scans every pull request and push to `main` that
       changes code, plus a weekly run. Its results can be submitted as
       the static scan.
+- [ ] The build provenance attached to each release as a file, so
+      OpenSSF Scorecard can see it. The publish job already attests the
+      release files (`actions/attest-build-provenance`), but GitHub keeps
+      that attestation in its own store, not on the release, and
+      Scorecard's Signed-Releases check reads only the release's files:
+      signed files score 8 of 10, and a provenance file named
+      `*.intoto.jsonl` scores 10. Write the action's bundle (its
+      `bundle-path` output) into `release/` after the attestation and
+      before `gh release create`, as two files. The action writes a whole
+      Sigstore bundle, one JSON object per line, which isn't the in-toto
+      format (a DSSE envelope per line, with `payload`, `payloadType` and
+      `signatures` at the top) that tools reading `.intoto.jsonl` expect.
+      So keep the bundle as `<App>_<version>.sigstore.json`, which holds
+      what is needed to verify it, and write each line's `dsseEnvelope`
+      as compact JSON, one per line, into
+      `<App>_<version>.intoto.jsonl`. Scorecard checks only the file's
+      name, not what is in it or whether it verifies, so the score
+      doesn't prove the file is right; check it once with a tool that
+      reads in-toto files. Both files are made after the checksums and
+      the attestation, so `SHA256SUMS` doesn't list them. The check
+      averages the last five releases and rounds down: with the other
+      releases signed (8 each), it shows 9 once three of the five have
+      provenance, and 10 once all five do. Not a CASA requirement; it is
+      here because it changes the same release job as the SBOM item above
+      *(owner, 2026-11-15)*
+- [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
+      bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
+      paperwork, best done once there are releases to point at
+      *(moved from Milestone 17 when it closed, owner, 2026-11-14)*
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-15:
+      fill it in after the evidence for the lab is gathered, since most of
+      what the passing level asks for will exist by then: static analysis,
+      dependency scanning, a way to report vulnerabilities (`SECURITY.md`,
+      `security.txt`), hardening and signed releases. Passing scores 5 of
+      10 on that check, which scores 0 today)*
 
 ### Bugs
 
@@ -6290,11 +6345,6 @@ Privacy and the policy.*
       Milestone 17 when it closed, owner, 2026-11-14)*: a Homebrew tap of
       the owner's own (the main Homebrew list needs an app to be popular
       first) and `winget` for Windows
-
-- [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
-      bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
-      paperwork, best done once there are releases to point at
-      *(moved from Milestone 17 when it closed, owner, 2026-11-14)*
 
 - [ ] "Use a different file" on "Google Cloud is set up" goes back to
       the start of the walkthrough *(owner, 2026-10-30: fine for now;
