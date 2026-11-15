@@ -5970,9 +5970,18 @@ Privacy and the policy.*
       the choices (for example everything, sender only, or "New email"
       only) and the default. Settings → Privacy, the policy and the
       settings test change with it.
-- [ ] Control Flow Guard on Windows (DASA 2.1.2): `-Ccontrol-flow-guard`
+- [x] Control Flow Guard on Windows (DASA 2.1.2): `-Ccontrol-flow-guard`
       for the MSVC target. It covers the app's own code; Rust's prebuilt
       standard library isn't built with it, and the evidence says so.
+      *(2026-11-15: in `.cargo/config.toml` for `x86_64-pc-windows-msvc`
+      and `aarch64-pc-windows-msvc`. Checked with a small program built
+      the release's way (cargo-xwin on a Mac): `llvm-readobj` shows the
+      `GUARD_CF` flag and `CF_INSTRUMENTED` for both, and no `GUARD_CF`
+      without the setting, so cargo-xwin keeps it. C code built through
+      the `cc` crate gets it too. A `RUSTFLAGS` set in the environment
+      would replace it for a plain Cargo build; nothing sets one. The
+      app's own Windows binary is checked by the release workflow item
+      above, once built)*
 - [x] Owner-only folders and files (DASA 1.9.1): create the data, cache
       and log folders as 0700 at startup, and the database 0600 (macOS
       already keeps `~/Library` private; Linux won't). The OAuth client
