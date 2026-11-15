@@ -122,6 +122,7 @@ const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
       "cargo fmt --all --check": appOnly,
       "cargo clippy --workspace --all-targets -- -D warnings": appOnly,
       "cargo test --workspace": appOnOs("macOS"),
+      'bun scripts/make-sbom.ts --version 0.0.0 --out "$RUNNER_TEMP/sbom"': appOnOs("macOS"),
       "cargo test --workspace --exclude desktop --no-fail-fast": appOnOs("Windows"),
     },
   },

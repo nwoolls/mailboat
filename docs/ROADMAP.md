@@ -5955,7 +5955,9 @@ Privacy and the policy.*
       Licenses are SPDX expressions when they follow SPDX's grammar, and
       named as written otherwise. A crate from outside crates.io (git,
       another registry) stops the job until the script describes it; the
-      app has none)*
+      app has none. CI's macOS Rust job makes it too, on every pull request
+      that changes the app, so a dependency without a license fails there
+      rather than on release day (both reviews))*
 - [ ] A setting for what new-mail notifications show (DASA 1.10.2: no
       sensitive data in notifications). Today the title is the sender and
       the body is the subject, plus the account's address when there is
