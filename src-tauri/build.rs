@@ -13,7 +13,8 @@ fn main() {
 /// Compiles the Apple Intelligence helper (`macos/ai-helper.swift`) to
 /// `binaries/ai-helper-<target>`, where Tauri picks it up as a sidecar
 /// (`tauri.macos.conf.json`) and copies it next to the app's binary.
-/// Needs Xcode's Swift compiler, as the app icons do.
+/// Needs Xcode's Swift compiler, as the app icons do. Stripped of its
+/// symbols in release builds, like the app's own binary.
 fn build_ai_helper() {
     let target = std::env::var("TARGET").unwrap_or_default();
     if !target.ends_with("apple-darwin") {
@@ -39,4 +40,18 @@ fn build_ai_helper() {
         .status()
         .expect("run xcrun swiftc (install Xcode) to build the Apple Intelligence helper");
     assert!(status.success(), "building macos/ai-helper.swift failed");
+    // Swift isn't built by Cargo, so the release profile's `strip = true`
+    // doesn't reach the helper: strip it here as well, so no shipped
+    // binary names its functions (DASA 1.8.2). Debug builds keep them.
+    if std::env::var("PROFILE").as_deref() == Ok("release") {
+        let status = std::process::Command::new("xcrun")
+            .arg("strip")
+            .arg(&out)
+            .status()
+            .expect("run xcrun strip on the Apple Intelligence helper");
+        assert!(
+            status.success(),
+            "stripping the Apple Intelligence helper failed"
+        );
+    }
 }
