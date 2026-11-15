@@ -232,13 +232,26 @@ pub async fn run_lines_with(
     args: &[String],
     stdin: &str,
     env: Env,
+    on_line: impl FnMut(&str) -> Result<ControlFlow<()>>,
+) -> Result<Exit> {
+    run_lines_within(TIMEOUT, program, args, stdin, env, on_line).await
+}
+
+/// `run_lines_with`, giving up after `limit` (`TIMEOUT` in the app; tests
+/// use less).
+async fn run_lines_within(
+    limit: Duration,
+    program: &Path,
+    args: &[String],
+    stdin: &str,
+    env: Env,
     mut on_line: impl FnMut(&str) -> Result<ControlFlow<()>>,
 ) -> Result<Exit> {
-    let work = tokio::time::timeout(TIMEOUT, async {
+    let work = tokio::time::timeout(limit, async {
         let dir = scratch_dir()?;
         let mut child = command(program, env)?
             .args(args)
-            .current_dir(&dir)
+            .current_dir(dir.path())
             .env("PATH", child_path(program))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -273,7 +286,6 @@ pub async fn run_lines_with(
                 let _ = child.wait().await;
                 writer.abort();
                 stderr.abort();
-                let _ = std::fs::remove_dir(&dir);
                 return Ok(Exit {
                     success: true,
                     stderr: String::new(),
@@ -286,7 +298,6 @@ pub async fn run_lines_with(
             .map_err(|e| CoreError::Ai(format!("waiting for {}: {e}", program.display())))?;
         let _ = writer.await;
         let stderr = stderr.await.unwrap_or_default();
-        let _ = std::fs::remove_dir(&dir);
         Ok(Exit {
             success: status.success(),
             stderr: tail(&String::from_utf8_lossy(&stderr), 600),
@@ -406,12 +417,20 @@ fn fence(program: &Path) -> Result<Option<String>> {
 }
 
 /// An empty folder to run in, so the tools find no project files
-/// (`CLAUDE.md`, `AGENTS.md`) to read.
-fn scratch_dir() -> Result<PathBuf> {
-    let dir = std::env::temp_dir().join(format!("ai-helper-{}", fastrand::u64(..)));
-    std::fs::create_dir_all(&dir)
-        .map_err(|e| CoreError::Ai(format!("couldn't make a working folder: {e}")))?;
-    Ok(dir)
+/// (`CLAUDE.md`, `AGENTS.md`) to read. Made in one step with a name no
+/// other program can claim first, readable by this user only (0700), and
+/// removed with anything written in it when dropped: whether the program
+/// answered, failed to start or to be read, or the request timed out
+/// (the timeout drops the work that holds it).
+fn scratch_dir() -> Result<tempfile::TempDir> {
+    let mut builder = tempfile::Builder::new();
+    builder.prefix("ai-helper-");
+    // tempfile leaves a folder's mode to the umask (often 0755).
+    #[cfg(unix)]
+    builder.permissions(std::os::unix::fs::PermissionsExt::from_mode(0o700));
+    builder
+        .tempdir()
+        .map_err(|e| CoreError::Ai(format!("couldn't make a working folder: {e}")))
 }
 
 fn tail(s: &str, max: usize) -> String {
@@ -577,6 +596,72 @@ mod tests {
             "{p}"
         );
         assert!(p.contains("(allow file-read* (subpath \"/d\"))"), "{p}");
+    }
+
+    /// What the program says about its working folder (its path and
+    /// `ls -ld`), after writing a file into it.
+    #[cfg(unix)]
+    const SHOW_FOLDER: &str = "touch left-behind; pwd -P; ls -ld . | cut -c1-10";
+
+    /// The working folder is private, and gone afterwards with what the
+    /// program wrote in it, on each way out of `run_lines_with`: the
+    /// program exiting, the answer coming in before it exits, and a line
+    /// handler failing. (A program that can't start leaves its folder to
+    /// the same drop.)
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_working_folder_is_private_and_removed_on_every_way_out() {
+        for way in ["exit", "answer", "error"] {
+            let script = match way {
+                "exit" => SHOW_FOLDER.to_string(),
+                _ => format!("{SHOW_FOLDER}; echo done; sleep 30"),
+            };
+            let mut seen = Vec::new();
+            let result = run_lines(Path::new("/bin/sh"), &["-c".into(), script], "", |line| {
+                seen.push(line.to_string());
+                match (way, line) {
+                    ("answer", "done") => Ok(ControlFlow::Break(())),
+                    ("error", "done") => Err(CoreError::Ai("stop".into())),
+                    _ => Ok(ControlFlow::Continue(())),
+                }
+            })
+            .await;
+            assert_eq!(result.is_ok(), way != "error", "{way}");
+            let folder = PathBuf::from(&seen[0]);
+            assert!(
+                folder
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .starts_with("ai-helper-"),
+                "{way}: {folder:?}"
+            );
+            assert_eq!(seen[1], "drwx------", "{way}: only this user");
+            assert!(!folder.exists(), "{way}: {folder:?} is left behind");
+        }
+    }
+
+    /// Timing out drops the work, and the folder with it (after a second
+    /// here, not the app's three minutes).
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_working_folder_is_removed_when_the_request_times_out() {
+        let mut seen = Vec::new();
+        let result = run_lines_within(
+            Duration::from_secs(1),
+            Path::new("/bin/sh"),
+            &["-c".into(), format!("{SHOW_FOLDER}; sleep 600")],
+            "",
+            Env::Inherit,
+            |line| {
+                seen.push(line.to_string());
+                Ok(ControlFlow::Continue(()))
+            },
+        )
+        .await;
+        assert!(matches!(result, Err(CoreError::Ai(m)) if m.contains("too long")));
+        let folder = PathBuf::from(&seen[0]);
+        assert!(!folder.exists(), "{folder:?} is left behind");
     }
 
     // Needs a Unix shell or path rules (/bin/sh, /usr/bin/env, /Users/…).

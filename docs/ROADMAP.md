@@ -5981,7 +5981,7 @@ Privacy and the policy.*
       tokens itself. The written answer describes how long each token
       stays in memory and when it is dropped; whether to add the wiping
       waits for the lab's answer.
-- [ ] The AI scratch folder: `ai/process.rs` makes a working folder in
+- [x] The AI scratch folder: `ai/process.rs` makes a working folder in
       the temp directory for every request, with `create_dir_all` (not
       private). Only the two paths that return the program's result (a
       failing exit status included) call `remove_dir`, which
@@ -5990,6 +5990,12 @@ Privacy and the policy.*
       of its output failing, waiting for it failing, or the request timing
       out. Use `tempfile::TempDir`, which is created
       atomically and private, and is removed on every exit.
+      *(2026-11-15: built. The working folder is a `tempfile::TempDir`,
+      made with a name no other program can claim first and with mode
+      0700 set explicitly (tempfile leaves it to the umask). It is removed
+      with anything in it when the request ends, however it ends. Tests
+      cover the program exiting, the answer coming in early, a line
+      handler failing and a timeout; they fail if the folder is kept)*
 - [ ] Encrypt the local cache at rest: a key in the keychain and an
       encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
       and costs little speed. Until then the cache relies on the
