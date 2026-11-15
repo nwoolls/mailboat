@@ -17,3 +17,28 @@ export function readButtonShowsUnread(o: {
 }): boolean {
   return o.marksUnread || (o.opening && o.markRead === "open");
 }
+
+/**
+ * The conversation last opened, and whether it was unread then (`null`
+ * until its row is in the list: one opened from a notification while the
+ * Inbox loads). Decided once, from the row as it first shows, so marking
+ * it read afterwards doesn't change it.
+ */
+export type Opened<Id> = { id: Id; unread: boolean | null } | null;
+
+/**
+ * `opened` after a render: a new conversation opened (`openedNow`) is
+ * looked up in `rows`, and one still undecided is decided once its row
+ * arrives. The same object when nothing changes.
+ */
+export function nextOpened<Id>(
+  opened: Opened<Id>,
+  openedNow: Id | null,
+  rows: readonly { id: Id; unread: boolean }[],
+): Opened<Id> {
+  if (openedNow !== null)
+    return { id: openedNow, unread: rows.find((t) => t.id === openedNow)?.unread ?? null };
+  if (opened === null || opened.unread !== null) return opened;
+  const row = rows.find((t) => t.id === opened.id);
+  return row ? { id: opened.id, unread: row.unread } : opened;
+}

@@ -1,3 +1,4 @@
+import { nextOpened, type Opened } from "../features/mailbox/model/readButton";
 import {
   Fragment,
   useCallback,
@@ -464,12 +465,15 @@ export function Shell() {
   // The conversation opened while unread, which opening is about to mark
   // read (Settings → Viewing), until the read button or `u` is used on it:
   // the read button shows Mark as unread for it from the start.
-  const [openedUnread, setOpenedUnread] = useState<ThreadId | null>(null);
-  if (selectedId !== null && selectedId !== shownId) {
-    setShownId(selectedId);
+  const [opened, setOpened] = useState<Opened<ThreadId>>(null);
+  const openedNow = selectedId !== null && selectedId !== shownId ? selectedId : null;
+  if (openedNow !== null) {
+    setShownId(openedNow);
     setReaderOpen(true);
-    setOpenedUnread(threads.find((t) => t.id === selectedId)?.unread ? selectedId : null);
   }
+  const openedNext = nextOpened(opened, openedNow, threads);
+  if (openedNext !== opened) setOpened(openedNext);
+  const openedUnread = opened?.unread ? opened.id : null;
   // While the sidebar is hidden, hovering its toolbar button floats it over
   // the list (as Notion Calendar does); it stays while the pointer is on
   // it and goes a moment after the pointer leaves both.
@@ -547,7 +551,7 @@ export function Shell() {
     function run(action: ThreadAction, ids: ThreadId[], fromUndo = false) {
       if (ids.length === 0) return;
       // Marked read or unread by hand: the button follows that from now on.
-      if (action.kind === "read") setOpenedUnread(null);
+      if (action.kind === "read") setOpened(null);
       const openBefore = openNow.current;
       if (leavesView(action, selection.view)) {
         const removed = new Set(ids);

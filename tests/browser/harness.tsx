@@ -351,11 +351,14 @@ mockIPC(
         // `&threads=distinct`: answered as the conversation asked for, so
         // moving to another one (j/k) shows a different conversation, as in
         // the app. Not by default: the fake reply belongs to conversation 7.
-        if (new URLSearchParams(location.search).get("threads") === "distinct")
-          return {
-            ...detail,
-            thread: { ...detail.thread, id: (args as { threadId: number }).threadId },
-          };
+        // Read or unread as its row is, so opening an unread one marks it
+        // read (Settings → Viewing), as in the app.
+        if (new URLSearchParams(location.search).get("threads") === "distinct") {
+          const id = (args as { threadId: number }).threadId;
+          const row = inbox().find((t) => t.id === id);
+          const unread = shellChanges.get(id)?.unread ?? row?.unread ?? detail.thread.unread;
+          return { ...detail, thread: { ...detail.thread, id, unread } };
+        }
         return detail;
       case "reply_source":
         return {

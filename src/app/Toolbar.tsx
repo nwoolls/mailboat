@@ -321,6 +321,18 @@ function ToolButton({
   // and whether it fades in, decided as it appears.
   const [shownAt] = useState(motion?.count ?? 0);
   const [fadeIn] = useState(appear ?? false);
+  // For a swap, the icon before the last change, which fades out under the
+  // new one. Kept during render; the icon can also change without a swap
+  // (another conversation picked), which leaves nothing to fade out.
+  const [swap, setSwap] = useState({ count: motion?.count ?? 0, icon: Icon, was: Icon });
+  if (motion && (motion.count !== swap.count || Icon !== swap.icon))
+    setSwap({
+      count: motion.count,
+      icon: Icon,
+      was: motion.count !== swap.count ? swap.icon : swap.was,
+    });
+  const Was = swap.was;
+  const swapping = motion?.kind === "swap" && motion.count !== shownAt && Was !== Icon;
   const soon = !onClick && !disabled;
   const title = [label, shortcut && `(${shortcut})`, soon && "· coming soon"]
     .filter(Boolean)
@@ -351,6 +363,12 @@ function ToolButton({
         </span>
       ) : (
         <Icon />
+      )}
+      {/* After the new icon, so it fades out over it. */}
+      {swapping && (
+        <span key={`was-${motion.count}`} className="icon-swap-out absolute flex">
+          <Was />
+        </span>
       )}
       {dot && (
         <span
@@ -455,10 +473,23 @@ function fadeOut(bar: HTMLElement, group: HTMLElement, ids: readonly string[]) {
     ghost.setAttribute("inert", "");
     ghost.classList.add("tool-leave");
     ghost.style.position = "absolute";
-    ghost.style.left = `${group.offsetLeft + button.offsetLeft}px`;
-    ghost.style.top = `${group.offsetTop + button.offsetTop}px`;
+    // Where the button is within the bar (the group isn't positioned, so
+    // its own offsets would already count the group's).
+    const at = button.getBoundingClientRect();
+    const from = bar.getBoundingClientRect();
+    ghost.style.left = `${at.left - from.left - bar.clientLeft}px`;
+    ghost.style.top = `${at.top - from.top - bar.clientTop}px`;
     ghost.style.pointerEvents = "none";
-    ghost.addEventListener("animationend", () => ghost.remove(), { once: true });
+    // Removed when its own fade ends (not an icon's motion inside it), is
+    // cancelled (Reduce motion turned on meanwhile), or in any case soon.
+    const done = () => {
+      window.clearTimeout(timer);
+      ghost.remove();
+    };
+    const timer = window.setTimeout(done, 1000);
+    const own = (e: AnimationEvent) => e.target === ghost && done();
+    ghost.addEventListener("animationend", own);
+    ghost.addEventListener("animationcancel", own);
     bar.appendChild(ghost);
   }
 }

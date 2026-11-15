@@ -25,7 +25,7 @@ import {
 } from "../shared/ui/icons";
 
 /** Each command's icon, wherever it's listed (palette, right-click menu). */
-export const COMMAND_ICONS: Partial<Record<CommandId, (props: IconProps) => React.ReactNode>> = {
+const COMMAND_ICONS: Partial<Record<CommandId, (props: IconProps) => React.ReactNode>> = {
   reply: ReplyIcon,
   replyAll: ReplyAllIcon,
   forward: ForwardIcon,

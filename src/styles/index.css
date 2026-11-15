@@ -1134,6 +1134,16 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
 .icon-swap {
   animation: icon-swap 200ms ease-out;
 }
+/* The icon being replaced, over the same spot, fading out as the new one fades in. */
+@keyframes icon-swap-out {
+  to {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+.icon-swap-out {
+  animation: icon-swap-out 200ms ease-in forwards;
+}
 @keyframes tool-appear {
   from {
     opacity: 0;
@@ -1159,5 +1169,8 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
   .tool-appear,
   .tool-leave {
     animation: none;
+  }
+  .icon-swap-out {
+    display: none;
   }
 }
