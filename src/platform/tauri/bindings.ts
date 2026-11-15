@@ -78,6 +78,17 @@ export const commands = {
 	 */
 	messageOpen: (messageId: MessageId) => typedError<OpenedMessage, AppError>(__TAURI_INVOKE("message_open", { messageId })),
 	/**
+	 *  A message for printing: as `message_open` gives it, but always with its
+	 *  original colors on white (a printed page is never dark), whatever its
+	 *  sender was set to. Its images follow the same rule as on screen.
+	 */
+	messagePrint: (messageId: MessageId) => typedError<OpenedMessage, AppError>(__TAURI_INVOKE("message_print", { messageId })),
+	/**
+	 *  Opens the system's print dialog for the window. The page shows only the
+	 *  print layout when printed (`@media print`), so that is what prints.
+	 */
+	windowPrint: () => typedError<null, AppError>(__TAURI_INVOKE("window_print")),
+	/**
 	 *  Marks threads read or unread. Threads may span accounts; each is sent to
 	 *  its own account. The local cache changes immediately; anything Gmail
 	 *  refuses is put back, and the error is returned.

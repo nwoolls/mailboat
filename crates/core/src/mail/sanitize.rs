@@ -930,6 +930,21 @@ pub fn text_document(text: &str) -> SafeMessage {
     }
 }
 
+/// A plain-text email on white with dark text, whatever the app's scheme:
+/// for printing, where a page is never dark.
+pub fn text_document_on_white(text: &str) -> SafeMessage {
+    let escaped = ammonia::clean_text(text);
+    let body = format!("<div class=\"safe-plain\">{escaped}</div>");
+    SafeMessage {
+        document: wrap_document(&body, false, false, "", "", ""),
+        blocked_images: 0,
+        loaded_images: 0,
+        trackers_removed: 0,
+        adaptive: false,
+        recolorable: false,
+    }
+}
+
 pub fn csp(allow_images: bool) -> String {
     let img = if allow_images {
         "data: https:"

@@ -5630,12 +5630,22 @@ built, the owner has tried it, and the owner has published 0.3.0
 
 ### New features
 
-- [ ] Print an email or a conversation. Needs no API, but Gmail has it and
+- [x] Print an email or a conversation. Needs no API, but Gmail has it and
       the app doesn't. Competitors: Apple Mail, Outlook, Spark (the latest
       email or the whole conversation), Mimestream. Effort: low (print the
       reader's sanitized HTML; check that the web view can print on macOS
       and Windows)
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      *(2026-11-14: built for the whole conversation, the owner's choice
+      for now; one email at a time waits for the per-email menu under
+      "Later / unscheduled". Print… (⌘P, Ctrl+P on Windows) is in File, ⌘K
+      and the toolbar's More menu, not the right-click menu (owner: "very
+      rarely used"). Every email, collapsed ones too, oldest first, drafts
+      left out, each under its sender, recipients and date, in its original
+      colors on white, with its attachments named; images as on screen.
+      No footer: WebKit can't number pages from CSS, and macOS's print
+      dialog can add its own headers and footers. The owner checked it on
+      paper on macOS and in Windows' print preview)*
 - [ ] Clone a sent email *(owner request, 2026-11-08; maybe for the Polish
       Spike, not likely)*: find an email you sent before and open it in a
       new composer with the same recipients, subject and body, to send the
@@ -6217,7 +6227,13 @@ Settings → Privacy, as `AGENTS.md` says.
       request contacts the sender's server, which the privacy policy and
       Settings → Privacy must then say; refuse local and private hosts as
       in "Images from local or private hosts")
-- [ ] Act on one message in a conversation. Every action today works on
+- [ ] Act on a single message in a conversation, from a menu on each email in
+      the reader (a "…" button, as Gmail has) *(owner, 2026-11-14, when
+      printing was built for whole conversations: "a per-email menu … for
+      individual email actions, e.g. reply, forward, print, translate, show
+      original, stuff that's in gmail")*. Reply, Reply all, Forward, Print,
+      Translate and Show original for that one email, then the actions
+      below. Every action today works on
       whole conversations. Gmail also lets you delete one message, mark
       unread from a message on, and label one message. These use
       `messages.trash`, `messages.untrash` and `messages.modify`.

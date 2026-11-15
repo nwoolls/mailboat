@@ -39,7 +39,8 @@ export type ConversationCommandId =
   | "labels"
   | "filterLike"
   | "block"
-  | "original";
+  | "original"
+  | "print";
 
 export type AppCommandId =
   | "new"
@@ -119,6 +120,9 @@ export function conversationCommands(
     // Mail's View → Message → Raw Source key. Only looks, so it works
     // while typing too.
     { id: "original", title: "Show original", accel: "Alt+Cmd+U", enabled: rows.length === 1 },
+    // Mail's File → Print. Only looks, like Show original. Drafts aren't
+    // printed, so a conversation that is only a draft has nothing to print.
+    { id: "print", title: "Print…", accel: "Cmd+P", enabled: one },
     { id: "summarize", title: "Summarize", enabled: one && o.ai.summarize },
     // Text selected in an email; says so if there's none. Only looks.
     {
@@ -200,7 +204,7 @@ export type MenuSpec = { title: string; items: (CommandId | "-")[] };
  * (Close Window, Enter Full Screen); Mailbox and Message are the app's.
  */
 export const MENU_BAR: MenuSpec[] = [
-  { title: "File", items: ["new"] },
+  { title: "File", items: ["new", "-", "print"] },
   { title: "View", items: ["sidebar", "reader", "-", "palette", "shortcuts"] },
   {
     title: "Mailbox",

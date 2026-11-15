@@ -14,6 +14,7 @@ mod mcp;
 mod menu;
 mod mode;
 mod notifications;
+mod print;
 mod state;
 mod sync_log;
 mod theme;
@@ -56,6 +57,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::labels_list,
             commands::unread_counts,
             commands::message_open,
+            commands::message_print,
+            commands::window_print,
             commands::threads_set_read,
             commands::threads_set_archived,
             commands::threads_set_starred,

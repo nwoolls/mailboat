@@ -53,7 +53,11 @@ objc2 = "0.6"
 # NSWorkspace: which app opens mailto: links, and making the app it (src/mail_handler.rs).
 # NSMenu, NSMenuItem, NSView and NSPasteboard: the app's own menu over
 # images and links in emails, and its Copy Image / Copy Link (src/email_menu.rs).
-objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "NSImage", "NSResponder", "NSEvent", "NSWorkspace", "NSMenu", "NSMenuItem", "NSView", "NSPasteboard", "NSUserInterfaceItemIdentification", "block2"] }
+# NSPrintInfo, NSPrintOperation and NSWindow: printing with margins (src/print.rs).
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "NSImage", "NSResponder", "NSEvent", "NSWorkspace", "NSMenu", "NSMenuItem", "NSView", "NSPasteboard", "NSUserInterfaceItemIdentification", "NSPrintInfo", "NSPrintOperation", "NSWindow", "block2"] }
+# WKWebView's print operation, with the app's own margins (src/print.rs).
+# Same version as Wry's, which Tauri already builds.
+objc2-web-kit = { version = "0.3", default-features = false, features = ["std", "objc2-app-kit", "WKWebView"] }
 # NSData, to turn a chosen app icon's PNG into an NSImage (src/dock.rs);
 # NSBundle, NSURL, NSString and NSError for src/mail_handler.rs.
 objc2-foundation = { version = "0.3", features = ["NSData", "NSBundle", "NSURL", "NSString", "NSError", "NSArray", "NSGeometry"] }

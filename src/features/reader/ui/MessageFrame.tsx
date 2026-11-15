@@ -43,7 +43,7 @@ export function selectedInMessage(): { messageId: MessageId; text: string } | nu
  * measured with the frame collapsed for that moment. Both changes happen
  * before anything is drawn, so nothing flickers.
  */
-function contentHeight(frame: HTMLIFrameElement): number {
+export function contentHeight(frame: HTMLIFrameElement): number {
   const doc = frame.contentDocument;
   if (!doc?.documentElement) return 0;
   const kept = frame.style.height;

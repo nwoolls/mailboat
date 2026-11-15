@@ -533,6 +533,37 @@ pub async fn message_open(
     state: State<'_, AppState>,
     message_id: MessageId,
 ) -> CmdResult<OpenedMessage> {
+    open_message(&state, message_id, false).await
+}
+
+/// A message for printing: as `message_open` gives it, but always with its
+/// original colors on white (a printed page is never dark), whatever its
+/// sender was set to. Its images follow the same rule as on screen.
+#[tauri::command]
+#[specta::specta]
+pub async fn message_print(
+    state: State<'_, AppState>,
+    message_id: MessageId,
+) -> CmdResult<OpenedMessage> {
+    open_message(&state, message_id, true).await
+}
+
+/// Opens the system's print dialog for the window. The page shows only the
+/// print layout when printed (`@media print`), so that is what prints.
+#[tauri::command]
+#[specta::specta]
+pub async fn window_print(window: tauri::WebviewWindow) -> CmdResult<()> {
+    crate::print::print(&window)
+        .await
+        .map_err(CoreError::Other)?;
+    Ok(())
+}
+
+async fn open_message(
+    state: &AppState,
+    message_id: MessageId,
+    for_print: bool,
+) -> CmdResult<OpenedMessage> {
     let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
     let cached = store::get_body(&state.db.conn(), message_id)?;
     let body = match cached {
@@ -583,7 +614,11 @@ pub async fn message_open(
         image_policy,
         attachments,
         original_colors,
-        content: mail::safe_message(&body, images_allowed, &inline, &cached, original_colors),
+        content: if for_print {
+            mail::printable_message(&body, images_allowed, &inline, &cached)
+        } else {
+            mail::safe_message(&body, images_allowed, &inline, &cached, original_colors)
+        },
     })
 }
 
