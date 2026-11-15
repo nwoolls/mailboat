@@ -4,3 +4,15 @@ runner = "scripts/dev-run.sh"
 
 [target.x86_64-apple-darwin]
 runner = "scripts/dev-run.sh"
+
+# Control Flow Guard on Windows (DASA 2.1.2): the compiler instruments
+# indirect calls and the linker marks the program `GUARD_CF`, so Windows
+# checks each indirect call's target. Kept by cargo-xwin, which the
+# release uses to build Windows on a Mac. It covers the app's own code
+# and its dependencies; Rust's prebuilt standard library isn't built
+# with it.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-Ccontrol-flow-guard"]
+
+[target.aarch64-pc-windows-msvc]
+rustflags = ["-Ccontrol-flow-guard"]
