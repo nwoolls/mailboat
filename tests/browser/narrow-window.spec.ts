@@ -151,6 +151,21 @@ test("the way back stays at the top of a long conversation, and is easy to hit",
   expect(placed.top).toBeGreaterThanOrEqual(0);
   expect(placed.top).toBeLessThan(8);
   expect(placed.height).toBeGreaterThanOrEqual(32);
+  // Over the conversation it has the reply bar's tint…
+  const bar = page.locator(".reader-back");
+  await expect(bar).toHaveAttribute("data-stuck", "true");
+  // …and back at the top it blends in, with no background of its own.
+  // (Scrolled up until it stays there: the reader settles its own scroll
+  // while a conversation's emails finish loading.)
+  await expect
+    .poll(async () => {
+      await reader.evaluate((el) => el.scrollTo(0, 0));
+      await page.waitForTimeout(300);
+      return reader.evaluate((el) => el.scrollTop);
+    })
+    .toBe(0);
+  await expect(bar).not.toHaveAttribute("data-stuck");
+  expect(await bar.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
   const back = page.locator(".reader-back button");
   await back.click();
   await expect.poll(() => listHidden(page)).toBe(false);

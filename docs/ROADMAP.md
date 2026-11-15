@@ -5783,7 +5783,9 @@ built, the owner has tried it, and the owner has published 0.3.0
       after the view) in a bar that stays at the top while the conversation
       scrolls, Esc or ⌘[, and no reader button. The owner tried it: the link
       was first above the subject, scrolled away with it and was small to
-      hit, so it got the pinned bar and a bigger target. Then (owner): with the
+      hit, so it got the pinned bar and a bigger target. The bar takes
+      the reply bar's dark tint only while the conversation scrolls under
+      it; scrolled to the top, it blends in (owner). Then (owner): with the
       sidebar folded, its button only floats it (a click that also put it
       away fought the hover, which floats it too); the keyboard shortcut
       still toggles it. And the window's shortest went from 520px, the

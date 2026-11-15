@@ -8,6 +8,7 @@ import type {
 import { useThread } from "../../../shared/lib/queries";
 import { AccountDot } from "../../../shared/ui/AccountDot";
 import { BackIcon } from "../../../shared/ui/icons";
+import { useStuck } from "../../../shared/ui/useStuck";
 import type { AccountIndex } from "../../accounts/model/accounts";
 import { displayName, formatFullDate, formatListDate } from "../../mailbox/model/format";
 import { useThreadAction } from "../../mailbox/ui/useThreadAction";
@@ -439,20 +440,26 @@ function BackBar({ back }: { back: ReaderBack }) {
     if (!active || active === document.body || active.closest("[inert]"))
       ref.current?.focus({ preventScroll: true });
   }, []);
+  // Tinted only while the conversation scrolls under it (as the reply bar
+  // at the bottom is); at the top it blends in (owner).
+  const [marker, stuck] = useStuck("top");
   return (
-    <div className="reader-back px-2 py-1">
-      <button
-        ref={ref}
-        type="button"
-        onClick={back.onBack}
-        aria-label={`Back to ${back.label}`}
-        title={`Back to ${back.label} (Esc)`}
-        data-reader-back
-        className="flex min-h-8 items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-accent hover:bg-selection"
-      >
-        <BackIcon size={16} />
-        {back.label}
-      </button>
-    </div>
+    <>
+      <div ref={marker} aria-hidden className="h-px" />
+      <div className="reader-back -mt-px px-2 py-1" data-stuck={stuck || undefined}>
+        <button
+          ref={ref}
+          type="button"
+          onClick={back.onBack}
+          aria-label={`Back to ${back.label}`}
+          title={`Back to ${back.label} (Esc)`}
+          data-reader-back
+          className="flex min-h-8 items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-accent hover:bg-selection"
+        >
+          <BackIcon size={16} />
+          {back.label}
+        </button>
+      </div>
+    </>
   );
 }

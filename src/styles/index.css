@@ -931,12 +931,15 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
 }
 
 /* The way back to the list, while the reader fills a narrow window: it
-   stays at the top as the conversation scrolls under it, with the reader
-   foot's blurred tint so the email doesn't show through. */
+   stays at the top as the conversation scrolls under it. While it covers
+   the conversation (`data-stuck`) it gets the reader foot's blurred tint
+   so the email doesn't show through; scrolled to the top, it blends in. */
 .reader-back {
   position: sticky;
   top: 0;
   z-index: 2;
+}
+.reader-back[data-stuck] {
   background: color-mix(
     in srgb,
     var(--color-background-base) var(--glass-reader-foot-strength),
