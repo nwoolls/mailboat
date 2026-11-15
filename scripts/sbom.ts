@@ -32,17 +32,47 @@ export function licenses(text: string | undefined): Component["licenses"] {
 }
 
 /**
- * Whether `text` is shaped like an SPDX expression: identifiers joined by
- * OR, AND or WITH, with parentheses. "SEE LICENSE IN LICENSE.md" isn't.
+ * Whether `text` follows SPDX's expression grammar: a license (an
+ * identifier, optionally `WITH` an exception), several joined by `AND` or
+ * `OR`, in balanced parentheses. "SEE LICENSE IN LICENSE.md",
+ * "(MIT OR Apache-2.0" and npm's "UNLICENSED" (not an SPDX identifier, a
+ * statement that no license is given) aren't.
  */
 function isExpression(text: string): boolean {
-  const tokens = text.replace(/[()]/g, " ").trim().split(/\s+/);
+  if (text.trim().toUpperCase() === "UNLICENSED") return false;
+  const tokens = text.match(/\(|\)|[^\s()]+/g) ?? [];
   const id = /^[A-Za-z0-9][A-Za-z0-9.+-]*$/;
-  const op = /^(OR|AND|WITH)$/;
-  return (
-    tokens.every((t, i) => (i % 2 === 0 ? id.test(t) && !op.test(t) : op.test(t))) &&
-    tokens.length % 2 === 1
-  );
+  const isOp = (t: string | undefined) => t === "AND" || t === "OR" || t === "WITH";
+  let at = 0;
+  // license := id ["WITH" id] | "(" expression ")"
+  const license = (): boolean => {
+    if (tokens[at] === "(") {
+      at++;
+      if (!expression() || tokens[at] !== ")") return false;
+      at++;
+      return true;
+    }
+    const t = tokens[at];
+    if (t === undefined || isOp(t) || !id.test(t)) return false;
+    at++;
+    if (tokens[at] === "WITH") {
+      at++;
+      const exception = tokens[at];
+      if (exception === undefined || isOp(exception) || !id.test(exception)) return false;
+      at++;
+    }
+    return true;
+  };
+  // expression := license (("AND" | "OR") license)*
+  const expression = (): boolean => {
+    if (!license()) return false;
+    while (tokens[at] === "AND" || tokens[at] === "OR") {
+      at++;
+      if (!license()) return false;
+    }
+    return true;
+  };
+  return expression() && at === tokens.length;
 }
 
 // ---------------------------------------------------------------- Rust
@@ -55,8 +85,18 @@ export function purlVersion(version: string): string {
   return encodeURIComponent(version);
 }
 
-/** A crate as one line of `cargo tree --prefix none --format "{p}\t{l}"`. */
-export type TreeCrate = { name: string; version: string; local: boolean; license?: string };
+/**
+ * A crate as one line of `cargo tree --prefix none --format "{p}\t{l}"`.
+ * `source` is set for one from neither crates.io nor the app's own
+ * folders (a git dependency, another registry).
+ */
+export type TreeCrate = {
+  name: string;
+  version: string;
+  local: boolean;
+  source?: string;
+  license?: string;
+};
 
 /**
  * The crates in `cargo tree` output, once each. A local crate (the app's
@@ -72,12 +112,14 @@ export function parseTree(output: string): TreeCrate[] {
     // A folder: "/…" on macOS and Linux, "C:\…" on Windows. Not
     // "(proc-macro)", and not a git or registry source.
     const local = paren !== undefined && (paren.startsWith("/") || /^[A-Za-z]:\\/.test(paren));
+    const source = paren !== undefined && !local && paren !== "proc-macro" ? paren : undefined;
     const key = `${name} ${version}`;
     if (!crates.has(key)) {
       crates.set(key, {
         name: name!,
         version: version!,
         local,
+        source,
         license: license?.replace(/\s*\(\*\)\s*$/, "").trim() || undefined,
       });
     }
@@ -104,7 +146,10 @@ export function cargoChecksums(lock: string): Map<string, string> {
  * holds each platform's `-e normal,no-proc-macro` output (linked into the
  * app: "required"), `used` its `-e normal,build` output (also proc macros
  * and build scripts' crates: "excluded" when not linked). The app's own
- * local crates are the application itself, not components.
+ * local crates are the application itself, not components. Only
+ * crates.io crates are described: one from another source (git, another
+ * registry) would need its own package URL and has no `Cargo.lock`
+ * checksum to go by, so it stops the run until that is written.
  */
 export function cargoComponents(
   linked: string[],
@@ -118,6 +163,9 @@ export function cargoComponents(
   const out: Component[] = [];
   for (const c of all.values()) {
     if (c.local) continue;
+    if (c.source) {
+      throw new Error(`${c.name} ${c.version} comes from ${c.source}, which isn't crates.io`);
+    }
     const purl = `pkg:cargo/${c.name}@${purlVersion(c.version)}`;
     const checksum = checksums.get(key(c));
     out.push({

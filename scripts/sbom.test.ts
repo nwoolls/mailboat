@@ -26,6 +26,18 @@ describe("licenses", () => {
     expect(licenses("SEE LICENSE IN LICENSE.md")).toEqual([
       { license: { name: "SEE LICENSE IN LICENSE.md" } },
     ]);
+    // Review: not valid expressions, though made of the right words.
+    for (const text of [
+      "(MIT OR Apache-2.0",
+      "MIT OR Apache-2.0)",
+      "UNLICENSED",
+      "MIT WITH",
+      "WITH MIT",
+      "MIT AND OR Apache-2.0",
+      "MIT WITH A WITH B",
+    ]) {
+      expect(licenses(text), text).toEqual([{ license: { name: text } }]);
+    }
     expect(licenses(undefined)).toBeUndefined();
     expect(licenses("  ")).toBeUndefined();
   });
@@ -80,6 +92,17 @@ version = "0.0.0"
       { name: "cc", version: "1.2.0", local: false, license: "MIT OR Apache-2.0" },
     ]);
     expect(parseTree(winLinked)[0]!.local).toBe(true);
+  });
+
+  it("stops at a crate from a source other than crates.io", () => {
+    // Review: a git crate with a registry crate's name and version would
+    // share its identifier and its checksum.
+    const git = "alpha v1.0.0 (https://github.com/example/alpha#0123abcd)\tMIT";
+    expect(parseTree(git)[0]).toMatchObject({
+      local: false,
+      source: expect.stringContaining("github"),
+    });
+    expect(() => cargoComponents([git], [git], new Map())).toThrow(/isn't crates.io/);
   });
 
   it("lists every platform's crates, linked ones as shipped and the rest as build-only", () => {
