@@ -298,16 +298,65 @@ pub(crate) mod tests {
 
     /// The SDDL text of a protected list (`P` among the flags after `D:`,
     /// which may include others such as `AI`) with one entry: full access
-    /// for this user.
+    /// for this user. Windows writes some accounts' SIDs as an alias (the
+    /// built-in Administrator, which CI runs as, is `LA`), so the expected
+    /// entry goes through the same conversion before comparing.
     #[cfg(windows)]
     pub(crate) fn assert_user_only(sddl: &str) {
+        let entries = |text: &str| -> String {
+            let (flags, rest) = text
+                .strip_prefix("D:")
+                .and_then(|rest| rest.split_once('('))
+                .unwrap_or_else(|| panic!("no entries: {text}"));
+            assert!(flags.contains('P'), "not protected: {text}");
+            format!("({rest}")
+        };
         let sid = windows::user_sid().unwrap();
-        let (flags, entries) = sddl
-            .strip_prefix("D:")
-            .and_then(|rest| rest.split_once('('))
-            .unwrap_or_else(|| panic!("no entries: {sddl}"));
-        assert!(flags.contains('P'), "not protected: {sddl}");
-        assert_eq!(format!("({entries}"), format!("(A;;FA;;;{sid})"), "{sddl}");
+        let expected = as_windows_writes_it(&format!("D:P(A;;FA;;;{sid})"));
+        assert_eq!(entries(sddl), entries(&expected), "{sddl}");
+    }
+
+    /// `sddl` read into a security descriptor and written back as text.
+    #[cfg(windows)]
+    fn as_windows_writes_it(sddl: &str) -> String {
+        use windows_sys::Win32::Foundation::LocalFree;
+        use windows_sys::Win32::Security::Authorization::{
+            ConvertSecurityDescriptorToStringSecurityDescriptorW,
+            ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
+        };
+        use windows_sys::Win32::Security::{DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR};
+        let wide: Vec<u16> = sddl.encode_utf16().chain(Some(0)).collect();
+        // SAFETY: valid pointers to locals; both buffers Windows allocates
+        // are freed before returning.
+        unsafe {
+            let mut descriptor: PSECURITY_DESCRIPTOR = std::ptr::null_mut();
+            assert_ne!(
+                ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                    wide.as_ptr(),
+                    SDDL_REVISION_1,
+                    &mut descriptor,
+                    std::ptr::null_mut(),
+                ),
+                0
+            );
+            let mut text: *mut u16 = std::ptr::null_mut();
+            let mut len = 0u32;
+            assert_ne!(
+                ConvertSecurityDescriptorToStringSecurityDescriptorW(
+                    descriptor,
+                    SDDL_REVISION_1,
+                    DACL_SECURITY_INFORMATION,
+                    &mut text,
+                    &mut len,
+                ),
+                0
+            );
+            let n = (0..).take_while(|&i| *text.add(i) != 0).count();
+            let out = String::from_utf16_lossy(std::slice::from_raw_parts(text, n));
+            LocalFree(text.cast());
+            LocalFree(descriptor);
+            out
+        }
     }
 
     /// The file's access list as SDDL text.
