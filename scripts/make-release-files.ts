@@ -22,6 +22,7 @@ import {
   checksumLines,
   INSTALLER_ENDINGS,
   isInstaller,
+  isSbom,
   isVersion,
   platformOf,
   publishable,
@@ -65,6 +66,14 @@ if (notes === null) {
 
 const all = readdirSync(from);
 const chosen = all.filter(publishable).toSorted();
+// Every release carries its software bill of materials (DASA 1.5.1), and
+// only the one this version's run made.
+const sboms = chosen.filter(isSbom);
+if (sboms.length !== 1 || !sboms[0]!.includes(`_${version}.`)) {
+  fail(
+    `expected one software bill of materials for ${version}, found: ${sboms.join(", ") || "none"}`,
+  );
+}
 const payloads = chosen.filter((f) => platformOf(f) !== null);
 const signatures = payloads.map((file) => {
   const sig = chosen.includes(`${file}.sig`) ? readFileSync(join(from, `${file}.sig`), "utf8") : "";
