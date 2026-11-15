@@ -5757,7 +5757,7 @@ built, the owner has tried it, and the owner has published 0.3.0
       the way the download is and checked against the public key before the
       app shows them as plain text (never HTML), or both.
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
-- [ ] Strip tracking codes (`utm_` and the like) from links, next to the
+- [x] Strip tracking codes (`utm_` and the like) from links, next to the
       tracking pixels already removed (from the GotEmail and bytemail ideas
       under "Later / unscheduled"; a sub-point of a ticked research item, so
       when it is done, add a dated "done" note to that sub-point instead of
@@ -5767,6 +5767,18 @@ built, the owner has tried it, and the owner has published 0.3.0
       *(moved from the Polish Spike when it closed, owner, 2026-11-14;
       never started)*
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      *(2026-11-14: built. Every web link in an email loses its campaign
+      tags (any `utm_` parameter) and ad and mailing click IDs (`gclid`,
+      `fbclid`, `msclkid`, Mailchimp's `mc_cid` and `mc_eid`, HubSpot's
+      `__hstc` and others: `TRACKING_PARAMS` in `mail/links.rs`), both in
+      what a click opens and in the address shown on hover. The rest of
+      the address is kept exactly as written. Codes that identify the
+      reader to the site (unsubscribe and sign-in tokens, Marketo's
+      `mkt_tok`, HubSpot's `_hsenc`) are left alone so links keep working.
+      Always on, with no setting, like tracking pixels, and not counted in
+      the reader's "trackers removed" (owner). Links that go through a
+      tracking redirect are left as they are: the redirect is the link.
+      The privacy policy, the website's card and the README say so)*
 - [x] Images from local or private hosts *(raised by the review of the
       image-address fix, 2026-11-07)*: an email's remote image may name a
       loopback or private-network host (`127.0.0.1`, `*.localhost`,
@@ -6240,7 +6252,8 @@ niche or extra", so Windows and the Release Spike come first)
         authenticity, links whose text and address differ
       - **Strip tracking codes from links** (bytemail): utm_ and the like,
         alongside the tracking pixels Mailboat already removes *(picked for
-        the Polish Spike, 2026-11-07)*
+        the Polish Spike, 2026-11-07)* *(done 2026-11-14, in 0.3.0: see its
+        item there)*
       - **Translate** (GotEmail): Apple's on-device translation of an
         email, with Show original. *Translating selected text moved to
         AI Spike 2 (owner, 2026-10-24)*
