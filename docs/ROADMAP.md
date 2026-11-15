@@ -4958,6 +4958,19 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         attempt 1. The same symptom as the reply-scroll entries in "Later /
         unscheduled" → Flaky tests: the reply never came into view on a
         slow runner, likely the same cause.
+- [ ] `ascii-glow.spec.ts`: "the glow glides over to the pointer, then holds
+      on loosely" (line 153, added in UX Spike 5).
+      - 2026-11-14, CI on `main` after #135 merged, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43657479405: after
+        a quick 179 px pointer move, the glow was 23.7 px from the pointer
+        where more than 30 was expected 20 ms later
+        (`toBeGreaterThan(30)`, line 177). #135 (printing) doesn't touch
+        the glow, and the same test passed on #135's own CI run. Run 10
+        times locally on the branch `flaky-ascii-glow` (the same code), it
+        passed every time. The check reads the glow's position in real
+        time after a 20 ms wait, so a slow runner that measures late sees
+        the glow nearer the pointer than the test allows; likely the cause,
+        not yet confirmed.
 
 ## Bug backlog
 
