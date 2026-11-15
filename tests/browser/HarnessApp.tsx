@@ -14,7 +14,14 @@ import { CommandPalette } from "../../src/features/palette/ui/CommandPalette";
 import { TitleSearch } from "../../src/app/TitleSearch";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import { inbox } from "./demoMail";
-import { GeneralSection, ToyboxSection } from "../../src/features/settings/ui/SettingsSections";
+import {
+  ComposingSection,
+  GeneralSection,
+  ToyboxSection,
+} from "../../src/features/settings/ui/SettingsSections";
+import { dismissToast, useToast } from "../../src/shared/lib/toast";
+import { Toast } from "../../src/shared/ui/Toast";
+
 import { UpdateNotice } from "../../src/features/updates/ui/UpdateNotice";
 import { Sidebar } from "../../src/features/accounts/ui/Sidebar";
 import { useSignIn } from "../../src/features/accounts/ui/useSignIn";
@@ -37,6 +44,11 @@ import {
   useComposeActions,
   useComposeState,
 } from "../../src/features/compose/ui/useCompose";
+
+/** The app's toast, as the shell shows it. */
+function HarnessToast() {
+  return <Toast toast={useToast()} onDismiss={dismissToast} />;
+}
 
 const params = new URLSearchParams(location.search);
 
@@ -198,13 +210,24 @@ export function Harness({
     );
   if (mode === "card")
     return card ? (
-      <ComposeCard
-        entry={card}
-        identities={[identity]}
-        accounts={[account]}
-        onSend={() => {}}
-        onSwitch={() => {}}
-      />
+      <>
+        <ComposeCard
+          entry={card}
+          identities={[identity]}
+          accounts={[account]}
+          onSend={() => {}}
+          onSwitch={() => {}}
+        />
+        {/* `&settings=composing`: Settings → Composing beside it, and toasts. */}
+        {params.get("settings") === "composing" && (
+          <>
+            <div style={{ width: 560, padding: 16 }}>
+              <ComposingSection />
+            </div>
+            <HarnessToast />
+          </>
+        )}
+      </>
     ) : null;
   // The real reader: the conversation, then the reply at its foot.
   return (

@@ -211,6 +211,18 @@ export const commands = {
 	 */
 	contactsList: () => typedError<Contact[], AppError>(__TAURI_INVOKE("contacts_list")),
 	/**
+	 *  Takes an address out of compose's suggestions (the app's own list;
+	 *  Google's contacts aren't changed).
+	 */
+	contactsHide: (email: string) => typedError<null, AppError>(__TAURI_INVOKE("contacts_hide", { email })),
+	/**  Puts an address taken out of the suggestions back. */
+	contactsUnhide: (email: string) => typedError<null, AppError>(__TAURI_INVOKE("contacts_unhide", { email })),
+	/**
+	 *  The addresses taken out of the suggestions, most recently first
+	 *  (Settings → Writing).
+	 */
+	contactsHidden: () => typedError<string[], AppError>(__TAURI_INVOKE("contacts_hidden")),
+	/**
 	 *  What a reply or forward needs from a message (people, subject, text),
 	 *  fetched with its own account's credentials if not cached.
 	 */

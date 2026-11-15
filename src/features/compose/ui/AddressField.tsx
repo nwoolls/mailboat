@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { Address } from "../../../platform/tauri/bindings";
-import { useContacts } from "../../../shared/lib/queries";
+import { useContacts, useHideContact } from "../../../shared/lib/queries";
+import { showToast } from "../../../shared/lib/toast";
+import { ClearIcon } from "../../../shared/ui/icons";
 import { matchContacts } from "../model/contacts";
 import {
   type AddressLine,
@@ -26,6 +28,7 @@ function SuggestionList({
   current,
   onHover,
   onPick,
+  onRemove,
 }: {
   id: string;
   anchor: Anchor;
@@ -33,6 +36,8 @@ function SuggestionList({
   current: number;
   onHover: (index: number) => void;
   onPick: (a: Address) => void;
+  /** Take this address out of the suggestions (the × on its row). */
+  onRemove: (a: Address) => void;
 }) {
   const ref = useRef<HTMLUListElement>(null);
   useEffect(() => {
@@ -60,12 +65,30 @@ function SuggestionList({
           aria-selected={i === current}
           onMouseEnter={() => onHover(i)}
           onClick={() => onPick(s)}
-          className={`flex cursor-default flex-col rounded-md px-2.5 py-1.5 ${
+          className={`flex cursor-default items-center gap-1 rounded-md py-1.5 pr-1 pl-2.5 ${
             i === current ? "bg-selection-strong" : ""
           }`}
         >
-          <span className="truncate">{s.name ?? s.email}</span>
-          {s.name && <span className="truncate text-xs text-content/50">{s.email}</span>}
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate">{s.name ?? s.email}</span>
+            {s.name && <span className="truncate text-xs text-content/50">{s.email}</span>}
+          </span>
+          {/* On the highlighted row only (hovered, or reached with ↑/↓). */}
+          {i === current && (
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label={`Remove ${s.email} from suggestions`}
+              title="Remove from suggestions (Shift+Delete)"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-content/50 hover:bg-selection hover:text-content"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(s);
+              }}
+            >
+              <ClearIcon size={14} />
+            </button>
+          )}
         </li>
       ))}
     </ul>
@@ -74,7 +97,9 @@ function SuggestionList({
 
 /**
  * A To/Cc/Bcc line: chosen people as chips, then a text box. Typing
- * suggests people from cached mail; ↑/↓ and Return or Tab pick one. A
+ * suggests people from cached mail; ↑/↓ and Return or Tab pick one, and
+ * the × on the highlighted one or Shift+Delete takes it out of the
+ * suggestions. A
  * comma, semicolon, Return or leaving the field turns typed text into
  * chips; Backspace in an empty box takes the last chip back for editing.
  * A chip can be dragged to another line (To, Cc, Bcc), as in Mail.
@@ -140,6 +165,17 @@ export function AddressField({
   const commitText = () => {
     if (text.trim()) add(parseAddresses(text));
   };
+  const hideContact = useHideContact();
+  // Taken out of the suggestions for good (Settings → Writing brings it
+  // back), with Undo for a slip. The rest of the list moves up.
+  const remove = (a: Address) => {
+    const email = a.email;
+    hideContact.mutate({ email, hidden: true });
+    showToast({
+      message: `${email} won't be suggested`,
+      action: { label: "Undo", run: () => hideContact.mutate({ email, hidden: false }) },
+    });
+  };
   const pick = (a: Address) => {
     // Just the address (suggestions carry ranking fields too).
     add([{ name: a.name, email: a.email }]);
@@ -151,6 +187,11 @@ export function AddressField({
       e.preventDefault();
       const step = e.key === "ArrowDown" ? 1 : -1;
       setActive((current + step + suggestions.length) % suggestions.length);
+      return;
+    }
+    if (e.key === "Delete" && e.shiftKey && open) {
+      e.preventDefault();
+      remove(suggestions[current]!);
       return;
     }
     if ((e.key === "Enter" || e.key === "Tab") && open) {
@@ -264,6 +305,7 @@ export function AddressField({
           current={current}
           onHover={setActive}
           onPick={pick}
+          onRemove={remove}
         />
       )}
     </div>

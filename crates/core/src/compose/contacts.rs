@@ -136,10 +136,11 @@ pub fn all(conn: &Connection) -> Result<Vec<Contact>> {
          FROM ranked r
          LEFT JOIN saved_names sn ON sn.key = r.key
          LEFT JOIN mail_names mn ON mn.key = r.key
-         WHERE r.wrote >= 2 OR NOT (
+         WHERE r.key NOT IN (SELECT lower(email) FROM hidden_contacts)
+         AND (r.wrote >= 2 OR NOT (
            r.key LIKE '%noreply%' OR r.key LIKE '%no-reply%' OR r.key LIKE '%donotreply%'
            OR r.key LIKE '%do-not-reply%' OR r.key LIKE 'notifications@%'
-           OR r.key LIKE 'mailer-daemon@%' OR r.key LIKE '%bounce%')
+           OR r.key LIKE 'mailer-daemon@%' OR r.key LIKE '%bounce%'))
          ORDER BY r.wrote DESC, r.score DESC, r.last_at DESC",
     )?;
     let rows = stmt.query_map(params![now_millis(), HALF_WEIGHT_AGE_MS], |r| {
@@ -149,6 +150,34 @@ pub fn all(conn: &Connection) -> Result<Vec<Contact>> {
             wrote: r.get::<_, i64>(2)? == 3,
         })
     })?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+/// Takes `email` out of the suggestions (`all`), for every account. Only
+/// the app's own list changes: Google's contacts stay as they are.
+pub fn hide(conn: &Connection, email: &str) -> Result<()> {
+    conn.execute(
+        "INSERT INTO hidden_contacts (email, hidden_at) VALUES (?1, ?2)
+         ON CONFLICT (email) DO UPDATE SET hidden_at = excluded.hidden_at",
+        params![email.trim(), now_millis()],
+    )?;
+    Ok(())
+}
+
+/// Puts `email` back in the suggestions.
+pub fn unhide(conn: &Connection, email: &str) -> Result<()> {
+    conn.execute(
+        "DELETE FROM hidden_contacts WHERE email = ?1",
+        [email.trim()],
+    )?;
+    Ok(())
+}
+
+/// The addresses taken out of the suggestions, most recently first.
+pub fn hidden(conn: &Connection) -> Result<Vec<String>> {
+    let mut stmt =
+        conn.prepare("SELECT email FROM hidden_contacts ORDER BY hidden_at DESC, email")?;
+    let rows = stmt.query_map([], |r| r.get(0))?;
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
@@ -283,6 +312,80 @@ mod tests {
         let found = all(&conn).unwrap();
         assert_eq!(found.len(), 1, "{found:?}");
         assert_eq!(found[0].name.as_deref(), Some("Kim"));
+    }
+
+    #[test]
+    fn removed_addresses_leave_the_suggestions_until_restored() {
+        let db = Db::open_in_memory().unwrap();
+        let a = account(&db, "a");
+        let b = account(&db, "b");
+        let now = now_millis();
+        let mut conn = db.conn();
+        // Written to from one account, a sender in the other, and a Google
+        // contact: removing takes it out from all of them, whatever the case.
+        upsert_thread(
+            &mut conn,
+            a,
+            &message(
+                "s1",
+                &["SENT"],
+                addr("", "a@me.example"),
+                vec![addr("Priya Raman", "Priya@x.example")],
+                now,
+            ),
+        )
+        .unwrap();
+        upsert_thread(
+            &mut conn,
+            b,
+            &message(
+                "r1",
+                &["INBOX"],
+                addr("Priya", "priya@x.example"),
+                vec![],
+                now,
+            ),
+        )
+        .unwrap();
+        upsert_thread(
+            &mut conn,
+            b,
+            &message(
+                "r2",
+                &["INBOX"],
+                addr("Jordan Park", "jordan@x.example"),
+                vec![],
+                now,
+            ),
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO google_contacts (account_id, email, name, kind) VALUES (?1, 'PRIYA@x.example', 'Priya Raman', 'saved')",
+            [b],
+        )
+        .unwrap();
+        // The people suggested (my own address aside).
+        let emails = |conn: &Connection| -> Vec<String> {
+            all(conn)
+                .unwrap()
+                .into_iter()
+                .map(|c| c.email.to_lowercase())
+                .filter(|e| e != "a@me.example")
+                .collect()
+        };
+        assert_eq!(emails(&conn), ["priya@x.example", "jordan@x.example"]);
+
+        hide(&conn, "priya@X.example").unwrap();
+        assert_eq!(emails(&conn), ["jordan@x.example"]);
+        hide(&conn, "jordan@x.example").unwrap();
+        // Removing again just moves it to the top of the list.
+        hide(&conn, "PRIYA@x.example").unwrap();
+        assert!(emails(&conn).is_empty());
+        assert_eq!(hidden(&conn).unwrap().len(), 2);
+
+        unhide(&conn, "Priya@x.example").unwrap();
+        assert_eq!(emails(&conn), ["priya@x.example"]);
+        assert_eq!(hidden(&conn).unwrap(), ["jordan@x.example"]);
     }
 
     #[test]

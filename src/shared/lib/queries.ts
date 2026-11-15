@@ -41,6 +41,7 @@ export const keys = {
   original: (id: MessageId) => ["original", id] as const,
   identities: ["identities"] as const,
   contacts: ["contacts"] as const,
+  hiddenContacts: ["contacts", "hidden"] as const,
   appInfo: ["appInfo"] as const,
   defaultMailApp: ["defaultMailApp"] as const,
   appSettings: ["appSettings"] as const,
@@ -192,6 +193,29 @@ export function useContacts() {
     queryFn: () => unwrap(commands.contactsList()),
     enabled: IS_TAURI,
     staleTime: Infinity,
+  });
+}
+
+/** The addresses taken out of the suggestions (Settings → Writing). */
+export function useHiddenContacts() {
+  return useQuery({
+    queryKey: keys.hiddenContacts,
+    queryFn: () => unwrap(commands.contactsHidden()),
+    enabled: IS_TAURI,
+  });
+}
+
+/**
+ * Takes an address out of the suggestions (`hidden: true`) or puts it
+ * back. Only the app's own list changes, never Google's contacts. The
+ * suggestions and the list are read again after.
+ */
+export function useHideContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ email, hidden }: { email: string; hidden: boolean }) =>
+      unwrap(hidden ? commands.contactsHide(email) : commands.contactsUnhide(email)),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.contacts }),
   });
 }
 

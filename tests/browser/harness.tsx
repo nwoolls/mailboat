@@ -123,6 +123,13 @@ const rowLabelIds = [
   [101, 102, 103],
   [103, 105],
 ];
+/** `&contacts=demo`: who compose suggests, and those taken out (newest first). */
+const demoContacts = [
+  { name: "Priya Raman", email: "priya@x.example", wrote: true },
+  { name: "Priya R.", email: "priya.r@y.example", wrote: false },
+  { name: "Jordan Park", email: "jordan@x.example", wrote: true },
+];
+let hiddenContacts: string[] = [];
 /** `?mode=shell`: stars and read states changed by the app, by conversation. */
 const shellChanges = new Map<number, { starred?: boolean; unread?: boolean; inInbox?: boolean }>();
 // `&conversation=all` (with `?mode=shell`): the conversation has all five emails.
@@ -228,7 +235,19 @@ mockIPC(
       case "identities_list":
         return [identity];
       case "contacts_list":
+        // `&contacts=demo`: the demo's people, less those taken out.
+        if (new URLSearchParams(location.search).get("contacts") === "demo")
+          return demoContacts.filter((c) => !hiddenContacts.includes(c.email));
         return [];
+      case "contacts_hide":
+      case "contacts_unhide": {
+        const email = (args as { email: string }).email;
+        hiddenContacts = hiddenContacts.filter((e) => e !== email);
+        if (cmd === "contacts_hide") hiddenContacts.unshift(email);
+        return null;
+      }
+      case "contacts_hidden":
+        return hiddenContacts;
       case "accounts_list":
         if (harnessMode === "shell")
           return shellAccountRemoved || onboardingParams.get("accounts") === "0" ? [] : [account];

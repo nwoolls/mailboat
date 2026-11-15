@@ -1112,6 +1112,29 @@ pub fn contacts_list(state: State<'_, AppState>) -> CmdResult<Vec<Contact>> {
     Ok(compose::contacts::all(&state.db.conn())?)
 }
 
+/// Takes an address out of compose's suggestions (the app's own list;
+/// Google's contacts aren't changed).
+#[tauri::command]
+#[specta::specta]
+pub fn contacts_hide(state: State<'_, AppState>, email: String) -> CmdResult<()> {
+    Ok(compose::contacts::hide(&state.db.conn(), &email)?)
+}
+
+/// Puts an address taken out of the suggestions back.
+#[tauri::command]
+#[specta::specta]
+pub fn contacts_unhide(state: State<'_, AppState>, email: String) -> CmdResult<()> {
+    Ok(compose::contacts::unhide(&state.db.conn(), &email)?)
+}
+
+/// The addresses taken out of the suggestions, most recently first
+/// (Settings → Writing).
+#[tauri::command]
+#[specta::specta]
+pub fn contacts_hidden(state: State<'_, AppState>) -> CmdResult<Vec<String>> {
+    Ok(compose::contacts::hidden(&state.db.conn())?)
+}
+
 /// What a reply or forward needs from a message (people, subject, text),
 /// fetched with its own account's credentials if not cached.
 #[tauri::command]
