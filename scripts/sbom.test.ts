@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   bom,
   type BunLock,
-  type CargoMetadata,
   cargoChecksums,
   cargoComponents,
   installPath,
   licenses,
   npmComponents,
+  parseTree,
 } from "./sbom";
 
 describe("licenses", () => {
@@ -31,19 +31,6 @@ describe("licenses", () => {
   });
 });
 
-/** A crate as `cargo metadata` lists it (the app and its core are local). */
-const pkg = (name: string, license: string | null = "MIT") => ({
-  id: `${name}-id`,
-  name,
-  version: "1.0.0",
-  license,
-  source: name === "desktop" || name === "mail-core" ? null : "registry+…",
-});
-const dep = (name: string, kind: "dev" | "build" | null = null) => ({
-  pkg: `${name}-id`,
-  dep_kinds: [{ kind }],
-});
-
 describe("Rust crates", () => {
   const lock = `
 version = 4
@@ -58,53 +45,62 @@ checksum = "aaaa"
 name = "desktop"
 version = "0.0.0"
 `;
-  // macOS: alpha (normal), cc (build only), tester (dev only), mail-core.
-  const mac: CargoMetadata = {
-    packages: ["desktop", "mail-core", "alpha", "cc", "tester"].map((n) => pkg(n)),
-    resolve: {
-      root: null,
-      nodes: [
-        { id: "desktop-id", deps: [dep("mail-core"), dep("cc", "build"), dep("tester", "dev")] },
-        { id: "mail-core-id", deps: [dep("alpha")] },
-      ],
-    },
-  };
-  // Windows adds a crate only it uses, through mail-core.
-  const windows: CargoMetadata = {
-    packages: ["desktop", "mail-core", "alpha", "winonly"].map((n) => pkg(n)),
-    resolve: {
-      root: null,
-      nodes: [
-        { id: "desktop-id", deps: [dep("mail-core")] },
-        { id: "mail-core-id", deps: [dep("alpha"), dep("winonly")] },
-      ],
-    },
-  };
+  // `cargo tree --prefix none --format "{p}\t{l}"` per platform: what is
+  // linked (normal edges, no proc macros), then what is used to build.
+  const macLinked = [
+    "desktop v0.0.0 (/src/app/src-tauri)\tGPL-3.0-only",
+    "mail-core v0.0.0 (/src/app/crates/core)\tGPL-3.0-only",
+    "alpha v1.0.0\tMIT",
+    "alpha v1.0.0\tMIT (*)",
+    "toml v1.1.8+spec-1.1.0\tMIT OR Apache-2.0",
+  ].join("\n");
+  const macUsed = [
+    macLinked,
+    "derive v1.0.0 (proc-macro)\tMIT/Apache-2.0",
+    "cc v1.2.0\tMIT OR Apache-2.0",
+  ].join("\n");
+  // Windows links a crate only it uses (and its folders look different).
+  const winLinked = [
+    "desktop v0.0.0 (C:\\src\\app\\src-tauri)\tGPL-3.0-only",
+    "alpha v1.0.0\tMIT",
+    "winonly v0.5.0\tMIT",
+  ].join("\n");
 
   it("reads each crate's checksum from Cargo.lock", () => {
     expect(cargoChecksums(lock)).toEqual(new Map([["alpha 1.0.0", "aaaa"]]));
   });
 
-  it("lists every platform's crates, build-only ones as such, and no dev-only ones", () => {
+  it("reads cargo tree's lines once each, knowing the app's own crates by their folder", () => {
+    expect(parseTree(macUsed)).toEqual([
+      { name: "desktop", version: "0.0.0", local: true, license: "GPL-3.0-only" },
+      { name: "mail-core", version: "0.0.0", local: true, license: "GPL-3.0-only" },
+      { name: "alpha", version: "1.0.0", local: false, license: "MIT" },
+      { name: "toml", version: "1.1.8+spec-1.1.0", local: false, license: "MIT OR Apache-2.0" },
+      { name: "derive", version: "1.0.0", local: false, license: "MIT/Apache-2.0" },
+      { name: "cc", version: "1.2.0", local: false, license: "MIT OR Apache-2.0" },
+    ]);
+    expect(parseTree(winLinked)[0]!.local).toBe(true);
+  });
+
+  it("lists every platform's crates, linked ones as shipped and the rest as build-only", () => {
     const sums = new Map([["alpha 1.0.0", "aaaa"]]);
-    const found = cargoComponents([mac, windows], sums, "desktop");
+    const found = cargoComponents([macLinked, winLinked], [macUsed, winLinked], sums);
     const byName = Object.fromEntries(found.map((c) => [c.name, c]));
-    // Review of the first version: a crate only the second platform uses
-    // was missed, because the walk stopped at a root already seen.
-    expect(Object.keys(byName).toSorted()).toEqual(["alpha", "cc", "mail-core", "winonly"]);
+    // The app's own crates are the application, not components.
+    expect(Object.keys(byName).toSorted()).toEqual(["alpha", "cc", "derive", "toml", "winonly"]);
     expect(byName.alpha).toMatchObject({
       purl: "pkg:cargo/alpha@1.0.0",
       scope: "required",
       licenses: [{ expression: "MIT" }],
       hashes: [{ alg: "SHA-256", content: "aaaa" }],
     });
+    // Review: proc macros and build scripts' crates don't ship.
+    expect(byName.derive!.scope).toBe("excluded");
     expect(byName.cc!.scope).toBe("excluded");
     expect(byName.winonly!.scope).toBe("required");
-    expect(byName["mail-core"]!.hashes).toBeUndefined();
-  });
-
-  it("fails without the app's own crate", () => {
-    expect(() => cargoComponents([mac], new Map(), "elsewhere")).toThrow(/no local crate/);
+    // Review: a version's "+" is percent-encoded in the package URL.
+    expect(byName.toml!.purl).toBe("pkg:cargo/toml@1.1.8%2Bspec-1.1.0");
+    expect(byName.toml!.version).toBe("1.1.8+spec-1.1.0");
   });
 });
 
@@ -114,12 +110,23 @@ describe("JavaScript packages", () => {
     workspaces: {
       "": {
         dependencies: { react: "^19", "@scope/ui": "^1" },
-        devDependencies: { vite: "^8" },
+        devDependencies: { vite: "^8", "@types/ui": "^1" },
       },
     },
     packages: {
       react: ["react@19.0.0", "", {}, `sha512-${sha}`],
-      "@scope/ui": ["@scope/ui@1.0.0", "", { dependencies: { tslib: "^1" } }, `sha512-${sha}`],
+      "@scope/ui": [
+        "@scope/ui@1.0.0",
+        "",
+        {
+          dependencies: { tslib: "^1" },
+          optionalDependencies: { menu: "^1" },
+          peerDependencies: { "@types/ui": "^1" },
+        },
+        `sha512-${sha}`,
+      ],
+      menu: ["menu@1.0.0", "", {}, `sha512-${sha}`],
+      "@types/ui": ["@types/ui@1.0.0", "", {}, `sha512-${sha}`],
       // The UI library has its own copy of tslib, nested under it.
       "@scope/ui/tslib": ["tslib@1.0.0", "", {}, `sha512-${sha}`],
       tslib: ["tslib@2.0.0", "", {}, `sha512-${sha}`],
@@ -139,6 +146,8 @@ describe("JavaScript packages", () => {
     const byPurl = Object.fromEntries(found.map((c) => [c.purl, c]));
     expect(Object.keys(byPurl).toSorted()).toEqual([
       "pkg:npm/%40scope/ui@1.0.0",
+      "pkg:npm/%40types/ui@1.0.0",
+      "pkg:npm/menu@1.0.0",
       "pkg:npm/react@19.0.0",
       "pkg:npm/tslib@1.0.0",
       "pkg:npm/tslib@2.0.0",
@@ -149,6 +158,10 @@ describe("JavaScript packages", () => {
     expect(byPurl["pkg:npm/tslib@1.0.0"]!.scope).toBe("required");
     expect(byPurl["pkg:npm/tslib@2.0.0"]!.scope).toBe("excluded");
     expect(byPurl["pkg:npm/vite@8.0.0"]).toMatchObject({ scope: "excluded", licenses: undefined });
+    // Review: reached only through an optional dependency, it's optional;
+    // a peer the app supplies from its dev dependencies doesn't ship.
+    expect(byPurl["pkg:npm/menu@1.0.0"]!.scope).toBe("optional");
+    expect(byPurl["pkg:npm/%40types/ui@1.0.0"]!.scope).toBe("excluded");
     expect(byPurl["pkg:npm/react@19.0.0"]!.hashes).toEqual([
       { alg: "SHA-512", content: Buffer.from("hash").toString("hex") },
     ]);

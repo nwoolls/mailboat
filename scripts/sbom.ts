@@ -12,8 +12,12 @@ export type Component = {
   name: string;
   version: string;
   purl: string;
-  /** "required": in what ships; "excluded": only used to build it. */
-  scope: "required" | "excluded";
+  /**
+   * "required": linked or bundled into the app; "optional": bundled, but
+   * reached only through an optional dependency; "excluded": only used to
+   * build it (build scripts, proc macros, dev tools).
+   */
+  scope: "required" | "optional" | "excluded";
   licenses?: { expression: string }[] | { license: { name: string } }[];
   hashes?: { alg: "SHA-256" | "SHA-512"; content: string }[];
 };
@@ -43,23 +47,43 @@ function isExpression(text: string): boolean {
 
 // ---------------------------------------------------------------- Rust
 
-/** What `cargo metadata --format-version 1` says that this uses. */
-export type CargoMetadata = {
-  packages: {
-    id: string;
-    name: string;
-    version: string;
-    license: string | null;
-    source: string | null;
-  }[];
-  resolve: {
-    root: string | null;
-    nodes: {
-      id: string;
-      deps: { pkg: string; dep_kinds: { kind: "dev" | "build" | null }[] }[];
-    }[];
-  };
-};
+/**
+ * A package URL's version, percent-encoded as the purl specification asks
+ * (`1.1.8+spec-1.1.0` is `1.1.8%2Bspec-1.1.0`).
+ */
+export function purlVersion(version: string): string {
+  return encodeURIComponent(version);
+}
+
+/** A crate as one line of `cargo tree --prefix none --format "{p}\t{l}"`. */
+export type TreeCrate = { name: string; version: string; local: boolean; license?: string };
+
+/**
+ * The crates in `cargo tree` output, once each. A local crate (the app's
+ * own, shown with its folder) is marked so; repeats (`(*)`) are dropped.
+ */
+export function parseTree(output: string): TreeCrate[] {
+  const crates = new Map<string, TreeCrate>();
+  for (const line of output.split("\n")) {
+    const [spec, license] = line.split("\t");
+    const m = spec?.match(/^(\S+) v(\S+)(?: \(([^)]*)\))?/);
+    if (!m) continue;
+    const [, name, version, paren] = m;
+    // A folder: "/…" on macOS and Linux, "C:\…" on Windows. Not
+    // "(proc-macro)", and not a git or registry source.
+    const local = paren !== undefined && (paren.startsWith("/") || /^[A-Za-z]:\\/.test(paren));
+    const key = `${name} ${version}`;
+    if (!crates.has(key)) {
+      crates.set(key, {
+        name: name!,
+        version: version!,
+        local,
+        license: license?.replace(/\s*\(\*\)\s*$/, "").trim() || undefined,
+      });
+    }
+  }
+  return [...crates.values()];
+}
 
 /** Each crate's checksum in `Cargo.lock`, by "name version". */
 export function cargoChecksums(lock: string): Map<string, string> {
@@ -75,56 +99,35 @@ export function cargoChecksums(lock: string): Map<string, string> {
 }
 
 /**
- * The crates `root` is built from on any of the platforms `metadata` holds
- * (one `cargo metadata --filter-platform` each), leaving out dev-only
- * ones. A crate only build scripts use is "excluded".
+ * The app's crates on every platform the release builds, from `cargo tree`
+ * as the build resolves them (features and platforms included): `linked`
+ * holds each platform's `-e normal,no-proc-macro` output (linked into the
+ * app: "required"), `used` its `-e normal,build` output (also proc macros
+ * and build scripts' crates: "excluded" when not linked). The app's own
+ * local crates are the application itself, not components.
  */
 export function cargoComponents(
-  metadata: CargoMetadata[],
+  linked: string[],
+  used: string[],
   checksums: Map<string, string>,
-  root: string,
 ): Component[] {
-  const required = new Set<string>();
-  const used = new Set<string>();
-  const packages = new Map<string, CargoMetadata["packages"][number]>();
-  for (const one of metadata) {
-    for (const p of one.packages) packages.set(p.id, p);
-    const edges = new Map(one.resolve.nodes.map((n) => [n.id, n.deps]));
-    const rootId = one.packages.find((p) => p.name === root && p.source === null)?.id;
-    if (!rootId) throw new Error(`cargo metadata has no local crate "${root}"`);
-    // Everything reachable through normal and build edges is used; through
-    // normal edges alone, from the root, it ships.
-    // Each platform walks on its own, then joins the rest: a crate already
-    // found for one platform doesn't stop the walk for another.
-    const walk = (start: string, into: Set<string>, kinds: (k: string | null) => boolean) => {
-      const seen = new Set<string>();
-      const queue = [start];
-      while (queue.length) {
-        const id = queue.pop()!;
-        if (seen.has(id)) continue;
-        seen.add(id);
-        into.add(id);
-        for (const dep of edges.get(id) ?? []) {
-          if (dep.dep_kinds.some((k) => kinds(k.kind))) queue.push(dep.pkg);
-        }
-      }
-    };
-    walk(rootId, required, (k) => k === null);
-    walk(rootId, used, (k) => k !== "dev");
-  }
+  const key = (c: TreeCrate) => `${c.name} ${c.version}`;
+  const shipped = new Set(linked.flatMap(parseTree).map(key));
+  const all = new Map<string, TreeCrate>();
+  for (const c of [...linked, ...used].flatMap(parseTree)) if (!all.has(key(c))) all.set(key(c), c);
   const out: Component[] = [];
-  for (const id of used) {
-    const p = packages.get(id)!;
-    if (p.name === root && p.source === null) continue;
-    const checksum = checksums.get(`${p.name} ${p.version}`);
+  for (const c of all.values()) {
+    if (c.local) continue;
+    const purl = `pkg:cargo/${c.name}@${purlVersion(c.version)}`;
+    const checksum = checksums.get(key(c));
     out.push({
       type: "library",
-      "bom-ref": `pkg:cargo/${p.name}@${p.version}`,
-      name: p.name,
-      version: p.version,
-      purl: `pkg:cargo/${p.name}@${p.version}`,
-      scope: required.has(id) ? "required" : "excluded",
-      licenses: licenses(p.license ?? undefined),
+      "bom-ref": purl,
+      name: c.name,
+      version: c.version,
+      purl,
+      scope: shipped.has(key(c)) ? "required" : "excluded",
+      licenses: licenses(c.license),
       hashes: checksum ? [{ alg: "SHA-256", content: checksum }] : undefined,
     });
   }
@@ -180,8 +183,10 @@ function integrityHex(integrity: string | undefined): Component["hashes"] {
 
 /**
  * Every package in `lock`. Those the app's own dependencies reach (not
- * its dev dependencies, which only build and test it) are "required".
- * `license(key)` reads an installed package's license, if it's there.
+ * its dev dependencies, which only build and test it) are "required", or
+ * "optional" when only an optional dependency reaches them.
+ * `license(key)` reads an installed package's license, if it's there: a
+ * platform's binary package that isn't installed on this computer has none.
  */
 export function npmComponents(
   lock: BunLock,
@@ -197,32 +202,45 @@ export function npmComponents(
     }
     return undefined;
   };
-  const required = new Set<string>();
-  const queue = Object.keys(lock.workspaces[""]?.dependencies ?? {})
-    .map((name) => resolve("", name))
-    .filter((k): k is string => k !== undefined);
-  while (queue.length) {
-    const key = queue.pop()!;
-    if (required.has(key)) continue;
-    required.add(key);
-    const meta = lock.packages[key]?.[2] ?? {};
-    for (const deps of [meta.dependencies, meta.optionalDependencies, meta.peerDependencies]) {
-      for (const name of Object.keys(deps ?? {})) {
-        const next = resolve(key, name);
-        if (next) queue.push(next);
+  // From `starts`, through `dependencies` (and `optionalDependencies` if
+  // asked), every key reached. Peer dependencies are the user's to supply:
+  // one that ships is also somebody's dependency, and is reached that way.
+  const reach = (starts: string[], optional: boolean): Set<string> => {
+    const found = new Set<string>();
+    const queue = [...starts];
+    while (queue.length) {
+      const key = queue.pop()!;
+      if (found.has(key)) continue;
+      found.add(key);
+      const meta = lock.packages[key]?.[2] ?? {};
+      for (const deps of [meta.dependencies, optional ? meta.optionalDependencies : undefined]) {
+        for (const name of Object.keys(deps ?? {})) {
+          const next = resolve(key, name);
+          if (next) queue.push(next);
+        }
       }
     }
-  }
+    return found;
+  };
+  const roots = Object.keys(lock.workspaces[""]?.dependencies ?? {})
+    .map((name) => resolve("", name))
+    .filter((k): k is string => k !== undefined);
+  const required = reach(roots, false);
+  const optional = reach(roots, true);
+  const scopeOf = (key: string): Component["scope"] =>
+    required.has(key) ? "required" : optional.has(key) ? "optional" : "excluded";
+  const rank = { required: 2, optional: 1, excluded: 0 };
   const out: Component[] = [];
   const seen = new Set<string>();
   for (const [key, entry] of Object.entries(lock.packages)) {
     const { name, version } = splitNameVersion(entry[0]);
     // A workspace or linked package has no registry version.
     if (!/^\d/.test(version)) continue;
-    const purl = `pkg:npm/${name.replace(/^@/, "%40")}@${version}`;
+    const purl = `pkg:npm/${name.replace(/^@/, "%40")}@${purlVersion(version)}`;
     if (seen.has(purl)) {
-      // The same version installed twice: required if either copy is.
-      if (required.has(key)) out.find((c) => c.purl === purl)!.scope = "required";
+      // The same version installed twice: the wider scope of the two.
+      const first = out.find((c) => c.purl === purl)!;
+      if (rank[scopeOf(key)] > rank[first.scope]) first.scope = scopeOf(key);
       continue;
     }
     seen.add(purl);
@@ -232,7 +250,7 @@ export function npmComponents(
       name,
       version,
       purl,
-      scope: required.has(key) ? "required" : "excluded",
+      scope: scopeOf(key),
       licenses: licenses(license(key)),
       hashes: integrityHex(entry[3]),
     });

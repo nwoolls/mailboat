@@ -3,8 +3,8 @@
 //   bun scripts/make-sbom.ts --version 0.3.0 --out release-sbom
 //
 // Run after `bun install --frozen-lockfile` (it reads installed packages'
-// licenses) with Rust installed (it asks `cargo metadata`, once per
-// platform the release builds). Writes `<App>_<version>.cdx.json` in `--out`.
+// licenses) with Rust installed (it asks `cargo tree`, twice per platform
+// the release builds). Writes `<App>_<version>.cdx.json` in `--out`.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -14,7 +14,6 @@ import { isVersion } from "./releaseFiles";
 import {
   bom,
   type BunLock,
-  type CargoMetadata,
   cargoChecksums,
   cargoComponents,
   installPath,
@@ -38,28 +37,33 @@ const version = option("version") ?? fail("missing --version");
 const out = option("out") ?? fail("missing --out");
 if (!isVersion(version)) fail(`"${version}" isn't a version like 1.2.3`);
 
-const metadata = TARGETS.map((target): CargoMetadata => {
+/** `cargo tree` for `target` through `edges`, a line per crate with its license. */
+function tree(target: string, edges: string): string {
   const run = spawnSync(
     "cargo",
     [
-      "metadata",
-      "--format-version",
-      "1",
+      "tree",
       "--locked",
-      "--filter-platform",
-      target,
       "--manifest-path",
       "src-tauri/Cargo.toml",
+      "--target",
+      target,
+      "-e",
+      edges,
+      "--prefix",
+      "none",
+      "--format",
+      "{p}\t{l}",
     ],
     { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 },
   );
-  if (run.status !== 0) fail(`cargo metadata for ${target} failed:\n${run.stderr}`);
-  return JSON.parse(run.stdout) as CargoMetadata;
-});
+  if (run.status !== 0) fail(`cargo tree for ${target} failed:\n${run.stderr}`);
+  return run.stdout;
+}
 const rust = cargoComponents(
-  metadata,
+  TARGETS.map((t) => tree(t, "normal,no-proc-macro")),
+  TARGETS.map((t) => tree(t, "normal,build")),
   cargoChecksums(readFileSync("Cargo.lock", "utf8")),
-  "desktop",
 );
 
 const lock = Bun.JSONC.parse(readFileSync("bun.lock", "utf8")) as BunLock;
@@ -87,10 +91,14 @@ const file = join(out, `${brand.name}_${version}.cdx.json`);
 writeFileSync(file, `${JSON.stringify(document, null, 2)}\n`);
 
 const count = (list: typeof rust, scope: string) => list.filter((c) => c.scope === scope).length;
-const unlicensed = document.components.filter((c) => c.scope === "required" && !c.licenses);
+// Build-only packages may lack one: a platform's binary package that isn't
+// installed on this computer can't be read.
+const unlicensed = document.components.filter((c) => c.scope !== "excluded" && !c.licenses);
 console.log(`${file}: ${document.components.length} components`);
 console.log(`  Rust: ${count(rust, "required")} shipped, ${count(rust, "excluded")} build-only`);
-console.log(`  JavaScript: ${count(js, "required")} shipped, ${count(js, "excluded")} build-only`);
+console.log(
+  `  JavaScript: ${count(js, "required")} shipped, ${count(js, "optional")} optional, ${count(js, "excluded")} build-only`,
+);
 // Every shipped component must say its license: the lab reads them, and
 // the project's license (GPL-3.0-only) has to allow each.
 if (unlicensed.length) {
