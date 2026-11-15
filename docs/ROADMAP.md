@@ -5783,7 +5783,12 @@ built, the owner has tried it, and the owner has published 0.3.0
       after the view) in a bar that stays at the top while the conversation
       scrolls, Esc or ⌘[, and no reader button. The owner tried it: the link
       was first above the subject, scrolled away with it and was small to
-      hit, so it got the pinned bar and a bigger target.
+      hit, so it got the pinned bar and a bigger target. Then (owner): with the
+      sidebar folded, its button only floats it (a click that also put it
+      away fought the hover, which floats it too); the keyboard shortcut
+      still toggles it. And the window's shortest went from 520px, the
+      first scaffold's default with no reason recorded, to 360px, where the
+      reader and the composer still work.
       Toolbar buttons that don't fit move into the More menu, Labels first,
       then Star, Mark read, Spam and Trash; Archive stays. The window now
       goes down to 420px, where it used to stop at 820px)*

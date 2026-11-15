@@ -479,6 +479,14 @@ export function Shell() {
     window.setTimeout(() => setPeek((p) => (p === "docking" ? "closed" : p)), PEEK_DOCK_MS);
     setSidebarOpen(opening);
   }, [sidebarFits]);
+  // The sidebar's button. Folded, hovering it already floats the sidebar,
+  // so a click only floats it (never puts it away, which fought the hover:
+  // owner, 2026-11-14); it goes when the pointer leaves, or with Esc. The
+  // keyboard shortcut still toggles it.
+  const clickSidebar = useCallback(() => {
+    if (sidebarFits) toggleSidebar();
+    else setPeek((p) => (p === "docking" ? p : "open"));
+  }, [sidebarFits, toggleSidebar]);
   const toggleReader = useCallback(() => {
     setReaderOpen(!readerOpen);
   }, [readerOpen]);
@@ -1105,7 +1113,7 @@ export function Shell() {
           hasSelection={chosenId !== null}
           count={targets.length}
           names={Object.fromEntries(allCommands.map((c) => [c.id, c.title]))}
-          onToggleSidebar={toggleSidebar}
+          onToggleSidebar={clickSidebar}
           onSidebarHover={hoverSidebar}
           onToggleReader={toggleReader}
           canCompose={accountList.length > 0}

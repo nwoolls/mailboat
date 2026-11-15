@@ -20,6 +20,12 @@ export const KEYBOARD_STEP = 16;
 const WINDOW_EDGE = 8;
 /** The window's narrowest (`minWidth` in `tauri.conf.json` must match). */
 export const WINDOW_MIN_WIDTH = 420;
+/**
+ * The window's shortest (`minHeight` in `tauri.conf.json` must match). The
+ * reader and the composer still work there (the composer's formatting bar
+ * wraps); 520 had been the scaffold's default, with no reason recorded.
+ */
+export const WINDOW_MIN_HEIGHT = 360;
 
 /**
  * How the window lays out its panes, by its width (owner, 2026-11-14):

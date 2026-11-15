@@ -17,6 +17,7 @@ import {
   READER_MIN_WIDTH,
   SIDEBAR_WIDTH,
   SPLITTER_WIDTH,
+  WINDOW_MIN_HEIGHT,
   WINDOW_MIN_WIDTH,
 } from "./panes";
 
@@ -147,5 +148,7 @@ describe("how the window lays out its panes", () => {
   it("stops the window where the layout ends, on macOS and Windows", () => {
     expect(tauriConf.app.windows[0]!.minWidth).toBe(WINDOW_MIN_WIDTH);
     expect(tauriWindowsConf.app.windows[0]!.minWidth).toBe(WINDOW_MIN_WIDTH);
+    expect(tauriConf.app.windows[0]!.minHeight).toBe(WINDOW_MIN_HEIGHT);
+    expect(tauriWindowsConf.app.windows[0]!.minHeight).toBe(WINDOW_MIN_HEIGHT);
   });
 });

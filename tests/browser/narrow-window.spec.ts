@@ -38,14 +38,34 @@ test("a medium window folds the sidebar, which its button floats", async ({ page
   await page.getByRole("option").first().click();
   await expect(page.locator(".reader-scroll")).toBeVisible();
   expect(await listHidden(page)).toBe(false);
-  // The sidebar's button floats it over the list, and puts it away again.
+  // The sidebar's button floats it over the list. A second click leaves it
+  // there (hovering the button floats it too, so a click that put it away
+  // fought the hover); the pointer leaving puts it away.
   const toggle = page.locator("[data-toolbar-start] button");
-  await page.mouse.move(600, 400);
+  const peek = page.locator(".sidebar-peek");
   await toggle.click();
-  await expect(page.locator(".sidebar-peek")).toBeVisible();
-  await page.mouse.move(600, 400);
+  await expect(peek).toBeVisible();
+  // Watched for the next 400ms: it never starts to slide away.
+  await peek.evaluate((el) => {
+    const w = window as unknown as { __peekLeft?: boolean };
+    w.__peekLeft = false;
+    new MutationObserver(() => {
+      if (el.hasAttribute("data-leaving") || !el.isConnected) w.__peekLeft = true;
+    }).observe(el, { attributes: true });
+  });
   await toggle.click();
-  await expect(page.locator(".sidebar-peek")).toHaveCount(0);
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => (window as unknown as { __peekLeft: boolean }).__peekLeft)).toBe(
+    false,
+  );
+  await expect(peek).toBeVisible();
+  await page.mouse.move(650, 400);
+  await expect(peek).toHaveCount(0);
+  // The keyboard shortcut still opens and closes it.
+  await page.keyboard.press("Control+Meta+s");
+  await expect(peek).toBeVisible();
+  await page.keyboard.press("Control+Meta+s");
+  await expect(peek).toHaveCount(0);
   // Widened, the sidebar is back where it was.
   await page.setViewportSize({ width: 1200, height: 700 });
   await expect.poll(() => sidebarFolded(page)).toBe(false);
