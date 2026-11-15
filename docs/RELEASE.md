@@ -33,12 +33,12 @@ accounts (GitHub, social media, Apple).
 | | 1. Closed source, paid | 2. Open source, bring your own Google credentials | 3. Hybrid: open source first, paid later (chosen) |
 |---|---|---|---|
 | Setup for a user | None | 10–15 min, guided in the app | Free: guided. Paid: none |
-| Google verification and security assessment | Required (yearly) | **None** | Only when the paid version starts |
+| Google verification and security assessment | Required (yearly) | **None** | Required before the paid version can start (yearly) |
 | Users before Google approves | 100 in total | No limit | No limit (free) |
 | Income | A subscription | Tips at most | Tips, then subscriptions |
 | Payments and licenses | Polar | None | Polar, added later |
 | Code | Private | Public | Public |
-| Yearly fixed costs | Signing, hosting, and the assessment if required | Signing, or none if unsigned | Signing, then as Plan 1 |
+| Yearly fixed costs | Signing, hosting and the assessment | Signing, or none if unsigned | Signing and the assessment, then as Plan 1 |
 | Reach | Anyone with Gmail | Technical people | Technical people, then anyone |
 
 ```mermaid
@@ -94,13 +94,14 @@ flowchart LR
       2026-10-29: `gmail.modify` covers drafts and sending, so
       `gmail.compose` is no longer asked for)*
 
-### Google verification (prepared in groundwork, submitted after Checkpoint 1)
+### Google verification (submitted 2026-11-07)
 
-*Update 2026-11-07: the owner submitted it early, before Checkpoint 1. The
-app is in production, its branding is verified and the form is in; Google's
-review is under way (`docs/GOOGLE-VERIFICATION.md` → Status). The plan below
-is otherwise unchanged. If Google asks for the yearly paid security
-assessment, the owner decides then whether to pay for it or to stop there.*
+*The owner submitted it before Checkpoint 1. The app is in production, its
+branding is verified, and Google's review is under way
+(`docs/GOOGLE-VERIFICATION.md` → Status). Google requires the yearly security
+assessment (ADA CASA AL1, first due 2027-02-12), and the owner is doing it
+(`docs/ROADMAP.md` → 0.3.0 → Security assessment (CASA)). The paid version
+can't start until both are done.*
 
 Mailboat asks for restricted scopes (`gmail.modify`; `gmail.settings.basic`
 is restricted too, as the consent screen's Data Access page shows,
@@ -128,12 +129,11 @@ verified; it's paperwork and waiting (weeks to months).
       the Summarize button whenever the provider is Claude or ChatGPT, so
       every transfer is one the user started. Whether Google's reviewers
       accept the transfer is their call; be ready to explain it
-- Security assessment (CASA): Google requires it when restricted data
-      is stored on or sent to servers. Mailboat keeps mail on the device,
-      and AI and MCP only send it where the user chooses, so ask to be
-      exempt. If Google insists: yearly, a paid assessment
-      *(2026-11-15: Google required it, ADA CASA AL1 by 2027-02-12;
-      `docs/ROADMAP.md` → 0.3.0 → Security assessment (CASA))*
+- Security assessment (CASA): required for Mailboat's Gmail
+      permissions, yearly and paid, from an ADA-authorized lab (AL1,
+      first due 2027-02-12). The submission asked to be exempt, since
+      mail stays on the device and AI and MCP only send it where the user
+      chooses; Google didn't grant it
 - Until approved, an unverified client (in Testing or in production)
       allows 100 users in total (every account that ever signs in counts;
       the count can't be reset): enough for the beta
@@ -184,8 +184,7 @@ verified; it's paperwork and waiting (weeks to months).
 
 ### Ongoing
 
-- Google re-verification every 12 months (and the assessment, if
-      required)
+- Google re-verification and the CASA assessment, every 12 months
 - Promotion, if the owner wants more than costs covered (see
       "Promotion" below)
 
@@ -371,8 +370,7 @@ Decide these before the first public release, whatever the plan:
 - **One bundle ID for every build**, so moving between free and paid
   never means reinstalling or losing data.
 - **No server of ours ever receives Gmail data**, in any plan. It's the
-  case for skipping Google's paid assessment and the simplest privacy
-  promise.
+  simplest privacy promise. Google still requires the paid assessment.
 - **Open-sourcing later is harder than now.** Closed for a while, then
   open, means the same history clean-up plus explaining the change to
   paying customers.
