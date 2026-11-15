@@ -4965,6 +4965,12 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         attempt 1. The same symptom as the reply-scroll entries in "Later /
         unscheduled" → Flaky tests: the reply never came into view on a
         slow runner, likely the same cause.
+      - 2026-11-15, CI on #145 (`ai-scratch-folder`), WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43745366359: the
+        same first check timed out after 15 s, the reply's end 429 px below
+        the reader (line 125); 162 others passed. #145 changes the AI
+        programs' working folder in Rust, not the reply or the reader.
+        Re-run requested.
 - [ ] `ascii-glow.spec.ts`: "the glow glides over to the pointer, then holds
       on loosely" (line 153, added in UX Spike 5).
       - 2026-11-14, CI on `main` after #135 merged, attempt 1,
@@ -5981,7 +5987,7 @@ Privacy and the policy.*
       tokens itself. The written answer describes how long each token
       stays in memory and when it is dropped; whether to add the wiping
       waits for the lab's answer.
-- [ ] The AI scratch folder: `ai/process.rs` makes a working folder in
+- [x] The AI scratch folder: `ai/process.rs` makes a working folder in
       the temp directory for every request, with `create_dir_all` (not
       private). Only the two paths that return the program's result (a
       failing exit status included) call `remove_dir`, which
@@ -5990,6 +5996,17 @@ Privacy and the policy.*
       of its output failing, waiting for it failing, or the request timing
       out. Use `tempfile::TempDir`, which is created
       atomically and private, and is removed on every exit.
+      *(2026-11-15: built. The working folder is a `tempfile::TempDir`,
+      made with a name no other program can claim first. On macOS and
+      Linux its mode is set to 0700 (tempfile leaves it to the umask); on
+      Windows it takes the permissions of the temp folder it is made in
+      (`%TEMP%`, normally the user's own), with no owner-only ACL of its
+      own. It is removed with anything in it however the request ends,
+      and only after the program has stopped (review: on Windows a
+      running program's working folder can't be deleted). Tests cover the
+      program exiting, the answer coming in early, a line handler failing
+      and a timeout; they fail if the folder is kept or removed while the
+      program still runs)*
 - [ ] Encrypt the local cache at rest: a key in the keychain and an
       encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
       and costs little speed. Until then the cache relies on the

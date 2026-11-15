@@ -232,13 +232,63 @@ pub async fn run_lines_with(
     args: &[String],
     stdin: &str,
     env: Env,
+    on_line: impl FnMut(&str) -> Result<ControlFlow<()>>,
+) -> Result<Exit> {
+    let stop = tokio::time::sleep(TIMEOUT);
+    run_lines_until(stop, program, args, stdin, env, on_line).await
+}
+
+/// A program running in its working folder. The folder goes only after
+/// the program has exited: on Windows a running program's working folder
+/// can't be deleted, and `TempDir` doesn't try again. When the request
+/// ends before the program was waited on (an error, a timeout, or the
+/// caller giving up), dropping this stops the program, waits for it, and
+/// then removes the folder, in a task of its own.
+struct Running {
+    child: Option<tokio::process::Child>,
+    dir: Option<tempfile::TempDir>,
+    /// The program has been waited on: only the folder is left to go.
+    reaped: bool,
+}
+
+impl Drop for Running {
+    fn drop(&mut self) {
+        let (child, dir) = (self.child.take(), self.dir.take());
+        let Some(mut child) = child.filter(|_| !self.reaped) else {
+            return;
+        };
+        match tokio::runtime::Handle::try_current() {
+            Ok(runtime) => {
+                runtime.spawn(async move {
+                    let _ = child.kill().await;
+                    drop(dir);
+                });
+            }
+            // No runtime to wait in (never in the app): stop it, and
+            // remove what can be removed.
+            Err(_) => {
+                let _ = child.start_kill();
+                drop(dir);
+            }
+        }
+    }
+}
+
+/// `run_lines_with`, giving up when `stop` completes (`TIMEOUT` in the
+/// app; a test can stop it when it chooses).
+async fn run_lines_until(
+    stop: impl std::future::Future<Output = ()>,
+    program: &Path,
+    args: &[String],
+    stdin: &str,
+    env: Env,
     mut on_line: impl FnMut(&str) -> Result<ControlFlow<()>>,
 ) -> Result<Exit> {
-    let work = tokio::time::timeout(TIMEOUT, async {
+    let work = async {
         let dir = scratch_dir()?;
-        let mut child = command(program, env)?
+        let child = command(program, env)?
             .args(args)
-            .current_dir(&dir)
+            .current_dir(dir.path())
             .env("PATH", child_path(program))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -246,6 +296,12 @@ pub async fn run_lines_with(
             .kill_on_drop(true)
             .spawn()
             .map_err(|e| CoreError::Ai(format!("couldn't start {}: {e}", program.display())))?;
+        let mut running = Running {
+            child: Some(child),
+            dir: Some(dir),
+            reaped: false,
+        };
+        let child = running.child.as_mut().expect("just set");
         let mut input = child.stdin.take().expect("piped stdin");
         let text = stdin.to_string();
         // Written alongside reading, so a large prompt can't fill the pipe
@@ -270,10 +326,9 @@ pub async fn run_lines_with(
                 // The answer is in: stop the program rather than wait for
                 // it to exit, and reap it so it doesn't linger.
                 let _ = child.start_kill();
-                let _ = child.wait().await;
+                running.reaped = child.wait().await.is_ok();
                 writer.abort();
                 stderr.abort();
-                let _ = std::fs::remove_dir(&dir);
                 return Ok(Exit {
                     success: true,
                     stderr: String::new(),
@@ -284,16 +339,18 @@ pub async fn run_lines_with(
             .wait()
             .await
             .map_err(|e| CoreError::Ai(format!("waiting for {}: {e}", program.display())))?;
+        running.reaped = true;
         let _ = writer.await;
         let stderr = stderr.await.unwrap_or_default();
-        let _ = std::fs::remove_dir(&dir);
         Ok(Exit {
             success: status.success(),
             stderr: tail(&String::from_utf8_lossy(&stderr), 600),
         })
-    });
-    work.await
-        .map_err(|_| CoreError::Ai("The AI took too long to answer.".into()))?
+    };
+    tokio::select! {
+        done = work => done,
+        () = stop => Err(CoreError::Ai("The AI took too long to answer.".into())),
+    }
 }
 
 /// Runs a short command (a status check) and returns its stdout, stderr
@@ -406,12 +463,20 @@ fn fence(program: &Path) -> Result<Option<String>> {
 }
 
 /// An empty folder to run in, so the tools find no project files
-/// (`CLAUDE.md`, `AGENTS.md`) to read.
-fn scratch_dir() -> Result<PathBuf> {
-    let dir = std::env::temp_dir().join(format!("ai-helper-{}", fastrand::u64(..)));
-    std::fs::create_dir_all(&dir)
-        .map_err(|e| CoreError::Ai(format!("couldn't make a working folder: {e}")))?;
-    Ok(dir)
+/// (`CLAUDE.md`, `AGENTS.md`) to read. Made in one step with a name no
+/// other program can claim first, readable by this user only (0700), and
+/// removed with anything written in it when dropped: whether the program
+/// answered, failed to start or to be read, or the request timed out
+/// (the timeout drops the work that holds it).
+fn scratch_dir() -> Result<tempfile::TempDir> {
+    let mut builder = tempfile::Builder::new();
+    builder.prefix("ai-helper-");
+    // tempfile leaves a folder's mode to the umask (often 0755).
+    #[cfg(unix)]
+    builder.permissions(std::os::unix::fs::PermissionsExt::from_mode(0o700));
+    builder
+        .tempdir()
+        .map_err(|e| CoreError::Ai(format!("couldn't make a working folder: {e}")))
 }
 
 fn tail(s: &str, max: usize) -> String {
@@ -579,13 +644,115 @@ mod tests {
         assert!(p.contains("(allow file-read* (subpath \"/d\"))"), "{p}");
     }
 
+    /// What the program says about its working folder (its path and
+    /// `ls -ld`), after writing a file into it.
+    #[cfg(unix)]
+    const SHOW_FOLDER: &str = "touch left-behind; pwd -P; ls -ld . | cut -c1-10";
+
+    /// Whether `folder` is gone within a few seconds: after an error or a
+    /// timeout, it goes once the program has been stopped and waited on,
+    /// in a task of its own.
+    #[cfg(unix)]
+    async fn goes(folder: &Path) -> bool {
+        for _ in 0..100 {
+            if !folder.exists() {
+                return true;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        false
+    }
+
+    /// The working folder is private, and gone afterwards with what the
+    /// program wrote in it, on each way out of `run_lines_with`: the
+    /// program exiting, the answer coming in before it exits, and a line
+    /// handler failing. (A program that can't start leaves its folder to
+    /// the same drop.)
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_working_folder_is_private_and_removed_on_every_way_out() {
+        for way in ["exit", "answer", "error"] {
+            let script = match way {
+                "exit" => SHOW_FOLDER.to_string(),
+                // `exec`, so stopping the program stops the sleep too.
+                _ => format!("{SHOW_FOLDER}; echo done; exec sleep 30"),
+            };
+            let mut seen = Vec::new();
+            let result = run_lines(Path::new("/bin/sh"), &["-c".into(), script], "", |line| {
+                seen.push(line.to_string());
+                match (way, line) {
+                    ("answer", "done") => Ok(ControlFlow::Break(())),
+                    ("error", "done") => Err(CoreError::Ai("stop".into())),
+                    _ => Ok(ControlFlow::Continue(())),
+                }
+            })
+            .await;
+            assert_eq!(result.is_ok(), way != "error", "{way}");
+            let folder = PathBuf::from(&seen[0]);
+            assert!(
+                folder
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .starts_with("ai-helper-"),
+                "{way}: {folder:?}"
+            );
+            assert_eq!(seen[1], "drwx------", "{way}: only this user");
+            assert!(goes(&folder).await, "{way}: {folder:?} is left behind");
+        }
+    }
+
+    /// Timing out stops the program and removes the folder. The test
+    /// times it out once the program has shown its folder, so how fast the
+    /// program starts doesn't matter.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn the_working_folder_is_removed_when_the_request_times_out() {
+        let (shown, stop) = tokio::sync::oneshot::channel::<()>();
+        let mut shown = Some(shown);
+        let mut seen = Vec::new();
+        let result = run_lines_until(
+            async {
+                let _ = stop.await;
+            },
+            Path::new("/bin/sh"),
+            // Its process ID, then `exec`, so the sleep is that process.
+            &[
+                "-c".into(),
+                format!("{SHOW_FOLDER}; echo $$; exec sleep 600"),
+            ],
+            "",
+            Env::Inherit,
+            |line| {
+                seen.push(line.to_string());
+                if seen.len() == 3 {
+                    shown.take().map(|s| s.send(()));
+                }
+                Ok(ControlFlow::Continue(()))
+            },
+        )
+        .await;
+        assert!(matches!(result, Err(CoreError::Ai(m)) if m.contains("too long")));
+        let folder = PathBuf::from(&seen[0]);
+        assert!(goes(&folder).await, "{folder:?} is left behind");
+        // Gone only once the program had stopped.
+        let alive = std::process::Command::new("kill")
+            .args(["-0", &seen[2]])
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success();
+        assert!(!alive, "the program was still running");
+    }
+
     // Needs a Unix shell or path rules (/bin/sh, /usr/bin/env, /Users/…).
     #[cfg(unix)]
     #[tokio::test]
     async fn an_error_from_a_line_stops_the_program() {
         let result = run_lines(
             Path::new("/bin/sh"),
-            &["-c".into(), "echo a; sleep 30; echo b".into()],
+            // `exec`, so stopping the program stops the sleep too.
+            &["-c".into(), "echo a; exec sleep 30".into()],
             "",
             |_| Err(CoreError::Ai("stop".into())),
         )
@@ -603,7 +770,8 @@ mod tests {
             Path::new("/bin/sh"),
             &[
                 "-c".into(),
-                "echo answer; echo done; sleep 30; echo late".into(),
+                // `exec`, so stopping the program stops the sleep too.
+                "echo answer; echo done; exec sleep 30".into(),
             ],
             "",
             |line| {

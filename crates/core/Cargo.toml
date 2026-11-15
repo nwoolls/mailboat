@@ -45,6 +45,10 @@ mail-parser = "1.0.0"
 # for the app's `--mcp` proxy that forwards to the running app.
 rmcp = { version = "3.9", features = ["server", "client", "macros", "schemars", "transport-io", "transport-async-rw"] }
 schemars = "1.1"
+# The AI programs' working folder (`ai::process`): made private and
+# atomically, and removed with what's in it on every way out. Already in
+# the build through other crates.
+tempfile = "3.27"
 
 [features]
 # Exposes the checks the fuzz target in `fuzz/` runs (`mail::sanitize_check`).
