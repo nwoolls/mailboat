@@ -139,7 +139,15 @@ import { useFeatureFlags } from "../shared/lib/featureFlags";
 import { accelMatches, IS_MAC, primaryKey } from "../shared/lib/platform";
 import { SEARCH_INPUT_ID } from "./TitleSearch";
 import { rememberSearch } from "../features/search/ui/history";
-import { LABEL_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
+import { LABEL_BUTTON_ID, MORE_BUTTON_ID, Toolbar, type ToolbarActions } from "./Toolbar";
+
+/**
+ * What the label picker opens under: the Labels button, or the More button
+ * once Labels has moved into its menu for want of room.
+ */
+function labelPickerButton(): HTMLElement | null {
+  return document.getElementById(LABEL_BUTTON_ID) ?? document.getElementById(MORE_BUTTON_ID);
+}
 import {
   useAccounts,
   useAiStatus,
@@ -416,6 +424,25 @@ export function Shell() {
   // Toolbar buttons moved into the More menu for want of room (`Toolbar`).
   const [overflow, setOverflow] = useState(0);
   const [readerOpen, setReaderOpen] = useState(() => panels.get().readerOpen);
+  // When the list and the reader take turns, focus follows the pane that
+  // shows: the way back once a conversation fills the window, the list on
+  // going back. Left alone when it's somewhere still shown (a reply).
+  const listShowing = !single || !(readerOpen && selectedId !== null);
+  const listShowed = useRef(listShowing);
+  useEffect(() => {
+    const was = listShowed.current;
+    listShowed.current = listShowing;
+    if (!single || was === listShowing) return;
+    const frame = requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (active && active !== document.body && !active.closest("[inert]")) return;
+      const target = listShowing
+        ? document.querySelector<HTMLElement>('[role="listbox"][aria-label="Conversations"]')
+        : document.querySelector<HTMLElement>("[data-reader-back]");
+      target?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [single, listShowing]);
   useEffect(() => setSavedReaderOpen(readerOpen), [readerOpen]);
   // Opening a different conversation (a click, or j/k while it shows)
   // brings a hidden reader back. Adjusted during render, not in an effect.
@@ -433,12 +460,9 @@ export function Shell() {
     window.clearTimeout(peekTimer.current);
     // (A docking peek finishes docking.)
     setPeek((p) => (p === "closed" || p === "docking" ? p : "leaving"));
-    peekTimer.current = window.setTimeout(
-      () => setPeek((p) => (p === "leaving" ? "closed" : p)),
-      PEEK_SLIDE_OUT_MS,
-    );
   }, []);
-  // A peek put away by the folded sidebar's button slides out, then goes.
+  // A peek put away (the pointer leaving, Esc, or the shortcut) slides
+  // out, then goes; coming back onto it meanwhile keeps it.
   useEffect(() => {
     if (peek !== "leaving") return;
     const done = window.setTimeout(
@@ -447,6 +471,7 @@ export function Shell() {
     );
     return () => window.clearTimeout(done);
   }, [peek]);
+  const peekShown = peek === "open";
   const hoverSidebar = useCallback(
     (inside: boolean) => {
       window.clearTimeout(peekTimer.current);
@@ -700,7 +725,7 @@ export function Shell() {
         if (command.action) act(command.action, ids);
         return;
       case "labels": {
-        const button = document.getElementById(LABEL_BUTTON_ID);
+        const button = labelPickerButton();
         const at = labelsAt ?? (button ? anchorBelow(button) : null);
         if (!at) return;
         setLabelFor(labelsAt ? ids : null);
@@ -846,6 +871,13 @@ export function Shell() {
         (e.target as HTMLElement).blur();
         return;
       }
+      // A floating sidebar goes first, wherever the focus is, and nothing
+      // under it (the reader) goes with the same press.
+      if (e.key === "Escape" && peekShown) {
+        e.preventDefault();
+        closePeek();
+        return;
+      }
       // Escape first drops picked conversations, then closes the open one
       // (and with it the reader).
       if (e.key === "Escape" && checked.size > 0) {
@@ -855,7 +887,13 @@ export function Shell() {
       }
       // ⌘[ (Mail's Back) goes back to the list while the reader fills the
       // window, as Esc does.
-      if (single && readerOpen && selectedId !== null && accelMatches(e, "Cmd+[")) {
+      if (
+        single &&
+        readerOpen &&
+        selectedId !== null &&
+        !isEditable(e.target) &&
+        accelMatches(e, "Cmd+[")
+      ) {
         e.preventDefault();
         setReaderOpen(false);
         return;
@@ -936,7 +974,7 @@ export function Shell() {
       }
       if (plain && e.key === "l" && targets.length > 0) {
         e.preventDefault();
-        const button = document.getElementById(LABEL_BUTTON_ID);
+        const button = labelPickerButton();
         if (button) {
           setLabelFor(null);
           setLabelAnchor(anchorBelow(button));
@@ -1045,6 +1083,8 @@ export function Shell() {
     commandsRef,
     runRef,
     single,
+    peekShown,
+    closePeek,
   ]);
 
   if (accountsQuery.isPending) return null;
@@ -1190,7 +1230,10 @@ export function Shell() {
             onPointerEnter={() => hoverSidebar(true)}
             onPointerLeave={() => hoverSidebar(false)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") closePeek();
+              if (e.key !== "Escape") return;
+              // Handled here, and not again by the window's own Esc.
+              e.stopPropagation();
+              closePeek();
             }}
           >
             <Sidebar

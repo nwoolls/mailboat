@@ -2,9 +2,8 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { CommandId } from "../features/commands/model/commands";
 import {
   OVERFLOW_ORDER,
-  overflowCount,
   type SearchPlacement,
-  searchPlacement,
+  toolbarLayout,
 } from "../features/layout/model/titleSearch";
 import type { ThreadAction } from "../features/mailbox/model/threadActions";
 import {
@@ -31,6 +30,8 @@ const TRAFFIC_LIGHTS_WIDTH = IS_MAC ? 80 : 8;
 
 /** The Label button, which `l` also opens the picker under. */
 export const LABEL_BUTTON_ID = "toolbar-label";
+/** The More button: where the label picker opens once Labels has moved into it. */
+export const MORE_BUTTON_ID = "toolbar-more";
 
 /** What a toggling button would do now, for the chosen conversations. */
 type Toggle = { action: ThreadAction; run: () => void } | null;
@@ -195,6 +196,7 @@ export function Toolbar({
           />
         )}
         <ToolButton
+          id={MORE_BUTTON_ID}
           icon={MoreIcon}
           label="More"
           onClick={actions.more ?? undefined}
@@ -311,21 +313,21 @@ function useSearchPlacement(
     const [b, l, r] = [bar.current, left.current, right.current];
     if (!b || !l || !r) return;
     const measure = () => {
-      const leftEnd = l.offsetLeft + l.offsetWidth;
       const now = latest.current;
-      // The right-hand buttons without the ones that can move.
-      const shown = OVERFLOW_ORDER.length - now.overflow;
-      const fixed = r.offsetWidth - shown * OVERFLOW_BUTTON_WIDTH;
-      const count = overflowCount(b.clientWidth, leftEnd, fixed, OVERFLOW_BUTTON_WIDTH);
-      if (count !== now.overflow) {
-        // Measured again once the buttons have moved.
-        now.onOverflow(count);
-        return;
-      }
-      const next = searchPlacement(b.clientWidth, leftEnd, r.offsetLeft);
+      const { overflow: count, placement: next } = toolbarLayout({
+        bar: b.clientWidth,
+        leftEnd: l.offsetLeft + l.offsetWidth,
+        rightStart: r.offsetLeft,
+        rightWidth: r.offsetWidth,
+        shown: OVERFLOW_ORDER.length - now.overflow,
+        perButton: OVERFLOW_BUTTON_WIDTH,
+      });
+      // Placed for the buttons that will show, in the same frame as they
+      // move, so the box never sits over one on its way out.
       setPlacement((was) =>
         was && was.left === next.left && was.width === next.width ? was : next,
       );
+      if (count !== now.overflow) now.onOverflow(count);
     };
     const observer = new ResizeObserver(measure);
     for (const el of [b, l, r]) observer.observe(el);

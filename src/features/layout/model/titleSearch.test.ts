@@ -3,6 +3,7 @@ import {
   OVERFLOW_ORDER,
   overflowCount,
   SEARCH_GAP,
+  toolbarLayout,
   SEARCH_WIDTH,
   searchPlacement,
 } from "./titleSearch";
@@ -81,5 +82,45 @@ describe("toolbar buttons moving into More", () => {
   it("starts with Labels and keeps Archive", () => {
     expect(OVERFLOW_ORDER[0]).toBe("labels");
     expect(OVERFLOW_ORDER).not.toContain("archive");
+  });
+});
+
+describe("the toolbar's layout, measured", () => {
+  // As the toolbar measures it: the bar's right padding (8px) after the
+  // right-hand group, which holds `shown` of the movable buttons.
+  const measured = (bar: number, shown: number) => {
+    const rightWidth = 182 + shown * 30;
+    return toolbarLayout({
+      bar,
+      leftEnd: 108,
+      rightStart: bar - 8 - rightWidth,
+      rightWidth,
+      shown,
+      perButton: 30,
+    });
+  };
+
+  it("keeps the search box at its narrowest or wider, counting the bar's padding", () => {
+    // Review: without the padding, 664px kept every button and left 192px.
+    for (let bar = 560; bar <= 1400; bar += 1) {
+      for (let shown = 0; shown <= OVERFLOW_ORDER.length; shown += 1) {
+        const { overflow, placement } = measured(bar, shown);
+        if (overflow < OVERFLOW_ORDER.length)
+          expect(placement.width, `${bar}px, ${shown} shown`).toBeGreaterThanOrEqual(
+            SEARCH_WIDTH.min,
+          );
+      }
+    }
+  });
+
+  it("places the search box for the buttons that will be shown, not those still there", () => {
+    // Narrowed past a boundary with every button still in the bar: the box
+    // is placed as if the moved ones had gone, and clears the rest.
+    for (let bar = 560; bar <= 1400; bar += 1) {
+      const before = measured(bar, OVERFLOW_ORDER.length);
+      const after = measured(bar, OVERFLOW_ORDER.length - before.overflow);
+      expect(after.overflow, `${bar}px`).toBe(before.overflow);
+      expect(before.placement, `${bar}px`).toEqual(after.placement);
+    }
   });
 });

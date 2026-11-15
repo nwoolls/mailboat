@@ -82,8 +82,15 @@ export function ThreadReader({
   back?: ReaderBack;
 }) {
   const thread = useThread(threadId);
-  if (thread.error) return <div className="selectable p-8 text-danger">{thread.error.message}</div>;
-  if (!thread.data) return <div className="flex-1" />;
+  // The way back shows while the conversation loads, or if it can't.
+  if (thread.error)
+    return (
+      <div className="flex-1">
+        {back && <BackBar back={back} />}
+        <div className="selectable p-8 text-danger">{thread.error.message}</div>
+      </div>
+    );
+  if (!thread.data) return <div className="flex-1">{back && <BackBar back={back} />}</div>;
   // Keyed by thread so expansion state starts fresh for each conversation,
   // and so each new conversation plays the entrance animation. While the
   // next one loads, the previous stays up, dimmed.
@@ -177,21 +184,7 @@ function ThreadBody({
       }`}
     >
       <div ref={contentRef}>
-        {back && (
-          // Pinned at the top while the conversation scrolls under it, so
-          // the way back is always in reach (owner).
-          <div className="reader-back px-2 py-1">
-            <button
-              type="button"
-              onClick={back.onBack}
-              title={`Back to ${back.label} (Esc)`}
-              className="flex min-h-8 items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-accent hover:bg-selection"
-            >
-              <BackIcon size={16} />
-              {back.label}
-            </button>
-          </div>
-        )}
+        {back && <BackBar back={back} />}
         <header className={`px-4 pb-3 ${back ? "pt-2" : "pt-5"}`} style={{ zoom }}>
           <h1 className="selectable text-lg leading-snug font-semibold">
             {data.thread.subject || "(no subject)"}
@@ -427,6 +420,29 @@ function Fold({ open, children }: { open: boolean; children: React.ReactNode }) 
       inert={!open}
     >
       <div className="min-h-0 overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * The way back to the list while the reader fills the window: pinned at the
+ * top as the conversation scrolls under it, so it's always in reach, with a
+ * target big enough to hit easily (owner).
+ */
+function BackBar({ back }: { back: ReaderBack }) {
+  return (
+    <div className="reader-back px-2 py-1">
+      <button
+        type="button"
+        onClick={back.onBack}
+        aria-label={`Back to ${back.label}`}
+        title={`Back to ${back.label} (Esc)`}
+        data-reader-back
+        className="flex min-h-8 items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-accent hover:bg-selection"
+      >
+        <BackIcon size={16} />
+        {back.label}
+      </button>
     </div>
   );
 }

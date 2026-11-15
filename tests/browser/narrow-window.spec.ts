@@ -79,9 +79,7 @@ test("a narrow window shows the list or the conversation, with a way back", asyn
   await page.getByRole("option").first().click();
   await expect(page.locator(".reader-scroll")).toBeVisible();
   await expect.poll(() => listHidden(page)).toBe(true);
-  const back = page
-    .getByRole("button", { name: "Inbox", exact: true })
-    .and(page.locator(".reader-scroll button"));
+  const back = page.getByRole("button", { name: "Back to Inbox" });
   await back.click();
   await expect.poll(() => listHidden(page)).toBe(false);
   // Esc and ⌘[ go back too.
@@ -156,4 +154,77 @@ test("the way back stays at the top of a long conversation, and is easy to hit",
   const back = page.locator(".reader-back button");
   await back.click();
   await expect.poll(() => listHidden(page)).toBe(false);
+});
+
+test("with Labels moved into More, the menu keeps the toolbar's order and l still opens it", async ({
+  page,
+}) => {
+  await open(page, 420);
+  await page.getByRole("option").first().click();
+  await page.keyboard.press("Escape");
+  await expect.poll(() => listHidden(page)).toBe(false);
+  // Every movable button has gone; the menu lists them as the toolbar did.
+  await page.getByTitle("More", { exact: true }).click();
+  const items = await page
+    .getByRole("menu", { name: "More" })
+    .getByRole("menuitem")
+    .allTextContents();
+  expect(items.slice(0, 5).map((t) => t.replace(/[a-z#!]$/, "").trim())).toEqual([
+    "Labels…",
+    "Star",
+    "Mark as read",
+    "Report spam",
+    "Move to Trash",
+  ]);
+  await page.keyboard.press("Escape");
+  // l opens the label picker, under the More button.
+  const picker = page.getByRole("dialog", { name: "Labels" });
+  await page.keyboard.press("l");
+  await expect(picker).toBeVisible();
+  const [at, more] = await Promise.all([
+    picker.boundingBox(),
+    page.getByTitle("More", { exact: true }).boundingBox(),
+  ]);
+  expect(Math.abs(at!.y - (more!.y + more!.height))).toBeLessThan(16);
+  await page.keyboard.press("Escape");
+  await expect(picker).toHaveCount(0);
+  // So does Labels in the command palette.
+  await page.keyboard.press("Meta+k");
+  await page.keyboard.type("Labels");
+  await page.keyboard.press("Enter");
+  await expect(picker).toBeVisible();
+});
+
+test("going back doesn't happen while typing, and Esc puts a floating sidebar away first", async ({
+  page,
+}) => {
+  await open(page, 480);
+  await page.getByRole("option").first().click();
+  await expect.poll(() => listHidden(page)).toBe(true);
+  // ⌘[ in a reply being written leaves the conversation where it is.
+  await page.getByRole("button", { name: "Reply", exact: true }).click();
+  await page.keyboard.type("Sounds good");
+  await page.keyboard.press("Meta+BracketLeft");
+  await page.waitForTimeout(200);
+  expect(await listHidden(page)).toBe(true);
+  await page.keyboard.press("Escape");
+  // A sidebar floated by its shortcut, with focus outside it: Esc puts it
+  // away, and the conversation stays.
+  const peek = page.locator(".sidebar-peek");
+  await page.keyboard.press("Control+Meta+s");
+  await expect(peek).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(peek).toHaveCount(0);
+  expect(await listHidden(page)).toBe(true);
+});
+
+test("focus follows the pane that shows", async ({ page }) => {
+  await open(page, 480);
+  await page.getByRole("option").first().click();
+  await expect.poll(() => listHidden(page)).toBe(true);
+  await expect(page.locator("[data-reader-back]")).toBeFocused();
+  await expect(page.locator("[data-reader-back]")).toHaveAccessibleName("Back to Inbox");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => listHidden(page)).toBe(false);
+  await expect(page.getByRole("listbox", { name: "Conversations" })).toBeFocused();
 });

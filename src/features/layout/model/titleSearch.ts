@@ -51,3 +51,26 @@ export function overflowCount(
   const fit = Math.max(0, Math.floor(room / perButton));
   return Math.max(0, OVERFLOW_ORDER.length - fit);
 }
+
+/**
+ * The toolbar's layout from its measurements: how many buttons move into
+ * the More menu (`overflowCount`, within the bar less its right-hand
+ * padding) and where the search box goes once they have, so both change in
+ * the same frame. `rightStart` is where the right-hand buttons begin with
+ * `shown` of the movable ones still in the bar.
+ */
+export function toolbarLayout(m: {
+  bar: number;
+  leftEnd: number;
+  rightStart: number;
+  rightWidth: number;
+  shown: number;
+  perButton: number;
+}): { overflow: number; placement: SearchPlacement } {
+  const rightInset = m.bar - (m.rightStart + m.rightWidth);
+  const fixed = m.rightWidth - m.shown * m.perButton;
+  const overflow = overflowCount(m.bar - rightInset, m.leftEnd, fixed, m.perButton);
+  const stillShown = OVERFLOW_ORDER.length - overflow;
+  const rightStart = m.rightStart + (m.shown - stillShown) * m.perButton;
+  return { overflow, placement: searchPlacement(m.bar, m.leftEnd, rightStart) };
+}
