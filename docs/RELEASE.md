@@ -132,6 +132,8 @@ verified; it's paperwork and waiting (weeks to months).
       is stored on or sent to servers. Mailboat keeps mail on the device,
       and AI and MCP only send it where the user chooses, so ask to be
       exempt. If Google insists: yearly, a paid assessment
+      *(2026-11-15: Google required it, ADA CASA AL1 by 2027-02-12;
+      `docs/ROADMAP.md` → 0.3.0 → Security assessment (CASA))*
 - Until approved, an unverified client (in Testing or in production)
       allows 100 users in total (every account that ever signs in counts;
       the count can't be reset): enough for the beta

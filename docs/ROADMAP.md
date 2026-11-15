@@ -4007,6 +4007,8 @@ yes"). If Google approves, the owner decides from there.*
       requires the assessment anyway: yearly, a paid assessment. Re-verified every 12 months
       *Submitted 2026-11-07; Google's review is under way (see
       `docs/GOOGLE-VERIFICATION.md` → Status). Tick this when Google approves.*
+      *(2026-11-15: Google requires the assessment, ADA CASA AL1 by
+      2027-02-12; the work is in 0.3.0 → Security assessment (CASA))*
 - [ ] The client's ID and secret only in official builds, added when
       building; never in the public code
 - [ ] Polar store and license keys (up to 2 devices), with a sandbox
@@ -4481,6 +4483,10 @@ privacy:
   people you've written to, or not at all): a design decision for the owner.
 - Encrypting the local cache at rest, and Touch ID or Windows Hello: decide,
   then plan; neither is needed for the review.
+  *(2026-11-15: Google now requires the security assessment, so encrypting
+  the cache moved into 0.3.0 → Security assessment (CASA), to build if the
+  lab counts the mail cache; Touch ID and Windows Hello stay in "Later /
+  unscheduled")*
 
 ### How to run it
 
@@ -5967,7 +5973,8 @@ Privacy and the policy.*
       waits for the lab's answer.
 - [ ] The AI scratch folder: `ai/process.rs` makes a working folder in
       the temp directory for every request, with `create_dir_all` (not
-      private). Only the two successful exits call `remove_dir`, which
+      private). Only the two paths that return the program's result (a
+      failing exit status included) call `remove_dir`, which
       fails if the helper wrote anything there. Every other exit leaves
       the folder: the program failing to start, a line handler or a read
       of its output failing, waiting for it failing, or the request timing
@@ -5990,7 +5997,9 @@ Privacy and the policy.*
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
       and SBOM, the signing and binary-flag output, a sync-log sample from
-      a demo-account sign-in, a data-flow diagram, and a written answer
+      a sign-in and first sync with the dedicated test Google account
+      (the one in the demo video; demo mode's Google is made up and signs
+      nobody in), read over before sending, a data-flow diagram, and a written answer
       for each test case (most are in `docs/ARCHITECTURE.md` already).
       CodeQL already scans every pull request and push to `main` that
       changes code, plus a weekly run. Its results can be submitted as
