@@ -5696,7 +5696,7 @@ built, the owner has tried it, and the owner has published 0.3.0
       wait until the new screensavers, #128, are merged, and time it with
       the 0.3.0 release, so the pictures show what that release ships)*
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
-- [ ] Label color and visibility. `labels.patch` takes `color`,
+- [x] Label color and visibility. `labels.patch` takes `color`,
       `labelListVisibility` and `messageListVisibility`; the app only
       renames (`rename_label` sends `name`). Pick a label's color from
       Gmail's palette and hide or show it in the sidebar, kept in sync
@@ -5704,6 +5704,23 @@ built, the owner has tried it, and the owner has published 0.3.0
       Permission: existing (`gmail.modify`). Competitors: Mimestream
       (colors and visibility, synced with Gmail). Effort: low
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      *(2026-11-14: built from the owner's mockup. A label's menu opens
+      from a ⋮ button at the right of its sidebar row (shown on hover or
+      when selected, in place of its count, as Gmail does) or by
+      right-click, and has Color (Gmail's 8 × 8 palette and No color) and
+      Show in sidebar (Always, Only with unread mail, Hidden) as submenus
+      beside it (owner: not menus that replace the first), and Show on
+      conversations. The app's menus gained submenus for this
+      (`MenuSubmenu`: hover, click or → opens one; ← or Esc closes it). Hidden labels sit in a closed Hidden fold at the end
+      of Labels, so their menu can show them again. Conversations' rows
+      show their labels after the subject, two at most and then "+N",
+      leaving out the label being viewed and labels set not to show on
+      conversations. A chip's text is black or white, whichever contrasts
+      more with its color (owner: Gmail's own text colors can be hard to
+      read). Each change reads the label from Gmail and writes it back
+      whole (`labels.get`, then `labels.update`). Labels are now also read
+      again every five minutes, so a change made in Gmail shows up without
+      waiting for a full sync. System labels are left as they are)*
 - [ ] Remove an address from compose suggestions *(held out of the Polish
       Spike, 2026-11-07: it touches the Contacts data Google is reviewing,
       so it must ask for no new permission)*

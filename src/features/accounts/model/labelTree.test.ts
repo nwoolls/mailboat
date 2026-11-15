@@ -11,6 +11,8 @@ const label = (name: string): Label => ({
   kind: "user",
   colorBg: null,
   colorFg: null,
+  sidebar: "show",
+  onConversations: true,
 });
 
 describe("labelPath", () => {

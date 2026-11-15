@@ -45,6 +45,8 @@ const work = (id: number, accountId: number): Label => ({
   kind: "user",
   colorBg: null,
   colorFg: null,
+  sidebar: "show",
+  onConversations: true,
 });
 
 describe("selections", () => {
@@ -130,6 +132,8 @@ describe("selectionNeedsAccount", () => {
     kind: "user",
     colorBg: null,
     colorFg: null,
+    sidebar: "show",
+    onConversations: true,
   };
 
   it("is true for the removed account's own views and labels", () => {

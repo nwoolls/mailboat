@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::db::store::{self, IncomingLabel, StoredBody};
-use crate::db::Db;
+use crate::db::{now_millis, Db};
 use crate::error::{CoreError, Result};
 use crate::gmail::{parse, GmailClient};
 use crate::model::{AccountId, LabelKind, MessageId};
@@ -348,8 +348,12 @@ impl SyncEngine<'_> {
             }
         }
 
-        if labels_changed {
-            // Cheap, and catches labels created since the last pass.
+        // Cheap (one request), and catches labels created since the last
+        // pass; read now and then anyway, since a label recolored, renamed
+        // or hidden in Gmail leaves no history.
+        let labels_due = now_millis() - store::labels_synced_at(&self.db.conn(), self.account)?
+            >= LABELS_REFRESH_MS;
+        if labels_changed || (commit && labels_due) {
             self.sync_labels().await?;
         }
         if !deleted.is_empty() {
@@ -376,7 +380,8 @@ impl SyncEngine<'_> {
     }
 
     async fn sync_labels(&self) -> Result<()> {
-        refresh_labels(self.db, self.gmail, self.account).await
+        refresh_labels(self.db, self.gmail, self.account).await?;
+        store::set_labels_synced_at(&self.db.conn(), self.account, now_millis())
     }
 
     /// Fetches threads by Gmail ID and writes them (or deletes vanished ones).
@@ -456,6 +461,10 @@ impl SyncEngine<'_> {
     }
 }
 
+/// How often an incremental sync reads the labels again even when its
+/// history shows no label change: five minutes.
+pub const LABELS_REFRESH_MS: i64 = 5 * 60 * 1000;
+
 /// Fetches an account's labels from Gmail and stores them.
 pub async fn refresh_labels(db: &Db, gmail: &GmailClient, account: AccountId) -> Result<()> {
     let labels: Vec<IncomingLabel> = gmail
@@ -471,6 +480,10 @@ pub async fn refresh_labels(db: &Db, gmail: &GmailClient, account: AccountId) ->
             },
             color_bg: l.color.as_ref().and_then(|c| c.background_color.clone()),
             color_fg: l.color.as_ref().and_then(|c| c.text_color.clone()),
+            list_visibility: l
+                .label_list_visibility
+                .unwrap_or_else(|| "labelShow".into()),
+            message_visibility: l.message_list_visibility.unwrap_or_else(|| "show".into()),
             gmail_label_id: l.id,
             name: l.name,
         })

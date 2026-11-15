@@ -34,6 +34,8 @@ fn add_account(db: &Db, sub: &str, email: &str) -> AccountId {
             kind: LabelKind::System,
             color_bg: None,
             color_fg: None,
+            list_visibility: "labelShow".into(),
+            message_visibility: "show".into(),
         })
         .collect();
     store::sync_labels(&mut db.conn(), id, &labels).unwrap();

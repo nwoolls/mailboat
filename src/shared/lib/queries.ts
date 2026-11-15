@@ -138,6 +138,16 @@ export function useThread(id: ThreadId | null) {
  * original colors). A changed choice refetches it; the current one stays
  * up until the new one arrives.
  */
+/** The label colors Gmail offers (`labels::PALETTE`), which never change. */
+export function useLabelPalette() {
+  return useQuery({
+    queryKey: ["labelPalette"],
+    queryFn: () => commands.labelPalette(),
+    enabled: IS_TAURI,
+    staleTime: Infinity,
+  });
+}
+
 export function useOpenedMessage(id: MessageId) {
   return useQuery({
     queryKey: keys.message(id),

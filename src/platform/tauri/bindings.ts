@@ -115,6 +115,17 @@ export const commands = {
 	labelCreate: (accountId: AccountId, name: string) => typedError<Label, AppError>(__TAURI_INVOKE("label_create", { accountId, name })),
 	/**  Renames a user label (and the labels nested under it). */
 	labelRename: (labelId: LabelId, name: string) => typedError<null, AppError>(__TAURI_INVOKE("label_rename", { labelId, name })),
+	/**
+	 *  Sets a user label's color, one of Gmail's (`labels::PALETTE`), or
+	 *  removes it (`None`).
+	 */
+	labelSetColor: (labelId: LabelId, color: string | null) => typedError<null, AppError>(__TAURI_INVOKE("label_set_color", { labelId, color })),
+	/**  Sets where a user label shows in the sidebar. */
+	labelSetSidebar: (labelId: LabelId, sidebar: LabelSidebar) => typedError<null, AppError>(__TAURI_INVOKE("label_set_sidebar", { labelId, sidebar })),
+	/**  Sets whether a user label shows on conversations in the list. */
+	labelSetOnConversations: (labelId: LabelId, show: boolean) => typedError<null, AppError>(__TAURI_INVOKE("label_set_on_conversations", { labelId, show })),
+	/**  The label colors Gmail offers (its picker's grid), in its order. */
+	labelPalette: () => __TAURI_INVOKE<string[]>("label_palette"),
 	/**  Deletes a user label; its conversations stay. */
 	labelDelete: (labelId: LabelId) => typedError<null, AppError>(__TAURI_INVOKE("label_delete", { labelId })),
 	/**
@@ -984,11 +995,27 @@ export type Label = {
 	kind: LabelKind,
 	colorBg: string | null,
 	colorFg: string | null,
+	/**  Where it shows in the sidebar (Gmail's "Show in label list"). */
+	sidebar: LabelSidebar,
+	/**
+	 *  Whether it shows on conversations in the list (Gmail's "Show in
+	 *  message list", `messageListVisibility`).
+	 */
+	onConversations: boolean,
 };
 
 export type LabelId = number;
 
 export type LabelKind = "system" | "user";
+
+/**  Where a label shows in the sidebar: Gmail's `labelListVisibility`. */
+export type LabelSidebar = 
+/**  Always (`labelShow`, Gmail's default). */
+"show" | 
+/**  Only while it has unread mail (`labelShowIfUnread`). */
+"showIfUnread" | 
+/**  Not with the other labels (`labelHide`): in the sidebar's Hidden fold. */
+"hide";
 
 /**
  *  How many conversations under one label (system or user, in one account)

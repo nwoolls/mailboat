@@ -10,6 +10,8 @@ const label = (id: number, name: string): Label => ({
   kind: "user",
   colorBg: null,
   colorFg: null,
+  sidebar: "show",
+  onConversations: true,
 });
 
 describe("label picker", () => {

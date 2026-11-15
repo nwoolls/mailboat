@@ -18,9 +18,10 @@ import {
   SpamIcon,
   StarIcon,
   TrashIcon,
+  MoreVerticalIcon,
   UnreadIcon,
 } from "../../../shared/ui/icons";
-import type { MenuAnchor } from "../../../shared/ui/Menu";
+import { anchorBelow, type MenuAnchor } from "../../../shared/ui/Menu";
 import { labelSelection, sameSelection, type Selection } from "../../mailbox/model/views";
 import { syncBadge } from "../model/accounts";
 import { containsLabel, type LabelNode } from "../model/labelTree";
@@ -113,6 +114,7 @@ export function Row({
   hint,
   count = 0,
   onContextMenu,
+  menu,
 }: {
   title: React.ReactNode;
   selected: boolean;
@@ -125,11 +127,23 @@ export function Row({
   hint?: boolean;
   count?: number;
   onContextMenu?: (e: React.MouseEvent) => void;
+  /**
+   * A ⋮ button at the row's right that opens its menu (as right-click
+   * does), shown while the pointer is on the row or the row is selected,
+   * in place of the count for that moment, as Gmail does (owner).
+   */
+  menu?: { label: string; onOpen: (button: HTMLElement) => void };
 }) {
   const shown = countText(count);
+  // The ⋮ button showing hides the count under it.
+  const countClass = menu
+    ? selected
+      ? "hidden"
+      : "group-hover:invisible group-focus-within:invisible"
+    : "";
   return (
     <div
-      className={`flex h-7 w-full items-center rounded-md pr-1 transition-colors duration-[120ms] ${
+      className={`group relative flex h-7 w-full items-center rounded-md pr-1 transition-colors duration-[120ms] ${
         selected
           ? "bg-selection-strong text-content"
           : hint
@@ -154,12 +168,26 @@ export function Row({
         <span className="truncate">{title}</span>
         {shown && (
           <span
-            className={`ml-auto shrink-0 text-xs tabular-nums ${selected ? "text-content/70" : "text-content/45"}`}
+            className={`ml-auto shrink-0 text-xs tabular-nums ${countClass} ${selected ? "text-content/70" : "text-content/45"}`}
           >
             {shown}
           </span>
         )}
       </button>
+      {menu && (
+        <button
+          type="button"
+          aria-label={menu.label}
+          aria-haspopup="menu"
+          title={menu.label}
+          onClick={(e) => menu.onOpen(e.currentTarget)}
+          className={`absolute right-1 flex h-5 w-5 items-center justify-center rounded text-content/60 hover:bg-selection-strong hover:text-content focus-visible:opacity-100 ${
+            selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+        >
+          <MoreVerticalIcon size={14} />
+        </button>
+      )}
     </div>
   );
 }
@@ -238,14 +266,21 @@ export function LabelRows({
   onSelect: (s: Selection) => void;
   isOpen: (key: string) => boolean;
   toggle: (key: string) => void;
-  /** Right-click on a label: Rename / Delete. */
-  onLabelMenu?: (label: Label, at: { x: number; y: number }) => void;
+  /** A label's menu (Rename, Color, …): right-click, or its ⋮ button. */
+  onLabelMenu?: (label: Label, at: MenuAnchor) => void;
 }) {
   const menuFor = (label: Label | null) =>
     label && onLabelMenu
       ? (e: React.MouseEvent) => {
           e.preventDefault();
           onLabelMenu(label, { x: e.clientX, y: e.clientY });
+        }
+      : undefined;
+  const buttonFor = (label: Label | null) =>
+    label && onLabelMenu
+      ? {
+          label: `${label.name}: label options`,
+          onOpen: (button: HTMLElement) => onLabelMenu(label, anchorBelow(button)),
         }
       : undefined;
   const selectedLabel = selection.view.kind === "userLabel" ? selection.view.labelId : null;
@@ -264,6 +299,7 @@ export function LabelRows({
           selected={sameSelection(selection, s)}
           onClick={() => onSelect(s)}
           onContextMenu={menuFor(node.label)}
+          menu={buttonFor(node.label)}
         />
       );
     }
@@ -281,6 +317,7 @@ export function LabelRows({
           selected={own !== null && sameSelection(selection, own)}
           hint={!groupOpen && selectedLabel !== null && containsLabel(node, selectedLabel)}
           onContextMenu={menuFor(node.label)}
+          menu={buttonFor(node.label)}
           onClick={() => {
             // A group that is also a label opens its mail and the fold.
             if (own) onSelect(own);

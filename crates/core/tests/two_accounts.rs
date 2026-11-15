@@ -53,6 +53,8 @@ fn work_label() -> Vec<IncomingLabel> {
             kind: LabelKind::System,
             color_bg: None,
             color_fg: None,
+            list_visibility: "labelShow".into(),
+            message_visibility: "show".into(),
         },
         IncomingLabel {
             gmail_label_id: "Label_1".into(),
@@ -60,6 +62,8 @@ fn work_label() -> Vec<IncomingLabel> {
             kind: LabelKind::User,
             color_bg: None,
             color_fg: None,
+            list_visibility: "labelShow".into(),
+            message_visibility: "show".into(),
         },
     ]
 }
@@ -668,6 +672,8 @@ fn unread_leaves_out_spam_and_trash() {
         kind: LabelKind::System,
         color_bg: None,
         color_fg: None,
+        list_visibility: "labelShow".into(),
+        message_visibility: "show".into(),
     };
     store::sync_labels(
         &mut db.conn(),

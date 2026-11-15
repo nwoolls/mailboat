@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { labelChipColors } from "../../accounts/model/labelColors";
 import type {
   MessageId,
   MessageMeta,
@@ -202,10 +203,7 @@ function ThreadBody({
                 <span
                   key={l.id}
                   className="rounded px-1.5 py-0.5"
-                  style={{
-                    background: l.colorBg ?? "var(--color-selection)",
-                    color: l.colorFg ?? undefined,
-                  }}
+                  style={labelChipColors(l) ?? { background: "var(--color-selection)" }}
                 >
                   {l.name}
                 </span>

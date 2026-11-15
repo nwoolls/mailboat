@@ -757,6 +757,90 @@ pub async fn label_rename(
     Ok(())
 }
 
+/// Applies one change to a user label in its account, and tells the window.
+async fn change_label(
+    app: &AppHandle,
+    state: &AppState,
+    label_id: LabelId,
+    change: mail_core::labels::LabelChange,
+) -> CmdResult<()> {
+    let (account, _, _) = store::label_ref(&state.db.conn(), label_id)?;
+    mail_core::labels::change(
+        &state.db,
+        |a| Ok(state.gmail_for(a)?.interactive()),
+        label_id,
+        change,
+    )
+    .await?;
+    let _ = MailChangedEvent::mail(account).emit(app);
+    Ok(())
+}
+
+/// Sets a user label's color, one of Gmail's (`labels::PALETTE`), or
+/// removes it (`None`).
+#[tauri::command]
+#[specta::specta]
+pub async fn label_set_color(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    label_id: LabelId,
+    color: Option<String>,
+) -> CmdResult<()> {
+    change_label(
+        &app,
+        &state,
+        label_id,
+        mail_core::labels::LabelChange::Color(color),
+    )
+    .await
+}
+
+/// Sets where a user label shows in the sidebar.
+#[tauri::command]
+#[specta::specta]
+pub async fn label_set_sidebar(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    label_id: LabelId,
+    sidebar: mail_core::model::LabelSidebar,
+) -> CmdResult<()> {
+    change_label(
+        &app,
+        &state,
+        label_id,
+        mail_core::labels::LabelChange::Sidebar(sidebar),
+    )
+    .await
+}
+
+/// Sets whether a user label shows on conversations in the list.
+#[tauri::command]
+#[specta::specta]
+pub async fn label_set_on_conversations(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    label_id: LabelId,
+    show: bool,
+) -> CmdResult<()> {
+    change_label(
+        &app,
+        &state,
+        label_id,
+        mail_core::labels::LabelChange::OnConversations(show),
+    )
+    .await
+}
+
+/// The label colors Gmail offers (its picker's grid), in its order.
+#[tauri::command]
+#[specta::specta]
+pub fn label_palette() -> Vec<String> {
+    mail_core::labels::PALETTE
+        .iter()
+        .map(|c| c.to_string())
+        .collect()
+}
+
 /// Deletes a user label; its conversations stay.
 #[tauri::command]
 #[specta::specta]

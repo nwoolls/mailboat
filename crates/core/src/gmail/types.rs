@@ -39,6 +39,10 @@ pub struct Label {
     pub label_type: Option<String>,
     #[serde(default)]
     pub color: Option<LabelColor>,
+    #[serde(default)]
+    pub label_list_visibility: Option<String>,
+    #[serde(default)]
+    pub message_list_visibility: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

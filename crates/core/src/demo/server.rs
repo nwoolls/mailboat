@@ -327,6 +327,11 @@ impl FakeGoogle {
                 }
                 mb.label_json(id).ok_or_else(not_found)
             }
+            ("GET", ["labels", id]) => mb.label_json(id).ok_or_else(not_found),
+            ("PUT", ["labels", id]) => match mb.update_label(id, &body) {
+                true => mb.label_json(id).ok_or_else(not_found),
+                false => Err(not_found()),
+            },
             ("DELETE", ["labels", id]) => match mb.delete_label(id) {
                 true => Ok(json!({})),
                 false => Err(not_found()),

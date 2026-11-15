@@ -20,6 +20,7 @@ pub mod cost {
     pub const PROFILE: u32 = 1;
     pub const LABELS_LIST: u32 = 1;
     pub const LABELS_CHANGE: u32 = 5;
+    pub const LABELS_GET: u32 = 1;
     pub const HISTORY_LIST: u32 = 2;
     pub const MESSAGES_GET: u32 = 5;
     pub const MESSAGES_LIST: u32 = 5;

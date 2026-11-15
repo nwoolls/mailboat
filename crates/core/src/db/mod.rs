@@ -117,6 +117,7 @@ fn migrate(conn: &mut Connection) -> Result<()> {
         (19, schema::MIGRATION_V19),
         (20, schema::MIGRATION_V20),
         (21, schema::MIGRATION_V21),
+        (22, schema::MIGRATION_V22),
     ];
     for (version, sql) in steps {
         if current < *version {
@@ -156,7 +157,7 @@ mod tests {
         let versions: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(versions, 21);
+        assert_eq!(versions, 22);
         conn.execute(
             "INSERT INTO messages_fts (rowid, subject, sender, recipients, snippet, body) VALUES (1, 'hello', '', '', '', '')",
             [],
@@ -175,6 +176,9 @@ mod tests {
         conn.execute_batch(
             "DROP TABLE account_id_seq;
              DELETE FROM schema_migrations WHERE version >= 19;
+             ALTER TABLE labels DROP COLUMN list_visibility;
+             ALTER TABLE labels DROP COLUMN message_visibility;
+             ALTER TABLE sync_state DROP COLUMN labels_synced_at;
              INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at)
                VALUES (1, 's1', 'a@example.com', '#5b8def', 'default', 0);
              INSERT INTO app_settings (key, value)
@@ -201,6 +205,9 @@ mod tests {
         let mut conn = db.conn();
         conn.execute_batch(
             "DROP TABLE image_cache; DELETE FROM schema_migrations WHERE version >= 21;
+             ALTER TABLE labels DROP COLUMN list_visibility;
+             ALTER TABLE labels DROP COLUMN message_visibility;
+             ALTER TABLE sync_state DROP COLUMN labels_synced_at;
              CREATE TABLE image_cache (id INTEGER PRIMARY KEY, url TEXT NOT NULL UNIQUE,
                mime TEXT NOT NULL, size INTEGER NOT NULL, fetched_at INTEGER NOT NULL,
                used_at INTEGER NOT NULL);

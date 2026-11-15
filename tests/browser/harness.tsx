@@ -94,6 +94,35 @@ const longBody = (text: string) => {
   return Array.from({ length: 60 }, (_, i) => paragraphs[i % paragraphs.length]).join("");
 };
 const harnessMode = new URLSearchParams(location.search).get("mode");
+// `&labels=1` (with `?mode=shell&rows=1`): the account has user labels, one
+// hidden and one set not to show on conversations, and the first rows carry
+// some of them.
+const withLabels = new URLSearchParams(location.search).get("labels") === "1";
+const userLabel = (id: number, name: string, over: Record<string, unknown> = {}) => ({
+  id,
+  accountId: 1,
+  gmailLabelId: `Label_${id}`,
+  name,
+  kind: "user" as const,
+  colorBg: null as string | null,
+  colorFg: null as string | null,
+  sidebar: "show" as "show" | "showIfUnread" | "hide",
+  onConversations: true,
+  ...over,
+});
+const harnessLabels = [
+  userLabel(101, "Clients", { colorBg: "#16a766", colorFg: "#ffffff" }),
+  userLabel(102, "Receipts"),
+  userLabel(103, "Travel", { colorBg: "#fad165", colorFg: "#000000" }),
+  userLabel(104, "Archive box", { sidebar: "hide" }),
+  userLabel(105, "Quiet", { onConversations: false }),
+];
+// Row 1: three labels to show (two chips and "+1"); row 2: one shown and
+// one that isn't shown on conversations.
+const rowLabelIds = [
+  [101, 102, 103],
+  [103, 105],
+];
 // `&conversation=all` (with `?mode=shell`): the conversation has all five emails.
 const unreadMode =
   harnessMode === "unread" ||
@@ -209,7 +238,12 @@ mockIPC(
       case "threads_list":
         // `?mode=shell&rows=1`: the demo's Inbox, for every view and search.
         if (harnessMode === "shell" && onboardingParams.has("rows"))
-          return { threads: inbox(), nextCursor: null };
+          return {
+            threads: withLabels
+              ? inbox().map((t, i) => ({ ...t, labelIds: rowLabelIds[i] ?? [] }))
+              : inbox(),
+            nextCursor: null,
+          };
         return { threads: [], nextCursor: null };
       case "threads_load_older":
         // As Rust with no account to ask: nothing older, and not an error.
@@ -217,7 +251,29 @@ mockIPC(
       case "mailto_take":
         return [];
       case "labels_list":
-        return [];
+        return withLabels ? harnessLabels : [];
+      case "label_palette":
+        return ["#000000", "#4a86e8", "#16a766", "#fad165"];
+      case "label_set_color":
+      case "label_set_sidebar":
+      case "label_set_on_conversations": {
+        // Recorded with what it changed; the label changes as Rust's would.
+        const a = args as {
+          labelId: number;
+          color?: string | null;
+          sidebar?: string;
+          show?: boolean;
+        };
+        record(`${cmd} ${a.labelId} ${JSON.stringify(a.color ?? a.sidebar ?? a.show ?? null)}`);
+        const l = harnessLabels.find((x) => x.id === a.labelId)!;
+        if (cmd === "label_set_color") {
+          l.colorBg = a.color ?? null;
+          l.colorFg = a.color ? "#ffffff" : null;
+        }
+        if (cmd === "label_set_sidebar") l.sidebar = a.sidebar as typeof l.sidebar;
+        if (cmd === "label_set_on_conversations") l.onConversations = a.show!;
+        return null;
+      }
       case "vacation_list":
         // A one-line reply, so most of the message box is empty.
         return [

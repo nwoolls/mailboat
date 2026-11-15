@@ -20,6 +20,10 @@ pub struct IncomingLabel {
     pub kind: LabelKind,
     pub color_bg: Option<String>,
     pub color_fg: Option<String>,
+    /// Gmail's `labelListVisibility` (`labelShow` when it gives none).
+    pub list_visibility: String,
+    /// Gmail's `messageListVisibility` (`show` when it gives none).
+    pub message_visibility: String,
 }
 
 /// One message's metadata, already parsed out of Gmail's JSON.
@@ -57,18 +61,23 @@ pub fn sync_labels(
     let tx = conn.transaction()?;
     for label in labels {
         tx.execute(
-            "INSERT INTO labels (account_id, gmail_label_id, name, kind, color_bg, color_fg)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            "INSERT INTO labels (account_id, gmail_label_id, name, kind, color_bg, color_fg,
+                                 list_visibility, message_visibility)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
              ON CONFLICT (account_id, gmail_label_id) DO UPDATE SET
                name = excluded.name, kind = excluded.kind,
-               color_bg = excluded.color_bg, color_fg = excluded.color_fg",
+               color_bg = excluded.color_bg, color_fg = excluded.color_fg,
+               list_visibility = excluded.list_visibility,
+               message_visibility = excluded.message_visibility",
             params![
                 account,
                 label.gmail_label_id,
                 label.name,
                 label.kind.as_str(),
                 label.color_bg,
-                label.color_fg
+                label.color_fg,
+                label.list_visibility,
+                label.message_visibility
             ],
         )?;
     }
@@ -1211,6 +1220,27 @@ pub fn set_scope_version(conn: &Connection, account: AccountId, version: u32) ->
     conn.execute(
         "UPDATE sync_state SET scope_version = ?2 WHERE account_id = ?1",
         params![account, version],
+    )?;
+    Ok(())
+}
+
+/// When the account's labels were last read from Gmail (0: never, or before
+/// this was recorded).
+pub fn labels_synced_at(conn: &Connection, account: AccountId) -> Result<i64> {
+    Ok(conn
+        .query_row(
+            "SELECT labels_synced_at FROM sync_state WHERE account_id = ?1",
+            [account],
+            |r| r.get(0),
+        )
+        .optional()?
+        .unwrap_or(0))
+}
+
+pub fn set_labels_synced_at(conn: &Connection, account: AccountId, at: i64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET labels_synced_at = ?2 WHERE account_id = ?1",
+        params![account, at],
     )?;
     Ok(())
 }
