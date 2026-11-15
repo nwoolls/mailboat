@@ -1096,7 +1096,8 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
 
 /* Toolbar icons that answer a change (Toolbar's `motion`): the star spins
    and grows a little as it lights up, and turns back when unstarred; the
-   toolbar's buttons fade in and out as the window's width moves them into
+   Archive / Move to Inbox and the read envelopes cross-fade into each
+   other; the toolbar's buttons fade in and out as the window's width moves them into
    and out of the More menu (`Toolbar`'s `fadeOut`). None with Reduce
    motion. */
 @keyframes icon-spin {
@@ -1124,6 +1125,15 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
 .icon-spin-back {
   animation: icon-spin-back 280ms ease-out;
 }
+@keyframes icon-swap {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+.icon-swap {
+  animation: icon-swap 200ms ease-out;
+}
 @keyframes tool-appear {
   from {
     opacity: 0;
@@ -1145,6 +1155,7 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
 @media (prefers-reduced-motion: reduce) {
   .icon-spin,
   .icon-spin-back,
+  .icon-swap,
   .tool-appear,
   .tool-leave {
     animation: none;

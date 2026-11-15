@@ -133,6 +133,7 @@ export function Toolbar({
   const trash = actions.trash?.action;
   const star = actions.star?.action;
   const moveToInbox = archive?.kind === "archive" && !archive.archived;
+  const archiveTurns = useChanges(targetKey, archive ? moveToInbox : undefined);
   const restore = trash?.kind === "trash" && !trash.trashed;
   const unstar = star?.kind === "star" && !star.starred;
   const starTurns = useChanges(targetKey, star ? unstar : undefined);
@@ -142,6 +143,7 @@ export function Toolbar({
     opening,
     markRead,
   });
+  const readTurns = useChanges(targetKey, read ? showsUnread : undefined);
   // Once the bar has been measured, buttons coming back from the More menu
   // fade in (not the ones there when the window opens).
   const settled = placement !== null;
@@ -169,6 +171,8 @@ export function Toolbar({
       <div ref={rightRef} data-toolbar-end className="flex items-center gap-0.5">
         <ToolButton
           icon={moveToInbox ? MoveToInboxIcon : ArchiveIcon}
+          // Archive and Move to Inbox cross-fade as one becomes the other.
+          motion={{ kind: "swap", count: archiveTurns.count }}
           label={(names.archive ?? "") + many}
           shortcut="e"
           onClick={actions.archive?.run}
@@ -203,6 +207,9 @@ export function Toolbar({
             // Open for Mark as read, closed for Mark as unread; closed from
             // the start for a conversation opening is about to mark read.
             icon={showsUnread ? MarkUnreadIcon : MarkReadIcon}
+            // The envelopes cross-fade when marked by hand (opening an
+            // unread conversation doesn't change it: see above).
+            motion={{ kind: "swap", count: readTurns.count }}
             label={(names.read ?? "") + many}
             shortcut="u"
             onClick={actions.read?.run}
@@ -308,7 +315,7 @@ function ToolButton({
    * is showing: a button coming back from the More menu doesn't play the
    * last one again.
    */
-  motion?: { kind: "spin" | "spin-back"; count: number };
+  motion?: { kind: "spin" | "spin-back" | "swap"; count: number };
 }) {
   // The motion's count when this button appeared, which it doesn't play;
   // and whether it fades in, decided as it appears.

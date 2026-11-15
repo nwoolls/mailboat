@@ -87,3 +87,24 @@ test("buttons fade out into the More menu and fade back in", async ({ page }) =>
     page.locator("[data-toolbar-end] [data-overflow].tool-appear").first(),
   ).toBeVisible();
 });
+
+test("Archive and Move to Inbox cross-fade, and so do the read envelopes", async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 800 });
+  await page.goto("/tests/browser/harness.html?mode=shell&rows=1");
+  // In All Mail an archived conversation stays, so its button turns into
+  // Move to Inbox on the same conversation.
+  const nav = page.locator("nav").first();
+  await nav.getByRole("button", { name: "More", exact: true }).click();
+  await nav.getByRole("button", { name: "All Mail", exact: true }).click();
+  await page.getByRole("option").first().click();
+  const archive = page.locator("[data-toolbar-end] button").first();
+  await expect(archive).toHaveAttribute("aria-label", /^Archive/);
+  await expect(archive.locator("span").first()).not.toHaveClass(/icon-swap/);
+  await page.keyboard.press("e");
+  await expect(archive).toHaveAttribute("aria-label", /^Move to Inbox/);
+  await expect(archive.locator("span").first()).toHaveClass(/icon-swap/);
+  // The read envelope, marked by hand.
+  await page.keyboard.press("u");
+  await page.keyboard.press("u");
+  await expect(readButton(page).locator("span").first()).toHaveClass(/icon-swap/);
+});

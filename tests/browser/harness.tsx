@@ -124,7 +124,7 @@ const rowLabelIds = [
   [103, 105],
 ];
 /** `?mode=shell`: stars and read states changed by the app, by conversation. */
-const shellChanges = new Map<number, { starred?: boolean; unread?: boolean }>();
+const shellChanges = new Map<number, { starred?: boolean; unread?: boolean; inInbox?: boolean }>();
 // `&conversation=all` (with `?mode=shell`): the conversation has all five emails.
 const unreadMode =
   harnessMode === "unread" ||
@@ -250,13 +250,20 @@ mockIPC(
           };
         return { threads: [], nextCursor: null };
       case "threads_set_starred":
+      case "threads_set_archived":
       case "threads_set_read": {
         // Kept, so the list asked for again shows the change, as Rust's would.
-        const a = args as { threadIds: number[]; starred?: boolean; read?: boolean };
+        const a = args as {
+          threadIds: number[];
+          starred?: boolean;
+          read?: boolean;
+          archived?: boolean;
+        };
         for (const id of a.threadIds) {
           const now = shellChanges.get(id) ?? {};
           if (a.starred !== undefined) now.starred = a.starred;
           if (a.read !== undefined) now.unread = !a.read;
+          if (a.archived !== undefined) now.inInbox = !a.archived;
           shellChanges.set(id, now);
         }
         return null;

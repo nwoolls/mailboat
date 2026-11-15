@@ -5813,7 +5813,9 @@ built, the owner has tried it, and the owner has published 0.3.0
       flag. And, the owner's idea, motion: starring spins the toolbar's
       star as it lights up and unstarring turns it back, only for a change
       on the same conversations while the star is showing (not when it
-      comes back from the More menu, owner); and buttons moving into and
+      comes back from the More menu, owner); Archive and Move to Inbox, and
+      the read envelopes, cross-fade into each other when one becomes the
+      other on the same conversations (owner); and buttons moving into and
       out of the More menu as the window narrows or widens fade out and
       in rather than vanish (owner). None with Reduce motion. An envelope
       whose flap opens and closes is in "Later / unscheduled")*
@@ -5869,7 +5871,7 @@ built, the owner has tried it, and the owner has published 0.3.0
       while reviewing icons: "can read / unread open / close the
       envelope? if not we can put a pin in that for later")*. Hugeicons
       draws the open and closed envelopes as separate shapes, so in 0.3.0
-      the button swaps them without motion (see the icon review). A
+      the button cross-fades them (see the icon review). A
       flap that swings needs an envelope drawn for the app, matched to
       Hugeicons' weight and size, and a moment for it that isn't opening
       a conversation
