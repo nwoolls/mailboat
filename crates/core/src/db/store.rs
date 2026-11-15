@@ -52,12 +52,26 @@ pub struct IncomingThread {
     pub messages: Vec<IncomingMessage>,
 }
 
-/// Replaces the account's label list with what Gmail reported.
+/// Everything kept about an account's labels, in a fixed order, to tell
+/// whether a label sync changed any of it.
+fn labels_state(conn: &Connection, account: AccountId) -> Result<Vec<Vec<Option<String>>>> {
+    let mut stmt = conn.prepare(
+        "SELECT gmail_label_id, name, kind, color_bg, color_fg, list_visibility, message_visibility
+         FROM labels WHERE account_id = ?1 ORDER BY gmail_label_id",
+    )?;
+    let rows = stmt.query_map([account], |r| (0..7).map(|i| r.get(i)).collect())?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+/// Replaces the account's label list with what Gmail reported, and says
+/// whether anything about it changed (a label added, removed, renamed,
+/// recolored or shown differently), so the window can be told.
 pub fn sync_labels(
     conn: &mut Connection,
     account: AccountId,
     labels: &[IncomingLabel],
-) -> Result<()> {
+) -> Result<bool> {
+    let before = labels_state(conn, account)?;
     let tx = conn.transaction()?;
     for label in labels {
         tx.execute(
@@ -92,7 +106,7 @@ pub fn sync_labels(
         tx.execute(&sql, values.as_slice())?;
     }
     tx.commit()?;
-    Ok(())
+    Ok(labels_state(conn, account)? != before)
 }
 
 /// Finds the label row for a Gmail label ID in this account, creating a

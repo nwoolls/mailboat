@@ -2,13 +2,16 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { nextMenuIndex } from "../lib/menuNavigation";
 import { ChevronIcon, type IconProps } from "./icons";
 
+/** A menu's items, plain or checkable, that can be highlighted. */
+const ITEM = ":is([role=menuitem],[role=menuitemradio],[role=menuitemcheckbox]):not(:disabled)";
+
 /**
  * A menu's own items: those whose nearest menu is `menu`, so a submenu's
  * items (inside it in the page) aren't counted as the parent's.
  */
 function ownItems(menu: HTMLElement | null): HTMLElement[] {
   if (!menu) return [];
-  return [...menu.querySelectorAll<HTMLElement>("[role=menuitem]:not(:disabled)")].filter(
+  return [...menu.querySelectorAll<HTMLElement>(ITEM)].filter(
     (item) => item.closest("[role=menu]") === menu,
   );
 }
@@ -110,7 +113,7 @@ export function Menu({
       // The pointer moves the highlight, so it and the keyboard never
       // highlight two different items.
       onPointerMove={(e) => {
-        const item = (e.target as Element).closest<HTMLElement>("[role=menuitem]:not(:disabled)");
+        const item = (e.target as Element).closest<HTMLElement>(ITEM);
         if (item && item !== document.activeElement) item.focus();
       }}
       onPointerLeave={() => ref.current?.focus()}
@@ -131,6 +134,8 @@ export function MenuItem({
   danger,
   disabled,
   hint,
+  checkable,
+  checked,
 }: {
   icon: (props: IconProps) => React.ReactNode;
   children: React.ReactNode;
@@ -139,11 +144,18 @@ export function MenuItem({
   disabled?: boolean;
   /** The key that does the same, shown faintly at the right. */
   hint?: string;
+  /**
+   * One of several choices ("radio") or an on/off switch ("checkbox"), so
+   * assistive technology hears whether it's `checked`, not only a ✓ icon.
+   */
+  checkable?: "radio" | "checkbox";
+  checked?: boolean;
 }) {
   return (
     <button
       type="button"
-      role="menuitem"
+      role={checkable ? `menuitem${checkable}` : "menuitem"}
+      aria-checked={checkable ? (checked ?? false) : undefined}
       disabled={disabled}
       onClick={onSelect}
       className={`flex h-7 w-full items-center gap-2 rounded-md px-2 text-left outline-none focus:bg-selection-strong disabled:opacity-40 ${
@@ -185,8 +197,11 @@ export function MenuSeparator() {
  * An item that opens a submenu beside it, as in macOS menus: on hover (after
  * a moment), a click, or →. ← or Escape closes just the submenu and returns
  * to the item; picking something in it closes every menu (the caller's
- * `onSelect` does). The submenu sits inside the parent menu in the page, so
- * the parent's closing on an outside press, and its keys, leave it alone.
+ * `onSelect` does). Another item of the parent menu highlighted closes it,
+ * after a moment, so the pointer can cross other items on its way to a
+ * far corner of the submenu. The submenu sits inside the parent menu in
+ * the page, so the parent's closing on an outside press, and its keys,
+ * leave it alone.
  */
 export function MenuSubmenu({
   icon: Icon,
@@ -205,9 +220,16 @@ export function MenuSubmenu({
   const item = useRef<HTMLButtonElement>(null);
   const sub = useRef<HTMLDivElement>(null);
   const hover = useRef(0);
+  const leaving = useRef(0);
   // Focus goes into the submenu on opening by keyboard (or click).
   const focusFirst = useRef(false);
-  useEffect(() => () => window.clearTimeout(hover.current), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(hover.current);
+      window.clearTimeout(leaving.current);
+    },
+    [],
+  );
 
   useLayoutEffect(() => {
     const el = sub.current;
@@ -224,8 +246,7 @@ export function MenuSubmenu({
       top = window.innerHeight - 8 - el.offsetHeight;
     el.style.left = `${Math.max(8, left)}px`;
     el.style.top = `${Math.max(8, top)}px`;
-    // Opened by hover, focus stays on the item, so highlighting another
-    // item of the parent (which moves focus) closes it.
+    // Opened by hover, focus stays on the item.
     if (focusFirst.current) ownItems(el)[0]?.focus();
     focusFirst.current = false;
     return () => {
@@ -233,9 +254,37 @@ export function MenuSubmenu({
     };
   }, [open]);
 
+  // While open: another item of the parent highlighted (by the pointer or
+  // the keys, wherever focus was) closes it after a moment; coming back to
+  // this item or into the submenu meanwhile keeps it.
+  useEffect(() => {
+    const parent = item.current?.closest<HTMLElement>("[role=menu]");
+    if (!open || !parent) return;
+    const onFocusIn = (e: FocusEvent) => {
+      const to = e.target as HTMLElement;
+      window.clearTimeout(leaving.current);
+      if (to === item.current || sub.current?.contains(to)) return;
+      if (to.closest("[role=menu]") !== parent || !to.matches(ITEM)) return;
+      leaving.current = window.setTimeout(() => setOpen(false), 250);
+    };
+    parent.addEventListener("focusin", onFocusIn);
+    return () => {
+      parent.removeEventListener("focusin", onFocusIn);
+      window.clearTimeout(leaving.current);
+    };
+  }, [open]);
+
   const close = (refocus: boolean) => {
     setOpen(false);
     if (refocus) item.current?.focus();
+  };
+  // Into the submenu by keyboard: its first item, opening it if need be.
+  const enter = () => {
+    if (open) ownItems(sub.current)[0]?.focus();
+    else {
+      focusFirst.current = true;
+      setOpen(true);
+    }
   };
 
   return (
@@ -246,10 +295,7 @@ export function MenuSubmenu({
         role="menuitem"
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => {
-          focusFirst.current = true;
-          setOpen(true);
-        }}
+        onClick={enter}
         onPointerEnter={() => {
           window.clearTimeout(hover.current);
           hover.current = window.setTimeout(() => setOpen(true), 150);
@@ -259,14 +305,13 @@ export function MenuSubmenu({
           if (e.key === "ArrowRight" || e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             e.stopPropagation();
-            focusFirst.current = true;
-            setOpen(true);
+            enter();
+          } else if (e.key === "Escape" && open) {
+            // Only the submenu, as from inside it.
+            e.preventDefault();
+            e.stopPropagation();
+            close(true);
           }
-        }}
-        // Another item of the parent highlighted (pointer or keys) closes it.
-        onBlur={(e) => {
-          const to = e.relatedTarget as Node | null;
-          if (to && !sub.current?.contains(to) && to !== sub.current) setOpen(false);
         }}
         className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-left outline-none focus:bg-selection-strong aria-expanded:bg-selection-strong"
       >
@@ -297,9 +342,7 @@ export function MenuSubmenu({
           }}
           onPointerMove={(e) => {
             e.stopPropagation();
-            const hit = (e.target as Element).closest<HTMLElement>(
-              "[role=menuitem]:not(:disabled)",
-            );
+            const hit = (e.target as Element).closest<HTMLElement>(ITEM);
             if (hit && hit !== document.activeElement) hit.focus();
           }}
           className="menu fixed m-0 max-w-80 min-w-44 rounded-lg p-1 text-[13px] font-normal text-content outline-none"

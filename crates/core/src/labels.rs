@@ -3,6 +3,9 @@
 //! (`Parent/Child`), so renaming a label also renames the labels under it,
 //! as Gmail does.
 
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
+
 use rusqlite::{params, OptionalExtension};
 
 use crate::db::Db;
@@ -26,6 +29,22 @@ fn friendly(e: CoreError, name: &str) -> CoreError {
         }
         e => e,
     }
+}
+
+/// One change at a time per label, across its read, its write and the
+/// cache: a change rewrites the whole label (`change`), so two at once could
+/// each read the original and the second undo the first; renaming and
+/// deleting take their turn too.
+async fn turn(id: LabelId) -> tokio::sync::OwnedMutexGuard<()> {
+    static TURNS: OnceLock<Mutex<HashMap<LabelId, Arc<tokio::sync::Mutex<()>>>>> = OnceLock::new();
+    let lock = {
+        let mut turns = TURNS
+            .get_or_init(Default::default)
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        turns.entry(id).or_default().clone()
+    };
+    lock.lock_owned().await
 }
 
 fn user_label(db: &Db, id: LabelId) -> Result<(AccountId, String, String)> {
@@ -84,6 +103,7 @@ pub async fn rename(
     id: LabelId,
     name: &str,
 ) -> Result<()> {
+    let _turn = turn(id).await;
     let (account, gmail_id, old) = user_label(db, id)?;
     let name = clean(name)?;
     if name == old {
@@ -130,6 +150,7 @@ pub async fn delete(
     gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
     id: LabelId,
 ) -> Result<()> {
+    let _turn = turn(id).await;
     let (account, gmail_id, _) = user_label(db, id)?;
     gmail_for(account)?.delete_label(&gmail_id).await?;
     db.conn()
@@ -203,6 +224,7 @@ pub async fn change(
     id: LabelId,
     change: LabelChange,
 ) -> Result<()> {
+    let _turn = turn(id).await;
     let (account, gmail_id, _) = user_label(db, id)?;
     if let LabelChange::Color(Some(color)) = &change {
         if !PALETTE.contains(&color.as_str()) {

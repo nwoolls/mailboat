@@ -1145,3 +1145,69 @@ async fn a_slow_profile_does_not_hold_up_the_mail() {
         .avatar_url
         .is_none());
 }
+
+/// A label recolored in Gmail leaves no history: an incremental pass reads
+/// the labels again once five minutes have passed, and says when they
+/// changed, so the window is told even with no conversation changed.
+#[tokio::test]
+async fn a_label_changed_in_gmail_is_read_again_and_reported() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch())
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let account = add_account(&db, "a");
+    run(&db, &server, account).await.unwrap();
+    // Nothing new in the history from here on.
+    Mock::given(path("/gmail/v1/users/me/history"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({ "historyId": "9100" })),
+        )
+        .with_priority(1)
+        .mount(&server)
+        .await;
+
+    // Read moments ago: not read again, nothing to report.
+    let outcome = run(&db, &server, account).await.unwrap();
+    assert_eq!(outcome.kind, SyncKind::Incremental);
+    assert!(!outcome.labels_changed);
+
+    // Due again, and unchanged in Gmail: read, nothing to report. (The
+    // first read drops the category labels the fixture's mail mentions but
+    // its label list leaves out; Gmail lists them, so a second read is the
+    // unchanged one.)
+    for _ in 0..2 {
+        db.conn()
+            .execute("UPDATE sync_state SET labels_synced_at = 0", [])
+            .unwrap();
+        run(&db, &server, account).await.unwrap();
+    }
+    db.conn()
+        .execute("UPDATE sync_state SET labels_synced_at = 0", [])
+        .unwrap();
+    assert!(!run(&db, &server, account).await.unwrap().labels_changed);
+
+    // Due again, and a label recolored in Gmail meanwhile.
+    let mut labels: serde_json::Value = serde_json::from_str(&fixture("labels.json")).unwrap();
+    let list = labels["labels"].as_array_mut().unwrap();
+    list.push(serde_json::json!({
+        "id": "Label_77",
+        "name": "Receipts",
+        "type": "user",
+        "color": { "backgroundColor": "#4a86e8", "textColor": "#000000" },
+    }));
+    Mock::given(path("/gmail/v1/users/me/labels"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(labels))
+        .with_priority(1)
+        .mount(&server)
+        .await;
+    db.conn()
+        .execute("UPDATE sync_state SET labels_synced_at = 0", [])
+        .unwrap();
+    let outcome = run(&db, &server, account).await.unwrap();
+    assert!(outcome.labels_changed);
+    assert_eq!(outcome.changed_threads, 0);
+}

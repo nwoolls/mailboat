@@ -418,18 +418,6 @@ DELETE FROM search_hits;
 /// keyed by an address alone. The cache held in the old shape can't be told
 /// apart by account, so it goes: it is a cache, and the images of that mail
 /// load live as an evicted image does (the old files are swept at start-up).
-/// Each label's visibility, as Gmail keeps it: in the label list (the
-/// sidebar: `labelShow`, `labelShowIfUnread`, `labelHide`) and on
-/// conversations in the message list (`show`, `hide`). Gmail's defaults
-/// until the next label sync fills them in. `labels_synced_at`: when the
-/// account's labels were last read, so syncs read them again now and then
-/// (a label recolored or hidden in Gmail leaves no history to notice).
-pub const MIGRATION_V22: &str = r#"
-ALTER TABLE labels ADD COLUMN list_visibility TEXT NOT NULL DEFAULT 'labelShow';
-ALTER TABLE labels ADD COLUMN message_visibility TEXT NOT NULL DEFAULT 'show';
-ALTER TABLE sync_state ADD COLUMN labels_synced_at INTEGER NOT NULL DEFAULT 0;
-"#;
-
 pub const MIGRATION_V21: &str = r#"
 DROP TABLE image_cache;
 CREATE TABLE image_cache (
@@ -442,4 +430,16 @@ CREATE TABLE image_cache (
   used_at INTEGER NOT NULL,
   UNIQUE (account_id, url)
 );
+"#;
+
+/// Each label's visibility, as Gmail keeps it: in the label list (the
+/// sidebar: `labelShow`, `labelShowIfUnread`, `labelHide`) and on
+/// conversations in the message list (`show`, `hide`). Gmail's defaults
+/// until the next label sync fills them in. `labels_synced_at`: when the
+/// account's labels were last read, so syncs read them again now and then
+/// (a label recolored or hidden in Gmail leaves no history to notice).
+pub const MIGRATION_V22: &str = r#"
+ALTER TABLE labels ADD COLUMN list_visibility TEXT NOT NULL DEFAULT 'labelShow';
+ALTER TABLE labels ADD COLUMN message_visibility TEXT NOT NULL DEFAULT 'show';
+ALTER TABLE sync_state ADD COLUMN labels_synced_at INTEGER NOT NULL DEFAULT 0;
 "#;

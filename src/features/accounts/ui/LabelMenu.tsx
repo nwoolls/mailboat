@@ -85,6 +85,8 @@ export function LabelMenu({
             {SIDEBAR_CHOICES.map(([value, title]) => (
               <MenuItem
                 key={value}
+                checkable="radio"
+                checked={target.label.sidebar === value}
                 icon={target.label.sidebar === value ? CheckIcon : NoIcon}
                 onSelect={() => {
                   const label = target.label;
@@ -97,6 +99,8 @@ export function LabelMenu({
             ))}
           </MenuSubmenu>
           <MenuItem
+            checkable="checkbox"
+            checked={target.label.onConversations}
             icon={target.label.onConversations ? CheckIcon : NoIcon}
             onSelect={() => {
               const label = target.label;

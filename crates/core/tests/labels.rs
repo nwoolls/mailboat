@@ -392,3 +392,53 @@ fn a_label_sync_keeps_where_each_label_shows() {
         ]
     );
 }
+
+/// Two changes to one label at once take turns: each reads the label after
+/// the other has written it, so neither undoes the other (review).
+#[tokio::test]
+async fn changes_to_one_label_take_turns() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/labels/Label_9"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(gmail_label(serde_json::json!({})))
+                .set_delay(std::time::Duration::from_millis(200)),
+        )
+        .mount(&server)
+        .await;
+    Mock::given(method("PUT"))
+        .and(path("/gmail/v1/users/me/labels/Label_9"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db);
+    let id = receipts(&db, a);
+    let uri = server.uri();
+    let gmail_for = |_| Ok(client(&uri).0);
+    let (first, second) = tokio::join!(
+        labels::change(
+            &db,
+            gmail_for,
+            id,
+            labels::LabelChange::Color(Some("#4a86e8".into()))
+        ),
+        labels::change(
+            &db,
+            gmail_for,
+            id,
+            labels::LabelChange::Sidebar(LabelSidebar::Hide)
+        ),
+    );
+    first.unwrap();
+    second.unwrap();
+    let methods: Vec<String> = server
+        .received_requests()
+        .await
+        .unwrap()
+        .iter()
+        .map(|r| r.method.to_string())
+        .collect();
+    assert_eq!(methods, ["GET", "PUT", "GET", "PUT"]);
+}

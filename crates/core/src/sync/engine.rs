@@ -105,6 +105,9 @@ pub struct SyncOutcome {
     /// Messages that just arrived unread anywhere but Spam and Trash (a
     /// superset of `new_inbox`), for "notify about all new mail".
     pub new_unread: Vec<MessageId>,
+    /// The account's labels changed (one added, removed, renamed, recolored
+    /// or shown differently), even with no conversation changed.
+    pub labels_changed: bool,
 }
 
 /// Threads fetched per write, so progress updates and DB locks stay short.
@@ -139,6 +142,7 @@ impl SyncEngine<'_> {
                 changed_threads: outcome.changed_threads + added,
                 new_inbox: outcome.new_inbox,
                 new_unread: outcome.new_unread,
+                labels_changed: outcome.labels_changed,
             };
         }
         let attachments = store::attachments_version(&self.db.conn(), self.account)?;
@@ -220,7 +224,7 @@ impl SyncEngine<'_> {
                 (profile.history_id, started_at)
             }
         };
-        self.sync_labels().await?;
+        let labels_changed = self.sync_labels().await?;
 
         let (ids, seen) = self.list_scope().await?;
 
@@ -254,6 +258,7 @@ impl SyncEngine<'_> {
             changed_threads: ids.len() + stale.len(),
             new_inbox: Vec::new(),
             new_unread: Vec::new(),
+            labels_changed,
         })
     }
 
@@ -353,8 +358,9 @@ impl SyncEngine<'_> {
         // or hidden in Gmail leaves no history.
         let labels_due = now_millis() - store::labels_synced_at(&self.db.conn(), self.account)?
             >= LABELS_REFRESH_MS;
+        let mut labels_moved = false;
         if labels_changed || (commit && labels_due) {
-            self.sync_labels().await?;
+            labels_moved = self.sync_labels().await?;
         }
         if !deleted.is_empty() {
             store::delete_messages(&mut self.db.conn(), self.account, &deleted)?;
@@ -375,13 +381,16 @@ impl SyncEngine<'_> {
             changed_threads: ids.len(),
             new_inbox,
             new_unread,
+            labels_changed: labels_moved,
         };
         Ok((outcome, latest))
     }
 
-    async fn sync_labels(&self) -> Result<()> {
-        refresh_labels(self.db, self.gmail, self.account).await?;
-        store::set_labels_synced_at(&self.db.conn(), self.account, now_millis())
+    /// Reads the labels again; whether anything about them changed.
+    async fn sync_labels(&self) -> Result<bool> {
+        let changed = refresh_labels(self.db, self.gmail, self.account).await?;
+        store::set_labels_synced_at(&self.db.conn(), self.account, now_millis())?;
+        Ok(changed)
     }
 
     /// Fetches threads by Gmail ID and writes them (or deletes vanished ones).
@@ -466,7 +475,7 @@ impl SyncEngine<'_> {
 pub const LABELS_REFRESH_MS: i64 = 5 * 60 * 1000;
 
 /// Fetches an account's labels from Gmail and stores them.
-pub async fn refresh_labels(db: &Db, gmail: &GmailClient, account: AccountId) -> Result<()> {
+pub async fn refresh_labels(db: &Db, gmail: &GmailClient, account: AccountId) -> Result<bool> {
     let labels: Vec<IncomingLabel> = gmail
         .labels()
         .await?

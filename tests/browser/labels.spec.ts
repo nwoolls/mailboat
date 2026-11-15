@@ -36,7 +36,7 @@ test("hidden labels sit in a closed Hidden fold, with their menu", async ({ page
   await page.getByRole("menuitem", { name: "Show in sidebar" }).click();
   await page
     .getByRole("menu", { name: "Where Archive box shows" })
-    .getByRole("menuitem", { name: "Always" })
+    .getByRole("menuitemradio", { name: "Always" })
     .click();
   await expect.poll(() => order(page)).toContain('label_set_sidebar 104 "show"');
 });
@@ -49,8 +49,12 @@ test("a label's ⋮ button shows on hover and opens its menu", async ({ page }) 
   await expect(dots).toHaveCSS("opacity", "1");
   await dots.click();
   const menu = page.getByRole("menu", { name: "Receipts menu" });
-  for (const name of ["Rename…", "Color", "Show in sidebar", "Show on conversations", "Delete…"])
+  for (const name of ["Rename…", "Color", "Show in sidebar", "Delete…"])
     await expect(menu.getByRole("menuitem", { name, exact: true })).toBeVisible();
+  // A switch, heard as on or off, not only shown with a ✓.
+  await expect(
+    menu.getByRole("menuitemcheckbox", { name: "Show on conversations" }),
+  ).toHaveAttribute("aria-checked", "true");
 
   // Color is a submenu beside the label's menu, which stays open (owner).
   await menu.getByRole("menuitem", { name: "Color", exact: true }).click();
@@ -65,7 +69,7 @@ test("a label's ⋮ button shows on hover and opens its menu", async ({ page }) 
 
   // Show on conversations toggles off.
   await nav.getByRole("button", { name: "Receipts", exact: true }).click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Show on conversations" }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Show on conversations" }).click();
   await expect.poll(() => order(page)).toContain("label_set_on_conversations 102 false");
 });
 
@@ -97,22 +101,65 @@ test("submenus open on hover and with →, and ← or another item closes them",
   await nav.getByRole("button", { name: "Travel", exact: true }).click({ button: "right" });
   const menu = page.getByRole("menu", { name: "Travel menu" });
   const where = page.getByRole("menu", { name: "Where Travel shows" });
-  // Hover opens it after a moment, and the label's menu stays.
-  await menu.getByRole("menuitem", { name: "Show in sidebar", exact: true }).hover();
+  const colors = page.getByRole("menu", { name: "Color for Travel" });
+  const item = (name: string) => menu.getByRole("menuitem", { name, exact: true });
+  // Hover opens it after a moment, the label's menu stays, and the choices
+  // say which is checked.
+  await item("Show in sidebar").hover();
   await expect(where).toBeVisible();
-  await expect(where.getByRole("menuitem", { name: "Always" })).toBeVisible();
-  // Moving to another item of the label's menu closes it.
-  await menu.getByRole("menuitem", { name: "Rename…" }).hover();
-  await expect(where).toHaveCount(0);
-  // → opens it with its first item highlighted; ← closes just it.
-  await menu.getByRole("menuitem", { name: "Show in sidebar", exact: true }).focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(where.getByRole("menuitem", { name: "Always" })).toBeFocused();
-  await page.keyboard.press("ArrowLeft");
+  await expect(where.getByRole("menuitemradio", { name: "Always" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await expect(where.getByRole("menuitemradio", { name: "Hidden" })).toHaveAttribute(
+    "aria-checked",
+    "false",
+  );
+  // Escape, with focus still on the item, closes only the submenu.
+  await page.keyboard.press("Escape");
   await expect(where).toHaveCount(0);
   await expect(menu).toBeVisible();
-  await expect(menu.getByRole("menuitem", { name: "Show in sidebar", exact: true })).toBeFocused();
-  // Esc then closes the label's menu.
+  // Opened by hover, → goes into it.
+  await item("Rename…").hover();
+  await item("Show in sidebar").hover();
+  await expect(where).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(where.getByRole("menuitemradio", { name: "Always" })).toBeFocused();
+  // From inside it, highlighting another item of the label's menu closes it.
+  await item("Rename…").hover();
+  await expect(where).toHaveCount(0);
+  // Only one submenu at a time.
+  await item("Color").click();
+  await expect(colors).toBeVisible();
+  await item("Show in sidebar").hover();
+  await expect(where).toBeVisible();
+  await expect(colors).toHaveCount(0);
+  // ← closes just it, back on its item; Esc then closes the label's menu.
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowLeft");
+  await expect(where).toHaveCount(0);
+  await expect(item("Show in sidebar")).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
+});
+
+test("the pointer can cross other items on its way into a submenu", async ({ page }) => {
+  const nav = await open(page);
+  await nav.getByRole("button", { name: "Travel", exact: true }).click({ button: "right" });
+  const menu = page.getByRole("menu", { name: "Travel menu" });
+  const colors = page.getByRole("menu", { name: "Color for Travel" });
+  await menu.getByRole("menuitem", { name: "Color", exact: true }).hover();
+  await expect(colors).toBeVisible();
+  // Down and across, over the items below Color, to the grid's last swatch.
+  const swatch = colors.getByRole("menuitem", { name: /^Color #/ }).last();
+  const target = (await swatch.boundingBox())!;
+  const from = (await menu.getByRole("menuitem", { name: "Color", exact: true }).boundingBox())!;
+  const below = (await menu
+    .getByRole("menuitemcheckbox", { name: "Show on conversations" })
+    .boundingBox())!;
+  await page.mouse.move(from.x + from.width - 20, below.y + below.height / 2, { steps: 4 });
+  await page.mouse.move(target.x + 5, target.y + 5, { steps: 4 });
+  await page.waitForTimeout(400);
+  await expect(colors).toBeVisible();
+  await expect(swatch).toBeFocused();
 });

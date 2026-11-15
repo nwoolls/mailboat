@@ -158,6 +158,23 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
         assert_eq!(versions, 22);
+        // Migration 22's columns, with Gmail's defaults.
+        conn.execute("INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at) VALUES (1, 's', 'a@example.com', '#5b8def', 'default', 0)", []).unwrap();
+        conn.execute("INSERT INTO labels (account_id, gmail_label_id, name, kind) VALUES (1, 'L', 'L', 'user')", []).unwrap();
+        conn.execute("INSERT INTO sync_state (account_id) VALUES (1)", [])
+            .unwrap();
+        let (list, message, synced): (String, String, i64) = conn
+            .query_row(
+                "SELECT l.list_visibility, l.message_visibility, s.labels_synced_at
+                 FROM labels l JOIN sync_state s ON s.account_id = l.account_id",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(
+            (list.as_str(), message.as_str(), synced),
+            ("labelShow", "show", 0)
+        );
         conn.execute(
             "INSERT INTO messages_fts (rowid, subject, sender, recipients, snippet, body) VALUES (1, 'hello', '', '', '', '')",
             [],
