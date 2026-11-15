@@ -137,22 +137,37 @@ pub fn save(config_dir: &Path, text: &str) -> Result<CheckedClient> {
     Ok(checked)
 }
 
+/// Writes `bytes` to `path`, readable by this user only. The mode is set
+/// through the opened file too: `.mode` applies only to a file it creates,
+/// not to one an earlier save left behind.
 #[cfg(unix)]
 fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .mode(0o600)
         .open(path)?;
+    file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
     file.write_all(bytes)
 }
 
+/// Writes `bytes` to `path` once it has an access list for this user
+/// alone (`owner_only`), so the secret is never in a file others can read.
+/// Renaming it into place keeps that list.
 #[cfg(not(unix))]
 fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    std::fs::File::create(path)?;
+    crate::owner_only::file(path)?;
     std::fs::write(path, bytes)
+}
+
+/// Makes a client file already in `config_dir` this user's only: one put
+/// there by hand, or saved before saving did so. Called at startup.
+pub fn make_private(config_dir: &Path) -> std::io::Result<()> {
+    crate::owner_only::file(&client_file_path(config_dir))
 }
 
 /// The newest client file Google's console downloaded into `dir` in the
@@ -337,6 +352,46 @@ mod tests {
                 .mode();
             assert_eq!(mode & 0o777, 0o600);
         }
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// A temporary file an earlier save left open, and a client file put
+    /// there by hand, both end up this user's only (DASA 1.9.1).
+    #[cfg(unix)]
+    #[test]
+    fn old_and_hand_placed_client_files_become_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        let open = std::fs::Permissions::from_mode(0o644);
+        let dir = std::env::temp_dir().join(format!("client-private-{}", fastrand::u64(..)));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = client_file_path(&dir);
+        let leftover = path.with_extension("json.tmp");
+        std::fs::write(&leftover, "old").unwrap();
+        std::fs::set_permissions(&leftover, open.clone()).unwrap();
+        save(&dir, DESKTOP).unwrap();
+        assert_eq!(mode(&path), 0o600);
+
+        std::fs::set_permissions(&path, open).unwrap();
+        make_private(&dir).unwrap();
+        assert_eq!(mode(&path), 0o600);
+        // Nothing saved yet is fine.
+        make_private(&dir.join("empty")).unwrap();
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// On Windows a saved client file has an access list for this user
+    /// alone (`owner_only`), not the folder's.
+    #[cfg(windows)]
+    #[test]
+    fn a_saved_client_file_is_this_users_alone() {
+        let dir = std::env::temp_dir().join(format!("client-acl-{}", fastrand::u64(..)));
+        save(&dir, DESKTOP).unwrap();
+        let sid = crate::owner_only::windows::user_sid().unwrap();
+        assert_eq!(
+            crate::owner_only::tests::read_dacl(&client_file_path(&dir)),
+            format!("D:P(A;;FA;;;{sid})")
+        );
         std::fs::remove_dir_all(dir).unwrap();
     }
 

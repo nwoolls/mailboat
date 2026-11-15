@@ -2763,6 +2763,7 @@ dependencies = [
  "fastrand",
  "icalendar",
  "keyring",
+ "libc",
  "lol_html",
  "mail-builder",
  "mail-parser",
@@ -2781,6 +2782,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "url",
+ "windows-sys 0.61.2",
  "wiremock",
 ]
 

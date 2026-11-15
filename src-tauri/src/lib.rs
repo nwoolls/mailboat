@@ -255,6 +255,14 @@ pub fn run() {
                     logs: app.path().app_log_dir()?,
                 },
             )?;
+            // The app's folders, and a Google client file already saved,
+            // this user's only (DASA 1.9.1), including ones an earlier
+            // version made open. Best effort: the app still starts if a
+            // folder's mode can't be changed (one owned by someone else).
+            for folder in [&dirs.data, &dirs.config, &dirs.cache, &dirs.logs] {
+                let _ = mail_core::owner_only::dir(folder);
+            }
+            let _ = mail_core::auth::config::make_private(&dirs.config);
             let db = Arc::new(Db::open(&mail_core::db::path_in(&dirs.data))?);
             let http = mail_core::reqwest::Client::builder()
                 .user_agent(format!(

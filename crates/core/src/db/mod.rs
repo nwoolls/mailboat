@@ -30,16 +30,34 @@ pub fn path_in(dir: &Path) -> std::path::PathBuf {
     dir.join(FILE_NAME)
 }
 
+/// The database file and the write-ahead files SQLite keeps beside it.
+fn database_files(path: &Path) -> [std::path::PathBuf; 3] {
+    let with = |suffix: &str| {
+        let mut name = path.as_os_str().to_owned();
+        name.push(suffix);
+        std::path::PathBuf::from(name)
+    };
+    [path.to_path_buf(), with("-wal"), with("-shm")]
+}
+
 impl Db {
+    /// Opens (or makes) the database at `path`, in a folder only this
+    /// user can open, and makes the database and its write-ahead files
+    /// this user's only (`owner_only`), including ones an earlier version
+    /// made open. SQLite gives new write-ahead files the database's mode.
     pub fn open(path: &Path) -> Result<Self> {
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
+            crate::owner_only::dir(parent)
                 .map_err(|e| CoreError::Other(format!("create data dir: {e}")))?;
         }
         let conn = Connection::open(path)?;
         conn.execute_batch(
             "PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;",
         )?;
+        for file in database_files(path) {
+            crate::owner_only::file(&file)
+                .map_err(|e| CoreError::Other(format!("make the database private: {e}")))?;
+        }
         Self::init(conn)
     }
 
@@ -149,6 +167,33 @@ pub(crate) fn placeholders(n: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The database's folder, the database and its write-ahead files are
+    /// this user's only, new or left open by an earlier version.
+    #[cfg(unix)]
+    #[test]
+    fn the_database_is_this_users_only() {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        let root = std::env::temp_dir().join(format!("db-private-{}", fastrand::u64(..)));
+        let path = path_in(&root.join("data"));
+        let db = Db::open(&path).unwrap();
+        db.conn()
+            .execute_batch("CREATE TABLE probe (x); INSERT INTO probe VALUES (1);")
+            .unwrap();
+        assert_eq!(mode(path.parent().unwrap()), 0o700);
+        for file in database_files(&path) {
+            assert_eq!(mode(&file), 0o600, "{file:?}");
+        }
+        drop(db);
+        for file in [path.clone(), path.parent().unwrap().to_path_buf()] {
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        let _db = Db::open(&path).unwrap();
+        assert_eq!(mode(path.parent().unwrap()), 0o700);
+        assert_eq!(mode(&path), 0o600);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 
     #[test]
     fn migrations_apply_once_and_fts5_is_available() {
