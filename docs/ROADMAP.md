@@ -4972,6 +4972,11 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         time after a 20 ms wait, so a slow runner that measures late sees
         the glow nearer the pointer than the test allows; likely the cause,
         not yet confirmed.
+      - 2026-11-15, CI on #141 (`remove-suggestion`), WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43725563301: the
+        same check, with the glow 10.6 px from the pointer where more than
+        30 was expected (line 177); 162 others passed. #141 changes compose
+        suggestions, not the glow. Re-run requested.
 - [ ] Vitest tests that run long: `scripts/ciAppChanged.test.ts` ("says app
       for files that only look like docs or site…") and
       `src/features/screensaver/model/catalog.test.ts` ("… runs a minute,
