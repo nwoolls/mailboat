@@ -5994,10 +5994,13 @@ Privacy and the policy.*
       says the mail cache counts. Its 0.2.0 note said the same: only if Google
       insists on the assessment, which it now does)*
 - [ ] Scan the code ourselves before the lab does, so findings are fixed
-      or documented before the paid scans start. For a desktop app, a lab
-      runs a static scan (SAST) of the source code, and one lab's terms
-      say every finding must be fixed before the next scan, low-risk ones
-      included. Run Semgrep's open-source rules for Rust and TypeScript,
+      or documented before the paid scans start. A lab may ask for a
+      static scan (SAST) of a desktop app's source code (confirm the
+      chosen lab's process, as planned above), and one lab's terms say
+      every finding must be fixed before the next scan, low-risk ones
+      included. Run Semgrep's free community rules for Rust and TypeScript
+      (check their license when choosing rules: it allows internal use
+      only),
       and Fluid Attacks, the scanner in the ADA's static-scan guide (check
       which of our languages it covers; the ADA notes it doesn't cover
       TypeScript or JavaScript). Read CodeQL's latest results too. Fix
