@@ -3983,7 +3983,8 @@ unscheduled", and the checkpoint was dropped (see below).
       frequent them)* *(closed 2026-11-14: the owner promotes it on social
       media and decides where; no more posts are tracked here)*
 - *Moved to "Later / unscheduled" (owner, 2026-11-14): the Homebrew tap
-  and `winget`, and the OpenSSF Best Practices badge.*
+  and `winget`, and the OpenSSF Best Practices badge.* *(The badge moved
+  on into 0.3.0 → Security assessment (CASA), owner, 2026-11-15.)*
 - *Dropped (owner, 2026-11-14): the checkpoint about a month after the
   launch (downloads, stars, setup issues, whether people would pay to skip
   the setup). Milestone 18 now waits on Google's decision on the
@@ -6054,13 +6055,22 @@ Privacy and the policy.*
       Run `osv-scanner` on the lockfiles as well *(owner, 2026-11-15)*:
       OpenSSF Scorecard's Vulnerabilities check uses the same OSV data and
       scores 3 of 10 with 7 known issues, while `cargo deny` and
-      `bun audit` find none. The likely gap is that `deny.toml` checks only
-      the macOS and Windows targets, and `Cargo.lock` also holds Tauri's
-      Linux GTK3 crates, several with RustSec advisories (not confirmed:
-      osv-scanner wasn't installed when this was found). Fix what can be
-      fixed; for what can't be until Tauri moves off GTK3, record each
-      with its reason in an `osv-scanner.toml` ignore list (check that
-      Scorecard reads it), and give the lab the same reasons.
+      `bun audit` find none. The seven are RustSec advisories, none of them
+      a vulnerability: `rustix` 1.1.5 unsound (RUSTSEC-2026-0486, fixed in
+      1.1.6), `glib` unsound (RUSTSEC-2024-0429), and unmaintained `paste`
+      (RUSTSEC-2024-0436, already ignored in `deny.toml`),
+      `proc-macro-error` (RUSTSEC-2024-0370), `zvariant`, `zbus_names` and
+      `zvariant_derive` (RUSTSEC-2026-0370, -0371 and -0372). Scorecard
+      scans the whole `Cargo.lock`, while `cargo deny` checks only the
+      macOS and Windows targets in `deny.toml` (so it skips the Linux GTK3
+      and D-Bus crates) and by default reports an unsound advisory only
+      for the workspace's own crates, not a dependency's. That default is
+      how `rustix`, which the macOS build uses (through `tempfile`), got
+      past it. Update `rustix` to 1.1.6 or later, and decide whether
+      `cargo deny` should report unsound dependencies too. For the rest,
+      which can't be fixed until Tauri drops them, record each with its
+      reason in an `osv-scanner.toml` ignore list (Scorecard runs
+      osv-scanner, which reads it), and give the lab the same reasons.
 - [ ] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
@@ -6081,7 +6091,12 @@ Privacy and the policy.*
       `*.intoto.jsonl` scores 10. Write the action's bundle (its
       `bundle-path` output) into `release/` as
       `<App>_<version>.intoto.jsonl` after the attestation and before
-      `gh release create`. The check averages the last five releases, so
+      `gh release create`. That bundle is a Sigstore bundle (JSON), not
+      the in-toto JSON Lines file the name suggests; Scorecard checks only
+      the name, so renaming it is enough for the score, but a tool that
+      reads `.intoto.jsonl` files may reject it. Making a real in-toto
+      file is a separate choice, if such tools matter. The check
+      averages the last five releases, so
       the score rises one release at a time. Not a CASA requirement; it is
       here because it changes the same release job as the SBOM item above
       *(owner, 2026-11-15)*
