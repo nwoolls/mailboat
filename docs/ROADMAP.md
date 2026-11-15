@@ -4971,6 +4971,23 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         time after a 20 ms wait, so a slow runner that measures late sees
         the glow nearer the pointer than the test allows; likely the cause,
         not yet confirmed.
+- [ ] Vitest tests that run long: `scripts/ciAppChanged.test.ts` ("says app
+      for files that only look like docs or site…") and
+      `src/features/screensaver/model/catalog.test.ts` ("… runs a minute,
+      with and without the pointer, drawing only palette values" for
+      envelopes, rain and sandscape).
+      - 2026-11-14, local `bun run check` on the branch `spam-icon`: three
+        timed out at Vitest's 5 s limit ("Test timed out in 5000ms";
+        ciAppChanged 5.7 s, envelopes 7.0 s, rain 5.3 s) while the
+        machine's load average was over 100 (reviews running beside it).
+        `bun run test` again at once: all 859 passed.
+      - 2026-11-14, two reviewers' runs of `bun run test` on the label
+        branch, also under load (one while Rust compiled): the same tests
+        timed out (and sandscape); they passed when run alone or with
+        `--maxWorkers=1`. They change nothing in these files. Likely cause:
+        tests that do a lot of work (a minute of a scene; a shell script)
+        near the 5 s limit, run in parallel on a busy machine; not yet
+        confirmed.
 
 ## Bug backlog
 
@@ -5767,6 +5784,42 @@ built, the owner has tried it, and the owner has published 0.3.0
       Architecture decisions, which also say what the web view still
       can't check))*
 
+- [x] Icons reviewed, starting with a different icon for Spam *(owner,
+      2026-11-14: "a security shield
+      is the opposite of what we should show")*. Report spam (the toolbar,
+      menus, ⌘K) and the Spam view in the sidebar use a shield, which
+      reads as "safe" or "protected". To pick: an icon that says junk or
+      a warning instead, used everywhere Spam appears
+      *(2026-11-14: the owner pointed to Gmail's, an octagon with "!".
+      Hugeicons' `SpamIcon` is that sign; `SpamIcon` in
+      `shared/ui/icons.tsx` now uses it, so the toolbar, the menus, ⌘K,
+      the sidebar's Spam view, the swipe action and the empty Spam view
+      all change)*
+      *(2026-11-14, widened by the owner to every icon: "let's batch that
+      up as visiting all of the icons". From a page of all 84, the owner
+      chose five more, each closer to Gmail's: Archive a box with a down
+      arrow in it (`ArchiveArrowDown`); Move to Inbox an arrow going into
+      the tray (`InboxDownload`; the old one pointed out of it); Mark as
+      read an open envelope and Mark as unread a closed one, following
+      what it will do in the toolbar, the menus, ⌘K and the swipe. The
+      toolbar's button switched on every click into an unread conversation
+      (opening marks it read at once), which was distracting; the owner's
+      rule: with Settings → Viewing marking mail read on open, a
+      conversation opened while unread shows Mark as unread from the
+      start, until it's marked read or unread by hand
+      (`readButtonShowsUnread`);
+      All Mail a stack of envelopes (`Mails`), so it doesn't look like
+      Unread; Important Gmail's tag-shaped marker (`LabelImportant`), not a
+      flag. And, the owner's idea, motion: starring spins the toolbar's
+      star as it lights up and unstarring turns it back, only for a change
+      on the same conversations while the star is showing (not when it
+      comes back from the More menu, owner); Archive and Move to Inbox, and
+      the read envelopes, cross-fade into each other when one becomes the
+      other on the same conversations (owner); and buttons moving into and
+      out of the More menu as the window narrows or widens fade out and
+      in rather than vanish (owner). None with Reduce motion. An envelope
+      whose flap opens and closes is in "Later / unscheduled")*
+
 ### Bugs
 
 *The open bugs not picked are in "Later / unscheduled" → Open bugs.*
@@ -5813,6 +5866,16 @@ built, the owner has tried it, and the owner has published 0.3.0
       goes down to 420px, where it used to stop at 820px)*
 
 ## Later / unscheduled
+
+- [ ] The read envelope's flap opening and closing *(owner, 2026-11-14,
+      while reviewing icons: "can read / unread open / close the
+      envelope? if not we can put a pin in that for later")*. Hugeicons
+      draws the open and closed envelopes as separate shapes, so in 0.3.0
+      the button cross-fades them (see the icon review). A
+      flap that swings needs an envelope drawn for the app, matched to
+      Hugeicons' weight and size, and a moment for it that isn't opening
+      a conversation
+      *(pinned for later, 2026-11-14)*
 
 - [ ] Ask for Google permissions when they are first needed: sign-in asks
       for what mail needs, and Calendar, Contacts and Gmail settings are

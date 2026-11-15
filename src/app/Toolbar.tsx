@@ -1,4 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { readButtonShowsUnread } from "../features/mailbox/model/readButton";
+import type { MarkRead } from "../features/mailbox/model/viewingPrefs";
 import type { CommandId } from "../features/commands/model/commands";
 import {
   OVERFLOW_ORDER,
@@ -11,6 +13,7 @@ import {
   ComposeIcon,
   type IconProps,
   LabelIcon,
+  MarkReadIcon,
   MarkUnreadIcon,
   MoreIcon,
   MoveToInboxIcon,
@@ -73,6 +76,18 @@ type Props = {
   /** Writing needs an account to write from. */
   canCompose: boolean;
   onCompose: () => void;
+  /**
+   * Which conversations the actions apply to, so a change in their star or
+   * read state (not a change of conversations) plays the buttons' motion.
+   */
+  targetKey: string;
+  /**
+   * The one conversation shown was unread when opened, and hasn't been
+   * marked read or unread by hand since (`readButtonShowsUnread`).
+   */
+  opening: boolean;
+  /** Settings → Viewing: when an opened conversation is marked read. */
+  markRead: MarkRead;
   /** Whether the reader's button shows (not when the panes take turns). */
   showReaderToggle: boolean;
   /** How many buttons have moved into the More menu (`OVERFLOW_ORDER`). */
@@ -104,6 +119,9 @@ export function Toolbar({
   showReaderToggle,
   overflow,
   onOverflow,
+  targetKey,
+  opening,
+  markRead,
 }: Props) {
   const barRef = useRef<HTMLElement>(null);
   const leftRef = useRef<HTMLDivElement>(null);
@@ -115,8 +133,20 @@ export function Toolbar({
   const trash = actions.trash?.action;
   const star = actions.star?.action;
   const moveToInbox = archive?.kind === "archive" && !archive.archived;
+  const archiveTurns = useChanges(targetKey, archive ? moveToInbox : undefined);
   const restore = trash?.kind === "trash" && !trash.trashed;
   const unstar = star?.kind === "star" && !star.starred;
+  const starTurns = useChanges(targetKey, star ? unstar : undefined);
+  const read = actions.read?.action;
+  const showsUnread = readButtonShowsUnread({
+    marksUnread: read?.kind === "read" && !read.read,
+    opening,
+    markRead,
+  });
+  const readTurns = useChanges(targetKey, read ? showsUnread : undefined);
+  // Once the bar has been measured, buttons coming back from the More menu
+  // fade in (not the ones there when the window opens).
+  const settled = placement !== null;
   return (
     <header
       ref={barRef}
@@ -141,6 +171,8 @@ export function Toolbar({
       <div ref={rightRef} data-toolbar-end className="flex items-center gap-0.5">
         <ToolButton
           icon={moveToInbox ? MoveToInboxIcon : ArchiveIcon}
+          // Archive and Move to Inbox cross-fade as one becomes the other.
+          motion={{ kind: "swap", count: archiveTurns.count }}
           label={(names.archive ?? "") + many}
           shortcut="e"
           onClick={actions.archive?.run}
@@ -148,6 +180,8 @@ export function Toolbar({
         />
         {!moved.has("trash") && (
           <ToolButton
+            overflowId="trash"
+            appear={settled}
             icon={restore ? RestoreIcon : TrashIcon}
             label={(names.trash ?? "") + many}
             shortcut="#"
@@ -157,6 +191,8 @@ export function Toolbar({
         )}
         {!moved.has("spam") && (
           <ToolButton
+            overflowId="spam"
+            appear={settled}
             icon={SpamIcon}
             label={(names.spam ?? "") + many}
             shortcut="!"
@@ -166,7 +202,14 @@ export function Toolbar({
         )}
         {!moved.has("read") && (
           <ToolButton
-            icon={MarkUnreadIcon}
+            overflowId="read"
+            appear={settled}
+            // Open for Mark as read, closed for Mark as unread; closed from
+            // the start for a conversation opening is about to mark read.
+            icon={showsUnread ? MarkUnreadIcon : MarkReadIcon}
+            // The envelopes cross-fade when marked by hand (opening an
+            // unread conversation doesn't change it: see above).
+            motion={{ kind: "swap", count: readTurns.count }}
             label={(names.read ?? "") + many}
             shortcut="u"
             onClick={actions.read?.run}
@@ -175,7 +218,11 @@ export function Toolbar({
         )}
         {!moved.has("star") && (
           <ToolButton
+            overflowId="star"
+            appear={settled}
             icon={StarIcon}
+            // Starring spins the star as it lights up; unstarring turns it back.
+            motion={{ kind: starTurns.to ? "spin" : "spin-back", count: starTurns.count }}
             label={(names.star ?? "") + many}
             shortcut="s"
             onClick={actions.star?.run}
@@ -187,6 +234,8 @@ export function Toolbar({
         )}
         {!moved.has("labels") && (
           <ToolButton
+            overflowId="labels"
+            appear={settled}
             id={LABEL_BUTTON_ID}
             icon={LabelIcon}
             label={(names.labels ?? "") + many}
@@ -239,8 +288,15 @@ function ToolButton({
   tone,
   dot,
   onHover,
+  motion,
+  overflowId,
+  appear,
 }: {
   id?: string;
+  /** One of `OVERFLOW_ORDER`: it can move into the More menu. */
+  overflowId?: string;
+  /** Fade in on appearing (a button back from the More menu). */
+  appear?: boolean;
   icon: (props: IconProps) => React.ReactNode;
   label: string;
   shortcut?: string;
@@ -254,7 +310,29 @@ function ToolButton({
   dot?: "warn" | "error" | null;
   /** The pointer went onto (true) or off (false) the button. */
   onHover?: (inside: boolean) => void;
+  /**
+   * A motion played on the icon each time `count` goes up while the button
+   * is showing: a button coming back from the More menu doesn't play the
+   * last one again.
+   */
+  motion?: { kind: "spin" | "spin-back" | "swap"; count: number };
 }) {
+  // The motion's count when this button appeared, which it doesn't play;
+  // and whether it fades in, decided as it appears.
+  const [shownAt] = useState(motion?.count ?? 0);
+  const [fadeIn] = useState(appear ?? false);
+  // For a swap, the icon before the last change, which fades out under the
+  // new one. Kept during render; the icon can also change without a swap
+  // (another conversation picked), which leaves nothing to fade out.
+  const [swap, setSwap] = useState({ count: motion?.count ?? 0, icon: Icon, was: Icon });
+  if (motion && (motion.count !== swap.count || Icon !== swap.icon))
+    setSwap({
+      count: motion.count,
+      icon: Icon,
+      was: motion.count !== swap.count ? swap.icon : swap.was,
+    });
+  const Was = swap.was;
+  const swapping = motion?.kind === "swap" && motion.count !== shownAt && Was !== Icon;
   const soon = !onClick && !disabled;
   const title = [label, shortcut && `(${shortcut})`, soon && "· coming soon"]
     .filter(Boolean)
@@ -270,11 +348,28 @@ function ToolButton({
       onPointerEnter={onHover && (() => onHover(true))}
       onPointerLeave={onHover && (() => onHover(false))}
       disabled={disabled}
+      data-overflow={overflowId}
       className={`relative flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-[120ms] hover:bg-selection hover:text-content disabled:opacity-35 disabled:hover:bg-transparent ${
         tone ?? "text-content/70"
-      }`}
+      } ${fadeIn ? "tool-appear" : ""}`}
     >
-      <Icon />
+      {motion ? (
+        // Keyed by the count, so each change plays the motion afresh.
+        <span
+          key={motion.count}
+          className={motion.count !== shownAt ? `flex icon-${motion.kind}` : "flex"}
+        >
+          <Icon />
+        </span>
+      ) : (
+        <Icon />
+      )}
+      {/* After the new icon, so it fades out over it. */}
+      {swapping && (
+        <span key={`was-${motion.count}`} className="icon-swap-out absolute flex">
+          <Was />
+        </span>
+      )}
       {dot && (
         <span
           className={`absolute top-1 right-1 h-1.5 w-1.5 rounded-full ${
@@ -327,11 +422,74 @@ function useSearchPlacement(
       setPlacement((was) =>
         was && was.left === next.left && was.width === next.width ? was : next,
       );
-      if (count !== now.overflow) now.onOverflow(count);
+      if (count !== now.overflow) {
+        if (count > now.overflow) fadeOut(b, r, OVERFLOW_ORDER.slice(now.overflow, count));
+        now.onOverflow(count);
+      }
     };
     const observer = new ResizeObserver(measure);
     for (const el of [b, l, r]) observer.observe(el);
     return () => observer.disconnect();
   }, [bar, left, right]);
   return placement;
+}
+
+/**
+ * How many times `value` has changed while `key` stayed the same (a star or
+ * read state flipped on the same conversations, not a different set chosen,
+ * or nothing chosen: `undefined`), and what it changed to last, so the
+ * motion keeps its direction when the conversations change afterwards.
+ * Worked out during render.
+ */
+function useChanges(key: string, value: boolean | undefined): { count: number; to: boolean } {
+  const [seen, setSeen] = useState({ key, value, count: 0, to: false });
+  if (seen.key !== key || seen.value !== value) {
+    const flipped = seen.key === key && seen.value !== undefined && value !== undefined;
+    setSeen({
+      key,
+      value,
+      count: flipped ? seen.count + 1 : seen.count,
+      to: flipped ? value : seen.to,
+    });
+  }
+  return { count: seen.count, to: seen.to };
+}
+
+/**
+ * Buttons about to move into the More menu fade out where they were (owner:
+ * they shouldn't just vanish). The buttons themselves leave the bar at once,
+ * so the bar's measuring stays right; a copy of each, out of the layout and
+ * not clickable, fades out in their place and is then removed.
+ */
+function fadeOut(bar: HTMLElement, group: HTMLElement, ids: readonly string[]) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (const id of ids) {
+    const button = group.querySelector<HTMLElement>(`[data-overflow="${id}"]`);
+    if (!button) continue;
+    const ghost = button.cloneNode(true) as HTMLElement;
+    ghost.removeAttribute("id");
+    ghost.removeAttribute("data-overflow");
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.setAttribute("inert", "");
+    ghost.classList.add("tool-leave");
+    ghost.style.position = "absolute";
+    // Where the button is within the bar (the group isn't positioned, so
+    // its own offsets would already count the group's).
+    const at = button.getBoundingClientRect();
+    const from = bar.getBoundingClientRect();
+    ghost.style.left = `${at.left - from.left - bar.clientLeft}px`;
+    ghost.style.top = `${at.top - from.top - bar.clientTop}px`;
+    ghost.style.pointerEvents = "none";
+    // Removed when its own fade ends (not an icon's motion inside it), is
+    // cancelled (Reduce motion turned on meanwhile), or in any case soon.
+    const done = () => {
+      window.clearTimeout(timer);
+      ghost.remove();
+    };
+    const timer = window.setTimeout(done, 1000);
+    const own = (e: AnimationEvent) => e.target === ghost && done();
+    ghost.addEventListener("animationend", own);
+    ghost.addEventListener("animationcancel", own);
+    bar.appendChild(ghost);
+  }
 }

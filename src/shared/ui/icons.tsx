@@ -11,7 +11,7 @@ import Wrench01 from "@hugeicons/core-free-icons/Wrench01Icon";
 import LeftToRightListDash from "@hugeicons/core-free-icons/LeftToRightListDashIcon";
 import AlertCircle from "@hugeicons/core-free-icons/AlertCircleIcon";
 import InformationCircle from "@hugeicons/core-free-icons/InformationCircleIcon";
-import Archive02 from "@hugeicons/core-free-icons/Archive02Icon";
+import ArchiveArrowDown from "@hugeicons/core-free-icons/ArchiveArrowDownIcon";
 import BookOpen01 from "@hugeicons/core-free-icons/BookOpen01Icon";
 import ArrowRight01 from "@hugeicons/core-free-icons/ArrowRight01Icon";
 import Attachment01 from "@hugeicons/core-free-icons/Attachment01Icon";
@@ -26,9 +26,10 @@ import Printer from "@hugeicons/core-free-icons/PrinterIcon";
 import MoreVertical from "@hugeicons/core-free-icons/MoreVerticalIcon";
 import PaintBoard from "@hugeicons/core-free-icons/PaintBoardIcon";
 import Eye from "@hugeicons/core-free-icons/EyeIcon";
-import Flag02 from "@hugeicons/core-free-icons/Flag02Icon";
+import LabelImportant from "@hugeicons/core-free-icons/LabelImportantIcon";
+import Mails from "@hugeicons/core-free-icons/MailsIcon";
 import Inbox from "@hugeicons/core-free-icons/InboxIcon";
-import InboxUpload from "@hugeicons/core-free-icons/InboxUploadIcon";
+import InboxDownload from "@hugeicons/core-free-icons/InboxDownloadIcon";
 import Logout01 from "@hugeicons/core-free-icons/Logout01Icon";
 import Mail01 from "@hugeicons/core-free-icons/Mail01Icon";
 import Mail02 from "@hugeicons/core-free-icons/Mail02Icon";
@@ -55,7 +56,7 @@ import Refresh01 from "@hugeicons/core-free-icons/Refresh01Icon";
 import Search01 from "@hugeicons/core-free-icons/Search01Icon";
 import Sent from "@hugeicons/core-free-icons/SentIcon";
 import SquareArrowUpRight from "@hugeicons/core-free-icons/SquareArrowUpRightIcon";
-import Shield01 from "@hugeicons/core-free-icons/Shield01Icon";
+import Spam from "@hugeicons/core-free-icons/SpamIcon";
 import SidebarLeft from "@hugeicons/core-free-icons/SidebarLeftIcon";
 import SidebarRight from "@hugeicons/core-free-icons/SidebarRightIcon";
 import Star from "@hugeicons/core-free-icons/StarIcon";
@@ -102,11 +103,13 @@ function wrap(icon: IconSvgElement) {
 export const AlertIcon = wrap(AlertCircle);
 export const InfoIcon = wrap(InformationCircle);
 export const AddIcon = wrap(Add01);
-export const AllMailIcon = wrap(Mail01);
+// A stack, so All Mail doesn't look like Unread or "Mark as unread".
+export const AllMailIcon = wrap(Mails);
 export const AttachmentIcon = wrap(Attachment01);
 export const ChevronIcon = wrap(ArrowRight01);
 export const InboxIcon = wrap(Inbox);
-export const MoveToInboxIcon = wrap(InboxUpload);
+// Gmail's: an arrow going into the tray (the old one pointed out of it).
+export const MoveToInboxIcon = wrap(InboxDownload);
 export const RestoreIcon = wrap(Undo02);
 export const SaveIcon = wrap(Download04);
 export const PreviewIcon = wrap(View);
@@ -114,17 +117,22 @@ export const FileIcon = wrap(FileAttachment);
 export const ImageIcon = wrap(Image01);
 export const PdfIcon = wrap(Pdf01);
 export const UnreadIcon = wrap(Mail02);
-export const ArchiveIcon = wrap(Archive02);
+// Gmail's: a box with a down arrow in it.
+export const ArchiveIcon = wrap(ArchiveArrowDown);
 export const ClearIcon = wrap(Cancel01);
 export const ComposeIcon = wrap(PencilEdit02);
 export const DraftIcon = wrap(File01);
-export const ImportantIcon = wrap(Flag02);
+// Gmail's Important marker, not a flag (which means something else).
+export const ImportantIcon = wrap(LabelImportant);
 export const LabelIcon = wrap(Tag01);
 export const PrintIcon = wrap(Printer);
 export const MoreVerticalIcon = wrap(MoreVertical);
 export const PaintIcon = wrap(PaintBoard);
 export const EyeIcon = wrap(Eye);
-export const MarkUnreadIcon = wrap(MailOpen01);
+// What the read button will do, as Gmail shows it: "Mark as read" an open
+// envelope, "Mark as unread" a closed one.
+export const MarkReadIcon = wrap(MailOpen01);
+export const MarkUnreadIcon = wrap(Mail01);
 export const MoreIcon = wrap(MoreHorizontal);
 export const PopOutIcon = wrap(SquareArrowUpRight);
 export const RemoveAccountIcon = wrap(Logout01);
@@ -133,7 +141,8 @@ export const ReaderToggleIcon = wrap(SidebarRight);
 export const SearchIcon = wrap(Search01);
 export const SentIcon = wrap(Sent);
 export const SidebarToggleIcon = wrap(SidebarLeft);
-export const SpamIcon = wrap(Shield01);
+// Gmail's sign for spam, an octagon with "!" (owner: a shield said "safe").
+export const SpamIcon = wrap(Spam);
 export const StarIcon = wrap(Star);
 export const ThumbsUpIcon = wrap(ThumbsUp);
 export const TrashIcon = wrap(Delete02);

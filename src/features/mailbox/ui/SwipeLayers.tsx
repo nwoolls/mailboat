@@ -1,13 +1,13 @@
 import { useId } from "react";
 import {
   ArchiveIcon,
+  MarkReadIcon,
   MarkUnreadIcon,
   MoveToInboxIcon,
   RestoreIcon,
   SpamIcon,
   StarIcon,
   TrashIcon,
-  UnreadIcon,
 } from "../../../shared/ui/icons";
 import { SWIPE, type SwipePose, type SwipeSide, swipeLabel } from "../model/swipe";
 import type { ThreadAction } from "../model/threadActions";
@@ -206,8 +206,8 @@ function ActionIcon({ action }: { action: ThreadAction }) {
   if (action.kind === "star") return <StarIcon size={13} />;
   if (action.kind === "spam") return <SpamIcon size={13} />;
   return action.kind === "read" && action.read ? (
-    <MarkUnreadIcon size={13} />
+    <MarkReadIcon size={13} />
   ) : (
-    <UnreadIcon size={13} />
+    <MarkUnreadIcon size={13} />
   );
 }

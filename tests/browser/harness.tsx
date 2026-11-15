@@ -123,6 +123,8 @@ const rowLabelIds = [
   [101, 102, 103],
   [103, 105],
 ];
+/** `?mode=shell`: stars and read states changed by the app, by conversation. */
+const shellChanges = new Map<number, { starred?: boolean; unread?: boolean; inInbox?: boolean }>();
 // `&conversation=all` (with `?mode=shell`): the conversation has all five emails.
 const unreadMode =
   harnessMode === "unread" ||
@@ -239,12 +241,33 @@ mockIPC(
         // `?mode=shell&rows=1`: the demo's Inbox, for every view and search.
         if (harnessMode === "shell" && onboardingParams.has("rows"))
           return {
-            threads: withLabels
-              ? inbox().map((t, i) => ({ ...t, labelIds: rowLabelIds[i] ?? [] }))
-              : inbox(),
+            threads: inbox().map((t, i) => ({
+              ...t,
+              ...(withLabels ? { labelIds: rowLabelIds[i] ?? [] } : {}),
+              ...shellChanges.get(t.id),
+            })),
             nextCursor: null,
           };
         return { threads: [], nextCursor: null };
+      case "threads_set_starred":
+      case "threads_set_archived":
+      case "threads_set_read": {
+        // Kept, so the list asked for again shows the change, as Rust's would.
+        const a = args as {
+          threadIds: number[];
+          starred?: boolean;
+          read?: boolean;
+          archived?: boolean;
+        };
+        for (const id of a.threadIds) {
+          const now = shellChanges.get(id) ?? {};
+          if (a.starred !== undefined) now.starred = a.starred;
+          if (a.read !== undefined) now.unread = !a.read;
+          if (a.archived !== undefined) now.inInbox = !a.archived;
+          shellChanges.set(id, now);
+        }
+        return null;
+      }
       case "threads_load_older":
         // As Rust with no account to ask: nothing older, and not an error.
         return { added: 0, exhausted: true, failed: 0 };
@@ -328,11 +351,14 @@ mockIPC(
         // `&threads=distinct`: answered as the conversation asked for, so
         // moving to another one (j/k) shows a different conversation, as in
         // the app. Not by default: the fake reply belongs to conversation 7.
-        if (new URLSearchParams(location.search).get("threads") === "distinct")
-          return {
-            ...detail,
-            thread: { ...detail.thread, id: (args as { threadId: number }).threadId },
-          };
+        // Read or unread as its row is, so opening an unread one marks it
+        // read (Settings → Viewing), as in the app.
+        if (new URLSearchParams(location.search).get("threads") === "distinct") {
+          const id = (args as { threadId: number }).threadId;
+          const row = inbox().find((t) => t.id === id);
+          const unread = shellChanges.get(id)?.unread ?? row?.unread ?? detail.thread.unread;
+          return { ...detail, thread: { ...detail.thread, id, unread } };
+        }
         return detail;
       case "reply_source":
         return {
