@@ -5888,11 +5888,11 @@ Privacy and the policy.*
       - no message frame gets `allow-scripts`;
       - the updater requires a signed version from HTTPS endpoints;
       - Tauri's `devtools` feature is off;
-      - the Windows rustflags include Control Flow Guard, and the release
-        profile strips symbols;
       - no `eval`, `new Function` or `innerHTML` assignment in `src/`;
-      - no `danger_accept_invalid_*`, shell (`sh -c`, `cmd /c`) or
-        plain-`http://` URL outside the demo and loopback in Rust;
+      - no `danger_accept_invalid_*` or shell (`sh -c`, `cmd /c`) in
+        Rust, and no plain-`http://` request target there: the sanitizer
+        upgrading `http://` images, the link scheme allowlist, the demo,
+        loopback and tests are allowed;
       - `dangerouslySetInnerHTML` and `unsafe` appear only in reviewed
         places;
       - the website's `_headers` keeps its CSP, HSTS, `nosniff` and
@@ -5904,17 +5904,20 @@ Privacy and the policy.*
       tests itself by planting each forbidden pattern and expecting a
       failure. Changing what was reviewed (the capability, the `unsafe`
       places) means editing the reviewed list in the script, which a pull
-      request review sees. Only judgment stays with a person or an agent:
+      request review sees. Control Flow Guard and symbol stripping join
+      the rules when their items below are done, so the check passes on
+      today's tree. Only judgment stays with a person or an agent:
       what a notification may show, IDOR logic, the written answers.
 - [ ] A check of the built app in the release workflow, where the signed
       builds exist. On macOS: the hardened runtime on both binaries (DASA
       3.3.1), no entitlements beyond the reviewed list, none today (3.3.2),
-      notarization with `spctl` (3.2.1), and no `LC_RPATH` (1.5.2). On
+      notarization with `spctl` (3.2.1), and no relative or user-writable
+      `RPATH` in `otool -l` (1.5.2; today's binaries have none at all). On
       Windows: `DYNAMICBASE` and `NXCOMPAT` (2.1.1), `GUARD_CF` (2.1.2),
       `HIGHENTROPYVA` (2.1.3) and a 64-bit build (2.1.4). The release fails
       if one is missing. `check-windows-signature` checks that an
       Authenticode signature is present, not that it is valid; DASA 2.2.1's
-      evidence is `signtool verify /pa` output, so add that check or
+      evidence is `signtool verify /v /pa` output, so add that check or
       collect the output by hand.
 - [ ] A software bill of materials (CycloneDX) for the Rust and the
       JavaScript dependencies, made by the release workflow and attached to
@@ -5922,9 +5925,10 @@ Privacy and the policy.*
 - [ ] A setting for what new-mail notifications show (DASA 1.10.2: no
       sensitive data in notifications). Today the title is the sender and
       the body is the subject, plus the account's address when there is
-      more than one account. When the email has a sign-in code (looked
-      for in the subject, the snippet and a downloaded body), the code
-      leads the title. The snippet itself is never shown, and more than
+      more than one account. When the email has a sign-in code, the code
+      leads the title. The code is looked for in the subject and the
+      snippet, and in a downloaded body only when the subject hints at a
+      code and the snippet has none. The snippet itself is never shown, and more than
       three new emails make one banner with a count. To decide:
       the choices (for example everything, sender only, or "New email"
       only) and the default. Settings → Privacy, the policy and the
@@ -5935,8 +5939,11 @@ Privacy and the policy.*
 - [ ] Owner-only folders and files (DASA 1.9.1): create the data, cache
       and log folders as 0700 at startup, and the database 0600 (macOS
       already keeps `~/Library` private; Linux won't). The OAuth client
-      file: `config::save` writes a temporary file with `.mode(0o600)` and
-      renames it into place, so a saved file is 0600. A client file put
+      file: on macOS and Linux, `config::save` writes a temporary file
+      with `.mode(0o600)` and renames it into place, so a saved file is
+      0600. On Windows it uses `std::fs::write` and the folder's inherited
+      ACL, with no owner-only ACL of its own: give it one, at save and at
+      startup. A client file put
       there by hand, or saved before onboarding did this (2026-10-27),
       keeps the mode it has, and `.mode` doesn't change a temporary file
       left behind by an earlier save. Set the mode at startup on the file
@@ -5960,10 +5967,11 @@ Privacy and the policy.*
       waits for the lab's answer.
 - [ ] The AI scratch folder: `ai/process.rs` makes a working folder in
       the temp directory for every request, with `create_dir_all` (not
-      private). It removes it with `remove_dir` on the normal exits, which
-      fails if the helper wrote anything there, and not at all when the
-      program fails to start, a line handler returns an error, or the
-      request times out. Use `tempfile::TempDir`, which is created
+      private). Only the two successful exits call `remove_dir`, which
+      fails if the helper wrote anything there. Every other exit leaves
+      the folder: the program failing to start, a line handler or a read
+      of its output failing, waiting for it failing, or the request timing
+      out. Use `tempfile::TempDir`, which is created
       atomically and private, and is removed on every exit.
 - [ ] Encrypt the local cache at rest: a key in the keychain and an
       encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
