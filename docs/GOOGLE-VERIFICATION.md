@@ -25,12 +25,13 @@ domain is verified in Google Search Console.
    demo video, and the contact details.
 5. Submit, then answer Google's questions by email. Restricted permissions
    (Gmail) can take weeks.
-6. Expect a question about a security assessment (CASA). Google requires one
-   when an app can reach restricted data from or through a third-party server.
-   This app has no server of the project's; mail leaves the computer only for a
-   provider the user chose (an AI provider, an AI app). The answer is to say so
-   and ask to be exempt (see `docs/RELEASE.md`). If Google insists, the
-   assessment is yearly and paid. Google decides; nothing here promises it.
+6. The security assessment (CASA). Google's rule asks for one when an app can
+   reach restricted data from or through a third-party server. This app has no
+   server of the project's, and the submission asked to be exempt. Google
+   didn't grant it (2026-11-15): it requires an ADA CASA assessment at level
+   AL1 by 2027-02-12 from an ADA-authorized lab, then every year. The work is
+   in `docs/ROADMAP.md` → 0.3.0 → Security assessment (CASA); reply to
+   Google's email once it is done.
 
 ## The eight permissions
 
@@ -386,7 +387,11 @@ Updated as each piece is done.
   request has no field for while under review, so the reply carries a private,
   expiring link to it, never the values themselves. Rotate the client
   secret after the review.
-- [ ] Google's answer on a security assessment (exempt, or required and by when)
+- [x] Google's answer on a security assessment (exempt, or required and by when):
+  required (2026-11-15). An ADA CASA assessment at level AL1 (formerly Tier 2)
+  by 2027-02-12, from an ADA-authorized lab, then every year. The work is in
+  `docs/ROADMAP.md` → 0.3.0 → Security assessment (CASA). Reply to Google's
+  email once it is done.
 - [ ] Google's final decision on the permissions
 
 Choices made on the submission form: the Gmail permissions were described

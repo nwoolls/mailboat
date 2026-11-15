@@ -4007,6 +4007,8 @@ yes"). If Google approves, the owner decides from there.*
       requires the assessment anyway: yearly, a paid assessment. Re-verified every 12 months
       *Submitted 2026-11-07; Google's review is under way (see
       `docs/GOOGLE-VERIFICATION.md` → Status). Tick this when Google approves.*
+      *(2026-11-15: Google requires the assessment, ADA CASA AL1 by
+      2027-02-12; the work is in 0.3.0 → Security assessment (CASA))*
 - [ ] The client's ID and secret only in official builds, added when
       building; never in the public code
 - [ ] Polar store and license keys (up to 2 devices), with a sandbox
@@ -4481,6 +4483,10 @@ privacy:
   people you've written to, or not at all): a design decision for the owner.
 - Encrypting the local cache at rest, and Touch ID or Windows Hello: decide,
   then plan; neither is needed for the review.
+  *(2026-11-15: Google now requires the security assessment, so encrypting
+  the cache moved into 0.3.0 → Security assessment (CASA), to build if the
+  lab counts the mail cache; Touch ID and Windows Hello stay in "Later /
+  unscheduled")*
 
 ### How to run it
 
@@ -5847,6 +5853,158 @@ built, the owner has tried it, and the owner has published 0.3.0
       in rather than vanish (owner). None with Reduce motion. An envelope
       whose flap opens and closes is in "Later / unscheduled")*
 
+### Security assessment (CASA)
+
+*Added 2026-11-15. Google's reply to the verification (2026-11-15) did not
+grant the exemption: the Gmail permissions need an annual ADA CASA
+assessment at level AL1 (formerly Tier 2), due by 2027-02-12, from an
+ADA-authorized lab the owner picks and pays. AL1 is a self-assessment the
+lab reviews: written answers and evidence for each test case, plus tool
+output (a Burp scan, an SSL Labs report, a dependency scan). The ADA keeps
+two specs: CASA v2.1.1, the one Google asked for (written for web apps and
+APIs), and DASA v2.2.0 (desktop apps), a guide to what a lab may ask of a
+desktop app, both at
+github.com/appdefensealliance/ASA-WG. An agent checked the code against
+both on 2026-11-15 and found no exploitable problem; the items below are
+what a strict reviewer would ask about. The detailed notes
+stay outside the repository until the fixes are merged. None of these items
+needs a new Google permission. The notification setting changes Settings →
+Privacy and the policy.*
+
+- [ ] Ask the lab, before paying *(owner)*: how it runs a CASA AL1
+      assessment for a desktop app with no server, which is what Google
+      asked for (DASA is only a guide to what it may ask; the letter
+      Google gets is CASA's): which web test cases it treats as not
+      applicable, what it scans, and whether it wants desktop evidence
+      (signing, hardened runtime, SBOM); whether `cargo deny` and
+      `bun audit` output count as the dependency scan; whether a mail
+      cache kept in user-only folders, on a disk the OS encrypts, is
+      acceptable (DASA 1.2.2 asks for more); and what it accepts as the
+      company name and address, which the ADA's AL1 questionnaire marks
+      as printed on the public certificate.
+- [ ] A security check that runs with the others (`bun run
+      check:security`, part of `check:web` and `check:quick`), so the
+      parts that can be checked mechanically can't regress. The rules come
+      from the CASA and DASA test cases, and each rule names its ID, so the
+      evidence can point to it:
+      - the Tauri capability lists exactly the reviewed permissions
+        (today: events and window dragging);
+      - the app's CSP keeps `script-src 'self'`, `object-src 'none'`,
+        `base-uri 'none'` and `form-action 'none'`;
+      - no message frame gets `allow-scripts`;
+      - the updater requires a signed version from HTTPS endpoints;
+      - Tauri's `devtools` feature is off;
+      - no `eval`, `new Function` or `innerHTML` assignment in `src/`;
+      - no `danger_accept_invalid_*` or shell (`sh -c`, `cmd /c`) in
+        Rust, and no plain-`http://` request target there: the sanitizer
+        upgrading `http://` images, the link scheme allowlist, the demo,
+        loopback and tests are allowed;
+      - `dangerouslySetInnerHTML` and `unsafe` appear only in reviewed
+        places;
+      - the website's `_headers` keeps its CSP, HSTS, `nosniff` and
+        `frame-ancestors`;
+      - no Google client secret or private key anywhere in the repository.
+
+      Guardrails: a reviewed exception carries `security-ok: <reason>` on
+      its line (like `privacy-ok`), and a bare marker fails. The script
+      tests itself by planting each forbidden pattern and expecting a
+      failure. Changing what was reviewed (the capability, the `unsafe`
+      places) means editing the reviewed list in the script, which a pull
+      request review sees. Control Flow Guard and symbol stripping join
+      the rules when their items below are done, so the check passes on
+      today's tree. Only judgment stays with a person or an agent:
+      what a notification may show, IDOR logic, the written answers.
+- [ ] A check of the built app in the release workflow, where the signed
+      builds exist. On macOS: the hardened runtime on both binaries (DASA
+      3.3.1), no entitlements beyond the reviewed list, none today (3.3.2),
+      notarization with `spctl` (3.2.1), and no relative or user-writable
+      `RPATH` in `otool -l` (1.5.2; today's binaries have none at all). On
+      Windows: `DYNAMICBASE` and `NXCOMPAT` (2.1.1), `GUARD_CF` (2.1.2),
+      `HIGHENTROPYVA` (2.1.3) and a 64-bit build (2.1.4). The release fails
+      if one is missing. `check-windows-signature` checks that an
+      Authenticode signature is present, not that it is valid; DASA 2.2.1's
+      evidence is `signtool verify /v /pa` output, so add that check or
+      collect the output by hand.
+- [ ] A software bill of materials (CycloneDX) for the Rust and the
+      JavaScript dependencies, made by the release workflow and attached to
+      each release (DASA 1.5.1).
+- [ ] A setting for what new-mail notifications show (DASA 1.10.2: no
+      sensitive data in notifications). Today the title is the sender and
+      the body is the subject, plus the account's address when there is
+      more than one account. When the email has a sign-in code, the code
+      leads the title. The code is looked for in the subject and the
+      snippet, and in a downloaded body only when the subject hints at a
+      code and the snippet has none. The snippet itself is never shown, and more than
+      three new emails make one banner with a count. To decide:
+      the choices (for example everything, sender only, or "New email"
+      only) and the default. Settings → Privacy, the policy and the
+      settings test change with it.
+- [ ] Control Flow Guard on Windows (DASA 2.1.2): `-Ccontrol-flow-guard`
+      for the MSVC target. It covers the app's own code; Rust's prebuilt
+      standard library isn't built with it, and the evidence says so.
+- [ ] Owner-only folders and files (DASA 1.9.1): create the data, cache
+      and log folders as 0700 at startup, and the database 0600 (macOS
+      already keeps `~/Library` private; Linux won't). The OAuth client
+      file: on macOS and Linux, `config::save` writes a temporary file
+      with `.mode(0o600)` and renames it into place, so a saved file is
+      0600. On Windows it uses `std::fs::write` and the folder's inherited
+      ACL, with no owner-only ACL of its own: give it one, at save and at
+      startup. A client file put
+      there by hand, or saved before onboarding did this (2026-10-27),
+      keeps the mode it has, and `.mode` doesn't change a temporary file
+      left behind by an earlier save. Set the mode at startup on the file
+      that is there, and after opening the temporary one. Tests for both.
+      The client secret in that file is plain text (DASA 1.2.1, no
+      plaintext secrets in configuration files): Google treats an
+      installed app's secret as not confidential, and the written answer
+      says so.
+- [ ] The Windows named pipe for AI apps (DASA 1.7.1, 2.3.1): give it an
+      explicit security descriptor for the current user, rather than
+      relying on the default, with a test (or capture `accesschk` output
+      showing that other accounts can't connect, if the default is kept).
+- [ ] `strip = true` in a `[profile.release]` (DASA 1.8.2), so symbol
+      stripping is a setting the evidence can show.
+- [ ] Tokens in memory (DASA 1.2.3), optional: keep access and refresh
+      tokens in `secrecy`/`zeroize` types, so they are wiped when dropped.
+      The requirement covers sensitive data the app handles itself (its
+      example is a password the user types), and the app handles these
+      tokens itself. The written answer describes how long each token
+      stays in memory and when it is dropped; whether to add the wiping
+      waits for the lab's answer.
+- [ ] The AI scratch folder: `ai/process.rs` makes a working folder in
+      the temp directory for every request, with `create_dir_all` (not
+      private). Only the two paths that return the program's result (a
+      failing exit status included) call `remove_dir`, which
+      fails if the helper wrote anything there. Every other exit leaves
+      the folder: the program failing to start, a line handler or a read
+      of its output failing, waiting for it failing, or the request timing
+      out. Use `tempfile::TempDir`, which is created
+      atomically and private, and is removed on every exit.
+- [ ] Encrypt the local cache at rest: a key in the keychain and an
+      encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
+      and costs little speed. Until then the cache relies on the
+      computer's disk encryption (FileVault, BitLocker), and the policy
+      says only what is true. Decide whether it is worth the dependency
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+      *(moved from "Later / unscheduled" into 0.3.0, 2026-11-15: it
+      answers the second verification point of DASA 1.2.2, sensitive data
+      not kept in a SQLite file without more encryption. The first point,
+      credentials, tokens and keys in the platform's secure storage, is
+      the keychain, which the app already uses. Build it only if the lab
+      says the mail cache counts. Its 0.2.0 note said the same: only if Google
+      insists on the assessment, which it now does)*
+- [ ] The evidence for the lab, gathered once the fixes are in, and kept
+      outside the repository: an SSL Labs report for getmailboat.app, the
+      DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
+      and SBOM, the signing and binary-flag output, a sync-log sample from
+      a sign-in and first sync with the dedicated test Google account
+      (the one in the demo video; demo mode's Google is made up and signs
+      nobody in), read over before sending, a data-flow diagram, and a written answer
+      for each test case (most are in `docs/ARCHITECTURE.md` already).
+      CodeQL already scans every pull request and push to `main` that
+      changes code, plus a weekly run. Its results can be submitted as
+      the static scan.
+
 ### Bugs
 
 *The open bugs not picked are in "Later / unscheduled" → Open bugs.*
@@ -5935,12 +6093,8 @@ built, the owner has tried it, and the owner has published 0.3.0
       on today, so the image host is contacted when mail arrives
       *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
 
-- [ ] Encrypt the local cache at rest: a key in the keychain and an
-      encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
-      and costs little speed. Until then the cache relies on the
-      computer's disk encryption (FileVault, BitLocker), and the policy
-      says only what is true. Decide whether it is worth the dependency
-      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+- Encrypting the local cache at rest moved to 0.3.0 → Security
+  assessment (CASA), 2026-11-15.
 
 - [ ] Optional, later: require Touch ID or Windows Hello to open the app,
       for shared computers
