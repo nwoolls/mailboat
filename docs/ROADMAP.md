@@ -5855,8 +5855,9 @@ assessment at level AL1 (formerly Tier 2), due by 2027-02-12, from an
 ADA-authorized lab the owner picks and pays. AL1 is a self-assessment the
 lab reviews: written answers and evidence for each test case, plus tool
 output (a Burp scan, an SSL Labs report, a dependency scan). The ADA keeps
-two specs that could apply: CASA v2.1.1 (written for web apps and APIs) and
-DASA v2.2.0 (desktop apps), both at
+two specs: CASA v2.1.1, the one Google asked for (written for web apps and
+APIs), and DASA v2.2.0 (desktop apps), a guide to what a lab may ask of a
+desktop app, both at
 github.com/appdefensealliance/ASA-WG. An agent checked the code against
 both on 2026-11-15 and found no exploitable problem; the items below are
 what a strict reviewer would ask about. The detailed notes
@@ -5864,12 +5865,15 @@ stay outside the repository until the fixes are merged. None of these items
 needs a new Google permission. The notification setting changes Settings →
 Privacy and the policy.*
 
-- [ ] Ask the lab, before paying *(owner)*: which spec it assesses a
-      desktop app against (CASA or DASA); what it scans for CASA's web
-      test cases when there is no server; whether `cargo deny` and
+- [ ] Ask the lab, before paying *(owner)*: how it runs a CASA AL1
+      assessment for a desktop app with no server, which is what Google
+      asked for (DASA is only a guide to what it may ask; the letter
+      Google gets is CASA's): which web test cases it treats as not
+      applicable, what it scans, and whether it wants desktop evidence
+      (signing, hardened runtime, SBOM); whether `cargo deny` and
       `bun audit` output count as the dependency scan; whether a mail
-      cache kept in user-only folders, on a disk the OS encrypts, meets
-      DASA 1.2.2; and what it accepts as the company name and address.
+      cache kept in user-only folders, on a disk the OS encrypts, is
+      acceptable (DASA 1.2.2 asks for more); and what it accepts as the company name and address.
       Both go on the public certificate.
 - [ ] A security check that runs with the others (`bun run
       check:security`, part of `check:web` and `check:quick`), so the
