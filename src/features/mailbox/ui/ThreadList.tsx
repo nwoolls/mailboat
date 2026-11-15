@@ -1,6 +1,8 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { labelChipColors } from "../../accounts/model/labelColors";
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
+import type { Label, LabelId, ThreadId, ThreadSummary } from "../../../platform/tauri/bindings";
+import { rowLabels } from "../model/rowLabels";
 import { AiIcon, AttachmentIcon, StarIcon } from "../../../shared/ui/icons";
 import { useAiStatus, useAppSettings } from "../../../shared/lib/queries";
 import { useLineSummaries } from "../../ai/ui/lineSummaries";
@@ -29,6 +31,10 @@ const FOOTER_HEIGHT = 40;
 const scrollPositions = new Map<string, number>();
 
 type Props = {
+  /** The accounts' user labels, for the chips on rows (`rowLabels`). */
+  labels?: Label[];
+  /** The label being viewed, if any: its chip is left off its rows. */
+  viewingLabel?: LabelId | null;
   /**
    * Which view the list is for (`selectionKey`). Each view comes back
    * scrolled as far as it was left; one not seen yet starts at the top.
@@ -67,7 +73,12 @@ type Props = {
   onSwipe: (id: ThreadId, action: ThreadAction) => void;
 };
 
+/** No labels: one array for every render, not a new one each time. */
+const NO_LABELS: Label[] = [];
+
 export function ThreadList({
+  labels = NO_LABELS,
+  viewingLabel = null,
   viewKey,
   placeholder,
   threads,
@@ -88,6 +99,7 @@ export function ThreadList({
   empty,
   onSwipe,
 }: Props) {
+  const labelsById = useMemo(() => new Map(labels.map((l) => [l.id, l])), [labels]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // The list element as state too, so the swipe's listeners attach once
   // it exists (it doesn't while the view is empty).
@@ -358,6 +370,7 @@ export function ThreadList({
                     )}
                     <span className="truncate">{t.subject || "(no subject)"}</span>
                     {t.signInCode && <CodePill code={t.signInCode} />}
+                    <RowLabels {...rowLabels(t.labelIds, labelsById, viewingLabel)} />
                   </div>
                   {previewLines > 0 && (
                     <div
@@ -428,5 +441,35 @@ export function ThreadList({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * A row's label chips, after its subject: each in its Gmail color (a label
+ * with none is a plain gray chip), then "+N" for the rest. They keep their
+ * size; the subject shortens first.
+ */
+function RowLabels({ shown, more }: { shown: Label[]; more: number }) {
+  if (shown.length === 0) return null;
+  return (
+    <span className="ml-1.5 flex shrink-0 items-center gap-1 text-[11px] leading-[17px] font-normal">
+      {shown.map((l) => (
+        <span
+          key={l.id}
+          className="max-w-28 truncate rounded px-1.5"
+          title={l.name}
+          style={
+            labelChipColors(l) ?? {
+              background: "var(--color-selection)",
+              color: "inherit",
+              opacity: 0.8,
+            }
+          }
+        >
+          {l.name}
+        </span>
+      ))}
+      {more > 0 && <span className="text-content/45">+{more}</span>}
+    </span>
   );
 }

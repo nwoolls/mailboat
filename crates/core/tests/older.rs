@@ -189,6 +189,8 @@ async fn other_accounts_labels_load_nothing() {
             kind: LabelKind::User,
             color_bg: None,
             color_fg: None,
+            list_visibility: "labelShow".into(),
+            message_visibility: "show".into(),
         }],
     )
     .unwrap();

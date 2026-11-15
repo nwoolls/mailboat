@@ -235,7 +235,9 @@ async fn run_worker(
                     ),
                 );
                 set_status(&db, &*events, account, SyncStatus::Idle, None);
-                if outcome.changed_threads > 0 {
+                // Labels too: one recolored or hidden in Gmail changes the
+                // sidebar and the rows with no conversation changed.
+                if outcome.changed_threads > 0 || outcome.labels_changed {
                     events.mail_changed(account);
                 }
                 if !outcome.new_unread.is_empty() {

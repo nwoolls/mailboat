@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { labelChipColors } from "../../accounts/model/labelColors";
 import type {
   Account,
   AccountId,
@@ -288,11 +289,7 @@ export function RuleEditor({
               <span
                 key={id}
                 className="flex h-6 items-center gap-1 rounded bg-selection pr-1 pl-2 text-xs"
-                style={
-                  label?.colorBg
-                    ? { background: label.colorBg, color: label.colorFg ?? undefined }
-                    : undefined
-                }
+                style={(label && labelChipColors(label)) ?? undefined}
               >
                 {label ? pickerName(label) : "…"}
                 <button

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use crate::db::store::{self, IncomingLabel, StoredBody};
-use crate::db::Db;
+use crate::db::{now_millis, Db};
 use crate::error::{CoreError, Result};
 use crate::gmail::{parse, GmailClient};
 use crate::model::{AccountId, LabelKind, MessageId};
@@ -105,6 +105,9 @@ pub struct SyncOutcome {
     /// Messages that just arrived unread anywhere but Spam and Trash (a
     /// superset of `new_inbox`), for "notify about all new mail".
     pub new_unread: Vec<MessageId>,
+    /// The account's labels changed (one added, removed, renamed, recolored
+    /// or shown differently), even with no conversation changed.
+    pub labels_changed: bool,
 }
 
 /// Threads fetched per write, so progress updates and DB locks stay short.
@@ -139,6 +142,7 @@ impl SyncEngine<'_> {
                 changed_threads: outcome.changed_threads + added,
                 new_inbox: outcome.new_inbox,
                 new_unread: outcome.new_unread,
+                labels_changed: outcome.labels_changed,
             };
         }
         let attachments = store::attachments_version(&self.db.conn(), self.account)?;
@@ -165,6 +169,7 @@ impl SyncEngine<'_> {
                 outcome.changed_threads += after.changed_threads;
                 outcome.new_inbox = after.new_inbox;
                 outcome.new_unread = after.new_unread;
+                outcome.labels_changed |= after.labels_changed;
             }
             // Gmail kept no history that old: nothing to catch up on.
             Err(CoreError::HistoryExpired) => {}
@@ -220,7 +225,7 @@ impl SyncEngine<'_> {
                 (profile.history_id, started_at)
             }
         };
-        self.sync_labels().await?;
+        let labels_changed = self.sync_labels().await?;
 
         let (ids, seen) = self.list_scope().await?;
 
@@ -254,6 +259,7 @@ impl SyncEngine<'_> {
             changed_threads: ids.len() + stale.len(),
             new_inbox: Vec::new(),
             new_unread: Vec::new(),
+            labels_changed,
         })
     }
 
@@ -348,9 +354,14 @@ impl SyncEngine<'_> {
             }
         }
 
-        if labels_changed {
-            // Cheap, and catches labels created since the last pass.
-            self.sync_labels().await?;
+        // Cheap (one request), and catches labels created since the last
+        // pass; read now and then anyway, since a label recolored, renamed
+        // or hidden in Gmail leaves no history.
+        let labels_due = now_millis() - store::labels_synced_at(&self.db.conn(), self.account)?
+            >= LABELS_REFRESH_MS;
+        let mut labels_moved = false;
+        if labels_changed || (commit && labels_due) {
+            labels_moved = self.sync_labels().await?;
         }
         if !deleted.is_empty() {
             store::delete_messages(&mut self.db.conn(), self.account, &deleted)?;
@@ -371,12 +382,16 @@ impl SyncEngine<'_> {
             changed_threads: ids.len(),
             new_inbox,
             new_unread,
+            labels_changed: labels_moved,
         };
         Ok((outcome, latest))
     }
 
-    async fn sync_labels(&self) -> Result<()> {
-        refresh_labels(self.db, self.gmail, self.account).await
+    /// Reads the labels again; whether anything about them changed.
+    async fn sync_labels(&self) -> Result<bool> {
+        let changed = refresh_labels(self.db, self.gmail, self.account).await?;
+        store::set_labels_synced_at(&self.db.conn(), self.account, now_millis())?;
+        Ok(changed)
     }
 
     /// Fetches threads by Gmail ID and writes them (or deletes vanished ones).
@@ -456,8 +471,12 @@ impl SyncEngine<'_> {
     }
 }
 
+/// How often an incremental sync reads the labels again even when its
+/// history shows no label change: five minutes.
+pub const LABELS_REFRESH_MS: i64 = 5 * 60 * 1000;
+
 /// Fetches an account's labels from Gmail and stores them.
-pub async fn refresh_labels(db: &Db, gmail: &GmailClient, account: AccountId) -> Result<()> {
+pub async fn refresh_labels(db: &Db, gmail: &GmailClient, account: AccountId) -> Result<bool> {
     let labels: Vec<IncomingLabel> = gmail
         .labels()
         .await?
@@ -471,6 +490,10 @@ pub async fn refresh_labels(db: &Db, gmail: &GmailClient, account: AccountId) ->
             },
             color_bg: l.color.as_ref().and_then(|c| c.background_color.clone()),
             color_fg: l.color.as_ref().and_then(|c| c.text_color.clone()),
+            list_visibility: l
+                .label_list_visibility
+                .unwrap_or_else(|| "labelShow".into()),
+            message_visibility: l.message_list_visibility.unwrap_or_else(|| "show".into()),
             gmail_label_id: l.id,
             name: l.name,
         })

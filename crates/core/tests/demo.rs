@@ -8,6 +8,7 @@ use mail_core::compose::mime::{self, MimeMessage};
 use mail_core::db::{accounts, query, Db};
 use mail_core::demo::{self, DemoData, FakeGoogle, Timing};
 use mail_core::gmail::GmailClient;
+use mail_core::labels;
 use mail_core::model::*;
 use mail_core::sync::*;
 
@@ -399,4 +400,48 @@ async fn the_demo_accounts_start_with_rules_and_a_scheduled_vacation() {
 
     let work = demo::client(http, &google, &data.accounts[1].email);
     assert!(!work.vacation().await.unwrap().enable_auto_reply);
+}
+
+#[tokio::test]
+async fn a_labels_color_and_visibility_change_in_demo_mode_and_sync_back() {
+    let (google, data) = start().await;
+    let db = Db::open_in_memory().unwrap();
+    let email = data.accounts[0].email.clone();
+    let id = add_account(&db, &email);
+    let gmail = demo::client(reqwest::Client::new(), &google, &email);
+    sync(&db, &gmail, id).await;
+    let travel = query::user_labels(&db.conn(), &AccountFilter::Only(vec![id]))
+        .unwrap()
+        .into_iter()
+        .find(|l| l.name == "Travel")
+        .expect("the demo's Travel label");
+    let gmail_for = |_| Ok(demo::client(reqwest::Client::new(), &google, &email));
+    for change in [
+        labels::LabelChange::Color(Some("#16a766".into())),
+        labels::LabelChange::Sidebar(LabelSidebar::ShowIfUnread),
+        labels::LabelChange::OnConversations(false),
+    ] {
+        labels::change(&db, &gmail_for, travel.id, change)
+            .await
+            .unwrap();
+    }
+    // Synced again from the stand-in server, not only the cache's own copy:
+    // labels are read again once five minutes have passed since the last
+    // read (here, set back), even with no label change in the history.
+    db.conn()
+        .execute("UPDATE sync_state SET labels_synced_at = 0", [])
+        .unwrap();
+    db.conn()
+        .execute("UPDATE labels SET color_bg = NULL, list_visibility = 'labelShow', message_visibility = 'show'", [])
+        .unwrap();
+    sync(&db, &gmail, id).await;
+    let travel = query::user_labels(&db.conn(), &AccountFilter::Only(vec![id]))
+        .unwrap()
+        .into_iter()
+        .find(|l| l.name == "Travel")
+        .unwrap();
+    assert_eq!(travel.color_bg.as_deref(), Some("#16a766"));
+    assert_eq!(travel.color_fg.as_deref(), Some("#000000"));
+    assert_eq!(travel.sidebar, LabelSidebar::ShowIfUnread);
+    assert!(!travel.on_conversations);
 }

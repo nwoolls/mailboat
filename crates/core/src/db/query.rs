@@ -8,9 +8,9 @@ use rusqlite::{params_from_iter, Connection, OptionalExtension, Row};
 use super::placeholders;
 use crate::error::{CoreError, Result};
 use crate::model::{
-    AccountFilter, Address, Label, LabelId, LabelKind, LabelUnread, ListCursor, ListQuery,
-    MailView, MessageMeta, SystemLabel, ThreadDetail, ThreadId, ThreadPage, ThreadSender,
-    ThreadSummary,
+    AccountFilter, Address, Label, LabelId, LabelKind, LabelSidebar, LabelUnread, ListCursor,
+    ListQuery, MailView, MessageMeta, SystemLabel, ThreadDetail, ThreadId, ThreadPage,
+    ThreadSender, ThreadSummary,
 };
 
 const MAX_LIMIT: u32 = 500;
@@ -493,7 +493,8 @@ pub fn thread_detail(conn: &Connection, id: ThreadId) -> Result<ThreadDetail> {
         .collect::<rusqlite::Result<_>>()?;
 
     let mut stmt = conn.prepare(
-        "SELECT l.id, l.account_id, l.gmail_label_id, l.name, l.kind, l.color_bg, l.color_fg
+        "SELECT l.id, l.account_id, l.gmail_label_id, l.name, l.kind, l.color_bg, l.color_fg,
+                l.list_visibility, l.message_visibility
          FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
          WHERE tl.thread_id = ?1 AND l.kind = 'user' ORDER BY l.name",
     )?;
@@ -517,6 +518,8 @@ fn label_from_row(r: &Row<'_>) -> rusqlite::Result<Label> {
         kind: LabelKind::parse(&r.get::<_, String>(4)?),
         color_bg: r.get(5)?,
         color_fg: r.get(6)?,
+        sidebar: LabelSidebar::from_gmail(&r.get::<_, String>(7)?),
+        on_conversations: r.get::<_, String>(8)? != "hide",
     })
 }
 
@@ -534,7 +537,8 @@ pub fn user_labels(conn: &Connection, accounts: &AccountFilter) -> Result<Vec<La
         ),
     };
     let sql = format!(
-        "SELECT id, account_id, gmail_label_id, name, kind, color_bg, color_fg
+        "SELECT id, account_id, gmail_label_id, name, kind, color_bg, color_fg,
+                list_visibility, message_visibility
          FROM labels WHERE kind = 'user' {filter} ORDER BY account_id, name COLLATE NOCASE"
     );
     let mut stmt = conn.prepare(&sql)?;

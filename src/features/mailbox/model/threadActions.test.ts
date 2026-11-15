@@ -51,6 +51,8 @@ const label = (id: number, name: string, accountId = 1): Label => ({
   kind: "user",
   colorBg: null,
   colorFg: null,
+  sidebar: "show",
+  onConversations: true,
 });
 
 const inbox = { kind: "system", label: "inbox" } as const;

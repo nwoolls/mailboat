@@ -134,6 +134,38 @@ impl LabelKind {
     }
 }
 
+/// Where a label shows in the sidebar: Gmail's `labelListVisibility`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum LabelSidebar {
+    /// Always (`labelShow`, Gmail's default).
+    Show,
+    /// Only while it has unread mail (`labelShowIfUnread`).
+    ShowIfUnread,
+    /// Not with the other labels (`labelHide`): in the sidebar's Hidden fold.
+    Hide,
+}
+
+impl LabelSidebar {
+    /// Gmail's name for it.
+    pub fn as_gmail(self) -> &'static str {
+        match self {
+            LabelSidebar::Show => "labelShow",
+            LabelSidebar::ShowIfUnread => "labelShowIfUnread",
+            LabelSidebar::Hide => "labelHide",
+        }
+    }
+
+    /// From Gmail's name; anything else (or none) is Gmail's default.
+    pub fn from_gmail(s: &str) -> Self {
+        match s {
+            "labelShowIfUnread" => LabelSidebar::ShowIfUnread,
+            "labelHide" => LabelSidebar::Hide,
+            _ => LabelSidebar::Show,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Label {
@@ -144,6 +176,11 @@ pub struct Label {
     pub kind: LabelKind,
     pub color_bg: Option<String>,
     pub color_fg: Option<String>,
+    /// Where it shows in the sidebar (Gmail's "Show in label list").
+    pub sidebar: LabelSidebar,
+    /// Whether it shows on conversations in the list (Gmail's "Show in
+    /// message list", `messageListVisibility`).
+    pub on_conversations: bool,
 }
 
 /// How many conversations under one label (system or user, in one account)

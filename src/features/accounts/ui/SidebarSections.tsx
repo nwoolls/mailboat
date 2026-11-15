@@ -8,6 +8,7 @@ import {
   viewTitle,
 } from "../../mailbox/model/views";
 import { labelTree } from "../model/labelTree";
+import { splitByVisibility } from "../model/labelVisibility";
 import { countText } from "../model/sidebar";
 import { anchorBelow } from "../../../shared/ui/Menu";
 import { AccountAvatar } from "./AccountAvatar";
@@ -67,7 +68,13 @@ export function SidebarSections(props: SidebarBodyProps) {
         const accountOpen = !isOpen(`${account.id}:collapsed`);
         const moreOpen = isOpen(`${account.id}:more`);
         const labelsOpen = isOpen(`${account.id}:labels`);
-        const tree = labelTree(labels.filter((l) => l.accountId === account.id));
+        const hiddenOpen = isOpen(`${account.id}:hiddenLabels`);
+        const accountLabels = labels.filter((l) => l.accountId === account.id);
+        const { shown: shownLabels, hidden: hiddenLabels } = splitByVisibility(accountLabels, (l) =>
+          countFor({ kind: "userLabel", labelId: l.id }, { kind: "all" }),
+        );
+        const tree = labelTree(shownLabels);
+        const hiddenTree = labelTree(hiddenLabels);
         const moreSelections = MORE_ACCOUNT_VIEWS.map((v) => viewSelection(v, account.id));
         const state = syncStates.find((s) => s.accountId === account.id);
         const inboxCount = countFor({ kind: "system", label: "inbox" }, filter);
@@ -148,7 +155,7 @@ export function SidebarSections(props: SidebarBodyProps) {
                   );
                 })}
               </Fold>
-              {tree.length > 0 && (
+              {accountLabels.length > 0 && (
                 <>
                   <Row
                     title="Labels"
@@ -175,6 +182,42 @@ export function SidebarSections(props: SidebarBodyProps) {
                       toggle={toggle}
                       onLabelMenu={props.onLabelMenu}
                     />
+                    {hiddenTree.length > 0 && (
+                      <>
+                        {/* Labels set to hide in Gmail: closed by default,
+                            and still here so their menu can show them. */}
+                        <Row
+                          title="Hidden"
+                          depth={1}
+                          icon={<Chevron open={hiddenOpen} />}
+                          expanded={hiddenOpen}
+                          selected={false}
+                          hint={
+                            !hiddenOpen &&
+                            selection.view.kind === "userLabel" &&
+                            hiddenLabels.some(
+                              (l) =>
+                                selection.view.kind === "userLabel" &&
+                                l.id === selection.view.labelId,
+                            )
+                          }
+                          onClick={() => toggle(`${account.id}:hiddenLabels`)}
+                        />
+                        <Fold open={hiddenOpen}>
+                          <LabelRows
+                            tree={hiddenTree}
+                            depth={2}
+                            foldPrefix={`${account.id}:hidden`}
+                            countFor={countFor}
+                            selection={selection}
+                            onSelect={onSelect}
+                            isOpen={isOpen}
+                            toggle={toggle}
+                            onLabelMenu={props.onLabelMenu}
+                          />
+                        </Fold>
+                      </>
+                    )}
                   </Fold>
                 </>
               )}

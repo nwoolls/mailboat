@@ -64,6 +64,8 @@ fn system(id: &str) -> IncomingLabel {
         kind: LabelKind::System,
         color_bg: None,
         color_fg: None,
+        list_visibility: "labelShow".into(),
+        message_visibility: "show".into(),
     }
 }
 
@@ -692,6 +694,8 @@ async fn a_mixed_conversation_is_listed_and_paged_by_its_visible_emails() {
             kind: LabelKind::User,
             color_bg: None,
             color_fg: None,
+            list_visibility: "labelShow".into(),
+            message_visibility: "show".into(),
         };
         store::sync_labels(
             &mut m.db.conn(),

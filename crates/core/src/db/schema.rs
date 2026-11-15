@@ -431,3 +431,15 @@ CREATE TABLE image_cache (
   UNIQUE (account_id, url)
 );
 "#;
+
+/// Each label's visibility, as Gmail keeps it: in the label list (the
+/// sidebar: `labelShow`, `labelShowIfUnread`, `labelHide`) and on
+/// conversations in the message list (`show`, `hide`). Gmail's defaults
+/// until the next label sync fills them in. `labels_synced_at`: when the
+/// account's labels were last read, so syncs read them again now and then
+/// (a label recolored or hidden in Gmail leaves no history to notice).
+pub const MIGRATION_V22: &str = r#"
+ALTER TABLE labels ADD COLUMN list_visibility TEXT NOT NULL DEFAULT 'labelShow';
+ALTER TABLE labels ADD COLUMN message_visibility TEXT NOT NULL DEFAULT 'show';
+ALTER TABLE sync_state ADD COLUMN labels_synced_at INTEGER NOT NULL DEFAULT 0;
+"#;

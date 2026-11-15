@@ -19,6 +19,8 @@ const label = (id: number, accountId: number, name: string): Label => ({
   kind: "user",
   colorBg: null,
   colorFg: null,
+  sidebar: "show",
+  onConversations: true,
 });
 
 it("lists unified views only with several accounts, then each account's views and labels", () => {

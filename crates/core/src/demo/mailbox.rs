@@ -31,6 +31,9 @@ pub(crate) struct UserLabel {
     pub name: String,
     pub background: Option<String>,
     pub text: Option<String>,
+    /// Gmail's `labelListVisibility` and `messageListVisibility`.
+    pub list_visibility: String,
+    pub message_visibility: String,
 }
 
 pub(crate) struct Stored {
@@ -117,6 +120,8 @@ impl Mailbox {
             name: name.to_string(),
             background,
             text,
+            list_visibility: "labelShow".into(),
+            message_visibility: "show".into(),
         });
         id
     }
@@ -127,18 +132,53 @@ impl Mailbox {
             .map(|id| json!({ "id": id, "name": id, "type": "system" }))
             .collect();
         for l in &self.labels {
-            let mut label = json!({ "id": l.id, "name": l.name, "type": "user" });
-            if l.background.is_some() || l.text.is_some() {
-                label["color"] = json!({ "backgroundColor": l.background, "textColor": l.text });
-            }
-            labels.push(label);
+            labels.push(Self::user_label_json(l));
         }
         json!({ "labels": labels })
     }
 
+    fn user_label_json(l: &UserLabel) -> Value {
+        let mut label = json!({
+            "id": l.id,
+            "name": l.name,
+            "type": "user",
+            "labelListVisibility": l.list_visibility,
+            "messageListVisibility": l.message_visibility,
+        });
+        if l.background.is_some() || l.text.is_some() {
+            label["color"] = json!({ "backgroundColor": l.background, "textColor": l.text });
+        }
+        label
+    }
+
     pub fn label_json(&self, id: &str) -> Option<Value> {
-        let l = self.labels.iter().find(|l| l.id == id)?;
-        Some(json!({ "id": l.id, "name": l.name, "type": "user" }))
+        self.labels
+            .iter()
+            .find(|l| l.id == id)
+            .map(Self::user_label_json)
+    }
+
+    /// `labels.update`: the label becomes `body` (a missing color is none).
+    pub fn update_label(&mut self, id: &str, body: &Value) -> bool {
+        let Some(l) = self.labels.iter_mut().find(|l| l.id == id) else {
+            return false;
+        };
+        if let Some(name) = body["name"].as_str() {
+            l.name = name.to_string();
+        }
+        l.background = body["color"]["backgroundColor"]
+            .as_str()
+            .map(str::to_string);
+        l.text = body["color"]["textColor"].as_str().map(str::to_string);
+        l.list_visibility = body["labelListVisibility"]
+            .as_str()
+            .unwrap_or("labelShow")
+            .to_string();
+        l.message_visibility = body["messageListVisibility"]
+            .as_str()
+            .unwrap_or("show")
+            .to_string();
+        true
     }
 
     pub fn delete_label(&mut self, id: &str) -> bool {

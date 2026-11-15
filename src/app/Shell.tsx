@@ -1314,6 +1314,8 @@ export function Shell() {
                 onOpenSettings={() => setSettings("vacation")}
               />
               <ThreadList
+                labels={labels}
+                viewingLabel={selection.view.kind === "userLabel" ? selection.view.labelId : null}
                 viewKey={selectionKey(selection)}
                 placeholder={threadsQuery.isPlaceholderData}
                 threads={threads}

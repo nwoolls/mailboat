@@ -240,6 +240,24 @@ impl GmailClient {
         Ok(())
     }
 
+    /// `labels.get`: one label as Gmail has it now, every field kept.
+    pub async fn get_label(&self, id: &str) -> Result<serde_json::Value> {
+        self.spend(cost::LABELS_GET).await;
+        let url = self.url(&format!("labels/{id}"));
+        let response = self.send(|| self.http.get(&url)).await?;
+        response.json().await.map_err(net_error)
+    }
+
+    /// `labels.update`: replaces a label with `label` (as `get_label` gave
+    /// it, changed). A field left out goes back to Gmail's default, which
+    /// is how a color is removed.
+    pub async fn update_label(&self, id: &str, label: &serde_json::Value) -> Result<()> {
+        self.spend(cost::LABELS_CHANGE).await;
+        let url = self.url(&format!("labels/{id}"));
+        self.send(|| self.http.put(&url).json(label)).await?;
+        Ok(())
+    }
+
     /// `labels.delete`. Already gone counts as deleted.
     pub async fn delete_label(&self, id: &str) -> Result<()> {
         self.spend(cost::LABELS_CHANGE).await;
