@@ -6095,6 +6095,12 @@ Privacy and the policy.*
       which can't be fixed until Tauri drops them, record each with its
       reason in an `osv-scanner.toml` ignore list (Scorecard runs
       osv-scanner, which reads it), and give the lab the same reasons.
+      *(2026-11-15: `rustix` updated to 1.1.6. Only its version and
+      checksum change in `Cargo.lock`: `cargo update -p rustix` also moved
+      other crates to older `windows-sys` versions, so the lockfile was
+      edited to the one package and checked with `--locked`. The macOS
+      build uses it through `tempfile` and `xattr`; neither Windows target
+      does. The rest of the item is still open)*
 - [ ] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
