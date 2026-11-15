@@ -5962,8 +5962,18 @@ Privacy and the policy.*
       explicit security descriptor for the current user, rather than
       relying on the default, with a test (or capture `accesschk` output
       showing that other accounts can't connect, if the default is kept).
-- [ ] `strip = true` in a `[profile.release]` (DASA 1.8.2), so symbol
+- [x] `strip = true` in a `[profile.release]` (DASA 1.8.2), so symbol
       stripping is a setting the evidence can show.
+      *(2026-11-15: in the workspace's `Cargo.toml`. A release build of the
+      macOS binary keeps one defined symbol (`nm -U`), down from tens of
+      thousands, plus the system-library imports it needs; it is also
+      about a quarter smaller. The macOS AI helper is Swift, which Cargo's
+      profile doesn't reach, so `src-tauri/build.rs` strips it in release
+      builds (review): one defined symbol left, and it still answers. The
+      app installs no panic hook and collects no backtraces, so nothing
+      used them. On Windows, the linker may still write a separate `.pdb`
+      beside the program during the build; the installer doesn't include
+      it)*
 - [ ] Tokens in memory (DASA 1.2.3), optional: keep access and refresh
       tokens in `secrecy`/`zeroize` types, so they are wiped when dropped.
       The requirement covers sensitive data the app handles itself (its
