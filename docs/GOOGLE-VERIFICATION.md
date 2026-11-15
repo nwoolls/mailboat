@@ -386,7 +386,11 @@ Updated as each piece is done.
   request has no field for while under review, so the reply carries a private,
   expiring link to it, never the values themselves. Rotate the client
   secret after the review.
-- [ ] Google's answer on a security assessment (exempt, or required and by when)
+- [x] Google's answer on a security assessment (exempt, or required and by when):
+  required (2026-11-15). An ADA CASA assessment at level AL1 (formerly Tier 2)
+  by 2027-02-12, from an ADA-authorized lab, then every year. The work is in
+  `docs/ROADMAP.md` → 0.3.0 → Security assessment (CASA). Reply to Google's
+  email once it is done.
 - [ ] Google's final decision on the permissions
 
 Choices made on the submission form: the Gmail permissions were described
