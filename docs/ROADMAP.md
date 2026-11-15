@@ -6089,15 +6089,22 @@ Privacy and the policy.*
       Scorecard's Signed-Releases check reads only the release's files:
       signed files score 8 of 10, and a provenance file named
       `*.intoto.jsonl` scores 10. Write the action's bundle (its
-      `bundle-path` output) into `release/` as
-      `<App>_<version>.intoto.jsonl` after the attestation and before
-      `gh release create`. That bundle is a Sigstore bundle (JSON), not
-      the in-toto JSON Lines file the name suggests; Scorecard checks only
-      the name, so renaming it is enough for the score, but a tool that
-      reads `.intoto.jsonl` files may reject it. Making a real in-toto
-      file is a separate choice, if such tools matter. The check
-      averages the last five releases, so
-      the score rises one release at a time. Not a CASA requirement; it is
+      `bundle-path` output) into `release/` after the attestation and
+      before `gh release create`, as two files. The action writes a whole
+      Sigstore bundle, one JSON object per line, which isn't the in-toto
+      format (a DSSE envelope per line, with `payload`, `payloadType` and
+      `signatures` at the top) that tools reading `.intoto.jsonl` expect.
+      So keep the bundle as `<App>_<version>.sigstore.json`, which holds
+      what is needed to verify it, and write each line's `dsseEnvelope`
+      as compact JSON, one per line, into
+      `<App>_<version>.intoto.jsonl`. Scorecard checks only the file's
+      name, not what is in it or whether it verifies, so the score
+      doesn't prove the file is right; check it once with a tool that
+      reads in-toto files. Both files are made after the checksums and
+      the attestation, so `SHA256SUMS` doesn't list them. The check
+      averages the last five releases and rounds down: with the other
+      releases signed (8 each), it shows 9 once three of the five have
+      provenance, and 10 once all five do. Not a CASA requirement; it is
       here because it changes the same release job as the SBOM item above
       *(owner, 2026-11-15)*
 - [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
