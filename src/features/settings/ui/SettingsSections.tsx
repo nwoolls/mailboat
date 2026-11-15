@@ -19,6 +19,8 @@ import {
   useClearCache,
   useClearImageCache,
   useDefaultMailApp,
+  useHiddenContacts,
+  useHideContact,
   useImageCacheSize,
   useIdentities,
   useMakeDefaultMailApp,
@@ -932,7 +934,42 @@ export function ComposingSection() {
           />
         </Row>
       </Group>
+      <RemovedSuggestionsGroup />
     </>
+  );
+}
+
+/**
+ * Addresses taken out of the To/Cc/Bcc suggestions (the × on a
+ * suggestion, or Shift+Delete), each with Restore. Only the app's own list:
+ * Google's contacts aren't changed.
+ */
+function RemovedSuggestionsGroup() {
+  const hidden = useHiddenContacts().data ?? [];
+  const hideContact = useHideContact();
+  return (
+    <Group
+      title="Removed from suggestions"
+      description="Addresses you took out of the To, Cc and Bcc suggestions. Your Google contacts aren't changed, and you can still type these addresses in full."
+    >
+      {hidden.length === 0 ? (
+        <Row
+          label="None"
+          description="Remove an address with the × beside a suggestion, or Shift+Delete."
+        />
+      ) : (
+        hidden.map((email) => (
+          <Row key={email} label={<span className="selectable">{email}</span>}>
+            <Button
+              label={`Restore ${email} to suggestions`}
+              onClick={() => hideContact.mutate({ email, hidden: false })}
+            >
+              Restore
+            </Button>
+          </Row>
+        ))
+      )}
+    </Group>
   );
 }
 

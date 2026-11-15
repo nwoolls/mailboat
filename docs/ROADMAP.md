@@ -4467,7 +4467,8 @@ privacy:
   above).
 - Remove an address from compose suggestions ("Later / unscheduled" →
   Writing; in 0.3.0 since 2026-11-14). It touches the Contacts data Google is reviewing, so it must
-  ask for no new permission.
+  ask for no new permission. *(done 2026-11-15, in 0.3.0: see its item
+  there)*
 - Warn about outside recipients (addresses not ending with chosen
   domains are marked while writing; "Later / unscheduled" → Writing; in 0.3.0
   since 2026-11-14). Not a
@@ -4971,6 +4972,11 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         time after a 20 ms wait, so a slow runner that measures late sees
         the glow nearer the pointer than the test allows; likely the cause,
         not yet confirmed.
+      - 2026-11-15, CI on #141 (`remove-suggestion`), WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43725563301: the
+        same check, with the glow 10.6 px from the pointer where more than
+        30 was expected (line 177); 162 others passed. #141 changes compose
+        suggestions, not the glow. Re-run requested.
 - [ ] Vitest tests that run long: `scripts/ciAppChanged.test.ts` ("says app
       for files that only look like docs or site…") and
       `src/features/screensaver/model/catalog.test.ts` ("… runs a minute,
@@ -5738,10 +5744,17 @@ built, the owner has tried it, and the owner has published 0.3.0
       whole (`labels.get`, then `labels.update`). Labels are now also read
       again every five minutes, so a change made in Gmail shows up without
       waiting for a full sync. System labels are left as they are)*
-- [ ] Remove an address from compose suggestions *(held out of the Polish
+- [x] Remove an address from compose suggestions *(held out of the Polish
       Spike, 2026-11-07: it touches the Contacts data Google is reviewing,
       so it must ask for no new permission)*
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      *(2026-11-15: built as the owner chose. A × on the highlighted
+      suggestion, or Shift+Delete, takes the address out of the To, Cc
+      and Bcc suggestions, and a toast offers Undo. Settings → Composing
+      lists removed addresses under "Removed from suggestions", each with
+      Restore. Only the app's own list changes (`hidden_contacts`), for
+      every account; Google's contacts aren't touched, so no new
+      permission. An address can still be typed in full)*
 - [ ] What's new in an available update *(owner idea, 2026-11-08; maybe for
       the Polish Spike, not likely)*: when the update notice says a version
       is available, let the person read what changed in it before installing.
