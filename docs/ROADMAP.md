@@ -4990,6 +4990,24 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         same check, with the glow 10.6 px from the pointer where more than
         30 was expected (line 177); 162 others passed. #141 changes compose
         suggestions, not the glow. Re-run requested.
+- [ ] `icon-motion.spec.ts`: "buttons fade out into the More menu and fade
+      back in" (line 104).
+      - 2026-11-16, CI on #155 (`notification-content`), WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43906849920: after
+        narrowing the window, no fading copy of a button was found within
+        5 s (`toBeAttached`, line 127). #155 changes the notification
+        setting, not the toolbar; the same code passed on #155's run
+        before a docs-only rebase, and 5 runs of the test on the branch's
+        head passed locally. Likely cause, not confirmed: the copy lives
+        about 160 ms, so on a slow runner it can be gone before the check
+        looks; the test also records each copy as it is added, which it
+        could check instead. Re-run requested.
+- [ ] `narrow-window.spec.ts`: "going back doesn't happen while typing, and
+      Esc puts a floating sidebar away first" (line 213).
+      - 2026-11-16, the same CI run: after Esc, the floating sidebar was
+        still there 5 s later (`toHaveCount(0)`, line 232). Unrelated to
+        #155 for the same reasons; 5 local runs passed. Cause not known.
+        Re-run requested.
 - [ ] Vitest tests that run long: `scripts/ciAppChanged.test.ts` ("says app
       for files that only look like docs or site…") and
       `src/features/screensaver/model/catalog.test.ts` ("… runs a minute,
