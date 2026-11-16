@@ -505,8 +505,12 @@ mod tests {
         run(db, prefetch, account).await.unwrap()
     }
 
-    /// The app's image client never fetches over plain HTTP: a redirect
-    /// from an HTTPS image to an `http://` one goes through this same check.
+    /// The app's image client never fetches over plain HTTP. The test
+    /// asks for an `http://` address, which reqwest refuses before
+    /// connecting. A redirect from an HTTPS image to an `http://` one is
+    /// refused by the same `https_only` flag, which reqwest copies onto the
+    /// redirect policy (ours included), as a redirect error instead; the
+    /// stand-in server speaks only plain HTTP, so that hop isn't run here.
     #[tokio::test]
     async fn the_apps_image_client_refuses_plain_http() {
         let server = server().await;
