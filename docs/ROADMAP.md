@@ -6338,7 +6338,7 @@ Privacy and the policy.*
       script refuses a line without a signed DSSE envelope
       (`intotoLines`, tested). Checking the files with an in-toto tool
       waits for the first release that has them)*
-- [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
+- [x] OpenSSF Best Practices badge: the self-assessment questionnaire at
       bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
       paperwork, best done once there are releases to point at
       *(moved from Milestone 17 when it closed, owner, 2026-11-14)*
@@ -6348,6 +6348,11 @@ Privacy and the policy.*
       dependency scanning, a way to report vulnerabilities (`SECURITY.md`,
       `security.txt`), hardening and signed releases. Passing scores 5 of
       10 on that check, which scores 0 today)*
+      *(2026-11-16: the passing badge was awarded (owner), and the README
+      shows it (https://www.bestpractices.dev/projects/16828). Two answers
+      rest on work in open pull requests: that warnings are addressed (the
+      linter cleanup, #162) and that the tests cover most of the code (the
+      coverage measurement); merge both to keep those answers true)*
 
 ### Bugs
 

@@ -10,6 +10,7 @@ A fast, keyboard-first Gmail client for macOS and Windows. Free and open source.
 
 [![CI](https://github.com/nwoolls/mailboat/actions/workflows/ci.yml/badge.svg)](https://github.com/nwoolls/mailboat/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/nwoolls/mailboat/badge)](https://scorecard.dev/viewer/?uri=github.com/nwoolls/mailboat)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16828/badge)](https://www.bestpractices.dev/projects/16828)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 ![Platforms: macOS and Windows](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-blue)
 ![Built with Tauri, Rust and React](https://img.shields.io/badge/built%20with-Tauri%20%C2%B7%20Rust%20%C2%B7%20React-orange)
