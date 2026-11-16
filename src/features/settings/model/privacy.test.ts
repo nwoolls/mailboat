@@ -3,7 +3,14 @@ import type {
   AiSettings,
   AppSettings_Serialize as AppSettings,
 } from "../../../platform/tauri/bindings";
-import { cloudUses, isCloudProvider, leavesRows, STAYS_ON_THIS_COMPUTER } from "./privacy";
+import {
+  cloudUses,
+  isCloudProvider,
+  leavesRows,
+  notificationsLine,
+  STAYS_ON_THIS_COMPUTER,
+  staysOnThisComputer,
+} from "./privacy";
 
 // Only the fields the page reads; the rest of the settings don't matter here.
 function settings(over: Partial<AppSettings> = {}): AppSettings {
@@ -169,5 +176,33 @@ describe("what stays on the computer", () => {
     expect(STAYS_ON_THIS_COMPUTER).toContain(
       "Addresses you removed from compose suggestions, for all your accounts, until you restore them or delete all data. Removing an account keeps them.",
     );
+  });
+
+  it("says what notifications show, as Settings → Notifications has it", () => {
+    expect(
+      notificationsLine({ notificationContent: "everything", newMailNotifications: true }),
+    ).toBe(
+      "New-mail notifications show the sender, the subject and any sign-in code, on screen and in the system's list of notifications. Settings → Notifications can show less.",
+    );
+    expect(notificationsLine({ notificationContent: "sender", newMailNotifications: true })).toBe(
+      "New-mail notifications show who sent the email, but not its subject or any sign-in code.",
+    );
+    expect(notificationsLine({ notificationContent: "nothing", newMailNotifications: true })).toBe(
+      "New-mail notifications say there is new mail, but not who sent it or what it says.",
+    );
+    // Review: with notifications off, it says so rather than describe them.
+    expect(
+      notificationsLine({ notificationContent: "everything", newMailNotifications: false }),
+    ).toBe("New-mail notifications are off.");
+    // On the page, before the closing line about analytics.
+    const lines = staysOnThisComputer({
+      notificationContent: "sender",
+      newMailNotifications: true,
+    });
+    expect(lines).toHaveLength(STAYS_ON_THIS_COMPUTER.length + 1);
+    expect(lines.at(-2)).toBe(
+      notificationsLine({ notificationContent: "sender", newMailNotifications: true }),
+    );
+    expect(lines.at(-1)).toBe(STAYS_ON_THIS_COMPUTER.at(-1));
   });
 });

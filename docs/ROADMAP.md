@@ -4990,6 +4990,24 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         same check, with the glow 10.6 px from the pointer where more than
         30 was expected (line 177); 162 others passed. #141 changes compose
         suggestions, not the glow. Re-run requested.
+- [ ] `icon-motion.spec.ts`: "buttons fade out into the More menu and fade
+      back in" (line 104).
+      - 2026-11-16, CI on #155 (`notification-content`), WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43906849920: after
+        narrowing the window, no fading copy of a button was found within
+        5 s (`toBeAttached`, line 127). #155 changes the notification
+        setting, not the toolbar; the same code passed on #155's run
+        before a docs-only rebase, and 5 runs of the test on the branch's
+        head passed locally. Likely cause, not confirmed: the copy lives
+        about 160 ms, so on a slow runner it can be gone before the check
+        looks; the test also records each copy as it is added, which it
+        could check instead. Re-run requested.
+- [ ] `narrow-window.spec.ts`: "going back doesn't happen while typing, and
+      Esc puts a floating sidebar away first" (line 213).
+      - 2026-11-16, the same CI run: after Esc, the floating sidebar was
+        still there 5 s later (`toHaveCount(0)`, line 232). Unrelated to
+        #155 for the same reasons; 5 local runs passed. Cause not known.
+        Re-run requested.
 - [ ] Vitest tests that run long: `scripts/ciAppChanged.test.ts` ("says app
       for files that only look like docs or site…") and
       `src/features/screensaver/model/catalog.test.ts` ("… runs a minute,
@@ -6035,7 +6053,7 @@ Privacy and the policy.*
       app has none. CI's macOS Rust job makes it too, on every pull request
       that changes the app, so a dependency without a license fails there
       rather than on release day (both reviews))*
-- [ ] A setting for what new-mail notifications show (DASA 1.10.2: no
+- [x] A setting for what new-mail notifications show (DASA 1.10.2: no
       sensitive data in notifications). Today the title is the sender and
       the body is the subject, plus the account's address when there is
       more than one account. When the email has a sign-in code, the code
@@ -6046,6 +6064,21 @@ Privacy and the policy.*
       the choices (for example everything, sender only, or "New email"
       only) and the default. Settings → Privacy, the policy and the
       settings test change with it.
+      *(2026-11-16: built. Settings → Notifications → Show: Everything
+      (the default, the owner's choice until the lab says otherwise: the
+      sender, the subject and any sign-in code), Sender only, or Just "New
+      email" (`notificationContent`, `mail::notify::notices`). Less than
+      everything never shows the subject or a code; the code still reaches
+      the window's row. The account's address still shows when there is
+      more than one account, and a click still opens the conversation.
+      Settings → Privacy says what notifications show, under "Stays on
+      this computer", read from the setting. The policy says nothing about
+      notifications, so it doesn't change)*
+      *(after review: the privacy page says what each choice leaves out,
+      not that it shows "only" something, since the account's address and
+      the count of a batch still show; it says when notifications are off;
+      and with less than everything, a banner shows at once instead of
+      waiting for a body that might hold a code it wouldn't show)*
 - [x] Control Flow Guard on Windows (DASA 2.1.2): `-Ccontrol-flow-guard`
       for the MSVC target. It covers the app's own code; Rust's prebuilt
       standard library isn't built with it, and the evidence says so.

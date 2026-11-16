@@ -60,6 +60,21 @@ pub enum NotifyFor {
     AllNew,
 }
 
+/// What a new-mail notification shows (DASA 1.10.2: sensitive data on
+/// screen). The default shows everything; the others keep the sender, or
+/// everything, off the screen and out of Notification Center.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum NotificationContent {
+    /// The sender, the subject, and a sign-in code if the email has one.
+    #[default]
+    Everything,
+    /// The sender only.
+    Sender,
+    /// Only that there is new mail.
+    Nothing,
+}
+
 /// A stretch of each day without notifications, in minutes after local
 /// midnight. `start` after `end` runs overnight (22:00 to 07:00).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -108,6 +123,8 @@ pub struct AppSettings {
     pub new_mail_notifications: bool,
     /// Which new mail notifies.
     pub notify_for: NotifyFor,
+    /// What a notification shows.
+    pub notification_content: NotificationContent,
     /// When notifications stay quiet.
     pub quiet_hours: QuietHours,
     /// Set on the window from Rust, so the glass, the page and emails'
@@ -221,6 +238,7 @@ impl Default for AppSettings {
         Self {
             new_mail_notifications: true,
             notify_for: NotifyFor::Inbox,
+            notification_content: NotificationContent::Everything,
             quiet_hours: QuietHours::default(),
             theme: Theme::System,
             app_icon: None,
@@ -286,6 +304,7 @@ mod tests {
     /// listed in one of the two lists below, so adding one means deciding.
     /// Nested settings are named `group.field`, at any depth.
     const ON_THE_PRIVACY_PAGE: &[&str] = &[
+        "notificationContent",
         "remoteImages",
         "imagePrefetch",
         "imageCacheMb",
@@ -367,6 +386,7 @@ mod tests {
         let off = AppSettings {
             new_mail_notifications: false,
             notify_for: NotifyFor::AllNew,
+            notification_content: NotificationContent::Nothing,
             quiet_hours: QuietHours {
                 on: true,
                 start: 60,
@@ -412,6 +432,7 @@ mod tests {
         let loaded = load(&conn).unwrap();
         assert_eq!(loaded.theme, Theme::Light);
         assert!(loaded.new_mail_notifications);
+        assert_eq!(loaded.notification_content, NotificationContent::Everything);
         assert_eq!(loaded.app_icon, None);
         assert_eq!(loaded.remote_images, RemoteImages::Load);
         assert!(loaded.image_prefetch);
