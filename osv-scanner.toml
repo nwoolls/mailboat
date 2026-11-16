@@ -1,0 +1,51 @@
+# Advisories osv-scanner reports for the lockfiles that don't apply to the
+# app as it ships, each with why. OpenSSF Scorecard runs osv-scanner and
+# reads this file; the reasons are also what the security assessment gets.
+# Each expires, so it is looked at again rather than forgotten. `cargo deny`
+# (deny.toml) checks the same advisories for the platforms the app ships,
+# dependencies' unsound ones included.
+#
+# osv-scanner reads the whole Cargo.lock: every platform, and optional
+# dependencies nothing turns on. The app ships for macOS and Windows.
+
+# glib: unsound iterator impls (fixed in 0.20). Only Tauri's GTK web view on
+# Linux uses it (webkit2gtk, gtk 0.18), and the app isn't built for Linux.
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0429"
+ignoreUntil = 2027-05-16
+reason = "glib is built only for Linux (Tauri's GTK web view); the app ships for macOS and Windows"
+
+# paste: unmaintained, not vulnerable. A compile-time macro specta (the
+# bindings generator) uses; none of its code is in the app. Also ignored in
+# deny.toml.
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0436"
+ignoreUntil = 2027-05-16
+reason = "Unmaintained only; a compile-time macro (through specta), not in the shipped app"
+
+# proc-macro-error: unmaintained, not vulnerable. A compile-time macro of
+# gtk's, built only for Linux.
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+ignoreUntil = 2027-05-16
+reason = "Unmaintained only; a compile-time macro built only for Linux (gtk)"
+
+# zvariant, zvariant_derive and zbus_names: unmaintained, not vulnerable.
+# Version 5 comes with Linux desktop notifications (notify-rust, through
+# Tauri's notification plugin), built only for Linux. Version 4 is listed
+# because keyring's optional secret-service backend is, which the app never
+# turns on: it isn't built for any platform.
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0370"
+ignoreUntil = 2027-05-16
+reason = "zvariant: unmaintained only; built only for Linux (notifications), or not at all (keyring's unused secret-service)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0371"
+ignoreUntil = 2027-05-16
+reason = "zbus_names: unmaintained only; built only for Linux (notifications), or not at all (keyring's unused secret-service)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0372"
+ignoreUntil = 2027-05-16
+reason = "zvariant_derive: unmaintained only; built only for Linux (notifications), or not at all (keyring's unused secret-service)"

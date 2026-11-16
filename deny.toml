@@ -2,10 +2,18 @@
 # GPL-3.0-only, so every crate must carry a licence GPL-3.0 can include.
 
 [graph]
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-pc-windows-msvc"]
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "x86_64-pc-windows-msvc",
+  "aarch64-pc-windows-msvc",
+]
 
 [advisories]
 version = 2
+# Unsound advisories for every crate, dependencies included, not only the
+# app's own (the default). That default let `rustix` 1.1.5 through.
+unsound = "all"
 ignore = [
   # `paste` is unmaintained, not vulnerable, and comes in through Tauri's
   # dependencies (no upgrade exists). Revisit when Tauri drops it.
