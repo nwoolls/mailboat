@@ -1,8 +1,9 @@
 // The security settings a script can check, so they can't quietly regress
 // (`bun run check:security`, docs/ROADMAP.md → 0.3.0 → Security assessment).
-// Each rule names the test case it backs, from CASA v2.1.1 and DASA v2.2.0
-// (github.com/appdefensealliance/ASA-WG), so the evidence for the lab can
-// point at it. What needs judgment (what a notification may
+// A rule that backs a test case is named by it, from CASA v2.1.1 and DASA
+// v2.2.0 (github.com/appdefensealliance/ASA-WG), so the evidence for the
+// lab can point at it; the rest have names of their own ("unsafe
+// (reviewed)", "hsts", "framing", "marker"). What needs judgment (what a notification may
 // show, the written answers) stays with a person.
 //
 // A reviewed exception carries `security-ok: <why>` on its line, like
@@ -234,7 +235,11 @@ export function cspProblems(csp: string): string[] {
   if (
     fallback.some(
       (v) =>
-        v === "*" || v.startsWith("'unsafe-") || v === "data:" || v === "https:" || v === "http:",
+        v === "*" ||
+        v.startsWith("'unsafe-") ||
+        ["data:", "blob:", "https:", "http:"].includes(v) ||
+        // A wildcard host: `https://*`, `*.example`.
+        /(^|\/\/)\*/.test(v),
     )
   ) {
     problems.push(`default-src allows ${fallback.join(" ")}`);
@@ -373,15 +378,18 @@ export function parseToml(text: string): Record<string, any> {
     if (c === "{") {
       i++;
       const t: Record<string, any> = {};
-      skipSpace(false);
+      // Line breaks are let through here too (strict TOML 1.0 refuses them,
+      // but Cargo accepts them, and a reformatted manifest may have them).
+      skipSpace(true);
       while (text[i] !== "}") {
+        if (i >= text.length) fail("an unterminated inline table");
         const path = key();
         if (text[i] !== "=") fail("an inline table");
         i++;
         into(t, path.slice(0, -1))[path.at(-1)!] = value();
-        skipSpace(false);
+        skipSpace(true);
         if (text[i] === ",") i++;
-        skipSpace(false);
+        skipSpace(true);
       }
       i++;
       return t;
@@ -611,8 +619,10 @@ export function checkSecurity(files: Files): Finding[] {
         }
       };
       // CASA 5.1.3: no code from strings.
-      each(/(?<![\w$.])(?:eval|Function)\s*\(|\.\s*eval\s*\(|\bnew\s+Function\b/g, bare, (line) =>
-        push("CASA 5.1.3", file, "code from a string", line),
+      each(
+        /(?<![\w$.])(?:eval|Function)\s*\(|\.\s*(?:eval|Function)\s*\(|\bnew\s+Function\b/g,
+        bare,
+        (line) => push("CASA 5.1.3", file, "code from a string", line),
       );
       // CASA 5.1.7: no HTML from strings, and React's raw HTML only where reviewed.
       each(
@@ -624,7 +634,7 @@ export function checkSecurity(files: Files): Finding[] {
       each(/allow-scripts/g, withStrings, (line) =>
         push("DASA 1.4.1", file, "a frame allows scripts", line),
       );
-      each(/createElement\s*\(\s*["'`]iframe["'`]/g, withStrings, (line) =>
+      each(/createElement\s*\(\s*["'`]iframe["'`]/gi, withStrings, (line) =>
         push(
           "DASA 1.4.1",
           file,
@@ -679,7 +689,8 @@ export function checkSecurity(files: Files): Finding[] {
       const isTest = (line: number) => inTests || ranges.some(([a, b]) => line >= a && line <= b);
       // DASA 1.4.2: programs run directly, never through a shell.
       for (const m of withStrings.matchAll(
-        /Command::new\(\s*"(?:\/bin\/|\/usr\/bin\/)?(?:sh|bash|zsh|cmd|powershell|pwsh)(?:\.exe)?"|Path::new\(\s*"\/bin\/(?:sh|bash|zsh)"/g,
+        // Any case, any folder, a raw string too: `Command::new(r"C:\…\cmd.EXE")`.
+        /(?:Command|Path)::new\(\s*(?:b?r#*)?"(?:[^"]*[\\/])?(?:sh|bash|zsh|cmd|powershell|pwsh)(?:\.exe)?"/gi,
       )) {
         const line = lineAt(withStrings, m.index!);
         if (!isTest(line) && !marked(line)) push("DASA 1.4.2", file, "a shell", line);
@@ -687,11 +698,13 @@ export function checkSecurity(files: Files): Finding[] {
       // DASA 1.1.1: requests go over HTTPS, except to this computer.
       // A host filled in later (`format!("http://{host}")`) counts: only the
       // bare prefix `"http://"` (as in `strip_prefix`) has no host.
-      for (const m of withStrings.matchAll(/"http:\/\/([^"/:?{\s]*)/g)) {
-        const host = m[1]!;
+      // Any case (`HTTP://`); an IPv6 host in brackets is read whole.
+      for (const m of withStrings.matchAll(/"http:\/\/(\[[^\]"]*\]|[^"/:?{\s]*)/gi)) {
+        const host = m[1]!.toLowerCase();
         if (
           (host === "" && withStrings[m.index! + m[0].length] === '"') ||
           host === "127.0.0.1" ||
+          host === "[::1]" ||
           host === "localhost" ||
           host.endsWith(".localhost")
         )

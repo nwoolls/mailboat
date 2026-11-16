@@ -510,6 +510,62 @@ describe("the security check", () => {
           `${f.get("src-tauri/Cargo.toml")}\n[target.'cfg(windows)'.dependencies]\ntauri = { version = "2", features = ["devtools"] }\n`,
         ),
     ],
+    // From the second round's second review.
+    ...[
+      'Command::new("PowerShell.exe")',
+      'Command::new("cmd.EXE")',
+      'Command::new(r"sh")',
+      'Command::new(r#"powershell.exe"#)',
+      'Command::new("C:\\\\Windows\\\\System32\\\\cmd.exe")',
+      'Command::new("/usr/local/bin/bash")',
+    ].map((call): [string, string, (f: Map<string, string>) => void] => [
+      `the shell ${call}`,
+      "DASA 1.4.2",
+      (f) => f.set("crates/core/src/run.rs", `fn r() { ${call}; }`),
+    ]),
+    [
+      "window.Function",
+      "CASA 5.1.3",
+      add("src/features/reader/ui/Frame.tsx", "window.Function(text)();"),
+    ],
+    [
+      "globalThis.Function",
+      "CASA 5.1.3",
+      add("src/features/reader/ui/Frame.tsx", "globalThis.Function(text)();"),
+    ],
+    [
+      "an IFRAME made in capitals",
+      "DASA 1.4.1",
+      add("src/features/reader/ui/Frame.tsx", 'document.createElement("IFRAME");'),
+    ],
+    [
+      "HTTP in capitals",
+      "DASA 1.1.1",
+      (f) => f.set("crates/core/src/run.rs", 'const U: &str = "HTTP://evil.x.example/";'),
+    ],
+    [
+      "HTTP in capitals, host filled in later",
+      "DASA 1.1.1",
+      (f) => f.set("crates/core/src/run.rs", 'fn u(h: &str) -> String { format!("HTTP://{h}") }'),
+    ],
+    [
+      "a wildcard host in default-src",
+      "CASA 5.1.7",
+      (f) =>
+        f.set(
+          "website/_headers",
+          f.get("website/_headers")!.replace("default-src 'self'", "default-src https://*"),
+        ),
+    ],
+    [
+      "blob: in default-src",
+      "CASA 5.1.7",
+      (f) =>
+        f.set(
+          "website/_headers",
+          f.get("website/_headers")!.replace("default-src 'self'", "default-src blob:"),
+        ),
+    ],
   ];
   for (const [what, rule, change] of planted) {
     it(`catches ${what} (${rule})`, () => {
@@ -586,6 +642,10 @@ describe("the security check", () => {
           'export const K = () => <iframe title={n > 0 ? "a" : "b"} sandbox="allow-same-origin" />;',
         ),
       ),
+    ).toEqual([]);
+    // The loopback address in IPv6 is this computer too.
+    expect(
+      rulesAfter(prepend("crates/core/src/net.rs", 'const L: &str = "http://[::1]:8080/";')),
     ).toEqual([]);
     // A frame in a comment isn't a frame, and a reviewed one says why.
     expect(rulesAfter(add("src/features/reader/ui/Frame.tsx", '// <iframe srcDoc="" />'))).toEqual(
@@ -666,6 +726,12 @@ describe("the TOML reader", () => {
     ]) {
       expect(() => parseToml(text), text).toThrow(/TOML/);
     }
+  });
+
+  it("reads an inline table broken across lines, as Cargo does", () => {
+    expect(parseToml('tokio = { version = "1", features = [\n  "rt",\n]\n}\n')).toEqual({
+      tokio: { version: "1", features: ["rt"] },
+    });
   });
 
   it("parses the repository's own Cargo files", () => {

@@ -5930,8 +5930,8 @@ Privacy and the policy.*
       devtools and symbol stripping (DASA 1.8.2), Control Flow Guard (DASA
       2.1.2), TLS checks (DASA 1.1.2), shells (DASA 1.4.2), plain HTTP
       (DASA 1.1.1), secrets (DASA 1.2.4), and the website's headers (CASA
-      4.1.1, 5.1.7). Rust test code (a `tests` folder, or after a file's
-      first `#[cfg(test)]`) may use shells and plain HTTP; `unsafe` is
+      4.1.1, 5.1.7). Rust test code (a `tests` folder, or a `#[cfg(test)]`
+      module) may use shells and plain HTTP; `unsafe` is
       counted everywhere. Control Flow Guard and symbol stripping are in,
       since both are done. The one exception on today's tree is the demo
       server reading a request's path through a `http://demo` URL, marked
@@ -5943,7 +5943,8 @@ Privacy and the policy.*
       capabilities or the updater, and no capability may be inline; the CSP
       also refuses `script-src-elem`/`-attr` overrides and an open
       `default-src`, on the website too, where `frame-ancestors` must be
-      `'none'` or `'self'`; the updater must require a signed version; the
+      `'none'` (`'self'` too at first; the second review made it
+      `'none'`); the updater must require a signed version; the
       Cargo settings are parsed as TOML (by a small reader of its own that
       refuses what it doesn't know); a comment or string is never taken
       for code, and the reverse (a small lexer for TypeScript and Rust);
@@ -5969,6 +5970,12 @@ Privacy and the policy.*
       review catches crafted code: TypeScript regular expressions and
       `${…}` template expressions aren't parsed, and a frame's attributes
       are read as text)*
+      *(2026-11-15, second round's second review, no blocker: shells in any
+      case, with a folder or as a raw string; `window.Function`;
+      `createElement("IFRAME")`; `HTTP://` in capitals; a wildcard host or
+      `blob:` in `default-src`; `[::1]` counts as this computer; and an
+      inline TOML table may break across lines, as Cargo allows. Review
+      rounds stop here)*
 - [ ] A check of the built app in the release workflow, where the signed
       builds exist. On macOS: the hardened runtime on both binaries (DASA
       3.3.1), no entitlements beyond the reviewed list, none today (3.3.2),
