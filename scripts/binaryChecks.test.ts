@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { entitlementKeys, macProblems, peProblems, rpaths } from "./binaryChecks";
+import { entitlementKeys, machHeaders, macProblems, peProblems, rpaths } from "./binaryChecks";
 
 // Shaped like the tools' real output (codesign 2026, otool, llvm-readobj 21),
 // cut to the lines the checks read; no signing identity in them.
@@ -51,6 +51,26 @@ describe("a macOS binary", () => {
     ).toEqual(["a", "b"]);
   });
 
+  it("reads PIE from the header rows, not the file's path, and wants one architecture", () => {
+    // Review: a binary under `PIE.app` passed on its path alone.
+    const noPie = `/tmp/PIE.app/Contents/MacOS/x:\n${PIE_HEADER.replace(" PIE", "")}`;
+    expect(macProblems({ ...good, header: noPie })).toEqual([
+      "DASA 3.1.1: not position-independent (no PIE flag)",
+    ]);
+    expect(machHeaders(PIE_HEADER)).toEqual([
+      ["NOUNDEFS", "DYLDLINK", "TWOLEVEL", "PIE", "MH_HAS_TLV_DESCRIPTORS"],
+    ]);
+    // A universal binary: another slice could lack what codesign shows.
+    const universal = `${PIE_HEADER}\nMH_MAGIC_64  X86_64        ALL  0x00     EXECUTE    20       2000   NOUNDEFS DYLDLINK TWOLEVEL`;
+    expect(macProblems({ ...good, header: universal })).toEqual([
+      "one architecture expected, found 2 (a universal binary)",
+      "DASA 3.1.1: not position-independent (no PIE flag)",
+    ]);
+    expect(macProblems({ ...good, header: "not a Mach-O file" })).toEqual([
+      "DASA 3.1.1: no Mach-O header found",
+    ]);
+  });
+
   it("fails without PIE, and with an RPATH", () => {
     expect(macProblems({ ...good, header: PIE_HEADER.replace(" PIE", "") })).toEqual([
       "DASA 3.1.1: not position-independent (no PIE flag)",
@@ -59,6 +79,9 @@ describe("a macOS binary", () => {
     expect(macProblems({ ...good, loadCommands: WITH_RPATH })).toEqual([
       "DASA 1.5.2: an RPATH: @loader_path/../lib",
     ]);
+    // Review: an RPATH with an empty path counts too.
+    const empty = `${NO_RPATH}Load command 13\n          cmd LC_RPATH\n      cmdsize 16\n         path  (offset 12)\n`;
+    expect(rpaths(empty)).toEqual(["(empty)"]);
   });
 });
 

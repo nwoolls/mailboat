@@ -33,9 +33,18 @@ export function macProblems(o: {
     if (!REVIEWED_ENTITLEMENTS.includes(key))
       problems.push(`DASA 3.3.2: entitlement not reviewed: ${key}`);
   }
-  // DASA 3.1.1: position-independent.
-  if (!/\bPIE\b/.test(o.header))
+  // DASA 3.1.1: position-independent, read from the header rows only (the
+  // output's first line is the file's path, which could hold "PIE"). One
+  // architecture: `codesign -d` shows only the native slice, so another
+  // slice could lack what this checks (review).
+  const headers = machHeaders(o.header);
+  if (headers.length === 0) problems.push("DASA 3.1.1: no Mach-O header found");
+  else if (headers.length > 1) {
+    problems.push(`one architecture expected, found ${headers.length} (a universal binary)`);
+  }
+  if (headers.some((flags) => !flags.includes("PIE"))) {
     problems.push("DASA 3.1.1: not position-independent (no PIE flag)");
+  }
   // DASA 1.5.2: no run-path search, so no folder a user could write to is
   // searched for libraries. Today's binaries have none at all.
   for (const path of rpaths(o.loadCommands)) problems.push(`DASA 1.5.2: an RPATH: ${path}`);
@@ -56,7 +65,21 @@ export function entitlementKeys(plist: string): string[] {
 
 /** The paths of `otool -l`'s `LC_RPATH` load commands. */
 export function rpaths(loadCommands: string): string[] {
-  return [...loadCommands.matchAll(/cmd LC_RPATH[\s\S]*?\bpath (.+?) \(offset/g)].map((m) => m[1]!);
+  // Each `LC_RPATH` counts, whatever its path reads as (review: an empty
+  // one was missed).
+  return loadCommands.split(/(?=^Load command )/m).flatMap((command) => {
+    if (!/^\s*cmd LC_RPATH\s*$/m.test(command)) return [];
+    const path = /^\s*path (.*?)\s*\(offset/m.exec(command)?.[1]?.trim();
+    return [path ? path : "(empty)"];
+  });
+}
+
+/** Each Mach-O header row's flags in `otool -hv` (one row per architecture). */
+export function machHeaders(header: string): string[][] {
+  return header
+    .split("\n")
+    .filter((line) => /^\s*MH_(?:MAGIC|CIGAM)(?:_64)?\s/.test(line))
+    .map((line) => line.trim().split(/\s+/).slice(7));
 }
 
 /**

@@ -5888,7 +5888,12 @@ Privacy and the policy.*
       cache kept in user-only folders, on a disk the OS encrypts, is
       acceptable (DASA 1.2.2 asks for more); and what it accepts as the
       company name and address, which the ADA's AL1 questionnaire marks
-      as printed on the public certificate.
+      as printed on the public certificate. Also: whether the Windows
+      installer and uninstaller, 32-bit programs NSIS makes (without
+      Control Flow Guard or high-entropy ASLR), need evidence of their
+      own or a documented third-party exception, since the release checks
+      only the app's program (DASA 2.1 names every `.exe` and `.dll` in
+      the app's folder) *(review of the binary check, 2026-11-15)*.
 - [x] A security check that runs with the others (`bun run
       check:security`, part of `check:web` and `check:quick`), so the
       parts that can be checked mechanically can't regress. The rules come
@@ -5999,6 +6004,10 @@ Privacy and the policy.*
       the release's way (`scripts/windows.sh build`) passes every flag. The Authenticode
       signature's validity stays by hand: `signtool` runs only on Windows,
       and the release builds on a Mac)*
+      *(after review: PIE is read from the Mach-O header rows only, not
+      the file's path; a universal binary fails, since `codesign -d` shows
+      one slice; and every `LC_RPATH` counts, an empty one too. Each was
+      reproduced with a real binary first)*
 - [x] A software bill of materials (CycloneDX) for the Rust and the
       JavaScript dependencies, made by the release workflow and attached to
       each release (DASA 1.5.1).
