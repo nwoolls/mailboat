@@ -31,10 +31,12 @@ ignoreUntil = 2027-05-16
 reason = "Unmaintained only; a compile-time macro built only for Linux (gtk)"
 
 # zvariant, zvariant_derive and zbus_names: unmaintained, not vulnerable.
-# Version 5 comes with Linux desktop notifications (notify-rust, through
-# Tauri's notification plugin), built only for Linux. Version 4 is listed
-# because keyring's optional secret-service backend is, which the app never
-# turns on: it isn't built for any platform.
+# zvariant and zvariant_derive 5.15.1 and zbus_names 4.3.5 come with Linux
+# desktop notifications (notify-rust, through Tauri's notification plugin),
+# built only for Linux. zvariant and zvariant_derive 4.2.0 and zbus_names
+# 3.0.0 are listed because keyring's optional async `secret-service` crate
+# is, which the app never turns on (Linux uses keyring's sync backend,
+# `dbus-secret-service`): they aren't built for any platform.
 [[IgnoredVulns]]
 id = "RUSTSEC-2026-0370"
 ignoreUntil = 2027-05-16
