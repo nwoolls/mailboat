@@ -1083,7 +1083,14 @@ mod tests {
             thread_summary(&db.conn(), thread).unwrap().sign_in_code,
             None
         );
-        let before = crate::mail::notify::notices(&db.conn(), account, &[m], None).unwrap();
+        let before = crate::mail::notify::notices(
+            &db.conn(),
+            account,
+            &[m],
+            None,
+            crate::settings::NotificationContent::Everything,
+        )
+        .unwrap();
         assert_eq!(before[0].title, "noreply@verify.x.example");
         // With the body downloaded, both read it.
         download_body(&db, m);
@@ -1094,7 +1101,14 @@ mod tests {
                 .as_deref(),
             Some("4821")
         );
-        let after = crate::mail::notify::notices(&db.conn(), account, &[m], None).unwrap();
+        let after = crate::mail::notify::notices(
+            &db.conn(),
+            account,
+            &[m],
+            None,
+            crate::settings::NotificationContent::Everything,
+        )
+        .unwrap();
         assert_eq!(after[0].title, "4821 · noreply@verify.x.example");
         assert!(after[0].body.starts_with("Sign-in code · "));
     }

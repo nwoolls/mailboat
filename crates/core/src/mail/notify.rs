@@ -5,6 +5,7 @@ use rusqlite::{params, Connection};
 
 use crate::error::Result;
 use crate::model::{AccountId, MessageId, SyncStatus, ThreadId};
+use crate::settings::NotificationContent;
 
 /// One notification to show.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,12 +36,16 @@ pub fn split_for_body(
 }
 
 /// The notifications for new mail in one account. `account_label` (its
-/// address) is added when there's more than one account.
+/// address) is added when there's more than one account. `content` says how
+/// much of each email they show (Settings → Notifications): everything, the
+/// sender only, or only that there is new mail. The summary of several
+/// shows a count either way.
 pub fn notices(
     conn: &Connection,
     account: AccountId,
     messages: &[MessageId],
     account_label: Option<&str>,
+    content: NotificationContent,
 ) -> Result<Vec<Notice>> {
     let suffix = account_label.map(|a| format!(" · {a}")).unwrap_or_default();
     if messages.len() > MAX_SEPARATE {
@@ -61,6 +66,24 @@ pub fn notices(
             .ok();
         if let Some((name, email, subject, snippet, thread)) = row {
             let who = name.filter(|n| !n.trim().is_empty()).unwrap_or(email);
+            // Less than everything: no subject and no sign-in code (the code
+            // still reaches the window, which shows it on the row).
+            let plain = |title: String| Notice {
+                title,
+                body: account_label.unwrap_or("New email").to_string(),
+                thread: Some(thread),
+            };
+            match content {
+                NotificationContent::Sender => {
+                    out.push(plain(who));
+                    continue;
+                }
+                NotificationContent::Nothing => {
+                    out.push(plain("New email".to_string()));
+                    continue;
+                }
+                NotificationContent::Everything => {}
+            }
             let subject = if subject.trim().is_empty() {
                 "(no subject)".to_string()
             } else {
@@ -205,7 +228,14 @@ mod tests {
     #[test]
     fn a_few_messages_get_one_notice_each() {
         let (db, a, ids) = setup(2);
-        let n = notices(&db.conn(), a, &ids, Some("a@x.example")).unwrap();
+        let n = notices(
+            &db.conn(),
+            a,
+            &ids,
+            Some("a@x.example"),
+            NotificationContent::Everything,
+        )
+        .unwrap();
         let thread_of = |m: MessageId| -> ThreadId {
             db.conn()
                 .query_row("SELECT thread_id FROM messages WHERE id = ?1", [m], |r| {
@@ -233,7 +263,7 @@ mod tests {
     #[test]
     fn many_become_one_summary() {
         let (db, a, ids) = setup(5);
-        let n = notices(&db.conn(), a, &ids, None).unwrap();
+        let n = notices(&db.conn(), a, &ids, None, NotificationContent::Everything).unwrap();
         assert_eq!(
             n,
             vec![Notice {
@@ -269,7 +299,7 @@ mod tests {
             .conn()
             .query_row("SELECT id FROM messages", [], |r| r.get(0))
             .unwrap();
-        let n = notices(&db.conn(), a, &[id], None).unwrap();
+        let n = notices(&db.conn(), a, &[id], None, NotificationContent::Everything).unwrap();
         assert_eq!(n[0].title, "346625 · Spotify");
         assert_eq!(n[0].body, "Sign-in code · Your Spotify login code");
         assert_eq!(n[0].thread, Some(thread));
@@ -278,6 +308,93 @@ mod tests {
         assert_eq!(found[0].code, "346625");
         assert_eq!(found[0].thread_id, thread);
         assert_eq!(found[0].sender, "Spotify");
+    }
+
+    /// Settings → Notifications: everything (the default), the sender only,
+    /// or only that there is new mail. Less than everything never shows the
+    /// subject or a sign-in code (DASA 1.10.2).
+    #[test]
+    fn notices_show_as_much_as_the_setting_allows() {
+        let (db, a, _) = setup(0);
+        let mut ids = Vec::new();
+        for (gid, from, subject, snippet) in [
+            (
+                "p",
+                "Maya Chen",
+                "Lisbon in May?",
+                "Are you free the second week?",
+            ),
+            (
+                "c",
+                "Harbor Bank",
+                "Your sign-in code",
+                "Your code is 482913.",
+            ),
+        ] {
+            upsert_thread(
+                &mut db.conn(),
+                a,
+                &IncomingThread {
+                    gmail_thread_id: gid.into(),
+                    messages: vec![IncomingMessage {
+                        gmail_message_id: format!("{gid}1"),
+                        subject: subject.into(),
+                        snippet: snippet.into(),
+                        from: Some(Address {
+                            name: Some(from.into()),
+                            email: "someone@x.example".into(),
+                        }),
+                        ..Default::default()
+                    }],
+                },
+            )
+            .unwrap();
+            ids.push(
+                db.conn()
+                    .query_row(
+                        "SELECT id FROM messages WHERE gmail_message_id = ?1",
+                        [format!("{gid}1")],
+                        |r| r.get::<_, MessageId>(0),
+                    )
+                    .unwrap(),
+            );
+        }
+        let shown = |content, label| -> Vec<(String, String)> {
+            notices(&db.conn(), a, &ids, label, content)
+                .unwrap()
+                .into_iter()
+                .map(|n| (n.title, n.body))
+                .collect()
+        };
+        let pair = |t: &str, b: &str| (t.to_string(), b.to_string());
+        assert_eq!(
+            shown(NotificationContent::Everything, None),
+            [
+                pair("Maya Chen", "Lisbon in May?"),
+                pair("482913 · Harbor Bank", "Sign-in code · Your sign-in code"),
+            ]
+        );
+        assert_eq!(
+            shown(NotificationContent::Sender, None),
+            [
+                pair("Maya Chen", "New email"),
+                pair("Harbor Bank", "New email")
+            ]
+        );
+        assert_eq!(
+            shown(NotificationContent::Nothing, Some("a@x.example")),
+            [
+                pair("New email", "a@x.example"),
+                pair("New email", "a@x.example")
+            ]
+        );
+        // Whatever is shown, a click still opens the conversation.
+        for content in [NotificationContent::Sender, NotificationContent::Nothing] {
+            assert!(notices(&db.conn(), a, &ids, None, content)
+                .unwrap()
+                .iter()
+                .all(|n| n.thread.is_some()));
+        }
     }
 
     #[test]

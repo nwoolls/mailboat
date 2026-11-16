@@ -38,6 +38,7 @@ import { SHORTCUTS } from "../../mailbox/model/shortcuts";
 import type {
   AppSettings,
   DockBadge,
+  NotificationContent,
   NotifyFor,
   RemoteImages,
   Theme,
@@ -88,7 +89,7 @@ import { iconSetting, shownIcon } from "../model/appIcon";
 import { defaultMailAppRow } from "../model/mailApp";
 import { describeImageCache, IMAGE_CACHE_SIZES } from "../model/imageCache";
 import { APP_NAME } from "../../../shared/lib/brand";
-import { leavesRows, STAYS_ON_THIS_COMPUTER } from "../model/privacy";
+import { leavesRows, staysOnThisComputer } from "../model/privacy";
 import type { SettingsSectionId } from "../model/sections";
 import { canCheck, describeUpdate } from "../../updates/model/update";
 import { checkForUpdates, installUpdate, useUpdateState } from "../../updates/ui/updateStore";
@@ -210,7 +211,7 @@ export function PrivacySection({
         ))}
       </Group>
       <Group title="Stays on this computer">
-        {STAYS_ON_THIS_COMPUTER.map((line) => (
+        {staysOnThisComputer(settings).map((line) => (
           <Row key={line} label={line} />
         ))}
       </Group>
@@ -505,6 +506,18 @@ export function NotificationsSection() {
           />
         </Row>
         <Row
+          label="Show"
+          description="How much of each email a notification shows. Notifications stay in the system's list of notifications, where anyone at this computer can read them. Everything is the sender, the subject, and a sign-in code if the email has one."
+        >
+          <Segmented
+            label="Notifications show"
+            value={settings?.notificationContent ?? "everything"}
+            options={NOTIFICATION_CONTENT}
+            disabled={!settings || !settings.newMailNotifications}
+            onChange={(notificationContent) => update({ notificationContent })}
+          />
+        </Row>
+        <Row
           label="Quiet hours"
           description="No notifications between these times, every day. Mail still arrives."
         >
@@ -586,6 +599,12 @@ export function NotificationsSection() {
     </>
   );
 }
+
+const NOTIFICATION_CONTENT: { value: NotificationContent; label: string }[] = [
+  { value: "everything", label: "Everything" },
+  { value: "sender", label: "Sender only" },
+  { value: "nothing", label: "Just “New email”" },
+];
 
 const NOTIFY_FOR: { value: NotifyFor; label: string }[] = [
   { value: "inbox", label: "Inbox" },

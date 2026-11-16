@@ -142,7 +142,36 @@ export function leavesRows(
   ];
 }
 
-/** What never leaves the computer, for the second half of the page. */
+/**
+ * What new-mail notifications show on this computer, from Settings →
+ * Notifications. They never leave it, but they stay in the system's list
+ * of notifications, where anyone at the computer can read them.
+ */
+export function notificationsLine(
+  settings: Pick<AppSettings_Serialize, "notificationContent">,
+): string {
+  switch (settings.notificationContent) {
+    case "sender":
+      return "New-mail notifications show only the sender, on screen and in the system's list of notifications.";
+    case "nothing":
+      return "New-mail notifications say only that there is new mail.";
+    default:
+      return "New-mail notifications show the sender, the subject and any sign-in code, on screen and in the system's list of notifications. Settings → Notifications can show less.";
+  }
+}
+
+/** What never leaves the computer, for the second half of the page, with this computer's notifications line. */
+export function staysOnThisComputer(
+  settings: Pick<AppSettings_Serialize, "notificationContent">,
+): readonly string[] {
+  return [
+    ...STAYS_ON_THIS_COMPUTER.slice(0, -1),
+    notificationsLine(settings),
+    STAYS_ON_THIS_COMPUTER.at(-1)!,
+  ];
+}
+
+/** What never leaves the computer, whatever the settings. */
 export const STAYS_ON_THIS_COMPUTER: readonly string[] = [
   "Your mail cache, attachments and downloaded images.",
   "Sign-in tokens, kept in the system keychain and never in a file.",

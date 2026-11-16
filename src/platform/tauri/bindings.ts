@@ -601,6 +601,8 @@ export type AppSettings_Deserialize = {
 	newMailNotifications?: boolean,
 	/**  Which new mail notifies. */
 	notifyFor?: NotifyFor,
+	/**  What a notification shows. */
+	notificationContent?: NotificationContent,
 	/**  When notifications stay quiet. */
 	quietHours?: QuietHours,
 	/**
@@ -649,6 +651,8 @@ export type AppSettings_Serialize = {
 	newMailNotifications: boolean,
 	/**  Which new mail notifies. */
 	notifyFor: NotifyFor,
+	/**  What a notification shows. */
+	notificationContent: NotificationContent,
 	/**  When notifications stay quiet. */
 	quietHours: QuietHours,
 	/**
@@ -1209,6 +1213,19 @@ export type Moment =
  *  (e.g. Outlook's "Eastern Standard Time"), or none (floating).
  */
 { kind: "local"; time: string; zone: string | null };
+
+/**
+ *  What a new-mail notification shows (DASA 1.10.2: sensitive data on
+ *  screen). The default shows everything; the others keep the sender, or
+ *  everything, off the screen and out of Notification Center.
+ */
+export type NotificationContent = 
+/**  The sender, the subject, and a sign-in code if the email has one. */
+"everything" | 
+/**  The sender only. */
+"sender" | 
+/**  Only that there is new mail. */
+"nothing";
 
 /**
  *  A new-mail notification was clicked: show this conversation (`None`:

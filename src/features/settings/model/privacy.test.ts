@@ -3,7 +3,14 @@ import type {
   AiSettings,
   AppSettings_Serialize as AppSettings,
 } from "../../../platform/tauri/bindings";
-import { cloudUses, isCloudProvider, leavesRows, STAYS_ON_THIS_COMPUTER } from "./privacy";
+import {
+  cloudUses,
+  isCloudProvider,
+  leavesRows,
+  notificationsLine,
+  STAYS_ON_THIS_COMPUTER,
+  staysOnThisComputer,
+} from "./privacy";
 
 // Only the fields the page reads; the rest of the settings don't matter here.
 function settings(over: Partial<AppSettings> = {}): AppSettings {
@@ -169,5 +176,22 @@ describe("what stays on the computer", () => {
     expect(STAYS_ON_THIS_COMPUTER).toContain(
       "Addresses you removed from compose suggestions, for all your accounts, until you restore them or delete all data. Removing an account keeps them.",
     );
+  });
+
+  it("says what notifications show, as Settings → Notifications has it", () => {
+    expect(notificationsLine({ notificationContent: "everything" })).toBe(
+      "New-mail notifications show the sender, the subject and any sign-in code, on screen and in the system's list of notifications. Settings → Notifications can show less.",
+    );
+    expect(notificationsLine({ notificationContent: "sender" })).toBe(
+      "New-mail notifications show only the sender, on screen and in the system's list of notifications.",
+    );
+    expect(notificationsLine({ notificationContent: "nothing" })).toBe(
+      "New-mail notifications say only that there is new mail.",
+    );
+    // On the page, before the closing line about analytics.
+    const lines = staysOnThisComputer({ notificationContent: "sender" });
+    expect(lines).toHaveLength(STAYS_ON_THIS_COMPUTER.length + 1);
+    expect(lines.at(-2)).toBe(notificationsLine({ notificationContent: "sender" }));
+    expect(lines.at(-1)).toBe(STAYS_ON_THIS_COMPUTER.at(-1));
   });
 });

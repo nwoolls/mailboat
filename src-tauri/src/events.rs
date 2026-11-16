@@ -210,7 +210,11 @@ fn show_notices(
     }
     let notices = {
         let conn = db.conn();
-        mail_core::mail::notify::notices(&conn, account, messages, label).unwrap_or_default()
+        let content = mail_core::settings::load(&conn)
+            .unwrap_or_default()
+            .notification_content;
+        mail_core::mail::notify::notices(&conn, account, messages, label, content)
+            .unwrap_or_default()
     };
     crate::notifications::show(app, notices);
 }

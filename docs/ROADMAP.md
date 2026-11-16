@@ -6035,7 +6035,7 @@ Privacy and the policy.*
       app has none. CI's macOS Rust job makes it too, on every pull request
       that changes the app, so a dependency without a license fails there
       rather than on release day (both reviews))*
-- [ ] A setting for what new-mail notifications show (DASA 1.10.2: no
+- [x] A setting for what new-mail notifications show (DASA 1.10.2: no
       sensitive data in notifications). Today the title is the sender and
       the body is the subject, plus the account's address when there is
       more than one account. When the email has a sign-in code, the code
@@ -6046,6 +6046,16 @@ Privacy and the policy.*
       the choices (for example everything, sender only, or "New email"
       only) and the default. Settings → Privacy, the policy and the
       settings test change with it.
+      *(2026-11-16: built. Settings → Notifications → Show: Everything
+      (the default, the owner's choice until the lab says otherwise: the
+      sender, the subject and any sign-in code), Sender only, or Just "New
+      email" (`notificationContent`, `mail::notify::notices`). Less than
+      everything never shows the subject or a code; the code still reaches
+      the window's row. The account's address still shows when there is
+      more than one account, and a click still opens the conversation.
+      Settings → Privacy says what notifications show, under "Stays on
+      this computer", read from the setting. The policy says nothing about
+      notifications, so it doesn't change)*
 - [x] Control Flow Guard on Windows (DASA 2.1.2): `-Ccontrol-flow-guard`
       for the MSVC target. It covers the app's own code; Rust's prebuilt
       standard library isn't built with it, and the evidence says so.
