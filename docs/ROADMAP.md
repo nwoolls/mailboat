@@ -6266,7 +6266,11 @@ Privacy and the policy.*
       `innerHTML` or `Math.random`; in Rust, an MD5 digest through
       `Md5::digest` but not `md5::compute`, certificate checks turned off
       or a shell command; and it missed an unsafe GitHub Actions workflow.
-      Semgrep and CodeQL cover more of those. Code scanning has no open
+      Semgrep and CodeQL cover more of those. Its parser also skips eight
+      Rust files it can't read (seven of the app's, among them
+      `src-tauri/src/commands.rs` and `crates/core/src/calendar.rs`, and
+      one test; its log names them), so its clean result says nothing
+      about them. Code scanning has no open
       alerts. Each dismissed CodeQL alert has its reason written on
       GitHub, and each reason still holds: logged account IDs are local
       integers, the Google endpoints are fixed HTTPS addresses, the

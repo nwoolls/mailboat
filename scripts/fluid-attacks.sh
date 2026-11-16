@@ -60,17 +60,29 @@ sast:
     - fuzz/seeds/
 EOF
 
-echo "$commit" >"$out/fluid-attacks-commit.txt"
+# The scan writes into a staging folder; the report, its log and the commit
+# replace the ones in the report folder together, and only when the scan
+# succeeded, so a failed rerun never leaves an old report beside a new
+# commit.
+mkdir "$work/out"
+echo "$commit" >"$work/out/fluid-attacks-commit.txt"
+echo "Commit scanned: $commit" >"$work/out/fluid-attacks.log"
 echo "Scanning $commit into $out"
-echo "Commit scanned: $commit" >"$out/fluid-attacks.log"
 docker run --rm --network none \
   -v "$work/src:/src:ro" \
-  -v "$out:/out" \
+  -v "$work/out:/out" \
   -v "$work/config.yaml:/config.yaml:ro" \
-  "$IMAGE" sast scan /config.yaml >>"$out/fluid-attacks.log" 2>&1 || status=$?
-cat "$out/fluid-attacks.log"
-# Clean up here rather than in the trap, so a failed removal can't replace
-# the scanner's exit status.
-rm -rf "$work"
+  "$IMAGE" sast scan /config.yaml >>"$work/out/fluid-attacks.log" 2>&1 || status=$?
+cat "$work/out/fluid-attacks.log"
+if [ "${status:-0}" -eq 0 ]; then
+  rm -f "$out/fluid-attacks.csv" "$out/fluid-attacks.sarif" \
+    "$out/fluid-attacks.log" "$out/fluid-attacks-commit.txt"
+  mv "$work/out/"* "$out/"
+else
+  echo "fluid-attacks: the scan failed (exit $status); $out is unchanged" >&2
+fi
+# Clean up here rather than in the trap, and never let a failed removal
+# replace the scanner's exit status.
+rm -rf "$work" || echo "fluid-attacks: couldn't remove $work" >&2
 trap - EXIT
 exit "${status:-0}"
