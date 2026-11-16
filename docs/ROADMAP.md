@@ -6261,15 +6261,19 @@ Privacy and the policy.*
       files Git tracks, read-only, in a container with no network and its
       telemetry off, from an image pinned by digest (it publishes only
       `latest`); one lab accepts its CSV report in place of the source.
-      It found nothing. Planting known weaknesses showed what it covers:
-      TypeScript (a weak hash and cipher, though not `eval`, `innerHTML`
-      or `Math.random`), not Rust or GitHub Actions workflows, which
-      Semgrep and CodeQL cover. Code scanning has no open alerts. Each
-      dismissed CodeQL alert has its reason written on GitHub, and each
-      reason still holds: logged account IDs are local integers, the
-      Google endpoints are fixed HTTPS addresses, the browser storage
-      holds UI settings and onboarding's progress, and the plain-text
-      copy of a draft is never parsed as HTML. gitleaks over every commit
+      It found nothing. Planting known weaknesses showed how far it goes:
+      in TypeScript it found a weak hash and cipher but not `eval`,
+      `innerHTML` or `Math.random`; in Rust, an MD5 digest through
+      `Md5::digest` but not `md5::compute`, certificate checks turned off
+      or a shell command; and it missed an unsafe GitHub Actions workflow.
+      Semgrep and CodeQL cover more of those. Code scanning has no open
+      alerts. Each dismissed CodeQL alert has its reason written on
+      GitHub, and each reason still holds: logged account IDs are local
+      integers, the Google endpoints are fixed HTTPS addresses, the
+      database writes it flagged are in tests, on an in-memory database
+      with made-up data, the browser storage holds UI settings and
+      onboarding's progress, and the plain-text copy of a draft is never
+      parsed as HTML. gitleaks over every commit
       on every branch found no secrets. Repeat the scans once the 0.3.0
       fixes are in, just before the first paid scan)*
       *(2026-11-15: `rustix` updated to 1.1.6. Only its version and
