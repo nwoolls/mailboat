@@ -5889,7 +5889,7 @@ Privacy and the policy.*
       acceptable (DASA 1.2.2 asks for more); and what it accepts as the
       company name and address, which the ADA's AL1 questionnaire marks
       as printed on the public certificate.
-- [ ] A security check that runs with the others (`bun run
+- [x] A security check that runs with the others (`bun run
       check:security`, part of `check:web` and `check:quick`), so the
       parts that can be checked mechanically can't regress. The rules come
       from the CASA and DASA test cases, and each rule names its ID, so the
@@ -5921,6 +5921,23 @@ Privacy and the policy.*
       the rules when their items below are done, so the check passes on
       today's tree. Only judgment stays with a person or an agent:
       what a notification may show, IDOR logic, the written answers.
+      *(2026-11-15: built (`scripts/security.ts`, `check-security.ts`, part
+      of `check:web`, `check:quick` and CI's web job, on every change). Each
+      rule names the CASA v2.1.1 or DASA v2.2.0 test case it backs, checked
+      against the ADA's specifications: the capability, the frame sandbox
+      and the reviewed `unsafe` places (DASA 1.4.1), the CSP, HTML from
+      strings and `dangerouslySetInnerHTML` (CASA 5.1.7), `eval` and
+      `new Function` (CASA 5.1.3), the updater (DASA 1.6.1, 1.6.2),
+      devtools and symbol stripping (DASA 1.8.2), Control Flow Guard (DASA
+      2.1.2), TLS checks (DASA 1.1.2), shells (DASA 1.4.2), plain HTTP
+      (DASA 1.1.1), secrets (DASA 1.2.4), and the website's headers (CASA
+      4.1.1, 5.1.7). Rust test code (a `tests` folder, or after a file's
+      first `#[cfg(test)]`) may use shells and plain HTTP; `unsafe` is
+      counted everywhere. Control Flow Guard and symbol stripping are in,
+      since both are done. The one exception on today's tree is the demo
+      server reading a request's path through a `http://demo` URL, marked
+      as reviewed with its reason. Its test plants each forbidden pattern
+      into a tree that passes and expects that rule to fail)*
 - [ ] A check of the built app in the release workflow, where the signed
       builds exist. On macOS: the hardened runtime on both binaries (DASA
       3.3.1), no entitlements beyond the reviewed list, none today (3.3.2),

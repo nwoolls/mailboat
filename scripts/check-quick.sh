@@ -29,6 +29,10 @@ bun run check:brand
 # never goes in the repository).
 bun run check:privacy
 
+# Fast, and any change can loosen a reviewed security setting
+# (scripts/security.ts).
+bun run check:security
+
 web=false
 rust=false
 for f in $changed; do

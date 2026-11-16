@@ -244,7 +244,8 @@ impl FakeGoogle {
         if !self.state.lock().unwrap().mailboxes.contains_key(&account) {
             return json_reply(Err(error(401, "Not signed in")));
         }
-        let Ok(url) = url::Url::parse(&format!("http://demo{target}")) else {
+        let parsed = url::Url::parse(&format!("http://demo{target}")); // security-ok: reads the request's path; nothing is fetched
+        let Ok(url) = parsed else {
             return json_reply(Err(error(400, "Bad request")));
         };
         let query = Query::new(&url);
