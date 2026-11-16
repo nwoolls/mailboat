@@ -122,7 +122,8 @@ mod pipe_tests {
     use std::path::Path;
 
     /// The AI apps' pipe has an access list for this user alone, which
-    /// this user can still connect through; a second first instance (a
+    /// this user can still connect through; the app's later instances (for
+    /// the next connection) get it too, and a second first instance (a
     /// second copy of the app) is refused.
     #[tokio::test]
     async fn only_this_user_can_open_the_pipe() {
@@ -135,6 +136,10 @@ mod pipe_tests {
             .open(&name)
             .unwrap();
         server.connect().await.unwrap();
+        let later = super::pipe(Path::new(&name), false).unwrap();
+        crate::owner_only::tests::assert_user_only(&crate::owner_only::tests::handle_dacl(
+            later.as_raw_handle(),
+        ));
         assert!(super::pipe(Path::new(&name), true).is_err());
     }
 }
