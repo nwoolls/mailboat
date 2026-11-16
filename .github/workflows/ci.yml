@@ -88,6 +88,9 @@ jobs:
         env:
           # The commits this push or pull request adds (messages are checked too).
           CHECK_PRIVACY_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
+      # The security settings a script can check (scripts/security.ts). Docs
+      # and the website's headers can change them too, so it always runs.
+      - run: bun run check:security
       - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site'
         run: bun run test
       # The website's own checks count as a site change, so a site run tests

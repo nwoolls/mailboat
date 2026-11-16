@@ -5889,7 +5889,7 @@ Privacy and the policy.*
       acceptable (DASA 1.2.2 asks for more); and what it accepts as the
       company name and address, which the ADA's AL1 questionnaire marks
       as printed on the public certificate.
-- [ ] A security check that runs with the others (`bun run
+- [x] A security check that runs with the others (`bun run
       check:security`, part of `check:web` and `check:quick`), so the
       parts that can be checked mechanically can't regress. The rules come
       from the CASA and DASA test cases, and each rule names its ID, so the
@@ -5917,10 +5917,65 @@ Privacy and the policy.*
       tests itself by planting each forbidden pattern and expecting a
       failure. Changing what was reviewed (the capability, the `unsafe`
       places) means editing the reviewed list in the script, which a pull
-      request review sees. Control Flow Guard and symbol stripping join
-      the rules when their items below are done, so the check passes on
-      today's tree. Only judgment stays with a person or an agent:
+      request review sees. Control Flow Guard and symbol stripping are
+      checked too. Only judgment stays with a person or an agent:
       what a notification may show, IDOR logic, the written answers.
+      *(2026-11-15: built (`scripts/security.ts`, `check-security.ts`, part
+      of `check:web`, `check:quick` and CI's web job, on every change). Each
+      rule names the CASA v2.1.1 or DASA v2.2.0 test case it backs, checked
+      against the ADA's specifications: the capability, the frame sandbox
+      and the reviewed `unsafe` places (DASA 1.4.1), the CSP, HTML from
+      strings and `dangerouslySetInnerHTML` (CASA 5.1.7), `eval` and
+      `new Function` (CASA 5.1.3), the updater (DASA 1.6.1, 1.6.2),
+      devtools and symbol stripping (DASA 1.8.2), Control Flow Guard (DASA
+      2.1.2), TLS checks (DASA 1.1.2), shells (DASA 1.4.2), plain HTTP
+      (DASA 1.1.1), secrets (DASA 1.2.4), and the website's headers (CASA
+      4.1.1, 5.1.7). Rust test code (a `tests` folder, or a `#[cfg(test)]`
+      module) may use shells and plain HTTP; `unsafe` is
+      counted everywhere. Control Flow Guard and symbol stripping are in,
+      since both are done. The one exception on today's tree is the demo
+      server reading a request's path through a `http://demo` URL, marked
+      as reviewed with its reason. Its test plants each forbidden pattern
+      into a tree that passes and expects that rule to fail)*
+      *(2026-11-15, after review: it reads untracked files too (the first
+      version passed before commit and failed after, on its own patterns);
+      Tauri's platform and build configs may not touch the CSP, the
+      capabilities or the updater, and no capability may be inline; the CSP
+      also refuses `script-src-elem`/`-attr` overrides and an open
+      `default-src`, on the website too, where `frame-ancestors` must be
+      `'none'` (`'self'` too at first; the second review made it
+      `'none'`); the updater must require a signed version; the
+      Cargo settings are parsed as TOML (by a small reader of its own that
+      refuses what it doesn't know); a comment or string is never taken
+      for code, and the reverse (a small lexer for TypeScript and Rust);
+      only a test module exempts Rust test code, not a single test
+      function; an `<iframe>` needs a literal `sandbox="…"`, and
+      `createElement("iframe")` fails; `Function(…)` without `new` and
+      each `unsafe` (not each line) count. Accepted limits: a shell or
+      address built from a constant elsewhere, a CSP built at runtime,
+      and reviewed `unsafe` code replaced by other code aren't seen; a
+      secret-shaped test fixture needs a marker)*
+      *(2026-11-15, second review: the capability may hold only its
+      reviewed keys (no `remote`); a plain-HTTP address whose host is filled
+      in later fails; `powershell.exe` and the like count as shells; a
+      literal `false` for the TLS and insecure-transport switches passes;
+      the website's `frame-ancestors` must be `'none'`; and two rules keep
+      their own names rather than cite a test case that doesn't say what
+      they check: the `unsafe` count, and HSTS, which supports CASA 4.1.1
+      (whose evidence is the SSL Labs report))*
+      *(2026-11-15, second round: a CSP directive given twice fails (a
+      browser keeps the first); `-C control-flow-guard=no` split over two
+      items is read; and `devtools` in a platform's own dependency table
+      fails. Accepted as limits, since the check guards against drift and
+      review catches crafted code: TypeScript regular expressions and
+      `${…}` template expressions aren't parsed, and a frame's attributes
+      are read as text)*
+      *(2026-11-15, second round's second review, no blocker: shells in any
+      case, with a folder or as a raw string; `window.Function`;
+      `createElement("IFRAME")`; `HTTP://` in capitals; a wildcard host or
+      `blob:` in `default-src`; `[::1]` counts as this computer; and an
+      inline TOML table may break across lines, as Cargo allows. Review
+      rounds stop here)*
 - [ ] A check of the built app in the release workflow, where the signed
       builds exist. On macOS: the hardened runtime on both binaries (DASA
       3.3.1), no entitlements beyond the reviewed list, none today (3.3.2),

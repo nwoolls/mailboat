@@ -264,6 +264,7 @@ check` run on the branch first when it touches Rust or the build.
 | Everything (run before every commit) | `bun run check` |
 | Web checks only (format, lint, types, brand, Vitest) | `bun run check:web` |
 | The app's name only in `brand.json` | `bun run check:brand` |
+| Reviewed security settings (`scripts/security.ts`; an exception carries `security-ok: <why>` on its line) | `bun run check:security` |
 | Rust checks only (fmt, clippy, cargo test) | `bun run check:rust` |
 | Rust tests only | `cargo test --workspace` |
 | Frontend tests only | `bun run test` |

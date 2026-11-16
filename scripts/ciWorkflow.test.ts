@@ -106,6 +106,7 @@ const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
       "bun run check:brand": always,
       "bun run check:website": unlessDocs,
       "bun run check:privacy": always,
+      "bun run check:security": always,
       "bun run test": appOnly,
       "bunx vitest run scripts/website.test.ts scripts/policy.test.ts": unlessDocs,
       'bun run changeset status --since="origin/$BASE_REF"': always,
