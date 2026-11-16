@@ -16,5 +16,14 @@ export default defineConfig({
       },
     },
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.ts"],
+    // `bun run coverage` (scripts/coverage.ts) turns this on and reads the
+    // summary; a plain `bun run test` doesn't measure.
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
+      exclude: ["**/*.test.{ts,tsx}", "src/platform/tauri/bindings.ts", "**/*.d.ts"],
+      reporter: ["json-summary"],
+      reportsDirectory: "coverage",
+    },
   },
 });
