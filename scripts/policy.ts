@@ -365,6 +365,7 @@ const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  */
 function policyHas(policy: string, sentence: string, host: string): boolean {
   const pattern = sentence.split("<site>").map(escaped).join(escaped(host));
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- the pattern is our own sentence, escaped
   return new RegExp(`(?:^|[.!?] )${pattern}(?: |$)`).test(policy);
 }
 

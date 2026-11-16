@@ -131,6 +131,7 @@ export function parseTree(output: string): TreeCrate[] {
 export function cargoChecksums(lock: string): Map<string, string> {
   const sums = new Map<string, string>();
   for (const block of lock.split("[[package]]").slice(1)) {
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- `key` is one of three constant names
     const field = (key: string) => block.match(new RegExp(`^${key} = "([^"]*)"`, "m"))?.[1];
     const name = field("name");
     const version = field("version");

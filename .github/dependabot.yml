@@ -3,15 +3,27 @@ updates:
   - package-ecosystem: cargo
     directory: /
     schedule: { interval: weekly }
+    # A version update waits until the release is a week old, so a malicious
+    # version found and pulled in its first days never reaches us (Semgrep).
+    # Security updates don't wait.
+    cooldown: { default-days: 7 }
     groups:
       cargo: { patterns: ["*"] }
   - package-ecosystem: bun
     directory: /
     schedule: { interval: weekly }
+    # A version update waits until the release is a week old, so a malicious
+    # version found and pulled in its first days never reaches us (Semgrep).
+    # Security updates don't wait.
+    cooldown: { default-days: 7 }
     groups:
       bun: { patterns: ["*"] }
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
+    # A version update waits until the release is a week old, so a malicious
+    # version found and pulled in its first days never reaches us (Semgrep).
+    # Security updates don't wait.
+    cooldown: { default-days: 7 }
     groups:
       actions: { patterns: ["*"] }
