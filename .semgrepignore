@@ -1,4 +1,6 @@
-# Semgrep's own defaults (dependencies, build output, tests' fixtures)
-# still apply; see .github/workflows/semgrep.yml. These are deliberately
-# hostile inputs for the sanitizer's fuzzer, not code.
+# A project .semgrepignore replaces Semgrep's built-in ignore list, so
+# everything not listed here is scanned. Semgrep reads only files Git
+# tracks, which keeps node_modules and target out (.gitignore). Tests are
+# scanned on purpose. The fuzzer's seeds are deliberately hostile HTML
+# inputs for the sanitizer, not code.
 fuzz/seeds/

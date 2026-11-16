@@ -56,10 +56,11 @@ export function entitlementKeys(plist: string): string[] {
   const dict = /<plist[^>]*>\s*<dict>([\s\S]*)<\/dict>\s*<\/plist>/.exec(plist)?.[1] ?? "";
   // Only the outer dict's keys: drop nested dicts first.
   let flat = dict;
-  for (let before = ""; before !== flat;) {
+  let before: string;
+  do {
     before = flat;
     flat = flat.replace(/<dict>(?:(?!<dict>)[\s\S])*?<\/dict>/g, "");
-  }
+  } while (before !== flat);
   return [...flat.matchAll(/<key>([^<]*)<\/key>/g)].map((m) => m[1]!);
 }
 

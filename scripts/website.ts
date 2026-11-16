@@ -134,10 +134,13 @@ export function checkSite(
     // one pass can leave a new "<!--" behind (<!<!-- x -->-->), which a
     // browser reads differently from this check.
     let html = source;
-    for (let before = ""; before !== html;) {
+    // (A do-while, not `for (…;;)`: Semgrep's parser can't read an empty
+    // update slot, and skipped the rest of this file.)
+    let before: string;
+    do {
       before = html;
       html = html.replace(/<!--[\s\S]*?-->/g, "");
-    }
+    } while (before !== html);
     if (html.includes("<!--"))
       say("a comment that is never closed, or one written so this check can't read it");
 

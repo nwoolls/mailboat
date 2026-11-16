@@ -42,6 +42,13 @@ jobs:
           persist-credentials: false
       - name: Scan
         run: scripts/semgrep.sh --sarif --output semgrep.sarif
+      # The SARIF file carries the full text of every rule that ran. Keep
+      # only the rules with findings, and of each only its ID, its short
+      # message and the link to Semgrep's page, so the upload doesn't pass
+      # the rules on.
+      - name: Keep only what the findings need
+        if: ${{ !cancelled() }}
+        run: python3 scripts/sarif-trim.py semgrep.sarif
       - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
         if: ${{ !cancelled() }}
         with:

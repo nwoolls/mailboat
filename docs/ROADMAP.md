@@ -6245,11 +6245,13 @@ Privacy and the policy.*
       CodeQL, report-only (owner: in CI, so it isn't skipped). At warnings
       and errors it found seven things. Fixed: Dependabot gets a seven-day
       cooldown; the TOML reader in `scripts/security.ts` refuses
-      `__proto__`, `constructor` and `prototype` as keys; and the AI
-      programs' quick status checks run in a private folder of their own
-      rather than the shared temp folder. False positives, each marked
+      `__proto__`, `constructor` and `prototype` as keys; and Codex's check
+      of its own switches (`codex features list`) runs in a private folder
+      of its own rather than the shared temp folder. False positives, each marked
       `nosemgrep` with its reason: regular expressions built from our own
-      constants, and a made-up service-account file in a test. The fuzzer's
+      constants, one built from a number in a browser test, the TOML
+      reader's loop that now refuses those keys, and a made-up
+      service-account file in a test. The fuzzer's
       hostile HTML seeds are left out (`.semgrepignore`). The
       informational level is `unsafe` blocks, tests' temp folders and the
       app reading its own path and arguments, none a problem. Fluid

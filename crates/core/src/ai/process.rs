@@ -368,31 +368,71 @@ pub async fn run_quick_with(
     args: &[&str],
     env: Env,
 ) -> Result<(bool, String, String)> {
+    run_quick_within(Duration::from_secs(15), program, args, env).await
+}
+
+/// `run_quick_with`, giving up after `limit` (15 seconds in the app; tests
+/// use less). The program and its folder are held by `Running`, so however
+/// this ends (an answer, the time limit, or the caller giving up) the
+/// folder goes only after the program has stopped (review: on Windows a
+/// running program's working folder can't be deleted).
+async fn run_quick_within(
+    limit: Duration,
+    program: &Path,
+    args: &[&str],
+    env: Env,
+) -> Result<(bool, String, String)> {
     let mut cmd = command(program, env)?;
-    // Kept until the command is done; a timeout drops it with the command.
-    let scratch = if env == Env::Minimal {
+    let dir = if env == Env::Minimal {
         let dir = scratch_dir()?;
         cmd.current_dir(dir.path());
         Some(dir)
     } else {
         None
     };
-    let out = tokio::time::timeout(
-        Duration::from_secs(15),
-        cmd.args(args)
-            .env("PATH", child_path(program))
-            .stdin(Stdio::null())
-            .kill_on_drop(true)
-            .output(),
-    )
-    .await
-    .map_err(|_| CoreError::Ai(format!("{} didn't answer", program.display())))?
-    .map_err(|e| CoreError::Ai(format!("couldn't start {}: {e}", program.display())))?;
-    drop(scratch);
+    let mut child = cmd
+        .args(args)
+        .env("PATH", child_path(program))
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .map_err(|e| CoreError::Ai(format!("couldn't start {}: {e}", program.display())))?;
+    let (out, err) = (child.stdout.take(), child.stderr.take());
+    let mut running = Running {
+        child: Some(child),
+        dir,
+        reaped: false,
+    };
+    let (Some(child), Some(mut out), Some(mut err)) = (running.child.as_mut(), out, err) else {
+        return Err(CoreError::Ai(format!(
+            "couldn't read {}",
+            program.display()
+        )));
+    };
+    let work = async {
+        let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+        let (read_out, read_err, status) = tokio::join!(
+            out.read_to_end(&mut stdout),
+            err.read_to_end(&mut stderr),
+            child.wait()
+        );
+        let status =
+            status.map_err(|e| CoreError::Ai(format!("waiting for {}: {e}", program.display())))?;
+        read_out
+            .and(read_err)
+            .map_err(|e| CoreError::Ai(format!("reading {}: {e}", program.display())))?;
+        Ok::<_, CoreError>((status, stdout, stderr))
+    };
+    let (status, stdout, stderr) = tokio::time::timeout(limit, work)
+        .await
+        .map_err(|_| CoreError::Ai(format!("{} didn't answer", program.display())))??;
+    running.reaped = true;
     Ok((
-        out.status.success(),
-        String::from_utf8_lossy(&out.stdout).into_owned(),
-        String::from_utf8_lossy(&out.stderr).into_owned(),
+        status.success(),
+        String::from_utf8_lossy(&stdout).into_owned(),
+        String::from_utf8_lossy(&stderr).into_owned(),
     ))
 }
 
@@ -746,6 +786,39 @@ mod tests {
         // Gone only once the program had stopped.
         let alive = std::process::Command::new("kill")
             .args(["-0", &seen[2]])
+            .stderr(Stdio::null())
+            .status()
+            .unwrap()
+            .success();
+        assert!(!alive, "the program was still running");
+    }
+
+    /// A quick command that times out is stopped before its folder is
+    /// removed, and the folder goes (review: on Windows a running
+    /// program's folder can't be deleted).
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_quick_command_that_times_out_is_stopped_and_its_folder_removed() {
+        let note = tempfile::NamedTempFile::new().unwrap();
+        let script = format!(
+            "pwd -P > '{0}'; echo $$ >> '{0}'; exec sleep 600",
+            note.path().display()
+        );
+        let result = run_quick_within(
+            Duration::from_secs(1),
+            Path::new("/bin/sh"),
+            &["-c", &script],
+            Env::Minimal,
+        )
+        .await;
+        assert!(matches!(result, Err(CoreError::Ai(m)) if m.contains("didn't answer")));
+        let text = std::fs::read_to_string(note.path()).unwrap();
+        let mut lines = text.lines();
+        let folder = PathBuf::from(lines.next().unwrap());
+        let pid = lines.next().unwrap().trim().to_string();
+        assert!(goes(&folder).await, "{folder:?} is left behind");
+        let alive = std::process::Command::new("kill")
+            .args(["-0", &pid])
             .stderr(Stdio::null())
             .status()
             .unwrap()

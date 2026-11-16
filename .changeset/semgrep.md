@@ -2,4 +2,4 @@
 "desktop": patch
 ---
 
-The AI helpers' quick status checks now run in a private folder of their own instead of the shared temporary folder.
+Codex's check of its own settings now runs in a private folder of its own instead of the shared temporary folder.
