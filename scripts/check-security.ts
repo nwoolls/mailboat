@@ -7,7 +7,12 @@ import { checkSecurity } from "./security";
 /** Not text. */
 const BINARY = /\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp|xlsx|docx|zip|gz)$/i;
 
-const r = Bun.spawnSync(["git", "ls-files", "-z"], { stdout: "pipe", stderr: "pipe" });
+// Tracked files and new ones not yet added (not ignored), so a file is
+// checked before it is committed, not only after.
+const r = Bun.spawnSync(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
+  stdout: "pipe",
+  stderr: "pipe",
+});
 if (r.exitCode !== 0) {
   console.error(`check:security: git ls-files failed: ${r.stderr.toString().trim()}`);
   process.exit(1);

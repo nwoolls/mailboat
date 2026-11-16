@@ -5938,6 +5938,23 @@ Privacy and the policy.*
       server reading a request's path through a `http://demo` URL, marked
       as reviewed with its reason. Its test plants each forbidden pattern
       into a tree that passes and expects that rule to fail)*
+      *(2026-11-15, after review: it reads untracked files too (the first
+      version passed before commit and failed after, on its own patterns);
+      Tauri's platform and build configs may not touch the CSP, the
+      capabilities or the updater, and no capability may be inline; the CSP
+      also refuses `script-src-elem`/`-attr` overrides and an open
+      `default-src`, on the website too, where `frame-ancestors` must be
+      `'none'` or `'self'`; the updater must require a signed version; the
+      Cargo settings are parsed as TOML (by a small reader of its own that
+      refuses what it doesn't know); a comment or string is never taken
+      for code, and the reverse (a small lexer for TypeScript and Rust);
+      only a test module exempts Rust test code, not a single test
+      function; an `<iframe>` needs a literal `sandbox="…"`, and
+      `createElement("iframe")` fails; `Function(…)` without `new` and
+      each `unsafe` (not each line) count. Accepted limits: a shell or
+      address built from a constant elsewhere, a CSP built at runtime,
+      and reviewed `unsafe` code replaced by other code aren't seen; a
+      secret-shaped test fixture needs a marker)*
 - [ ] A check of the built app in the release workflow, where the signed
       builds exist. On macOS: the hardened runtime on both binaries (DASA
       3.3.1), no entitlements beyond the reviewed list, none today (3.3.2),
