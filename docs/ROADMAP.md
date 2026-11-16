@@ -5962,6 +5962,13 @@ Privacy and the policy.*
       their own names rather than cite a test case that doesn't say what
       they check: the `unsafe` count, and HSTS, which supports CASA 4.1.1
       (whose evidence is the SSL Labs report))*
+      *(2026-11-15, second round: a CSP directive given twice fails (a
+      browser keeps the first); `-C control-flow-guard=no` split over two
+      items is read; and `devtools` in a platform's own dependency table
+      fails. Accepted as limits, since the check guards against drift and
+      review catches crafted code: TypeScript regular expressions and
+      `${…}` template expressions aren't parsed, and a frame's attributes
+      are read as text)*
 - [ ] A check of the built app in the release workflow, where the signed
       builds exist. On macOS: the hardened runtime on both binaries (DASA
       3.3.1), no entitlements beyond the reviewed list, none today (3.3.2),

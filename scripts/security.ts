@@ -11,10 +11,16 @@
 // a whole (the capability, the `unsafe` places) is listed here, so changing
 // it means changing this file, which a pull request review sees.
 //
-// Known limits, accepted: the rules read text, not values, so a shell or an
-// `http://` address built from a constant elsewhere, or a CSP built at
-// runtime, isn't seen; `unsafe` counts can't tell reviewed code was
-// replaced; secret-shaped test fixtures need a marker.
+// Known limits, accepted (the check guards against drift, not crafted
+// code, which review catches): the rules read text, not values, so a shell
+// or an `http://` address built from a constant elsewhere, or a CSP built
+// at runtime, isn't seen; TypeScript's regular expressions and `${…}`
+// template expressions aren't parsed, so code written inside or after one
+// can be missed; a frame's attributes are read as text, so `sandbox="…"`
+// inside another attribute's expression would be taken for one; `unsafe`
+// counts can't tell reviewed code was replaced; `(0, eval)(x)` isn't seen;
+// secret-shaped test fixtures need a marker; Cargo files using TOML this
+// reader doesn't know (`[[bin]]`, multi-line strings) fail until it does.
 
 /** One problem found: the rule's ID, where, and what. */
 export type Finding = { rule: string; file: string; line?: number; message: string };
@@ -186,12 +192,19 @@ export function rustTestRanges(text: string): [number, number][] {
   return ranges;
 }
 
-/** A CSP's directives, by name. */
-function directives(csp: string): Map<string, string[]> {
-  const map = new Map<string, string[]>();
+/**
+ * A CSP's directives, by name, as a browser reads them: the first of a
+ * repeated directive counts and later ones are ignored. `repeated` lists
+ * the names given more than once.
+ */
+function directives(csp: string): Map<string, string[]> & { repeated: string[] } {
+  const map = Object.assign(new Map<string, string[]>(), { repeated: [] as string[] });
   for (const part of csp.split(";")) {
-    const [name, ...values] = part.trim().split(/\s+/);
-    if (name) map.set(name.toLowerCase(), values);
+    const [raw, ...values] = part.trim().split(/\s+/);
+    const name = raw?.toLowerCase();
+    if (!name) continue;
+    if (map.has(name)) map.repeated.push(name);
+    else map.set(name, values);
   }
   return map;
 }
@@ -214,6 +227,9 @@ export function cspProblems(csp: string): string[] {
   for (const override of ["script-src-elem", "script-src-attr"]) {
     if (d.has(override)) problems.push(`${override} overrides script-src`);
   }
+  // Review: a browser keeps the first of a repeated directive, so a repeat
+  // is at best dead text and at worst the one that counts.
+  for (const name of new Set(d.repeated)) problems.push(`${name} is given more than once`);
   const fallback = d.get("default-src") ?? [];
   if (
     fallback.some(
@@ -539,9 +555,16 @@ export function checkSecurity(files: Files): Finding[] {
 
   // DASA 1.8.2: no web inspector, and symbols stripped, in what ships.
   const appCargo = toml(files, "src-tauri/Cargo.toml", findings, "DASA 1.8.2");
-  const tauriDep = appCargo?.dependencies?.tauri;
-  if (Array.isArray(tauriDep?.features) && tauriDep.features.includes("devtools")) {
-    push("DASA 1.8.2", "src-tauri/Cargo.toml", "Tauri's devtools feature is on");
+  // Every place Tauri can be listed: the dependencies, and each
+  // platform's own (`[target.'cfg(windows)'.dependencies]`, review).
+  const tauriDeps = [
+    appCargo?.dependencies?.tauri,
+    ...Object.values(appCargo?.target ?? {}).map((t: any) => t?.dependencies?.tauri),
+  ];
+  for (const dep of tauriDeps) {
+    if (Array.isArray(dep?.features) && dep.features.includes("devtools")) {
+      push("DASA 1.8.2", "src-tauri/Cargo.toml", "Tauri's devtools feature is on");
+    }
   }
   const stripSetting = toml(files, "Cargo.toml", findings, "DASA 1.8.2")?.profile?.release?.strip;
   if (stripSetting !== true && stripSetting !== "symbols") {
@@ -551,7 +574,16 @@ export function checkSecurity(files: Files): Finding[] {
   // setting of the flag wins, so it must be on).
   const cargoConfig = toml(files, ".cargo/config.toml", findings, "DASA 2.1.2");
   for (const target of ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"]) {
-    const flags: unknown[] = cargoConfig?.target?.[target]?.rustflags ?? [];
+    // `-C x` split over two items is the same flag as `-Cx` (review).
+    const listed: unknown[] = cargoConfig?.target?.[target]?.rustflags ?? [];
+    const flags: string[] = [];
+    for (let n = 0; n < listed.length; n++) {
+      const f = listed[n];
+      if (typeof f !== "string") continue;
+      if ((f === "-C" || f === "--codegen") && typeof listed[n + 1] === "string") {
+        flags.push(`-C${listed[++n]}`);
+      } else flags.push(f.replace(/^--codegen=?/, "-C"));
+    }
     const cfg = flags.findLast(
       (f): f is string => typeof f === "string" && f.startsWith("-Ccontrol-flow-guard"),
     );

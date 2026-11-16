@@ -461,6 +461,55 @@ describe("the security check", () => {
       "DASA 1.1.2",
       add("crates/core/src/net.rs", "let c = builder.danger_accept_invalid_certs(insecure);"),
     ],
+    // From the second round.
+    [
+      "a permissive script-src given first, before the reviewed one",
+      "CASA 5.1.7",
+      (f) =>
+        f.set(
+          "website/_headers",
+          f
+            .get("website/_headers")!
+            .replace(
+              "Content-Security-Policy: ",
+              "Content-Security-Policy: script-src * 'unsafe-inline'; ",
+            ),
+        ),
+    ],
+    [
+      "framing allowed first, before the reviewed frame-ancestors",
+      "framing",
+      (f) =>
+        f.set(
+          "website/_headers",
+          f
+            .get("website/_headers")!
+            .replace("Content-Security-Policy: ", "Content-Security-Policy: frame-ancestors *; "),
+        ),
+    ],
+    [
+      "Control Flow Guard turned off with a split -C",
+      "DASA 2.1.2",
+      (f) =>
+        f.set(
+          ".cargo/config.toml",
+          f
+            .get(".cargo/config.toml")!
+            .replaceAll(
+              '["-Ccontrol-flow-guard"]',
+              '["-Ccontrol-flow-guard", "-C", "control-flow-guard=no"]',
+            ),
+        ),
+    ],
+    [
+      "devtools for one platform only",
+      "DASA 1.8.2",
+      (f) =>
+        f.set(
+          "src-tauri/Cargo.toml",
+          `${f.get("src-tauri/Cargo.toml")}\n[target.'cfg(windows)'.dependencies]\ntauri = { version = "2", features = ["devtools"] }\n`,
+        ),
+    ],
   ];
   for (const [what, rule, change] of planted) {
     it(`catches ${what} (${rule})`, () => {
