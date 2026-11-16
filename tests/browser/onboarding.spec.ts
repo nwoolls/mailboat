@@ -6,9 +6,10 @@ const open = (page: Page, query: string) =>
 /** Drops a file named `name` holding `text` on the window, as Finder would. */
 async function dropFile(page: Page, name: string, text: string) {
   await page.evaluate(
-    ({ name, text }) => {
+    // Runs in the page, with its own copies of the two values.
+    (file) => {
       const data = new DataTransfer();
-      data.items.add(new File([text], name, { type: "application/json" }));
+      data.items.add(new File([file.text], file.name, { type: "application/json" }));
       for (const type of ["dragenter", "dragover", "drop"])
         window.dispatchEvent(new DragEvent(type, { dataTransfer: data, bubbles: true }));
     },

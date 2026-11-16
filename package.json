@@ -18,7 +18,7 @@
     "test:watch": "vitest",
     "test:browser": "playwright test",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint --report-unused-disable-directives",
+    "lint": "oxlint --deny-warnings --report-unused-disable-directives",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "check": "bun run check:web && bun run check:rust && bun run test:browser",

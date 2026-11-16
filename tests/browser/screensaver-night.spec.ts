@@ -45,7 +45,7 @@ const skyLightness = (page: Page) =>
   page.locator("canvas.screensaver").evaluate((c: HTMLCanvasElement) => {
     const size = 11;
     const { data } = c.getContext("2d")!.getImageData(2, 2, size, size);
-    const median = (values: number[]) => values.sort((a, b) => a - b)[values.length >> 1]!;
+    const median = (values: number[]) => values.toSorted((a, b) => a - b)[values.length >> 1]!;
     const light: number[] = [];
     const alpha: number[] = [];
     for (let i = 0; i < data.length; i += 4) {

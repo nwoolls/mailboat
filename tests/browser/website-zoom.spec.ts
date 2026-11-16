@@ -220,7 +220,8 @@ test("website zoom: a step during a crossfade doesn't snap the leaving picture b
       (b) =>
         new Promise((done) => {
           const img = new Image();
-          img.onload = img.onerror = done;
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
           img.src = `${b}-light.webp`;
         }),
       base,

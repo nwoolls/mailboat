@@ -6348,6 +6348,17 @@ Privacy and the policy.*
       dependency scanning, a way to report vulnerabilities (`SECURITY.md`,
       `security.txt`), hardening and signed releases. Passing scores 5 of
       10 on that check, which scores 0 today)*
+      *(2026-11-16: answers drafted, kept outside the repository; the
+      owner fills in the form. One MUST, that the project addresses its
+      warnings, needed work: the linter's 124 warnings are gone and any new
+      one now fails the check (`oxlint --deny-warnings`). Seven were in the
+      app and scripts and were fixed; one was a missing effect dependency
+      in the onboarding file drop, which now saves through
+      `useEffectEvent` (it behaved the same, since `save` used only stable
+      values). In tests, three rules that fight how the tests are written
+      on purpose are turned off there only (see the decisions table), and
+      the rest were fixed, among them two hooks in the browser-test harness
+      that came after an early return)*
       *(2026-11-16: the passing badge was awarded (owner), and the README
       shows it (https://www.bestpractices.dev/projects/16828). Two answers
       rest on work in open pull requests: that warnings are addressed (the

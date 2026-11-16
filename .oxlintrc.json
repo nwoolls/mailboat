@@ -17,5 +17,21 @@
   "rules": {
     "react-in-jsx-scope": "off",
     "react/incompatible-library": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["tests/browser/**"],
+      "rules": {
+        "no-await-in-loop": "off",
+        "no-underscore-dangle": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "tests/browser/**"],
+      "rules": {
+        "unicorn/consistent-function-scoping": "off",
+        "oxc/no-map-spread": "off"
+      }
+    }
+  ]
 }

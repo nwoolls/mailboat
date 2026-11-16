@@ -193,12 +193,15 @@ export function GoogleStage({
   );
 }
 
+/** Picks how to set up Google; the gcloud path gets its project ID now. */
+function choose(path: GooglePath) {
+  updateProgress({
+    path,
+    ...(path === "gcloud" ? { projectId: makeProjectId(APP_NAME, Math.random) } : {}),
+  });
+}
+
 function ChoosePath() {
-  const choose = (path: GooglePath) =>
-    updateProgress({
-      path,
-      ...(path === "gcloud" ? { projectId: makeProjectId(APP_NAME, Math.random) } : {}),
-    });
   const options: {
     path: GooglePath;
     icon: typeof FileIcon;
@@ -361,7 +364,7 @@ function StepCard({
 function GcloudCard({ progress }: { progress: Progress }) {
   // Made when the path was chosen.
   const projectId = progress.projectId ?? "";
-  const commands = gcloudCommands(projectId, APP_NAME);
+  const steps = gcloudCommands(projectId, APP_NAME);
   return (
     <div className="space-y-2 rounded-xl bg-selection-subtle p-4 ring-1 ring-stroke">
       <p className="text-[13px] text-content/70">
@@ -369,7 +372,7 @@ function GcloudCard({ progress }: { progress: Progress }) {
         Then run these two commands, one at a time. They create the project <code>{projectId}</code>{" "}
         and turn on the Gmail, People and Calendar APIs.
       </p>
-      {commands.map((command, i) => (
+      {steps.map((command, i) => (
         <div
           key={command}
           className="flex items-start gap-2 rounded-lg bg-background-base/60 p-2.5"

@@ -42,7 +42,7 @@ export function macProblems(o: {
   else if (headers.length > 1) {
     problems.push(`one architecture expected, found ${headers.length} (a universal binary)`);
   }
-  if (headers.some((flags) => !flags.includes("PIE"))) {
+  if (headers.some((row) => !row.includes("PIE"))) {
     problems.push("DASA 3.1.1: not position-independent (no PIE flag)");
   }
   // DASA 1.5.2: no run-path search, so no folder a user could write to is

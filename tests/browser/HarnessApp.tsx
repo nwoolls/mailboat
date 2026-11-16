@@ -96,8 +96,6 @@ export function Harness({
     return () => window.removeEventListener("keydown", onKey);
   }, [mode]);
 
-  if (mode === "onboarding") return <OnboardingHarness />;
-  if (mode === "shell") return <Shell />;
   // `?mode=updates&draft=1`: a message being written, so there is something to save.
   const draftStarted = useRef(false);
   useEffect(() => {
@@ -110,6 +108,9 @@ export function Harness({
     if (mode === "updates" && params.has("draft") && writing && writing.draft.subject === "")
       updateDraft(writing.draft.id, (d) => ({ ...d, subject: "Lunch on Friday" }));
   }, [mode, writing]);
+
+  if (mode === "onboarding") return <OnboardingHarness />;
+  if (mode === "shell") return <Shell />;
   // Settings → About with the update row, and the update notice.
   if (mode === "updates")
     return (

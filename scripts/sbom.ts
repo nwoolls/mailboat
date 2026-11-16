@@ -38,11 +38,12 @@ export function licenses(text: string | undefined): Component["licenses"] {
  * "(MIT OR Apache-2.0" and npm's "UNLICENSED" (not an SPDX identifier, a
  * statement that no license is given) aren't.
  */
+const isOp = (t: string | undefined) => t === "AND" || t === "OR" || t === "WITH";
+
 function isExpression(text: string): boolean {
   if (text.trim().toUpperCase() === "UNLICENSED") return false;
   const tokens = text.match(/\(|\)|[^\s()]+/g) ?? [];
   const id = /^[A-Za-z0-9][A-Za-z0-9.+-]*$/;
-  const isOp = (t: string | undefined) => t === "AND" || t === "OR" || t === "WITH";
   let at = 0;
   // license := id ["WITH" id] | "(" expression ")"
   const license = (): boolean => {

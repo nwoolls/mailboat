@@ -103,13 +103,13 @@ describe("with no account left", () => {
 
   it("turns off writing and syncing, and nothing else", () => {
     const some = enabled(true);
-    const none = enabled(false);
-    expect(none.new).toBe(false);
-    expect(none.sync).toBe(false);
+    const off = enabled(false);
+    expect(off.new).toBe(false);
+    expect(off.sync).toBe(false);
     expect(some.new).toBe(true);
     expect(some.sync).toBe(true);
-    for (const id of Object.keys(some).filter((id) => id !== "new" && id !== "sync"))
-      expect(none[id], id).toBe(some[id]);
+    for (const id of Object.keys(some).filter((key) => key !== "new" && key !== "sync"))
+      expect(off[id], id).toBe(some[id]);
   });
 });
 

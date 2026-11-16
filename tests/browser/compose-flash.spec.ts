@@ -14,7 +14,6 @@ test("the card never fades when the AI panel opens or closes", async ({ page }) 
   // Past its own opening fade.
   await page.waitForTimeout(400);
   for (let i = 0; i < 2; i++) {
-    // oxlint-disable-next-line no-await-in-loop -- one toggle after another, on purpose
     const lowest = await page.evaluate(
       () =>
         new Promise<number>((resolve) => {

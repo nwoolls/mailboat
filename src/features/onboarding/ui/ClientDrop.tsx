@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { type CheckedClient, commands } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
 import { IS_MAC } from "../../../shared/lib/platform";
@@ -35,6 +35,9 @@ export function ClientDrop({ onSaved }: { onSaved: (client: CheckedClient) => vo
       setError(plainError(e));
     }
   };
+  // A dropped file is saved with the current `save`, without re-adding the
+  // window's drop listeners on every render.
+  const saveDropped = useEffectEvent((text: string) => void save(text));
 
   // The whole window takes the drop (the window's own file drop is off, so
   // the page gets it).
@@ -59,7 +62,7 @@ export function ClientDrop({ onSaved }: { onSaved: (client: CheckedClient) => vo
       depth = 0;
       setOver(false);
       const file = e.dataTransfer?.files[0];
-      if (file) void file.text().then(save);
+      if (file) void file.text().then(saveDropped);
     };
     window.addEventListener("dragenter", onEnter);
     window.addEventListener("dragleave", onLeave);
