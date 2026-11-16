@@ -148,13 +148,14 @@ export function leavesRows(
  * of notifications, where anyone at the computer can read them.
  */
 export function notificationsLine(
-  settings: Pick<AppSettings_Serialize, "notificationContent">,
+  settings: Pick<AppSettings_Serialize, "notificationContent" | "newMailNotifications">,
 ): string {
+  if (!settings.newMailNotifications) return "New-mail notifications are off.";
   switch (settings.notificationContent) {
     case "sender":
-      return "New-mail notifications show only the sender, on screen and in the system's list of notifications.";
+      return "New-mail notifications show who sent the email, but not its subject or any sign-in code.";
     case "nothing":
-      return "New-mail notifications say only that there is new mail.";
+      return "New-mail notifications say there is new mail, but not who sent it or what it says.";
     default:
       return "New-mail notifications show the sender, the subject and any sign-in code, on screen and in the system's list of notifications. Settings → Notifications can show less.";
   }
@@ -162,7 +163,7 @@ export function notificationsLine(
 
 /** What never leaves the computer, for the second half of the page, with this computer's notifications line. */
 export function staysOnThisComputer(
-  settings: Pick<AppSettings_Serialize, "notificationContent">,
+  settings: Pick<AppSettings_Serialize, "notificationContent" | "newMailNotifications">,
 ): readonly string[] {
   return [
     ...STAYS_ON_THIS_COMPUTER.slice(0, -1),

@@ -432,6 +432,7 @@ mod tests {
         let loaded = load(&conn).unwrap();
         assert_eq!(loaded.theme, Theme::Light);
         assert!(loaded.new_mail_notifications);
+        assert_eq!(loaded.notification_content, NotificationContent::Everything);
         assert_eq!(loaded.app_icon, None);
         assert_eq!(loaded.remote_images, RemoteImages::Load);
         assert!(loaded.image_prefetch);

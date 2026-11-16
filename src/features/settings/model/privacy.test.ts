@@ -179,19 +179,30 @@ describe("what stays on the computer", () => {
   });
 
   it("says what notifications show, as Settings → Notifications has it", () => {
-    expect(notificationsLine({ notificationContent: "everything" })).toBe(
+    expect(
+      notificationsLine({ notificationContent: "everything", newMailNotifications: true }),
+    ).toBe(
       "New-mail notifications show the sender, the subject and any sign-in code, on screen and in the system's list of notifications. Settings → Notifications can show less.",
     );
-    expect(notificationsLine({ notificationContent: "sender" })).toBe(
-      "New-mail notifications show only the sender, on screen and in the system's list of notifications.",
+    expect(notificationsLine({ notificationContent: "sender", newMailNotifications: true })).toBe(
+      "New-mail notifications show who sent the email, but not its subject or any sign-in code.",
     );
-    expect(notificationsLine({ notificationContent: "nothing" })).toBe(
-      "New-mail notifications say only that there is new mail.",
+    expect(notificationsLine({ notificationContent: "nothing", newMailNotifications: true })).toBe(
+      "New-mail notifications say there is new mail, but not who sent it or what it says.",
     );
+    // Review: with notifications off, it says so rather than describe them.
+    expect(
+      notificationsLine({ notificationContent: "everything", newMailNotifications: false }),
+    ).toBe("New-mail notifications are off.");
     // On the page, before the closing line about analytics.
-    const lines = staysOnThisComputer({ notificationContent: "sender" });
+    const lines = staysOnThisComputer({
+      notificationContent: "sender",
+      newMailNotifications: true,
+    });
     expect(lines).toHaveLength(STAYS_ON_THIS_COMPUTER.length + 1);
-    expect(lines.at(-2)).toBe(notificationsLine({ notificationContent: "sender" }));
+    expect(lines.at(-2)).toBe(
+      notificationsLine({ notificationContent: "sender", newMailNotifications: true }),
+    );
     expect(lines.at(-1)).toBe(STAYS_ON_THIS_COMPUTER.at(-1));
   });
 });

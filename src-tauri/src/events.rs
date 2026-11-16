@@ -160,7 +160,16 @@ impl SyncEvents for TauriSyncEvents {
         };
         // Sign-in codes go to the window whether or not notifications are on.
         // A message that may hold one in its body is waited for (a few
-        // seconds at most), so its banner can lead with the code.
+        // seconds at most), so its banner can lead with the code: only when
+        // banners show codes (Settings → Notifications → Everything), else
+        // the banner shows at once (review).
+        let leads_with_codes = {
+            let conn = self.db.conn();
+            mail_core::settings::load(&conn)
+                .unwrap_or_default()
+                .notification_content
+                == mail_core::settings::NotificationContent::Everything
+        };
         let waiting = if inbox.is_empty() {
             Vec::new()
         } else {
@@ -171,6 +180,10 @@ impl SyncEvents for TauriSyncEvents {
                 wanted.clone(),
             );
             crate::codes::arrived(&self.app, &self.db, inbox, move |read| {
+                // Banners that don't show codes were all shown at once.
+                if !leads_with_codes {
+                    return;
+                }
                 let (_, later) = mail_core::mail::notify::split_for_body(&wanted, read);
                 // The settings may have changed during the wait.
                 if notifications_wanted(&db) {
@@ -178,7 +191,8 @@ impl SyncEvents for TauriSyncEvents {
                 }
             })
         };
-        let (now, _) = mail_core::mail::notify::split_for_body(&wanted, &waiting);
+        let held: &[mail_core::model::MessageId] = if leads_with_codes { &waiting } else { &[] };
+        let (now, _) = mail_core::mail::notify::split_for_body(&wanted, held);
         show_notices(&self.app, &self.db, account, &now, label.as_deref());
     }
     fn identities_changed(&self, account_id: AccountId) {

@@ -6056,6 +6056,11 @@ Privacy and the policy.*
       Settings → Privacy says what notifications show, under "Stays on
       this computer", read from the setting. The policy says nothing about
       notifications, so it doesn't change)*
+      *(after review: the privacy page says what each choice leaves out,
+      not that it shows "only" something, since the account's address and
+      the count of a batch still show; it says when notifications are off;
+      and with less than everything, a banner shows at once instead of
+      waiting for a body that might hold a code it wouldn't show)*
 - [x] Control Flow Guard on Windows (DASA 2.1.2): `-Ccontrol-flow-guard`
       for the MSVC target. It covers the app's own code; Rust's prebuilt
       standard library isn't built with it, and the evidence says so.
