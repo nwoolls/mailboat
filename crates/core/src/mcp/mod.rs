@@ -51,32 +51,44 @@ pub fn socket_path() -> Option<PathBuf> {
 }
 
 /// Serves AI apps' proxies on the named pipe `socket` until the app quits:
-/// one `MailServer` per connection. Only this user (and administrators)
-/// can write to a pipe they created, so other accounts on the PC can't
-/// send it requests; remote clients are refused. If something else
+/// one `MailServer` per connection. Each instance of the pipe has an
+/// access list for this user alone (`pipe`), so other accounts on the PC
+/// can't connect, and remote clients are refused. If something else
 /// already made the pipe (a second copy of the app), this one gives up.
 #[cfg(windows)]
 pub async fn listen(socket: &Path, db: Arc<Db>, host: Arc<dyn Host>) -> Result<()> {
-    use tokio::net::windows::named_pipe::ServerOptions;
     let io = |e: std::io::Error| CoreError::Other(format!("MCP pipe: {e}"));
-    let mut next = ServerOptions::new()
-        .first_pipe_instance(true)
-        .reject_remote_clients(true)
-        .create(socket)
-        .map_err(io)?;
+    let mut next = pipe(socket, true).map_err(io)?;
     loop {
         next.connect().await.map_err(io)?;
         let stream = next;
-        next = ServerOptions::new()
-            .reject_remote_clients(true)
-            .create(socket)
-            .map_err(io)?;
+        next = pipe(socket, false).map_err(io)?;
         let server = MailServer::new(db.clone(), host.clone());
         tokio::spawn(async move {
             if let Ok(running) = server.serve(stream).await {
                 let _ = running.waiting().await;
             }
         });
+    }
+}
+
+/// One instance of the AI apps' pipe, which only this user can connect to
+/// or read the attributes of (DASA 1.7.1, 2.3.1): an explicit, protected
+/// access list naming this user's SID, rather than Windows' default, which
+/// also lets everyone read it and administrators and SYSTEM open it.
+#[cfg(windows)]
+fn pipe(
+    socket: &Path,
+    first: bool,
+) -> std::io::Result<tokio::net::windows::named_pipe::NamedPipeServer> {
+    let mut access = crate::owner_only::windows::UserOnly::new()?;
+    // SAFETY: the attributes and the descriptor they point to live until
+    // `access` drops, after the pipe has been made with them.
+    unsafe {
+        tokio::net::windows::named_pipe::ServerOptions::new()
+            .first_pipe_instance(first)
+            .reject_remote_clients(true)
+            .create_with_security_attributes_raw(socket, access.attributes())
     }
 }
 
@@ -101,5 +113,33 @@ pub async fn listen(socket: &Path, db: Arc<Db>, host: Arc<dyn Host>) -> Result<(
                 let _ = running.waiting().await;
             }
         });
+    }
+}
+
+#[cfg(all(test, windows))]
+mod pipe_tests {
+    use std::os::windows::io::AsRawHandle;
+    use std::path::Path;
+
+    /// The AI apps' pipe has an access list for this user alone, which
+    /// this user can still connect through; the app's later instances (for
+    /// the next connection) get it too, and a second first instance (a
+    /// second copy of the app) is refused.
+    #[tokio::test]
+    async fn only_this_user_can_open_the_pipe() {
+        let name = format!(r"\\.\pipe\mail-core-test-{}", fastrand::u64(..));
+        let server = super::pipe(Path::new(&name), true).unwrap();
+        crate::owner_only::tests::assert_user_only(&crate::owner_only::tests::handle_dacl(
+            server.as_raw_handle(),
+        ));
+        let _client = tokio::net::windows::named_pipe::ClientOptions::new()
+            .open(&name)
+            .unwrap();
+        server.connect().await.unwrap();
+        let later = super::pipe(Path::new(&name), false).unwrap();
+        crate::owner_only::tests::assert_user_only(&crate::owner_only::tests::handle_dacl(
+            later.as_raw_handle(),
+        ));
+        assert!(super::pipe(Path::new(&name), true).is_err());
     }
 }

@@ -6015,10 +6015,22 @@ Privacy and the policy.*
       and antivirus still reach them. A link, to a file or a folder, is
       left alone. Tests for each, failing with the fix removed; the
       Windows tests run in CI's Windows job)*
-- [ ] The Windows named pipe for AI apps (DASA 1.7.1, 2.3.1): give it an
+- [x] The Windows named pipe for AI apps (DASA 1.7.1, 2.3.1): give it an
       explicit security descriptor for the current user, rather than
       relying on the default, with a test (or capture `accesschk` output
       showing that other accounts can't connect, if the default is kept).
+      *(2026-11-15: each instance of the pipe is made with a protected
+      access list naming this user's SID alone, full access
+      (`mcp::pipe`, `owner_only::windows::UserOnly`), instead of Windows'
+      default, which gives Everyone and Anonymous read access to the pipe
+      (its data included) and LocalSystem and Administrators full
+      control. Remote clients stay refused. A Windows test reads the list
+      back from the pipe's handle, connects as the same user, checks a
+      later instance (made while the first is open, as for each next
+      connection) gets the same list, and checks a second copy of the app
+      can't make the pipe; it runs in CI's Windows job. An AI app that
+      starts the proxy in an AppContainer or at low integrity couldn't
+      connect, as with the old default; none is known to)*
 - [x] `strip = true` in a `[profile.release]` (DASA 1.8.2), so symbol
       stripping is a setting the evidence can show.
       *(2026-11-15: in the workspace's `Cargo.toml`. A release build of the

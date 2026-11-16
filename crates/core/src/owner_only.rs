@@ -100,7 +100,8 @@ pub(crate) mod windows {
     };
     use windows_sys::Win32::Security::{
         GetSecurityDescriptorDacl, GetTokenInformation, TokenUser, ACL, DACL_SECURITY_INFORMATION,
-        PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, TOKEN_QUERY, TOKEN_USER,
+        PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, SECURITY_ATTRIBUTES,
+        TOKEN_QUERY, TOKEN_USER,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
@@ -146,6 +147,57 @@ pub(crate) mod windows {
             let sid = String::from_utf16_lossy(std::slice::from_raw_parts(text, n));
             LocalFree(text.cast());
             Ok(sid)
+        }
+    }
+
+    /// A security descriptor for a new kernel object (the AI apps' named
+    /// pipe): a protected access list giving this user, by SID, full
+    /// access, and nobody else any (not even the default read access
+    /// everyone gets to a pipe). Freed when dropped. Not `Send`: build it
+    /// right where the object is made.
+    pub(crate) struct UserOnly {
+        descriptor: PSECURITY_DESCRIPTOR,
+        attributes: SECURITY_ATTRIBUTES,
+    }
+
+    impl UserOnly {
+        pub(crate) fn new() -> std::io::Result<Self> {
+            let sddl = wide(&format!("D:P(A;;FA;;;{})", user_sid()?));
+            let mut descriptor: PSECURITY_DESCRIPTOR = std::ptr::null_mut();
+            // SAFETY: valid pointers to locals; the descriptor Windows
+            // allocates is owned by the value returned, which frees it.
+            let made = unsafe {
+                ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                    sddl.as_ptr(),
+                    SDDL_REVISION_1,
+                    &mut descriptor,
+                    std::ptr::null_mut(),
+                )
+            };
+            if made == 0 || descriptor.is_null() {
+                return Err(last_error());
+            }
+            Ok(Self {
+                descriptor,
+                attributes: SECURITY_ATTRIBUTES {
+                    nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+                    lpSecurityDescriptor: descriptor,
+                    bInheritHandle: 0,
+                },
+            })
+        }
+
+        /// The `SECURITY_ATTRIBUTES` to pass when making the object, valid
+        /// while this value lives.
+        pub(crate) fn attributes(&mut self) -> *mut std::ffi::c_void {
+            (&mut self.attributes as *mut SECURITY_ATTRIBUTES).cast()
+        }
+    }
+
+    impl Drop for UserOnly {
+        fn drop(&mut self) {
+            // SAFETY: allocated by Windows in `new`, freed once.
+            unsafe { LocalFree(self.descriptor) };
         }
     }
 
@@ -314,6 +366,50 @@ pub(crate) mod tests {
         let sid = windows::user_sid().unwrap();
         let expected = as_windows_writes_it(&format!("D:P(A;;FA;;;{sid})"));
         assert_eq!(entries(sddl), entries(&expected), "{sddl}");
+    }
+
+    /// The access list of an open kernel object (a pipe), as SDDL text.
+    #[cfg(windows)]
+    pub(crate) fn handle_dacl(handle: std::os::windows::io::RawHandle) -> String {
+        use windows_sys::Win32::Foundation::{LocalFree, ERROR_SUCCESS};
+        use windows_sys::Win32::Security::Authorization::{
+            ConvertSecurityDescriptorToStringSecurityDescriptorW, GetSecurityInfo, SDDL_REVISION_1,
+            SE_KERNEL_OBJECT,
+        };
+        use windows_sys::Win32::Security::{DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR};
+        // SAFETY: a live handle and pointers to locals; both buffers
+        // Windows allocates are freed before returning.
+        unsafe {
+            let mut descriptor: PSECURITY_DESCRIPTOR = std::ptr::null_mut();
+            let status = GetSecurityInfo(
+                handle,
+                SE_KERNEL_OBJECT,
+                DACL_SECURITY_INFORMATION,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                &mut descriptor,
+            );
+            assert_eq!(status, ERROR_SUCCESS);
+            let mut text: *mut u16 = std::ptr::null_mut();
+            let mut len = 0u32;
+            assert_ne!(
+                ConvertSecurityDescriptorToStringSecurityDescriptorW(
+                    descriptor,
+                    SDDL_REVISION_1,
+                    DACL_SECURITY_INFORMATION,
+                    &mut text,
+                    &mut len,
+                ),
+                0
+            );
+            let n = (0..).take_while(|&i| *text.add(i) != 0).count();
+            let sddl = String::from_utf16_lossy(std::slice::from_raw_parts(text, n));
+            LocalFree(text.cast());
+            LocalFree(descriptor);
+            sddl
+        }
     }
 
     /// `sddl` read into a security descriptor and written back as text.
