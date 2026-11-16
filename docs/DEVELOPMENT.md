@@ -484,7 +484,12 @@ publishes nothing, to try the builds without a tag.
 **Checking a download**
 - `shasum -a 256 -c SHA256SUMS` in the folder with the files.
 - `gh attestation verify <file> --repo <owner>/<repo>` says the file was built
-  by this repository's release workflow from a given commit.
+  by this repository's release workflow from a given commit. The same
+  attestation is on the release as files: `<App>_<version>.sigstore.json`
+  (`gh attestation verify <file> --repo <owner>/<repo> --bundle <that file>`
+  checks against it without asking GitHub) and `<App>_<version>.intoto.jsonl`,
+  its signed statements, which OpenSSF Scorecard looks for. Both are made
+  after the checksums, so `SHA256SUMS` doesn't list them.
 
 ## Versions and the changelog
 
