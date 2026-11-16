@@ -721,6 +721,7 @@ describe("the TOML reader", () => {
       "__proto__ = { polluted = true }",
       "[a.__proto__]\nb = 1",
       "a = { constructor = 1 }",
+      'a."prototype" = 1',
       'a = """x"""',
       "[[bin]]\nname = 'x'",
       "a = 1979-05-27",

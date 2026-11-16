@@ -46,11 +46,15 @@ jobs:
       # only the rules with findings, and of each only its ID, its short
       # message and the link to Semgrep's page, so the upload doesn't pass
       # the rules on.
+      # Results suppressed in source (`nosemgrep`) are dropped too: code
+      # scanning doesn't read SARIF suppressions and would open them.
       - name: Keep only what the findings need
+        id: trim
         if: ${{ !cancelled() }}
         run: python3 scripts/sarif-trim.py semgrep.sarif
+      # Only a trimmed file goes up; if trimming failed, nothing does.
       - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.trim.outcome == 'success' }}
         with:
           sarif_file: semgrep.sarif
           category: semgrep

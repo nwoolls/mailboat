@@ -3,7 +3,9 @@
 Semgrep writes the full text of every rule it ran into the file. The rules'
 license allows our own use, not passing them on, so only the rules that
 found something stay, and of each only its ID, its short message and the
-link to Semgrep's own page. Run by .github/workflows/semgrep.yml (Semgrep's
+link to Semgrep's own page. Results suppressed in source (`nosemgrep`,
+reviewed false positives) are dropped: code scanning doesn't read SARIF
+suppressions, and would open each as an alert. Run by .github/workflows/semgrep.yml (Semgrep's
 image has Python, not Bun).
 
     python3 scripts/sarif-trim.py semgrep.sarif
@@ -17,6 +19,7 @@ KEEP = ("id", "name", "shortDescription", "helpUri", "defaultConfiguration", "pr
 
 def trim(sarif):
     for run in sarif.get("runs", []):
+        run["results"] = [r for r in run.get("results", []) if not r.get("suppressions")]
         used = {r.get("ruleId") for r in run.get("results", [])}
         driver = run.get("tool", {}).get("driver", {})
         rules = []
