@@ -4972,6 +4972,12 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         the reader (line 125); 162 others passed. #145 changes the AI
         programs' working folder in Rust, not the reply or the reader.
         Re-run requested.
+      - 2026-11-16, CI on `main` after #157 merged, WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43928198959: the
+        same first check timed out, the reply's end 359 px below the reader
+        (line 125). #157 adds a Semgrep workflow and fixes in scripts and
+        the AI helper's folder, not the reply or the reader. Re-run
+        requested.
 - [ ] `ascii-glow.spec.ts`: "the glow glides over to the pointer, then holds
       on loosely" (line 153, added in UX Spike 5).
       - 2026-11-14, CI on `main` after #135 merged, attempt 1,
@@ -5002,12 +5008,39 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         about 160 ms, so on a slow runner it can be gone before the check
         looks; the test also records each copy as it is added, which it
         could check instead. Re-run requested.
+      - 2026-11-16, CI on `main` after #158 merged, WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43971353566: the
+        same check, no fading copy within 5 s (line 127). #158 updates
+        five packages (TanStack Query, the Vite React plugin, oxfmt,
+        oxlint, Vite); its own pull request run passed the browser tests,
+        and so did the next run on `main`, which includes it. Re-run
+        requested.
 - [ ] `narrow-window.spec.ts`: "going back doesn't happen while typing, and
       Esc puts a floating sidebar away first" (line 213).
       - 2026-11-16, the same CI run: after Esc, the floating sidebar was
         still there 5 s later (`toHaveCount(0)`, line 232). Unrelated to
         #155 for the same reasons; 5 local runs passed. Cause not known.
         Re-run requested.
+      - 2026-11-16, CI on `main` after #157 merged, WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43928198959: the
+        same check, the sidebar still there after Esc (line 232). #157
+        changes scanning and scripts, not the window or the sidebar.
+        Re-run requested.
+      - 2026-11-16, CI on `main` after #161 merged, WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43980529440: the
+        same (line 232). #161 changes only how the Rust side downloads
+        images. Re-run requested.
+- [ ] `empty-toys.spec.ts`: "bubble wrap pops the bubble clicked with a
+      burst, and only it" (line 69).
+      - 2026-11-16, CI on `main` after #158 merged, WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43971353566: after
+        the click, the inked area was 85675 where more than 85825 (the
+        count before) was expected (`toBeGreaterThan`, line 83): the burst
+        hadn't drawn more ink yet when the test measured. #158 updates five
+        packages, none of them the toy's drawing; its own pull request run
+        passed, and so did the next run on `main`. Likely cause, not
+        confirmed: the measure comes before the burst's first frames on a
+        slow runner. Re-run requested.
 - [ ] Vitest tests that run long: `scripts/ciAppChanged.test.ts` ("says app
       for files that only look like docs or site…") and
       `src/features/screensaver/model/catalog.test.ts` ("… runs a minute,
@@ -5025,6 +5058,12 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         tests that do a lot of work (a minute of a scene; a shell script)
         near the 5 s limit, run in parallel on a busy machine; not yet
         confirmed.
+      - 2026-11-16, local coverage runs (`vitest run --coverage.enabled`)
+        on the branch `coverage`: envelopes timed out at 5 s in two of
+        four runs of the whole suite. Alone it takes about 1.1 s, and
+        2.8 s with coverage measuring. The coverage run now allows 30 s
+        (`scripts/coverage.ts`); three runs with that passed. Plain
+        `bun run test` is unchanged.
 
 ## Bug backlog
 
