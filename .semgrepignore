@@ -1,0 +1,4 @@
+# Semgrep's own defaults (dependencies, build output, tests' fixtures)
+# still apply; see .github/workflows/semgrep.yml. These are deliberately
+# hostile inputs for the sanitizer's fuzzer, not code.
+fuzz/seeds/

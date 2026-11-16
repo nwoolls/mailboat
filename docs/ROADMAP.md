@@ -6235,6 +6235,25 @@ Privacy and the policy.*
       Linux notifications or not at all (keyring's unused `secret-service`
       backend), and `paste` is a compile-time macro. osv-scanner 2.7.1 then
       finds no issues and no unused ignores)*
+      *(2026-11-16: Semgrep done too. `scripts/semgrep.sh` runs its
+      community rules (the default and security-audit packs, Rust,
+      TypeScript, React, secrets and GitHub Actions), fetched from its
+      registry each run and never committed, as their license allows
+      (our own use, not passing them on), with no usage data sent. A
+      `Semgrep` workflow runs it on pull requests that change code, on
+      pushes to main and weekly, and reports to GitHub code scanning beside
+      CodeQL, report-only (owner: in CI, so it isn't skipped). At warnings
+      and errors it found seven things. Fixed: Dependabot gets a seven-day
+      cooldown; the TOML reader in `scripts/security.ts` refuses
+      `__proto__`, `constructor` and `prototype` as keys; and the AI
+      programs' quick status checks run in a private folder of their own
+      rather than the shared temp folder. False positives, each marked
+      `nosemgrep` with its reason: regular expressions built from our own
+      constants, and a made-up service-account file in a test. The fuzzer's
+      hostile HTML seeds are left out (`.semgrepignore`). The
+      informational level is `unsafe` blocks, tests' temp folders and the
+      app reading its own path and arguments, none a problem. Fluid
+      Attacks and reading CodeQL's results are still to do)*
       *(2026-11-15: `rustix` updated to 1.1.6. Only its version and
       checksum change in `Cargo.lock`: `cargo update -p rustix` also moved
       other crates to older `windows-sys` versions, so the lockfile was

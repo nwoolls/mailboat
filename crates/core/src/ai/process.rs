@@ -360,16 +360,23 @@ pub async fn run_quick(program: &Path, args: &[&str]) -> Result<(bool, String, S
 }
 
 /// `run_quick` with a choice of what the program inherits. With
-/// `Env::Minimal` it runs in the temp folder, not the app's.
+/// `Env::Minimal` it runs in an empty folder of its own (`scratch_dir`),
+/// not the app's or the shared temp folder, where another program could
+/// have left files for it to read (Semgrep's review).
 pub async fn run_quick_with(
     program: &Path,
     args: &[&str],
     env: Env,
 ) -> Result<(bool, String, String)> {
     let mut cmd = command(program, env)?;
-    if env == Env::Minimal {
-        cmd.current_dir(std::env::temp_dir());
-    }
+    // Kept until the command is done; a timeout drops it with the command.
+    let scratch = if env == Env::Minimal {
+        let dir = scratch_dir()?;
+        cmd.current_dir(dir.path());
+        Some(dir)
+    } else {
+        None
+    };
     let out = tokio::time::timeout(
         Duration::from_secs(15),
         cmd.args(args)
@@ -381,6 +388,7 @@ pub async fn run_quick_with(
     .await
     .map_err(|_| CoreError::Ai(format!("{} didn't answer", program.display())))?
     .map_err(|e| CoreError::Ai(format!("couldn't start {}: {e}", program.display())))?;
+    drop(scratch);
     Ok((
         out.status.success(),
         String::from_utf8_lossy(&out.stdout).into_owned(),
@@ -743,6 +751,35 @@ mod tests {
             .unwrap()
             .success();
         assert!(!alive, "the program was still running");
+    }
+
+    /// A quick command with the minimal environment runs in an empty,
+    /// private folder of its own, gone afterwards, not the shared temp
+    /// folder (Semgrep's review).
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_minimal_quick_command_runs_in_its_own_folder() {
+        let (ok, out, _) = run_quick_with(
+            Path::new("/bin/sh"),
+            &["-c", "pwd -P; ls -A | wc -l; ls -ld . | cut -c1-10"],
+            Env::Minimal,
+        )
+        .await
+        .unwrap();
+        assert!(ok);
+        let lines: Vec<&str> = out.lines().map(str::trim).collect();
+        let folder = PathBuf::from(lines[0]);
+        assert!(
+            folder
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("ai-helper-"),
+            "{folder:?}"
+        );
+        assert_eq!(lines[1], "0", "empty");
+        assert_eq!(lines[2], "drwx------", "only this user");
+        assert!(!folder.exists(), "{folder:?} is left behind");
     }
 
     // Needs a Unix shell or path rules (/bin/sh, /usr/bin/env, /Users/…).

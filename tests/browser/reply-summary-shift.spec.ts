@@ -56,6 +56,7 @@ async function lineOnScreen(editor: Locator) {
     return Number(p?.textContent?.match(/^Line (\d+):/)?.[1]);
   });
   expect(n).toBeGreaterThan(0);
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- `n` is a number the test read
   return editor.locator("p", { hasText: new RegExp(`^Line ${n}:`) });
 }
 

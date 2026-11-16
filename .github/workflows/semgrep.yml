@@ -1,0 +1,49 @@
+name: Semgrep
+
+# Semgrep's community rules (scripts/semgrep.sh), reported to GitHub code
+# scanning beside CodeQL. Report-only: the rules change over time, so a
+# new rule mustn't fail a pull request that changed nothing; code scanning
+# raises an alert only for a new finding. The rules are fetched each run,
+# never committed (their license allows our own use, not passing them on).
+on:
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - ".changeset/**"
+      - "*.md"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - ".changeset/**"
+      - "*.md"
+  schedule:
+    - cron: "17 5 * * 2"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Semgrep
+    # Code scanning isn't available on a private repository (free plan).
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    # Semgrep's own image, pinned by digest (1.185.0).
+    container:
+      image: semgrep/semgrep@sha256:67518c174185a2043fdbed16c70631b79209499b3671178e7194379b48295a0d
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Scan
+        run: scripts/semgrep.sh --sarif --output semgrep.sarif
+      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
+        if: ${{ !cancelled() }}
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep

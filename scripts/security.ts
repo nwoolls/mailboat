@@ -340,6 +340,11 @@ export function parseToml(text: string): Record<string, any> {
         parts.push(m![0]);
         i += m![0].length;
       }
+      // Never a key that would reach an object's prototype (Semgrep's
+      // review): fail closed instead.
+      if (["__proto__", "constructor", "prototype"].includes(parts.at(-1)!)) {
+        fail(`a key named "${parts.at(-1)}"`);
+      }
       skipSpace(false);
       if (text[i] !== ".") return parts;
       i++;
@@ -350,6 +355,7 @@ export function parseToml(text: string): Record<string, any> {
     for (const part of path) {
       t[part] ??= {};
       if (typeof t[part] !== "object" || Array.isArray(t[part])) fail(`"${part}" isn't a table`);
+      // nosemgrep: javascript.lang.security.audit.prototype-pollution.prototype-pollution-loop.prototype-pollution-loop -- key() refuses __proto__, constructor and prototype
       t = t[part];
     }
     return t;

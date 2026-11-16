@@ -718,6 +718,9 @@ describe("the TOML reader", () => {
 
   it("refuses what it doesn't read, so the check fails closed", () => {
     for (const text of [
+      "__proto__ = { polluted = true }",
+      "[a.__proto__]\nb = 1",
+      "a = { constructor = 1 }",
       'a = """x"""',
       "[[bin]]\nname = 'x'",
       "a = 1979-05-27",

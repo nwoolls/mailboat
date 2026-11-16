@@ -317,6 +317,7 @@ mod tests {
     fn check_explains_each_wrong_file() {
         let web = r#"{"web":{"client_id":"1.apps.googleusercontent.com","client_secret":"s"}}"#;
         assert!(check(web).unwrap_err().contains("Desktop app"));
+        // nosemgrep: generic.secrets.security.detected-google-gcm-service-account.detected-google-gcm-service-account -- made up, no key in it
         let key = r#"{"type":"service_account","project_id":"p"}"#;
         assert!(check(key).unwrap_err().contains("service account"));
         assert!(check("not json")
