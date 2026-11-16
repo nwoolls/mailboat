@@ -5917,9 +5917,8 @@ Privacy and the policy.*
       tests itself by planting each forbidden pattern and expecting a
       failure. Changing what was reviewed (the capability, the `unsafe`
       places) means editing the reviewed list in the script, which a pull
-      request review sees. Control Flow Guard and symbol stripping join
-      the rules when their items below are done, so the check passes on
-      today's tree. Only judgment stays with a person or an agent:
+      request review sees. Control Flow Guard and symbol stripping are
+      checked too. Only judgment stays with a person or an agent:
       what a notification may show, IDOR logic, the written answers.
       *(2026-11-15: built (`scripts/security.ts`, `check-security.ts`, part
       of `check:web`, `check:quick` and CI's web job, on every change). Each
@@ -5955,6 +5954,14 @@ Privacy and the policy.*
       address built from a constant elsewhere, a CSP built at runtime,
       and reviewed `unsafe` code replaced by other code aren't seen; a
       secret-shaped test fixture needs a marker)*
+      *(2026-11-15, second review: the capability may hold only its
+      reviewed keys (no `remote`); a plain-HTTP address whose host is filled
+      in later fails; `powershell.exe` and the like count as shells; a
+      literal `false` for the TLS and insecure-transport switches passes;
+      the website's `frame-ancestors` must be `'none'`; and two rules keep
+      their own names rather than cite a test case that doesn't say what
+      they check: the `unsafe` count, and HSTS, which supports CASA 4.1.1
+      (whose evidence is the SSL Labs report))*
 - [ ] A check of the built app in the release workflow, where the signed
       builds exist. On macOS: the hardened runtime on both binaries (DASA
       3.3.1), no entitlements beyond the reviewed list, none today (3.3.2),

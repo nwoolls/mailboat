@@ -26,11 +26,21 @@ export type Files = ReadonlyMap<string, string>;
  * The Tauri capability's reviewed permissions: the web side, which shows
  * untrusted email, can do nothing else (DASA 1.4.1).
  */
+/** The keys the reviewed capability may have (no `remote`, no `platforms`). */
+export const REVIEWED_CAPABILITY_KEYS = [
+  "$schema",
+  "identifier",
+  "description",
+  "windows",
+  "permissions",
+];
+
 export const REVIEWED_PERMISSIONS = ["core:event:default", "core:window:allow-start-dragging"];
 
 /**
  * Where Rust's `unsafe` is reviewed, and how many times each file uses it
- * (DASA 1.4.1, by review): the macOS bridges in the app layer and the Windows
+ * (a rule of its own, "unsafe (reviewed)": no test case asks about Rust's
+ * `unsafe`, so it backs none): the macOS bridges in the app layer and the Windows
  * security calls in the core. A new one means updating this list.
  */
 export const REVIEWED_UNSAFE: Record<string, number> = {
@@ -442,6 +452,15 @@ export function checkSecurity(files: Files): Finding[] {
         "applies to windows other than main",
       );
     }
+    // Review: only the reviewed keys; `remote` would let websites call it.
+    const extra = Object.keys(capability).filter((k) => !REVIEWED_CAPABILITY_KEYS.includes(k));
+    if (extra.length) {
+      push(
+        "DASA 1.4.1",
+        "src-tauri/capabilities/default.json",
+        `keys not reviewed: ${extra.join(", ")}`,
+      );
+    }
   }
 
   // Tauri's configs: the base one holds the reviewed security settings; a
@@ -513,7 +532,7 @@ export function checkSecurity(files: Files): Finding[] {
     ) {
       push("DASA 1.6.1", "src-tauri/tauri.conf.json", "every updater endpoint must be HTTPS");
     }
-    if (updater && "dangerousInsecureTransportProtocol" in updater) {
+    if (updater?.dangerousInsecureTransportProtocol === true) {
       push("DASA 1.6.1", "src-tauri/tauri.conf.json", "the updater allows insecure transport");
     }
   }
@@ -609,10 +628,17 @@ export function checkSecurity(files: Files): Finding[] {
       // DASA 1.4.1: `unsafe` only where reviewed, each use counted (tests too).
       const unsafe = (bare.match(/\bunsafe\b/g) ?? []).length;
       if (unsafe !== (REVIEWED_UNSAFE[file] ?? 0)) {
-        push("DASA 1.4.1", file, `unsafe ${unsafe} times, reviewed: ${REVIEWED_UNSAFE[file] ?? 0}`);
+        push(
+          "unsafe (reviewed)",
+          file,
+          `unsafe ${unsafe} times, reviewed: ${REVIEWED_UNSAFE[file] ?? 0}`,
+        );
       }
       // DASA 1.1.2: certificates are always checked.
-      for (const m of bare.matchAll(/danger_accept_invalid_(certs|hostnames)/g)) {
+      // Only a literal `false` is safe to leave in.
+      for (const m of bare.matchAll(
+        /danger_accept_invalid_(certs|hostnames)\s*\((?!\s*false\s*\))/g,
+      )) {
         const line = lineAt(bare, m.index!);
         if (!marked(line)) push("DASA 1.1.2", file, "TLS checks turned off", line);
       }
@@ -621,16 +647,18 @@ export function checkSecurity(files: Files): Finding[] {
       const isTest = (line: number) => inTests || ranges.some(([a, b]) => line >= a && line <= b);
       // DASA 1.4.2: programs run directly, never through a shell.
       for (const m of withStrings.matchAll(
-        /Command::new\(\s*"(?:\/bin\/|\/usr\/bin\/)?(?:sh|bash|zsh|cmd|cmd\.exe|powershell|pwsh)"|Path::new\(\s*"\/bin\/(?:sh|bash|zsh)"/g,
+        /Command::new\(\s*"(?:\/bin\/|\/usr\/bin\/)?(?:sh|bash|zsh|cmd|powershell|pwsh)(?:\.exe)?"|Path::new\(\s*"\/bin\/(?:sh|bash|zsh)"/g,
       )) {
         const line = lineAt(withStrings, m.index!);
         if (!isTest(line) && !marked(line)) push("DASA 1.4.2", file, "a shell", line);
       }
       // DASA 1.1.1: requests go over HTTPS, except to this computer.
+      // A host filled in later (`format!("http://{host}")`) counts: only the
+      // bare prefix `"http://"` (as in `strip_prefix`) has no host.
       for (const m of withStrings.matchAll(/"http:\/\/([^"/:?{\s]*)/g)) {
         const host = m[1]!;
         if (
-          host === "" ||
+          (host === "" && withStrings[m.index! + m[0].length] === '"') ||
           host === "127.0.0.1" ||
           host === "localhost" ||
           host.endsWith(".localhost")
@@ -655,9 +683,10 @@ export function checkSecurity(files: Files): Finding[] {
     }
   }
 
-  // The website's response headers: HTTPS only (CASA 4.1.1); its scripts
-  // its own, with nosniff, against script injection (CASA 5.1.7); and not
-  // framed by other sites, a hardening control no test case asks for.
+  // The website's response headers: its scripts its own, with nosniff,
+  // against script injection (CASA 5.1.7); HSTS, which supports CASA 4.1.1
+  // (TLS itself is the SSL Labs report's); and not framed by any site, a
+  // hardening control no test case asks for.
   const headers = files.get("website/_headers");
   if (headers === undefined) {
     push("CASA 5.1.7", "website/_headers", "missing");
@@ -671,15 +700,12 @@ export function checkSecurity(files: Files): Finding[] {
     }
     const hsts = /Strict-Transport-Security:\s*max-age=(\d+)/i.exec(headers);
     if (!hsts || Number(hsts[1]) < 15552000) {
-      push("CASA 4.1.1", "website/_headers", "HSTS must last at least 180 days");
+      // Supports CASA 4.1.1, whose evidence is the SSL Labs report.
+      push("hsts", "website/_headers", "HSTS must last at least 180 days");
     }
     const ancestors = (directives(csp).get("frame-ancestors") ?? []).join(" ");
-    if (ancestors !== "'none'" && ancestors !== "'self'") {
-      push(
-        "framing",
-        "website/_headers",
-        `frame-ancestors must be 'none' or 'self', is "${ancestors}"`,
-      );
+    if (ancestors !== "'none'") {
+      push("framing", "website/_headers", `frame-ancestors must be 'none', is "${ancestors}"`);
     }
   }
 

@@ -197,10 +197,10 @@ describe("the security check", () => {
       "CASA 5.1.7",
       add("src/features/compose/ui/Preview.tsx", "<div dangerouslySetInnerHTML={x} />"),
     ],
-    ["another unsafe", "DASA 1.4.1", add("src-tauri/src/print.rs", "unsafe { g() };")],
+    ["another unsafe", "unsafe (reviewed)", add("src-tauri/src/print.rs", "unsafe { g() };")],
     [
       "unsafe somewhere new",
-      "DASA 1.4.1",
+      "unsafe (reviewed)",
       add("crates/core/src/net.rs", "fn f() { unsafe { g() } }"),
     ],
     [
@@ -241,7 +241,7 @@ describe("the security check", () => {
     ],
     [
       "no HSTS on the website",
-      "CASA 4.1.1",
+      "hsts",
       (f) =>
         f.set("website/_headers", f.get("website/_headers")!.replace(/.*Strict-Transport.*\n/, "")),
     ],
@@ -401,7 +401,7 @@ describe("the security check", () => {
     ],
     [
       "two unsafe on one line",
-      "DASA 1.4.1",
+      "unsafe (reviewed)",
       (f) =>
         f.set(
           "src-tauri/src/print.rs",
@@ -409,6 +409,57 @@ describe("the security check", () => {
             .get("src-tauri/src/print.rs")!
             .replace("unsafe { f() };", "unsafe { f() }; unsafe { g() };"),
         ),
+    ],
+    // From the second review.
+    [
+      "a capability that remote sites can call",
+      "DASA 1.4.1",
+      edit(
+        "src-tauri/capabilities/default.json",
+        (c) => (c.remote = { urls: ["https://evil.example/*"] }),
+      ),
+    ],
+    [
+      "plain HTTP to a host filled in later",
+      "DASA 1.1.1",
+      (f) =>
+        f.set(
+          "crates/core/src/run.rs",
+          'fn u(host: &str) -> String { format!("http://{host}/v1") }',
+        ),
+    ],
+    [
+      "plain HTTP with a positional host",
+      "DASA 1.1.1",
+      (f) => f.set("crates/core/src/run.rs", 'fn u(h: &str) -> String { format!("http://{}", h) }'),
+    ],
+    [
+      "powershell.exe",
+      "DASA 1.4.2",
+      (f) => f.set("crates/core/src/run.rs", 'fn r() { Command::new("powershell.exe"); }'),
+    ],
+    [
+      "a shell after a test module, in production code",
+      "DASA 1.4.2",
+      (f) =>
+        f.set(
+          "crates/core/src/run.rs",
+          '#[cfg(test)]\nmod tests {\n    fn t() {}\n}\n\npub fn run() { std::process::Command::new("sh"); }',
+        ),
+    ],
+    [
+      "framing by the site itself",
+      "framing",
+      (f) =>
+        f.set(
+          "website/_headers",
+          f.get("website/_headers")!.replace("frame-ancestors 'none'", "frame-ancestors 'self'"),
+        ),
+    ],
+    [
+      "certificate checks off through a variable",
+      "DASA 1.1.2",
+      add("crates/core/src/net.rs", "let c = builder.danger_accept_invalid_certs(insecure);"),
     ],
   ];
   for (const [what, rule, change] of planted) {
@@ -459,6 +510,44 @@ describe("the security check", () => {
     expect(
       rulesAfter(
         prepend("crates/core/src/net.rs", 'const S: &str = r#"no unsafe "here" either"#;'),
+      ),
+    ).toEqual([]);
+    // Review: safe values of the dangerous switches, and the bare prefix.
+    expect(
+      rulesAfter(
+        prepend(
+          "crates/core/src/net.rs",
+          "fn t(b: B) -> B { b.danger_accept_invalid_certs(false) }",
+        ),
+      ),
+    ).toEqual([]);
+    expect(
+      rulesAfter(
+        edit(
+          "src-tauri/tauri.conf.json",
+          (c) => (c.plugins.updater.dangerousInsecureTransportProtocol = false),
+        ),
+      ),
+    ).toEqual([]);
+    // A frame with a comparison or an arrow function among its attributes is read whole.
+    expect(
+      rulesAfter(
+        add(
+          "src/features/reader/ui/Frame.tsx",
+          'export const K = () => <iframe title={n > 0 ? "a" : "b"} sandbox="allow-same-origin" />;',
+        ),
+      ),
+    ).toEqual([]);
+    // A frame in a comment isn't a frame, and a reviewed one says why.
+    expect(rulesAfter(add("src/features/reader/ui/Frame.tsx", '// <iframe srcDoc="" />'))).toEqual(
+      [],
+    );
+    expect(
+      rulesAfter(
+        add(
+          "src/features/reader/ui/Frame.tsx",
+          'const L = <iframe srcDoc="" />; // security-ok: a test of the marker',
+        ),
       ),
     ).toEqual([]);
     // A frame with an arrow function among its attributes is still read whole.
