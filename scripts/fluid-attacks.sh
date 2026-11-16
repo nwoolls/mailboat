@@ -33,7 +33,14 @@ cd "$(dirname "$0")/.."
 
 commit=$(git rev-parse HEAD)
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+# On an early exit, keep the status of what failed even if the removal fails.
+# shellcheck disable=SC2329 # called by the trap below
+on_exit() {
+  st=$?
+  rm -rf "$work" || echo "fluid-attacks: couldn't remove $work" >&2
+  exit "$st"
+}
+trap on_exit EXIT
 mkdir "$work/src"
 # The export and the extraction run as separate commands, so `set -e` stops
 # the script when either fails (in a pipe it would see only tar's status, and
