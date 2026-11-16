@@ -195,3 +195,39 @@ export function tagProblem(tag: string, version: string, changelog: string): str
   }
   return null;
 }
+
+/**
+ * The in-toto lines Scorecard looks for in a release (`*.intoto.jsonl`)
+ * from the Sigstore bundle `actions/attest-build-provenance` writes: one
+ * bundle per line, each holding its signed statement as a DSSE envelope
+ * (`payload`, `payloadType`, `signatures`). Each envelope becomes a line of
+ * compact JSON, as tools reading in-toto files expect. A line without a
+ * whole envelope is an error, so a changed bundle format can't publish an
+ * empty or broken file.
+ */
+export function intotoLines(bundle: string): string {
+  const lines = bundle.split("\n").filter((line) => line.trim() !== "");
+  if (lines.length === 0) throw new Error("the attestation bundle is empty");
+  return lines
+    .map((line, i) => {
+      const envelope = JSON.parse(line)?.dsseEnvelope;
+      if (
+        typeof envelope?.payload !== "string" ||
+        typeof envelope?.payloadType !== "string" ||
+        !Array.isArray(envelope?.signatures) ||
+        envelope.signatures.length === 0 ||
+        !envelope.signatures.every(
+          (s: { sig?: unknown } | null) => typeof s?.sig === "string" && s.sig !== "",
+        )
+      ) {
+        throw new Error(`line ${i + 1} of the attestation bundle has no signed DSSE envelope`);
+      }
+      return JSON.stringify({
+        payloadType: envelope.payloadType,
+        payload: envelope.payload,
+        signatures: envelope.signatures,
+      });
+    })
+    .map((line) => `${line}\n`)
+    .join("");
+}

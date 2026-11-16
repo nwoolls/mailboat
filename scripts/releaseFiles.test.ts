@@ -5,6 +5,7 @@ import {
   changelogSection,
   checksumLines,
   compareVersions,
+  intotoLines,
   isInstaller,
   isPrerelease,
   isVersion,
@@ -231,5 +232,46 @@ describe("version order", () => {
         expect(Math.sign(compareVersions(order[i], order[j]))).toBe(Math.sign(i - j));
       }
     }
+  });
+});
+
+describe("the release's in-toto file", () => {
+  // Shaped like `actions/attest-build-provenance`'s bundle: made-up values.
+  const envelope = {
+    payload: Buffer.from('{"_type":"https://in-toto.io/Statement/v1"}').toString("base64"),
+    payloadType: "application/vnd.in-toto+json",
+    signatures: [{ sig: "c2ln" }],
+  };
+  const bundleLine = (dsse: unknown) =>
+    JSON.stringify({
+      mediaType: "application/vnd.dev.sigstore.bundle.v0.3+json",
+      verificationMaterial: { certificate: { rawBytes: "Y2VydA==" } },
+      dsseEnvelope: dsse,
+    });
+
+  it("is each bundle line's DSSE envelope, compact, one per line", () => {
+    const out = intotoLines(`${bundleLine(envelope)}
+${bundleLine(envelope)}
+`);
+    const lines = out.split("\n");
+    expect(lines).toHaveLength(3);
+    expect(lines[2]).toBe("");
+    expect(JSON.parse(lines[0]!)).toEqual(envelope);
+    expect(lines[0]).not.toContain(" ");
+    // Only the envelope: the certificate stays in the Sigstore bundle.
+    expect(out).not.toContain("verificationMaterial");
+  });
+
+  it("refuses a bundle with no envelope, or one without its signature", () => {
+    expect(() => intotoLines("")).toThrow(/empty/);
+    expect(() => intotoLines(bundleLine(undefined))).toThrow(/line 1/);
+    expect(() => intotoLines(bundleLine({ ...envelope, signatures: [] }))).toThrow(/line 1/);
+    // Review: a signature entry without its signature.
+    for (const signatures of [[{}], [null], ["x"], [{ keyid: "k" }], [{ sig: "" }]]) {
+      expect(() => intotoLines(bundleLine({ ...envelope, signatures }))).toThrow(/line 1/);
+    }
+    expect(() => intotoLines(`${bundleLine(envelope)}\n${bundleLine({ payload: "x" })}`)).toThrow(
+      /line 2/,
+    );
   });
 });

@@ -6133,7 +6133,7 @@ Privacy and the policy.*
       CodeQL already scans every pull request and push to `main` that
       changes code, plus a weekly run. Its results can be submitted as
       the static scan.
-- [ ] The build provenance attached to each release as a file, so
+- [x] The build provenance attached to each release as a file, so
       OpenSSF Scorecard can see it. The publish job already attests the
       release files (`actions/attest-build-provenance`), but GitHub keeps
       that attestation in its own store, not on the release, and
@@ -6158,6 +6158,13 @@ Privacy and the policy.*
       provenance, and 10 once all five do. Not a CASA requirement; it is
       here because it changes the same release job as the SBOM item above
       *(owner, 2026-11-15)*
+      *(2026-11-15: built. The publish job gives the attestation step an
+      id and runs `scripts/provenance-files.ts` on its `bundle-path`
+      before creating the draft. The pinned `actions/attest` writes one
+      compact Sigstore bundle per line (checked in its source), and the
+      script refuses a line without a signed DSSE envelope
+      (`intotoLines`, tested). Checking the files with an in-toto tool
+      waits for the first release that has them)*
 - [ ] OpenSSF Best Practices badge: the self-assessment questionnaire at
       bestpractices.dev (Scorecard's "CII-Best-Practices" check). Optional
       paperwork, best done once there are releases to point at
