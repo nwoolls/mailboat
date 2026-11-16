@@ -6192,6 +6192,16 @@ Privacy and the policy.*
       which can't be fixed until Tauri drops them, record each with its
       reason in an `osv-scanner.toml` ignore list (Scorecard runs
       osv-scanner, which reads it), and give the lab the same reasons.
+      *(2026-11-16: done for osv-scanner. `rustix` was updated to 1.1.6
+      (#150). `deny.toml` now reports unsound advisories for every crate
+      (`unsound = "all"`, the owner's choice: the most secure) and checks
+      Windows on ARM too, which the release builds; `cargo deny` passes.
+      `osv-scanner.toml` lists the rest with reasons, each expiring in six
+      months: `glib` and `proc-macro-error` are built only for Linux (Tauri's
+      GTK web view), `zvariant`, `zvariant_derive` and `zbus_names` only for
+      Linux notifications or not at all (keyring's unused `secret-service`
+      backend), and `paste` is a compile-time macro. osv-scanner 2.7.1 then
+      finds no issues and no unused ignores)*
       *(2026-11-15: `rustix` updated to 1.1.6. Only its version and
       checksum change in `Cargo.lock`: `cargo update -p rustix` also moved
       other crates to older `windows-sys` versions, so the lockfile was
