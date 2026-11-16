@@ -5976,7 +5976,7 @@ Privacy and the policy.*
       `blob:` in `default-src`; `[::1]` counts as this computer; and an
       inline TOML table may break across lines, as Cargo allows. Review
       rounds stop here)*
-- [ ] A check of the built app in the release workflow, where the signed
+- [x] A check of the built app in the release workflow, where the signed
       builds exist. On macOS: the hardened runtime on both binaries (DASA
       3.3.1), no entitlements beyond the reviewed list, none today (3.3.2),
       notarization with `spctl` (3.2.1), and no relative or user-writable
@@ -5987,6 +5987,18 @@ Privacy and the policy.*
       Authenticode signature is present, not that it is valid; DASA 2.2.1's
       evidence is `signtool verify /v /pa` output, so add that check or
       collect the output by hand.
+      *(2026-11-15: built (`scripts/binaryChecks.ts`, `check-binaries.ts`,
+      called by the release workflow). On macOS it checks every binary in
+      the app and in the update payload: the hardened runtime, no
+      entitlements beyond the reviewed list (none), PIE (3.1.1) and no
+      `RPATH`; the job already checked notarization with `spctl`. On
+      Windows it checks the app's program for each target with
+      `llvm-readobj`. Its output is the evidence. The installed release
+      passes on macOS; a Windows build from before Control Flow Guard
+      fails on `GUARD_CF` alone, as it should, and a fresh ARM64 build made
+      the release's way (`scripts/windows.sh build`) passes every flag. The Authenticode
+      signature's validity stays by hand: `signtool` runs only on Windows,
+      and the release builds on a Mac)*
 - [x] A software bill of materials (CycloneDX) for the Rust and the
       JavaScript dependencies, made by the release workflow and attached to
       each release (DASA 1.5.1).

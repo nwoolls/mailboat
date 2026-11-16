@@ -191,6 +191,10 @@ jobs:
           tar -xzf "${payloads[0]}" -C "$unpacked"
           xcrun stapler validate "$unpacked"/*.app
           spctl --assess --type execute -vv "$unpacked"/*.app
+          # Every binary hardened (DASA 3.3.1, 3.3.2, 3.1.1, 1.5.2), in the
+          # app and in the payload updates install.
+          bun scripts/check-binaries.ts macos "$app"
+          bun scripts/check-binaries.ts macos "$unpacked"/*.app
           mkdir -p release-files
           # ditto keeps what a plain zip would lose (permissions, the ticket).
           ditto -c -k --keepParent "$app" "release-files/$(basename "$app").zip"
@@ -275,6 +279,13 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: scripts/windows.sh build
+      # The program's hardening (DASA 2.1.1 to 2.1.4): ASLR, DEP, Control
+      # Flow Guard, high-entropy ASLR, 64-bit. Homebrew's llvm (installed
+      # above) reads it.
+      - name: Check the program's hardening
+        env:
+          WINDOWS_TARGET: ${{ matrix.target }}
+        run: bun scripts/check-binaries.ts windows "$WINDOWS_TARGET"
       - name: Check the signatures and keep the installer
         env:
           WINDOWS_TARGET: ${{ matrix.target }}
