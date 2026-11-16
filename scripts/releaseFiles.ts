@@ -215,7 +215,10 @@ export function intotoLines(bundle: string): string {
         typeof envelope?.payload !== "string" ||
         typeof envelope?.payloadType !== "string" ||
         !Array.isArray(envelope?.signatures) ||
-        envelope.signatures.length === 0
+        envelope.signatures.length === 0 ||
+        !envelope.signatures.every(
+          (s: { sig?: unknown } | null) => typeof s?.sig === "string" && s.sig !== "",
+        )
       ) {
         throw new Error(`line ${i + 1} of the attestation bundle has no signed DSSE envelope`);
       }

@@ -266,6 +266,10 @@ ${bundleLine(envelope)}
     expect(() => intotoLines("")).toThrow(/empty/);
     expect(() => intotoLines(bundleLine(undefined))).toThrow(/line 1/);
     expect(() => intotoLines(bundleLine({ ...envelope, signatures: [] }))).toThrow(/line 1/);
+    // Review: a signature entry without its signature.
+    for (const signatures of [[{}], [null], ["x"], [{ keyid: "k" }], [{ sig: "" }]]) {
+      expect(() => intotoLines(bundleLine({ ...envelope, signatures }))).toThrow(/line 1/);
+    }
     expect(() => intotoLines(`${bundleLine(envelope)}\n${bundleLine({ payload: "x" })}`)).toThrow(
       /line 2/,
     );
