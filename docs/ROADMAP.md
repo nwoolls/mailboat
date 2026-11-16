@@ -6355,10 +6355,10 @@ Privacy and the policy.*
       app and scripts and were fixed; one was a missing effect dependency
       in the onboarding file drop, which now saves through
       `useEffectEvent` (it behaved the same, since `save` used only stable
-      values). In tests, three rules that fight how the tests are written
+      values). In tests, four rules that fight how the tests are written
       on purpose are turned off there only (see the decisions table), and
-      the rest were fixed, among them two hooks in the browser-test harness
-      that came after an early return)*
+      the rest were fixed, among them a ref and two effects in the
+      browser-test harness that came after an early return)*
       *(2026-11-16: the passing badge was awarded (owner), and the README
       shows it (https://www.bestpractices.dev/projects/16828). Two answers
       rest on work in open pull requests: that warnings are addressed (the
