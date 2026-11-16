@@ -70,9 +70,13 @@ pub struct Prefetch {
 impl Prefetch {
     /// A client for image downloads: a Safari user agent, as the reader's
     /// own image loads send, so a prefetch looks no different from opening
-    /// the email; no cookies or referrer (reqwest sends neither).
+    /// the email; no cookies or referrer (reqwest sends neither). HTTPS
+    /// only, redirects included: addresses are already upgraded
+    /// (`remote_image_url`), and the reader's CSP allows nothing else, so a
+    /// redirect to plain HTTP is refused here too. (Tests use
+    /// `with_client`, since their stand-in server speaks plain HTTP.)
     pub fn new(dir: PathBuf) -> Result<Self> {
-        Self::with_client(dir, client_builder())
+        Self::with_client(dir, client_builder().https_only(true))
     }
 
     fn with_client(dir: PathBuf, builder: reqwest::ClientBuilder) -> Result<Self> {
@@ -499,6 +503,27 @@ mod tests {
 
     async fn run_plain(db: &Db, prefetch: &Prefetch, account: AccountId) -> PrefetchReport {
         run(db, prefetch, account).await.unwrap()
+    }
+
+    /// The app's image client never fetches over plain HTTP: a redirect
+    /// from an HTTPS image to an `http://` one goes through this same check.
+    #[tokio::test]
+    async fn the_apps_image_client_refuses_plain_http() {
+        let server = server().await;
+        let url = format!("{}/a.png", server.uri());
+        let dir = tempfile::tempdir().unwrap();
+
+        let err = Prefetch::new(dir.path().to_path_buf())
+            .unwrap()
+            .http
+            .get(&url)
+            .send()
+            .await
+            .unwrap_err();
+        assert!(err.is_builder(), "refused before connecting: {err}");
+        // The same server answers a client without the rule, so the
+        // refusal above is the rule's.
+        assert!(reqwest::get(&url).await.unwrap().status().is_success());
     }
 
     /// A public-looking name that resolves to the reader's own computer is

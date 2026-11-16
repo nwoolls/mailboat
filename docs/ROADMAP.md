@@ -6262,6 +6262,14 @@ Privacy and the policy.*
       edited to the one package and checked with `--locked`. The macOS
       build uses it through `tempfile` and `xattr`; neither Windows target
       does. The rest of the item is still open)*
+- [x] Image downloads over HTTPS only, redirects included *(found
+      writing the answers for the lab, 2026-11-16: DASA 1.1.1)*. The
+      reader always asks for an image over HTTPS (`http://` addresses are
+      upgraded, and the message's CSP allows nothing else), but the client
+      that downloads images as mail arrives (`mail::prefetch`) followed a
+      redirect to plain HTTP. It is now HTTPS only, as the Google client
+      is, and a test checks that it refuses a plain-HTTP address before
+      connecting.
 - [ ] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
