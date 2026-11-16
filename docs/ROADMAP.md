@@ -6256,6 +6256,22 @@ Privacy and the policy.*
       informational level is `unsafe` blocks, tests' temp folders and the
       app reading its own path and arguments, none a problem. Fluid
       Attacks and reading CodeQL's results are still to do)*
+      *(2026-11-16: Fluid Attacks and CodeQL done too.
+      `scripts/fluid-attacks.sh` runs Fluid Attacks' SAST scanner on the
+      files Git tracks, read-only, in a container with no network and its
+      telemetry off, from an image pinned by digest (it publishes only
+      `latest`); one lab accepts its CSV report in place of the source.
+      It found nothing. Planting known weaknesses showed what it covers:
+      TypeScript (a weak hash and cipher, though not `eval`, `innerHTML`
+      or `Math.random`), not Rust or GitHub Actions workflows, which
+      Semgrep and CodeQL cover. Code scanning has no open alerts. Each
+      dismissed CodeQL alert has its reason written on GitHub, and each
+      reason still holds: logged account IDs are local integers, the
+      Google endpoints are fixed HTTPS addresses, the browser storage
+      holds UI settings and onboarding's progress, and the plain-text
+      copy of a draft is never parsed as HTML. gitleaks over every commit
+      on every branch found no secrets. Repeat the scans once the 0.3.0
+      fixes are in, just before the first paid scan)*
       *(2026-11-15: `rustix` updated to 1.1.6. Only its version and
       checksum change in `Cargo.lock`: `cargo update -p rustix` also moved
       other crates to older `windows-sys` versions, so the lockfile was
