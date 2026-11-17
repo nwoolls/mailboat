@@ -3,6 +3,8 @@ import { TableKit } from "@tiptap/extension-table";
 import { TextAlign } from "@tiptap/extension-text-align";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import { type Editor, EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import { TextSelection } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useRef, useState } from "react";
 import { commands } from "../../../platform/tauri/bindings";
@@ -28,6 +30,57 @@ import { FONTS, SIZES } from "../model/fonts";
 import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 
 export type EditorChange = { html: string; text: string; edited: boolean };
+
+/** How far the pointer may move between press and release and still be a click. */
+const CLICK_SLOP_PX = 4;
+
+/**
+ * A plain click's press, per editor, until its release. Kept by the view, not
+ * in the handlers: focusing re-renders, and TipTap then installs fresh
+ * handlers, often between the press and the release.
+ */
+const pressed = new WeakMap<EditorView, { x: number; y: number }>();
+
+/**
+ * Puts the cursor where a click put it, once the click has finished, when
+ * the click is what focused the editor. ProseMirror (prosemirror-view
+ * 1.42.6) checks 20 ms after it gets focus whether it has heard where the
+ * click put the cursor, and if not, puts back the cursor it had before (the
+ * start). On a busy page the browser's selection event comes later than
+ * that, and the text typed next went in at the start (docs/ROADMAP.md →
+ * 0.3.0 → Bugs). Only a plain click: a drag, a double click or a click with
+ * a key held keeps ProseMirror's own handling.
+ */
+export function clickCaretGuard() {
+  return {
+    mousedown(view: EditorView, event: MouseEvent) {
+      const plain =
+        event.button === 0 &&
+        event.detail === 1 &&
+        !event.shiftKey &&
+        !event.altKey &&
+        !event.metaKey &&
+        !event.ctrlKey;
+      if (plain && !view.hasFocus()) pressed.set(view, { x: event.clientX, y: event.clientY });
+      else pressed.delete(view);
+      return false;
+    },
+    mouseup(view: EditorView, event: MouseEvent) {
+      const from = pressed.get(view);
+      pressed.delete(view);
+      if (!from) return false;
+      const moved = Math.hypot(event.clientX - from.x, event.clientY - from.y);
+      if (moved > CLICK_SLOP_PX) return false;
+      const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+      if (!at) return false;
+      const { state } = view;
+      const pos = Math.min(at.pos, state.doc.content.size);
+      if (state.selection.empty && state.selection.from === pos) return false;
+      view.dispatch(state.tr.setSelection(TextSelection.near(state.doc.resolve(pos))));
+      return false;
+    },
+  };
+}
 
 /**
  * The message text, with Gmail's formatting (TipTap). Reports its HTML
@@ -72,6 +125,7 @@ export function useRichEditor(
       // ⌘↩ sends (the form handles it); the editor mustn't also insert a
       // line break, which is what it would otherwise do.
       handleKeyDown: (_view, event) => event.key === "Enter" && primaryKey(event),
+      handleDOMEvents: clickCaretGuard(),
       ...(clear > 0 && {
         scrollThreshold: { top: 0, left: 0, right: 0, bottom: clear },
         scrollMargin: { top: 5, left: 5, right: 5, bottom: clear },
