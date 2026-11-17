@@ -10,7 +10,7 @@
 // Line and branch counts are printed; Rust's branch counts need the nightly
 // compiler, so its regions are printed instead.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { type FileSummary, groupCoverage, percent } from "./coverageAreas";
 
 // Measuring slows the code down (a screensaver test that takes a second
@@ -31,11 +31,20 @@ const summary = JSON.parse(readFileSync("coverage/coverage-summary.json", "utf8"
   string,
   FileSummary
 >;
+// The summary's keys come from the real path of each file, so the folder is
+// resolved the same way.
+const { areas, unmatched } = groupCoverage(summary, realpathSync(process.cwd()));
 console.log("\nTypeScript (Vitest)      files   lines    branches");
-for (const a of groupCoverage(summary, process.cwd())) {
+for (const a of areas) {
   console.log(
     `  ${a.area.padEnd(42)} ${String(a.files).padStart(4)}  ${percent(a.lines).padStart(7)}  ${percent(a.branches).padStart(7)}`,
   );
+}
+if (unmatched.length) {
+  console.error(
+    `coverage: ${unmatched.length} file(s) in no area, so the table above leaves them out; the first: ${unmatched[0]}`,
+  );
+  process.exit(1);
 }
 
 const llvmCov = Bun.spawnSync(["cargo", "llvm-cov", "--version"], {

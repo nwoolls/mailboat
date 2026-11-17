@@ -155,7 +155,8 @@ bun run coverage
 
 Prints how much of the code the tests run, by area: the TypeScript logic
 (`src/**/model`), the components (`src/**/ui`), the build and release
-scripts, and the Rust core (`crates/core`). The components are thin and are
+scripts, the rest of `src` (the app shell, shared code, the platform
+layer), and the Rust core (`crates/core`). The components are thin and are
 exercised by the browser tests, which this doesn't measure, so read their
 number with that in mind. The Rust part needs `cargo-llvm-cov` once:
 

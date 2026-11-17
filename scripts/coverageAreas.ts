@@ -10,6 +10,9 @@ export interface FileSummary {
   branches: { total: number; covered: number };
 }
 
+/** Forward slashes, so Windows paths (`C:\\repo\\src\\…`) match the areas too. */
+const slashes = (path: string) => path.replaceAll("\\", "/");
+
 export interface AreaCoverage {
   area: string;
   files: number;
@@ -27,11 +30,18 @@ export const AREAS: { area: string; matches: (path: string) => boolean }[] = [
 
 /**
  * Sums the summary's files by area. Paths in the summary are absolute; `root`
- * is the repository folder they are made relative to. The summary's own
- * `total` entry and files outside every area are left out.
+ * is the repository folder they are made relative to (pass both through
+ * `realpath` first, so a linked folder such as macOS's /tmp matches). The
+ * summary's own `total` entry is skipped; a file in no area is listed in
+ * `unmatched`, so a wrong root shows up instead of an empty table.
  */
-export function groupCoverage(summary: Record<string, FileSummary>, root: string): AreaCoverage[] {
-  const prefix = root.endsWith("/") ? root : `${root}/`;
+export function groupCoverage(
+  summary: Record<string, FileSummary>,
+  root: string,
+): { areas: AreaCoverage[]; unmatched: string[] } {
+  const base = slashes(root);
+  const prefix = base.endsWith("/") ? base : `${base}/`;
+  const unmatched: string[] = [];
   const areas = AREAS.map(({ area }) => ({
     area,
     files: 0,
@@ -40,9 +50,13 @@ export function groupCoverage(summary: Record<string, FileSummary>, root: string
   }));
   for (const [file, s] of Object.entries(summary)) {
     if (file === "total") continue;
-    const path = file.startsWith(prefix) ? file.slice(prefix.length) : file;
+    const key = slashes(file);
+    const path = key.startsWith(prefix) ? key.slice(prefix.length) : key;
     const i = AREAS.findIndex(({ matches }) => matches(path));
-    if (i === -1) continue;
+    if (i === -1) {
+      unmatched.push(file);
+      continue;
+    }
     const a = areas[i]!;
     a.files++;
     a.lines.total += s.lines.total;
@@ -50,7 +64,7 @@ export function groupCoverage(summary: Record<string, FileSummary>, root: string
     a.branches.total += s.branches.total;
     a.branches.covered += s.branches.covered;
   }
-  return areas;
+  return { areas, unmatched };
 }
 
 /** "92.1%" of a count, or "n/a" when there is nothing to count. */
