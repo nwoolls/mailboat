@@ -303,10 +303,24 @@ impl Scope {
     }
 }
 
+/// RFC 3339 in this computer's zone, with milliseconds only when there are
+/// some: `2026-10-27T10:05:00-04:00`, `…T10:05:00.123-04:00`.
 fn date(ms: i64) -> String {
-    chrono::DateTime::from_timestamp_millis(ms)
-        .map(|d| d.with_timezone(&chrono::Local).to_rfc3339())
-        .unwrap_or_default()
+    let Ok(at) = jiff::Timestamp::from_millisecond(ms) else {
+        return String::new();
+    };
+    let local = at.to_zoned(jiff::tz::TimeZone::system());
+    let millis = ms.rem_euclid(1000);
+    let fraction = if millis == 0 {
+        String::new()
+    } else {
+        format!(".{millis:03}")
+    };
+    format!(
+        "{}{fraction}{}",
+        local.strftime("%Y-%m-%dT%H:%M:%S"),
+        local.strftime("%:z")
+    )
 }
 
 fn person(a: &Address) -> String {
@@ -945,6 +959,26 @@ impl ServerHandler for MailServer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Dates read as RFC 3339, as they did before the move to jiff: this computer's zone, an
+    /// offset like `-05:00`, and milliseconds only when there are some.
+    #[test]
+    fn dates_are_rfc3339_with_milliseconds_only_when_there_are_some() {
+        let whole = date(3_000);
+        let fraction = date(1_234);
+        let offset = |s: &str| {
+            let tail = &s[s.len() - 6..];
+            assert!(
+                matches!(tail.as_bytes()[0], b'+' | b'-') && tail.as_bytes()[3] == b':',
+                "{s}"
+            );
+        };
+        offset(&whole);
+        offset(&fraction);
+        assert_eq!(whole.len(), "1970-01-01T00:00:03+00:00".len(), "{whole}");
+        assert!(fraction.contains(":01.234"), "{fraction}");
+        assert_eq!(date(i64::MAX), "");
+    }
 
     #[test]
     fn reads_addresses_with_and_without_names() {

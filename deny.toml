@@ -18,13 +18,11 @@ ignore = [
   # `paste` is unmaintained, not vulnerable, and comes in through Tauri's
   # dependencies (no upgrade exists). Revisit when Tauri drops it.
   { id = "RUSTSEC-2024-0436", reason = "unmaintained only; transitive through Tauri" },
-  # `chrono` and `chrono-tz` are unmaintained (2026-11), not vulnerable, with
-  # no maintained release to move to. `chrono` comes in through oauth2 (Google
-  # sign-in), icalendar (invitations), rmcp (AI apps) and schemars as well as
-  # the app's own code; the app's own dates and time zones are moving to `jiff`
-  # (docs/ROADMAP.md → 0.3.0), which removes `chrono-tz` and the app's direct use.
-  { id = "RUSTSEC-2026-0543", reason = "chrono: unmaintained only; also through oauth2, icalendar, rmcp, schemars" },
-  { id = "RUSTSEC-2026-0555", reason = "chrono-tz: unmaintained only; the app's own use is moving to jiff" },
+  # `chrono` is unmaintained (2026-11), not vulnerable, with no maintained
+  # release to move to. It comes in through oauth2 (Google sign-in),
+  # icalendar (invitations), rmcp (AI apps) and schemars; the app's own dates
+  # and time zones use `jiff` (and `chrono-tz` is gone with that move).
+  { id = "RUSTSEC-2026-0543", reason = "chrono: unmaintained only; through oauth2, icalendar, rmcp, schemars" },
 ]
 
 [licenses]

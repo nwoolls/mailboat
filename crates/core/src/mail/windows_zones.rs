@@ -1,6 +1,6 @@
 //! Windows time zone names (as Outlook writes them in invitations, e.g.
 //! "Central Standard Time") to IANA names (`America/Chicago`), so
-//! `chrono-tz` can place them. Each name maps to its zone for territory
+//! `jiff` can place them. Each name maps to its zone for territory
 //! "001", the one CLDR gives as the zone's default.
 //!
 //! Generated from Unicode CLDR's `common/supplemental/windowsZones.xml`
@@ -236,9 +236,9 @@ mod tests {
     }
 
     #[test]
-    fn every_zone_is_one_chrono_tz_knows() {
+    fn every_zone_is_one_the_time_zone_database_knows() {
         for (windows, iana) in WINDOWS_ZONES {
-            assert!(iana.parse::<chrono_tz::Tz>().is_ok(), "{windows} -> {iana}");
+            assert!(jiff::tz::TimeZone::get(iana).is_ok(), "{windows} -> {iana}");
         }
     }
 

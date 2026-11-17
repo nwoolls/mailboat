@@ -7,7 +7,7 @@
 //! An invitation not on the calendar yet (some from outside Google) is
 //! added first (`events.import`), then answered.
 
-use chrono::{DateTime, NaiveDate};
+use jiff::{civil::Date, Timestamp};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -107,20 +107,20 @@ fn status_for(answer: Answer) -> &'static str {
 
 fn moment_of(t: &EventTime) -> Option<Moment> {
     if let Some(dt) = &t.date_time {
-        return DateTime::parse_from_rfc3339(dt).ok().map(|d| Moment::At {
-            ms: d.timestamp_millis(),
-        });
+        return crate::dates::rfc3339_millis(dt).map(|ms| Moment::At { ms });
     }
     t.date
         .as_ref()
-        .filter(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").is_ok())
+        .filter(|d| Date::strptime("%Y-%m-%d", d).is_ok())
         .map(|d| Moment::AllDay { date: d.clone() })
 }
 
+/// UTC, to the second: `2026-10-27T15:00:00Z`.
 fn rfc3339(ms: i64) -> String {
-    DateTime::from_timestamp_millis(ms)
-        .unwrap_or_default()
-        .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+    Timestamp::from_millisecond(ms)
+        .unwrap_or(Timestamp::UNIX_EPOCH)
+        .strftime("%Y-%m-%dT%H:%M:%SZ")
+        .to_string()
 }
 
 /// A Calendar `start`/`end` for a moment from the email.

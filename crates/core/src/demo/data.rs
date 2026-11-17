@@ -4,7 +4,8 @@
 
 use std::collections::HashMap;
 
-use chrono::{Local, TimeZone};
+use jiff::tz::{AmbiguousOffset, TimeZone};
+use jiff::{Timestamp, ToSpan};
 use mail_builder::headers::address::Address as MimeAddress;
 use mail_builder::MessageBuilder;
 use serde::Deserialize;
@@ -284,18 +285,20 @@ fn ics_time(spec: &str, now_ms: u64) -> Option<String> {
         .parse()
         .ok()?;
     let (hour, minute) = time.split_once(':')?;
-    let today = Local
-        .timestamp_millis_opt(now_ms as i64)
-        .single()?
-        .date_naive();
-    let day = today + chrono::Duration::days(days);
-    let local = day.and_hms_opt(hour.parse().ok()?, minute.parse().ok()?, 0)?;
-    let at = Local.from_local_datetime(&local).earliest()?;
-    Some(
-        at.with_timezone(&chrono::Utc)
-            .format("%Y%m%dT%H%M%SZ")
-            .to_string(),
-    )
+    let zone = TimeZone::system();
+    let today = Timestamp::from_millisecond(i64::try_from(now_ms).ok()?)
+        .ok()?
+        .to_zoned(zone.clone())
+        .date();
+    let day = today.checked_add(days.days()).ok()?;
+    let local = day.at(hour.parse().ok()?, minute.parse().ok()?, 0, 0);
+    // A time in a spring-forward gap has none; a fall-back one takes the earlier.
+    let ambiguous = zone.to_ambiguous_timestamp(local);
+    if matches!(ambiguous.offset(), AmbiguousOffset::Gap { .. }) {
+        return None;
+    }
+    let at = ambiguous.earlier().ok()?;
+    Some(at.strftime("%Y%m%dT%H%M%SZ").to_string())
 }
 
 #[cfg(test)]

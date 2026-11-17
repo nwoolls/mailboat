@@ -5,14 +5,15 @@
 //! card itself goes through Google Calendar's API, which needs the event's
 //! `uid` to find it; when an invitation isn't on the calendar, it's added
 //! from what's read here, or answered by email. Parsing uses the
-//! `icalendar` crate; times with a time zone are resolved with `chrono-tz`.
+//! `icalendar` crate; times with a time zone are resolved with `jiff`, from
+//! the system's time zone database (bundled into the app on Windows).
 
 use std::str::FromStr;
 
-use chrono::{NaiveDateTime, TimeZone};
 use icalendar::{
     Calendar, CalendarDateTime, Component, DatePerhapsTime, EventLike, EventStatus, PartStat,
 };
+use jiff::tz::{AmbiguousOffset, TimeZone};
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -165,7 +166,12 @@ pub fn reply_ics(invite: &Invite, you: &str, answer: Answer) -> String {
     event
         .uid(&invite.uid)
         .sequence(invite.sequence)
-        .timestamp(chrono::Utc::now())
+        .add_property(
+            "DTSTAMP",
+            jiff::Timestamp::now()
+                .strftime("%Y%m%dT%H%M%SZ")
+                .to_string(),
+        )
         .append_multi_property(
             Property::new("ATTENDEE", format!("mailto:{you}"))
                 .add_parameter("PARTSTAT", partstat)
@@ -196,9 +202,9 @@ fn start_property(start: &Moment) -> icalendar::Property {
             .done(),
         Moment::At { ms } => Property::new(
             "DTSTART",
-            chrono::DateTime::from_timestamp_millis(*ms)
-                .unwrap_or_default()
-                .format("%Y%m%dT%H%M%SZ")
+            jiff::Timestamp::from_millisecond(*ms)
+                .unwrap_or(jiff::Timestamp::UNIX_EPOCH)
+                .strftime("%Y%m%dT%H%M%SZ")
                 .to_string(),
         ),
         Moment::Local { time, zone } => {
@@ -228,35 +234,42 @@ fn moment(value: DatePerhapsTime) -> Option<Moment> {
         DatePerhapsTime::DateTime(CalendarDateTime::Utc(at)) => Moment::At {
             ms: at.timestamp_millis(),
         },
-        DatePerhapsTime::DateTime(CalendarDateTime::Floating(time)) => local(time, None),
+        DatePerhapsTime::DateTime(CalendarDateTime::Floating(time)) => {
+            local(time.format(LOCAL).to_string(), None)
+        }
         DatePerhapsTime::DateTime(CalendarDateTime::WithTimezone { date_time, tzid }) => {
+            let time = date_time.format(LOCAL).to_string();
             // An IANA name, or a Windows one as Outlook writes them
             // ("Eastern Standard Time"), placed through CLDR's table.
-            let zone = tzid.parse::<chrono_tz::Tz>().or_else(|e| {
-                super::windows_zones::iana_for(&tzid)
-                    .ok_or(e)
-                    .and_then(str::parse::<chrono_tz::Tz>)
+            let zone = TimeZone::get(&tzid).ok().or_else(|| {
+                super::windows_zones::iana_for(&tzid).and_then(|iana| TimeZone::get(iana).ok())
             });
-            match zone {
+            match (zone, crate::dates::civil(&time)) {
                 // A time that doesn't exist (in a spring-forward gap) has
                 // no answer; ambiguous ones (fall back) take the earlier.
-                Ok(zone) => match zone.from_local_datetime(&date_time).earliest() {
-                    Some(at) => Moment::At {
-                        ms: at.timestamp_millis(),
-                    },
-                    None => local(date_time, Some(tzid)),
-                },
-                Err(_) => local(date_time, Some(tzid)),
+                (Some(zone), Some((civil, leap))) => {
+                    let ambiguous = zone.to_ambiguous_timestamp(civil);
+                    match (ambiguous.offset(), ambiguous.earlier()) {
+                        (AmbiguousOffset::Gap { .. }, _) | (_, Err(_)) => local(time, Some(tzid)),
+                        (_, Ok(at)) => match at.checked_add(leap) {
+                            Ok(at) => Moment::At {
+                                ms: crate::dates::millis(at),
+                            },
+                            Err(_) => local(time, Some(tzid)),
+                        },
+                    }
+                }
+                _ => local(time, Some(tzid)),
             }
         }
     })
 }
 
-fn local(time: NaiveDateTime, zone: Option<String>) -> Moment {
-    Moment::Local {
-        time: time.format("%Y-%m-%dT%H:%M:%S").to_string(),
-        zone,
-    }
+/// How a time without a zone is written: `2026-10-27T10:00:00`.
+const LOCAL: &str = "%Y-%m-%dT%H:%M:%S";
+
+fn local(time: String, zone: Option<String>) -> Moment {
+    Moment::Local { time, zone }
 }
 
 /// `mailto:Someone@Example.com` → `someone@example.com`.
@@ -388,6 +401,74 @@ END:VCALENDAR\r
             Moment::Local {
                 time: "2026-10-20T14:00:00".into(),
                 zone: Some("Lunar Standard Time".into()),
+            }
+        );
+    }
+
+    /// Daylight saving's edges, in New York (2026: forward on 8 March at
+    /// 02:00, back on 1 November at 02:00).
+    #[test]
+    fn times_at_daylight_savings_edges() {
+        let at = |when: &str| {
+            parse(
+                &GOOGLE.replace(
+                    "TZID=America/New_York:20261020T140000",
+                    &format!("TZID=America/New_York:{when}"),
+                ),
+                &[],
+            )
+            .unwrap()
+            .start
+        };
+        // 02:30 on the spring-forward day doesn't exist: kept as written.
+        assert_eq!(
+            at("20260308T023000"),
+            Moment::Local {
+                time: "2026-03-08T02:30:00".into(),
+                zone: Some("America/New_York".into()),
+            }
+        );
+        // 01:30 on the fall-back day happens twice: the earlier, in
+        // daylight time (UTC−4), which is 05:30 UTC.
+        assert_eq!(
+            at("20261101T013000"),
+            Moment::At {
+                ms: 1_793_511_000_000
+            }
+        );
+        // Review: a leap second named with a zone is the same moment as
+        // when written in UTC (which `icalendar` reads itself): the next
+        // second, not `:59`.
+        let zoned = parse(
+            &GOOGLE.replace(
+                "TZID=America/New_York:20261020T140000",
+                "TZID=UTC:20161231T235960",
+            ),
+            &[],
+        )
+        .unwrap()
+        .start;
+        let utc = parse(
+            &GOOGLE.replace(
+                "DTSTART;TZID=America/New_York:20261020T140000",
+                "DTSTART:20161231T235960Z",
+            ),
+            &[],
+        )
+        .unwrap()
+        .start;
+        assert_eq!(
+            zoned,
+            Moment::At {
+                ms: 1_483_228_800_000
+            }
+        );
+        assert_eq!(zoned, utc);
+        // And an ordinary time: 14:00 in October is 18:00 UTC.
+        assert_eq!(
+            at("20261020T140000"),
+            Moment::At {
+                ms: 1_792_519_200_000
             }
         );
     }

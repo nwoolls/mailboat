@@ -649,10 +649,11 @@ async fn a_conversations_emails_in_spam_or_trash_stay_hidden() {
             assert_eq!(mixed["starred"], false, "{what}{shown}");
             assert_eq!(
                 mixed["date"],
-                json!(chrono::DateTime::from_timestamp_millis(3_000)
+                json!(jiff::Timestamp::from_millisecond(3_000)
                     .unwrap()
-                    .with_timezone(&chrono::Local)
-                    .to_rfc3339()),
+                    .to_zoned(jiff::tz::TimeZone::system())
+                    .strftime("%Y-%m-%dT%H:%M:%S%:z")
+                    .to_string()),
                 "{what}{shown}"
             );
         }

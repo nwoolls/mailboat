@@ -52,20 +52,14 @@ id = "RUSTSEC-2026-0372"
 ignoreUntil = 2027-05-16
 reason = "zvariant_derive: unmaintained only; built only for Linux (notifications), or not at all (keyring's unused secret-service)"
 
-# chrono and chrono-tz: unmaintained (2026-11), not vulnerable, and no
-# maintained release to move to. chrono also comes in through oauth2 (Google
-# sign-in), icalendar (invitations), rmcp (AI apps) and schemars. The app's
-# own dates and time zones are moving to jiff (docs/ROADMAP.md → 0.3.0),
-# which removes chrono-tz. Also ignored in deny.toml.
+# chrono: unmaintained (2026-11), not vulnerable, and no maintained release
+# to move to. It comes in through oauth2 (Google sign-in), icalendar
+# (invitations), rmcp (AI apps) and schemars; the app's own dates and time
+# zones use jiff. Also ignored in deny.toml.
 [[IgnoredVulns]]
 id = "RUSTSEC-2026-0543"
 ignoreUntil = 2027-05-17
-reason = "chrono: unmaintained only; also through oauth2, icalendar, rmcp and schemars"
-
-[[IgnoredVulns]]
-id = "RUSTSEC-2026-0555"
-ignoreUntil = 2027-05-17
-reason = "chrono-tz: unmaintained only; the app's own time zones are moving to jiff"
+reason = "chrono: unmaintained only; through oauth2, icalendar, rmcp and schemars"
 
 # picomatch 4.0.7: a regular-expression slowdown (ReDoS) on crafted glob
 # patterns, with no fixed release yet. Only build and test tools use it

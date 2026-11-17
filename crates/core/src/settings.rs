@@ -110,9 +110,8 @@ impl QuietHours {
 
     /// Whether it's quiet now, by this Mac's clock.
     pub fn covers_now(&self) -> bool {
-        use chrono::Timelike;
-        let now = chrono::Local::now();
-        self.covers((now.hour() * 60 + now.minute()) as u16)
+        let now = jiff::Zoned::now();
+        self.covers((i32::from(now.hour()) * 60 + i32::from(now.minute())) as u16)
     }
 }
 
