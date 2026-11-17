@@ -6354,6 +6354,15 @@ Privacy and the policy.*
       redirect to plain HTTP. It is now HTTPS only, as the Google client
       is, and a test checks that it refuses a plain-HTTP address before
       connecting.
+- [x] A `SAFETY:` comment on every `unsafe` block *(found while drafting
+      the OpenSSF Best Practices answers, 2026-11-16)*. The desktop profile
+      asks how memory safety is kept, and most of the app's `unsafe` code
+      (calls into macOS and Windows) said why it is sound; the Dock icon,
+      the email menu's method swap and the notification delegate didn't.
+      They do now, and Clippy's `undocumented_unsafe_blocks` lint is on for
+      the workspace, so CI fails an `unsafe` block without one (checked by
+      removing a comment: Clippy then fails). The Windows-only blocks pass
+      it too (`scripts/windows.sh check`).
 - [ ] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans

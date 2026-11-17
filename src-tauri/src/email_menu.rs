@@ -62,6 +62,13 @@ mod mac {
 
     type WillOpenMenu = unsafe extern "C-unwind" fn(&AnyObject, Sel, &NSMenu, &NSEvent);
 
+    /// Our `willOpenMenu:withEvent:`, installed on the web view's class.
+    ///
+    /// # Safety
+    ///
+    /// Called only by the Objective-C runtime, as that method (`v@:@@`):
+    /// `this` is the web view, on the main thread, and `menu` and `event`
+    /// are the live objects AppKit passes.
     unsafe extern "C-unwind" fn will_open_menu(
         this: &AnyObject,
         cmd: Sel,
@@ -71,6 +78,8 @@ mod mac {
         if let Some(original) = ORIGINAL.get() {
             // SAFETY: the method replaced had this signature (v@:@@).
             let original: WillOpenMenu = unsafe { std::mem::transmute(*original) };
+            // SAFETY: called with the arguments the runtime gave us, as the
+            // method expects.
             unsafe { original(this, cmd, menu, event) };
         }
         let ids: Vec<String> = menu
@@ -133,6 +142,12 @@ mod mac {
 
     type Action = unsafe extern "C-unwind" fn(&AnyObject, Sel, *const AnyObject);
 
+    /// The `appTranslate:` action "Translate selection" sends.
+    ///
+    /// # Safety
+    ///
+    /// Called only by the Objective-C runtime, as that action (`v@:@`). It
+    /// reads none of its arguments.
     unsafe extern "C-unwind" fn translate_action(
         _this: &AnyObject,
         _cmd: Sel,
@@ -169,13 +184,20 @@ mod mac {
             let class_ptr = (class as *const AnyClass).cast_mut();
             // Added to Wry's subclass (overriding WKWebView's), or, if the
             // subclass already has its own, replacing that one.
+            // SAFETY: `class_ptr` is a live, registered class; `ours` has
+            // the signature the type encoding "v@:@@" says, which is the
+            // replaced method's; on the main thread, before any menu opens.
             let added = unsafe { ffi::class_addMethod(class_ptr, sel, ours, c"v@:@@".as_ptr()) };
             if !added.as_bool() {
+                // SAFETY: `method` is that class's own method for this
+                // selector, and `ours` has its signature (above).
                 unsafe { ffi::method_setImplementation(method, ours) };
             }
             // The action "Translate selection" sends to the web view.
             // SAFETY: as above; `translate_action` matches "v@:@".
             let action: Imp = unsafe { std::mem::transmute(translate_action as Action) };
+            // SAFETY: as for `willOpenMenu:withEvent:`; "v@:@" is
+            // `translate_action`'s signature, and the selector is new.
             unsafe {
                 ffi::class_addMethod(class_ptr, sel!(appTranslate:), action, c"v@:@".as_ptr())
             };

@@ -15,6 +15,9 @@ doctest = false
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[lints]
+workspace = true
+
 [dependencies]
 mail-core = { path = "../crates/core" }
 tauri = { version = "2", features = ["macos-private-api"] }
