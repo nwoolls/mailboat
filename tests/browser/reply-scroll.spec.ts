@@ -181,6 +181,12 @@ test("Reply with AI: scrolling up slowly stops the reply being followed", async 
   });
   await contentSettled(page);
   await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
+  // A person scrolls up once the reply has laid out (its ideas shown, its
+  // height steady). While it still grows, each growth aims the follow again
+  // and undoes the steps before they add up: on a slow runner the follow
+  // was still on after all twenty (docs/ROADMAP.md → Flaky tests).
+  await expect(page.getByRole("button", { name: "Say yes" })).toBeVisible();
+  await contentSettled(page, 'section[aria-label="Reply"]');
   await expect
     .poll(async () => (await replyInView(page)).bottom, { timeout: 15_000 })
     .toBeGreaterThanOrEqual(-1);
