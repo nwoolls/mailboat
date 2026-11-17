@@ -4,6 +4,7 @@
 # everything and stays the rule before every commit.
 #
 # Always: the app's name only in brand.json (scripts/check-brand.ts).
+# Always: the version README.md names (scripts/check-readme.ts).
 # Web changes: format, lint, types, Vitest (seconds).
 # Rust changes: format, clippy, the core unit tests, the multi-account
 # guard test and the app layer's tests (which include the bindings check).
@@ -24,6 +25,10 @@ fi
 
 # Fast, and any change can bring the app's name back.
 bun run check:brand
+
+# Fast, and README.md is docs, which the web checks below skip: its version
+# notice against package.json (scripts/readme.ts).
+bun run check:readme
 
 # Fast, and any change can bring real mail details in (AGENTS.md → Real mail
 # never goes in the repository).

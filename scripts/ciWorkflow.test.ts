@@ -104,6 +104,7 @@ const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
       "bun run lint": unlessDocs,
       "bun run typecheck": appOnly,
       "bun run check:brand": always,
+      "bun run check:readme": always,
       "bun run check:website": unlessDocs,
       "bun run check:privacy": always,
       "bun run check:security": always,

@@ -78,6 +78,9 @@ jobs:
       - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site'
         run: bun run typecheck
       - run: bun run check:brand
+      # The version the README names against package.json (scripts/readme.ts).
+      # Always: a README change is a docs change.
+      - run: bun run check:readme
       # The website's links, files and what its security policy allows.
       - if: needs.changes.outputs.kind != 'docs'
         run: bun run check:website
