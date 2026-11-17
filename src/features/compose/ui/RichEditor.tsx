@@ -31,7 +31,7 @@ import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 
 export type EditorChange = { html: string; text: string; edited: boolean };
 
-/** How far the pointer may move between press and release and still be a click. */
+/** How far the pointer may move during a press and still be a click. */
 const CLICK_SLOP_PX = 4;
 
 /**
@@ -48,8 +48,11 @@ const pressed = new WeakMap<EditorView, { x: number; y: number }>();
  * click put the cursor, and if not, puts back the cursor it had before (the
  * start). On a busy page the browser's selection event comes later than
  * that, and the text typed next went in at the start (docs/ROADMAP.md →
- * 0.3.0 → Bugs). Only a plain click: a drag, a double click or a click with
- * a key held keeps ProseMirror's own handling.
+ * 0.3.0 → Bugs). Only a plain click: a double click, a click with a key
+ * held, or a press that moves more than `CLICK_SLOP_PX` at any point (a
+ * drag, even one that comes back) keeps ProseMirror's own handling, and so
+ * does a release that finds anything but a cursor (a range, a table's
+ * cells, an image), since the race only ever leaves a cursor.
  */
 export function clickCaretGuard() {
   return {
@@ -61,21 +64,43 @@ export function clickCaretGuard() {
         !event.altKey &&
         !event.metaKey &&
         !event.ctrlKey;
-      if (plain && !view.hasFocus()) pressed.set(view, { x: event.clientX, y: event.clientY });
-      else pressed.delete(view);
+      pressed.delete(view);
+      if (!plain || view.hasFocus()) return false;
+      const from = { x: event.clientX, y: event.clientY };
+      pressed.set(view, from);
+      // Watched on the window, so a drag that leaves the editor counts too.
+      const win = view.dom.ownerDocument.defaultView ?? window;
+      const move = (e: MouseEvent) => {
+        if (Math.hypot(e.clientX - from.x, e.clientY - from.y) > CLICK_SLOP_PX) {
+          if (pressed.get(view) === from) pressed.delete(view);
+          stop();
+        }
+      };
+      // After the editor's own release (the window hears it last), whether
+      // the release was in the editor or not.
+      const stop = () => {
+        win.removeEventListener("mousemove", move, true);
+        win.removeEventListener("mouseup", released);
+      };
+      const released = () => {
+        if (pressed.get(view) === from) pressed.delete(view);
+        stop();
+      };
+      win.addEventListener("mousemove", move, true);
+      win.addEventListener("mouseup", released);
       return false;
     },
     mouseup(view: EditorView, event: MouseEvent) {
       const from = pressed.get(view);
       pressed.delete(view);
       if (!from) return false;
-      const moved = Math.hypot(event.clientX - from.x, event.clientY - from.y);
-      if (moved > CLICK_SLOP_PX) return false;
+      if (Math.hypot(event.clientX - from.x, event.clientY - from.y) > CLICK_SLOP_PX) return false;
+      const { state } = view;
+      if (!(state.selection instanceof TextSelection) || !state.selection.empty) return false;
       const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
       if (!at) return false;
-      const { state } = view;
       const pos = Math.min(at.pos, state.doc.content.size);
-      if (state.selection.empty && state.selection.from === pos) return false;
+      if (state.selection.from === pos) return false;
       view.dispatch(state.tr.setSelection(TextSelection.near(state.doc.resolve(pos))));
       return false;
     },
