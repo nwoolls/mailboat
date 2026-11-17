@@ -6418,6 +6418,13 @@ Privacy and the policy.*
       on purpose are turned off there only (see the decisions table), and
       the rest were fixed, among them a ref and two effects in the
       browser-test harness that came after an early return)*
+      *(2026-11-16: test coverage is now measured, for the questionnaire's
+      `test_most`: `bun run coverage` prints it by area (Vitest's V8
+      coverage, and `cargo llvm-cov` over `crates/core`), measured on
+      demand, not enforced. No coverage badge: it needs an outside service
+      or CI write access, and one number for all of `src` misleads, since
+      the components are covered by the browser tests, which it doesn't
+      count)*
       *(2026-11-16: the passing badge was awarded (owner), and the README
       shows it (https://www.bestpractices.dev/projects/16828). Two answers
       rest on work in open pull requests: that warnings are addressed (the
