@@ -6468,6 +6468,26 @@ Privacy and the policy.*
       the workspace, so CI fails an `unsafe` block without one (checked by
       removing a comment: Clippy then fails). The Windows-only blocks pass
       it too (`scripts/windows.sh check`).
+- [x] New advisories on 2026-11-17 stopped `cargo deny`, and with it every
+      pull request: `chrono` (RUSTSEC-2026-0543) and `chrono-tz`
+      (RUSTSEC-2026-0555) are unmaintained, not vulnerable, with no
+      maintained release to move to. osv-scanner also reports `picomatch`
+      4.0.7 (GHSA-fc5q-39xc-vjpf: a regular-expression slowdown on crafted
+      glob patterns, no fixed release yet), which `bun audit` doesn't. Each
+      is ignored with its reason: the two `chrono` advisories in
+      `deny.toml` and `osv-scanner.toml` (six months), `picomatch` in
+      `osv-scanner.toml` (three months, to pick up a fix). `chrono` also
+      comes in through `oauth2` (Google sign-in), `icalendar` (invitations),
+      `rmcp` (AI apps) and `schemars`, so it stays until they move; only
+      build and test tools use `picomatch`, on the project's own patterns,
+      and the bill of materials marks it build-only.
+- [ ] Move the app's own dates and time zones from `chrono` and `chrono-tz`
+      to `jiff`, a maintained library with time zones built in
+      *(owner, 2026-11-17, after the advisory above)*. Removes `chrono-tz`
+      and the app's direct use of `chrono`; `chrono` stays until `oauth2`,
+      `icalendar`, `rmcp` and `schemars` drop it. Calendar invitations'
+      times and time zones are the riskiest part: their tests must pass
+      unchanged.
 - [ ] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
