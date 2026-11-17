@@ -24,7 +24,7 @@ A fast, keyboard-first Gmail client for macOS and Windows. Free and open source.
 
 </div>
 
-> **Early development.** Version 0.1.0 is out, with signed downloads for Mac
+> **Early development.** Version 0.2.1 is out, with signed downloads for Mac
 > (Apple silicon) and Windows on the
 > [releases page](https://github.com/nwoolls/mailboat/releases/latest), and it
 > offers updates that you install when you choose. Expect rough edges. You bring your own Google credentials,
