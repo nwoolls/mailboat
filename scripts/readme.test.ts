@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { readmeVersionProblems } from "./readme";
 
-describe("readmeVersionProblems", () => {
-  const readme = (v: string) =>
-    `# App\n\n> **Early development.** Version ${v} is out, with signed downloads for Mac\n> (Apple silicon) and Windows.\n`;
+const readme = (v: string) =>
+  `# App\n\n> **Early development.** Version ${v} is out, with signed downloads for Mac\n> (Apple silicon) and Windows.\n`;
 
+describe("readmeVersionProblems", () => {
   it("passes when the README names the released version", () => {
     expect(readmeVersionProblems(readme("0.2.1"), "0.2.1")).toEqual([]);
     expect(readmeVersionProblems(readme("1.0.0"), "1.0.0")).toEqual([]);
