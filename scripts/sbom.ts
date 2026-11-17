@@ -315,11 +315,13 @@ export function npmComponents(
 export function bom(o: {
   name: string;
   version: string;
+  /** The Rust target of the download this describes (`aarch64-apple-darwin`). */
+  target: string;
   components: Component[];
   timestamp: string;
   serial: string;
 }) {
-  const app = `pkg:generic/${o.name.toLowerCase()}@${o.version}`;
+  const app = `pkg:generic/${o.name.toLowerCase()}@${o.version}?target=${o.target}`;
   return {
     bomFormat: "CycloneDX",
     specVersion: "1.5",
@@ -333,6 +335,7 @@ export function bom(o: {
         name: o.name,
         version: o.version,
         licenses: [{ expression: "GPL-3.0-only" }],
+        properties: [{ name: "build:target", value: o.target }],
       },
     },
     components: o.components.toSorted((a, b) => a.purl.localeCompare(b.purl)),

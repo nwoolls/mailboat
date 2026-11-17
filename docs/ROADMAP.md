@@ -6217,6 +6217,17 @@ Privacy and the policy.*
       app has none. CI's macOS Rust job makes it too, on every pull request
       that changes the app, so a dependency without a license fails there
       rather than on release day (both reviews))*
+      *(2026-11-17: one bill of materials per download, after checking the
+      0.3.0-beta.0 release (owner). The platforms ship different Rust crates
+      (most are shared; some only on macOS, some only on Windows, and
+      Windows x64 and ARM64 differ by a few), so the one file listed a
+      crate as shipped if any platform shipped it. The release now carries
+      `<App>_<version>_aarch64.cdx.json`, `_x64` and `_arm64`, each naming
+      its Rust target and listing only that build's crates, and the
+      publish job wants all three. The job moved to macOS: a build
+      script's own crates follow the computer that builds, every release
+      build runs on a Mac, and the Linux job had left out two that Tauri's
+      build uses there, `swift-rs` and `base64`; they're listed now)*
 - [x] A setting for what new-mail notifications show (DASA 1.10.2: no
       sensitive data in notifications). Today the title is the sender and
       the body is the subject, plus the account's address when there is

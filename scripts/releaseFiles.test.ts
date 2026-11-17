@@ -8,9 +8,13 @@ import {
   intotoLines,
   isInstaller,
   isPrerelease,
+  isSbom,
   isVersion,
+  PLATFORMS,
   platformOf,
   publishable,
+  SBOM_DOWNLOADS,
+  sbomName,
   stableName,
   tagFor,
   tagProblem,
@@ -40,7 +44,9 @@ describe("what goes on the release", () => {
       "App_0.1.0_x64-setup.exe.sig",
       "App_0.1.0_arm64-setup.exe",
       "App_0.1.0_arm64-setup.exe.sig",
-      "App_0.1.0.cdx.json",
+      "App_0.1.0_aarch64.cdx.json",
+      "App_0.1.0_x64.cdx.json",
+      "App_0.1.0_arm64.cdx.json",
     ]) {
       expect(publishable(file)).toBe(true);
     }
@@ -50,6 +56,26 @@ describe("what goes on the release", () => {
     expect(publishable("App.app.zip")).toBe(false);
     expect(publishable("App_0.1.0_aarch64.dmg.sig")).toBe(false);
     expect(publishable("notes.txt")).toBe(false);
+  });
+});
+
+describe("a bill of materials per download", () => {
+  it("names each after the download it describes, beside it, for every platform", () => {
+    const downloads = [
+      "App_0.1.0_aarch64.dmg",
+      "App_0.1.0_x64-setup.exe",
+      "App_0.1.0_arm64-setup.exe",
+    ];
+    for (const d of SBOM_DOWNLOADS) {
+      const name = sbomName("App", "0.1.0", d);
+      // It shares the download's name up to the platform's word.
+      expect(downloads.some((f) => f.startsWith(name.replace(".cdx.json", "")))).toBe(true);
+      expect(isSbom(name) && publishable(name)).toBe(true);
+      // Never mistaken for an update file or an installer.
+      expect(platformOf(name)).toBeNull();
+      expect(stableName(name, "0.1.0")).toBeNull();
+    }
+    expect(SBOM_DOWNLOADS.map((d) => d.platform).toSorted()).toEqual([...PLATFORMS].toSorted());
   });
 });
 

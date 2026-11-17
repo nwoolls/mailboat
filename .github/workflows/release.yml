@@ -315,15 +315,18 @@ jobs:
         if: always()
         run: az logout || true
 
-  # The software bill of materials (CycloneDX, DASA 1.5.1), made by our own
-  # script from the lockfiles (`scripts/sbom.ts`), in a job of its own:
-  # reading packages' licenses needs `bun install`, which the publish job,
-  # with its write access, shouldn't run.
+  # The software bills of materials (CycloneDX, DASA 1.5.1), one per
+  # download, made by our own script from the lockfiles (`scripts/sbom.ts`),
+  # in a job of its own: reading packages' licenses needs `bun install`,
+  # which the publish job, with its write access, shouldn't run. On a Mac,
+  # as every build above is (Windows is cross-built there): the crates a
+  # build script uses follow the computer that builds, so only a Mac lists
+  # the ones the release used.
   sbom:
-    name: Software bill of materials
+    name: Software bills of materials
     if: github.ref_type == 'tag'
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 20
     permissions:
       contents: read
@@ -338,7 +341,7 @@ jobs:
       # Packages' own install scripts don't run: only their files are read.
       - run: bun install --frozen-lockfile --ignore-scripts
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
-      - name: Make the bill of materials
+      - name: Make the bills of materials
         env:
           TAG: ${{ github.ref_name }}
         run: bun scripts/make-sbom.ts --version "${TAG#v}" --out sbom

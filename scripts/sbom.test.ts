@@ -196,6 +196,7 @@ describe("the document", () => {
     const doc = bom({
       name: "App",
       version: "1.2.3",
+      target: "aarch64-apple-darwin",
       timestamp: "2026-11-15T00:00:00.000Z",
       serial: "00000000-0000-4000-8000-000000000000",
       components: [
@@ -222,7 +223,13 @@ describe("the document", () => {
       specVersion: "1.5",
       serialNumber: "urn:uuid:00000000-0000-4000-8000-000000000000",
       metadata: {
-        component: { type: "application", name: "App", version: "1.2.3" },
+        component: {
+          type: "application",
+          "bom-ref": "pkg:generic/app@1.2.3?target=aarch64-apple-darwin",
+          name: "App",
+          version: "1.2.3",
+          properties: [{ name: "build:target", value: "aarch64-apple-darwin" }],
+        },
       },
     });
     expect(doc.components.map((c) => c.name)).toEqual(["a", "b"]);

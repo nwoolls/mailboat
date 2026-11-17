@@ -52,9 +52,37 @@ export function stableName(file: string, version: string): string | null {
   return file.replace(marker, "_");
 }
 
-/** The software bill of materials (`make-sbom.ts`). */
+/** A software bill of materials (`make-sbom.ts`). */
 export function isSbom(file: string): boolean {
   return file.endsWith(".cdx.json");
+}
+
+/**
+ * The downloads that each get a software bill of materials: the platform the
+ * release builds for, its Rust target, and the word its files end with
+ * (`App_0.1.0_aarch64.dmg`, `App_0.1.0_x64-setup.exe`), so each bill of
+ * materials sits beside the download it describes.
+ */
+export const SBOM_DOWNLOADS = [
+  { platform: "darwin-aarch64", target: "aarch64-apple-darwin", suffix: "aarch64" },
+  { platform: "windows-x86_64", target: "x86_64-pc-windows-msvc", suffix: "x64" },
+  { platform: "windows-aarch64", target: "aarch64-pc-windows-msvc", suffix: "arm64" },
+] as const satisfies readonly { platform: Platform; target: string; suffix: string }[];
+
+/** A download's bill of materials: `App_0.1.0_aarch64.cdx.json`. */
+export function sbomName(app: string, version: string, download: { suffix: string }): string {
+  return `${app}_${version}_${download.suffix}.cdx.json`;
+}
+
+/**
+ * What's wrong with a release's bills of materials, or null: there must be
+ * one per download for this version (`SBOM_DOWNLOADS`), and no others.
+ */
+export function sbomProblem(files: string[], app: string, version: string): string | null {
+  const sboms = files.filter(isSbom).toSorted();
+  const want = SBOM_DOWNLOADS.map((d) => sbomName(app, version, d)).toSorted();
+  if (sboms.length === want.length && sboms.every((f, i) => f === want[i])) return null;
+  return `expected a software bill of materials for each download of ${version} (${want.join(", ")}), found: ${sboms.join(", ") || "none"}`;
 }
 
 /** The disk image and the two Windows installers: what a person downloads. */

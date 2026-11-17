@@ -507,12 +507,17 @@ notes for people:
 3. The publish job checks every update signature against the public key in the
    app and for this version (and makes nothing if one is wrong), writes
    `latest.json` and `SHA256SUMS`, attests where the files came from, and makes
-   the draft release. The release also carries its software bill of materials,
-   `<App>_<version>.cdx.json` (CycloneDX: every Rust crate and JavaScript
-   package, with its license and hash), made by a read-only `sbom` job with
-   `scripts/make-sbom.ts`; without it the publish job makes nothing. CI makes
-   one on every pull request that changes the app, so a shipped dependency
-   without a license fails there first. To make one locally:
+   the draft release. The release also carries a software bill of materials
+   for each download, named after it: `<App>_<version>_aarch64.cdx.json` for
+   the Mac app, `…_x64.cdx.json` and `…_arm64.cdx.json` for the Windows
+   installers (CycloneDX: every Rust crate that platform's build ships or
+   uses, and every JavaScript package, with its license and hash). Each
+   platform ships different Rust crates, so one file for all three would
+   list crates a download doesn't contain. A read-only `sbom` job makes them
+   with `scripts/make-sbom.ts`, on a Mac like every build; without all three
+   the publish job makes nothing. CI makes them on every pull request that
+   changes the app, so a shipped dependency without a license fails there
+   first. To make them locally, on a Mac:
    `bun scripts/make-sbom.ts --version <version> --out <folder>`.
 4. Read the draft on GitHub (files, notes), then **Publish release**. Only a
    published release is what the update addresses redirect to. Publishing

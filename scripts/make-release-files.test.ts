@@ -41,6 +41,8 @@ function sigFile(file: Buffer, key: Key, version: string | null): string {
 }
 
 const PAYLOADS = ["App.app.tar.gz", "App_0.1.0_x64-setup.exe", "App_0.1.0_arm64-setup.exe"];
+/** One bill of materials per download. */
+const SBOMS = ["App_0.1.0_aarch64.cdx.json", "App_0.1.0_x64.cdx.json", "App_0.1.0_arm64.cdx.json"];
 
 let dir: string;
 let key: Key;
@@ -69,7 +71,7 @@ function setup(
   }
   writeFileSync(from("App_0.1.0_aarch64.dmg"), "a disk image");
   writeFileSync(from("App.app.zip"), "the checking zip: not published");
-  for (const name of opts.sboms ?? ["App_0.1.0.cdx.json"]) writeFileSync(from(name), "{}");
+  for (const name of opts.sboms ?? SBOMS) writeFileSync(from(name), "{}");
   writeFileSync(
     join(dir, "tauri.conf.json"),
     JSON.stringify({ plugins: { updater: { pubkey: key.pubkey } } }),
@@ -114,12 +116,14 @@ describe("making a release's files", () => {
     expect(readdirSync(join(dir, "to")).toSorted()).toEqual([
       "App.app.tar.gz",
       "App.app.tar.gz.sig",
-      "App_0.1.0.cdx.json",
+      "App_0.1.0_aarch64.cdx.json",
       "App_0.1.0_aarch64.dmg",
       "App_0.1.0_arm64-setup.exe",
       "App_0.1.0_arm64-setup.exe.sig",
+      "App_0.1.0_arm64.cdx.json",
       "App_0.1.0_x64-setup.exe",
       "App_0.1.0_x64-setup.exe.sig",
+      "App_0.1.0_x64.cdx.json",
       "App_aarch64.dmg",
       "App_arm64-setup.exe",
       "App_x64-setup.exe",
@@ -140,7 +144,7 @@ describe("making a release's files", () => {
       readFileSync(join(dir, "to", "SHA256SUMS"), "utf8")
         .trim()
         .split("\n"),
-    ).toHaveLength(12);
+    ).toHaveLength(14);
     expect(readFileSync(join(dir, "notes.md"), "utf8")).toBe("First release.\n");
   });
 
@@ -208,11 +212,14 @@ describe("a release that must not be made", () => {
     expect(() => readdirSync(join(dir, "to"))).toThrow();
   });
 
-  it("is refused, making nothing, without exactly one bill of materials for this version", () => {
+  it("is refused, making nothing, without one bill of materials per download for this version", () => {
     for (const sboms of [
       [],
-      ["App_0.0.9.cdx.json"],
-      ["App_0.1.0.cdx.json", "Other_0.1.0.cdx.json"],
+      // The single file releases had before 0.3.0.
+      ["App_0.1.0.cdx.json"],
+      SBOMS.slice(1),
+      SBOMS.map((f) => f.replace("0.1.0", "0.0.9")),
+      [...SBOMS, "Other_0.1.0_x64.cdx.json"],
     ]) {
       setup({ sboms });
       const { code, out } = run();

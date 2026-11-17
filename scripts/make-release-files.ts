@@ -22,7 +22,7 @@ import {
   checksumLines,
   INSTALLER_ENDINGS,
   isInstaller,
-  isSbom,
+  sbomProblem,
   isVersion,
   platformOf,
   publishable,
@@ -66,14 +66,6 @@ if (notes === null) {
 
 const all = readdirSync(from);
 const chosen = all.filter(publishable).toSorted();
-// Every release carries its software bill of materials (DASA 1.5.1), and
-// only the one this version's run made.
-const sboms = chosen.filter(isSbom);
-if (sboms.length !== 1 || !sboms[0]!.includes(`_${version}.`)) {
-  fail(
-    `expected one software bill of materials for ${version}, found: ${sboms.join(", ") || "none"}`,
-  );
-}
 const payloads = chosen.filter((f) => platformOf(f) !== null);
 const signatures = payloads.map((file) => {
   const sig = chosen.includes(`${file}.sig`) ? readFileSync(join(from, `${file}.sig`), "utf8") : "";
@@ -135,6 +127,14 @@ for (const ending of INSTALLER_ENDINGS) {
     fail(`no installer ending in ${ending}: the website's download link for it would break`);
   }
 }
+
+// Every release carries a software bill of materials for each download
+// (DASA 1.5.1), and only the ones this version's run made. Checked after the
+// installers, since the app's name is read from the disk image
+// (`App_0.1.0_aarch64.dmg`).
+const app = chosen.find((f) => f.endsWith(".dmg"))?.split("_")[0] ?? "";
+const sbomError = sbomProblem(chosen, app, version);
+if (sbomError) fail(sbomError);
 
 mkdirSync(to, { recursive: true });
 for (const file of chosen) copyFileSync(join(from, file), join(to, file));
