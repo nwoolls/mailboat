@@ -6862,9 +6862,11 @@ Privacy and the policy.*
       that is fixed (0.3.0 → Bugs, "A reply's follow that was cut short
       left it below the reader"). The few-pixel and hundreds-of-pixels
       misses described here may both have been that; not confirmed. The
-      slow-machine test passed 15 runs with `test.fixme` taken off, with
-      and without the fix, so it stays off until the owner decides. The
-      redesign above is still open)*
+      slow-machine test is back on, at the owner's word: on a slowed page
+      (`bun run test:browser:slow`) it failed 5 runs of 5 without the fix,
+      the reply 182–432 px below as in CI, and passed 5 of 5 with it; at
+      normal speed it passed 15 of 15 with the fix, and 15 of 15 without
+      it. The redesign above is still open)*
 - [ ] Tooltips don't show when the app's window is on another desktop than
       the one the app is assigned to *(owner report, 2026-11-12, macOS)*:
       with the Dock icon's Options → Assign To set to "This Desktop",
@@ -6937,7 +6939,7 @@ Privacy and the policy.*
         "scrolling up to read" in the Flaky tests section above: the same
         symptom (the reply never came into view), and the same fix in the
         app. Passed 20 runs and 21 on a slowed page.
-- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
+- [x] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
       the reply still scrolls into view". Turned off (`test.fixme`, line 86)
       by the owner on 2026-11-11, until the reply-follow redesign; turn it
       back on with that. The full story is under Open bugs above ("On a slow
@@ -6959,10 +6961,14 @@ Privacy and the policy.*
         Reply with AI while the email above was still laying out. The tests
         now wait for the conversation to keep its height for half a second
         before clicking.
-      - 2026-11-16, Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`): with the
-        follow fixed (0.3.0 → Bugs), this test passed 15 runs of 15 with
-        `test.fixme` taken off, but also 15 of 15 without the fix, so it
-        doesn't show the fix works. It stays off until the owner decides.
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`),
+        and turned back on at the owner's word: a follow scroll cut short
+        after the reply stopped growing left it below the reader, and the
+        follow now finishes such a scroll (0.3.0 → Bugs). At normal speed
+        the test passed 15 runs of 15 with the fix and 15 of 15 without it,
+        so it shows the fix only on a slowed page (`bun run
+        test:browser:slow`): there it failed 5 runs of 5 without the fix,
+        the reply 182–432 px below as in CI, and passed 5 of 5 with it.
 
 ### Reading
 

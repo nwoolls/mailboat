@@ -79,11 +79,12 @@ for (const height of [640, 360])
  * the reply had stopped being followed, and left it part way below the
  * reader. Slowed animations stand in for the slow machine here.
  *
- * Off for now (fixme): in CI it still sometimes finds the reply hundreds of
- * pixels below the reader, for a reason not found. Following a reply that
- * keeps growing is to be rethought (docs/ROADMAP.md, Bug backlog).
+ * Off from 2026-11-11 to 2026-11-16: in CI it sometimes found the reply
+ * hundreds of pixels below the reader. A follow scroll cut short after the
+ * reply stopped growing did that, and the follow now finishes such a scroll
+ * (docs/ROADMAP.md → 0.3.0 → Bugs); turned back on at the owner's word.
  */
-test.fixme("Reply with AI, 360px reader, slow machine: the reply still scrolls into view", async ({
+test("Reply with AI, 360px reader, slow machine: the reply still scrolls into view", async ({
   page,
 }) => {
   await page.goto("/tests/browser/harness.html?mode=inline");
@@ -102,7 +103,6 @@ test.fixme("Reply with AI, 360px reader, slow machine: the reply still scrolls i
   await expect
     .poll(async () => (await replyInView(page)).bottom, {
       message: "the reply's end (its Send button) is in view",
-      timeout: 5_000,
     })
     .toBeGreaterThanOrEqual(-1);
 });
