@@ -5213,6 +5213,27 @@ the way, and one bug in the app caused flaky failures; all three are in
         after it has counted the stand-ins and measured the area. Passed
         with a 2 s pause added, 10 runs of 10 on the slowed page, and 40
         of 40 on 8 workers.
+- [x] `reply-scroll.spec.ts`: "Reply with AI: scrolling up slowly stops the
+      reply being followed" (line 176).
+      - 2026-11-17, CI on `main` after #178 merged, WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/44167373682: after
+        twenty 3 px steps up, the reader still moved when the reply grew
+        (`toBe(0)`, received 9, line 203). #178 changes only the
+        reply-ideas test, the harness's held ideas and the docs; its own
+        pull request run passed the test.
+      - Fixed 2026-11-17 (branch `fix-flaky-reply-scroll-up`). The CI trace
+        showed the steps starting 40 ms after the click, before the
+        reply's ideas had arrived. The 60 px the test adds grows the reply
+        by only 9 px (the form clips it), so the follow was still on after
+        all twenty steps: while the reply was still laying out, each growth
+        aimed the follow again and undid the steps before they added up to
+        its 8 px. With the reply made to grow 1 px a step, the old test
+        failed 3 runs of 3 with CI's 9; with the CPU fully loaded (gitleaks
+        in a loop) or on the slowed page it didn't fail. As with clicking
+        Reply (the owner's call, 2026-11-11), a person scrolls up once the
+        reply has laid out, so the test now waits for the ideas and for the
+        reply to keep its height for half a second before its steps.
+        Passed 30 of 30 on 8 workers and 40 of 40 with the CPU fully loaded.
 
 ## Bug backlog
 
