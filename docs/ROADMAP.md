@@ -5199,7 +5199,8 @@ the way, and one bug in the app caused flaky failures; all three are in
         its own pull request run passed the test. Likely cause, not
         confirmed: the stand-ins only show until the ideas arrive, and on
         a slow runner the ideas had already replaced them when the test
-        first looked. Re-run requested.
+        first looked. Re-run requested: attempt 2 passed, with every other
+        job.
 
 ## Bug backlog
 
