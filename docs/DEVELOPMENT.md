@@ -436,7 +436,8 @@ stable release (below), and only when the owner says to.
 3. Run `bun run version-packages`. The pending changesets move into
    `.changeset/pre/`, `package.json` becomes `0.2.0-beta.0` (then `.1`, and so
    on), and `CHANGELOG.md` gets a section for that version, which becomes the
-   release notes. Never edit either by hand. A later beta needs at least one
+   release notes. Never edit the version by hand; curate the new section
+   (see "Curating the release notes" below). A later beta needs at least one
    changeset added since the last one that asks for a release (a `patch` or
    more; an empty one doesn't): the archived ones in `.changeset/pre/` don't
    count again. If none was added, `version-packages` changes nothing, so
@@ -458,15 +459,42 @@ While beta mode is on, every pull request still adds a changeset, as always.
    Don't commit this step alone: until step 3 has run, `.changeset/pre.json`
    says `"mode": "exit"` and the repository looks as if beta mode were off.
 3. Run `bun run version-packages`. It makes `0.2.0` from every changeset,
-   betas included, and writes the `## 0.2.0` section of `CHANGELOG.md`. Read
-   the section: it is the release notes, and it should list what the release
-   changed. Change the version in `README.md` (the notice near the top,
+   betas included, and writes the `## 0.2.0` section of `CHANGELOG.md`. It
+   is the release notes: curate it (below), starting from the betas'
+   curated sections, since it lists every changeset again. Change the version in `README.md` (the notice near the top,
    `Version 0.2.1 is out, …`), and for a new major or minor version also the
    one on the home page (the chip at the top of `website/index.html`,
    `v0.2 · …`): `bun run check` fails until both match `package.json`.
 4. Run `bun run check`, commit, open a pull request, merge it.
 5. Tag, build and publish (steps below), with the tag `v` plus the version
    from step 3 (`v0.2.0`).
+
+**Curating the release notes** (on the release branch, after
+`version-packages`, for a beta and a stable release alike)
+
+`version-packages` writes one line per changeset, in no useful order, so the
+new section reads as a list of pull requests. Rewrite that one section into
+notes for people:
+
+- Group the lines by topic under `###` headings, most interesting first:
+  `New` (what people can do now), then the areas that changed (such as
+  `Window and toolbar` or `Toybox and screensavers`), then fixes, then
+  `Security and privacy`, then `Releases` (what comes with each download).
+  Drop Changesets' `Minor Changes` and `Patch Changes` headings. A short
+  bold lead (`**Print a conversation.**`) can start a new feature's line.
+- Merge lines about the same thing into one, and say what they share once
+  (one line for "every screensaver can be drawn in pixel art or ASCII art",
+  not one per screensaver).
+- Leave out a fix to something new in the same release (people never saw the
+  problem) and details only the change's author would notice.
+- Keep every change people can see or rely on, with its facts: names of
+  settings and menus, shortcuts, defaults, platforms. Add nothing the
+  changesets don't say.
+- Change only the new section: never the version heading, the version in
+  `package.json`, an older section, or the changeset files.
+- Run `declauding`, then `unslop`, on the section (AGENTS.md → Writing for
+  people), and `bun scripts/check-release-tag.ts v<version>`, which reads the
+  section the release uses.
 
 **Tag, build and publish** (the same for both)
 1. Tag the merged commit on `main` and push the tag as yourself:
@@ -538,7 +566,10 @@ Each pull request adds a changeset, a small file in `.changeset/` made with
 fails without one. At release, `bun run version-packages` turns the
 changesets into the next version and a `CHANGELOG.md` entry; that release
 pull request (branch `changeset-release/…`) and Dependabot's are the two
-kinds CI doesn't ask a changeset of. Never edit either by hand. Details: `.changeset/README.md`.
+kinds CI doesn't ask a changeset of. Never edit the version by hand. The new
+`CHANGELOG.md` section is curated on the release branch (Releasing →
+Curating the release notes); older sections stay as they were. Details:
+`.changeset/README.md`.
 
 ## Files on your Mac
 

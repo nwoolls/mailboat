@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.3.0-beta.0
+
+### New
+
+- **Print a conversation.** Print… (⌘P, or Ctrl+P on Windows) in the File menu, the command palette and the toolbar's More menu prints every email in it on white, with who sent it, to whom and when.
+- **Label colors and visibility.** Each label in the sidebar has a ⋮ button for choosing its color, whether it shows in the sidebar and whether it shows on conversations, saved to Gmail. Conversations in the list show their labels after the subject, in colors that stay readable.
+- **What notifications show.** Settings → Notifications can make new-mail notifications show everything (the default), only the sender, or just "New email".
+- **Remove a suggested address.** Take an address out of the To, Cc and Bcc suggestions with the × beside it or Shift+Delete, and bring it back from Settings → Composing.
+- **Links without tracking codes.** Known tracking codes (such as `utm_source` and ad click IDs) come off links in emails before they open in your browser.
+
+### Window and toolbar
+
+- The window can be made much narrower and shorter: the sidebar folds away first, then the conversation list and the open conversation take turns, and toolbar buttons that don't fit move into the More menu. The search box no longer runs into the toolbar's buttons.
+- Icons closer to Gmail's: Spam is a warning sign instead of a shield, Archive and Move to Inbox show where mail goes, Mark as read and Mark as unread show an open or closed envelope, All Mail is a stack of envelopes, and Important is Gmail's marker.
+- A little motion: starring spins the star, Archive and Move to Inbox and the open and closed envelopes cross-fade when they change, and toolbar buttons fade in and out as the window's width moves them into the More menu.
+
+### Toybox and screensavers
+
+- Every screensaver and toy can be drawn in chunky pixel art or in ASCII art (Settings → Toybox → Style).
+- Settings → Toybox is reworked: each card's switch sits beside its choices, and the style and every screensaver show a small picture of themselves.
+- A new screensaver, Code rain: columns of falling characters, with the pointer as a flashlight. The envelope flock is now Flock, a murmuration of birds with depth.
+- Screensavers that changed:
+  - Fireworks has a new shell, a weeping willow whose sparks sink slowly toward the ground.
+  - The starfield has streaking stars and an occasional warp.
+  - Jellyfish are big and glowing, with tentacles that trail and ripple.
+  - Koi are larger, with fins and tails that ripple, and swim more calmly.
+  - Fireflies are fewer and calmer, over swaying grass.
+- Toys that changed:
+  - The glow is now one of the toys in Settings → Toybox → Something to play with, instead of a switch of its own. It's still the default, and an earlier choice carries over. It follows the pointer on a spring: it glides to the pointer, keeps pace as you move and settles where you stop. In ASCII art it thins out around the icon and words so they still read.
+  - The pond is drawn in your accent color, and the pointer stirs its water faintly as it moves; a click still drops a stone.
+  - The sky is redrawn: mountains and fields under a sky that follows the time of day, without the rounded fade at the edges, and the text over it turns light at dusk.
+  - Popping bubble wrap sets off confetti and makes nearby bubbles wobble, and after the last pop a fresh sheet inflates.
+- Screensavers, and the pond's water, now reach the top of the list, under its title, without a hard edge below it, and the title stays readable under the glow. Resizing the window no longer restarts the sky, the pond, the jellyfish or the starfield, the sandscape keeps its sand, and screensavers no longer flash while the window is resized.
+
+### Fixes
+
+- A reply you open no longer stays partly below the reader when its scroll into view is cut short.
+
+### Security and privacy
+
+- An email's images no longer load from an address on your own computer or local network (a router, a printer, a local server), and images downloaded as mail arrives aren't fetched from such an address either.
+- Images downloaded as mail arrives are always fetched over HTTPS, even when an image server redirects to a plain HTTP address.
+- On macOS, the app's folders, mail database and saved Google client file can be opened only by your user account, including ones made by earlier versions. On Windows, the saved Google client file is protected the same way.
+- On Windows, the connection AI apps use to reach the app admits only your user account.
+- The working folder the AI helpers run in is always removed afterwards, even when a request fails or times out, and on macOS it is readable only by you. Codex's check of its own settings runs in a private folder of its own instead of the shared temporary folder.
+- The Windows app is built with Control Flow Guard, a Windows protection that checks where the program's indirect calls go.
+- On macOS, a component the app uses to talk to the system is updated to fix a known memory-safety problem.
+- Release builds leave out the program's internal symbol names, which makes the app a little smaller.
+
+### Releases
+
+- Each release includes a software bill of materials listing every library the app is built from, with its license.
+- Each release also carries its build provenance as files, which say where and how it was built.
+
 ## 0.2.1
 
 ### Patch Changes

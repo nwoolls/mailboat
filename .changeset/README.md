@@ -4,6 +4,11 @@ Every pull request that changes the app adds a small file here, saying what
 kind of change it is and what to tell people. At release, the files become
 the new version number and `CHANGELOG.md`.
 
+At release, the sentences are grouped and merged into readable notes
+(`docs/DEVELOPMENT.md` → Releasing → Curating the release notes), so write
+each one to stand on its own; it doesn't need to repeat what a related
+change already says.
+
 Make one with `bun run changeset`, or write it by hand:
 
 ```md
