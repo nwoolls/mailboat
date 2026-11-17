@@ -6210,7 +6210,7 @@ Privacy and the policy.*
       publish job adds it to the release, checksummed and attested with
       the rest, and refuses to make a release without it. A component
       that ships without a license stops the job; a build-only platform
-      binary that isn't installed on the job's Linux runner has none.
+      binary that isn't installed on the runner that makes it has none.
       Licenses are SPDX expressions when they follow SPDX's grammar, and
       named as written otherwise. A crate from outside crates.io (git,
       another registry) stops the job until the script describes it; the

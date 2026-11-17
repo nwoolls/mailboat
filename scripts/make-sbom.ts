@@ -16,14 +16,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import brand from "../brand.json";
 import { isVersion, SBOM_DOWNLOADS, sbomName } from "./releaseFiles";
-import {
-  bom,
-  type BunLock,
-  cargoChecksums,
-  cargoComponents,
-  installPath,
-  npmComponents,
-} from "./sbom";
+import { type BunLock, cargoChecksums, downloadBom, installPath, npmComponents } from "./sbom";
 
 function option(name: string): string | undefined {
   const at = process.argv.indexOf(`--${name}`);
@@ -84,16 +77,13 @@ mkdirSync(out, { recursive: true });
 const count = (list: { scope?: string }[], scope: string) =>
   list.filter((c) => c.scope === scope).length;
 for (const download of SBOM_DOWNLOADS) {
-  const rust = cargoComponents(
-    [tree(download.target, "normal,no-proc-macro")],
-    [tree(download.target, "normal,build")],
-    checksums,
-  );
-  const document = bom({
+  const { rust, document } = downloadBom({
     name: brand.name,
     version,
     target: download.target,
-    components: [...rust, ...js],
+    tree,
+    checksums,
+    js,
     timestamp: new Date().toISOString(),
     serial: crypto.randomUUID(),
   });

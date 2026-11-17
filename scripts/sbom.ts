@@ -311,6 +311,38 @@ export function npmComponents(
 
 // --------------------------------------------------------------- The BOM
 
+/**
+ * One download's bill of materials: the Rust crates `cargo tree` gives for
+ * its `target` alone (linked as shipped, the rest of the build as
+ * build-only), and the JavaScript components, which every download shares.
+ * `tree` runs `cargo tree` for a target and edge kinds (`make-sbom.ts`).
+ */
+export function downloadBom(o: {
+  name: string;
+  version: string;
+  target: string;
+  tree: (target: string, edges: string) => string;
+  checksums: Map<string, string>;
+  js: Component[];
+  timestamp: string;
+  serial: string;
+}) {
+  const rust = cargoComponents(
+    [o.tree(o.target, "normal,no-proc-macro")],
+    [o.tree(o.target, "normal,build")],
+    o.checksums,
+  );
+  const document = bom({
+    name: o.name,
+    version: o.version,
+    target: o.target,
+    components: [...rust, ...o.js],
+    timestamp: o.timestamp,
+    serial: o.serial,
+  });
+  return { rust, document };
+}
+
 /** The whole document: the app, then its components sorted by package URL. */
 export function bom(o: {
   name: string;

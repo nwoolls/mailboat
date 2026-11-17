@@ -511,7 +511,9 @@ notes for people:
    for each download, named after it: `<App>_<version>_aarch64.cdx.json` for
    the Mac app, `…_x64.cdx.json` and `…_arm64.cdx.json` for the Windows
    installers (CycloneDX: every Rust crate that platform's build ships or
-   uses, and every JavaScript package, with its license and hash). Each
+   uses, and every JavaScript package, each with its hash; every shipped or
+   optional one with its license, while a build-only package not installed
+   on the Mac that makes the files can lack one). Each
    platform ships different Rust crates, so one file for all three would
    list crates a download doesn't contain. A read-only `sbom` job makes them
    with `scripts/make-sbom.ts`, on a Mac like every build; without all three
