@@ -108,8 +108,12 @@ mod mac {
         #[name = "AppNotificationDelegate"]
         struct Delegate;
 
+        // SAFETY: an NSObject subclass meets NSObjectProtocol.
         unsafe impl NSObjectProtocol for Delegate {}
 
+        // SAFETY: the two methods below have the protocol's selectors and
+        // argument types, and call each completion handler once, as the
+        // protocol requires.
         unsafe impl UNUserNotificationCenterDelegate for Delegate {
             /// Show it even while the app is in front, as Mail does.
             #[unsafe(method(userNotificationCenter:willPresentNotification:withCompletionHandler:))]

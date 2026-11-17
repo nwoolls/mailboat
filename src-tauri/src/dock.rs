@@ -22,8 +22,14 @@ pub fn show_at_launch(png: Option<&'static [u8]>) {
     }
     let image = png.and_then(image_from);
     let app = NSApplication::sharedApplication(mtm);
+    // SAFETY: on the main thread (`mtm`), with a live NSImage or nil, which
+    // AppKit documents as "back to the app's own icon".
     unsafe { app.setApplicationIconImage(image.as_deref()) };
     app.dockTile().display();
+    // SAFETY: `performSelector:withObject:afterDelay:` is NSObject's, its
+    // argument types are a selector, an object or nil, and a double, and it
+    // returns nothing; AppKit keeps the app and the image alive until the
+    // call is made. `setApplicationIconImage:` takes one object, as passed.
     unsafe {
         let _: () = msg_send![
             &app,
@@ -52,6 +58,8 @@ pub fn set_icon(app: &tauri::AppHandle, png: Option<&'static [u8]>) {
         }
         let image = png.and_then(image_from);
         let app = NSApplication::sharedApplication(mtm);
+        // SAFETY: as in `show_at_launch`: the main thread, and a live
+        // NSImage or nil.
         unsafe { app.setApplicationIconImage(image.as_deref()) };
         app.dockTile().display();
     });

@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 description = "The app's sync, storage, auth and mail logic. No Tauri dependency, so it tests fast."
 
+[lints]
+workspace = true
+
 [lib]
 # No doc examples to test; skipping the search keeps `cargo test` fast.
 doctest = false
