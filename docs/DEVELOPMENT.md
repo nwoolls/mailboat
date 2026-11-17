@@ -152,7 +152,13 @@ too. `bun run test:browser:slow` runs the tests with the page kept busy most
 of the time (`tests/browser/slowMachine.ts`), as on a loaded CI runner, so
 check such a test with it before trusting it; the whole suite takes about 25
 minutes this way. A test that measures motion drives the page's clock
-(`tests/browser/time.ts`) rather than waiting real time. To run a second set
+(`tests/browser/time.ts`) rather than waiting real time. A test that checks
+what shows while the harness's fake Rust side is still answering (stand-ins
+while the AI's reply ideas load, for example) has the harness hold that
+answer until the test releases it (`&ideas=held` and
+`window.__releaseIdeas()`), so the check can't come too late. The slowed page
+doesn't catch that race, since the harness's timer slows with the page;
+adding a pause between the action and the check does. To run a second set
 of browser tests beside a long one, give it another port:
 `BROWSER_TESTS_PORT=1437 bun run test:browser …`.
 
