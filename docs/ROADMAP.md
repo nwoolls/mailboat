@@ -6665,6 +6665,9 @@ Privacy and the policy.*
       tests running in parallel: focusing re-renders, and TipTap installs
       fresh handlers, often between the press and the release. The press
       is now kept per editor view; 40 runs of 40 passed on 8 workers)*
+      *(2026-11-17: not reported to ProseMirror (owner): its GitHub
+      repository was archived on 2026-04-07 and points elsewhere, and the
+      app's own fix stands either way)*
 
 ## Later / unscheduled
 
