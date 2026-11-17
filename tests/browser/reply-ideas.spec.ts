@@ -12,7 +12,10 @@ function chipArea(page: Page) {
 
 for (const width of [760, 420])
   test(`${width}px reader: the ideas don't change the panel's height`, async ({ page }) => {
-    await page.goto("/tests/browser/harness.html?mode=inline");
+    // The ideas wait for the test (`&ideas=held`): when they came 800 ms
+    // after the click, a busy runner sometimes looked later than that and
+    // found the stand-ins already gone (docs/ROADMAP.md → Flaky tests).
+    await page.goto("/tests/browser/harness.html?mode=inline&ideas=held");
     await expect(page.getByTitle("Message content")).toBeVisible();
     await page.evaluate((w) => {
       document.querySelector<HTMLElement>("#root > div")!.style.width = `${w}px`;
@@ -28,7 +31,11 @@ for (const width of [760, 420])
       );
     expect(tops).toBe(2);
     const before = (await area.boundingBox())!.height;
-    // The ideas arrive.
+    // The ideas arrive, once the app has asked for them.
+    await expect.poll(() => page.evaluate(() => "__releaseIdeas" in window)).toBe(true);
+    await page.evaluate(() =>
+      (window as unknown as { __releaseIdeas: () => void }).__releaseIdeas(),
+    );
     await expect(area.getByRole("button", { name: "Say yes" })).toBeVisible();
     expect((await area.boundingBox())!.height).toBe(before);
   });

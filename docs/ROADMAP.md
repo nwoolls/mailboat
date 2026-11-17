@@ -5189,7 +5189,7 @@ the way, and one bug in the app caused flaky failures; all three are in
         that runs git) and have their own 30 s limit now, instead of
         Vitest's 5 s. The whole suite then passed 3 runs of 3 with the
         machine's load average over 200.
-- [ ] `reply-ideas.spec.ts`: "760px reader: the ideas don't change the
+- [x] `reply-ideas.spec.ts`: "760px reader: the ideas don't change the
       panel's height" (line 14).
       - 2026-11-17, CI on `main` after #174 merged, WebKit, attempt 1,
         https://github.com/nwoolls/mailboat/actions/runs/44152586150: the
@@ -5201,6 +5201,18 @@ the way, and one bug in the app caused flaky failures; all three are in
         a slow runner the ideas had already replaced them when the test
         first looked. Re-run requested: attempt 2 passed, with every other
         job.
+      - Fixed 2026-11-17 (branch `fix-flaky-reply-ideas`). Confirmed the
+        cause first: with a 1 s pause added between the click and the first
+        look, the old test failed every time on both widths with CI's error
+        (received 0); the slowed page (`test:browser:slow`) didn't show it,
+        since it slows the harness's 800 ms timer as much as the page.
+        Driving the page's clock (`./time.ts`) didn't fit this page: with
+        the clock held it stopped answering, even to focusing a button. So
+        the harness holds the ideas instead (`&ideas=held`) until the test
+        calls `window.__releaseIdeas()`, and the test releases them only
+        after it has counted the stand-ins and measured the area. Passed
+        with a 2 s pause added, 10 runs of 10 on the slowed page, and 40
+        of 40 on 8 workers.
 
 ## Bug backlog
 

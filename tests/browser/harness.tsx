@@ -35,6 +35,9 @@
  *     &style=pixel|ascii           the Toybox style without the glow
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
  *   &ai=none                      (card, inline) no AI set up
+ *   &ideas=held                   (inline) the reply ideas wait until the
+ *                                 test calls `window.__releaseIdeas()`,
+ *                                 not 800 ms
  *   &summary=live                 (inline) the AI summary above the
  *                                 conversation, as in the app: it answers
  *                                 a moment after it's asked, and a draft
@@ -368,9 +371,17 @@ mockIPC(
       }
       case "ai_translation_languages":
         return ["de", "fr", "fr-CA"];
-      case "ai_reply_ideas":
+      case "ai_reply_ideas": {
         // A moment later, as from a model, so the stand-ins show first.
-        return new Promise((done) => setTimeout(() => done(["Say yes", "Ask for details"]), 800));
+        const ideas = ["Say yes", "Ask for details"];
+        // `&ideas=held`: when the test says, however long it takes to look.
+        if (new URLSearchParams(location.search).get("ideas") === "held")
+          return new Promise((done) => {
+            (window as unknown as { __releaseIdeas?: () => void }).__releaseIdeas = () =>
+              done(ideas);
+          });
+        return new Promise((done) => setTimeout(() => done(ideas), 800));
+      }
       case "thread_get":
         // `&threads=distinct`: answered as the conversation asked for, so
         // moving to another one (j/k) shows a different conversation, as in
