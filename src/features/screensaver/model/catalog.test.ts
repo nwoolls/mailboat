@@ -31,7 +31,13 @@ describe("pickScene", () => {
   });
 });
 
-describe("every scene", () => {
+/**
+ * A minute of every scene is real work: about a second each alone, more
+ * on a busy machine, where Vitest's 5 s limit cut some short (with many
+ * tests running side by side, or coverage measuring). Their own limit,
+ * 30 s, fits the work (docs/ROADMAP.md → Flaky tests).
+ */
+describe("every scene", { timeout: 30_000 }, () => {
   for (const { id } of SCREENSAVERS)
     it(`${id} runs a minute, with and without the pointer, drawing only palette values`, () => {
       const setup = testSetup(90, 80, seeded());

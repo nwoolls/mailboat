@@ -4557,7 +4557,8 @@ moved to "Later / unscheduled" → Open bugs and → Flaky tests.)
     composer, as in Gmail; #125).
 
 Not in the spike: rethinking how a new reply is followed (and the
-slow-machine test kept as `test.fixme`). It is a design for the owner to
+slow-machine test kept as `test.fixme`, back on since the Flaky Test Spike,
+2026-11-16). It is a design for the owner to
 lead, with a mockup first.
 
 ## UX Spike 5: ASCII Toybox
@@ -4946,7 +4947,38 @@ stretching the measured animation.
 The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
 2026-11-14)*, with their full text. New ones are still added here.
 
-- [ ] `settings-toybox.spec.ts`: "repainting a still picture doesn't move it
+**Flaky Test Spike, 2026-11-16** *(owner: "we need tests that either pass or
+fail")*: every entry here and under "Later / unscheduled" → Flaky tests was
+worked on the branch `flaky-fixes`. Most failures came from tests that wait
+a fixed time and then measure motion, which a slow CI runner doesn't keep
+to. What was added for that:
+
+- `bun run test:browser:slow` keeps the test page's main thread busy most
+  of the time (`tests/browser/slowMachine.ts`), like a loaded runner. It
+  reproduced the bubble wrap failure from CI 5 times of 5. Run it on a test
+  that measures motion before trusting it; the whole suite takes about 25
+  minutes this way.
+- `tests/browser/time.ts`: a test that measures motion drives the page's
+  clock (Playwright's `page.clock`, with CSS and Web Animations kept on it)
+  and moves it on itself, so how fast the machine is no longer matters.
+- The browser tests' `expect` waits up to 15 s (Playwright's default is 5).
+- `BROWSER_TESTS_PORT` runs a second set of browser tests beside a long one.
+
+The whole suite on a slowed page failed 7 tests before the fixes. After
+them it failed none apart from two that failed in that run while their code
+was being changed; their file, `reply-scroll.spec.ts`, then passed 21 runs
+slowed. Two of the 7 had never failed in CI and
+were fixed too: the labels submenu (`labels.spec.ts`, "the pointer can cross
+other items on its way into a submenu": the pointer's steps took longer than
+the submenu's 250 ms grace in real time; it now drives the clock, moves it
+on 150 ms over the other item, and checks that staying there past the grace
+closes the submenu; it passed 10 runs, and fails with the grace set to 0) and the vacation responder's box
+(`vacation-box.spec.ts`: the typed text went in at the start, see 0.3.0 →
+Bugs; it passed 10 runs and 8 slowed). Two bugs in the app were found on
+the way, and one bug in the app caused flaky failures; all three are in
+0.3.0 → Bugs.
+
+- [x] `settings-toybox.spec.ts`: "repainting a still picture doesn't move it
       on: new colors and back give the same picture" (added in #128).
       - 2026-11-14, CI on `main` after #128 merged, attempt 1,
         https://github.com/nwoolls/mailboat/actions/runs/43626606206: the
@@ -4957,7 +4989,15 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         commit. Not yet known whether the still wasn't reached in the test's
         9.5 s wait on a slow runner, or a repaint really moves the scene on,
         which is what the test guards against.
-- [ ] `reply-scroll.spec.ts`: "Reply with AI: scrolling up to read stops the
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`): the
+        wait for the still picture (`untilStill`) took the canvas being
+        shown for the picture being still, but the canvas is shown for a
+        moment after it mounts, before it hides to play out of sight. A slow
+        runner's check could catch that moment and go on while the sand was
+        still pouring. It now also waits for the picture to stay the same
+        for 300 ms. Not reproduced locally (10 runs under heavy load
+        passed before the fix); after it, 18 runs passed.
+- [x] `reply-scroll.spec.ts`: "Reply with AI: scrolling up to read stops the
       reply being followed" (line 115).
       - 2026-11-14, same run, attempt 2 (`main` after #128, which touches
         neither the reply nor the follow): the first check, before any
@@ -4982,7 +5022,19 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         run on `main` when another starts); the run for the newest
         commit, which contains this merge, passed on 2026-11-16
         (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
-- [ ] `ascii-glow.spec.ts`: "the glow glides over to the pointer, then holds
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`), in the
+        app (see 0.3.0 → Bugs, "A reply's follow that was cut short left it
+        below the reader"). The CI trace of the 2026-11-16 failure showed
+        the reader moving about 70 px toward the reply and then stopping for
+        the rest of the 15 s: the follow's smooth scroll was cut short, and
+        the follow only aims again when something resizes. Cutting the
+        scroll short by hand reproduced it every time (the reply left
+        173–179 px below). A new test drops the follow's scrolls until the
+        reply has finished growing: without the fix the reply stays 429 px
+        below, with it the reply comes into view. After the fix the file
+        passed 20 runs and 21 on a slowed page (`bun run
+        test:browser:slow`).
+- [x] `ascii-glow.spec.ts`: "the glow glides over to the pointer, then holds
       on loosely" (line 153, added in UX Spike 5).
       - 2026-11-14, CI on `main` after #135 merged, attempt 1,
         https://github.com/nwoolls/mailboat/actions/runs/43657479405: after
@@ -5000,7 +5052,15 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         same check, with the glow 10.6 px from the pointer where more than
         30 was expected (line 177); 162 others passed. #141 changes compose
         suggestions, not the glow. Re-run requested.
-- [ ] `icon-motion.spec.ts`: "buttons fade out into the More menu and fade
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`): the
+        test waited real time (20 ms) and then measured the glow, whose
+        spring runs on `requestAnimationFrame`; on a slow runner frames
+        come late, so it measured further into the glide. It now drives the
+        page's clock (`tests/browser/time.ts`): `page.clock` for timers and
+        frames, with the CSS drift animation kept on the same clock. The
+        old test failed on a slowed page; the new one passed 20 runs and 4
+        slowed, plus the whole suite slowed.
+- [x] `icon-motion.spec.ts`: "buttons fade out into the More menu and fade
       back in" (line 104).
       - 2026-11-16, CI on #155 (`notification-content`), WebKit, attempt 1,
         https://github.com/nwoolls/mailboat/actions/runs/43906849920: after
@@ -5023,7 +5083,12 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         run on `main` when another starts); the run for the newest
         commit, which contains this merge, passed on 2026-11-16
         (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
-- [ ] `narrow-window.spec.ts`: "going back doesn't happen while typing, and
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`): the
+        test looked on screen for a fading copy that lives about 160 ms. It
+        now reads the record it already kept of each copy as it was added.
+        The old failure wasn't reproduced locally; the new test passed 25
+        runs and 5 on a slowed page.
+- [x] `narrow-window.spec.ts`: "going back doesn't happen while typing, and
       Esc puts a floating sidebar away first" (line 213).
       - 2026-11-16, the same CI run: after Esc, the floating sidebar was
         still there 5 s later (`toHaveCount(0)`, line 232). Unrelated to
@@ -5046,7 +5111,25 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         run on `main` when another starts); the run for the newest
         commit, which contains this merge, passed on 2026-11-16
         (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
-- [ ] `empty-toys.spec.ts`: "bubble wrap pops the bubble clicked with a
+      - 2026-11-16, three more, WebKit, attempt 1, each the same check
+        (line 232): CI on `main` after #166 merged
+        (https://github.com/nwoolls/mailboat/actions/runs/43994251922),
+        after #167 merged
+        (https://github.com/nwoolls/mailboat/actions/runs/43996893870), and
+        on #169, the 0.3.0-beta.0 version bump
+        (https://github.com/nwoolls/mailboat/actions/runs/43997476358).
+        #166 checks the README's version, #167 adds comments and a lint,
+        #169 changes only the version and the changelog. Re-runs requested
+        of #169's run and of the newest run on `main` (#167's).
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`). Not the
+        runner's speed: the mouse was still on the Reply button, which is
+        where the floating sidebar comes in, and a sidebar that slides in
+        under a resting pointer counts as hovered, which keeps it after Esc.
+        Reproduced locally in 13 of 18 tries with the same steps; the
+        others closed in about 180 ms. The test now moves the pointer away
+        first, and passed 20 runs. The app's behavior is a bug of its own,
+        in 0.3.0 → Bugs.
+- [x] `empty-toys.spec.ts`: "bubble wrap pops the bubble clicked with a
       burst, and only it" (line 69).
       - 2026-11-16, CI on `main` after #158 merged, WebKit, attempt 1,
         https://github.com/nwoolls/mailboat/actions/runs/43971353566: after
@@ -5061,7 +5144,24 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         run on `main` when another starts); the run for the newest
         commit, which contains this merge, passed on 2026-11-16
         (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
-- [ ] Vitest tests that run long: `scripts/ciAppChanged.test.ts` ("says app
+      - 2026-11-16, CI on `main` after #165 merged, WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43990809565, and
+        after #166 merged,
+        https://github.com/nwoolls/mailboat/actions/runs/43994251922: a
+        different check this time: clicking the popped bubble again
+        should leave the drawing as it was, and it had less ink
+        (`toBe`, line 91; 85250 where 85425 and 85675 were expected).
+        Possibly the first pop's confetti still settling after
+        `POP_DONE_MS` on a slow runner; not confirmed. #165 adds coverage tooling and #166 a README
+        check, neither the toy. A later run on `main` (#167's) passed it.
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`), both
+        checks (lines 83 and 91): the toy steps its burst by at most 0.1 s a
+        frame, so on a slow runner the burst runs slower than real time,
+        and a fixed real-time wait measured it early. The test now drives
+        the page's clock (`tests/browser/time.ts`). On a slowed page (`bun
+        run test:browser:slow`) the old test failed 5 of 5, with the error
+        from CI; the new one passed 20 runs and 12 slowed.
+- [x] Vitest tests that run long: `scripts/ciAppChanged.test.ts` ("says app
       for files that only look like docs or site…") and
       `src/features/screensaver/model/catalog.test.ts` ("… runs a minute,
       with and without the pointer, drawing only palette values" for
@@ -5084,6 +5184,11 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         2.8 s with coverage measuring. The coverage run now allows 30 s
         (`scripts/coverage.ts`); three runs with that passed. Plain
         `bun run test` is unchanged.
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`): the two
+        groups do a lot of work (a minute of every scene; a shell script
+        that runs git) and have their own 30 s limit now, instead of
+        Vitest's 5 s. The whole suite then passed 3 runs of 3 with the
+        machine's load average over 200.
 
 ## Bug backlog
 
@@ -6484,6 +6589,49 @@ Privacy and the policy.*
       Toolbar buttons that don't fit move into the More menu, Labels first,
       then Star, Mark read, Spam and Trash; Archive stays. The window now
       goes down to 420px, where it used to stop at 820px)*
+- [x] A reply's follow that was cut short left it below the reader
+      *(found 2026-11-16 in the Flaky Test Spike, from CI's trace of a
+      failed `reply-scroll.spec.ts` run; fixed the same day)*: opening a
+      reply scrolls the reader smoothly to show it, and keeps it in view
+      while it grows (for up to 10 s, until the person scrolls or types).
+      A smooth scroll is canceled by any instant one, and the follow only
+      aimed again when something grew, so a scroll cut short after the
+      reply had finished growing left it below the reader for good: in CI,
+      hundreds of pixels below. What cut it short in CI isn't known; cutting
+      it short by hand reproduced it every time. The follow
+      (`ComposeForm`) now looks each frame: when the reader has stopped at
+      the furthest it has been, with the reply's end still below it, it
+      scrolls the rest of the way at once. A person who scrolled up leaves
+      the reader above that point and isn't pulled back (the test for slow
+      scrolling up failed on a first version that did pull back). The new
+      test fails without the change. The older "On a slow machine, a new
+      reply sometimes stops being followed" in "Later / unscheduled" →
+      Open bugs has a note about it.
+- [ ] Esc doesn't put away a floating sidebar that came in under a resting
+      pointer *(found 2026-11-16 in the Flaky Test Spike, through the
+      flaky `narrow-window.spec.ts` test)*: in a narrow window, with the
+      pointer resting where the sidebar floats in (over the reader's left
+      side), floating it with its shortcut and pressing Esc can leave it
+      open. The sidebar slides in under the pointer, which counts as
+      hovering it, and coming back onto a sidebar that is leaving keeps
+      it (`Shell.tsx`, the peek). In a local test with that sequence it
+      stayed open in 13 of 18 tries. Esc is meant to put it away wherever
+      the focus is. Possible fix, not built: after Esc (or the shortcut),
+      only a real pointer move brings it back. The owner's design, so the
+      owner decides.
+- [ ] A click in an editor that doesn't have focus can leave the cursor at
+      the start on a busy page *(found 2026-11-16 in the Flaky Test Spike,
+      through the vacation responder's box test)*: the editor
+      (ProseMirror, `prosemirror-view` 1.42.6) checks 20 ms after it gets
+      focus whether it has heard where the click put the cursor, and if
+      not, puts back the cursor it had before (at the start). When the page
+      is busy for longer than that at the moment of the click, the
+      browser's selection event comes too late, and the text typed next
+      goes in at the start rather than where the person clicked. It shows
+      in the message, signature and vacation boxes when they have text.
+      Rare for a person; reproduced on a deliberately slowed page. Possible
+      fixes, not built: put the cursor where the click was once the click
+      has finished, in the shared editor, or report it to ProseMirror.
 
 ## Later / unscheduled
 
@@ -6702,7 +6850,8 @@ Privacy and the policy.*
       shown, so nothing needs following once it opens (for example, open it
       at its final size, with space kept for the signature and the
       assistant, and scroll once); a design for the owner to lead, with a
-      mockup first. Turn the test back on with it. The next CI run failed
+      mockup first. (The test is back on since 2026-11-16, without the
+      redesign: see the note at the end of this item.) The next CI run failed
       another test in the file the same way ("scrolling up slowly", 401 px,
       before it scrolled at all): it had clicked Reply with AI while the
       email above was still laying out on the slow machine. The owner's call:
@@ -6710,8 +6859,17 @@ Privacy and the policy.*
       now wait until it has kept the same height for half a second before
       clicking. Clicking while it still loads is a separate case, for tests
       of its own later. The follow didn't cause the cursor bug filed in #109
-      (2026-11-12, see that item), so this item stays open and the test
-      stays `test.fixme`
+      (2026-11-12, see that item), so this item stays open
+      *(2026-11-16, the Flaky Test Spike: a follow scroll cut short after
+      the reply finished growing left it below the reader for good, and
+      that is fixed (0.3.0 → Bugs, "A reply's follow that was cut short
+      left it below the reader"). The few-pixel and hundreds-of-pixels
+      misses described here may both have been that; not confirmed. The
+      slow-machine test is back on, at the owner's word: on a slowed page
+      (`bun run test:browser:slow`) it failed 5 runs of 5 without the fix,
+      the reply 182–432 px below as in CI, and passed 5 of 5 with it; at
+      normal speed it passed 15 of 15 with the fix, and 15 of 15 without
+      it. The redesign above is still open)*
 - [ ] Tooltips don't show when the app's window is on another desktop than
       the one the app is assigned to *(owner report, 2026-11-12, macOS)*:
       with the Dock icon's Options → Assign To set to "This Desktop",
@@ -6729,7 +6887,7 @@ Privacy and the policy.*
 
 ### Flaky tests (moved from the Flaky tests section, owner, 2026-11-14)
 
-- [ ] `ai-panel.spec.ts`: "inline reply: opening and closing the panel many
+- [x] `ai-panel.spec.ts`: "inline reply: opening and closing the panel many
       times never moves the reply". Back after the 2026-11-08 fix.
       - 2026-11-12, local full check on branch `trash-leaves-inbox` (a
         change to Trash, nothing near the reply or the panel): the reply
@@ -6744,14 +6902,33 @@ Privacy and the policy.*
         "toggle 1 animated", expected more than 2 painted frames in 0.9 s,
         received 2. The branch passed the test file 20 runs of 20 locally;
         the failed job was run again and passed, with every other job.
-- [ ] `ai-panel.spec.ts`: "floating card at bottom-right: the panel opens on
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`). "Toggle
+        1 animated" counted frames painted in 0.9 s of real time, and a slow
+        runner paints only a few; the test now checks that the panel's
+        animation ran, and watches until it has finished rather than for a
+        fixed time. It also opened the panel with a bare `click()`, which
+        has no press, so the reply was still being followed into view (for
+        up to 10 s) while the panel opened; a person's click ends the
+        follow. It now sends the press a click has, and waits for the reply
+        to stay put rather than a fixed 1.8 s. The 445 px jump wasn't
+        reproduced locally, so that it came from the follow is likely, not
+        confirmed. Passed 20 runs and 3 on a slowed page.
+- [x] `ai-panel.spec.ts`: "floating card at bottom-right: the panel opens on
       the left, the whole card bounces, the form stays". Back after the
       2026-11-08 fix.
       - 2026-11-12, CI on #122, the same run as above: the new message form
         wasn't visible within 5 s (`toBeVisible`, element not found), before
         the panel was opened at all. It passed 5 runs of 5 locally (the
         bottom-left one too).
-- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader: the reply
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`): the
+        browser tests' `expect` now waits up to 15 s, not 5
+        (`playwright.config.ts`). Under heavy load the page sometimes took
+        longer than 5 s to show its first content, and tests failed there,
+        before checking anything (seen locally in this file, in
+        `compose-no-ai.spec.ts` and in `reply-scroll.spec.ts`). A check
+        passes as soon as it holds, so the longer limit only slows down a
+        real failure.
+- [x] `reply-scroll.spec.ts`: "Reply with AI, 360px reader: the reply
       scrolls into view" (line 49, the normal-speed version of the test
       below).
       - 2026-11-12, CI on #125 (branch `trashed-draft-opens`, Rust and docs
@@ -6761,10 +6938,14 @@ Privacy and the policy.*
         Send button or the reply's top never came into the reader). The
         failed job was run again and passed, with every other job. Likely
         the same cause as the slow-machine test below, on a slow runner.
-- [ ] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
-      the reply still scrolls into view". Turned off (`test.fixme`, line 86)
-      by the owner on 2026-11-11, until the reply-follow redesign; turn it
-      back on with that. The full story is under Open bugs above ("On a slow
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`), with
+        "scrolling up to read" in the Flaky tests section above: the same
+        symptom (the reply never came into view), and the same fix in the
+        app. Passed 20 runs and 21 on a slowed page.
+- [x] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
+      the reply still scrolls into view". Turned off (`test.fixme`) by the
+      owner on 2026-11-11, and back on since the Flaky Test Spike
+      (2026-11-16, below). The full story is under Open bugs above ("On a slow
       machine, a new reply sometimes stops being followed"). Its failures:
       - 2026-11-10, CI: the reader stopped well short of the reply. Fixed
         that day by following the reply until the person scrolls or types.
@@ -6783,6 +6964,14 @@ Privacy and the policy.*
         Reply with AI while the email above was still laying out. The tests
         now wait for the conversation to keep its height for half a second
         before clicking.
+      - Fixed in the Flaky Test Spike, 2026-11-16 (branch `flaky-fixes`),
+        and turned back on at the owner's word: a follow scroll cut short
+        after the reply stopped growing left it below the reader, and the
+        follow now finishes such a scroll (0.3.0 → Bugs). At normal speed
+        the test passed 15 runs of 15 with the fix and 15 of 15 without it,
+        so it shows the fix only on a slowed page (`bun run
+        test:browser:slow`): there it failed 5 runs of 5 without the fix,
+        the reply 182–432 px below as in CI, and passed 5 of 5 with it.
 
 ### Reading
 

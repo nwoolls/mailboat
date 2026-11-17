@@ -43,12 +43,22 @@ const tilePixels = (page: import("@playwright/test").Page, name: string) =>
  * Waits until a scene's still picture has its frame: it plays out of sight
  * (hidden) until then. A fixed wait isn't enough on a slow machine, where
  * frames come slower than the scene's clock and the picture is still
- * playing when the wait ends.
+ * playing when the wait ends. Shown isn't enough either: the canvas is
+ * there, not yet hidden, for a moment before it starts playing, which a
+ * check on a slow runner can catch (docs/ROADMAP.md → Flaky tests). So it
+ * also waits for the picture to stay the same for a while, which it never
+ * does while the scene plays.
  */
-const untilStill = (page: import("@playwright/test").Page, name: string) =>
-  expect(page.getByRole("radio", { name }).locator("canvas")).toHaveCSS("visibility", "visible", {
-    timeout: 30_000,
-  });
+async function untilStill(page: import("@playwright/test").Page, name: string) {
+  const canvas = page.getByRole("radio", { name }).locator("canvas");
+  await expect(async () => {
+    await expect(canvas).toHaveCSS("visibility", "visible", { timeout: 0 });
+    const first = await tilePixels(page, name);
+    await page.waitForTimeout(300);
+    expect(await tilePixels(page, name)).toBe(first);
+    await expect(canvas).toHaveCSS("visibility", "visible", { timeout: 0 });
+  }).toPass({ timeout: 30_000 });
+}
 
 test("a still picture is never seen moving: it shows only once it has its frame", async ({
   page,

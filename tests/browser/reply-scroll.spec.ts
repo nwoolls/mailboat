@@ -26,9 +26,9 @@ async function replyInView(page: Page) {
  * loading is a separate case, for tests of its own later (docs/ROADMAP.md,
  * Bug backlog).
  */
-async function contentSettled(page: Page) {
-  await page.evaluate(async () => {
-    const content = document.querySelector(".reader-scroll")!.firstElementChild!;
+async function contentSettled(page: Page, selector = ".reader-scroll > *") {
+  await page.evaluate(async (which) => {
+    const content = document.querySelector(which)!;
     const frame = () => new Promise((done) => requestAnimationFrame(done));
     let height = content.getBoundingClientRect().height;
     let since = performance.now();
@@ -41,7 +41,7 @@ async function contentSettled(page: Page) {
         since = performance.now();
       }
     }
-  });
+  }, selector);
 }
 
 for (const height of [640, 360])
@@ -79,11 +79,12 @@ for (const height of [640, 360])
  * the reply had stopped being followed, and left it part way below the
  * reader. Slowed animations stand in for the slow machine here.
  *
- * Off for now (fixme): in CI it still sometimes finds the reply hundreds of
- * pixels below the reader, for a reason not found. Following a reply that
- * keeps growing is to be rethought (docs/ROADMAP.md, Bug backlog).
+ * Off from 2026-11-11 to 2026-11-16: in CI it sometimes found the reply
+ * hundreds of pixels below the reader. A follow scroll cut short after the
+ * reply stopped growing did that, and the follow now finishes such a scroll
+ * (docs/ROADMAP.md → 0.3.0 → Bugs); turned back on at the owner's word.
  */
-test.fixme("Reply with AI, 360px reader, slow machine: the reply still scrolls into view", async ({
+test("Reply with AI, 360px reader, slow machine: the reply still scrolls into view", async ({
   page,
 }) => {
   await page.goto("/tests/browser/harness.html?mode=inline");
@@ -102,7 +103,6 @@ test.fixme("Reply with AI, 360px reader, slow machine: the reply still scrolls i
   await expect
     .poll(async () => (await replyInView(page)).bottom, {
       message: "the reply's end (its Send button) is in view",
-      timeout: 5_000,
     })
     .toBeGreaterThanOrEqual(-1);
 });
@@ -136,6 +136,40 @@ test("Reply with AI: scrolling up to read stops the reply being followed", async
     return reader.scrollTop;
   });
   expect(scrollTop).toBe(0);
+});
+
+/**
+ * A scroll of the follow's can be cut short (any instant scroll cancels a
+ * smooth one), and with nothing growing afterwards nothing aimed again: in
+ * CI the reply was left hundreds of pixels below the reader for good
+ * (docs/ROADMAP.md → Flaky tests). Here every scroll the follow asks for is
+ * dropped until the reply has finished growing, so it is left below for
+ * certain; then the follow, seeing the reader stopped short, aims again.
+ */
+test("Reply with AI: a follow scroll that was cut short is aimed again", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await expect(page.getByTitle("Message content")).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
+    const scrollTo = Element.prototype.scrollTo;
+    const win = window as unknown as { dropScrolls: boolean };
+    win.dropScrolls = true;
+    Element.prototype.scrollTo = function (this: Element, ...args: unknown[]) {
+      if (win.dropScrolls && this.classList.contains("reader-scroll")) return;
+      return (scrollTo as (...a: unknown[]) => void).apply(this, args);
+    };
+  });
+  await contentSettled(page);
+  await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
+  await expect(page.locator('section[aria-label="Reply"]')).toBeVisible();
+  await contentSettled(page, 'section[aria-label="Reply"]');
+  expect((await replyInView(page)).bottom).toBeLessThan(-1);
+  await page.evaluate(() => {
+    (window as unknown as { dropScrolls: boolean }).dropScrolls = false;
+  });
+  await expect
+    .poll(async () => (await replyInView(page)).bottom, { timeout: 15_000 })
+    .toBeGreaterThanOrEqual(-1);
 });
 
 /** Scrolling up slowly, a few pixels at a time, adds up and stops it too. */

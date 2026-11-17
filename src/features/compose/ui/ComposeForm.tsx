@@ -158,32 +158,36 @@ export function ComposeForm({
     // Where the follow is taking the reader, so its own scrolling (up too,
     // when the reply's end is already in view) isn't taken for the person's.
     let target = scroller?.scrollTop ?? 0;
-    const show = () => {
+    /** How far the reader has to move to show the reply. */
+    const offBy = (reader: Element) => {
+      const view = reader.getBoundingClientRect();
+      const box = whole.getBoundingClientRect();
+      // Taller than the reader: its end at the bottom. Otherwise the least
+      // movement that shows all of it.
+      if (box.height > view.height || box.bottom > view.bottom) return box.bottom - view.bottom;
+      if (box.top < view.top) return box.top - view.top;
+      return 0;
+    };
+    const show = (atOnce = false) => {
       if (!scroller) {
         whole.scrollIntoView({ block: "nearest", behavior: "smooth" });
         return;
       }
-      const view = scroller.getBoundingClientRect();
-      const box = whole.getBoundingClientRect();
-      // Taller than the reader: its end at the bottom. Otherwise the least
-      // movement that shows all of it.
-      let by = 0;
-      if (box.height > view.height || box.bottom > view.bottom) by = box.bottom - view.bottom;
-      else if (box.top < view.top) by = box.top - view.top;
+      const by = offBy(scroller);
       target = scroller.scrollTop + by;
       // WebKit leaves a smooth scroll of a pixel or two undone, so the
       // reply, growing a little at a time, ended a few pixels below the
       // reader. A short way (looks the same) goes at once.
       scroller.scrollTo({
         top: target,
-        behavior: Math.abs(by) <= REPLY_FOLLOW_AT_ONCE_PX ? "instant" : "smooth",
+        behavior: atOnce || Math.abs(by) <= REPLY_FOLLOW_AT_ONCE_PX ? "instant" : "smooth",
       });
     };
     // The reader may still be landing on an email it just opened (a draft
     // reply resumes by itself): the reply takes over from it.
     scroller?.dispatchEvent(new Event(REPLY_FOLLOW_EVENT));
     show();
-    const growing = new ResizeObserver(show);
+    const growing = new ResizeObserver(() => show());
     growing.observe(whole);
     // Inline, the reader's content too: whatever grows above moves it.
     const content = scroller?.firstElementChild;
@@ -192,7 +196,36 @@ export function ComposeForm({
     // or for REPLY_FOLLOW_MS at most. A fixed second and a half wasn't enough
     // on a slow machine: the email above, the assistant and the signature
     // finished laying out after it, and the reply was left part way below.
-    const stop = () => growing.disconnect();
+    // Measured from the furthest down the reader has been (see onScroll).
+    let furthest = scroller?.scrollTop ?? 0;
+    // A smooth scroll can be cut short (any instant scroll cancels one),
+    // and with nothing growing afterwards, nothing aimed again: in CI the
+    // reply was left hundreds of pixels below the reader for good. So each
+    // frame, when the reader has stopped at the furthest it has been with
+    // the reply's end still below it, the follow aims again, at once: on a
+    // busy page a smooth scroll can show no progress from one frame to the
+    // next, and starting it again every frame kept it from moving at all.
+    // A person scrolling up leaves the reader above that point, and isn't
+    // pulled back.
+    let lastTop = scroller?.scrollTop ?? 0;
+    let checking = 0;
+    let live = true;
+    const check = () => {
+      if (scroller) {
+        const top = scroller.scrollTop;
+        furthest = Math.max(furthest, top);
+        if (top === lastTop && top >= furthest - 1 && offBy(scroller) > 1) show(true);
+        lastTop = scroller.scrollTop;
+      }
+      // Stopped meanwhile (a scroll it caused, say): no next frame.
+      if (live) checking = requestAnimationFrame(check);
+    };
+    checking = requestAnimationFrame(check);
+    const stop = () => {
+      live = false;
+      growing.disconnect();
+      cancelAnimationFrame(checking);
+    };
     const byHand = ["wheel", "pointerdown", "keydown", "touchstart"] as const;
     for (const type of byHand) window.addEventListener(type, stop, { capture: true, once: true });
     // A wheel or a touch over an email (a sandboxed frame of its own, whose
@@ -201,7 +234,6 @@ export function ComposeForm({
     // is the person reading: stop.
     // Measured from the furthest down it has been, so slow scrolling in
     // small steps adds up.
-    let furthest = scroller?.scrollTop ?? 0;
     const onScroll = () => {
       if (!scroller) return;
       furthest = Math.max(furthest, scroller.scrollTop);

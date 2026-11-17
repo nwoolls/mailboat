@@ -18,6 +18,7 @@
     "test:watch": "vitest",
     "coverage": "bun scripts/coverage.ts",
     "test:browser": "playwright test",
+    "test:browser:slow": "VITE_SLOW_MACHINE=12000000 playwright test",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --deny-warnings --report-unused-disable-directives",
     "fmt": "oxfmt",

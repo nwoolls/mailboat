@@ -147,6 +147,15 @@ The browser tests (`tests/browser`, Playwright) need WebKit and Chromium once:
 bunx playwright install webkit chromium
 ```
 
+A browser test that measures motion or timing should pass on a slow machine
+too. `bun run test:browser:slow` runs the tests with the page kept busy most
+of the time (`tests/browser/slowMachine.ts`), as on a loaded CI runner, so
+check such a test with it before trusting it; the whole suite takes about 25
+minutes this way. A test that measures motion drives the page's clock
+(`tests/browser/time.ts`) rather than waiting real time. To run a second set
+of browser tests beside a long one, give it another port:
+`BROWSER_TESTS_PORT=1437 bun run test:browser …`.
+
 ### Test coverage
 
 ```sh

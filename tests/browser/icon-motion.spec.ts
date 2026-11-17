@@ -123,13 +123,17 @@ test("buttons fade out into the More menu and fade back in", async ({ page }) =>
     }).observe(header, { childList: true });
   });
   await page.setViewportSize({ width: 560, height: 800 });
-  // A copy fades out where each button was, then goes.
-  await expect(bar.locator(".tool-leave").first()).toBeAttached();
+  const placed = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { ghosts: { left: number; right: number; bar: number }[] }).ghosts,
+    );
+  // A copy fades out where each button was, then goes. Read from the
+  // record, not looked for on screen: a copy lives about 160 ms, which a
+  // slow runner's check can miss (docs/ROADMAP.md → Flaky tests).
+  await expect.poll(async () => (await placed()).length).toBeGreaterThan(0);
   await expect(bar.locator(".tool-leave")).toHaveCount(0);
-  const ghosts = await page.evaluate(
-    () => (window as unknown as { ghosts: { left: number; right: number; bar: number }[] }).ghosts,
-  );
-  expect(ghosts.length).toBeGreaterThan(0);
+  const ghosts = await placed();
   // In the bar's right half, where the buttons were, not pushed off it.
   for (const g of ghosts) {
     expect(g.right).toBeLessThanOrEqual(g.bar);
