@@ -209,6 +209,7 @@ export function ComposeForm({
     // pulled back.
     let lastTop = scroller?.scrollTop ?? 0;
     let checking = 0;
+    let live = true;
     const check = () => {
       if (scroller) {
         const top = scroller.scrollTop;
@@ -216,10 +217,12 @@ export function ComposeForm({
         if (top === lastTop && top >= furthest - 1 && offBy(scroller) > 1) show(true);
         lastTop = scroller.scrollTop;
       }
-      checking = requestAnimationFrame(check);
+      // Stopped meanwhile (a scroll it caused, say): no next frame.
+      if (live) checking = requestAnimationFrame(check);
     };
     checking = requestAnimationFrame(check);
     const stop = () => {
+      live = false;
       growing.disconnect();
       cancelAnimationFrame(checking);
     };

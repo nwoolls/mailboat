@@ -4965,11 +4965,13 @@ to. What was added for that:
 
 The whole suite on a slowed page failed 7 tests before the fixes. After
 them it failed none apart from two that failed in that run while their code
-was being changed, and passed 21 runs slowed afterwards. Two of the 7 had never failed in CI and
+was being changed; their file, `reply-scroll.spec.ts`, then passed 21 runs
+slowed. Two of the 7 had never failed in CI and
 were fixed too: the labels submenu (`labels.spec.ts`, "the pointer can cross
 other items on its way into a submenu": the pointer's steps took longer than
-the submenu's 250 ms grace in real time; it now drives the clock, and passed
-10 runs and 6 slowed) and the vacation responder's box
+the submenu's 250 ms grace in real time; it now drives the clock, moves it
+on 150 ms over the other item, and checks that staying there past the grace
+closes the submenu; it passed 10 runs, and fails with the grace set to 0) and the vacation responder's box
 (`vacation-box.spec.ts`: the typed text went in at the start, see 0.3.0 →
 Bugs; it passed 10 runs and 8 slowed). Two bugs in the app were found on
 the way, and one bug in the app caused flaky failures; all three are in
@@ -6855,8 +6857,7 @@ Privacy and the policy.*
       now wait until it has kept the same height for half a second before
       clicking. Clicking while it still loads is a separate case, for tests
       of its own later. The follow didn't cause the cursor bug filed in #109
-      (2026-11-12, see that item), so this item stays open and the test
-      stays `test.fixme`
+      (2026-11-12, see that item), so this item stays open
       *(2026-11-16, the Flaky Test Spike: a follow scroll cut short after
       the reply finished growing left it below the reader for good, and
       that is fixed (0.3.0 → Bugs, "A reply's follow that was cut short
@@ -6940,9 +6941,9 @@ Privacy and the policy.*
         symptom (the reply never came into view), and the same fix in the
         app. Passed 20 runs and 21 on a slowed page.
 - [x] `reply-scroll.spec.ts`: "Reply with AI, 360px reader, slow machine:
-      the reply still scrolls into view". Turned off (`test.fixme`, line 86)
-      by the owner on 2026-11-11, until the reply-follow redesign; turn it
-      back on with that. The full story is under Open bugs above ("On a slow
+      the reply still scrolls into view". Turned off (`test.fixme`) by the
+      owner on 2026-11-11, and back on since the Flaky Test Spike
+      (2026-11-16, below). The full story is under Open bugs above ("On a slow
       machine, a new reply sometimes stops being followed"). Its failures:
       - 2026-11-10, CI: the reader stopped well short of the reply. Fixed
         that day by following the reply until the person scrolls or types.

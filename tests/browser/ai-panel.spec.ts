@@ -118,6 +118,19 @@ async function stopSampling(page: Page) {
   );
 }
 
+/**
+ * Waits until the reply has stayed in the same place for half a second: a
+ * fixed wait can be outlasted by a slow machine, and by the reply still
+ * being followed into view.
+ */
+async function settled(top: () => Promise<number>, page: Page) {
+  await expect(async () => {
+    const was = await top();
+    await page.waitForTimeout(500);
+    expect(await top()).toBe(was);
+  }).toPass({ timeout: 15_000 });
+}
+
 async function toggleAssistant(page: Page) {
   await page.getByRole("button", { name: "Write with AI" }).click();
 }
@@ -175,13 +188,7 @@ test("inline reply: opening and closing the panel many times never moves the rep
   // At the end of the conversation, as when answering.
   await page.locator(".reader-scroll").evaluate((el) => (el.scrollTop = el.scrollHeight));
   const top = async () => (await reply.boundingBox())!.y;
-  // Settled: in the same place for half a second (not a fixed wait, which
-  // a slow machine can outlast).
-  await expect(async () => {
-    const was = await top();
-    await page.waitForTimeout(500);
-    expect(await top()).toBe(was);
-  }).toPass({ timeout: 15_000 });
+  await settled(top, page);
   const start = await top();
 
   for (let i = 0; i < 12; i++) {
@@ -234,6 +241,9 @@ test("inline reply: opening and closing the panel many times never moves the rep
         }),
     );
     expect(animated, `toggle ${i + 1} animated`).toBe(true);
+    // At least the observer's first report, so the check below has something
+    // to check (not a frame count, which a slow machine can't keep up).
+    expect(tops.length, `toggle ${i + 1} watched`).toBeGreaterThan(0);
     for (const t of tops) expect(Math.abs(t - start), `toggle ${i + 1}`).toBeLessThanOrEqual(2);
     // The reply must come back to where it started. Polled, since a slow
     // machine (CI) can still be finishing the animation after the window.
@@ -255,13 +265,19 @@ test("inline reply: stays put when the page stalls mid-animation", async ({ page
   const reply = page.locator('section[aria-label="Reply"] form[aria-label="Reply"]');
   await expect(reply).toBeVisible();
   await page.locator(".reader-scroll").evaluate((el) => (el.scrollTop = el.scrollHeight));
-  await page.waitForTimeout(1800);
   const top = async () => (await reply.boundingBox())!.y;
+  await settled(top, page);
   const start = await top();
 
   for (let i = 0; i < 4; i++) {
     await page.evaluate(() => {
-      document.querySelector<HTMLButtonElement>('button[aria-label="Write with AI"]')!.click();
+      const button = document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Write with AI"]',
+      )!;
+      // A real click's press first, which ends the reply being followed
+      // into view (see the test above).
+      button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      button.click();
       setTimeout(() => {
         const end = performance.now() + 220;
         while (performance.now() < end);

@@ -175,8 +175,16 @@ test("the pointer can cross other items on its way into a submenu", async ({ pag
     .getByRole("menuitemcheckbox", { name: "Show on conversations" })
     .boundingBox())!;
   await page.mouse.move(from.x + from.width - 20, below.y + below.height / 2, { steps: 4 });
+  // A moment over the other item, inside the 250 ms it has before the
+  // submenu closes.
+  await advance(page, 150);
+  await expect(colors).toBeVisible();
   await page.mouse.move(target.x + 5, target.y + 5, { steps: 4 });
   await advance(page, 400);
   await expect(colors).toBeVisible();
   await expect(swatch).toBeFocused();
+  // Staying on another item past that moment closes it.
+  await page.mouse.move(from.x + from.width - 20, below.y + below.height / 2, { steps: 4 });
+  await advance(page, 400);
+  await expect(colors).toHaveCount(0);
 });
