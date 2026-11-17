@@ -192,8 +192,8 @@ fn person(a: &Address, mine: bool) -> String {
 
 /// Formats a date as UTC "2026-10-20 14:05" (models don't need the zone).
 fn when(millis: i64) -> String {
-    chrono::DateTime::from_timestamp_millis(millis)
-        .map(|d| d.format("%Y-%m-%d %H:%M UTC").to_string())
+    jiff::Timestamp::from_millisecond(millis)
+        .map(|d| d.strftime("%Y-%m-%d %H:%M UTC").to_string())
         .unwrap_or_default()
 }
 

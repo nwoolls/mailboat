@@ -51,7 +51,7 @@ mod tests {
     fn the_review_reads_and_has_a_date() {
         let r = review();
         assert!(
-            chrono::NaiveDate::parse_from_str(&r.reviewed, "%Y-%m-%d").is_ok(),
+            jiff::civil::Date::strptime("%Y-%m-%d", &r.reviewed).is_ok(),
             "reviewed: {}",
             r.reviewed
         );

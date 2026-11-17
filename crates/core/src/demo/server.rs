@@ -870,7 +870,7 @@ fn send_as(mb: &Mailbox) -> Value {
 
 /// Whether an event's start falls between two RFC 3339 times.
 fn overlaps(event: &Value, from: Option<&str>, to: Option<&str>) -> bool {
-    let parse = |s: &str| chrono::DateTime::parse_from_rfc3339(s).ok();
+    let parse = |s: &str| s.parse::<jiff::Timestamp>().ok();
     let Some(start) = event["start"]["dateTime"].as_str().and_then(parse) else {
         return false;
     };

@@ -6487,18 +6487,35 @@ Privacy and the policy.*
       glob patterns, no fixed release yet), which `bun audit` doesn't. Each
       is ignored with its reason: the two `chrono` advisories in
       `deny.toml` and `osv-scanner.toml` (six months), `picomatch` in
-      `osv-scanner.toml` (three months, to pick up a fix). `chrono` also
+      `osv-scanner.toml` (three months, to pick up a fix); `chrono-tz`'s
+      entries went with the move to `jiff` below. `chrono` also
       comes in through `oauth2` (Google sign-in), `icalendar` (invitations),
       `rmcp` (AI apps) and `schemars`, so it stays until they move; only
       build and test tools use `picomatch`, on the project's own patterns,
       and the bill of materials marks it build-only.
-- [ ] Move the app's own dates and time zones from `chrono` and `chrono-tz`
+- [x] Move the app's own dates and time zones from `chrono` and `chrono-tz`
       to `jiff`, a maintained library with time zones built in
       *(owner, 2026-11-17, after the advisory above)*. Removes `chrono-tz`
       and the app's direct use of `chrono`; `chrono` stays until `oauth2`,
       `icalendar`, `rmcp` and `schemars` drop it. Calendar invitations'
       times and time zones are the riskiest part: their tests must pass
       unchanged.
+      *(2026-11-17: done. `chrono-tz` is out of `Cargo.lock`, and
+      `mail-core` no longer names `chrono`: invitations convert
+      `icalendar`'s values at that boundary, and the reply's DTSTAMP is
+      written as `icalendar` wrote it. Time zones come from the system's
+      database on macOS and from one bundled into the app on Windows
+      (`jiff-tzdb`), where `chrono-tz` compiled its own copy in. Dates
+      read the same: the AI apps' (MCP) dates keep RFC 3339 with
+      milliseconds only when there are some, and a new test pins it; new
+      tests pin invitations at daylight saving's edges (a spring-forward
+      time stays as written, a fall-back one takes the earlier). Review
+      caught two places `jiff` reads differently: a leap second
+      (`23:59:60`) became `:59`, and a time a fraction before 1970 rounded
+      to 0 rather than -1. `mail_core::dates` reads them as `chrono` did,
+      with tests, so a zoned invitation and the same one in UTC (which
+      `icalendar` still reads with `chrono`) agree. The `chrono-tz` ignore
+      entries are gone from `deny.toml` and `osv-scanner.toml`)*
 - [ ] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
