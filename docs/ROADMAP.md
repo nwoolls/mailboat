@@ -5046,6 +5046,16 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         run on `main` when another starts); the run for the newest
         commit, which contains this merge, passed on 2026-11-16
         (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
+      - 2026-11-16, three more, WebKit, attempt 1, each the same check
+        (line 232): CI on `main` after #166 merged
+        (https://github.com/nwoolls/mailboat/actions/runs/43994251922),
+        after #167 merged
+        (https://github.com/nwoolls/mailboat/actions/runs/43996893870), and
+        on #169, the 0.3.0-beta.0 version bump
+        (https://github.com/nwoolls/mailboat/actions/runs/43997476358).
+        #166 checks the README's version, #167 adds comments and a lint,
+        #169 changes only the version and the changelog. Re-runs requested
+        of #169's run and of the newest run on `main` (#167's).
 - [ ] `empty-toys.spec.ts`: "bubble wrap pops the bubble clicked with a
       burst, and only it" (line 69).
       - 2026-11-16, CI on `main` after #158 merged, WebKit, attempt 1,
@@ -5061,6 +5071,16 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         run on `main` when another starts); the run for the newest
         commit, which contains this merge, passed on 2026-11-16
         (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
+      - 2026-11-16, CI on `main` after #165 merged, WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/43990809565, and
+        after #166 merged,
+        https://github.com/nwoolls/mailboat/actions/runs/43994251922: a
+        different check this time: clicking the popped bubble again
+        should leave the drawing as it was, and it had less ink
+        (`toBe`, line 91; 85250 where 85425 and 85675 were expected).
+        Possibly the first pop's confetti still settling after
+        `POP_DONE_MS` on a slow runner; not confirmed. #165 adds coverage tooling and #166 a README
+        check, neither the toy. A later run on `main` (#167's) passed it.
 - [ ] Vitest tests that run long: `scripts/ciAppChanged.test.ts` ("says app
       for files that only look like docs or site…") and
       `src/features/screensaver/model/catalog.test.ts` ("… runs a minute,
