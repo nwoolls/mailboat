@@ -1,27 +1,22 @@
-// Writes the release's software bill of materials (`sbom.ts`):
+// Writes the release's software bills of materials (`sbom.ts`), one per
+// download, since each platform's build ships different Rust crates:
 //
 //   bun scripts/make-sbom.ts --version 0.3.0 --out release-sbom
 //
 // Run after `bun install --frozen-lockfile` (it reads installed packages'
 // licenses) with Rust installed (it asks `cargo tree`, twice per platform
-// the release builds). Writes `<App>_<version>.cdx.json` in `--out`.
+// the release builds), on a Mac: every release build runs on one (Windows
+// is cross-built there), and a build script's own crates follow the
+// computer that builds, so only a Mac lists the ones the release used.
+// Writes `<App>_<version>_<download>.cdx.json` in `--out` for each of
+// `SBOM_DOWNLOADS` (`releaseFiles.ts`).
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import brand from "../brand.json";
-import { isVersion } from "./releaseFiles";
-import {
-  bom,
-  type BunLock,
-  cargoChecksums,
-  cargoComponents,
-  installPath,
-  npmComponents,
-} from "./sbom";
-
-/** The platforms the release builds (`release.yml`). */
-const TARGETS = ["aarch64-apple-darwin", "x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"];
+import { isVersion, SBOM_DOWNLOADS, sbomName } from "./releaseFiles";
+import { type BunLock, cargoChecksums, downloadBom, installPath, npmComponents } from "./sbom";
 
 function option(name: string): string | undefined {
   const at = process.argv.indexOf(`--${name}`);
@@ -60,11 +55,10 @@ function tree(target: string, edges: string): string {
   if (run.status !== 0) fail(`cargo tree for ${target} failed:\n${run.stderr}`);
   return run.stdout;
 }
-const rust = cargoComponents(
-  TARGETS.map((t) => tree(t, "normal,no-proc-macro")),
-  TARGETS.map((t) => tree(t, "normal,build")),
-  cargoChecksums(readFileSync("Cargo.lock", "utf8")),
-);
+if (process.platform !== "darwin") {
+  fail("run on a Mac, as the release builds are: the build tools' crates depend on it");
+}
+const checksums = cargoChecksums(readFileSync("Cargo.lock", "utf8"));
 
 const lock = Bun.JSONC.parse(readFileSync("bun.lock", "utf8")) as BunLock;
 const license = (key: string): string | undefined => {
@@ -79,28 +73,33 @@ const license = (key: string): string | undefined => {
 };
 const js = npmComponents(lock, license);
 
-const document = bom({
-  name: brand.name,
-  version,
-  components: [...rust, ...js],
-  timestamp: new Date().toISOString(),
-  serial: crypto.randomUUID(),
-});
 mkdirSync(out, { recursive: true });
-const file = join(out, `${brand.name}_${version}.cdx.json`);
-writeFileSync(file, `${JSON.stringify(document, null, 2)}\n`);
-
-const count = (list: typeof rust, scope: string) => list.filter((c) => c.scope === scope).length;
-// Build-only packages may lack one: a platform's binary package that isn't
-// installed on this computer can't be read.
-const unlicensed = document.components.filter((c) => c.scope !== "excluded" && !c.licenses);
-console.log(`${file}: ${document.components.length} components`);
-console.log(`  Rust: ${count(rust, "required")} shipped, ${count(rust, "excluded")} build-only`);
-console.log(
-  `  JavaScript: ${count(js, "required")} shipped, ${count(js, "optional")} optional, ${count(js, "excluded")} build-only`,
-);
-// Every shipped component must say its license: the lab reads them, and
-// the project's license (GPL-3.0-only) has to allow each.
-if (unlicensed.length) {
-  fail(`no license found for ${unlicensed.map((c) => c.purl).join(", ")}`);
+const count = (list: { scope?: string }[], scope: string) =>
+  list.filter((c) => c.scope === scope).length;
+for (const download of SBOM_DOWNLOADS) {
+  const { rust, document } = downloadBom({
+    name: brand.name,
+    version,
+    target: download.target,
+    tree,
+    checksums,
+    js,
+    timestamp: new Date().toISOString(),
+    serial: crypto.randomUUID(),
+  });
+  const file = join(out, sbomName(brand.name, version, download));
+  writeFileSync(file, `${JSON.stringify(document, null, 2)}\n`);
+  console.log(`${file}: ${document.components.length} components`);
+  console.log(`  Rust: ${count(rust, "required")} shipped, ${count(rust, "excluded")} build-only`);
+  console.log(
+    `  JavaScript: ${count(js, "required")} shipped, ${count(js, "optional")} optional, ${count(js, "excluded")} build-only`,
+  );
+  // Every shipped component must say its license: the lab reads them, and
+  // the project's license (GPL-3.0-only) has to allow each. Build-only
+  // packages may lack one: a platform's binary package that isn't installed
+  // on this computer can't be read.
+  const unlicensed = document.components.filter((c) => c.scope !== "excluded" && !c.licenses);
+  if (unlicensed.length) {
+    fail(`no license found for ${unlicensed.map((c) => c.purl).join(", ")}`);
+  }
 }

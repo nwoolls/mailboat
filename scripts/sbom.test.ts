@@ -4,6 +4,7 @@ import {
   type BunLock,
   cargoChecksums,
   cargoComponents,
+  downloadBom,
   installPath,
   licenses,
   npmComponents,
@@ -77,6 +78,39 @@ version = "0.0.0"
     "alpha v1.0.0\tMIT",
     "winonly v0.5.0\tMIT",
   ].join("\n");
+
+  it("makes each download's bill of materials from its own target only", () => {
+    const asked: string[] = [];
+    const tree = (target: string, edges: string) => {
+      asked.push(`${target} ${edges}`);
+      if (target === "aarch64-apple-darwin") return edges === "normal,build" ? macUsed : macLinked;
+      return winLinked;
+    };
+    const make = (target: string) =>
+      downloadBom({
+        name: "App",
+        version: "1.2.3",
+        target,
+        tree,
+        checksums: new Map(),
+        js: [],
+        timestamp: "2026-11-17T00:00:00.000Z",
+        serial: "00000000-0000-4000-8000-000000000000",
+      });
+    const mac = make("aarch64-apple-darwin");
+    expect(asked).toEqual([
+      "aarch64-apple-darwin normal,no-proc-macro",
+      "aarch64-apple-darwin normal,build",
+    ]);
+    const win = make("x86_64-pc-windows-msvc");
+    const names = (d: typeof mac) => d.document.components.map((c) => c.name).toSorted();
+    // Each file has only its platform's crates: no Windows crate in the Mac's.
+    expect(names(mac)).toEqual(["alpha", "cc", "derive", "toml"]);
+    expect(names(win)).toEqual(["alpha", "winonly"]);
+    expect(win.document.metadata.component.properties).toEqual([
+      { name: "build:target", value: "x86_64-pc-windows-msvc" },
+    ]);
+  });
 
   it("reads each crate's checksum from Cargo.lock", () => {
     expect(cargoChecksums(lock)).toEqual(new Map([["alpha 1.0.0", "aaaa"]]));
@@ -196,6 +230,7 @@ describe("the document", () => {
     const doc = bom({
       name: "App",
       version: "1.2.3",
+      target: "aarch64-apple-darwin",
       timestamp: "2026-11-15T00:00:00.000Z",
       serial: "00000000-0000-4000-8000-000000000000",
       components: [
@@ -222,7 +257,13 @@ describe("the document", () => {
       specVersion: "1.5",
       serialNumber: "urn:uuid:00000000-0000-4000-8000-000000000000",
       metadata: {
-        component: { type: "application", name: "App", version: "1.2.3" },
+        component: {
+          type: "application",
+          "bom-ref": "pkg:generic/app@1.2.3?target=aarch64-apple-darwin",
+          name: "App",
+          version: "1.2.3",
+          properties: [{ name: "build:target", value: "aarch64-apple-darwin" }],
+        },
       },
     });
     expect(doc.components.map((c) => c.name)).toEqual(["a", "b"]);
