@@ -4557,7 +4557,8 @@ moved to "Later / unscheduled" → Open bugs and → Flaky tests.)
     composer, as in Gmail; #125).
 
 Not in the spike: rethinking how a new reply is followed (and the
-slow-machine test kept as `test.fixme`). It is a design for the owner to
+slow-machine test kept as `test.fixme`, back on since the Flaky Test Spike,
+2026-11-16). It is a design for the owner to
 lead, with a mockup first.
 
 ## UX Spike 5: ASCII Toybox
@@ -6849,7 +6850,8 @@ Privacy and the policy.*
       shown, so nothing needs following once it opens (for example, open it
       at its final size, with space kept for the signature and the
       assistant, and scroll once); a design for the owner to lead, with a
-      mockup first. Turn the test back on with it. The next CI run failed
+      mockup first. (The test is back on since 2026-11-16, without the
+      redesign: see the note at the end of this item.) The next CI run failed
       another test in the file the same way ("scrolling up slowly", 401 px,
       before it scrolled at all): it had clicked Reply with AI while the
       email above was still laying out on the slow machine. The owner's call:
