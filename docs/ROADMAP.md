@@ -5189,6 +5189,18 @@ the way, and one bug in the app caused flaky failures; all three are in
         that runs git) and have their own 30 s limit now, instead of
         Vitest's 5 s. The whole suite then passed 3 runs of 3 with the
         machine's load average over 200.
+- [ ] `reply-ideas.spec.ts`: "760px reader: the ideas don't change the
+      panel's height" (line 14).
+      - 2026-11-17, CI on `main` after #174 merged, WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/44152586150: the
+        three stand-ins shown while the ideas load weren't there to count
+        (`toHaveCount(3)`, received 0, line 23). #174 moves the app's
+        dates to `jiff` in Rust and touches nothing near the reply panel;
+        its own pull request run passed the test. Likely cause, not
+        confirmed: the stand-ins only show until the ideas arrive, and on
+        a slow runner the ideas had already replaced them when the test
+        first looked. Re-run requested: attempt 2 passed, with every other
+        job.
 
 ## Bug backlog
 
