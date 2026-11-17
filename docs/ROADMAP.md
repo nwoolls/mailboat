@@ -6638,18 +6638,6 @@ Privacy and the policy.*
       test fails without the change. The older "On a slow machine, a new
       reply sometimes stops being followed" in "Later / unscheduled" →
       Open bugs has a note about it.
-- [ ] Esc doesn't put away a floating sidebar that came in under a resting
-      pointer *(found 2026-11-16 in the Flaky Test Spike, through the
-      flaky `narrow-window.spec.ts` test)*: in a narrow window, with the
-      pointer resting where the sidebar floats in (over the reader's left
-      side), floating it with its shortcut and pressing Esc can leave it
-      open. The sidebar slides in under the pointer, which counts as
-      hovering it, and coming back onto a sidebar that is leaving keeps
-      it (`Shell.tsx`, the peek). In a local test with that sequence it
-      stayed open in 13 of 18 tries. Esc is meant to put it away wherever
-      the focus is. Possible fix, not built: after Esc (or the shortcut),
-      only a real pointer move brings it back. The owner's design, so the
-      owner decides.
 - [x] A click in an editor that doesn't have focus can leave the cursor at
       the start on a busy page *(found 2026-11-16 in the Flaky Test Spike,
       through the vacation responder's box test)*: the editor
@@ -6868,6 +6856,26 @@ Privacy and the policy.*
       *(moved from Milestone 12 when it closed, owner, 2026-11-14)*
 
 ### Open bugs (moved from the Bug backlog, owner, 2026-11-14)
+
+- [ ] Esc doesn't put away a floating sidebar that came in under a resting
+      pointer *(found 2026-11-16 in the Flaky Test Spike, through the
+      flaky `narrow-window.spec.ts` test)*: in a narrow window, with the
+      pointer resting where the sidebar floats in (over the reader's left
+      side), floating it with its shortcut and pressing Esc can leave it
+      open. The sidebar slides in under the pointer, which counts as
+      hovering it, and coming back onto a sidebar that is leaving keeps
+      it (`Shell.tsx`, the peek). In a local test with that sequence it
+      stayed open in 13 of 18 tries. Esc is meant to put it away wherever
+      the focus is. Possible fix, not built: after Esc (or the shortcut),
+      only a real pointer move brings it back. The owner's design, so the
+      owner decides.
+      *(moved from 0.3.0 to "Later / unscheduled" → Open bugs, owner,
+      2026-11-17: the owner couldn't reproduce it by hand on a Mac. It was
+      seen only in a Playwright test, whose pointer rests at exact
+      coordinates with no movement while WebKit re-checks hover during the
+      slide; a real pointer may not do that. Built only if a person hits it.
+      The test now moves its pointer off that spot before floating the
+      sidebar (#170))*
 
 - [ ] On a slow machine, a new reply sometimes stops being followed before
       it has laid out *(found 2026-11-11, by the browser test "Reply with
