@@ -4978,6 +4978,10 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         (line 125). #157 adds a Semgrep workflow and fixes in scripts and
         the AI helper's folder, not the reply or the reader. Re-run
         requested.
+        The re-runs of the older runs canceled one another (CI cancels a
+        run on `main` when another starts); the run for the newest
+        commit, which contains this merge, passed on 2026-11-16
+        (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
 - [ ] `ascii-glow.spec.ts`: "the glow glides over to the pointer, then holds
       on loosely" (line 153, added in UX Spike 5).
       - 2026-11-14, CI on `main` after #135 merged, attempt 1,
@@ -5015,6 +5019,10 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         oxlint, Vite); its own pull request run passed the browser tests,
         and so did the next run on `main`, which includes it. Re-run
         requested.
+        The re-runs of the older runs canceled one another (CI cancels a
+        run on `main` when another starts); the run for the newest
+        commit, which contains this merge, passed on 2026-11-16
+        (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
 - [ ] `narrow-window.spec.ts`: "going back doesn't happen while typing, and
       Esc puts a floating sidebar away first" (line 213).
       - 2026-11-16, the same CI run: after Esc, the floating sidebar was
@@ -5026,10 +5034,18 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         same check, the sidebar still there after Esc (line 232). #157
         changes scanning and scripts, not the window or the sidebar.
         Re-run requested.
+        The re-runs of the older runs canceled one another (CI cancels a
+        run on `main` when another starts); the run for the newest
+        commit, which contains this merge, passed on 2026-11-16
+        (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
       - 2026-11-16, CI on `main` after #161 merged, WebKit, attempt 1,
         https://github.com/nwoolls/mailboat/actions/runs/43980529440: the
         same (line 232). #161 changes only how the Rust side downloads
         images. Re-run requested.
+        The re-runs of the older runs canceled one another (CI cancels a
+        run on `main` when another starts); the run for the newest
+        commit, which contains this merge, passed on 2026-11-16
+        (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
 - [ ] `empty-toys.spec.ts`: "bubble wrap pops the bubble clicked with a
       burst, and only it" (line 69).
       - 2026-11-16, CI on `main` after #158 merged, WebKit, attempt 1,
@@ -5041,6 +5057,10 @@ The open entries moved to "Later / unscheduled" → Flaky tests *(owner,
         passed, and so did the next run on `main`. Likely cause, not
         confirmed: the measure comes before the burst's first frames on a
         slow runner. Re-run requested.
+        The re-runs of the older runs canceled one another (CI cancels a
+        run on `main` when another starts); the run for the newest
+        commit, which contains this merge, passed on 2026-11-16
+        (https://github.com/nwoolls/mailboat/actions/runs/43983352350).
 - [ ] Vitest tests that run long: `scripts/ciAppChanged.test.ts` ("says app
       for files that only look like docs or site…") and
       `src/features/screensaver/model/catalog.test.ts` ("… runs a minute,
