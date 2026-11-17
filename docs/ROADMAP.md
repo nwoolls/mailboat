@@ -5950,21 +5950,6 @@ built, the owner has tried it, and the owner has published 0.3.0
       Restore. Only the app's own list changes (`hidden_contacts`), for
       every account; Google's contacts aren't touched, so no new
       permission. An address can still be typed in full)*
-- [ ] What's new in an available update *(owner idea, 2026-11-08; maybe for
-      the Polish Spike, not likely)*: when the update notice says a version
-      is available, let the person read what changed in it before installing.
-      The Tauri updater supports release notes: its manifest (`latest.json`)
-      can carry them, and the plugin hands them back with the update
-      (`Update::body`). The app leaves them out on purpose: only the
-      download is signed, not the manifest, so a tampered manifest could put
-      any text in the window (`updates.rs` and `releaseFiles.ts` say so), and
-      the release notes themselves come from `CHANGELOG.md` and go on the
-      GitHub release. To decide: a "What's new" link in the notice that opens
-      that version's release page in the browser (simplest: nothing is shown
-      in the window, and the address follows from the version), notes signed
-      the way the download is and checked against the public key before the
-      app shows them as plain text (never HTML), or both.
-      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
 - [x] Strip tracking codes (`utm_` and the like) from links, next to the
       tracking pixels already removed (from the GotEmail and bytemail ideas
       under "Later / unscheduled"; a sub-point of a ticked research item, so
@@ -6687,6 +6672,30 @@ Privacy and the policy.*
       app's own fix stands either way)*
 
 ## Later / unscheduled
+
+- [ ] What's new in an available update *(owner idea, 2026-11-08; maybe for
+      the Polish Spike, not likely)*: when the update notice says a version
+      is available, let the person read what changed in it before installing.
+      The Tauri updater supports release notes: its manifest (`latest.json`)
+      can carry them, and the plugin hands them back with the update
+      (`Update::body`). The app leaves them out on purpose: only the
+      download is signed, not the manifest, so a tampered manifest could put
+      any text in the window (`updates.rs` and `releaseFiles.ts` say so), and
+      the release notes themselves come from `CHANGELOG.md` and go on the
+      GitHub release. To decide: a "What's new" link in the notice that opens
+      that version's release page in the browser (simplest: nothing is shown
+      in the window, and the address follows from the version), notes signed
+      the way the download is and checked against the public key before the
+      app shows them as plain text (never HTML), or both.
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      *(parked, moved from 0.3.0 to "Later / unscheduled", owner,
+      2026-11-17: the owner wants the notes shown in the app, signed like
+      the download and checked against the app's key before they show as
+      plain text, with no link to GitHub, since casual users shouldn't need
+      to know about it; and not half-done. That is three pull requests (the
+      release workflow signs the notes and puts them in `latest.json`, the
+      app checks them, a "What's new" view with a mockup first) and two
+      betas to prove it end to end)*
 
 - [ ] The read envelope's flap opening and closing *(owner, 2026-11-14,
       while reviewing icons: "can read / unread open / close the
