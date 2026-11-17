@@ -156,7 +156,7 @@ toward. Write it that way from the start, and fix it in the `unslop` pass.
 Leave as they are an identifier or an API value (`CoreError::Cancelled`,
 Google's `"cancelled"` calendar status), a CSS keyword, a quoted name such
 as a required status check (`cargo-deny (licences, advisories)`), and
-`CHANGELOG.md`, which is generated. Code comments and variable names are
+the older sections of `CHANGELOG.md`. Code comments and variable names are
 not part of this rule.
 
 ## Conventions
@@ -208,8 +208,11 @@ a pull request mixes the two, the real changeset wins. Recheck it whenever
 a commit is added to an open pull request. CI fails a pull request without
 one, except Dependabot's and the release pull request (branch
 `changeset-release/…`, which consumes them). Never edit the version or
-`CHANGELOG.md` by hand, except for the test releases 0.0.1 and 0.0.2
-(decided 2026-11-05), which have no generated bump.
+older sections of `CHANGELOG.md` by hand, except for the test releases
+0.0.1 and 0.0.2 (decided 2026-11-05), which have no generated bump. The
+section `version-packages` writes is curated on the release branch into
+notes for people (grouped, merged, with in-release fixes left out): see
+`docs/DEVELOPMENT.md` → Releasing → Curating the release notes.
 
 ### Releases
 
@@ -222,8 +225,9 @@ prepares the `changeset-release/…` branch and says what is left. If
 since the last one asks for a release; read the version it wrote, and tag
 that); `"mode": "exit"` means `pre exit` was run but `version-packages` has
 not yet, so never commit one without the other. Never enter or exit beta mode
-without the owner saying so. Versions and `CHANGELOG.md` are made only by
-`bun run version-packages`, never by hand (the exception for 0.0.1 and 0.0.2
+without the owner saying so. Versions and new `CHANGELOG.md` sections are
+made only by `bun run version-packages`, never by hand; the new section is
+then curated as `docs/DEVELOPMENT.md` → Releasing says (the exception for 0.0.1 and 0.0.2
 under "Versions" is history, not a method).
 
 ### Pull requests (once the repository's ruleset is on)
