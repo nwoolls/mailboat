@@ -295,8 +295,8 @@ the version is recorded in `package.json` (`packageManager`, `engines`).
 - SQLite via `rusqlite` (bundled) with FTS5 for cache and search.
 - `tauri-specta` generates `src/platform/tauri/bindings.ts` from Rust. Never
   edit that file by hand. A test fails if it is out of date.
-- TanStack Query (IPC result caching), TanStack Virtual (lists), cmdk (palette,
-  later), TipTap (composer, later).
+- TanStack Query (IPC result caching), TanStack Virtual (lists), cmdk (the
+  command palette), TipTap (the composer).
 - OS keychain (`keyring` crate) for OAuth refresh tokens. Never store tokens
   in SQLite or plain files. Access tokens live in memory only.
 
@@ -467,7 +467,7 @@ When it does:
   (WebView2's engine) with `data-platform="windows"` set; the rest stay in
   WebKit. One-time setup: `bunx playwright install chromium`.
 
-## Future direction (don't build yet)
+## AI and AI apps (built)
 
 AI (built in the AI Spike, see `docs/ARCHITECTURE.md` → AI): summaries and
 a writing assistant through Apple Intelligence (on-device, the default) or the

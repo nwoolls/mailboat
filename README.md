@@ -15,7 +15,7 @@ A fast, keyboard-first Gmail client for macOS and Windows. Free and open source.
 ![Platforms: macOS and Windows](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-blue)
 ![Built with Tauri, Rust and React](https://img.shields.io/badge/built%20with-Tauri%20%C2%B7%20Rust%20%C2%B7%20React-orange)
 
-[Get started](#get-started) · [Features](#why-mailboat) · [Privacy](#your-mail-stays-yours) · [Build from source](#build-from-source) · [Roadmap](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md)
+[Website](https://getmailboat.app) · [Get started](#get-started) · [Features](#why-mailboat) · [Privacy](#your-mail-stays-yours) · [Build from source](#build-from-source) · [Roadmap](docs/ROADMAP.md) · [Architecture](docs/ARCHITECTURE.md)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png">
@@ -270,8 +270,9 @@ Mailboat runs on Windows: the releases page has a signed installer for x64 and
 one for Arm. Linux will follow.
 
 **What's next?**
-A website, and trying the setup with someone who has never used Google Cloud.
-The full list is in the [roadmap](docs/ROADMAP.md).
+Version 0.3.0: printing, label colors, a reworked Toybox, cloning a sent
+email, and a warning about recipients outside the domains you choose. The full
+list is in the [roadmap](docs/ROADMAP.md).
 
 ## Contributing and license
 

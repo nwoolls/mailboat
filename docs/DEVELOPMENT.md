@@ -247,8 +247,8 @@ spctl --assess --type execute -vv "$APP"
 ```
 
 Tauri can also notarize during the build, but it reads the key's file path
-and IDs from `APPLE_API_*` variables and can't use the saved profile; that is
-how GitHub Actions will do it.
+and IDs from `APPLE_API_*` variables and can't use the saved profile; the
+release workflow does it that way (see below).
 
 Try the signed app before trusting it, starting with demo mode (made-up mail,
 and no keychain), then without it:
@@ -363,9 +363,8 @@ private key that matches the public one in the config.
   notes are shown, and `requireSignedVersion` has the plugin refuse an update
   whose signature wasn't made for the version announced (otherwise a crafted
   manifest could pair a newer number with an older, genuinely signed release).
-  The Tauri CLI records the version in each signature when it builds, so the
-  first release needs nothing extra, but check that its signature carries
-  `version:` before publishing it.
+  The Tauri CLI records the version in each signature when it builds, and the
+  release workflow's publish job checks every signature for it (see Releasing).
 - **The files.** A release build (the release workflow) turns on
   `createUpdaterArtifacts` through `src-tauri/tauri.updater-artifacts.conf.json`,
   and Tauri signs each update payload with the private key as its last step:
