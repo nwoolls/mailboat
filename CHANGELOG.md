@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0-beta.1
+
+### Fixes
+
+- Clicking into the message, signature or vacation box puts the cursor where you clicked, even when the app is busy at that moment.
+
+### Dates and times
+
+- Dates and time zones, such as an invitation's time, now come from a maintained library; they read the same as before.
+
+### Releases
+
+- Each download now comes with its own software bill of materials, listing only what that platform's build contains.
+
 ## 0.3.0-beta.0
 
 ### New
