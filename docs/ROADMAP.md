@@ -6639,7 +6639,7 @@ Privacy and the policy.*
       the focus is. Possible fix, not built: after Esc (or the shortcut),
       only a real pointer move brings it back. The owner's design, so the
       owner decides.
-- [ ] A click in an editor that doesn't have focus can leave the cursor at
+- [x] A click in an editor that doesn't have focus can leave the cursor at
       the start on a busy page *(found 2026-11-16 in the Flaky Test Spike,
       through the vacation responder's box test)*: the editor
       (ProseMirror, `prosemirror-view` 1.42.6) checks 20 ms after it gets
@@ -6650,8 +6650,22 @@ Privacy and the policy.*
       goes in at the start rather than where the person clicked. It shows
       in the message, signature and vacation boxes when they have text.
       Rare for a person; reproduced on a deliberately slowed page. Possible
-      fixes, not built: put the cursor where the click was once the click
+      fixes considered: put the cursor where the click was once the click
       has finished, in the shared editor, or report it to ProseMirror.
+      *(2026-11-17: fixed in the shared editor (`clickCaretGuard` in
+      `RichEditor.tsx`), so the message, signature and vacation boxes all
+      have it: when a plain click focuses the editor (no double click, no
+      key held, no movement past 4 px at any point, so a drag that comes
+      back doesn't count) and the release finds a cursor rather than a
+      range, a table's cells or an image, the cursor goes where the click
+      was once the button comes up. A new browser test holds the browser's first
+      selection event back by 100 ms, past ProseMirror's 20 ms check, then
+      clicks once and types: without the fix the text went in at the
+      start every time, with it at the click. A first version kept the
+      press in the handlers' own closure and failed now and then with
+      tests running in parallel: focusing re-renders, and TipTap installs
+      fresh handlers, often between the press and the release. The press
+      is now kept per editor view; 40 runs of 40 passed on 8 workers)*
 
 ## Later / unscheduled
 
