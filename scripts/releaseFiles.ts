@@ -74,16 +74,18 @@ export function isVersion(text: string): boolean {
   return SEMVER.test(text);
 }
 
+/** A version's numeric core and pre-release parts (build metadata dropped). */
+function split(v: string) {
+  const [core, pre] = v.split("+")[0].split("-", 2);
+  return { core: core.split(".").map(Number), pre: pre === undefined ? null : pre.split(".") };
+}
+
 /**
  * Semver order: negative when `a` is older than `b`. A pre-release is older
  * than its release (0.2.0-beta.2 < 0.2.0), numeric parts compare as numbers,
  * and 0.2.0-beta.2 < 0.2.0-beta.10.
  */
 export function compareVersions(a: string, b: string): number {
-  const split = (v: string) => {
-    const [core, pre] = v.split("+")[0].split("-", 2);
-    return { core: core.split(".").map(Number), pre: pre === undefined ? null : pre.split(".") };
-  };
   const x = split(a);
   const y = split(b);
   for (let i = 0; i < 3; i++) {

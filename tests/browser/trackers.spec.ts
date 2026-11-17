@@ -36,7 +36,7 @@ async function openEmail(page: Page, images: "0" | "1") {
 test("an email's trackers make no request, while its images load", async ({ page }) => {
   const remote = await openEmail(page, "1");
   // The control: the frame's requests are seen, so none below means none made.
-  expect(remote.sort()).toEqual([
+  expect(remote.toSorted()).toEqual([
     "https://cdn.vendor.example/hero.png",
     "https://cdn.vendor.example/inline.png",
     "https://cdn.vendor.example/logo.png",

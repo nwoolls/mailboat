@@ -31,6 +31,9 @@ export function licenses(text: string | undefined): Component["licenses"] {
   return isExpression(expression) ? [{ expression }] : [{ license: { name: value } }];
 }
 
+/** An SPDX operator. */
+const isOp = (t: string | undefined) => t === "AND" || t === "OR" || t === "WITH";
+
 /**
  * Whether `text` follows SPDX's expression grammar: a license (an
  * identifier, optionally `WITH` an exception), several joined by `AND` or
@@ -42,7 +45,6 @@ function isExpression(text: string): boolean {
   if (text.trim().toUpperCase() === "UNLICENSED") return false;
   const tokens = text.match(/\(|\)|[^\s()]+/g) ?? [];
   const id = /^[A-Za-z0-9][A-Za-z0-9.+-]*$/;
-  const isOp = (t: string | undefined) => t === "AND" || t === "OR" || t === "WITH";
   let at = 0;
   // license := id ["WITH" id] | "(" expression ")"
   const license = (): boolean => {

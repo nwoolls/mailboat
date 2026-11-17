@@ -183,7 +183,6 @@ test("inline reply: opening and closing the panel many times never moves the rep
     // layout, in an observer created after the panel's own (so after its
     // correction; sampling at the start of a frame reads the panel's new
     // size before it's corrected for).
-    // oxlint-disable-next-line no-await-in-loop -- one toggle after another, on purpose
     const tops = await page.evaluate(
       () =>
         new Promise<number[]>((resolve) => {
@@ -212,7 +211,6 @@ test("inline reply: opening and closing the panel many times never moves the rep
     for (const t of tops) expect(Math.abs(t - start), `toggle ${i + 1}`).toBeLessThanOrEqual(2);
     // The reply must come back to where it started. Polled, since a slow
     // machine (CI) can still be finishing the animation after the window.
-    // oxlint-disable-next-line no-await-in-loop -- measured after each toggle
     await expect
       .poll(async () => Math.abs((await top()) - start), {
         message: `after toggle ${i + 1}`,
@@ -236,7 +234,6 @@ test("inline reply: stays put when the page stalls mid-animation", async ({ page
   const start = await top();
 
   for (let i = 0; i < 4; i++) {
-    // oxlint-disable-next-line no-await-in-loop -- one toggle after another, on purpose
     await page.evaluate(() => {
       document.querySelector<HTMLButtonElement>('button[aria-label="Write with AI"]')!.click();
       setTimeout(() => {
@@ -248,9 +245,7 @@ test("inline reply: stays put when the page stalls mid-animation", async ({ page
     // click is applied, the reply is still where it started), and not after
     // a fixed wait: a slow machine can still be finishing the animation, so
     // it is polled until the reply is back where it began.
-    // oxlint-disable-next-line no-await-in-loop -- measured after each toggle
     await page.waitForTimeout(600);
-    // oxlint-disable-next-line no-await-in-loop -- measured after each toggle
     await expect
       .poll(async () => Math.abs((await top()) - start), {
         message: `after toggle ${i + 1}`,

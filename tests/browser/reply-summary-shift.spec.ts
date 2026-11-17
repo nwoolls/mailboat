@@ -52,8 +52,8 @@ async function lineOnScreen(editor: Locator) {
   const n = await editor.evaluate((el) => {
     const reader = document.querySelector(".reader-scroll")!.getBoundingClientRect();
     const middle = reader.top + reader.height / 2;
-    const p = [...el.querySelectorAll("p")].find((p) => p.getBoundingClientRect().top > middle);
-    return Number(p?.textContent?.match(/^Line (\d+):/)?.[1]);
+    const below = [...el.querySelectorAll("p")].find((p) => p.getBoundingClientRect().top > middle);
+    return Number(below?.textContent?.match(/^Line (\d+):/)?.[1]);
   });
   expect(n).toBeGreaterThan(0);
   // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- `n` is a number the test read

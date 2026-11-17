@@ -358,7 +358,7 @@ export function sceneAt(
   t: SkySceneTuning,
 ): Cell {
   const { rows, cols } = scene;
-  const skyColorAt = (yy: number) =>
+  const skyHere = (yy: number) =>
     mixRgb(p.top, p.horizon, Math.max(0, Math.min(1, yy / (rows * t.mountainsAt))));
   // The light comes from the sun's or moon's side: its faces are lit.
   const litLeft = state.body.x < cols / 2;
@@ -456,7 +456,7 @@ export function sceneAt(
     if (inside && uy < c.h * 0.35) {
       const shade = lift > 0.35 ? p.cloudLit : lift > -0.25 ? p.cloudMid : p.cloudShade;
       // At night, clouds are faint shapes against the sky.
-      return cell("cloud", mixRgb(shade, skyColorAt(y), p.night * 0.45), 0, 0, lift);
+      return cell("cloud", mixRgb(shade, skyHere(y), p.night * 0.45), 0, 0, lift);
     }
   }
 

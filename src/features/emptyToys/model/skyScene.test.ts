@@ -107,18 +107,18 @@ describe("resizing the sky", () => {
     driftClouds(old, 30);
     const cloud = old.clouds[0]!;
     const share = (cloud.x + cloud.w) / (120 + cloud.w * 2);
-    const scene = resizeScene(old, 180, 80, T);
-    expect(scene.clouds[0]).toBe(cloud);
+    const resized = resizeScene(old, 180, 80, T);
+    expect(resized.clouds[0]).toBe(cloud);
     expect((cloud.x + cloud.w) / (180 + cloud.w * 2)).toBeCloseTo(share, 6);
   });
 
   it("drifts clouds on and round past the edge", () => {
-    const scene = buildScene(120, 80, T);
-    const cloud = scene.clouds[0]!;
+    const fresh = buildScene(120, 80, T);
+    const cloud = fresh.clouds[0]!;
     const x = cloud.x;
-    driftClouds(scene, 1);
+    driftClouds(fresh, 1);
     expect(cloud.x).toBeCloseTo(x + cloud.speed, 6);
-    driftClouds(scene, (120 + cloud.w * 2) / cloud.speed);
+    driftClouds(fresh, (120 + cloud.w * 2) / cloud.speed);
     expect(cloud.x).toBeCloseTo(x + cloud.speed, 3);
   });
 });
