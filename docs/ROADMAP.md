@@ -6504,6 +6504,24 @@ Privacy and the policy.*
       Toolbar buttons that don't fit move into the More menu, Labels first,
       then Star, Mark read, Spam and Trash; Archive stays. The window now
       goes down to 420px, where it used to stop at 820px)*
+- [x] A reply's follow that was cut short left it below the reader
+      *(found 2026-11-16 in the Flaky Test Spike, from CI's trace of a
+      failed `reply-scroll.spec.ts` run; fixed the same day)*: opening a
+      reply scrolls the reader smoothly to show it, and keeps it in view
+      while it grows (for up to 10 s, until the person scrolls or types).
+      A smooth scroll is canceled by any instant one, and the follow only
+      aimed again when something grew, so a scroll cut short after the
+      reply had finished growing left it below the reader for good: in CI,
+      hundreds of pixels below. What cut it short in CI isn't known; cutting
+      it short by hand reproduced it every time. The follow
+      (`ComposeForm`) now looks each frame: when the reader has stopped at
+      the furthest it has been, with the reply's end still below it, it
+      scrolls the rest of the way at once. A person who scrolled up leaves
+      the reader above that point and isn't pulled back (the test for slow
+      scrolling up failed on a first version that did pull back). The new
+      test fails without the change. The older "On a slow machine, a new
+      reply sometimes stops being followed" in "Later / unscheduled" →
+      Open bugs has a note about it.
 
 ## Later / unscheduled
 
@@ -6732,6 +6750,14 @@ Privacy and the policy.*
       of its own later. The follow didn't cause the cursor bug filed in #109
       (2026-11-12, see that item), so this item stays open and the test
       stays `test.fixme`
+      *(2026-11-16, the Flaky Test Spike: a follow scroll cut short after
+      the reply finished growing left it below the reader for good, and
+      that is fixed (0.3.0 → Bugs, "A reply's follow that was cut short
+      left it below the reader"). The few-pixel and hundreds-of-pixels
+      misses described here may both have been that; not confirmed. The
+      slow-machine test passed 15 runs with `test.fixme` taken off, with
+      and without the fix, so it stays off until the owner decides. The
+      redesign above is still open)*
 - [ ] Tooltips don't show when the app's window is on another desktop than
       the one the app is assigned to *(owner report, 2026-11-12, macOS)*:
       with the Dock icon's Options → Assign To set to "This Desktop",
