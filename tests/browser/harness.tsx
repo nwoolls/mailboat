@@ -58,6 +58,7 @@
  *                                 as the Rust sanitizer gave it (images
  *                                 loading or held back), `fixtures/`
  */
+import "./slowMachine";
 import { emit } from "@tauri-apps/api/event";
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

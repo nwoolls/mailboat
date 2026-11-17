@@ -33,4 +33,5 @@ src-tauri/binaries/
 
 # Playwright (tests/browser)
 test-results/
+test-results-*/
 playwright-report/

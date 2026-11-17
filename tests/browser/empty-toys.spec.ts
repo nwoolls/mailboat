@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { sheetFor } from "../../src/features/emptyToys/model/bubbles";
 import { BUBBLE_DEFAULTS } from "../../src/features/emptyToys/model/bubblePop";
+import { advance, driveTime, holdTime } from "./time";
 
 /** Long enough for a pop's confetti to land and its film to settle. */
 const POP_DONE_MS = BUBBLE_DEFAULTS.confettiSeconds * 1.25 * 1000 + 300;
@@ -67,11 +68,15 @@ test("the pond ripples where it's clicked, then settles", async ({ page }) => {
 });
 
 test("bubble wrap pops the bubble clicked with a burst, and only it", async ({ page }) => {
+  // Time the test drives (./time.ts): a slow runner can't make a
+  // measurement land early or late in the pop.
+  await driveTime(page);
   await page.goto("/tests/browser/harness.html?mode=empty&toy=bubbles");
   await expect(page.getByText("All caught up")).toBeVisible();
   await stayClearOfTitle(page);
+  await holdTime(page);
   // The fresh sheet inflates first.
-  await page.waitForTimeout(1200);
+  await advance(page, 1200);
   const before = await inked(page);
   expect(before).toBeGreaterThan(1000);
   // The first bubble, where the sheet's own layout puts it.
@@ -79,15 +84,15 @@ test("bubble wrap pops the bubble clicked with a burst, and only it", async ({ p
   const first = sheetFor(box.width, box.height).centres[0]!;
   await page.mouse.click(box.x + first.x, box.y + first.y);
   // A burst: the flash ring and confetti cover more than the bubble did.
-  await page.waitForTimeout(110);
+  await advance(page, 110);
   expect(await inked(page)).toBeGreaterThan(before);
   // Once the confetti has landed, crumpled film is left: less than a bubble.
-  await page.waitForTimeout(POP_DONE_MS);
+  await advance(page, POP_DONE_MS);
   const once = await inked(page);
   expect(once).toBeLessThan(before);
   // Clicking it again finds nothing left to pop.
   await page.mouse.click(box.x + first.x, box.y + first.y);
-  await page.waitForTimeout(POP_DONE_MS);
+  await advance(page, POP_DONE_MS);
   expect(await inked(page)).toBe(once);
 });
 

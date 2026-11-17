@@ -174,40 +174,66 @@ test("inline reply: opening and closing the panel many times never moves the rep
   await expect(reply).toBeVisible();
   // At the end of the conversation, as when answering.
   await page.locator(".reader-scroll").evaluate((el) => (el.scrollTop = el.scrollHeight));
-  await page.waitForTimeout(1800);
   const top = async () => (await reply.boundingBox())!.y;
+  // Settled: in the same place for half a second (not a fixed wait, which
+  // a slow machine can outlast).
+  await expect(async () => {
+    const was = await top();
+    await page.waitForTimeout(500);
+    expect(await top()).toBe(was);
+  }).toPass({ timeout: 15_000 });
   const start = await top();
 
   for (let i = 0; i < 12; i++) {
     // Clicks, then watches the reply in what's painted: after each frame's
     // layout, in an observer created after the panel's own (so after its
     // correction; sampling at the start of a frame reads the panel's new
-    // size before it's corrected for).
-    const tops = await page.evaluate(
+    // size before it's corrected for). Until the panel's animation has
+    // finished, however long that takes, not for a fixed time: a slow
+    // machine paints few frames and late (docs/ROADMAP.md → Flaky tests).
+    const { tops, animated } = await page.evaluate(
       () =>
-        new Promise<number[]>((resolve) => {
+        new Promise<{ tops: number[]; animated: boolean }>((resolve) => {
           const form = document.querySelector(
             'section[aria-label="Reply"] form[aria-label="Reply"]',
           )!;
-          document.querySelector<HTMLButtonElement>('button[aria-label="Write with AI"]')!.click();
+          const button = document.querySelector<HTMLButtonElement>(
+            'button[aria-label="Write with AI"]',
+          )!;
+          // A real click's press first: it ends the reply being followed
+          // into view, as it does for a person (a bare click() didn't, and
+          // the follow, still running, moved the reply).
+          button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+          button.click();
           const painted: number[] = [];
+          let ran = false;
           let watch: ResizeObserver | null = null;
+          let quiet = 0;
           // React applies the click a moment later: watch from the first
-          // frame the panel is there.
-          const attach = () => {
-            const panel = document.querySelector(".inline-reveal");
-            if (!panel) return void requestAnimationFrame(attach);
-            watch = new ResizeObserver(() => painted.push(form.getBoundingClientRect().top));
-            watch.observe(panel);
+          // frame the panel is there, until it has had no animation for
+          // two frames.
+          const frame = () => {
+            const panel = document.querySelector<HTMLElement>(".inline-reveal");
+            if (panel && !watch) {
+              watch = new ResizeObserver(() => painted.push(form.getBoundingClientRect().top));
+              watch.observe(panel);
+            }
+            // Endless ones (a spinner) never finish, and are left out.
+            const running =
+              panel
+                ?.getAnimations({ subtree: true })
+                .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).length ?? 0;
+            if (running > 0) ran = true;
+            quiet = watch && ran && running === 0 ? quiet + 1 : 0;
+            if (quiet >= 2) {
+              watch!.disconnect();
+              resolve({ tops: painted, animated: ran });
+            } else requestAnimationFrame(frame);
           };
-          requestAnimationFrame(attach);
-          setTimeout(() => {
-            watch?.disconnect();
-            resolve(painted);
-          }, 900);
+          requestAnimationFrame(frame);
         }),
     );
-    expect(tops.length, `toggle ${i + 1} animated`).toBeGreaterThan(2);
+    expect(animated, `toggle ${i + 1} animated`).toBe(true);
     for (const t of tops) expect(Math.abs(t - start), `toggle ${i + 1}`).toBeLessThanOrEqual(2);
     // The reply must come back to where it started. Polled, since a slow
     // machine (CI) can still be finishing the animation after the window.

@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { advance, driveTime, holdTime } from "./time";
 
 /**
  * Settings → Toybox → Style → ASCII art: the glow is drawn in characters on
@@ -151,8 +152,12 @@ test("the ASCII glow keeps the card's title clear, as it does the words", async 
 });
 
 test("the glow glides over to the pointer, then holds on loosely", async ({ page }) => {
+  // Time the test drives (./time.ts): "a frame later" is a frame later
+  // however slow the machine is.
+  await driveTime(page);
   await page.goto("/tests/browser/harness.html?mode=empty&glow=pixel");
   await expect(page.getByText("All caught up")).toBeVisible();
+  await holdTime(page);
   const card = (await page.locator(".panel").boundingBox())!;
   const centre = async () => {
     const g = (await page.locator(".empty-glow").boundingBox())!;
@@ -165,17 +170,17 @@ test("the glow glides over to the pointer, then holds on loosely", async ({ page
   // Arriving: it glides rather than jumping there.
   const at = { x: card.x + 80, y: card.y + card.height - 80 };
   await page.mouse.move(at.x, at.y);
-  await page.waitForTimeout(50);
+  await advance(page, 50);
   expect(await gap(at)).toBeGreaterThan(20);
   // On a still pointer it settles right on it.
-  await page.waitForTimeout(1500);
+  await advance(page, 1500);
   expect(await gap(at)).toBeLessThan(6);
   // A quick move: loose, not stuck to the pointer, a frame later...
   const next = { x: at.x + 160, y: at.y - 80 };
   await page.mouse.move(next.x, next.y);
-  await page.waitForTimeout(20);
+  await advance(page, 20);
   expect(await gap(next)).toBeGreaterThan(30);
   // ...and with it again a moment after.
-  await page.waitForTimeout(400);
+  await advance(page, 400);
   expect(await gap(next)).toBeLessThan(8);
 });

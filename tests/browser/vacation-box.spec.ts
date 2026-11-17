@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+/** The parts of ProseMirror's state read here. */
+type EditorState = {
+  selection: { empty: boolean; to: number };
+  doc: { content: { size: number } };
+};
+
 /**
  * Settings → Vacation responder: a click anywhere in the message box puts
  * the cursor in the message, not only a click on its text. The reply here
@@ -18,8 +24,24 @@ test("a click on the empty part of the message box starts typing there", async (
   if (!area || !text) throw new Error("the message box isn't laid out");
   // Well below the text, and near the box's right edge.
   expect(area.y + area.height - 10).toBeGreaterThan(text.y + text.height);
-  await page.mouse.click(area.x + area.width - 10, area.y + area.height - 10);
+  // A click there focuses the message, and one there in the focused
+  // message puts the cursor at the end of the text. Checked apart: the
+  // first click's cursor can lose a race in the editor (ProseMirror,
+  // 20 ms after focusing, puts its old cursor back if it hasn't yet heard
+  // where the click put it), which a busy CI runner lost now and then
+  // (docs/ROADMAP.md → Flaky tests, and the Bug backlog).
+  const spot = { x: area.x + area.width - 10, y: area.y + area.height - 10 };
+  await page.mouse.click(spot.x, spot.y);
   await expect(message).toBeFocused();
+  await page.mouse.click(spot.x, spot.y);
+  await expect
+    .poll(() =>
+      message.evaluate((el) => {
+        const { state } = (el as HTMLElement & { editor: { state: EditorState } }).editor;
+        return state.selection.empty && state.selection.to === state.doc.content.size - 1;
+      }),
+    )
+    .toBe(true);
 
   await page.keyboard.type(" or Tuesday");
   await expect(message).toHaveText("Back Monday or Tuesday");

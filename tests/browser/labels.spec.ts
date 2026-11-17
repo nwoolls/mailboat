@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { advance, driveTime, holdTime } from "./time";
 
 /**
  * Label color and visibility (0.3.0, from the owner's mockup): a label's
@@ -153,11 +154,18 @@ test("submenus open on hover and with →, and ← or another item closes them",
 });
 
 test("the pointer can cross other items on its way into a submenu", async ({ page }) => {
+  // The crossing has 250 ms before the submenu closes. On the page's clock,
+  // which the test drives (./time.ts): on a busy runner the pointer's steps
+  // took longer than that in real time, as if moved slowly, and it closed.
+  await driveTime(page);
   const nav = await open(page);
   await nav.getByRole("button", { name: "Travel", exact: true }).click({ button: "right" });
   const menu = page.getByRole("menu", { name: "Travel menu" });
   const colors = page.getByRole("menu", { name: "Color for Travel" });
+  await expect(menu).toBeVisible();
+  await holdTime(page);
   await menu.getByRole("menuitem", { name: "Color", exact: true }).hover();
+  await advance(page, 200);
   await expect(colors).toBeVisible();
   // Down and across, over the items below Color, to the grid's last swatch.
   const swatch = colors.getByRole("menuitem", { name: /^Color #/ }).last();
@@ -168,7 +176,7 @@ test("the pointer can cross other items on its way into a submenu", async ({ pag
     .boundingBox())!;
   await page.mouse.move(from.x + from.width - 20, below.y + below.height / 2, { steps: 4 });
   await page.mouse.move(target.x + 5, target.y + 5, { steps: 4 });
-  await page.waitForTimeout(400);
+  await advance(page, 400);
   await expect(colors).toBeVisible();
   await expect(swatch).toBeFocused();
 });

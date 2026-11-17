@@ -224,7 +224,11 @@ test("going back doesn't happen while typing, and Esc puts a floating sidebar aw
   expect(await listHidden(page)).toBe(true);
   await page.keyboard.press("Escape");
   // A sidebar floated by its shortcut, with focus outside it: Esc puts it
-  // away, and the conversation stays.
+  // away, and the conversation stays. The pointer first leaves the Reply
+  // button, which is where the sidebar floats in: one sliding in under a
+  // resting pointer counts as hovered, and hovering keeps it, which made
+  // this test fail now and then (docs/ROADMAP.md → Flaky tests).
+  await page.mouse.move(470, 60);
   const peek = page.locator(".sidebar-peek");
   await page.keyboard.press("Control+Meta+s");
   await expect(peek).toBeVisible();

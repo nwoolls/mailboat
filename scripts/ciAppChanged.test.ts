@@ -44,7 +44,12 @@ beforeAll(() => {
 });
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-describe("ci-app-changed.sh", () => {
+/**
+ * Each check runs the script, which runs git, several times: on a busy
+ * machine one test took longer than Vitest's 5 s. Their own limit, 30 s,
+ * fits the work (docs/ROADMAP.md → Flaky tests).
+ */
+describe("ci-app-changed.sh", { timeout: 30_000 }, () => {
   it("says docs when only docs, changesets and top-level Markdown change", () => {
     expect(
       answer(() => {
