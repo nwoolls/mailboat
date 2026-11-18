@@ -6046,6 +6046,15 @@ built, the owner has tried it, and the owner has published 0.3.0
       Vitest for the address, and `tests/browser/updates.spec.ts` for the
       button.
 
+- [x] "Use a different file" on "Google Cloud is set up" asks for the
+      file *(moved from "Later / unscheduled", owner, 2026-11-18, as a small
+      fix for beta.3, which also tries the What's new link on a real
+      update)*: it went back to the start of the walkthrough the person
+      had first followed, its steps long done. It now goes straight to the
+      place to give a file (the "have a file" way, which "Change" can still
+      switch), and "Keep the current file" goes back without replacing it.
+      Test: `tests/browser/onboarding.spec.ts` (fails without the change).
+
 ### Enhancements to existing features
 
 - [x] UX Spike 5, the ASCII Toybox (#128): new and reworked screensavers,
@@ -7033,11 +7042,12 @@ Privacy and the policy.*
       the owner's own (the main Homebrew list needs an app to be popular
       first) and `winget` for Windows
 
-- [ ] "Use a different file" on "Google Cloud is set up" goes back to
+- [x] "Use a different file" on "Google Cloud is set up" goes back to
       the start of the walkthrough *(owner, 2026-10-30: fine for now;
       look again if it becomes a problem)* *(held out of the Polish Spike,
       2026-11-07: only if it becomes a problem)*
       *(moved from Milestone 12 when it closed, owner, 2026-11-14)*
+      *(moved into 0.3.0 and fixed, owner, 2026-11-18: see its item there)*
 
 ### Open bugs (moved from the Bug backlog, owner, 2026-11-14)
 

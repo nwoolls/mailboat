@@ -132,7 +132,10 @@ export function GoogleStage({
         onReplace={() => {
           setClient(null);
           setReplacing(true);
-          if (path === null) updateProgress({ path: "have" });
+          // Straight to giving a file: the walkthrough first followed (its
+          // steps all done long ago) opened again at its start (owner
+          // report, 2026-10-30). "Change" still offers the other ways.
+          updateProgress({ path: "have" });
         }}
       />
     );
@@ -158,6 +161,18 @@ export function GoogleStage({
           >
             Change
           </button>
+          {configured && replacing && (
+            <>
+              {" "}
+              <button
+                type="button"
+                className="text-accent hover:underline"
+                onClick={() => setReplacing(false)}
+              >
+                Keep the current file
+              </button>
+            </>
+          )}
         </p>
       </header>
       {path === "gcloud" && <GcloudCard progress={progress} />}
