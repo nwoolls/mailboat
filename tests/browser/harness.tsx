@@ -240,6 +240,10 @@ mockIPC(
         if (found === "none") return null;
         return new Promise((done) => setTimeout(() => done({ version: "0.2.0" }), 150));
       }
+      case "link_open":
+        // Opened in the browser in the app; here only noted, in order.
+        record(`link_open ${(args as { url: string }).url}`);
+        return null;
       case "update_install":
         record("update_install");
         if (new URLSearchParams(location.search).get("install") === "fail")

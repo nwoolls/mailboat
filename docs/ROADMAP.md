@@ -6033,6 +6033,18 @@ built, the owner has tried it, and the owner has published 0.3.0
       The company's directory and its other domains need a new permission:
       see "Needing a new permission" under Later.
 
+- [x] What's new link in the update notice *(owner, 2026-11-17: the link
+      for 0.3.0, the notes in the app later; see "What's new in an
+      available update" under "Later / unscheduled")*: the notice that
+      offers an update has a What's new button that opens that version's
+      release page on GitHub in the browser, where its curated notes are.
+      Nothing from the update check is shown in the window: the address
+      follows from the version (`releaseNotesUrl`, which accepts only a
+      plain version), and the repository's address is in `brand.json`
+      (`repository`). The privacy policy's "Update checks" says so. Tests:
+      Vitest for the address, and `tests/browser/updates.spec.ts` for the
+      button.
+
 ### Enhancements to existing features
 
 - [x] UX Spike 5, the ASCII Toybox (#128): new and reworked screensavers,
@@ -6835,6 +6847,9 @@ Privacy and the policy.*
       release workflow signs the notes and puts them in `latest.json`, the
       app checks them, a "What's new" view with a mockup first) and two
       betas to prove it end to end)*
+      *(2026-11-17, later the same day: the owner chose the link for 0.3.0
+      after all, and the notes in the app stay here for later. The link is
+      "What's new link in the update notice" in 0.3.0)*
 
 - [ ] The read envelope's flap opening and closing *(owner, 2026-11-14,
       while reviewing icons: "can read / unread open / close the

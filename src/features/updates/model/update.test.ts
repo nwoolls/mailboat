@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { canCheck, describeUpdate, percent, showNotice, type UpdateState } from "./update";
+import {
+  canCheck,
+  describeUpdate,
+  percent,
+  releaseNotesUrl,
+  showNotice,
+  type UpdateState,
+} from "./update";
 
 const available: UpdateState = { kind: "available", version: "0.2.0" };
 
@@ -70,5 +77,17 @@ describe("the notice", () => {
       total: 100,
     };
     expect(showNotice(installing, new Set(["0.2.0"]))).toBe(true);
+  });
+});
+
+describe("releaseNotesUrl", () => {
+  const repo = "https://github.example/owner/app";
+  it("is the version's release page", () => {
+    expect(releaseNotesUrl(repo, "0.3.0")).toBe(`${repo}/releases/tag/v0.3.0`);
+    expect(releaseNotesUrl(`${repo}/`, "0.3.0-beta.1")).toBe(`${repo}/releases/tag/v0.3.0-beta.1`);
+  });
+  it("is nothing for a version that isn't one", () => {
+    for (const odd of ["", "latest", "0.3", "1.0.0/../../x", "1.0.0?q=1", "1.0.0 "])
+      expect(releaseNotesUrl(repo, odd)).toBeNull();
   });
 });

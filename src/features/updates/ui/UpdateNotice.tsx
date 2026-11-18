@@ -1,12 +1,16 @@
-import { APP_NAME } from "../../../shared/lib/brand";
-import { percent, showNotice } from "../model/update";
+import { commands } from "../../../platform/tauri/bindings";
+import { unwrap } from "../../../platform/tauri/ipc";
+import { APP_NAME, REPOSITORY } from "../../../shared/lib/brand";
+import { showToast } from "../../../shared/lib/toast";
+import { percent, releaseNotesUrl, showNotice } from "../model/update";
 import { installUpdate, putOffUpdate, usePutOffUpdates, useUpdateState } from "./updateStore";
 
 /**
  * A new version, in a glass notice at the top right (as the sign-in code and
  * signed-out notices): what it is, and "Install and restart" or "Later".
  * Never modal, and nothing is installed without the click. "Later" puts it
- * off until the next launch.
+ * off until the next launch. "What's new" opens the version's release page,
+ * with its notes, in the browser.
  */
 export function UpdateNotice() {
   const state = useUpdateState();
@@ -32,6 +36,7 @@ export function UpdateNotice() {
 }
 
 function Actions({ state }: { state: { version: string; error?: string } }) {
+  const notes = releaseNotesUrl(REPOSITORY, state.version);
   return (
     <>
       {state.error && <p className="selectable mt-2 text-[11px] text-danger">{state.error}</p>}
@@ -50,6 +55,22 @@ function Actions({ state }: { state: { version: string; error?: string } }) {
         >
           Later
         </button>
+        {notes && (
+          <button
+            type="button"
+            onClick={() =>
+              void unwrap(commands.linkOpen(notes)).catch((e: unknown) =>
+                showToast({
+                  tone: "error",
+                  message: `Couldn’t open the release notes: ${e instanceof Error ? e.message : String(e)}`,
+                }),
+              )
+            }
+            className="ml-auto h-7 rounded-md px-2 text-[12px] text-content/60 hover:bg-selection hover:text-content"
+          >
+            What’s new
+          </button>
+        )}
       </div>
     </>
   );

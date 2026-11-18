@@ -2,5 +2,6 @@
   "name": "Mailboat",
   "shortName": "mailboat",
   "id": "com.nwoolls.mailboat",
-  "envPrefix": "MAILBOAT"
+  "envPrefix": "MAILBOAT",
+  "repository": "https://github.com/nwoolls/mailboat"
 }
