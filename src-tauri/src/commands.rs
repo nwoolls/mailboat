@@ -10,6 +10,7 @@ use mail_core::brand;
 use mail_core::calendar::{self, InviteCard};
 use mail_core::compose::contacts::Contact;
 use mail_core::compose::identities::{self, Identity};
+use mail_core::compose::outside::OutsideRule;
 use mail_core::compose::{self, OpenedDraft, OutgoingMessage, ReplySource};
 use mail_core::db::{accounts, erase, query, store};
 use mail_core::mail::images::{self, ImagePolicy};
@@ -1110,6 +1111,17 @@ pub fn identities_list(state: State<'_, AppState>) -> CmdResult<Vec<Identity>> {
 #[specta::specta]
 pub fn contacts_list(state: State<'_, AppState>) -> CmdResult<Vec<Contact>> {
     Ok(compose::contacts::all(&state.db.conn())?)
+}
+
+/// Who counts as outside this account's organization while writing from it
+/// (its domains and its Google contacts), for the warning Gmail shows.
+#[tauri::command]
+#[specta::specta]
+pub fn compose_outside_rule(
+    state: State<'_, AppState>,
+    account: AccountId,
+) -> CmdResult<OutsideRule> {
+    Ok(compose::outside::rule(&state.db.conn(), account)?)
 }
 
 /// Takes an address out of compose's suggestions (the app's own list;

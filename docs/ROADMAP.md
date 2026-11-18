@@ -5934,7 +5934,7 @@ built, the owner has tried it, and the owner has published 0.3.0
       signature is kept or added again. The clone is a new draft; the
       original is untouched.
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
-- [ ] Warn about outside recipients (addresses not ending with chosen
+- [x] Warn about outside recipients (addresses not ending with chosen
       domains are marked while writing) *(held out of the Polish Spike,
       2026-11-07)*
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
@@ -5957,10 +5957,20 @@ built, the owner has tried it, and the owner has published 0.3.0
         choice (no API has it), so a person whose administrator turned
         Gmail's warning off can turn the app's off too. No list of
         domains to type in.
-      - Nothing leaves the computer; the setting is listed on Settings →
-        Privacy as not about privacy, or as the page's test decides.
+      - Nothing leaves the computer. The switch is kept with Settings →
+        Composing's other choices in the window (not Rust's settings), so
+        Settings → Privacy, which lists what leaves the computer, doesn't
+        change.
       - Mockup first (the marked address and the banner, in Gmail's
-        look), for the owner to react to.
+        look), for the owner to react to: agreed 2026-11-17, with the
+        app's own switch in Settings.
+      Built 2026-11-17: `compose::outside` (Rust) gathers an account's
+      domains and Google contacts; `compose/model/outside.ts` decides per
+      address and words the banner. An outside chip is tinted amber with a
+      globe and says so in its tooltip; the banner, under the subject,
+      names one person or counts several. Tests: Rust and Vitest for the
+      rule, and `tests/browser/outside-recipients.spec.ts` for the chips,
+      the banner and the switch.
       The company's directory and its other domains need a new permission:
       see "Needing a new permission" under Later.
 

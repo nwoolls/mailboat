@@ -15,6 +15,7 @@ import { TitleSearch } from "../../src/app/TitleSearch";
 import { ArchiveIcon } from "../../src/shared/ui/icons";
 import { inbox } from "./demoMail";
 import {
+  AccountsSection,
   ComposingSection,
   GeneralSection,
   ToyboxSection,
@@ -227,6 +228,17 @@ export function Harness({
             </div>
             <HarnessToast />
           </>
+        )}
+        {/* `&settings=accounts`: Settings → Accounts beside it. */}
+        {params.get("settings") === "accounts" && (
+          <div style={{ width: 560, padding: 16 }}>
+            <AccountsSection
+              accounts={[account]}
+              syncStates={[]}
+              onAccountRemoved={() => {}}
+              header={() => null}
+            />
+          </div>
         )}
       </>
     ) : null;

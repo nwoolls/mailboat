@@ -12,6 +12,12 @@ export type ComposingPrefs = {
   defaultFrom: { accountId: AccountId; email: string } | null;
   /** The font and size new messages and replies start in. */
   style: TextStyle;
+  /**
+   * Workspace accounts whose outside recipients aren't marked (Settings →
+   * Accounts). On for every account until turned off, as Gmail's warning
+   * is on by default.
+   */
+  outsideWarningOff: AccountId[];
 };
 
 export type UndoSendSeconds = 5 | 10 | 20 | 30;
@@ -25,6 +31,7 @@ export const DEFAULT_COMPOSING_PREFS: ComposingPrefs = {
   undoSendSeconds: 5,
   defaultFrom: null,
   style: { font: "", size: "" },
+  outsideWarningOff: [],
 };
 
 function parseFrom(value: unknown): ComposingPrefs["defaultFrom"] {
@@ -54,5 +61,8 @@ export function parseComposingPrefs(raw: string | null): ComposingPrefs {
       font: FONTS.find(([, family]) => family === style.font)?.[1] ?? "",
       size: SIZES.find(([, size]) => size === style.size)?.[1] ?? "",
     },
+    outsideWarningOff: Array.isArray(saved.outsideWarningOff)
+      ? saved.outsideWarningOff.filter((id): id is AccountId => typeof id === "number")
+      : [],
   };
 }

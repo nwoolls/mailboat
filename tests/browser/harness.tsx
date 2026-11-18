@@ -35,6 +35,11 @@
  *     &style=pixel|ascii           the Toybox style without the glow
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
  *   &ai=none                      (card, inline) no AI set up
+ *   &outside=work                 (card) the account is a Workspace account
+ *                                 at its own domain, with sam@okafor.example
+ *                                 in its contacts, so other addresses are
+ *                                 marked as outside; `&settings=accounts`
+ *                                 shows Settings → Accounts beside the card
  *   &ideas=held                   (inline) the reply ideas wait until the
  *                                 test calls `window.__releaseIdeas()`,
  *                                 not 800 ms
@@ -256,6 +261,14 @@ mockIPC(
       }
       case "contacts_hidden":
         return hiddenContacts;
+      case "compose_outside_rule": {
+        const work = new URLSearchParams(location.search).get("outside") === "work";
+        return {
+          workspace: work,
+          domains: [account.email.split("@")[1]!.toLowerCase()],
+          known: work ? ["sam@okafor.example"] : [],
+        };
+      }
       case "accounts_list":
         if (harnessMode === "shell")
           return shellAccountRemoved || onboardingParams.get("accounts") === "0" ? [] : [account];

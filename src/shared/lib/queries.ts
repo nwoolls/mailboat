@@ -42,6 +42,7 @@ export const keys = {
   original: (id: MessageId) => ["original", id] as const,
   identities: ["identities"] as const,
   contacts: ["contacts"] as const,
+  outsideRule: (account: AccountId) => ["contacts", "outside", account] as const,
   hiddenContacts: ["contacts", "hidden"] as const,
   appInfo: ["appInfo"] as const,
   defaultMailApp: ["defaultMailApp"] as const,
@@ -193,6 +194,20 @@ export function useContacts() {
     queryKey: keys.contacts,
     queryFn: () => unwrap(commands.contactsList()),
     enabled: IS_TAURI,
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * Who is outside an account's organization while writing from it: its
+ * domains and Google contacts (`compose::outside`). Under "contacts", so
+ * mail changing (contacts refreshed) reads it again.
+ */
+export function useOutsideRule(account: AccountId | null | undefined) {
+  return useQuery({
+    queryKey: keys.outsideRule(account ?? 0),
+    queryFn: () => unwrap(commands.composeOutsideRule(account!)),
+    enabled: IS_TAURI && account != null,
     staleTime: Infinity,
   });
 }
@@ -652,6 +667,8 @@ export function useMailEvents() {
       }),
       events.identitiesChangedEvent.listen(() => {
         void qc.invalidateQueries({ queryKey: keys.identities });
+        // A new alias can bring a domain inside.
+        void qc.invalidateQueries({ queryKey: ["contacts", "outside"] });
       }),
     ];
     return () => {

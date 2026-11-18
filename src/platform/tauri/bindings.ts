@@ -211,6 +211,11 @@ export const commands = {
 	 */
 	contactsList: () => typedError<Contact[], AppError>(__TAURI_INVOKE("contacts_list")),
 	/**
+	 *  Who counts as outside this account's organization while writing from it
+	 *  (its domains and its Google contacts), for the warning Gmail shows.
+	 */
+	composeOutsideRule: (account: AccountId) => typedError<OutsideRule, AppError>(__TAURI_INVOKE("compose_outside_rule", { account })),
+	/**
 	 *  Takes an address out of compose's suggestions (the app's own list;
 	 *  Google's contacts aren't changed).
 	 */
@@ -1355,6 +1360,25 @@ export type OutgoingMessage = {
 	inlineImages: AttachmentId[],
 	/**  The message this replies to or forwards, for threading. */
 	replyingTo: MessageId | null,
+};
+
+/**  What the composer needs to mark an account's outside recipients. */
+export type OutsideRule = {
+	/**
+	 *  A Google Workspace account (not a personal Gmail one): only these
+	 *  are warned about, as in Gmail.
+	 */
+	workspace: boolean,
+	/**
+	 *  The domains that count as inside, in lower case: the account's own
+	 *  first, then its aliases'.
+	 */
+	domains: string[],
+	/**
+	 *  Addresses in the account's Contacts and Other contacts, in lower
+	 *  case: never marked, wherever they are.
+	 */
+	known: string[],
 };
 
 /**  Optional Google permissions, by the feature that needs them. */

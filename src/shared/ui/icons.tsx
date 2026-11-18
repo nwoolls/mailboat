@@ -10,6 +10,8 @@ import ShieldKey from "@hugeicons/core-free-icons/ShieldKeyIcon";
 import Wrench01 from "@hugeicons/core-free-icons/Wrench01Icon";
 import LeftToRightListDash from "@hugeicons/core-free-icons/LeftToRightListDashIcon";
 import AlertCircle from "@hugeicons/core-free-icons/AlertCircleIcon";
+import Alert02 from "@hugeicons/core-free-icons/Alert02Icon";
+import Globe02 from "@hugeicons/core-free-icons/Globe02Icon";
 import InformationCircle from "@hugeicons/core-free-icons/InformationCircleIcon";
 import ArchiveArrowDown from "@hugeicons/core-free-icons/ArchiveArrowDownIcon";
 import BookOpen01 from "@hugeicons/core-free-icons/BookOpen01Icon";
@@ -101,6 +103,9 @@ function wrap(icon: IconSvgElement) {
 }
 
 export const AlertIcon = wrap(AlertCircle);
+export const WarningIcon = wrap(Alert02);
+/** An address outside the organization (compose). */
+export const OutsideIcon = wrap(Globe02);
 export const InfoIcon = wrap(InformationCircle);
 export const AddIcon = wrap(Add01);
 // A stack, so All Mail doesn't look like Unread or "Mark as unread".
