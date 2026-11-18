@@ -434,6 +434,11 @@ it("a resumed draft goes inline when it's a reply, in the card otherwise", () =>
   expect(reply.resumedFrom).toBe(77);
   expect([reply.kind, reply.threadId, reply.savedId, reply.showBcc]).toEqual(["reply", 5, 9, true]);
   expect(reply.signature).toBe("");
+  // Review: its signature was saved in the text, so changing From (Send
+  // again's copy too, reopened) doesn't add another.
+  expect(withIdentity(reply, { ...identities[2]!, signature: "<p>-- Work</p>" }).signature).toBe(
+    "",
+  );
   const fresh = resumedDraft({ ...opened, replyingTo: null, html: "", text: "a\n\nb" }, 78);
   expect([fresh.kind, fresh.threadId, fresh.html]).toEqual(["new", null, "<p>a</p><p>b</p>"]);
 });

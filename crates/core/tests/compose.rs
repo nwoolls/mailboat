@@ -1243,26 +1243,39 @@ async fn send_again_opens_without_bcc_when_gmail_cant_be_asked() {
 #[tokio::test]
 async fn send_again_copies_the_newest_email_you_sent_not_a_newer_one_or_a_draft() {
     // Review: the newest you sent, by Gmail's SENT label, even when a
-    // newer received email or a draft follows it.
+    // newer received email or a draft follows it; and the conversation's
+    // flag agrees with what's picked.
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "a");
     let thread = load_t1(&db, a);
     let (m1, m2) = (message_id(&db, a, "m1"), message_id(&db, a, "m2"));
-    assert_eq!(
-        compose::again::newest_sent(&db.conn(), thread).unwrap(),
-        None
-    );
-    label_message(&db, a, m1, "SENT");
-    assert_eq!(
-        compose::again::newest_sent(&db.conn(), thread).unwrap(),
-        Some(m1)
-    );
+    let newest = |db: &Db| compose::again::newest_sent(&db.conn(), thread).unwrap();
+    let in_sent = |db: &Db| query::thread_summary(&db.conn(), thread).unwrap().in_sent;
+    assert_eq!((newest(&db), in_sent(&db)), (None, false));
+    // Labeled both SENT and DRAFT: counts for neither.
     label_message(&db, a, m2, "SENT");
     label_message(&db, a, m2, "DRAFT");
-    assert_eq!(
-        compose::again::newest_sent(&db.conn(), thread).unwrap(),
-        Some(m1)
-    );
+    assert_eq!((newest(&db), in_sent(&db)), (None, false));
+    // An older email you sent, before a newer one that isn't.
+    label_message(&db, a, m1, "SENT");
+    assert_eq!((newest(&db), in_sent(&db)), (Some(m1), true));
+}
+
+#[tokio::test]
+async fn send_again_notices_an_email_replaced_while_gmail_was_asked() {
+    // Review: SQLite can give a removed email's ID to a new one, another
+    // account's; what's read after asking Gmail must be the same email.
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    load_t1(&db, a);
+    let m2 = message_id(&db, a, "m2");
+    let same = |account, gmail_id: &str| {
+        compose::again::still_the_same(&db.conn(), m2, account, gmail_id).unwrap()
+    };
+    assert!(same(a, "m2"));
+    assert!(!same(b, "m2"), "another account");
+    assert!(!same(a, "m9"), "another email");
 }
 
 #[tokio::test]

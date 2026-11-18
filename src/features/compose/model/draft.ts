@@ -84,7 +84,8 @@ export type Draft = {
   sendAgainNote?: SendAgainNote;
   /**
    * The signature is already in the text (Send again copies an email as
-   * sent), so changing From doesn't add one under it.
+   * sent; a reopened draft was saved with it), so changing From doesn't
+   * add one under it.
    */
   signatureInBody?: boolean;
 };
@@ -486,6 +487,9 @@ export function resumedDraft(opened: OpenedDraft, from: MessageId): Draft {
     quote: "",
     quoteText: "",
     signature: "",
+    // Saved with its signature in the text (as sent, or as Send again
+    // copied it), so changing From doesn't add another under it (review).
+    signatureInBody: true,
     savedId: opened.draft,
     resumedFrom: from,
     opened: fieldsKey({ ...opened, attachments: opened.files }),

@@ -44,6 +44,8 @@ test("the note says when Bcc couldn't be read, and can be dismissed", async ({ p
   await expect(note).toContainText("The original’s Bcc couldn’t be read from Gmail.");
   await note.getByRole("button", { name: "Dismiss" }).click();
   await expect(note).toHaveCount(0);
+  // Its button gone, the message has focus (review).
+  await expect(page.locator(".ProseMirror")).toBeFocused();
   // The file stays: dismissing only hides the note.
   await expect(page.getByText("Lisbon itinerary.pdf")).toBeVisible();
 });

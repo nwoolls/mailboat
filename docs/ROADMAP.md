@@ -5247,6 +5247,14 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [x] Changing From on a reopened draft added a second signature *(found
+      in the Send again review, 2026-11-17; fixed the same day, branch
+      `send-again`)*: a draft is saved with its signature in the text, so
+      when it was opened again and From changed, the new address's
+      signature was added under the old one. A reopened draft now counts
+      its signature as part of the text (`signatureInBody`), as Send
+      again's copy does, so changing From adds none. A Vitest case fails
+      without the change.
 - [x] A draft in Trash can't be opened *(owner report, 2026-11-12; fixed
       the same day, and the owner tried it)*: clicking one showed
       "Couldn't open the draft: not found: that draft is no longer in
@@ -5954,19 +5962,27 @@ built, the owner has tried it, and the owner has published 0.3.0
         fetched from Gmail, so then it doesn't open offline.
       - The body as sent, in the editor, its old signature included; the
         current signature isn't added on top, even when From changes. The
-        editor keeps simple formatting only (its tables and styles don't
-        survive it), so an email written elsewhere with rich formatting
-        comes back plainer.
+        editor keeps the formatting it supports (text styles, lists, links,
+        simple tables) and drops the rest (style sheets, layouts), so an
+        email written elsewhere with rich formatting comes back plainer.
       - Images in the body follow the reader's rule for that email
         (Settings → Viewing), since the composer loads them itself
         (review): known trackers and images on your own computer or
         network are always removed, other remote images only stay if the
         setting would load them, and embedded images (`cid:`) aren't
-        carried. The note counts what was left out.
+        carried, nor are images at any other address (a relative one would
+        resolve against the app). A left-out image's alt text stays in its
+        place, and the note counts what was left out.
       - The original's files come along as a forward's do (each with its
-        ×, fetched from Gmail when sending), and a note above them, not a
-        dialog, says so, with Remove them and a × to dismiss it. The note
-        isn't kept with a saved draft.
+        ×), fetched from Gmail when the draft is saved or sent: a copy
+        saves as a Gmail draft as soon as it opens, as a forward does. A
+        note above them, not a dialog, says so, with Remove them and a ×
+        to dismiss it; either moves focus to the message. The note isn't
+        kept with a saved draft.
+      - What's offered and what's copied use one rule (`SENT_NOT_DRAFT`
+        in `db::query`), and an email removed by a sync while Gmail is
+        asked for Bcc (its ID reused) is noticed and not mixed with
+        another (review).
       Tests: Rust (which email is copied, Bcc from Gmail, Gmail answering
       with an error, images under each setting, a removed alias, refused
       without a sent email, and the demo's sent invoice end to end),

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 use super::{original, quote_clean};
+use crate::db::query::SENT_NOT_DRAFT;
 use crate::db::{accounts, store, Db};
 use crate::error::{CoreError, Result};
 use crate::gmail::{parse, GmailClient};
@@ -34,8 +35,8 @@ pub struct SendAgainSource {
     /// because it's unknown, not because there was none.
     pub bcc_unknown: bool,
     pub subject: String,
-    /// The body's HTML as sent, cleaned as a quote is (no scripts, style
-    /// sheets, forms or event handlers), with its images as the reader
+    /// The body's HTML as sent, cleaned as a quote is (no scripts, forms
+    /// or event handlers; its style sheets stay), with its images as the reader
     /// would show them (`sanitize::images_for_editor`). `None` for
     /// plain-text mail.
     pub html: Option<String>,
@@ -54,17 +55,31 @@ pub struct SendAgainSource {
 pub fn newest_sent(conn: &rusqlite::Connection, thread: ThreadId) -> Result<Option<MessageId>> {
     Ok(conn
         .query_row(
-            "SELECT m.id FROM messages m
-             WHERE m.thread_id = ?1
-               AND EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
-                           WHERE ml.message_id = m.id AND l.gmail_label_id = 'SENT')
-               AND NOT EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
-                               WHERE ml.message_id = m.id AND l.gmail_label_id = 'DRAFT')
-             ORDER BY m.internal_date DESC, m.id DESC LIMIT 1",
+            &format!(
+                "SELECT m.id FROM messages m WHERE m.thread_id = ?1 AND {SENT_NOT_DRAFT}
+                 ORDER BY m.internal_date DESC, m.id DESC LIMIT 1"
+            ),
             [thread],
             |r| r.get(0),
         )
         .optional()?)
+}
+
+/// `message` is still the email with this account and Gmail ID.
+pub fn still_the_same(
+    conn: &rusqlite::Connection,
+    message: MessageId,
+    account: AccountId,
+    gmail_id: &str,
+) -> Result<bool> {
+    Ok(conn
+        .query_row(
+            "SELECT 1 FROM messages WHERE id = ?1 AND account_id = ?2 AND gmail_message_id = ?3",
+            rusqlite::params![message, account, gmail_id],
+            |_| Ok(()),
+        )
+        .optional()?
+        .is_some())
 }
 
 /// Whether `email` is one of the account's own addresses (its own, or an
@@ -102,6 +117,15 @@ pub async fn source(db: &Db, gmail: &GmailClient, thread: ThreadId) -> Result<Se
         }
         Err(_) => (Vec::new(), true),
     };
+    // While Gmail was asked, a sync may have removed the email, and SQLite
+    // can give its ID to a new one (another account's): check it is still
+    // the same email before reading anything else by that ID (review).
+    let same = still_the_same(&db.conn(), message, o.account, &o.gmail_message_id)?;
+    if !same {
+        return Err(CoreError::Invalid(
+            "The email changed while it was being read. Try again.".into(),
+        ));
+    }
     let body = fetch_body(db, gmail, message).await?;
     let text = body
         .text

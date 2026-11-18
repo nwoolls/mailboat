@@ -1620,8 +1620,8 @@ export type SendAgainSource = {
 	bccUnknown: boolean,
 	subject: string,
 	/**
-	 *  The body's HTML as sent, cleaned as a quote is (no scripts, style
-	 *  sheets, forms or event handlers), with its images as the reader
+	 *  The body's HTML as sent, cleaned as a quote is (no scripts, forms
+	 *  or event handlers; its style sheets stay), with its images as the reader
 	 *  would show them (`sanitize::images_for_editor`). `None` for
 	 *  plain-text mail.
 	 */

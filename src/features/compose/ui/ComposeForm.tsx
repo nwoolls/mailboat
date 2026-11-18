@@ -432,8 +432,15 @@ export function ComposeForm({
         <SendAgainNote
           note={draft.sendAgainNote}
           files={draft.forwarded.length}
-          onRemoveFiles={() => onChange((d) => ({ ...d, forwarded: [] }))}
-          onDismiss={() => onChange((d) => ({ ...d, sendAgainNote: undefined }))}
+          // The button pressed goes away: the message takes focus (review).
+          onRemoveFiles={() => {
+            onChange((d) => ({ ...d, forwarded: [] }));
+            editor?.commands.focus();
+          }}
+          onDismiss={() => {
+            onChange((d) => ({ ...d, sendAgainNote: undefined }));
+            editor?.commands.focus();
+          }}
         />
       )}
       {draft.attachments.length + draft.forwarded.length > 0 && (
