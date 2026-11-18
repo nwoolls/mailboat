@@ -427,9 +427,9 @@ mockIPC(
       case "send_again_source": {
         // Send again on one of your emails in the conversation: as sent,
         // with one file. `&bcc=unknown`: Gmail couldn't be asked for Bcc.
-        // The newest of your emails, as Rust picks it (Gmail's SENT label).
+        // The first of your emails, as Rust picks it (Gmail's SENT label).
         const m =
-          detail.messages.findLast(
+          detail.messages.find(
             (x: { from: { email: string } }) => x.from.email === account.email,
           ) ?? detail.messages[0]!;
         const unknown = new URLSearchParams(location.search).get("bcc") === "unknown";

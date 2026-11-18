@@ -5950,9 +5950,12 @@ built, the owner has tried it, and the owner has published 0.3.0
       you sent. It's a conversation command, so it's in the list's
       right-click menu (hidden there when it doesn't apply, as the reply
       items are), the Message menu and ⌘K (greyed out there). It copies
-      the newest email in the conversation that has Gmail's SENT label
+      the first email in the conversation that has Gmail's SENT label
       and isn't a draft; the same label marks the conversation, so what
-      offers it and what it copies agree (review).
+      offers it and what it copies agree (review). *(2026-11-18, owner
+      report from beta.2: it copied the newest, so after a forward of
+      yours it copied the forward; the first email you sent is the one to
+      send again. Fixed the same day, branch `send-again-first`)*
       Built 2026-11-17 (`compose::again`, `sendAgainDraft`):
       - From: the same account and address (an alias too); one since
         removed from your addresses starts from the account's default,

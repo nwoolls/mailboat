@@ -1161,7 +1161,7 @@ pub async fn reply_source(
     Ok(compose::reply_source(&state.db, &gmail, message_id).await?)
 }
 
-/// What Send again needs from the newest email you sent in a conversation
+/// What Send again needs from the first email you sent in a conversation
 /// (recipients with Bcc, subject, body, files), fetched with its own
 /// account's credentials.
 #[tauri::command]

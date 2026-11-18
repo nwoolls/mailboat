@@ -95,7 +95,7 @@ export function conversationCommands(
     { id: "forward", title: "Forward", key: "f", accel: "Shift+Cmd+F", enabled: one },
     { id: "replyAi", title: "Reply with AI", enabled: one && o.ai.write },
     // Apple Mail's Message → Send Again: an email you sent, as a new
-    // message (its newest one in the conversation). Not for received mail.
+    // message (the first one in the conversation). Not for received mail.
     {
       id: "sendAgain",
       title: "Send again…",

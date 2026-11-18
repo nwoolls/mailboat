@@ -216,7 +216,7 @@ export const commands = {
 	 */
 	composeOutsideRule: (account: AccountId) => typedError<OutsideRule, AppError>(__TAURI_INVOKE("compose_outside_rule", { account })),
 	/**
-	 *  What Send again needs from the newest email you sent in a conversation
+	 *  What Send again needs from the first email you sent in a conversation
 	 *  (recipients with Bcc, subject, body, files), fetched with its own
 	 *  account's credentials.
 	 */

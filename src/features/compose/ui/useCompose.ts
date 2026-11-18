@@ -390,13 +390,13 @@ export function useComposeActions(accounts: Account[]) {
   );
 
   /**
-   * Send again: the newest email you sent in a conversation, as a new
+   * Send again: the first email you sent in a conversation, as a new
    * message in the card (Apple Mail's Message → Send Again).
    */
   const startSendAgain = useCallback(
     async (threadId: ThreadId) => {
       try {
-        // Rust picks the email: the newest you sent (Gmail's SENT label).
+        // Rust picks the email: the first you sent (Gmail's SENT label).
         const [source, list] = await Promise.all([
           unwrap(commands.sendAgainSource(threadId)),
           identities(),

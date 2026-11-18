@@ -1241,24 +1241,43 @@ async fn send_again_opens_without_bcc_when_gmail_cant_be_asked() {
 }
 
 #[tokio::test]
-async fn send_again_copies_the_newest_email_you_sent_not_a_newer_one_or_a_draft() {
-    // Review: the newest you sent, by Gmail's SENT label, even when a
-    // newer received email or a draft follows it; and the conversation's
-    // flag agrees with what's picked.
+async fn send_again_copies_the_first_email_you_sent_not_a_later_one_or_a_draft() {
+    // The first you sent, by Gmail's SENT label: a later reply or forward
+    // of yours isn't the message to send again (owner, 2026-11-18). A
+    // draft counts for nothing, and the conversation's flag agrees with
+    // what's picked (review).
     let db = Db::open_in_memory().unwrap();
     let a = add_account(&db, "a");
     let thread = load_t1(&db, a);
     let (m1, m2) = (message_id(&db, a, "m1"), message_id(&db, a, "m2"));
-    let newest = |db: &Db| compose::again::newest_sent(&db.conn(), thread).unwrap();
+    let first = |db: &Db| compose::again::first_sent(&db.conn(), thread).unwrap();
     let in_sent = |db: &Db| query::thread_summary(&db.conn(), thread).unwrap().in_sent;
-    assert_eq!((newest(&db), in_sent(&db)), (None, false));
+    assert_eq!((first(&db), in_sent(&db)), (None, false));
     // Labeled both SENT and DRAFT: counts for neither.
     label_message(&db, a, m2, "SENT");
     label_message(&db, a, m2, "DRAFT");
-    assert_eq!((newest(&db), in_sent(&db)), (None, false));
-    // An older email you sent, before a newer one that isn't.
+    assert_eq!((first(&db), in_sent(&db)), (None, false));
+    // The original (m1), then a later email of yours (m2, a forward say):
+    // the original is copied.
     label_message(&db, a, m1, "SENT");
-    assert_eq!((newest(&db), in_sent(&db)), (Some(m1), true));
+    db.conn()
+        .execute(
+            "DELETE FROM message_labels WHERE message_id = ?1 AND label_id IN
+             (SELECT id FROM labels WHERE gmail_label_id = 'DRAFT')",
+            [m2],
+        )
+        .unwrap();
+    assert_eq!((first(&db), in_sent(&db)), (Some(m1), true));
+    // By date, not by when it was cached (review): the email with the
+    // larger ID is the earlier one here, and it's picked.
+    db.conn()
+        .execute(
+            "UPDATE messages SET internal_date = (SELECT internal_date FROM messages WHERE id = ?2) + 1
+             WHERE id = ?1",
+            [m1, m2],
+        )
+        .unwrap();
+    assert_eq!(first(&db), Some(m2));
 }
 
 #[tokio::test]
