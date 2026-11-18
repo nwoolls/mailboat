@@ -120,6 +120,7 @@ export function Harness({
         <div className="fixed top-12 right-3 z-50">
           <UpdateNotice />
         </div>
+        <HarnessToast />
       </div>
     );
   // Settings → Toybox.

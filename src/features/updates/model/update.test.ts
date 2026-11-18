@@ -86,6 +86,15 @@ describe("releaseNotesUrl", () => {
     expect(releaseNotesUrl(repo, "0.3.0")).toBe(`${repo}/releases/tag/v0.3.0`);
     expect(releaseNotesUrl(`${repo}/`, "0.3.0-beta.1")).toBe(`${repo}/releases/tag/v0.3.0-beta.1`);
   });
+  it("covers every version the release tooling can tag (review)", () => {
+    expect(releaseNotesUrl(repo, "0.3.1-beta-hotfix.1")).toBe(
+      `${repo}/releases/tag/v0.3.1-beta-hotfix.1`,
+    );
+    expect(releaseNotesUrl(repo, "1.0.0-rc-1")).toBe(`${repo}/releases/tag/v1.0.0-rc-1`);
+    expect(releaseNotesUrl(repo, "0.3.0-BETA.1")).toBe(`${repo}/releases/tag/v0.3.0-BETA.1`);
+    // Build metadata's `+`, escaped in the address.
+    expect(releaseNotesUrl(repo, "0.3.1+build.4")).toBe(`${repo}/releases/tag/v0.3.1%2Bbuild.4`);
+  });
   it("is nothing for a version that isn't one", () => {
     for (const odd of ["", "latest", "0.3", "1.0.0/../../x", "1.0.0?q=1", "1.0.0 "])
       expect(releaseNotesUrl(repo, odd)).toBeNull();

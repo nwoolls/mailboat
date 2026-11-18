@@ -19,6 +19,7 @@ import {
   tagFor,
   tagProblem,
 } from "./releaseFiles";
+import { releaseNotesUrl } from "../src/features/updates/model/update";
 
 describe("which build outputs are update payloads", () => {
   it("knows each platform's by its name", () => {
@@ -299,5 +300,25 @@ ${bundleLine(envelope)}
     expect(() => intotoLines(`${bundleLine(envelope)}\n${bundleLine({ payload: "x" })}`)).toThrow(
       /line 2/,
     );
+  });
+});
+
+describe("the update notice's What's new link", () => {
+  it("is offered for exactly the versions a release can be tagged with", () => {
+    // `releaseNotesUrl` keeps its own copy of the pattern (the app can't
+    // import this script); this keeps the two the same (review).
+    const repo = "https://github.example/owner/app";
+    for (const v of [
+      "0.3.0",
+      "0.3.0-beta.1",
+      "0.3.1-beta-hotfix.1",
+      "1.0.0-rc-1",
+      "0.3.1+build.4",
+      "latest",
+      "0.3",
+      "1.0.0?q=1",
+      "1.0.0/../x",
+    ])
+      expect(releaseNotesUrl(repo, v) !== null, v).toBe(isVersion(v));
   });
 });

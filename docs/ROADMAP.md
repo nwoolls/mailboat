@@ -6038,10 +6038,11 @@ built, the owner has tried it, and the owner has published 0.3.0
       available update" under "Later / unscheduled")*: the notice that
       offers an update has a What's new button that opens that version's
       release page on GitHub in the browser, where its curated notes are.
-      Nothing from the update check is shown in the window: the address
-      follows from the version (`releaseNotesUrl`, which accepts only a
-      plain version), and the repository's address is in `brand.json`
-      (`repository`). The privacy policy's "Update checks" says so. Tests:
+      The notice shows the version from the update check, as it did, and
+      the link is built from that version alone (`releaseNotesUrl`, which
+      accepts the versions the release tooling can tag and nothing else);
+      the notes are read in the browser, not shown in the window. The
+      repository's address is in `brand.json` (`repository`). The privacy policy's "Update checks" says so. Tests:
       Vitest for the address, and `tests/browser/updates.spec.ts` for the
       button.
 
