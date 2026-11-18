@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0-beta.2
+
+### New
+
+- **Send again.** Send again… (⇧⌘D) opens an email you sent as a new message, with the same recipients, subject, text and files, and its Bcc when Gmail can be asked for it, ready to change and send.
+- **Outside recipients.** On a Google Workspace account, people outside your organization are marked while you write, with a note above the message, as Gmail does. Settings → Accounts can turn it off for each such account.
+- **What's new.** The notice that offers an update has a What's new button, which opens that version's release notes in your browser.
+
 ## 0.3.0-beta.1
 
 ### Fixes
