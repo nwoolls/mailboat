@@ -4481,7 +4481,8 @@ privacy:
 - Only if it becomes a problem: "Use a different file" on "Google Cloud
   is set up" goes back to the start of the walkthrough (Milestone 12;
   the owner said it was fine for now; in "Later / unscheduled" since
-  2026-11-14).
+  2026-11-14) *(done 2026-11-18, in 0.3.0: see its item
+  there)*.
 - Contacting fewer image hosts before a message is opened (prefetch only for
   people you've written to, or not at all): a design decision for the owner.
 - Encrypting the local cache at rest, and Touch ID or Windows Hello: decide,
@@ -6052,8 +6053,12 @@ built, the owner has tried it, and the owner has published 0.3.0
       update)*: it went back to the start of the walkthrough the person
       had first followed, its steps long done. It now goes straight to the
       place to give a file (the "have a file" way, which "Change" can still
-      switch), and "Keep the current file" goes back without replacing it.
-      Test: `tests/browser/onboarding.spec.ts` (fails without the change).
+      switch), and "Keep the current file" goes back without replacing it,
+      from there or from the other ways after "Change"; it reads again
+      which file is in use, in case one being saved as it was pressed
+      (Watch my Downloads) went through (review). Test:
+      `tests/browser/onboarding.spec.ts` (fails without the change; checks
+      that keeping saves nothing).
 
 ### Enhancements to existing features
 
