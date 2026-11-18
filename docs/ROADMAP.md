@@ -6547,6 +6547,36 @@ Privacy and the policy.*
       cache; check the owner's Windows test machine first
       (`manage-bde -status`, as an administrator) to know what they'll
       see)*
+      *(2026-11-18, checked: the owner's Windows 11 Home test machine (a
+      virtual machine) has no disk encryption at all: BitLocker reports
+      the system drive fully decrypted, protection off, no key
+      protectors. Device encryption needs a TPM, which virtual machines
+      usually lack. So on a machine like it the mail cache, and the
+      attachments and images the app downloads, are plain files anyone
+      who can read the disk can read; a lab checking such a machine would
+      likely flag DASA 1.2.2's second point. Now likely needed, not only
+      if asked. Plan:*
+      - *Ask the lab whether a Windows machine without disk encryption
+        fails its check, or whether documenting it is enough (with the
+        reply about how the reviewer signs in). Its answer sets the
+        urgency.*
+      - *A spike first, then build it in 0.4.0 or a 0.3.x before the
+        paid scan (the deadline is 2027-02-12), not in 0.3.0. The spike
+        answers, none verified yet: SQLCipher or SQLite3 Multiple
+        Ciphers (or similar) through `rusqlite`, with FTS5 search still
+        working; whether it builds on all three targets, in particular
+        the Windows build cross-compiled with cargo-xwin, where
+        SQLCipher's usual OpenSSL may not build (some alternatives bring
+        their own crypto); its license against GPL-3.0-only; the speed
+        cost; the key in the OS keychain (Credential Manager on Windows)
+        beside the Google tokens; a one-time migration of an existing
+        database; and the downloaded attachments and images, plain
+        files in the app's folder that need encrypting too or the job is
+        half done.*
+      - *Optional, sooner: Settings → Privacy saying when the computer's
+        disk isn't encrypted. On Windows, reading that without
+        administrator rights isn't simple; the spike settles whether it
+        can be done.*
 - [ ] Scan the code ourselves before the lab does, so findings are fixed
       or documented before the paid scans start. A lab may ask for a
       static scan (SAST) of a desktop app's source code (confirm the
