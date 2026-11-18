@@ -49,15 +49,18 @@ pub struct SendAgainSource {
     pub images_left_out: u32,
 }
 
-/// The newest email in `thread` that you sent: Gmail's SENT label, not a
-/// draft. The same label marks the conversation (`ThreadSummary::in_sent`),
-/// so what offers Send again and what it copies agree.
-pub fn newest_sent(conn: &rusqlite::Connection, thread: ThreadId) -> Result<Option<MessageId>> {
+/// The first email in `thread` that you sent: Gmail's SENT label, not a
+/// draft. The first, not the newest: a later reply or forward of yours in
+/// the conversation isn't the message to send again (owner, 2026-11-18,
+/// after a forward was copied). The same label marks the conversation
+/// (`ThreadSummary::in_sent`), so what offers Send again and what it
+/// copies agree.
+pub fn first_sent(conn: &rusqlite::Connection, thread: ThreadId) -> Result<Option<MessageId>> {
     Ok(conn
         .query_row(
             &format!(
                 "SELECT m.id FROM messages m WHERE m.thread_id = ?1 AND {SENT_NOT_DRAFT}
-                 ORDER BY m.internal_date DESC, m.id DESC LIMIT 1"
+                 ORDER BY m.internal_date ASC, m.id ASC LIMIT 1"
             ),
             [thread],
             |r| r.get(0),
@@ -96,13 +99,13 @@ fn is_mine(conn: &rusqlite::Connection, account: AccountId, email: &str) -> Resu
     Ok(aliases.iter().any(|a| a.trim().to_lowercase() == email))
 }
 
-/// Gathers what Send again needs from the newest email you sent in
+/// Gathers what Send again needs from the first email you sent in
 /// `thread`. Bcc is asked of Gmail; the body is fetched if it isn't cached.
 pub async fn source(db: &Db, gmail: &GmailClient, thread: ThreadId) -> Result<SendAgainSource> {
     // Bound first: never hold the lock in an `if`/`match` header.
-    let newest = newest_sent(&db.conn(), thread)?;
+    let first = first_sent(&db.conn(), thread)?;
     let message =
-        newest.ok_or_else(|| CoreError::Invalid("Send again is for emails you sent.".into()))?;
+        first.ok_or_else(|| CoreError::Invalid("Send again is for emails you sent.".into()))?;
     let o = original(db, message)?;
     let from_still_yours = is_mine(&db.conn(), o.account, &o.from.email)?;
     let (bcc, bcc_unknown) = match gmail.message_headers(&o.gmail_message_id, &["Bcc"]).await {

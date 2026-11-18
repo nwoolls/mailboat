@@ -52,7 +52,7 @@ const IN_ALL_MAIL: &str = concat!(
 
 /// The message `m` is one you sent: Gmail's SENT label, and not a draft.
 /// Marks a conversation for Send again (`in_sent`) and picks the email it
-/// copies (`compose::again::newest_sent`), so the two agree.
+/// copies (`compose::again::first_sent`), so the two agree.
 macro_rules! sent_not_draft {
     () => {
         "EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
