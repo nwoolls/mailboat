@@ -29,6 +29,10 @@
   );
   --color-danger: hsl(4 75% 60%);
   --color-warn: hsl(38 85% 55%);
+  /* The warning amber for small marks that must read on their own (the
+     globe on an outside address): darker in the light theme, where the
+     plain amber is too pale against a light tint. */
+  --color-warn-ink: hsl(36 90% var(--warn-ink-lightness));
   /* Information that isn't a warning: always blue, whatever accent is chosen
      (a red or orange accent would read as a warning). */
   --color-info: hsl(217 85% 62%);
@@ -46,6 +50,7 @@
   --background-lightness: 9%;
   --raised-lightness: 12%;
   --content-lightness: 92%;
+  --warn-ink-lightness: 55%;
   /* The owner's pick, found with a temporary transparency slider.
      Settings → Appearance adds `--glass-*-adjust` (set on this element
      by `features/settings`) to make them clearer or more solid. */
@@ -82,6 +87,7 @@
     --background-lightness: 99%;
     --raised-lightness: 97%;
     --content-lightness: 12%;
+    --warn-ink-lightness: 30%;
     --glass-sidebar-base: 10%;
     --glass-panel-base: 37%;
     --glass-compose-strength: 78%;

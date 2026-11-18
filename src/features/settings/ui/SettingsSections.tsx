@@ -23,6 +23,7 @@ import {
   useHideContact,
   useImageCacheSize,
   useIdentities,
+  useOutsideRule,
   useMakeDefaultMailApp,
   useSaveAppSettings,
   useSetAccountColor,
@@ -347,6 +348,10 @@ function AccountGroup({
   const addresses = (useIdentities().data ?? []).filter((i) => i.accountId === account.id);
   const name = account.displayName?.trim();
   const reason = signInAgainReason(account.missingPermissions);
+  // Only Workspace accounts are warned about, as in Gmail.
+  const outsideRule = useOutsideRule(account.id).data;
+  const prefs = composingPrefs.use();
+  const warnOutside = !prefs.outsideWarningOff.includes(account.id);
   return (
     <Group
       title={
@@ -437,6 +442,33 @@ function AccountGroup({
           Open in Gmail
         </Button>
       </Row>
+      {outsideRule?.workspace && (
+        <Row
+          label="Warn about outside recipients"
+          description={`While you write, marks anyone not at ${
+            outsideRule.domains.length > 1
+              ? `${outsideRule.domains[0]} or your aliases’ domains`
+              : outsideRule.domains[0]
+          }, as Gmail does. People in your Google Contacts and Other contacts aren’t marked, as of the last sync.${
+            account.missingPermissions.includes("contacts")
+              ? " This account hasn’t allowed Contacts, so they’re marked too until you sign in again."
+              : ""
+          }`}
+        >
+          <Toggle
+            label="Warn about outside recipients"
+            on={warnOutside}
+            onChange={(on) =>
+              composingPrefs.set({
+                ...prefs,
+                outsideWarningOff: on
+                  ? prefs.outsideWarningOff.filter((id) => id !== account.id)
+                  : [...prefs.outsideWarningOff, account.id],
+              })
+            }
+          />
+        </Row>
+      )}
       <Row
         label="Remove account"
         description="Stops syncing it, asks Google to end its sign-in, and deletes its mail saved on this Mac. Nothing changes in Gmail."

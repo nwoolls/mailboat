@@ -4475,7 +4475,9 @@ privacy:
 - Warn about outside recipients (addresses not ending with chosen
   domains are marked while writing; "Later / unscheduled" → Writing; in 0.3.0
   since 2026-11-14). Not a
-  bug or a privacy item; held to keep the scope small.
+  bug or a privacy item; held to keep the scope small. *(done 2026-11-17,
+  in 0.3.0, as Gmail's warning rather than chosen domains: see its item
+  there)*
 - Only if it becomes a problem: "Use a different file" on "Google Cloud
   is set up" goes back to the start of the walkthrough (Milestone 12;
   the owner said it was fine for now; in "Later / unscheduled" since
@@ -5934,10 +5936,49 @@ built, the owner has tried it, and the owner has published 0.3.0
       signature is kept or added again. The clone is a new draft; the
       original is untouched.
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
-- [ ] Warn about outside recipients (addresses not ending with chosen
-      domains are marked while writing) *(held out of the Polish Spike,
+- [x] Warn about outside recipients, as Gmail does (on a Workspace
+      account, addresses outside its own and its aliases' domains are
+      marked while writing, except its Contacts and Other contacts; first
+      planned as chosen domains) *(held out of the Polish Spike,
       2026-11-07)*
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      Decided with the owner, 2026-11-17: copy Gmail's own warning as
+      closely as the app can ("Warn for external recipients", a Workspace
+      administrator's setting, on by default; Google Workspace Admin Help,
+      "Control Gmail external recipient warnings"). Gmail marks each
+      outside address while you write and shows a banner, for a new email
+      and a reply alike; it skips people in the company's directory, your
+      Contacts and your Other contacts, and the company's other domains
+      and domain aliases; personal Gmail accounts never see it. In the
+      app:
+      - Only Workspace accounts (not `gmail.com` or `googlemail.com`).
+      - Inside means the account's own domain and its send-as aliases'
+        domains (the app already reads the aliases). People in Contacts
+        and Other contacts are never marked (the app already reads both
+        for address suggestions), as of the account's last contacts
+        sync; an account that hasn't allowed Contacts has none, so they
+        are marked until it signs in again (Settings says so).
+      - A switch per account, shown only for a Workspace account, on by
+        default as Gmail's is. The app can never read the administrator's
+        choice (no API has it), so a person whose administrator turned
+        Gmail's warning off can turn the app's off too. No list of
+        domains to type in.
+      - Nothing leaves the computer. The switch is kept with Settings →
+        Composing's other choices in the window (not Rust's settings), so
+        Settings → Privacy, which lists what leaves the computer, doesn't
+        change.
+      - Mockup first (the marked address and the banner, in Gmail's
+        look), for the owner to react to: agreed 2026-11-17, with the
+        app's own switch in Settings.
+      Built 2026-11-17: `compose::outside` (Rust) gathers an account's
+      domains and Google contacts; `compose/model/outside.ts` decides per
+      address and words the banner. An outside chip is tinted amber with a
+      globe and says so in its tooltip; the banner, under the subject,
+      names one person or counts several. Tests: Rust and Vitest for the
+      rule, and `tests/browser/outside-recipients.spec.ts` for the chips,
+      the banner and the switch.
+      The company's directory and its other domains need a new permission:
+      see "Needing a new permission" under Later.
 
 ### Enhancements to existing features
 
@@ -7378,6 +7419,19 @@ Settings → Privacy, as `AGENTS.md` says.
       Permission: new (`contacts`, which allows writing). Competitors:
       Apple Mail (to the computer's Contacts, not Google's). Effort: low
       to medium
+- [ ] Outside recipients, as Gmail decides them *(owner, 2026-11-17)*:
+      read the company's directory (People API `listDirectoryPeople`),
+      which a person can read when their organization shares it. People
+      in it are never marked, as in Gmail, address by address. Its
+      domains don't all count as inside: an administrator can add
+      shared external contacts to the directory, so a partner's address
+      there would otherwise clear everyone at the partner's domain
+      (review, 2026-11-17). Telling the company's other domains apart
+      needs evidence of its own. The warning built in 0.3.0 counts only
+      the account's own and its aliases' domains, and skips only
+      Contacts and Other contacts.
+      Permission: new (`directory.readonly`). Competitors: none
+      confirmed. Effort: low in code, after the review
 #### Workspace administrators only (not reachable with a person's own sign-in)
 
 Google allows these methods only for a service account with domain-wide
@@ -7400,6 +7454,10 @@ For people, they stay in Gmail's own settings.
 - [ ] Delegated mailboxes (`settings.delegates`): the delegate must be in
       the same Workspace organization. Competitors: Outlook (its own
       delegation). Effort: high (administrator setup)
+- The company's full list of domains (Admin SDK `domains.list`) answers
+  only an administrator, and the administrator's "Warn for external
+  recipients" choice has no API. So the outside-recipients warning (0.3.0)
+  has a switch of its own per account instead *(owner, 2026-11-17)*.
 
 #### Only in Gmail's own app (no API)
 

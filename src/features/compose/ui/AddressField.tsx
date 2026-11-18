@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { Address } from "../../../platform/tauri/bindings";
 import { useContacts, useHideContact } from "../../../shared/lib/queries";
 import { showToast } from "../../../shared/lib/toast";
-import { ClearIcon } from "../../../shared/ui/icons";
+import { ClearIcon, OutsideIcon } from "../../../shared/ui/icons";
 import { matchContacts } from "../model/contacts";
 import {
   type AddressLine,
@@ -114,6 +114,7 @@ export function AddressField({
   onMove,
   autoFocus,
   trailing,
+  isOutside,
 }: {
   label: string;
   /** Which line this is, for dragging chips between lines. */
@@ -129,6 +130,8 @@ export function AddressField({
   autoFocus?: boolean;
   /** Shown at the end of the line (the Cc/Bcc toggles). */
   trailing?: React.ReactNode;
+  /** Marks an address outside the organization (`model/outside.ts`). */
+  isOutside?: (email: string) => boolean;
 }) {
   const [text, setText] = useState("");
   const [active, setActive] = useState(0);
@@ -250,6 +253,7 @@ export function AddressField({
         <Chip
           key={a.email.toLowerCase()}
           address={a}
+          outside={isOutside?.(a.email) ?? false}
           onDragOver={onDragOver}
           onDrop={(to) => {
             onDragOver(null);
@@ -330,12 +334,15 @@ function lineAt(x: number, y: number, chip: Element): AddressLine | null {
 
 function Chip({
   address,
+  outside,
   onDragOver,
   onDrop,
   onRemove,
   onEdit,
 }: {
   address: Address;
+  /** Outside the organization: tinted, with a globe, as Gmail marks it. */
+  outside: boolean;
   onDragOver: (line: AddressLine | null) => void;
   onDrop: (line: AddressLine | null) => void;
   onRemove: () => void;
@@ -353,7 +360,14 @@ function Chip({
   };
   return (
     <span
-      title={valid ? formatAddress(address) : `“${address.email}” isn’t a valid email address`}
+      title={
+        !valid
+          ? `“${address.email}” isn’t a valid email address`
+          : outside
+            ? `${formatAddress(address)}, outside your organization`
+            : formatAddress(address)
+      }
+      data-outside={outside || undefined}
       onPointerDown={(e) => {
         if (e.button !== 0 || (e.target as Element).closest("[data-chip-remove]")) return;
         press.current = { x: e.clientX, y: e.clientY };
@@ -383,14 +397,23 @@ function Chip({
         if (shift) onDrop(null);
         end();
       }}
-      className={`flex h-6 max-w-[16rem] items-center gap-0.5 rounded-md pr-0.5 pl-2 select-none ${
-        valid ? "bg-selection" : "bg-danger/15 text-danger"
+      className={`flex h-6 max-w-[16rem] items-center gap-0.5 rounded-md pr-0.5 select-none ${
+        !valid
+          ? "bg-danger/15 pl-2 text-danger"
+          : outside
+            ? "bg-warn/15 pl-1.5 ring-1 ring-warn/55 ring-inset"
+            : "bg-selection pl-2"
       } ${shift ? "relative z-50 cursor-grabbing shadow-md" : ""}`}
       style={shift ? { transform: `translate(${shift.x}px, ${shift.y}px)` } : undefined}
     >
+      {outside && <OutsideIcon aria-hidden size={13} className="mr-0.5 shrink-0 text-warn-ink" />}
       <button
         type="button"
         className="truncate"
+        // Said, not only shown in amber.
+        aria-label={
+          outside ? `${address.name ?? address.email}, outside your organization` : undefined
+        }
         // Double-click edits, as in Mail.
         onDoubleClick={(e) => {
           e.stopPropagation();

@@ -8,6 +8,7 @@
 pub mod contacts;
 pub mod identities;
 pub mod mime;
+pub mod outside;
 
 use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};

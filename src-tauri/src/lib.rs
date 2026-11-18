@@ -93,6 +93,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::sync_log_reveal,
             commands::identities_list,
             commands::contacts_list,
+            commands::compose_outside_rule,
             commands::contacts_hide,
             commands::contacts_unhide,
             commands::contacts_hidden,

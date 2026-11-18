@@ -22,4 +22,10 @@ describe("parseComposingPrefs", () => {
     expect(all.defaultFrom).toEqual({ accountId: 2, email: "me@y.example" });
     expect(all.style).toEqual({ font: "Georgia, serif", size: "18px" });
   });
+  it("keeps the accounts whose outside warning is off, and drops anything else", () => {
+    expect(parseComposingPrefs('{"outsideWarningOff":[2,"3",null,5]}').outsideWarningOff).toEqual([
+      2, 5,
+    ]);
+    expect(parseComposingPrefs('{"outsideWarningOff":"all"}').outsideWarningOff).toEqual([]);
+  });
 });

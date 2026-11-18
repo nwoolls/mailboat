@@ -12,10 +12,13 @@ import {
   ReplyAllIcon,
   ReplyIcon,
   TrashIcon,
+  WarningIcon,
 } from "../../../shared/ui/icons";
 import type { OutgoingAttachment } from "../../../platform/tauri/bindings";
 import { formatSize } from "../../reader/model/attachments";
 import { attachmentSize } from "../model/draft";
+import { outsideBanner, outsideRecipients } from "../model/outside";
+import { useOutsideRule } from "../../../shared/lib/queries";
 import type { ComposeEntry } from "../model/composeState";
 import {
   type ComposeKind,
@@ -99,7 +102,12 @@ export function ComposeForm({
   };
 }) {
   const { draft, sending, error } = entry;
-  const { style } = composingPrefs.use();
+  const { style, outsideWarningOff } = composingPrefs.use();
+  // Recipients outside the From account's organization, marked as Gmail
+  // marks them (Workspace accounts only; Settings → Accounts turns it off).
+  const outsideRule = useOutsideRule(draft.accountId).data;
+  const rule = outsideWarningOff.includes(draft.accountId) ? null : outsideRule;
+  const outside = outsideRecipients(rule, [...draft.to, ...draft.cc, ...draft.bcc]);
   const [problem, setProblem] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [dropping, setDropping] = useState(false);
@@ -369,6 +377,7 @@ export function ComposeForm({
         <AddressFieldRow
           draft={draft}
           onChange={onChange}
+          isOutside={(email) => outside.some((a) => a.email.toLowerCase() === email.toLowerCase())}
           kindMenu={
             onSwitchKind &&
             draft.kind !== "new" && <KindMenu kind={draft.kind} onSwitch={onSwitchKind} />
@@ -384,6 +393,7 @@ export function ComposeForm({
             className="h-9 border-b border-stroke bg-transparent outline-none placeholder:text-content/45 focus-visible:outline-none"
           />
         )}
+        <OutsideBanner banner={rule && outside.length > 0 ? outsideBanner(rule, outside) : null} />
         {/* Never squeezed below a few lines by what's under it (a long
           list of attachments, say); that scrolls instead. */}
         {/* With nothing under it, the editor fills the space, so a click
@@ -558,19 +568,43 @@ export function ComposeForm({
   );
 }
 
+/** Above the message while it has recipients outside the organization. */
+function OutsideBanner({ banner }: { banner: { title: string; detail: string } | null }) {
+  // The status region is always there, empty without a warning, so a
+  // screen reader announces the first one too (a region added together
+  // with its text isn't reliably read).
+  return (
+    <div role="status">
+      {banner && (
+        <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-warn/35 bg-warn/10 px-3 py-2.5">
+          <WarningIcon aria-hidden size={16} className="mt-px shrink-0 text-warn-ink" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="font-semibold">{banner.title}</span>
+            <span className="text-content/70">{banner.detail}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AddressFieldRow({
   draft,
   onChange,
   kindMenu,
+  isOutside,
 }: {
   draft: Draft;
   onChange: (change: (d: Draft) => Draft) => void;
   kindMenu?: React.ReactNode;
+  /** Marks an address outside the organization. */
+  isOutside: (email: string) => boolean;
 }) {
   // The line a dragged address chip is over, highlighted until it drops.
   const [dragOver, setDragOver] = useState<AddressLine | null>(null);
   const lineProps = (line: AddressLine) => ({
     line,
+    isOutside,
     dropTarget: dragOver === line,
     onDragOver: setDragOver,
     onMove: (address: Address, to: AddressLine) =>
