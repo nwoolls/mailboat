@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0-beta.3
+
+### Fixes
+
+- Send again copies the first email you sent in a conversation, not a later reply or forward of yours.
+- In first-launch setup, Use a different file goes straight to giving the new credentials file, instead of back to the start of the Google Cloud steps, and you can keep the current file instead.
+
 ## 0.3.0-beta.2
 
 ### New
