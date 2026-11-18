@@ -123,6 +123,13 @@ export function GoogleStage({
   // Giving another file after one was saved (this time or before).
   const [replacing, setReplacing] = useState(false);
   const path = progress.path;
+  // Back to "Google Cloud is set up" without giving another file. Read
+  // again which file is in use: one Watch my Downloads found as this was
+  // pressed may still have been saved, and the screen says which (review).
+  const keep = () => {
+    setReplacing(false);
+    void qc.invalidateQueries({ queryKey: keys.oauthSetup });
+  };
 
   if (client || (configured && !replacing))
     return (
@@ -132,12 +139,17 @@ export function GoogleStage({
         onReplace={() => {
           setClient(null);
           setReplacing(true);
-          if (path === null) updateProgress({ path: "have" });
+          // Straight to giving a file: the walkthrough first followed (its
+          // steps all done long ago) opened again at its start (owner
+          // report, 2026-10-30). "Change" still offers the other ways.
+          updateProgress({ path: "have" });
         }}
       />
     );
 
-  if (path === null) return <ChoosePath />;
+  // Replacing came from "Google Cloud is set up", so there is a file to
+  // keep, even while its status is still being read again (review).
+  if (path === null) return <ChoosePath onKeep={replacing ? keep : undefined} />;
 
   const steps = path === "have" ? [] : stepsFor(path);
   const current = currentStep(progress.done, path);
@@ -158,6 +170,14 @@ export function GoogleStage({
           >
             Change
           </button>
+          {replacing && (
+            <>
+              {" "}
+              <button type="button" className="text-accent hover:underline" onClick={keep}>
+                Keep the current file
+              </button>
+            </>
+          )}
         </p>
       </header>
       {path === "gcloud" && <GcloudCard progress={progress} />}
@@ -201,7 +221,7 @@ function choose(path: GooglePath) {
   });
 }
 
-function ChoosePath() {
+function ChoosePath({ onKeep }: { onKeep?: () => void }) {
   const options: {
     path: GooglePath;
     icon: typeof FileIcon;
@@ -241,6 +261,14 @@ function ChoosePath() {
           {APP_NAME} signs in through a small project in your own Google Cloud account. It’s private
           to you, free (no card needed), and takes about 10 minutes, once. It covers all your Gmail
           accounts, work or personal.
+          {onKeep && (
+            <>
+              {" "}
+              <button type="button" className="text-accent hover:underline" onClick={onKeep}>
+                Keep the current file
+              </button>
+            </>
+          )}
         </p>
       </header>
       <div className="grid gap-2">

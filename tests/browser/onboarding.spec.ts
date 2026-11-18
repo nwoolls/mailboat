@@ -120,3 +120,44 @@ test("a file dropped on the last step's card connects", async ({ page }) => {
   await dropFile(page, "client_secret_1.json", '{"installed":{}}');
   await expect(page.getByRole("heading", { name: "Google Cloud is set up" })).toBeVisible();
 });
+
+/**
+ * "Use a different file" on "Google Cloud is set up" goes to the place to
+ * give a file, not back to the start of the walkthrough the person first
+ * followed (docs/ROADMAP.md, Later → Milestone 12's item, fixed in 0.3.0);
+ * and the file in use can be kept.
+ */
+test("Use a different file asks for the file, not the walkthrough again", async ({ page }) => {
+  await open(page, "stage=google&path=guide&configured=1");
+  await expect(page.getByRole("heading", { name: "Google Cloud is set up" })).toBeVisible();
+  await page.getByRole("button", { name: "Use a different file" }).click();
+  await expect(page.getByText("Drop your credentials file here")).toBeVisible();
+  await expect(
+    page.getByText("Give the credentials file you downloaded from Google Cloud."),
+  ).toBeVisible();
+  // Not the walkthrough's first step.
+  await expect(page.getByText("console.cloud.google.com/projectcreate")).toHaveCount(0);
+  // Changed their mind: the file in use stays, and nothing was saved.
+  const saves = () =>
+    page.evaluate(
+      () =>
+        ((window as unknown as { __order?: string[] }).__order ?? []).filter(
+          (c) => c === "oauth_client_save",
+        ).length,
+    );
+  await page.getByRole("button", { name: "Keep the current file" }).click();
+  await expect(page.getByRole("heading", { name: "Google Cloud is set up" })).toBeVisible();
+  expect(await saves()).toBe(0);
+  // From the other ways too (Change), it can be kept (review).
+  await page.getByRole("button", { name: "Use a different file" }).click();
+  await page.getByRole("button", { name: "Change" }).click();
+  await expect(page.getByRole("button", { name: "Guide me" })).toBeVisible();
+  await page.getByRole("button", { name: "Keep the current file" }).click();
+  await expect(page.getByRole("heading", { name: "Google Cloud is set up" })).toBeVisible();
+  expect(await saves()).toBe(0);
+  // A new file replaces it, as before.
+  await page.getByRole("button", { name: "Use a different file" }).click();
+  await dropFile(page, "client_secret_1.json", '{"installed":{}}');
+  await expect(page.getByRole("heading", { name: "Google Cloud is set up" })).toBeVisible();
+  expect(await saves()).toBe(1);
+});

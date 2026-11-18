@@ -214,6 +214,7 @@ mockIPC(
           problem: null,
         };
       case "oauth_client_save":
+        record("oauth_client_save");
         // As Rust's check: a Web client is refused, with the reason.
         if (String((args as { text: string }).text).includes('"web"'))
           throw { kind: "invalid", message: 'invalid input: This is a "Web application" client.' };
