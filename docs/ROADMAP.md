@@ -5938,6 +5938,31 @@ built, the owner has tried it, and the owner has published 0.3.0
       domains are marked while writing) *(held out of the Polish Spike,
       2026-11-07)*
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      Decided with the owner, 2026-11-17: copy Gmail's own warning as
+      closely as the app can ("Warn for external recipients", a Workspace
+      administrator's setting, on by default; Google Workspace Admin Help,
+      "Control Gmail external recipient warnings"). Gmail marks each
+      outside address while you write and shows a banner, for a new email
+      and a reply alike; it skips people in the company's directory, your
+      Contacts and your Other contacts, and the company's other domains
+      and domain aliases; personal Gmail accounts never see it. In the
+      app:
+      - Only Workspace accounts (not `gmail.com` or `googlemail.com`).
+      - Inside means the account's own domain and its send-as aliases'
+        domains (the app already reads the aliases). People in Contacts
+        and Other contacts are never marked (the app already reads both
+        for address suggestions).
+      - A switch per account, shown only for a Workspace account, on by
+        default as Gmail's is. The app can never read the administrator's
+        choice (no API has it), so a person whose administrator turned
+        Gmail's warning off can turn the app's off too. No list of
+        domains to type in.
+      - Nothing leaves the computer; the setting is listed on Settings →
+        Privacy as not about privacy, or as the page's test decides.
+      - Mockup first (the marked address and the banner, in Gmail's
+        look), for the owner to react to.
+      The company's directory and its other domains need a new permission:
+      see "Needing a new permission" under Later.
 
 ### Enhancements to existing features
 
@@ -7378,6 +7403,16 @@ Settings → Privacy, as `AGENTS.md` says.
       Permission: new (`contacts`, which allows writing). Competitors:
       Apple Mail (to the computer's Contacts, not Google's). Effort: low
       to medium
+- [ ] Outside recipients, as Gmail decides them *(owner, 2026-11-17)*:
+      read the company's directory (People API `listDirectoryPeople`),
+      which a person can read when their organization shares it. People
+      in it are never marked, as in Gmail, and the domains of its
+      addresses count as inside, so a coworker on the company's other
+      domain isn't marked. The warning built in 0.3.0 counts only the
+      account's own and its aliases' domains, and skips only Contacts and
+      Other contacts.
+      Permission: new (`directory.readonly`). Competitors: none
+      confirmed. Effort: low in code, after the review
 #### Workspace administrators only (not reachable with a person's own sign-in)
 
 Google allows these methods only for a service account with domain-wide
@@ -7400,6 +7435,10 @@ For people, they stay in Gmail's own settings.
 - [ ] Delegated mailboxes (`settings.delegates`): the delegate must be in
       the same Workspace organization. Competitors: Outlook (its own
       delegation). Effort: high (administrator setup)
+- The company's full list of domains (Admin SDK `domains.list`) answers
+  only an administrator, and the administrator's "Warn for external
+  recipients" choice has no API. So the outside-recipients warning (0.3.0)
+  has a switch of its own per account instead *(owner, 2026-11-17)*.
 
 #### Only in Gmail's own app (no API)
 
