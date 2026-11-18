@@ -1268,6 +1268,16 @@ async fn send_again_copies_the_first_email_you_sent_not_a_later_one_or_a_draft()
         )
         .unwrap();
     assert_eq!((first(&db), in_sent(&db)), (Some(m1), true));
+    // By date, not by when it was cached (review): the email with the
+    // larger ID is the earlier one here, and it's picked.
+    db.conn()
+        .execute(
+            "UPDATE messages SET internal_date = (SELECT internal_date FROM messages WHERE id = ?2) + 1
+             WHERE id = ?1",
+            [m1, m2],
+        )
+        .unwrap();
+    assert_eq!(first(&db), Some(m2));
 }
 
 #[tokio::test]
