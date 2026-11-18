@@ -6,3 +6,9 @@ import brand from "../../../brand.json";
  * else in the code is named after it.
  */
 export const APP_NAME: string = brand.name;
+
+/**
+ * Where the app's source and releases are, from `brand.json`: each version's
+ * release page carries its notes (`releaseNotesUrl`).
+ */
+export const REPOSITORY: string = brand.repository;

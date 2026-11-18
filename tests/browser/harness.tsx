@@ -20,7 +20,8 @@
  *                                 installing fail; `&draft=1` has a message
  *                                 being written, and `&draftsave=fail` makes
  *                                 saving it fail. The order the commands were
- *                                 called in is in `window.__order`
+ *                                 called in is in `window.__order`;
+ *                                 `&link=fail` makes opening a link fail
  *   ?mode=toybox                  Settings → Toybox
  *   ?mode=shortcuts               the `?` keyboard shortcuts sheet
  *   ?mode=menu                    a pop-up menu with a very long item
@@ -240,6 +241,13 @@ mockIPC(
         if (found === "none") return null;
         return new Promise((done) => setTimeout(() => done({ version: "0.2.0" }), 150));
       }
+      case "link_open":
+        // `&link=fail`: the system couldn't open it.
+        if (new URLSearchParams(location.search).get("link") === "fail")
+          throw { kind: "other", message: "could not open the link" };
+        // Opened in the browser in the app; here only noted, in order.
+        record(`link_open ${(args as { url: string }).url}`);
+        return null;
       case "update_install":
         record("update_install");
         if (new URLSearchParams(location.search).get("install") === "fail")

@@ -49,3 +49,19 @@ export function showNotice(state: UpdateState, dismissed: ReadonlySet<string>): 
   if (state.kind === "installing") return true;
   return state.kind === "available" && !dismissed.has(state.version);
 }
+
+/**
+ * A version's release page, where its notes are ("What's new" in the
+ * update notice). The address follows from the version, as the release
+ * workflow tags it (`v` and the version), so the version is all it takes
+ * from the update check. The notes in the app, signed like the download,
+ * are for later (docs/ROADMAP.md).
+ */
+export function releaseNotesUrl(repository: string, version: string): string | null {
+  // The versions the release tooling accepts (`SEMVER` in
+  // `scripts/releaseFiles.ts`, the same pattern), so every release that can
+  // be tagged gets the button (review), and nothing else rides along in
+  // the address.
+  if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/.test(version)) return null;
+  return `${repository.replace(/\/+$/, "")}/releases/tag/v${encodeURIComponent(version)}`;
+}

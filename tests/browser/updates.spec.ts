@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import brand from "../../brand.json" with { type: "json" };
 
 /**
  * Updating the app (Milestone 15): Settings → About says where it stands, a
@@ -30,6 +31,28 @@ test("a check finds an update, the notice offers it, and Later puts the notice o
   await expect(notice).toBeHidden();
   await expect(page.getByText("Version 0.2.0 is available.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Install and restart" })).toBeVisible();
+});
+
+test("What's new opens the version's release page, with its notes", async ({ page }) => {
+  await page.goto(open("update=found"));
+  await page.getByRole("button", { name: "Check for updates" }).click();
+  const notice = page.getByRole("status", { name: "Update available" });
+  await notice.getByRole("button", { name: "What’s new" }).click();
+  const order = () =>
+    page.evaluate(() => (window as unknown as { __order?: string[] }).__order ?? []);
+  await expect.poll(order).toContain(`link_open ${brand.repository}/releases/tag/v0.2.0`);
+  // Only looks: the notice stays, and nothing was installed.
+  await expect(notice).toBeVisible();
+  expect(await order()).not.toContain("update_install");
+});
+
+test("What's new says so when the page can't be opened, and the notice stays", async ({ page }) => {
+  await page.goto(open("update=found&link=fail"));
+  await page.getByRole("button", { name: "Check for updates" }).click();
+  const notice = page.getByRole("status", { name: "Update available" });
+  await notice.getByRole("button", { name: "What’s new" }).click();
+  await expect(page.getByText(/Couldn’t open the release notes/)).toBeVisible();
+  await expect(notice.getByRole("button", { name: "Install and restart" })).toBeVisible();
 });
 
 test("installing shows its progress in the notice", async ({ page }) => {
