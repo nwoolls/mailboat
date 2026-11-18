@@ -6214,7 +6214,7 @@ stay outside the repository until the fixes are merged. None of these items
 needs a new Google permission. The notification setting changes Settings →
 Privacy and the policy.*
 
-- [ ] Ask the lab, before paying *(owner)*: how it runs a CASA AL1
+- [x] Ask the lab, before paying *(owner)*: how it runs a CASA AL1
       assessment for a desktop app with no server, which is what Google
       asked for (DASA is only a guide to what it may ask; the letter
       Google gets is CASA's): which web test cases it treats as not
@@ -6230,6 +6230,23 @@ Privacy and the policy.*
       own or a documented third-party exception, since the release checks
       only the app's program (DASA 2.1 names every `.exe` and `.dll` in
       the app's folder) *(review of the binary check, 2026-11-15)*.
+      *(Answered 2026-11-18. For a desktop app with no server the
+      assessment is a manual review; the lab decides which web test cases
+      don't apply after reviewing the app, and wants authenticated
+      evidence covering the app and its OAuth sign-in. An SBOM is wanted
+      (each download has its own). `cargo deny` and `bun audit` count as
+      the dependency scans. The mail cache relying on the computer's disk
+      encryption is accepted, but the lab will check Windows' disk
+      encryption itself (see "Encrypt the local cache at rest"). A solo
+      developer can put their own name where the company's goes; the
+      certificate also needs the website, the app's name and address,
+      the Google Cloud project number and Google's due date, which the
+      owner sends and which stay out of the repository. AI providers
+      people use through their own subscriptions (Claude, ChatGPT) aren't
+      in scope as third-party processors. The plan chosen includes
+      rescans until the letter is issued. Not answered: the Windows
+      installer's 32-bit NSIS programs, and wiping tokens from memory
+      (both stay as they are below).)*
 - [x] A security check that runs with the others (`bun run
       check:security`, part of `check:web` and `check:quick`), so the
       parts that can be checked mechanically can't regress. The rules come
@@ -6487,7 +6504,8 @@ Privacy and the policy.*
       example is a password the user types), and the app handles these
       tokens itself. The written answer describes how long each token
       stays in memory and when it is dropped; whether to add the wiping
-      waits for the lab's answer.
+      waits for the lab's answer. *(2026-11-18: the lab's answers didn't
+      cover it; still optional)*
 - [x] The AI scratch folder: `ai/process.rs` makes a working folder in
       the temp directory for every request, with `create_dir_all` (not
       private). Only the two paths that return the program's result (a
@@ -6521,6 +6539,14 @@ Privacy and the policy.*
       the keychain, which the app already uses. Build it only if the lab
       says the mail cache counts. Its 0.2.0 note said the same: only if Google
       insists on the assessment, which it now does)*
+      *(2026-11-18, the lab's answer: the cache relying on the OS's disk
+      encryption is accepted, but the lab will check Windows' disk
+      encryption itself. Not built now: build it only if that check asks
+      for it. Windows Home has no BitLocker (some machines offer Device
+      encryption instead), so a reviewer's machine may not encrypt the
+      cache; check the owner's Windows test machine first
+      (`manage-bde -status`, as an administrator) to know what they'll
+      see)*
 - [ ] Scan the code ourselves before the lab does, so findings are fixed
       or documented before the paid scans start. A lab may ask for a
       static scan (SAST) of a desktop app's source code (confirm the
@@ -6681,6 +6707,12 @@ Privacy and the policy.*
       CodeQL already scans every pull request and push to `main` that
       changes code, plus a weekly run. Its results can be submitted as
       the static scan.
+      *(Added 2026-11-18, from the lab's answers: the Windows test
+      machine's disk-encryption status; and how the reviewer signs in for
+      the manual review, since the OAuth client is in Testing (their
+      Google account added as a test user, and the client's file shared
+      with them in a way agreed with the lab). The certificate's details
+      are sent by the owner and not kept here.)*
 - [x] The build provenance attached to each release as a file, so
       OpenSSF Scorecard can see it. The publish job already attests the
       release files (`actions/attest-build-provenance`), but GitHub keeps
