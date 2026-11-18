@@ -397,6 +397,19 @@ impl GmailClient {
         .await
     }
 
+    /// One message's headers by name (`format=metadata`), for a header the
+    /// sync doesn't keep: Bcc, which Gmail keeps on your own sent copy.
+    pub async fn message_headers(&self, id: &str, names: &[&str]) -> Result<Message> {
+        let mut query = vec![("format", "metadata")];
+        query.extend(names.iter().map(|h| ("metadataHeaders", *h)));
+        self.get_json(
+            &self.url(&format!("messages/{id}")),
+            &query,
+            cost::MESSAGES_GET,
+        )
+        .await
+    }
+
     /// `settings.sendAs.list`: the main address and any aliases.
     pub async fn send_as(&self) -> Result<SendAsList> {
         self.get_json(&self.url("settings/sendAs"), &[], cost::SETTINGS_GET)

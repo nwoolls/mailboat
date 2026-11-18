@@ -1010,9 +1010,112 @@ a{{color:#2f6fde}}
     )
 }
 
+/// A body going into the composer (Send again), with its images as the
+/// reader's rule would show them, since the composer loads an image's
+/// address directly. Only a remote image the rule loads is kept, written
+/// as HTTPS (`remote_image_url`). Known trackers and images on the
+/// reader's own computer or network are always removed; so are remote
+/// images the rule blocks (`allow_remote` false), embedded ones (`cid:`,
+/// which the copy doesn't carry) and any other address (a relative one
+/// would resolve against the app). A removed image's alt text stays in its
+/// place, so what it said (a signature's contact details, say) isn't lost.
+/// Returns the body and how many images were left out that the person
+/// would notice (not trackers), or None if it couldn't be rewritten (the
+/// caller uses the plain text: never the body with its images unchecked).
+pub fn images_for_editor(html: &str, allow_remote: bool) -> Option<(String, u32)> {
+    let left_out = Cell::new(0u32);
+    let rewritten = rewrite_str(
+        html,
+        RewriteStrSettings::new().append_element_content_handler(element!("img", |el| {
+            let src = attr(el, "src").unwrap_or_default();
+            let tracker = is_remote(&src)
+                && looks_like_tracker(
+                    &src,
+                    el.get_attribute("width"),
+                    el.get_attribute("height"),
+                    el.get_attribute("style"),
+                );
+            if is_remote(&src) && !tracker && allow_remote {
+                set_attr(el, "src", &remote_image_url(&src))?;
+                return Ok(());
+            }
+            // Trackers and local addresses go without a word; anything else
+            // the person would notice is counted, its alt text kept.
+            if tracker || (web_address(&src).is_some() && !is_remote(&src)) {
+                el.remove();
+                return Ok(());
+            }
+            left_out.set(left_out.get() + 1);
+            match attr(el, "alt").map(|a| a.trim().to_string()) {
+                Some(alt) if !alt.is_empty() => el.replace(&alt, ContentType::Text),
+                _ => el.remove(),
+            }
+            Ok(())
+        })),
+    );
+    rewritten.ok().map(|html| (html, left_out.get()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn images_for_the_composer_follow_the_readers_rule() {
+        let html = concat!(
+            r#"<p>Hi</p><img src="https://img.x.example/logo.png">"#,
+            r#"<img src="cid:sig@x.example"><img src="http://192.168.1.2/cam.jpg">"#,
+            r#"<img src="https://t.x.example/open.gif" width="1" height="1">"#,
+        );
+        // Allowed: the remote image stays (as HTTPS); the embedded one, the
+        // local one and the tracker go, and only the embedded one counts.
+        let (kept, left_out) = images_for_editor(html, true).unwrap();
+        assert!(
+            kept.contains(r#"src="https://img.x.example/logo.png""#),
+            "{kept}"
+        );
+        assert!(!kept.contains("cid:") && !kept.contains("192.168") && !kept.contains("open.gif"));
+        assert_eq!(left_out, 1);
+        // Blocked: the remote image goes too, and counts.
+        let (blocked, left_out) = images_for_editor(html, false).unwrap();
+        assert!(!blocked.contains("<img"), "{blocked}");
+        assert!(blocked.contains("<p>Hi</p>"));
+        assert_eq!(left_out, 2);
+    }
+
+    #[test]
+    fn the_composer_keeps_only_approved_https_images_written_safely() {
+        // Review: a relative address would resolve against the app, so it
+        // goes (and counts); a kept address is written escaped, so an
+        // `&` followed by an entity name stays as it was.
+        let (html, left_out) = images_for_editor(
+            r#"<img src="logo.png"><img src="https://img.x.example/a.png?x=1&amp;copy=2">"#,
+            true,
+        )
+        .unwrap();
+        assert!(!html.contains("logo.png"), "{html}");
+        assert!(html.contains("x=1&amp;copy=2"), "{html}");
+        assert_eq!(left_out, 1);
+    }
+
+    #[test]
+    fn a_left_out_image_keeps_its_alt_text() {
+        let (html, left_out) = images_for_editor(
+            r#"<p>Alex</p><img src="https://img.x.example/card.png" alt="Phone 555-0100 &amp; fax">"#,
+            false,
+        )
+        .unwrap();
+        assert!(!html.contains("<img"), "{html}");
+        assert!(html.contains("Phone 555-0100 &amp; fax"), "{html}");
+        assert_eq!(left_out, 1);
+    }
+
+    #[test]
+    fn plain_http_images_are_upgraded_for_the_composer() {
+        let (html, _) =
+            images_for_editor(r#"<img src="http://img.x.example/a.png">"#, true).unwrap();
+        assert!(html.contains("https://img.x.example/a.png"), "{html}");
+    }
 
     const EVIL: &str = r#"<html><head><base href="https://evil.example/"><meta http-equiv="refresh" content="0;url=https://evil.example"><link rel="stylesheet" href="https://evil.example/x.css"></head>
 <body onload="steal()"><p style="color:red" onclick="x()">Hi <b>there</b></p>

@@ -17,6 +17,7 @@ const row = (over: Partial<Parameters<typeof conversationCommands>[0][number]> =
   inSpam: false,
   signInCode: null,
   onlyDraft: false,
+  inSent: false,
   ...over,
 });
 const none = {
@@ -27,6 +28,18 @@ const none = {
 };
 
 describe("conversationCommands", () => {
+  it("offers Send again only for one conversation holding an email you sent", () => {
+    const sendAgain = (rows: ReturnType<typeof row>[]) =>
+      conversationCommands(rows, none).find((c) => c.id === "sendAgain");
+    expect(sendAgain([row({ inSent: true })])).toMatchObject({
+      title: "Send again…",
+      accel: "Shift+Cmd+D",
+      enabled: true,
+    });
+    expect(sendAgain([row()])?.enabled).toBe(false);
+    expect(sendAgain([row({ inSent: true }), row({ inSent: true })])?.enabled).toBe(false);
+  });
+
   it("names actions after what they'll do", () => {
     const byId = new Map(
       conversationCommands([row({ unread: false, inInbox: false, starred: true })], none).map(

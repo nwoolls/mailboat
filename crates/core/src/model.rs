@@ -268,6 +268,8 @@ pub struct ThreadSummary {
     pub only_draft: bool,
     /// In Spam (so "Not spam" applies; otherwise "Report spam").
     pub in_spam: bool,
+    /// Holds an email you sent (Gmail's SENT label), so "Send again" applies.
+    pub in_sent: bool,
     /// A sign-in code in its newest mail, if it arrived in the last day
     /// (`mail::codes`), shown on the row to copy.
     pub sign_in_code: Option<String>,

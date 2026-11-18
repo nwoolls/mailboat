@@ -1095,3 +1095,218 @@ async fn saving_a_draft_says_when_other_mail_changed_with_it() {
         assert_eq!(saved.other_mail_changed, expected, "{case}");
     }
 }
+
+/// Gives a message Gmail's `label` (SENT, DRAFT), as sync would.
+fn label_message(db: &Db, account: AccountId, message: MessageId, label: &str) {
+    let conn = db.conn();
+    conn.execute(
+        "INSERT OR IGNORE INTO labels (account_id, gmail_label_id, name, kind) VALUES (?1, ?2, ?2, 'system')",
+        rusqlite::params![account, label],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO message_labels (account_id, message_id, label_id)
+         SELECT ?1, ?2, id FROM labels WHERE account_id = ?1 AND gmail_label_id = ?3",
+        rusqlite::params![account, message, label],
+    )
+    .unwrap();
+}
+
+/// Send again: m2 in thread t1, as if sent from account `a`'s alias.
+fn sent_by_me(db: &Db) -> (AccountId, ThreadId, MessageId) {
+    let a = add_account(db, "a");
+    let thread = load_t1(db, a);
+    let m2 = message_id(db, a, "m2");
+    db.conn()
+        .execute(
+            "INSERT INTO send_as (account_id, email, is_primary) VALUES (?1, 'events@x.example', 0)",
+            [a],
+        )
+        .unwrap();
+    db.conn()
+        .execute(
+            "UPDATE messages SET from_email = 'Events@X.example' WHERE id = ?1",
+            [m2],
+        )
+        .unwrap();
+    label_message(db, a, m2, "SENT");
+    store::set_body(
+        &mut db.conn(),
+        m2,
+        &store::StoredBody {
+            html: Some(
+                r#"<p>Lunch at noon?</p><script>x()</script><img src="https://img.y.example/logo.png"><img src="cid:sig@x.example">"#
+                    .into(),
+            ),
+            text: Some("Lunch at noon?".into()),
+        },
+        &[],
+    )
+    .unwrap();
+    (a, thread, m2)
+}
+
+async fn mount_bcc(server: &MockServer) {
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m2"))
+        .and(query_param("format", "metadata"))
+        .and(query_param("metadataHeaders", "Bcc"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "m2", "threadId": "t1",
+            "payload": { "headers": [
+                { "name": "Bcc", "value": "Lee Kim <lee@y.example>, sam@y.example" }
+            ]}
+        })))
+        .mount(server)
+        .await;
+}
+
+#[tokio::test]
+async fn send_again_brings_the_bcc_from_gmail_and_the_body_as_sent() {
+    let server = MockServer::start().await;
+    mount_bcc(&server).await;
+    let db = Db::open_in_memory().unwrap();
+    let (a, thread, m2) = sent_by_me(&db);
+    let (gmail, _) = client(&server.uri());
+    let source = compose::again::source(&db, &gmail, thread).await.unwrap();
+    assert_eq!(source.account_id, a);
+    assert_eq!(source.from.email, "Events@X.example");
+    assert!(source.from_still_yours, "an alias, in another case");
+    let bcc: Vec<_> = source.bcc.iter().map(|b| b.email.as_str()).collect();
+    assert_eq!(bcc, ["lee@y.example", "sam@y.example"]);
+    assert!(!source.bcc_unknown);
+    // The cached recipients and subject, as the original had them.
+    let original = query::thread_detail(&db.conn(), thread).unwrap();
+    let m = original.messages.iter().find(|m| m.id == m2).unwrap();
+    assert_eq!(source.to, m.to);
+    assert_eq!(source.cc, m.cc);
+    assert_eq!(source.subject, m.subject);
+    assert_eq!(source.text, "Lunch at noon?");
+    // Images load by default, so the hosted one stays; the embedded one
+    // can't come along and is counted.
+    let html = source.html.unwrap();
+    assert!(
+        html.contains("Lunch at noon?") && !html.contains("script"),
+        "{html}"
+    );
+    assert!(
+        html.contains("img.y.example/logo.png") && !html.contains("cid:"),
+        "{html}"
+    );
+    assert_eq!(source.images_left_out, 1);
+    assert_eq!(
+        source.attachments,
+        store::attachments_for(&db.conn(), m2).unwrap()
+    );
+}
+
+#[tokio::test]
+async fn send_again_leaves_out_images_the_setting_blocks() {
+    // Review: the composer loads an image itself, so it must not load one
+    // the reader wouldn't.
+    let server = MockServer::start().await;
+    mount_bcc(&server).await;
+    let db = Db::open_in_memory().unwrap();
+    let (_, thread, _) = sent_by_me(&db);
+    let blocked = mail_core::settings::AppSettings {
+        remote_images: mail_core::mail::images::RemoteImages::Block,
+        ..Default::default()
+    };
+    mail_core::settings::save(&db.conn(), &blocked).unwrap();
+    let (gmail, _) = client(&server.uri());
+    let source = compose::again::source(&db, &gmail, thread).await.unwrap();
+    let html = source.html.unwrap();
+    assert!(!html.contains("<img"), "{html}");
+    assert_eq!(source.images_left_out, 2);
+}
+
+#[tokio::test]
+async fn send_again_opens_without_bcc_when_gmail_cant_be_asked() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m2"))
+        .respond_with(ResponseTemplate::new(404).set_body_string(fixture("error_404.json")))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let (_, thread, _) = sent_by_me(&db);
+    let (gmail, _) = client(&server.uri());
+    let source = compose::again::source(&db, &gmail, thread).await.unwrap();
+    assert!(source.bcc.is_empty());
+    assert!(
+        source.bcc_unknown,
+        "empty because unknown, and the composer says so"
+    );
+    assert_eq!(source.text, "Lunch at noon?");
+}
+
+#[tokio::test]
+async fn send_again_copies_the_newest_email_you_sent_not_a_newer_one_or_a_draft() {
+    // Review: the newest you sent, by Gmail's SENT label, even when a
+    // newer received email or a draft follows it; and the conversation's
+    // flag agrees with what's picked.
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let thread = load_t1(&db, a);
+    let (m1, m2) = (message_id(&db, a, "m1"), message_id(&db, a, "m2"));
+    let newest = |db: &Db| compose::again::newest_sent(&db.conn(), thread).unwrap();
+    let in_sent = |db: &Db| query::thread_summary(&db.conn(), thread).unwrap().in_sent;
+    assert_eq!((newest(&db), in_sent(&db)), (None, false));
+    // Labeled both SENT and DRAFT: counts for neither.
+    label_message(&db, a, m2, "SENT");
+    label_message(&db, a, m2, "DRAFT");
+    assert_eq!((newest(&db), in_sent(&db)), (None, false));
+    // An older email you sent, before a newer one that isn't.
+    label_message(&db, a, m1, "SENT");
+    assert_eq!((newest(&db), in_sent(&db)), (Some(m1), true));
+}
+
+#[tokio::test]
+async fn send_again_notices_an_email_replaced_while_gmail_was_asked() {
+    // Review: SQLite can give a removed email's ID to a new one, another
+    // account's; what's read after asking Gmail must be the same email.
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    load_t1(&db, a);
+    let m2 = message_id(&db, a, "m2");
+    let same = |account, gmail_id: &str| {
+        compose::again::still_the_same(&db.conn(), m2, account, gmail_id).unwrap()
+    };
+    assert!(same(a, "m2"));
+    assert!(!same(b, "m2"), "another account");
+    assert!(!same(a, "m9"), "another email");
+}
+
+#[tokio::test]
+async fn send_again_from_a_removed_alias_says_so() {
+    let server = MockServer::start().await;
+    mount_bcc(&server).await;
+    let db = Db::open_in_memory().unwrap();
+    let (a, thread, _) = sent_by_me(&db);
+    db.conn()
+        .execute("DELETE FROM send_as WHERE account_id = ?1", [a])
+        .unwrap();
+    let (gmail, _) = client(&server.uri());
+    let source = compose::again::source(&db, &gmail, thread).await.unwrap();
+    assert!(!source.from_still_yours);
+}
+
+#[tokio::test]
+async fn send_again_is_only_for_email_you_sent() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(0)
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    // Nothing in t1 has Gmail's SENT label.
+    let thread = load_t1(&db, a);
+    let (gmail, _) = client(&server.uri());
+    let err = compose::again::source(&db, &gmail, thread)
+        .await
+        .unwrap_err();
+    assert!(matches!(err, CoreError::Invalid(_)), "{err:?}");
+}

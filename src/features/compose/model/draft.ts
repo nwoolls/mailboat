@@ -11,6 +11,7 @@ import type {
   OutgoingAttachment,
   OutgoingMessage,
   ReplySource,
+  SendAgainSource,
   ThreadId,
 } from "../../../platform/tauri/bindings";
 import { PLAIN_STYLE, styleCss, type TextStyle } from "./fonts";
@@ -76,6 +77,45 @@ export type Draft = {
   threadId: ThreadId | null;
   showCc: boolean;
   showBcc: boolean;
+  /**
+   * Send again: the note above the message about what came from the
+   * original. Gone once dismissed.
+   */
+  sendAgainNote?: SendAgainNote;
+  /**
+   * The signature is already in the text (Send again copies an email as
+   * sent; a reopened draft was saved with it), so changing From doesn't
+   * add one under it.
+   */
+  signatureInBody?: boolean;
+};
+
+/**
+ * The note's sentences, given how many of the original's files are still
+ * attached (their × or Remove them can take them off).
+ */
+export function sendAgainLines(note: SendAgainNote, files: number): string[] {
+  const images = note.imagesLeftOut;
+  return [
+    files > 0 && `Includes the ${files === 1 ? "file" : `${files} files`} from the original.`,
+    images > 0 &&
+      `${images === 1 ? "An image" : `${images} images`} from the original couldn’t be copied.`,
+    note.bccUnknown && "The original’s Bcc couldn’t be read from Gmail.",
+    note.fromNoLongerYours &&
+      `It was sent from ${note.fromNoLongerYours}, which is no longer one of your addresses.`,
+  ].filter((l): l is string => !!l);
+}
+
+/** What Send again says about the copy (`SendAgainNote` in the composer). */
+export type SendAgainNote = {
+  /** The original's files, included. */
+  files: number;
+  /** Gmail couldn't be asked for the original's Bcc. */
+  bccUnknown: boolean;
+  /** Images in the original that were left out. */
+  imagesLeftOut: number;
+  /** It was sent from this address, no longer one of yours. */
+  fromNoLongerYours: string | null;
 };
 
 let nextId = 1;
@@ -194,6 +234,51 @@ export function newDraft(
     threadId: null,
     showCc: false,
     showBcc: false,
+  };
+}
+
+/**
+ * Send again (Apple Mail's Message → Send Again): a new message from the
+ * same address as an email you sent, to the same people, with its subject,
+ * body and files. The body is as it was sent, its signature included, so
+ * the current one isn't added again. Not tied to the original's
+ * conversation: it's a new message, and the original is untouched.
+ */
+export function sendAgainDraft(
+  source: SendAgainSource,
+  identities: Identity[],
+  accountEmail: string,
+): Draft {
+  const sentFrom = identities.find(
+    (i) => i.accountId === source.accountId && sameEmail(i.email, source.from.email),
+  );
+  // Sent from an address that's no longer yours (an alias since removed):
+  // the account's default instead, and the note says so.
+  const draft = newDraft(identities, source.accountId, accountEmail);
+  const html = source.html?.trim() ? source.html : textToHtml(source.text);
+  const note: SendAgainNote = {
+    files: source.attachments.length,
+    bccUnknown: source.bccUnknown,
+    imagesLeftOut: source.imagesLeftOut,
+    fromNoLongerYours: source.fromStillYours ? null : source.from.email,
+  };
+  const worthSaying =
+    note.files > 0 || note.bccUnknown || note.imagesLeftOut > 0 || note.fromNoLongerYours;
+  return {
+    ...draft,
+    from: sentFrom ? identityAddress(sentFrom) : draft.from,
+    to: source.to,
+    cc: source.cc,
+    bcc: source.bcc,
+    subject: source.subject,
+    html,
+    text: htmlToText(html),
+    signature: "",
+    signatureInBody: true,
+    forwarded: source.attachments,
+    showCc: source.cc.length > 0,
+    showBcc: source.bcc.length > 0,
+    sendAgainNote: worthSaying ? note : undefined,
   };
 }
 
@@ -402,6 +487,9 @@ export function resumedDraft(opened: OpenedDraft, from: MessageId): Draft {
     quote: "",
     quoteText: "",
     signature: "",
+    // Saved with its signature in the text (as sent, or as Send again
+    // copied it), so changing From doesn't add another under it (review).
+    signatureInBody: true,
     savedId: opened.draft,
     resumedFrom: from,
     opened: fieldsKey({ ...opened, attachments: opened.files }),
@@ -442,7 +530,8 @@ export function withIdentity(draft: Draft, identity: Identity): Draft {
     ...draft,
     accountId: identity.accountId,
     from,
-    signature: trimSignature(identity.signature ?? ""),
+    // Send again's text already ends with the signature it was sent with.
+    signature: draft.signatureInBody ? "" : trimSignature(identity.signature ?? ""),
   };
 }
 

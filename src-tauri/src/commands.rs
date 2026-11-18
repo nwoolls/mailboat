@@ -8,6 +8,7 @@ use mail_core::attachments;
 use mail_core::auth::{config, oauth, tokens, AccountTokens};
 use mail_core::brand;
 use mail_core::calendar::{self, InviteCard};
+use mail_core::compose::again::SendAgainSource;
 use mail_core::compose::contacts::Contact;
 use mail_core::compose::identities::{self, Identity};
 use mail_core::compose::outside::OutsideRule;
@@ -1158,6 +1159,20 @@ pub async fn reply_source(
     let (account, _) = store::message_gmail_ref(&state.db.conn(), message_id)?;
     let gmail = state.gmail_for(account)?.interactive();
     Ok(compose::reply_source(&state.db, &gmail, message_id).await?)
+}
+
+/// What Send again needs from the newest email you sent in a conversation
+/// (recipients with Bcc, subject, body, files), fetched with its own
+/// account's credentials.
+#[tauri::command]
+#[specta::specta]
+pub async fn send_again_source(
+    state: State<'_, AppState>,
+    thread_id: ThreadId,
+) -> CmdResult<SendAgainSource> {
+    let account = query::thread_summary(&state.db.conn(), thread_id)?.account_id;
+    let gmail = state.gmail_for(account)?.interactive();
+    Ok(compose::again::source(&state.db, &gmail, thread_id).await?)
 }
 
 /// Sends a message with the From account's Gmail and returns the

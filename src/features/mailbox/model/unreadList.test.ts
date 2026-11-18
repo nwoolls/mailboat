@@ -20,6 +20,7 @@ const row = (id: number, at: number, unread = true): ThreadSummary =>
     inTrash: false,
     labelIds: [],
     onlyDraft: false,
+    inSent: false,
     inSpam: false,
     signInCode: null,
   }) as unknown as ThreadSummary;

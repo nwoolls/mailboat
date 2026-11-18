@@ -50,10 +50,23 @@ const IN_ALL_MAIL: &str = concat!(
     ")"
 );
 
+/// The message `m` is one you sent: Gmail's SENT label, and not a draft.
+/// Marks a conversation for Send again (`in_sent`) and picks the email it
+/// copies (`compose::again::newest_sent`), so the two agree.
+macro_rules! sent_not_draft {
+    () => {
+        "EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+           WHERE ml.message_id = m.id AND l.gmail_label_id = 'SENT')
+         AND NOT EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+           WHERE ml.message_id = m.id AND l.gmail_label_id = 'DRAFT')"
+    };
+}
+pub const SENT_NOT_DRAFT: &str = sent_not_draft!();
+
 const IN_INBOX: &str = "EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
     WHERE tl.thread_id = t.id AND l.kind = 'system' AND l.gmail_label_id = 'INBOX')";
 
-const THREAD_COLUMNS: &str =
+const THREAD_COLUMNS: &str = concat!(
     "t.id, t.account_id, t.subject, t.snippet, t.senders_json, t.last_message_at,
   t.message_count, t.unread_count > 0,
   EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
@@ -72,7 +85,11 @@ const THREAD_COLUMNS: &str =
     SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
     WHERE ml.message_id = m.id AND l.gmail_label_id = 'DRAFT')),
   EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
-          WHERE tl.thread_id = t.id AND l.gmail_label_id = 'SPAM')";
+          WHERE tl.thread_id = t.id AND l.gmail_label_id = 'SPAM'),
+  EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = t.id AND ",
+    sent_not_draft!(),
+    ")"
+);
 
 /// How long a sign-in code is worth showing on its row: codes expire in
 /// minutes, so an old one is only noise.
@@ -105,6 +122,7 @@ fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
             .collect(),
         only_draft: row.get(13)?,
         in_spam,
+        in_sent: row.get(15)?,
         // Filled in by `add_code`, which needs the newest message.
         sign_in_code: None,
     })

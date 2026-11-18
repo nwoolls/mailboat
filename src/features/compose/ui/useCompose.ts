@@ -22,6 +22,7 @@ import {
   newDraft,
   replyDraft,
   resumedDraft,
+  sendAgainDraft,
   switchedKind,
   preferredIdentity,
   toOutgoing,
@@ -388,6 +389,29 @@ export function useComposeActions(accounts: Account[]) {
     [qc, identities, emailOf],
   );
 
+  /**
+   * Send again: the newest email you sent in a conversation, as a new
+   * message in the card (Apple Mail's Message → Send Again).
+   */
+  const startSendAgain = useCallback(
+    async (threadId: ThreadId) => {
+      try {
+        // Rust picks the email: the newest you sent (Gmail's SENT label).
+        const [source, list] = await Promise.all([
+          unwrap(commands.sendAgainSource(threadId)),
+          identities(),
+        ]);
+        set(S.openCard(state, sendAgainDraft(source, list, emailOf(source.accountId))));
+      } catch (e) {
+        showToast({
+          tone: "error",
+          message: `Couldn’t send again: ${e instanceof Error ? e.message : String(e)}`,
+        });
+      }
+    },
+    [identities, emailOf],
+  );
+
   /** Turns a reply into reply all or a forward (or back), keeping the text. */
   const switchKind = useCallback(
     async (id: number, kind: Exclude<ComposeKind, "new">) => {
@@ -476,7 +500,7 @@ export function useComposeActions(accounts: Account[]) {
   }, []);
 
   return useMemo(
-    () => ({ startNew, startFromMailto, startReply, switchKind, send }),
-    [startNew, startFromMailto, startReply, switchKind, send],
+    () => ({ startNew, startFromMailto, startReply, startSendAgain, switchKind, send }),
+    [startNew, startFromMailto, startReply, startSendAgain, switchKind, send],
   );
 }

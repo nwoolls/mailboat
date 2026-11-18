@@ -743,6 +743,10 @@ export function Shell() {
         void compose.startReply(id === "replyAi" ? "reply" : id, row.id);
         return;
       }
+      case "sendAgain":
+        // A new message in the card; the conversation stays as it is.
+        if (ids[0] !== undefined) void compose.startSendAgain(ids[0]);
+        return;
       case "archive":
       case "trash":
       case "read":
@@ -1524,7 +1528,7 @@ export function Shell() {
             // Replies only for one conversation; a line after them, and
             // before the rules (where Gmail and Mail draw one too).
             // The AI ones too, while AI isn't set up (Settings → AI).
-            const reply = ["reply", "replyAll", "forward", "replyAi", "summarize"];
+            const reply = ["reply", "replyAll", "forward", "replyAi", "sendAgain", "summarize"];
             if (reply.includes(c.id) && !c.enabled) return null;
             // About text selected in an email, not the row.
             if (c.id === "translate") return null;
