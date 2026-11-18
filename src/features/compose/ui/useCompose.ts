@@ -31,7 +31,6 @@ import {
 } from "../model/draft";
 import { selectedInMessage } from "../../reader/ui/MessageFrame";
 import { draftFromMailto } from "../model/mailto";
-import { sameEmail } from "../model/addresses";
 import { composingPrefs } from "./composingPrefs";
 
 /**
@@ -397,22 +396,11 @@ export function useComposeActions(accounts: Account[]) {
   const startSendAgain = useCallback(
     async (threadId: ThreadId) => {
       try {
-        const [detail, list] = await Promise.all([
-          qc.fetchQuery({
-            queryKey: keys.thread(threadId),
-            queryFn: () => unwrap(commands.threadGet(threadId)),
-          }),
+        // Rust picks the email: the newest you sent (Gmail's SENT label).
+        const [source, list] = await Promise.all([
+          unwrap(commands.sendAgainSource(threadId)),
           identities(),
         ]);
-        const mine = (email: string, account: AccountId) =>
-          sameEmail(email, emailOf(account)) ||
-          list.some((i) => i.accountId === account && sameEmail(i.email, email));
-        const target = detail.messages.findLast((m) => !m.draft && mine(m.from.email, m.accountId));
-        if (!target) {
-          showToast({ tone: "error", message: "Send again is for emails you sent." });
-          return;
-        }
-        const source = await unwrap(commands.sendAgainSource(target.id));
         set(S.openCard(state, sendAgainDraft(source, list, emailOf(source.accountId))));
       } catch (e) {
         showToast({
@@ -421,7 +409,7 @@ export function useComposeActions(accounts: Account[]) {
         });
       }
     },
-    [qc, identities, emailOf],
+    [identities, emailOf],
   );
 
   /** Turns a reply into reply all or a forward (or back), keeping the text. */

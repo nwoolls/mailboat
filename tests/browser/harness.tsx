@@ -418,12 +418,16 @@ mockIPC(
       case "send_again_source": {
         // Send again on one of your emails in the conversation: as sent,
         // with one file. `&bcc=unknown`: Gmail couldn't be asked for Bcc.
-        const id = (args as { messageId: number }).messageId;
-        const m = detail.messages.find((x: { id: number }) => x.id === id) ?? detail.messages[0]!;
+        // The newest of your emails, as Rust picks it (Gmail's SENT label).
+        const m =
+          detail.messages.findLast(
+            (x: { from: { email: string } }) => x.from.email === account.email,
+          ) ?? detail.messages[0]!;
         const unknown = new URLSearchParams(location.search).get("bcc") === "unknown";
         return {
           accountId: account.id,
           from: m.from,
+          fromStillYours: true,
           to: m.to,
           cc: m.cc,
           bcc: unknown ? [] : [{ name: null, email: "books@rivera.example" }],
@@ -434,12 +438,13 @@ mockIPC(
           attachments: [
             {
               id: 501,
-              messageId: id,
+              messageId: m.id,
               filename: "Lisbon itinerary.pdf",
               mimeType: "application/pdf",
               size: 48_000,
             },
           ],
+          imagesLeftOut: 0,
         };
       }
       case "reply_source":

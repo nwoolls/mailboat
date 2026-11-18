@@ -216,10 +216,11 @@ export const commands = {
 	 */
 	composeOutsideRule: (account: AccountId) => typedError<OutsideRule, AppError>(__TAURI_INVOKE("compose_outside_rule", { account })),
 	/**
-	 *  What Send again needs from an email you sent (recipients with Bcc,
-	 *  subject, body, files), fetched with its own account's credentials.
+	 *  What Send again needs from the newest email you sent in a conversation
+	 *  (recipients with Bcc, subject, body, files), fetched with its own
+	 *  account's credentials.
 	 */
-	sendAgainSource: (messageId: MessageId) => typedError<SendAgainSource, AppError>(__TAURI_INVOKE("send_again_source", { messageId })),
+	sendAgainSource: (threadId: ThreadId) => typedError<SendAgainSource, AppError>(__TAURI_INVOKE("send_again_source", { threadId })),
 	/**
 	 *  Takes an address out of compose's suggestions (the app's own list;
 	 *  Google's contacts aren't changed).
@@ -1600,27 +1601,40 @@ export type SavedRule = {
 /**  What a new message needs from the email it copies. */
 export type SendAgainSource = {
 	accountId: AccountId,
-	/**  The address it was sent from (an alias too). */
+	/**  The address it was sent from. */
 	from: Address,
+	/**
+	 *  `from` is still one of the account's addresses (its own, or an
+	 *  alias). If not (an alias since removed), the new message starts
+	 *  from the account's default address, and says so.
+	 */
+	fromStillYours: boolean,
 	to: Address[],
 	cc: Address[],
 	/**  From Gmail, which keeps Bcc on your own sent copy (the cache doesn't). */
 	bcc: Address[],
 	/**
-	 *  Gmail couldn't be asked for Bcc (offline, say): `bcc` is empty
+	 *  Gmail couldn't be asked for Bcc (offline, an error): `bcc` is empty
 	 *  because it's unknown, not because there was none.
 	 */
 	bccUnknown: boolean,
 	subject: string,
 	/**
 	 *  The body's HTML as sent, cleaned as a quote is (no scripts, style
-	 *  sheets, forms or event handlers). `None` for plain-text mail.
+	 *  sheets, forms or event handlers), with its images as the reader
+	 *  would show them (`sanitize::images_for_editor`). `None` for
+	 *  plain-text mail.
 	 */
 	html: string | null,
 	/**  The body as plain text. */
 	text: string,
 	/**  Its files, sent again from Gmail as a forward's are. */
 	attachments: Attachment[],
+	/**
+	 *  Images in the body that were left out: embedded ones (not carried)
+	 *  and remote ones the image setting blocks for this email.
+	 */
+	imagesLeftOut: number,
 };
 
 /**  A sign-in code arrived in new mail. */

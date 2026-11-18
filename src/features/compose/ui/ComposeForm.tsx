@@ -23,6 +23,8 @@ import type { ComposeEntry } from "../model/composeState";
 import {
   type ComposeKind,
   type Draft,
+  type SendAgainNote as SendAgainNoteFields,
+  sendAgainLines,
   hasChanges,
   sendProblem,
   withIdentity,
@@ -430,15 +432,7 @@ export function ComposeForm({
         <SendAgainNote
           note={draft.sendAgainNote}
           files={draft.forwarded.length}
-          onRemoveFiles={() =>
-            onChange((d) => ({
-              ...d,
-              forwarded: [],
-              sendAgainNote: d.sendAgainNote?.bccUnknown
-                ? { files: 0, bccUnknown: true }
-                : undefined,
-            }))
-          }
+          onRemoveFiles={() => onChange((d) => ({ ...d, forwarded: [] }))}
           onDismiss={() => onChange((d) => ({ ...d, sendAgainNote: undefined }))}
         />
       )}
@@ -595,16 +589,13 @@ function SendAgainNote({
   onRemoveFiles,
   onDismiss,
 }: {
-  note: { files: number; bccUnknown: boolean };
+  note: SendAgainNoteFields;
   /** The original's files still attached. */
   files: number;
   onRemoveFiles: () => void;
   onDismiss: () => void;
 }) {
-  const lines = [
-    files > 0 && `Includes the ${files === 1 ? "file" : `${files} files`} from the original.`,
-    note.bccUnknown && "Bcc couldn’t be read from Gmail, so it’s empty.",
-  ].filter((l): l is string => !!l);
+  const lines = sendAgainLines(note, files);
   if (lines.length === 0) return null;
   return (
     <div

@@ -3,6 +3,7 @@
 //! subject, body and attachments, as Apple Mail's Message → Send Again
 //! does. Only for email you sent; the original is untouched.
 
+use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -10,7 +11,8 @@ use super::{original, quote_clean};
 use crate::db::{accounts, store, Db};
 use crate::error::{CoreError, Result};
 use crate::gmail::{parse, GmailClient};
-use crate::model::{AccountId, Address, Attachment, MessageId};
+use crate::mail::{images, sanitize};
+use crate::model::{AccountId, Address, Attachment, MessageId, ThreadId};
 use crate::sync::fetch_body;
 
 /// What a new message needs from the email it copies.
@@ -18,51 +20,76 @@ use crate::sync::fetch_body;
 #[serde(rename_all = "camelCase")]
 pub struct SendAgainSource {
     pub account_id: AccountId,
-    /// The address it was sent from (an alias too).
+    /// The address it was sent from.
     pub from: Address,
+    /// `from` is still one of the account's addresses (its own, or an
+    /// alias). If not (an alias since removed), the new message starts
+    /// from the account's default address, and says so.
+    pub from_still_yours: bool,
     pub to: Vec<Address>,
     pub cc: Vec<Address>,
     /// From Gmail, which keeps Bcc on your own sent copy (the cache doesn't).
     pub bcc: Vec<Address>,
-    /// Gmail couldn't be asked for Bcc (offline, say): `bcc` is empty
+    /// Gmail couldn't be asked for Bcc (offline, an error): `bcc` is empty
     /// because it's unknown, not because there was none.
     pub bcc_unknown: bool,
     pub subject: String,
     /// The body's HTML as sent, cleaned as a quote is (no scripts, style
-    /// sheets, forms or event handlers). `None` for plain-text mail.
+    /// sheets, forms or event handlers), with its images as the reader
+    /// would show them (`sanitize::images_for_editor`). `None` for
+    /// plain-text mail.
     pub html: Option<String>,
     /// The body as plain text.
     pub text: String,
     /// Its files, sent again from Gmail as a forward's are.
     pub attachments: Vec<Attachment>,
+    /// Images in the body that were left out: embedded ones (not carried)
+    /// and remote ones the image setting blocks for this email.
+    pub images_left_out: u32,
+}
+
+/// The newest email in `thread` that you sent: Gmail's SENT label, not a
+/// draft. The same label marks the conversation (`ThreadSummary::in_sent`),
+/// so what offers Send again and what it copies agree.
+pub fn newest_sent(conn: &rusqlite::Connection, thread: ThreadId) -> Result<Option<MessageId>> {
+    Ok(conn
+        .query_row(
+            "SELECT m.id FROM messages m
+             WHERE m.thread_id = ?1
+               AND EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                           WHERE ml.message_id = m.id AND l.gmail_label_id = 'SENT')
+               AND NOT EXISTS (SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
+                               WHERE ml.message_id = m.id AND l.gmail_label_id = 'DRAFT')
+             ORDER BY m.internal_date DESC, m.id DESC LIMIT 1",
+            [thread],
+            |r| r.get(0),
+        )
+        .optional()?)
 }
 
 /// Whether `email` is one of the account's own addresses (its own, or an
 /// alias's), compared without regard to case.
 fn is_mine(conn: &rusqlite::Connection, account: AccountId, email: &str) -> Result<bool> {
-    let own = accounts::get(conn, account)?.email;
-    if own.trim().eq_ignore_ascii_case(email.trim()) {
+    let email = email.trim().to_lowercase();
+    if accounts::get(conn, account)?.email.trim().to_lowercase() == email {
         return Ok(true);
     }
-    let alias: bool = conn.query_row(
-        "SELECT EXISTS (SELECT 1 FROM send_as WHERE account_id = ?1 AND email = ?2 COLLATE NOCASE)",
-        rusqlite::params![account, email.trim()],
-        |r| r.get(0),
-    )?;
-    Ok(alias)
+    let mut stmt = conn.prepare("SELECT email FROM send_as WHERE account_id = ?1")?;
+    let aliases = stmt
+        .query_map([account], |r| r.get::<_, String>(0))?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(aliases.iter().any(|a| a.trim().to_lowercase() == email))
 }
 
-/// Gathers what Send again needs from `message`, which must be one you
-/// sent. Bcc is asked of Gmail; the body is fetched if it isn't cached.
-pub async fn source(db: &Db, gmail: &GmailClient, message: MessageId) -> Result<SendAgainSource> {
+/// Gathers what Send again needs from the newest email you sent in
+/// `thread`. Bcc is asked of Gmail; the body is fetched if it isn't cached.
+pub async fn source(db: &Db, gmail: &GmailClient, thread: ThreadId) -> Result<SendAgainSource> {
+    // Bound first: never hold the lock in an `if`/`match` header.
+    let newest = newest_sent(&db.conn(), thread)?;
+    let message =
+        newest.ok_or_else(|| CoreError::Invalid("Send again is for emails you sent.".into()))?;
     let o = original(db, message)?;
-    // Bound first: never hold the lock in an `if` header.
-    let mine = is_mine(&db.conn(), o.account, &o.from.email)?;
-    if !mine {
-        return Err(CoreError::Invalid(
-            "Send again is for emails you sent.".into(),
-        ));
-    }
+    let from_still_yours = is_mine(&db.conn(), o.account, &o.from.email)?;
     let (bcc, bcc_unknown) = match gmail.message_headers(&o.gmail_message_id, &["Bcc"]).await {
         Ok(meta) => {
             let bcc = meta
@@ -76,15 +103,27 @@ pub async fn source(db: &Db, gmail: &GmailClient, message: MessageId) -> Result<
         Err(_) => (Vec::new(), true),
     };
     let body = fetch_body(db, gmail, message).await?;
-    let html = body.html.as_deref().map(quote_clean);
     let text = body
         .text
+        .clone()
         .or_else(|| body.html.as_deref().map(parse::html_to_text))
         .unwrap_or_default();
+    // The composer loads an image's address itself, so the body's images
+    // follow the reader's rule for this email (Settings → Viewing).
+    let (policy, _) = images::policy_for_message(&db.conn(), message)?;
+    let (html, images_left_out) = match body.html.as_deref().map(quote_clean) {
+        Some(cleaned) => match sanitize::images_for_editor(&cleaned, policy.allows()) {
+            Some((html, left_out)) => (Some(html), left_out),
+            // Never the body with its images unchecked: the text instead.
+            None => (None, 0),
+        },
+        None => (None, 0),
+    };
     let attachments = store::attachments_for(&db.conn(), message)?;
     Ok(SendAgainSource {
         account_id: o.account,
         from: o.from,
+        from_still_yours,
         to: o.to,
         cc: o.cc,
         bcc,
@@ -93,5 +132,6 @@ pub async fn source(db: &Db, gmail: &GmailClient, message: MessageId) -> Result<
         html,
         text,
         attachments,
+        images_left_out,
     })
 }

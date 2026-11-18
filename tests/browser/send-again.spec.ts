@@ -41,7 +41,7 @@ test("the note says when Bcc couldn't be read, and can be dismissed", async ({ p
   const menu = await sendAgainFrom(page, "Lisbon in May?");
   await menu.getByRole("menuitem", { name: "Send again…" }).click();
   const note = page.getByRole("note", { name: "Sending again" });
-  await expect(note).toContainText("Bcc couldn’t be read from Gmail, so it’s empty.");
+  await expect(note).toContainText("The original’s Bcc couldn’t be read from Gmail.");
   await note.getByRole("button", { name: "Dismiss" }).click();
   await expect(note).toHaveCount(0);
   // The file stays: dismissing only hides the note.

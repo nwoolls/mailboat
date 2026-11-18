@@ -467,13 +467,10 @@ async fn send_again_copies_the_sent_invoice_with_its_attachment() {
     assert!(invoice.in_sent);
     // Received mail only: not in Sent, so Send again doesn't apply.
     assert!(inbox(&db).iter().any(|t| !t.in_sent));
-    let message = query::thread_detail(&db.conn(), invoice.id)
-        .unwrap()
-        .messages
-        .last()
-        .unwrap()
-        .id;
-    let source = compose::again::source(&db, &gmail, message).await.unwrap();
+    let source = compose::again::source(&db, &gmail, invoice.id)
+        .await
+        .unwrap();
+    assert!(source.from_still_yours);
     assert_eq!(source.from.email, work.email);
     assert_eq!(source.subject, "Invoice 2041: Fernhill rebrand, phase 1");
     assert_eq!(source.to.len(), 1);

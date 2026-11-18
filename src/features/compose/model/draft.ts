@@ -79,10 +79,42 @@ export type Draft = {
   showBcc: boolean;
   /**
    * Send again: the note above the message about what came from the
-   * original (its files, included; Bcc that couldn't be read). Gone once
-   * dismissed.
+   * original. Gone once dismissed.
    */
-  sendAgainNote?: { files: number; bccUnknown: boolean };
+  sendAgainNote?: SendAgainNote;
+  /**
+   * The signature is already in the text (Send again copies an email as
+   * sent), so changing From doesn't add one under it.
+   */
+  signatureInBody?: boolean;
+};
+
+/**
+ * The note's sentences, given how many of the original's files are still
+ * attached (their × or Remove them can take them off).
+ */
+export function sendAgainLines(note: SendAgainNote, files: number): string[] {
+  const images = note.imagesLeftOut;
+  return [
+    files > 0 && `Includes the ${files === 1 ? "file" : `${files} files`} from the original.`,
+    images > 0 &&
+      `${images === 1 ? "An image" : `${images} images`} from the original couldn’t be copied.`,
+    note.bccUnknown && "The original’s Bcc couldn’t be read from Gmail.",
+    note.fromNoLongerYours &&
+      `It was sent from ${note.fromNoLongerYours}, which is no longer one of your addresses.`,
+  ].filter((l): l is string => !!l);
+}
+
+/** What Send again says about the copy (`SendAgainNote` in the composer). */
+export type SendAgainNote = {
+  /** The original's files, included. */
+  files: number;
+  /** Gmail couldn't be asked for the original's Bcc. */
+  bccUnknown: boolean;
+  /** Images in the original that were left out. */
+  imagesLeftOut: number;
+  /** It was sent from this address, no longer one of yours. */
+  fromNoLongerYours: string | null;
 };
 
 let nextId = 1;
@@ -219,11 +251,21 @@ export function sendAgainDraft(
   const sentFrom = identities.find(
     (i) => i.accountId === source.accountId && sameEmail(i.email, source.from.email),
   );
+  // Sent from an address that's no longer yours (an alias since removed):
+  // the account's default instead, and the note says so.
   const draft = newDraft(identities, source.accountId, accountEmail);
   const html = source.html?.trim() ? source.html : textToHtml(source.text);
+  const note: SendAgainNote = {
+    files: source.attachments.length,
+    bccUnknown: source.bccUnknown,
+    imagesLeftOut: source.imagesLeftOut,
+    fromNoLongerYours: source.fromStillYours ? null : source.from.email,
+  };
+  const worthSaying =
+    note.files > 0 || note.bccUnknown || note.imagesLeftOut > 0 || note.fromNoLongerYours;
   return {
     ...draft,
-    from: sentFrom ? identityAddress(sentFrom) : source.from,
+    from: sentFrom ? identityAddress(sentFrom) : draft.from,
     to: source.to,
     cc: source.cc,
     bcc: source.bcc,
@@ -231,13 +273,11 @@ export function sendAgainDraft(
     html,
     text: htmlToText(html),
     signature: "",
+    signatureInBody: true,
     forwarded: source.attachments,
     showCc: source.cc.length > 0,
     showBcc: source.bcc.length > 0,
-    sendAgainNote:
-      source.attachments.length > 0 || source.bccUnknown
-        ? { files: source.attachments.length, bccUnknown: source.bccUnknown }
-        : undefined,
+    sendAgainNote: worthSaying ? note : undefined,
   };
 }
 
@@ -486,7 +526,8 @@ export function withIdentity(draft: Draft, identity: Identity): Draft {
     ...draft,
     accountId: identity.accountId,
     from,
-    signature: trimSignature(identity.signature ?? ""),
+    // Send again's text already ends with the signature it was sent with.
+    signature: draft.signatureInBody ? "" : trimSignature(identity.signature ?? ""),
   };
 }
 

@@ -1010,9 +1010,81 @@ a{{color:#2f6fde}}
     )
 }
 
+/// A body going into the composer (Send again), with its images as the
+/// reader's rule would show them, since the composer loads an image's
+/// address directly: known trackers and images on the reader's own
+/// computer or network are always removed, other remote images are kept
+/// (as HTTPS) only when `allow_remote`, and embedded images (`cid:`, which
+/// the copy doesn't carry) are removed. Returns the body and how many
+/// images were left out that the person would notice (not trackers), or
+/// None if it couldn't be rewritten (the caller uses the plain text: never
+/// the body with its images unchecked).
+pub fn images_for_editor(html: &str, allow_remote: bool) -> Option<(String, u32)> {
+    let left_out = Cell::new(0u32);
+    let rewritten = rewrite_str(
+        html,
+        RewriteStrSettings::new().append_element_content_handler(element!("img", |el| {
+            let src = attr(el, "src").unwrap_or_default();
+            let trimmed = src.trim().to_ascii_lowercase();
+            if trimmed.starts_with("cid:") {
+                left_out.set(left_out.get() + 1);
+                el.remove();
+            } else if web_address(&src).is_some() {
+                if !is_remote(&src)
+                    || looks_like_tracker(
+                        &src,
+                        el.get_attribute("width"),
+                        el.get_attribute("height"),
+                        el.get_attribute("style"),
+                    )
+                {
+                    el.remove();
+                } else if !allow_remote {
+                    left_out.set(left_out.get() + 1);
+                    el.remove();
+                } else {
+                    el.set_attribute("src", &remote_image_url(&src))?;
+                }
+            }
+            Ok(())
+        })),
+    );
+    rewritten.ok().map(|html| (html, left_out.get()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn images_for_the_composer_follow_the_readers_rule() {
+        let html = concat!(
+            r#"<p>Hi</p><img src="https://img.x.example/logo.png">"#,
+            r#"<img src="cid:sig@x.example"><img src="http://192.168.1.2/cam.jpg">"#,
+            r#"<img src="https://t.x.example/open.gif" width="1" height="1">"#,
+        );
+        // Allowed: the remote image stays (as HTTPS); the embedded one, the
+        // local one and the tracker go, and only the embedded one counts.
+        let (kept, left_out) = images_for_editor(html, true).unwrap();
+        assert!(
+            kept.contains(r#"src="https://img.x.example/logo.png""#),
+            "{kept}"
+        );
+        assert!(!kept.contains("cid:") && !kept.contains("192.168") && !kept.contains("open.gif"));
+        assert_eq!(left_out, 1);
+        // Blocked: the remote image goes too, and counts.
+        let (blocked, left_out) = images_for_editor(html, false).unwrap();
+        assert!(!blocked.contains("<img"), "{blocked}");
+        assert!(blocked.contains("<p>Hi</p>"));
+        assert_eq!(left_out, 2);
+    }
+
+    #[test]
+    fn plain_http_images_are_upgraded_for_the_composer() {
+        let (html, _) =
+            images_for_editor(r#"<img src="http://img.x.example/a.png">"#, true).unwrap();
+        assert!(html.contains("https://img.x.example/a.png"), "{html}");
+    }
 
     const EVIL: &str = r#"<html><head><base href="https://evil.example/"><meta http-equiv="refresh" content="0;url=https://evil.example"><link rel="stylesheet" href="https://evil.example/x.css"></head>
 <body onload="steal()"><p style="color:red" onclick="x()">Hi <b>there</b></p>

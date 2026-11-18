@@ -5941,22 +5941,37 @@ built, the owner has tried it, and the owner has published 0.3.0
       you sent. It's a conversation command, so it's in the list's
       right-click menu (hidden there when it doesn't apply, as the reply
       items are), the Message menu and ⌘K (greyed out there). It copies
-      the newest email in the conversation from one of your addresses.
+      the newest email in the conversation that has Gmail's SENT label
+      and isn't a draft; the same label marks the conversation, so what
+      offers it and what it copies agree (review).
       Built 2026-11-17 (`compose::again`, `sendAgainDraft`):
-      - From: the same account and address (an alias too). To, Cc and
-        the subject as sent. Bcc is asked of Gmail, which keeps it on
-        your sent copy; if Gmail can't be asked (offline), it opens
-        without Bcc and the note says so.
+      - From: the same account and address (an alias too); one since
+        removed from your addresses starts from the account's default,
+        and the note says so. To, Cc and the subject as sent. Bcc is
+        asked of Gmail, which keeps it on your sent copy; if that request
+        fails (offline, an error), it opens without Bcc and the note says
+        so. Opening needs the body: one not yet saved on this computer is
+        fetched from Gmail, so then it doesn't open offline.
       - The body as sent, in the editor, its old signature included; the
-        current signature isn't added on top. The editor keeps simple
-        formatting only (its tables and styles don't survive it), so an
-        email written elsewhere with rich formatting comes back plainer.
+        current signature isn't added on top, even when From changes. The
+        editor keeps simple formatting only (its tables and styles don't
+        survive it), so an email written elsewhere with rich formatting
+        comes back plainer.
+      - Images in the body follow the reader's rule for that email
+        (Settings → Viewing), since the composer loads them itself
+        (review): known trackers and images on your own computer or
+        network are always removed, other remote images only stay if the
+        setting would load them, and embedded images (`cid:`) aren't
+        carried. The note counts what was left out.
       - The original's files come along as a forward's do (each with its
         ×, fetched from Gmail when sending), and a note above them, not a
-        dialog, says so, with Remove them and a × to dismiss it.
-      Tests: Rust (Bcc from Gmail, Gmail unreachable, refused for email
-      you didn't send, and the demo's sent invoice end to end), Vitest
-      (the draft and when the command applies) and
+        dialog, says so, with Remove them and a × to dismiss it. The note
+        isn't kept with a saved draft.
+      Tests: Rust (which email is copied, Bcc from Gmail, Gmail answering
+      with an error, images under each setting, a removed alias, refused
+      without a sent email, and the demo's sent invoice end to end),
+      Vitest (the draft, the note, the signature on a From change, what's
+      sent, and when the command applies) and
       `tests/browser/send-again.spec.ts`.
 - [x] Warn about outside recipients, as Gmail does (on a Workspace
       account, addresses outside its own and its aliases' domains are
