@@ -60,6 +60,9 @@
  *                                 view and search),
  *                                 `&accounts=0` for none; removing the
  *                                 account (`account_remove`) empties the list
+ *   &bcc=unknown                  (shell) Send again couldn't read Bcc
+ *                                 (Send again needs `&conversation=all`,
+ *                                 whose emails include yours)
  *   ?mode=search                  the title bar's search, with three recent
  *                                 searches saved
  *   ?mode=sizes                   the reader with an email of images sized by
@@ -412,6 +415,33 @@ mockIPC(
           return { ...detail, thread: { ...detail.thread, id, unread } };
         }
         return detail;
+      case "send_again_source": {
+        // Send again on one of your emails in the conversation: as sent,
+        // with one file. `&bcc=unknown`: Gmail couldn't be asked for Bcc.
+        const id = (args as { messageId: number }).messageId;
+        const m = detail.messages.find((x: { id: number }) => x.id === id) ?? detail.messages[0]!;
+        const unknown = new URLSearchParams(location.search).get("bcc") === "unknown";
+        return {
+          accountId: account.id,
+          from: m.from,
+          to: m.to,
+          cc: m.cc,
+          bcc: unknown ? [] : [{ name: null, email: "books@rivera.example" }],
+          bccUnknown: unknown,
+          subject: m.subject,
+          html: "<p>Sent once already.</p>",
+          text: "Sent once already.",
+          attachments: [
+            {
+              id: 501,
+              messageId: id,
+              filename: "Lisbon itinerary.pdf",
+              mimeType: "application/pdf",
+              size: 48_000,
+            },
+          ],
+        };
+      }
       case "reply_source":
         return {
           messageId: message.id,

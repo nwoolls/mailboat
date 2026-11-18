@@ -33,6 +33,7 @@ export type ConversationCommandId =
   | "replyAll"
   | "forward"
   | "replyAi"
+  | "sendAgain"
   | "summarize"
   | "translate"
   | ToggleKind
@@ -58,7 +59,7 @@ export type CommandId = ConversationCommandId | AppCommandId;
 
 type Rows = Pick<
   ThreadSummary,
-  "unread" | "inInbox" | "starred" | "inTrash" | "inSpam" | "onlyDraft"
+  "unread" | "inInbox" | "starred" | "inTrash" | "inSpam" | "onlyDraft" | "inSent"
 >[];
 
 const TOGGLES: { kind: ToggleKind; key: string; accel?: string; idle: string }[] = [
@@ -93,6 +94,14 @@ export function conversationCommands(
     { id: "replyAll", title: "Reply all", key: "a", accel: "Shift+Cmd+R", enabled: one },
     { id: "forward", title: "Forward", key: "f", accel: "Shift+Cmd+F", enabled: one },
     { id: "replyAi", title: "Reply with AI", enabled: one && o.ai.write },
+    // Apple Mail's Message → Send Again: an email you sent, as a new
+    // message (its newest one in the conversation). Not for received mail.
+    {
+      id: "sendAgain",
+      title: "Send again…",
+      accel: "Shift+Cmd+D",
+      enabled: one && rows[0]!.inSent,
+    },
   ];
   for (const t of TOGGLES) {
     const action = toggleFor(t.kind, rows) ?? undefined;
@@ -217,6 +226,7 @@ export const MENU_BAR: MenuSpec[] = [
       "replyAll",
       "forward",
       "replyAi",
+      "sendAgain",
       "-",
       "archive",
       "trash",

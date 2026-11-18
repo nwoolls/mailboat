@@ -38,6 +38,7 @@ const thread = (id: number, over: Partial<ThreadSummary> = {}): ThreadSummary =>
   inTrash: false,
   labelIds: [],
   onlyDraft: false,
+  inSent: false,
   inSpam: false,
   signInCode: null,
   ...over,

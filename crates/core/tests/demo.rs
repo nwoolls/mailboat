@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+use mail_core::compose;
 use mail_core::compose::mime::{self, MimeMessage};
 use mail_core::db::{accounts, query, Db};
 use mail_core::demo::{self, DemoData, FakeGoogle, Timing};
@@ -444,4 +445,44 @@ async fn a_labels_color_and_visibility_change_in_demo_mode_and_sync_back() {
     assert_eq!(travel.color_fg.as_deref(), Some("#000000"));
     assert_eq!(travel.sidebar, LabelSidebar::ShowIfUnread);
     assert!(!travel.on_conversations);
+}
+
+/// Send again on the demo's sent invoice: the conversation says it holds
+/// an email you sent, and the copy keeps its recipients and its file.
+#[tokio::test]
+async fn send_again_copies_the_sent_invoice_with_its_attachment() {
+    let (google, data) = start().await;
+    let db = Db::open_in_memory().unwrap();
+    let work = &data.accounts[1];
+    let id = add_account(&db, &work.email);
+    let gmail = demo::client(reqwest::Client::new(), &google, &work.email);
+    sync(&db, &gmail, id).await;
+    let sent = view(
+        &db,
+        MailView::System {
+            label: SystemLabel::Sent,
+        },
+    );
+    let invoice = subject_in(&sent, "Invoice 2041: Fernhill rebrand, phase 1").clone();
+    assert!(invoice.in_sent);
+    // Received mail only: not in Sent, so Send again doesn't apply.
+    assert!(inbox(&db).iter().any(|t| !t.in_sent));
+    let message = query::thread_detail(&db.conn(), invoice.id)
+        .unwrap()
+        .messages
+        .last()
+        .unwrap()
+        .id;
+    let source = compose::again::source(&db, &gmail, message).await.unwrap();
+    assert_eq!(source.from.email, work.email);
+    assert_eq!(source.subject, "Invoice 2041: Fernhill rebrand, phase 1");
+    assert_eq!(source.to.len(), 1);
+    assert!(!source.bcc_unknown);
+    let files: Vec<_> = source
+        .attachments
+        .iter()
+        .map(|a| a.filename.as_str())
+        .collect();
+    assert_eq!(files, ["Invoice 2041.pdf"]);
+    assert!(source.text.contains("Attached is the invoice"));
 }

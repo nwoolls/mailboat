@@ -72,7 +72,9 @@ const THREAD_COLUMNS: &str =
     SELECT 1 FROM message_labels ml JOIN labels l ON l.id = ml.label_id
     WHERE ml.message_id = m.id AND l.gmail_label_id = 'DRAFT')),
   EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
-          WHERE tl.thread_id = t.id AND l.gmail_label_id = 'SPAM')";
+          WHERE tl.thread_id = t.id AND l.gmail_label_id = 'SPAM'),
+  EXISTS (SELECT 1 FROM thread_labels tl JOIN labels l ON l.id = tl.label_id
+          WHERE tl.thread_id = t.id AND l.gmail_label_id = 'SENT')";
 
 /// How long a sign-in code is worth showing on its row: codes expire in
 /// minutes, so an old one is only noise.
@@ -105,6 +107,7 @@ fn thread_from_row(row: &Row<'_>) -> rusqlite::Result<ThreadSummary> {
             .collect(),
         only_draft: row.get(13)?,
         in_spam,
+        in_sent: row.get(15)?,
         // Filled in by `add_code`, which needs the newest message.
         sign_in_code: None,
     })

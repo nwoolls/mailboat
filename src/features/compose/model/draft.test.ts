@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { Address, Identity, ReplySource } from "../../../platform/tauri/bindings";
+import type {
+  Address,
+  Identity,
+  ReplySource,
+  SendAgainSource,
+} from "../../../platform/tauri/bindings";
 import {
   accountForNew,
   attachmentSize,
@@ -17,6 +22,7 @@ import {
   resumedDraft,
   replyRecipients,
   replySubject,
+  sendAgainDraft,
   sendProblem,
   switchedKind,
   canSwitchKind,
@@ -473,4 +479,66 @@ it("switching kind keeps the writing and swaps recipients and quote", () => {
   expect(fwd.quote).toBe(forwardHtml(src, date));
   expect(canSwitchKind(reply)).toBe(true);
   expect(canSwitchKind({ ...reply, resumedFrom: 9 })).toBe(false);
+});
+
+describe("sendAgainDraft", () => {
+  const file = { id: 9, filename: "Invoice 2041.pdf", mimeType: "application/pdf", size: 1200 };
+  const sent: SendAgainSource = {
+    accountId: ME,
+    from: a("Alias@X.example"),
+    to: [a("lena@z.example", "Lena")],
+    cc: [a("ben@z.example")],
+    bcc: [a("books@x.example")],
+    bccUnknown: false,
+    subject: "Invoice 2041",
+    html: "<p>Attached is the invoice.</p><p>-- Alex</p>",
+    text: "Attached is the invoice.\n\n-- Alex",
+    attachments: [file as never],
+  };
+  const withSig = identities.map((i) => ({ ...i, signature: "<p>-- current</p>" }));
+
+  it("is a new message from the same address, to the same people, with the same subject", () => {
+    const d = sendAgainDraft(sent, withSig, "me@x.example");
+    expect(d.kind).toBe("new");
+    expect(d.accountId).toBe(ME);
+    // The alias as Gmail names it, not as the original spelled it.
+    expect(d.from).toEqual({ name: "Alias", email: "alias@x.example" });
+    expect([d.to, d.cc, d.bcc]).toEqual([sent.to, sent.cc, sent.bcc]);
+    expect([d.showCc, d.showBcc]).toEqual([true, true]);
+    expect(d.subject).toBe("Invoice 2041");
+    // Not tied to the original: a new message, not a reply.
+    expect([d.replyingTo, d.threadId, d.quote]).toEqual([null, null, ""]);
+  });
+
+  it("keeps the body as sent, without adding the current signature again", () => {
+    const d = sendAgainDraft(sent, withSig, "me@x.example");
+    expect(d.html).toBe(sent.html);
+    expect(d.text).toContain("Attached is the invoice.");
+    expect(d.signature).toBe("");
+  });
+
+  it("brings the files along and says so; says when Bcc couldn't be read", () => {
+    const d = sendAgainDraft(sent, identities, "me@x.example");
+    expect(d.forwarded).toEqual([file]);
+    expect(d.sendAgainNote).toEqual({ files: 1, bccUnknown: false });
+    const unknown = sendAgainDraft(
+      { ...sent, bcc: [], bccUnknown: true, attachments: [] },
+      identities,
+      "me@x.example",
+    );
+    expect(unknown.sendAgainNote).toEqual({ files: 0, bccUnknown: true });
+    expect(unknown.showBcc).toBe(false);
+    const plain = sendAgainDraft({ ...sent, attachments: [] }, identities, "me@x.example");
+    expect(plain.sendAgainNote).toBeUndefined();
+  });
+
+  it("makes HTML of plain-text mail", () => {
+    const d = sendAgainDraft(
+      { ...sent, html: null, text: "Hi\nthere" },
+      identities,
+      "me@x.example",
+    );
+    expect(d.html).toContain("Hi");
+    expect(d.text).toContain("there");
+  });
 });

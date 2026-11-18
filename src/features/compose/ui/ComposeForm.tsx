@@ -426,6 +426,22 @@ export function ComposeForm({
           {draft.quoteText && <QuoteFold html={draft.quote} startOpen={draft.kind === "forward"} />}
         </div>
       </fieldset>
+      {draft.sendAgainNote && (
+        <SendAgainNote
+          note={draft.sendAgainNote}
+          files={draft.forwarded.length}
+          onRemoveFiles={() =>
+            onChange((d) => ({
+              ...d,
+              forwarded: [],
+              sendAgainNote: d.sendAgainNote?.bccUnknown
+                ? { files: 0, bccUnknown: true }
+                : undefined,
+            }))
+          }
+          onDismiss={() => onChange((d) => ({ ...d, sendAgainNote: undefined }))}
+        />
+      )}
       {draft.attachments.length + draft.forwarded.length > 0 && (
         <AttachmentChips
           files={[
@@ -564,6 +580,56 @@ export function ComposeForm({
       >
         {form}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Send again: what came along from the original, said once above the
+ * files (not a dialog). Its files can all go at once; each also has its
+ * own ×.
+ */
+function SendAgainNote({
+  note,
+  files,
+  onRemoveFiles,
+  onDismiss,
+}: {
+  note: { files: number; bccUnknown: boolean };
+  /** The original's files still attached. */
+  files: number;
+  onRemoveFiles: () => void;
+  onDismiss: () => void;
+}) {
+  const lines = [
+    files > 0 && `Includes the ${files === 1 ? "file" : `${files} files`} from the original.`,
+    note.bccUnknown && "Bcc couldn’t be read from Gmail, so it’s empty.",
+  ].filter((l): l is string => !!l);
+  if (lines.length === 0) return null;
+  return (
+    <div
+      role="note"
+      aria-label="Sending again"
+      className="mx-4 mb-2 flex items-center gap-2 rounded-lg bg-selection px-3 py-1.5 text-xs text-content/80"
+    >
+      <span className="min-w-0 flex-1">{lines.join(" ")}</span>
+      {files > 0 && (
+        <button
+          type="button"
+          className="shrink-0 rounded px-1.5 py-0.5 font-medium hover:bg-selection-strong"
+          onClick={onRemoveFiles}
+        >
+          {files === 1 ? "Remove it" : "Remove them"}
+        </button>
+      )}
+      <button
+        type="button"
+        aria-label="Dismiss"
+        className="shrink-0 rounded px-1 text-content/50 hover:bg-selection-strong hover:text-content"
+        onClick={onDismiss}
+      >
+        <ClearIcon size={13} />
+      </button>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import type {
   OutgoingAttachment,
   OutgoingMessage,
   ReplySource,
+  SendAgainSource,
   ThreadId,
 } from "../../../platform/tauri/bindings";
 import { PLAIN_STYLE, styleCss, type TextStyle } from "./fonts";
@@ -76,6 +77,12 @@ export type Draft = {
   threadId: ThreadId | null;
   showCc: boolean;
   showBcc: boolean;
+  /**
+   * Send again: the note above the message about what came from the
+   * original (its files, included; Bcc that couldn't be read). Gone once
+   * dismissed.
+   */
+  sendAgainNote?: { files: number; bccUnknown: boolean };
 };
 
 let nextId = 1;
@@ -194,6 +201,43 @@ export function newDraft(
     threadId: null,
     showCc: false,
     showBcc: false,
+  };
+}
+
+/**
+ * Send again (Apple Mail's Message → Send Again): a new message from the
+ * same address as an email you sent, to the same people, with its subject,
+ * body and files. The body is as it was sent, its signature included, so
+ * the current one isn't added again. Not tied to the original's
+ * conversation: it's a new message, and the original is untouched.
+ */
+export function sendAgainDraft(
+  source: SendAgainSource,
+  identities: Identity[],
+  accountEmail: string,
+): Draft {
+  const sentFrom = identities.find(
+    (i) => i.accountId === source.accountId && sameEmail(i.email, source.from.email),
+  );
+  const draft = newDraft(identities, source.accountId, accountEmail);
+  const html = source.html?.trim() ? source.html : textToHtml(source.text);
+  return {
+    ...draft,
+    from: sentFrom ? identityAddress(sentFrom) : source.from,
+    to: source.to,
+    cc: source.cc,
+    bcc: source.bcc,
+    subject: source.subject,
+    html,
+    text: htmlToText(html),
+    signature: "",
+    forwarded: source.attachments,
+    showCc: source.cc.length > 0,
+    showBcc: source.bcc.length > 0,
+    sendAgainNote:
+      source.attachments.length > 0 || source.bccUnknown
+        ? { files: source.attachments.length, bccUnknown: source.bccUnknown }
+        : undefined,
   };
 }
 

@@ -5,6 +5,7 @@
 //! reply only joins the original's thread when it's sent from the same
 //! account (threads never merge across accounts).
 
+pub mod again;
 pub mod contacts;
 pub mod identities;
 pub mod mime;

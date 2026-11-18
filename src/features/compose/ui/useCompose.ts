@@ -22,6 +22,7 @@ import {
   newDraft,
   replyDraft,
   resumedDraft,
+  sendAgainDraft,
   switchedKind,
   preferredIdentity,
   toOutgoing,
@@ -30,6 +31,7 @@ import {
 } from "../model/draft";
 import { selectedInMessage } from "../../reader/ui/MessageFrame";
 import { draftFromMailto } from "../model/mailto";
+import { sameEmail } from "../model/addresses";
 import { composingPrefs } from "./composingPrefs";
 
 /**
@@ -388,6 +390,40 @@ export function useComposeActions(accounts: Account[]) {
     [qc, identities, emailOf],
   );
 
+  /**
+   * Send again: the newest email you sent in a conversation, as a new
+   * message in the card (Apple Mail's Message → Send Again).
+   */
+  const startSendAgain = useCallback(
+    async (threadId: ThreadId) => {
+      try {
+        const [detail, list] = await Promise.all([
+          qc.fetchQuery({
+            queryKey: keys.thread(threadId),
+            queryFn: () => unwrap(commands.threadGet(threadId)),
+          }),
+          identities(),
+        ]);
+        const mine = (email: string, account: AccountId) =>
+          sameEmail(email, emailOf(account)) ||
+          list.some((i) => i.accountId === account && sameEmail(i.email, email));
+        const target = detail.messages.findLast((m) => !m.draft && mine(m.from.email, m.accountId));
+        if (!target) {
+          showToast({ tone: "error", message: "Send again is for emails you sent." });
+          return;
+        }
+        const source = await unwrap(commands.sendAgainSource(target.id));
+        set(S.openCard(state, sendAgainDraft(source, list, emailOf(source.accountId))));
+      } catch (e) {
+        showToast({
+          tone: "error",
+          message: `Couldn’t send again: ${e instanceof Error ? e.message : String(e)}`,
+        });
+      }
+    },
+    [qc, identities, emailOf],
+  );
+
   /** Turns a reply into reply all or a forward (or back), keeping the text. */
   const switchKind = useCallback(
     async (id: number, kind: Exclude<ComposeKind, "new">) => {
@@ -476,7 +512,7 @@ export function useComposeActions(accounts: Account[]) {
   }, []);
 
   return useMemo(
-    () => ({ startNew, startFromMailto, startReply, switchKind, send }),
-    [startNew, startFromMailto, startReply, switchKind, send],
+    () => ({ startNew, startFromMailto, startReply, startSendAgain, switchKind, send }),
+    [startNew, startFromMailto, startReply, startSendAgain, switchKind, send],
   );
 }

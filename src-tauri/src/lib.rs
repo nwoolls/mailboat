@@ -94,6 +94,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::identities_list,
             commands::contacts_list,
             commands::compose_outside_rule,
+            commands::send_again_source,
             commands::contacts_hide,
             commands::contacts_unhide,
             commands::contacts_hidden,

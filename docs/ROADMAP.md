@@ -5924,7 +5924,7 @@ built, the owner has tried it, and the owner has published 0.3.0
       No footer: WebKit can't number pages from CSS, and macOS's print
       dialog can add its own headers and footers. The owner checked it on
       paper on macOS and in Windows' print preview)*
-- [ ] Clone a sent email *(owner request, 2026-11-08; maybe for the Polish
+- [x] Clone a sent email *(owner request, 2026-11-08; maybe for the Polish
       Spike, not likely)*: find an email you sent before and open it in a
       new composer with the same recipients, subject and body, to send the
       same message again. Useful before templates (in "Later / unscheduled" → Writing), which remain
@@ -5936,6 +5936,28 @@ built, the owner has tried it, and the owner has published 0.3.0
       signature is kept or added again. The clone is a new draft; the
       original is untouched.
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      Decided with the owner, 2026-11-17: named **Send again…** after
+      Apple Mail's Message → Send Again (⇧⌘D here too), and only for email
+      you sent. It's a conversation command, so it's in the list's
+      right-click menu (hidden there when it doesn't apply, as the reply
+      items are), the Message menu and ⌘K (greyed out there). It copies
+      the newest email in the conversation from one of your addresses.
+      Built 2026-11-17 (`compose::again`, `sendAgainDraft`):
+      - From: the same account and address (an alias too). To, Cc and
+        the subject as sent. Bcc is asked of Gmail, which keeps it on
+        your sent copy; if Gmail can't be asked (offline), it opens
+        without Bcc and the note says so.
+      - The body as sent, in the editor, its old signature included; the
+        current signature isn't added on top. The editor keeps simple
+        formatting only (its tables and styles don't survive it), so an
+        email written elsewhere with rich formatting comes back plainer.
+      - The original's files come along as a forward's do (each with its
+        ×, fetched from Gmail when sending), and a note above them, not a
+        dialog, says so, with Remove them and a × to dismiss it.
+      Tests: Rust (Bcc from Gmail, Gmail unreachable, refused for email
+      you didn't send, and the demo's sent invoice end to end), Vitest
+      (the draft and when the command applies) and
+      `tests/browser/send-again.spec.ts`.
 - [x] Warn about outside recipients, as Gmail does (on a Workspace
       account, addresses outside its own and its aliases' domains are
       marked while writing, except its Contacts and Other contacts; first

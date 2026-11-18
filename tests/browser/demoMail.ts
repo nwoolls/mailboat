@@ -120,6 +120,7 @@ export function threadOf(c: DemoConversation, id: number) {
     inTrash: false,
     labelIds: [],
     onlyDraft: false,
+    inSent: c.messages.some((m) => m.from === "me"),
     inSpam: false,
     signInCode: null,
   };

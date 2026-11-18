@@ -1095,3 +1095,116 @@ async fn saving_a_draft_says_when_other_mail_changed_with_it() {
         assert_eq!(saved.other_mail_changed, expected, "{case}");
     }
 }
+
+/// Send again: m2 in thread t1, as if sent from account `a`'s alias.
+fn sent_by_me(db: &Db) -> (AccountId, MessageId) {
+    let a = add_account(db, "a");
+    load_t1(db, a);
+    let m2 = message_id(db, a, "m2");
+    db.conn()
+        .execute(
+            "INSERT INTO send_as (account_id, email, is_primary) VALUES (?1, 'events@x.example', 0)",
+            [a],
+        )
+        .unwrap();
+    db.conn()
+        .execute(
+            "UPDATE messages SET from_email = 'Events@X.example' WHERE id = ?1",
+            [m2],
+        )
+        .unwrap();
+    store::set_body(
+        &mut db.conn(),
+        m2,
+        &store::StoredBody {
+            html: Some("<p>Lunch at noon?</p><script>x()</script>".into()),
+            text: Some("Lunch at noon?".into()),
+        },
+        &[],
+    )
+    .unwrap();
+    (a, m2)
+}
+
+#[tokio::test]
+async fn send_again_brings_the_bcc_from_gmail_and_the_body_as_sent() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m2"))
+        .and(query_param("format", "metadata"))
+        .and(query_param("metadataHeaders", "Bcc"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "id": "m2", "threadId": "t1",
+            "payload": { "headers": [
+                { "name": "Bcc", "value": "Lee Kim <lee@y.example>, sam@y.example" }
+            ]}
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let (a, m2) = sent_by_me(&db);
+    let (gmail, _) = client(&server.uri());
+    let source = compose::again::source(&db, &gmail, m2).await.unwrap();
+    assert_eq!(source.account_id, a);
+    assert_eq!(source.from.email, "Events@X.example");
+    let bcc: Vec<_> = source.bcc.iter().map(|b| b.email.as_str()).collect();
+    assert_eq!(bcc, ["lee@y.example", "sam@y.example"]);
+    assert!(!source.bcc_unknown);
+    // The cached recipients and subject, as the original had them.
+    // Bound first: two `db.conn()` in one expression deadlock.
+    let thread = load_t1(&db, a);
+    let original = query::thread_detail(&db.conn(), thread).unwrap();
+    let m = original.messages.iter().find(|m| m.id == m2).unwrap();
+    assert_eq!(source.to, m.to);
+    assert_eq!(source.cc, m.cc);
+    assert_eq!(source.subject, m.subject);
+    assert_eq!(source.text, "Lunch at noon?");
+    let html = source.html.unwrap();
+    assert!(
+        html.contains("Lunch at noon?") && !html.contains("script"),
+        "{html}"
+    );
+    assert_eq!(
+        source.attachments,
+        store::attachments_for(&db.conn(), m2).unwrap()
+    );
+}
+
+#[tokio::test]
+async fn send_again_opens_without_bcc_when_gmail_cant_be_asked() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m2"))
+        .respond_with(ResponseTemplate::new(404).set_body_string(fixture("error_404.json")))
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let (_, m2) = sent_by_me(&db);
+    let (gmail, _) = client(&server.uri());
+    let source = compose::again::source(&db, &gmail, m2).await.unwrap();
+    assert!(source.bcc.is_empty());
+    assert!(
+        source.bcc_unknown,
+        "empty because unknown, and the composer says so"
+    );
+    assert_eq!(source.text, "Lunch at noon?");
+}
+
+#[tokio::test]
+async fn send_again_is_only_for_email_you_sent() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(0)
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    load_t1(&db, a);
+    // m2 is from bob@example.com, not one of the account's addresses.
+    let m2 = message_id(&db, a, "m2");
+    let (gmail, _) = client(&server.uri());
+    let err = compose::again::source(&db, &gmail, m2).await.unwrap_err();
+    assert!(matches!(err, CoreError::Invalid(_)), "{err:?}");
+}
