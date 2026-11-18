@@ -4475,7 +4475,9 @@ privacy:
 - Warn about outside recipients (addresses not ending with chosen
   domains are marked while writing; "Later / unscheduled" → Writing; in 0.3.0
   since 2026-11-14). Not a
-  bug or a privacy item; held to keep the scope small.
+  bug or a privacy item; held to keep the scope small. *(done 2026-11-17,
+  in 0.3.0, as Gmail's warning rather than chosen domains: see its item
+  there)*
 - Only if it becomes a problem: "Use a different file" on "Google Cloud
   is set up" goes back to the start of the walkthrough (Milestone 12;
   the owner said it was fine for now; in "Later / unscheduled" since
@@ -5934,8 +5936,10 @@ built, the owner has tried it, and the owner has published 0.3.0
       signature is kept or added again. The clone is a new draft; the
       original is untouched.
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
-- [x] Warn about outside recipients (addresses not ending with chosen
-      domains are marked while writing) *(held out of the Polish Spike,
+- [x] Warn about outside recipients, as Gmail does (on a Workspace
+      account, addresses outside its own and its aliases' domains are
+      marked while writing, except its Contacts and Other contacts; first
+      planned as chosen domains) *(held out of the Polish Spike,
       2026-11-07)*
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
       Decided with the owner, 2026-11-17: copy Gmail's own warning as
@@ -5951,7 +5955,9 @@ built, the owner has tried it, and the owner has published 0.3.0
       - Inside means the account's own domain and its send-as aliases'
         domains (the app already reads the aliases). People in Contacts
         and Other contacts are never marked (the app already reads both
-        for address suggestions).
+        for address suggestions), as of the account's last contacts
+        sync; an account that hasn't allowed Contacts has none, so they
+        are marked until it signs in again (Settings says so).
       - A switch per account, shown only for a Workspace account, on by
         default as Gmail's is. The app can never read the administrator's
         choice (no API has it), so a person whose administrator turned
@@ -7416,11 +7422,14 @@ Settings → Privacy, as `AGENTS.md` says.
 - [ ] Outside recipients, as Gmail decides them *(owner, 2026-11-17)*:
       read the company's directory (People API `listDirectoryPeople`),
       which a person can read when their organization shares it. People
-      in it are never marked, as in Gmail, and the domains of its
-      addresses count as inside, so a coworker on the company's other
-      domain isn't marked. The warning built in 0.3.0 counts only the
-      account's own and its aliases' domains, and skips only Contacts and
-      Other contacts.
+      in it are never marked, as in Gmail, address by address. Its
+      domains don't all count as inside: an administrator can add
+      shared external contacts to the directory, so a partner's address
+      there would otherwise clear everyone at the partner's domain
+      (review, 2026-11-17). Telling the company's other domains apart
+      needs evidence of its own. The warning built in 0.3.0 counts only
+      the account's own and its aliases' domains, and skips only
+      Contacts and Other contacts.
       Permission: new (`directory.readonly`). Competitors: none
       confirmed. Effort: low in code, after the review
 #### Workspace administrators only (not reachable with a person's own sign-in)

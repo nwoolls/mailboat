@@ -406,10 +406,14 @@ function Chip({
       } ${shift ? "relative z-50 cursor-grabbing shadow-md" : ""}`}
       style={shift ? { transform: `translate(${shift.x}px, ${shift.y}px)` } : undefined}
     >
-      {outside && <OutsideIcon aria-hidden size={13} className="mr-0.5 shrink-0 text-warn" />}
+      {outside && <OutsideIcon aria-hidden size={13} className="mr-0.5 shrink-0 text-warn-ink" />}
       <button
         type="button"
         className="truncate"
+        // Said, not only shown in amber.
+        aria-label={
+          outside ? `${address.name ?? address.email}, outside your organization` : undefined
+        }
         // Double-click edits, as in Mail.
         onDoubleClick={(e) => {
           e.stopPropagation();
@@ -417,7 +421,6 @@ function Chip({
         }}
       >
         {address.name ?? address.email}
-        {outside && <span className="sr-only">, outside your organization</span>}
       </button>
       <button
         type="button"

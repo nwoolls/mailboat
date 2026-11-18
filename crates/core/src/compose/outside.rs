@@ -37,10 +37,18 @@ pub struct OutsideRule {
     pub known: Vec<String>,
 }
 
+/// An address as the composer compares it: trimmed, in lower case. Full
+/// Unicode lower case, as JavaScript's `toLowerCase` makes it (SQLite's
+/// `lower` changes only ASCII, so `É` stayed and never matched).
+fn normalized(email: &str) -> String {
+    email.trim().to_lowercase()
+}
+
 /// The part after the last `@`, in lower case, if there is one.
 fn domain(email: &str) -> Option<String> {
-    let (_, domain) = email.trim().rsplit_once('@')?;
-    let domain = domain.trim().to_ascii_lowercase();
+    let email = normalized(email);
+    let (_, domain) = email.rsplit_once('@')?;
+    let domain = domain.trim().to_string();
     (!domain.is_empty()).then_some(domain)
 }
 
@@ -65,13 +73,14 @@ pub fn rule(conn: &Connection, account: AccountId) -> Result<OutsideRule> {
     let workspace = domains
         .first()
         .is_some_and(|d| !PERSONAL_DOMAINS.contains(&d.as_str()));
-    let known: Vec<String> = {
-        let mut stmt = conn.prepare(
-            "SELECT DISTINCT lower(trim(email)) FROM google_contacts WHERE account_id = ?1",
-        )?;
+    let mut known: Vec<String> = {
+        let mut stmt = conn.prepare("SELECT email FROM google_contacts WHERE account_id = ?1")?;
         let rows = stmt.query_map([account], |r| r.get::<_, String>(0))?;
-        rows.collect::<rusqlite::Result<_>>()?
+        rows.map(|e| e.map(|e| normalized(&e)))
+            .collect::<rusqlite::Result<_>>()?
     };
+    known.sort();
+    known.dedup();
     Ok(OutsideRule {
         workspace,
         domains,
@@ -151,9 +160,13 @@ mod tests {
         contact(&db, work, "jordan@x.example", "other");
         contact(&db, work, "sam@x.example", "other");
         contact(&db, other, "priya@y.example", "saved");
-        let mut known = rule(&db.conn(), work).unwrap().known;
-        known.sort();
-        assert_eq!(known, ["jordan@x.example", "sam@x.example"]);
+        // Review: lower case beyond ASCII, as the composer makes it.
+        contact(&db, work, "Éva@X.example", "saved");
+        let known = rule(&db.conn(), work).unwrap().known;
+        assert_eq!(
+            known,
+            ["jordan@x.example", "sam@x.example", "éva@x.example"]
+        );
         assert_eq!(rule(&db.conn(), other).unwrap().known, ["priya@y.example"]);
     }
 

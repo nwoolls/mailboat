@@ -393,7 +393,7 @@ export function ComposeForm({
             className="h-9 border-b border-stroke bg-transparent outline-none placeholder:text-content/45 focus-visible:outline-none"
           />
         )}
-        {rule && outside.length > 0 && <OutsideBanner {...outsideBanner(rule, outside)} />}
+        <OutsideBanner banner={rule && outside.length > 0 ? outsideBanner(rule, outside) : null} />
         {/* Never squeezed below a few lines by what's under it (a long
           list of attachments, say); that scrolls instead. */}
         {/* With nothing under it, the editor fills the space, so a click
@@ -569,17 +569,21 @@ export function ComposeForm({
 }
 
 /** Above the message while it has recipients outside the organization. */
-function OutsideBanner({ title, detail }: { title: string; detail: string }) {
+function OutsideBanner({ banner }: { banner: { title: string; detail: string } | null }) {
+  // The status region is always there, empty without a warning, so a
+  // screen reader announces the first one too (a region added together
+  // with its text isn't reliably read).
   return (
-    <div
-      role="status"
-      className="mt-3 flex items-start gap-2.5 rounded-lg border border-warn/35 bg-warn/10 px-3 py-2.5"
-    >
-      <WarningIcon aria-hidden size={16} className="mt-px shrink-0 text-warn" />
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="font-semibold">{title}</span>
-        <span className="text-content/70">{detail}</span>
-      </div>
+    <div role="status">
+      {banner && (
+        <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-warn/35 bg-warn/10 px-3 py-2.5">
+          <WarningIcon aria-hidden size={16} className="mt-px shrink-0 text-warn-ink" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="font-semibold">{banner.title}</span>
+            <span className="text-content/70">{banner.detail}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

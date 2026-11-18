@@ -20,6 +20,8 @@ describe("who is outside, as Gmail decides", () => {
 
   it("never marks someone in Contacts or Other contacts", () => {
     expect(isOutside(work, "Sam@X.example")).toBe(false);
+    // Rust sends them lower-cased as JavaScript lower-cases (review).
+    expect(isOutside({ ...work, known: ["éva@x.example"] }, "Éva@X.example")).toBe(false);
   });
 
   it("counts a subdomain as another domain, as Gmail does", () => {

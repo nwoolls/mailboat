@@ -449,7 +449,11 @@ function AccountGroup({
             outsideRule.domains.length > 1
               ? `${outsideRule.domains[0]} or your aliases’ domains`
               : outsideRule.domains[0]
-          }, as Gmail does. People in your contacts aren’t marked.`}
+          }, as Gmail does. People in your Google Contacts and Other contacts aren’t marked, as of the last sync.${
+            account.missingPermissions.includes("contacts")
+              ? " This account hasn’t allowed Contacts, so they’re marked too until you sign in again."
+              : ""
+          }`}
         >
           <Toggle
             label="Warn about outside recipients"
