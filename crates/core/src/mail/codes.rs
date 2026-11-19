@@ -5,12 +5,10 @@
 //! A code is a short run of digits (4 to 8, maybe split as "123 456" or
 //! "123-456") or a short mix of capitals and digits ("G-482910",
 //! "XK7P2"), near words that say it's a code ("verification code",
-//! "one-time password", "is your … code"). With no such words, a number by
-//! a line saying the code expires counts in two cases: the subject points
-//! to a verification, or the subject holds the same number and the email
-//! asks to verify (`find` has the details). Things that look like codes
-//! but aren't are left alone: promo and discount codes, years, prices,
-//! phone and order numbers, ZIP codes.
+//! "one-time password", "is your … code"), or handed over by a subject
+//! shaped "Use <code> to <an account action>" (`ACCOUNT_ACTIONS`, kept
+//! narrow). Things that look like codes but aren't are left alone: promo
+//! and discount codes, years, prices, phone and order numbers, ZIP codes.
 
 use rusqlite::{Connection, OptionalExtension};
 
@@ -157,6 +155,9 @@ pub fn find(subject: &str, text: &str) -> Option<String> {
     if NOT_A_CODE.iter().any(|p| s.starts_with(p)) {
         return None;
     }
+    if let Some(code) = subject_hands_over(subject) {
+        return Some(code);
+    }
     // Links (tracking links run to hundreds of characters) and preheader
     // padding (invisible joiners and spaces) can push the code past the
     // limit; leave them out first.
@@ -192,18 +193,6 @@ pub fn find(subject: &str, text: &str) -> Option<String> {
             return Some(code);
         }
     }
-    // The subject hands over the code itself ("Use 482913 to set up your
-    // recovery email"), with no word for it and nothing about verifying in
-    // the subject (owner report, 2026-11-18: an account's recovery-email
-    // check was missed). A number in the subject and by an expiry line isn't
-    // enough on its own: deliveries, gates, guest networks, invoices and
-    // promos read the same (review). So the body has to ask to verify too,
-    // and the subject mustn't be about anything else.
-    if subject_holds_code(subject) && asks_to_verify(text) {
-        if let Some(code) = expiry_code_in_subject(text, subject) {
-            return Some(code);
-        }
-    }
     // The subject says it's a code but the body sets it apart, sentences
     // away ("…expire in 15 minutes. 320641", Disney+): the code-like
     // number nearest the word "code".
@@ -218,6 +207,59 @@ pub fn find(subject: &str, text: &str) -> Option<String> {
             .map(|(_, code)| code);
     }
     None
+}
+
+/// What follows "Use <code> to" in a subject that hands over a sign-in code:
+/// an action on an account. Narrow on purpose (owner, 2026-11-18): a code
+/// in the subject with only an expiry line or a "verify" in the body also
+/// marked deliveries, gate codes, invoices and promos (review). A missed
+/// code is added here as one more phrase, with a look-alike test, never
+/// as a broader rule; rethinking detection as a whole is in
+/// docs/ROADMAP.md (Later).
+const ACCOUNT_ACTIONS: &[&str] = &[
+    // Google's recovery-email and recovery-phone checks ("Use 482913 to
+    // set up recovery email"), which name no code and don't say verify.
+    "set up recovery",
+    "recovery email",
+    "recovery phone",
+    "verify your",
+    "verify it's you",
+    "verify it\u{2019}s you",
+    "sign in",
+    "sign-in",
+    "log in",
+    "login",
+    "reset your password",
+    "confirm your email",
+    "confirm your account",
+    "confirm your phone",
+];
+
+/// The code a subject hands over by its shape, "Use <code> to <an account
+/// action>" (`ACCOUNT_ACTIONS`), unless it is about a promo, a locker, a
+/// ticket, a guest network or the like. From the subject alone, so a
+/// snippet that ends early can't hide it.
+fn subject_hands_over(subject: &str) -> Option<String> {
+    let lower = subject.trim().to_ascii_lowercase();
+    if lower.len() != subject.trim().len()
+        || NOT_SIGN_IN.iter().any(|w| lower.contains(w))
+        || CUE_NOT_SIGN_IN.iter().any(|w| lower.contains(w))
+    {
+        return None;
+    }
+    let rest = lower.strip_prefix("use ")?;
+    let (token, action) = rest.split_once(" to ")?;
+    if !ACCOUNT_ACTIONS.iter().any(|a| action.contains(a)) {
+        return None;
+    }
+    // The token is one code and nothing else ("482913", "482 913",
+    // "G-482913"), in the subject's own case.
+    let original = &subject.trim()[4..4 + token.len()];
+    let found = candidates(original);
+    match found.as_slice() {
+        [(0, code)] if original.trim().len() <= code.len() + 2 => Some(code.clone()),
+        _ => None,
+    }
 }
 
 /// `text` without its web addresses (up to the next space, line break,
@@ -286,30 +328,6 @@ fn is_duration(lower: &str, at: usize, code: &str) -> bool {
 /// minutes"), within `CUE_REACH`, unless the cue is about a promo or the
 /// like.
 fn near_expiry_cue(text: &str) -> Option<String> {
-    near_expiry_cue_where(text, |_| true)
-}
-
-/// The nearest number by an expiry cue that the subject also holds (spaces
-/// and hyphens aside, on both sides; a letter prefix has to match), even
-/// when another number stands nearer the cue (review).
-fn expiry_code_in_subject(text: &str, subject: &str) -> Option<String> {
-    let wanted: Vec<String> = candidates(subject)
-        .into_iter()
-        .map(|(_, c)| compact(&c))
-        .collect();
-    near_expiry_cue_where(text, |code| wanted.contains(&compact(code)))
-}
-
-/// A code without its separators, in capitals, for comparing.
-fn compact(code: &str) -> String {
-    code.chars()
-        .filter(|c| c.is_ascii_alphanumeric())
-        .map(|c| c.to_ascii_uppercase())
-        .collect()
-}
-
-/// `near_expiry_cue`, among the numbers `keep` accepts.
-fn near_expiry_cue_where(text: &str, keep: impl Fn(&str) -> bool) -> Option<String> {
     let lower = text.to_ascii_lowercase();
     // The offsets below are `text`'s only if lowering kept its length.
     if lower.len() != text.len() {
@@ -327,7 +345,6 @@ fn near_expiry_cue_where(text: &str, keep: impl Fn(&str) -> bool) -> Option<Stri
         .into_iter()
         .filter(|(at, _)| !cue_excluded(&lower, *at))
         .filter(|(at, code)| !is_duration(&lower, *at, code))
-        .filter(|(_, code)| keep(code))
         .filter_map(|(at, code)| {
             let reach = cues.iter().map(|c| c.abs_diff(at)).min()?;
             (reach <= CUE_REACH).then_some((reach, code))
@@ -550,15 +567,11 @@ pub fn find_cached(
 }
 
 /// Whether the subject makes the body worth reading for a code: it says or
-/// hints at one, or holds a code-shaped number (`subject_holds_code`: the
-/// line that makes it a code may come after the snippet ends, review), and
-/// isn't a reply or forward (people writing about a code).
+/// hints at one, and isn't a reply or forward (people writing about a code).
 pub fn may_hold_code(subject: &str) -> bool {
     let s = subject.trim_start().to_ascii_lowercase();
     !["re:", "fw:", "fwd:"].iter().any(|p| s.starts_with(p))
-        && (subject_says_code(subject)
-            || subject_hints_code(subject)
-            || subject_holds_code(subject))
+        && (subject_says_code(subject) || subject_hints_code(subject))
 }
 
 /// The newest message of a conversation, whose snippet its row shows, with its
@@ -641,39 +654,13 @@ pub fn in_messages(
                 sender: name.filter(|n| !n.trim().is_empty()).unwrap_or(email),
                 subject,
             }),
-            None if !has_body && may_hold_code(&subject) => needs_body.push(m),
+            None if !has_body && (subject_says_code(&subject) || subject_hints_code(&subject)) => {
+                needs_body.push(m)
+            }
             None => {}
         }
     }
     Ok((found, needs_body))
-}
-
-/// The subject holds a code-shaped number and is about nothing but that:
-/// not a reply or forward, not a promo, locker, ticket or the like, and not
-/// a passcode, one-time or access code (which also name meeting and door
-/// codes; `subject_unlocks_cue` refuses them too). Makes the body worth
-/// reading for a code, and is half of what lets the subject hand one over.
-pub fn subject_holds_code(subject: &str) -> bool {
-    let s = subject.trim_start().to_ascii_lowercase();
-    const ALSO_NOT: &[&str] = &[
-        "passcode", "one-time", "one time", "access", "discount", "% off",
-    ];
-    !["re:", "fw:", "fwd:"].iter().any(|p| s.starts_with(p))
-        && !NOT_SIGN_IN.iter().any(|w| s.contains(w))
-        && !CUE_NOT_SIGN_IN.iter().any(|w| s.contains(w))
-        && !ALSO_NOT.iter().any(|w| s.contains(w))
-        && !candidates(subject).is_empty()
-}
-
-/// The text asks to verify something ("Verify recovery email", "to verify
-/// your account", "verification"), as a word of its own: not "verified".
-fn asks_to_verify(text: &str) -> bool {
-    let lower = text.to_ascii_lowercase();
-    ["verify", "verification"].iter().any(|w| {
-        lower
-            .match_indices(w)
-            .any(|(i, _)| is_whole_word(&lower, i, w.len()))
-    })
 }
 
 /// Whether the subject lets an expiry line in the body count: it says there
@@ -916,10 +903,9 @@ mod tests {
         }
     }
 
-    /// A code the subject itself hands over ("Use 482913 to set up your
-    /// recovery email"), with no word for it, an expiry line beside it in
-    /// the body, and the body asking to verify (owner report, 2026-11-18).
-    /// Made-up, in the shape of an account's recovery-email check.
+    /// A made-up email in the shape of Google's recovery-email check (owner
+    /// report, 2026-11-18): the code in the subject and the body, an expiry
+    /// line, "Verify recovery email" at the top, and no code word.
     const RECOVERY: &str = "Verify recovery email\n\nmaya@x.example wants to use your \
         email address as their recovery email. Use this code to finish setting up \
         alex@y.example as a recovery email:\n\n482913\n\nThis code will expire in 24 \
@@ -927,75 +913,78 @@ mod tests {
         address from their account.";
 
     #[test]
-    fn a_code_in_the_subject_and_by_an_expiry_line_is_found() {
-        let subject = "Use 482913 to set up recovery email";
-        assert_eq!(find(subject, RECOVERY), Some("482913".into()));
-        assert_eq!(
-            find(subject, &RECOVERY.replace('\n', " ")),
-            Some("482913".into())
-        );
-        // Review: spaces and hyphens either side, and a nearer number that
-        // isn't the subject's.
-        let spaced = RECOVERY.replace("482913", "482 913");
-        assert_eq!(find(subject, &spaced), Some("482913".into()));
-        assert_eq!(
-            find("Use 482 913 to set up recovery email", RECOVERY),
-            Some("482913".into())
-        );
-        assert_eq!(
-            find("Use 482-913 to set up recovery email", RECOVERY),
-            Some("482913".into())
-        );
-        let nearer = RECOVERY.replace(
-            "\n\nThis code will expire",
-            "\nError 663344.\nThis code will expire",
-        );
-        assert_eq!(find(subject, &nearer), Some("482913".into()));
+    fn a_subject_shaped_use_code_to_act_on_an_account_hands_it_over() {
+        for (subject, code) in [
+            ("Use 482913 to set up recovery email", "482913"),
+            ("Use 482913 to set up recovery phone", "482913"),
+            ("Use 482913 to verify it's you", "482913"),
+            ("Use 482913 to verify your email address", "482913"),
+            ("Use 482913 to sign in to your account", "482913"),
+            ("Use 482913 to reset your password", "482913"),
+            ("Use 482913 to confirm your email", "482913"),
+            ("Use 482 913 to set up recovery email", "482913"),
+            ("Use G-482913 to sign in", "G-482913"),
+        ] {
+            // From the subject alone: any body, or none, or a snippet that
+            // ends before the expiry line.
+            for text in ["", RECOVERY, &RECOVERY.replace('\n', " ")[..150]] {
+                assert_eq!(find(subject, text), Some(code.into()), "{subject}");
+            }
+        }
     }
 
-    /// Review: a number in the subject and by an expiry line isn't enough on
-    /// its own. None of these asks to verify, or the subject is about
-    /// something else; each was marked by the first version of the rule.
+    /// The shape is narrow on purpose: "Use <code> to" and an account action,
+    /// both. Each of these was considered or marked by a broader rule.
     #[test]
-    fn a_number_in_the_subject_and_by_an_expiry_line_alone_is_no_code() {
+    fn use_code_to_without_an_account_action_hands_nothing_over() {
+        for subject in [
+            "Use 7721 to get 20% off",
+            "Use 482913 to confirm your order",
+            "Use 551234 to open the gate",
+            "Use 551234 at the gate",
+            "Use 4821 to sign in to the guest Wi-Fi portal",
+            "Use 7721 for 20% off",
+            "Use 482913 to track your parcel",
+            "Re: Use 482913 to sign in",
+            "Fwd: Use 482913 to set up recovery email",
+            "Use the code 482913 to sign in",
+            "Please use 482913 to sign in",
+            "Use 2026 to sign in",
+        ] {
+            assert_eq!(find(subject, ""), None, "{subject}");
+        }
+        // A year isn't a code: `candidates` leaves it out.
+    }
+
+    /// Look-alikes from the reviews of earlier, broader rules (a number in the
+    /// subject and by an expiry line, then also "verify" in the body): none is
+    /// a sign-in code, and none may become one. Kept as a guard for whatever
+    /// rethinks detection.
+    #[test]
+    fn numbers_by_an_expiry_line_and_verify_wording_are_no_codes() {
         for (subject, text) in [
             ("Delivery 482913", "Tell the driver 482913. This code expires in 10 minutes."),
             ("Your delivery code 839201", "Hand the driver 839201. This code expires in 4 hours."),
             ("Gate 551234", "Use 551234 at the gate. This code expires in 12 hours."),
             ("Guest network 33881", "Password 33881. This code expires in 8 hours."),
-            ("Use 7721 for 20% off", "Enter 7721 at checkout. This code will expire in 10 days."),
             ("20% discount 7721", "Enter 7721 at checkout. This code will expire in 10 days."),
             ("Invoice 552190", "Please pay 552190. This code will expire in 30 days."),
             ("Order 482913 has shipped", "Order 482913 is on its way. Use 482913 for returns. This code will expire in 30 days."),
             ("Issue 4829 is out", "Readers can enter 4829 on the site. This code will expire in 7 days."),
             ("Standup passcode 482913", "Access code: 482913\nThis code will expire in 10 minutes."),
             ("Your one-time access 551234", "Use 551234 to get in. This code is valid for today only."),
-            // Asks to verify, but the subject is a passcode's.
             ("Your passcode for today: 551234", "Verify at the desk with 551234. This code is valid for today only."),
-            // The subject's number isn't the one by the expiry line.
-            ("Use 999999 to set up recovery email", RECOVERY),
-            // No expiry line.
-            ("Use 482913 to set up recovery email", "Verify your account. 482913"),
-            // Part of a longer number in the subject.
-            ("Order 14829130 shipped", "Verify 482913 now. This code will expire in 10 minutes."),
-            // A letter prefix has to match.
-            ("Use 482913 to set up recovery email", &RECOVERY.replace("482913", "G-482913")),
+            ("Order 482913 has shipped", "Please verify your order. 482913. This code will expire in 30 days."),
+            ("Invoice 552190", "Verify this invoice: 552190. This code will expire in 30 days."),
+            ("Delivery 482913", "Verify the address for delivery 482913. This code expires in 10 minutes."),
+            ("Gate 551234", "Verify your identity at the desk. 551234. This code expires in 12 hours."),
+            ("Guest network 33881", "Verify you are on site. 33881. This code expires in 8 hours."),
+            ("Shipment 482913 update", "Verify your shipping address. 482913. This code will expire in 30 days."),
+            ("Package 482913", "482913. This code will expire in 30 days. Reply to verify."),
+            ("Your number 482913", "482913 is ready. This code will expire in 30 days. Account verification is in your profile."),
+            ("Your number 482913", "482913. This code will expire in 30 days. You do not need to verify anything."),
         ] {
-            assert_eq!(find(subject, text), None, "{subject}");
-        }
-    }
-
-    /// Review: the snippet can end before the expiry line, so a subject that
-    /// holds a code-shaped number makes the body worth reading.
-    #[test]
-    fn a_subject_holding_a_code_makes_the_body_worth_reading() {
-        let subject = "Use 482913 to set up recovery email";
-        let clipped = &RECOVERY.replace('\n', " ")[..150];
-        assert!(!clipped.contains("expire"));
-        assert_eq!(find(subject, clipped), None);
-        assert!(may_hold_code(subject));
-        for no in ["Weekly digest", "Re: Use 482913", "Locker 4821 is ready"] {
-            assert!(!may_hold_code(no), "{no}");
+            assert_eq!(find(subject, text), None, "{subject} / {text:.40}");
         }
     }
 

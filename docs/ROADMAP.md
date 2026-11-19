@@ -5250,24 +5250,24 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
 - [x] A sign-in code handed over in the subject wasn't found *(owner report,
       2026-11-18; fixed the same day, branch `fix-code-recovery-email`)*:
-      an account's recovery-email check put the code in the subject ("Use
-      482913 to set up recovery email", made-up here) and in the body,
-      with "This code will expire in 24 hours" beside it, but no word for
-      the code ("verification code" and the like) and no "verify" in the
-      subject, so neither way of finding it applied. Now a number by an
-      expiry line that the subject also holds (spaces and hyphens aside) is
-      the code when the email asks to verify, unless the subject is a
-      reply or about a promo, a locker, a ticket, a passcode, a one-time or
-      access code or the like (`mail::codes::find`); and such a subject
-      makes the body worth reading, since Gmail's snippet can end before
-      the expiry line. The review showed the first version marked
-      deliveries, gate codes, invoices and promos whose number was in the
-      subject too; the body asking to verify rules them out. Tests: the
-      email's shape and its snippet, the forms swapped between subject and
-      body, a nearer unrelated number, sixteen look-alikes that stay
-      unmarked (most of which the first version marked; that test fails
-      without the "asks to verify" check), and a clipped
-      snippet that makes the body worth reading.
+      Google's own recovery-email check put the code in the subject ("Use
+      482913 to set up recovery email", made-up here) and the body, beside
+      "This code will expire in 24 hours", with no code word and no
+      "verify" in the subject, so neither way of finding a code applied.
+      Two broader fixes were tried and reviewed: a number in the subject
+      and by an expiry line, then also "verify" in the body. Both marked
+      deliveries, gate codes, invoices, orders and promos, and reading more
+      bodies cost the list's body reads and could delay notifications. The
+      owner chose a narrow rule: a subject shaped "Use <code> to <an
+      account action>" hands over its code, from the subject alone
+      (`mail::codes::ACCOUNT_ACTIONS`: setting up a recovery email or
+      phone, verify your / verify it's you, sign in, log in, reset your
+      password, confirm your email, account or phone). Future misses are
+      added there as one phrase at a time, each with a look-alike test.
+      Tests: the shape and its sibling subjects; subjects of that form
+      without an account action; and the look-alikes from both reviews,
+      kept so no later rule marks them. Rethinking detection: see
+      "Sign-in codes by more than word lists" under "Later / unscheduled".
 - [x] Changing From on a reopened draft added a second signature *(found
       in the Send again review, 2026-11-17; fixed the same day, branch
       `send-again`)*: a draft is saved with its signature in the text, so
@@ -7005,6 +7005,19 @@ Privacy and the policy.*
         disk isn't encrypted. On Windows, reading that without
         administrator rights isn't simple; the spike settles whether it
         can be done.*
+
+- [ ] Sign-in codes by more than word lists *(owner, 2026-11-18, after the
+      recovery-email miss)*: detection (`mail::codes`) is lists of words
+      and shapes, and each fix for a missed code either missed others or
+      marked look-alikes (deliveries, gate codes, invoices, promos). Ideas
+      to weigh, with a design the owner leads: a score from several weak
+      signals together (a code in the subject, an expiry line, wording
+      about an account, a sender that sends codes) against a threshold;
+      or asking the on-device model (Apple Intelligence) whether an email
+      hands over a one-time code, and which, for the unsure cases, with
+      the word lists kept for Windows and Macs without it. The look-alike
+      tests in `codes.rs` must stay unmarked. Until then, misses are added
+      narrowly (`ACCOUNT_ACTIONS` and the like).
 
 - [ ] Optional, later: require Touch ID or Windows Hello to open the app,
       for shared computers
