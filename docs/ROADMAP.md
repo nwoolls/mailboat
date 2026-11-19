@@ -6251,13 +6251,16 @@ built, the owner has tried it, and the owner has published 0.3.0
       dragged over the window, mail frames now let the pointer through
       (`:root[data-file-drag]`, set by `Shell`), so the drop reaches the
       composer under them, which attaches it, or the page, which ignores
-      it. And the window refuses to go anywhere but the app's own pages
-      (`src-tauri/src/navigation.rs`, Tauri's `on_navigation`), whatever
-      starts it. Tests: `tests/browser/frame-drops.spec.ts` (a drop on a
-      reply's signature attaches, one on an email does nothing, and the
-      frames take the pointer again after a drag; they fail without the
-      fix), and the allowed and refused addresses in `navigation.rs`. A real
-      drag from Finder can't be made in tests: try it.
+      it. And the web view refuses a navigation to a file or to a page that
+      isn't one of the app's own (`src-tauri/src/navigation.rs`, Tauri's
+      `on_navigation`); a link clicked in an email still reaches the app's
+      `email-link:` handler, which opens it in the browser (review). Tests:
+      `tests/browser/frame-drops.spec.ts` (a drop on a reply's signature
+      attaches, one on an email does nothing, and the frames take the
+      pointer again after a drop or a pause; they fail without the fix),
+      and the allowed and refused addresses in `navigation.rs`. Not
+      covered by tests: a real drag from Finder, WebKit's own hit test
+      during it, and the guard as registered in the app: try it.
 
 ### Security assessment (CASA)
 

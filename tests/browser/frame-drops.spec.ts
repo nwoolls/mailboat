@@ -21,16 +21,26 @@ async function dragAt(page: Page, type: string, point: { x: number; y: number })
         w.__drag = new DataTransfer();
         w.__drag.items.add(new File(["%PDF-1.4"], "Quote 1042.pdf", { type: "application/pdf" }));
       }
-      const target = document.elementFromPoint(x, y);
-      if (!target || target instanceof HTMLIFrameElement) return { target: "frame", taken: false };
       // A drag event made in a page carries no files in WebKit, so the
       // dragged data is set on it as the web view's own would carry it.
-      const e = new Event(kind, { bubbles: true, cancelable: true });
-      Object.defineProperty(e, "dataTransfer", { value: w.__drag });
-      Object.defineProperty(e, "clientX", { value: x });
-      Object.defineProperty(e, "clientY", { value: y });
-      target.dispatchEvent(e);
-      return { target: target.tagName, taken: e.defaultPrevented };
+      const fire = (name: string, at: EventTarget) => {
+        const e = new Event(name, { bubbles: true, cancelable: true });
+        Object.defineProperty(e, "dataTransfer", { value: w.__drag });
+        Object.defineProperty(e, "clientX", { value: x });
+        Object.defineProperty(e, "clientY", { value: y });
+        at.dispatchEvent(e);
+        return e.defaultPrevented;
+      };
+      // The drag is still going (a real one sends dragover every few dozen
+      // milliseconds), in the same moment as the hit test, so the pause
+      // that ends a drag can't run out between this test's steps.
+      fire("dragover", document.body);
+      // How the frames take the pointer at this moment of the drag.
+      const frames = getComputedStyle(document.querySelector("iframe")!).pointerEvents;
+      const target = document.elementFromPoint(x, y);
+      if (!target || target instanceof HTMLIFrameElement)
+        return { target: "frame", taken: false, frames };
+      return { target: target.tagName, taken: fire(kind, target), frames };
     },
     { kind: type, ...point },
   );
@@ -62,15 +72,16 @@ test("a file dragged onto a reply's signature attaches to the reply", async ({ p
   const frame = 'section[aria-label="Reply"] iframe[title="Signature"]';
   await expect(page.locator(frame)).toBeVisible();
   const at = await pointOn(page, frame);
-  // The drag enters the window elsewhere first, then crosses the signature.
+  // The drag enters the window elsewhere first, then crosses the signature,
+  // reaching the reply under it rather than the frame.
   await dragAt(page, "dragenter", { x: 5, y: 5 });
-  expect(await pointerEvents(page, frame)).toBe("none");
   expect(await dragAt(page, "dragover", at)).toMatchObject({ taken: true });
   await expect(reply.getByText("Drop to attach")).toBeVisible();
   expect(await dragAt(page, "drop", at)).toMatchObject({ taken: true });
+  // At once after the drop, the frame takes the pointer again (links,
+  // selecting), not only after the pause that ends a drag.
+  expect(await pointerEvents(page, frame)).toBe("auto");
   await expect(reply.getByText("Quote 1042.pdf").first()).toBeVisible();
-  // After the drag, the frame takes the pointer again (links, selecting).
-  await expect.poll(() => pointerEvents(page, frame)).toBe("auto");
 });
 
 test("a file dragged onto an email in the reader does nothing", async ({ page }) => {
@@ -88,8 +99,7 @@ test("a file dragged onto an email in the reader does nothing", async ({ page })
 test("a drag that leaves the window gives the frames the pointer back", async ({ page }) => {
   await openConversation(page);
   const frame = 'iframe[title="Message content"]';
-  await dragAt(page, "dragover", { x: 5, y: 5 });
-  expect(await pointerEvents(page, frame)).toBe("none");
+  expect(await dragAt(page, "dragover", { x: 5, y: 5 })).toMatchObject({ frames: "none" });
   // No drop: the drag went elsewhere.
   await expect.poll(() => pointerEvents(page, frame), { timeout: 2000 }).toBe("auto");
 });
