@@ -6214,7 +6214,7 @@ stay outside the repository until the fixes are merged. None of these items
 needs a new Google permission. The notification setting changes Settings →
 Privacy and the policy.*
 
-- [ ] Ask the lab, before paying *(owner)*: how it runs a CASA AL1
+- [x] Ask the lab, before paying *(owner)*: how it runs a CASA AL1
       assessment for a desktop app with no server, which is what Google
       asked for (DASA is only a guide to what it may ask; the letter
       Google gets is CASA's): which web test cases it treats as not
@@ -6230,6 +6230,24 @@ Privacy and the policy.*
       own or a documented third-party exception, since the release checks
       only the app's program (DASA 2.1 names every `.exe` and `.dll` in
       the app's folder) *(review of the binary check, 2026-11-15)*.
+      *(Answered 2026-11-18. For a desktop app with no server the
+      assessment is a manual review; the lab decides which web test cases
+      don't apply after reviewing the app, and wants authenticated
+      evidence covering the app and its OAuth sign-in. An SBOM is wanted
+      (each download has its own). `cargo deny` and `bun audit` count as
+      the dependency scans. The mail cache relying on the computer's disk
+      encryption is accepted, but the lab will check Windows' disk
+      encryption itself (see "Encrypt the local cache at rest", under
+      "Later / unscheduled"). A solo
+      developer can put their own name where the company's goes; the
+      certificate also needs the website, the app's name and address,
+      the Google Cloud project number and Google's due date, which the
+      owner sends and which stay out of the repository. AI providers
+      people use through their own subscriptions (Claude, ChatGPT) aren't
+      in scope as third-party processors. The plan chosen includes
+      rescans until the letter is issued. Not answered: the Windows
+      installer's 32-bit NSIS programs, and wiping tokens from memory
+      (both stay as they are below).)*
 - [x] A security check that runs with the others (`bun run
       check:security`, part of `check:web` and `check:quick`), so the
       parts that can be checked mechanically can't regress. The rules come
@@ -6487,7 +6505,8 @@ Privacy and the policy.*
       example is a password the user types), and the app handles these
       tokens itself. The written answer describes how long each token
       stays in memory and when it is dropped; whether to add the wiping
-      waits for the lab's answer.
+      waits for the lab's answer. *(2026-11-18: the lab's answers didn't
+      cover it; still optional)*
 - [x] The AI scratch folder: `ai/process.rs` makes a working folder in
       the temp directory for every request, with `create_dir_all` (not
       private). Only the two paths that return the program's result (a
@@ -6508,19 +6527,6 @@ Privacy and the policy.*
       program exiting, the answer coming in early, a line handler failing
       and a timeout; they fail if the folder is kept or removed while the
       program still runs)*
-- [ ] Encrypt the local cache at rest: a key in the keychain and an
-      encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
-      and costs little speed. Until then the cache relies on the
-      computer's disk encryption (FileVault, BitLocker), and the policy
-      says only what is true. Decide whether it is worth the dependency
-      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
-      *(moved from "Later / unscheduled" into 0.3.0, 2026-11-15: it
-      answers the second verification point of DASA 1.2.2, sensitive data
-      not kept in a SQLite file without more encryption. The first point,
-      credentials, tokens and keys in the platform's secure storage, is
-      the keychain, which the app already uses. Build it only if the lab
-      says the mail cache counts. Its 0.2.0 note said the same: only if Google
-      insists on the assessment, which it now does)*
 - [ ] Scan the code ourselves before the lab does, so findings are fixed
       or documented before the paid scans start. A lab may ask for a
       static scan (SAST) of a desktop app's source code (confirm the
@@ -6533,8 +6539,10 @@ Privacy and the policy.*
       which of our languages it covers; the ADA notes it doesn't cover
       TypeScript or JavaScript). Read CodeQL's latest results too. Fix
       what is real, and for each false positive write down why. Keep the
-      reports outside the repository, like the other evidence. Repeat once
-      the 0.3.0 fixes are in, just before the first paid scan.
+      reports outside the repository, like the other evidence. Repeat on
+      the build the lab will assess, just before the first paid scan
+      *(2026-11-18, review: not "once the 0.3.0 fixes are in", since cache
+      encryption may come after 0.3.0 but before the paid scan)*.
       Run `osv-scanner` on the lockfiles as well *(owner, 2026-11-15)*:
       OpenSSF Scorecard's Vulnerabilities check uses the same OSV data and
       scores 3 of 10 with 7 known issues, while `cargo deny` and
@@ -6681,6 +6689,15 @@ Privacy and the policy.*
       CodeQL already scans every pull request and push to `main` that
       changes code, plus a weekly run. Its results can be submitted as
       the static scan.
+      *(Added 2026-11-18, from the lab's answers: the Windows test
+      machine's disk-encryption status; and how the reviewer signs in for
+      the manual review, since the OAuth client is in Testing (their
+      Google account added as a test user, and the client's file shared
+      with them in a way agreed with the lab); and ask the lab whether a
+      Windows machine without disk encryption fails its check, or whether
+      documenting it is enough (see "Encrypt the local cache at rest"
+      under "Later / unscheduled"). The certificate's details are sent by
+      the owner and not kept here.)*
 - [x] The build provenance attached to each release as a file, so
       OpenSSF Scorecard can see it. The publish job already attests the
       release files (`actions/attest-build-provenance`), but GitHub keeps
@@ -6912,6 +6929,62 @@ Privacy and the policy.*
 
 - Encrypting the local cache at rest moved to 0.3.0 → Security
   assessment (CASA), 2026-11-15.
+
+- [ ] Encrypt the local cache at rest: a key in the keychain and an
+      encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
+      and costs little speed. Until then the app doesn't encrypt its files:
+      the cache is protected only when the computer's disk encryption is
+      on (FileVault on macOS; BitLocker or Device encryption on Windows),
+      and the policy says only that. Decide whether it is worth the
+      dependency
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+      *(moved from "Later / unscheduled" into 0.3.0, 2026-11-15: it
+      answers the second verification point of DASA 1.2.2, sensitive data
+      not kept in a SQLite file without more encryption. The first point,
+      credentials, tokens and keys in the platform's secure storage, is
+      the keychain, which the app already uses. Build it only if the lab
+      says the mail cache counts. Its 0.2.0 note said the same: only if Google
+      insists on the assessment, which it now does)*
+      *(2026-11-18, the lab's answer: the cache relying on the OS's disk
+      encryption is accepted, but the lab will check Windows' disk
+      encryption itself. Windows Home doesn't include BitLocker's own
+      management; Device encryption, which uses BitLocker, is on Home only
+      for devices that meet Microsoft's requirements (a TPM, Secure Boot
+      and a recovery environment among them), so a reviewer's machine may
+      not encrypt the cache)*
+      *(2026-11-18, checked: on the owner's Windows 11 Home test machine
+      (a virtual machine), BitLocker reports the system drive inside the
+      machine fully decrypted, protection off, no key protectors. That
+      shows only the guest's own drive; whether the host encrypts the
+      virtual disk isn't known from it. On a machine like it the mail
+      database (in the app's data folder) and the downloaded attachments
+      and images (in its cache folder) are plain files anyone who can read
+      the disk can read, and a lab checking such a machine would likely
+      flag DASA 1.2.2's second point. Now likely needed, not only if
+      asked)*
+      *(moved from 0.3.0 back to "Later / unscheduled", 2026-11-18, review:
+      it's planned after 0.3.0, so it can't be one of 0.3.0's items. The
+      question to the lab stays in 0.3.0's evidence item. Plan:)*
+      - *Ask the lab whether a Windows machine without disk encryption
+        fails its check, or whether documenting it is enough. Its answer
+        sets the urgency.*
+      - *A spike first, then build it in 0.4.0 or a 0.3.x before the
+        paid scan (the deadline is 2027-02-12). The spike answers, none
+        verified yet: SQLCipher or SQLite3 Multiple Ciphers (or similar)
+        through `rusqlite`, with FTS5 search still working; whether it
+        builds on all three targets, in particular the Windows build
+        cross-compiled with cargo-xwin, where SQLCipher's usual OpenSSL
+        may not build (some alternatives bring their own crypto); its
+        license against GPL-3.0-only; the speed cost; the key in the OS
+        keychain (Credential Manager on Windows) beside the Google
+        tokens; a one-time migration of an existing database; and the
+        downloaded attachments and images in the app's cache folder
+        (`attachments/`, `images/`), a different folder from the
+        database's, which need encrypting too or the job is half done.*
+      - *Optional, sooner: Settings → Privacy saying when the computer's
+        disk isn't encrypted. On Windows, reading that without
+        administrator rights isn't simple; the spike settles whether it
+        can be done.*
 
 - [ ] Optional, later: require Touch ID or Windows Hello to open the app,
       for shared computers
