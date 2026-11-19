@@ -6103,6 +6103,13 @@ built, the owner has tried it, and the owner has published 0.3.0
 
 ### Enhancements to existing features
 
+- [x] The toy behind an empty list eases in *(owner, 2026-11-19: archiving
+      the last email showed the sky all at once, "flash bangs into
+      place")*: the glow (in any style) and the toys such as the sky now
+      fade in over 450 ms when the list empties, a little behind the words,
+      and appear at once for people who ask for reduced motion. Tests in
+      `tests/browser/empty-toys.spec.ts` (the fade starts on each layer,
+      and not under reduced motion; they fail without it).
 - [x] UX Spike 5, the ASCII Toybox (#128): new and reworked screensavers,
       every toy and screensaver in pixel art or ASCII art, and Settings →
       Toybox reworked, with the switch between pixel art and ASCII art

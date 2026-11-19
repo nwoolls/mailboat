@@ -185,3 +185,54 @@ test("the sky in ASCII art draws on a canvas reaching under the title", async ({
   // Not the pixel sky's gradient and puffs.
   await expect(layer(page).locator(".rounded-full")).toHaveCount(0);
 });
+
+/**
+ * The toy eases in when the list empties, instead of appearing at once
+ * (owner, 2026-11-19: the sky "flash bangs into place"): a 450 ms fade that
+ * starts as the layer appears, and none for people who ask for reduced
+ * motion. Recorded from the page's first moment (a timed check came too
+ * late: the fade is over before the page can be held).
+ */
+const started = (page: Page) =>
+  page.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { __fades: string[] }).__fades = seen;
+    document.addEventListener(
+      "animationstart",
+      (e) => {
+        if (e.animationName === "empty-toy-in") seen.push((e.target as Element).classList[0] ?? "");
+      },
+      true,
+    );
+  });
+
+for (const [name, query, selector] of [
+  ["the sky", "toy=sky", "empty-toy"],
+  ["the glow", "toy=glow", "empty-glow-pull"],
+  ["the pixel glow", "glow=pixel", "empty-glow-canvas"],
+] as const) {
+  test(`${name} eases in`, async ({ page }) => {
+    await started(page);
+    await page.goto(`/tests/browser/harness.html?mode=empty&${query}`);
+    await expect(page.locator(`.${selector}`).first()).toBeAttached();
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __fades: string[] }).__fades))
+      .toContain(selector);
+    const duration = await page
+      .locator(`.${selector}`)
+      .first()
+      .evaluate((el) => getComputedStyle(el).animationDuration);
+    expect(duration.split(",").map((d) => d.trim())).toContain("0.45s");
+  });
+
+  test(`${name} appears without a fade under reduced motion`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await started(page);
+    await page.goto(`/tests/browser/harness.html?mode=empty&${query}`);
+    await expect(page.locator(`.${selector}`).first()).toBeAttached();
+    await page.waitForTimeout(300);
+    expect(
+      await page.evaluate(() => (window as unknown as { __fades: string[] }).__fades),
+    ).not.toContain(selector);
+  });
+}
