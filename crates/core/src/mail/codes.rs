@@ -5,9 +5,10 @@
 //! A code is a short run of digits (4 to 8, maybe split as "123 456" or
 //! "123-456") or a short mix of capitals and digits ("G-482910",
 //! "XK7P2"), near words that say it's a code ("verification code",
-//! "one-time password", "is your … code"). Things that look like codes
-//! but aren't are left alone: promo and discount codes, years, prices,
-//! phone and order numbers, ZIP codes.
+//! "one-time password", "is your … code"), or handed over by a subject
+//! shaped `Use <code> to <account action>` (`ACCOUNT_ACTIONS`, kept
+//! narrow). Things that look like codes but aren't are left alone: promo
+//! and discount codes, years, prices, phone and order numbers, ZIP codes.
 
 use rusqlite::{Connection, OptionalExtension};
 
@@ -180,6 +181,10 @@ pub fn find(subject: &str, text: &str) -> Option<String> {
             return Some(code);
         }
     }
+    // After the words that name a code, so a code they name wins (review).
+    if let Some(code) = subject_hands_over(subject) {
+        return Some(code);
+    }
     // No word names the code, but the email says it expires soon, with a
     // number set apart nearby. Only when the subject already points to a
     // verification or code: an expiry line alone also sits in mail about
@@ -203,6 +208,81 @@ pub fn find(subject: &str, text: &str) -> Option<String> {
             .map(|(_, code)| code);
     }
     None
+}
+
+/// How the action after `Use <code> to` begins, in a subject that hands
+/// over a sign-in code. Narrow on purpose (owner, 2026-11-18): a code in
+/// the subject with only an expiry line or a "verify" in the body also
+/// marked deliveries, gate codes, invoices and promos, and phrases matched
+/// anywhere ("sign in" inside "design invitations") or loosely ("verify
+/// your order") did too (reviews). The action must start with one of these
+/// and end there, or go on only as `ACTION_TAILS` allow. A missed code is
+/// added here as one more phrase, with a look-alike test, never as a
+/// broader rule; rethinking detection as a whole is in docs/ROADMAP.md
+/// (Later).
+const ACCOUNT_ACTIONS: &[&str] = &[
+    // Google's recovery-email and recovery-phone checks ("Use 482913 to
+    // set up recovery email"), which name no code and don't say verify.
+    "set up recovery email",
+    "set up recovery phone",
+    "verify your recovery email",
+    "verify your recovery phone",
+    "verify your email",
+    "verify your account",
+    "verify your phone",
+    "verify your identity",
+    "verify it's you",
+    "verify it\u{2019}s you",
+    "sign in",
+    "log in",
+    "reset your password",
+    "confirm your email",
+    "confirm your account",
+    "confirm your phone",
+];
+
+/// What may follow an action: nothing, or one of these ("Use 482913 to
+/// verify your email address", "to sign in to your account"). Not "at the
+/// front desk", "and save" or "to the event app" (reviews).
+const ACTION_TAILS: &[&str] = &[" address", " number", " to your "];
+
+/// The code a subject hands over by its shape, `Use <code> to <account
+/// action>` (`ACCOUNT_ACTIONS`), unless it is about a promo, a locker, a
+/// ticket, a guest network or the like. From the subject alone, so a
+/// snippet that ends early can't hide it.
+fn subject_hands_over(subject: &str) -> Option<String> {
+    let subject = subject.trim();
+    let lower = subject.to_ascii_lowercase();
+    if NOT_SIGN_IN.iter().any(|w| lower.contains(w))
+        || CUE_NOT_SIGN_IN.iter().any(|w| lower.contains(w))
+    {
+        return None;
+    }
+    let rest = lower.strip_prefix("use ")?;
+    let (token, action) = rest.split_once(" to ")?;
+    let fits = ACCOUNT_ACTIONS.iter().any(|a| {
+        action
+            .strip_prefix(a)
+            .is_some_and(|tail| tail.is_empty() || ACTION_TAILS.iter().any(|t| tail.starts_with(t)))
+    });
+    if !fits {
+        return None;
+    }
+    // The token is one code and nothing more ("482913", "482 913",
+    // "G-482913"; not "482913.7" or "the code 482913"), in the subject's own
+    // case. `lower` keeps `subject`'s byte offsets (ASCII lowercasing).
+    let original = &subject[4..4 + token.len()];
+    if !original
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == '-')
+    {
+        return None;
+    }
+    let squeeze = |t: &str| -> String { t.chars().filter(|c| c.is_ascii_alphanumeric()).collect() };
+    match candidates(original).as_slice() {
+        [(0, code)] if squeeze(code) == squeeze(original) => Some(code.clone()),
+        _ => None,
+    }
 }
 
 /// `text` without its web addresses (up to the next space, line break,
@@ -297,11 +377,14 @@ fn near_expiry_cue(text: &str) -> Option<String> {
 }
 
 fn find_in(text: &str, about_code: bool) -> Option<String> {
-    let lower = text.to_lowercase();
-    // ASCII lowercasing would keep offsets; `to_lowercase` may not, so work
-    // on the lowered text for both finding and cutting.
+    // `to_lowercase` can lengthen a letter (Turkish "İ"), which would throw
+    // off the offsets below, so ASCII lowercasing (which keeps them) stands
+    // in. Once, here: this function used to call itself on the ASCII-lowered
+    // text, which still held the letter, and recursed until the stack ran
+    // out (review).
+    let mut lower = text.to_lowercase();
     if lower.len() != text.len() {
-        return find_in(&text.to_ascii_lowercase(), about_code).map(|c| c.to_uppercase());
+        lower = text.to_ascii_lowercase();
     }
     let mut best: Option<(usize, String)> = None;
     let extra: &[&str] = if about_code {
@@ -843,6 +926,129 @@ mod tests {
             ),
         ] {
             assert_eq!(find(subject, text), None, "{subject} / {text:.30}");
+        }
+    }
+
+    /// A made-up email in the shape of Google's recovery-email check (owner
+    /// report, 2026-11-18): the code in the subject and the body, an expiry
+    /// line, "Verify recovery email" at the top, and no code word.
+    const RECOVERY: &str = "Verify recovery email\n\nmaya@x.example wants to use your \
+        email address as their recovery email. Use this code to finish setting up \
+        alex@y.example as a recovery email:\n\n482913\n\nThis code will expire in 24 \
+        hours.\n\nIf you don't recognize maya@x.example, you can remove your email \
+        address from their account.";
+
+    #[test]
+    fn a_subject_shaped_use_code_to_act_on_an_account_hands_it_over() {
+        for (subject, code) in [
+            ("Use 482913 to set up recovery email", "482913"),
+            ("Use 482913 to set up recovery phone", "482913"),
+            ("Use 482913 to verify it's you", "482913"),
+            ("Use 482913 to verify it\u{2019}s you", "482913"),
+            ("USE 482913 TO SIGN IN", "482913"),
+            ("Use 482913 to verify your email address", "482913"),
+            ("Use 482913 to sign in to your account", "482913"),
+            ("Use 482913 to reset your password", "482913"),
+            ("Use 482913 to confirm your email", "482913"),
+            ("Use 482 913 to set up recovery email", "482913"),
+            ("Use G-482913 to sign in", "G-482913"),
+        ] {
+            // From the subject alone: any body, or none, or a snippet that
+            // ends before the expiry line.
+            for text in ["", RECOVERY, &RECOVERY.replace('\n', " ")[..150]] {
+                assert_eq!(find(subject, text), Some(code.into()), "{subject}");
+            }
+        }
+    }
+
+    /// The shape is narrow on purpose: `Use <code> to` and an account action,
+    /// both. Each of these was considered or marked by a broader rule.
+    #[test]
+    fn use_code_to_without_an_account_action_hands_nothing_over() {
+        for subject in [
+            "Use 7721 to get 20% off",
+            "Use 482913 to confirm your order",
+            "Use 551234 to open the gate",
+            "Use 551234 at the gate",
+            "Use 4821 to sign in to the guest Wi-Fi portal",
+            "Use 7721 for 20% off",
+            "Use 482913 to track your parcel",
+            "Re: Use 482913 to sign in",
+            "Fwd: Use 482913 to set up recovery email",
+            "Use the code 482913 to sign in",
+            "Please use 482913 to sign in",
+            "Use 2026 to sign in",
+            // Reviews: a phrase inside another word, a loose "verify your",
+            // and actions that go on to something else.
+            "Use 482913 to design invitations",
+            "Use 482913 to verify your order",
+            "Use 482913 to verify your shipping address",
+            "Use 482913 to verify your identity at the desk",
+            "Use 4821 to sign in at the front desk",
+            "Use 4831 to log in to the event app",
+            "Use SAVE20 to sign in and save",
+            "Use 482913 to sign into the event",
+            "Use 482913 to sign in to something and get a discount",
+            // Not a code token.
+            "Use 482913.7 to sign in",
+        ] {
+            assert_eq!(find(subject, ""), None, "{subject}");
+        }
+        // A year isn't a code: `candidates` leaves it out.
+    }
+
+    /// Review: a code the words name wins over the subject's.
+    #[test]
+    fn a_code_the_words_name_wins_over_the_subjects() {
+        assert_eq!(
+            find(
+                "Use 482913 to sign in. Your verification code is in the message",
+                "Your verification code is 731624"
+            ),
+            Some("731624".into())
+        );
+    }
+
+    /// Review: a letter that lowercasing lengthens (Turkish "İ") made the
+    /// code-word search call itself forever, until the stack ran out.
+    #[test]
+    fn a_letter_that_lowercasing_lengthens_is_no_crash() {
+        assert_eq!(
+            find("Your SİGN-IN code", "Your sign-in code is 482913"),
+            Some("482913".into())
+        );
+        assert_eq!(find("İ", "İ"), None);
+    }
+
+    /// Look-alikes from the reviews of earlier, broader rules (a number in the
+    /// subject and by an expiry line, then also "verify" in the body): none is
+    /// a sign-in code, and none may become one. Kept as a guard for whatever
+    /// rethinks detection.
+    #[test]
+    fn numbers_by_an_expiry_line_and_verify_wording_are_no_codes() {
+        for (subject, text) in [
+            ("Delivery 482913", "Tell the driver 482913. This code expires in 10 minutes."),
+            ("Your delivery code 839201", "Hand the driver 839201. This code expires in 4 hours."),
+            ("Gate 551234", "Use 551234 at the gate. This code expires in 12 hours."),
+            ("Guest network 33881", "Password 33881. This code expires in 8 hours."),
+            ("20% discount 7721", "Enter 7721 at checkout. This code will expire in 10 days."),
+            ("Invoice 552190", "Please pay 552190. This code will expire in 30 days."),
+            ("Order 482913 has shipped", "Order 482913 is on its way. Use 482913 for returns. This code will expire in 30 days."),
+            ("Issue 4829 is out", "Readers can enter 4829 on the site. This code will expire in 7 days."),
+            ("Standup passcode 482913", "Access code: 482913\nThis code will expire in 10 minutes."),
+            ("Your one-time access 551234", "Use 551234 to get in. This code is valid for today only."),
+            ("Your passcode for today: 551234", "Verify at the desk with 551234. This code is valid for today only."),
+            ("Order 482913 has shipped", "Please verify your order. 482913. This code will expire in 30 days."),
+            ("Invoice 552190", "Verify this invoice: 552190. This code will expire in 30 days."),
+            ("Delivery 482913", "Verify the address for delivery 482913. This code expires in 10 minutes."),
+            ("Gate 551234", "Verify your identity at the desk. 551234. This code expires in 12 hours."),
+            ("Guest network 33881", "Verify you are on site. 33881. This code expires in 8 hours."),
+            ("Shipment 482913 update", "Verify your shipping address. 482913. This code will expire in 30 days."),
+            ("Package 482913", "482913. This code will expire in 30 days. Reply to verify."),
+            ("Your number 482913", "482913 is ready. This code will expire in 30 days. Account verification is in your profile."),
+            ("Your number 482913", "482913. This code will expire in 30 days. You do not need to verify anything."),
+        ] {
+            assert_eq!(find(subject, text), None, "{subject} / {text:.40}");
         }
     }
 
