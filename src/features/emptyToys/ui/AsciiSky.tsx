@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useLayoutEffect, useRef } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { asciiSkyTuning, rayChar, SKY_CHARS, skyChar } from "../model/asciiSky";
 import {
   bodyAt,
@@ -27,10 +27,11 @@ import {
   SHOOTING_SPEED,
   type SkyCarry,
   SkyInput,
-  skyText,
+  skyLook,
   skyTextEls,
-  skyTextNow,
+  skyLookNow,
 } from "./skyInput";
+import { claimLook, releaseLook, setLook } from "../../../shared/lib/sceneLook";
 
 /**
  * The sky in ASCII art (`model/asciiSky.ts`): the same scene as the pixel
@@ -57,6 +58,9 @@ export function AsciiSkyLayer({
   clear: Rect[];
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  // Who set the text's look (`sceneLook.ts`), and on what (`skyTextEls`).
+  const [owner] = useState(() => ({}));
+  const textRef = useRef<(HTMLElement | null)[]>([]);
   // The sky carried from one size to the next (`SkyCarry`).
   const carryRef = useRef<SkyCarry | null>(null);
   const placeRef = useRef({ left, top, clear });
@@ -94,7 +98,6 @@ export function AsciiSkyLayer({
     }));
     if (carried) input.takeOn(carried.held);
 
-    const textEls = () => skyTextEls(canvas);
     let textMode: string | null = "unset";
 
     const tick = (nowMs: number) => {
@@ -145,7 +148,7 @@ export function AsciiSkyLayer({
       // Again now and then too, should the page's theme change.
       if (mode !== textMode || count % 30 === 1) {
         textMode = mode;
-        skyText(textEls(), mode === "night", readAsciiColors(0.5, 0.5).dark);
+        setLook(owner, textRef.current, skyLook(mode === "night", readAsciiColors(0.5, 0.5).dark));
       }
 
       // Characters take their own color rows: each material's color, lifted
@@ -250,19 +253,23 @@ export function AsciiSkyLayer({
       input.dispose();
       cancelAnimationFrame(frame);
     };
-  }, [areaRef, width, height]);
+  }, [areaRef, owner, width, height]);
 
-  // The text's day or night look is set as the sky mounts and cleared as
-  // it goes, before the page is painted: from the first animation frame, a
-  // sky mounting again showed the text in the page's color for a moment,
-  // then faded it back (owner, 2026-11-19). The frames keep it in step.
+  // The text's day or night look is set as the sky mounts, before the page
+  // is painted: set from the first animation frame, a sky mounting again
+  // showed the text in the page's color for a moment, then faded it back
+  // (owner, 2026-11-19). The frames keep it in step. It's cleared as the sky
+  // goes, with the other effects, so a screensaver taking over sets its
+  // own before the page is painted; a sky that has taken over already keeps
+  // its look (`sceneLook.ts`).
   useLayoutEffect(() => {
-    skyTextNow(skyTextEls(ref.current));
-    const canvas = ref.current;
-    return () => {
-      skyText(skyTextEls(canvas), false, false);
-    };
-  }, []);
+    textRef.current = skyTextEls(ref.current);
+    claimLook(owner, textRef.current, skyLookNow());
+  }, [owner]);
+  useEffect(() => {
+    const els = textRef.current;
+    return () => releaseLook(owner, els);
+  }, [owner]);
 
   return <canvas ref={ref} style={{ width, height }} />;
 }

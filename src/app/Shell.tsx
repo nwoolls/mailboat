@@ -303,9 +303,9 @@ export function Shell() {
   // showed that list, empty, for a moment, so the empty state (the sky, say)
   // flashed before the mail (owner, 2026-11-19). While the view is being
   // read again after it was opened, an empty list isn't trusted. If the list
-  // showed an empty state just before, that one stays (its words too), so
-  // going from one empty view to another doesn't replay its entrance;
-  // otherwise the list waits, blank for a moment. Only while that read is
+  // showed an empty state just before, that one stays (its words too) until
+  // the read is done; rows shown since forget it. Otherwise the list waits,
+  // blank for a moment. Only while that read is
   // in progress: a view still fresh isn't read again (the app keeps data
   // fresh 30 s), and waiting for a read that never came left the list
   // blank (owner, the same day). A refresh while the view stays open
@@ -314,8 +314,8 @@ export function Shell() {
     !threadsQuery.isPending && (threadsQuery.isFetchedAfterMount || !threadsQuery.isFetching);
   const settledEmpty = readHere && threads.length === 0 ? selection.view : null;
   const [lastEmpty, setLastEmpty] = useState<MailView | null>(null);
-  if (readHere && JSON.stringify(lastEmpty) !== JSON.stringify(settledEmpty))
-    setLastEmpty(settledEmpty);
+  const nextEmpty = readHere ? settledEmpty : threads.length > 0 ? null : lastEmpty;
+  if (JSON.stringify(lastEmpty) !== JSON.stringify(nextEmpty)) setLastEmpty(nextEmpty);
   const notReadYet = !readHere && threads.length === 0;
   const waitForRead = notReadYet && lastEmpty === null;
   const emptyView = notReadYet && lastEmpty ? lastEmpty : selection.view;

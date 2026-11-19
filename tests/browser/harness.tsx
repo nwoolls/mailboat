@@ -304,10 +304,14 @@ const answer = (cmd: string, args: unknown): unknown => {
       return { revoked: true };
     case "threads_list":
       // `?mode=shell&rows=1`: the demo's Inbox, for every view and search.
-      // `window.__rows = true` turns them on mid-test, as if mail arrived.
+      // `window.__rows = true` turns them on mid-test, as if mail arrived;
+      // `window.__rowsIn = ["archive", …]` only in those views (a system
+      // label, or the view's kind).
       if (
         harnessMode === "shell" &&
-        (onboardingParams.has("rows") || (window as unknown as { __rows?: boolean }).__rows)
+        (onboardingParams.has("rows") ||
+          (window as unknown as { __rows?: boolean }).__rows ||
+          inRowsView(args))
       )
         return {
           threads: inbox().map((t, i) => ({
@@ -685,6 +689,13 @@ const skyHour = new URLSearchParams(location.search).get("hour");
 if (skyHour !== null) {
   const { setSkyHourOverride } = await import("../../src/features/emptyToys/model/sky");
   setSkyHourOverride(Number(skyHour));
+}
+
+/** Whether the list asked for is one of `window.__rowsIn`'s views. */
+function inRowsView(args: unknown): boolean {
+  const views = (window as unknown as { __rowsIn?: string[] }).__rowsIn;
+  const view = (args as { query?: { view?: { kind: string; label?: string } } }).query?.view;
+  return !!views && !!view && views.includes(view.label ?? view.kind);
 }
 
 // Imported after the mock, so the app sees a Tauri window (IS_TAURI).

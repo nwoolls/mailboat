@@ -7,6 +7,7 @@ import {
 } from "../model/skyScene";
 import { skyHourOverride } from "../model/sky";
 import { readAsciiColors } from "./asciiPaint";
+import type { SceneLook } from "../../../shared/lib/sceneLook";
 
 export type Shooting = { x: number; y: number; dx: number; dy: number; age: number };
 
@@ -126,22 +127,10 @@ export class SkyInput {
  * bright by day (`skyIsDark`), whatever the page's theme, so their text follows the sky: light on
  * a night sky (`data-scene-night`, as the screensavers' night skies do),
  * dark on a day sky (`data-scene-day`). Only where it differs from the
- * page's own text. Returns what it set, to set again only on a change.
+ * page's own text (`shared/lib/sceneLook.ts` sets it).
  */
-export function skyText(
-  els: (HTMLElement | null | undefined)[],
-  skyDark: boolean,
-  pageDark: boolean,
-): "night" | "day" | null {
-  const mode = skyDark ? (pageDark ? null : "night") : pageDark ? "day" : null;
-  for (const el of els) {
-    if (!el) continue;
-    if (mode === "night") el.dataset.sceneNight = "";
-    else delete el.dataset.sceneNight;
-    if (mode === "day") el.dataset.sceneDay = "";
-    else delete el.dataset.sceneDay;
-  }
-  return mode;
+export function skyLook(skyDark: boolean, pageDark: boolean): SceneLook {
+  return skyDark ? (pageDark ? null : "night") : pageDark ? "day" : null;
 }
 
 /**
@@ -161,9 +150,9 @@ export function skyTextEls(canvas: HTMLElement | null): (HTMLElement | null)[] {
   ];
 }
 
-/** `skyText` for the sky at this hour, before the first frame is drawn. */
-export function skyTextNow(els: (HTMLElement | null)[]): "night" | "day" | null {
+/** `skyLook` for the sky at this hour, before the first frame is drawn. */
+export function skyLookNow(): SceneLook {
   const now = new Date();
   const hour = skyHourOverride() ?? now.getHours() + now.getMinutes() / 60;
-  return skyText(els, skyIsDark(paletteFor(hour)), readAsciiColors(0.5, 0.5).dark);
+  return skyLook(skyIsDark(paletteFor(hour)), readAsciiColors(0.5, 0.5).dark);
 }

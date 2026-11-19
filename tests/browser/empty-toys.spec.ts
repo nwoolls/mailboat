@@ -188,52 +188,81 @@ test("the sky in ASCII art draws on a canvas reaching under the title", async ({
 
 /**
  * The toy eases in when the list empties, instead of appearing at once
- * (owner, 2026-11-19: the sky "flash bangs into place"): a 450 ms fade that
- * starts as the layer appears, and none for people who ask for reduced
- * motion. Recorded from the page's first moment (a timed check came too
- * late: the fade is over before the page can be held).
+ * (owner, 2026-11-19: the sky "flash bangs into place"): a 450 ms fade from
+ * nothing that starts as the layer appears, and none for people who ask for
+ * reduced motion. Recorded as each fade starts (a timed check came too late:
+ * the fade is over before the page can be held): the layer, the fade's
+ * first frame's opacity, and the layer's opacity then.
  */
+type Fade = { layer: string; from: string; opacity: number };
 const started = (page: Page) =>
   page.addInitScript(() => {
-    const seen: string[] = [];
-    (window as unknown as { __fades: string[] }).__fades = seen;
+    const seen: Fade[] = [];
+    (window as unknown as { __fades: Fade[] }).__fades = seen;
     document.addEventListener(
       "animationstart",
       (e) => {
-        if (e.animationName === "empty-toy-in") seen.push((e.target as Element).classList[0] ?? "");
+        if (e.animationName !== "empty-toy-in") return;
+        const el = e.target as Element;
+        const fade = el
+          .getAnimations()
+          .find((a) => (a as CSSAnimation).animationName === "empty-toy-in");
+        const first = (fade?.effect as KeyframeEffect | undefined)?.getKeyframes()[0];
+        seen.push({
+          layer: el.classList[0] ?? "",
+          from: String(first?.opacity ?? ""),
+          opacity: Number(getComputedStyle(el).opacity),
+        });
       },
       true,
     );
   });
+const fades = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __fades: Fade[] }).__fades);
 
-for (const [name, query, selector] of [
+const LAYERS = [
   ["the sky", "toy=sky", "empty-toy"],
-  ["the glow", "toy=glow", "empty-glow-pull"],
-  ["the pixel glow", "glow=pixel", "empty-glow-canvas"],
-] as const) {
-  test(`${name} eases in`, async ({ page }) => {
+  ["the pixel glow", "toy=glow&style=pixel", "empty-glow-canvas"],
+  ["the ASCII glow", "toy=glow&style=ascii", "empty-glow-canvas"],
+] as const;
+
+for (const [name, query, layerClass] of LAYERS) {
+  test(`${name} eases in when the last email leaves the list`, async ({ page }) => {
     await started(page);
-    await page.goto(`/tests/browser/harness.html?mode=empty&${query}`);
-    await expect(page.locator(`.${selector}`).first()).toBeAttached();
-    await expect
-      .poll(() => page.evaluate(() => (window as unknown as { __fades: string[] }).__fades))
-      .toContain(selector);
+    await page.addInitScript(() => {
+      (window as unknown as { __rows: boolean }).__rows = true;
+    });
+    await page.goto(`/tests/browser/harness.html?mode=shell&synced=1&${query}`);
+    await expect(page.getByRole("option").first()).toBeVisible();
+    expect(await fades(page)).toEqual([]);
+    // The list empties, as when its last email is archived.
+    await page.evaluate(async () => {
+      const w = window as unknown as { __rows: boolean; __invalidateLists: () => Promise<void> };
+      w.__rows = false;
+      await w.__invalidateLists();
+    });
+    await expect(page.getByText("All caught up")).toBeVisible();
+    await expect.poll(() => fades(page).then((f) => f.map((x) => x.layer))).toContain(layerClass);
+    const fade = (await fades(page)).find((f) => f.layer === layerClass)!;
+    expect(Number(fade.from)).toBe(0);
+    expect(fade.opacity).toBeLessThan(0.5);
     const duration = await page
-      .locator(`.${selector}`)
+      .locator(`.${layerClass}`)
       .first()
       .evaluate((el) => getComputedStyle(el).animationDuration);
     expect(duration.split(",").map((d) => d.trim())).toContain("0.45s");
+    // The glow reads its pull's opacity as its brightness: only the canvas
+    // fades, or the glow was dimmed twice.
+    expect((await fades(page)).map((f) => f.layer)).not.toContain("empty-glow-pull");
   });
 
   test(`${name} appears without a fade under reduced motion`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await started(page);
     await page.goto(`/tests/browser/harness.html?mode=empty&${query}`);
-    await expect(page.locator(`.${selector}`).first()).toBeAttached();
+    await expect(page.locator(`.${layerClass}`).first()).toBeAttached();
     await page.waitForTimeout(300);
-    expect(
-      await page.evaluate(() => (window as unknown as { __fades: string[] }).__fades),
-    ).not.toContain(selector);
+    expect(await fades(page)).toEqual([]);
   });
 }
 
@@ -318,21 +347,27 @@ for (const style of ["pixel", "ascii"]) {
       await expect
         .poll(() => page.locator("[data-card-title]").getAttribute("data-scene-day"))
         .toBe("");
-      // Every frame from here on: the words and the title, if shown, have
-      // the daytime look.
+      // Each view read once, so none is opened for the first time below.
+      const nav = page.getByRole("navigation");
+      await nav.getByRole("button", { name: "Drafts", exact: true }).click();
+      await expect(page.getByText("All caught up")).toHaveCount(0);
+      await nav.getByRole("button", { name: "Inbox", exact: true }).click();
+      await expect(page.getByText("All caught up")).toBeVisible();
+      // Every frame from here on: an empty state with the sky, and the words
+      // and the title with the daytime look.
       await page.evaluate(() => {
         const w = window as unknown as { __lostLook: string[] };
         w.__lostLook = [];
         const watch = () => {
           const words = document.querySelector(".empty-words");
           const title = document.querySelector("[data-card-title]");
-          if (words && !words.closest("[data-scene-day]")) w.__lostLook.push("words");
-          if (words && title && !title.hasAttribute("data-scene-day")) w.__lostLook.push("title");
+          if (!words || !document.querySelector(".empty-toy")) w.__lostLook.push("no empty state");
+          else if (!words.closest("[data-scene-day]")) w.__lostLook.push("words");
+          if (!title?.hasAttribute("data-scene-day")) w.__lostLook.push("title");
           requestAnimationFrame(watch);
         };
         requestAnimationFrame(watch);
       });
-      const nav = page.getByRole("navigation");
       for (let i = 0; i < 3; i++) {
         await nav.getByRole("button", { name: "Drafts", exact: true }).click();
         await expect(page.getByText("All caught up")).toHaveCount(0);
@@ -348,3 +383,126 @@ for (const style of ["pixel", "ascii"]) {
     });
   });
 }
+
+/**
+ * While an empty view opened again is read again, the empty state shown
+ * before it stays (its words and toy), rather than a blank list.
+ */
+test("going from one empty view to another keeps the empty state during the read", async ({
+  page,
+}) => {
+  await page.goto("/tests/browser/harness.html?mode=shell&synced=1&toy=sky");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  const nav = page.getByRole("navigation");
+  await nav.getByRole("button", { name: "Drafts", exact: true }).click();
+  await expect(page.getByText("All caught up")).toHaveCount(0);
+  await nav.getByRole("button", { name: "Inbox", exact: true }).click();
+  await expect(page.getByText("All caught up")).toBeVisible();
+  await page.evaluate(() => {
+    const w = window as unknown as { __listDelay: number; __blank: number };
+    w.__blank = 0;
+    w.__listDelay = 600;
+    const watch = () => {
+      if (!document.querySelector(".empty-words") || !document.querySelector(".empty-toy"))
+        w.__blank++;
+      requestAnimationFrame(watch);
+    };
+    requestAnimationFrame(watch);
+  });
+  await nav.getByRole("button", { name: "Drafts", exact: true }).click();
+  // The Inbox's words stay while Drafts is read, then Drafts' own.
+  await expect(page.getByText("All caught up")).toBeVisible();
+  await expect(page.getByText("All caught up")).toHaveCount(0, { timeout: 3000 });
+  await expect(page.locator(".empty-words")).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __blank: number }).__blank)).toBe(0);
+});
+
+/**
+ * The empty state held during a read is only the one shown just before:
+ * a view that showed mail in between forgets it. Opening Archive (with
+ * mail) from an empty Inbox, then Drafts before Archive was read again,
+ * showed the Inbox's words in Drafts.
+ */
+test("a view showing mail in between forgets the empty state held before", async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __rowsIn: string[] }).__rowsIn = ["archive"];
+  });
+  await page.goto("/tests/browser/harness.html?mode=shell&synced=1&toy=sky");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  const nav = page.getByRole("navigation");
+  // Each view read once, so each has a saved list.
+  await nav.getByRole("button", { name: "Drafts", exact: true }).click();
+  await expect(page.getByText("All caught up")).toHaveCount(0);
+  await nav.getByRole("button", { name: "Archive", exact: true }).click();
+  await expect(page.getByRole("option").first()).toBeVisible();
+  await nav.getByRole("button", { name: "Inbox", exact: true }).click();
+  await expect(page.getByText("All caught up")).toBeVisible();
+  // Archive's read again answers late, so Drafts is opened while it's read.
+  await page.evaluate(() => {
+    (window as unknown as { __listDelay: number }).__listDelay = 1500;
+  });
+  await nav.getByRole("button", { name: "Archive", exact: true }).click();
+  await expect(page.getByRole("option").first()).toBeVisible();
+  await page.evaluate(() => {
+    const w = window as unknown as { __listDelay: number; __held: boolean };
+    w.__held = false;
+    // Drafts' read answers late too.
+    w.__listDelay = 600;
+    const watch = () => {
+      if (document.body.innerText.includes("All caught up")) w.__held = true;
+      requestAnimationFrame(watch);
+    };
+    requestAnimationFrame(watch);
+  });
+  await nav.getByRole("button", { name: "Drafts", exact: true }).click();
+  // Drafts' own empty state, once read: until then, a blank list.
+  await expect(page.getByText("No drafts")).toBeVisible({ timeout: 3000 });
+  expect(await page.evaluate(() => (window as unknown as { __held: boolean }).__held)).toBe(false);
+});
+
+/**
+ * The sky and a screensaver hand the text's look to each other without
+ * dropping it: on a light page under a night sky, a night screensaver
+ * (the starfield) taking over, and the sky coming back after it, keep the
+ * title and words light on every frame. The sky letting go before the
+ * screensaver's first frame, or the screensaver letting go after the sky
+ * came back, showed them dark for a moment, then faded back.
+ */
+test.describe("on a light page", () => {
+  test.use({ colorScheme: "light" });
+  test("the sky and a night screensaver hand the text's look on", async ({ page }) => {
+    await page.goto("/tests/browser/harness.html?mode=shell&synced=1&toy=sky&screensaver&hour=0");
+    await expect(page.getByText("All caught up")).toBeVisible();
+    await expect
+      .poll(() => page.locator("[data-card-title]").getAttribute("data-scene-night"))
+      .toBe("");
+    await page.evaluate(() => {
+      const w = window as unknown as { __lostLook: string[] };
+      w.__lostLook = [];
+      const watch = () => {
+        const words = document.querySelector(".empty-words");
+        const title = document.querySelector("[data-card-title]");
+        if (words && !words.closest("[data-scene-night]")) w.__lostLook.push("words");
+        if (!title?.hasAttribute("data-scene-night")) w.__lostLook.push("title");
+        requestAnimationFrame(watch);
+      };
+      requestAnimationFrame(watch);
+    });
+    await expect(async () => {
+      await page.evaluate(() =>
+        window.dispatchEvent(new CustomEvent("app:screensaver", { detail: "starfield" })),
+      );
+      await expect(page.locator("canvas.screensaver")).toBeVisible({ timeout: 500 });
+    }).toPass({ timeout: 10_000 });
+    await expect(page.locator(".empty-toy")).toHaveCount(0);
+    await page.waitForTimeout(300);
+    await page.keyboard.press("Shift");
+    await expect(page.locator("canvas.screensaver")).toHaveCount(0);
+    await expect(page.locator(".empty-toy")).toHaveCount(1);
+    await page.waitForTimeout(300);
+    const lost = await page.evaluate(
+      () => (window as unknown as { __lostLook: string[] }).__lostLook,
+    );
+    expect(lost).toEqual([]);
+  });
+});

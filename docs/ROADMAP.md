@@ -6107,9 +6107,14 @@ built, the owner has tried it, and the owner has published 0.3.0
       the last email showed the sky all at once, "flash bangs into
       place")*: the glow (in any style) and the toys such as the sky now
       fade in over 450 ms when the list empties, a little behind the words,
-      and appear at once for people who ask for reduced motion. Tests in
-      `tests/browser/empty-toys.spec.ts` (the fade starts on each layer,
-      and not under reduced motion; they fail without it).
+      and appear at once for people who ask for reduced motion. The glow's
+      canvas fades, not the element whose opacity the glow reads as its
+      brightness, which dimmed it twice (review). Tests in
+      `tests/browser/empty-toys.spec.ts`, for the sky and the glow in pixel
+      and ASCII art, from a list with mail that empties: each fade starts
+      from nothing, the glow is faded once, and none under reduced motion
+      (they fail with a fade from full opacity, or with the glow faded
+      twice).
 - [x] Opening a view whose saved list was empty but now has mail flashed
       its empty state (the sky, say) before the mail *(owner, 2026-11-19:
       moving an email from Archive to the Inbox, then opening the Inbox)*.
@@ -6117,15 +6122,18 @@ built, the owner has tried it, and the owner has published 0.3.0
       again. While a view is being read again after it was opened, an
       empty list isn't trusted: if the list showed an empty state just
       before, that one stays (its words too), otherwise the list waits,
-      blank for a moment (`Shell`). Only while that read is in progress:
+      blank for a moment (`Shell`). A view that showed mail in between
+      forgets the empty state held before; the first version kept it, and
+      a view opened next showed another view's words (review). Only while that read is in progress:
       the first version waited for a read even when the view was still
       fresh (the app keeps data fresh 30 s) and not read again, and the
       list stayed blank, with no toy or words (owner, the same day). A
       refresh while the view stays open doesn't count. Tests in
       `tests/browser/empty-toys.spec.ts`, with the harness on the app's
       freshness (`&staleTime=app`), answering the list late as the app
-      does: the flash (fails on `main`) and the blank list (fails on the
-      first version). Not
+      does: the flash (fails on `main`), the blank list (fails on the
+      first version), the empty state kept during a read, and a view with
+      mail in between. Not
       changed: going from one empty view to another already replays the
       empty state's entrance on `main`; this doesn't add to it.
 - [x] Switching between empty views under the Sky toy flickered the
@@ -6136,9 +6144,20 @@ built, the owner has tried it, and the owner has published 0.3.0
       0.6 s. The sky now sets the look before the page is painted, on the
       wrapper around the icon and words (which stays while the words are
       replaced) and on the title, and clears it as it goes (`skyInput.ts`,
-      both sky styles). Test in `tests/browser/empty-toys.spec.ts`, which
-      checks every frame while switching, with the harness's new `&toy=`
-      in any mode and `&hour=` for the sky's time (fails without the fix).
+      both sky styles). The sky and the screensavers share the look
+      (`shared/lib/sceneLook.ts`): each owns what it set, and clears only
+      that, so one leaving after the next has set its look leaves it, and
+      a screensaver sets its look as it starts rather than on its first
+      frame (review: a night screensaver taking over from the sky, or the
+      sky coming back after one, dropped the look for a moment). Tests in
+      `tests/browser/empty-toys.spec.ts` check every frame while switching
+      views and while the sky and the starfield take over from each other,
+      with the harness's new `&toy=` in any mode and `&hour=` for the sky's
+      time; they fail without the fix, and without the screensaver setting
+      its look as it starts. The sky coming back is covered by
+      `sceneLook.test.ts` instead: the harness runs under React's
+      StrictMode, which sets a new sky's look a second time after mounting
+      and hides a screensaver clearing it late.
 - [x] UX Spike 5, the ASCII Toybox (#128): new and reworked screensavers,
       every toy and screensaver in pixel art or ASCII art, and Settings →
       Toybox reworked, with the switch between pixel art and ASCII art

@@ -20,6 +20,7 @@ import {
 } from "../model/palettes";
 import { blend, ink, type Pointer, type Rect, type Scene, SLOT } from "../model/scene";
 import { isRealMove } from "../../../shared/lib/pointer";
+import { releaseLook, setLook } from "../../../shared/lib/sceneLook";
 import { screensaverPrefs } from "./prefs";
 import { deepJellyTuning, makeSwarm, resizeSwarm, step, type Swarm } from "../model/deepJellies";
 import { drawDeepJellies } from "./deepJelliesDraw";
@@ -340,7 +341,10 @@ export function ScreensaverCanvas({
     let frame = 0;
     // Whether the page is light now (Settings → Appearance → Theme).
     const light = window.matchMedia("(prefers-color-scheme: light)");
-    // Whether the icon and words are switched to light text for a night sky.
+    // Whether the icon and words are switched to light text for a night sky
+    // (and the canvas drawn solid, see the CSS). This run of the scene owns
+    // that look (`sceneLook.ts`): a sky back after it keeps its own.
+    const owner = {};
     let nightShown = false;
     let last = 0;
 
@@ -531,7 +535,11 @@ export function ScreensaverCanvas({
         const night = !!scene.night && light.matches;
         if (night !== nightShown) {
           nightShown = night;
-          setNight([iconRef.current, wordsRef.current, title, canvas], night);
+          setLook(
+            owner,
+            [iconRef.current, wordsRef.current, title, canvas],
+            night ? "night" : null,
+          );
         }
         if (look === "ascii") {
           if (
@@ -692,7 +700,7 @@ export function ScreensaverCanvas({
       const night = light.matches && !rain && !life && !flock;
       if (night !== deepNight) {
         deepNight = night;
-        setNight([iconRef.current, wordsRef.current, title, canvas], night);
+        setLook(owner, [iconRef.current, wordsRef.current, title, canvas], night ? "night" : null);
       }
       const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
       const shapes = clearShapes(a);
@@ -891,6 +899,15 @@ export function ScreensaverCanvas({
     const onVisibility = () => (document.hidden ? pause() : play());
 
     layout();
+    // Its look is set as it starts, not from its first frame: the sky it
+    // takes over from has just let go of the title, which showed in the
+    // page's color for a frame and faded back (owner, 2026-11-19).
+    const nightAtStart = (): boolean =>
+      deep ? light.matches && !rain && !life && !flock : !!scene?.night && light.matches;
+    const startNight = nightAtStart();
+    if (deep) deepNight = startNight;
+    else nightShown = startNight;
+    setLook(owner, [iconRef.current, wordsRef.current, title, canvas], startNight ? "night" : null);
     play();
     // A resize lands after this frame's drawing and before it's shown, and
     // resizing the canvas clears it, so every scene is drawn again at once
@@ -916,7 +933,7 @@ export function ScreensaverCanvas({
       card.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("visibilitychange", onVisibility);
       setWordsHidden(words, false);
-      setNight([icon, words, title, canvas], false);
+      releaseLook(owner, [icon, words, title, canvas]);
     };
   }, [sceneId, areaRef, iconRef, wordsRef, style]);
 
@@ -928,18 +945,6 @@ export function ScreensaverCanvas({
       data-closing={closing || undefined}
     />
   );
-}
-
-/**
- * On a night sky the icon and words (dark on a light page) switch to light
- * text so they still read, and the canvas is drawn solid (see the CSS).
- */
-function setNight(els: (HTMLElement | null)[], night: boolean) {
-  for (const el of els) {
-    if (!el) continue;
-    if (night) el.dataset.sceneNight = "";
-    else delete el.dataset.sceneNight;
-  }
 }
 
 /** Fades the words out (Life plays with them) or back in. */

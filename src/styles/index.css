@@ -340,9 +340,9 @@ html.resizing .panel-slide {
 /* What plays behind an empty list (the glow, in any style, or a toy such as
    the sky) eases in when the list empties, instead of appearing at once
    (owner, 2026-11-19), a little behind the words. "backwards" only: once it
-   has played, each layer's own opacity (the glow's brightness, fading out
-   for a screensaver) is untouched. */
-.empty-glow-pull,
+   has played, each layer's own opacity (fading out for a screensaver) is
+   untouched. The glow's canvas fades, not its pull: the glow reads the
+   pull's opacity as its brightness, and fading both dimmed it twice. */
 .empty-glow-canvas,
 .empty-toy {
   animation: empty-toy-in 450ms var(--motion-ease-out) backwards;
@@ -442,7 +442,6 @@ html.resizing .panel-slide {
 }
 @media (prefers-reduced-motion: reduce) {
   .empty-glow,
-  .empty-glow-pull,
   .empty-glow-canvas,
   .empty-toy,
   .empty-rise,
