@@ -5248,6 +5248,16 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [x] A subject with a letter that lowercasing lengthens crashed sign-in
+      code detection *(found in the review of `fix-code-recovery-email`,
+      2026-11-18; fixed the same day, same branch)*: `mail::codes::find_in`
+      lowercased the text and, when that changed its length (Turkish "İ"
+      becomes two characters), called itself on an ASCII-lowercased copy,
+      which still held the letter, and so on until the stack ran out. An
+      email with such a subject could crash what reads codes as mail
+      arrives. It now lowercases once, falling back to ASCII lowercasing
+      (which keeps the offsets), and never calls itself. A test overflows
+      the stack without the change.
 - [x] A sign-in code handed over in the subject wasn't found *(owner report,
       2026-11-18; fixed the same day, branch `fix-code-recovery-email`)*:
       Google's own recovery-email check put the code in the subject ("Use
@@ -5258,15 +5268,23 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       and by an expiry line, then also "verify" in the body. Both marked
       deliveries, gate codes, invoices, orders and promos, and reading more
       bodies cost the list's body reads and could delay notifications. The
-      owner chose a narrow rule: a subject shaped "Use <code> to <an
-      account action>" hands over its code, from the subject alone
-      (`mail::codes::ACCOUNT_ACTIONS`: setting up a recovery email or
-      phone, verify your / verify it's you, sign in, log in, reset your
-      password, confirm your email, account or phone). Future misses are
-      added there as one phrase at a time, each with a look-alike test.
-      Tests: the shape and its sibling subjects; subjects of that form
-      without an account action; and the look-alikes from both reviews,
-      kept so no later rule marks them. Rethinking detection: see
+      owner chose a narrow rule: a subject shaped `Use <code> to <account
+      action>` hands over its code, from the subject alone, when no code
+      word names one (`mail::codes::ACCOUNT_ACTIONS`: setting up a
+      recovery email or phone; verify your email, account, phone or
+      identity; verify it's you; sign in; log in; reset your password;
+      confirm your email, account or phone). The action must start with
+      one of those and end there or go on only as " address", " number"
+      or " to your …"; the third review found phrases matched anywhere
+      ("sign in" inside "design invitations") and a loose "verify your"
+      ("verify your order"). Future misses are added as one phrase at a
+      time, each with a look-alike test.
+      Tests: the shape and its sibling subjects (each with no body, a full
+      body and a clipped snippet); subjects of that form the rule must not
+      take, including every one the third review marked (that test fails
+      with phrases matched anywhere); a code the words name winning over
+      the subject's; and the look-alikes from all three reviews, kept so
+      no later rule marks them. Rethinking detection: see
       "Sign-in codes by more than word lists" under "Later / unscheduled".
 - [x] Changing From on a reopened draft added a second signature *(found
       in the Send again review, 2026-11-17; fixed the same day, branch
