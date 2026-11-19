@@ -298,3 +298,53 @@ test("an empty view opened again while fresh shows its empty state", async ({ pa
   await expect(page.locator(".empty-rise")).toBeVisible();
   await expect(page.getByText("All caught up")).toHaveCount(0);
 });
+
+/**
+ * Switching between empty views keeps the sky's text look: on a dark page
+ * under a daytime sky, the words and the card's title take dark text, and
+ * keep it on every frame. They went light, then dark, then light while
+ * switching (owner, 2026-11-19): the new words started in the page's color,
+ * and the title lost its look until the new sky's first frame.
+ */
+for (const style of ["pixel", "ascii"]) {
+  test.describe(`the ${style} sky`, () => {
+    test.use({ colorScheme: "dark" });
+    test("keeps its text look on every frame while switching empty views", async ({ page }) => {
+      await page.goto(
+        `/tests/browser/harness.html?mode=shell&synced=1&staleTime=app&toy=sky&style=${style}&hour=12`,
+      );
+      await expect(page.getByText("All caught up")).toBeVisible();
+      await expect(page.locator(".empty-words")).toHaveCount(1);
+      await expect
+        .poll(() => page.locator("[data-card-title]").getAttribute("data-scene-day"))
+        .toBe("");
+      // Every frame from here on: the words and the title, if shown, have
+      // the daytime look.
+      await page.evaluate(() => {
+        const w = window as unknown as { __lostLook: string[] };
+        w.__lostLook = [];
+        const watch = () => {
+          const words = document.querySelector(".empty-words");
+          const title = document.querySelector("[data-card-title]");
+          if (words && !words.closest("[data-scene-day]")) w.__lostLook.push("words");
+          if (words && title && !title.hasAttribute("data-scene-day")) w.__lostLook.push("title");
+          requestAnimationFrame(watch);
+        };
+        requestAnimationFrame(watch);
+      });
+      const nav = page.getByRole("navigation");
+      for (let i = 0; i < 3; i++) {
+        await nav.getByRole("button", { name: "Drafts", exact: true }).click();
+        await expect(page.getByText("All caught up")).toHaveCount(0);
+        await page.waitForTimeout(150);
+        await nav.getByRole("button", { name: "Inbox", exact: true }).click();
+        await expect(page.getByText("All caught up")).toBeVisible();
+        await page.waitForTimeout(150);
+      }
+      const lost = await page.evaluate(
+        () => (window as unknown as { __lostLook: string[] }).__lostLook,
+      );
+      expect(lost).toEqual([]);
+    });
+  });
+}

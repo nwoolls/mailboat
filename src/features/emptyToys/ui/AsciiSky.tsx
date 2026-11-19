@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useRef } from "react";
 import { asciiSkyTuning, rayChar, SKY_CHARS, skyChar } from "../model/asciiSky";
 import {
   bodyAt,
@@ -22,7 +22,15 @@ import type { Rgb } from "../../screensaver/model/palettes";
 import { approach } from "../../mailbox/model/glow";
 import { asciiGlowTuning, type ClearShape, clearing } from "../../mailbox/model/asciiGlow";
 import { asciiCell, AsciiPainter, GLYPH_ON_HOT, readAsciiColors } from "./asciiPaint";
-import { SHOOTING_SECONDS, SHOOTING_SPEED, type SkyCarry, SkyInput, skyText } from "./skyInput";
+import {
+  SHOOTING_SECONDS,
+  SHOOTING_SPEED,
+  type SkyCarry,
+  SkyInput,
+  skyText,
+  skyTextEls,
+  skyTextNow,
+} from "./skyInput";
 
 /**
  * The sky in ASCII art (`model/asciiSky.ts`): the same scene as the pixel
@@ -35,8 +43,6 @@ import { SHOOTING_SECONDS, SHOOTING_SPEED, type SkyCarry, SkyInput, skyText } fr
  */
 export function AsciiSkyLayer({
   areaRef,
-  iconRef,
-  wordsRef,
   width,
   height,
   left,
@@ -44,9 +50,6 @@ export function AsciiSkyLayer({
   clear,
 }: {
   areaRef: RefObject<HTMLElement | null>;
-  /** The icon and words, whose text follows the sky (`skyText`), with the card's title. */
-  iconRef: RefObject<HTMLElement | null>;
-  wordsRef: RefObject<HTMLElement | null>;
   width: number;
   height: number;
   left: number;
@@ -91,11 +94,7 @@ export function AsciiSkyLayer({
     }));
     if (carried) input.takeOn(carried.held);
 
-    const textEls = () => [
-      iconRef.current,
-      wordsRef.current,
-      card.querySelector<HTMLElement>("[data-card-title]"),
-    ];
+    const textEls = () => skyTextEls(canvas);
     let textMode: string | null = "unset";
 
     const tick = (nowMs: number) => {
@@ -250,9 +249,20 @@ export function AsciiSkyLayer({
       carryRef.current = scene ? { scene, tunedFor, held: input.held() } : null;
       input.dispose();
       cancelAnimationFrame(frame);
-      skyText(textEls(), false, false);
     };
-  }, [areaRef, iconRef, wordsRef, width, height]);
+  }, [areaRef, width, height]);
+
+  // The text's day or night look is set as the sky mounts and cleared as
+  // it goes, before the page is painted: from the first animation frame, a
+  // sky mounting again showed the text in the page's color for a moment,
+  // then faded it back (owner, 2026-11-19). The frames keep it in step.
+  useLayoutEffect(() => {
+    skyTextNow(skyTextEls(ref.current));
+    const canvas = ref.current;
+    return () => {
+      skyText(skyTextEls(canvas), false, false);
+    };
+  }, []);
 
   return <canvas ref={ref} style={{ width, height }} />;
 }

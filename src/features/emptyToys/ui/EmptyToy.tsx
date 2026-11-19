@@ -58,19 +58,11 @@ export function EmptyToy({
       style={{ ...place, zIndex: -1 }}
     >
       {toy === "sky" && style !== "ascii" && (
-        <PixelSkyLayer
-          areaRef={areaRef}
-          iconRef={iconRef}
-          wordsRef={wordsRef}
-          width={box.width}
-          height={box.height}
-        />
+        <PixelSkyLayer areaRef={areaRef} width={box.width} height={box.height} />
       )}
       {toy === "sky" && style === "ascii" && (
         <AsciiSkyLayer
           areaRef={areaRef}
-          iconRef={iconRef}
-          wordsRef={wordsRef}
           width={box.width}
           height={box.height}
           left={box.left}

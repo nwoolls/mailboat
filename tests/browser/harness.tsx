@@ -34,6 +34,8 @@
  *   ?mode=empty&toy=…             an empty Inbox with a Toybox toy
  *     &glow=pixel|ascii            the glow (a toy), in that Toybox style
  *     &style=pixel|ascii           the Toybox style without the glow
+ *   &toy=…                        (any mode) the Toybox toy, as above
+ *   &hour=…                       the Sky toy's hour of day (0–24)
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
  *   &ai=none                      (card, inline) no AI set up
  *   &outside=work                 (card) the account is a Workspace account
@@ -662,7 +664,8 @@ if (harnessMode === "search")
     "prefs.searchHistory",
     JSON.stringify(["invoice march", "from:sam", "Invoice"]),
   );
-if (harnessMode === "empty") {
+// `&toy=…` works in other modes too (the shell, to switch views over it).
+if (harnessMode === "empty" || new URLSearchParams(location.search).has("toy")) {
   const params = new URLSearchParams(location.search);
   // The glow is a toy: `&glow=pixel|ascii` chooses it, in that Toybox
   // style. No toy otherwise unless asked for (`&toy=…`), and no
@@ -675,6 +678,13 @@ if (harnessMode === "empty") {
     JSON.stringify({ screensavers: params.has("screensaver") }),
   );
   localStorage.setItem("prefs.toyboxStyle", JSON.stringify(glow ?? params.get("style") ?? "pixel"));
+}
+
+// `&hour=…`: the Sky toy's time of day, so its look doesn't follow the clock.
+const skyHour = new URLSearchParams(location.search).get("hour");
+if (skyHour !== null) {
+  const { setSkyHourOverride } = await import("../../src/features/emptyToys/model/sky");
+  setSkyHourOverride(Number(skyHour));
 }
 
 // Imported after the mock, so the app sees a Tauri window (IS_TAURI).

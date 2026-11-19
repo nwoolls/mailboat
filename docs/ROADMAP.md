@@ -6128,6 +6128,17 @@ built, the owner has tried it, and the owner has published 0.3.0
       first version). Not
       changed: going from one empty view to another already replays the
       empty state's entrance on `main`; this doesn't add to it.
+- [x] Switching between empty views under the Sky toy flickered the
+      words and the card's title between light and dark text *(owner,
+      2026-11-19: Drafts and Inbox, both empty)*. The new words started in
+      the page's color, and the old sky cleared the title's look before
+      the new sky's first frame set it again, each time fading back over
+      0.6 s. The sky now sets the look before the page is painted, on the
+      wrapper around the icon and words (which stays while the words are
+      replaced) and on the title, and clears it as it goes (`skyInput.ts`,
+      both sky styles). Test in `tests/browser/empty-toys.spec.ts`, which
+      checks every frame while switching, with the harness's new `&toy=`
+      in any mode and `&hour=` for the sky's time (fails without the fix).
 - [x] UX Spike 5, the ASCII Toybox (#128): new and reworked screensavers,
       every toy and screensaver in pixel art or ASCII art, and Settings →
       Toybox reworked, with the switch between pixel art and ASCII art
