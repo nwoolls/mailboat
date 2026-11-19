@@ -5248,6 +5248,15 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [x] On the website, the hero screenshot left a tall window still tipped
+      back *(owner report, 2026-11-19; fixed the same day, branch
+      `hero-tilt-settle`)*. It settled flat over a fixed 70% of the window's
+      height of scrolling, so in a tall window it went flat later and its top
+      reached the header first. It now goes flat
+      when it reaches the middle of the window, at any height: `site.js`
+      measures that scroll distance and updates it when the layout changes
+      (70% stays as the fallback without the script). A WebKit test checks
+      three window heights and fails on two of them without the change.
 - [x] A subject with a letter that lowercasing lengthens crashed sign-in
       code detection *(found in the review of `fix-code-recovery-email`,
       2026-11-18; fixed the same day, same branch)*: `mail::codes::find_in`

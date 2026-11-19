@@ -1,9 +1,10 @@
-// The website's only script. Three small jobs, all optional: the page reads
+// The website's only script. Four small jobs, all optional: the page reads
 // fine without it (site.css only hides [data-reveal] when scripting runs).
 //
 // 1. Fade sections in as they scroll into view.
 // 2. Mark the page as scrolled, so the floating header lifts a little.
 // 3. Open a screenshot in a zoomed view (a native <dialog>) when clicked.
+// 4. Measure where the hero screenshot finishes settling flat.
 
 const reveal = document.querySelectorAll("[data-reveal]");
 
@@ -28,6 +29,27 @@ const root = document.documentElement;
 const onScroll = () => root.classList.toggle("is-scrolled", window.scrollY > 8);
 onScroll();
 window.addEventListener("scroll", onScroll, { passive: true });
+
+// The hero screenshot settles flat as the page scrolls (site.css). It should
+// be flat by the time it reaches the middle of the window, however tall the
+// window is, so the scroll distance that takes is measured here and updated
+// when the layout changes. The screenshot's box, not its picture, is
+// measured: the picture is the part that tilts and shrinks.
+const heroShot = document.querySelector(".hero-shot");
+if (heroShot) {
+  const measure = () => {
+    const box = heroShot.getBoundingClientRect();
+    const top = box.top + window.scrollY;
+    const centered = top + box.height / 2 - window.innerHeight / 2;
+    // In a window so tall that it starts out nearly centered, still leave a
+    // short scroll to settle over.
+    const end = Math.max(centered, 200);
+    heroShot.style.setProperty("--settle-end", `${Math.round(end)}px`);
+  };
+  measure();
+  window.addEventListener("resize", measure, { passive: true });
+  if ("ResizeObserver" in window) new ResizeObserver(measure).observe(document.body);
+}
 
 // Close the small-screen menu after a link in it is chosen.
 for (const menu of document.querySelectorAll("details.menu")) {
