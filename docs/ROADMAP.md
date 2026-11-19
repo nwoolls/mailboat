@@ -6242,6 +6242,22 @@ built, the owner has tried it, and the owner has published 0.3.0
       out of the More menu as the window narrows or widens fade out and
       in rather than vanish (owner). None with Reduce motion. An envelope
       whose flap opens and closes is in "Later / unscheduled")*
+- [x] A file dropped on a reply's signature filled the window with the
+      file, leaving no way back but quitting *(owner, 2026-11-19: a PDF
+      dropped on a reply to attach it)*. The signature and quoted message
+      are shown in frames of their own, as emails are in the reader, and a
+      frame runs no scripts, so nothing in the page saw the drop and the
+      web view opened the file in place of the app. While files are
+      dragged over the window, mail frames now let the pointer through
+      (`:root[data-file-drag]`, set by `Shell`), so the drop reaches the
+      composer under them, which attaches it, or the page, which ignores
+      it. And the window refuses to go anywhere but the app's own pages
+      (`src-tauri/src/navigation.rs`, Tauri's `on_navigation`), whatever
+      starts it. Tests: `tests/browser/frame-drops.spec.ts` (a drop on a
+      reply's signature attaches, one on an email does nothing, and the
+      frames take the pointer again after a drag; they fail without the
+      fix), and the allowed and refused addresses in `navigation.rs`. A real
+      drag from Finder can't be made in tests: try it.
 
 ### Security assessment (CASA)
 

@@ -186,20 +186,51 @@ function enterOpens(target: EventTarget | null): boolean {
  * A file dropped outside a composer does nothing. (With Tauri's own file
  * drop turned off so composers can take files, the web view would
  * otherwise open the file in place of the app.)
+ *
+ * While files are dragged over the window, the frames mail is shown in (an
+ * email; a composer's signature and quoted message) let the pointer through
+ * (`:root[data-file-drag]`), so the drag reaches what's under them: the
+ * composer, which takes the files, or the page, which ignores them. A frame
+ * runs no scripts, so nothing in it could see the drop, and the web view
+ * opened the file in place of the whole app (owner, 2026-11-19: a PDF
+ * dropped on a reply's signature). The drag sends `dragover` every few
+ * dozen milliseconds, so a pause means it has left the window.
  */
 function useIgnoreStrayDrops() {
   useEffect(() => {
-    const stop = (e: DragEvent) => {
-      if (e.dataTransfer?.types.includes("Files")) e.preventDefault();
+    const root = document.documentElement;
+    let timer = 0;
+    const done = () => {
+      window.clearTimeout(timer);
+      delete root.dataset.fileDrag;
     };
-    window.addEventListener("dragover", stop);
-    window.addEventListener("drop", stop);
+    const over = (e: DragEvent) => {
+      if (!e.dataTransfer?.types.includes("Files")) return;
+      e.preventDefault();
+      root.dataset.fileDrag = "";
+      window.clearTimeout(timer);
+      timer = window.setTimeout(done, FILE_DRAG_PAUSE_MS);
+    };
+    const drop = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes("Files")) e.preventDefault();
+      done();
+    };
+    window.addEventListener("dragenter", over, true);
+    window.addEventListener("dragover", over, true);
+    window.addEventListener("drop", drop, true);
+    window.addEventListener("dragend", done, true);
     return () => {
-      window.removeEventListener("dragover", stop);
-      window.removeEventListener("drop", stop);
+      done();
+      window.removeEventListener("dragenter", over, true);
+      window.removeEventListener("dragover", over, true);
+      window.removeEventListener("drop", drop, true);
+      window.removeEventListener("dragend", done, true);
     };
   }, []);
 }
+
+/** How long without a `dragover` before a file drag counts as gone. */
+const FILE_DRAG_PAUSE_MS = 400;
 
 /** How long the search text must stay the same before Gmail is asked. */
 const SEARCH_SETTLE_MS = 700;
