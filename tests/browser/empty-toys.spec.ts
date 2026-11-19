@@ -236,3 +236,37 @@ for (const [name, query, selector] of [
     ).not.toContain(selector);
   });
 }
+
+/**
+ * Coming back to a view that was empty but has mail now (moved there from
+ * another view) shows the mail, never the empty view first (owner,
+ * 2026-11-19: the sky flashed for a moment). The view's saved list is still
+ * the empty one until it has been read again.
+ */
+test("a view that has mail again doesn't flash its empty state first", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=shell&synced=1");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  const nav = page.getByRole("navigation");
+  await expect(page.locator(".empty-rise")).toBeVisible();
+  await nav.getByRole("button", { name: "Archive", exact: true }).click();
+  await expect(page.locator(".empty-rise")).toBeVisible();
+  await expect(page.getByText("All caught up")).toHaveCount(0);
+  // Mail arrives in the Inbox meanwhile. From now on, every frame is checked
+  // for the empty Inbox's words.
+  await page.evaluate(() => {
+    const w = window as unknown as { __rows: boolean; __flashed: boolean; __listDelay: number };
+    w.__rows = true;
+    w.__listDelay = 300;
+    w.__flashed = false;
+    const look = () => {
+      if (document.body.innerText.includes("All caught up")) w.__flashed = true;
+      requestAnimationFrame(look);
+    };
+    look();
+  });
+  await nav.getByRole("button", { name: "Inbox", exact: true }).click();
+  await expect(page.getByRole("option").first()).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __flashed: boolean }).__flashed)).toBe(
+    false,
+  );
+});

@@ -299,6 +299,22 @@ export function Shell() {
     () => threadsQuery.data?.pages.flatMap((p) => p.threads) ?? [],
     [threadsQuery.data],
   );
+  // A view's saved list can be from before mail moved into it: opening it
+  // showed that list, empty, for a moment, so the empty state (the sky, say)
+  // flashed before the mail (owner, 2026-11-19). Until the view has been read
+  // since it was opened, an empty list isn't trusted. If the list showed
+  // an empty state just before, that one stays (its words too), so going
+  // from one empty view to another doesn't replay its entrance; otherwise
+  // the list waits, blank for a moment. A refresh while the view stays open
+  // doesn't count, so an empty view doesn't blink.
+  const readHere = threadsQuery.isFetchedAfterMount && !threadsQuery.isPending;
+  const settledEmpty = readHere && threads.length === 0 ? selection.view : null;
+  const [lastEmpty, setLastEmpty] = useState<MailView | null>(null);
+  if (readHere && JSON.stringify(lastEmpty) !== JSON.stringify(settledEmpty))
+    setLastEmpty(settledEmpty);
+  const notReadYet = !readHere && threads.length === 0;
+  const waitForRead = notReadYet && lastEmpty === null;
+  const emptyView = notReadYet && lastEmpty ? lastEmpty : selection.view;
   // In Unread, conversations read during a visit stay, shown as read, until
   // the view changes (unreadList.ts keeps them in the list's data). Leaving
   // the view forgets its list, so the next visit lists only what is unread.
@@ -1386,12 +1402,12 @@ export function Shell() {
                 // Not while the previous view's list stands in for this one.
                 hasMore={(hasNextPage && !threadsQuery.isPlaceholderData) || fromGmail}
                 loadMore={loadMore}
-                loading={threadsQuery.isPending || isFetchingNextPage}
+                loading={threadsQuery.isPending || isFetchingNextPage || waitForRead}
                 older={older}
                 empty={
                   <EmptyState
-                    state={emptyStateFor(selection.view, firstSyncing, accountList.length === 0)}
-                    swapKey={emptyStateKey(selection.view, firstSyncing, accountList.length === 0)}
+                    state={emptyStateFor(emptyView, firstSyncing, accountList.length === 0)}
+                    swapKey={emptyStateKey(emptyView, firstSyncing, accountList.length === 0)}
                   />
                 }
               />

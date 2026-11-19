@@ -6110,6 +6110,18 @@ built, the owner has tried it, and the owner has published 0.3.0
       and appear at once for people who ask for reduced motion. Tests in
       `tests/browser/empty-toys.spec.ts` (the fade starts on each layer,
       and not under reduced motion; they fail without it).
+- [x] Opening a view whose saved list was empty but now has mail flashed
+      its empty state (the sky, say) before the mail *(owner, 2026-11-19:
+      moving an email from Archive to the Inbox, then opening the Inbox)*.
+      The list showed the view's saved list, still empty, while reading it
+      again. Until a view has been read since it was opened, an empty list
+      isn't trusted: if the list showed an empty state just before, that
+      one stays (its words too), otherwise the list waits, blank for a
+      moment (`Shell`). A refresh while the view stays open doesn't count.
+      Test: `tests/browser/empty-toys.spec.ts`, with the harness answering
+      the list late as the app does (fails without the change). Not
+      changed: going from one empty view to another already replays the
+      empty state's entrance on `main`; this doesn't add to it.
 - [x] UX Spike 5, the ASCII Toybox (#128): new and reworked screensavers,
       every toy and screensaver in pixel art or ASCII art, and Settings →
       Toybox reworked, with the switch between pixel art and ASCII art
