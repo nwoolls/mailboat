@@ -5255,11 +5255,19 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       with "This code will expire in 24 hours" beside it, but no word for
       the code ("verification code" and the like) and no "verify" in the
       subject, so neither way of finding it applied. Now a number by an
-      expiry line that the subject also holds, as a word of its own, is
-      the code, unless the subject is about a promo, a locker, a ticket or
-      the like (`mail::codes::find`). Tests: the email's shape, its
-      snippet, and six look-alikes that stay unmarked; the main one fails
-      without the change.
+      expiry line that the subject also holds (spaces and hyphens aside) is
+      the code when the email asks to verify, unless the subject is a
+      reply or about a promo, a locker, a ticket, a passcode, a one-time or
+      access code or the like (`mail::codes::find`); and such a subject
+      makes the body worth reading, since Gmail's snippet can end before
+      the expiry line. The review showed the first version marked
+      deliveries, gate codes, invoices and promos whose number was in the
+      subject too; the body asking to verify rules them out. Tests: the
+      email's shape and its snippet, the forms swapped between subject and
+      body, a nearer unrelated number, sixteen look-alikes that stay
+      unmarked (most of which the first version marked; that test fails
+      without the "asks to verify" check), and a clipped
+      snippet that makes the body worth reading.
 - [x] Changing From on a reopened draft added a second signature *(found
       in the Send again review, 2026-11-17; fixed the same day, branch
       `send-again`)*: a draft is saved with its signature in the text, so
