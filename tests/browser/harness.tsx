@@ -679,7 +679,22 @@ if (harnessMode === "empty") {
 
 // Imported after the mock, so the app sees a Tauri window (IS_TAURI).
 const { Harness } = await import("./HarnessApp");
-const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+// `&staleTime=app`: data stays fresh 30 s, as in the app (src/app/App.tsx);
+// a view opened again within that isn't read again. Not the default here,
+// where every view is read again.
+const client = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      ...(new URLSearchParams(location.search).get("staleTime") === "app"
+        ? { staleTime: 30_000, refetchOnWindowFocus: false }
+        : {}),
+    },
+  },
+});
+// Marks every list out of date, as the app does after an action moves mail.
+(window as unknown as { __invalidateLists: () => Promise<void> }).__invalidateLists = () =>
+  client.invalidateQueries({ queryKey: ["threads"] });
 createRoot(document.getElementById("root")!).render(
   // As in the app (src/main.tsx), so effects run twice on mount here too.
   <StrictMode>

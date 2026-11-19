@@ -301,13 +301,17 @@ export function Shell() {
   );
   // A view's saved list can be from before mail moved into it: opening it
   // showed that list, empty, for a moment, so the empty state (the sky, say)
-  // flashed before the mail (owner, 2026-11-19). Until the view has been read
-  // since it was opened, an empty list isn't trusted. If the list showed
-  // an empty state just before, that one stays (its words too), so going
-  // from one empty view to another doesn't replay its entrance; otherwise
-  // the list waits, blank for a moment. A refresh while the view stays open
+  // flashed before the mail (owner, 2026-11-19). While the view is being
+  // read again after it was opened, an empty list isn't trusted. If the list
+  // showed an empty state just before, that one stays (its words too), so
+  // going from one empty view to another doesn't replay its entrance;
+  // otherwise the list waits, blank for a moment. Only while that read is
+  // in progress: a view still fresh isn't read again (the app keeps data
+  // fresh 30 s), and waiting for a read that never came left the list
+  // blank (owner, the same day). A refresh while the view stays open
   // doesn't count, so an empty view doesn't blink.
-  const readHere = threadsQuery.isFetchedAfterMount && !threadsQuery.isPending;
+  const readHere =
+    !threadsQuery.isPending && (threadsQuery.isFetchedAfterMount || !threadsQuery.isFetching);
   const settledEmpty = readHere && threads.length === 0 ? selection.view : null;
   const [lastEmpty, setLastEmpty] = useState<MailView | null>(null);
   if (readHere && JSON.stringify(lastEmpty) !== JSON.stringify(settledEmpty))

@@ -244,7 +244,7 @@ for (const [name, query, selector] of [
  * the empty one until it has been read again.
  */
 test("a view that has mail again doesn't flash its empty state first", async ({ page }) => {
-  await page.goto("/tests/browser/harness.html?mode=shell&synced=1");
+  await page.goto("/tests/browser/harness.html?mode=shell&synced=1&staleTime=app");
   await expect(page.getByText("All caught up")).toBeVisible();
   const nav = page.getByRole("navigation");
   await expect(page.locator(".empty-rise")).toBeVisible();
@@ -253,9 +253,18 @@ test("a view that has mail again doesn't flash its empty state first", async ({ 
   await expect(page.getByText("All caught up")).toHaveCount(0);
   // Mail arrives in the Inbox meanwhile. From now on, every frame is checked
   // for the empty Inbox's words.
-  await page.evaluate(() => {
-    const w = window as unknown as { __rows: boolean; __flashed: boolean; __listDelay: number };
+  await page.evaluate(async () => {
+    const w = window as unknown as {
+      __rows: boolean;
+      __flashed: boolean;
+      __listDelay: number;
+      __invalidateLists: () => Promise<void>;
+    };
     w.__rows = true;
+    // Moving mail marks the lists out of date, as the app's action does; the
+    // open view reads its list again at once. Then the next read (the
+    // Inbox's) answers late, as the app's does.
+    await w.__invalidateLists();
     w.__listDelay = 300;
     w.__flashed = false;
     const look = () => {
@@ -269,4 +278,23 @@ test("a view that has mail again doesn't flash its empty state first", async ({ 
   expect(await page.evaluate(() => (window as unknown as { __flashed: boolean }).__flashed)).toBe(
     false,
   );
+});
+
+/**
+ * A view opened again while its saved list is still fresh isn't read again
+ * (the app keeps data fresh 30 s), so its empty state shows at once. The
+ * first version of the fix above waited for a read that never came, and the
+ * list stayed blank: no toy, no words (owner, 2026-11-19).
+ */
+test("an empty view opened again while fresh shows its empty state", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=shell&synced=1&staleTime=app");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  const nav = page.getByRole("navigation");
+  await nav.getByRole("button", { name: "Drafts", exact: true }).click();
+  await expect(page.locator(".empty-rise")).toBeVisible();
+  await nav.getByRole("button", { name: "Inbox", exact: true }).click();
+  await expect(page.getByText("All caught up")).toBeVisible();
+  await nav.getByRole("button", { name: "Drafts", exact: true }).click();
+  await expect(page.locator(".empty-rise")).toBeVisible();
+  await expect(page.getByText("All caught up")).toHaveCount(0);
 });

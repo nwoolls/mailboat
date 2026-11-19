@@ -6114,12 +6114,18 @@ built, the owner has tried it, and the owner has published 0.3.0
       its empty state (the sky, say) before the mail *(owner, 2026-11-19:
       moving an email from Archive to the Inbox, then opening the Inbox)*.
       The list showed the view's saved list, still empty, while reading it
-      again. Until a view has been read since it was opened, an empty list
-      isn't trusted: if the list showed an empty state just before, that
-      one stays (its words too), otherwise the list waits, blank for a
-      moment (`Shell`). A refresh while the view stays open doesn't count.
-      Test: `tests/browser/empty-toys.spec.ts`, with the harness answering
-      the list late as the app does (fails without the change). Not
+      again. While a view is being read again after it was opened, an
+      empty list isn't trusted: if the list showed an empty state just
+      before, that one stays (its words too), otherwise the list waits,
+      blank for a moment (`Shell`). Only while that read is in progress:
+      the first version waited for a read even when the view was still
+      fresh (the app keeps data fresh 30 s) and not read again, and the
+      list stayed blank, with no toy or words (owner, the same day). A
+      refresh while the view stays open doesn't count. Tests in
+      `tests/browser/empty-toys.spec.ts`, with the harness on the app's
+      freshness (`&staleTime=app`), answering the list late as the app
+      does: the flash (fails on `main`) and the blank list (fails on the
+      first version). Not
       changed: going from one empty view to another already replays the
       empty state's entrance on `main`; this doesn't add to it.
 - [x] UX Spike 5, the ASCII Toybox (#128): new and reworked screensavers,
