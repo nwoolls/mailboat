@@ -17,7 +17,8 @@ use tauri::Url;
 /// (`about:srcdoc`, `about:blank`), and a link clicked in an email, which
 /// goes to the app's `email-link:` address (`email-link://localhost`, or
 /// `http://email-link.localhost` on Windows). On the Mac this is asked for
-/// frames' navigations too, so a link's click comes through here.
+/// frames' navigations too, so a link's click comes through here; on
+/// Windows only for the window's own.
 pub fn allowed(url: &Url, dev_url: Option<&Url>) -> bool {
     use mail_core::mail::links;
     match url.scheme() {

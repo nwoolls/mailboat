@@ -6253,7 +6253,8 @@ built, the owner has tried it, and the owner has published 0.3.0
       composer under them, which attaches it, or the page, which ignores
       it. And the web view refuses a navigation to a file or to a page that
       isn't one of the app's own (`src-tauri/src/navigation.rs`, Tauri's
-      `on_navigation`); a link clicked in an email still reaches the app's
+      `on_navigation`: for every frame on the Mac, for the window itself on
+      Windows); a link clicked in an email still reaches the app's
       `email-link:` handler, which opens it in the browser (review). Tests:
       `tests/browser/frame-drops.spec.ts` (a drop on a reply's signature
       attaches, one on an email does nothing, and the frames take the
