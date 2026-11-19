@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0-beta.5
+
+### Fixes
+
+- On the Mac, the app opens again after an update as the app in the Dock, without a second Dock icon. Updating to this version still shows the extra icon once, because the version being replaced does the restart; the fix shows from the next update.
+
 ## 0.3.0-beta.4
 
 ### Fixes
