@@ -152,6 +152,7 @@ fn spawn_waiter(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
     use std::time::{Duration, Instant};
 
     #[test]
