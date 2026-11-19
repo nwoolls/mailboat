@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0-beta.4
+
+### Fixes
+
+- A sign-in code is found in emails whose subject reads `Use <code> to …` followed by an account action, such as Google's recovery-email check (`Use 123456 to set up recovery email`).
+- An email whose subject has certain letters, such as the Turkish capital İ, no longer crashes sign-in code detection.
+
 ## 0.3.0-beta.3
 
 ### Fixes
