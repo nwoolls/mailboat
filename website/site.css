@@ -851,22 +851,26 @@ section {
 }
 
 /* The hero moment: the screenshot starts tipped back and a little smaller,
-   and settles flat over the first screenful of scrolling, while its glow
-   grows. Driven by the page's scroll position, so it moves from the first
-   pixel (CSS scroll-driven animation; where a browser lacks it, the
-   screenshot is simply flat). */
+   and settles flat as it scrolls up to the middle of the window, while its
+   glow grows. Driven by the page's scroll position, so it moves from the
+   first pixel (CSS scroll-driven animation; where a browser lacks it, the
+   screenshot is simply flat). Where it ends, --settle-end, is measured by
+   site.js, because it depends on both the window's height and where the
+   screenshot sits on the page: a fixed share of the window (70vh, kept for
+   when the script doesn't run) ends too late in a tall window, so the
+   screenshot leaves the top of it still tipped. */
 @supports (animation-timeline: scroll()) {
   @media (prefers-reduced-motion: no-preference) {
     .hero-shot picture {
       transform-origin: 50% 0%;
       animation: settle linear both;
       animation-timeline: scroll(root);
-      animation-range: 0px 70vh;
+      animation-range: 0px var(--settle-end, 70vh);
     }
     .hero-shot::before {
       animation: glow linear both;
       animation-timeline: scroll(root);
-      animation-range: 0px 70vh;
+      animation-range: 0px var(--settle-end, 70vh);
     }
   }
 }

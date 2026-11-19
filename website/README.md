@@ -14,8 +14,10 @@ step and no backend. It is meant to be served by Cloudflare as it is (decided
 - `site.js`: fades sections in as they scroll into view, lifts the header
   once the page scrolls, and opens a screenshot in a zoomed view (a native
   `<dialog>`) when it is clicked: any `<img data-zoom="images/…">` is made
-  clickable, and `data-zoom` names its full-size pictures. The pages read
-  fine without it.
+  clickable, and `data-zoom` names its full-size pictures. It also measures
+  how far the page scrolls before the hero screenshot reaches the middle of
+  the window, where its tilt ends (`--settle-end`). The pages read fine
+  without it.
 - `.well-known/security.txt`: where to report a security problem (RFC 9116),
   naming `SECURITY.md`. Its `Expires` date must be renewed before it passes,
   at most a year ahead: `bun run check:website` warns in the last 60 days and
