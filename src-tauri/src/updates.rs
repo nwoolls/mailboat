@@ -211,6 +211,39 @@ pub async fn update_install(app: AppHandle) -> CmdResult<()> {
         .map_err(friendly)?;
     // The new version is in place. On Windows the installer has already
     // ended this process; on the Mac it is started here.
+    relaunch(&app).await
+}
+
+/// Quits and starts the new version. On the Mac a helper opens the app once
+/// this process has ended (`mail_core::relaunch`), so it opens as the app
+/// kept in the Dock rather than as a second copy beside it, which Tauri's
+/// restart made. Where the helper can't be started (or outside a bundle, as
+/// in development), Tauri's restart. Either way the command never answers:
+/// the app is quitting, and the window keeps showing the install until then.
+async fn relaunch(app: &AppHandle) -> CmdResult<()> {
+    #[cfg(target_os = "macos")]
+    if let Some((exe, bundle)) = tauri::process::current_binary(&app.env())
+        .ok()
+        .and_then(|exe| mail_core::relaunch::bundle_of(&exe).map(|bundle| (exe, bundle)))
+    {
+        match mail_core::relaunch::after_exit(&bundle, &exe) {
+            Ok(()) => {
+                app.exit(0);
+                return std::future::pending().await;
+            }
+            Err(e) => {
+                if let Some(state) = app.try_state::<AppState>() {
+                    state.sync_log.write(
+                        mail_core::model::AccountId(0),
+                        &format!(
+                            "Update: couldn't start the relaunch helper ({:?}), restarting instead",
+                            e.kind()
+                        ),
+                    );
+                }
+            }
+        }
+    }
     app.restart()
 }
 

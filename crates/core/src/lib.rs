@@ -24,6 +24,7 @@ pub mod owner_only;
 /// tests and the fuzz targets in `fuzz/` (the `fuzzing` feature). Not in the app.
 #[cfg(any(test, feature = "fuzzing"))]
 pub mod parse_check;
+pub mod relaunch;
 pub mod rules;
 pub mod settings;
 pub mod sync;

@@ -6242,6 +6242,27 @@ built, the owner has tried it, and the owner has published 0.3.0
       out of the More menu as the window narrows or widens fade out and
       in rather than vanish (owner). None with Reduce motion. An envelope
       whose flap opens and closes is in "Later / unscheduled")*
+- [x] After an in-app update on the Mac, the app started again with a
+      second Dock icon of its own, beside the one kept in the Dock
+      *(owner, 2026-11-19)*. The update worked; quitting the extra copy
+      removed the icon, and the kept icon opened the new version. Tauri's
+      restart runs `open -n` while the old copy still runs, so macOS starts
+      a second copy, which gets a Dock icon of its own. Now a small helper
+      waits for the old copy to end, then opens the app without `-n`, as a
+      click on its icon would (`mail_core::relaunch`, from
+      `update_install`). If that fails, it starts the app's program
+      directly, as Tauri's restart does when `open` fails; where the helper
+      can't start, Tauri's restart. Since the version being replaced is the one that
+      relaunches, the first update to a version with the fix still shows
+      the extra icon once; the update after it is the test (owner's plan:
+      0.3.0-beta.5 carries the fix, beta.6 tests it). Tests in
+      `crates/core/src/relaunch.rs`: the bundle is opened only after the old
+      copy has ended, and after the wait (30 s in the app) if it hasn't; the
+      program is started if opening fails or the opener can't run; and the
+      bundle is found from the executable. The helper is a copy of the
+      app's process rather than a shell script, which the security checks
+      don't allow (DASA 1.4.2); its `unsafe` is listed in
+      `scripts/security.ts`.
 
 ### Security assessment (CASA)
 
