@@ -36,6 +36,8 @@
  *     &style=pixel|ascii           the Toybox style without the glow
  *   &toy=…                        (any mode) the Toybox toy, as above
  *   &hour=…                       the Sky toy's hour of day (0–24)
+ *   &strict=0                     (any mode) without React's StrictMode,
+ *                                 as in a release build
  *   ?mode=palette                 ⌘K over a search box, with "Search mail"
  *   &ai=none                      (card, inline) no AI set up
  *   &outside=work                 (card) the account is a Workspace account
@@ -221,24 +223,24 @@ const answer = (cmd: string, args: unknown): unknown => {
       if (String((args as { text: string }).text).includes('"web"'))
         throw { kind: "invalid", message: 'invalid input: This is a "Web application" client.' };
       return { clientId: "1234-abc.apps.googleusercontent.com", projectId: "mail-k3x9qa" };
-    case "sync_status_list":
+    case "sync_status_list": {
+      // `window.__synced = true`: the first sync finishes mid-test (then
+      // `window.__invalidateAll()`).
+      const synced =
+        onboardingParams.has("synced") || !!(window as unknown as { __synced?: boolean }).__synced;
       return [
         {
           accountId: account.id,
           // `?mode=signedout`: Google ended this account's sign-in.
           // `&synced=1`: its first sync is done, so empty views say what
           // they are ("All caught up"), not "Getting your mail…".
-          status:
-            harnessMode === "signedout"
-              ? "authError"
-              : onboardingParams.has("synced")
-                ? "idle"
-                : "syncing",
+          status: harnessMode === "signedout" ? "authError" : synced ? "idle" : "syncing",
           errorKind: harnessMode === "signedout" ? "auth" : null,
           errorMessage: null,
-          lastSyncAt: onboardingParams.has("synced") ? Date.now() : null,
+          lastSyncAt: synced ? Date.now() : null,
         },
       ];
+    }
     case "app_info":
       return { iconChoices: [], version: "0.1.0" };
     case "update_check": {
@@ -341,9 +343,16 @@ const answer = (cmd: string, args: unknown): unknown => {
       }
       return null;
     }
-    case "threads_load_older":
+    case "threads_load_older": {
       // As Rust with no account to ask: nothing older, and not an error.
+      // `window.__olderFailsIn = ["draft", …]`: in those views Gmail fails,
+      // and the list shows "Try again".
+      const fails = (window as unknown as { __olderFailsIn?: string[] }).__olderFailsIn;
+      const view = (args as { view?: { kind: string; label?: string } }).view;
+      if (fails && view && fails.includes(view.label ?? view.kind))
+        return { added: 0, exhausted: false, failed: 1 };
       return { added: 0, exhausted: true, failed: 0 };
+    }
     case "mailto_take":
       return [];
     case "labels_list":
@@ -716,11 +725,17 @@ const client = new QueryClient({
 // Marks every list out of date, as the app does after an action moves mail.
 (window as unknown as { __invalidateLists: () => Promise<void> }).__invalidateLists = () =>
   client.invalidateQueries({ queryKey: ["threads"] });
+// Marks everything out of date (after `window.__synced`, say).
+(window as unknown as { __invalidateAll: () => Promise<void> }).__invalidateAll = () =>
+  client.invalidateQueries();
+const app = (
+  <QueryClientProvider client={client}>
+    <Harness account={account as never} identity={identity as never} detail={detail as never} />
+  </QueryClientProvider>
+);
 createRoot(document.getElementById("root")!).render(
   // As in the app (src/main.tsx), so effects run twice on mount here too.
-  <StrictMode>
-    <QueryClientProvider client={client}>
-      <Harness account={account as never} identity={identity as never} detail={detail as never} />
-    </QueryClientProvider>
-  </StrictMode>,
+  // `&strict=0`: as in a release build, where they run once; StrictMode's
+  // second run can hide an effect that runs too late.
+  new URLSearchParams(location.search).get("strict") === "0" ? app : <StrictMode>{app}</StrictMode>,
 );

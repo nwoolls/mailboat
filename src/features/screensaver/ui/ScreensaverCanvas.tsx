@@ -345,6 +345,25 @@ export function ScreensaverCanvas({
     // (and the canvas drawn solid, see the CSS). This run of the scene owns
     // that look (`sceneLook.ts`): a sky back after it keeps its own.
     const owner = {};
+    const styled = new Set<HTMLElement>();
+    // Likewise the words Life fades out.
+    const hidden = new Set<HTMLElement>();
+    const hideWords = (hide: boolean) => {
+      if (wordsRef.current) hidden.add(wordsRef.current);
+      setWordsHidden(wordsRef.current, hide);
+    };
+    // The look goes on the wrapper around the empty state's icon and words
+    // (`.empty-rise`), as the sky's does: the words are replaced when the
+    // view's empty state changes (keyed), and a replacement got no look
+    // while the scene played, or kept it after (review, 2026-11-19).
+    // Elsewhere (onboarding), on the icon and words. Every element given
+    // the look is cleared on leaving.
+    const showNight = (night: boolean) => {
+      const rise = iconRef.current?.closest<HTMLElement>(".empty-rise");
+      const els = rise ? [rise, title, canvas] : [iconRef.current, wordsRef.current, title, canvas];
+      for (const el of els) if (el) styled.add(el);
+      setLook(owner, els, night ? "night" : null);
+    };
     let nightShown = false;
     let last = 0;
 
@@ -519,7 +538,7 @@ export function ScreensaverCanvas({
         if (advance) {
           const result = scene.frame(dt, pointer);
           if (result.nod) nodRef.current();
-          if (result.hideWords !== undefined) setWordsHidden(wordsRef.current, result.hideWords);
+          if (result.hideWords !== undefined) hideWords(result.hideWords);
           // The sandscape's turn: the canvas rotates, then the grid is turned.
           canvas.style.transform = result.turn ? `rotate(${result.turn}deg)` : "";
         }
@@ -535,11 +554,7 @@ export function ScreensaverCanvas({
         const night = !!scene.night && light.matches;
         if (night !== nightShown) {
           nightShown = night;
-          setLook(
-            owner,
-            [iconRef.current, wordsRef.current, title, canvas],
-            night ? "night" : null,
-          );
+          showNight(night);
         }
         if (look === "ascii") {
           if (
@@ -691,7 +706,7 @@ export function ScreensaverCanvas({
         if (life) {
           const result = life.frame(dt, pointer);
           if (result.nod) nodRef.current();
-          if (result.hideWords !== undefined) setWordsHidden(wordsRef.current, result.hideWords);
+          if (result.hideWords !== undefined) hideWords(result.hideWords);
         }
         if (code && stepCodeRain(code, dt, codeRainTuning(), Math.random)) nodRef.current();
       }
@@ -700,7 +715,7 @@ export function ScreensaverCanvas({
       const night = light.matches && !rain && !life && !flock;
       if (night !== deepNight) {
         deepNight = night;
-        setLook(owner, [iconRef.current, wordsRef.current, title, canvas], night ? "night" : null);
+        showNight(night);
       }
       const { cw, ch } = asciiCell(ctx, g.fontPx, g.lineHeight);
       const shapes = clearShapes(a);
@@ -907,7 +922,7 @@ export function ScreensaverCanvas({
     const startNight = nightAtStart();
     if (deep) deepNight = startNight;
     else nightShown = startNight;
-    setLook(owner, [iconRef.current, wordsRef.current, title, canvas], startNight ? "night" : null);
+    showNight(startNight);
     play();
     // A resize lands after this frame's drawing and before it's shown, and
     // resizing the canvas clears it, so every scene is drawn again at once
@@ -921,8 +936,6 @@ export function ScreensaverCanvas({
     card.addEventListener("pointermove", onMove);
     card.addEventListener("pointerleave", onLeave);
     document.addEventListener("visibilitychange", onVisibility);
-    const words = wordsRef.current;
-    const icon = iconRef.current;
     return () => {
       resumeRef.current = null;
       freezeRef.current = null;
@@ -932,8 +945,8 @@ export function ScreensaverCanvas({
       card.removeEventListener("pointermove", onMove);
       card.removeEventListener("pointerleave", onLeave);
       document.removeEventListener("visibilitychange", onVisibility);
-      setWordsHidden(words, false);
-      releaseLook(owner, [icon, words, title, canvas]);
+      for (const words of hidden) setWordsHidden(words, false);
+      releaseLook(owner, [...styled]);
     };
   }, [sceneId, areaRef, iconRef, wordsRef, style]);
 

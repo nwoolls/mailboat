@@ -461,17 +461,50 @@ test("a view showing mail in between forgets the empty state held before", async
 });
 
 /**
+ * Likewise Gmail's footer: an empty list asking Gmail for older mail, or
+ * failing to, shows "Try again" instead of its empty state, so the next
+ * view doesn't hold that empty state while it's read.
+ */
+test("Gmail's footer in between forgets the empty state held before", async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as unknown as { __olderFailsIn: string[] }).__olderFailsIn = ["draft"];
+  });
+  await page.goto("/tests/browser/harness.html?mode=shell&synced=1&toy=sky");
+  await expect(page.getByText("All caught up")).toBeVisible();
+  const nav = page.getByRole("navigation");
+  await nav.getByRole("button", { name: "Drafts", exact: true }).click();
+  await expect(page.getByText("Try again")).toBeVisible();
+  await page.evaluate(() => {
+    const w = window as unknown as { __listDelay: number; __held: boolean };
+    w.__held = false;
+    w.__listDelay = 600;
+    const watch = () => {
+      if (document.body.innerText.includes("No drafts")) w.__held = true;
+      requestAnimationFrame(watch);
+    };
+    requestAnimationFrame(watch);
+  });
+  await nav.getByRole("button", { name: "Inbox", exact: true }).click();
+  await expect(page.getByText("All caught up")).toBeVisible({ timeout: 3000 });
+  expect(await page.evaluate(() => (window as unknown as { __held: boolean }).__held)).toBe(false);
+});
+
+/**
  * The sky and a screensaver hand the text's look to each other without
  * dropping it: on a light page under a night sky, a night screensaver
  * (the starfield) taking over, and the sky coming back after it, keep the
  * title and words light on every frame. The sky letting go before the
  * screensaver's first frame, or the screensaver letting go after the sky
- * came back, showed them dark for a moment, then faded back.
+ * came back, showed them dark for a moment, then faded back. Without
+ * StrictMode, as in a release build: its second run of a new sky's effects
+ * set the look again and hid the screensaver clearing it late.
  */
 test.describe("on a light page", () => {
   test.use({ colorScheme: "light" });
   test("the sky and a night screensaver hand the text's look on", async ({ page }) => {
-    await page.goto("/tests/browser/harness.html?mode=shell&synced=1&toy=sky&screensaver&hour=0");
+    await page.goto(
+      "/tests/browser/harness.html?mode=shell&synced=1&toy=sky&screensaver&hour=0&strict=0",
+    );
     await expect(page.getByText("All caught up")).toBeVisible();
     await expect
       .poll(() => page.locator("[data-card-title]").getAttribute("data-scene-night"))
@@ -504,5 +537,50 @@ test.describe("on a light page", () => {
       () => (window as unknown as { __lostLook: string[] }).__lostLook,
     );
     expect(lost).toEqual([]);
+  });
+});
+
+/**
+ * Words replaced while a screensaver plays (the first sync finishing turns
+ * "Getting your mail…" into the view's own words) take its look, and lose
+ * it when it ends. Set on the words themselves, a replacement had no look
+ * while it played (dark text on the night sky), or kept it after (light
+ * text on a light page).
+ */
+test.describe("on a light page", () => {
+  test.use({ colorScheme: "light" });
+  test("words replaced while a screensaver plays take its look, then lose it", async ({ page }) => {
+    await page.goto("/tests/browser/harness.html?mode=shell&toy=none&screensaver");
+    await expect(page.getByText("Getting your mail…")).toBeVisible();
+    await expect(async () => {
+      await page.evaluate(() =>
+        window.dispatchEvent(new CustomEvent("app:screensaver", { detail: "starfield" })),
+      );
+      await expect(page.locator("canvas.screensaver")).toBeVisible({ timeout: 500 });
+    }).toPass({ timeout: 10_000 });
+    await expect(page.locator(".empty-rise")).toHaveAttribute("data-scene-night", "");
+    await page.evaluate(async () => {
+      const w = window as unknown as { __synced: boolean; __invalidateAll: () => Promise<void> };
+      w.__synced = true;
+      await w.__invalidateAll();
+    });
+    await expect(page.getByText("All caught up")).toBeVisible();
+    // The new words have the night look while it plays: light text.
+    await expect
+      .poll(() =>
+        page
+          .locator(".empty-words p")
+          .first()
+          .evaluate((p) => {
+            const [r, g, b] = getComputedStyle(p)
+              .color.match(/[\d.]+/g)!
+              .map(Number);
+            return (r! + g! + b!) / 3;
+          }),
+      )
+      .toBeGreaterThan(180);
+    await page.keyboard.press("Shift");
+    await expect(page.locator("canvas.screensaver")).toHaveCount(0);
+    await expect(page.locator("[data-scene-night]")).toHaveCount(0);
   });
 });

@@ -6122,9 +6122,10 @@ built, the owner has tried it, and the owner has published 0.3.0
       again. While a view is being read again after it was opened, an
       empty list isn't trusted: if the list showed an empty state just
       before, that one stays (its words too), otherwise the list waits,
-      blank for a moment (`Shell`). A view that showed mail in between
-      forgets the empty state held before; the first version kept it, and
-      a view opened next showed another view's words (review). Only while that read is in progress:
+      blank for a moment (`Shell`). A view that showed mail, or Gmail's
+      "Try again" footer, in between forgets the empty state held before;
+      the first version kept it, and a view opened next showed another
+      view's words (review). Only while that read is in progress:
       the first version waited for a read even when the view was still
       fresh (the app keeps data fresh 30 s) and not read again, and the
       list stayed blank, with no toy or words (owner, the same day). A
@@ -6133,7 +6134,7 @@ built, the owner has tried it, and the owner has published 0.3.0
       freshness (`&staleTime=app`), answering the list late as the app
       does: the flash (fails on `main`), the blank list (fails on the
       first version), the empty state kept during a read, and a view with
-      mail in between. Not
+      mail or the footer in between. Not
       changed: going from one empty view to another already replays the
       empty state's entrance on `main`; this doesn't add to it.
 - [x] Switching between empty views under the Sky toy flickered the
@@ -6149,15 +6150,19 @@ built, the owner has tried it, and the owner has published 0.3.0
       that, so one leaving after the next has set its look leaves it, and
       a screensaver sets its look as it starts rather than on its first
       frame (review: a night screensaver taking over from the sky, or the
-      sky coming back after one, dropped the look for a moment). Tests in
+      sky coming back after one, dropped the look for a moment). The
+      screensavers put the look on the same wrapper (before, on the icon
+      and words), and clear every element they styled: words replaced
+      while one played (the first sync finishing, say) had no night look,
+      dark on its night sky, or kept it after (review). Tests in
       `tests/browser/empty-toys.spec.ts` check every frame while switching
       views and while the sky and the starfield take over from each other,
-      with the harness's new `&toy=` in any mode and `&hour=` for the sky's
-      time; they fail without the fix, and without the screensaver setting
-      its look as it starts. The sky coming back is covered by
-      `sceneLook.test.ts` instead: the harness runs under React's
-      StrictMode, which sets a new sky's look a second time after mounting
-      and hides a screensaver clearing it late.
+      and words replaced during a screensaver, with the harness's new
+      `&toy=` in any mode, `&hour=` for the sky's time and `&strict=0`
+      (the handoff runs without React's StrictMode, whose second run of a
+      new sky's effects hid a screensaver clearing its look late). Each
+      fails with its fix undone; `sceneLook.test.ts` tests the ownership
+      rule itself.
 - [x] UX Spike 5, the ASCII Toybox (#128): new and reworked screensavers,
       every toy and screensaver in pixel art or ASCII art, and Settings →
       Toybox reworked, with the switch between pixel art and ASCII art

@@ -416,8 +416,9 @@ html.resizing .panel-slide {
 .screensaver[data-closing] {
   opacity: 0;
 }
-/* On a scene's night sky (light page), the icon and words take the dark
-   theme's light text so they still read. */
+/* On a scene's night sky (light page), the empty state's icon and words
+   (through their wrapper, .empty-rise) and the card's title take the dark
+   theme's light text so they still read (shared/lib/sceneLook.ts). */
 [data-scene-night] {
   --color-content: hsl(var(--theme-hue) var(--theme-saturation) 92%);
   --color-stroke: color-mix(in srgb, var(--color-content) 8%, transparent);
