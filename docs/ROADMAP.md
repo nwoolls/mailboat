@@ -5248,6 +5248,18 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [x] A sign-in code handed over in the subject wasn't found *(owner report,
+      2026-11-18; fixed the same day, branch `fix-code-recovery-email`)*:
+      an account's recovery-email check put the code in the subject ("Use
+      482913 to set up recovery email", made-up here) and in the body,
+      with "This code will expire in 24 hours" beside it, but no word for
+      the code ("verification code" and the like) and no "verify" in the
+      subject, so neither way of finding it applied. Now a number by an
+      expiry line that the subject also holds, as a word of its own, is
+      the code, unless the subject is about a promo, a locker, a ticket or
+      the like (`mail::codes::find`). Tests: the email's shape, its
+      snippet, and six look-alikes that stay unmarked; the main one fails
+      without the change.
 - [x] Changing From on a reopened draft added a second signature *(found
       in the Send again review, 2026-11-17; fixed the same day, branch
       `send-again`)*: a draft is saved with its signature in the text, so
