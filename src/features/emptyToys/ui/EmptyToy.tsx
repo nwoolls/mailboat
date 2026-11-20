@@ -54,23 +54,15 @@ export function EmptyToy({
     // reaches up under the title row never covers the title.
     <div
       aria-hidden
-      className="pointer-events-none absolute overflow-hidden"
+      className="empty-toy pointer-events-none absolute overflow-hidden"
       style={{ ...place, zIndex: -1 }}
     >
       {toy === "sky" && style !== "ascii" && (
-        <PixelSkyLayer
-          areaRef={areaRef}
-          iconRef={iconRef}
-          wordsRef={wordsRef}
-          width={box.width}
-          height={box.height}
-        />
+        <PixelSkyLayer areaRef={areaRef} width={box.width} height={box.height} />
       )}
       {toy === "sky" && style === "ascii" && (
         <AsciiSkyLayer
           areaRef={areaRef}
-          iconRef={iconRef}
-          wordsRef={wordsRef}
           width={box.width}
           height={box.height}
           left={box.left}

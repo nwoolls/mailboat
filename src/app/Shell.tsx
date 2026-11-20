@@ -330,6 +330,31 @@ export function Shell() {
     () => threadsQuery.data?.pages.flatMap((p) => p.threads) ?? [],
     [threadsQuery.data],
   );
+  // Past the last cached page, ask Gmail for older mail. Not while the
+  // list is refreshing or standing in for the previous view.
+  const older = useOlderMail(selection);
+  // A view's saved list can be from before mail moved into it: opening it
+  // showed that list, empty, for a moment, so the empty state (the sky, say)
+  // flashed before the mail (owner, 2026-11-19). While the view is being
+  // read again after it was opened, an empty list isn't trusted. If the list
+  // showed an empty state just before, that one stays (its words too) until
+  // the read is done; rows shown since forget it, and so does Gmail's
+  // footer, which an empty list shows instead of its empty state
+  // (`ThreadList`). Otherwise the list waits, blank for a moment. Only while
+  // that read is in progress: a view still fresh isn't read again (the app
+  // keeps data fresh 30 s), and waiting for a read that never came left the
+  // list blank (owner, the same day). A refresh while the view stays open
+  // doesn't count, so an empty view doesn't blink.
+  const readHere =
+    !threadsQuery.isPending && (threadsQuery.isFetchedAfterMount || !threadsQuery.isFetching);
+  const footer = older.status !== "idle";
+  const settledEmpty = readHere && threads.length === 0 && !footer ? selection.view : null;
+  const [lastEmpty, setLastEmpty] = useState<MailView | null>(null);
+  const nextEmpty = readHere ? settledEmpty : threads.length > 0 || footer ? null : lastEmpty;
+  if (JSON.stringify(lastEmpty) !== JSON.stringify(nextEmpty)) setLastEmpty(nextEmpty);
+  const notReadYet = !readHere && threads.length === 0;
+  const waitForRead = notReadYet && lastEmpty === null;
+  const emptyView = notReadYet && lastEmpty ? lastEmpty : selection.view;
   // In Unread, conversations read during a visit stay, shown as read, until
   // the view changes (unreadList.ts keeps them in the list's data). Leaving
   // the view forgets its list, so the next visit lists only what is unread.
@@ -427,9 +452,6 @@ export function Shell() {
   );
   const { mutate: mutateThreads } = useThreadAction();
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = threadsQuery;
-  // Past the last cached page, ask Gmail for older mail. Not while the
-  // list is refreshing or standing in for the previous view.
-  const older = useOlderMail(selection);
   const settled = !threadsQuery.isPlaceholderData && !threadsQuery.isFetching;
   // A search asks Gmail only once its text has stopped changing, not for
   // every half-typed word (local results still show as you type).
@@ -1417,12 +1439,12 @@ export function Shell() {
                 // Not while the previous view's list stands in for this one.
                 hasMore={(hasNextPage && !threadsQuery.isPlaceholderData) || fromGmail}
                 loadMore={loadMore}
-                loading={threadsQuery.isPending || isFetchingNextPage}
+                loading={threadsQuery.isPending || isFetchingNextPage || waitForRead}
                 older={older}
                 empty={
                   <EmptyState
-                    state={emptyStateFor(selection.view, firstSyncing, accountList.length === 0)}
-                    swapKey={emptyStateKey(selection.view, firstSyncing, accountList.length === 0)}
+                    state={emptyStateFor(emptyView, firstSyncing, accountList.length === 0)}
+                    swapKey={emptyStateKey(emptyView, firstSyncing, accountList.length === 0)}
                   />
                 }
               />

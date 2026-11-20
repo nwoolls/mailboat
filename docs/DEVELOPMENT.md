@@ -372,7 +372,10 @@ private key that matches the public one in the config.
 - **Restarting.** "Install and restart" restarts the app at once, so it first
   saves every open draft (they otherwise save 2.5 seconds after typing stops,
   and a message typed without a pause would never have been saved); if one
-  can't be saved, nothing is installed and the notice says so.
+  can't be saved, nothing is installed and the notice says so. On the Mac the
+  app quits and a helper opens it again once it has ended
+  (`mail_core::relaunch`), so it comes back as the app in the Dock; Tauri's
+  restart is the fallback.
 - **What a person sees from the manifest.** Only the version. The manifest
   (`latest.json`) is not signed, only the downloaded update is, so no release
   notes are shown, and `requireSignedVersion` has the plugin refuse an update

@@ -1,4 +1,13 @@
-import { makeCloud, type Scene, type SkySceneTuning } from "../model/skyScene";
+import {
+  makeCloud,
+  paletteFor,
+  type Scene,
+  skyIsDark,
+  type SkySceneTuning,
+} from "../model/skyScene";
+import { skyHourOverride } from "../model/sky";
+import { readAsciiColors } from "./asciiPaint";
+import type { SceneLook } from "../../../shared/lib/sceneLook";
 
 export type Shooting = { x: number; y: number; dx: number; dy: number; age: number };
 
@@ -118,20 +127,32 @@ export class SkyInput {
  * bright by day (`skyIsDark`), whatever the page's theme, so their text follows the sky: light on
  * a night sky (`data-scene-night`, as the screensavers' night skies do),
  * dark on a day sky (`data-scene-day`). Only where it differs from the
- * page's own text. Returns what it set, to set again only on a change.
+ * page's own text (`shared/lib/sceneLook.ts` sets it).
  */
-export function skyText(
-  els: (HTMLElement | null | undefined)[],
-  skyDark: boolean,
-  pageDark: boolean,
-): "night" | "day" | null {
-  const mode = skyDark ? (pageDark ? null : "night") : pageDark ? "day" : null;
-  for (const el of els) {
-    if (!el) continue;
-    if (mode === "night") el.dataset.sceneNight = "";
-    else delete el.dataset.sceneNight;
-    if (mode === "day") el.dataset.sceneDay = "";
-    else delete el.dataset.sceneDay;
-  }
-  return mode;
+export function skyLook(skyDark: boolean, pageDark: boolean): SceneLook {
+  return skyDark ? (pageDark ? null : "night") : pageDark ? "day" : null;
+}
+
+/**
+ * The text that follows the sky, found from the sky's own canvas: the
+ * card's title, and the wrapper around the empty state's icon and words
+ * (`.empty-rise`), not the words themselves. The words are replaced on every
+ * switch between empty views (keyed by view), and a new one started in the
+ * page's color until the sky set it again; on the wrapper, new words take
+ * its look as they appear (owner, 2026-11-19: the label and title went white,
+ * black, white while switching).
+ */
+export function skyTextEls(canvas: HTMLElement | null): (HTMLElement | null)[] {
+  const card = canvas?.closest<HTMLElement>(".panel");
+  return [
+    card?.querySelector<HTMLElement>(".empty-rise") ?? null,
+    card?.querySelector<HTMLElement>("[data-card-title]") ?? null,
+  ];
+}
+
+/** `skyLook` for the sky at this hour, before the first frame is drawn. */
+export function skyLookNow(): SceneLook {
+  const now = new Date();
+  const hour = skyHourOverride() ?? now.getHours() + now.getMinutes() / 60;
+  return skyLook(skyIsDark(paletteFor(hour)), readAsciiColors(0.5, 0.5).dark);
 }
