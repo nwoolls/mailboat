@@ -6343,6 +6343,14 @@ built, the owner has tried it, and the owner has published 0.3.0
       and the allowed and refused addresses in `navigation.rs`. Not
       covered by tests: a real drag from Finder, WebKit's own hit test
       during it, and the guard as registered in the app: try it.
+- [x] A reply with a long unbroken line (a row of "=" under a quoted
+      disclaimer, a long link) was wider than the reader, which scrolled
+      sideways to keep the cursor in view, cutting off the left of every
+      email and of the reply *(owner, 2026-11-19, on a draft resumed from
+      Drafts)*. The composer's fields sit in a `<fieldset>`, which browsers
+      make at least as wide as its widest unbroken line; it now may shrink
+      (`min-w-0`), and the editor breaks the line at its edge. Test in
+      `tests/browser/compose-long-lines.spec.ts` (fails without the fix).
 
 ### Security assessment (CASA)
 

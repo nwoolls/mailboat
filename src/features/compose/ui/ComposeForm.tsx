@@ -346,7 +346,11 @@ export function ComposeForm({
         }
       }}
     >
-      <fieldset disabled={sending} className="flex min-h-0 flex-1 flex-col px-4">
+      {/* min-w-0: a fieldset is at least as wide as its widest line
+          (browsers' own style), and a long unbroken line (a row of "=",
+          a long link) made the reply wider than the reader, which then
+          scrolled sideways (owner, 2026-11-19). */}
+      <fieldset disabled={sending} className="flex min-h-0 min-w-0 flex-1 flex-col px-4">
         {identities.length > 1 && (
           <div className="flex h-9 items-center gap-1 border-b border-stroke">
             <span className="w-12 shrink-0 text-content/45">From</span>
