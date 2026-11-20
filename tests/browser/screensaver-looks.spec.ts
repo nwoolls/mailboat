@@ -51,7 +51,7 @@ test("on a light page the jellyfish brings a deep-sea backdrop and light text", 
   await start(page, "jellyfish", "ascii");
   const night = await page
     .locator(".empty-words")
-    .evaluate((el) => el.hasAttribute("data-scene-night"));
+    .evaluate((el) => !!el.closest("[data-scene-night]"));
   expect(night).toBe(true);
 });
 
