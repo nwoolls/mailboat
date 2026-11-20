@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0-beta.6
+
+### Toybox and screensavers
+
+- When a list empties, the glow or toy behind it fades in instead of appearing all at once.
+- The text over the Sky toy no longer flickers between light and dark when you switch between empty views or when a screensaver starts or ends, and the words stay readable when they change while a screensaver plays.
+
+### Fixes
+
+- Opening a view that had no mail but has some now shows the mail, without a flash of the empty view first.
+
 ## 0.3.0-beta.5
 
 ### Fixes
