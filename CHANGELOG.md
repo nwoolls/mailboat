@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0-beta.7
+
+### Fixes
+
+- A file dropped on a reply's signature or quoted text attaches to the reply, and a dropped file no longer opens in place of the app.
+- A long unbroken line in a reply, such as a row of "=" or a long link, now wraps instead of pushing the conversation sideways.
+
 ## 0.3.0-beta.6
 
 ### Toybox and screensavers
