@@ -47,12 +47,15 @@ export const REVIEWED_PERMISSIONS = ["core:event:default", "core:window:allow-st
 /**
  * Where Rust's `unsafe` is reviewed, and how many times each file uses it
  * (a rule of its own, "unsafe (reviewed)": no test case asks about Rust's
- * `unsafe`, so it backs none): the macOS bridges in the app layer and the Windows
- * security calls in the core. A new one means updating this list.
+ * `unsafe`, so it backs none): the macOS bridges in the app layer, the Windows
+ * security calls in the core, and the relaunch after an update (`fork`, then
+ * only calls safe in the child until `execv`). A new one means updating this
+ * list.
  */
 export const REVIEWED_UNSAFE: Record<string, number> = {
   "crates/core/src/mcp/mod.rs": 1,
   "crates/core/src/owner_only.rs": 7,
+  "crates/core/src/relaunch.rs": 3,
   "src-tauri/src/dock.rs": 3,
   "src-tauri/src/email_menu.rs": 16,
   "src-tauri/src/mail_handler.rs": 1,

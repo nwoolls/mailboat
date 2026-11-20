@@ -71,13 +71,13 @@ test.describe("on a light page", () => {
       // And it shows as painted: the canvas otherwise follows the glass's
       // see-through-ness, which washed the sky out to a pale grey.
       await expect.poll(() => canvasOpacity(page)).toBeGreaterThan(0.95);
-      await expect(page.locator(".empty-words")).toHaveAttribute("data-scene-night", "");
+      await expect(page.locator(".empty-rise")).toHaveAttribute("data-scene-night", "");
       await expect.poll(() => wordsLightness(page)).toBeGreaterThan(180);
     });
 
   test("a scene without one leaves the page as it is", async ({ page }) => {
     await start(page, "koi");
-    await expect(page.locator(".empty-words")).not.toHaveAttribute("data-scene-night");
+    await expect(page.locator(".empty-rise")).not.toHaveAttribute("data-scene-night");
     expect(await wordsLightness(page)).toBeLessThan(120);
   });
 });
@@ -88,6 +88,6 @@ test.describe("on a dark page", () => {
   test("the starfield needs no sky of its own", async ({ page }) => {
     await start(page, "starfield");
     expect((await skyLightness(page)).alpha).toBeLessThan(200);
-    await expect(page.locator(".empty-words")).not.toHaveAttribute("data-scene-night");
+    await expect(page.locator(".empty-rise")).not.toHaveAttribute("data-scene-night");
   });
 });

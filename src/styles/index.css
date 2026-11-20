@@ -337,6 +337,21 @@ html.resizing .panel-slide {
     transform: translate(-26%, 18%) scale(1.06);
   }
 }
+/* What plays behind an empty list (the glow, in any style, or a toy such as
+   the sky) eases in when the list empties, instead of appearing at once
+   (owner, 2026-11-19), a little behind the words. "backwards" only: once it
+   has played, each layer's own opacity (fading out for a screensaver) is
+   untouched. The glow's canvas fades, not its pull: the glow reads the
+   pull's opacity as its brightness, and fading both dimmed it twice. */
+.empty-glow-canvas,
+.empty-toy {
+  animation: empty-toy-in 450ms var(--motion-ease-out) backwards;
+}
+@keyframes empty-toy-in {
+  from {
+    opacity: 0;
+  }
+}
 .empty-rise {
   animation: empty-rise 420ms var(--motion-ease-out) both;
 }
@@ -401,8 +416,9 @@ html.resizing .panel-slide {
 .screensaver[data-closing] {
   opacity: 0;
 }
-/* On a scene's night sky (light page), the icon and words take the dark
-   theme's light text so they still read. */
+/* On a scene's night sky (light page), the empty state's icon and words
+   (through their wrapper, .empty-rise) and the card's title take the dark
+   theme's light text so they still read (shared/lib/sceneLook.ts). */
 [data-scene-night] {
   --color-content: hsl(var(--theme-hue) var(--theme-saturation) 92%);
   --color-stroke: color-mix(in srgb, var(--color-content) 8%, transparent);
@@ -427,6 +443,8 @@ html.resizing .panel-slide {
 }
 @media (prefers-reduced-motion: reduce) {
   .empty-glow,
+  .empty-glow-canvas,
+  .empty-toy,
   .empty-rise,
   .empty-swap,
   .empty-nod {
