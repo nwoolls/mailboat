@@ -147,6 +147,12 @@ html.resizing * {
 html.resizing iframe {
   pointer-events: none;
 }
+/* While files are dragged over the window, likewise: the drag reaches the
+   composer or the page under a mail frame, never the frame (Shell,
+   useIgnoreStrayDrops). */
+:root[data-file-drag] iframe {
+  pointer-events: none;
+}
 
 /* Text sitting on the glass (sidebar, reader) gets one step more weight
    than the list card's regular text, so it holds up over a blurred,

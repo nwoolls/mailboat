@@ -6323,6 +6323,26 @@ built, the owner has tried it, and the owner has published 0.3.0
       app's process rather than a shell script, which the security checks
       don't allow (DASA 1.4.2); its `unsafe` is listed in
       `scripts/security.ts`.
+- [x] A file dropped on a reply's signature filled the window with the
+      file, leaving no way back but quitting *(owner, 2026-11-19: a PDF
+      dropped on a reply to attach it)*. The signature and quoted message
+      are shown in frames of their own, as emails are in the reader, and a
+      frame runs no scripts, so nothing in the page saw the drop and the
+      web view opened the file in place of the app. While files are
+      dragged over the window, mail frames now let the pointer through
+      (`:root[data-file-drag]`, set by `Shell`), so the drop reaches the
+      composer under them, which attaches it, or the page, which ignores
+      it. And the web view refuses a navigation to a file or to a page that
+      isn't one of the app's own (`src-tauri/src/navigation.rs`, Tauri's
+      `on_navigation`: for every frame on the Mac, for the window itself on
+      Windows); a link clicked in an email still reaches the app's
+      `email-link:` handler, which opens it in the browser (review). Tests:
+      `tests/browser/frame-drops.spec.ts` (a drop on a reply's signature
+      attaches, one on an email does nothing, and the frames take the
+      pointer again after a drop or a pause; they fail without the fix),
+      and the allowed and refused addresses in `navigation.rs`. Not
+      covered by tests: a real drag from Finder, WebKit's own hit test
+      during it, and the guard as registered in the app: try it.
 
 ### Security assessment (CASA)
 
