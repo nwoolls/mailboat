@@ -103,8 +103,14 @@ const emails = messagesOf(lisbon, 7, 10);
 if (emails.length !== 5) throw new Error("the harness expects five emails in Lisbon in May?");
 const newest = emails.at(-1)!;
 const maya = newest.from;
-// No signature: tests check the editors' exact text.
-const identity = { ...demoIdentity, signature: null };
+// No signature: tests check the editors' exact text. `&signature=1`: one,
+// shown under the reply in a frame of its own.
+const identity = {
+  ...demoIdentity,
+  signature: new URLSearchParams(location.search).has("signature")
+    ? "<p>Maya Chen<br>555-0142</p>"
+    : null,
+};
 const thread = { ...threadOf(lisbon, 7), unread: false, messageCount: 1 };
 const message = { ...newest, unread: false };
 /** An email's text as paragraphs, repeated so the reader scrolls as with long mail. */

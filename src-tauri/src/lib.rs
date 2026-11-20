@@ -13,6 +13,7 @@ mod mail_handler;
 mod mcp;
 mod menu;
 mod mode;
+mod navigation;
 mod notifications;
 mod print;
 mod state;
@@ -446,8 +447,15 @@ fn open_window(app: &tauri::App, mode: mode::Mode) -> tauri::Result<()> {
         .find(|w| w.label == "main")
         .cloned()
         .ok_or_else(|| tauri::Error::WindowNotFound)?;
+    // The dev server, in development only (`navigation::allowed`).
+    let dev_url = if tauri::is_dev() {
+        app.config().build.dev_url.clone()
+    } else {
+        None
+    };
     tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?
         .incognito(!mode.is_normal())
+        .on_navigation(move |url| navigation::allowed(url, dev_url.as_ref()))
         // The demo's scheduled mail counts from when the window is up.
         .on_page_load(|webview, payload| {
             if payload.event() == tauri::webview::PageLoadEvent::Finished {
