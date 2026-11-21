@@ -143,7 +143,7 @@
       "conversations": [
         {
           "labels": ["INBOX", "STARRED", "IMPORTANT", "Travel"],
-          "summary": "Maya found flights for 16–23 May and wants to book the Alfama apartment by Friday.",
+          "summary": "Maya found cheap flights the week of 16 May and wants to book the Alfama apartment by Friday.",
           "brief": [
             "Maya wants to book Casa Azul in Alfama for 16–23 May, and asks you to confirm.",
             "Book by Friday: the host says someone else asked about those dates.",
@@ -293,7 +293,7 @@
         },
         {
           "labels": ["INBOX", "CATEGORY_UPDATES"],
-          "summary": "Issue 48: one inbox for many accounts, shortcuts as a language, small tools.",
+          "summary": "Issue 48: one quiet inbox over five noisy ones, shortcuts as fluency, three small tools.",
           "messages": [
             {
               "from": "slowweb",
@@ -453,7 +453,7 @@
           "brief": [
             "Lena now also wants the leaf on its own, as a stamp for paper bags, and copied Rosa for the bag sizes; Thursday still works.",
             "Fernhill chose direction B, the hand-drawn leaf.",
-            "Their notes: a warmer green, more letter spacing, mock-ups on cups, bags and the sign.",
+            "Their notes are attached; you'll warm up the green and mock it up on cups, bags and the sign.",
             "You agreed to deliver; Jordan is copied for the timeline."
           ],
           "reply": "Thanks Alex, that's great. Looking forward to Thursday! Lena",

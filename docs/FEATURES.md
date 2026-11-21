@@ -240,7 +240,7 @@ Instant local search across all accounts, with Gmail's own operators (from:, has
   <img src="images/features/send-again-light.png" alt="A copy of a sent invoice in a new message, with a note that it includes the file from the original" width="800">
 </picture>
 
-Send again on an email you sent opens a new message from the same address, to the same people, with its subject, text and files, ready to change. A note above the files says they came from the original, with a button to remove them, and says so when something couldn't come along: a Bcc list Gmail couldn't return, or an address that is no longer yours (the account's default address takes its place). The original stays as it was.
+Send again on a conversation you wrote in opens a new message from the first email you sent there: from the same address, to the same people, with its subject, text and files, ready to change. A note above the files says they came from the original, with a button to remove them, and says so when something couldn't come along: a Bcc list Gmail couldn't return, or an address that is no longer yours (the account's default address takes its place). The original stays as it was.
 
 ### Outside recipients
 
@@ -251,7 +251,7 @@ Send again on an email you sent opens a new message from the same address, to th
   <img src="images/features/outside-light.png" alt="A reply all with a recipient on Cc marked as outside the organization, and a note above the message" width="800">
 </picture>
 
-On a Google Workspace account, as in Gmail, a recipient outside your organization is marked as you write, with a note above the message. As in Gmail, people in your Contacts or Other contacts aren't marked.
+On a Google Workspace account, a recipient is marked as you write, with a note above the message, when their address isn't at your address's domain or one of your aliases' domains and they aren't in your Contacts or Other contacts. Gmail has a similar warning. Each account can turn it off in Settings, Accounts.
 
 ### Print
 
@@ -274,7 +274,7 @@ A × on a suggested address, or Shift+Delete, takes it out of the To, Cc and Bcc
   <img src="images/features/privacy-light.png" alt="Settings, Privacy: each thing that leaves the computer, what is sent and when, with a button to the setting that decides it" width="800">
 </picture>
 
-Each thing that leaves the computer (Google, image hosts, updates, the AI you chose, AI apps you allow), what is sent and when, and a button to the setting that decides it. Below that, what stays on the computer.
+Each thing that leaves the computer (Google, image hosts, updates, the AI you chose), and the AI apps you allow, which read through Mailboat on this computer: what is sent and when, and a button to the setting that decides it. Below that, what stays on the computer.
 
 ### Notifications
 
@@ -285,7 +285,7 @@ Each thing that leaves the computer (Google, image hosts, updates, the AI you ch
   <img src="images/features/notifications-light.png" alt="Settings, Notifications: notify about the Inbox or all new mail, and show everything, the sender only, or just New email" width="800">
 </picture>
 
-New-mail notifications can show everything (the sender, the subject and a sign-in code), the sender only, or just "New email", since they stay in the system's list where anyone at the computer can read them. The last two leave out the subject and the code; with more than one account, they name the account the mail came to. Quiet hours turn them off between the times you choose, every day.
+New-mail notifications can show everything (the sender, the subject and a sign-in code), the sender only, or just "New email", since they stay in the system's list where anyone at the computer can read them. The last two leave out the subject and the code. With more than one account, all three name the account the mail came to. Quiet hours turn them off between the times you choose, every day.
 
 ### Links without tracking codes
 
@@ -354,4 +354,4 @@ Light, dark or follow macOS; seven accent colors; four text sizes; seventeen app
 
 **Updates that tell you what's new.**
 
-The app checks for a new version at launch and about once a day, and never installs one by itself. The update notice links to the version's release notes. Settings, General can switch to the Beta channel, for test versions first.
+By default the app checks for a new version at launch and about once a day (Settings, General can turn that off), and it never installs one by itself. The update notice links to the version's release notes. Settings, General can switch to the Beta channel, for test versions first.

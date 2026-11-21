@@ -39,7 +39,7 @@ key() { ev "keystroke \"$1\"${2:+ using $2 down}"; sleep "${3:-1}"; }
 esc() { ev "key code 53"; sleep 0.8; }
 click() { ev "click at {$((584 + $1)), $((272 + $2))}"; sleep "${3:-1.5}"; }   # capture coordinates
 # A real click (with a click count, which WebKit needs for `click`), in window coordinates.
-pclick() { "$OUT/bin/click" $((640 + $1)) $((300 + $2)); sleep "${3:-1.2}"; }
+pclick() { "$OUT/bin/click" $((640 + $1)) $((300 + $2)) || { echo "the click helper failed (run build.sh): stopping"; exit 1; }; sleep "${3:-1.2}"; }
 shoot() {
   "$here/shoot.sh" "$wallpaper" "$OUT/gallery/$theme/$1.png" || { echo "shoot $1 failed: stopping"; exit 1; }
   echo "shot $theme/$1"
@@ -90,9 +90,14 @@ feature_inbox() { main_view; shoot inbox; }
 # summary, and the sign-in code popup in the top right. Run it with
 # KEEP_TOAST=1 on a fresh demo, once the popup has come (about 45 seconds in).
 feature_hero() {
-  main_view; sclick 600 300 2.4; shoot hero
-  sips -c 900 1504 "$OUT/gallery/$theme/hero.png" >/dev/null \
-    || { echo "cropping the main picture failed: stopping"; exit 1; }   # the middle 1504 of the 1600
+  main_view; sclick 600 300 2.4; shoot hero-uncropped
+  # The middle 1504 of the 1600, published as hero.png only once it worked.
+  local raw="$OUT/gallery/$theme/hero-uncropped.png"
+  # sips can exit 0 without writing anything, so check the size of what it wrote.
+  sips -c 900 1504 "$raw" --out "$OUT/gallery/$theme/hero-crop.png" >/dev/null 2>&1
+  [ "$(sips -g pixelWidth -g pixelHeight "$OUT/gallery/$theme/hero-crop.png" 2>/dev/null | awk '/pixel/{printf "%s ", $2}')" = "1504 900 " ] \
+    || { rm -f "$raw" "$OUT/gallery/$theme/hero-crop.png"; echo "cropping the main picture failed: stopping"; exit 1; }
+  mv "$OUT/gallery/$theme/hero-crop.png" "$OUT/gallery/$theme/hero.png"; rm -f "$raw"
 }
 
 feature_conversation() { main_view; sclick 600 300 2.2; shoot conversation; }   # Lisbon: the AI summary above the messages
