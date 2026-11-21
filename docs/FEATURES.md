@@ -46,6 +46,17 @@ Gmail's automatic reply while you're away: the first and last day, a subject and
 
 A signature for each address you send from, kept in Gmail so it follows you everywhere. New mail and replies get the right one for the From address.
 
+### Label colors
+
+**Gmail's label colors, set from the sidebar.**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/features/labels-dark.png">
+  <img src="images/features/labels-light.png" alt="A label's menu in the sidebar with its Color grid open, over an inbox whose rows show their labels" width="800">
+</picture>
+
+A label's menu (the ⋮ on its sidebar row, or a right-click) sets its color from Gmail's own grid, whether it shows in the sidebar always, only with unread mail, or not at all, and whether it shows on conversations. Rows show up to two labels after the subject. The changes are saved in Gmail.
+
 ### Meeting invitations
 
 **Reply to a meeting invitation without leaving the email.**
@@ -148,13 +159,26 @@ It follows the time of day, with the sun or tonight's moon on its way across.
 
 Eleven scenes (sandscape, a flock of birds, life, rain on glass, koi pond, fireflies, lava lamp, jellyfish, starfield, fireworks and code rain) in six color schemes, or a random one. Start one from the command palette while the view is empty.
 
+### ASCII art
+
+**Every toy and screensaver, drawn in ASCII art too.**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/features/screensaver-ascii-dark.png">
+  <img src="images/features/screensaver-ascii-light.png" alt="Jellyfish drawn in ASCII characters drifting over an empty view" width="800">
+</picture>
+
+*Animated:* [GIF](images/loops/jellyfish-ascii.gif) · [MP4](images/loops/jellyfish-ascii.mp4)
+
+Settings, Toybox, Style switches every toy and every screensaver between pixel art and ASCII art.
+
 ### Toybox settings
 
 **All the toys, in one settings page.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/features/toybox-dark.png">
-  <img src="images/features/toybox-light.png" alt="Settings, Toybox: glow, screensavers, and the choice of toy for the empty view" width="800">
+  <img src="images/features/toybox-light.png" alt="Settings, Toybox: pixel art or ASCII art, the choice of toy for the empty view, and the screensaver" width="800">
 </picture>
 
 The screensavers, and something to play with behind an empty view: the glow, a pond, bubble wrap or the sky. Each toy can be drawn as pixel art or ASCII art, and so can every screensaver.
@@ -204,6 +228,68 @@ One-time codes come out of the email as a pill on its row (click it to copy the 
 </picture>
 
 Instant local search across all accounts, with Gmail's own operators (from:, has:attachment and the rest) merged in as the answer arrives.
+
+## Writing and sending
+
+### Send again
+
+**Send an email again, attachments included.**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/features/send-again-dark.png">
+  <img src="images/features/send-again-light.png" alt="A copy of a sent invoice in a new message, with a note that it includes the file from the original" width="800">
+</picture>
+
+Send again on a conversation you wrote in opens a new message from the first email you sent there: from the same address, to the same people, with its subject, text and files, ready to change. A note above the files says they came from the original, with a button to remove them, and says so when something couldn't come along: a Bcc list Gmail couldn't return, or an address that is no longer yours (the account's default address takes its place). The original stays as it was.
+
+### Outside recipients
+
+**A warning before mail leaves your organization.**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/features/outside-dark.png">
+  <img src="images/features/outside-light.png" alt="A reply all with a recipient on Cc marked as outside the organization, and a note above the message" width="800">
+</picture>
+
+On a Google Workspace account, a recipient is marked as you write, with a note above the message, when their address isn't at your address's domain or one of your aliases' domains and they aren't in your Contacts or Other contacts. Gmail has a similar warning. Each account can turn it off in Settings, Accounts.
+
+### Print
+
+**Print a whole conversation.**
+
+Print… (⌘P, or Ctrl+P on Windows) prints every email in the conversation, oldest first, each under its sender, recipients and date, in its original colors on white, with its attachments named.
+
+### Suggestions you can tidy
+
+A × on a suggested address, or Shift+Delete, takes it out of the To, Cc and Bcc suggestions. Settings, Composing lists the addresses removed, each with Restore. Your Google contacts aren't changed.
+
+## Privacy
+
+### Privacy page
+
+**Everything that leaves your computer, on one page.**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/features/privacy-dark.png">
+  <img src="images/features/privacy-light.png" alt="Settings, Privacy: each thing that leaves the computer, what is sent and when, with a button to the setting that decides it" width="800">
+</picture>
+
+Each thing that leaves the computer (Google, image hosts, updates, the AI you chose), and the AI apps you allow, which read through Mailboat on this computer: what is sent and when, and a button to the setting that decides it. Below that, what stays on the computer.
+
+### Notifications
+
+**Notifications that show as much as you want.**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/features/notifications-dark.png">
+  <img src="images/features/notifications-light.png" alt="Settings, Notifications: notify about the Inbox or all new mail, and show everything, the sender only, or just New email" width="800">
+</picture>
+
+New-mail notifications can show everything (the sender, the subject and a sign-in code), the sender only, or just "New email", since they stay in the system's list where anyone at the computer can read them. The last two leave out the subject and the code. With more than one account, all three name the account the mail came to. Quiet hours turn them off between the times you choose, every day.
+
+### Links without tracking codes
+
+Every web link in an email loses the tracking codes the app knows (`utm_` and the click IDs common ad and mailing services add) before it opens, and in the address shown on hover. Codes a link needs to work, such as an unsubscribe token, stay.
 
 ## Fast
 
@@ -263,3 +349,9 @@ Gmail's own keys (j and k, e, #, g then i, c, r) plus the extras, in a sheet one
 </picture>
 
 Light, dark or follow macOS; seven accent colors; four text sizes; seventeen app icons for the Dock; and a transparency control for how much of what's behind the window shows through.
+
+### Updates
+
+**Updates that tell you what's new.**
+
+By default the app checks for a new version at launch and about once a day (Settings, General can turn that off), and it never installs one by itself. The update notice links to the version's release notes. Settings, General can switch to the Beta channel, for test versions first.

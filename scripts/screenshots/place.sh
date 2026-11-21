@@ -16,7 +16,10 @@ for candidate in $(ps -axo pid,args | grep -F -- "--demo" | grep -v grep | awk '
 done
 [ -n "$pid" ] || { echo "no on-screen window of the demo: start it first (bun run demo)"; exit 1; }
 echo "$pid" > "$OUT/demo-pid"
-osascript <<APPLESCRIPT
+# A window wider than the room right of x=640 keeps part of its old width on
+# the first try, so try until it is where it should be.
+for try in 1 2 3; do
+  osascript <<APPLESCRIPT
 tell application "System Events"
   set frontmost of (first process whose unix id is $pid) to true
   tell window 1 of (first process whose unix id is $pid)
@@ -25,3 +28,7 @@ tell application "System Events"
   end tell
 end tell
 APPLESCRIPT
+  sleep 0.5
+  "$OUT/bin/windows" "$name" | awk -v p="$pid" '$1==p && ($5=="1"||$5=="true") && $6=="1424x820@640,300"{ok=1} END{exit !ok}' && exit 0
+done
+echo "the demo window would not go to 1424x820 at 640,300"; exit 1

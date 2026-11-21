@@ -3,9 +3,12 @@
 # and placed (place.sh). usage: gallery.sh <dark|light> [feature ...]
 # Pictures land in $OUT/gallery/<theme>/<feature>.png (1600x900, 16:9).
 #
-# Positions: the window is at 640,300 (1424x820); a window capture has 56px
-# of shadow at the sides and 28px above, so a point seen at (cx,cy) in such
-# a capture is at (584+cx, 272+cy) on screen.
+# Positions: the window is at 640,300 (1424x820). The older steps use
+# `click`, in window-capture coordinates: such a capture has 56px of shadow at
+# the sides, and `click` takes 28px above, though it is 38px, so it lands 10px
+# low (harmless on big targets; it missed small ones such as a row's menu
+# button). New steps use `pclick`, in the window's own coordinates: find them
+# with `screencapture -R 640,300,1424,820` and read them off that picture.
 # No `set -e`: the small helpers (`ev`, `kill`) fail harmlessly on purpose. The
 # steps that matter stop the script themselves: place.sh, check_window, shoot
 # and record, so no later click lands in the wrong state.
@@ -35,6 +38,8 @@ focus() { check_window; ev "set frontmost of (first process whose unix id is $pi
 key() { ev "keystroke \"$1\"${2:+ using $2 down}"; sleep "${3:-1}"; }
 esc() { ev "key code 53"; sleep 0.8; }
 click() { ev "click at {$((584 + $1)), $((272 + $2))}"; sleep "${3:-1.5}"; }   # capture coordinates
+# A real click (with a click count, which WebKit needs for `click`), in window coordinates.
+pclick() { "$OUT/bin/click" $((640 + $1)) $((300 + $2)) || { echo "the click helper failed (run build.sh): stopping"; exit 1; }; sleep "${3:-1.2}"; }
 shoot() {
   "$here/shoot.sh" "$wallpaper" "$OUT/gallery/$theme/$1.png" || { echo "shoot $1 failed: stopping"; exit 1; }
   echo "shot $theme/$1"
@@ -46,14 +51,15 @@ settings_y() {
     general) echo 132 ;; accounts) echo 160 ;; notifications) echo 188 ;; appearance) echo 216 ;;
     list) echo 244 ;; viewing) echo 272 ;; composing) echo 300 ;; ai) echo 328 ;;
     signatures) echo 356 ;; rules) echo 384 ;; vacation) echo 412 ;; keyboard) echo 440 ;;
-    toybox) echo 468 ;; advanced) echo 496 ;;
+    toybox) echo 468 ;; privacy) echo 496 ;; advanced) echo 524 ;;
   esac
 }
 dismiss_toast() { [ -n "${KEEP_TOAST:-}" ] || { ev "click at {2033, 364}"; sleep 0.8; }; }   # the demo's sign-in code alert, top right (KEEP_TOAST=1 leaves it)
 settings() { focus; esc; key "," command 1.6; dismiss_toast; click 113 "$(settings_y "$1")" 1.8; }
 leave_settings() { click 111 830 1.5; }   # the Back button
 
-set_theme() { settings appearance; click "$theme_x" 278 2.5; leave_settings; }
+# Twice: on a fresh demo the first visit to Settings can miss its clicks.
+set_theme() { local i; for i in 1 2; do settings appearance; click "$theme_x" 278 2.5; leave_settings; done; }
 # Opening conversations must not change the unread counts shown in the sidebar.
 keep_unread() { settings viewing; click 1108 368 1; leave_settings; }
 
@@ -62,13 +68,15 @@ feature_rules() {   # the rule editor, over the list of rules
   settings rules; click 994 306 1.8; shoot rules; esc; leave_settings
 }
 
-scrolldown() { "$OUT/bin/scroll" 1100 700 "-$1"; sleep 1; }
+# Small wheel steps: one big step was sometimes ignored.
+scrolldown() { local left=$1; while [ "$left" -gt 0 ]; do "$OUT/bin/scroll" 1500 800 -200; left=$((left - 200)); sleep 0.15; done; sleep 1; }
+scrollup() { local i; for i in 1 2 3 4 5 6; do "$OUT/bin/scroll" "$1" 700 300; sleep 0.15; done; sleep 0.8; }
 
 feature_vacation() { settings vacation; shoot vacation; leave_settings; }
 feature_signatures() { settings signatures; shoot signatures; leave_settings; }
 feature_ai() { settings ai; shoot ai; leave_settings; }
 feature_ai_apps() { settings ai; scrolldown 700; shoot ai-apps; leave_settings; }   # keep the command path (it has a local path) below the fold
-feature_toybox() { settings toybox; click 950 572 1; shoot toybox; leave_settings; }   # Bubble wrap chosen
+feature_toybox() { settings toybox; click 950 626 1; shoot toybox; leave_settings; }   # Bubble wrap chosen
 feature_appearance() { settings appearance; shoot appearance; leave_settings; }
 feature_keyboard() { settings keyboard; shoot keyboard; leave_settings; }
 feature_list() { settings list; shoot list; leave_settings; }   # rows, preview lines and swipes
@@ -77,6 +85,20 @@ feature_list() { settings list; shoot list; leave_settings; }   # rows, preview 
 sclick() { ev "click at {$((552 + $1)), $((260 + $2))}"; sleep "${3:-1.5}"; }
 main_view() { focus; esc; esc; dismiss_toast; sclick 144 134 1.4; }   # always from the unified Inbox
 feature_inbox() { main_view; shoot inbox; }
+
+# The README's and the website's main picture (1504x900): Lisbon open with its
+# summary, and the sign-in code popup in the top right. Run it with
+# KEEP_TOAST=1 on a fresh demo, once the popup has come (about 45 seconds in).
+feature_hero() {
+  main_view; sclick 600 300 2.4; shoot hero-uncropped
+  # The middle 1504 of the 1600, published as hero.png only once it worked.
+  local raw="$OUT/gallery/$theme/hero-uncropped.png"
+  # sips can exit 0 without writing anything, so check the size of what it wrote.
+  sips -c 900 1504 "$raw" --out "$OUT/gallery/$theme/hero-crop.png" >/dev/null 2>&1
+  [ "$(sips -g pixelWidth -g pixelHeight "$OUT/gallery/$theme/hero-crop.png" 2>/dev/null | awk '/pixel/{printf "%s ", $2}')" = "1504 900 " ] \
+    || { rm -f "$raw" "$OUT/gallery/$theme/hero-crop.png"; echo "cropping the main picture failed: stopping"; exit 1; }
+  mv "$OUT/gallery/$theme/hero-crop.png" "$OUT/gallery/$theme/hero.png"; rm -f "$raw"
+}
 
 feature_conversation() { main_view; sclick 600 300 2.2; shoot conversation; }   # Lisbon: the AI summary above the messages
 feature_invitation() { main_view; sclick 600 516 2.2; shoot invitation; }         # a meeting invitation, answered in the email
@@ -87,7 +109,7 @@ feature_search() { main_view; sclick 800 60 1; ev 'keystroke "from:priya"'; slee
 
 # Inbox Zero: a toy behind an empty view (the demo's empty "Someday" label).
 # The first account's Labels list must be open in the sidebar (the demo keeps it).
-set_toy() { settings toybox; click "$1" 572 1.2; leave_settings; }   # Pond 806, Bubble wrap 950, Sky 1096
+set_toy() { settings toybox; click "$1" 626 1.2; leave_settings; }   # Glow 662, Pond 806, Bubble wrap 950, Sky 1096
 open_someday() { main_view; click 140 592 2; }
 feature_bubbles() { set_toy 950; open_someday; shoot inbox-zero-bubbles; }
 feature_sky() { set_toy 1096; open_someday; shoot inbox-zero-sky; }
@@ -100,15 +122,44 @@ feature_write_with_ai() {
   shoot write-with-ai
 }
 
-feature_screensaver_settings() { settings toybox; click 950 572 1; scrolldown 420; click 807 527 1; click $scheme 1; shoot screensaver-settings; leave_settings; }   # Koi pond, and the theme's colours
+feature_screensaver_settings() { settings toybox; click 950 626 1; scrolldown 1200; click 807 400 1; click $scheme 1; shoot screensaver-settings; leave_settings; }   # Koi pond, and the theme's colours
 # A screensaver scene over the empty view (Koi pond, Ocean colours), started from the palette.
 feature_screensaver() {
-  settings toybox; scrolldown 420; click 807 527 1; click $scheme 1; leave_settings
+  settings toybox; scrolldown 1200; click 807 400 1; click $scheme 1; leave_settings
   open_someday; key k command 1.4; ev 'keystroke "screensaver"'; sleep 1; ev "key code 36"; sleep 5
   shoot screensaver
   focus; esc
 }
 
+
+# ---- added for 0.3.0 ----------------------------------------------------------
+feature_privacy() { settings privacy; shoot privacy; leave_settings; }
+feature_notifications() { settings notifications; shoot notifications; leave_settings; }
+
+# Reply all to the client's newest email: her colleague on Cc isn't in the
+# contacts, so the work account marks her and says so above the message.
+feature_outside() {
+  main_view; scrollup 900; pclick 390 404 2.2; key a "" 2.5; shoot outside
+  pclick 1386 785 1.2; pclick 831 453 1.2   # the reply's trash, then Discard if it asks
+}
+# A label's color, from its menu in the sidebar (Receipts), over the Inbox and its label chips.
+feature_labels() {
+  main_view; scrollup 900; pclick 209 526 1.2; pclick 63 586 1.2; shoot labels; esc; esc
+}
+# Send again on an email you sent (the invoice in Sent, with its file).
+feature_send_again() {
+  main_view; pclick 54 178 1.5; pclick 400 404 2
+  key k command 1.4; ev 'keystroke "send again"'; sleep 1; ev "key code 36"; sleep 2.5
+  shoot send-again
+  pclick 1378 778 1.2; pclick 831 453 1.2   # the copy's trash, then Discard
+}
+# The ASCII art style: jellyfish over the empty view. Puts Pixel art back after.
+ascii_jellyfish() {
+  settings toybox; pclick 968 352 1; scrolldown 1200; pclick 606 490 1; click $scheme 1; leave_settings
+  open_someday; key k command 1.4; ev 'keystroke "screensaver"'; sleep 1; ev "key code 36"
+}
+pixel_art_again() { settings toybox; pclick 679 352 1; leave_settings; }
+feature_screensaver_ascii() { ascii_jellyfish; sleep 6; shoot screensaver-ascii; focus; esc; pixel_art_again; }
 
 # ---- short loops (mp4 for posts, gif for a page) -----------------------------
 # record <name> <seconds> <command...>: a video of the shot's region, with the
@@ -165,11 +216,12 @@ swipe_and_undo() {
 }
 feature_loop_swipe() { main_view; record swipe-archive 24 swipe_and_undo; }
 feature_loop_koi() {
-  settings toybox; scrolldown 420; click 807 527 1; click $scheme 1; leave_settings
+  settings toybox; scrolldown 1200; click 807 400 1; click $scheme 1; leave_settings
   open_someday; key k command 1.4; ev 'keystroke "screensaver"'; sleep 1; ev "key code 36"; sleep 2
   record koi-pond 10 sleep 9
   focus; esc
 }
+feature_loop_jellyfish() { ascii_jellyfish; sleep 2; record jellyfish-ascii 10 sleep 9; focus; esc; pixel_art_again; }
 feature_loop_write_with_ai() {
   main_view; sclick 600 300 2.2
   record write-with-ai 75 write_with_ai_steps
@@ -198,8 +250,11 @@ write_with_ai_steps() {
 
 features=("$@")
 # The order matters a little: the toys and the screensaver last, since they change settings.
-[ ${#features[@]} -gt 0 ] || features=( inbox conversation invitation codes palette shortcuts search
-  rules vacation signatures ai ai_apps appearance keyboard list toybox screensaver_settings bubbles sky screensaver
+# `hero` and `codes` are not in it: they need the sign-in popup (KEEP_TOAST=1),
+# which every other feature dismisses. Take them on their own (README).
+[ ${#features[@]} -gt 0 ] || features=( inbox conversation invitation palette shortcuts search
+  rules vacation signatures ai ai_apps appearance keyboard list privacy notifications outside labels send_again
+  toybox screensaver_settings bubbles sky screensaver screensaver_ascii
   write_with_ai )   # last: its discard click does not always work, and a draft would stay open
 focus
 set_theme

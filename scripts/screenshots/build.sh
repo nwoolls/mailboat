@@ -7,7 +7,7 @@ repo="$(cd "$here/../.." && pwd)"
 OUT="${OUT:-/tmp/shots}"
 mkdir -p "$OUT/bin" "$OUT/bg"
 
-for tool in backdrop windows mouse frame scroll drag swipe; do
+for tool in backdrop windows mouse click frame scroll drag swipe; do
   swiftc -O -o "$OUT/bin/$tool" "$here/$tool.swift"
 done
 

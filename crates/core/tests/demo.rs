@@ -354,7 +354,7 @@ async fn prepare_adds_the_accounts_synced_with_their_summaries() {
     let lisbon = subject_in(&inbox, "Lisbon in May?").id;
     let lines = mail_core::ai::summaries::current_lines(&db.conn(), &[lisbon]).unwrap();
     assert_eq!(lines.len(), 1);
-    assert!(lines[0].text.starts_with("Maya found flights"));
+    assert!(lines[0].text.starts_with("Maya found cheap flights"));
     let reader = mail_core::ai::summaries::current(
         &db.conn(),
         lisbon,
