@@ -76,8 +76,8 @@ Newer features to try in the demo:
   round 2 feedback" and Reply all: the client's colleague on Cc, who isn't
   in the contacts, is marked, with a note above the message. The personal
   account counts as a personal Gmail account (`"personal": true` in the demo
-  data; the app otherwise takes any address off `gmail.com` for Google
-  Workspace), so it never warns.
+  data; the app otherwise treats any address not on `gmail.com` or
+  `googlemail.com` as Google Workspace), so it never warns.
 - **Details.** "Benefits enrollment closes Friday" went to eight people;
   Details shows them all.
 - **Links without tracking codes.** The link in "Autumn notebooks are here"

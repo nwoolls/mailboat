@@ -6361,8 +6361,14 @@ built, the owner has tried it, and the owner has published 0.3.0
       the newsletter's link carries tracking codes. The update notice offers
       the app's own version about 20 seconds after launch, so What's new
       opens a real release page, and Install shows a made-up download that
-      installs nothing (`updates.rs`, demo only). The rest was already
-      demonstrable. Test in `crates/core/tests/demo.rs`.
+      installs nothing (`updates.rs`, demo only; it comes once, and
+      `MAILBOAT_DEMO_UPDATE_AFTER=off` leaves it out of the screenshots).
+      The rest was already demonstrable. Tests in
+      `crates/core/tests/demo.rs`: the outside recipient and the personal
+      account (through `FakeGoogle::outside_rule`, which fails without the
+      override), the eight recipients, and the newsletter's link opening
+      without its codes. The update notice has no automated test: the owner
+      tries it in the demo.
 
 ### Security assessment (CASA)
 
