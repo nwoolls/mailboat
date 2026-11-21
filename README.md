@@ -24,7 +24,7 @@ A fast, keyboard-first Gmail client for macOS and Windows. Free and open source.
 
 </div>
 
-> **Early development.** Version 0.2.1 is out, with signed downloads for Mac
+> **Early development.** Version 0.3.0 is out, with signed downloads for Mac
 > (Apple silicon) and Windows on the
 > [releases page](https://github.com/nwoolls/mailboat/releases/latest), and it
 > offers updates that you install when you choose. Expect rough edges. You bring your own Google credentials,
@@ -270,9 +270,9 @@ Mailboat runs on Windows: the releases page has a signed installer for x64 and
 one for Arm. Linux will follow.
 
 **What's next?**
-Version 0.3.0: printing, label colors, a reworked Toybox, cloning a sent
-email, and a warning about recipients outside the domains you choose. The full
-list is in the [roadmap](docs/ROADMAP.md).
+Version 0.3.0 brought printing, label colors, a reworked Toybox, sending a
+sent email again, and a warning about recipients outside your organization.
+What may come next is in the [roadmap](docs/ROADMAP.md).
 
 ## Contributing and license
 

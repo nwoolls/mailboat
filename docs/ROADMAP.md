@@ -6190,6 +6190,9 @@ built, the owner has tried it, and the owner has published 0.3.0
       wait until the new screensavers, #128, are merged, and time it with
       the 0.3.0 release, so the pictures show what that release ships)*
       *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      *(2026-11-21, owner: with every screen and feature 0.3.0 changed, in the
+      README, FEATURES.md and the website together, done alongside the
+      0.3.0 release, not before it)*
 - [x] Label color and visibility. Gmail keeps a label's `color`,
       `labelListVisibility` and `messageListVisibility`; the app only
       renamed (`rename_label` sends `name`). Pick a label's color from
@@ -6673,14 +6676,7 @@ Privacy and the policy.*
       used them. On Windows, the linker may still write a separate `.pdb`
       beside the program during the build; the installer doesn't include
       it)*
-- [ ] Tokens in memory (DASA 1.2.3), optional: keep access and refresh
-      tokens in `secrecy`/`zeroize` types, so they are wiped when dropped.
-      The requirement covers sensitive data the app handles itself (its
-      example is a password the user types), and the app handles these
-      tokens itself. The written answer describes how long each token
-      stays in memory and when it is dropped; whether to add the wiping
-      waits for the lab's answer. *(2026-11-18: the lab's answers didn't
-      cover it; still optional)*
+- Tokens in memory (DASA 1.2.3) moved to "CASA assessment, after 0.3.0", 2026-11-21: CASA work for after the stable 0.3.0.
 - [x] The AI scratch folder: `ai/process.rs` makes a working folder in
       the temp directory for every request, with `create_dir_all` (not
       private). Only the two paths that return the program's result (a
@@ -6798,6 +6794,7 @@ Privacy and the policy.*
       edited to the one package and checked with `--locked`. The macOS
       build uses it through `tempfile` and `xattr`; neither Windows target
       does. The rest of the item is still open)*
+      *(2026-11-21, owner: repeat the scans now, on the 0.3.0 release, alongside it)*
 - [x] Image downloads over HTTPS only, redirects included *(found
       writing the answers for the lab, 2026-11-16: DASA 1.1.1)*. The
       reader always asks for an image over HTTPS (`http://` addresses are
@@ -6852,26 +6849,7 @@ Privacy and the policy.*
       with tests, so a zoned invitation and the same one in UTC (which
       `icalendar` still reads with `chrono`) agree. The `chrono-tz` ignore
       entries are gone from `deny.toml` and `osv-scanner.toml`)*
-- [ ] The evidence for the lab, gathered once the fixes are in, and kept
-      outside the repository: an SSL Labs report for getmailboat.app, the
-      DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
-      and SBOM, the signing and binary-flag output, a sync-log sample from
-      a sign-in and first sync with the dedicated test Google account
-      (the one in the demo video; demo mode's Google is made up and signs
-      nobody in), read over before sending, a data-flow diagram, and a written answer
-      for each test case (most are in `docs/ARCHITECTURE.md` already).
-      CodeQL already scans every pull request and push to `main` that
-      changes code, plus a weekly run. Its results can be submitted as
-      the static scan.
-      *(Added 2026-11-18, from the lab's answers: the Windows test
-      machine's disk-encryption status; and how the reviewer signs in for
-      the manual review, since the OAuth client is in Testing (their
-      Google account added as a test user, and the client's file shared
-      with them in a way agreed with the lab); and ask the lab whether a
-      Windows machine without disk encryption fails its check, or whether
-      documenting it is enough (see "Encrypt the local cache at rest"
-      under "Later / unscheduled"). The certificate's details are sent by
-      the owner and not kept here.)*
+- The evidence for the lab moved to "CASA assessment, after 0.3.0", 2026-11-21: CASA work for after the stable 0.3.0.
 - [x] The build provenance attached to each release as a file, so
       OpenSSF Scorecard can see it. The publish job already attests the
       release files (`actions/attest-build-provenance`), but GitHub keeps
@@ -7030,6 +7008,44 @@ Privacy and the policy.*
       *(2026-11-17: not reported to ProseMirror (owner): its GitHub
       repository was archived on 2026-04-07 and points elsewhere, and the
       app's own fix stands either way)*
+
+## CASA assessment, after 0.3.0
+
+*Opened 2026-11-21 for the CASA work that follows the stable 0.3.0: the
+evidence comes from the released version, and the lab's answers decide the
+rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
+
+- [ ] Tokens in memory (DASA 1.2.3), optional: keep access and refresh
+      tokens in `secrecy`/`zeroize` types, so they are wiped when dropped.
+      The requirement covers sensitive data the app handles itself (its
+      example is a password the user types), and the app handles these
+      tokens itself. The written answer describes how long each token
+      stays in memory and when it is dropped; whether to add the wiping
+      waits for the lab's answer. *(2026-11-18: the lab's answers didn't
+      cover it; still optional)*
+      *(moved here from 0.3.0 → Security assessment (CASA), owner, 2026-11-21: CASA work for after the stable 0.3.0)*
+
+- [ ] The evidence for the lab, gathered once the fixes are in, and kept
+      outside the repository: an SSL Labs report for getmailboat.app, the
+      DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
+      and SBOM, the signing and binary-flag output, a sync-log sample from
+      a sign-in and first sync with the dedicated test Google account
+      (the one in the demo video; demo mode's Google is made up and signs
+      nobody in), read over before sending, a data-flow diagram, and a written answer
+      for each test case (most are in `docs/ARCHITECTURE.md` already).
+      CodeQL already scans every pull request and push to `main` that
+      changes code, plus a weekly run. Its results can be submitted as
+      the static scan.
+      *(Added 2026-11-18, from the lab's answers: the Windows test
+      machine's disk-encryption status; and how the reviewer signs in for
+      the manual review, since the OAuth client is in Testing (their
+      Google account added as a test user, and the client's file shared
+      with them in a way agreed with the lab); and ask the lab whether a
+      Windows machine without disk encryption fails its check, or whether
+      documenting it is enough (see "Encrypt the local cache at rest"
+      under "Later / unscheduled"). The certificate's details are sent by
+      the owner and not kept here.)*
+      *(moved here from 0.3.0 → Security assessment (CASA), owner, 2026-11-21: CASA work for after the stable 0.3.0)*
 
 ## Later / unscheduled
 
