@@ -214,6 +214,7 @@
         },
         {
           "labels": ["Travel", "Receipts"],
+          "summary": "Your flight from SFO to Lisbon on 16 May is booked.",
           "messages": [
             {
               "from": "ternair",
@@ -258,6 +259,7 @@
         {
           "labels": ["INBOX"],
           "reply": "Great, see you at 7! I'll grab us a rope.",
+          "summary": "Climbing on Thursday at 7 pm; Sam asks who's bringing chalk.",
           "messages": [
             {
               "from": "sam",
@@ -279,6 +281,7 @@
         },
         {
           "labels": ["INBOX"],
+          "summary": "Your cleaning is Thursday at 3 pm; reply to confirm.",
           "messages": [
             {
               "from": "dental",
@@ -344,6 +347,7 @@
         },
         {
           "labels": [],
+          "summary": "You offered Sam your copy of \"The Design of Everyday Things\".",
           "messages": [
             {
               "from": "me",
@@ -501,6 +505,7 @@
         },
         {
           "labels": ["INBOX", "CATEGORY_UPDATES"],
+          "summary": "Ben moved \"Menu cards\" to Done on the Fernhill board.",
           "messages": [
             {
               "from": "trellis",
@@ -512,6 +517,7 @@
         },
         {
           "labels": ["INBOX", "Clients/Fernhill"],
+          "summary": "Ben sent the Fernhill type specimen with refined spacing for review.",
           "messages": [
             {
               "from": "ben",
@@ -530,6 +536,7 @@
         },
         {
           "labels": ["INBOX"],
+          "summary": "Benefits enrollment closes Friday; if you change nothing, your current choices carry over.",
           "messages": [
             {
               "from": "people",
@@ -543,6 +550,7 @@
         {
           "labels": ["INBOX"],
           "reply": "Noodles it is. Meet you downstairs at 12:30!",
+          "summary": "Jordan suggests noodles at 12:30 and asks you to bring the budget numbers.",
           "messages": [
             {
               "from": "jordan",
@@ -566,6 +574,7 @@
         },
         {
           "labels": ["Clients/Fernhill"],
+          "summary": "You sent Lena the invoice for phase 1 of the Fernhill rebrand.",
           "messages": [
             {
               "from": "me",

@@ -6179,7 +6179,7 @@ built, the owner has tried it, and the owner has published 0.3.0
       are in the spike's own section
       *(#128 merged 2026-11-14. "Weather in the sky" stays open in the
       spike, undecided; its real-weather part waits for Google's review)*
-- [ ] Regenerate the Toybox screensaver screenshots, which still show the
+- [x] Regenerate the Toybox screensaver screenshots, which still show the
       old "Colours" and "accent colour" labels: `screensaver-settings-light`
       and `-dark`, in `docs/images/features` and in `website/images` (cards
       and full size). The `toybox` screenshots too, which don't show the
@@ -6193,6 +6193,21 @@ built, the owner has tried it, and the owner has published 0.3.0
       *(2026-11-21, owner: with every screen and feature 0.3.0 changed, in the
       README, FEATURES.md and the website together, done alongside the
       0.3.0 release, not before it)*
+      *(2026-11-21, done, widened by the owner to every picture: the icons
+      and the labels on rows (#138, #139) had changed them all. Every
+      feature picture, the main picture, the four loops and the website's
+      copies are retaken in demo mode, and GitHub's social preview takes
+      the new main picture. New pictures for label colors, Send again,
+      outside recipients, Settings → Privacy, Notifications and the ASCII
+      screensaver, with an ASCII jellyfish loop, and FEATURES.md gains
+      their sections plus Print, removed suggestions, links without
+      tracking codes and updates. The main picture and the social preview
+      are now scripted (`gallery.sh hero`, `social.py`). The demo's rows
+      that show in pictures got written summaries: asked live, the
+      on-device model once wrote a made-up code into a row, and twice its
+      own field names)*
+- [ ] Choose which features the README and the website show, now that
+      there are new ones *(owner, 2026-11-21; the owner decides)*
 - [x] Label color and visibility. Gmail keeps a label's `color`,
       `labelListVisibility` and `messageListVisibility`; the app only
       renamed (`rename_label` sends `name`). Pick a label's color from
