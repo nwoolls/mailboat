@@ -28,8 +28,8 @@ the desktop. Each shot is 1600x900 (16:9): good for the README and for a post.
 bun run demo                              # the demo app, with its update notice off (below); wait for its window
 OUT=/tmp/shots scripts/screenshots/build.sh   # the helpers and the two wallpapers
 OUT=/tmp/shots scripts/screenshots/place.sh   # puts the demo window in its spot
-OUT=/tmp/shots scripts/screenshots/gallery.sh dark     # every picture, dark
-OUT=/tmp/shots scripts/screenshots/gallery.sh light    # every picture, light
+OUT=/tmp/shots scripts/screenshots/gallery.sh dark     # every picture but hero and codes (below), dark
+OUT=/tmp/shots scripts/screenshots/gallery.sh light    # the same, light
 OUT=/tmp/shots scripts/screenshots/gallery.sh dark rules vacation   # just some
 OUT=/tmp/shots scripts/screenshots/gallery.sh dark loop_bubbles loop_swipe loop_koi loop_jellyfish loop_write_with_ai   # the loops
 ```
@@ -115,9 +115,11 @@ read them off the picture: a point at (x,y) there is `pclick x y`. (The
 older `click` uses window-capture coordinates and lands 10px low; it is
 fine on big targets and missed small ones such as a row's ⋮.)
 
-Keep made-up details out of a picture as well as real ones: the demo's
-rows have written summaries (`summary` in `demo/mail.json`) because the
-on-device model, asked live, sometimes wrote odd lines (a made-up code, its
-own field names). Give a new conversation one if its row shows in a picture.
+Demo mail is the only mail a picture may show, and what it shows must
+match that mail: the demo's rows have written summaries (`summary` in
+`demo/mail.json`) because the on-device model, asked live, sometimes wrote
+lines the email doesn't support (a made-up code, its own field labels). Give
+a new conversation one if its row shows in a picture, and check it against
+the email's text.
 Native dialogs show the real Mac (the print sheet names the printer), so
 they stay out of the pictures.

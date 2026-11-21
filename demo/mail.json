@@ -189,7 +189,7 @@
         },
         {
           "labels": ["INBOX", "Travel"],
-          "summary": "Tomás confirmed Casa Azul for 16–23 May; check-in from 3 pm, guide attached.",
+          "summary": "Casa Azul is free 16–23 May; check-in from 3 pm, guide attached.",
           "brief": [
             "Casa Azul is available 16–23 May.",
             "Check-in from 3 pm; Tomás meets you with the keys.",
@@ -259,7 +259,7 @@
         {
           "labels": ["INBOX"],
           "reply": "Great, see you at 7! I'll grab us a rope.",
-          "summary": "Climbing on Thursday at 7 pm; Sam asks who's bringing chalk.",
+          "summary": "Climbing Thursday at 7 pm; Sam asks you to bring back the chalk.",
           "messages": [
             {
               "from": "sam",
@@ -281,7 +281,7 @@
         },
         {
           "labels": ["INBOX"],
-          "summary": "Your cleaning is Thursday at 3 pm; reply to confirm.",
+          "summary": "Your appointment is Thursday at 9:30 am; reply C to confirm.",
           "messages": [
             {
               "from": "dental",
@@ -307,6 +307,7 @@
         },
         {
           "labels": ["INBOX", "CATEGORY_UPDATES"],
+          "summary": "The run club does the 8 km river loop Saturday at 8 am, from the boathouse.",
           "messages": [
             {
               "from": "runclub",
@@ -448,7 +449,7 @@
         },
         {
           "labels": ["INBOX", "STARRED", "IMPORTANT", "Clients/Fernhill"],
-          "summary": "Lena loves direction B, wants a warmer green and the logo tested on cups by Thursday.",
+          "summary": "Lena's team picked direction B; she'd like the leaf as a stamp for the paper bags too.",
           "brief": [
             "Lena now also wants the leaf on its own, as a stamp for paper bags, and copied Rosa for the bag sizes; Thursday still works.",
             "Fernhill chose direction B, the hand-drawn leaf.",
@@ -517,7 +518,7 @@
         },
         {
           "labels": ["INBOX", "Clients/Fernhill"],
-          "summary": "Ben sent the Fernhill type specimen with refined spacing for review.",
+          "summary": "Ben sent the type specimen with the wider spacing Lena asked for.",
           "messages": [
             {
               "from": "ben",
@@ -550,7 +551,7 @@
         {
           "labels": ["INBOX"],
           "reply": "Noodles it is. Meet you downstairs at 12:30!",
-          "summary": "Jordan suggests noodles at 12:30 and asks you to bring the budget numbers.",
+          "summary": "Jordan asks if you're up for noodles at 12:30.",
           "messages": [
             {
               "from": "jordan",

@@ -91,7 +91,8 @@ feature_inbox() { main_view; shoot inbox; }
 # KEEP_TOAST=1 on a fresh demo, once the popup has come (about 45 seconds in).
 feature_hero() {
   main_view; sclick 600 300 2.4; shoot hero
-  sips -c 900 1504 "$OUT/gallery/$theme/hero.png" >/dev/null   # the middle 1504 of the 1600
+  sips -c 900 1504 "$OUT/gallery/$theme/hero.png" >/dev/null \
+    || { echo "cropping the main picture failed: stopping"; exit 1; }   # the middle 1504 of the 1600
 }
 
 feature_conversation() { main_view; sclick 600 300 2.2; shoot conversation; }   # Lisbon: the AI summary above the messages
@@ -244,7 +245,9 @@ write_with_ai_steps() {
 
 features=("$@")
 # The order matters a little: the toys and the screensaver last, since they change settings.
-[ ${#features[@]} -gt 0 ] || features=( inbox conversation invitation codes palette shortcuts search
+# `hero` and `codes` are not in it: they need the sign-in popup (KEEP_TOAST=1),
+# which every other feature dismisses. Take them on their own (README).
+[ ${#features[@]} -gt 0 ] || features=( inbox conversation invitation palette shortcuts search
   rules vacation signatures ai ai_apps appearance keyboard list privacy notifications outside labels send_again
   toybox screensaver_settings bubbles sky screensaver screensaver_ascii
   write_with_ai )   # last: its discard click does not always work, and a draft would stay open
