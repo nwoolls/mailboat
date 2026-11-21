@@ -18,17 +18,17 @@ webp() { # <source png> <destination webp> [extra cwebp arguments]
 
 # Full size (the hero and the two spotlight sections):
 # name in docs/images (without -dark/-light.png) -> name on the site
-for pair in "hero:hero" "features/write-with-ai:write-with-ai" "features/screensaver:inbox-zero"; do
+for pair in "hero:hero" "features/write-with-ai:write-with-ai" "features/screensaver-ascii:inbox-zero"; do
   for theme in dark light; do
     webp "docs/images/${pair%%:*}-$theme.png" "$out/${pair##*:}-$theme.webp"
   done
 done
 
 # Feature cards, one per section of docs/FEATURES.md (write-with-ai and
-# screensaver have the full-size spotlight sections above instead): half size for the card,
+# screensaver-ascii have the full-size spotlight sections above instead): half size for the card,
 # and full size (cards/ -> full/) for the zoomed view a click opens.
-for name in rules vacation signatures invitation conversation ai-apps ai \
-  toybox screensaver-settings \
+for name in rules vacation signatures labels invitation conversation ai-apps ai \
+  toybox screensaver-settings send-again outside privacy notifications \
   inbox codes search palette list shortcuts keyboard appearance; do
   for theme in dark light; do
     webp "docs/images/features/$name-$theme.png" "$out/cards/$name-$theme.webp" -resize 800 0

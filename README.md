@@ -89,10 +89,10 @@ which has since shut down.
     </td>
     <td width="50%" valign="top">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/screensaver-dark.png">
-        <img src="docs/images/features/screensaver-light.png" alt="A pixel-art koi pond swimming over an empty view">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/screensaver-ascii-dark.png">
+        <img src="docs/images/features/screensaver-ascii-light.png" alt="Jellyfish drawn in ASCII characters drifting over an empty view">
       </picture>
-      <br><sub><b>Inbox Zero</b> has toys: a glow, a pond, bubble wrap, a sky, and eleven screensavers.</sub>
+      <br><sub><b>Inbox Zero</b> has toys: a glow, a pond, bubble wrap, a sky, and eleven screensavers, in pixel art or ASCII art.</sub>
     </td>
   </tr>
   <tr>
@@ -105,10 +105,10 @@ which has since shut down.
     </td>
     <td width="50%" valign="top">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/palette-dark.png">
-        <img src="docs/images/features/palette-light.png" alt="The command palette over a conversation, listing actions with their shortcuts">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/features/privacy-dark.png">
+        <img src="docs/images/features/privacy-light.png" alt="Settings, Privacy: each thing that leaves the computer, what is sent and when, with a button to the setting that decides it">
       </picture>
-      <br><sub><b>⌘K</b>: every action, with its shortcut.</sub>
+      <br><sub><b>Privacy</b>: everything that leaves your computer, on one page, with the setting behind each.</sub>
     </td>
   </tr>
 </table>

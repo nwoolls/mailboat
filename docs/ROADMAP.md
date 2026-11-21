@@ -6206,8 +6206,14 @@ built, the owner has tried it, and the owner has published 0.3.0
       that show in pictures got written summaries: asked live, the
       on-device model once wrote a made-up code into a row, and twice its
       own field names)*
-- [ ] Choose which features the README and the website show, now that
+- [x] Choose which features the README and the website show, now that
       there are new ones *(owner, 2026-11-21; the owner decides)*
+      *(2026-11-21, owner agreed: the README's koi tile becomes the ASCII
+      jellyfish and its ⌘K tile the Privacy page. The website gains a
+      Label colors card, a Writing and sending group (Send again, Outside
+      recipients), a Privacy group (Privacy page, Notifications) above
+      "Your mail stays yours.", and the ASCII jellyfish in the Inbox Zero
+      spotlight)*
 - [x] Label color and visibility. Gmail keeps a label's `color`,
       `labelListVisibility` and `messageListVisibility`; the app only
       renamed (`rename_label` sends `name`). Pick a label's color from
