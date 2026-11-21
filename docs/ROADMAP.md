@@ -5948,6 +5948,38 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       conversation in the results (updated, with Restore or Not spam on
       offer) and leave the preview as it was. A unit test failed before the
       fix.
+- [ ] A conversation's one-line summary in the list can carry made-up or
+      leftover text *(found by an agent in demo mode while retaking the
+      pictures, 2026-11-21; filed on the owner's word)*. With Apple
+      Intelligence writing the line live, on made-up mail:
+      - one line ended in a sign-in code the email never had ("use code
+        code1234");
+      - two came back as labeled fields ("…, status: updated, ask: none",
+        "—status: sent; use c…"), though no prompt contains those labels;
+      - two took parts of the prompt's example line ("Review moved to Thu
+        3pm, bring budget numbers"): a dentist's reminder for 9:30 am
+        became "cleaning on Thu 3pm", and a one-line lunch invitation
+        gained "bring budget numbers".
+      Likely causes, all in `list_line` (`ai/prompts.rs`), not yet tested
+      one at a time: its example line is specific enough to copy; it asks
+      in one sentence for what it's about, where it stands and what is
+      asked, which the model may turn into fields; and it adds `CODE_ASKS`
+      to every request, which may invite a code where there is none. To
+      check: whether `clean_line` should drop field-style labels, and
+      whether a code in the line must appear in the email. Related: the
+      2026-11-08 fix (#62, the "first bullet repeats the prompt's own
+      example" entry above) removed the copied example and label from
+      `thread_summary`. In `list_line`'s instructions it only changed
+      "newest message" to "latest message" and left the example in place
+      (its test, `the_prompts_give_the_model_nothing_to_copy_into_a_bullet`,
+      still allows it); it also changed the conversation text both prompts
+      read (`context::render`), which now marks the newest message with
+      "(latest message)" on its date line instead of a "Newest message:"
+      label, so a reproduction should use that input. On branch
+      `picture-refresh` (not yet merged), the demo's inbox rows that show
+      in pictures get written summaries, so the pictures don't depend on
+      this; the sign-in code email has none, and needs none, since its
+      line is the app's fixed "Sign-in code" and never asks the model.
 
 ## 0.3.0
 
