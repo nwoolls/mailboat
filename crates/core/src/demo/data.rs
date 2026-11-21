@@ -55,6 +55,11 @@ pub struct AccountData {
     /// The vacation reply the account starts with.
     #[serde(default)]
     pub vacation: Option<VacationData>,
+    /// A personal Gmail account. Demo addresses are all on made-up domains,
+    /// which the app takes for Google Workspace (`compose::outside`); this
+    /// has the demo treat the account as a `gmail.com` one instead.
+    #[serde(default)]
+    pub personal: bool,
 }
 
 /// A filter, written the way the app shows a rule: what it matches, then

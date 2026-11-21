@@ -70,6 +70,18 @@ None of your own mail can show. Archiving, labels, rules and the rest all
 work. Sending is faked: the message lands in Sent and the person answers
 about 8 seconds later. A sign-in code arrives 45 seconds after the window opens.
 
+The demo also has what the newer features need to show: the personal
+account counts as a personal Gmail account (`"personal": true` in the demo
+data; the app otherwise takes any address off `gmail.com` for Google
+Workspace), so only the work account warns about outside recipients, and
+Reply all to the client's newest email marks her colleague, who isn't in the
+contacts. A studio-wide email has a recipient line long enough for Details,
+and the newsletter's link carries tracking codes for the app to take off.
+About 20 seconds after launch the update notice offers an update (the app's
+own version, so What's new opens a real release page); Install shows a
+made-up download and then says the demo installs nothing. Nothing is
+fetched.
+
 The made-up mail lives in `demo/mail.json` (reserved `.example` addresses
 only). Like the clean start below, the demo keeps to its own folder
 (`com.nwoolls.mailboat.demo`) and starts over at every launch, dated
@@ -368,7 +380,8 @@ private key that matches the public one in the config.
   and the updater's own user agent; the app's version and the kind of computer
   are not sent, and GitHub learns the kind of computer when an update is
   downloaded. A development
-  build, the demo and a clean start don't look at all.
+  build, the demo and a clean start don't look at all (the demo shows a
+  made-up update instead, see Demo mode).
 - **Restarting.** "Install and restart" restarts the app at once, so it first
   saves every open draft (they otherwise save 2.5 seconds after typing stops,
   and a message typed without a pause would never have been saved); if one

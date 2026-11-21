@@ -184,6 +184,9 @@ impl Drop for InstallGuard {
 #[tauri::command]
 #[specta::specta]
 pub async fn update_check(app: AppHandle) -> CmdResult<Option<UpdateInfo>> {
+    if is_demo(&app) {
+        return Ok(Some(demo_update()));
+    }
     Ok(look(&app).await?.as_ref().map(info))
 }
 
@@ -195,6 +198,9 @@ pub async fn update_install(app: AppHandle) -> CmdResult<()> {
     let Some(_installing) = InstallGuard::take() else {
         return Err(CoreError::Other("An update is already being installed.".into()).into());
     };
+    if is_demo(&app) {
+        return Err(demo_install(&app).await.into());
+    }
     let Some(update) = look(&app).await? else {
         return Err(CoreError::Other("The app is already up to date.".into()).into());
     };
@@ -262,6 +268,9 @@ fn wanted(app: &AppHandle) -> bool {
 /// Looks soon after launch, then about once a day while the app stays open,
 /// and tells the window when a version it hasn't mentioned yet is there.
 pub fn watch(app: AppHandle) {
+    if is_demo(&app) {
+        return demo_watch(app);
+    }
     tauri::async_runtime::spawn(async move {
         // Not at once: the app has work of its own to do at launch.
         tokio::time::sleep(FIRST_LOOK_AFTER).await;
@@ -278,6 +287,60 @@ pub fn watch(app: AppHandle) {
             tokio::time::sleep(LOOK_EVERY).await;
         }
     });
+}
+
+/// Demo mode shows the update notice with nothing behind it: it offers an
+/// update, its What's new opens the release notes of the app's own version
+/// (a real page), and Install shows a made-up download, then says the demo
+/// installs nothing. Nothing is fetched and the app isn't touched, so what
+/// the notice looks like can be shown (owner, 2026-11-20). Outside the demo,
+/// none of this runs.
+fn is_demo(app: &AppHandle) -> bool {
+    app.try_state::<AppState>()
+        .is_some_and(|s| s.demo.is_some())
+}
+
+/// The update the demo offers: the app's own version, whose release page
+/// exists, for What's new.
+fn demo_update() -> UpdateInfo {
+    UpdateInfo {
+        version: mail_core::brand::VERSION.to_string(),
+    }
+}
+
+/// How long after launch the demo's notice appears: soon enough to show it,
+/// after the window has settled.
+const DEMO_OFFER_AFTER: Duration = Duration::from_secs(20);
+
+/// Offers the demo's update once, if looking for updates is on.
+fn demo_watch(app: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(DEMO_OFFER_AFTER).await;
+        let wanted = app.try_state::<AppState>().is_some_and(|state| {
+            mail_core::settings::load(&state.db.conn())
+                .map(|s| s.auto_check_updates)
+                .unwrap_or(true)
+        });
+        if wanted {
+            let _ = UpdateAvailableEvent(demo_update()).emit(&app);
+        }
+    });
+}
+
+/// A made-up download of about 12 MB over two seconds, then the demo's
+/// answer, which the notice shows as the install's error.
+async fn demo_install(app: &AppHandle) -> CoreError {
+    const TOTAL: u64 = 12_000_000;
+    const STEPS: u64 = 20;
+    for step in 1..=STEPS {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        let _ = UpdateProgressEvent {
+            downloaded: TOTAL * step / STEPS,
+            total: Some(TOTAL),
+        }
+        .emit(app);
+    }
+    CoreError::Other("This is the demo, so nothing was installed.".into())
 }
 
 #[cfg(test)]

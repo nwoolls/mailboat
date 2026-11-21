@@ -178,6 +178,17 @@ impl FakeGoogle {
         }
     }
 
+    /// Whether the demo account at `email` is a personal Gmail account
+    /// (`AccountData::personal`).
+    pub fn is_personal(&self, email: &str) -> bool {
+        let state = self.state.lock().unwrap();
+        state
+            .data
+            .accounts
+            .iter()
+            .any(|a| a.personal && a.email.eq_ignore_ascii_case(email))
+    }
+
     /// The conversations' summaries, for the list and the reader.
     pub fn summaries(&self) -> Vec<Summary> {
         self.state.lock().unwrap().summaries.clone()
