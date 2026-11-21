@@ -6351,6 +6351,24 @@ built, the owner has tried it, and the owner has published 0.3.0
       make at least as wide as its widest unbroken line; it now may shrink
       (`min-w-0`), and the editor breaks the line at its edge. Test in
       `tests/browser/compose-long-lines.spec.ts` (fails without the fix).
+- [x] Demo mode shows the features added since the features gallery
+      (2026-11-03), for the README, FEATURES.md and the website *(owner,
+      2026-11-20)*. The personal demo account counts as a personal Gmail
+      account (`"personal": true`, demo only), so only the work account
+      warns about outside recipients, and Reply all to the client's newest
+      email marks a colleague of hers who isn't in the contacts. A
+      studio-wide email's recipient line is long enough for Details, and
+      the newsletter's link carries tracking codes. The update notice offers
+      the app's own version about 20 seconds after launch, so What's new
+      opens a real release page, and Install shows a made-up download that
+      installs nothing (`updates.rs`, demo only; it comes once, and
+      `MAILBOAT_DEMO_UPDATE_AFTER=off` leaves it out of the screenshots).
+      The rest was already demonstrable. Tests in
+      `crates/core/tests/demo.rs`: the outside recipient and the personal
+      account (through `FakeGoogle::outside_rule`, which fails without the
+      override), the eight recipients, and the newsletter's link opening
+      without its codes. The update notice has no automated test: the owner
+      tries it in the demo.
 
 ### Security assessment (CASA)
 

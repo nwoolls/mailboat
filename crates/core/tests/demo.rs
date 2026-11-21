@@ -483,3 +483,67 @@ async fn send_again_copies_the_sent_invoice_with_its_attachment() {
     assert_eq!(files, ["Invoice 2041.pdf"]);
     assert!(source.text.contains("Attached is the invoice"));
 }
+
+/// What the features gallery shows from the work account: Reply all to the
+/// client's newest email copies a colleague of hers who isn't in the
+/// account's contacts, so the composer marks her as outside the
+/// organization; the studio-wide email's recipient line is long enough for
+/// Details; and the personal account counts as a personal Gmail account
+/// (`AccountData::personal`), so it is never warned about.
+#[tokio::test]
+async fn the_demo_shows_outside_recipients_and_a_long_recipient_line() {
+    let (google, data) = start().await;
+    let db = Db::open_in_memory().unwrap();
+    let personal = &data.accounts[0];
+    let work = &data.accounts[1];
+    assert!(google.is_personal(&personal.email));
+    assert!(!google.is_personal(&work.email));
+
+    // As the composer asks in demo mode (`FakeGoogle::outside_rule`): the
+    // personal account is never warned about, the work account is.
+    let mine = add_account(&db, &personal.email);
+    assert!(!google.outside_rule(&db, mine).unwrap().workspace);
+    assert!(compose::outside::rule(&db.conn(), mine).unwrap().workspace);
+
+    let id = add_account(&db, &work.email);
+    let gmail = demo::client(reqwest::Client::new(), &google, &work.email);
+    sync(&db, &gmail, id).await;
+    compose::contacts::refresh_google(&db, &gmail, id)
+        .await
+        .unwrap();
+    let rule = google.outside_rule(&db, id).unwrap();
+    assert!(rule.workspace);
+    assert_eq!(rule.domains, ["northwind.example"]);
+    assert!(rule.known.iter().any(|a| a == "lena@fernhill.example"));
+    assert!(!rule.known.iter().any(|a| a == "rosa@fernhill.example"));
+
+    let threads = inbox(&db);
+    let fernhill = subject_in(&threads, "Fernhill rebrand: round 2 feedback").id;
+    let detail = query::thread_detail(&db.conn(), fernhill).unwrap();
+    let newest = detail.messages.last().unwrap();
+    assert!(newest.cc.iter().any(|a| a.email == "rosa@fernhill.example"));
+
+    let benefits = subject_in(&threads, "Benefits enrollment closes Friday").id;
+    let detail = query::thread_detail(&db.conn(), benefits).unwrap();
+    assert_eq!(detail.messages[0].to.len(), 8);
+}
+
+/// The newsletter's link carries tracking codes, so the demo shows them
+/// coming off: the link the email's page holds opens without them.
+#[test]
+fn the_demo_newsletters_link_opens_without_its_tracking_codes() {
+    let data = DemoData::builtin();
+    let html = data.accounts[0]
+        .conversations
+        .iter()
+        .flat_map(|c| &c.messages)
+        .filter_map(|m| m.html.as_deref())
+        .find(|h| h.contains("paperleaf.example/autumn"))
+        .unwrap();
+    assert!(html.contains("utm_source="));
+    let page = mail_core::mail::sanitize::sanitize_html(html, true).document;
+    let start = page.find(mail_core::mail::links::link_base()).unwrap();
+    let href = &page[start..page[start..].find('"').unwrap() + start];
+    let opens = mail_core::mail::links::unwrap(&href.replace("&amp;", "&")).unwrap();
+    assert_eq!(opens, "https://paperleaf.example/autumn");
+}

@@ -203,7 +203,10 @@ security cleanup, a stricter check on input): a `patch` for a fix, as the
 image-address fix was, and a `minor` or `major` when it adds or breaks
 something, as `.changeset/README.md` says. An empty one
 (`bun run changeset --empty`) is for a pull request that changes nothing
-the app outputs or does: docs, tests, tooling, or the website's text. When
+the app outputs or does: docs, tests, tooling, or the website's text. A
+change that only affects demo mode (`--demo`) takes an empty one too, though
+the demo's code ships in the app: it's tooling for pictures and videos, and
+nobody using the app needs it in the release notes (owner, 2026-11-20). When
 a pull request mixes the two, the real changeset wins. Recheck it whenever
 a commit is added to an open pull request. CI fails a pull request without
 one, except Dependabot's and the release pull request (branch

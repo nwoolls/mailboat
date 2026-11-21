@@ -72,6 +72,26 @@
       "name": "Lena Fischer",
       "email": "lena@fernhill.example"
     },
+    "rosa": {
+      "name": "Rosa Lindqvist",
+      "email": "rosa@fernhill.example"
+    },
+    "mei": {
+      "name": "Mei Tanaka",
+      "email": "mei@northwind.example"
+    },
+    "omar": {
+      "name": "Omar Haddad",
+      "email": "omar@northwind.example"
+    },
+    "ines": {
+      "name": "Inês Duarte",
+      "email": "ines@northwind.example"
+    },
+    "theo": {
+      "name": "Theo Brandt",
+      "email": "theo@northwind.example"
+    },
     "trellis": {
       "name": "Trellis",
       "email": "notifications@trellis.example"
@@ -82,6 +102,7 @@
     {
       "email": "alex@rivera.example",
       "name": "Alex Rivera",
+      "personal": true,
       "color": "#5b8def",
       "signature": "<div>Alex</div>",
       "labels": [
@@ -365,7 +386,7 @@
               "ago": "5d",
               "subject": "Autumn notebooks are here",
               "text": "Dot grid, lined and blank, in four new cover colors. Members get 15% off this week.",
-              "html": "<div style=\"font-family:Helvetica,Arial,sans-serif;color:#333;padding:24px\">\n<h2 style=\"font-weight:normal;margin:0 0 12px\">Autumn notebooks are here</h2>\n<p style=\"line-height:1.6\">Dot grid, lined and blank, in four new cover colors. Members get 15% off this week.</p>\n<p><a href=\"https://paperleaf.example/autumn\" style=\"color:#7a4b2a\">Browse the collection</a></p></div>"
+              "html": "<div style=\"font-family:Helvetica,Arial,sans-serif;color:#333;padding:24px\">\n<h2 style=\"font-weight:normal;margin:0 0 12px\">Autumn notebooks are here</h2>\n<p style=\"line-height:1.6\">Dot grid, lined and blank, in four new cover colors. Members get 15% off this week.</p>\n<p><a href=\"https://paperleaf.example/autumn?utm_source=newsletter&utm_medium=email&utm_campaign=autumn_notebooks\" style=\"color:#7a4b2a\">Browse the collection</a></p></div>"
             }
           ]
         }
@@ -425,7 +446,7 @@
           "labels": ["INBOX", "STARRED", "IMPORTANT", "Clients/Fernhill"],
           "summary": "Lena loves direction B, wants a warmer green and the logo tested on cups by Thursday.",
           "brief": [
-            "Lena now also wants the leaf on its own, as a stamp for paper bags; Thursday still works.",
+            "Lena now also wants the leaf on its own, as a stamp for paper bags, and copied Rosa for the bag sizes; Thursday still works.",
             "Fernhill chose direction B, the hand-drawn leaf.",
             "Their notes: a warmer green, more letter spacing, mock-ups on cups, bags and the sign.",
             "You agreed to deliver; Jordan is copied for the timeline."
@@ -453,9 +474,10 @@
             },
             {
               "from": "lena",
+              "cc": ["rosa"],
               "ago": "1h",
               "unread": true,
-              "text": "Perfect. One more thing: could we also see the leaf on its own, as a stamp for the paper bags? Thursday still works for us.\n\nLena"
+              "text": "Perfect. One more thing: could we also see the leaf on its own, as a stamp for the paper bags? I've copied Rosa, who orders our packaging, so she can tell you the sizes. Thursday still works for us.\n\nLena"
             }
           ]
         },
@@ -511,6 +533,7 @@
           "messages": [
             {
               "from": "people",
+              "to": ["me", "priya", "jordan", "ben", "mei", "omar", "ines", "theo"],
               "ago": "1d",
               "subject": "Benefits enrollment closes Friday",
               "text": "Hi everyone, a reminder that benefits enrollment for next year closes this Friday. If you don't change anything, your current choices carry over.\n\nThe People Team"
