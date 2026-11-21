@@ -1,10 +1,15 @@
+/// <reference types="node" />
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   feedWheel,
+  GOO_REACH,
   isCoasting,
   NEW_GESTURE,
   openRest,
   releaseTo,
+  SNAP_GAP,
   springStep,
   SWIPE,
   swipeActions,
@@ -148,3 +153,91 @@ it("labels each button in a word", () => {
   expect(swipeLabel({ kind: "spam", spam: false })).toBe("Not spam");
   expect(swipeLabel({ kind: "star", starred: true })).toBe("Star");
 });
+
+describe("the button's snap as it separates", () => {
+  // The real stylesheet, so this guards what the app draws. (Read from
+  // disk: Vitest stubs CSS imports, `?raw` ones too, as empty.)
+  const css = readFileSync(resolve(__dirname, "../../../styles/index.css"), "utf8");
+  const keyframes = snapKeyframes(css);
+
+  it("is read from the stylesheet", () => {
+    expect(keyframes.length).toBeGreaterThanOrEqual(2);
+    expect(keyframes[0]!.at).toBe(0);
+    expect(keyframes.at(-1)!.at).toBe(1);
+  });
+
+  it("never reaches back within the goo's reach of the row", () => {
+    // The snap scales the button from its outer edge, so growing past its
+    // width moves its near edge toward the row. It starts the moment the
+    // gap reaches SNAP_GAP; the finger may stop there.
+    const stretch = (largestScale(keyframes) - 1) * SWIPE.capsule;
+    expect(SNAP_GAP).toBeGreaterThan(GOO_REACH);
+    expect(SNAP_GAP - Math.max(0, stretch)).toBeGreaterThan(GOO_REACH);
+  });
+});
+
+type Keyframe = { at: number; scale: number; easing: [number, number, number, number] };
+
+const NAMED_EASINGS: Record<string, [number, number, number, number]> = {
+  linear: [0, 0, 1, 1],
+  ease: [0.25, 0.1, 0.25, 1],
+  "ease-in": [0.42, 0, 1, 1],
+  "ease-out": [0, 0, 0.58, 1],
+  "ease-in-out": [0.42, 0, 0.58, 1],
+};
+
+function easing(text: string): [number, number, number, number] {
+  const bezier = /cubic-bezier\(([^)]*)\)/.exec(text);
+  if (bezier) {
+    const n = bezier[1]!.split(",").map(Number);
+    expect(n).toHaveLength(4);
+    return n as [number, number, number, number];
+  }
+  const named = Object.keys(NAMED_EASINGS).find((k) => new RegExp(`(^|\\s)${k}(\\s|$)`).test(text));
+  if (!named) throw new Error(`unknown easing in "${text}"`);
+  return NAMED_EASINGS[named]!;
+}
+
+/** `@keyframes swipe-snap`: each step's offset, scaleX and easing to the next. */
+function snapKeyframes(sheet: string): Keyframe[] {
+  const rule = /\.swipe-snap\s*\{[^}]*animation:\s*swipe-snap\s+([^;]*);/.exec(sheet);
+  if (!rule) throw new Error(".swipe-snap's animation not found");
+  const fallback = easing(rule[1]!.replace(/[\d.]+m?s/g, ""));
+  const open = sheet.indexOf("{", sheet.indexOf("@keyframes swipe-snap "));
+  let depth = 0;
+  let close = open;
+  for (; close < sheet.length; close++) {
+    if (sheet[close] === "{") depth++;
+    if (sheet[close] === "}" && --depth === 0) break;
+  }
+  const block = sheet.slice(open + 1, close);
+  return [...block.matchAll(/(from|to|[\d.]+%)\s*\{([^}]*)\}/g)].map((m) => {
+    const body = m[2]!;
+    const scale = /scaleX\(([\d.]+)\)/.exec(body);
+    if (!scale) throw new Error(`a swipe-snap step without scaleX: ${body}`);
+    const timing = /animation-timing-function:\s*([^;]+);/.exec(body);
+    const at = m[1] === "from" ? 0 : m[1] === "to" ? 1 : Number.parseFloat(m[1]!) / 100;
+    return { at, scale: Number(scale[1]), easing: timing ? easing(timing[1]!) : fallback };
+  });
+}
+
+/**
+ * The widest the button gets: each step eases to the next along its
+ * cubic-bezier, whose progress can overshoot past 1 or below 0, so the
+ * curve is sampled, not just the keyframes' own values.
+ */
+function largestScale(frames: Keyframe[]): number {
+  let most = Math.max(...frames.map((f) => f.scale));
+  for (let i = 0; i + 1 < frames.length; i++) {
+    const { scale: from, easing: e } = frames[i]!;
+    const to = frames[i + 1]!.scale;
+    for (let k = 0; k <= 1000; k++) {
+      const t = k / 1000;
+      // The curve's progress at parameter t; x is monotonic in t for a
+      // valid easing, so sampling t covers every moment in time.
+      const y = 3 * (1 - t) ** 2 * t * e[1] + 3 * (1 - t) * t ** 2 * e[3] + t ** 3;
+      most = Math.max(most, from + (to - from) * y);
+    }
+  }
+  return most;
+}

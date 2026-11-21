@@ -74,6 +74,14 @@ export type SwipePose = {
 /** The gap at which the goo blur lets go of the join (see SwipeLayers). */
 export const SNAP_GAP = 7;
 
+/**
+ * How far the goo filter reaches across a gap: closer than this, the
+ * button and the row are drawn joined by a neck. Measured on a render of
+ * SwipeBack's filter (blur 5, alpha cut `22 -10`). The button's snap may
+ * never bring it back within this of the row (see `.swipe-snap`).
+ */
+export const GOO_REACH = 6.8;
+
 const clamp = (x: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, x));
 const smooth = (a: number, b: number, x: number) => {
   const t = clamp((x - a) / (b - a));
