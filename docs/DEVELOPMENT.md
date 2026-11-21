@@ -70,17 +70,27 @@ None of your own mail can show. Archiving, labels, rules and the rest all
 work. Sending is faked: the message lands in Sent and the person answers
 about 8 seconds later. A sign-in code arrives 45 seconds after the window opens.
 
-The demo also has what the newer features need to show: the personal
-account counts as a personal Gmail account (`"personal": true` in the demo
-data; the app otherwise takes any address off `gmail.com` for Google
-Workspace), so only the work account warns about outside recipients, and
-Reply all to the client's newest email marks her colleague, who isn't in the
-contacts. A studio-wide email has a recipient line long enough for Details,
-and the newsletter's link carries tracking codes for the app to take off.
-About 20 seconds after launch the update notice offers an update (the app's
-own version, so What's new opens a real release page); Install shows a
-made-up download and then says the demo installs nothing. Nothing is
-fetched.
+Newer features to try in the demo:
+
+- **Outside recipients.** In the work account, open "Fernhill rebrand:
+  round 2 feedback" and Reply all: the client's colleague on Cc, who isn't
+  in the contacts, is marked, with a note above the message. The personal
+  account counts as a personal Gmail account (`"personal": true` in the demo
+  data; the app otherwise takes any address off `gmail.com` for Google
+  Workspace), so it never warns.
+- **Details.** "Benefits enrollment closes Friday" went to eight people;
+  Details shows them all.
+- **Links without tracking codes.** The link in "Autumn notebooks are here"
+  carries `utm_` codes; it opens in the browser without them.
+- **The update notice.** About 20 seconds after the demo opens, if Settings
+  → About → "Check for updates automatically" is on (it is at first), the
+  notice offers an update; "Check for updates" offers it at any time. The
+  version offered is the app's own, so What's new opens that version's
+  release page, which exists once the version is published (a branch
+  already at the next, unpublished version opens a missing page). Install
+  shows a made-up download, then says the demo installs nothing. Nothing is
+  fetched. `MAILBOAT_DEMO_UPDATE_AFTER=<seconds>` changes when the notice
+  comes, and `=off` leaves it out (the screenshots do).
 
 The made-up mail lives in `demo/mail.json` (reserved `.example` addresses
 only). Like the clean start below, the demo keeps to its own folder

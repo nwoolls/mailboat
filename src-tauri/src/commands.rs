@@ -1122,15 +1122,12 @@ pub fn compose_outside_rule(
     state: State<'_, AppState>,
     account: AccountId,
 ) -> CmdResult<OutsideRule> {
-    let mut rule = compose::outside::rule(&state.db.conn(), account)?;
     // Demo mode only: its personal account, on a made-up domain, is treated
     // as a personal Gmail account would be.
-    if let Some(google) = state.demo.as_ref() {
-        let email = mail_core::db::accounts::get(&state.db.conn(), account)?.email;
-        if google.is_personal(&email) {
-            rule.workspace = false;
-        }
-    }
+    let rule = match state.demo.as_ref() {
+        Some(google) => google.outside_rule(&state.db, account)?,
+        None => compose::outside::rule(&state.db.conn(), account)?,
+    };
     Ok(rule)
 }
 

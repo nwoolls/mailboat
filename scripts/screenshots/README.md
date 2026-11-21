@@ -25,7 +25,7 @@ the desktop. Each shot is 1600x900 (16:9): good for the README and for a post.
 ## Each time
 
 ```sh
-bun run demo                              # the demo app; wait for its window
+bun run demo                              # the demo app, with its update notice off (below); wait for its window
 OUT=/tmp/shots scripts/screenshots/build.sh   # the helpers and the two wallpapers
 OUT=/tmp/shots scripts/screenshots/place.sh   # puts the demo window in its spot
 OUT=/tmp/shots scripts/screenshots/gallery.sh dark     # every picture, dark
@@ -33,6 +33,12 @@ OUT=/tmp/shots scripts/screenshots/gallery.sh light    # every picture, light
 OUT=/tmp/shots scripts/screenshots/gallery.sh dark rules vacation   # just some
 OUT=/tmp/shots scripts/screenshots/gallery.sh dark loop_bubbles loop_swipe loop_koi loop_write_with_ai   # the loops
 ```
+
+The demo offers a made-up update about 20 seconds after it opens, and the
+notice would sit over every picture: start the demo with the app's
+`<prefix>_DEMO_UPDATE_AFTER=off` before `bun run demo` (the full name is in
+docs/DEVELOPMENT.md → Demo mode). For a picture of the notice itself, start it
+without that (or with `=5` to have it sooner).
 
 Take each AI picture, and the AI loop, on a fresh demo: the writing assistant
 leaves a draft reply behind, and the app's undo brings back only the latest

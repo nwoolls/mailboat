@@ -178,6 +178,27 @@ impl FakeGoogle {
         }
     }
 
+    /// Who counts as outside `account`'s organization, as
+    /// `compose::outside::rule` says, except that a demo account marked
+    /// personal (`AccountData::personal`) is treated as a personal Gmail
+    /// account would be: never warned about. Only demo mode asks this.
+    pub fn outside_rule(
+        &self,
+        db: &crate::db::Db,
+        account: crate::model::AccountId,
+    ) -> Result<crate::compose::outside::OutsideRule> {
+        // The database is let go of before this server's own lock is taken.
+        let (mut rule, email) = {
+            let conn = db.conn();
+            let rule = crate::compose::outside::rule(&conn, account)?;
+            (rule, crate::db::accounts::get(&conn, account)?.email)
+        };
+        if self.is_personal(&email) {
+            rule.workspace = false;
+        }
+        Ok(rule)
+    }
+
     /// Whether the demo account at `email` is a personal Gmail account
     /// (`AccountData::personal`).
     pub fn is_personal(&self, email: &str) -> bool {

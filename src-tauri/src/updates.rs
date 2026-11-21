@@ -185,6 +185,7 @@ impl Drop for InstallGuard {
 #[specta::specta]
 pub async fn update_check(app: AppHandle) -> CmdResult<Option<UpdateInfo>> {
     if is_demo(&app) {
+        DEMO_OFFERED.store(true, Ordering::SeqCst);
         return Ok(Some(demo_update()));
     }
     Ok(look(&app).await?.as_ref().map(info))
@@ -309,19 +310,44 @@ fn demo_update() -> UpdateInfo {
 }
 
 /// How long after launch the demo's notice appears: soon enough to show it,
-/// after the window has settled.
+/// after the window has settled. `<prefix>_DEMO_UPDATE_AFTER=<seconds>`
+/// changes it, and `=off` leaves the notice out (the gallery's other
+/// pictures, `scripts/screenshots`).
 const DEMO_OFFER_AFTER: Duration = Duration::from_secs(20);
+
+/// Set once the demo has offered its update, by itself or because "Check
+/// for updates" was pressed, so it isn't offered again: offering it again
+/// replaced what an install had just said (review).
+static DEMO_OFFERED: AtomicBool = AtomicBool::new(false);
+
+/// When the demo offers its update by itself, if at all.
+fn demo_offer_after() -> Option<Duration> {
+    let name = format!("{}_DEMO_UPDATE_AFTER", mail_core::brand::ENV_PREFIX);
+    match std::env::var(name) {
+        Ok(v) if v.trim().eq_ignore_ascii_case("off") => None,
+        Ok(v) => v
+            .trim()
+            .parse()
+            .ok()
+            .map(Duration::from_secs)
+            .or(Some(DEMO_OFFER_AFTER)),
+        Err(_) => Some(DEMO_OFFER_AFTER),
+    }
+}
 
 /// Offers the demo's update once, if looking for updates is on.
 fn demo_watch(app: AppHandle) {
+    let Some(after) = demo_offer_after() else {
+        return;
+    };
     tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(DEMO_OFFER_AFTER).await;
+        tokio::time::sleep(after).await;
         let wanted = app.try_state::<AppState>().is_some_and(|state| {
             mail_core::settings::load(&state.db.conn())
                 .map(|s| s.auto_check_updates)
                 .unwrap_or(true)
         });
-        if wanted {
+        if wanted && !DEMO_OFFERED.swap(true, Ordering::SeqCst) {
             let _ = UpdateAvailableEvent(demo_update()).emit(&app);
         }
     });

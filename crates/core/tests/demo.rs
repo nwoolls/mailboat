@@ -499,13 +499,19 @@ async fn the_demo_shows_outside_recipients_and_a_long_recipient_line() {
     assert!(google.is_personal(&personal.email));
     assert!(!google.is_personal(&work.email));
 
+    // As the composer asks in demo mode (`FakeGoogle::outside_rule`): the
+    // personal account is never warned about, the work account is.
+    let mine = add_account(&db, &personal.email);
+    assert!(!google.outside_rule(&db, mine).unwrap().workspace);
+    assert!(compose::outside::rule(&db.conn(), mine).unwrap().workspace);
+
     let id = add_account(&db, &work.email);
     let gmail = demo::client(reqwest::Client::new(), &google, &work.email);
     sync(&db, &gmail, id).await;
     compose::contacts::refresh_google(&db, &gmail, id)
         .await
         .unwrap();
-    let rule = compose::outside::rule(&db.conn(), id).unwrap();
+    let rule = google.outside_rule(&db, id).unwrap();
     assert!(rule.workspace);
     assert_eq!(rule.domains, ["northwind.example"]);
     assert!(rule.known.iter().any(|a| a == "lena@fernhill.example"));
@@ -520,4 +526,24 @@ async fn the_demo_shows_outside_recipients_and_a_long_recipient_line() {
     let benefits = subject_in(&threads, "Benefits enrollment closes Friday").id;
     let detail = query::thread_detail(&db.conn(), benefits).unwrap();
     assert_eq!(detail.messages[0].to.len(), 8);
+}
+
+/// The newsletter's link carries tracking codes, so the demo shows them
+/// coming off: the link the email's page holds opens without them.
+#[test]
+fn the_demo_newsletters_link_opens_without_its_tracking_codes() {
+    let data = DemoData::builtin();
+    let html = data.accounts[0]
+        .conversations
+        .iter()
+        .flat_map(|c| &c.messages)
+        .filter_map(|m| m.html.as_deref())
+        .find(|h| h.contains("paperleaf.example/autumn"))
+        .unwrap();
+    assert!(html.contains("utm_source="));
+    let page = mail_core::mail::sanitize::sanitize_html(html, true).document;
+    let start = page.find(mail_core::mail::links::link_base()).unwrap();
+    let href = &page[start..page[start..].find('"').unwrap() + start];
+    let opens = mail_core::mail::links::unwrap(&href.replace("&amp;", "&")).unwrap();
+    assert_eq!(opens, "https://paperleaf.example/autumn");
 }
