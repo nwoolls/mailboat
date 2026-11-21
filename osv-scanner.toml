@@ -61,12 +61,3 @@ id = "RUSTSEC-2026-0543"
 ignoreUntil = 2027-05-17
 reason = "chrono: unmaintained only; through oauth2, icalendar, rmcp and schemars"
 
-# picomatch 4.0.7: a regular-expression slowdown (ReDoS) on crafted glob
-# patterns, with no fixed release yet. Only build and test tools use it
-# (Vite, Vitest, Changesets, tinyglobby), matching the project's own
-# patterns; none of it ships in the app (the bill of materials marks it
-# build-only). Shorter expiry, to pick up a fixed release.
-[[IgnoredVulns]]
-id = "GHSA-fc5q-39xc-vjpf"
-ignoreUntil = 2027-02-17
-reason = "picomatch: build and test tools only, matching the project's own globs; not in the shipped app"

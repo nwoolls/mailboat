@@ -6697,7 +6697,7 @@ Privacy and the policy.*
       program exiting, the answer coming in early, a line handler failing
       and a timeout; they fail if the folder is kept or removed while the
       program still runs)*
-- [ ] Scan the code ourselves before the lab does, so findings are fixed
+- [x] Scan the code ourselves before the lab does, so findings are fixed
       or documented before the paid scans start. A lab may ask for a
       static scan (SAST) of a desktop app's source code (confirm the
       chosen lab's process, as planned above), and one lab's terms say
@@ -6795,6 +6795,13 @@ Privacy and the policy.*
       build uses it through `tempfile` and `xattr`; neither Windows target
       does. The rest of the item is still open)*
       *(2026-11-21, owner: repeat the scans now, on the 0.3.0 release, alongside it)*
+      *(2026-11-21: repeated on `main` at the 0.3.0 code (f19a311): Fluid
+      Attacks, Semgrep (507 rules), GitHub code scanning, gitleaks over
+      every commit on every branch, cargo-deny, osv-scanner and `bun audit`
+      found nothing. Fluid Attacks' parser skipped the same eight Rust files
+      as before, which Semgrep and CodeQL cover. The one change: the
+      `picomatch` advisory was withdrawn, so its ignore is removed. The
+      reports are kept outside the repository with the other evidence)*
 - [x] Image downloads over HTTPS only, redirects included *(found
       writing the answers for the lab, 2026-11-16: DASA 1.1.1)*. The
       reader always asks for an image over HTTPS (`http://` addresses are
@@ -6826,6 +6833,9 @@ Privacy and the policy.*
       `rmcp` (AI apps) and `schemars`, so it stays until they move; only
       build and test tools use `picomatch`, on the project's own patterns,
       and the bill of materials marks it build-only.
+      *(2026-11-21: the `picomatch` advisory was withdrawn on 2026-11-18,
+      so its entry in `osv-scanner.toml` is removed; found by the self-scan
+      below)*
 - [x] Move the app's own dates and time zones from `chrono` and `chrono-tz`
       to `jiff`, a maintained library with time zones built in
       *(owner, 2026-11-17, after the advisory above)*. Removes `chrono-tz`
