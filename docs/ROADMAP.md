@@ -5948,9 +5948,9 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       conversation in the results (updated, with Restore or Not spam on
       offer) and leave the preview as it was. A unit test failed before the
       fix.
-- [ ] A conversation's one-line summary in the list can carry made-up or
+- [x] A conversation's one-line summary in the list can carry made-up or
       leftover text *(found by an agent in demo mode while retaking the
-      pictures, 2026-11-21; filed on the owner's word)*. With Apple
+      pictures, 2026-11-21; filed on the owner's word; fixed the same day)*. With Apple
       Intelligence writing the line live, on made-up mail:
       - one line ended in a sign-in code the email never had ("use code
         code1234");
@@ -5980,6 +5980,37 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       in pictures get written summaries, so the pictures don't depend on
       this; the sign-in code email has none, and needs none, since its
       line is the app's fixed "Sign-in code" and never asks the model.
+
+      Fix: reproduced with a new live test, `apple_list_lines`
+      (`crates/core/tests/ai_live.rs`, ignored), which asks Apple
+      Intelligence for the line of every demo conversation several times and
+      marks field labels and any number or code the conversation doesn't
+      have. With the old prompt, 40 of 110 answers on the demo's made-up mail
+      were marked, with all three faults above. Trying the causes one at a
+      time showed that the model copies whatever the instructions spell out:
+      without the example line, a quoted "next Tuesday" (added to stop it
+      working out calendar dates from the date line) turned up in
+      conversations without one. So `list_line` now quotes nothing, names no
+      parts to fill in, and leaves out `CODE_ASKS` (it keeps the rule against
+      saying something was already done, without the word "code"). It also
+      says to use only facts and numbers from the email and to write dates as
+      the email does. With it, 1 of 105 answers was marked (a worked-out
+      date). `clean_line` now also takes off a Markdown or "Summary:"
+      wrapper, cuts the line at the first field label ("Status:", "Ask:",
+      "Action:"), and drops each part of the line that holds a number or a
+      code the model wasn't given, so a made-up code or date doesn't reach
+      the list even when the model writes one; if nothing is left, the list
+      shows the email's first words. Unit tests use the faulty lines from the
+      reproduction. Left over, filed below: a line can still call something
+      confirmed that is only proposed.
+- [ ] A list summary can call something confirmed or done that the
+      conversation only proposes *(found while fixing the entry above,
+      2026-11-21)*. In demo mode, "Lisbon in May?" (the reader is asked to
+      book by Friday) came back as "Alfama stay confirmed" in 4 of 5 answers
+      in one run and none of 10 in the next, with the same prompt. The old
+      prompt did it too ("Status: confirmed"). The instructions already say
+      not to; `apple_list_lines` with `AI_LIVE_LINE_ONLY=lisbon` reproduces
+      it.
 
 ## 0.3.0
 

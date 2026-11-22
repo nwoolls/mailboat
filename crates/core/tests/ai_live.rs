@@ -184,6 +184,117 @@ async fn chatgpt_ideas() {
     ideas_with(AiProvider::ChatGpt).await;
 }
 
+/// The list line of every demo conversation, a few times each (the model
+/// varies; `AI_LIVE_LINE_RUNS`, default 3), as the app writes and tidies it.
+/// `AI_LIVE_LINE_ONLY=lisbon` asks for the matching conversations only.
+/// Prints each line, marked where the model's answer had field labels or a
+/// number or code the conversation doesn't, and fails if one survives
+/// tidying. Apple's model once wrote "use code code1234" for an email with
+/// no code, "status: sent; ask: none" fields, and the instructions' example
+/// line into a dentist's reminder.
+async fn list_lines_with(provider: AiProvider) {
+    use mail_core::ai::{context, prompts};
+    use mail_core::db::Db;
+    use mail_core::demo::{self, DemoData, FakeGoogle, Timing};
+    use mail_core::model::ThreadId;
+
+    let data = DemoData::builtin();
+    let google = FakeGoogle::start(data.clone(), Timing::default())
+        .await
+        .unwrap();
+    let db = Db::open_in_memory().unwrap();
+    demo::prepare(&db, &reqwest::Client::new(), &google, &data)
+        .await
+        .unwrap();
+    let runs: usize = std::env::var("AI_LIVE_LINE_RUNS")
+        .ok()
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(3);
+    // `AI_LIVE_LINE_ONLY`: only conversations whose subject has these words.
+    let only = std::env::var("AI_LIVE_LINE_ONLY").unwrap_or_default();
+    let threads: Vec<(i64, String)> = {
+        let conn = db.conn();
+        let mut st = conn
+            .prepare("SELECT id, subject FROM threads ORDER BY id")
+            .unwrap();
+        let rows = st
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        rows
+    };
+    // What's wrong with a line: a field label, or a word with a digit the
+    // model never read (spaces ignored: "6 pm" can come back "6pm").
+    let faults = |line: &str, read: &str| {
+        let read: String = read
+            .to_lowercase()
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
+        let lower = line.to_lowercase();
+        let mut out = Vec::new();
+        for label in ["status:", "ask:", "asked:", "action:", "next step:"] {
+            if lower.contains(label) {
+                out.push(label.to_string());
+            }
+        }
+        for word in lower.split(|c: char| !c.is_alphanumeric()) {
+            if word.chars().any(|c| c.is_ascii_digit()) && !read.contains(word) {
+                out.push(word.to_string());
+            }
+        }
+        out
+    };
+    let programs = programs();
+    let (mut asked, mut raw_faults, mut left) = (0, 0, Vec::new());
+    for (id, subject) in threads {
+        if !subject.to_lowercase().contains(&only.to_lowercase()) {
+            continue;
+        }
+        let text = context::thread_text(&db.conn(), ThreadId(id)).unwrap();
+        let Some(last) = text.messages.last() else {
+            continue;
+        };
+        // The app writes a fixed line for these, without asking.
+        if !last.mine && mail_core::mail::codes::find(&subject, &last.text).is_some() {
+            continue;
+        }
+        let prompt = prompts::list_line(&text, provider);
+        println!("== {subject}");
+        for _ in 0..runs {
+            let answer = match ai::ask(&programs, provider, &prompt, &|_| {}).await {
+                Ok(a) => a,
+                // Apple's guardrails turn down the demo's prize scam.
+                Err(e) => {
+                    println!("   ({e})");
+                    continue;
+                }
+            };
+            asked += 1;
+            let raw = faults(&answer.text, &prompt.input);
+            let line = prompts::clean_line(&answer.text, &prompt.input);
+            let after = faults(&line, &prompt.input);
+            if !raw.is_empty() {
+                raw_faults += 1;
+                println!(" ! {:?} {raw:?}", answer.text.trim());
+            }
+            println!("   {line}");
+            if !after.is_empty() {
+                left.push(format!("{subject}: {line} {after:?}"));
+            }
+        }
+    }
+    println!("{provider:?}: {raw_faults} of {asked} answers had faults before tidying");
+    assert!(left.is_empty(), "left after tidying: {left:#?}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore]
+async fn apple_list_lines() {
+    list_lines_with(AiProvider::Apple).await;
+}
+
 /// Each rewrite style on a rough paragraph, and a sentence written to
 /// steer the model (it should be rewritten like the rest, not obeyed).
 async fn rewrite_with(provider: AiProvider) {

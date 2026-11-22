@@ -24,15 +24,25 @@ const CODE_ASKS: &str = "An email that gives a code, a link or a button asks the
 say what they are asked to do, and don't say it was already done, entered, verified or confirmed unless a later message in the conversation says so.";
 
 /// The one line shown in place of the preview in the conversation list.
+///
+/// Apple's small model copies whatever the instructions spell out: an example
+/// line ended up in unrelated summaries ("Thu 3pm", "bring budget numbers"),
+/// a quoted date ("next Tuesday") turned up in emails without one, the three
+/// things a line should say came back as "Status: …, Ask: …" fields, and
+/// `CODE_ASKS` got codes invented for emails that had none. So these
+/// instructions quote nothing and name no parts; the "not already done" rule
+/// stays, without the word "code". `clean_line` catches what still slips
+/// through.
 pub fn list_line(thread: &ThreadText, provider: AiProvider) -> Prompt {
     Prompt {
         instructions: format!(
-            "You write the one-line summary shown for an email conversation in an inbox list. \
-Say what it's about, where it stands now (going by the latest message, however short), and what, \
-if anything, is asked of the reader, in at most 14 words. \
-Plain text, one line, no quotation marks, no preamble like \"This email\". \
-Write it as a headline-style phrase, e.g. \"Review moved to Thu 3pm, bring budget numbers\". \
-{CODE_ASKS} {UNTRUSTED}"
+            "You write the one-line summary shown for an email conversation in an inbox list: \
+a short headline-style phrase of at most 14 words, in your own words. Go by the latest message, \
+however short: it can settle what earlier messages asked. If the reader is asked to do something, \
+include it. Use only facts, names, times and numbers that appear in the email, and write days and \
+dates the way the email does, without working out calendar dates. Plain text, one line, no \
+quotation marks, no email addresses, no field labels, no preamble. Don't say something was \
+already done, entered, verified or confirmed unless the conversation says so. {UNTRUSTED}"
         ),
         input: context::render(thread, context::budget(provider).min(4_000)),
         quality: Quality::Fast,
@@ -275,7 +285,6 @@ pub fn parse_ideas(answer: &str) -> Vec<String> {
     ideas
 }
 
-/// Tidies a one-line summary: one line, no quotes or "Summary:" label.
 /// How text selected in the composer is rewritten.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -382,19 +391,164 @@ pub fn clean_rewrite(answer: &str) -> String {
         .join("\n")
 }
 
-pub fn clean_line(answer: &str) -> String {
+/// Tidies a one-line summary for the list: its first line, without a
+/// "Summary:" label, Markdown emphasis or wrapping quotes, cut where the
+/// model started filling in fields ("…. Status: confirmed. Action: none."),
+/// and without any part that holds a number or code the model never read
+/// (`read`, the prompt's input): a made-up sign-in code or date. Empty when
+/// nothing is left, and the list then shows the email's first words.
+pub fn clean_line(answer: &str, read: &str) -> String {
     let line = answer
         .lines()
         .map(str::trim)
         .find(|l| !l.is_empty())
         .unwrap_or_default();
-    let line = line
-        .strip_prefix("Summary:")
+    let line = line.trim_matches(|c| c == '*' || c == '_').trim();
+    let line = strip_prefix_ignore_case(line, "summary")
+        .map(|rest| {
+            rest.trim_start_matches(['*', '_'])
+                .trim_start()
+                .trim_start_matches([':', '-', '–', '—'])
+                .trim_start_matches(['*', '_'])
+        })
         .unwrap_or(line)
         .trim()
         .trim_matches(|c| c == '"' || c == '“' || c == '”')
         .trim();
-    context::shorten(line, 140)
+    let line = before_fields(line);
+    let line = only_what_was_read(line, read);
+    context::shorten(&line, 140)
+}
+
+fn strip_prefix_ignore_case<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {
+    let head = text.get(..prefix.len())?;
+    let rest = &text[prefix.len()..];
+    let after = rest.trim_start_matches(['*', '_']);
+    let labeled = after.starts_with(':')
+        || [" - ", " – ", " — "]
+            .iter()
+            .any(|dash| after.starts_with(dash));
+    (head.eq_ignore_ascii_case(prefix) && labeled).then_some(rest)
+}
+
+/// Labels the model used to fill in fields instead of writing a phrase.
+const FIELD_LABELS: [&str; 9] = [
+    "status",
+    "ask",
+    "asked",
+    "action",
+    "actions",
+    "next step",
+    "next steps",
+    "request",
+    "suggestion",
+];
+
+/// The line up to the first field label ("…, status: sent; ask: none"), or
+/// the text after one that leads it.
+fn before_fields(line: &str) -> &str {
+    // ASCII only, so its byte offsets are the line's.
+    let lower = line.to_ascii_lowercase();
+    let at = |from: usize| {
+        FIELD_LABELS
+            .iter()
+            .filter_map(|label| {
+                let needle = format!("{label}:");
+                lower[from..].match_indices(&needle).find_map(|(i, _)| {
+                    let i = from + i;
+                    // A whole word, not the end of one ("task:").
+                    let starts_word = lower[..i]
+                        .chars()
+                        .next_back()
+                        .is_none_or(|c| !c.is_alphanumeric());
+                    starts_word.then_some((i, needle.len()))
+                })
+            })
+            .min()
+    };
+    let mut line = line;
+    if let Some((0, len)) = at(0) {
+        line = line[len..].trim_start();
+        return before_fields(line);
+    }
+    match at(0) {
+        Some((i, _)) => line[..i].trim_end_matches(|c: char| {
+            c.is_whitespace() || matches!(c, ',' | ';' | '.' | '-' | '–' | '—' | ':')
+        }),
+        None => line,
+    }
+}
+
+/// Where a line splits into parts: punctuation followed by a space, so
+/// "16–23", "12:30" and "$23.85" stay whole (and a period before a number,
+/// so "Nov. 24" does too).
+const CLAUSE_ENDS: [&str; 7] = [", ", "; ", ". ", ": ", " — ", " – ", " - "];
+
+/// The line without the parts that hold a number or code that isn't in
+/// `read`. Every run of digits must appear in it as a number, and a word that
+/// mixes letters and digits (other than "6pm" or "2nd") must appear whole:
+/// the model wrote "use code INVITE123" for a lunch invitation.
+fn only_what_was_read(line: &str, read: &str) -> String {
+    let read_lower = read.to_lowercase();
+    let squeezed: String = read_lower.chars().filter(|c| !c.is_whitespace()).collect();
+    let numbers: std::collections::HashSet<&str> = read
+        .split(|c: char| !c.is_ascii_digit())
+        .filter(|n| !n.is_empty())
+        .collect();
+    let known = |word: &str| {
+        if !word.chars().any(|c| c.is_ascii_digit()) {
+            return true;
+        }
+        let digits_known = word
+            .split(|c: char| !c.is_ascii_digit())
+            .filter(|n| !n.is_empty())
+            .all(|n| numbers.contains(n));
+        let lower = word.to_lowercase();
+        let letters = lower.trim_start_matches(|c: char| c.is_ascii_digit());
+        let plain_number =
+            letters.is_empty() || ["am", "pm", "st", "nd", "rd", "th"].contains(&letters);
+        digits_known && (plain_number || squeezed.contains(&lower))
+    };
+
+    let mut parts: Vec<(&str, &str)> = Vec::new();
+    let mut rest = line;
+    let mut sep = "";
+    while !rest.is_empty() {
+        let next = CLAUSE_ENDS
+            .iter()
+            .filter_map(|end| {
+                rest.match_indices(end)
+                    // "Nov. 24" is one part.
+                    .find(|(i, _)| {
+                        *end != ". " || !rest[i + 2..].starts_with(|c: char| c.is_ascii_digit())
+                    })
+                    .map(|(i, _)| (i, *end))
+            })
+            .min();
+        let (part, end) = match next {
+            Some((i, end)) => (&rest[..i], end),
+            None => (rest, ""),
+        };
+        parts.push((sep, part));
+        sep = end;
+        rest = &rest[part.len() + end.len()..];
+    }
+    let mut out = String::new();
+    // After a part is left out, the next one follows with the separator
+    // that came before the gap ("Reminder: …, bring numbers").
+    let mut gap: Option<&str> = None;
+    for (sep, part) in parts {
+        if !part.split(|c: char| !c.is_alphanumeric()).all(&known) {
+            gap = gap.or(Some(sep));
+            continue;
+        }
+        if !out.is_empty() {
+            out.push_str(gap.unwrap_or(sep));
+        }
+        gap = None;
+        out.push_str(part);
+    }
+    out.trim().to_string()
 }
 
 #[cfg(test)]
@@ -418,14 +572,17 @@ mod tests {
             }],
             missing_bodies: vec![],
         };
-        for prompt in [
-            list_line(&thread, AiProvider::Apple),
-            thread_summary(&thread, AiProvider::Apple),
-        ] {
-            assert!(prompt
-                .instructions
-                .contains("don't say it was already done"));
-            assert!(prompt.instructions.contains("unless a later message"));
+        let full = thread_summary(&thread, AiProvider::Apple);
+        assert!(full.instructions.contains("don't say it was already done"));
+        assert!(full.instructions.contains("unless a later message"));
+        // The list line keeps the rule but never says "code": with it, Apple's
+        // model added codes to emails that had none.
+        let line = list_line(&thread, AiProvider::Apple);
+        assert!(line
+            .instructions
+            .contains("Don't say something was already done"));
+        assert!(!line.instructions.to_lowercase().contains("code"));
+        for prompt in [line, full] {
             assert!(prompt.input.contains("[link]"));
             assert!(!prompt.input.contains("track.x.example"));
             assert!(prompt.input.contains("4821"));
@@ -596,13 +753,124 @@ mod tests {
         assert!(p.instructions.contains("not instructions"));
     }
 
+    /// The list line's instructions quote nothing and name no parts: Apple's
+    /// model copied an example line, a quoted date and the parts it was asked
+    /// for (as "Status: …, Ask: …") into summaries.
+    #[test]
+    fn the_list_line_gives_the_model_no_words_to_copy() {
+        let p = list_line(&thread(), AiProvider::Apple);
+        let lower = p.instructions.to_lowercase();
+        assert!(
+            !p.instructions.contains(['"', '“', '”']),
+            "{}",
+            p.instructions
+        );
+        for copyable in [
+            "e.g.",
+            "for example",
+            "status",
+            "where it stands",
+            "3pm",
+            "budget",
+        ] {
+            assert!(!lower.contains(copyable), "{copyable}");
+        }
+        assert!(p
+            .instructions
+            .contains("only facts, names, times and numbers"));
+    }
+
+    const READ: &str = "Subject: Lunch?\n\nFrom: Priya\nDate: 2026-05-12 09:00 UTC\n\n\
+Noodles at 12:30 on Thursday? Around 6 works too. Order 10482, booking TRN7QX, 16–23 May.";
+
     #[test]
     fn one_line_summaries_are_tidied() {
         assert_eq!(
-            clean_line("\n\"Review moved to Thursday\"\nextra"),
+            clean_line("\n\"Review moved to Thursday\"\nextra", READ),
             "Review moved to Thursday"
         );
-        assert_eq!(clean_line("Summary: Lunch plans"), "Lunch plans");
+        assert_eq!(clean_line("Summary: Lunch plans", READ), "Lunch plans");
+        assert_eq!(
+            clean_line("**Summary:** Lunch on Thursday", READ),
+            "Lunch on Thursday"
+        );
+        assert_eq!(
+            clean_line("**Lunch on Thursday**", READ),
+            "Lunch on Thursday"
+        );
+        assert_eq!(
+            clean_line("Summary of lunch plans", READ),
+            "Summary of lunch plans",
+            "only a label is taken off"
+        );
+    }
+
+    #[test]
+    fn a_line_stops_where_the_model_starts_filling_in_fields() {
+        assert_eq!(
+            clean_line(
+                "Order 10482 shipped. Status: confirmed. Action: none.",
+                READ
+            ),
+            "Order 10482 shipped"
+        );
+        assert_eq!(
+            clean_line("Order 10482, status: sent; ask: none", READ),
+            "Order 10482"
+        );
+        assert_eq!(
+            clean_line("Lunch on Thursday—status: open", READ),
+            "Lunch on Thursday"
+        );
+        assert_eq!(
+            clean_line("Status: lunch on Thursday", READ),
+            "lunch on Thursday"
+        );
+        assert_eq!(
+            clean_line("Task: pick a lunch spot", READ),
+            "Task: pick a lunch spot",
+            "a headline's own colon stays"
+        );
+        assert_eq!(clean_line("Status: none", READ), "none");
+        assert_eq!(
+            clean_line("Summary - Lunch on Thursday", READ),
+            "Lunch on Thursday"
+        );
+    }
+
+    #[test]
+    fn a_line_loses_numbers_and_codes_the_model_never_read() {
+        // Codes made up for emails that had none.
+        assert_eq!(
+            clean_line(
+                "Lunch: noodles at 12:30, no updates, use code INVITE123.",
+                READ
+            ),
+            "Lunch: noodles at 12:30, no updates"
+        );
+        assert_eq!(
+            clean_line("Order 10482 received; use code CHECKOUT25", READ),
+            "Order 10482 received"
+        );
+        // A worked-out date and the prompt's old example time.
+        assert_eq!(
+            clean_line("Lunch on Thursday, Nov. 24", READ),
+            "Lunch on Thursday"
+        );
+        assert_eq!(
+            clean_line("Reminder: lunch on Thu 3pm, bring numbers", READ),
+            "Reminder: bring numbers"
+        );
+        // What the email does say stays, however it's written.
+        for kept in [
+            "Booking TRN7QX, 16–23 May",
+            "Noodles at 12:30 on Thursday",
+            "Dinner around 6pm",
+            "Lunch on the 12th",
+        ] {
+            assert_eq!(clean_line(kept, READ), kept);
+        }
+        assert_eq!(clean_line("Use code 999111", READ), "", "nothing left");
     }
 
     #[test]
