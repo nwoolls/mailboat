@@ -1,0 +1,60 @@
+/* The clips' stylesheet: the app's own, with the clips' class names added
+   back (the app's leaves video/ out), and the clips' additions. */
+@import "../../src/styles/index.css";
+@source "./**/*.{ts,tsx}"; /* a glob: a bare folder doesn't override the app's `not` */
+
+/* Dark, whatever the renderer's browser reports: the dark values of
+   src/styles/index.css, with enough weight to beat its light media block. */
+:root:root {
+  --background-lightness: 9%;
+  --raised-lightness: 12%;
+  --content-lightness: 92%;
+  --warn-ink-lightness: 55%;
+  --glass-sidebar-base: 6.5%;
+  --glass-panel-base: 34%;
+  color-scheme: dark;
+}
+
+/* Every frame is drawn from the frame number, so nothing may run on the
+   clock. The app's own timed effects are paused here and placed by the
+   clip instead: `--snap` is how far into the swipe's snap (seconds of its
+   320 ms), `--wash` how far into the armed light-up (of its 200 ms). The
+   snap is restated in full (as in src/styles/index.css) so that a renderer
+   asking for reduced motion, where the app turns it off, still plays it. */
+.clip * {
+  transition: none !important;
+}
+.clip .swipe-snap {
+  animation: swipe-snap 320ms ease-in-out both paused;
+  animation-delay: calc(var(--snap, 0.32) * -1s);
+}
+/* Armed: the wash behind the button, and its icon and word turning accent
+   and growing a touch, together, as the app's 200 ms transitions do. */
+.clip[data-armed] [data-swipe-button] .bg-accent\/20 {
+  animation: clip-wash 200ms cubic-bezier(0.3, 1.6, 0.5, 1) both paused;
+  animation-delay: calc(var(--wash, 0) * -1s);
+}
+.clip[data-armed] [data-swipe-button] .transition-\[color\,transform\] {
+  animation: clip-label 200ms cubic-bezier(0.3, 1.6, 0.5, 1) both paused;
+  animation-delay: calc(var(--wash, 0) * -1s);
+}
+@keyframes clip-wash {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes clip-label {
+  from {
+    color: color-mix(in oklab, var(--color-content) 70%, transparent);
+    transform: scale(1);
+  }
+  to {
+    color: var(--color-accent);
+    transform: scale(1.06);
+  }
+}

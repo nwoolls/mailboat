@@ -7,10 +7,5 @@
   "scripts": {
     "studio": "remotionb studio src/index.ts",
     "render": "remotionb render src/index.ts"
-  },
-  "dependencies": {
-    "@remotion/cli": "4.0.541",
-    "@tailwindcss/webpack": "4.3.5",
-    "remotion": "4.0.541"
   }
 }

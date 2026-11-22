@@ -17,11 +17,11 @@ import {
   useVideoConfig,
   Img,
 } from "remotion";
-import "../../src/styles/index.css";
-import "./video.css";
+import "./clip.css";
 import { SwipeBack, SwipeButton } from "../../src/features/mailbox/ui/SwipeLayers";
 import { swipePose } from "../../src/features/mailbox/model/swipe";
 import { DEFAULT_LIST_PREFS, rowStep } from "../../src/features/mailbox/model/listPrefs";
+import { CodePill } from "../../src/features/codes/ui/CodePill";
 import { AiIcon, AttachmentIcon, StarIcon } from "../../src/shared/ui/icons";
 
 /** The snap and the light-up, slowed this many times. */
@@ -206,11 +206,7 @@ function RowContent({ row }: { row: Row }) {
           />
         )}
         <span className="truncate">{row.subject}</span>
-        {row.code && (
-          <span className="ml-2 shrink-0 rounded bg-accent/15 px-1.5 font-mono text-[11px] text-accent">
-            {row.code}
-          </span>
-        )}
+        {row.code && <CodePill code={row.code} />}
       </div>
       <div
         className="relative truncate text-xs font-medium text-content/40"
@@ -273,11 +269,14 @@ export function SwipeArchive() {
   const clock = {
     "--snap": Number.isFinite(snap) ? snap : SNAP_SECONDS,
     "--wash": Number.isFinite(wash) ? wash : 0,
-    "--wash-to": pose.armed ? 1 : 0,
   } as CSSProperties;
 
   return (
-    <AbsoluteFill className="clip overflow-hidden bg-black" style={{ ...clock, opacity: fade }}>
+    <AbsoluteFill
+      className="clip overflow-hidden bg-black"
+      data-armed={pose.armed ? "" : undefined}
+      style={{ ...clock, opacity: fade }}
+    >
       <div
         className="absolute inset-0 origin-top-left"
         style={{
