@@ -2,7 +2,7 @@
 // in /video/, which Safari needs to play a video.
 import { describe, expect, it } from "vitest";
 // @ts-expect-error: a plain JavaScript module, deployed as it is.
-import worker, { parseRange, rangeAllowed } from "../.github/website/worker.js";
+import worker, { parseRange, precondition, rangeAllowed } from "../.github/website/worker.js";
 
 describe("parseRange", () => {
   const size = 1000;
@@ -47,19 +47,33 @@ describe("rangeAllowed", () => {
   });
 });
 
+describe("precondition", () => {
+  const ask = (headers: Record<string, string>) =>
+    precondition(new Request("https://site.example/", { headers }), '"v2"');
+  it("judges If-Match strongly and If-None-Match weakly, If-Match first", () => {
+    expect(ask({})).toBeNull();
+    expect(ask({ "If-Match": '"v2"' })).toBeNull();
+    expect(ask({ "If-Match": 'W/"v2"' })).toBe(412);
+    expect(ask({ "If-Match": '"v1"', "If-None-Match": '"v2"' })).toBe(412);
+    expect(ask({ "If-None-Match": 'W/"v2"' })).toBe(304);
+    expect(ask({ "If-None-Match": '"v1"' })).toBeNull();
+  });
+});
+
 describe("the Worker", () => {
   const bytes = new Uint8Array(Array.from({ length: 300 }, (_, i) => i % 256));
   const etag = '"v2"';
-  // As Cloudflare's asset binding does: no body for HEAD, 304 for a matching
-  // If-None-Match, 404 for a file that isn't there.
+  // As Cloudflare's asset binding does: no body for HEAD, 404 for a file that
+  // isn't there. It judges no conditions here: the Worker judges them itself
+  // and never sends them on.
   const env = {
     ASSETS: {
       fetch: async (request: Request) => {
         if (new URL(request.url).pathname !== "/video/clip.mp4") {
           return new Response("not here", { status: 404 });
         }
-        if (request.headers.get("If-None-Match") === etag) {
-          return new Response(null, { status: 304, headers: { ETag: etag } });
+        if (request.headers.has("If-None-Match") || request.headers.has("If-Match")) {
+          throw new Error("the Worker passed a condition on to the files");
         }
         const headers = {
           "Content-Type": "video/mp4",
@@ -116,14 +130,38 @@ describe("the Worker", () => {
     expect(stale.status).toBe(200);
     expect((await stale.arrayBuffer()).byteLength).toBe(300);
   });
-  it("passes a 304 for an unchanged file through", async () => {
-    const res = await get("/video/clip.mp4", { headers: { "If-None-Match": etag } });
-    expect(res.status).toBe(304);
+  it.each([etag, `W/${etag}`, '"v1", "v2"', "*"])(
+    "answers 304 for If-None-Match %s, before any range",
+    async (value) => {
+      const res = await get("/video/clip.mp4", {
+        headers: { "If-None-Match": value, Range: "bytes=0-1" },
+      });
+      expect(res.status).toBe(304);
+      expect(res.headers.get("ETag")).toBe(etag);
+      expect(await res.text()).toBe("");
+    },
+  );
+  it("sends the file when If-None-Match names another version", async () => {
+    const other = await get("/video/clip.mp4", { headers: { "If-None-Match": '"v1"' } });
+    expect(other.status).toBe(200);
   });
-  it("answers HEAD with the range's headers and no body", async () => {
-    const res = await get("/video/clip.mp4", { method: "HEAD", headers: { Range: "bytes=0-1" } });
+  it.each(['"v1"', `W/${etag}`])("answers 412 for If-Match %s, before any range", async (value) => {
+    const res = await get("/video/clip.mp4", {
+      headers: { "If-Match": value, Range: "bytes=0-1" },
+    });
+    expect(res.status).toBe(412);
+  });
+  it.each([etag, '"v1", "v2"', "*"])("honors the range under If-Match %s", async (value) => {
+    const res = await get("/video/clip.mp4", {
+      headers: { "If-Match": value, Range: "bytes=0-1" },
+    });
     expect(res.status).toBe(206);
-    expect(res.headers.get("Content-Length")).toBe("2");
+  });
+  it("ignores a range on HEAD and gives the whole file's headers (RFC 9110 14.2)", async () => {
+    const res = await get("/video/clip.mp4", { method: "HEAD", headers: { Range: "bytes=0-1" } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Length")).toBe("300");
+    expect(res.headers.get("Content-Range")).toBeNull();
     expect(await res.text()).toBe("");
   });
 });
