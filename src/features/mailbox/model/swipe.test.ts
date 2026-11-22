@@ -158,9 +158,9 @@ describe("the button's snap as it separates", () => {
   // The real stylesheet, so this guards what the app draws. (Read from
   // disk: Vitest stubs CSS imports, `?raw` ones too, as empty.)
   const css = readFileSync(resolve(__dirname, "../../../styles/index.css"), "utf8");
-  const keyframes = snapKeyframes(css);
 
   it("is read from the stylesheet", () => {
+    const keyframes = snapKeyframes(css);
     expect(keyframes.length).toBeGreaterThanOrEqual(2);
     expect(keyframes[0]!.at).toBe(0);
     expect(keyframes.at(-1)!.at).toBe(1);
@@ -170,15 +170,67 @@ describe("the button's snap as it separates", () => {
     // The snap scales the button from its outer edge, so growing past its
     // width moves its near edge toward the row. It starts the moment the
     // gap reaches SNAP_GAP; the finger may stop there.
-    const stretch = (largestScale(keyframes) - 1) * SWIPE.capsule;
     expect(SNAP_GAP).toBeGreaterThan(GOO_REACH);
-    expect(SNAP_GAP - Math.max(0, stretch)).toBeGreaterThan(GOO_REACH);
+    expect(snapGap(css)).toBeGreaterThan(GOO_REACH);
+  });
+
+  // Edits a browser would draw with the button back inside the goo's reach.
+  // Each must fail the check above: by the gap it computes, or by refusing
+  // CSS it can't read the way the browser does.
+  const first = "transform: scaleX(0.94);";
+  const opening = /0% \{\n\s*transform: scaleX\(0\.94\);\n\s*animation-timing-function: [^;]+;/;
+  const bouncy =
+    "0% {\n    transform: scaleX(0.94);\n    animation-timing-function: cubic-bezier(0.3, 2, 0.5, 1)";
+  const broken: Record<string, string> = {
+    "the old stretch toward the row": css.replace(first, "transform: scaleX(1.07);"),
+    "an easing that overshoots past full width": css.replace(opening, `${bouncy};`),
+    "that easing as a step's last line, without a semicolon": css.replace(opening, `${bouncy}`),
+    "a second transform in a step (the last wins)": css.replace(
+      first,
+      `${first} transform: scaleX(1.07);`,
+    ),
+    "another transform function alongside": css.replace(
+      first,
+      "transform: translateX(-8px) scaleX(0.94);",
+    ),
+    "a second scale on top": css.replace(first, "transform: scaleX(0.94) scale(1.07);"),
+    "a later block of the same name (the last wins)": `${css}\n@keyframes swipe-snap { 0% { transform: scaleX(1.07); } 100% { transform: scaleX(1); } }`,
+    "a step behind a comment": css.replace(
+      "  75% {",
+      "  75% /* dip */ {\n    transform: scaleX(1.07);\n  }\n  76% {",
+    ),
+    // In source order 0% eases to 75% (0.94 to 0.985, under 1 however it
+    // overshoots); in time order to 50% (0.94 to 1, so past it).
+    "steps out of order": moveStep(css.replace(opening, `${bouncy};`), "50%", "100%"),
+  };
+
+  it.each(Object.entries(broken))("catches %s", (_name, sheet) => {
+    expect(sheet).not.toBe(css);
+    let gap: number;
+    try {
+      gap = snapGap(sheet);
+    } catch {
+      return; // refused: unreadable CSS fails the check above too
+    }
+    expect(gap).toBeLessThanOrEqual(GOO_REACH);
   });
 });
 
-type Keyframe = { at: number; scale: number; easing: [number, number, number, number] };
+/** The stylesheet with one of swipe-snap's steps moved to just after another. */
+function moveStep(sheet: string, step: string, after: string): string {
+  const at = sheet.indexOf("@keyframes swipe-snap ");
+  const head = sheet.slice(0, at);
+  const tail = sheet.slice(at);
+  const block = new RegExp(`\\n  ${step} \\{[^}]*\\}`).exec(tail)?.[0];
+  const anchor = new RegExp(`\\n  ${after} \\{[^}]*\\}`).exec(tail)?.[0];
+  if (at < 0 || !block || !anchor) throw new Error(`no ${step} or ${after} step`);
+  return head + tail.replace(block, "").replace(anchor, anchor + block);
+}
 
-const NAMED_EASINGS: Record<string, [number, number, number, number]> = {
+type Bezier = [number, number, number, number];
+type Keyframe = { at: number; scale: number; easing: Bezier };
+
+const NAMED_EASINGS: Record<string, Bezier> = {
   linear: [0, 0, 1, 1],
   ease: [0.25, 0.1, 0.25, 1],
   "ease-in": [0.42, 0, 1, 1],
@@ -186,39 +238,82 @@ const NAMED_EASINGS: Record<string, [number, number, number, number]> = {
   "ease-in-out": [0.42, 0, 0.58, 1],
 };
 
-function easing(text: string): [number, number, number, number] {
-  const bezier = /cubic-bezier\(([^)]*)\)/.exec(text);
-  if (bezier) {
-    const n = bezier[1]!.split(",").map(Number);
-    expect(n).toHaveLength(4);
-    return n as [number, number, number, number];
-  }
-  const named = Object.keys(NAMED_EASINGS).find((k) => new RegExp(`(^|\\s)${k}(\\s|$)`).test(text));
-  if (!named) throw new Error(`unknown easing in "${text}"`);
-  return NAMED_EASINGS[named]!;
+/** One easing, exactly: a keyword or a cubic-bezier. Anything else is refused. */
+function easing(text: string): Bezier {
+  const value = text.trim();
+  const named = NAMED_EASINGS[value];
+  if (named) return named;
+  const bezier = /^cubic-bezier\(([^)]*)\)$/.exec(value);
+  const n = bezier?.[1]!.split(",").map(Number);
+  if (!n || n.length !== 4 || n.some(Number.isNaN)) throw new Error(`unread easing "${value}"`);
+  return n as Bezier;
 }
 
-/** `@keyframes swipe-snap`: each step's offset, scaleX and easing to the next. */
-function snapKeyframes(sheet: string): Keyframe[] {
-  const rule = /\.swipe-snap\s*\{[^}]*animation:\s*swipe-snap\s+([^;]*);/.exec(sheet);
-  if (!rule) throw new Error(".swipe-snap's animation not found");
-  const fallback = easing(rule[1]!.replace(/[\d.]+m?s/g, ""));
-  const open = sheet.indexOf("{", sheet.indexOf("@keyframes swipe-snap "));
-  let depth = 0;
-  let close = open;
-  for (; close < sheet.length; close++) {
-    if (sheet[close] === "{") depth++;
-    if (sheet[close] === "}" && --depth === 0) break;
+/** A block's declarations, the last of each property winning, as in CSS. */
+function declarations(body: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const part of body.split(";")) {
+    if (!part.trim()) continue;
+    const colon = part.indexOf(":");
+    if (colon < 0) throw new Error(`unread declaration "${part.trim()}"`);
+    out.set(part.slice(0, colon).trim(), part.slice(colon + 1).trim());
   }
-  const block = sheet.slice(open + 1, close);
-  return [...block.matchAll(/(from|to|[\d.]+%)\s*\{([^}]*)\}/g)].map((m) => {
-    const body = m[2]!;
-    const scale = /scaleX\(([\d.]+)\)/.exec(body);
-    if (!scale) throw new Error(`a swipe-snap step without scaleX: ${body}`);
-    const timing = /animation-timing-function:\s*([^;]+);/.exec(body);
-    const at = m[1] === "from" ? 0 : m[1] === "to" ? 1 : Number.parseFloat(m[1]!) / 100;
-    return { at, scale: Number(scale[1]), easing: timing ? easing(timing[1]!) : fallback };
-  });
+  return out;
+}
+
+/** The text inside the braces that open at `open`. */
+function braced(sheet: string, open: number): string {
+  let depth = 0;
+  for (let i = open; i < sheet.length; i++) {
+    if (sheet[i] === "{") depth++;
+    if (sheet[i] === "}" && --depth === 0) return sheet.slice(open + 1, i);
+  }
+  throw new Error("unclosed block");
+}
+
+/**
+ * `@keyframes swipe-snap`, read strictly: each step's offset (sorted),
+ * its scaleX (the only transform allowed) and its easing to the next.
+ * What this can't read as the browser would, it refuses.
+ */
+function snapKeyframes(source: string): Keyframe[] {
+  const sheet = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  const blocks = [...sheet.matchAll(/@keyframes\s+swipe-snap\s*\{/g)];
+  if (blocks.length !== 1) throw new Error(`${blocks.length} @keyframes swipe-snap blocks`);
+  const rules = [...sheet.matchAll(/(?:^|\})\s*\.swipe-snap\s*\{/g)];
+  if (rules.length !== 1) throw new Error(`${rules.length} top-level .swipe-snap rules`);
+  const rule = declarations(braced(sheet, rules[0]!.index + rules[0]![0].length - 1));
+  if ([...rule.keys()].some((k) => k.startsWith("animation") && k !== "animation"))
+    throw new Error(".swipe-snap sets an animation longhand");
+  const words = (rule.get("animation") ?? "").split(/\s+(?![^(]*\))/);
+  const rest = words.filter((w) => !/^(swipe-snap|[\d.]+m?s|both|forwards|none)$/.test(w));
+  if (words[0] !== "swipe-snap" || rest.length !== 1)
+    throw new Error(`unread animation "${rule.get("animation")}"`);
+  const fallback = easing(rest[0]!);
+
+  const block = braced(sheet, blocks[0]!.index + blocks[0]![0].length - 1);
+  const frames = new Map<number, Keyframe>();
+  for (const m of block.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const props = declarations(m[2]!);
+    const transform = props.get("transform") ?? "";
+    const scale = /^scaleX\(([\d.]+)\)$/.exec(transform);
+    if (!scale) throw new Error(`a swipe-snap step's transform isn't one scaleX: "${transform}"`);
+    const timing = props.get("animation-timing-function");
+    for (const selector of m[1]!.split(",").map((x) => x.trim())) {
+      const at =
+        selector === "from" ? 0 : selector === "to" ? 1 : Number.parseFloat(selector) / 100;
+      if (!/^(from|to|[\d.]+%)$/.test(selector) || frames.has(at))
+        throw new Error(`unread or repeated step "${selector}"`);
+      frames.set(at, { at, scale: Number(scale[1]), easing: timing ? easing(timing) : fallback });
+    }
+  }
+  return [...frames.values()].toSorted((a, b) => a.at - b.at);
+}
+
+/** The gap between button and row at the snap's widest, from a split at SNAP_GAP. */
+function snapGap(sheet: string): number {
+  const stretch = (largestScale(snapKeyframes(sheet)) - 1) * SWIPE.capsule;
+  return SNAP_GAP - Math.max(0, stretch);
 }
 
 /**

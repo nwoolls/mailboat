@@ -885,10 +885,11 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
 /* A swiped row's button springing a little as it separates from the row
    (mailbox/ui/SwipeLayers.tsx). It recoils away from the row and settles,
    with a small second dip, and never grows past its own width: the origin
-   is its outer edge, so any stretch would reach back toward the row, and
-   at the split the gap is only just wider than the goo filter's reach, so
-   the two would join again for a moment (a flicker). The test in
-   mailbox/model/swipe.test.ts reads these keyframes and guards that. */
+   is its outer edge, so a stretch reaches back toward the row, and at the
+   split the gap is only just wider than the goo filter's reach, so more
+   than a fraction of a pixel would join the two again for a moment (a
+   flicker). The test in mailbox/model/swipe.test.ts reads these keyframes
+   strictly and guards that. */
 @keyframes swipe-snap {
   0% {
     transform: scaleX(0.94);
