@@ -455,3 +455,14 @@ CREATE TABLE hidden_contacts (
   hidden_at INTEGER NOT NULL
 );
 "#;
+
+/// List summaries written before the list line's prompt and check were
+/// fixed (2026-11-21) can carry words from the old instructions, field
+/// labels, or codes and dates the email doesn't have, and stay current
+/// until the conversation gets a new message. They go: they're a cache,
+/// written again for the rows on screen. The app's fixed "Sign-in code"
+/// line goes too, as a model's line could read the same; writing it again
+/// asks no model. Full summaries stay.
+pub const MIGRATION_V24: &str = r#"
+DELETE FROM ai_summaries WHERE kind = 'line';
+"#;

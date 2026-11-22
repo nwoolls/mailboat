@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use super::context::{thread_text, ThreadText};
+use super::context::{self, thread_text, ThreadText};
 use super::prompts::{self, ChatTurn, RewriteStyle, WritingContext};
 use super::summaries::{self, Summary, SummaryKind};
 use super::usage::{self, Purpose};
@@ -147,7 +147,7 @@ pub async fn summarize(
     };
     let answer = ask_recorded(db, programs, provider, purpose, &prompt, on_text).await?;
     let clean = match kind {
-        SummaryKind::Line => prompts::clean_line(&answer.text),
+        SummaryKind::Line => prompts::clean_line(&answer.text, &context::source_text(&text)),
         SummaryKind::Full => answer.text.trim().to_string(),
     };
     let summary = summaries::store(&db.conn(), thread, kind, provider, newest, &clean)?;

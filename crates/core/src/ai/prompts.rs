@@ -24,15 +24,25 @@ const CODE_ASKS: &str = "An email that gives a code, a link or a button asks the
 say what they are asked to do, and don't say it was already done, entered, verified or confirmed unless a later message in the conversation says so.";
 
 /// The one line shown in place of the preview in the conversation list.
+///
+/// Apple's small model copies whatever the instructions spell out: an example
+/// line ended up in unrelated summaries ("Thu 3pm", "bring budget numbers"),
+/// a quoted date ("next Tuesday") turned up in emails without one, the three
+/// things a line should say came back as "Status: …, Ask: …" fields, and
+/// `CODE_ASKS` got codes invented for emails that had none. So these
+/// instructions quote nothing and name no parts; the "not already done" rule
+/// stays, without the word "code". `clean_line` catches what still slips
+/// through.
 pub fn list_line(thread: &ThreadText, provider: AiProvider) -> Prompt {
     Prompt {
         instructions: format!(
-            "You write the one-line summary shown for an email conversation in an inbox list. \
-Say what it's about, where it stands now (going by the latest message, however short), and what, \
-if anything, is asked of the reader, in at most 14 words. \
-Plain text, one line, no quotation marks, no preamble like \"This email\". \
-Write it as a headline-style phrase, e.g. \"Review moved to Thu 3pm, bring budget numbers\". \
-{CODE_ASKS} {UNTRUSTED}"
+            "You write the one-line summary shown for an email conversation in an inbox list: \
+a short headline-style phrase of at most 14 words, in your own words. Go by the latest message, \
+however short: it can settle what earlier messages asked. If the reader is asked to do something, \
+include it. Use only facts, names, times and numbers that appear in the email, and write days and \
+dates the way the email does, without working out calendar dates. Plain text, one line, no \
+quotation marks, no email addresses, no field labels, no preamble. Don't say something was \
+already done, entered, verified or confirmed unless the conversation says so. {UNTRUSTED}"
         ),
         input: context::render(thread, context::budget(provider).min(4_000)),
         quality: Quality::Fast,
@@ -275,7 +285,6 @@ pub fn parse_ideas(answer: &str) -> Vec<String> {
     ideas
 }
 
-/// Tidies a one-line summary: one line, no quotes or "Summary:" label.
 /// How text selected in the composer is rewritten.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -382,19 +391,414 @@ pub fn clean_rewrite(answer: &str) -> String {
         .join("\n")
 }
 
-pub fn clean_line(answer: &str) -> String {
+/// Tidies a one-line summary for the list: its first line, without a
+/// "Summary:" label, Markdown emphasis or wrapping quotes, cut where the
+/// model started filling in fields ("…. Status: confirmed. Action: none."),
+/// and without any part that holds a number or code the conversation doesn't
+/// (`source`, from `context::source_text`): a made-up sign-in code or date.
+/// Empty when nothing is left, and the list then shows the email's first
+/// words.
+pub fn clean_line(answer: &str, source: &str) -> String {
+    let line = unwrap_marks(before_fields(tidy(answer)));
+    let line = only_what_was_read(line, &Known::new(source));
+    context::shorten(&line, 140)
+}
+
+/// What's wrong with a list line, as `clean_line` sees it: a field label,
+/// and each number or word with a number in it that the conversation
+/// (`source`) doesn't have. For the live test, to mark the model's answers.
+pub fn line_faults(answer: &str, source: &str) -> Vec<String> {
+    let line = tidy(answer);
+    let known = Known::new(source);
+    let mut faults = Vec::new();
+    if before_fields(line) != line {
+        faults.push("field label".to_string());
+    }
+    faults.extend(known.unknown(line));
+    faults
+}
+
+/// The answer's first line, without the marks around it or a "Summary:"
+/// label.
+fn tidy(answer: &str) -> &str {
     let line = answer
         .lines()
         .map(str::trim)
         .find(|l| !l.is_empty())
         .unwrap_or_default();
-    let line = line
-        .strip_prefix("Summary:")
-        .unwrap_or(line)
-        .trim()
-        .trim_matches(|c| c == '"' || c == '“' || c == '”')
-        .trim();
-    context::shorten(line, 140)
+    let line = unwrap_marks(line);
+    unwrap_marks(
+        strip_prefix_ignore_case(line, "summary")
+            .map(|rest| {
+                rest.trim_start_matches(['*', '_'])
+                    .trim_start()
+                    .trim_start_matches([':', '-', '–', '—'])
+            })
+            .unwrap_or(line),
+    )
+}
+
+/// The text without the white space, Markdown emphasis and quotation marks
+/// around it.
+fn unwrap_marks(text: &str) -> &str {
+    text.trim_matches(|c: char| c.is_whitespace() || matches!(c, '*' | '_' | '"' | '“' | '”'))
+}
+
+fn strip_prefix_ignore_case<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {
+    let head = text.get(..prefix.len())?;
+    let rest = &text[prefix.len()..];
+    let after = rest.trim_start_matches(['*', '_']);
+    let labeled = after.starts_with(':')
+        || [" - ", " – ", " — "]
+            .iter()
+            .any(|dash| after.starts_with(dash));
+    (head.eq_ignore_ascii_case(prefix) && labeled).then_some(rest)
+}
+
+/// Labels Apple's model used to fill in fields instead of writing a phrase.
+const FIELD_LABELS: [&str; 4] = ["status", "ask", "asked", "action"];
+
+/// The length of the field label that `lower` starts with: the label, any
+/// emphasis and spaces around it, and its colon ("**Status** :").
+fn field_label(lower: &str) -> Option<usize> {
+    let skip = |s: &str| {
+        s.len()
+            - s.trim_start_matches(['*', '_', ' ', '\t', '"', '“', '”'])
+                .len()
+    };
+    let start = skip(lower);
+    FIELD_LABELS.iter().find_map(|label| {
+        let rest = lower[start..].strip_prefix(label)?;
+        let before_colon = skip(rest);
+        let after = rest[before_colon..].strip_prefix(':')?;
+        Some(start + label.len() + before_colon + 1 + skip(after))
+    })
+}
+
+/// The line without the field labels that lead it, up to the first one
+/// that follows a punctuation mark ("…, status: sent; ask: none"). A label
+/// inside a phrase stays ("flight status: delayed", "pre-status: go").
+fn before_fields(line: &str) -> &str {
+    let mut line = line;
+    // ASCII only, so its byte offsets are the line's.
+    while let Some(len) = field_label(&line.to_ascii_lowercase()) {
+        line = line[len..].trim_start();
+    }
+    let lower = line.to_ascii_lowercase();
+    let mut prev = ' ';
+    let cut = lower.char_indices().find_map(|(i, c)| {
+        let before = std::mem::replace(&mut prev, c);
+        let mark = matches!(c, ',' | ';' | '.' | '!' | '?' | '—' | '–' | '|')
+            || (c == '-' && before.is_whitespace());
+        if !mark {
+            return None;
+        }
+        let after = &lower[i + c.len_utf8()..];
+        let spaces = after.len() - after.trim_start().len();
+        field_label(&after[spaces..]).map(|_| i)
+    });
+    match cut {
+        Some(i) => line[..i].trim_end_matches(|c: char| {
+            c.is_whitespace()
+                || matches!(
+                    c,
+                    ',' | ';' | '.' | '-' | '–' | '—' | ':' | '*' | '_' | '"' | '“'
+                )
+        }),
+        None => line,
+    }
+}
+
+/// The words of a text as `Known` compares them: letters, digits and the
+/// hyphens and periods inside ("INV-12345", "ZX7.AA1").
+fn words(text: &str) -> impl Iterator<Item = &str> {
+    text.split(|c: char| !(c.is_alphanumeric() || c == '-' || c == '.'))
+        .map(|w| w.trim_matches(['-', '.']))
+        .filter(|w| !w.is_empty())
+}
+
+/// The numbers in a text, whole: digits with the periods, colons, slashes
+/// and commas between them ("$1,299.50" is 1299.50, "09:30" is 9:30, "05/24"
+/// is 05/24, "16–23" is 16 and 23). A thousands comma (three digits after
+/// it) is left out, so "1,299" and "1299" are the same number; any other
+/// comma stays ("42,95"). A time loses its leading zero ("09:30" is 9:30).
+/// Digits inside a code ("INV-007315", "TRN7QX") aren't numbers of their
+/// own: the code is compared as a word. Each number comes with the "am" or
+/// "pm" written after it, if any. `text` is lowercase.
+fn numbers(text: &str) -> Vec<(String, Option<&'static str>)> {
+    let chars: Vec<char> = text.chars().collect();
+    let digit = |i: usize| chars.get(i).is_some_and(char::is_ascii_digit);
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        if !digit(i) {
+            i += 1;
+            continue;
+        }
+        let prev = i.checked_sub(1).map(|p| chars[p]);
+        let in_code = prev.is_some_and(char::is_alphabetic)
+            || (matches!(prev, Some('-' | '.'))
+                && i.checked_sub(2).is_some_and(|p| chars[p].is_alphabetic()));
+        if in_code {
+            while i < chars.len() && chars[i].is_alphanumeric() {
+                i += 1;
+            }
+            continue;
+        }
+        let mut number = String::new();
+        while i < chars.len() {
+            let c = chars[i];
+            let thousands = c == ',' && (1..=3).all(|k| digit(i + k)) && !digit(i + 4);
+            if c.is_ascii_digit() || (matches!(c, '.' | ':' | '/' | ',') && digit(i + 1)) {
+                if !thousands {
+                    number.push(c);
+                }
+            } else {
+                break;
+            }
+            i += 1;
+        }
+        if number.contains(':') {
+            let trimmed = number.trim_start_matches('0');
+            number = if trimmed.starts_with(':') {
+                format!("0{trimmed}")
+            } else {
+                trimmed.to_string()
+            };
+        }
+        let after: String = chars[i..]
+            .iter()
+            .skip_while(|c| c.is_whitespace())
+            .take(5)
+            .filter(|c| **c != '.')
+            .collect::<String>()
+            .to_lowercase();
+        let mark = ["am", "pm"]
+            .into_iter()
+            .find(|m| after.starts_with(m) && !after[m.len()..].starts_with(char::is_alphabetic));
+        out.push((number, mark));
+    }
+    out
+}
+
+/// A number and its unit or ending, written together ("6pm", "12th").
+const NUMBER_ENDINGS: [&str; 6] = ["am", "pm", "st", "nd", "rd", "th"];
+
+fn number_with_ending(word: &str) -> bool {
+    let ending = word.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == ':');
+    let ending = ending.replace('.', "");
+    ending.len() < word.len() && NUMBER_ENDINGS.contains(&ending.as_str())
+}
+
+/// The numbers and codes of a conversation, to check a line's against.
+struct Known {
+    /// Every number, whole (`numbers`).
+    numbers: std::collections::HashSet<String>,
+    /// The "am" or "pm" written after each number: a line can't swap one
+    /// for the other ("9:30 AM" as "9:30 PM").
+    marks: std::collections::HashMap<String, std::collections::HashSet<&'static str>>,
+    /// The whole part of every number with a fraction or minutes ("42" of
+    /// "42.95", "10" of "10:00"): a line may round to it.
+    whole_parts: std::collections::HashSet<String>,
+    /// Every word with a digit in it, lowercased, and each number joined to
+    /// the word after it, with only a space between ("2 m" as "2m").
+    codes: std::collections::HashSet<String>,
+}
+
+impl Known {
+    fn new(source: &str) -> Self {
+        let lower = source.to_lowercase();
+        let found = numbers(&lower);
+        let mut marks: std::collections::HashMap<_, std::collections::HashSet<_>> =
+            std::collections::HashMap::new();
+        for (n, mark) in &found {
+            if let Some(mark) = mark {
+                marks.entry(n.clone()).or_default().insert(*mark);
+                // "9:00 AM" can come back as "9 AM", not "9 PM".
+                if let Some((hour, _)) = n.split_once(':') {
+                    marks.entry(hour.to_string()).or_default().insert(*mark);
+                }
+            }
+        }
+        let numbers: std::collections::HashSet<String> =
+            found.into_iter().map(|(n, _)| n).collect();
+        let whole_parts = numbers
+            .iter()
+            .filter_map(|n| {
+                n.split_once(['.', ':'])
+                    .filter(|_| !n.contains('/'))
+                    .map(|(whole, _)| whole.to_string())
+            })
+            .collect();
+        let mut codes = std::collections::HashSet::new();
+        for line in lower.lines() {
+            let chunks: Vec<&str> = line.split([' ', '\t']).filter(|c| !c.is_empty()).collect();
+            for (i, chunk) in chunks.iter().enumerate() {
+                codes.extend(
+                    words(chunk)
+                        .filter(|w| w.chars().any(char::is_numeric))
+                        .map(String::from),
+                );
+                if let Some(next) = chunks.get(i + 1) {
+                    if chunk.chars().all(|c| c.is_ascii_digit())
+                        && next.chars().all(char::is_alphabetic)
+                    {
+                        codes.insert(format!("{chunk}{next}"));
+                    }
+                }
+            }
+        }
+        Known {
+            numbers,
+            marks,
+            whole_parts,
+            codes,
+        }
+    }
+
+    fn knows_number(&self, n: &str, mark: Option<&str>) -> bool {
+        let known = self.numbers.contains(n)
+            || (!n.contains(['.', ':', '/']) && self.whole_parts.contains(n));
+        let other_mark = mark.is_some_and(|m| {
+            self.marks
+                .get(n)
+                .is_some_and(|seen| !seen.is_empty() && !seen.contains(m))
+        });
+        known && !other_mark
+    }
+
+    /// A word with letters and digits must be a word of the conversation,
+    /// a number with its ending, or such words joined by hyphens
+    /// ("9am-5pm"). One with digits of another script must be a word of it.
+    fn knows_word(&self, word: &str) -> bool {
+        let lower = word.to_lowercase();
+        let foreign = lower.chars().any(|c| c.is_numeric() && !c.is_ascii_digit());
+        let mixed =
+            lower.chars().any(|c| c.is_ascii_digit()) && lower.chars().any(char::is_alphabetic);
+        if !(foreign || mixed) || self.codes.contains(&lower) {
+            return true;
+        }
+        if foreign {
+            return false;
+        }
+        number_with_ending(&lower)
+            || (lower.contains('-')
+                && lower.split('-').all(|part| {
+                    part.chars().any(|c| c.is_ascii_digit())
+                        && (part.chars().all(|c| c.is_ascii_digit())
+                            || number_with_ending(part)
+                            || self.codes.contains(part))
+                }))
+    }
+
+    /// The numbers and words of `text` the conversation doesn't have.
+    fn unknown(&self, text: &str) -> Vec<String> {
+        // Lowercased before it's split, as the conversation is ("İ" turns
+        // into two characters).
+        let text = &text.to_lowercase();
+        let numbers = numbers(text)
+            .into_iter()
+            .filter(|(n, mark)| !self.knows_number(n, *mark))
+            .map(|(n, mark)| match mark {
+                Some(m) => format!("{n} {m}"),
+                None => n,
+            });
+        let words = words(text)
+            .filter(|w| !self.knows_word(w))
+            .map(String::from);
+        numbers.chain(words).collect()
+    }
+}
+
+/// Where a line splits into parts, weakest first: punctuation followed by a
+/// space, so "16–23", "12:30" and "$23.85" stay whole.
+const CLAUSE_ENDS: [&str; 9] = [", ", ": ", " - ", " – ", " — ", "; ", ". ", "! ", "? "];
+
+/// Words shortened with a period before a number ("Nov. 24", "No. 8"),
+/// where the period doesn't end a part. Splitting there would leave
+/// "Notebook no" when the number is dropped; the whole part goes instead.
+const MONTHS: [&str; 13] = [
+    "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec", "no",
+];
+
+/// Words that start a part limiting the rest of the line: when such a part
+/// goes, the whole line goes.
+const CONDITIONS: [&str; 6] = ["only", "unless", "if", "except", "provided", "until"];
+
+fn strength(sep: &str) -> usize {
+    CLAUSE_ENDS
+        .iter()
+        .position(|e| *e == sep)
+        .map_or(0, |p| p + 1)
+}
+
+/// The line without the parts that hold a number or code the conversation
+/// doesn't: the model wrote "use code INVITE123" for a lunch invitation.
+fn only_what_was_read(line: &str, known: &Known) -> String {
+    let mut parts: Vec<(&str, &str)> = Vec::new();
+    let mut rest = line;
+    let mut sep = "";
+    while !rest.is_empty() {
+        let next = CLAUSE_ENDS
+            .iter()
+            .filter_map(|end| {
+                rest.match_indices(end)
+                    .find(|(i, _)| {
+                        let abbreviation = *end == ". "
+                            && rest[i + 2..].starts_with(char::is_numeric)
+                            && MONTHS.contains(
+                                &rest[..*i]
+                                    .rsplit(|c: char| !c.is_alphabetic())
+                                    .next()
+                                    .unwrap_or_default()
+                                    .to_lowercase()
+                                    .as_str(),
+                            );
+                        !abbreviation
+                    })
+                    .map(|(i, _)| (i, *end))
+            })
+            .min();
+        let (part, end) = match next {
+            Some((i, end)) => (&rest[..i], end),
+            None => (rest, ""),
+        };
+        parts.push((sep, part));
+        sep = end;
+        rest = &rest[part.len() + end.len()..];
+    }
+    let mut out = String::new();
+    // Where parts were left out, the ones on either side are joined by the
+    // strongest separator between them ("Lunch, room 777. Bring a notebook"
+    // becomes "Lunch. Bring a notebook").
+    let mut gap: Option<&str> = None;
+    for (sep, part) in parts {
+        let joiner = match gap {
+            Some(g) if strength(g) > strength(sep) => g,
+            _ => sep,
+        };
+        if !known.unknown(part).is_empty() {
+            // Without its condition, a request would say something else
+            // ("Submit, (only if the total is below …)" isn't "Submit"). A
+            // new sentence isn't a condition of the one before.
+            let first = part
+                .split(|c: char| !c.is_alphabetic())
+                .find(|w| !w.is_empty())
+                .unwrap_or_default();
+            let same_sentence = ![". ", "! ", "? "].contains(&sep);
+            if same_sentence && CONDITIONS.contains(&first.to_lowercase().as_str()) {
+                return String::new();
+            }
+            gap = Some(joiner);
+            continue;
+        }
+        if !out.is_empty() {
+            out.push_str(joiner);
+        }
+        gap = None;
+        out.push_str(part);
+    }
+    out.trim().to_string()
 }
 
 #[cfg(test)]
@@ -418,14 +822,17 @@ mod tests {
             }],
             missing_bodies: vec![],
         };
-        for prompt in [
-            list_line(&thread, AiProvider::Apple),
-            thread_summary(&thread, AiProvider::Apple),
-        ] {
-            assert!(prompt
-                .instructions
-                .contains("don't say it was already done"));
-            assert!(prompt.instructions.contains("unless a later message"));
+        let full = thread_summary(&thread, AiProvider::Apple);
+        assert!(full.instructions.contains("don't say it was already done"));
+        assert!(full.instructions.contains("unless a later message"));
+        // The list line keeps the rule but never says "code": with it, Apple's
+        // model added codes to emails that had none.
+        let line = list_line(&thread, AiProvider::Apple);
+        assert!(line
+            .instructions
+            .contains("Don't say something was already done"));
+        assert!(!line.instructions.to_lowercase().contains("code"));
+        for prompt in [line, full] {
             assert!(prompt.input.contains("[link]"));
             assert!(!prompt.input.contains("track.x.example"));
             assert!(prompt.input.contains("4821"));
@@ -596,13 +1003,392 @@ mod tests {
         assert!(p.instructions.contains("not instructions"));
     }
 
+    /// The list line's instructions quote nothing and name no parts: Apple's
+    /// model copied an example line, a quoted date and the parts it was asked
+    /// for (as "Status: …, Ask: …") into summaries.
+    #[test]
+    fn the_list_line_gives_the_model_no_words_to_copy() {
+        let p = list_line(&thread(), AiProvider::Apple);
+        let lower = p.instructions.to_lowercase();
+        assert!(
+            !p.instructions.contains(['"', '“', '”']),
+            "{}",
+            p.instructions
+        );
+        for copyable in [
+            "e.g.",
+            "for example",
+            "status",
+            "where it stands",
+            "3pm",
+            "budget",
+        ] {
+            assert!(!lower.contains(copyable), "{copyable}");
+        }
+        assert!(p
+            .instructions
+            .contains("only facts, names, times and numbers"));
+    }
+
+    /// A conversation's own words, as `context::source_text` gives them.
+    const READ: &str = "Lunch?\n\
+Noodles at 12:30 on Thursday? Around 6 works too. Order 10482, booking TRN7QX, 16–23 May. \
+Doors open 09:30, 2 m from the door.";
+
     #[test]
     fn one_line_summaries_are_tidied() {
         assert_eq!(
-            clean_line("\n\"Review moved to Thursday\"\nextra"),
+            clean_line("\n\"Review moved to Thursday\"\nextra", READ),
             "Review moved to Thursday"
         );
-        assert_eq!(clean_line("Summary: Lunch plans"), "Lunch plans");
+        assert_eq!(clean_line("Summary: Lunch plans", READ), "Lunch plans");
+        assert_eq!(
+            clean_line("**Summary:** Lunch on Thursday", READ),
+            "Lunch on Thursday"
+        );
+        assert_eq!(
+            clean_line("**Lunch on Thursday**", READ),
+            "Lunch on Thursday"
+        );
+        assert_eq!(
+            clean_line("Summary of lunch plans", READ),
+            "Summary of lunch plans",
+            "only a label is taken off"
+        );
+        assert_eq!(
+            clean_line("\"Summary: Lunch on Thursday\"", READ),
+            "Lunch on Thursday",
+            "quotes come off before the label"
+        );
+    }
+
+    #[test]
+    fn a_line_stops_where_the_model_starts_filling_in_fields() {
+        assert_eq!(
+            clean_line(
+                "Order 10482 shipped. Status: confirmed. Action: none.",
+                READ
+            ),
+            "Order 10482 shipped"
+        );
+        assert_eq!(
+            clean_line("Order 10482, status: sent; ask: none", READ),
+            "Order 10482"
+        );
+        assert_eq!(
+            clean_line("Lunch on Thursday—status: open", READ),
+            "Lunch on Thursday"
+        );
+        assert_eq!(
+            clean_line("Status: lunch on Thursday", READ),
+            "lunch on Thursday"
+        );
+        assert_eq!(
+            clean_line("Task: pick a lunch spot", READ),
+            "Task: pick a lunch spot",
+            "a headline's own colon stays"
+        );
+        assert_eq!(clean_line("Status: none", READ), "none");
+        assert_eq!(
+            clean_line("Summary - Lunch on Thursday", READ),
+            "Lunch on Thursday"
+        );
+        // Emphasis around a label goes with it.
+        assert_eq!(
+            clean_line("**Status:** lunch on Thursday", READ),
+            "lunch on Thursday"
+        );
+        assert_eq!(clean_line("**Status: none**", READ), "none");
+        assert_eq!(clean_line("Lunch, **Status:** open", READ), "Lunch");
+        assert_eq!(clean_line("**Status:**", READ), "");
+        // A label is cut only where it follows a punctuation mark; inside a
+        // phrase it is the headline's own words.
+        assert_eq!(
+            clean_line("Review flight status: delayed until Thursday", READ),
+            "Review flight status: delayed until Thursday"
+        );
+        assert_eq!(
+            clean_line("Budget request: lunch on Thursday", READ),
+            "Budget request: lunch on Thursday"
+        );
+        // Many leading labels, without running out of stack.
+        let many = format!("{}lunch", "Status: ".repeat(5_000));
+        assert_eq!(clean_line(&many, READ), "lunch");
+    }
+
+    #[test]
+    fn a_line_loses_numbers_and_codes_the_model_never_read() {
+        // Codes made up for emails that had none.
+        assert_eq!(
+            clean_line(
+                "Lunch: noodles at 12:30, no updates, use code INVITE123.",
+                READ
+            ),
+            "Lunch: noodles at 12:30, no updates"
+        );
+        assert_eq!(
+            clean_line("Order 10482 received; use code CHECKOUT25", READ),
+            "Order 10482 received"
+        );
+        // A worked-out date and the prompt's old example time.
+        assert_eq!(
+            clean_line("Lunch on Thursday, Nov. 24", READ),
+            "Lunch on Thursday"
+        );
+        assert_eq!(
+            clean_line("Reminder: lunch on Thu 3pm, bring numbers", READ),
+            "Reminder: bring numbers"
+        );
+        // What the email does say stays, however it's written.
+        for kept in [
+            "Booking TRN7QX, 16–23 May",
+            "Noodles at 12:30 on Thursday",
+            "Dinner around 6pm",
+            "Lunch on the 12th",
+        ] {
+            assert_eq!(clean_line(kept, READ), kept);
+        }
+        assert_eq!(clean_line("Use code 999111", READ), "", "nothing left");
+    }
+
+    /// Only the conversation's own words count: a code has to be one of its
+    /// words, whole, and a send time or date line isn't in it.
+    #[test]
+    fn a_code_counts_only_whole_and_from_the_emails_own_words() {
+        let source = "Your order XINVITE123Z, room\n123, codes ABC-456 and XYZ-123";
+        for made_up in ["Use code INVITE123", "Go to ROOM123", "Use code ABC-123"] {
+            assert_eq!(clean_line(made_up, source), "", "{made_up}");
+        }
+        assert_eq!(clean_line("Use code ABC-456", source), "Use code ABC-456");
+        assert_eq!(
+            clean_line("Doors open 9:30, 2m from the door", READ),
+            "Doors open 9:30, 2m from the door",
+            "leading zeros and a number's unit"
+        );
+        // From a real thread's text: the message's send time isn't the email's.
+        let thread = ThreadText {
+            subject: "Review".into(),
+            messages: vec![ContextMessage {
+                id: MessageId(1),
+                from: Address {
+                    name: Some("Sam".into()),
+                    email: "s@x.example".into(),
+                },
+                to: vec![],
+                // 2026-11-24 10:45 UTC
+                date: 1_795_517_100_000,
+                mine: false,
+                text: "Can we move the review to next week?".into(),
+            }],
+            missing_bodies: vec![],
+        };
+        let prompt = list_line(&thread, AiProvider::Apple);
+        assert!(
+            prompt.input.contains("2026-11-24 10:45"),
+            "{}",
+            prompt.input
+        );
+        let source = context::source_text(&thread);
+        assert_eq!(
+            clean_line("Review moved to next week, Nov. 24, at 10:45", &source),
+            "Review moved to next week"
+        );
+    }
+
+    #[test]
+    fn a_line_split_by_a_dropped_part_keeps_its_sentence_break() {
+        assert_eq!(
+            clean_line("Lunch, room 777. Bring a notebook", READ),
+            "Lunch. Bring a notebook"
+        );
+        assert_eq!(
+            clean_line("Lunch. 3 guests requested. Bring a notebook", READ),
+            "Lunch. Bring a notebook",
+            "a period before a number ends a sentence"
+        );
+        assert_eq!(
+            clean_line("Lunch on Thursday, Nov. 24", READ),
+            "Lunch on Thursday",
+            "but not after a month"
+        );
+    }
+
+    /// `line_faults` and `clean_line` agree: a fault before tidying is gone
+    /// after it, and a line without one is kept as it is.
+    #[test]
+    fn faults_are_what_clean_line_takes_out() {
+        let bad = "Lunch at 6pm, use code INVITE123. Status: open";
+        assert_eq!(line_faults(bad, READ), ["field label", "invite123"]);
+        assert_eq!(clean_line(bad, READ), "Lunch at 6pm");
+        assert!(line_faults(&clean_line(bad, READ), READ).is_empty());
+        // A field behind a wrapper counts too.
+        assert_eq!(line_faults("Summary: Status: moved", READ), ["field label"]);
+        assert_eq!(clean_line("Summary: Status: moved", READ), "moved");
+        let good = "Lunch at 6pm on the 12th";
+        assert!(line_faults(good, READ).is_empty());
+        assert_eq!(clean_line(good, READ), good);
+    }
+
+    /// A number counts whole: an amount, a time or a reference made of
+    /// pieces from different places in the email doesn't.
+    #[test]
+    fn numbers_count_whole() {
+        let source = "Deposit $19.95. Balance $42.00. Nov. 24 at 09:30, Dec. 2 at 11:45. \
+Invoice INV-007315. There are 2. Mail the form.";
+        for made_up in [
+            "Deposit $42.95",
+            "Meet at 09:45",
+            "Use sign-in code 7315",
+            "Use code 2mail",
+            "Lunch on ٢٤ May",
+        ] {
+            assert_eq!(clean_line(made_up, source), "", "{made_up}");
+        }
+        for kept in ["Balance $42", "Meet at 9:30", "Invoice INV-007315 due"] {
+            assert_eq!(clean_line(kept, source), kept);
+        }
+        // Thousands commas, either way round.
+        assert_eq!(
+            clean_line("Budget is 1,299", "The budget is 1299."),
+            "Budget is 1,299"
+        );
+        assert_eq!(
+            clean_line("Budget is 1299", "Total $1,299.50 due"),
+            "Budget is 1299"
+        );
+        // A range of times, however it's joined.
+        for source in ["Open 9 am to 5 pm", "Open 9am - 5pm"] {
+            assert_eq!(
+                clean_line("Open 9am-5pm", source),
+                "Open 9am-5pm",
+                "{source}"
+            );
+        }
+        assert_eq!(clean_line("Free 2-4pm", "Free 2-4 pm."), "Free 2-4pm");
+        assert_eq!(clean_line("Use code ABC-123", "ABC-456 and XYZ-123"), "");
+    }
+
+    /// Round 3's cases: commas only of thousands, dates with slashes and
+    /// codes with periods whole, "am" kept apart from "pm", and a dropped
+    /// condition taking its request with it.
+    #[test]
+    fn numbers_keep_their_form() {
+        // A decimal comma isn't a thousands comma.
+        for made_up in ["Total €4295", "Total €42.95"] {
+            assert_eq!(clean_line(made_up, "Total €42,95"), "", "{made_up}");
+        }
+        assert_eq!(clean_line("Room 12 is open", "Rooms 1,2 are open"), "");
+        // Slashes and periods join a date or a code.
+        for source in ["Choose 05/12 or 06/24", "Thursday the 24th at 5"] {
+            assert_eq!(clean_line("Meet on 05/24", source), "", "{source}");
+        }
+        assert_eq!(
+            clean_line("Meet on 05/24", "Meet on 05/24?"),
+            "Meet on 05/24"
+        );
+        assert_eq!(
+            clean_line("Use code ZX7.BB2", "Codes ZX7.AA1 and YQ8.BB2"),
+            ""
+        );
+        assert_eq!(
+            clean_line("Use code ZX7.AA1", "Codes ZX7.AA1 and YQ8.BB2"),
+            "Use code ZX7.AA1"
+        );
+        // "am" and "pm" aren't swapped; one the email leaves out may be added.
+        assert_eq!(clean_line("Meet at 9:30 PM", "Meet at 9:30 AM"), "");
+        assert_eq!(clean_line("Meet at 9:30pm", "Meet at 9:30 a.m."), "");
+        assert_eq!(
+            clean_line("Meet at 9:30 AM", "Meet at 9:30 AM"),
+            "Meet at 9:30 AM"
+        );
+        assert_eq!(
+            clean_line("Dinner at 6.30pm", "Dinner at 6.30?"),
+            "Dinner at 6.30pm"
+        );
+        // A condition that goes takes the whole line with it.
+        assert_eq!(
+            clean_line(
+                "Submit, only if the total is below $42.95",
+                "Submit only if the total is below $42.00"
+            ),
+            ""
+        );
+        // Other scripts' digits after an abbreviation, and a quoted label.
+        assert_eq!(clean_line("Notebook no. ٨ ready", READ), "");
+        assert_eq!(clean_line("Lunch, “Status: open”", READ), "Lunch");
+    }
+
+    /// Round 4's cases.
+    #[test]
+    fn marks_conditions_and_codes_hold_in_other_forms() {
+        // "am" and "pm" across a no-break space, on a whole hour, and written
+        // with periods.
+        assert_eq!(clean_line("Meet at 9:30\u{a0}PM", "Meet at 9:30 AM"), "");
+        assert_eq!(clean_line("Meet at 9 PM", "Meet at 9:00 AM"), "");
+        assert_eq!(
+            clean_line("Meet at 9 AM", "Meet at 9:00 AM"),
+            "Meet at 9 AM"
+        );
+        assert_eq!(
+            clean_line("Meet at 9:30a.m.", "Meet at 9:30 a.m."),
+            "Meet at 9:30a.m."
+        );
+        // A condition in brackets; a new sentence isn't one.
+        assert_eq!(
+            clean_line(
+                "Submit, (only if the total is below $42.95)",
+                "Submit only if the total is below $42.00"
+            ),
+            ""
+        );
+        assert_eq!(
+            clean_line(
+                "Pickup is ready. But the review moved to May 24",
+                "Pickup is ready"
+            ),
+            "Pickup is ready"
+        );
+        // A comma that isn't a thousands one, and a code's digits, count only
+        // as written.
+        assert_eq!(clean_line("The fee is 42,95", "Rooms 42 and 95"), "");
+        assert_eq!(
+            clean_line("The fee is 42,95", "The fee: 42,95"),
+            "The fee is 42,95"
+        );
+        assert_eq!(
+            clean_line("Use sign-in code 007315", "Invoice INV-007315 is due"),
+            ""
+        );
+        assert_eq!(
+            clean_line("Invoice INV-007315 is due", "Invoice INV-007315 is due"),
+            "Invoice INV-007315 is due"
+        );
+        // The same code, whatever its letters lowercase to.
+        assert_eq!(
+            clean_line("Ref İD2 is ready", "Ref İD2 is ready"),
+            "Ref İD2 is ready"
+        );
+    }
+
+    /// Labels written with a space before the colon, or after "!" or "?",
+    /// are cut too; one inside a hyphenated word isn't. "No. 8" is one part.
+    #[test]
+    fn field_labels_in_other_forms() {
+        assert_eq!(
+            clean_line("Buses delayed! Status: sent", READ),
+            "Buses delayed"
+        );
+        assert_eq!(
+            clean_line("Buses delayed, Status : sent", READ),
+            "Buses delayed"
+        );
+        assert_eq!(clean_line("Ready? Ask: none", READ), "Ready");
+        assert_eq!(clean_line("pre-status: go", READ), "pre-status: go");
+        assert_eq!(clean_line("Notebook no. 8 ready", READ), "");
+        assert_eq!(
+            clean_line("Lunch on Thursday. No. 8 is free", READ),
+            "Lunch on Thursday"
+        );
     }
 
     #[test]

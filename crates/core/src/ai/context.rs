@@ -203,6 +203,27 @@ fn when(millis: i64) -> String {
 /// stood alone into its answer as a bullet.
 pub const LATEST_MARK: &str = " (latest message)";
 
+/// The conversation's own words: its subject, the names of the people in
+/// it, and each message's text, without the date lines, addresses and notes
+/// `render` adds. A list line is checked against it (`prompts::clean_line`),
+/// so a number the model took from a message's send time, rather than from
+/// what the email says, doesn't count.
+pub fn source_text(thread: &ThreadText) -> String {
+    let mut out = thread.subject.clone();
+    for m in &thread.messages {
+        for name in std::iter::once(&m.from)
+            .chain(&m.to)
+            .filter_map(|a| a.name.as_deref())
+        {
+            out.push('\n');
+            out.push_str(name);
+        }
+        out.push('\n');
+        out.push_str(&m.text);
+    }
+    out
+}
+
 /// The conversation as text within `budget` characters. The newest
 /// message gets the most room; older ones are shortened, then left out
 /// (oldest first), with a note saying how many. In a conversation, the

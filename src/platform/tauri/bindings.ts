@@ -1515,10 +1515,7 @@ export type RewriteAnswer = {
 	html: string,
 };
 
-/**
- *  Tidies a one-line summary: one line, no quotes or "Summary:" label.
- *  How text selected in the composer is rewritten.
- */
+/**  How text selected in the composer is rewritten. */
 export type RewriteStyle = "shorter" | "friendlier" | "moreFormal" | "fixGrammar";
 
 export type Rule = {

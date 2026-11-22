@@ -168,7 +168,7 @@ describe("what leaves the computer", () => {
 describe("what stays on the computer", () => {
   it("says how long saved summaries stay, and what the switch changes", () => {
     expect(STAYS_ON_THIS_COMPUTER).toContain(
-      "Saved summaries stay until they are written again or cleared, or until you quit if you turn off Keep saved summaries.",
+      "Saved summaries stay until they are written again, cleared, or removed with their conversation or by an update, or until you quit if you turn off Keep saved summaries.",
     );
   });
 

@@ -184,6 +184,117 @@ async fn chatgpt_ideas() {
     ideas_with(AiProvider::ChatGpt).await;
 }
 
+/// The list line of every demo conversation, a few times each (the model
+/// varies; `AI_LIVE_LINE_RUNS`, default 3), as the app writes and tidies it.
+/// `AI_LIVE_LINE_ONLY=lisbon` asks for the matching conversations only.
+/// Prints each line, marked where the model's answer had field labels or a
+/// number or code the conversation doesn't (`prompts::line_faults`), and
+/// fails if one survives tidying, a request failed (other than a guardrail
+/// refusal), no answer came back, or tidying emptied more than a tenth of
+/// the lines. Apple's model once wrote "use code code1234" for an email with
+/// no code, "status: sent; ask: none" fields, and the instructions' example
+/// line into a dentist's reminder.
+async fn list_lines_with(provider: AiProvider) {
+    use mail_core::ai::{context, prompts};
+    use mail_core::db::Db;
+    use mail_core::demo::{self, DemoData, FakeGoogle, Timing};
+    use mail_core::model::ThreadId;
+
+    let data = DemoData::builtin();
+    let google = FakeGoogle::start(data.clone(), Timing::default())
+        .await
+        .unwrap();
+    let db = Db::open_in_memory().unwrap();
+    demo::prepare(&db, &reqwest::Client::new(), &google, &data)
+        .await
+        .unwrap();
+    let runs: usize = std::env::var("AI_LIVE_LINE_RUNS")
+        .ok()
+        .and_then(|n| n.parse().ok())
+        .unwrap_or(3);
+    // `AI_LIVE_LINE_ONLY`: only conversations whose subject has these words.
+    let only = std::env::var("AI_LIVE_LINE_ONLY").unwrap_or_default();
+    let threads: Vec<(i64, String)> = {
+        let conn = db.conn();
+        let mut st = conn
+            .prepare("SELECT id, subject FROM threads ORDER BY id")
+            .unwrap();
+        let rows = st
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        rows
+    };
+    let programs = programs();
+    let (mut asked, mut raw_faults, mut emptied, mut left) = (0, 0, 0, Vec::new());
+    let mut errors: Vec<String> = Vec::new();
+    for (id, subject) in threads {
+        if !subject.to_lowercase().contains(&only.to_lowercase()) {
+            continue;
+        }
+        let text = context::thread_text(&db.conn(), ThreadId(id)).unwrap();
+        let Some(last) = text.messages.last() else {
+            continue;
+        };
+        // The app writes a fixed line for these, without asking.
+        if !last.mine && mail_core::mail::codes::find(&subject, &last.text).is_some() {
+            continue;
+        }
+        let prompt = prompts::list_line(&text, provider);
+        println!("== {subject}");
+        for _ in 0..runs {
+            let answer = match ai::ask(&programs, provider, &prompt, &|_| {}).await {
+                Ok(a) => a,
+                // Apple's guardrails turn down the demo's prize scam; any
+                // other error fails the run, which would otherwise check
+                // fewer lines than it says.
+                Err(e) => {
+                    println!("   ({e})");
+                    if !e.to_string().contains("guardrails") {
+                        errors.push(format!("{subject}: {e}"));
+                    }
+                    continue;
+                }
+            };
+            asked += 1;
+            let source = context::source_text(&text);
+            let raw = prompts::line_faults(&answer.text, &source);
+            let line = prompts::clean_line(&answer.text, &source);
+            let after = prompts::line_faults(&line, &source);
+            if !raw.is_empty() {
+                raw_faults += 1;
+                println!(" ! {:?} {raw:?}", answer.text.trim());
+            }
+            println!("   {line}");
+            if !after.is_empty() {
+                left.push(format!("{subject}: {line} {after:?}"));
+            }
+            if line.is_empty() {
+                emptied += 1;
+            }
+        }
+    }
+    println!("{provider:?}: {raw_faults} of {asked} answers had faults before tidying");
+    assert!(
+        asked > 0,
+        "no answers: is the provider set up, and does the filter match?"
+    );
+    assert!(errors.is_empty(), "requests failed: {errors:#?}");
+    assert!(left.is_empty(), "left after tidying: {left:#?}");
+    // Tidying keeps the lines it has no reason to drop.
+    assert!(
+        emptied * 10 <= asked,
+        "{emptied} of {asked} lines were emptied"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore]
+async fn apple_list_lines() {
+    list_lines_with(AiProvider::Apple).await;
+}
+
 /// Each rewrite style on a rough paragraph, and a sentence written to
 /// steer the model (it should be rewritten like the rest, not obeyed).
 async fn rewrite_with(provider: AiProvider) {
