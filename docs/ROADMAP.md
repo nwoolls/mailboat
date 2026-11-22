@@ -6032,8 +6032,8 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       rows on screen. Unit tests use the faulty lines from the reproduction
       and the reviews' cases, and `a_list_line_keeps_only_what_the_conversation_says`
       (`crates/core/tests/ai.rs`) checks the saved line end to end.
-      Left over, filed below: a line can still call something confirmed that
-      is only proposed.
+      Left over, filed below and fixed 2026-11-22: a line could still call
+      something confirmed that was only proposed.
 - [x] A list summary can call something confirmed or done that the
       conversation only proposes *(found while fixing the entry above,
       2026-11-21; fixed 2026-11-22, branch `list-line-claims`)*. In demo mode, "Lisbon in May?" (the reader is asked to
@@ -6045,11 +6045,16 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       now does: a part of the line that says something was done
       ("confirmed", "booked", "paid", "approved" and a few more) is left
       out when the conversation never uses that word, unless the line says
-      it hasn't happened ("not confirmed", "to be confirmed"). A related
-      word isn't enough, since a request says "book" or "confirmation"
-      too. In a live run over the demo it also caught "approved" in two
-      other conversations where nothing was approved. A unit test fails
-      without the change.
+      it hasn't happened ("not confirmed", "to be confirmed") or names it as
+      a condition ("once approved"). A related word isn't enough, since a
+      request says "book" or "confirmation" too. The rule's limit: a
+      request that uses the word itself ("let me know once it is booked")
+      lets the claim through. "Done" and "entered" aren't checked, as they
+      set deadlines too often ("done by Friday"). In a live run over the
+      demo it also caught "approved" in two other conversations where
+      nothing was approved. A unit test fails without the change, and so
+      does `a_list_line_keeps_only_what_the_conversation_says` with
+      "approved" taken off the list.
 
 ## 0.3.0
 

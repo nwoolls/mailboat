@@ -264,20 +264,30 @@ mod tests {
         assert_eq!(next, 1);
     }
 
-    /// `MIGRATION_V24` and `MIGRATION_V25`, each on a database from before
-    /// it: list lines go, full summaries stay.
+    /// `MIGRATION_V24` and `MIGRATION_V25`, each alone on the summaries
+    /// saved before it, and the upgrade from before both: list lines go,
+    /// full summaries stay. Each runs on its own, as the other deletes the
+    /// same rows and would hide a broken one.
     #[test]
     fn upgrading_drops_list_lines_written_with_the_old_prompt() {
-        for from in [24, 25] {
-            upgrading_from_drops_list_lines(from);
+        for sql in [schema::MIGRATION_V24, schema::MIGRATION_V25] {
+            let db = Db::open_in_memory().unwrap();
+            let conn = db.conn();
+            saved_summaries(&conn);
+            conn.execute_batch(sql).unwrap();
+            assert_eq!(summaries_left(&conn), [(1, "full".to_string())]);
         }
-    }
-
-    fn upgrading_from_drops_list_lines(from: i64) {
         let db = Db::open_in_memory().unwrap();
         let mut conn = db.conn();
-        conn.execute("DELETE FROM schema_migrations WHERE version >= ?1", [from])
+        conn.execute("DELETE FROM schema_migrations WHERE version >= 24", [])
             .unwrap();
+        saved_summaries(&conn);
+        migrate(&mut conn).unwrap();
+        assert_eq!(summaries_left(&conn), [(1, "full".to_string())]);
+    }
+
+    /// Two list lines and a full summary, as an older version saved them.
+    fn saved_summaries(conn: &Connection) {
         conn.execute_batch(
             "
              INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at)
@@ -289,15 +299,15 @@ mod tests {
                       (1, 2, 'line', 'apple', 2, 'Sign-in code', 0);",
         )
         .unwrap();
-        migrate(&mut conn).unwrap();
-        let left: Vec<(i64, String)> = conn
-            .prepare("SELECT thread_id, kind FROM ai_summaries ORDER BY thread_id, kind")
+    }
+
+    fn summaries_left(conn: &Connection) -> Vec<(i64, String)> {
+        conn.prepare("SELECT thread_id, kind FROM ai_summaries ORDER BY thread_id, kind")
             .unwrap()
             .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
             .unwrap()
             .collect::<std::result::Result<_, _>>()
-            .unwrap();
-        assert_eq!(left, [(1, "full".to_string())]);
+            .unwrap()
     }
 
     /// `MIGRATION_V21` on a database from before it: the shared image cache
