@@ -395,7 +395,9 @@ pub fn clean_rewrite(answer: &str) -> String {
 /// "Summary:" label, Markdown emphasis or wrapping quotes, cut where the
 /// model started filling in fields ("…. Status: confirmed. Action: none."),
 /// and without any part that holds a number or code the conversation doesn't
-/// (`source`, from `context::source_text`): a made-up sign-in code or date.
+/// (`source`, from `context::source_text`): a made-up sign-in code or date,
+/// or that says something was done in words the conversation doesn't use
+/// (`CLAIMS`).
 /// Empty when nothing is left, and the list then shows the email's first
 /// words.
 pub fn clean_line(answer: &str, source: &str) -> String {
@@ -405,8 +407,9 @@ pub fn clean_line(answer: &str, source: &str) -> String {
 }
 
 /// What's wrong with a list line, as `clean_line` sees it: a field label,
-/// and each number or word with a number in it that the conversation
-/// (`source`) doesn't have. For the live test, to mark the model's answers.
+/// each number or word with a number in it that the conversation
+/// (`source`) doesn't have, and each word saying something was done that it
+/// doesn't use (`CLAIMS`). For the live test, to mark the model's answers.
 pub fn line_faults(answer: &str, source: &str) -> Vec<String> {
     let line = tidy(answer);
     let known = Known::new(source);
@@ -603,6 +606,39 @@ struct Known {
     /// Every word with a digit in it, lowercased, and each number joined to
     /// the word after it, with only a space between ("2 m" as "2m").
     codes: std::collections::HashSet<String>,
+    /// Every word of letters, lowercased: a line may say something is done
+    /// (`CLAIMS`) only with a word the conversation uses.
+    letters: std::collections::HashSet<String>,
+}
+
+/// Words that say something has already happened. Apple's model wrote
+/// "stay confirmed" for a trip the reader was only asked to book, though
+/// the instructions say not to. A line may use one only when the
+/// conversation has that same word; a related one isn't enough ("book",
+/// "confirmation" and "payment" are what a request says, too).
+const CLAIMS: [&str; 10] = [
+    "confirmed",
+    "booked",
+    "reserved",
+    "verified",
+    "completed",
+    "finalized",
+    "approved",
+    "paid",
+    "entered",
+    "done",
+];
+
+/// Words before a claim that say it hasn't happened ("not confirmed",
+/// "to be confirmed", "not yet paid"). A word ending in "n't" counts too.
+const NOT_YET: [&str; 4] = ["not", "be", "yet", "never"];
+
+/// The words of a text made of letters (and apostrophes, so "isn't" stays
+/// one word), lowercased. `text` is lowercase.
+fn letter_words(text: &str) -> impl Iterator<Item = &str> {
+    text.split(|c: char| !(c.is_alphabetic() || c == '\'' || c == '’'))
+        .map(|w| w.trim_matches(['\'', '’']))
+        .filter(|w| !w.is_empty())
 }
 
 impl Known {
@@ -648,11 +684,13 @@ impl Known {
                 }
             }
         }
+        let letters = letter_words(&lower).map(String::from).collect();
         Known {
             numbers,
             marks,
             whole_parts,
             codes,
+            letters,
         }
     }
 
@@ -706,7 +744,23 @@ impl Known {
         let words = words(text)
             .filter(|w| !self.knows_word(w))
             .map(String::from);
-        numbers.chain(words).collect()
+        numbers.chain(words).chain(self.claims(text)).collect()
+    }
+
+    /// The words of `text` (lowercase) that say something was done
+    /// (`CLAIMS`) when the conversation never says it, unless a word
+    /// before says it wasn't.
+    fn claims(&self, text: &str) -> Vec<String> {
+        let mut prev = "";
+        let mut out = Vec::new();
+        for w in letter_words(text) {
+            let denied = NOT_YET.contains(&prev) || prev.ends_with("n't") || prev.ends_with("n’t");
+            if CLAIMS.contains(&w) && !denied && !self.letters.contains(w) {
+                out.push(w.to_string());
+            }
+            prev = w;
+        }
+        out
     }
 }
 
@@ -1227,6 +1281,38 @@ Doors open 09:30, 2 m from the door.";
         let good = "Lunch at 6pm on the 12th";
         assert!(line_faults(good, READ).is_empty());
         assert_eq!(clean_line(good, READ), good);
+    }
+
+    /// A line can't say something was done when the conversation only asks
+    /// for it: the demo's trip asks the reader to book by Friday, and Apple's
+    /// model wrote "Alfama stay confirmed".
+    #[test]
+    fn a_line_says_done_only_when_the_conversation_does() {
+        let asked = "Lisbon in May?\nAlfama it is. Shall I book it? \
+We should book by Friday. Let me check that week with work.";
+        let bad = "Trip to Lisbon: Alfama stay confirmed, book by Friday";
+        assert_eq!(line_faults(bad, asked), ["confirmed"]);
+        assert_eq!(clean_line(bad, asked), "Trip to Lisbon: book by Friday");
+        for made_up in ["Alfama booked", "Stay paid", "Trip finalized", "Plans done"] {
+            assert_eq!(clean_line(made_up, asked), "", "{made_up}");
+        }
+        // A line that says it hasn't happened yet is true.
+        for not_yet in [
+            "Alfama stay not confirmed yet",
+            "Alfama stay isn't booked yet",
+            "Alfama stay to be confirmed by Friday",
+        ] {
+            assert!(line_faults(not_yet, asked).is_empty(), "{not_yet}");
+        }
+        // When the conversation says it, so may the line.
+        let done = "Casa Azul is booked and the host confirmed the dates.";
+        assert!(line_faults("Casa Azul booked, dates confirmed", done).is_empty());
+        // A related word isn't the same claim: a request for confirmation
+        // doesn't confirm anything.
+        assert_eq!(
+            clean_line("Dates confirmed", "Please send your confirmation."),
+            ""
+        );
     }
 
     /// A number counts whole: an amount, a time or a reference made of

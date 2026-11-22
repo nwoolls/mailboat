@@ -140,6 +140,7 @@ fn migrate(conn: &mut Connection) -> Result<()> {
         (22, schema::MIGRATION_V22),
         (23, schema::MIGRATION_V23),
         (24, schema::MIGRATION_V24),
+        (25, schema::MIGRATION_V25),
     ];
     for (version, sql) in steps {
         if current < *version {
@@ -206,7 +207,7 @@ mod tests {
         let versions: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(versions, 24);
+        assert_eq!(versions, 25);
         // Migration 22's columns, with Gmail's defaults.
         conn.execute("INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at) VALUES (1, 's', 'a@example.com', '#5b8def', 'default', 0)", []).unwrap();
         conn.execute("INSERT INTO labels (account_id, gmail_label_id, name, kind) VALUES (1, 'L', 'L', 'user')", []).unwrap();
@@ -263,14 +264,22 @@ mod tests {
         assert_eq!(next, 1);
     }
 
-    /// `MIGRATION_V24` on a database from before it: list lines go, full
-    /// summaries stay.
+    /// `MIGRATION_V24` and `MIGRATION_V25`, each on a database from before
+    /// it: list lines go, full summaries stay.
     #[test]
     fn upgrading_drops_list_lines_written_with_the_old_prompt() {
+        for from in [24, 25] {
+            upgrading_from_drops_list_lines(from);
+        }
+    }
+
+    fn upgrading_from_drops_list_lines(from: i64) {
         let db = Db::open_in_memory().unwrap();
         let mut conn = db.conn();
+        conn.execute("DELETE FROM schema_migrations WHERE version >= ?1", [from])
+            .unwrap();
         conn.execute_batch(
-            "DELETE FROM schema_migrations WHERE version >= 24;
+            "
              INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at)
                VALUES (1, 's1', 'a@example.com', '#5b8def', 'default', 0);
              INSERT INTO threads (id, account_id, gmail_thread_id) VALUES (1, 1, 't1'), (2, 1, 't2');

@@ -6034,14 +6034,22 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       (`crates/core/tests/ai.rs`) checks the saved line end to end.
       Left over, filed below: a line can still call something confirmed that
       is only proposed.
-- [ ] A list summary can call something confirmed or done that the
+- [x] A list summary can call something confirmed or done that the
       conversation only proposes *(found while fixing the entry above,
-      2026-11-21)*. In demo mode, "Lisbon in May?" (the reader is asked to
+      2026-11-21; fixed 2026-11-22, branch `list-line-claims`)*. In demo mode, "Lisbon in May?" (the reader is asked to
       book by Friday) came back as "Alfama stay confirmed" in 4 of 5 answers
       in one run and none of 10 in the next, with the same prompt. The old
       prompt did it too ("Status: confirmed"). The instructions already say
       not to; `apple_list_lines` with `AI_LIVE_LINE_ONLY=lisbon` reproduces
-      it.
+      it. Since the instructions alone didn't stop it, the line's tidying
+      now does: a part of the line that says something was done
+      ("confirmed", "booked", "paid", "approved" and a few more) is left
+      out when the conversation never uses that word, unless the line says
+      it hasn't happened ("not confirmed", "to be confirmed"). A related
+      word isn't enough, since a request says "book" or "confirmation"
+      too. In a live run over the demo it also caught "approved" in two
+      other conversations where nothing was approved. A unit test fails
+      without the change.
 
 ## 0.3.0
 

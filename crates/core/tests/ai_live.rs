@@ -187,8 +187,9 @@ async fn chatgpt_ideas() {
 /// The list line of every demo conversation, a few times each (the model
 /// varies; `AI_LIVE_LINE_RUNS`, default 3), as the app writes and tidies it.
 /// `AI_LIVE_LINE_ONLY=lisbon` asks for the matching conversations only.
-/// Prints each line, marked where the model's answer had field labels or a
-/// number or code the conversation doesn't (`prompts::line_faults`), and
+/// Prints each line, marked where the model's answer had field labels, a
+/// number or code the conversation doesn't, or said something was done in
+/// words the conversation doesn't use (`prompts::line_faults`), and
 /// fails if one survives tidying, a request failed (other than a guardrail
 /// refusal), no answer came back, or tidying emptied more than a tenth of
 /// the lines. Apple's model once wrote "use code code1234" for an email with
