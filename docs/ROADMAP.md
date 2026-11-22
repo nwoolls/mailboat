@@ -7480,9 +7480,10 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
 
 ### Open bugs (moved from the Bug backlog, owner, 2026-11-14)
 
-- [ ] Esc doesn't put away a floating sidebar that came in under a resting
+- [x] Esc doesn't put away a floating sidebar that came in under a resting
       pointer *(found 2026-11-16 in the Flaky Test Spike, through the
-      flaky `narrow-window.spec.ts` test)*: in a narrow window, with the
+      flaky `narrow-window.spec.ts` test; reproduced by the owner and fixed
+      2026-11-22, branch `sidebar-esc-still-pointer`)*: in a narrow window, with the
       pointer resting where the sidebar floats in (over the reader's left
       side), floating it with its shortcut and pressing Esc can leave it
       open. The sidebar slides in under the pointer, which counts as
@@ -7499,6 +7500,22 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       slide; a real pointer may not do that. Built only if a person hits it.
       The test now moves its pointer off that spot before floating the
       sidebar (#170))*
+      *(2026-11-22: reproduced by hand. Varying the old test's sequence in
+      WebKit found one that kept the sidebar open every time: in a narrow
+      window, click Reply (at the bottom left, under where the sidebar
+      floats in), press Esc to close the empty reply, then with the
+      pointer untouched float the sidebar with ⌃⌘S and press Esc. The
+      owner did the same in demo mode and the sidebar stayed. A hand on
+      the keyboard leaves the pointer still, so a person meets it. The
+      fix: while the sidebar slides out, a "pointer entered" at the spot
+      where the pointer last moved to is ignored, as it comes from the
+      sidebar moving, not the pointer (`Shell.tsx`, `lastPointer`). A real
+      move back onto it still keeps it: WebKit sends the "entered" of a
+      move before its "moved", so the spot differs. Two browser tests in
+      `narrow-window.spec.ts`: the owner's steps, which failed 10 of 10
+      without the fix, and moving back onto the sliding sidebar, which
+      keeps it with and without the fix. The older test no longer moves
+      its pointer away first, so it runs with the pointer resting too)*
 
 - [ ] On a slow machine, a new reply sometimes stops being followed before
       it has laid out *(found 2026-11-11, by the browser test "Reply with
