@@ -395,7 +395,9 @@ pub fn clean_rewrite(answer: &str) -> String {
 /// "Summary:" label, Markdown emphasis or wrapping quotes, cut where the
 /// model started filling in fields ("…. Status: confirmed. Action: none."),
 /// and without any part that holds a number or code the conversation doesn't
-/// (`source`, from `context::source_text`): a made-up sign-in code or date.
+/// (`source`, from `context::source_text`): a made-up sign-in code or date,
+/// or that says something was done in words the conversation doesn't use
+/// (`CLAIMS`).
 /// Empty when nothing is left, and the list then shows the email's first
 /// words.
 pub fn clean_line(answer: &str, source: &str) -> String {
@@ -405,8 +407,9 @@ pub fn clean_line(answer: &str, source: &str) -> String {
 }
 
 /// What's wrong with a list line, as `clean_line` sees it: a field label,
-/// and each number or word with a number in it that the conversation
-/// (`source`) doesn't have. For the live test, to mark the model's answers.
+/// each number or word with a number in it that the conversation
+/// (`source`) doesn't have, and each word saying something was done that it
+/// doesn't use (`CLAIMS`). For the live test, to mark the model's answers.
 pub fn line_faults(answer: &str, source: &str) -> Vec<String> {
     let line = tidy(answer);
     let known = Known::new(source);
@@ -414,7 +417,11 @@ pub fn line_faults(answer: &str, source: &str) -> Vec<String> {
     if before_fields(line) != line {
         faults.push("field label".to_string());
     }
-    faults.extend(known.unknown(line));
+    // Part by part, as `clean_line` reads it: a "not" in one part doesn't
+    // take back a claim in the next ("Maybe not — confirmed").
+    for (_, part) in parts(line) {
+        faults.extend(known.unknown(part));
+    }
     faults
 }
 
@@ -603,6 +610,46 @@ struct Known {
     /// Every word with a digit in it, lowercased, and each number joined to
     /// the word after it, with only a space between ("2 m" as "2m").
     codes: std::collections::HashSet<String>,
+    /// Every word of letters, lowercased: a line may say something is done
+    /// (`CLAIMS`) only with a word the conversation uses.
+    letters: std::collections::HashSet<String>,
+}
+
+/// Words that say something has already happened. Apple's model wrote
+/// "stay confirmed" for a trip the reader was only asked to book, though
+/// the instructions say not to. A line may use one only when the
+/// conversation has that same word; a related one isn't enough ("book",
+/// "confirmation" and "payment" are what a request says, too). "Done" and
+/// "entered" aren't here: they set deadlines and give instructions too
+/// often ("done by Friday", "get it done").
+const CLAIMS: [&str; 8] = [
+    "confirmed",
+    "booked",
+    "reserved",
+    "verified",
+    "completed",
+    "finalized",
+    "approved",
+    "paid",
+];
+
+/// Words before a claim that say it hasn't happened ("not confirmed",
+/// "to be confirmed", "not yet paid"). A word ending in "n't" counts too,
+/// and so does a condition ("once approved", "unless paid": `CONDITIONS`).
+const NOT_YET: [&str; 4] = ["not", "be", "yet", "never"];
+
+/// The words of a text, lowercased, as claims are compared: letters and
+/// digits with the hyphens, apostrophes and combining marks inside, so
+/// "isn't", "pre-approved" and "paid123" are each one word, and so is
+/// "İpaid", whose lowercase "i" carries a combining dot. `text` is
+/// lowercase.
+fn letter_words(text: &str) -> impl Iterator<Item = &str> {
+    let inside = |c: char| {
+        c.is_alphanumeric() || matches!(c, '\'' | '’' | '-') || ('\u{300}'..='\u{36f}').contains(&c)
+    };
+    text.split(move |c: char| !inside(c))
+        .map(|w| w.trim_matches(['\'', '’', '-']))
+        .filter(|w| !w.is_empty())
 }
 
 impl Known {
@@ -648,11 +695,13 @@ impl Known {
                 }
             }
         }
+        let letters = letter_words(&lower).map(String::from).collect();
         Known {
             numbers,
             marks,
             whole_parts,
             codes,
+            letters,
         }
     }
 
@@ -706,7 +755,26 @@ impl Known {
         let words = words(text)
             .filter(|w| !self.knows_word(w))
             .map(String::from);
-        numbers.chain(words).collect()
+        numbers.chain(words).chain(self.claims(text)).collect()
+    }
+
+    /// The words of `text` (lowercase) that say something was done
+    /// (`CLAIMS`) when the conversation never says it, unless a word
+    /// before says it wasn't.
+    fn claims(&self, text: &str) -> Vec<String> {
+        let mut prev = "";
+        let mut out = Vec::new();
+        for w in letter_words(text) {
+            let denied = NOT_YET.contains(&prev)
+                || CONDITIONS.contains(&prev)
+                || prev.ends_with("n't")
+                || prev.ends_with("n’t");
+            if CLAIMS.contains(&w) && !denied && !self.letters.contains(w) {
+                out.push(w.to_string());
+            }
+            prev = w;
+        }
+        out
     }
 }
 
@@ -722,8 +790,10 @@ const MONTHS: [&str; 13] = [
 ];
 
 /// Words that start a part limiting the rest of the line: when such a part
-/// goes, the whole line goes.
-const CONDITIONS: [&str; 6] = ["only", "unless", "if", "except", "provided", "until"];
+/// goes, or the part it limits goes, the whole line goes.
+const CONDITIONS: [&str; 8] = [
+    "only", "unless", "if", "except", "provided", "until", "once", "when",
+];
 
 fn strength(sep: &str) -> usize {
     CLAUSE_ENDS
@@ -732,9 +802,9 @@ fn strength(sep: &str) -> usize {
         .map_or(0, |p| p + 1)
 }
 
-/// The line without the parts that hold a number or code the conversation
-/// doesn't: the model wrote "use code INVITE123" for a lunch invitation.
-fn only_what_was_read(line: &str, known: &Known) -> String {
+/// The parts of a line, each with the separator before it ("" for the
+/// first), split at `CLAUSE_ENDS`.
+fn parts(line: &str) -> Vec<(&str, &str)> {
     let mut parts: Vec<(&str, &str)> = Vec::new();
     let mut rest = line;
     let mut sep = "";
@@ -767,30 +837,53 @@ fn only_what_was_read(line: &str, known: &Known) -> String {
         sep = end;
         rest = &rest[part.len() + end.len()..];
     }
+    parts
+}
+
+/// The first word of a part, lowercased.
+fn first_word(part: &str) -> String {
+    part.split(|c: char| !c.is_alphabetic())
+        .find(|w| !w.is_empty())
+        .unwrap_or_default()
+        .to_lowercase()
+}
+
+/// The line without the parts that hold a number or code the conversation
+/// doesn't, or say something was done in words it doesn't use: the model
+/// wrote "use code INVITE123" for a lunch invitation.
+fn only_what_was_read(line: &str, known: &Known) -> String {
     let mut out = String::new();
+    // A part was left out earlier in the sentence.
+    let mut dropped = false;
     // Where parts were left out, the ones on either side are joined by the
     // strongest separator between them ("Lunch, room 777. Bring a notebook"
     // becomes "Lunch. Bring a notebook").
     let mut gap: Option<&str> = None;
-    for (sep, part) in parts {
+    for (sep, part) in parts(line) {
         let joiner = match gap {
             Some(g) if strength(g) > strength(sep) => g,
             _ => sep,
         };
+        // A new sentence isn't a condition of the one before.
+        let same_sentence = ![". ", "! ", "? "].contains(&sep);
+        if !same_sentence {
+            dropped = false;
+        }
+        let condition = same_sentence && CONDITIONS.contains(&first_word(part).as_str());
         if !known.unknown(part).is_empty() {
             // Without its condition, a request would say something else
-            // ("Submit, (only if the total is below …)" isn't "Submit"). A
-            // new sentence isn't a condition of the one before.
-            let first = part
-                .split(|c: char| !c.is_alphabetic())
-                .find(|w| !w.is_empty())
-                .unwrap_or_default();
-            let same_sentence = ![". ", "! ", "? "].contains(&sep);
-            if same_sentence && CONDITIONS.contains(&first.to_lowercase().as_str()) {
+            // ("Submit, (only if the total is below …)" isn't "Submit").
+            if condition {
                 return String::new();
             }
+            dropped = true;
             gap = Some(joiner);
             continue;
+        }
+        // Nor does a condition whose subject was left out ("Trip booked,
+        // unless canceled" can't become "unless canceled").
+        if condition && dropped {
+            return String::new();
         }
         if !out.is_empty() {
             out.push_str(joiner);
@@ -1227,6 +1320,81 @@ Doors open 09:30, 2 m from the door.";
         let good = "Lunch at 6pm on the 12th";
         assert!(line_faults(good, READ).is_empty());
         assert_eq!(clean_line(good, READ), good);
+    }
+
+    /// A line can't say something was done when the conversation only asks
+    /// for it: the demo's trip asks the reader to book by Friday, and Apple's
+    /// model wrote "Alfama stay confirmed".
+    #[test]
+    fn a_line_says_done_only_when_the_conversation_does() {
+        let asked = "Lisbon in May?\nAlfama it is. Shall I book it? \
+We should book by Friday. Let me check that week with work.";
+        let bad = "Trip to Lisbon: Alfama stay confirmed, book by Friday";
+        assert_eq!(line_faults(bad, asked), ["confirmed"]);
+        assert_eq!(clean_line(bad, asked), "Trip to Lisbon: book by Friday");
+        for made_up in [
+            "Alfama booked",
+            "Stay paid",
+            "Trip finalized",
+            "Rate approved",
+        ] {
+            assert_eq!(clean_line(made_up, asked), "", "{made_up}");
+            assert!(!line_faults(made_up, asked).is_empty(), "{made_up}");
+        }
+        // A line that says it hasn't happened yet, or names it as a
+        // condition, is true.
+        for not_yet in [
+            "Alfama stay not confirmed yet",
+            "Alfama stay isn't booked yet",
+            "Alfama stay isn’t booked yet",
+            "Alfama stay to be confirmed by Friday",
+            "Alfama stay, only if confirmed",
+            "Submit the form, once approved",
+            "Dinner Friday, unless paid in advance",
+        ] {
+            assert!(line_faults(not_yet, asked).is_empty(), "{not_yet}");
+            assert_eq!(clean_line(not_yet, asked), not_yet);
+        }
+        // A condition left without the part it limited goes with the line.
+        assert_eq!(clean_line("Trip booked, unless canceled", asked), "");
+        // A "not" in one part doesn't take back a claim in the next, for
+        // either function.
+        let after_not = "Maybe not — confirmed";
+        assert_eq!(line_faults(after_not, asked), ["confirmed"]);
+        assert_eq!(clean_line(after_not, asked), "Maybe not");
+        // "Done" sets deadlines too often to count.
+        for kept in ["Homework done by Friday", "Get it done by Friday"] {
+            assert_eq!(clean_line(kept, asked), kept);
+        }
+        // A claim inside a longer word isn't the claim.
+        assert_eq!(
+            clean_line("Pre-approved rate for members", asked),
+            "Pre-approved rate for members"
+        );
+        // When the conversation says it, so may the line.
+        let done = "Casa Azul is booked and the host confirmed the dates.";
+        assert!(line_faults("Casa Azul booked, dates confirmed", done).is_empty());
+        // The same word inside a longer one of the conversation doesn't
+        // count: a reference with digits, or a letter that lowercasing
+        // gives a combining mark.
+        for reference in [
+            "Reference PAID123 is on the invoice.",
+            "Reference İpaid is on the invoice.",
+        ] {
+            assert_eq!(clean_line("Invoice paid", reference), "", "{reference}");
+        }
+        // A related word isn't the same claim: a request for confirmation
+        // doesn't confirm anything.
+        assert_eq!(
+            clean_line("Dates confirmed", "Please send your confirmation."),
+            ""
+        );
+        // The limit of the rule: a request that uses the word itself lets
+        // the claim through.
+        assert_eq!(
+            clean_line("Stay booked", "Can you let me know once it is booked?"),
+            "Stay booked"
+        );
     }
 
     /// A number counts whole: an amount, a time or a reference made of

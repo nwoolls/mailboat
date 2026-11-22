@@ -466,3 +466,11 @@ CREATE TABLE hidden_contacts (
 pub const MIGRATION_V24: &str = r#"
 DELETE FROM ai_summaries WHERE kind = 'line';
 "#;
+
+/// List summaries written before the line's check learned to drop a claim
+/// that something was done (2026-11-22: "stay confirmed" for a trip the
+/// reader was only asked to book) go too, for the same reasons as
+/// `MIGRATION_V24`.
+pub const MIGRATION_V25: &str = r#"
+DELETE FROM ai_summaries WHERE kind = 'line';
+"#;
