@@ -197,6 +197,7 @@ describe("checkSite", () => {
     for (const tag of [
       `<svg><image href="gone.png" /></svg>`,
       `<video src="gone.mp4"></video>`,
+      `<video poster="gone.webp"></video>`,
       `<audio src="gone.mp3"></audio>`,
       `<iframe src="gone.html"></iframe>`,
       `<embed src="gone.swf">`,
@@ -205,6 +206,9 @@ describe("checkSite", () => {
       expect(body(tag), tag).toEqual([expect.stringContaining("which is not in website/")]);
     }
     expect(body(`<iframe src="https://evil.example/x"></iframe>`)).toEqual([
+      expect.stringContaining("from another server"),
+    ]);
+    expect(body(`<video poster="https://cdn.example/still.webp"></video>`)).toEqual([
       expect.stringContaining("from another server"),
     ]);
     expect(body(`<picture><source srcset="gone.webp 1x"></picture>`)).toEqual([

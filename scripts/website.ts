@@ -212,6 +212,9 @@ export function checkSite(
         links.push({ value: a.get("src")!, resource: true });
       }
       if (name === "object" && a.has("data")) links.push({ value: a.get("data")!, resource: true });
+      // A video's still, shown until it plays (and instead of it, when it never does).
+      if (name === "video" && a.has("poster"))
+        links.push({ value: a.get("poster")!, resource: true });
       if (["img", "source"].includes(name) && a.has("srcset")) {
         for (const candidate of a.get("srcset")!.split(",")) {
           const url = candidate.trim().split(/\s+/)[0];

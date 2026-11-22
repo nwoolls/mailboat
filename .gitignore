@@ -20,6 +20,8 @@ video/out/
 # macOS's own wallpaper, made locally by video/render.sh, never committed
 video/public/sonoma.png
 video/public/sonoma-blur.png
+# wrangler dev's working files (the website's Worker, tried locally)
+.wrangler/
 *.tsbuildinfo
 *.log
 .vite/

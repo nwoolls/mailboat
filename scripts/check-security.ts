@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { checkSecurity } from "./security";
 
 /** Not text. */
-const BINARY = /\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp|xlsx|docx|zip|gz)$/i;
+const BINARY = /\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp|mp4|webm|mov|xlsx|docx|zip|gz)$/i;
 
 // Tracked files and new ones not yet added (not ignored), so a file is
 // checked before it is committed, not only after.

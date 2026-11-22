@@ -1,7 +1,7 @@
 # Video
 
 Short clips of the app made with [Remotion](https://www.remotion.dev), for the
-README, the website and posts. Each clip draws the app's own components with
+website, FEATURES.md and posts. Each clip draws the app's own components with
 its own stylesheet, so it shows what the app does. Only the input (a finger's
 travel, a camera) is scripted. Every frame is drawn from its frame number,
 not from the clock, so a render comes out the same each time on the same
