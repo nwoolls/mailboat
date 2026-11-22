@@ -26,7 +26,7 @@ reqwest = { version = "0.13", features = ["json", "form", "query", "gzip"] }
 async-trait = "0.1.92"
 fastrand = "2.5.0"
 base64 = "0.23.1"
-url = "2.5.8"
+url = "2.5.9"
 # Decodes mailto: links; from the url crate's authors, already in the build.
 percent-encoding = "2.3.2"
 encoding_rs = "0.8.42"
