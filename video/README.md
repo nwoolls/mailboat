@@ -27,7 +27,7 @@ bun run render SwipeArchive out/swipe-archive.mp4         # render one clip
 
 `render.sh` renders the dark and the light clip into `out/` (ignored by
 git) and writes the copies that are used: the website's Swipes card
-(`website/video/`, a 1280px MP4 and a still per theme) and FEATURES.md's
+(a 1280px MP4 per theme in `website/video/`, and its still in `website/images/`) and FEATURES.md's
 loop (`docs/images/loops/swipe-archive-closeup.*`, dark). It needs ffmpeg,
 cwebp, Python 3 with Pillow and the Xcode command line tools. Look at what it
 made before committing it.

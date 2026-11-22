@@ -37,12 +37,13 @@ serves the clips in `video/` with byte ranges (below).
   feature cards, one per section of `docs/FEATURES.md`),
   made by `scripts/build-website-images.sh`. Only Demo mode is ever
   pictured.
-- `video/`: the Swipes card's clip, per theme (an MP4 and its still), made
-  by `video/render.sh` from the clips in the repository's `video/` folder.
-  Cloudflare serves the MP4s through `.github/website/worker.js`: static
-  assets answer a byte-range request with the whole file, and Safari won't
-  play a video then. Everything else, the stills included, is served as a
-  plain file.
+- `video/`: the Swipes card's clip, per theme (an MP4; its still is
+  `images/swipe-archive-*.webp`), made by `video/render.sh` from the clips in
+  the repository's `video/` folder. Cloudflare serves this folder through
+  `.github/website/worker.js`: static assets answer a byte-range request with
+  the whole file, and Safari won't play a video then. The folder holds only
+  the clips; everything else, the stills included, is served as a plain
+  file.
 
 ## Publishing
 

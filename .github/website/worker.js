@@ -1,6 +1,6 @@
-// The website's only code on Cloudflare, and only for the clips (/video/*.mp4,
-// wrangler.jsonc's `run_worker_first`): everything else, the clips' stills
-// included, is served as a plain file, as before.
+// The website's only code on Cloudflare, and only for the clips (/video/*,
+// wrangler.jsonc's `run_worker_first`; the folder holds nothing else, their
+// stills are in /images/): everything else is served as a plain file.
 //
 // Cloudflare's static assets answer a Range request with the whole file and
 // 200, and Safari won't play a video from a server that does that: it asks for

@@ -1,8 +1,8 @@
 #!/bin/bash
 # Renders the clips and puts their copies where they're used:
 #   video/out/                      the masters (1920x1080, 60 fps; ignored by git)
-#   website/video/                  the Swipes card's clip, per theme: a 1280px
-#                                   MP4 and its still (WebP) for before it plays
+#   website/video/                  the Swipes card's clip, per theme: a 1280px MP4
+#   website/images/                 and its still (WebP), for before it plays
 #   docs/images/loops/              the dark clip for FEATURES.md: MP4 and GIF
 # Needs ffmpeg and cwebp (brew install ffmpeg webp), Python 3 with Pillow, and
 # the Xcode command line tools (the light backdrop is a frame of macOS's own
@@ -39,7 +39,7 @@ for theme in dark light; do
     "$repo/website/video/swipe-archive-$theme.mp4"
   # Its still: the shapes just apart, the button showing.
   ffmpeg -y -loglevel error -ss 6.8 -i "out/swipe-archive-$theme.mp4" -frames:v 1 -vf "scale=1280:-2:flags=lanczos" out/still-$theme.png
-  cwebp -quiet -q 82 out/still-$theme.png -o "$repo/website/video/swipe-archive-$theme.webp"
+  cwebp -quiet -q 82 out/still-$theme.png -o "$repo/website/images/swipe-archive-$theme.webp"
 done
 
 # FEATURES.md: the dark clip, as the other loops are.
