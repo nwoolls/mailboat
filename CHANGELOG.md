@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1-beta.0
+
+### Fixes
+
+- One-line AI summaries in the conversation list are asked for with new instructions that give the model no example line to copy, and field labels like "Status:" and most codes, dates and numbers the email doesn't contain are taken out of them. This update deletes the saved one-line summaries once, and they are written again as you scroll.
+- A swiped conversation's button no longer flickers back onto the row as it comes apart: it springs away from the row and settles.
+
+### Security and privacy
+
+- The library that reads web addresses is updated with a security fix for a crash on deeply nested `blob:` addresses. It also writes a `^` in a link's path as `%5E`, as browsers do, so such a link shows and opens in that form.
+
 ## 0.3.0
 
 ### New
