@@ -189,8 +189,9 @@ async fn chatgpt_ideas() {
 /// `AI_LIVE_LINE_ONLY=lisbon` asks for the matching conversations only.
 /// Prints each line, marked where the model's answer had field labels or a
 /// number or code the conversation doesn't (`prompts::line_faults`), and
-/// fails if one survives tidying, no answer came back, or tidying emptied
-/// more than a tenth of the lines. Apple's model once wrote "use code code1234" for an email with
+/// fails if one survives tidying, a request failed (other than a guardrail
+/// refusal), no answer came back, or tidying emptied more than a tenth of
+/// the lines. Apple's model once wrote "use code code1234" for an email with
 /// no code, "status: sent; ask: none" fields, and the instructions' example
 /// line into a dentist's reminder.
 async fn list_lines_with(provider: AiProvider) {
@@ -227,6 +228,7 @@ async fn list_lines_with(provider: AiProvider) {
     };
     let programs = programs();
     let (mut asked, mut raw_faults, mut emptied, mut left) = (0, 0, 0, Vec::new());
+    let mut errors: Vec<String> = Vec::new();
     for (id, subject) in threads {
         if !subject.to_lowercase().contains(&only.to_lowercase()) {
             continue;
@@ -244,9 +246,14 @@ async fn list_lines_with(provider: AiProvider) {
         for _ in 0..runs {
             let answer = match ai::ask(&programs, provider, &prompt, &|_| {}).await {
                 Ok(a) => a,
-                // Apple's guardrails turn down the demo's prize scam.
+                // Apple's guardrails turn down the demo's prize scam; any
+                // other error fails the run, which would otherwise check
+                // fewer lines than it says.
                 Err(e) => {
                     println!("   ({e})");
+                    if !e.to_string().contains("guardrails") {
+                        errors.push(format!("{subject}: {e}"));
+                    }
                     continue;
                 }
             };
@@ -273,6 +280,7 @@ async fn list_lines_with(provider: AiProvider) {
         asked > 0,
         "no answers: is the provider set up, and does the filter match?"
     );
+    assert!(errors.is_empty(), "requests failed: {errors:#?}");
     assert!(left.is_empty(), "left after tidying: {left:#?}");
     // Tidying keeps the lines it has no reason to drop.
     assert!(

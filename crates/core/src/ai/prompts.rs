@@ -517,12 +517,14 @@ fn words(text: &str) -> impl Iterator<Item = &str> {
         .filter(|w| !w.is_empty())
 }
 
-/// The numbers in a text, whole: digits with the periods, colons and
-/// slashes between them, and the commas of thousands ("$1,299.50" is
-/// 1299.50, "09:30" is 9:30, "05/24" is 05/24, "16–23" is 16 and 23, "12,34"
-/// is 12 and 34). A time loses its leading zero, so "1,299" and "1299",
-/// "09:30" and "9:30" are the same number. Each comes with the "am" or "pm"
-/// written after it, if any.
+/// The numbers in a text, whole: digits with the periods, colons, slashes
+/// and commas between them ("$1,299.50" is 1299.50, "09:30" is 9:30, "05/24"
+/// is 05/24, "16–23" is 16 and 23). A thousands comma (three digits after
+/// it) is left out, so "1,299" and "1299" are the same number; any other
+/// comma stays ("42,95"). A time loses its leading zero ("09:30" is 9:30).
+/// Digits inside a code ("INV-007315", "TRN7QX") aren't numbers of their
+/// own: the code is compared as a word. Each number comes with the "am" or
+/// "pm" written after it, if any. `text` is lowercase.
 fn numbers(text: &str) -> Vec<(String, Option<&'static str>)> {
     let chars: Vec<char> = text.chars().collect();
     let digit = |i: usize| chars.get(i).is_some_and(char::is_ascii_digit);
@@ -533,13 +535,25 @@ fn numbers(text: &str) -> Vec<(String, Option<&'static str>)> {
             i += 1;
             continue;
         }
+        let prev = i.checked_sub(1).map(|p| chars[p]);
+        let in_code = prev.is_some_and(char::is_alphabetic)
+            || (matches!(prev, Some('-' | '.'))
+                && i.checked_sub(2).is_some_and(|p| chars[p].is_alphabetic()));
+        if in_code {
+            while i < chars.len() && chars[i].is_alphanumeric() {
+                i += 1;
+            }
+            continue;
+        }
         let mut number = String::new();
         while i < chars.len() {
             let c = chars[i];
             let thousands = c == ',' && (1..=3).all(|k| digit(i + k)) && !digit(i + 4);
-            if c.is_ascii_digit() || (matches!(c, '.' | ':' | '/') && digit(i + 1)) {
-                number.push(c);
-            } else if !thousands {
+            if c.is_ascii_digit() || (matches!(c, '.' | ':' | '/' | ',') && digit(i + 1)) {
+                if !thousands {
+                    number.push(c);
+                }
+            } else {
                 break;
             }
             i += 1;
@@ -554,7 +568,7 @@ fn numbers(text: &str) -> Vec<(String, Option<&'static str>)> {
         }
         let after: String = chars[i..]
             .iter()
-            .skip_while(|c| **c == ' ')
+            .skip_while(|c| c.is_whitespace())
             .take(5)
             .filter(|c| **c != '.')
             .collect::<String>()
@@ -572,7 +586,8 @@ const NUMBER_ENDINGS: [&str; 6] = ["am", "pm", "st", "nd", "rd", "th"];
 
 fn number_with_ending(word: &str) -> bool {
     let ending = word.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == ':');
-    ending.len() < word.len() && NUMBER_ENDINGS.contains(&ending)
+    let ending = ending.replace('.', "");
+    ending.len() < word.len() && NUMBER_ENDINGS.contains(&ending.as_str())
 }
 
 /// The numbers and codes of a conversation, to check a line's against.
@@ -599,6 +614,10 @@ impl Known {
         for (n, mark) in &found {
             if let Some(mark) = mark {
                 marks.entry(n.clone()).or_default().insert(*mark);
+                // "9:00 AM" can come back as "9 AM", not "9 PM".
+                if let Some((hour, _)) = n.split_once(':') {
+                    marks.entry(hour.to_string()).or_default().insert(*mark);
+                }
             }
         }
         let numbers: std::collections::HashSet<String> =
@@ -674,6 +693,9 @@ impl Known {
 
     /// The numbers and words of `text` the conversation doesn't have.
     fn unknown(&self, text: &str) -> Vec<String> {
+        // Lowercased before it's split, as the conversation is ("İ" turns
+        // into two characters).
+        let text = &text.to_lowercase();
         let numbers = numbers(text)
             .into_iter()
             .filter(|(n, mark)| !self.knows_number(n, *mark))
@@ -701,9 +723,7 @@ const MONTHS: [&str; 13] = [
 
 /// Words that start a part limiting the rest of the line: when such a part
 /// goes, the whole line goes.
-const CONDITIONS: [&str; 8] = [
-    "only", "unless", "if", "except", "provided", "but", "not", "until",
-];
+const CONDITIONS: [&str; 6] = ["only", "unless", "if", "except", "provided", "until"];
 
 fn strength(sep: &str) -> usize {
     CLAUSE_ENDS
@@ -759,9 +779,14 @@ fn only_what_was_read(line: &str, known: &Known) -> String {
         };
         if !known.unknown(part).is_empty() {
             // Without its condition, a request would say something else
-            // ("Submit, only if the total is below …" isn't "Submit").
-            let first = part.split_whitespace().next().unwrap_or_default();
-            if CONDITIONS.contains(&first.to_lowercase().as_str()) {
+            // ("Submit, (only if the total is below …)" isn't "Submit"). A
+            // new sentence isn't a condition of the one before.
+            let first = part
+                .split(|c: char| !c.is_alphabetic())
+                .find(|w| !w.is_empty())
+                .unwrap_or_default();
+            let same_sentence = ![". ", "! ", "? "].contains(&sep);
+            if same_sentence && CONDITIONS.contains(&first.to_lowercase().as_str()) {
                 return String::new();
             }
             gap = Some(joiner);
@@ -1193,7 +1218,7 @@ Doors open 09:30, 2 m from the door.";
     #[test]
     fn faults_are_what_clean_line_takes_out() {
         let bad = "Lunch at 6pm, use code INVITE123. Status: open";
-        assert_eq!(line_faults(bad, READ), ["field label", "123", "INVITE123"]);
+        assert_eq!(line_faults(bad, READ), ["field label", "invite123"]);
         assert_eq!(clean_line(bad, READ), "Lunch at 6pm");
         assert!(line_faults(&clean_line(bad, READ), READ).is_empty());
         // A field behind a wrapper counts too.
@@ -1291,6 +1316,58 @@ Invoice INV-007315. There are 2. Mail the form.";
         // Other scripts' digits after an abbreviation, and a quoted label.
         assert_eq!(clean_line("Notebook no. ٨ ready", READ), "");
         assert_eq!(clean_line("Lunch, “Status: open”", READ), "Lunch");
+    }
+
+    /// Round 4's cases.
+    #[test]
+    fn marks_conditions_and_codes_hold_in_other_forms() {
+        // "am" and "pm" across a no-break space, on a whole hour, and written
+        // with periods.
+        assert_eq!(clean_line("Meet at 9:30\u{a0}PM", "Meet at 9:30 AM"), "");
+        assert_eq!(clean_line("Meet at 9 PM", "Meet at 9:00 AM"), "");
+        assert_eq!(
+            clean_line("Meet at 9 AM", "Meet at 9:00 AM"),
+            "Meet at 9 AM"
+        );
+        assert_eq!(
+            clean_line("Meet at 9:30a.m.", "Meet at 9:30 a.m."),
+            "Meet at 9:30a.m."
+        );
+        // A condition in brackets; a new sentence isn't one.
+        assert_eq!(
+            clean_line(
+                "Submit, (only if the total is below $42.95)",
+                "Submit only if the total is below $42.00"
+            ),
+            ""
+        );
+        assert_eq!(
+            clean_line(
+                "Pickup is ready. But the review moved to May 24",
+                "Pickup is ready"
+            ),
+            "Pickup is ready"
+        );
+        // A comma that isn't a thousands one, and a code's digits, count only
+        // as written.
+        assert_eq!(clean_line("The fee is 42,95", "Rooms 42 and 95"), "");
+        assert_eq!(
+            clean_line("The fee is 42,95", "The fee: 42,95"),
+            "The fee is 42,95"
+        );
+        assert_eq!(
+            clean_line("Use sign-in code 007315", "Invoice INV-007315 is due"),
+            ""
+        );
+        assert_eq!(
+            clean_line("Invoice INV-007315 is due", "Invoice INV-007315 is due"),
+            "Invoice INV-007315 is due"
+        );
+        // The same code, whatever its letters lowercase to.
+        assert_eq!(
+            clean_line("Ref İD2 is ready", "Ref İD2 is ready"),
+            "Ref İD2 is ready"
+        );
     }
 
     /// Labels written with a space before the colon, or after "!" or "?",
