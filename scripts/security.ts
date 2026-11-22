@@ -61,6 +61,7 @@ export const REVIEWED_UNSAFE: Record<string, number> = {
   "src-tauri/src/mail_handler.rs": 1,
   "src-tauri/src/notifications.rs": 6,
   "src-tauri/src/print.rs": 3,
+  "src-tauri/src/tooltips.rs": 2,
   "src-tauri/src/trackpad.rs": 2,
 };
 
