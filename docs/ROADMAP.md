@@ -7555,19 +7555,22 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       showing; with "None" they show on any desktop. Another app tried the
       same way kept its tooltips. The app's tooltips are native ones
       (`title` attributes, 126 of them), which macOS draws in windows of
-      their own. Likely cause, not confirmed: an app assigned to one desktop
-      opens its new windows there, so they appear out of sight.
+      their own. Likely cause, not confirmed at the time of the report (see
+      the 2026-11-22 note below): an app assigned to one desktop opens its
+      new windows there, so they appear out of sight.
       Options: leave it (setting "None" avoids it), or draw the tooltips in
       the page instead, with one shared handler that takes over every
       `title` (a visible change, so the owner leads it, with mockups first:
       the bubble's look and its delay; keep each button's accessible name).
-      Held for later (owner, 2026-11-12)
+      Held for later (owner, 2026-11-12; the text above is the original
+      report)
       *(2026-11-22: the cause, confirmed: macOS draws every tooltip in one
       window, `NSToolTipPanel`, which AppKit makes in the app's process and
       reuses. For an app assigned to a desktop, that window opened on the
       assigned desktop. The fix keeps native tooltips: `src-tauri/src/tooltips.rs`
-      watches the app's windows show and sets the tooltip window to move to
-      the desktop in use when it shows (`MoveToActiveSpace`). Checked by
+      watches every window's visibility (occlusion) changes and sets the
+      tooltip window, picked out by its class, to move to the desktop in use
+      when it shows (`MoveToActiveSpace`). Checked by
       the owner in demo mode with temporary logging: without the change,
       no tooltip showed on the other desktop, the same as the report; with
       it, tooltips showed on both desktops, the first after launch

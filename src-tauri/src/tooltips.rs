@@ -15,8 +15,8 @@
 //! with the window moved off the assigned desktop before any tooltip had
 //! shown). Once set, the setting stays with the window.
 
-/// Watches the app's windows as they show or hide, and sets the tooltip
-/// window to follow the desktop in use.
+/// Watches every window's visibility (occlusion) changes, and sets the
+/// tooltip window, picked out by its class, to follow the desktop in use.
 #[cfg(target_os = "macos")]
 pub fn follow_desktop() {
     use std::ptr::NonNull;
@@ -31,7 +31,13 @@ pub fn follow_desktop() {
     if MainThreadMarker::new().is_none() {
         return;
     }
+    // Captures nothing, so it's safe to keep for the app's life.
     let block = RcBlock::new(|note: NonNull<NSNotification>| {
+        // AppKit posts this on the main thread; anything else that posts the
+        // same name elsewhere is ignored.
+        if MainThreadMarker::new().is_none() {
+            return;
+        }
         // SAFETY: AppKit hands the observer a valid notification for this
         // call.
         let Some(object) = (unsafe { note.as_ref() }).object() else {
@@ -46,12 +52,20 @@ pub fn follow_desktop() {
             return;
         };
         // Moves to the desktop in use when shown; like a menu, it isn't
-        // one of the windows Mission Control and window cycling show.
-        let follow = NSWindowCollectionBehavior::MoveToActiveSpace
+        // one of the windows Mission Control and window cycling show. Added
+        // to what the window has (nothing, on the macOS it was checked on),
+        // less the choices AppKit doesn't allow beside these: being on every
+        // desktop, and the other Mission Control kinds.
+        let now = window.collectionBehavior();
+        let want = (now
+            - (NSWindowCollectionBehavior::CanJoinAllSpaces
+                | NSWindowCollectionBehavior::Managed
+                | NSWindowCollectionBehavior::Stationary))
+            | NSWindowCollectionBehavior::MoveToActiveSpace
             | NSWindowCollectionBehavior::Transient
             | NSWindowCollectionBehavior::IgnoresCycle;
-        if window.collectionBehavior() != follow {
-            window.setCollectionBehavior(follow);
+        if now != want {
+            window.setCollectionBehavior(want);
         }
     });
     let center = NSNotificationCenter::defaultCenter();
