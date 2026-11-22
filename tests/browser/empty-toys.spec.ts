@@ -192,7 +192,7 @@ test("the sky in ASCII art draws on a canvas reaching under the title", async ({
  * nothing that starts as the layer appears, and none for people who ask for
  * reduced motion. Recorded as each fade starts (a timed check came too late:
  * the fade is over before the page can be held): the layer, the fade's
- * first frame's opacity, and the layer's opacity then.
+ * first keyframe's opacity, and the layer's opacity at the fade's start.
  */
 type Fade = { layer: string; from: string; opacity: number };
 const started = (page: Page) =>
@@ -208,6 +208,11 @@ const started = (page: Page) =>
           .getAnimations()
           .find((a) => (a as CSSAnimation).animationName === "empty-toy-in");
         const first = (fade?.effect as KeyframeEffect | undefined)?.getKeyframes()[0];
+        // The event comes some time after the fade began, later on a busy
+        // runner (CI read 0.7, a slowed page over 0.8). Wind the fade back
+        // to its start, so the opacity read is its first frame's, whatever
+        // the machine's speed; it plays on from there.
+        if (fade) fade.currentTime = 0;
         seen.push({
           layer: el.classList[0] ?? "",
           from: String(first?.opacity ?? ""),

@@ -5237,6 +5237,22 @@ the way, and one bug in the app caused flaky failures; all three are in
         reply has laid out, so the test now waits for the ideas and for the
         reply to keep its height for half a second before its steps.
         Passed 30 of 30 on 8 workers and 40 of 40 with the CPU fully loaded.
+- [x] `empty-toys.spec.ts`: "the sky eases in when the last email leaves the
+      list" (line 230), and its two glow versions.
+      - 2026-11-21, CI on `main` after #204 merged, WebKit, attempt 1,
+        https://github.com/nwoolls/mailboat/actions/runs/44975024207: the
+        layer's opacity as its fade started was 0.696505 where less than
+        0.5 was expected (`toBeLessThan`, line 248). #204 changes only how
+        a swiped row's button moves.
+      - Fixed 2026-11-21 (branch `flaky-sky-fade`). The test read the
+        opacity in its `animationstart` handler, and the event comes some
+        time after the fade began: on the slowed page (`bun run
+        test:browser:slow`) the three tests failed 7 of the first 9 runs,
+        reading over 0.8. The handler now winds the fade back to its start
+        before reading, so it reads the first frame whatever the machine's
+        speed. Passed 15 of 15 on the slowed page and the whole file 10
+        times (220 of 220); with the toy's opacity forced to 1, the three
+        tests still fail.
 
 ## Bug backlog
 
