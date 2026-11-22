@@ -188,8 +188,8 @@ async fn chatgpt_ideas() {
 /// varies; `AI_LIVE_LINE_RUNS`, default 3), as the app writes and tidies it.
 /// `AI_LIVE_LINE_ONLY=lisbon` asks for the matching conversations only.
 /// Prints each line, marked where the model's answer had field labels or a
-/// number or code the conversation doesn't, and fails if one survives
-/// tidying. Apple's model once wrote "use code code1234" for an email with
+/// number or code the conversation doesn't (`prompts::line_faults`), and
+/// fails if one survives tidying or no answer came back. Apple's model once wrote "use code code1234" for an email with
 /// no code, "status: sent; ask: none" fields, and the instructions' example
 /// line into a dentist's reminder.
 async fn list_lines_with(provider: AiProvider) {
@@ -224,28 +224,6 @@ async fn list_lines_with(provider: AiProvider) {
             .unwrap();
         rows
     };
-    // What's wrong with a line: a field label, or a word with a digit the
-    // model never read (spaces ignored: "6 pm" can come back "6pm").
-    let faults = |line: &str, read: &str| {
-        let read: String = read
-            .to_lowercase()
-            .chars()
-            .filter(|c| !c.is_whitespace())
-            .collect();
-        let lower = line.to_lowercase();
-        let mut out = Vec::new();
-        for label in ["status:", "ask:", "asked:", "action:", "next step:"] {
-            if lower.contains(label) {
-                out.push(label.to_string());
-            }
-        }
-        for word in lower.split(|c: char| !c.is_alphanumeric()) {
-            if word.chars().any(|c| c.is_ascii_digit()) && !read.contains(word) {
-                out.push(word.to_string());
-            }
-        }
-        out
-    };
     let programs = programs();
     let (mut asked, mut raw_faults, mut left) = (0, 0, Vec::new());
     for (id, subject) in threads {
@@ -272,9 +250,10 @@ async fn list_lines_with(provider: AiProvider) {
                 }
             };
             asked += 1;
-            let raw = faults(&answer.text, &prompt.input);
-            let line = prompts::clean_line(&answer.text, &prompt.input);
-            let after = faults(&line, &prompt.input);
+            let source = context::source_text(&text);
+            let raw = prompts::line_faults(&answer.text, &source);
+            let line = prompts::clean_line(&answer.text, &source);
+            let after = prompts::line_faults(&line, &source);
             if !raw.is_empty() {
                 raw_faults += 1;
                 println!(" ! {:?} {raw:?}", answer.text.trim());
@@ -286,6 +265,10 @@ async fn list_lines_with(provider: AiProvider) {
         }
     }
     println!("{provider:?}: {raw_faults} of {asked} answers had faults before tidying");
+    assert!(
+        asked > 0,
+        "no answers: is the provider set up, and does the filter match?"
+    );
     assert!(left.is_empty(), "left after tidying: {left:#?}");
 }
 

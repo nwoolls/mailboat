@@ -139,6 +139,7 @@ fn migrate(conn: &mut Connection) -> Result<()> {
         (21, schema::MIGRATION_V21),
         (22, schema::MIGRATION_V22),
         (23, schema::MIGRATION_V23),
+        (24, schema::MIGRATION_V24),
     ];
     for (version, sql) in steps {
         if current < *version {
@@ -205,7 +206,7 @@ mod tests {
         let versions: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(versions, 23);
+        assert_eq!(versions, 24);
         // Migration 22's columns, with Gmail's defaults.
         conn.execute("INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at) VALUES (1, 's', 'a@example.com', '#5b8def', 'default', 0)", []).unwrap();
         conn.execute("INSERT INTO labels (account_id, gmail_label_id, name, kind) VALUES (1, 'L', 'L', 'user')", []).unwrap();
@@ -260,6 +261,39 @@ mod tests {
             .query_row("SELECT last FROM account_id_seq", [], |r| r.get(0))
             .unwrap();
         assert_eq!(next, 1);
+    }
+
+    /// `MIGRATION_V24` on a database from before it: model-written list
+    /// lines go, the fixed sign-in line and the full summaries stay.
+    #[test]
+    fn upgrading_drops_list_lines_written_with_the_old_prompt() {
+        let db = Db::open_in_memory().unwrap();
+        let mut conn = db.conn();
+        conn.execute_batch(
+            "DELETE FROM schema_migrations WHERE version >= 24;
+             INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at)
+               VALUES (1, 's1', 'a@example.com', '#5b8def', 'default', 0);
+             INSERT INTO threads (id, account_id, gmail_thread_id) VALUES (1, 1, 't1'), (2, 1, 't2');
+             INSERT INTO ai_summaries (account_id, thread_id, kind, provider, newest_message_id, text, created_at)
+               VALUES (1, 1, 'line', 'apple', 1, 'Lunch at 12:30, use code INVITE123', 0),
+                      (1, 1, 'full', 'apple', 1, '- Lunch at 12:30', 0),
+                      (1, 2, 'line', 'apple', 2, 'Sign-in code', 0);",
+        )
+        .unwrap();
+        migrate(&mut conn).unwrap();
+        let left: Vec<(i64, String)> = conn
+            .prepare("SELECT thread_id, kind FROM ai_summaries ORDER BY thread_id, kind")
+            .unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .collect::<std::result::Result<_, _>>()
+            .unwrap();
+        assert_eq!(left, [(1, "full".to_string()), (2, "line".to_string())]);
+        assert_eq!(
+            crate::ai::summaries::SIGN_IN_LINE,
+            "Sign-in code",
+            "the migration keeps this text"
+        );
     }
 
     /// `MIGRATION_V21` on a database from before it: the shared image cache

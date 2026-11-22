@@ -5976,7 +5976,7 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       read (`context::render`), which now marks the newest message with
       "(latest message)" on its date line instead of a "Newest message:"
       label, so a reproduction should use that input. On branch
-      `picture-refresh` (not yet merged), the demo's inbox rows that show
+      `picture-refresh` (merged since, #203), the demo's inbox rows that show
       in pictures get written summaries, so the pictures don't depend on
       this; the sign-in code email has none, and needs none, since its
       line is the app's fixed "Sign-in code" and never asks the model.
@@ -5995,14 +5995,21 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       saying something was already done, without the word "code"). It also
       says to use only facts and numbers from the email and to write dates as
       the email does. With it, 1 of 105 answers was marked (a worked-out
-      date). `clean_line` now also takes off a Markdown or "Summary:"
-      wrapper, cuts the line at the first field label ("Status:", "Ask:",
-      "Action:"), and drops each part of the line that holds a number or a
-      code the model wasn't given, so a made-up code or date doesn't reach
-      the list even when the model writes one; if nothing is left, the list
-      shows the email's first words. Unit tests use the faulty lines from the
-      reproduction. Left over, filed below: a line can still call something
-      confirmed that is only proposed.
+      date) in one run and none of 105 in the next. `clean_line` now also
+      takes off a Markdown or "Summary:" wrapper (and quotes), cuts the line
+      at the first field label that follows a punctuation mark ("…, Status:",
+      "Ask:", "Action:"; "flight status: delayed" stays), and drops each part
+      of the line that holds a number or a code the conversation's own words
+      don't have (its subject and messages, `context::source_text`, not the
+      date lines the model also reads, so a send date or time doesn't
+      count). A code counts only as a whole word of the email. So a made-up
+      code or date doesn't reach the list even when the model writes one; if
+      nothing is left, the list shows the email's first words. Lines saved
+      before the fix are deleted on upgrade (`MIGRATION_V24`) and written
+      again for the rows on screen; the fixed "Sign-in code" line stays. Unit
+      tests use the faulty lines from the reproduction and the reviews' cases.
+      Left over, filed below: a line can still call something confirmed that
+      is only proposed.
 - [ ] A list summary can call something confirmed or done that the
       conversation only proposes *(found while fixing the entry above,
       2026-11-21)*. In demo mode, "Lisbon in May?" (the reader is asked to
