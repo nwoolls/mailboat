@@ -1,0 +1,6 @@
+# Keep the hoisted node_modules layout. With a workspace (video/), Bun's
+# default becomes the isolated layout, where only direct dependencies sit in
+# node_modules, and the app reaches some packages through others
+# (@tiptap/core through the @tiptap/* extensions).
+[install]
+linker = "hoisted"

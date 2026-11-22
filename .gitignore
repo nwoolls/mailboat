@@ -15,6 +15,8 @@ dist/
 target/
 src-tauri/gen/schemas/
 coverage/
+# Rendered clips (video/): published deliberately, never by accident
+video/out/
 *.tsbuildinfo
 *.log
 .vite/
