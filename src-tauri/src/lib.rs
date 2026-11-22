@@ -19,6 +19,7 @@ mod print;
 mod state;
 mod sync_log;
 mod theme;
+mod tooltips;
 mod trackpad;
 mod updates;
 mod window_place;
@@ -247,6 +248,7 @@ pub fn run() {
             mail_handler::open_args(app.handle(), std::env::args().skip(1));
             menu::install(app.handle())?;
             trackpad::watch(app.handle());
+            tooltips::follow_desktop();
             email_menu::install(app.handle());
             notifications::install(app.handle());
             let dirs = mode::prepare(

@@ -7546,8 +7546,10 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       the reply 182–432 px below as in CI, and passed 5 of 5 with it; at
       normal speed it passed 15 of 15 with the fix, and 15 of 15 without
       it. The redesign above is still open)*
-- [ ] Tooltips don't show when the app's window is on another desktop than
-      the one the app is assigned to *(owner report, 2026-11-12, macOS)*:
+- [x] Tooltips don't show when the app's window is on another desktop than
+      the one the app is assigned to *(owner report, 2026-11-12, macOS;
+      fixed 2026-11-22, branch `native-tooltips-spaces`, tooltips kept
+      native at the owner's wish)*:
       with the Dock icon's Options → Assign To set to "This Desktop",
       moving the window to another desktop (Space) stops the tooltips
       showing; with "None" they show on any desktop. Another app tried the
@@ -7560,6 +7562,20 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       `title` (a visible change, so the owner leads it, with mockups first:
       the bubble's look and its delay; keep each button's accessible name).
       Held for later (owner, 2026-11-12)
+      *(2026-11-22: the cause, confirmed: macOS draws every tooltip in one
+      window, `NSToolTipPanel`, which AppKit makes in the app's process and
+      reuses. For an app assigned to a desktop, that window opened on the
+      assigned desktop. The fix keeps native tooltips: `src-tauri/src/tooltips.rs`
+      watches the app's windows show and sets the tooltip window to move to
+      the desktop in use when it shows (`MoveToActiveSpace`). Checked by
+      the owner in demo mode with temporary logging: without the change,
+      no tooltip showed on the other desktop, the same as the report; with
+      it, tooltips showed on both desktops, the first after launch
+      included, and kept showing as the window moved back and forth. A
+      small test app with a
+      web view didn't reproduce it, so the check was made in the app
+      itself. No automated test: CI can't assign an app to a desktop or
+      switch desktops)*
 
 ### Flaky tests (moved from the Flaky tests section, owner, 2026-11-14)
 
