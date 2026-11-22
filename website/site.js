@@ -320,7 +320,9 @@ if (zoomables.length && typeof HTMLDialogElement === "function") {
 // visitor asks for less motion or has paused it. Otherwise its still (the
 // poster) shows. Nothing loads until it would play (preload="none").
 // A Pause / Play button sits on the card (WCAG 2.2.2: motion that starts by
-// itself and lasts over five seconds can be paused), and the choice is
+// itself and lasts over five seconds can be paused). It says what pressing it
+// will do now: Pause while the clip plays, Play otherwise (paused by the
+// visitor, or a browser that wouldn't start it by itself). A pause is
 // remembered on this browser. Reduced motion hides the button and puts the
 // still back, even mid-play.
 const clips = [...document.querySelectorAll("video[data-clip]")];
@@ -344,9 +346,14 @@ if (clips.length > 0 && "IntersectionObserver" in window) {
       // Asked for less motion: back to the still, not a frozen frame.
       if (calm.matches && clip.currentTime > 0) clip.load();
     }
+    label();
+  };
+  const playing = () => clips.some((clip) => !clip.paused);
+  const label = () => {
+    const on = playing();
     for (const toggle of toggles) {
-      toggle.textContent = held ? "Play" : "Pause";
-      toggle.setAttribute("aria-label", held ? "Play the clip" : "Pause the clip");
+      toggle.textContent = on ? "Pause" : "Play";
+      toggle.setAttribute("aria-label", on ? "Pause the clip" : "Play the clip");
     }
   };
   // One button per card that has clips.
@@ -356,7 +363,9 @@ if (clips.length > 0 && "IntersectionObserver" in window) {
     toggle.type = "button";
     toggle.className = "clip-toggle";
     toggle.addEventListener("click", () => {
-      held = !held;
+      // Pausing what plays, or playing what doesn't, whatever the reason it
+      // wasn't (the click lets a browser that refused to start it, start it).
+      held = playing();
       try {
         localStorage.setItem(KEY, held ? "1" : "0");
       } catch {
@@ -378,7 +387,11 @@ if (clips.length > 0 && "IntersectionObserver" in window) {
     },
     { threshold: 0.4 },
   );
-  for (const clip of clips) watch.observe(clip);
+  for (const clip of clips) {
+    watch.observe(clip);
+    clip.addEventListener("play", label);
+    clip.addEventListener("pause", label);
+  }
   calm.addEventListener("change", update);
   dark.addEventListener("change", update);
   update();

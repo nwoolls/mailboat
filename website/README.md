@@ -39,9 +39,10 @@ serves the clips in `video/` with byte ranges (below).
   pictured.
 - `video/`: the Swipes card's clip, per theme (an MP4 and its still), made
   by `video/render.sh` from the clips in the repository's `video/` folder.
-  Cloudflare serves these through `.github/website/worker.js`: static
+  Cloudflare serves the MP4s through `.github/website/worker.js`: static
   assets answer a byte-range request with the whole file, and Safari won't
-  play a video then. Everything else is served as a plain file.
+  play a video then. Everything else, the stills included, is served as a
+  plain file.
 
 ## Publishing
 
