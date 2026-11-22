@@ -1,8 +1,9 @@
 # Website
 
 The site at getmailboat.app: plain HTML, CSS and JavaScript, with no build
-step and no backend. It is meant to be served by Cloudflare as it is (decided
-2026-11-06, see the Architecture decisions).
+step. It is meant to be served by Cloudflare as it is (decided 2026-11-06, see
+the Architecture decisions). Its one bit of server code is a small Worker that
+serves the clips in `video/` with byte ranges (below).
 
 - `index.html`, `privacy.html`, `terms.html`: the pages. The header and
   footer are repeated in each page; change them in all of them.
@@ -16,8 +17,10 @@ step and no backend. It is meant to be served by Cloudflare as it is (decided
   `<dialog>`) when it is clicked: any `<img data-zoom="images/…">` is made
   clickable, and `data-zoom` names its full-size pictures. It also measures
   how far the page scrolls before the hero screenshot reaches the middle of
-  the window, where its tilt ends (`--settle-end`). The pages read fine
-  without it.
+  the window, where its tilt ends (`--settle-end`), and plays a card's clip
+  while it's on screen, with a Pause / Play button whose choice the browser
+  remembers (`localStorage`), unless the visitor asks for reduced motion.
+  The pages read fine without it.
 - `.well-known/security.txt`: where to report a security problem (RFC 9116),
   naming `SECURITY.md`. Its `Expires` date must be renewed before it passes,
   at most a year ahead: `bun run check:website` warns in the last 60 days and
@@ -34,6 +37,13 @@ step and no backend. It is meant to be served by Cloudflare as it is (decided
   feature cards, one per section of `docs/FEATURES.md`),
   made by `scripts/build-website-images.sh`. Only Demo mode is ever
   pictured.
+- `video/`: the Swipes card's clip, per theme (an MP4; its still is
+  `images/swipe-archive-*.webp`), made by `video/render.sh` from the clips in
+  the repository's `video/` folder. Cloudflare serves this folder through
+  `.github/website/worker.js`: static assets answer a byte-range request with
+  the whole file, and Safari won't play a video then. The folder holds only
+  the clips; everything else, the stills included, is served as a plain
+  file.
 
 ## Publishing
 

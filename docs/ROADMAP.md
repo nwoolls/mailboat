@@ -7235,6 +7235,13 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       license (free for individuals and small companies) when starting,
       and record it in ARCHITECTURE
       *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+      *(2026-11-21: a first clip is made, owner's request: swipe to archive
+      up close (`video/`, composition `SwipeArchive`, dark and light),
+      drawing the app's real components, shown on the website's Swipes card
+      and in FEATURES.md. Remotion's license was checked and recorded in
+      ARCHITECTURE (source-available; free for individuals and companies of
+      up to 3 people). `video/render.sh` renders and places it. The trailer
+      itself is still to plan)*
 
 - [ ] Fewer hosts contacted before a message is opened: options are
       remote images for people you've written to by default, prefetching

@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* video/ (the Remotion clips) has class names of its own; the app's CSS
+   leaves them out. The clips add them back in video/src/clip.css. */
+@source not "../../video";
 
 /* Theme tokens follow MonoCode's approach (src/styles/index.css there):
    a hue/saturation base, a content color, and translucent mixes of content

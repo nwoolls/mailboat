@@ -22,7 +22,7 @@ import {
 
 /** Not text, generated, or the detector's own test inputs. */
 const SKIP =
-  /(^|\/)(bun\.lock|Cargo\.lock|LICENSE)$|\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp)$|^docs\/images\/|^scripts\/privacy\.test\.ts$/i;
+  /(^|\/)(bun\.lock|Cargo\.lock|LICENSE)$|\.(png|jpe?g|gif|icns|ico|car|pdf|woff2?|webp|mp4|webm|mov)$|^docs\/images\/|^scripts\/privacy\.test\.ts$/i;
 
 /** A git command; a failure is an error, never an empty answer. */
 function git(...args: string[]): string {

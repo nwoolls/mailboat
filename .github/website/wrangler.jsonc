@@ -7,8 +7,16 @@
   // dashboard), so the public *.workers.dev address and preview URLs stay off.
   "workers_dev": false,
   "preview_urls": false,
+  // The site's one bit of code: it serves the clips in /video/ with byte ranges,
+  // which Safari needs to play a video and static assets don't give (worker.js).
+  // /video/ holds only the clips (their stills are in /images/), so the
+  // documented trailing-* pattern is enough. Every other address is a plain
+  // file and never reaches it.
+  "main": "worker.js",
   "assets": {
     "directory": "../../website",
+    "binding": "ASSETS",
+    "run_worker_first": ["/video/*"],
     // Unknown addresses get website/404.html, with its real 404 status.
     "not_found_handling": "404-page",
   },

@@ -520,6 +520,58 @@ section {
 .feature-text {
   padding: 20px 22px 24px;
 }
+/* A clip in place of a card's screenshot: same 16:9 box and line under it,
+   one video per theme (site.js plays only the one showing). */
+.feature video.clip {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.feature video.clip-dark {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  .feature video.clip-dark {
+    display: block;
+  }
+  .feature video.clip-light {
+    display: none;
+  }
+}
+/* The clip's Pause / Play button (site.js adds it): a small pill on the
+   clip's top right corner. Hidden when the visitor asks for less motion,
+   since the clip doesn't play then. */
+.feature.has-clip {
+  position: relative;
+}
+.clip-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.clip-toggle:hover,
+.clip-toggle:focus-visible {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .clip-toggle {
+    display: none;
+  }
+}
 .feature-text p {
   margin-top: 8px;
   font-size: 15px;

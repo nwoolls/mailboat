@@ -1,10 +1,12 @@
-// The website's only script. Four small jobs, all optional: the page reads
+// The website's only script. Five small jobs, all optional: the page reads
 // fine without it (site.css only hides [data-reveal] when scripting runs).
 //
 // 1. Fade sections in as they scroll into view.
 // 2. Mark the page as scrolled, so the floating header lifts a little.
 // 3. Open a screenshot in a zoomed view (a native <dialog>) when clicked.
 // 4. Measure where the hero screenshot finishes settling flat.
+// 5. Play a card's clip while it's on screen, with a button to pause it (its
+//    still shows otherwise).
 
 const reveal = document.querySelectorAll("[data-reveal]");
 
@@ -311,4 +313,86 @@ if (zoomables.length && typeof HTMLDialogElement === "function") {
     if (event.key === "ArrowLeft") step(-1);
     if (event.key === "ArrowRight") step(1);
   });
+}
+
+// ----- Clips. A <video data-clip> plays, muted and looping, while it's on
+// screen and showing (one per theme; the other is display: none), unless the
+// visitor asks for less motion or has paused it. Otherwise its still (the
+// poster) shows. Nothing loads until it would play (preload="none").
+// A Pause / Play button sits on the card (WCAG 2.2.2: motion that starts by
+// itself and lasts over five seconds can be paused). It says what pressing it
+// will do now: Pause while the clip plays, Play otherwise (paused by the
+// visitor, or a browser that wouldn't start it by itself). A pause is
+// remembered on this browser. Reduced motion hides the button and puts the
+// still back, even mid-play.
+const clips = [...document.querySelectorAll("video[data-clip]")];
+if (clips.length > 0 && "IntersectionObserver" in window) {
+  const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const dark = window.matchMedia("(prefers-color-scheme: dark)");
+  const onScreen = new Set();
+  const KEY = "clips-paused";
+  let held = false;
+  try {
+    held = localStorage.getItem(KEY) === "1";
+  } catch {
+    // Storage blocked: the choice lasts for this page only.
+  }
+  const toggles = [];
+  const update = () => {
+    for (const clip of clips) {
+      const play = onScreen.has(clip) && !held && !calm.matches && clip.getClientRects().length > 0;
+      if (play && clip.paused) clip.play().catch(() => {});
+      else if (!play && !clip.paused) clip.pause();
+      // Asked for less motion: back to the still, not a frozen frame.
+      if (calm.matches && clip.currentTime > 0) clip.load();
+    }
+    label();
+  };
+  const playing = () => clips.some((clip) => !clip.paused);
+  const label = () => {
+    const on = playing();
+    for (const toggle of toggles) {
+      toggle.textContent = on ? "Pause" : "Play";
+      toggle.setAttribute("aria-label", on ? "Pause the clip" : "Play the clip");
+    }
+  };
+  // One button per card that has clips.
+  for (const card of new Set(clips.map((clip) => clip.parentElement))) {
+    if (!card) continue;
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "clip-toggle";
+    toggle.addEventListener("click", () => {
+      // Pausing what plays, or playing what doesn't, whatever the reason it
+      // wasn't (the click lets a browser that refused to start it, start it).
+      held = playing();
+      try {
+        localStorage.setItem(KEY, held ? "1" : "0");
+      } catch {
+        // As above.
+      }
+      update();
+    });
+    card.classList.add("has-clip");
+    card.append(toggle);
+    toggles.push(toggle);
+  }
+  const watch = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) onScreen.add(entry.target);
+        else onScreen.delete(entry.target);
+      }
+      update();
+    },
+    { threshold: 0.4 },
+  );
+  for (const clip of clips) {
+    watch.observe(clip);
+    clip.addEventListener("play", label);
+    clip.addEventListener("pause", label);
+  }
+  calm.addEventListener("change", update);
+  dark.addEventListener("change", update);
+  update();
 }

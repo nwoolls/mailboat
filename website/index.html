@@ -586,17 +586,37 @@
             </div>
           </article>
           <article class="feature" data-reveal="3">
-            <picture>
-              <source srcset="images/cards/list-dark.webp" media="(prefers-color-scheme: dark)" />
-              <img
-                src="images/cards/list-light.webp"
-                data-zoom="images/full/list"
-                width="800"
-                height="450"
-                loading="lazy"
-                alt="The list settings for swipes and row density"
-              />
-            </picture>
+            <!-- Up close: the row and its button parting like liquid glass, at a
+              quarter of the speed. One video per theme; site.js plays the one
+              showing while it's on screen, and only if motion is welcome. -->
+            <video
+              class="clip clip-dark"
+              data-clip
+              muted
+              loop
+              playsinline
+              preload="none"
+              width="1280"
+              height="720"
+              poster="images/swipe-archive-dark.webp"
+              aria-label="Up close and slowed down: a row slides to the left, a button grows out of it and parts from it, and fills until it lights up as Archive"
+            >
+              <source src="video/swipe-archive-dark.mp4" type="video/mp4" />
+            </video>
+            <video
+              class="clip clip-light"
+              data-clip
+              muted
+              loop
+              playsinline
+              preload="none"
+              width="1280"
+              height="720"
+              poster="images/swipe-archive-light.webp"
+              aria-label="Up close and slowed down: a row slides to the left, a button grows out of it and parts from it, and fills until it lights up as Archive"
+            >
+              <source src="video/swipe-archive-light.mp4" type="video/mp4" />
+            </video>
             <div class="feature-text">
               <h3>Swipes</h3>
               <p>
