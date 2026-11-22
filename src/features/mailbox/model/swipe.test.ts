@@ -259,8 +259,14 @@ function moveStep(sheet: string, step: string, after: string): string {
   const at = sheet.indexOf("@keyframes swipe-snap ");
   const head = sheet.slice(0, at);
   const tail = sheet.slice(at);
-  const block = new RegExp(`\\n  ${step} \\{[^}]*\\}`).exec(tail)?.[0];
-  const anchor = new RegExp(`\\n  ${after} \\{[^}]*\\}`).exec(tail)?.[0];
+  // A step's whole block, from its line to its closing brace.
+  const find = (name: string) => {
+    const start = tail.indexOf(`\n  ${name} {`);
+    const end = tail.indexOf("}", start);
+    return start < 0 || end < 0 ? null : tail.slice(start, end + 1);
+  };
+  const block = find(step);
+  const anchor = find(after);
   if (at < 0 || !block || !anchor) throw new Error(`no ${step} or ${after} step`);
   return head + tail.replace(block, "").replace(anchor, anchor + block);
 }
