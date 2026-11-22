@@ -223,7 +223,17 @@ function RowContent({ row }: { row: Row }) {
   );
 }
 
-export function SwipeArchive() {
+export type Theme = "dark" | "light";
+
+/** Per theme: the desktop picture (as in the screenshots), a blurred copy
+ * standing in for the macOS blur behind the window, and its tint. */
+const LOOK: Record<Theme, { backdrop: string; blurred: string; tint: string }> = {
+  dark: { backdrop: "sunset.png", blurred: "sunset-blur.png", tint: "bg-black/20" },
+  light: { backdrop: "sonoma.png", blurred: "sonoma-blur.png", tint: "bg-white/35" },
+};
+
+export function SwipeArchive({ theme }: { theme: Theme }) {
+  const look = LOOK[theme];
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const t = frame / fps;
@@ -274,6 +284,7 @@ export function SwipeArchive() {
   return (
     <AbsoluteFill
       className="clip overflow-hidden bg-black"
+      data-theme={theme}
       data-armed={pose.armed ? "" : undefined}
       style={{ ...clock, opacity: fade }}
     >
@@ -284,7 +295,7 @@ export function SwipeArchive() {
         }}
       >
         <Img
-          src={staticFile("sunset.png")}
+          src={staticFile(look.backdrop)}
           className="absolute inset-0 h-full w-full object-cover"
         />
         {/* The window: the macOS blur behind it, which the app's glass tints. */}
@@ -295,11 +306,12 @@ export function SwipeArchive() {
             top: PANEL.y - 60,
             width: PANEL.width + 260,
             height: PANEL.height + 100,
-            boxShadow: "0 30px 80px rgb(0 0 0 / 0.45)",
+            boxShadow:
+              theme === "dark" ? "0 30px 80px rgb(0 0 0 / 0.45)" : "0 30px 80px rgb(0 0 0 / 0.22)",
           }}
         >
           <Img
-            src={staticFile("sunset-blur.png")}
+            src={staticFile(look.blurred)}
             className="absolute"
             style={{
               left: -(PANEL.x - 220),
@@ -309,7 +321,7 @@ export function SwipeArchive() {
               maxWidth: "none",
             }}
           />
-          <div className="absolute inset-0 bg-black/20" />
+          <div className={`absolute inset-0 ${look.tint}`} />
           <div className="absolute inset-0 bg-glass-sidebar" />
         </div>
         <div

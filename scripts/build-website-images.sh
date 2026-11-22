@@ -25,11 +25,12 @@ for pair in "hero:hero" "features/write-with-ai:write-with-ai" "features/screens
 done
 
 # Feature cards, one per section of docs/FEATURES.md (write-with-ai and
-# screensaver-ascii have the full-size spotlight sections above instead): half size for the card,
+# screensaver-ascii have the full-size spotlight sections above instead, and Swipes
+# shows a clip, website/video/, made by video/render.sh): half size for the card,
 # and full size (cards/ -> full/) for the zoomed view a click opens.
 for name in rules vacation signatures labels invitation conversation ai-apps ai \
   toybox screensaver-settings send-again outside privacy notifications \
-  inbox codes search palette list shortcuts keyboard appearance; do
+  inbox codes search palette shortcuts keyboard appearance; do
   for theme in dark light; do
     webp "docs/images/features/$name-$theme.png" "$out/cards/$name-$theme.webp" -resize 800 0
     webp "docs/images/features/$name-$theme.png" "$out/full/$name-$theme.webp"

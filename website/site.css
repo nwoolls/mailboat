@@ -520,6 +520,28 @@ section {
 .feature-text {
   padding: 20px 22px 24px;
 }
+/* A clip in place of a card's screenshot: same 16:9 box and line under it,
+   one video per theme (site.js plays only the one showing). */
+.feature video.clip {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.feature video.clip-dark {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  .feature video.clip-dark {
+    display: block;
+  }
+  .feature video.clip-light {
+    display: none;
+  }
+}
 .feature-text p {
   margin-top: 8px;
   font-size: 15px;

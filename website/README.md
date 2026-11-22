@@ -34,6 +34,10 @@ step and no backend. It is meant to be served by Cloudflare as it is (decided
   feature cards, one per section of `docs/FEATURES.md`),
   made by `scripts/build-website-images.sh`. Only Demo mode is ever
   pictured.
+- `video/`: the Swipes card's clip, per theme (an MP4 and its still), made
+  by `video/render.sh` from the clips in the repository's `video/` folder.
+  `site.js` plays the one showing while it's on screen, unless the visitor
+  asks for reduced motion.
 
 ## Publishing
 

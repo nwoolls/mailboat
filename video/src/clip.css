@@ -3,9 +3,10 @@
 @import "../../src/styles/index.css";
 @source "./**/*.{ts,tsx}"; /* a glob: a bare folder doesn't override the app's `not` */
 
-/* Dark, whatever the renderer's browser reports: the dark values of
-   src/styles/index.css, with enough weight to beat its light media block. */
-:root:root {
+/* The clip's theme, whatever the renderer's browser reports: the values of
+   src/styles/index.css for each (its :root and its light media block), set
+   on the page's root, where the app's colors are worked out from them. */
+:root:has(.clip[data-theme="dark"]) {
   --background-lightness: 9%;
   --raised-lightness: 12%;
   --content-lightness: 92%;
@@ -13,6 +14,15 @@
   --glass-sidebar-base: 6.5%;
   --glass-panel-base: 34%;
   color-scheme: dark;
+}
+:root:has(.clip[data-theme="light"]) {
+  --background-lightness: 99%;
+  --raised-lightness: 97%;
+  --content-lightness: 12%;
+  --warn-ink-lightness: 30%;
+  --glass-sidebar-base: 10%;
+  --glass-panel-base: 37%;
+  color-scheme: light;
 }
 
 /* Every frame is drawn from the frame number, so nothing may run on the

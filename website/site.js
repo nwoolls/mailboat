@@ -1,10 +1,11 @@
-// The website's only script. Four small jobs, all optional: the page reads
+// The website's only script. Five small jobs, all optional: the page reads
 // fine without it (site.css only hides [data-reveal] when scripting runs).
 //
 // 1. Fade sections in as they scroll into view.
 // 2. Mark the page as scrolled, so the floating header lifts a little.
 // 3. Open a screenshot in a zoomed view (a native <dialog>) when clicked.
 // 4. Measure where the hero screenshot finishes settling flat.
+// 5. Play a card's clip while it's on screen (its still shows otherwise).
 
 const reveal = document.querySelectorAll("[data-reveal]");
 
@@ -311,4 +312,35 @@ if (zoomables.length && typeof HTMLDialogElement === "function") {
     if (event.key === "ArrowLeft") step(-1);
     if (event.key === "ArrowRight") step(1);
   });
+}
+
+// ----- Clips. A <video data-clip> plays, muted and looping, while it's on
+// screen and showing (one per theme; the other is display: none), and only
+// when the visitor hasn't asked for less motion. Otherwise its still (the
+// poster) stays. Nothing loads until it would play (preload="none").
+const clips = [...document.querySelectorAll("video[data-clip]")];
+if (clips.length > 0 && "IntersectionObserver" in window) {
+  const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const dark = window.matchMedia("(prefers-color-scheme: dark)");
+  const onScreen = new Set();
+  const update = () => {
+    for (const clip of clips) {
+      const play = onScreen.has(clip) && !calm.matches && clip.getClientRects().length > 0;
+      if (play && clip.paused) clip.play().catch(() => {});
+      else if (!play && !clip.paused) clip.pause();
+    }
+  };
+  const watch = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) onScreen.add(entry.target);
+        else onScreen.delete(entry.target);
+      }
+      update();
+    },
+    { threshold: 0.4 },
+  );
+  for (const clip of clips) watch.observe(clip);
+  calm.addEventListener("change", update);
+  dark.addEventListener("change", update);
 }

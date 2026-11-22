@@ -315,6 +315,8 @@ Every web link in an email loses the tracking codes the app knows (`utm_` and th
 
 *Animated:* [GIF](images/loops/swipe-archive.gif) · [MP4](images/loops/swipe-archive.mp4)
 
+*Up close, slowed down:* [GIF](images/loops/swipe-archive-closeup.gif) · [MP4](images/loops/swipe-archive-closeup.mp4). The button grows out of the row as one shape, parts from it like liquid glass and springs, then fills until it lights up.
+
 Two fingers to the left on a conversation archives it from the Inbox (anywhere else it moves it to Trash), and a toast offers Undo (or press z). What each swipe does is yours to choose in Settings, List, where rows can also be compact, default or roomy, with no, one or two lines of preview.
 
 ### Keyboard shortcuts
