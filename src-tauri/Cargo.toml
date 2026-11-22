@@ -62,8 +62,10 @@ objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSDockTile", "N
 # Same version as Wry's, which Tauri already builds.
 objc2-web-kit = { version = "0.3", default-features = false, features = ["std", "objc2-app-kit", "WKWebView"] }
 # NSData, to turn a chosen app icon's PNG into an NSImage (src/dock.rs);
-# NSBundle, NSURL, NSString and NSError for src/mail_handler.rs.
-objc2-foundation = { version = "0.3", features = ["NSData", "NSBundle", "NSURL", "NSString", "NSError", "NSArray", "NSGeometry"] }
+# NSBundle, NSURL, NSString and NSError for src/mail_handler.rs;
+# NSNotification, NSOperation and block2 to watch the tooltip window show
+# (src/tooltips.rs).
+objc2-foundation = { version = "0.3", features = ["NSData", "NSBundle", "NSURL", "NSString", "NSError", "NSArray", "NSGeometry", "NSNotification", "NSOperation", "block2"] }
 # The trackpad monitor's handler (src/trackpad.rs); same version as Tauri's.
 block2 = "0.6"
 # New-mail notifications through macOS's own notification center, so a
