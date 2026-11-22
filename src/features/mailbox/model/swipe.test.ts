@@ -202,7 +202,45 @@ describe("the button's snap as it separates", () => {
     // In source order 0% eases to 75% (0.94 to 0.985, under 1 however it
     // overshoots); in time order to 50% (0.94 to 1, so past it).
     "steps out of order": moveStep(css.replace(opening, `${bouncy};`), "50%", "100%"),
+    "a later block under a quoted name": `${css}\n@keyframes "swipe-snap" { from { transform: scaleX(1.07); } to { transform: scaleX(1); } }`,
+    "a later block under an escaped name": `${css}\n@keyframes swipe\\-snap { from { transform: scaleX(1.07); } to { transform: scaleX(1); } }`,
+    "a later block under the WebKit prefix": `${css}\n@-webkit-keyframes swipe-snap { from { transform: scaleX(1.07); } to { transform: scaleX(1); } }`,
+    "a second transform in capitals": css.replace(first, `${first} TRANSFORM: scaleX(1.07);`),
+    "a scale property alongside the transform": css.replace(first, `${first} scale: 1.15 1;`),
+    "a scale on the rule that runs it": css.replace(
+      "transform-box: fill-box;",
+      "transform-box: fill-box;\n  scale: 1.15 1;",
+    ),
+    "another rule that selects the button": `${css}\nsvg .swipe-snap { scale: 1.15 1; }`,
+    "a later block with the at-rule in capitals": `${css}\n@KEYFRAMES swipe-snap { from { transform: scaleX(1.07); } to { transform: scaleX(1); } }`,
+    "a scale beside an unchanged transform": css.replace(
+      "transform: scaleX(1);",
+      "transform: scaleX(1);\n    scale: 1.07;",
+    ),
+    "a rule for the rect alone": `${css}\nrect.swipe-snap { scale: 1.07; }`,
+    "an invalid easing the browser drops for an overshooting one": css
+      .replace("320ms ease-in-out both", "320ms cubic-bezier(0.3, 2, 0.5, 1) both")
+      .replace("cubic-bezier(0.2, 0.8, 0.3, 1)", "cubic-bezier(2, 0, 0.5, 1)"),
+    "a shorthand the browser drops (two fill modes)": css.replace(
+      "320ms ease-in-out both;",
+      "320ms ease-in-out both both;",
+    ),
   };
+
+  it("is turned off for reduced motion", () => {
+    const moving = css.replace(
+      "@media (prefers-reduced-motion: reduce) {\n  .swipe-snap",
+      "@media (prefers-reduced-motion: no-preference) {\n  .swipe-snap",
+    );
+    expect(moving).not.toBe(css);
+    expect(() => snapKeyframes(moving)).toThrow(/reduced-motion/);
+  });
+
+  it("keeps the 320 ms a video clip places it by", () => {
+    const shorter = css.replace("swipe-snap 320ms", "swipe-snap 32ms");
+    expect(shorter).not.toBe(css);
+    expect(() => snapKeyframes(shorter)).toThrow(/unread animation/);
+  });
 
   it.each(Object.entries(broken))("catches %s", (_name, sheet) => {
     expect(sheet).not.toBe(css);
@@ -245,18 +283,28 @@ function easing(text: string): Bezier {
   if (named) return named;
   const bezier = /^cubic-bezier\(([^)]*)\)$/.exec(value);
   const n = bezier?.[1]!.split(",").map(Number);
-  if (!n || n.length !== 4 || n.some(Number.isNaN)) throw new Error(`unread easing "${value}"`);
+  // x outside 0–1 is invalid CSS: the browser drops it and eases another way.
+  if (!n || n.length !== 4 || n.some(Number.isNaN) || [n[0]!, n[2]!].some((x) => x < 0 || x > 1))
+    throw new Error(`unread easing "${value}"`);
   return n as Bezier;
 }
 
-/** A block's declarations, the last of each property winning, as in CSS. */
-function declarations(body: string): Map<string, string> {
+/**
+ * A block's declarations, the last of each property winning, as in CSS.
+ * Property names are case-insensitive; only `allowed` ones may appear, so
+ * anything that could also move the button (`scale`, `translate`, …) is
+ * refused, not ignored.
+ */
+function declarations(body: string, allowed: string[]): Map<string, string> {
   const out = new Map<string, string>();
   for (const part of body.split(";")) {
     if (!part.trim()) continue;
     const colon = part.indexOf(":");
-    if (colon < 0) throw new Error(`unread declaration "${part.trim()}"`);
-    out.set(part.slice(0, colon).trim(), part.slice(colon + 1).trim());
+    const name = part.slice(0, colon).trim().toLowerCase();
+    const value = part.slice(colon + 1).trim();
+    if (colon < 0 || !allowed.includes(name) || value.includes("!"))
+      throw new Error(`unread declaration "${part.trim()}"`);
+    out.set(name, value);
   }
   return out;
 }
@@ -274,32 +322,55 @@ function braced(sheet: string, open: number): string {
 /**
  * `@keyframes swipe-snap`, read strictly: each step's offset (sorted),
  * its scaleX (the only transform allowed) and its easing to the next.
- * What this can't read as the browser would, it refuses.
+ * What this can't read as the browser would, it refuses: every mention
+ * of swipe-snap in the sheet must be one of the three rules it knows.
  */
 function snapKeyframes(source: string): Keyframe[] {
-  const sheet = source.replace(/\/\*[\s\S]*?\*\//g, "");
-  const blocks = [...sheet.matchAll(/@keyframes\s+swipe-snap\s*\{/g)];
+  // Comments out, and escapes decoded (`swipe\-snap` is the same name).
+  const sheet = source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, hex: string) =>
+      String.fromCodePoint(Number.parseInt(hex, 16)),
+    )
+    .replace(/\\(.)/g, "$1");
+  const mentions = [...sheet.matchAll(/swipe-snap/g)].length;
+
+  // The keyframes, by any spelling of the at-rule or the name.
+  const blocks = [
+    ...sheet.matchAll(/@(?:-webkit-)?keyframes\s+(?:swipe-snap|"swipe-snap"|'swipe-snap')\s*\{/gi),
+  ];
   if (blocks.length !== 1) throw new Error(`${blocks.length} @keyframes swipe-snap blocks`);
+
+  // The one rule that runs it: exactly `swipe-snap 320ms <easing> both`.
   const rules = [...sheet.matchAll(/(?:^|\})\s*\.swipe-snap\s*\{/g)];
   if (rules.length !== 1) throw new Error(`${rules.length} top-level .swipe-snap rules`);
-  const rule = declarations(braced(sheet, rules[0]!.index + rules[0]![0].length - 1));
-  if ([...rule.keys()].some((k) => k.startsWith("animation") && k !== "animation"))
-    throw new Error(".swipe-snap sets an animation longhand");
-  const words = (rule.get("animation") ?? "").split(/\s+(?![^(]*\))/);
-  const rest = words.filter((w) => !/^(swipe-snap|[\d.]+m?s|both|forwards|none)$/.test(w));
-  if (words[0] !== "swipe-snap" || rest.length !== 1)
-    throw new Error(`unread animation "${rule.get("animation")}"`);
-  const fallback = easing(rest[0]!);
+  const rule = declarations(braced(sheet, rules[0]!.index + rules[0]![0].length - 1), [
+    "transform-box",
+    "animation",
+  ]);
+  // 320ms: a video clip pauses the snap and places it by that length.
+  const shorthand = /^swipe-snap\s+320ms\s+(.+?)\s+both$/.exec(rule.get("animation") ?? "");
+  if (!shorthand) throw new Error(`unread animation "${rule.get("animation")}"`);
+  const fallback = easing(shorthand[1]!);
+
+  // Reduced motion turns it off, and that's all that rule may do.
+  const reduced =
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*\.swipe-snap\s*\{\s*animation:\s*none;?\s*\}\s*\}/.test(
+      sheet,
+    );
+  if (!reduced) throw new Error("no reduced-motion rule turning the snap off");
+  // Keyframes name, rule selector, its animation, the reduced-motion selector.
+  if (mentions !== 4) throw new Error(`swipe-snap is mentioned ${mentions} times, not 4`);
 
   const block = braced(sheet, blocks[0]!.index + blocks[0]![0].length - 1);
   const frames = new Map<number, Keyframe>();
   for (const m of block.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const props = declarations(m[2]!);
+    const props = declarations(m[2]!, ["transform", "animation-timing-function"]);
     const transform = props.get("transform") ?? "";
     const scale = /^scaleX\(([\d.]+)\)$/.exec(transform);
     if (!scale) throw new Error(`a swipe-snap step's transform isn't one scaleX: "${transform}"`);
     const timing = props.get("animation-timing-function");
-    for (const selector of m[1]!.split(",").map((x) => x.trim())) {
+    for (const selector of m[1]!.split(",").map((x) => x.trim().toLowerCase())) {
       const at =
         selector === "from" ? 0 : selector === "to" ? 1 : Number.parseFloat(selector) / 100;
       if (!/^(from|to|[\d.]+%)$/.test(selector) || frames.has(at))
