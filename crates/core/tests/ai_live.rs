@@ -189,7 +189,8 @@ async fn chatgpt_ideas() {
 /// `AI_LIVE_LINE_ONLY=lisbon` asks for the matching conversations only.
 /// Prints each line, marked where the model's answer had field labels or a
 /// number or code the conversation doesn't (`prompts::line_faults`), and
-/// fails if one survives tidying or no answer came back. Apple's model once wrote "use code code1234" for an email with
+/// fails if one survives tidying, no answer came back, or tidying emptied
+/// more than a tenth of the lines. Apple's model once wrote "use code code1234" for an email with
 /// no code, "status: sent; ask: none" fields, and the instructions' example
 /// line into a dentist's reminder.
 async fn list_lines_with(provider: AiProvider) {
@@ -225,7 +226,7 @@ async fn list_lines_with(provider: AiProvider) {
         rows
     };
     let programs = programs();
-    let (mut asked, mut raw_faults, mut left) = (0, 0, Vec::new());
+    let (mut asked, mut raw_faults, mut emptied, mut left) = (0, 0, 0, Vec::new());
     for (id, subject) in threads {
         if !subject.to_lowercase().contains(&only.to_lowercase()) {
             continue;
@@ -262,6 +263,9 @@ async fn list_lines_with(provider: AiProvider) {
             if !after.is_empty() {
                 left.push(format!("{subject}: {line} {after:?}"));
             }
+            if line.is_empty() {
+                emptied += 1;
+            }
         }
     }
     println!("{provider:?}: {raw_faults} of {asked} answers had faults before tidying");
@@ -270,6 +274,11 @@ async fn list_lines_with(provider: AiProvider) {
         "no answers: is the provider set up, and does the filter match?"
     );
     assert!(left.is_empty(), "left after tidying: {left:#?}");
+    // Tidying keeps the lines it has no reason to drop.
+    assert!(
+        emptied * 10 <= asked,
+        "{emptied} of {asked} lines were emptied"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

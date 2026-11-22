@@ -621,7 +621,7 @@ async fn a_list_line_keeps_only_what_the_conversation_says() {
         "Lunch on Thursday?",
     );
     let (programs, dir) = fake_apple_answering(
-        "Studio54 sent the proofs for Thursday, Nov. 24 at 10:45. Status: ready",
+        "Studio54 sent the proofs for Thursday, Nov. 24, at 10:45. Status: ready",
         "Use code 999111",
     );
     for (thread, want) in [

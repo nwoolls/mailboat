@@ -461,7 +461,11 @@ const FIELD_LABELS: [&str; 4] = ["status", "ask", "asked", "action"];
 /// The length of the field label that `lower` starts with: the label, any
 /// emphasis and spaces around it, and its colon ("**Status** :").
 fn field_label(lower: &str) -> Option<usize> {
-    let skip = |s: &str| s.len() - s.trim_start_matches(['*', '_', ' ', '\t']).len();
+    let skip = |s: &str| {
+        s.len()
+            - s.trim_start_matches(['*', '_', ' ', '\t', '"', '“', '”'])
+                .len()
+    };
     let start = skip(lower);
     FIELD_LABELS.iter().find_map(|label| {
         let rest = lower[start..].strip_prefix(label)?;
@@ -495,46 +499,47 @@ fn before_fields(line: &str) -> &str {
     });
     match cut {
         Some(i) => line[..i].trim_end_matches(|c: char| {
-            c.is_whitespace() || matches!(c, ',' | ';' | '.' | '-' | '–' | '—' | ':' | '*' | '_')
+            c.is_whitespace()
+                || matches!(
+                    c,
+                    ',' | ';' | '.' | '-' | '–' | '—' | ':' | '*' | '_' | '"' | '“'
+                )
         }),
         None => line,
     }
 }
 
 /// The words of a text as `Known` compares them: letters, digits and the
-/// hyphens inside ("INV-12345").
+/// hyphens and periods inside ("INV-12345", "ZX7.AA1").
 fn words(text: &str) -> impl Iterator<Item = &str> {
-    text.split(|c: char| !(c.is_alphanumeric() || c == '-'))
-        .map(|w| w.trim_matches('-'))
+    text.split(|c: char| !(c.is_alphanumeric() || c == '-' || c == '.'))
+        .map(|w| w.trim_matches(['-', '.']))
         .filter(|w| !w.is_empty())
 }
 
-/// The numbers in a text, whole: digits with the commas, periods and colons
-/// between them ("$1,299.50" is 1299.50, "09:30" is 9:30, "16–23" is 16 and
-/// 23). Thousands commas are left out and a time loses its leading zero, so
-/// "1,299" and "1299", "09:30" and "9:30" are the same number.
-fn numbers(text: &str) -> Vec<String> {
+/// The numbers in a text, whole: digits with the periods, colons and
+/// slashes between them, and the commas of thousands ("$1,299.50" is
+/// 1299.50, "09:30" is 9:30, "05/24" is 05/24, "16–23" is 16 and 23, "12,34"
+/// is 12 and 34). A time loses its leading zero, so "1,299" and "1299",
+/// "09:30" and "9:30" are the same number. Each comes with the "am" or "pm"
+/// written after it, if any.
+fn numbers(text: &str) -> Vec<(String, Option<&'static str>)> {
     let chars: Vec<char> = text.chars().collect();
+    let digit = |i: usize| chars.get(i).is_some_and(char::is_ascii_digit);
     let mut out = Vec::new();
     let mut i = 0;
     while i < chars.len() {
-        if !chars[i].is_ascii_digit() {
+        if !digit(i) {
             i += 1;
             continue;
         }
         let mut number = String::new();
         while i < chars.len() {
             let c = chars[i];
-            let joins = matches!(c, ',' | '.' | ':')
-                && chars.get(i + 1).is_some_and(|n| n.is_ascii_digit())
-                && !number.is_empty();
-            if c.is_ascii_digit() {
+            let thousands = c == ',' && (1..=3).all(|k| digit(i + k)) && !digit(i + 4);
+            if c.is_ascii_digit() || (matches!(c, '.' | ':' | '/') && digit(i + 1)) {
                 number.push(c);
-            } else if joins {
-                if c != ',' {
-                    number.push(c);
-                }
-            } else {
+            } else if !thousands {
                 break;
             }
             i += 1;
@@ -547,7 +552,17 @@ fn numbers(text: &str) -> Vec<String> {
                 trimmed.to_string()
             };
         }
-        out.push(number);
+        let after: String = chars[i..]
+            .iter()
+            .skip_while(|c| **c == ' ')
+            .take(5)
+            .filter(|c| **c != '.')
+            .collect::<String>()
+            .to_lowercase();
+        let mark = ["am", "pm"]
+            .into_iter()
+            .find(|m| after.starts_with(m) && !after[m.len()..].starts_with(char::is_alphabetic));
+        out.push((number, mark));
     }
     out
 }
@@ -556,7 +571,7 @@ fn numbers(text: &str) -> Vec<String> {
 const NUMBER_ENDINGS: [&str; 6] = ["am", "pm", "st", "nd", "rd", "th"];
 
 fn number_with_ending(word: &str) -> bool {
-    let ending = word.trim_start_matches(|c: char| c.is_ascii_digit());
+    let ending = word.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.' || c == ':');
     ending.len() < word.len() && NUMBER_ENDINGS.contains(&ending)
 }
 
@@ -564,6 +579,9 @@ fn number_with_ending(word: &str) -> bool {
 struct Known {
     /// Every number, whole (`numbers`).
     numbers: std::collections::HashSet<String>,
+    /// The "am" or "pm" written after each number: a line can't swap one
+    /// for the other ("9:30 AM" as "9:30 PM").
+    marks: std::collections::HashMap<String, std::collections::HashSet<&'static str>>,
     /// The whole part of every number with a fraction or minutes ("42" of
     /// "42.95", "10" of "10:00"): a line may round to it.
     whole_parts: std::collections::HashSet<String>,
@@ -575,10 +593,23 @@ struct Known {
 impl Known {
     fn new(source: &str) -> Self {
         let lower = source.to_lowercase();
-        let numbers: std::collections::HashSet<String> = numbers(&lower).into_iter().collect();
+        let found = numbers(&lower);
+        let mut marks: std::collections::HashMap<_, std::collections::HashSet<_>> =
+            std::collections::HashMap::new();
+        for (n, mark) in &found {
+            if let Some(mark) = mark {
+                marks.entry(n.clone()).or_default().insert(*mark);
+            }
+        }
+        let numbers: std::collections::HashSet<String> =
+            found.into_iter().map(|(n, _)| n).collect();
         let whole_parts = numbers
             .iter()
-            .filter_map(|n| n.split_once(['.', ':']).map(|(whole, _)| whole.to_string()))
+            .filter_map(|n| {
+                n.split_once(['.', ':'])
+                    .filter(|_| !n.contains('/'))
+                    .map(|(whole, _)| whole.to_string())
+            })
             .collect();
         let mut codes = std::collections::HashSet::new();
         for line in lower.lines() {
@@ -600,13 +631,21 @@ impl Known {
         }
         Known {
             numbers,
+            marks,
             whole_parts,
             codes,
         }
     }
 
-    fn knows_number(&self, n: &str) -> bool {
-        self.numbers.contains(n) || (!n.contains(['.', ':']) && self.whole_parts.contains(n))
+    fn knows_number(&self, n: &str, mark: Option<&str>) -> bool {
+        let known = self.numbers.contains(n)
+            || (!n.contains(['.', ':', '/']) && self.whole_parts.contains(n));
+        let other_mark = mark.is_some_and(|m| {
+            self.marks
+                .get(n)
+                .is_some_and(|seen| !seen.is_empty() && !seen.contains(m))
+        });
+        known && !other_mark
     }
 
     /// A word with letters and digits must be a word of the conversation,
@@ -635,7 +674,13 @@ impl Known {
 
     /// The numbers and words of `text` the conversation doesn't have.
     fn unknown(&self, text: &str) -> Vec<String> {
-        let numbers = numbers(text).into_iter().filter(|n| !self.knows_number(n));
+        let numbers = numbers(text)
+            .into_iter()
+            .filter(|(n, mark)| !self.knows_number(n, *mark))
+            .map(|(n, mark)| match mark {
+                Some(m) => format!("{n} {m}"),
+                None => n,
+            });
         let words = words(text)
             .filter(|w| !self.knows_word(w))
             .map(String::from);
@@ -652,6 +697,12 @@ const CLAUSE_ENDS: [&str; 9] = [", ", ": ", " - ", " – ", " — ", "; ", ". ",
 /// "Notebook no" when the number is dropped; the whole part goes instead.
 const MONTHS: [&str; 13] = [
     "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec", "no",
+];
+
+/// Words that start a part limiting the rest of the line: when such a part
+/// goes, the whole line goes.
+const CONDITIONS: [&str; 8] = [
+    "only", "unless", "if", "except", "provided", "but", "not", "until",
 ];
 
 fn strength(sep: &str) -> usize {
@@ -674,7 +725,7 @@ fn only_what_was_read(line: &str, known: &Known) -> String {
                 rest.match_indices(end)
                     .find(|(i, _)| {
                         let abbreviation = *end == ". "
-                            && rest[i + 2..].starts_with(|c: char| c.is_ascii_digit())
+                            && rest[i + 2..].starts_with(char::is_numeric)
                             && MONTHS.contains(
                                 &rest[..*i]
                                     .rsplit(|c: char| !c.is_alphabetic())
@@ -707,6 +758,12 @@ fn only_what_was_read(line: &str, known: &Known) -> String {
             _ => sep,
         };
         if !known.unknown(part).is_empty() {
+            // Without its condition, a request would say something else
+            // ("Submit, only if the total is below …" isn't "Submit").
+            let first = part.split_whitespace().next().unwrap_or_default();
+            if CONDITIONS.contains(&first.to_lowercase().as_str()) {
+                return String::new();
+            }
             gap = Some(joiner);
             continue;
         }
@@ -1108,7 +1165,7 @@ Doors open 09:30, 2 m from the door.";
         );
         let source = context::source_text(&thread);
         assert_eq!(
-            clean_line("Review moved to next week, Nov. 24 at 10:45", &source),
+            clean_line("Review moved to next week, Nov. 24, at 10:45", &source),
             "Review moved to next week"
         );
     }
@@ -1184,6 +1241,56 @@ Invoice INV-007315. There are 2. Mail the form.";
         }
         assert_eq!(clean_line("Free 2-4pm", "Free 2-4 pm."), "Free 2-4pm");
         assert_eq!(clean_line("Use code ABC-123", "ABC-456 and XYZ-123"), "");
+    }
+
+    /// Round 3's cases: commas only of thousands, dates with slashes and
+    /// codes with periods whole, "am" kept apart from "pm", and a dropped
+    /// condition taking its request with it.
+    #[test]
+    fn numbers_keep_their_form() {
+        // A decimal comma isn't a thousands comma.
+        for made_up in ["Total €4295", "Total €42.95"] {
+            assert_eq!(clean_line(made_up, "Total €42,95"), "", "{made_up}");
+        }
+        assert_eq!(clean_line("Room 12 is open", "Rooms 1,2 are open"), "");
+        // Slashes and periods join a date or a code.
+        for source in ["Choose 05/12 or 06/24", "Thursday the 24th at 5"] {
+            assert_eq!(clean_line("Meet on 05/24", source), "", "{source}");
+        }
+        assert_eq!(
+            clean_line("Meet on 05/24", "Meet on 05/24?"),
+            "Meet on 05/24"
+        );
+        assert_eq!(
+            clean_line("Use code ZX7.BB2", "Codes ZX7.AA1 and YQ8.BB2"),
+            ""
+        );
+        assert_eq!(
+            clean_line("Use code ZX7.AA1", "Codes ZX7.AA1 and YQ8.BB2"),
+            "Use code ZX7.AA1"
+        );
+        // "am" and "pm" aren't swapped; one the email leaves out may be added.
+        assert_eq!(clean_line("Meet at 9:30 PM", "Meet at 9:30 AM"), "");
+        assert_eq!(clean_line("Meet at 9:30pm", "Meet at 9:30 a.m."), "");
+        assert_eq!(
+            clean_line("Meet at 9:30 AM", "Meet at 9:30 AM"),
+            "Meet at 9:30 AM"
+        );
+        assert_eq!(
+            clean_line("Dinner at 6.30pm", "Dinner at 6.30?"),
+            "Dinner at 6.30pm"
+        );
+        // A condition that goes takes the whole line with it.
+        assert_eq!(
+            clean_line(
+                "Submit, only if the total is below $42.95",
+                "Submit only if the total is below $42.00"
+            ),
+            ""
+        );
+        // Other scripts' digits after an abbreviation, and a quoted label.
+        assert_eq!(clean_line("Notebook no. ٨ ready", READ), "");
+        assert_eq!(clean_line("Lunch, “Status: open”", READ), "Lunch");
     }
 
     /// Labels written with a space before the colon, or after "!" or "?",

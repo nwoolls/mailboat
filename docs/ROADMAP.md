@@ -6002,12 +6002,16 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       of the line that holds a number or a code the conversation's own words
       don't have (its subject, people's names and messages,
       `context::source_text`, not the date lines the model also reads, so a
-      send date or time doesn't count). Numbers count whole (an amount or
-      time made of pieces of others doesn't), and a word mixing letters and
-      digits must be a word of the email. So a made-up code or date doesn't
-      reach the list even when the model writes one, except a day matched
-      with another month's name, which isn't checked; if nothing is left,
-      the list shows the email's first words. List lines saved before the
+      send date or time doesn't count). Numbers count whole (an amount, time
+      or slashed date made of pieces of others doesn't), and a word mixing
+      letters and digits must be a word of the email, with a few allowed
+      forms (a number with "pm" or "th", "2 m" as "2m", "9am-5pm"). If a part
+      that goes starts a condition ("only if …"), the whole line goes. This
+      catches the made-up codes and dates seen in the reproduction, not every
+      one: a day matched with another month's name, numbers joined by a
+      hyphen, and a number's sign, currency or percent aren't checked (the
+      decisions row of 2026-11-21 in ARCHITECTURE.md lists the limits). If
+      nothing is left, the list shows the email's first words. List lines saved before the
       fix are deleted on upgrade (`MIGRATION_V24`) and written again for the
       rows on screen. Unit tests use the faulty lines from the reproduction
       and the reviews' cases, and `a_list_line_keeps_only_what_the_conversation_says`
