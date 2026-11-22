@@ -542,6 +542,9 @@ export function Shell() {
   // out, then goes; coming back onto it meanwhile keeps it.
   useEffect(() => {
     if (peek !== "leaving") return;
+    // However it was put away (the shortcut too), a hover still waiting to
+    // float it is dropped, or it would bring it back a moment after.
+    window.clearTimeout(peekTimer.current);
     const done = window.setTimeout(
       () => setPeek((p) => (p === "leaving" ? "closed" : p)),
       PEEK_SLIDE_OUT_MS,

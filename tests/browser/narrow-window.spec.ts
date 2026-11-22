@@ -251,6 +251,23 @@ test("Esc puts a floating sidebar away under a pointer that hasn't moved", async
   await expect(peek).toHaveCount(0);
 });
 
+test("the shortcut puts away a sidebar its button floated, for good", async ({ page }) => {
+  // From review: hovering the sidebar's button starts a timer that floats
+  // the sidebar a moment later. Clicked before then, and put away with the
+  // shortcut before then too, the timer still fired and brought it back.
+  await open(page, 480);
+  const toggle = page.locator("[data-toolbar-start] button");
+  const peek = page.locator(".sidebar-peek");
+  await toggle.hover();
+  await toggle.click();
+  await expect(peek).toBeVisible();
+  await page.keyboard.press("Control+Meta+s");
+  await expect(peek).toHaveCount(0);
+  // Past the hover's delay: still gone.
+  await page.waitForTimeout(600);
+  await expect(peek).toHaveCount(0);
+});
+
 test("moving back onto a floating sidebar as it slides out keeps it", async ({ page }) => {
   await open(page, 480);
   await page.mouse.move(470, 60);
