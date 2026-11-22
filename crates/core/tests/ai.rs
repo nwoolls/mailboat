@@ -564,3 +564,87 @@ async fn a_conversation_moved_to_spam_while_it_is_read_is_not_summarized() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// A stand-in for Apple's helper that answers `proofs` for an email about
+/// proofs and `other` for any other.
+fn fake_apple_answering(proofs: &str, other: &str) -> (Programs, std::path::PathBuf) {
+    let dir = std::env::temp_dir().join(format!("ai-helper-test-{}", fastrand::u64(..)));
+    std::fs::create_dir_all(&dir).unwrap();
+    let helper = dir.join("ai-helper");
+    let done = |text: &str| format!("printf '%s\\n' '{{\"type\":\"done\",\"text\":\"{text}\"}}'");
+    std::fs::write(
+        &helper,
+        format!(
+            "#!/bin/sh\nif grep -q proofs; then {}; else {}; fi\n",
+            done(proofs),
+            done(other)
+        ),
+    )
+    .unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(&helper, std::fs::Permissions::from_mode(0o755)).unwrap();
+    (
+        Programs {
+            apple: Some(helper),
+            ..Default::default()
+        },
+        dir,
+    )
+}
+
+/// The list line as saved: tidied against the conversation's own words. A
+/// number in the sender's name counts; the message's send date and time,
+/// which the model also reads, don't; and a line with nothing left is saved
+/// empty, so the list shows the email's first words and doesn't ask again.
+#[tokio::test]
+async fn a_list_line_keeps_only_what_the_conversation_says() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a", "a@x.example");
+    // 2026-11-24 10:45 UTC.
+    let mut proofs = message("m1", 1_795_517_100_000, &["INBOX"]);
+    proofs.from = Some(Address {
+        name: Some("Studio54".into()),
+        email: "hello@studio.example".into(),
+    });
+    let proofs = put_thread_named(
+        &db,
+        a,
+        "t1",
+        vec![proofs],
+        "The proofs are ready for Thursday.",
+    );
+    let lunch = put_thread_named(
+        &db,
+        a,
+        "t2",
+        vec![message("m2", 1_795_517_100_000, &["INBOX"])],
+        "Lunch on Thursday?",
+    );
+    let (programs, dir) = fake_apple_answering(
+        "Studio54 sent the proofs for Thursday, Nov. 24 at 10:45. Status: ready",
+        "Use code 999111",
+    );
+    for (thread, want) in [
+        (proofs, "Studio54 sent the proofs for Thursday"),
+        (lunch, ""),
+    ] {
+        let r = tasks::summarize(
+            &db,
+            None,
+            &programs,
+            AiProvider::Apple,
+            line(thread),
+            &|_| {},
+        )
+        .await
+        .unwrap();
+        assert!(
+            matches!(&r, Summarized::Done(s, _) if s.text == want),
+            "{want}"
+        );
+    }
+    let saved = summaries::current_lines(&db.conn(), &[proofs, lunch]).unwrap();
+    let texts: Vec<&str> = saved.iter().map(|s| s.text.as_str()).collect();
+    assert_eq!(texts, ["Studio54 sent the proofs for Thursday", ""]);
+    let _ = std::fs::remove_dir_all(dir);
+}

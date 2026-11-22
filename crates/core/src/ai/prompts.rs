@@ -399,13 +399,35 @@ pub fn clean_rewrite(answer: &str) -> String {
 /// Empty when nothing is left, and the list then shows the email's first
 /// words.
 pub fn clean_line(answer: &str, source: &str) -> String {
+    let line = unwrap_marks(before_fields(tidy(answer)));
+    let line = only_what_was_read(line, &Known::new(source));
+    context::shorten(&line, 140)
+}
+
+/// What's wrong with a list line, as `clean_line` sees it: a field label,
+/// and each number or word with a number in it that the conversation
+/// (`source`) doesn't have. For the live test, to mark the model's answers.
+pub fn line_faults(answer: &str, source: &str) -> Vec<String> {
+    let line = tidy(answer);
+    let known = Known::new(source);
+    let mut faults = Vec::new();
+    if before_fields(line) != line {
+        faults.push("field label".to_string());
+    }
+    faults.extend(known.unknown(line));
+    faults
+}
+
+/// The answer's first line, without the marks around it or a "Summary:"
+/// label.
+fn tidy(answer: &str) -> &str {
     let line = answer
         .lines()
         .map(str::trim)
         .find(|l| !l.is_empty())
         .unwrap_or_default();
     let line = unwrap_marks(line);
-    let line = unwrap_marks(
+    unwrap_marks(
         strip_prefix_ignore_case(line, "summary")
             .map(|rest| {
                 rest.trim_start_matches(['*', '_'])
@@ -413,28 +435,7 @@ pub fn clean_line(answer: &str, source: &str) -> String {
                     .trim_start_matches([':', '-', '–', '—'])
             })
             .unwrap_or(line),
-    );
-    let line = unwrap_marks(before_fields(line));
-    let line = only_what_was_read(line, &Known::new(source));
-    context::shorten(&line, 140)
-}
-
-/// What's wrong with a list line, as `clean_line` sees it: a field label,
-/// and each word with a number or code the conversation (`source`) doesn't
-/// have. For the live test, to mark the model's answers before tidying.
-pub fn line_faults(line: &str, source: &str) -> Vec<String> {
-    let line = unwrap_marks(line);
-    let known = Known::new(source);
-    let mut faults = Vec::new();
-    if before_fields(line) != line {
-        faults.push("field label".to_string());
-    }
-    faults.extend(
-        words(line)
-            .filter(|w| !known.knows(w))
-            .map(|w| w.to_string()),
-    );
-    faults
+    )
 }
 
 /// The text without the white space, Markdown emphasis and quotation marks
@@ -457,23 +458,22 @@ fn strip_prefix_ignore_case<'a>(text: &'a str, prefix: &str) -> Option<&'a str> 
 /// Labels Apple's model used to fill in fields instead of writing a phrase.
 const FIELD_LABELS: [&str; 4] = ["status", "ask", "asked", "action"];
 
-/// The length of the field label (with its colon and any emphasis) that
-/// `lower` starts with.
+/// The length of the field label that `lower` starts with: the label, any
+/// emphasis and spaces around it, and its colon ("**Status** :").
 fn field_label(lower: &str) -> Option<usize> {
-    let marks = lower.len() - lower.trim_start_matches(['*', '_']).len();
+    let skip = |s: &str| s.len() - s.trim_start_matches(['*', '_', ' ', '\t']).len();
+    let start = skip(lower);
     FIELD_LABELS.iter().find_map(|label| {
-        let rest = lower[marks..].strip_prefix(label)?;
-        let colon = rest.len() - rest.trim_start_matches(['*', '_']).len();
-        rest[colon..].strip_prefix(':')?;
-        let after = &rest[colon + 1..];
-        let closing = after.len() - after.trim_start_matches(['*', '_']).len();
-        Some(marks + label.len() + colon + 1 + closing)
+        let rest = lower[start..].strip_prefix(label)?;
+        let before_colon = skip(rest);
+        let after = rest[before_colon..].strip_prefix(':')?;
+        Some(start + label.len() + before_colon + 1 + skip(after))
     })
 }
 
 /// The line without the field labels that lead it, up to the first one
 /// that follows a punctuation mark ("…, status: sent; ask: none"). A label
-/// inside a phrase stays ("flight status: delayed").
+/// inside a phrase stays ("flight status: delayed", "pre-status: go").
 fn before_fields(line: &str) -> &str {
     let mut line = line;
     // ASCII only, so its byte offsets are the line's.
@@ -481,13 +481,17 @@ fn before_fields(line: &str) -> &str {
         line = line[len..].trim_start();
     }
     let lower = line.to_ascii_lowercase();
+    let mut prev = ' ';
     let cut = lower.char_indices().find_map(|(i, c)| {
-        if !matches!(c, ',' | ';' | '.' | '—' | '–' | '-' | '|') {
+        let before = std::mem::replace(&mut prev, c);
+        let mark = matches!(c, ',' | ';' | '.' | '!' | '?' | '—' | '–' | '|')
+            || (c == '-' && before.is_whitespace());
+        if !mark {
             return None;
         }
         let after = &lower[i + c.len_utf8()..];
-        let skipped = after.len() - after.trim_start().len();
-        field_label(&after[skipped..]).map(|_| i)
+        let spaces = after.len() - after.trim_start().len();
+        field_label(&after[spaces..]).map(|_| i)
     });
     match cut {
         Some(i) => line[..i].trim_end_matches(|c: char| {
@@ -505,71 +509,147 @@ fn words(text: &str) -> impl Iterator<Item = &str> {
         .filter(|w| !w.is_empty())
 }
 
-/// The numbers and codes of a conversation, to check a line's against.
-struct Known {
-    /// Every run of digits, without leading zeros ("09:30" gives 9 and 30).
-    numbers: std::collections::HashSet<String>,
-    /// Every word with a digit in it, lowercased, and each number joined to
-    /// the word after it on the same line ("2 m" as "2m").
-    codes: std::collections::HashSet<String>,
+/// The numbers in a text, whole: digits with the commas, periods and colons
+/// between them ("$1,299.50" is 1299.50, "09:30" is 9:30, "16–23" is 16 and
+/// 23). Thousands commas are left out and a time loses its leading zero, so
+/// "1,299" and "1299", "09:30" and "9:30" are the same number.
+fn numbers(text: &str) -> Vec<String> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < chars.len() {
+        if !chars[i].is_ascii_digit() {
+            i += 1;
+            continue;
+        }
+        let mut number = String::new();
+        while i < chars.len() {
+            let c = chars[i];
+            let joins = matches!(c, ',' | '.' | ':')
+                && chars.get(i + 1).is_some_and(|n| n.is_ascii_digit())
+                && !number.is_empty();
+            if c.is_ascii_digit() {
+                number.push(c);
+            } else if joins {
+                if c != ',' {
+                    number.push(c);
+                }
+            } else {
+                break;
+            }
+            i += 1;
+        }
+        if number.contains(':') {
+            let trimmed = number.trim_start_matches('0');
+            number = if trimmed.starts_with(':') {
+                format!("0{trimmed}")
+            } else {
+                trimmed.to_string()
+            };
+        }
+        out.push(number);
+    }
+    out
 }
 
-fn unpadded(digits: &str) -> String {
-    let trimmed = digits.trim_start_matches('0');
-    if trimmed.is_empty() { "0" } else { trimmed }.to_string()
+/// A number and its unit or ending, written together ("6pm", "12th").
+const NUMBER_ENDINGS: [&str; 6] = ["am", "pm", "st", "nd", "rd", "th"];
+
+fn number_with_ending(word: &str) -> bool {
+    let ending = word.trim_start_matches(|c: char| c.is_ascii_digit());
+    ending.len() < word.len() && NUMBER_ENDINGS.contains(&ending)
+}
+
+/// The numbers and codes of a conversation, to check a line's against.
+struct Known {
+    /// Every number, whole (`numbers`).
+    numbers: std::collections::HashSet<String>,
+    /// The whole part of every number with a fraction or minutes ("42" of
+    /// "42.95", "10" of "10:00"): a line may round to it.
+    whole_parts: std::collections::HashSet<String>,
+    /// Every word with a digit in it, lowercased, and each number joined to
+    /// the word after it, with only a space between ("2 m" as "2m").
+    codes: std::collections::HashSet<String>,
 }
 
 impl Known {
     fn new(source: &str) -> Self {
         let lower = source.to_lowercase();
-        let numbers = lower
-            .split(|c: char| !c.is_ascii_digit())
-            .filter(|n| !n.is_empty())
-            .map(unpadded)
+        let numbers: std::collections::HashSet<String> = numbers(&lower).into_iter().collect();
+        let whole_parts = numbers
+            .iter()
+            .filter_map(|n| n.split_once(['.', ':']).map(|(whole, _)| whole.to_string()))
             .collect();
         let mut codes = std::collections::HashSet::new();
         for line in lower.lines() {
-            let line_words: Vec<&str> = line.split([' ', '\t']).flat_map(words).collect();
-            for (i, w) in line_words.iter().enumerate() {
-                if w.chars().any(|c| c.is_ascii_digit()) {
-                    codes.insert(w.to_string());
-                }
-                if let Some(next) = line_words.get(i + 1) {
-                    if w.chars().all(|c| c.is_ascii_digit())
+            let chunks: Vec<&str> = line.split([' ', '\t']).filter(|c| !c.is_empty()).collect();
+            for (i, chunk) in chunks.iter().enumerate() {
+                codes.extend(
+                    words(chunk)
+                        .filter(|w| w.chars().any(char::is_numeric))
+                        .map(String::from),
+                );
+                if let Some(next) = chunks.get(i + 1) {
+                    if chunk.chars().all(|c| c.is_ascii_digit())
                         && next.chars().all(char::is_alphabetic)
                     {
-                        codes.insert(format!("{w}{next}"));
+                        codes.insert(format!("{chunk}{next}"));
                     }
                 }
             }
         }
-        Known { numbers, codes }
+        Known {
+            numbers,
+            whole_parts,
+            codes,
+        }
     }
 
-    /// Whether a word of the line is in the conversation: each of its runs
-    /// of digits as a number, and a word that mixes letters and digits
-    /// whole (other than a number and its "pm" or "nd").
-    fn knows(&self, word: &str) -> bool {
-        if !word.chars().any(|c| c.is_ascii_digit()) {
+    fn knows_number(&self, n: &str) -> bool {
+        self.numbers.contains(n) || (!n.contains(['.', ':']) && self.whole_parts.contains(n))
+    }
+
+    /// A word with letters and digits must be a word of the conversation,
+    /// a number with its ending, or such words joined by hyphens
+    /// ("9am-5pm"). One with digits of another script must be a word of it.
+    fn knows_word(&self, word: &str) -> bool {
+        let lower = word.to_lowercase();
+        let foreign = lower.chars().any(|c| c.is_numeric() && !c.is_ascii_digit());
+        let mixed =
+            lower.chars().any(|c| c.is_ascii_digit()) && lower.chars().any(char::is_alphabetic);
+        if !(foreign || mixed) || self.codes.contains(&lower) {
             return true;
         }
-        let digits_known = word
-            .split(|c: char| !c.is_ascii_digit())
-            .filter(|n| !n.is_empty())
-            .all(|n| self.numbers.contains(&unpadded(n)));
-        let lower = word.to_lowercase();
-        let has_letters = lower.chars().any(char::is_alphabetic);
-        let suffix = lower.trim_start_matches(|c: char| c.is_ascii_digit());
-        let number_and_suffix = ["am", "pm", "st", "nd", "rd", "th"].contains(&suffix);
-        digits_known && (!has_letters || number_and_suffix || self.codes.contains(&lower))
+        if foreign {
+            return false;
+        }
+        number_with_ending(&lower)
+            || (lower.contains('-')
+                && lower.split('-').all(|part| {
+                    part.chars().any(|c| c.is_ascii_digit())
+                        && (part.chars().all(|c| c.is_ascii_digit())
+                            || number_with_ending(part)
+                            || self.codes.contains(part))
+                }))
+    }
+
+    /// The numbers and words of `text` the conversation doesn't have.
+    fn unknown(&self, text: &str) -> Vec<String> {
+        let numbers = numbers(text).into_iter().filter(|n| !self.knows_number(n));
+        let words = words(text)
+            .filter(|w| !self.knows_word(w))
+            .map(String::from);
+        numbers.chain(words).collect()
     }
 }
 
 /// Where a line splits into parts, weakest first: punctuation followed by a
 /// space, so "16–23", "12:30" and "$23.85" stay whole.
-const CLAUSE_ENDS: [&str; 7] = [", ", ": ", " - ", " – ", " — ", "; ", ". "];
+const CLAUSE_ENDS: [&str; 9] = [", ", ": ", " - ", " – ", " — ", "; ", ". ", "! ", "? "];
 
-/// Month names shortened with a period ("Nov. 24"), which doesn't end a part.
+/// Words shortened with a period before a number ("Nov. 24", "No. 8"),
+/// where the period doesn't end a part. Splitting there would leave
+/// "Notebook no" when the number is dropped; the whole part goes instead.
 const MONTHS: [&str; 13] = [
     "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec", "no",
 ];
@@ -626,7 +706,7 @@ fn only_what_was_read(line: &str, known: &Known) -> String {
             Some(g) if strength(g) > strength(sep) => g,
             _ => sep,
         };
-        if !words(part).all(|w| known.knows(w)) {
+        if !known.unknown(part).is_empty() {
             gap = Some(joiner);
             continue;
         }
@@ -1051,13 +1131,80 @@ Doors open 09:30, 2 m from the door.";
         );
     }
 
+    /// `line_faults` and `clean_line` agree: a fault before tidying is gone
+    /// after it, and a line without one is kept as it is.
     #[test]
     fn faults_are_what_clean_line_takes_out() {
+        let bad = "Lunch at 6pm, use code INVITE123. Status: open";
+        assert_eq!(line_faults(bad, READ), ["field label", "123", "INVITE123"]);
+        assert_eq!(clean_line(bad, READ), "Lunch at 6pm");
+        assert!(line_faults(&clean_line(bad, READ), READ).is_empty());
+        // A field behind a wrapper counts too.
+        assert_eq!(line_faults("Summary: Status: moved", READ), ["field label"]);
+        assert_eq!(clean_line("Summary: Status: moved", READ), "moved");
+        let good = "Lunch at 6pm on the 12th";
+        assert!(line_faults(good, READ).is_empty());
+        assert_eq!(clean_line(good, READ), good);
+    }
+
+    /// A number counts whole: an amount, a time or a reference made of
+    /// pieces from different places in the email doesn't.
+    #[test]
+    fn numbers_count_whole() {
+        let source = "Deposit $19.95. Balance $42.00. Nov. 24 at 09:30, Dec. 2 at 11:45. \
+Invoice INV-007315. There are 2. Mail the form.";
+        for made_up in [
+            "Deposit $42.95",
+            "Meet at 09:45",
+            "Use sign-in code 7315",
+            "Use code 2mail",
+            "Lunch on ٢٤ May",
+        ] {
+            assert_eq!(clean_line(made_up, source), "", "{made_up}");
+        }
+        for kept in ["Balance $42", "Meet at 9:30", "Invoice INV-007315 due"] {
+            assert_eq!(clean_line(kept, source), kept);
+        }
+        // Thousands commas, either way round.
         assert_eq!(
-            line_faults("Lunch at 6pm, status: open, use code INVITE123", READ),
-            ["field label", "INVITE123"]
+            clean_line("Budget is 1,299", "The budget is 1299."),
+            "Budget is 1,299"
         );
-        assert!(line_faults("Lunch at 6pm on the 12th", READ).is_empty());
+        assert_eq!(
+            clean_line("Budget is 1299", "Total $1,299.50 due"),
+            "Budget is 1299"
+        );
+        // A range of times, however it's joined.
+        for source in ["Open 9 am to 5 pm", "Open 9am - 5pm"] {
+            assert_eq!(
+                clean_line("Open 9am-5pm", source),
+                "Open 9am-5pm",
+                "{source}"
+            );
+        }
+        assert_eq!(clean_line("Free 2-4pm", "Free 2-4 pm."), "Free 2-4pm");
+        assert_eq!(clean_line("Use code ABC-123", "ABC-456 and XYZ-123"), "");
+    }
+
+    /// Labels written with a space before the colon, or after "!" or "?",
+    /// are cut too; one inside a hyphenated word isn't. "No. 8" is one part.
+    #[test]
+    fn field_labels_in_other_forms() {
+        assert_eq!(
+            clean_line("Buses delayed! Status: sent", READ),
+            "Buses delayed"
+        );
+        assert_eq!(
+            clean_line("Buses delayed, Status : sent", READ),
+            "Buses delayed"
+        );
+        assert_eq!(clean_line("Ready? Ask: none", READ), "Ready");
+        assert_eq!(clean_line("pre-status: go", READ), "pre-status: go");
+        assert_eq!(clean_line("Notebook no. 8 ready", READ), "");
+        assert_eq!(
+            clean_line("Lunch on Thursday. No. 8 is free", READ),
+            "Lunch on Thursday"
+        );
     }
 
     #[test]

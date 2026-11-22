@@ -263,8 +263,8 @@ mod tests {
         assert_eq!(next, 1);
     }
 
-    /// `MIGRATION_V24` on a database from before it: model-written list
-    /// lines go, the fixed sign-in line and the full summaries stay.
+    /// `MIGRATION_V24` on a database from before it: list lines go, full
+    /// summaries stay.
     #[test]
     fn upgrading_drops_list_lines_written_with_the_old_prompt() {
         let db = Db::open_in_memory().unwrap();
@@ -288,12 +288,7 @@ mod tests {
             .unwrap()
             .collect::<std::result::Result<_, _>>()
             .unwrap();
-        assert_eq!(left, [(1, "full".to_string()), (2, "line".to_string())]);
-        assert_eq!(
-            crate::ai::summaries::SIGN_IN_LINE,
-            "Sign-in code",
-            "the migration keeps this text"
-        );
+        assert_eq!(left, [(1, "full".to_string())]);
     }
 
     /// `MIGRATION_V21` on a database from before it: the shared image cache
