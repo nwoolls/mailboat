@@ -149,6 +149,8 @@ async function openReplyWithAi(page: Page) {
 test("Reply with AI: scrolling up to read lets the reply go", async ({ page }) => {
   await openReplyWithAi(page);
   await page.evaluate(() => {
+    // By hand: a wheel, as the person scrolling sends.
+    window.dispatchEvent(new WheelEvent("wheel"));
     document.querySelector<HTMLElement>(".reader-scroll")!.scrollTop = 0;
   });
   await growReply(page);
@@ -162,6 +164,7 @@ test("Reply with AI: scrolling up slowly lets the reply go", async ({ page }) =>
     const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
     const frame = () => new Promise((done) => requestAnimationFrame(done));
     for (let i = 0; i < 3; i++) {
+      window.dispatchEvent(new WheelEvent("wheel"));
       reader.scrollTop -= 3;
       await frame();
       await frame();
@@ -182,8 +185,10 @@ test("Reply with AI: scrolling back to the end sticks the reply again", async ({
   await openReplyWithAi(page);
   await page.evaluate(async () => {
     const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    window.dispatchEvent(new WheelEvent("wheel"));
     reader.scrollTop = 0;
     await new Promise((done) => setTimeout(done, 100));
+    window.dispatchEvent(new WheelEvent("wheel"));
     reader.scrollTop = reader.scrollHeight;
     await new Promise((done) => setTimeout(done, 100));
   });
@@ -433,6 +438,7 @@ test("Reply with AI: after letting go of the slide, growth at the end is instant
     reader.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
     await wait(1000);
     // Back down to the end, by hand.
+    window.dispatchEvent(new WheelEvent("wheel"));
     reader.scrollTop = reader.scrollHeight;
     await wait(200);
     const asked: string[] = [];
@@ -449,5 +455,30 @@ test("Reply with AI: after letting go of the slide, growth at the end is instant
   });
   expect(behaviors.length).toBeGreaterThan(0);
   expect(behaviors.every((b) => b === "instant")).toBe(true);
+  expect(await fromEnd(page)).toBeLessThanOrEqual(2);
+});
+
+/**
+ * Clicking one of the assistant's ideas (owner report, 2026-11-23): the
+ * panel shrank for a moment as the ideas went, the browser pulled the
+ * reader up to the shorter end, and that read as the person scrolling up,
+ * so the reply let go and its answer grew out of sight. Only a scroll by
+ * hand lets go now.
+ */
+test("Reply with AI: clicking one of its ideas keeps the reply stuck", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await expect(page.getByTitle("Message content")).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>("#root > div")!.style.height = "600px";
+  });
+  await contentSettled(page);
+  await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Say yes" })).toBeVisible();
+  await contentSettled(page, 'section[aria-label="Reply"]');
+  await expect.poll(() => fromEnd(page), { timeout: 15_000 }).toBeLessThanOrEqual(2);
+  await page.getByRole("button", { name: "Say yes" }).click();
+  // The made-up answer arrives after a moment, under its Insert button.
+  await expect(page.getByRole("button", { name: "Insert" })).toBeVisible();
+  await contentSettled(page, 'section[aria-label="Reply"]');
   expect(await fromEnd(page)).toBeLessThanOrEqual(2);
 });

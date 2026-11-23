@@ -7862,10 +7862,15 @@ niche or extra", so Windows and the Release Spike come first)
       and goes the rest at once within 40 px of the end (the cursor going
       into the text usually scrolls that far by itself) or after 0.7 s.
       The size a ResizeObserver reports when it starts watching doesn't
-      count as growth, and neither does the browser moving the reader
-      down to keep the view in place as something above grows, or a
-      scroll event that didn't move it (found in review: each had jumped
-      the opening or stuck a released reply again). Typing no longer lets go, as it stopped the follow. Going
+      count as growth (found in review: it jumped the opening). Only a
+      scroll by the person's hand lets go or sticks again: a wheel, a
+      touch or a scrolling key just before it, the scroll bar held, or the
+      pointer over an email (whose wheel never reaches the app). The
+      layout moves the reader too: clicking one of the assistant's ideas
+      shrank the panel for a moment, the browser pulled the reader up to
+      the shorter end, and the reply let go, its answer growing out of
+      sight (owner report, 2026-11-23); content growing above can also
+      move it down onto the end, which caught a released reply again. Typing no longer lets go, as it stopped the follow. Going
       back to a conversation with a reply open no longer lands on its
       first unread email, which would have pulled the reader away from
       the reply. Branch `reply-sticks-bottom`; `reply-scroll.spec.ts`

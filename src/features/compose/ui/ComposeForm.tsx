@@ -65,6 +65,13 @@ const ABOVE_FOOT_GAP = 16;
 const REPLY_ARRIVE_MS = 700;
 /** As far as opening a reply scrolls at once rather than smoothly. */
 const REPLY_AT_ONCE_PX = 40;
+/**
+ * How long after a wheel, a touch or a scrolling key a scroll still counts
+ * as the person's (a trackpad's momentum keeps sending wheel events).
+ */
+const HAND_MS = 600;
+/** Keys that scroll the reader, or move the cursor in the reply and scroll it. */
+const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"]);
 
 export function ComposeForm({
   entry,
@@ -179,9 +186,6 @@ export function ComposeForm({
     const end = () => scroller.scrollHeight - scroller.clientHeight;
     let stuck = true;
     let lastTop = scroller.scrollTop;
-    // The end as the last scroll saw it, to tell the browser keeping the
-    // view in place as something above grows from the person scrolling.
-    let lastEnd = end();
     // Instant: WebKit leaves short smooth scrolls undone, and growth comes
     // a few pixels at a time. Recorded at once, so a scroll up straight
     // after isn't measured from where the reader was before it.
@@ -242,14 +246,45 @@ export function ComposeForm({
     const content = scroller.firstElementChild;
     if (content) growing.observe(content);
     growing.observe(scroller);
-    // A wheel or a touch over an email (a sandboxed frame of its own, whose
-    // input never reaches this window) shows only as the reader scrolling,
-    // as do the keys and the scroll bar.
+    // Signs of the person's hand on a scroll (stuckAfterScroll): a wheel, a
+    // touch or a scrolling key just now, the scroll bar held, or the
+    // pointer over an email (a sandboxed frame of its own, whose wheel
+    // never reaches this window and shows only as the reader scrolling).
+    let handAt = Number.NEGATIVE_INFINITY;
+    let barHeld = false;
+    let overEmail = false;
+    const byHand = () => barHeld || overEmail || performance.now() - handAt < HAND_MS;
+    const onHand = () => {
+      handAt = performance.now();
+    };
+    const onHandKey = (e: KeyboardEvent) => {
+      const editing =
+        e.target instanceof HTMLElement &&
+        (e.target.isContentEditable || ["INPUT", "TEXTAREA"].includes(e.target.tagName));
+      if (SCROLL_KEYS.has(e.key) || (e.key === " " && !editing)) onHand();
+    };
+    const onOver = (e: PointerEvent) => {
+      overEmail = e.target instanceof HTMLIFrameElement;
+    };
+    const onLeave = () => {
+      overEmail = false;
+    };
+    const onRelease = () => {
+      barHeld = false;
+    };
+    window.addEventListener("wheel", onHand, { capture: true, passive: true });
+    window.addEventListener("touchmove", onHand, { capture: true, passive: true });
+    window.addEventListener("keydown", onHandKey, { capture: true });
+    window.addEventListener("pointerup", onRelease, { capture: true });
+    scroller.addEventListener("pointerover", onOver);
+    scroller.addEventListener("pointerleave", onLeave);
     const onScroll = () => {
       const top = scroller.scrollTop;
-      stuck = stuckAfterScroll(stuck, { top, lastTop, end: end(), lastEnd });
+      stuck = stuckAfterScroll(stuck, { top, lastTop, end: end(), byHand: byHand() });
       lastTop = top;
-      lastEnd = end();
+      // The layout pulled it short of the end (content shrank for a moment):
+      // back to the end at once. (While opening, the slide sees to it.)
+      if (!opening && stuck) toEnd();
       // Opening, within a short way of the end (the cursor going into the
       // text scrolled there at once, which also stopped the slide): the
       // rest at once, rather than waiting for REPLY_ARRIVE_MS.
@@ -264,7 +299,8 @@ export function ComposeForm({
     // Not a press on the reader itself (its scroll bar): a drag up lets go
     // anyway, through the scroll.
     const onPointer = (e: PointerEvent) => {
-      if (e.target !== scroller && notInReply(e.target)) letGo();
+      if (e.target === scroller) barHeld = true;
+      else if (notInReply(e.target)) letGo();
     };
     const onKey = (e: KeyboardEvent) => {
       if (notInReply(e.target)) letGo();
@@ -278,6 +314,12 @@ export function ComposeForm({
       scroller.removeEventListener("scroll", onScroll);
       scroller.removeEventListener("pointerdown", onPointer, { capture: true });
       scroller.removeEventListener("keydown", onKey, { capture: true });
+      window.removeEventListener("wheel", onHand, { capture: true });
+      window.removeEventListener("touchmove", onHand, { capture: true });
+      window.removeEventListener("keydown", onHandKey, { capture: true });
+      window.removeEventListener("pointerup", onRelease, { capture: true });
+      scroller.removeEventListener("pointerover", onOver);
+      scroller.removeEventListener("pointerleave", onLeave);
     };
   }, [editor, draft.kind, entry.focusKey]);
 
