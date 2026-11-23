@@ -293,7 +293,7 @@ fn ics_time(spec: &str, now_ms: u64) -> Option<String> {
     let zone = TimeZone::system();
     let today = Timestamp::from_millisecond(i64::try_from(now_ms).ok()?)
         .ok()?
-        .to_zoned(zone.clone())
+        .to_zoned_datetime(zone.clone())
         .date();
     let day = today.checked_add(days.days()).ok()?;
     let local = day.at(hour.parse().ok()?, minute.parse().ok()?, 0, 0);
