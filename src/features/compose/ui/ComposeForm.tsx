@@ -37,7 +37,7 @@ import { HtmlPreview } from "./HtmlPreview";
 import { EditorBody, FormatBar, useRichEditor } from "./RichEditor";
 import { composingPrefs } from "./composingPrefs";
 import { useStuck } from "../../../shared/ui/useStuck";
-import { stuckAfterScroll } from "../model/stickToEnd";
+import { AT_END_PX, stuckAfterScroll } from "../model/stickToEnd";
 import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 
 export type ReplyKind = Exclude<ComposeKind, "new">;
@@ -174,23 +174,59 @@ export function ComposeForm({
     const end = () => scroller.scrollHeight - scroller.clientHeight;
     let stuck = true;
     let lastTop = scroller.scrollTop;
+    // The end as last seen, so reaching it just before something grew
+    // still counts as reaching it (the scroll event comes after).
+    let lastEnd = end();
     // Instant: WebKit leaves short smooth scrolls undone, and growth comes
-    // a few pixels at a time.
+    // a few pixels at a time. Recorded at once, so a scroll up straight
+    // after isn't measured from where the reader was before it.
     const toEnd = () => {
       // Any shortfall at all: "at the end" allows rounding, the reply doesn't.
-      if (stuck && scroller.scrollTop < end() - 0.5)
+      if (stuck && scroller.scrollTop < end() - 0.5) {
         scroller.scrollTo({ top: end(), behavior: "instant" });
+        lastTop = scroller.scrollTop;
+      }
+      lastEnd = end();
     };
     // Opening slides down to it. A smooth scroll can be cut short or left
     // undone (on a slow machine, in WebKit), so once it has had time to
     // arrive, still stuck and short of the end goes the rest at once.
     scroller.scrollTo({ top: end(), behavior: "smooth" });
     const arrived = window.setTimeout(toEnd, REPLY_ARRIVE_MS);
-    const growing = new ResizeObserver(toEnd);
+    const letGo = () => {
+      if (!stuck) return;
+      stuck = false;
+      window.clearTimeout(arrived);
+      // Stops the opening slide where it is, or it would reach the end and
+      // stick again.
+      scroller.scrollTo({ top: scroller.scrollTop, behavior: "instant" });
+      lastTop = scroller.scrollTop;
+      // Let go at the end on purpose: being there doesn't stick it again
+      // until the person scrolls.
+      lastEnd = Number.POSITIVE_INFINITY;
+    };
+    // A ResizeObserver reports each box once when it starts watching; that
+    // isn't growth, and acting on it cut the opening slide short. Only a
+    // change from the size first seen counts.
+    const seen = new Map<Element, number>();
+    const growing = new ResizeObserver((entries) => {
+      let grew = false;
+      for (const box of entries) {
+        const height = box.contentRect.height;
+        if (seen.has(box.target) && seen.get(box.target) !== height) grew = true;
+        seen.set(box.target, height);
+      }
+      if (!grew) return;
+      // Released, but the reader had reached the end as it was: it sticks.
+      if (!stuck && scroller.scrollTop >= lastEnd - AT_END_PX) stuck = true;
+      toEnd();
+    });
     growing.observe(whole);
-    // Whatever grows above it (an email measured taller) moves it too.
+    // Whatever grows above it (an email measured taller) moves it too, and
+    // so does the reader itself changing height (the window resized).
     const content = scroller.firstElementChild;
     if (content) growing.observe(content);
+    growing.observe(scroller);
     // A wheel or a touch over an email (a sandboxed frame of its own, whose
     // input never reaches this window) shows only as the reader scrolling,
     // as do the keys and the scroll bar.
@@ -198,19 +234,30 @@ export function ComposeForm({
       const top = scroller.scrollTop;
       stuck = stuckAfterScroll(stuck, { top, lastTop, end: end() });
       lastTop = top;
+      lastEnd = end();
     };
     scroller.addEventListener("scroll", onScroll, { passive: true });
-    // A click in the conversation above (opening an email, say) lets go,
-    // or the email would grow up out of sight instead of down.
+    // A click or a key in the conversation above (opening an email, say,
+    // from its header or with the keyboard) lets go, or the email would
+    // grow up out of sight instead of down. Typing in the reply doesn't.
+    const notInReply = (target: EventTarget | null) =>
+      target instanceof Node && !whole.contains(target);
+    // Not a press on the reader itself (its scroll bar): a drag up lets go
+    // anyway, through the scroll.
     const onPointer = (e: PointerEvent) => {
-      if (!(e.target instanceof Node && whole.contains(e.target))) stuck = false;
+      if (e.target !== scroller && notInReply(e.target)) letGo();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (notInReply(e.target)) letGo();
     };
     scroller.addEventListener("pointerdown", onPointer, { capture: true });
+    scroller.addEventListener("keydown", onKey, { capture: true });
     return () => {
       growing.disconnect();
       window.clearTimeout(arrived);
       scroller.removeEventListener("scroll", onScroll);
       scroller.removeEventListener("pointerdown", onPointer, { capture: true });
+      scroller.removeEventListener("keydown", onKey, { capture: true });
     };
   }, [editor, draft.kind, entry.focusKey]);
 

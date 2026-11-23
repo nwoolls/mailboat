@@ -9,6 +9,10 @@ describe("stuckAfterScroll", () => {
     expect(stuckAfterScroll(true, { top: 300, lastTop: 500, end: 300 })).toBe(true);
   });
 
+  it("isn't caught again by a shrink that clamps a released reader to the end", () => {
+    expect(stuckAfterScroll(false, { top: 300, lastTop: 400, end: 300 })).toBe(false);
+  });
+
   it("lets go when moved up short of the end", () => {
     expect(stuckAfterScroll(true, { top: 400, lastTop: 500, end: 500 })).toBe(false);
     // Slowly, a few pixels at a time: the first step is enough.

@@ -11,13 +11,15 @@ export const AT_END_PX = 2;
  *
  * Content growing while stuck doesn't scroll the reader, so it never shows
  * here; the reader is put back at its end for it. Content shrinking clamps
- * the reader up, but to its end, so that stays stuck too.
+ * the reader up to its new end: that keeps whatever it was, since the
+ * person didn't move (a released reply isn't caught again by the
+ * assistant closing).
  */
 export function stuckAfterScroll(
   stuck: boolean,
   at: { top: number; lastTop: number; end: number },
 ): boolean {
-  if (at.top >= at.end - AT_END_PX) return true;
-  if (at.top < at.lastTop) return false;
-  return stuck;
+  const atEnd = at.top >= at.end - AT_END_PX;
+  if (at.top < at.lastTop) return atEnd && stuck;
+  return atEnd || stuck;
 }

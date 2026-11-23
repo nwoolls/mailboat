@@ -82,8 +82,9 @@ for (const height of [640, 360])
  *
  * Off from 2026-11-11 to 2026-11-16: in CI it sometimes found the reply
  * hundreds of pixels below the reader. A follow scroll cut short after the
- * reply stopped growing did that, and the follow now finishes such a scroll
- * (docs/ROADMAP.md → 0.3.0 → Bugs); turned back on at the owner's word.
+ * reply stopped growing did that, and the follow was made to finish such a
+ * scroll (docs/ROADMAP.md → 0.3.0 → Bugs); turned back on at the owner's
+ * word. Since 2026-11-23 there's no follow: the reply sticks to the bottom.
  */
 test("Reply with AI, 360px reader, slow machine: the reply still scrolls into view", async ({
   page,
@@ -219,13 +220,87 @@ test("Reply with AI: a click above the reply lets it go", async ({ page }) => {
   await openReplyWithAi(page);
   const before = await page.evaluate(() => {
     const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
-    reader.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    reader
+      .querySelector("section[data-message-id] > button")!
+      .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     return reader.scrollTop;
   });
   await growReply(page);
   expect(await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop)).toBe(
     before,
   );
+});
+
+/** A key pressed on an email above (Enter on its header) lets go as a click does. */
+test("Reply with AI: a key on an email above the reply lets it go", async ({ page }) => {
+  await openReplyWithAi(page);
+  const before = await page.evaluate(() => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    reader
+      .querySelector("section[data-message-id] > button")!
+      .dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    return reader.scrollTop;
+  });
+  await growReply(page);
+  expect(await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop)).toBe(
+    before,
+  );
+});
+
+/**
+ * A press on the reader itself (its scroll bar) that doesn't scroll keeps
+ * the reply stuck: only moving up lets go.
+ */
+test("Reply with AI: a press on the scroll bar alone keeps the reply stuck", async ({ page }) => {
+  await openReplyWithAi(page);
+  await page.evaluate(() => {
+    document
+      .querySelector(".reader-scroll")!
+      .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+  });
+  await growReply(page);
+  expect(await fromEnd(page)).toBeLessThanOrEqual(2);
+});
+
+/** The window made shorter: the stuck reply stays at the bottom. */
+test("Reply with AI: a shorter reader keeps the reply at the bottom", async ({ page }) => {
+  await openReplyWithAi(page);
+  await page.evaluate(async () => {
+    document.querySelector<HTMLElement>("#root > div")!.style.height = "300px";
+    await new Promise((done) => setTimeout(done, 300));
+  });
+  expect(await fromEnd(page)).toBeLessThanOrEqual(2);
+});
+
+/**
+ * Opening a reply below the fold slides to it rather than jumping: the
+ * first frames after the click are short of the end. (A ResizeObserver
+ * reports every box once when it starts watching, and acting on that
+ * report jumped straight to the end.)
+ */
+test("Reply: opening slides to the reply rather than jumping", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await expect(page.getByTitle("Message content")).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
+  });
+  await contentSettled(page);
+  const tops = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    [...document.querySelectorAll("button")]
+      .find((b) => b.textContent?.trim() === "Reply")!
+      .click();
+    const seen: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      await frame();
+      seen.push(reader.scrollHeight - reader.clientHeight - reader.scrollTop);
+    }
+    return seen;
+  });
+  // Some distance still to go a couple of frames in.
+  expect(Math.max(...tops.slice(1))).toBeGreaterThan(2);
+  await expect.poll(() => fromEnd(page), { timeout: 15_000 }).toBeLessThanOrEqual(2);
 });
 
 /**

@@ -351,6 +351,10 @@ function useLandOn(messageId: MessageId | null) {
     const scroller = ref.current;
     const card = scroller?.querySelector(`[data-message-id="${messageId}"]`);
     if (messageId === null || !scroller || !card) return;
+    // A reply already open in it (back to a conversation being answered)
+    // keeps the reader at its end. Its own effect ran first, so the event
+    // below that hands over to it came before this listened.
+    if (scroller.querySelector("[data-inline-reply]")) return;
     const land = () => {
       scroller.scrollTop += card.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
     };
