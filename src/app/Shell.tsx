@@ -551,6 +551,9 @@ export function Shell() {
   // out, then goes; coming back onto it meanwhile keeps it.
   useEffect(() => {
     if (peek !== "leaving") return;
+    // However it was put away (the shortcut too), a hover still waiting to
+    // float it is dropped, or it would bring it back a moment after.
+    window.clearTimeout(peekTimer.current);
     const done = window.setTimeout(
       () => setPeek((p) => (p === "leaving" ? "closed" : p)),
       PEEK_SLIDE_OUT_MS,
@@ -558,6 +561,18 @@ export function Shell() {
     return () => window.clearTimeout(done);
   }, [peek]);
   const peekShown = peek === "open";
+  // Where the pointer last moved to (in the window). A floating sidebar
+  // sliding out from under a pointer that hasn't moved gets a "pointer
+  // entered" from WebKit all the same, which counted as coming back onto
+  // it and kept it open after Esc. A real move brings a new position.
+  const lastPointer = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    const moved = (e: PointerEvent) => {
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("pointermove", moved, { passive: true });
+    return () => window.removeEventListener("pointermove", moved);
+  }, []);
   const hoverSidebar = useCallback(
     (inside: boolean) => {
       window.clearTimeout(peekTimer.current);
@@ -1332,7 +1347,16 @@ export function Shell() {
             className="sidebar-peek on-glass absolute top-10 bottom-2 left-2 z-30 flex overflow-hidden rounded-[10px] pt-1 pr-2"
             data-leaving={peek === "leaving" || undefined}
             data-docking={peek === "docking" || undefined}
-            onPointerEnter={() => hoverSidebar(true)}
+            onPointerEnter={(e) => {
+              // Sliding out from under a pointer that hasn't moved isn't
+              // coming back onto it (see `lastPointer`). WebKit sends the
+              // "entered" of a real move before its "moved", so the
+              // position differs then.
+              const at = lastPointer.current;
+              const still = at === null || (at.x === e.clientX && at.y === e.clientY);
+              if (peek === "leaving" && still) return;
+              hoverSidebar(true);
+            }}
             onPointerLeave={() => hoverSidebar(false)}
             onKeyDown={(e) => {
               if (e.key !== "Escape") return;

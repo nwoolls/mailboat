@@ -5132,6 +5132,10 @@ the way, and one bug in the app caused flaky failures; all three are in
         others closed in about 180 ms. The test now moves the pointer away
         first, and passed 20 runs. The app's behavior is a bug of its own,
         in 0.3.0 → Bugs.
+      - 2026-11-22: that bug, since moved to "Later / unscheduled" → Open
+        bugs, is fixed (branch `sidebar-esc-still-pointer`), and the test no
+        longer moves the pointer away first: it runs with the pointer
+        resting on Reply, and a new test covers the owner's steps.
 - [x] `empty-toys.spec.ts`: "bubble wrap pops the bubble clicked with a
       burst, and only it" (line 69).
       - 2026-11-16, CI on `main` after #158 merged, WebKit, attempt 1,
@@ -7498,25 +7502,52 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
 
 ### Open bugs (moved from the Bug backlog, owner, 2026-11-14)
 
-- [ ] Esc doesn't put away a floating sidebar that came in under a resting
+- [x] Esc doesn't put away a floating sidebar that came in under a resting
       pointer *(found 2026-11-16 in the Flaky Test Spike, through the
-      flaky `narrow-window.spec.ts` test)*: in a narrow window, with the
+      flaky `narrow-window.spec.ts` test; reproduced by the owner and fixed
+      2026-11-22, branch `sidebar-esc-still-pointer`)*: in a narrow window, with the
       pointer resting where the sidebar floats in (over the reader's left
       side), floating it with its shortcut and pressing Esc can leave it
       open. The sidebar slides in under the pointer, which counts as
       hovering it, and coming back onto a sidebar that is leaving keeps
       it (`Shell.tsx`, the peek). In a local test with that sequence it
       stayed open in 13 of 18 tries. Esc is meant to put it away wherever
-      the focus is. Possible fix, not built: after Esc (or the shortcut),
-      only a real pointer move brings it back. The owner's design, so the
-      owner decides.
+      the focus is. Possible fix, not built (superseded: see the
+      2026-11-22 note): after Esc (or the shortcut), only a real pointer
+      move brings it back. The owner's design, so the owner decides.
       *(moved from 0.3.0 to "Later / unscheduled" → Open bugs, owner,
       2026-11-17: the owner couldn't reproduce it by hand on a Mac. It was
       seen only in a Playwright test, whose pointer rests at exact
       coordinates with no movement while WebKit re-checks hover during the
       slide; a real pointer may not do that. Built only if a person hits it.
-      The test now moves its pointer off that spot before floating the
-      sidebar (#170))*
+      The test then moved its pointer off that spot before floating the
+      sidebar (#170); it no longer does, see below)*
+      *(2026-11-22: reproduced by hand. Varying the old test's sequence in
+      WebKit found one that kept the sidebar open every time: in a narrow
+      window, click Reply (at the bottom left, under where the sidebar
+      floats in), press Esc to close the empty reply, then with the
+      pointer untouched float the sidebar with ⌃⌘S and press Esc. The
+      owner did the same in demo mode and the sidebar stayed. The
+      fix: while the sidebar slides out, a "pointer entered" at the spot
+      where the pointer last moved to is ignored, as it comes from the
+      sidebar moving, not the pointer (`Shell.tsx`, `lastPointer`). A real
+      move back onto it still keeps it: WebKit sends the "entered" of a
+      move before its "moved", so the spot differs. Two browser tests in
+      `narrow-window.spec.ts`: the owner's steps, which failed 10 of 10
+      without the fix, and moving back onto the sliding sidebar, which
+      keeps it with and without the fix. The older test no longer moves
+      its pointer away first, so it runs with the pointer resting too.
+      From review, a second way back, through the sidebar's button: hovering
+      it starts a timer that floats the sidebar a moment later, and the
+      shortcut didn't cancel it, so the sidebar came back after the
+      shortcut put it away. Now putting it away, by any means, cancels the
+      timer; a test fails 5 of 5 without that. `windows-sidebar.spec.ts`
+      runs the owner's steps and the move back in Chromium (WebView2's
+      engine), which never sent the stray "entered", so it passed before the
+      fix too; it guards that the fix changes nothing there. With the
+      pointer resting over the email's body (an iframe the page can't see
+      moves in), the sidebar went in WebKit 10 of 10 times, so that case
+      needs nothing more)*
 
 - [ ] On a slow machine, a new reply sometimes stops being followed before
       it has laid out *(found 2026-11-11, by the browser test "Reply with
