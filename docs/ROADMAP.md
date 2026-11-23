@@ -7552,7 +7552,7 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       moves in), the sidebar went in WebKit 10 of 10 times, so that case
       needs nothing more)*
 
-- [ ] On a slow machine, a new reply sometimes stops being followed before
+- [x] On a slow machine, a new reply sometimes stops being followed before
       it has laid out *(found 2026-11-11, by the browser test "Reply with
       AI, 360px reader, slow machine" failing in CI on two pull requests that
       didn't touch it, and passing when run again and every time locally;
@@ -7598,6 +7598,24 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       the reply 182–432 px below as in CI, and passed 5 of 5 with it; at
       normal speed it passed 15 of 15 with the fix, and 15 of 15 without
       it. The redesign above is still open)*
+      *(2026-11-22, closed as fixed, owner: every cause found is fixed,
+      no further failures of the slow-machine test are recorded since
+      the 2026-11-16 fix, and no person has reported it. The failures
+      that weren't made on purpose were all in CI; the local ones were
+      reproductions on a slowed page. The redesign isn't a bug fix, so it
+      moved to "Later / unscheduled" → Writing, "A new reply that opens
+      at its final size". The tests for clicking Reply with AI while the
+      conversation is still laying out, promised above, are the item
+      below)*
+- [ ] A test for clicking Reply with AI while the conversation is still
+      laying out *(split from the closed item above, 2026-11-22, from
+      review)*: the slow-machine test in `reply-scroll.spec.ts` waits
+      until the conversation has kept the same height for half a second
+      before it clicks, as a person would (the owner's call,
+      2026-11-11), so it doesn't cover a click during layout. That case
+      was left "for tests of its own later". A failure there would show
+      as the reply's end left below the reader, as in the 2026-11-11 run
+      of "scrolling up slowly" (401 px).
 - [x] Tooltips don't show when the app's window is on another desktop than
       the one the app is assigned to *(owner report, 2026-11-12, macOS;
       fixed 2026-11-22, branch `native-tooltips-spaces`, tooltips kept
@@ -7745,6 +7763,21 @@ niche or extra", so Windows and the Release Spike come first)
       embedded images; to decide: resizing in the editor (Gmail offers
       small / best fit / original), and a large image's share of
       Gmail's 25 MB limit
+- [ ] A new reply that opens at its final size *(moved from Open bugs,
+      owner, 2026-11-22)*: today the reader scrolls to a new reply and
+      follows it for up to 10 s while it grows (the signature, the
+      quote, the AI panel), which takes two checks of its own: each
+      frame, one finishes a smooth scroll that stopped short, and a
+      scroll listener stops the follow when the person scrolls up past
+      where it was heading. Every bug in "On a slow machine, a new reply
+      sometimes stops being followed" (Open bugs, closed) was in that
+      follow. The idea: open the reply at its final size, with space
+      kept for the signature and the assistant, and scroll once; the
+      follow could then be removed. It changes what a person sees on
+      Reply (the slide in, where the reply lands, space kept for an AI
+      panel that may not open), so the owner leads it, with a mockup
+      first. To pick up if the follow breaks again, or with any rework
+      of how replies open.
 ### From the AI Spike (moved unbuilt when it closed, 2026-10-21)
 
 - MCP server: moved to AI Spike 2 (owner, 2026-10-24)
