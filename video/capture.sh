@@ -30,12 +30,25 @@ for p in $(ps -axo pid,args | grep -F -- "--demo" | grep -v grep | awk '{print $
 done
 [ -n "$pid" ] || { echo "no on-screen window of the demo (bun run demo)"; exit 1; }
 
-ev() { osascript -e "tell application \"System Events\" to $1" >/dev/null 2>&1; }
-focus() { ev "set frontmost of (first process whose unix id is $pid) to true"; sleep 0.5; }
+# Every click, key and capture below is at a screen position or goes to the
+# frontmost app, so each is sent only while the demo is frontmost and its
+# window is where `setup` put it; anything else stops the script.
+stop() { echo "$1: stopping"; exit 1; }
+ev() { osascript -e "tell application \"System Events\" to $1" >/dev/null 2>&1 || stop "System Events refused: $1"; }
+placed() {
+  "$OUT/bin/windows" "$name" | awk -v p="$pid" -v want="1424x820@$((SX + 88)),$((SY + 80))" '$1==p && $6==want{ok=1} END{exit !ok}'
+}
+guard() {
+  local front
+  front="$(osascript -e 'tell application "System Events" to unix id of first process whose frontmost is true' 2>/dev/null)"
+  [ "$front" = "$pid" ] || stop "the demo is not the frontmost app"
+  placed || stop "the demo window is not where setup put it (run setup)"
+}
+focus() { ev "set frontmost of (first process whose unix id is $pid) to true"; sleep 0.5; guard; }
 # A point of a gallery picture (1600x900, the window at 88,40 in it), on screen.
-c() { "$OUT/bin/click" $((SX + $1)) $((SY + 40 + $2)) || { echo "click failed"; exit 1; }; sleep "${3:-1.2}"; }
-key() { ev "keystroke \"$1\"${2:+ using $2 down}"; sleep "${3:-1}"; }
-esc() { ev "key code 53"; sleep 0.7; }
+c() { guard; "$OUT/bin/click" $((SX + $1)) $((SY + 40 + $2)) || stop "click failed"; sleep "${3:-1.2}"; }
+key() { guard; ev "keystroke \"$1\"${2:+ using $2 down}"; sleep "${3:-1}"; }
+esc() { guard; ev "key code 53"; sleep 0.7; }
 region="$SX,$((SY + 40)),1512,900"
 # The 3024x1800 take, padded on the right to the gallery's frame at 2x.
 pad() { ffmpeg -v error -y -i "$1" "${@:3}" -vf "pad=3200:1800:0:0:color=black" "$2"; }
@@ -54,41 +67,50 @@ end tell
 EOF
   sleep 0.6
   # The first try can land short of its place (as place.sh found): try again.
-  "$OUT/bin/windows" "$name" | awk -v p="$pid" -v want="1424x820@$((SX + 88)),$((SY + 80))" '$1==p && $6==want{ok=1} END{exit !ok}' && return 0
+  placed && return 0
   done
   echo "the window would not go to its place"; "$OUT/bin/windows" "$name"; exit 1
 }
 # Settings: open, a sidebar row, a point on the page, back (gallery positions).
 settings() { focus; key "," command 1.6; c 145 "$1" 1.6; c "$2" "$3" 1.6; c 143 842 1.4; }
+# The wallpaper behind the window while a take is made; gone when the script ends, whatever happens.
+bd=""
+trap '[ -n "$bd" ] && kill "$bd" 2>/dev/null' EXIT INT TERM
 backdrop() { "$OUT/bin/backdrop" "$SX" $((SY + 40)) 1512 900 "$OUT/bg/$1.png" & bd=$!; sleep 1.2; focus; "$OUT/bin/mouse" $((SX + 750)) $((SY + 12)); sleep 0.4; }
 still() {   # still <name> <wallpaper>
   backdrop "$2"
-  screencapture -x -R "$region" "$REC/$1.raw.png"
-  kill "$bd" 2>/dev/null
-  pad "$REC/$1.raw.png" "$REC/$1.png" && rm -f "$REC/$1.raw.png" && echo "took $1"
+  guard
+  screencapture -x -R "$region" "$REC/$1.raw.png" && [ -s "$REC/$1.raw.png" ] || stop "no picture of $1 (screen recording allowed?)"
+  kill "$bd" 2>/dev/null; bd=""
+  pad "$REC/$1.raw.png" "$REC/$1.png" || stop "padding $1 failed"
+  rm -f "$REC/$1.raw.png"; echo "took $1"
 }
 record() {  # record <name> <wallpaper> <seconds> <steps…>
   local clip="$1" paper="$2" most="$3"; shift 3
   backdrop "$paper"
+  guard
   rm -f "$REC/$clip.mov"
   screencapture -v -V "$most" -R "$region" -x "$REC/$clip.mov" & local rec=$!
   sleep 1.2
   "$@"
-  wait "$rec"; kill "$bd" 2>/dev/null
+  wait "$rec" && [ -s "$REC/$clip.mov" ] || stop "no recording of $clip (screen recording allowed?)"
+  kill "$bd" 2>/dev/null; bd=""
   pad "$REC/$clip.mov" "$REC/$clip.mp4" -an -r 60 -c:v libx264 -preset slow -crf 14 -g 30 -pix_fmt yuv420p -movflags +faststart \
-    && rm -f "$REC/$clip.mov" && echo "recorded $clip"
+    || stop "converting $clip failed"
+  rm -f "$REC/$clip.mov"; echo "recorded $clip"
 }
 
 palette_steps() {
   sleep 0.8; key k command 1.4
-  local ch; for ch in a r c h; do ev "keystroke \"$ch\""; sleep 0.32; done
+  # Checked once before the letters, so they keep their rhythm.
+  guard; local ch; for ch in a r c h; do ev "keystroke \"$ch\""; sleep 0.32; done
   sleep 3
 }
 reply_ai_steps() {
   c 798 766 2.2                       # Reply
   c 1393 825 1.6                      # the AI button in the reply's bar
-  ev 'keystroke "Confirm the booking"'; sleep 0.6
-  ev 'key code 36'; sleep 14          # Return: ask for the draft
+  guard; ev 'keystroke "Confirm the booking"'; sleep 0.6
+  guard; ev 'key code 36'; sleep 14   # Return: ask for the draft
 }
 
 for take in "$@"; do

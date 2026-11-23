@@ -15,6 +15,7 @@ import {
   AbsoluteFill,
   Audio,
   Easing,
+  Freeze,
   Img,
   interpolate,
   OffthreadVideo,
@@ -484,7 +485,8 @@ function Flip({
   if (p <= 0 || p >= 1) return <>{children(frame)}</>;
   return (
     <>
-      {children(flip - 1)}
+      {/* Frozen as a whole: its camera, overlays and a playing loop all hold the same frame. */}
+      <Freeze frame={flip - 1}>{children(flip - 1)}</Freeze>
       <AbsoluteFill style={{ clipPath: `circle(${radius}px at 960px 540px)` }}>
         {children(frame)}
       </AbsoluteFill>

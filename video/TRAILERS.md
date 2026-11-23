@@ -24,7 +24,10 @@ this folder: a 1280-wide MP4 of each in `website/video/` (the website's
 "Watch the trailer" button plays `trailer.mp4`; docs/FEATURES.md and the
 README link to them on the website), and the main trailer's end card as
 `website/images/trailer.webp`, the video's poster and the picture a shared
-link shows. Watch each one before committing.
+link shows. It first checks that the music and the takes are there, and
+makes the backdrops with `backdrops.sh` (the light one is a frame of
+macOS's Sonoma wallpaper, made on each computer and never committed; a
+direct Remotion render needs it too). Watch each one before committing.
 
 Most shots are of one demo conversation, "Lisbon in May?" (called Lisbon
 here): Maya Chen planning a trip, five emails long, with a summary and an
@@ -121,8 +124,9 @@ OUT=/tmp/shots SCREEN_X=2560 SCREEN_Y=342 video/capture.sh setup dark reply-ai
 ```
 
 Use a fresh demo for each run and don't try a step out before taking it: a
-reply opened and closed leaves a draft that changes the next take. Look at
-every take before using it.
+reply opened and closed leaves a draft that changes the next take. The
+script stops if the demo isn't the frontmost app or its window has moved,
+before any click, key or capture. Look at every take before using it.
 
 | Take | What it is |
 |---|---|

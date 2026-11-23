@@ -1,4 +1,4 @@
-// The website's only script. Five small jobs, all optional: the page reads
+// The website's only script. Six small jobs, all optional: the page reads
 // fine without it (site.css only hides [data-reveal] when scripting runs).
 //
 // 1. Fade sections in as they scroll into view.
@@ -7,6 +7,7 @@
 // 4. Measure where the hero screenshot finishes settling flat.
 // 5. Play a card's clip while it's on screen, with a button to pause it (its
 //    still shows otherwise).
+// 6. Play the trailer in a dialog when its link is clicked.
 
 const reveal = document.querySelectorAll("[data-reveal]");
 
@@ -400,7 +401,8 @@ if (clips.length > 0 && "IntersectionObserver" in window) {
 // ----- Trailer. The link under the downloads opens the trailer in a dialog
 // and plays it with sound (the click is the visitor's go-ahead). Esc, the
 // close button or a click beside the video closes it, and closing pauses
-// it. Without this script the link opens the video file itself. The dialog
+// it. Without this script, or with a modifier key or another button (to
+// open it in a new tab or window), the link opens the video file itself. The dialog
 // fills the window, so a click beside the video lands on the dialog, not on
 // its backdrop: that click is checked here, in every browser.
 const trailer = document.getElementById("trailer");
@@ -408,6 +410,8 @@ const trailerLink = document.getElementById("trailer-open");
 if (trailer instanceof HTMLDialogElement && trailerLink) {
   const film = trailer.querySelector("video");
   trailerLink.addEventListener("click", (event) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      return;
     event.preventDefault();
     trailer.showModal();
     film?.play().catch(() => {});

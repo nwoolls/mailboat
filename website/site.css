@@ -981,7 +981,7 @@ section {
 }
 .trailer {
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   max-width: none;
   max-height: none;
   margin: 0;
@@ -1007,7 +1007,7 @@ section {
 }
 .trailer video {
   display: block;
-  width: min(1280px, calc(100vw - 144px), calc((100vh - 140px) * 16 / 9));
+  width: min(1280px, calc(100vw - 144px), calc((100dvh - 140px) * 16 / 9));
   height: auto;
   aspect-ratio: 16 / 9;
   border-radius: 14px;
@@ -1040,7 +1040,8 @@ section {
   outline-color: #ffffff;
 }
 @media (max-width: 700px) {
+  /* Still no taller than the window, so a phone held sideways keeps the controls in view. */
   .trailer video {
-    width: calc(100vw - 24px);
+    width: min(calc(100vw - 24px), calc((100dvh - 96px) * 16 / 9));
   }
 }

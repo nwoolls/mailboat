@@ -5,8 +5,9 @@
 #   website/images/trailer.webp      the main trailer's still: its end card,
 #                                    the poster before it plays and the picture
 #                                    a shared link shows
-# Needs the music and the takes (TRAILERS.md), ffmpeg and cwebp. About ten
-# minutes per trailer. Watch each one before committing it.
+# Needs the music and the takes (TRAILERS.md), ffmpeg, cwebp, and what
+# backdrops.sh needs (it makes the Sonoma backdrop). About ten minutes per
+# trailer. Watch each one before committing it.
 # usage: video/render-trailers.sh [Trailer TrailerToybox TrailerGmail TrailerFast]
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -25,6 +26,12 @@ name_of() {
 
 ids=("$@")
 [ ${#ids[@]} -gt 0 ] || ids=(Trailer TrailerToybox TrailerGmail TrailerFast)
+# What a render needs that git doesn't have: stop now, not after a long render.
+[ -f "public/music/80s Chillwave Dreamy Outrun.mp3" ] || { echo "the music is missing (TRAILERS.md, The music)"; exit 1; }
+for take in inbox-dark.png conversation-dark.png codes-light.png palette-light.mp4 reply-ai.mp4; do
+  [ -f "public/rec/$take" ] || { echo "the take $take is missing (TRAILERS.md, capture.sh)"; exit 1; }
+done
+"$here/backdrops.sh"
 mkdir -p out "$repo/website/video" "$repo/website/images"
 for id in "${ids[@]}"; do
   name="$(name_of "$id")"
