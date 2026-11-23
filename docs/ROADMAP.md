@@ -7670,7 +7670,8 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       that weren't made on purpose were all in CI; the local ones were
       reproductions on a slowed page. The redesign isn't a bug fix, so it
       moved to "Later / unscheduled" → Writing, "A new reply that opens
-      at its final size". The tests for clicking Reply with AI while the
+      at its final size" (renamed 2026-11-23: "A new reply that needs no
+      follow"). The tests for clicking Reply with AI while the
       conversation is still laying out, promised above, are the item
       below)*
 - [ ] A test for clicking Reply with AI while the conversation is still
@@ -7831,7 +7832,7 @@ niche or extra", so Windows and the Release Spike come first)
       Gmail's 25 MB limit
 - [x] A new reply that needs no follow (first proposed as one that opens
       at its final size) *(moved from Open bugs, owner, 2026-11-22)*: until
-      2026-11-23 the reader scrolled to a new reply and followed it for up to 10 s while it grows (the signature, the
+      2026-11-23 the reader scrolled to a new reply and followed it for up to 10 s while it grew (the signature, the
       quote, the AI panel), which took two checks of its own: each
       frame, one finished a smooth scroll that stopped short, and a
       scroll listener stopped the follow when the person scrolled up past
@@ -7842,8 +7843,8 @@ niche or extra", so Windows and the Release Spike come first)
       follow could then be removed. It changes what a person sees on
       Reply (the slide in, where the reply lands, space kept for an AI
       panel that may not open), so the owner leads it, with a mockup
-      first. To pick up if the follow breaks again, or with any rework
-      of how replies open.
+      first. It was to be picked up if the follow broke again, or with any
+      rework of how replies open.
       *(2026-11-23, done another way, owner: the reply sticks to the
       bottom of the reader instead. It is the last thing in the
       conversation, so the reader stays at its end while the person
@@ -7856,11 +7857,15 @@ niche or extra", so Windows and the Release Spike come first)
       downward; a press on the scroll bar alone doesn't. Content
       shrinking (the assistant closing) keeps whichever it was. The
       10-second window, the per-frame re-aim and the check for scrolls
-      stopped short are gone: growth scrolls at once, and only the opening
-      scroll is smooth, finished at once if it hasn't arrived after
-      0.7 s. The size a ResizeObserver reports when it starts watching
-      doesn't count as growth (it cut the opening slide short, found in
-      review). Typing no longer lets go, as it stopped the follow. Going
+      stopped short are gone: once the reply has opened, growth scrolls
+      at once. Opening slides to it, aimed again as the assistant grows,
+      and goes the rest at once within 40 px of the end (the cursor going
+      into the text usually scrolls that far by itself) or after 0.7 s.
+      The size a ResizeObserver reports when it starts watching doesn't
+      count as growth, and neither does the browser moving the reader
+      down to keep the view in place as something above grows, or a
+      scroll event that didn't move it (found in review: each had jumped
+      the opening or stuck a released reply again). Typing no longer lets go, as it stopped the follow. Going
       back to a conversation with a reply open no longer lands on its
       first unread email, which would have pulled the reader away from
       the reply. Branch `reply-sticks-bottom`; `reply-scroll.spec.ts`

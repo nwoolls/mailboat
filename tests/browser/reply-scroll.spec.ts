@@ -273,33 +273,40 @@ test("Reply with AI: a shorter reader keeps the reply at the bottom", async ({ p
 });
 
 /**
- * Opening a reply below the fold slides to it rather than jumping: the
- * first frames after the click are short of the end. (A ResizeObserver
- * reports every box once when it starts watching, and acting on that
- * report jumped straight to the end.)
+ * Opening a reply below the fold slides to it rather than jumping, even
+ * as the assistant grows while it opens. (A ResizeObserver reports every
+ * box once when it starts watching, and acting on that report, or on the
+ * growth, jumped straight to the end.) Reply with AI: plain Reply puts the
+ * cursor in the text, which scrolls most of the way at once by itself.
  */
-test("Reply: opening slides to the reply rather than jumping", async ({ page }) => {
+test("Reply with AI: opening slides to the reply rather than jumping", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=inline");
   await expect(page.getByTitle("Message content")).toBeVisible();
   await page.evaluate(() => {
     document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
   });
   await contentSettled(page);
-  const tops = await page.evaluate(async () => {
+  const seen = await page.evaluate(async () => {
     const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
     const frame = () => new Promise((done) => requestAnimationFrame(done));
+    const start = reader.scrollTop;
+    const clicked = performance.now();
     [...document.querySelectorAll("button")]
-      .find((b) => b.textContent?.trim() === "Reply")!
+      .find((b) => b.textContent?.trim() === "Reply with AI")!
       .click();
-    const seen: number[] = [];
-    for (let i = 0; i < 4; i++) {
+    // Every frame until the 0.7 s fallback, which would go the rest at once.
+    const tops: number[] = [];
+    while (performance.now() - clicked < 600) {
       await frame();
-      seen.push(reader.scrollHeight - reader.clientHeight - reader.scrollTop);
+      tops.push(reader.scrollTop);
     }
-    return seen;
+    return { start, tops, end: reader.scrollHeight - reader.clientHeight };
   });
-  // Some distance still to go a couple of frames in.
-  expect(Math.max(...tops.slice(1))).toBeGreaterThan(2);
+  // Before the fallback could have moved it, the reader passed through the
+  // first half of the way: a slide. A jump lands near the end at once (and
+  // chases the assistant's growth from there); standing still never moves.
+  const halfway = seen.start + (seen.end - seen.start) / 2;
+  expect(seen.tops.some((top) => top > seen.start + 2 && top < halfway)).toBe(true);
   await expect.poll(() => fromEnd(page), { timeout: 15_000 }).toBeLessThanOrEqual(2);
 });
 
@@ -307,7 +314,9 @@ test("Reply: opening slides to the reply rather than jumping", async ({ page }) 
  * The smooth scroll that opens a reply can be cut short or left undone (in
  * CI the reply was left hundreds of pixels below the reader: docs/ROADMAP.md
  * → Flaky tests). Here every smooth scroll of the reader is dropped, so the
- * opening one never happens; the reply still ends up at the bottom.
+ * opening one never happens, and nothing growing gets to put the reader at
+ * its end (the page's ResizeObservers are turned off): only the 0.7 s
+ * fallback is left, and the reply still ends up at the bottom.
  */
 test("Reply with AI: a smooth scroll left undone still ends at the reply", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=inline");
@@ -322,9 +331,77 @@ test("Reply with AI: a smooth scroll left undone still ends at the reply", async
     };
   });
   await contentSettled(page);
+  await page.evaluate(() => {
+    const quiet = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    (window as unknown as { ResizeObserver: unknown }).ResizeObserver = quiet;
+  });
   await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
   await expect(page.locator('section[aria-label="Reply"]')).toBeVisible();
-  await expect
-    .poll(async () => (await replyInView(page)).bottom, { timeout: 15_000 })
-    .toBeGreaterThanOrEqual(-1);
+  await page.waitForTimeout(300);
+  expect(await fromEnd(page)).toBeGreaterThan(2);
+  await expect.poll(() => fromEnd(page), { timeout: 15_000 }).toBeLessThanOrEqual(2);
+});
+
+/**
+ * A key while the reply is still sliding into view (on the reader, which
+ * has the keyboard once it's been clicked or entered) lets go there: the
+ * slide stops, and nothing finishes it.
+ */
+test("Reply with AI: a key during the opening slide stops it there", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await expect(page.getByTitle("Message content")).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
+  });
+  await contentSettled(page);
+  const stopped = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    [...document.querySelectorAll("button")]
+      .find((b) => b.textContent?.trim() === "Reply with AI")!
+      .click();
+    await frame();
+    await frame();
+    reader.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    const at = reader.scrollTop;
+    await new Promise((done) => setTimeout(done, 1200));
+    return {
+      moved: reader.scrollTop - at,
+      left: reader.scrollHeight - reader.clientHeight - reader.scrollTop,
+    };
+  });
+  expect(stopped.moved).toBe(0);
+  expect(stopped.left).toBeGreaterThan(2);
+});
+
+/**
+ * Let go, then content shrinking back so the reader is clamped to its end
+ * (an email closed, the assistant closed), then growing: still let go
+ * (found in review).
+ */
+test("Reply with AI: a released reply clamped to the end stays released", async ({ page }) => {
+  await openReplyWithAi(page);
+  const before = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
+    reader
+      .querySelector("section[data-message-id] > button")!
+      .dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    // Something above grows, then goes away again.
+    const extra = document.createElement("div");
+    extra.style.height = "120px";
+    reader.querySelector("section[data-message-id]")!.append(extra);
+    await wait(300);
+    extra.remove();
+    await wait(300);
+    return reader.scrollTop;
+  });
+  await growReply(page);
+  expect(await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop)).toBe(
+    before,
+  );
 });

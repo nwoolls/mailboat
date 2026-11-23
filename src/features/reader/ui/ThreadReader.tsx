@@ -20,7 +20,7 @@ import { useTextZoom } from "../../settings/ui/textSize";
 import { EmailContextMenu } from "./EmailContextMenu";
 import { ThreadSummaryCard } from "../../ai/ui/ThreadSummaryCard";
 import { MessageFrame } from "./MessageFrame";
-import { REPLY_FOLLOW_EVENT } from "../../../shared/lib/replyFollow";
+import { REPLY_FOLLOW_EVENT, REPLY_HOLDS_ATTR } from "../../../shared/lib/replyFollow";
 import { detailLines } from "../model/recipients";
 
 /**
@@ -351,10 +351,9 @@ function useLandOn(messageId: MessageId | null) {
     const scroller = ref.current;
     const card = scroller?.querySelector(`[data-message-id="${messageId}"]`);
     if (messageId === null || !scroller || !card) return;
-    // A reply already open in it (back to a conversation being answered)
-    // keeps the reader at its end. Its own effect ran first, so the event
-    // below that hands over to it came before this listened.
-    if (scroller.querySelector("[data-inline-reply]")) return;
+    // A reply already holding it (back to a conversation being answered)
+    // keeps the reader at its end (REPLY_HOLDS_ATTR).
+    if (scroller.querySelector(`[${REPLY_HOLDS_ATTR}]`)) return;
     const land = () => {
       scroller.scrollTop += card.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
     };
