@@ -20,7 +20,7 @@ import { useTextZoom } from "../../settings/ui/textSize";
 import { EmailContextMenu } from "./EmailContextMenu";
 import { ThreadSummaryCard } from "../../ai/ui/ThreadSummaryCard";
 import { MessageFrame } from "./MessageFrame";
-import { useReaderKeyboard } from "./useReaderKeyboard";
+import { REPLY_STOP, useReaderKeyboard } from "./useReaderKeyboard";
 import { REPLY_FOLLOW_EVENT, REPLY_HOLDS_ATTR } from "../../../shared/lib/replyFollow";
 import { detailLines } from "../model/recipients";
 
@@ -200,6 +200,9 @@ function ThreadBody({
       // Takes the keyboard (→ or Enter from the list, or a click), and the
       // outlined email shows where it is (useReaderKeyboard).
       tabIndex={-1}
+      // The reply being written is drawn by its own component: outlined
+      // through this (index.css).
+      data-outline-reply={keyboard.outlined === REPLY_STOP || undefined}
       {...keyboard.handlers}
     >
       <div ref={contentRef}>

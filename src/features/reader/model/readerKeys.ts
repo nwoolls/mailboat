@@ -3,7 +3,8 @@
  * from the list, or a click in it; owner, 2026-11-23): ↑ / ↓ go through
  * its emails, reading down a long one first; → or Enter opens the
  * outlined email, ← closes it, and ← on a closed one or Esc goes back to
- * the list.
+ * the list. A reply being written is the last stop, after the emails:
+ * → or Enter on it goes back into its text.
  */
 export type ReaderKey = "down" | "up" | "open" | "close" | "leave";
 
@@ -26,13 +27,21 @@ export function readerKeyFor(
 }
 
 /** An email card, measured from the top of the reader's view, in pixels. */
-export type CardBox = { top: number; bottom: number; open: boolean };
+export type CardBox = {
+  top: number;
+  bottom: number;
+  open: boolean;
+  /** The reply being written, the last stop after the emails. */
+  reply?: boolean;
+};
 
 /** What a key does: scroll the reader, outline another email, or the rest. */
 export type ReaderStep =
   | { kind: "scroll"; by: number }
   | { kind: "move"; to: number; by: number }
-  | { kind: "open" | "close" | "leave" };
+  | { kind: "open" | "close" | "leave" }
+  /** Back into the reply's text, where the cursor was. */
+  | { kind: "write" };
 
 /** Room kept above or below an email brought into view, in pixels. */
 export const EDGE_PX = 8;
@@ -85,9 +94,10 @@ export function readerStep(
       return { kind: "move", to: at - 1, by: revealBy(previous, viewHeight, "end") };
     }
     case "open":
+      if (card.reply) return { kind: "write" };
       return card.open ? null : { kind: "open" };
     case "close":
-      return card.open ? { kind: "close" } : { kind: "leave" };
+      return card.open && !card.reply ? { kind: "close" } : { kind: "leave" };
     case "leave":
       return { kind: "leave" };
   }

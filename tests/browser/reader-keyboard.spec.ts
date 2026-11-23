@@ -106,14 +106,33 @@ test("a click in the conversation gives it the keyboard", async ({ page }) => {
   await expect(page.getByRole("option").first()).toHaveAttribute("aria-selected", "true");
 });
 
-test("Esc in a reply's text hands the keyboard to the conversation", async ({ page }) => {
+test("Esc in a reply's text outlines the reply; ↑ / ↓ move from it and Enter goes back in", async ({
+  page,
+}) => {
   await preview(page);
   await page.getByRole("button", { name: "Reply", exact: true }).click();
   const reply = page.getByRole("region", { name: "Reply" });
-  await expect(reply.getByRole("textbox", { name: "Message" })).toBeFocused();
+  const text = reply.getByRole("textbox", { name: "Message" });
+  const replyOutlined = page.locator(".reader-scroll[data-outline-reply]");
+  await expect(text).toBeFocused();
   await page.keyboard.type("Sounds good");
   await page.keyboard.press("Escape");
-  await expect(outlined(page)).toHaveCount(1);
+  // The reply itself is outlined, not an email.
+  await expect(replyOutlined).toHaveCount(1);
+  await expect(outlined(page)).toHaveCount(0);
   expect(await readerOpen(page)).toBe("true");
   await expect(reply).toContainText("Sounds good");
+  // ↑ goes to the last email, ↓ back to the reply.
+  await page.keyboard.press("ArrowUp");
+  await expect(outlined(page)).toHaveCount(1);
+  await expect(replyOutlined).toHaveCount(0);
+  expect(await outlinedIndex(page)).toBe((await cards(page).count()) - 1);
+  await page.keyboard.press("ArrowDown");
+  await expect(replyOutlined).toHaveCount(1);
+  // Enter puts the cursor back in the text, where the keys type again.
+  await page.keyboard.press("Enter");
+  await expect(text).toBeFocused();
+  await expect(replyOutlined).toHaveCount(0);
+  await page.keyboard.type(" then");
+  await expect(reply).toContainText("then");
 });

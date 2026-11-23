@@ -26,7 +26,9 @@ async function openReply(page: Page, width: number) {
   await expect(reply(page)).toBeVisible();
 }
 
-const outlined = (page: Page) => page.locator("section[data-outlined]");
+/** Whatever is outlined for the keyboard: an email, or the reply itself. */
+const outlined = (page: Page) =>
+  page.locator("section[data-outlined], .reader-scroll[data-outline-reply]");
 
 test("in a narrow window, Esc twice in a reply goes back to the list, and the reply stays", async ({
   page,

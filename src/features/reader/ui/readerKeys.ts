@@ -18,9 +18,12 @@ function shownReader(): HTMLElement | null {
  * takes the keyboard (useReaderKeyboard outlines an email). False if none
  * is showing.
  */
-export function focusReader(): boolean {
+export function focusReader(at?: "reply"): boolean {
   const reader = shownReader();
   if (!reader) return false;
+  // From the reply's text (Esc), the reply is outlined, so ↑ goes on to
+  // the email above it and → or Enter goes back in (useReaderKeyboard).
+  if (at) reader.dataset.focusAt = at;
   reader.focus({ preventScroll: true });
   return true;
 }

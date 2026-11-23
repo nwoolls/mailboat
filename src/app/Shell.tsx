@@ -986,7 +986,7 @@ export function Shell() {
         // reader. (From 2026-11-22 one Esc went straight on to the list,
         // since the first seemed to do nothing.) The reply stays with its
         // conversation, as a new message's card stays a draft.
-        if (reply && focusReader()) e.preventDefault();
+        if (reply && focusReader("reply")) e.preventDefault();
         return;
       }
       // A floating sidebar goes first, wherever the focus is, and nothing

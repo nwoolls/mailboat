@@ -7835,7 +7835,14 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       the first press shows the outline, so it no longer seems to do
       nothing. The outline is the accent-colored focus ring, to be tried
       in the app. Tests: `reader-keyboard.spec.ts`, with
-      `reply-esc.spec.ts` updated; all of them fail without the change
+      `reply-esc.spec.ts` updated; all of them fail without the change.
+      *(2026-11-23, owner, trying it with a reply open: after Esc in the
+      reply, ↑ / ↓ went through the emails with no way back into the reply
+      by keys. A reply being written is now the last stop after the
+      emails, outlined like them; → or Enter on it puts the cursor back in
+      its text, where it was. Esc in its text outlines the reply itself,
+      so ↑ goes on to the email above. ↓ stops on the reply rather than
+      going into the text, so holding ↓ never leaves you typing)*
 
 - [ ] A card on hover for each person in an email's Details *(owner idea,
       2026-11-08, from the Details button; maybe for the Polish Spike, not

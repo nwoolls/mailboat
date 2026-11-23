@@ -64,6 +64,21 @@ describe("readerStep", () => {
     expect(readerStep("down", last, 0, view)).toEqual({ kind: "scroll", by: 100 });
   });
 
+  it("goes back into the reply's text from its outline", () => {
+    // The last email in view, the reply below it.
+    const withReply = [
+      { top: 100, bottom: 140, open: false },
+      { top: 148, bottom: 600, open: true, reply: true },
+    ];
+    expect(readerStep("down", withReply, 0, view)).toEqual({
+      kind: "move",
+      to: 1,
+      by: 148 - EDGE_PX,
+    });
+    expect(readerStep("open", withReply, 1, view)).toEqual({ kind: "write" });
+    expect(readerStep("close", withReply, 1, view)).toEqual({ kind: "leave" });
+  });
+
   it("opens, closes, and goes back to the list", () => {
     expect(readerStep("open", cards, 0, view)).toEqual({ kind: "open" });
     expect(readerStep("open", cards, 1, view)).toBeNull();

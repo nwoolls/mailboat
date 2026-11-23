@@ -3,6 +3,12 @@ import { useRef, useState } from "react";
 import type { MessageId } from "../../../platform/tauri/bindings";
 import { type CardBox, firstOutlined, readerKeyFor, readerStep } from "../model/readerKeys";
 
+/**
+ * The reply being written, as an outlined stop: after the emails, it isn't
+ * a message, so it takes an ID no message has (they're positive).
+ */
+export const REPLY_STOP = -1 as MessageId;
+
 /** Longer than a smooth scroll takes. */
 const HEADING_MS = 600;
 
@@ -18,6 +24,10 @@ function inReply(el: EventTarget | null): boolean {
   return el instanceof Element && el.closest("[data-inline-reply]") !== null;
 }
 
+function isReply(card: HTMLElement): boolean {
+  return card.hasAttribute("data-inline-reply");
+}
+
 /**
  * Each email card in the reader, measured from the top of its view as it
  * will be once the reader is at `scrollTop` (where a smooth scroll is
@@ -28,15 +38,19 @@ function measure(
   scrollTop = reader.scrollTop,
 ): { ids: MessageId[]; boxes: CardBox[] } {
   const top = reader.getBoundingClientRect().top + (scrollTop - reader.scrollTop);
-  const cards = [...reader.querySelectorAll<HTMLElement>("section[data-message-id]")];
+  // In the order shown: the emails, then the reply, if one is being written.
+  const cards = [
+    ...reader.querySelectorAll<HTMLElement>("section[data-message-id], section[data-inline-reply]"),
+  ];
   return {
-    ids: cards.map((c) => Number(c.dataset.messageId) as MessageId),
+    ids: cards.map((c) => (isReply(c) ? REPLY_STOP : (Number(c.dataset.messageId) as MessageId))),
     boxes: cards.map((c) => {
       const box = c.getBoundingClientRect();
       return {
         top: box.top - top,
         bottom: box.bottom - top,
-        open: c.querySelector(':scope > button[aria-expanded="true"]') !== null,
+        open: isReply(c) || c.querySelector(':scope > button[aria-expanded="true"]') !== null,
+        reply: isReply(c),
       };
     }),
   };
@@ -45,7 +59,8 @@ function measure(
 /**
  * The open conversation with the keyboard (owner, 2026-11-23): it takes
  * it on → or Enter from the list (`focusReader`) or a click in it, and
- * outlines an email. ↑ / ↓, → / ← and Esc then work here (see
+ * outlines an email (or the reply being written, the last stop).
+ * ↑ / ↓, → / ← and Esc then work here (see
  * `model/readerKeys`); every other key (j / k, r, e…) still reaches the
  * app's shortcuts. The outline shows only while the conversation has the
  * keyboard.
@@ -98,6 +113,12 @@ export function useReaderKeyboard({
   const onFocus = (e: React.FocusEvent<HTMLElement>) => {
     const keys = !isEditable(e.target) && !inReply(e.target);
     setFocused(keys);
+    const reader = e.currentTarget;
+    if (keys && reader.dataset.focusAt === "reply") {
+      delete reader.dataset.focusAt;
+      setOutlined(REPLY_STOP);
+      return;
+    }
     if (keys && outlined === null) {
       const { ids, boxes } = measure(e.currentTarget);
       const at = firstOutlined(
@@ -165,6 +186,12 @@ export function useReaderKeyboard({
       case "open":
       case "close":
         if (id !== undefined) setOpen(id, step.kind === "open");
+        return;
+      case "write":
+        // The editor keeps where its cursor was.
+        reader
+          .querySelector<HTMLElement>('[data-inline-reply] [role="textbox"][aria-label="Message"]')
+          ?.focus();
         return;
       case "leave":
         // Back to the list: the app's keys move it again, and the next Esc
