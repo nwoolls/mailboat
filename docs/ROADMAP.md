@@ -7847,6 +7847,14 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       its text, where it was. Esc in its text outlines the reply itself,
       so ↑ goes on to the email above. ↓ stops on the reply rather than
       going into the text, so holding ↓ never leaves you typing)*
+- [ ] The conversation's outline for screen readers *(owner, 2026-11-23,
+      from review of the item above)*: the outlined email (or reply) is
+      drawn, not announced. Focus stays on the reader while ↑ / ↓ move
+      the outline, so a screen reader says nothing as it moves. The likely
+      way: move real focus onto each email as it's outlined (its header,
+      or the card itself), so the screen reader reads the sender and
+      date, and leave the outline to follow focus. To check with VoiceOver
+      on macOS and Narrator on Windows.
 
 - [ ] A card on hover for each person in an email's Details *(owner idea,
       2026-11-08, from the Details button; maybe for the Polish Spike, not
