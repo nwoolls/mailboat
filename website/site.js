@@ -396,3 +396,25 @@ if (clips.length > 0 && "IntersectionObserver" in window) {
   dark.addEventListener("change", update);
   update();
 }
+
+// ----- Trailer. The link under the downloads opens the trailer in a dialog
+// and plays it with sound (the click is the visitor's go-ahead). Esc, the
+// close button or a click beside the video closes it, and closing pauses
+// it. Without this script the link opens the video file itself. The dialog
+// fills the window, so a click beside the video lands on the dialog, not on
+// its backdrop: that click is checked here, in every browser.
+const trailer = document.getElementById("trailer");
+const trailerLink = document.getElementById("trailer-open");
+if (trailer instanceof HTMLDialogElement && trailerLink) {
+  const film = trailer.querySelector("video");
+  trailerLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    trailer.showModal();
+    film?.play().catch(() => {});
+  });
+  trailer.querySelector(".trailer-close")?.addEventListener("click", () => trailer.close());
+  trailer.addEventListener("click", (event) => {
+    if (event.target === trailer) trailer.close();
+  });
+  trailer.addEventListener("close", () => film?.pause());
+}

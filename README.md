@@ -8,6 +8,8 @@
 
 A fast, keyboard-first Gmail client for macOS and Windows. Free and open source.
 
+▶ [Watch the 28-second trailer](https://getmailboat.app/video/trailer.mp4)
+
 [![CI](https://github.com/nwoolls/mailboat/actions/workflows/ci.yml/badge.svg)](https://github.com/nwoolls/mailboat/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/nwoolls/mailboat/badge)](https://scorecard.dev/viewer/?uri=github.com/nwoolls/mailboat)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16828/badge)](https://www.bestpractices.dev/projects/16828)

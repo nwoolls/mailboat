@@ -8,10 +8,18 @@ The bold line under each heading is the short version: a tagline here, and a
 ready-made post on its own, one feature at a time or all at once. The features
 that move also have a short loop: a small GIF for a page and an MP4 for a post.
 
+There are trailers too, about 28 seconds each with music:
+[the main one](https://getmailboat.app/video/trailer.mp4) (the inbox, summaries, the keyboard, Write
+with AI, sign-in codes, the command palette), and one each for
+[Gmail features](https://getmailboat.app/video/trailer-gmail.mp4), [Inbox Zero](https://getmailboat.app/video/trailer-toybox.mp4)
+and [speed](https://getmailboat.app/video/trailer-fast.mp4).
+
 ## Gmail features that IMAP clients can't do
 
 Mailboat talks to Gmail's own API, so the things that live in your Gmail
 settings work from the app, and keep working when it is closed.
+
+▶ [The Gmail features trailer](https://getmailboat.app/video/trailer-gmail.mp4) (28 seconds, with music)
 
 ### Rules
 
@@ -121,6 +129,8 @@ Choose which AI does what: summaries in the list, summaries above a conversation
 ## Inbox Zero, for fun
 
 A view with no mail is a place to play. Pick a toy, and after a minute without input a screensaver scene plays over the empty view.
+
+▶ [The Inbox Zero trailer](https://getmailboat.app/video/trailer-toybox.mp4) (28 seconds, with music)
 
 ### Bubble wrap
 
@@ -292,6 +302,9 @@ New-mail notifications can show everything (the sender, the subject and a sign-i
 Every web link in an email loses the tracking codes the app knows (`utm_` and the click IDs common ad and mailing services add) before it opens, and in the address shown on hover. Codes a link needs to work, such as an unsubscribe token, stay.
 
 ## Fast
+
+▶ [The speed trailer](https://getmailboat.app/video/trailer-fast.mp4): search, swipes, shortcuts and the
+command palette (28 seconds, with music)
 
 ### Command palette
 

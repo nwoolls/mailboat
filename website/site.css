@@ -942,3 +942,105 @@ section {
     opacity: 1;
   }
 }
+
+/* ----- Trailer: a link under the downloads, opening a dialog that plays it */
+
+.trailer-row {
+  margin-top: 20px;
+}
+.trailer-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--ghost);
+  color: var(--strong);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+.trailer-button:hover {
+  border-color: var(--accent-text);
+}
+.trailer-button:active {
+  transform: translateY(1px);
+}
+.trailer-button .icon {
+  color: var(--accent-text);
+}
+.trailer-length {
+  color: var(--faint);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.trailer {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+.trailer[open] {
+  display: grid;
+  place-items: center;
+}
+/* Scrolling over the dialog or its backdrop stays off the page behind. */
+.trailer:modal {
+  overscroll-behavior: contain;
+}
+.trailer::backdrop {
+  background: rgb(4 5 8 / 0.78);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.trailer video {
+  display: block;
+  width: min(1280px, calc(100vw - 144px), calc((100vh - 140px) * 16 / 9));
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  background: #000000;
+  box-shadow: 0 40px 120px rgb(0 0 0 / 0.6);
+}
+.trailer-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.1);
+  color: #ffffff;
+  font-family: var(--font);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.trailer-close:hover {
+  background: rgb(255 255 255 / 0.2);
+}
+.trailer :focus-visible {
+  outline-color: #ffffff;
+}
+@media (max-width: 700px) {
+  .trailer video {
+    width: calc(100vw - 24px);
+  }
+}
