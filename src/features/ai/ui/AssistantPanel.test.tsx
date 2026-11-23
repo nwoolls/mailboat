@@ -82,6 +82,33 @@ describe("AssistantPanel", () => {
     expect(screen.getByText("Thursday").tagName).toBe("STRONG");
   });
 
+  it("keeps an answer that was still being shown when the panel closed", async () => {
+    // Long enough to take a while to show, at the pace answers are let out.
+    const text = "Thanks for the venue options. ".repeat(30).trim();
+    aiWrite.mockResolvedValue({
+      status: "ok",
+      data: { text, html: `<p>${text}</p>`, subject: null },
+    });
+    const draft = { ...newDraft([], 7, "me@x.example"), kind: "reply" as const, threadId: 42 };
+    const panel = () => (
+      <AssistantPanel draft={draft} placement="top" onUse={vi.fn()} onClose={vi.fn()} />
+    );
+    const view = render(panel());
+    const field = screen.getByLabelText("Ask the AI");
+    fireEvent.change(field, { target: { value: "Say yes" } });
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Enter" });
+    });
+    // In, but still being let out: no buttons yet, and Stop is still there.
+    expect(screen.queryByText("Replace")).toBeNull();
+    expect(screen.getByLabelText("Stop")).toBeTruthy();
+
+    view.unmount();
+    render(panel());
+    expect(screen.getByText("Replace")).toBeTruthy();
+    expect(screen.queryByLabelText("Stop")).toBeNull();
+  });
+
   it("offers ideas written from the email when replying", () => {
     const reply = { ...newDraft([], 1, "me@x.example"), kind: "reply" as const, threadId: 42 };
     render(<AssistantPanel draft={reply} placement="top" onUse={vi.fn()} onClose={vi.fn()} />);

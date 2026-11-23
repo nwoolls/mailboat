@@ -7844,6 +7844,24 @@ niche or extra", so Windows and the Release Spike come first)
       isn't: it needs its own design in the search box). Not built
       during the AI Spike; the other ideas with it (AI actions in ⌘K,
       keeping Codex running) moved to AI Spike 2 (owner, 2026-10-24)
+- [x] Smoother AI writing *(owner request, 2026-11-23; done the same day,
+      branch `ai-micro-interactions`, picked from a mockup)*: the writing
+      assistant and the summary card worked but looked basic: a pulsing
+      "Writing…", and answers that arrived in Claude's small pieces, Apple
+      Intelligence's sentences or ChatGPT's single block. Now the ✦ turns and
+      twinkles beside a shimmering "Writing…" or "Summarizing…", and the
+      answer is let out at an even pace, a word at a time, each word fading in
+      (`model/pace.ts`, `ui/paced.tsx`). The pace speeds up when it falls
+      behind, so the screen stays within about half a second of what has
+      arrived, and the rest of a finished answer shows within about a second.
+      Stop gets a turning ring while it writes, the request rises into the
+      chat (only as wide as its text, at the right), and the finished draft's
+      Insert and Replace rise in one after the other, with room kept for them
+      so the bubble doesn't grow when they appear. Reply ideas and the
+      summary's stand-in bar get a sweeping light, and the ideas rise in when
+      they arrive. An answer still being shown when the panel closes is kept.
+      With reduced motion, text shows at once and the animations are off. The
+      translation card and the Rewrite button keep their pulse.
 - [ ] Offline mode *(moved from Milestone 5; owner, 2026-10-17: likes all
       three ideas, but lowest priority: almost never offline, and doesn't
       expect to send while offline)*. Today reading cached mail and local
