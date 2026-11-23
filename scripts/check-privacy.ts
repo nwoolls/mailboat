@@ -18,6 +18,7 @@ import {
   findPassageIssues,
   joinLines,
   parseDenylist,
+  withoutTrailerAddress,
 } from "./privacy";
 
 /** Not text, generated, or the detector's own test inputs. */
@@ -177,7 +178,8 @@ if (base) {
   for (const block of messages.split("\x01")) {
     const [hash, body] = block.split("\0");
     if (!hash || !body) continue;
-    const msgLines = body.split("\n");
+    // A trailer's address is commit metadata, already in the history.
+    const msgLines = body.split("\n").map(withoutTrailerAddress);
     msgLines.forEach((line) => {
       for (const f of findIssues(line, denylist, projectDomains)) {
         report(`commit ${hash.trim()}`, f.kind, f.text);

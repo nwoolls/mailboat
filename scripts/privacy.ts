@@ -110,6 +110,20 @@ export function findIssues(
   return found;
 }
 
+/**
+ * A whole-line identity trailer in a commit message (`Co-authored-by: Name
+ * <address>`, `Signed-off-by: …`). GitHub writes one for each committer when
+ * it squashes a pull request, from the commits' author metadata, which the
+ * pushed history already holds. Only the address is dropped; the name and any
+ * other line are still checked.
+ */
+const IDENTITY_TRAILER = /^(\s*(?:co-authored-by|signed-off-by):[^<>\n]*)<[^<>\s]+@[^<>\s]+>\s*$/i;
+
+/** A commit message line with an identity trailer's address taken out. */
+export function withoutTrailerAddress(line: string): string {
+  return line.replace(IDENTITY_TRAILER, "$1<>");
+}
+
 /** The local denylist: one term per line, `#` for comments. */
 export function parseDenylist(content: string): string[] {
   return content

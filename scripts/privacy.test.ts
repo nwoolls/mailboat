@@ -5,6 +5,7 @@ import {
   findPassageIssues,
   joinLines,
   parseDenylist,
+  withoutTrailerAddress,
 } from "./privacy";
 
 const kinds = (text: string, deny: string[] = []) => findIssues(text, deny).map((f) => f.kind);
@@ -121,6 +122,37 @@ describe("passages across a line wrap", () => {
     expect(
       findDenylistInPassage(joinLines(["from Acme", "Corp today"]), ["acme corp"]),
     ).toHaveLength(1);
+  });
+});
+
+describe("withoutTrailerAddress", () => {
+  it("drops the address of a commit's identity trailer, keeping the name", () => {
+    expect(withoutTrailerAddress("Co-authored-by: Jane Doe <jane.doe@gmail.com>")).toBe(
+      "Co-authored-by: Jane Doe <>",
+    );
+    expect(withoutTrailerAddress("Signed-off-by: Jane Doe <jane@company.com>  ")).toBe(
+      "Signed-off-by: Jane Doe <>",
+    );
+    expect(withoutTrailerAddress("co-authored-by: Jane <jane@company.com>")).toBe(
+      "co-authored-by: Jane <>",
+    );
+  });
+
+  it("still lets the rest of the line be checked", () => {
+    const line = withoutTrailerAddress("Co-authored-by: Acme Corp <jane@company.com>");
+    expect(findIssues(line, ["acme corp"]).map((f) => f.kind)).toEqual(["denylisted term"]);
+  });
+
+  it("leaves an address anywhere else in a message alone", () => {
+    for (const line of [
+      "Reported by jane@company.com",
+      "Co-authored-by: Jane <jane@company.com> and bob@company.com",
+      "See Co-authored-by: Jane <jane@company.com>",
+      "Reviewed-by: Jane <jane@company.com>",
+    ]) {
+      expect(withoutTrailerAddress(line)).toBe(line);
+      expect(kinds(line)).toContain("email address");
+    }
   });
 });
 
