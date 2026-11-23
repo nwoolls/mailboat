@@ -405,3 +405,49 @@ test("Reply with AI: a released reply clamped to the end stays released", async 
     before,
   );
 });
+
+/**
+ * Let go during the opening slide (a key on an email above), then back to
+ * the end: opening is over, so growth from then on is instant, not another
+ * slide (found in review: opening stayed on, and growth slid without the
+ * fallback behind it).
+ */
+test("Reply with AI: after letting go of the slide, growth at the end is instant", async ({
+  page,
+}) => {
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await expect(page.getByTitle("Message content")).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
+  });
+  await contentSettled(page);
+  const behaviors = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
+    [...document.querySelectorAll("button")]
+      .find((b) => b.textContent?.trim() === "Reply with AI")!
+      .click();
+    await frame();
+    await frame();
+    reader.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    await wait(1000);
+    // Back down to the end, by hand.
+    reader.scrollTop = reader.scrollHeight;
+    await wait(200);
+    const asked: string[] = [];
+    const scrollTo = reader.scrollTo.bind(reader);
+    reader.scrollTo = ((options: ScrollToOptions) => {
+      asked.push(options.behavior ?? "auto");
+      scrollTo(options);
+    }) as typeof reader.scrollTo;
+    const extra = document.createElement("div");
+    extra.style.height = "120px";
+    document.querySelector('section[aria-label="Reply"] form')!.append(extra);
+    await wait(500);
+    return asked;
+  });
+  expect(behaviors.length).toBeGreaterThan(0);
+  expect(behaviors.every((b) => b === "instant")).toBe(true);
+  expect(await fromEnd(page)).toBeLessThanOrEqual(2);
+});

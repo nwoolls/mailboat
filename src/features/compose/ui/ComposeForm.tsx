@@ -213,6 +213,9 @@ export function ComposeForm({
     const letGo = () => {
       if (!stuck) return;
       stuck = false;
+      // Opening is over: if it sticks again later, growth is instant, as
+      // after the timer.
+      opening = false;
       window.clearTimeout(arrived);
       // Stops the opening slide where it is, or it would reach the end and
       // stick again.
