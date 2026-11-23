@@ -2,13 +2,7 @@ import type React from "react";
 import { useRef, useState } from "react";
 import type { MessageId } from "../../../platform/tauri/bindings";
 import { isEditable } from "../../../shared/lib/editable";
-import {
-  type CardBox,
-  firstOutlined,
-  readerKeyFor,
-  readerStep,
-  revealBy,
-} from "../model/readerKeys";
+import { type CardBox, firstOutlined, readerKeyFor, readerStep } from "../model/readerKeys";
 import { leaveReader } from "./readerKeys";
 
 /**
@@ -216,13 +210,11 @@ export function useReaderKeyboard({
     e.stopPropagation();
     if (ids[at] !== outlined) setOutlined(ids[at] ?? null);
     // Picked afresh (the outline had scrolled away): ↑ / ↓ stop on the one
-    // picked, rather than moving on past it at once.
-    const box = boxes[at];
-    if (picked && (key === "up" || key === "down")) {
-      const by = box ? revealBy(box, view, key === "down" ? "start" : "end") : 0;
-      if (by !== 0) scrollTo(reader, from, by);
-      return;
-    }
+    // picked, rather than moving on past it at once. It's showing already
+    // (that's how it was picked), so the reader stays where the person
+    // scrolled it: bringing a tall email's top or end into view moved it
+    // the other way from the key (found in review).
+    if (picked && (key === "up" || key === "down")) return;
     const step = readerStep(key, boxes, at, view);
     if (!step) return;
     const id = ids[at];
@@ -232,6 +224,10 @@ export function useReaderKeyboard({
         return;
       case "move":
         setOutlined(ids[step.to] ?? null);
+        // Focus on a control in the email left behind (its header, after
+        // Tab or a click) would take Enter there, not to the outlined one.
+        if (document.activeElement !== reader && reader.contains(document.activeElement))
+          reader.focus({ preventScroll: true });
         if (step.by !== 0) scrollTo(reader, from, step.by);
         return;
       case "open":

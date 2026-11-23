@@ -2,11 +2,12 @@
  * The keys of an open conversation once it has the keyboard (→ or Enter
  * from the list, or a click in it; owner, 2026-11-23): ↑ / ↓ go through
  * its emails, reading down a long one first; → or Enter opens the
- * outlined email, ← closes it, and ← on a closed one or Esc goes back to
- * the list. A reply being written is the last stop, after the emails:
- * → or Enter on it goes back into its text.
+ * outlined email, ← closes it, and ← on a closed one goes back to the
+ * list (Esc does too, through the app's own Esc rules in `Shell.tsx`). A
+ * reply being written is the last stop, after the emails: → or Enter on
+ * it goes back into its text.
  */
-export type ReaderKey = "down" | "up" | "open" | "close" | "leave";
+export type ReaderKey = "down" | "up" | "open" | "close";
 
 const KEYS: Record<string, ReaderKey> = {
   ArrowDown: "down",
@@ -14,7 +15,6 @@ const KEYS: Record<string, ReaderKey> = {
   ArrowRight: "open",
   Enter: "open",
   ArrowLeft: "close",
-  Escape: "leave",
 };
 
 /** Maps a keydown in the conversation to what it does, ignoring typing and modifiers. */
@@ -98,8 +98,6 @@ export function readerStep(
       return card.open ? null : { kind: "open" };
     case "close":
       return card.open && !card.reply ? { kind: "close" } : { kind: "leave" };
-    case "leave":
-      return { kind: "leave" };
   }
 }
 

@@ -17,7 +17,8 @@ describe("readerKeyFor", () => {
     expect(readerKeyFor(key("ArrowRight"), false)).toBe("open");
     expect(readerKeyFor(key("Enter"), false)).toBe("open");
     expect(readerKeyFor(key("ArrowLeft"), false)).toBe("close");
-    expect(readerKeyFor(key("Escape"), false)).toBe("leave");
+    // Esc is the app's (Shell.tsx), which goes back to the list in its turn.
+    expect(readerKeyFor(key("Escape"), false)).toBeNull();
   });
 
   it("leaves typing, modifiers and other keys alone", () => {
@@ -84,7 +85,6 @@ describe("readerStep", () => {
     expect(readerStep("open", cards, 1, view)).toBeNull();
     expect(readerStep("close", cards, 1, view)).toEqual({ kind: "close" });
     expect(readerStep("close", cards, 0, view)).toEqual({ kind: "leave" });
-    expect(readerStep("leave", cards, 1, view)).toEqual({ kind: "leave" });
   });
 });
 

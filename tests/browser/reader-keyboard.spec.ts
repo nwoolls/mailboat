@@ -202,19 +202,30 @@ test("an arrow after the outline scrolled away outlines the first email showing"
   await page.keyboard.press("ArrowRight");
   for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
   await expect.poll(() => outlinedIndex(page)).toBe(0);
-  // Scrolled down by hand (a wheel) until the first email is gone.
+  // Scrolled down by hand (a wheel), well past the outlined email.
   const showing = await page.evaluate(async () => {
     const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
     const emails = [...reader.querySelectorAll("section[data-message-id]")];
+    // Into the middle of the tallest email, which fills the reader (the
+    // reader stayed put on the next arrow only for an email that fit).
+    const tall = emails.reduce((a, b) =>
+      b.getBoundingClientRect().height > a.getBoundingClientRect().height ? b : a,
+    );
     reader.dispatchEvent(new WheelEvent("wheel", { deltaY: 100, bubbles: true }));
-    reader.scrollTop += emails[1]!.getBoundingClientRect().top - reader.getBoundingClientRect().top;
+    reader.scrollTop += tall.getBoundingClientRect().top - reader.getBoundingClientRect().top + 300;
     // Past where the last arrow's scroll was heading, and its window.
     await new Promise((done) => setTimeout(done, 800));
     const top = reader.getBoundingClientRect().top;
     return emails.findIndex((c) => c.getBoundingClientRect().bottom > top);
   });
+  const scrolled = await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop);
   await page.keyboard.press("ArrowDown");
   await expect.poll(() => outlinedIndex(page)).toBe(showing);
+  // It's showing already, so the reader stays where it was scrolled to.
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop)).toBe(
+    scrolled,
+  );
 });
 
 /**
@@ -264,4 +275,25 @@ test("Enter back into the reply keeps the cursor where it was", async ({ page })
   await expect(text).toBeFocused();
   await page.keyboard.type(" on");
   await expect(text).toContainText("See you on Friday");
+});
+
+/**
+ * Focus on an email's header (Tab, or a click), then ↓: the outline moves
+ * on and so does the keyboard, so Enter opens the outlined email, not the
+ * header left behind (review).
+ */
+test("Enter after ↓ from a focused header opens the outlined email", async ({ page }) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
+  await expect.poll(() => outlinedIndex(page)).toBe(0);
+  const header = (i: number) => cards(page).nth(i).locator(":scope > button");
+  await expect(header(0)).toHaveAttribute("aria-expanded", "false");
+  await expect(header(1)).toHaveAttribute("aria-expanded", "false");
+  await header(0).focus();
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => outlinedIndex(page)).toBe(1);
+  await page.keyboard.press("Enter");
+  await expect(header(1)).toHaveAttribute("aria-expanded", "true");
+  await expect(header(0)).toHaveAttribute("aria-expanded", "false");
 });
