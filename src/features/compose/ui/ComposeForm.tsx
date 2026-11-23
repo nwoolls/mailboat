@@ -37,6 +37,7 @@ import { HtmlPreview } from "./HtmlPreview";
 import { EditorBody, FormatBar, useRichEditor } from "./RichEditor";
 import { composingPrefs } from "./composingPrefs";
 import { useStuck } from "../../../shared/ui/useStuck";
+import { stuckAfterScroll } from "../model/stickToEnd";
 import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 
 export type ReplyKind = Exclude<ComposeKind, "new">;
@@ -60,12 +61,8 @@ const PINNED_FOOT_HEIGHT = 80;
 /** Room kept between the line being typed and that bar, in pixels. */
 const ABOVE_FOOT_GAP = 16;
 
-/** The longest a newly opened reply is kept in view while it lays out. */
-const REPLY_FOLLOW_MS = 10_000;
-/** How far the reader has to move up for that to be the person reading. */
-const REPLY_FOLLOW_UP_PX = 8;
-/** As far as following scrolls at once rather than smoothly. */
-const REPLY_FOLLOW_AT_ONCE_PX = 40;
+/** How long the smooth scroll to a new reply has before it goes the rest at once. */
+const REPLY_ARRIVE_MS = 700;
 
 export function ComposeForm({
   entry,
@@ -143,10 +140,6 @@ export function ComposeForm({
   // Replies start in the text, above the quote (new messages and
   // forwards start in To). Asked again (focusKey) when `r` is pressed on
   // a conversation already being answered.
-  // The whole reply is scrolled into view, its header to its Send button,
-  // and kept there while it finishes laying out (the signature loads a
-  // moment later, an email above it is measured taller), not just the
-  // line being typed on.
   // A reply that opens with the writing assistant ("Reply with AI") leaves
   // the cursor in the assistant's box instead. Read through a ref, so
   // opening or closing the assistant later doesn't move the cursor here.
@@ -162,101 +155,62 @@ export function ComposeForm({
       editor.commands.focus(entry.focusKey === 0 ? "start" : undefined);
     const whole = formRef.current?.closest("section") ?? formRef.current;
     if (!whole) return;
-    // Taller than the reader (the AI chat above it, say), its end shows:
-    // "nearest" showed its top, the chat, with the reply out of sight.
-    const scroller = whole.closest(".reader-scroll");
-    // Where the follow is taking the reader, so its own scrolling (up too,
-    // when the reply's end is already in view) isn't taken for the person's.
-    let target = scroller?.scrollTop ?? 0;
-    /** How far the reader has to move to show the reply. */
-    const offBy = (reader: Element) => {
-      const view = reader.getBoundingClientRect();
-      const box = whole.getBoundingClientRect();
-      // Taller than the reader: its end at the bottom. Otherwise the least
-      // movement that shows all of it.
-      if (box.height > view.height || box.bottom > view.bottom) return box.bottom - view.bottom;
-      if (box.top < view.top) return box.top - view.top;
-      return 0;
-    };
-    const show = (atOnce = false) => {
-      if (!scroller) {
-        whole.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        return;
-      }
-      const by = offBy(scroller);
-      target = scroller.scrollTop + by;
-      // WebKit leaves a smooth scroll of a pixel or two undone, so the
-      // reply, growing a little at a time, ended a few pixels below the
-      // reader. A short way (looks the same) goes at once.
-      scroller.scrollTo({
-        top: target,
-        behavior: atOnce || Math.abs(by) <= REPLY_FOLLOW_AT_ONCE_PX ? "instant" : "smooth",
-      });
-    };
+    const scroller = whole.closest<HTMLElement>(".reader-scroll");
+    if (!scroller) {
+      whole.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      return;
+    }
+    // The reply is the last thing in the reader, so it sticks to the
+    // bottom by keeping the reader at its end (owner, 2026-11-23): while
+    // the person types, the signature loads, the assistant opens and its
+    // ideas arrive. Scrolling up to read lets go (the Send bar then pins
+    // to the bottom edge and the reply passes under it); scrolling back
+    // down to the end sticks again. This replaced a follow that kept the
+    // reply in view for up to 10 s after it opened, and needed checks of
+    // its own for scrolls WebKit cut short (docs/ROADMAP.md).
     // The reader may still be landing on an email it just opened (a draft
     // reply resumes by itself): the reply takes over from it.
-    scroller?.dispatchEvent(new Event(REPLY_FOLLOW_EVENT));
-    show();
-    const growing = new ResizeObserver(() => show());
+    scroller.dispatchEvent(new Event(REPLY_FOLLOW_EVENT));
+    const end = () => scroller.scrollHeight - scroller.clientHeight;
+    let stuck = true;
+    let lastTop = scroller.scrollTop;
+    // Instant: WebKit leaves short smooth scrolls undone, and growth comes
+    // a few pixels at a time.
+    const toEnd = () => {
+      // Any shortfall at all: "at the end" allows rounding, the reply doesn't.
+      if (stuck && scroller.scrollTop < end() - 0.5)
+        scroller.scrollTo({ top: end(), behavior: "instant" });
+    };
+    // Opening slides down to it. A smooth scroll can be cut short or left
+    // undone (on a slow machine, in WebKit), so once it has had time to
+    // arrive, still stuck and short of the end goes the rest at once.
+    scroller.scrollTo({ top: end(), behavior: "smooth" });
+    const arrived = window.setTimeout(toEnd, REPLY_ARRIVE_MS);
+    const growing = new ResizeObserver(toEnd);
     growing.observe(whole);
-    // Inline, the reader's content too: whatever grows above moves it.
-    const content = scroller?.firstElementChild;
+    // Whatever grows above it (an email measured taller) moves it too.
+    const content = scroller.firstElementChild;
     if (content) growing.observe(content);
-    // Followed until the person scrolls or types (where they are then wins),
-    // or for REPLY_FOLLOW_MS at most. A fixed second and a half wasn't enough
-    // on a slow machine: the email above, the assistant and the signature
-    // finished laying out after it, and the reply was left part way below.
-    // Measured from the furthest down the reader has been (see onScroll).
-    let furthest = scroller?.scrollTop ?? 0;
-    // A smooth scroll can be cut short (any instant scroll cancels one),
-    // and with nothing growing afterwards, nothing aimed again: in CI the
-    // reply was left hundreds of pixels below the reader for good. So each
-    // frame, when the reader has stopped at the furthest it has been with
-    // the reply's end still below it, the follow aims again, at once: on a
-    // busy page a smooth scroll can show no progress from one frame to the
-    // next, and starting it again every frame kept it from moving at all.
-    // A person scrolling up leaves the reader above that point, and isn't
-    // pulled back.
-    let lastTop = scroller?.scrollTop ?? 0;
-    let checking = 0;
-    let live = true;
-    const check = () => {
-      if (scroller) {
-        const top = scroller.scrollTop;
-        furthest = Math.max(furthest, top);
-        if (top === lastTop && top >= furthest - 1 && offBy(scroller) > 1) show(true);
-        lastTop = scroller.scrollTop;
-      }
-      // Stopped meanwhile (a scroll it caused, say): no next frame.
-      if (live) checking = requestAnimationFrame(check);
-    };
-    checking = requestAnimationFrame(check);
-    const stop = () => {
-      live = false;
-      growing.disconnect();
-      cancelAnimationFrame(checking);
-    };
-    const byHand = ["wheel", "pointerdown", "keydown", "touchstart"] as const;
-    for (const type of byHand) window.addEventListener(type, stop, { capture: true, once: true });
     // A wheel or a touch over an email (a sandboxed frame of its own, whose
-    // input never reaches this window) shows only as the reader scrolling.
-    // Following only ever scrolls down to the reply, so the reader moving up
-    // is the person reading: stop.
-    // Measured from the furthest down it has been, so slow scrolling in
-    // small steps adds up.
+    // input never reaches this window) shows only as the reader scrolling,
+    // as do the keys and the scroll bar.
     const onScroll = () => {
-      if (!scroller) return;
-      furthest = Math.max(furthest, scroller.scrollTop);
-      // Up past both the furthest point and where the follow is heading.
-      if (scroller.scrollTop < Math.min(furthest, target) - REPLY_FOLLOW_UP_PX) stop();
+      const top = scroller.scrollTop;
+      stuck = stuckAfterScroll(stuck, { top, lastTop, end: end() });
+      lastTop = top;
     };
-    scroller?.addEventListener("scroll", onScroll, { passive: true });
-    const settled = window.setTimeout(stop, REPLY_FOLLOW_MS);
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    // A click in the conversation above (opening an email, say) lets go,
+    // or the email would grow up out of sight instead of down.
+    const onPointer = (e: PointerEvent) => {
+      if (!(e.target instanceof Node && whole.contains(e.target))) stuck = false;
+    };
+    scroller.addEventListener("pointerdown", onPointer, { capture: true });
     return () => {
-      stop();
-      window.clearTimeout(settled);
-      scroller?.removeEventListener("scroll", onScroll);
-      for (const type of byHand) window.removeEventListener(type, stop, { capture: true });
+      growing.disconnect();
+      window.clearTimeout(arrived);
+      scroller.removeEventListener("scroll", onScroll);
+      scroller.removeEventListener("pointerdown", onPointer, { capture: true });
     };
   }, [editor, draft.kind, entry.focusKey]);
 

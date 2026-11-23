@@ -4,7 +4,8 @@ import { expect, type Page, test } from "@playwright/test";
  * Reply with AI (owner reports, 2026-10-22 and 10-24): the reader stopped
  * partway down the last email, or showed only the AI chat with the reply
  * below it. The reply, down to its Send button, should end up in view,
- * and all of it when it fits.
+ * and all of it when it fits. Since 2026-11-23 the reply sticks to the
+ * bottom of the reader until the person scrolls up (owner).
  */
 async function replyInView(page: Page) {
   return page.evaluate(() => {
@@ -107,12 +108,26 @@ test("Reply with AI, 360px reader, slow machine: the reply still scrolls into vi
     .toBeGreaterThanOrEqual(-1);
 });
 
-/**
- * Scrolling up over the email itself (a sandboxed frame, whose input never
- * reaches the app's window: the reader just scrolls) stops the follow, so
- * the reader doesn't snap back to the reply while the person reads.
- */
-test("Reply with AI: scrolling up to read stops the reply being followed", async ({ page }) => {
+/** Grows the reply as a signature arriving would, then waits a moment. */
+async function growReply(page: Page) {
+  await page.evaluate(async () => {
+    const extra = document.createElement("div");
+    extra.style.height = "60px";
+    document.querySelector('section[aria-label="Reply"] form')!.append(extra);
+    await new Promise((done) => setTimeout(done, 800));
+  });
+}
+
+/** How far the reader is from its end, in pixels. */
+async function fromEnd(page: Page) {
+  return page.evaluate(() => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    return reader.scrollHeight - reader.clientHeight - reader.scrollTop;
+  });
+}
+
+/** Opens Reply with AI in a 360px reader and waits for it to lay out. */
+async function openReplyWithAi(page: Page) {
   await page.goto("/tests/browser/harness.html?mode=inline");
   await expect(page.getByTitle("Message content")).toBeVisible();
   await page.evaluate(() => {
@@ -120,91 +135,121 @@ test("Reply with AI: scrolling up to read stops the reply being followed", async
   });
   await contentSettled(page);
   await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
-  await expect
-    .poll(async () => (await replyInView(page)).bottom, { timeout: 15_000 })
-    .toBeGreaterThanOrEqual(-1);
-  // The reader moved up, as a wheel over the email moves it, then the reply
-  // grows (as a signature arriving would): the reader stays where it is.
-  const scrollTop = await page.evaluate(async () => {
+  await expect(page.getByRole("button", { name: "Say yes" })).toBeVisible();
+  await contentSettled(page, 'section[aria-label="Reply"]');
+  await expect.poll(() => fromEnd(page), { timeout: 15_000 }).toBeLessThanOrEqual(2);
+}
+
+/**
+ * Scrolling up over the email itself (a sandboxed frame, whose input never
+ * reaches the app's window: the reader just scrolls) lets the reply go, so
+ * the reader doesn't snap back to it while the person reads.
+ */
+test("Reply with AI: scrolling up to read lets the reply go", async ({ page }) => {
+  await openReplyWithAi(page);
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>(".reader-scroll")!.scrollTop = 0;
+  });
+  await growReply(page);
+  expect(await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop)).toBe(0);
+});
+
+/** Scrolling up slowly, a few pixels at a time, lets it go too. */
+test("Reply with AI: scrolling up slowly lets the reply go", async ({ page }) => {
+  await openReplyWithAi(page);
+  const before = await page.evaluate(async () => {
     const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
-    reader.scrollTop = 0;
-    await new Promise((done) => setTimeout(done, 100));
-    const extra = document.createElement("div");
-    extra.style.height = "60px";
-    document.querySelector('section[aria-label="Reply"] form')!.append(extra);
-    await new Promise((done) => setTimeout(done, 800));
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    for (let i = 0; i < 3; i++) {
+      reader.scrollTop -= 3;
+      await frame();
+      await frame();
+    }
     return reader.scrollTop;
   });
-  expect(scrollTop).toBe(0);
+  await growReply(page);
+  expect(await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop)).toBe(
+    before,
+  );
 });
 
 /**
- * A scroll of the follow's can be cut short (any instant scroll cancels a
- * smooth one), and with nothing growing afterwards nothing aimed again: in
- * CI the reply was left hundreds of pixels below the reader for good
- * (docs/ROADMAP.md → Flaky tests). Here every scroll the follow asks for is
- * dropped until the reply has finished growing, so it is left below for
- * certain; then the follow, seeing the reader stopped short, aims again.
+ * Scrolled back down to the end, where the Send bar joins the reply again,
+ * it sticks again (owner, 2026-11-23).
  */
-test("Reply with AI: a follow scroll that was cut short is aimed again", async ({ page }) => {
+test("Reply with AI: scrolling back to the end sticks the reply again", async ({ page }) => {
+  await openReplyWithAi(page);
+  await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    reader.scrollTop = 0;
+    await new Promise((done) => setTimeout(done, 100));
+    reader.scrollTop = reader.scrollHeight;
+    await new Promise((done) => setTimeout(done, 100));
+  });
+  await growReply(page);
+  expect(await fromEnd(page)).toBeLessThanOrEqual(2);
+});
+
+/**
+ * Typing doesn't let go (the old follow stopped on any key): the reply
+ * still sticks to the bottom as it grows afterwards.
+ */
+test("Reply: typing keeps the reply stuck to the bottom", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await expect(page.getByTitle("Message content")).toBeVisible();
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
+  });
+  await contentSettled(page);
+  await page.getByRole("button", { name: "Reply", exact: true }).click();
+  await contentSettled(page, 'section[aria-label="Reply"]');
+  await expect.poll(() => fromEnd(page), { timeout: 15_000 }).toBeLessThanOrEqual(2);
+  for (let i = 0; i < 4; i++) await page.keyboard.press("Enter");
+  await page.keyboard.type("Thanks, see you then.");
+  await growReply(page);
+  expect(await fromEnd(page)).toBeLessThanOrEqual(2);
+});
+
+/**
+ * A click in the conversation above (opening an email) lets go, so the
+ * email opens downward where it was clicked instead of growing up out of
+ * sight.
+ */
+test("Reply with AI: a click above the reply lets it go", async ({ page }) => {
+  await openReplyWithAi(page);
+  const before = await page.evaluate(() => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    reader.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    return reader.scrollTop;
+  });
+  await growReply(page);
+  expect(await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop)).toBe(
+    before,
+  );
+});
+
+/**
+ * The smooth scroll that opens a reply can be cut short or left undone (in
+ * CI the reply was left hundreds of pixels below the reader: docs/ROADMAP.md
+ * → Flaky tests). Here every smooth scroll of the reader is dropped, so the
+ * opening one never happens; the reply still ends up at the bottom.
+ */
+test("Reply with AI: a smooth scroll left undone still ends at the reply", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=inline");
   await expect(page.getByTitle("Message content")).toBeVisible();
   await page.evaluate(() => {
     document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
     const scrollTo = Element.prototype.scrollTo;
-    const win = window as unknown as { dropScrolls: boolean };
-    win.dropScrolls = true;
     Element.prototype.scrollTo = function (this: Element, ...args: unknown[]) {
-      if (win.dropScrolls && this.classList.contains("reader-scroll")) return;
+      const options = args[0] as ScrollToOptions | undefined;
+      if (this.classList.contains("reader-scroll") && options?.behavior === "smooth") return;
       return (scrollTo as (...a: unknown[]) => void).apply(this, args);
     };
   });
   await contentSettled(page);
   await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
   await expect(page.locator('section[aria-label="Reply"]')).toBeVisible();
-  await contentSettled(page, 'section[aria-label="Reply"]');
-  expect((await replyInView(page)).bottom).toBeLessThan(-1);
-  await page.evaluate(() => {
-    (window as unknown as { dropScrolls: boolean }).dropScrolls = false;
-  });
   await expect
     .poll(async () => (await replyInView(page)).bottom, { timeout: 15_000 })
     .toBeGreaterThanOrEqual(-1);
-});
-
-/** Scrolling up slowly, a few pixels at a time, adds up and stops it too. */
-test("Reply with AI: scrolling up slowly stops the reply being followed", async ({ page }) => {
-  await page.goto("/tests/browser/harness.html?mode=inline");
-  await expect(page.getByTitle("Message content")).toBeVisible();
-  await page.evaluate(() => {
-    document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
-  });
-  await contentSettled(page);
-  await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
-  // A person scrolls up once the reply has laid out (its ideas shown, its
-  // height steady). While it still grows, each growth aims the follow again
-  // and undoes the steps before they add up: on a slow runner the follow
-  // was still on after all twenty (docs/ROADMAP.md → Flaky tests).
-  await expect(page.getByRole("button", { name: "Say yes" })).toBeVisible();
-  await contentSettled(page, 'section[aria-label="Reply"]');
-  await expect
-    .poll(async () => (await replyInView(page)).bottom, { timeout: 15_000 })
-    .toBeGreaterThanOrEqual(-1);
-  const moved = await page.evaluate(async () => {
-    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
-    const frame = () => new Promise((done) => requestAnimationFrame(done));
-    // Twenty steps of 3 px, each its own scroll event.
-    for (let i = 0; i < 20; i++) {
-      reader.scrollTop -= 3;
-      await frame();
-      await frame();
-    }
-    const read = reader.scrollTop;
-    const extra = document.createElement("div");
-    extra.style.height = "60px";
-    document.querySelector('section[aria-label="Reply"] form')!.append(extra);
-    await new Promise((done) => setTimeout(done, 800));
-    return reader.scrollTop - read;
-  });
-  expect(moved).toBe(0);
 });

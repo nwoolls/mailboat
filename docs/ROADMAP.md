@@ -7822,7 +7822,7 @@ niche or extra", so Windows and the Release Spike come first)
       embedded images; to decide: resizing in the editor (Gmail offers
       small / best fit / original), and a large image's share of
       Gmail's 25 MB limit
-- [ ] A new reply that opens at its final size *(moved from Open bugs,
+- [x] A new reply that opens at its final size *(moved from Open bugs,
       owner, 2026-11-22)*: today the reader scrolls to a new reply and
       follows it for up to 10 s while it grows (the signature, the
       quote, the AI panel), which takes two checks of its own: each
@@ -7837,6 +7837,22 @@ niche or extra", so Windows and the Release Spike come first)
       panel that may not open), so the owner leads it, with a mockup
       first. To pick up if the follow breaks again, or with any rework
       of how replies open.
+      *(2026-11-23, done another way, owner: the reply sticks to the
+      bottom of the reader instead. It is the last thing in the
+      conversation, so the reader stays at its end while the person
+      types, the signature loads, and the assistant opens and fills in.
+      Scrolling up to read lets go, and the Send bar pins to the bottom
+      edge with the reply passing under it, as before. Scrolling back down
+      to the end sticks it again. A click in the conversation above it
+      lets go too, so an email opened there grows downward. The 10-second
+      window, the per-frame re-aim and the check for scrolls stopped short
+      are gone: growth scrolls at once, and only the opening scroll is
+      smooth, finished at once if it hasn't arrived after 0.7 s. Typing no
+      longer lets go, as it stopped the follow. Branch
+      `reply-sticks-bottom`; `reply-scroll.spec.ts` rewritten for it, and
+      its two new tests, typing and scrolling back down, fail with the
+      follow)*
+
 ### From the AI Spike (moved unbuilt when it closed, 2026-10-21)
 
 - MCP server: moved to AI Spike 2 (owner, 2026-10-24)
