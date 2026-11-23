@@ -5,7 +5,7 @@ import {
   findPassageIssues,
   joinLines,
   parseDenylist,
-  withoutTrailerAddress,
+  messageLines,
 } from "./privacy";
 
 const kinds = (text: string, deny: string[] = []) => findIssues(text, deny).map((f) => f.kind);
@@ -125,33 +125,48 @@ describe("passages across a line wrap", () => {
   });
 });
 
-describe("withoutTrailerAddress", () => {
-  it("drops the address of a commit's identity trailer, keeping the name", () => {
-    expect(withoutTrailerAddress("Co-authored-by: Jane Doe <jane.doe@gmail.com>")).toBe(
-      "Co-authored-by: Jane Doe <>",
-    );
-    expect(withoutTrailerAddress("Signed-off-by: Jane Doe <jane@company.com>  ")).toBe(
-      "Signed-off-by: Jane Doe <>",
-    );
-    expect(withoutTrailerAddress("co-authored-by: Jane <jane@company.com>")).toBe(
-      "co-authored-by: Jane <>",
-    );
+describe("messageLines", () => {
+  // Reserved addresses aren't flagged on their own, so each case denylists them.
+  const deny = ["jane@x.example", "bob@x.example", "jane doe"];
+  const found = (body: string) =>
+    messageLines(body).flatMap((l) => findIssues(l, deny).map((f) => f.text));
+  const squash = (block: string) => `Bump things (#1)\n\nBody text.\n\n---------\n\n${block}\n`;
+
+  it("drops the address of each credit in the final trailer block, keeping the name", () => {
+    expect(
+      messageLines(
+        squash("Signed-off-by: Bot <bot@x.example>\nCo-authored-by: Jane Doe <jane@x.example>"),
+      ).slice(-3),
+    ).toEqual(["Signed-off-by: Bot <>", "Co-authored-by: Jane Doe <>", ""]);
+    expect(found(squash("Co-authored-by: Someone <jane@x.example>"))).toEqual([]);
+    expect(found(squash("Co-authored-by: Jane Doe <jane@x.example>"))).toHaveLength(1);
+    expect(found(squash("co-authored-by: Someone <jane@x.example>\r"))).toEqual([]);
+    // An address in the name stays checked.
+    expect(found(squash("Co-authored-by: jane@x.example <bob@x.example>"))).toHaveLength(1);
   });
 
-  it("still lets the rest of the line be checked", () => {
-    const line = withoutTrailerAddress("Co-authored-by: Acme Corp <jane@company.com>");
-    expect(findIssues(line, ["acme corp"]).map((f) => f.kind)).toEqual(["denylisted term"]);
-  });
-
-  it("leaves an address anywhere else in a message alone", () => {
-    for (const line of [
-      "Reported by jane@company.com",
-      "Co-authored-by: Jane <jane@company.com> and bob@company.com",
-      "See Co-authored-by: Jane <jane@company.com>",
-      "Reviewed-by: Jane <jane@company.com>",
+  it("checks a trailer-shaped line anywhere but the final trailer block", () => {
+    const line = "Co-authored-by: Someone <jane@x.example>";
+    for (const body of [
+      `Subject\n\nAn example:\n    ${line}\n\nCo-authored-by: Someone <bob@x.example>\n`,
+      `Subject\n\n${line}\n\nThanks.\n`,
+      `Subject\n\n${line}\nand a sentence after it\n`,
+      `Subject\n\n    ${line}\n`,
+      line,
     ]) {
-      expect(withoutTrailerAddress(line)).toBe(line);
-      expect(kinds(line)).toContain("email address");
+      expect(found(body)).toContain("(a term from your local denylist)");
+    }
+  });
+
+  it("leaves a credit alone unless it holds exactly one address", () => {
+    for (const line of [
+      "Co-authored-by: Someone <jane@x.example,bob@x.example>",
+      "Co-authored-by: Someone <jane@x.example> <bob@x.example>",
+      "Co-authored-by: Someone <jane@x.example> and more",
+      "Reviewed-by: Someone <jane@x.example>",
+    ]) {
+      expect(messageLines(squash(line))).toContain(line);
+      expect(found(squash(line)).length).toBeGreaterThan(0);
     }
   });
 });

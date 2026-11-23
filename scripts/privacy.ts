@@ -104,24 +104,40 @@ export function findIssues(
   const lower = line.toLowerCase();
   for (const term of denylist) {
     if (term && lower.includes(term.toLowerCase())) {
-      found.push({ kind: "denylisted term", text: "(a term from your local denylist)" });
+      found.push({
+        kind: "denylisted term",
+        text: "(a term from your local denylist)",
+      });
     }
   }
   return found;
 }
 
-/**
- * A whole-line identity trailer in a commit message (`Co-authored-by: Name
- * <address>`, `Signed-off-by: …`). GitHub writes one for each committer when
- * it squashes a pull request, from the commits' author metadata, which the
- * pushed history already holds. Only the address is dropped; the name and any
- * other line are still checked.
- */
-const IDENTITY_TRAILER = /^(\s*(?:co-authored-by|signed-off-by):[^<>\n]*)<[^<>\s]+@[^<>\s]+>\s*$/i;
+/** An identity trailer: the key, a name, and exactly one address in brackets. */
+const IDENTITY_TRAILER =
+  /^((?:co-authored-by|signed-off-by):[^<>\n]*)<[^<>\s@,;]+@[^<>\s@,;]+>\s*$/i;
+/** Any trailer line (`Key: value`), unindented. */
+const TRAILER = /^[A-Za-z][A-Za-z0-9-]*:\s/;
 
-/** A commit message line with an identity trailer's address taken out. */
-export function withoutTrailerAddress(line: string): string {
-  return line.replace(IDENTITY_TRAILER, "$1<>");
+/**
+ * A commit message's lines to check, with the address taken out of each
+ * `Co-authored-by:` or `Signed-off-by:` line of its final trailer block: the
+ * last paragraph, when every line in it is a trailer. GitHub writes that block
+ * when it squashes a pull request, crediting each committer by the address on
+ * their commits. Git's own parser (`git interpret-trailers`) doesn't see
+ * GitHub's block, because it takes the `---------` line above it for the start
+ * of a patch. The names, every other line, and any trailer-shaped line in the
+ * body are still checked.
+ */
+export function messageLines(body: string): string[] {
+  const lines = body.replace(/\r/g, "").split("\n");
+  let end = lines.length;
+  while (end > 0 && lines[end - 1]!.trim() === "") end--;
+  let start = end;
+  while (start > 0 && lines[start - 1]!.trim() !== "") start--;
+  // The subject line is never a trailer block.
+  if (start === 0 || !lines.slice(start, end).every((l) => TRAILER.test(l))) return lines;
+  return lines.map((l, i) => (i >= start && i < end ? l.replace(IDENTITY_TRAILER, "$1<>") : l));
 }
 
 /** The local denylist: one term per line, `#` for comments. */
@@ -190,5 +206,8 @@ export function findDenylistInPassage(passage: string, denylist: string[]): Find
   const lower = passage.toLowerCase();
   return denylist
     .filter((term) => term && lower.includes(term.toLowerCase()))
-    .map(() => ({ kind: "denylisted term", text: "(a term from your local denylist)" }));
+    .map(() => ({
+      kind: "denylisted term",
+      text: "(a term from your local denylist)",
+    }));
 }
