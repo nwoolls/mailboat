@@ -14,20 +14,7 @@ repo="$(cd "$here/.." && pwd)"
 cd "$here"
 
 # The light backdrop and the blurred copies the window stands on.
-if [ ! -f public/sonoma.png ]; then
-  tmp="$(mktemp -d)"
-  swiftc -O -o "$tmp/frame" "$repo/scripts/screenshots/frame.swift"
-  "$tmp/frame" "/System/Library/Desktop Pictures/.wallpapers/Sonoma/Sonoma Graphic Light Landscape.mov" public/sonoma.png 2
-  rm -rf "$tmp"
-fi
-python3 - <<'PY'
-from PIL import Image, ImageEnhance, ImageFilter
-for name in ("sunset", "sonoma"):
-    image = Image.open(f"public/{name}.png").convert("RGB").resize((1920, 1080))
-    image.save(f"public/{name}.png", optimize=True)
-    blurred = ImageEnhance.Color(image.filter(ImageFilter.GaussianBlur(70))).enhance(1.25)
-    blurred.save(f"public/{name}-blur.png", optimize=True)
-PY
+"$here/backdrops.sh"
 
 mkdir -p out "$repo/website/video" "$repo/docs/images/loops"
 for theme in dark light; do

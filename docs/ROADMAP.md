@@ -5304,6 +5304,13 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [ ] In the demo, clicking the sign-in code email in the Inbox (or
+      pressing Return on it) selects the row but doesn't open the
+      conversation, while the sign-in code alert is up *(seen while
+      taking the trailer's pictures, 2026-11-22; not yet investigated)*.
+      Other conversations opened with a click in the same session. The
+      gallery's `codes` picture, taken for 0.3.0, shows it open, so this
+      may be new since then or tied to the alert.
 - [x] The first Esc in a reply seemed to do nothing *(owner report,
       2026-11-22; fixed the same day, branch `reply-esc-leaves-reply`)*:
       after clicking Reply, the first Esc only took the cursor out of
@@ -7316,6 +7323,22 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       ARCHITECTURE (source-available; free for individuals and companies of
       up to 3 people). `video/render.sh` renders and places it. The trailer
       itself is still to plan)*
+      *(2026-11-22/23: made with the owner, branch `video-trailer`: the
+      app's window in 3D, cut to a music track's beats (93 BPM, the
+      opening over the track's soft start, a feature held through its
+      hold, the flip to light on its groove), captions, and an end card
+      where the icon draws itself. Four trailers share a kit
+      (`video/src/kit/`): the main one (inbox, summaries, the keyboard,
+      Write with AI, sign-in codes, the palette) and three themed ones
+      (Toybox, Gmail features, Fast). The music (Pixabay) and 2x takes
+      of the demo (`video/capture.sh`) stay out of git;
+      `video/TRAILERS.md` says how to make everything again when a
+      screen changes. Still to do: square and vertical cuts, where and
+      how they are posted (the owner's call), 2x takes for the themed
+      trailers' shots, and two more themed trailers: "Fits your window"
+      (the compose card moving between corners, the layout as the window
+      narrows: better drawn from the real components than recorded) and
+      "Private by default" (the Privacy page, AI providers, AI apps))*
 
 - [ ] Fewer hosts contacted before a message is opened: options are
       remote images for people you've written to by default, prefetching

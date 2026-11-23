@@ -15,6 +15,11 @@ screenshots, the clips show only made-up demo mail.
 |---|---|
 | `SwipeArchive`, `SwipeArchiveLight` | Swipe to archive, close up: the row slides and the button grows out of it as one shape, then necks and snaps apart (the snap at quarter speed). The two join and part again, and the ring fills until the button lights up. 1920x1080, 60 fps, dark and light. |
 
+The trailers (`Trailer`, `TrailerToybox`, `TrailerGmail`, `TrailerFast`)
+are about 28 seconds each, cut to a music track's beats; how they are put
+together, and how to make them again when a screen changes, is in
+[TRAILERS.md](TRAILERS.md).
+
 ## Running
 
 From this folder:

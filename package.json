@@ -55,6 +55,7 @@
     "@changesets/cli": "^3.0.3",
     "@playwright/test": "^1.65.0",
     "@remotion/cli": "4.0.541",
+    "@remotion/motion-blur": "4.0.541",
     "@tailwindcss/vite": "^4.3.5",
     "@tailwindcss/webpack": "4.3.5",
     "@tauri-apps/cli": "^2.12.4",
