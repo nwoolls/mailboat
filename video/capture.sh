@@ -111,6 +111,10 @@ record() {  # record <name> <wallpaper> <seconds> <steps…>
   screencapture -v -V "$most" -R "$region" -x "$REC/$clip.mov" & rec=$!
   hold 1
   "$@"
+  # The steps must finish inside the recording's limit; then the rest of the
+  # recording is watched too, until it ends.
+  kill -0 "$rec" 2>/dev/null || stop "the recording of $clip ended before its steps did: raise its limit"
+  while kill -0 "$rec" 2>/dev/null; do guard; sleep 0.25; done
   wait "$rec" && [ -s "$REC/$clip.mov" ] || stop "no recording of $clip (screen recording allowed?)"
   rec=""; partial=""
   kill "$bd" 2>/dev/null; bd=""
@@ -121,8 +125,7 @@ record() {  # record <name> <wallpaper> <seconds> <steps…>
 
 palette_steps() {
   sleep 0.8; key k command 1.4
-  # Checked once before the letters, so they keep their rhythm.
-  guard; local ch; for ch in a r c h; do ev "keystroke \"$ch\""; sleep 0.32; done
+  local ch; for ch in a r c h; do guard; ev "keystroke \"$ch\""; sleep 0.15; done
   hold 3
 }
 reply_ai_steps() {
@@ -141,13 +144,13 @@ for take in "$@"; do
     codes) still codes-light sonoma ;;
     palette)        # ⌘K over Lisbon, typing (light); dismisses the alert
       focus; esc; esc; c 1481 104 0.8; c 144 134 1.4; c 600 300 2.4
-      record palette-light sonoma 10 palette_steps; esc ;;
+      record palette-light sonoma 12 palette_steps; esc ;;
     dark) settings 228 1165 290 ;;
     inbox) focus; esc; esc; c 144 134 1.6; still inbox-dark sunset ;;
     conversation) focus; c 600 300 2.4; still conversation-dark sunset ;;
     reply-ai)       # Reply, then the AI button (dark, a fresh demo: it leaves a draft)
       focus; esc; esc; c 1481 104 0.8; c 144 134 1.4; c 600 300 2.5
-      record reply-ai sunset 22 reply_ai_steps ;;
+      record reply-ai sunset 26 reply_ai_steps ;;
     *) echo "unknown take: $take"; exit 1 ;;
   esac
 done
