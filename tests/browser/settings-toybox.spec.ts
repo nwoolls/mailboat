@@ -154,3 +154,18 @@ test("repainting a still picture doesn't move it on: new colors and back give th
   await page.waitForTimeout(150);
   expect(await tilePixels(page, "Sandscape")).toBe(before);
 });
+
+test("the reduce-motion card says whether the system's setting is on, as it changes", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto(open);
+  const card = page.locator("section", {
+    has: page.getByRole("heading", { name: "Reduce motion" }),
+  });
+  await expect(card).toContainText("When Reduce motion is on");
+  await expect(card.getByRole("listitem")).toHaveCount(5);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(card).toContainText("Reduce motion is on in System Settings");
+  await expect(card).not.toContainText("When Reduce motion");
+});

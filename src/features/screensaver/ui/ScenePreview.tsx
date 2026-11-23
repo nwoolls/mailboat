@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "../../../shared/lib/reducedMotion";
 import type { ToyboxStyle } from "../../emptyToys/model/style";
 import type { SceneId } from "../model/catalog";
 import type { PaletteId } from "../model/palettes";
@@ -55,20 +56,6 @@ const STILL_AT: Partial<Record<SceneId, number>> = {
  */
 const DRAWN_W = 720;
 const DRAWN_H = 450;
-
-const REDUCE = "(prefers-reduced-motion: reduce)";
-
-/** Whether the system asks for less motion, following it as it changes. */
-function useReducedMotion(): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const query = window.matchMedia(REDUCE);
-      query.addEventListener("change", onChange);
-      return () => query.removeEventListener("change", onChange);
-    },
-    () => window.matchMedia(REDUCE).matches,
-  );
-}
 
 export function ScenePreview({
   sceneId,
