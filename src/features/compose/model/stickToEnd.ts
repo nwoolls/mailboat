@@ -14,15 +14,16 @@ export const AT_END_PX = 2;
  * or caught it again.
  *
  * By hand: moved down to the end, stuck (scrolling back down joins the
- * reply to its bar again); moved up short of the end, let go (the person
- * is reading); otherwise, or not moved at all, as it was.
+ * reply to its bar again); moved up at all, let go (the person is
+ * reading); otherwise, or not moved at all, as it was.
  */
 export function stuckAfterScroll(
   stuck: boolean,
   at: { top: number; lastTop: number; end: number; byHand: boolean },
 ): boolean {
   if (!at.byHand || Math.abs(at.top - at.lastTop) < 0.5) return stuck;
-  const atEnd = at.top >= at.end - AT_END_PX;
-  if (at.top < at.lastTop) return atEnd && stuck;
-  return atEnd || stuck;
+  // Any move up by hand, however small: a person scrolling up a pixel at a
+  // time would otherwise be put back at the end after every step.
+  if (at.top < at.lastTop) return false;
+  return at.top >= at.end - AT_END_PX || stuck;
 }

@@ -7864,8 +7864,11 @@ niche or extra", so Windows and the Release Spike come first)
       The size a ResizeObserver reports when it starts watching doesn't
       count as growth (found in review: it jumped the opening). Only a
       scroll by the person's hand lets go or sticks again: a wheel, a
-      touch or a scrolling key just before it, the scroll bar held, or the
-      pointer over an email (whose wheel never reaches the app). The
+      touch or a scrolling key just before it (Space only when it doesn't
+      press a button), the scroll bar held, or the pointer over an email
+      (whose wheel never reaches the app) with nothing resized since. Any
+      move up by hand lets go, however small, and so does focus moving to
+      the conversation above (⇧Tab out of the reply). The
       layout moves the reader too: clicking one of the assistant's ideas
       shrank the panel for a moment, the browser pulled the reader up to
       the shorter end, and the reply let go, its answer growing out of

@@ -21,8 +21,8 @@ describe("stuckAfterScroll", () => {
     expect(stuckAfterScroll(true, byHand(497, 500, 500))).toBe(false);
   });
 
-  it("stays stuck on a move up within rounding of the end", () => {
-    expect(stuckAfterScroll(true, byHand(499, 500, 500))).toBe(true);
+  it("lets go on a move up of a pixel, so slow steps add up", () => {
+    expect(stuckAfterScroll(true, byHand(499, 500, 500))).toBe(false);
   });
 
   it("stays as it was while the person scrolls down short of the end", () => {

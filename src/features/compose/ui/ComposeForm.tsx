@@ -214,15 +214,19 @@ export function ComposeForm({
       opening = false;
       toEnd();
     }, REPLY_ARRIVE_MS);
-    const letGo = () => {
-      if (!stuck) return;
+    // Let go, however: opening is over too, so if it sticks again later,
+    // growth is instant, as after the timer.
+    const released = () => {
       stuck = false;
-      // Opening is over: if it sticks again later, growth is instant, as
-      // after the timer.
       opening = false;
       window.clearTimeout(arrived);
-      // Stops the opening slide where it is, or it would reach the end and
-      // stick again.
+    };
+    // Let go by a click, a key or focus on the conversation above: the
+    // opening slide stops where it is, or it would reach the end and stick
+    // again. (A scroll up by hand is already moving the reader itself.)
+    const letGo = () => {
+      if (!stuck) return;
+      released();
       scroller.scrollTo({ top: scroller.scrollTop, behavior: "instant" });
       lastTop = scroller.scrollTop;
     };
@@ -239,6 +243,7 @@ export function ComposeForm({
       }
       if (grew && opening) slide();
       else if (grew) toEnd();
+      lastEnd = end();
     });
     growing.observe(whole);
     // Whatever grows above it (an email measured taller) moves it too, and
@@ -247,41 +252,57 @@ export function ComposeForm({
     if (content) growing.observe(content);
     growing.observe(scroller);
     // Signs of the person's hand on a scroll (stuckAfterScroll): a wheel, a
-    // touch or a scrolling key just now, the scroll bar held, or the
-    // pointer over an email (a sandboxed frame of its own, whose wheel
-    // never reaches this window and shows only as the reader scrolling).
+    // touch or a scrolling key just now, or the scroll bar held. Or the
+    // pointer over an email (a sandboxed frame of its own, whose wheel never
+    // reaches this window and shows only as the reader scrolling), but only
+    // with nothing resized since the last look: a pointer resting on an
+    // email while the assistant shrinks isn't a hand on the scroll.
     let handAt = Number.NEGATIVE_INFINITY;
     let barHeld = false;
-    let overEmail = false;
-    const byHand = () => barHeld || overEmail || performance.now() - handAt < HAND_MS;
+    let lastEnd = end();
+    const byHand = () => {
+      if (barHeld || performance.now() - handAt < HAND_MS) return true;
+      const overEmail = scroller.querySelector("iframe:hover") !== null;
+      return overEmail && Math.abs(end() - lastEnd) <= 1;
+    };
     const onHand = () => {
       handAt = performance.now();
     };
+    // A wheel turned up over the conversation lets go at once: during the
+    // opening slide (which can move a few hundred pixels a frame) the scroll
+    // it makes can still show as a move down.
+    const onWheel = (e: WheelEvent) => {
+      onHand();
+      if (e.deltaY < 0 && e.target instanceof Node && scroller.contains(e.target) && stuck)
+        released();
+    };
     const onHandKey = (e: KeyboardEvent) => {
-      const editing =
-        e.target instanceof HTMLElement &&
-        (e.target.isContentEditable || ["INPUT", "TEXTAREA"].includes(e.target.tagName));
-      if (SCROLL_KEYS.has(e.key) || (e.key === " " && !editing)) onHand();
+      // Space presses a focused button (one of the assistant's ideas, say)
+      // or types; elsewhere it scrolls.
+      const pressesOrTypes =
+        e.target instanceof Element &&
+        e.target.closest(
+          'button, a, input, textarea, select, [contenteditable="true"], [role="button"]',
+        );
+      if (SCROLL_KEYS.has(e.key) || (e.key === " " && !pressesOrTypes)) onHand();
     };
-    const onOver = (e: PointerEvent) => {
-      overEmail = e.target instanceof HTMLIFrameElement;
-    };
-    const onLeave = () => {
-      overEmail = false;
-    };
+    // Also when the press ends where the window doesn't hear it.
     const onRelease = () => {
       barHeld = false;
     };
-    window.addEventListener("wheel", onHand, { capture: true, passive: true });
+    window.addEventListener("wheel", onWheel, { capture: true, passive: true });
     window.addEventListener("touchmove", onHand, { capture: true, passive: true });
     window.addEventListener("keydown", onHandKey, { capture: true });
     window.addEventListener("pointerup", onRelease, { capture: true });
-    scroller.addEventListener("pointerover", onOver);
-    scroller.addEventListener("pointerleave", onLeave);
+    window.addEventListener("pointercancel", onRelease, { capture: true });
+    window.addEventListener("blur", onRelease);
     const onScroll = () => {
       const top = scroller.scrollTop;
+      const was = stuck;
       stuck = stuckAfterScroll(stuck, { top, lastTop, end: end(), byHand: byHand() });
+      if (was && !stuck) released();
       lastTop = top;
+      lastEnd = end();
       // The layout pulled it short of the end (content shrank for a moment):
       // back to the end at once. (While opening, the slide sees to it.)
       if (!opening && stuck) toEnd();
@@ -305,8 +326,16 @@ export function ComposeForm({
     const onKey = (e: KeyboardEvent) => {
       if (notInReply(e.target)) letGo();
     };
+    // Focus moving out of the reply to the conversation above (⇧Tab, a
+    // click in an email): the browser scrolls it into view, so let go. Not
+    // the reader itself, which takes focus to give the keyboard to the
+    // conversation without moving.
+    const onFocusIn = (e: FocusEvent) => {
+      if (e.target !== scroller && notInReply(e.target)) letGo();
+    };
     scroller.addEventListener("pointerdown", onPointer, { capture: true });
     scroller.addEventListener("keydown", onKey, { capture: true });
+    scroller.addEventListener("focusin", onFocusIn);
     return () => {
       whole.removeAttribute(REPLY_HOLDS_ATTR);
       growing.disconnect();
@@ -314,12 +343,13 @@ export function ComposeForm({
       scroller.removeEventListener("scroll", onScroll);
       scroller.removeEventListener("pointerdown", onPointer, { capture: true });
       scroller.removeEventListener("keydown", onKey, { capture: true });
-      window.removeEventListener("wheel", onHand, { capture: true });
+      window.removeEventListener("wheel", onWheel, { capture: true });
       window.removeEventListener("touchmove", onHand, { capture: true });
       window.removeEventListener("keydown", onHandKey, { capture: true });
       window.removeEventListener("pointerup", onRelease, { capture: true });
-      scroller.removeEventListener("pointerover", onOver);
-      scroller.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("pointercancel", onRelease, { capture: true });
+      window.removeEventListener("blur", onRelease);
+      scroller.removeEventListener("focusin", onFocusIn);
     };
   }, [editor, draft.kind, entry.focusKey]);
 
