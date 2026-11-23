@@ -45,7 +45,7 @@ import {
   navKeyFor,
   rangeKeyFor,
 } from "../features/mailbox/model/listNavigation";
-import { pageReader, stepEmail } from "../features/reader/ui/readerKeys";
+import { focusReader, pageReader, stepEmail } from "../features/reader/ui/readerKeys";
 import {
   actionTargets,
   type Checked,
@@ -975,15 +975,19 @@ export function Shell() {
         return;
       }
       if (e.key === "Escape" && isEditable(e.target)) {
+        const reply = inReplyText(e.target);
         (e.target as HTMLElement).blur();
-        // In a reply's text, one Esc also takes the next step below (the
-        // floating sidebar, picked conversations, then back to the list or
-        // the reader hidden), as a second Esc did: the
-        // first seemed to do nothing (owner, 2026-11-22). The reply stays
-        // with its conversation, as a new message's card stays a draft.
         // Not during an input method's conversion, which Esc cancels (229:
         // the key code some engines give a key the input method used).
-        if (e.isComposing || e.keyCode === 229 || !inReplyText(e.target)) return;
+        if (e.isComposing || e.keyCode === 229) return;
+        // In a reply's text, Esc hands the keyboard to the conversation,
+        // with an email outlined (owner, 2026-11-23), so ↑ / ↓ read on;
+        // the next Esc goes back to the list and the one after hides the
+        // reader. (From 2026-11-22 one Esc went straight on to the list,
+        // since the first seemed to do nothing.) The reply stays with its
+        // conversation, as a new message's card stays a draft.
+        if (reply && focusReader()) e.preventDefault();
+        return;
       }
       // A floating sidebar goes first, wherever the focus is, and nothing
       // under it (the reader) goes with the same press.
@@ -1129,6 +1133,19 @@ export function Shell() {
         return;
       }
       const previewing = readerOpen && selectedId !== null;
+      // → or Enter with a conversation previewed: it takes the keyboard,
+      // and ↑ / ↓ go through its emails (owner, 2026-11-23). From the
+      // conversation, ← or Esc come back here.
+      if (
+        plain &&
+        !e.shiftKey &&
+        previewing &&
+        (e.key === "ArrowRight" || (e.key === "Enter" && enterOpens(e.target))) &&
+        focusReader()
+      ) {
+        e.preventDefault();
+        return;
+      }
       // Space / ⇧Space: the open email a screenful down or up (not on a
       // focused button, which Space presses).
       if (

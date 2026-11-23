@@ -55,6 +55,11 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
   {
     group: "Reading",
     keys: [
+      // The open conversation takes the keyboard (owner, 2026-11-23).
+      ["→ or ↩", "Move into the open conversation"],
+      ["↓ / ↑", "Next / previous email there, reading down a long one first"],
+      ["→ / ←", "Open / close that email"],
+      ["Esc or ←", "Back to the list"],
       ["Space", "Scroll down"],
       [accelLabel("Shift+Space"), "Scroll up"],
       ["n / p", "Next / previous email"],

@@ -13,6 +13,18 @@ function shownReader(): HTMLElement | null {
   return null;
 }
 
+/**
+ * → or Enter on the list with a conversation previewed: the conversation
+ * takes the keyboard (useReaderKeyboard outlines an email). False if none
+ * is showing.
+ */
+export function focusReader(): boolean {
+  const reader = shownReader();
+  if (!reader) return false;
+  reader.focus({ preventScroll: true });
+  return true;
+}
+
 /** Space / ⇧Space: the open conversation a screenful down or up. */
 export function pageReader(dir: 1 | -1): boolean {
   const reader = shownReader();
