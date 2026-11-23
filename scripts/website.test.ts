@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
+import brand from "../brand.json";
 import {
   checkSite,
   securityTxtDaysLeft,
   securityTxtProblems,
+  mp4DurationSeconds,
   type Pages,
+  trailerLengthProblems,
   versionChipProblems,
 } from "./website";
 
@@ -462,5 +465,125 @@ describe("versionChipProblems", () => {
 
   it("fails when the chip is gone", () => {
     expect(versionChipProblems("<main><p>macOS and Windows</p></main>", "0.2.0")).toHaveLength(1);
+  });
+});
+
+/** A box: its size, its four-letter type, then its contents. */
+function box(type: string, ...contents: Uint8Array[]): Uint8Array {
+  const size = 8 + contents.reduce((n, c) => n + c.length, 0);
+  const out = new Uint8Array(size);
+  new DataView(out.buffer).setUint32(0, size);
+  out.set(
+    [...type].map((c) => c.charCodeAt(0)),
+    4,
+  );
+  let at = 8;
+  for (const c of contents) {
+    out.set(c, at);
+    at += c.length;
+  }
+  return out;
+}
+/** A movie header with this timescale and duration, in version 0 (32-bit) or 1 (64-bit). */
+function mvhd(timescale: number, duration: number, version: 0 | 1 = 0): Uint8Array {
+  const body = new Uint8Array(version === 1 ? 108 : 96);
+  const view = new DataView(body.buffer);
+  body[0] = version;
+  if (version === 1) {
+    view.setUint32(20, timescale);
+    view.setBigUint64(24, BigInt(duration));
+  } else {
+    view.setUint32(12, timescale);
+    view.setUint32(16, duration);
+  }
+  return box("mvhd", body);
+}
+
+describe("mp4DurationSeconds", () => {
+  it("reads the length from the movie header, after other boxes", () => {
+    const file = [
+      box("ftyp", new Uint8Array(8)),
+      box("free"),
+      box("moov", box("udta"), mvhd(1000, 28416)),
+    ];
+    const bytes = new Uint8Array(file.reduce((n, b) => n + b.length, 0));
+    let at = 0;
+    for (const b of file) {
+      bytes.set(b, at);
+      at += b.length;
+    }
+    expect(mp4DurationSeconds(bytes)).toBeCloseTo(28.416);
+  });
+
+  it("reads a version 1 (64-bit) header", () => {
+    expect(mp4DurationSeconds(box("moov", mvhd(90000, 2557440, 1)))).toBeCloseTo(28.416);
+  });
+
+  it("gives nothing for a file without one, or cut short", () => {
+    expect(mp4DurationSeconds(box("ftyp", new Uint8Array(8)))).toBeUndefined();
+    expect(mp4DurationSeconds(box("moov", mvhd(1000, 28416)).subarray(0, 30))).toBeUndefined();
+    expect(mp4DurationSeconds(new Uint8Array(0))).toBeUndefined();
+  });
+});
+
+describe("trailerLengthProblems", () => {
+  const button = (said: string, file = "trailer.mp4") =>
+    `<a class="trailer-button" href="video/${file}">Watch the trailer <span class="trailer-length">${said}</span></a>`;
+  const url = (file: string) => `https://get${brand.shortName}.app/video/${file}`;
+  const lengths = { "trailer.mp4": 28.416, "trailer-fast.mp4": 28.416 };
+
+  it("passes lengths that match the videos, to the second", () => {
+    const readme = `▶ [Watch the 28-second trailer](${url("trailer.mp4")})`;
+    const features = `▶ [The speed trailer](${url("trailer-fast.mp4")}): search and the\ncommand palette (28 seconds, with music)`;
+    expect(
+      trailerLengthProblems(
+        button("0:28"),
+        { "README.md": readme, "docs/FEATURES.md": features },
+        lengths,
+      ),
+    ).toEqual([]);
+  });
+
+  it("fails the button when its time isn't the video's", () => {
+    expect(trailerLengthProblems(button("0:30"), {}, lengths)).toEqual([
+      "index.html: the trailer button says 0:30 but trailer.mp4 runs 0:28: change it to 0:28",
+    ]);
+  });
+
+  it("fails a number of seconds in a paragraph that links a trailer, even on the next line", () => {
+    const features = `▶ [The speed trailer](${url("trailer-fast.mp4")}): search and the\ncommand palette (30 seconds, with music)`;
+    expect(
+      trailerLengthProblems(button("0:28"), { "docs/FEATURES.md": features }, lengths),
+    ).toEqual([
+      "docs/FEATURES.md: says 30 seconds next to trailer-fast.mp4, which runs 28: change it to 28",
+    ]);
+  });
+
+  it("checks every trailer a paragraph links against its number", () => {
+    const text = `Trailers, about 28 seconds each: [one](${url("trailer.mp4")}), [two](${url("trailer-fast.mp4")}).`;
+    expect(
+      trailerLengthProblems(
+        button("0:28"),
+        { "README.md": text },
+        { ...lengths, "trailer-fast.mp4": 31.2 },
+      ),
+    ).toEqual([
+      "README.md: says 28 seconds next to trailer-fast.mp4, which runs 31: change it to 31",
+    ]);
+  });
+
+  it("leaves a paragraph without a trailer link alone, and fails a link to a missing video", () => {
+    expect(
+      trailerLengthProblems(button("0:28"), { "README.md": "A 90-second read." }, lengths),
+    ).toEqual([]);
+    expect(
+      trailerLengthProblems(
+        button("0:28"),
+        { "README.md": `[x](${url("trailer-gone.mp4")}) 28 seconds` },
+        lengths,
+      ),
+    ).toEqual([
+      "README.md links trailer-gone.mp4, which isn't in website/video/ (or has no readable length)",
+    ]);
   });
 });

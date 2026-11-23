@@ -8,6 +8,7 @@
 // own files, and the basics a page needs (language, title, description, image
 // sizes and descriptions).
 import { posix } from "node:path";
+import brand from "../brand.json";
 
 /** The pages, by path inside website/ (`index.html`), with their text. */
 export type Pages = Record<string, string>;
@@ -375,4 +376,110 @@ export function versionChipProblems(index: string, version: string): string[] {
     : [
         `index.html: the chip says v${chip[1]}.${chip[2]} but package.json is ${version}: change it to v${major}.${minor}`,
       ];
+}
+
+/**
+ * An MP4's length in seconds, from its movie header (`moov` → `mvhd`): the
+ * timescale and the duration in it. Undefined when the file has no such box.
+ */
+export function mp4DurationSeconds(bytes: Uint8Array): number | undefined {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const type = (at: number) => String.fromCharCode(...bytes.subarray(at + 4, at + 8));
+  // The boxes from `start` to `end`: each a size, a type, then its contents.
+  const find = (start: number, end: number, want: string): [number, number] | undefined => {
+    let at = start;
+    while (at + 8 <= end) {
+      let size = view.getUint32(at);
+      let header = 8;
+      if (size === 1) {
+        if (at + 16 > end) return undefined;
+        size = Number(view.getBigUint64(at + 8));
+        header = 16;
+      } else if (size === 0) {
+        size = end - at;
+      }
+      if (size < header || at + size > end) return undefined;
+      if (type(at) === want) return [at + header, at + size];
+      at += size;
+    }
+    return undefined;
+  };
+  const moov = find(0, bytes.byteLength, "moov");
+  if (!moov) return undefined;
+  const mvhd = find(moov[0], moov[1], "mvhd");
+  if (!mvhd) return undefined;
+  const [at, end] = mvhd;
+  const version = bytes[at];
+  // After the version and flags: two dates, then the timescale and the
+  // duration, 32-bit each in version 0 and 64-bit dates and duration in 1.
+  const need = version === 1 ? 32 : 20;
+  if (at + need > end) return undefined;
+  const timescale = view.getUint32(at + (version === 1 ? 20 : 12));
+  const duration = version === 1 ? Number(view.getBigUint64(at + 24)) : view.getUint32(at + 16);
+  return timescale > 0 ? duration / timescale : undefined;
+}
+
+/** A link to a trailer on the website (the domain is the app's short name, from brand.json). */
+const TRAILER_URL = new RegExp(
+  `https://get${brand.shortName}\\.app/video/(trailer[\\w-]*\\.mp4)`,
+  "g",
+);
+
+/**
+ * The trailers' length is typed by hand where they're linked: the website's
+ * button ("Watch the trailer 0:28") and the README's and FEATURES.md's links
+ * ("28 seconds", "28-second"). Each must match the video it points at, to the
+ * second, as read from the files in website/video/ (`lengths`, seconds by file
+ * name). On the home page, the button's `m:ss` and the file its link opens; in
+ * Markdown, each paragraph that links a trailer: every "N seconds" or
+ * "N-second" in it must match each trailer it links.
+ */
+export function trailerLengthProblems(
+  index: string,
+  markdown: Record<string, string>,
+  lengths: Record<string, number>,
+): string[] {
+  const problems: string[] = [];
+  const seconds = (file: string, where: string): number | undefined => {
+    const length = lengths[file];
+    if (length === undefined)
+      problems.push(
+        `${where} links ${file}, which isn't in website/video/ (or has no readable length)`,
+      );
+    return length === undefined ? undefined : Math.round(length);
+  };
+  const button =
+    /href="video\/(trailer[\w-]*\.mp4)"[\s\S]*?class="trailer-length">\s*(\d+):(\d\d)\s*</.exec(
+      index,
+    );
+  if (button) {
+    const [, file, minutes, secs] = button;
+    const want = seconds(file!, "index.html");
+    const said = Number(minutes) * 60 + Number(secs);
+    if (want !== undefined && said !== want) {
+      const right = `${Math.floor(want / 60)}:${String(want % 60).padStart(2, "0")}`;
+      problems.push(
+        `index.html: the trailer button says ${minutes}:${secs} but ${file} runs ${right}: change it to ${right}`,
+      );
+    }
+  }
+  for (const [name, text] of Object.entries(markdown)) {
+    for (const paragraph of text.split(/\n\s*\n/)) {
+      const files = [...paragraph.matchAll(TRAILER_URL)].map((m) => m[1]!);
+      if (files.length === 0) continue;
+      const said = [...paragraph.matchAll(/\b(\d+)[- ]seconds?\b/g)].map((m) => Number(m[1]));
+      for (const file of new Set(files)) {
+        const want = seconds(file, name);
+        if (want === undefined) continue;
+        for (const n of said) {
+          if (n !== want) {
+            problems.push(
+              `${name}: says ${n} seconds next to ${file}, which runs ${want}: change it to ${want}`,
+            );
+          }
+        }
+      }
+    }
+  }
+  return problems;
 }

@@ -8,7 +8,8 @@
 // .well-known/security.txt, included). The policy is also checked against the
 // code (scripts/policy.ts): the Google permissions and the defaults it states.
 // And the version on the home page against package.json, for a stable
-// version (versionChipProblems).
+// version (versionChipProblems), and the trailers' length where they're
+// linked against the videos in website/video/ (trailerLengthProblems).
 // Run by `bun run check:website`, which `bun run check:web` includes.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import {
@@ -18,6 +19,8 @@ import {
   securityTxtProblems,
   type Pages,
   type Sheets,
+  mp4DurationSeconds,
+  trailerLengthProblems,
   versionChipProblems,
 } from "./website";
 import { claimProblems, parseScopes, POLICY_SOURCES, scopeProblems } from "./policy";
@@ -58,12 +61,31 @@ const policyChecks = (): string[] => {
   }
 };
 
+// The trailers' lengths, read from the videos themselves.
+const trailerLengths = (): Record<string, number> => {
+  const folder = `${root}video/`;
+  if (!existsSync(folder)) return {};
+  const lengths: Record<string, number> = {};
+  for (const name of readdirSync(folder)) {
+    if (!/^trailer[\w-]*\.mp4$/.test(name)) continue;
+    const length = mp4DurationSeconds(new Uint8Array(readFileSync(`${folder}${name}`)));
+    if (length !== undefined) lengths[name] = length;
+  }
+  return lengths;
+};
+
 const problems = [
   ...checkSite(pages, (path) => existsSync(`${root}${path}`), read("_headers"), sheets),
   ...securityTxtProblems(securityTxt),
   ...policyChecks(),
   // The home page's version against the app's (a stable release must match).
   ...versionChipProblems(pages["index.html"], JSON.parse(repoFile("package.json")).version),
+  // The trailers' length, typed by hand where they're linked, against the videos.
+  ...trailerLengthProblems(
+    pages["index.html"],
+    { "README.md": repoFile("README.md"), "docs/FEATURES.md": repoFile("docs/FEATURES.md") },
+    trailerLengths(),
+  ),
 ];
 
 if (problems.length) {
