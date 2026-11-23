@@ -5268,6 +5268,27 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [x] The first Esc in a reply seemed to do nothing *(owner report,
+      2026-11-22; fixed the same day, branch `reply-esc-leaves-reply`)*:
+      after clicking Reply, the first Esc only took the cursor out of
+      the text (the app's rule for every text box), and only the second
+      went back to the list (or, in a wide window, hid the reader). Now
+      one Esc in a reply's text does both (the second step is Esc's next
+      one: a floating sidebar or picked conversations go first, as
+      before), and the reply stays with its conversation, text and all,
+      as Esc only minimizes a new message's card (owner's choice). Esc
+      in the reply's other fields (To, Subject), and during an input
+      method's conversion, still only does what it did. First tried: Esc
+      closing a reply nobody had changed (never merged). Closing a reply
+      is Discard, which deletes its saved copy, and two rounds of review
+      kept finding replies with something worth keeping that counted as
+      unchanged (a reopened draft, added recipients, a save or file read
+      under way, an assistant chat, a forward's files), so it was
+      dropped for this, which closes nothing. `Shell.tsx`
+      (`inReplyText`); `reply-esc.spec.ts`, whose two one-Esc tests fail
+      without the change. The sidebar tests from #212 began with Esc to
+      leave a reply's text; they now leave it without Esc, so the
+      pointer stays where Reply was clicked.
 - [x] On the website, the hero screenshot left a tall window still tipped
       back *(owner report, 2026-11-19; fixed the same day, branch
       `hero-tilt-settle`)*. It settled flat over a fixed 70% of the window's

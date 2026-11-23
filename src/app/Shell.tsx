@@ -254,6 +254,15 @@ function listPageRows(): number {
   return Math.max(1, Math.floor(list.clientHeight / (row.offsetHeight + 4)) - 1);
 }
 
+/** The text of an inline reply (`ReplyArea`), not its other fields. */
+function inReplyText(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    target.isContentEditable &&
+    target.closest("[data-inline-reply]") !== null
+  );
+}
+
 function isEditable(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
@@ -967,7 +976,14 @@ export function Shell() {
       }
       if (e.key === "Escape" && isEditable(e.target)) {
         (e.target as HTMLElement).blur();
-        return;
+        // In a reply's text, one Esc also takes the next step below (the
+        // floating sidebar, picked conversations, then back to the list or
+        // the reader hidden), as a second Esc did: the
+        // first seemed to do nothing (owner, 2026-11-22). The reply stays
+        // with its conversation, as a new message's card stays a draft.
+        // Not during an input method's conversion, which Esc cancels (229:
+        // the key code some engines give a key the input method used).
+        if (e.isComposing || e.keyCode === 229 || !inReplyText(e.target)) return;
       }
       // A floating sidebar goes first, wherever the focus is, and nothing
       // under it (the reader) goes with the same press.

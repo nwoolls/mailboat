@@ -16,6 +16,13 @@ const list = (page: Page) => page.locator("section.panel").first();
 const listHidden = (page: Page) =>
   list(page).evaluate((el) => el.hasAttribute("inert") && el.getBoundingClientRect().width < 1);
 
+/**
+ * Takes the focus out of the reply's text without Esc (which would also
+ * leave the conversation: reply-esc.spec.ts) and without moving the pointer.
+ */
+const leaveText = (page: Page) =>
+  page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+
 async function open(page: Page, width: number) {
   await page.setViewportSize({ width, height: 700 });
   await page.goto("/tests/browser/harness.html?mode=shell&rows=1");
@@ -222,7 +229,7 @@ test("going back doesn't happen while typing, and Esc puts a floating sidebar aw
   await page.keyboard.press("Meta+BracketLeft");
   await page.waitForTimeout(200);
   expect(await listHidden(page)).toBe(true);
-  await page.keyboard.press("Escape");
+  await leaveText(page);
   // A sidebar floated by its shortcut, with focus outside it: Esc puts it
   // away, and the conversation stays, with the pointer still resting on
   // Reply, under the sidebar.
@@ -243,12 +250,16 @@ test("Esc puts a floating sidebar away under a pointer that hasn't moved", async
   await page.getByRole("option").first().click();
   await expect.poll(() => listHidden(page)).toBe(true);
   await page.getByRole("button", { name: "Reply", exact: true }).click();
-  await page.keyboard.press("Escape");
+  // The owner closed the empty reply's text with Esc; one Esc there now
+  // leaves the conversation too, so the focus leaves the text without it.
+  await leaveText(page);
   const peek = page.locator(".sidebar-peek");
   await page.keyboard.press("Control+Meta+s");
   await expect(peek).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(peek).toHaveCount(0);
+  // The sidebar went, and only it.
+  expect(await listHidden(page)).toBe(true);
 });
 
 test("the shortcut puts away a sidebar its button floated, for good", async ({ page }) => {
