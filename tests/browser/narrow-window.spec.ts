@@ -222,7 +222,12 @@ test("going back doesn't happen while typing, and Esc puts a floating sidebar aw
   await page.keyboard.press("Meta+BracketLeft");
   await page.waitForTimeout(200);
   expect(await listHidden(page)).toBe(true);
+  // Esc in the reply's text goes back to the list at once (see
+  // reply-esc.spec.ts); back into the conversation for the rest.
   await page.keyboard.press("Escape");
+  await expect.poll(() => listHidden(page)).toBe(false);
+  await page.getByRole("option").first().click();
+  await expect.poll(() => listHidden(page)).toBe(true);
   // A sidebar floated by its shortcut, with focus outside it: Esc puts it
   // away, and the conversation stays. The pointer first leaves the Reply
   // button, which is where the sidebar floats in: one sliding in under a
