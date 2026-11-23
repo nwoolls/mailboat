@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1-beta.1
+
+### Fixes
+
+- One Esc in a reply's text now does what two did: it leaves the text and takes Esc's next step, usually back to the list or hiding the reader. The reply stays with its conversation.
+- On a Mac, tooltips now show when the app is assigned to one desktop and its window is on another.
+- In a narrow window, Esc puts away the floating sidebar even when the pointer rests where it slid in.
+- The one-line AI summaries in the conversation list say something was confirmed, booked, paid or approved only when the email uses that word. Saved one-line summaries are deleted once by this update and written again as you scroll.
+
 ## 0.3.1-beta.0
 
 ### Fixes
