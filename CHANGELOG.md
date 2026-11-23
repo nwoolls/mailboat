@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1-beta.2
+
+### Toybox and screensavers
+
+- Settings → Toybox now says that the system's reduce motion setting keeps the toys and the screensaver mostly still, and whether it is on.
+
+### Security and privacy
+
+- The app's database library and its built-in copy of SQLite are updated, with fixes for memory-safety bugs, along with smaller updates to the window framework and the connection used by AI apps.
+- A library the app's window framework uses is updated with a security fix for the way it encrypts cookies.
+
 ## 0.3.1-beta.1
 
 ### Fixes
