@@ -70,7 +70,10 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
   // and grow back, moving a reply being written below it.
   const text = (query.isFetching && streamed) || (query.data?.text ?? "");
   // Let out at an even pace as it's written; one from the cache shows at once.
-  const shown = usePacedText(text, !query.isFetching);
+  const paced = usePacedText(text, !query.isFetching);
+  const shown = paced.text;
+  // Until all of it is on screen: the header, busy state and "Summarize
+  // again" go by this, not by the request alone.
   const writing = query.isFetching || shown.length < text.length;
   // A request from a menu brings the card into view (the email may be
   // scrolled well past it).
@@ -106,7 +109,7 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
     <section
       ref={card}
       aria-label="Summary"
-      aria-busy={query.isFetching}
+      aria-busy={writing}
       className="message-card mb-2 rounded-[10px] px-4 pt-2.5 pb-3 ring-1 ring-stroke ring-inset"
       style={{ zoom }}
     >
@@ -121,7 +124,7 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
         </span>
         <span title="Change in Settings → AI">· {PROVIDER_NAMES[provider]}</span>
         <span className="ml-auto flex items-center">
-          {!query.isFetching && (
+          {!writing && (
             <button
               type="button"
               aria-label="Summarize again"
@@ -167,7 +170,7 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
           {points.map((p, i) => (
             // oxlint-disable-next-line react/no-array-index-key -- by place, so a point being written keeps its words (and their fade) as it grows
             <li key={i}>
-              <FadeWords text={p} />
+              <FadeWords text={p} fade={paced.fade} />
             </li>
           ))}
         </ul>

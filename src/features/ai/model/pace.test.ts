@@ -23,10 +23,17 @@ describe("pacing", () => {
     expect(nextShown(12, 10, MIN_RATE, 0.1)).toBe(10);
   });
 
-  it("speeds up when it falls behind, so a big piece doesn't lag", () => {
-    // 600 characters at once while more is coming: caught up in about
-    // half a second, not ten.
-    expect(streamRate(600) * BEHIND_SECONDS).toBeCloseTo(600);
+  it("catches up with a big piece within the time it may fall behind", () => {
+    // 600 characters at once while more is coming, at the pace set when
+    // they arrived: shown in about half a second, not ten.
+    const rate = streamRate(600);
+    let shown = 0;
+    let t = 0;
+    while (shown < 600 && t < 5) {
+      shown = nextShown(shown, 600, rate, 1 / 60);
+      t += 1 / 60;
+    }
+    expect(t).toBeLessThanOrEqual(BEHIND_SECONDS + 1 / 30);
   });
 
   it("shows the rest of a whole answer within the drain time, at an even pace", () => {

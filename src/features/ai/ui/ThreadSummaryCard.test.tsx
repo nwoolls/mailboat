@@ -126,6 +126,30 @@ describe("ThreadSummaryCard", () => {
     expect(screen.getByText(point("Tickets booked"))).toBeTruthy();
   });
 
+  it("stays busy, without Summarize again, until all of the summary is shown", async () => {
+    aiThreadSummary.mockResolvedValue({
+      status: "ok",
+      data: {
+        threadId: 13,
+        text: "- Lunch moved to Friday at the usual place",
+        provider: "codex",
+        createdAt: 0,
+      },
+    });
+    show(13);
+    fireEvent.click(screen.getByText("Summarize"));
+    // The answer is in, all at once, but still being shown.
+    await act(async () => {});
+    const card = screen.getByRole("region", { name: "Summary" });
+    expect(card.getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByLabelText("Summarize again")).toBeNull();
+    expect(screen.getByText("Summarizing…")).toBeTruthy();
+
+    await screen.findByText(point("Lunch moved to Friday at the usual place"));
+    expect(card.getAttribute("aria-busy")).toBe("false");
+    expect(screen.getByLabelText("Summarize again")).toBeTruthy();
+  });
+
   it("leaves other conversations alone", () => {
     requestSummary(9);
     show(10);

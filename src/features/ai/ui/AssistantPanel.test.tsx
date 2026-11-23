@@ -21,7 +21,7 @@ vi.mock("../../../shared/lib/queries", () => ({
         },
 }));
 
-const { AssistantPanel } = await import("./AssistantPanel");
+const { AssistantPanel, forgetChat } = await import("./AssistantPanel");
 
 afterEach(cleanup);
 
@@ -105,6 +105,64 @@ describe("AssistantPanel", () => {
 
     view.unmount();
     render(panel());
+    expect(screen.getByText("Replace")).toBeTruthy();
+    expect(screen.queryByLabelText("Stop")).toBeNull();
+  });
+
+  /** Asks for a long answer (it takes a while to show) and waits for it to arrive. */
+  async function askLong(panel: () => React.ReactElement) {
+    const text = "Thanks for the venue options. ".repeat(30).trim();
+    aiWrite.mockResolvedValue({
+      status: "ok",
+      data: { text, html: `<p>${text}</p>`, subject: null },
+    });
+    const view = render(panel());
+    const field = screen.getByLabelText("Ask the AI");
+    fireEvent.change(field, { target: { value: "Say yes" } });
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Enter" });
+    });
+    expect(screen.queryByText("Replace")).toBeNull();
+    return view;
+  }
+
+  it("doesn't bring back the chat of a message discarded while an answer was shown", async () => {
+    const draft = { ...newDraft([], 8, "me@x.example"), kind: "reply" as const, threadId: 42 };
+    const panel = () => (
+      <AssistantPanel draft={draft} placement="top" onUse={vi.fn()} onClose={vi.fn()} />
+    );
+    const view = await askLong(panel);
+    // Sent or discarded: compose forgets the chat, then the panel goes.
+    forgetChat(draft.id);
+    view.unmount();
+    render(panel());
+    expect(screen.queryByText("Replace")).toBeNull();
+    expect(screen.queryByText("Say yes")).toBeNull();
+  });
+
+  it("hands an answer still being shown to the card a reply pops out into", async () => {
+    const draft = { ...newDraft([], 9, "me@x.example"), kind: "reply" as const, threadId: 42 };
+    const panel = (where: "top" | "left") => (
+      <AssistantPanel
+        key={where}
+        draft={draft}
+        placement={where}
+        onUse={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    const view = await askLong(() => panel("top"));
+    // One render unmounts the inline panel and mounts the card's.
+    view.rerender(panel("left"));
+    expect(screen.getByText("Replace")).toBeTruthy();
+  });
+
+  it("shows the rest of an answer at once when Stop is pressed while it's shown", async () => {
+    const draft = { ...newDraft([], 10, "me@x.example"), kind: "reply" as const, threadId: 42 };
+    await askLong(() => (
+      <AssistantPanel draft={draft} placement="top" onUse={vi.fn()} onClose={vi.fn()} />
+    ));
+    fireEvent.click(screen.getByLabelText("Stop"));
     expect(screen.getByText("Replace")).toBeTruthy();
     expect(screen.queryByLabelText("Stop")).toBeNull();
   });

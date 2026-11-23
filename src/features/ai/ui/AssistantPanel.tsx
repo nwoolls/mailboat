@@ -72,7 +72,8 @@ export function AssistantPanel({
   const [pending, setPending] = useState<number | null>(null);
   const pendingRef = useRef<number | null>(null);
   // An answer that is in, still being let out onto the screen at an even
-  // pace (`usePacedText`); it joins the chat once all of it is shown.
+  // pace (`usePacedText`). It's kept with the chat (`chats`) as soon as it
+  // arrives, and joins what this panel shows once all of it is on screen.
   const [landing, setLanding] = useState<{ request: number; message: ChatMessage } | null>(null);
   const landingRef = useRef<ChatMessage | null>(null);
   const busy = pending !== null || landing !== null;
@@ -88,16 +89,13 @@ export function AssistantPanel({
     setMessages((prev) => [...prev, m]);
   }, [setMessages]);
 
-  // Closing the panel (or the message) stops a request being written, and
-  // keeps an answer that was still being shown.
-  useEffect(() => {
-    const id = draft.id;
-    return () => {
+  // Closing the panel (or the message) stops a request being written.
+  useEffect(
+    () => () => {
       if (pendingRef.current !== null) void commands.aiCancel(pendingRef.current);
-      const m = landingRef.current;
-      if (m) chats.set(id, [...(chats.get(id) ?? []), m]);
-    };
-  }, [draft.id]);
+    },
+    [],
+  );
   // Keep the newest at the bottom in view as it's written (after every
   // render: a new bubble, or more of the answer).
   const follow = useCallback(() => {
@@ -123,6 +121,11 @@ export function AssistantPanel({
           html: answer.html,
           subject: answer.subject,
         });
+        // Kept with the chat at once, so it's there however the panel
+        // goes (closed, or a reply popped out into the card) while it's
+        // still being shown; unless the message was sent or discarded.
+        const chat = chats.get(draft.id);
+        if (chat) chats.set(draft.id, [...chat, message]);
         landingRef.current = message;
         setLanding({ request: id, message });
       })
@@ -294,6 +297,7 @@ export function AssistantPanel({
             // The same bubble from the request until its answer has landed.
             key={pending ?? landing?.request}
             text={landing?.message.text ?? streamed}
+            subject={landing?.message.subject ?? null}
             done={landing !== null}
             onShown={land}
             onGrow={follow}
@@ -369,23 +373,27 @@ export function AssistantPanel({
 /**
  * The answer being written: a single line with the ✦ and "Writing…" until
  * the first words arrive, then a bubble with the words fading in at an
- * even pace. The bubble is laid out like the draft it becomes (with room
- * for Insert and Replace), so nothing moves when it does.
+ * even pace. The bubble is laid out like the draft it becomes, subject
+ * and room for Insert and Replace included, so the buttons appearing don't
+ * move it (formatting, such as bold or a list, can still reflow it).
  */
 function WritingBubble({
   text,
+  subject,
   done,
   onShown,
   onGrow,
 }: {
   text: string;
+  /** A new message's subject, once the answer is in (shown as the draft shows it). */
+  subject: string | null;
   /** The whole answer is in. */
   done: boolean;
   /** All of it is on screen. */
   onShown: () => void;
   onGrow: () => void;
 }) {
-  const shown = usePacedText(text, done, onShown);
+  const shown = usePacedText(text, done, onShown).text;
   useEffect(onGrow);
   if (!shown)
     return (
@@ -396,6 +404,11 @@ function WritingBubble({
     );
   return (
     <div aria-busy className="ai-rise rounded-lg bg-selection px-2.5 pt-2 pb-1.5">
+      {subject && (
+        <p className="mb-1 text-xs text-content/55">
+          Subject: <span className="text-content/80">{subject}</span>
+        </p>
+      )}
       <p className="whitespace-pre-wrap text-content/85">
         <FadeWords text={shown} />
       </p>
