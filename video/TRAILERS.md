@@ -126,7 +126,8 @@ OUT=/tmp/shots SCREEN_X=2560 SCREEN_Y=342 video/capture.sh setup dark reply-ai
 Use a fresh demo for each run and don't try a step out before taking it: a
 reply opened and closed leaves a draft that changes the next take. The
 script stops if the demo isn't the frontmost app or its window has moved,
-before any click, key or capture. Look at every take before using it.
+before any click, key or capture and all through a recording's waits; when
+it stops (or on Ctrl-C), it ends the recording and deletes the part made. Look at every take before using it.
 
 | Take | What it is |
 |---|---|

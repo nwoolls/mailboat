@@ -30,6 +30,23 @@ for p in $(ps -axo pid,args | grep -F -- "--demo" | grep -v grep | awk '{print $
 done
 [ -n "$pid" ] || { echo "no on-screen window of the demo (bun run demo)"; exit 1; }
 
+# What runs in the background while a take is made: the wallpaper behind the
+# window, the recording, and the file it writes. However the script ends (a
+# step failing, Ctrl-C, a kill), they are stopped and a recording cut short
+# is deleted; Ctrl-C and a kill end the script there, not at the next step.
+bd=""
+rec=""
+partial=""
+cleanup() {
+  [ -n "$rec" ] && kill "$rec" 2>/dev/null
+  [ -n "$bd" ] && kill "$bd" 2>/dev/null
+  [ -n "$partial" ] && rm -f "$partial"
+  rec=""; bd=""; partial=""
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 # Every click, key and capture below is at a screen position or goes to the
 # frontmost app, so each is sent only while the demo is frontmost and its
 # window is where `setup` put it; anything else stops the script.
@@ -45,6 +62,9 @@ guard() {
   placed || stop "the demo window is not where setup put it (run setup)"
 }
 focus() { ev "set frontmost of (first process whose unix id is $pid) to true"; sleep 0.5; guard; }
+# A wait during a take (whole seconds), checking all along that the demo is
+# still frontmost and in place, so a recording never runs on over another app.
+hold() { local end=$((SECONDS + $1)); while [ "$SECONDS" -lt "$end" ]; do guard; sleep 0.25; done; }
 # A point of a gallery picture (1600x900, the window at 88,40 in it), on screen.
 c() { guard; "$OUT/bin/click" $((SX + $1)) $((SY + 40 + $2)) || stop "click failed"; sleep "${3:-1.2}"; }
 key() { guard; ev "keystroke \"$1\"${2:+ using $2 down}"; sleep "${3:-1}"; }
@@ -73,9 +93,6 @@ EOF
 }
 # Settings: open, a sidebar row, a point on the page, back (gallery positions).
 settings() { focus; key "," command 1.6; c 145 "$1" 1.6; c "$2" "$3" 1.6; c 143 842 1.4; }
-# The wallpaper behind the window while a take is made; gone when the script ends, whatever happens.
-bd=""
-trap '[ -n "$bd" ] && kill "$bd" 2>/dev/null' EXIT INT TERM
 backdrop() { "$OUT/bin/backdrop" "$SX" $((SY + 40)) 1512 900 "$OUT/bg/$1.png" & bd=$!; sleep 1.2; focus; "$OUT/bin/mouse" $((SX + 750)) $((SY + 12)); sleep 0.4; }
 still() {   # still <name> <wallpaper>
   backdrop "$2"
@@ -90,10 +107,12 @@ record() {  # record <name> <wallpaper> <seconds> <steps…>
   backdrop "$paper"
   guard
   rm -f "$REC/$clip.mov"
-  screencapture -v -V "$most" -R "$region" -x "$REC/$clip.mov" & local rec=$!
-  sleep 1.2
+  partial="$REC/$clip.mov"
+  screencapture -v -V "$most" -R "$region" -x "$REC/$clip.mov" & rec=$!
+  hold 1
   "$@"
   wait "$rec" && [ -s "$REC/$clip.mov" ] || stop "no recording of $clip (screen recording allowed?)"
+  rec=""; partial=""
   kill "$bd" 2>/dev/null; bd=""
   pad "$REC/$clip.mov" "$REC/$clip.mp4" -an -r 60 -c:v libx264 -preset slow -crf 14 -g 30 -pix_fmt yuv420p -movflags +faststart \
     || stop "converting $clip failed"
@@ -104,13 +123,13 @@ palette_steps() {
   sleep 0.8; key k command 1.4
   # Checked once before the letters, so they keep their rhythm.
   guard; local ch; for ch in a r c h; do ev "keystroke \"$ch\""; sleep 0.32; done
-  sleep 3
+  hold 3
 }
 reply_ai_steps() {
   c 798 766 2.2                       # Reply
   c 1393 825 1.6                      # the AI button in the reply's bar
   guard; ev 'keystroke "Confirm the booking"'; sleep 0.6
-  guard; ev 'key code 36'; sleep 14   # Return: ask for the draft
+  guard; ev 'key code 36'; hold 14    # Return: ask for the draft
 }
 
 for take in "$@"; do
@@ -122,7 +141,7 @@ for take in "$@"; do
     codes) still codes-light sonoma ;;
     palette)        # ⌘K over Lisbon, typing (light); dismisses the alert
       focus; esc; esc; c 1481 104 0.8; c 144 134 1.4; c 600 300 2.4
-      record palette-light sonoma 9 palette_steps; esc ;;
+      record palette-light sonoma 10 palette_steps; esc ;;
     dark) settings 228 1165 290 ;;
     inbox) focus; esc; esc; c 144 134 1.6; still inbox-dark sunset ;;
     conversation) focus; c 600 300 2.4; still conversation-dark sunset ;;
