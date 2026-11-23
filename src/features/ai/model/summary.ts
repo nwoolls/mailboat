@@ -11,3 +11,11 @@ export function summaryPoints(text: string): string[] {
   if (marked.length === 0) return lines.length > 0 ? [lines.join(" ")] : [];
   return marked.map((l) => l.replace(/^([-•*]|\d+\.)\s+/, "").replace(/\*\*/g, ""));
 }
+
+/**
+ * The points of a summary still being written: as `summaryPoints`, less any
+ * point with no words yet (a bullet's "-" before its first word arrives).
+ */
+export function pointsSoFar(text: string): string[] {
+  return summaryPoints(text).filter((p) => /[\p{L}\p{N}]/u.test(p));
+}

@@ -157,6 +157,50 @@ describe("AssistantPanel", () => {
     expect(screen.getByText("Replace")).toBeTruthy();
   });
 
+  it("leaves out an answer to a request the panel canceled when the reply popped out", async () => {
+    let answer!: (v: unknown) => void;
+    aiWrite.mockReturnValue(new Promise((r) => (answer = r)));
+    const draft = { ...newDraft([], 11, "me@x.example"), kind: "reply" as const, threadId: 42 };
+    const panel = (where: "top" | "left") => (
+      <AssistantPanel
+        key={where}
+        draft={draft}
+        placement={where}
+        onUse={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+    const view = render(panel("top"));
+    const field = screen.getByLabelText("Ask the AI");
+    fireEvent.change(field, { target: { value: "Say yes" } });
+    await act(async () => {
+      fireEvent.keyDown(field, { key: "Enter" });
+    });
+    // Popped out while it was being written (the inline panel cancels it),
+    // and the answer arrives anyway.
+    view.rerender(panel("left"));
+    await act(async () => {
+      answer({ status: "ok", data: { text: "Late", html: "<p>Late</p>", subject: null } });
+    });
+    view.unmount();
+    render(panel("left"));
+    expect(screen.queryByText("Replace")).toBeNull();
+  });
+
+  it("doesn't bring back a discarded message's chat when Stop is pressed after", async () => {
+    const draft = { ...newDraft([], 12, "me@x.example"), kind: "reply" as const, threadId: 42 };
+    const panel = () => (
+      <AssistantPanel draft={draft} placement="top" onUse={vi.fn()} onClose={vi.fn()} />
+    );
+    const view = await askLong(panel);
+    forgetChat(draft.id);
+    fireEvent.click(screen.getByLabelText("Stop"));
+    view.unmount();
+    render(panel());
+    expect(screen.queryByText("Replace")).toBeNull();
+    expect(screen.queryByText("Say yes")).toBeNull();
+  });
+
   it("shows the rest of an answer at once when Stop is pressed while it's shown", async () => {
     const draft = { ...newDraft([], 10, "me@x.example"), kind: "reply" as const, threadId: 42 };
     await askLong(() => (

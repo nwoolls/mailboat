@@ -4,6 +4,7 @@ import {
   DRAIN_MIN_RATE,
   DRAIN_SECONDS,
   drainRate,
+  keptCut,
   MIN_RATE,
   nextShown,
   sharedStart,
@@ -79,7 +80,48 @@ describe("sharedStart", () => {
 
 describe("words", () => {
   it("keeps the spaces and line breaks between words", () => {
-    expect(words("Hi  Maya,\nthanks")).toEqual(["Hi", "  ", "Maya,", "\n", "thanks"]);
-    expect(words("").join("")).toBe("");
+    const parts = words("Hi  Maya,\nthanks");
+    expect(parts.join("")).toBe("Hi  Maya,\nthanks");
+    expect(parts).toContain("  ");
+    expect(parts).toContain("\n");
+    expect(parts).toContain("Maya");
+    expect(words("")).toEqual([]);
+  });
+});
+
+// Made-up Japanese ("I'll reply about tomorrow's meeting.") and Thai text,
+// written without spaces between words.
+const JA = "明日の会議について返信します。";
+const TH = "ขอบคุณสำหรับข้อความ";
+
+describe("text written without spaces", () => {
+  it("is let out a word at a time, not held until the answer is done", () => {
+    const cut = wordCut(JA, 5, false);
+    expect(cut).toBeGreaterThan(0);
+    expect(cut).toBeLessThanOrEqual(5);
+    expect(wordCut(TH, 10, false)).toBeGreaterThan(0);
+  });
+
+  it("holds back only the last word while more is coming", () => {
+    const cut = wordCut(JA, JA.length, false);
+    expect(cut).toBeGreaterThan(0);
+    expect(cut).toBeLessThan(JA.length);
+  });
+});
+
+describe("keptCut", () => {
+  it("keeps all of what was shown when the text goes on from a word's end", () => {
+    expect(keptCut("Hi Maya,", "Hi Maya, thanks")).toBe(8);
+    expect(keptCut("Tickets booked", "Tickets booked")).toBe(14);
+  });
+
+  it("drops a shown word the new text turns into a longer one", () => {
+    // "Plan" was shown; the text now says "Plans".
+    expect(keptCut("Plan", "Plans changed")).toBe(0);
+    expect(keptCut("We plan", "We plans")).toBe(2);
+  });
+
+  it("keeps the whole words a replaced text shares", () => {
+    expect("Plans canceled".slice(0, keptCut("Plans confirmed", "Plans canceled"))).toBe("Plans");
   });
 });

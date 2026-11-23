@@ -94,11 +94,36 @@ describe("usePacedText", () => {
     expect(result.current).toEqual({ text: "From the cache", fade: false });
   });
 
-  it("fades text that arrives after the first render", () => {
+  it("fades text that arrives after the first render, then settles", () => {
     const { result, rerender } = paced("", false);
     rerender({ text: "Fresh words", done: true });
+    advance(100);
+    expect(result.current.fade).toBe(true);
+    // All shown and faded in: shown again (a summary hidden and shown
+    // again), it doesn't fade a second time.
     advance(1000);
-    expect(result.current).toEqual({ text: "Fresh words", fade: true });
+    expect(result.current).toEqual({ text: "Fresh words", fade: false });
+  });
+
+  it("drops a shown word the new text turns into a longer one, in render and frames alike", () => {
+    const { result, rerender } = paced("", false);
+    rerender({ text: "Plan accepted", done: false });
+    for (let i = 0; i < 60 && result.current.text !== "Plan"; i++) advance(16);
+    expect(result.current.text).toBe("Plan");
+    rerender({ text: "Plans changed", done: false });
+    expect(result.current.text).toBe("");
+    advance(16);
+    expect("Plans changed".startsWith(result.current.text)).toBe(true);
+    expect(["", "Plans"]).toContain(result.current.text);
+  });
+
+  it("lets out text written without spaces a word at a time", () => {
+    // Made-up Japanese: "I'll reply about tomorrow's meeting. Thanks."
+    const text = "明日の会議について返信します。よろしくお願いします。";
+    const { result, rerender } = paced("", false);
+    rerender({ text, done: false });
+    advance(BEHIND_SECONDS * 1000 + 50);
+    expect(result.current.text.length).toBeGreaterThan(text.length / 2);
   });
 
   it("shows everything at once with reduced motion", () => {

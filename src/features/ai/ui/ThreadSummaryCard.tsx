@@ -5,7 +5,7 @@ import { IS_TAURI, unwrap } from "../../../platform/tauri/ipc";
 import { useAiStatus, useAppSettings } from "../../../shared/lib/queries";
 import { AiIcon, ClearIcon, SyncIcon } from "../../../shared/ui/icons";
 import { aiChoices, canSummarize, PROVIDER_NAMES } from "../model/providers";
-import { summaryPoints } from "../model/summary";
+import { pointsSoFar } from "../model/summary";
 import { dropText, newRequestId, useStreamedText } from "./stream";
 import { useSummaryRequests } from "./summaryRequests";
 import { FadeWords, Shimmer, ThinkingSparkle, usePacedText } from "./paced";
@@ -103,7 +103,7 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
 
   // Short conversations (automatic) get none.
   if (query.data === null) return null;
-  const points = summaryPoints(shown);
+  const points = pointsSoFar(shown);
 
   return (
     <section

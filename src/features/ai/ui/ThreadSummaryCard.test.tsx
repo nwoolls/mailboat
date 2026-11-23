@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ThreadDetail } from "../../../platform/tauri/bindings";
 
@@ -148,6 +148,22 @@ describe("ThreadSummaryCard", () => {
     await screen.findByText(point("Lunch moved to Friday at the usual place"));
     expect(card.getAttribute("aria-busy")).toBe("false");
     expect(screen.getByLabelText("Summarize again")).toBeTruthy();
+  });
+
+  it("doesn't fade a summary in again when it's shown again after Hide", async () => {
+    aiThreadSummary.mockResolvedValue({
+      status: "ok",
+      data: { threadId: 14, text: "- Venue booked", provider: "apple", createdAt: 0 },
+    });
+    show(14);
+    fireEvent.click(screen.getByText("Summarize"));
+    await screen.findByText(point("Venue booked"));
+    // All shown and faded in.
+    await waitFor(() => expect(document.querySelector(".ai-word")).toBeNull());
+    fireEvent.click(screen.getByLabelText("Hide summary"));
+    await act(async () => requestSummary(14));
+    expect(screen.getByText(point("Venue booked"))).toBeTruthy();
+    expect(document.querySelector(".ai-word")).toBeNull();
   });
 
   it("leaves other conversations alone", () => {

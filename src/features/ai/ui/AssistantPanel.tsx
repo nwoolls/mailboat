@@ -86,16 +86,20 @@ export function AssistantPanel({
     if (!m) return;
     landingRef.current = null;
     setLanding(null);
-    setMessages((prev) => [...prev, m]);
-  }, [setMessages]);
+    // Not if the message was sent or discarded meanwhile (its chat forgotten).
+    if (chats.has(draft.id)) setMessages((prev) => [...prev, m]);
+  }, [draft.id, setMessages]);
 
-  // Closing the panel (or the message) stops a request being written.
-  useEffect(
-    () => () => {
+  // Closing the panel (or the message) stops a request being written; an
+  // answer to it that still arrives is left out (`alive`).
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
       if (pendingRef.current !== null) void commands.aiCancel(pendingRef.current);
-    },
-    [],
-  );
+    };
+  }, []);
   // Keep the newest at the bottom in view as it's written (after every
   // render: a new bubble, or more of the answer).
   const follow = useCallback(() => {
@@ -108,6 +112,7 @@ export function AssistantPanel({
     const request = text.trim();
     if (!request || busy) return;
     const next = [...messages, chatMessage({ role: "user", text: request })];
+    chats.set(draft.id, next);
     setMessages(() => next);
     setInput("");
     const id = newRequestId();
@@ -121,16 +126,19 @@ export function AssistantPanel({
           html: answer.html,
           subject: answer.subject,
         });
-        // Kept with the chat at once, so it's there however the panel
-        // goes (closed, or a reply popped out into the card) while it's
-        // still being shown; unless the message was sent or discarded.
+        // Only for this panel's own request (not one it canceled when it
+        // closed, which may still answer), and not once the message was
+        // sent or discarded (its chat forgotten).
         const chat = chats.get(draft.id);
-        if (chat) chats.set(draft.id, [...chat, message]);
+        if (!alive.current || !chat) return;
+        // Kept with the chat at once, so it's there however the panel goes
+        // (closed, or a reply popped out into the card) while it's shown.
+        chats.set(draft.id, [...chat, message]);
         landingRef.current = message;
         setLanding({ request: id, message });
       })
       .catch((e: unknown) => {
-        if (e instanceof IpcError && e.kind === "cancelled") return;
+        if (!alive.current || (e instanceof IpcError && e.kind === "cancelled")) return;
         setMessages((m) => [
           ...m,
           chatMessage({

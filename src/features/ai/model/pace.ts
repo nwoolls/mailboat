@@ -41,18 +41,58 @@ export function nextShown(shown: number, arrived: number, rate: number, seconds:
 }
 
 /**
+ * Words as the browser's word segmenter finds them, so text in languages
+ * written without spaces (Japanese, Chinese, Thai) also comes a word at a
+ * time; missing, only whitespace ends a word.
+ */
+const segmenter =
+  typeof Intl !== "undefined" && "Segmenter" in Intl
+    ? new Intl.Segmenter(undefined, { granularity: "word" })
+    : null;
+/** How far back to look for the end of a word (a longer run is cut at whitespace). */
+const LOOK_BACK = 48;
+
+/**
  * Where to cut the text for showing `shown` characters: back to the end of
  * the last whole word, so a word never appears in halves. The whole text
  * once it has all been shown and nothing more is coming.
  */
 export function wordCut(text: string, shown: number, done: boolean): number {
   const n = Math.min(Math.floor(shown), text.length);
-  if (n >= text.length) return done ? text.length : lastBreak(text, n);
-  // A word ends where whitespace starts.
-  return /\s/.test(text[n] ?? "") ? n : lastBreak(text, n);
+  if (n >= text.length) return done ? text.length : wordEnd(text, text.length, false);
+  return wordEnd(text, n, true);
 }
 
-function lastBreak(text: string, n: number): number {
+/**
+ * What stays on screen of `prev` (the text shown) when the text becomes
+ * `text`: all of it if `text` goes on from it at a word's end; otherwise the
+ * whole words both begin with. The same rule while rendering and between
+ * frames, so they never disagree.
+ */
+export function keptCut(prev: string, text: string): number {
+  const n = text.startsWith(prev) ? prev.length : sharedStart(prev, text);
+  if (n >= text.length) return text.length;
+  return wordEnd(text, n, true);
+}
+
+/**
+ * The last place a word ends at or before `n` (before it, when the text
+ * past `n` isn't known yet: `known` false). A word ends where whitespace
+ * starts, or between two words the segmenter tells apart.
+ */
+function wordEnd(text: string, n: number, known: boolean): number {
+  if (known && /\s/.test(text[n] ?? "")) return n;
+  if (segmenter) {
+    const from = Math.max(0, n - LOOK_BACK);
+    let best = from === 0 ? 0 : -1;
+    for (const { index } of segmenter.segment(text.slice(from, known ? n + 1 : n))) {
+      const at = from + index;
+      // The window's own start isn't known to be a word's start.
+      if (index === 0 || at > n || (!known && at >= n)) continue;
+      if (!/\s/.test(text[at - 1]!)) best = at;
+    }
+    if (best >= 0) return best;
+  }
   for (let i = n - 1; i >= 0; i--) if (/\s/.test(text[i]!)) return i;
   return 0;
 }
@@ -66,5 +106,6 @@ export function sharedStart(prev: string, next: string): number {
 
 /** Words and the spaces between them, in order (for fading words in one at a time). */
 export function words(text: string): string[] {
+  if (segmenter) return Array.from(segmenter.segment(text), (s) => s.segment);
   return text.match(/\s+|\S+/g) ?? [];
 }

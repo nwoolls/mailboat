@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { drainRate, nextShown, sharedStart, streamRate, wordCut, words } from "../model/pace";
+import { drainRate, keptCut, nextShown, streamRate, wordCut, words } from "../model/pace";
 
 function reducedMotion() {
   return (
@@ -18,7 +18,8 @@ export const WORD_FADE_MS = 380;
  * `onCaughtUp` is called once all of it is on screen and its last word
  * has faded in. Text that is already complete when this first renders (a
  * summary from the cache) shows at once without fading (`fade` is false),
- * and with reduced motion everything shows at once.
+ * as does text shown again after it was let out (a summary hidden and
+ * shown again), and with reduced motion everything shows at once.
  */
 export function usePacedText(
   text: string,
@@ -26,7 +27,8 @@ export function usePacedText(
   onCaughtUp?: () => void,
 ): { text: string; fade: boolean } {
   const [shown, setShown] = useState(() => (done ? text : ""));
-  const [settled] = useState(() => (done ? text : null));
+  // Text that's all on screen, its words faded in: shown again, it doesn't fade.
+  const [settled, setSettled] = useState(() => (done ? text : null));
   const live = useRef({
     text,
     done,
@@ -41,19 +43,20 @@ export function usePacedText(
     drain: null as number | null,
     frame: 0,
     timer: 0,
-    reported: false,
+    // Complete when first rendered: nothing to let out or report.
+    reported: done,
     onCaughtUp,
   });
 
   useEffect(() => {
     const l = live.current;
     if (text !== l.text) {
-      if (!text.startsWith(l.text)) {
-        // Replaced rather than continued (a new summary over the old one):
-        // only the whole words both begin with stay shown.
-        l.cut = wordCut(text, Math.min(l.cut, sharedStart(l.text, text)), false);
-        l.chars = l.cut;
-      }
+      // Replaced rather than continued (a new summary over the old one), or
+      // a word on screen turned into a longer one: only the whole words
+      // both begin with stay shown.
+      const kept = keptCut(l.text.slice(0, l.cut), text);
+      if (kept < l.cut) l.chars = kept;
+      l.cut = kept;
       // Set once per piece, so a big piece is caught up with in time
       // (worked out again each frame, the pace kept slowing down).
       l.rate = streamRate(text.length - l.chars);
@@ -66,7 +69,7 @@ export function usePacedText(
     }
     l.done = done;
     l.onCaughtUp = onCaughtUp;
-    if (l.frame) return;
+    if (l.frame || (l.done && l.reported && l.cut === l.text.length)) return;
     const instant = reducedMotion();
     const tick = (t: number) => {
       const dt = l.last === null ? 0 : Math.min(0.05, (t - l.last) / 1000);
@@ -83,7 +86,14 @@ export function usePacedText(
         if (l.done && !l.reported) {
           l.reported = true;
           // Once the last word has faded in.
-          l.timer = window.setTimeout(() => l.onCaughtUp?.(), instant ? 0 : WORD_FADE_MS);
+          const all = l.text;
+          l.timer = window.setTimeout(
+            () => {
+              setSettled(all);
+              l.onCaughtUp?.();
+            },
+            instant ? 0 : WORD_FADE_MS,
+          );
         }
         return;
       }
@@ -101,11 +111,9 @@ export function usePacedText(
     };
   }, []);
 
-  // Worked out here too, so a replaced text never shows a frame of the old
-  // cut: back to the whole words it shares with what was on screen.
-  const display = text.startsWith(shown)
-    ? shown
-    : text.slice(0, wordCut(text, sharedStart(shown, text), false));
+  // Worked out here too, by the same rule as between frames, so a replaced
+  // text never shows a frame of the old cut.
+  const display = text.slice(0, keptCut(shown, text));
   return { text: display, fade: text !== settled };
 }
 
