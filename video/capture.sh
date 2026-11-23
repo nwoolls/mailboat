@@ -1,0 +1,112 @@
+#!/bin/bash
+# Takes the trailer's pictures and loops of the demo at 2x, on a Retina
+# screen, into video/public/rec/ (ignored by git: they are made again here).
+# Every take is of demo mode's made-up mail, on a demo started fresh for it,
+# and nothing is tried out before it is taken: a reply opened and closed
+# leaves a draft that changes what later takes show.
+#
+# Needs: the demo running and alone (bun run demo, with the app's
+# <prefix>_DEMO_UPDATE_AFTER=off), the helpers from
+# scripts/screenshots/build.sh in $OUT/bin and its wallpapers in $OUT/bg,
+# and a Retina screen whose top-left corner (in points, as screencapture
+# counts them) is SCREEN_X,SCREEN_Y. The window goes 88,80 points into it,
+# at the gallery's size (1424x820), so a take lines up with the gallery's
+# 1600x900 pictures at twice their size (3200x1800).
+#
+# usage: OUT=… SCREEN_X=2560 SCREEN_Y=342 video/capture.sh <take> [<take> …]
+#   takes, in the order a fresh demo needs them (the sign-in code alert
+#   arrives about 45 s in; `codes` keeps it, everything after dismisses it):
+#   setup open-codes codes palette dark inbox conversation (reply-ai on a demo of its own)
+set -uo pipefail
+here="$(cd "$(dirname "$0")" && pwd)"
+OUT="${OUT:?set OUT to the folder of scripts/screenshots/build.sh}"
+SX="${SCREEN_X:?}"; SY="${SCREEN_Y:?}"
+REC="$here/public/rec"
+mkdir -p "$REC"
+name="$(cd "$here/.." && bun -p "require('./brand.json').name")"
+pid=""
+for p in $(ps -axo pid,args | grep -F -- "--demo" | grep -v grep | awk '{print $1}'); do
+  "$OUT/bin/windows" "$name" | awk -v p="$p" '$1==p && ($5=="1"||$5=="true"){f=1} END{exit !f}' && { pid="$p"; break; }
+done
+[ -n "$pid" ] || { echo "no on-screen window of the demo (bun run demo)"; exit 1; }
+
+ev() { osascript -e "tell application \"System Events\" to $1" >/dev/null 2>&1; }
+focus() { ev "set frontmost of (first process whose unix id is $pid) to true"; sleep 0.5; }
+# A point of a gallery picture (1600x900, the window at 88,40 in it), on screen.
+c() { "$OUT/bin/click" $((SX + $1)) $((SY + 40 + $2)) || { echo "click failed"; exit 1; }; sleep "${3:-1.2}"; }
+key() { ev "keystroke \"$1\"${2:+ using $2 down}"; sleep "${3:-1}"; }
+esc() { ev "key code 53"; sleep 0.7; }
+region="$SX,$((SY + 40)),1512,900"
+# The 3024x1800 take, padded on the right to the gallery's frame at 2x.
+pad() { ffmpeg -v error -y -i "$1" "${@:3}" -vf "pad=3200:1800:0:0:color=black" "$2"; }
+
+place() {
+  local try
+  for try in 1 2 3; do
+  osascript <<EOF
+tell application "System Events"
+  set frontmost of (first process whose unix id is $pid) to true
+  tell window 1 of (first process whose unix id is $pid)
+    set position to {$((SX + 88)), $((SY + 80))}
+    set size to {1424, 820}
+  end tell
+end tell
+EOF
+  sleep 0.6
+  # The first try can land short of its place (as place.sh found): try again.
+  "$OUT/bin/windows" "$name" | awk -v p="$pid" -v want="1424x820@$((SX + 88)),$((SY + 80))" '$1==p && $6==want{ok=1} END{exit !ok}' && return 0
+  done
+  echo "the window would not go to its place"; "$OUT/bin/windows" "$name"; exit 1
+}
+# Settings: open, a sidebar row, a point on the page, back (gallery positions).
+settings() { focus; key "," command 1.6; c 145 "$1" 1.6; c "$2" "$3" 1.6; c 143 842 1.4; }
+backdrop() { "$OUT/bin/backdrop" "$SX" $((SY + 40)) 1512 900 "$OUT/bg/$1.png" & bd=$!; sleep 1.2; focus; "$OUT/bin/mouse" $((SX + 750)) $((SY + 12)); sleep 0.4; }
+still() {   # still <name> <wallpaper>
+  backdrop "$2"
+  screencapture -x -R "$region" "$REC/$1.raw.png"
+  kill "$bd" 2>/dev/null
+  pad "$REC/$1.raw.png" "$REC/$1.png" && rm -f "$REC/$1.raw.png" && echo "took $1"
+}
+record() {  # record <name> <wallpaper> <seconds> <steps…>
+  local clip="$1" paper="$2" most="$3"; shift 3
+  backdrop "$paper"
+  rm -f "$REC/$clip.mov"
+  screencapture -v -V "$most" -R "$region" -x "$REC/$clip.mov" & local rec=$!
+  sleep 1.2
+  "$@"
+  wait "$rec"; kill "$bd" 2>/dev/null
+  pad "$REC/$clip.mov" "$REC/$clip.mp4" -an -r 60 -c:v libx264 -preset slow -crf 14 -g 30 -pix_fmt yuv420p -movflags +faststart \
+    && rm -f "$REC/$clip.mov" && echo "recorded $clip"
+}
+
+palette_steps() {
+  sleep 0.8; key k command 1.4
+  local ch; for ch in a r c h; do ev "keystroke \"$ch\""; sleep 0.32; done
+  sleep 3
+}
+reply_ai_steps() {
+  c 798 766 2.2                       # Reply
+  c 1393 825 1.6                      # the AI button in the reply's bar
+  ev 'keystroke "Confirm the booking"'; sleep 0.6
+  ev 'key code 36'; sleep 14          # Return: ask for the draft
+}
+
+for take in "$@"; do
+  case "$take" in
+    setup)          # place it, keep mail unread when opened, light
+      place; settings 284 1140 380; settings 228 1101 290 ;;
+    open-codes)     # the sign-in code open, its alert still up (light): check it, then `codes`
+      focus; c 144 134 1.4; c 600 156 1.0; c 600 156 2.2 ;;
+    codes) still codes-light sonoma ;;
+    palette)        # ⌘K over Lisbon, typing (light); dismisses the alert
+      focus; esc; esc; c 1481 104 0.8; c 144 134 1.4; c 600 300 2.4
+      record palette-light sonoma 9 palette_steps; esc ;;
+    dark) settings 228 1165 290 ;;
+    inbox) focus; esc; esc; c 144 134 1.6; still inbox-dark sunset ;;
+    conversation) focus; c 600 300 2.4; still conversation-dark sunset ;;
+    reply-ai)       # Reply, then the AI button (dark, a fresh demo: it leaves a draft)
+      focus; esc; esc; c 1481 104 0.8; c 144 134 1.4; c 600 300 2.5
+      record reply-ai sunset 22 reply_ai_steps ;;
+    *) echo "unknown take: $take"; exit 1 ;;
+  esac
+done

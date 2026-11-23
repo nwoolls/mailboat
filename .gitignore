@@ -42,3 +42,7 @@ src-tauri/binaries/
 test-results/
 test-results-*/
 playwright-report/
+# Music for the trailer: licensed for use in a video, not to redistribute
+video/public/music/
+# Fresh recordings of the demo for the trailer (regenerable, large)
+video/public/rec/
