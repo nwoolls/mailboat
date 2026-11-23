@@ -61,3 +61,23 @@ export async function holdTime(page: Page): Promise<void> {
 export async function advance(page: Page, ms: number): Promise<void> {
   await page.clock.runFor(ms);
 }
+
+/**
+ * Holds the CSS animation `name` at its first frame as it starts, however
+ * busy the machine is: a change to the page that starts it is seen before
+ * the next frame. For a test about what happens during a short motion
+ * (the floating sidebar's 120 ms slide out), where a step that takes longer
+ * on a busy runner came after the motion had ended. `driveTime` leaves an
+ * animation the page paused alone. Call before `page.goto`.
+ */
+export async function holdAtStart(page: Page, name: string): Promise<void> {
+  await page.addInitScript((wanted) => {
+    new MutationObserver(() => {
+      for (const a of document.getAnimations()) {
+        if ((a as CSSAnimation).animationName !== wanted || a.playState !== "running") continue;
+        a.pause();
+        a.currentTime = 0;
+      }
+    }).observe(document, { childList: true, subtree: true, attributes: true });
+  }, name);
+}
