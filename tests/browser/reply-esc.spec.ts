@@ -2,7 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 
 /**
  * Esc in a reply's text (owner, 2026-11-23): the first press hands the
- * keyboard to the conversation, with an email outlined, so the arrows read
+ * keyboard to the conversation, with the reply outlined, so the arrows read
  * on; the next goes back to the list (or, in a wide window, the one after
  * hides the reader). From 2026-11-22 to 11-23 one press went straight on,
  * since the first seemed to do nothing; now it shows the outline. The

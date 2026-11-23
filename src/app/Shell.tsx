@@ -45,7 +45,14 @@ import {
   navKeyFor,
   rangeKeyFor,
 } from "../features/mailbox/model/listNavigation";
-import { focusReader, pageReader, stepEmail } from "../features/reader/ui/readerKeys";
+import {
+  focusReader,
+  inConversation,
+  leaveReader,
+  pageReader,
+  stepEmail,
+} from "../features/reader/ui/readerKeys";
+import { isEditable } from "../shared/lib/editable";
 import {
   actionTargets,
   type Checked,
@@ -260,13 +267,6 @@ function inReplyText(target: EventTarget | null): boolean {
     target instanceof HTMLElement &&
     target.isContentEditable &&
     target.closest("[data-inline-reply]") !== null
-  );
-}
-
-function isEditable(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
   );
 }
 
@@ -981,7 +981,7 @@ export function Shell() {
         // the key code some engines give a key the input method used).
         if (e.isComposing || e.keyCode === 229) return;
         // In a reply's text, Esc hands the keyboard to the conversation,
-        // with an email outlined (owner, 2026-11-23), so ↑ / ↓ read on;
+        // with the reply outlined (owner, 2026-11-23), so ↑ / ↓ read on;
         // the next Esc goes back to the list and the one after hides the
         // reader. (From 2026-11-22 one Esc went straight on to the list,
         // since the first seemed to do nothing.) The reply stays with its
@@ -1001,6 +1001,16 @@ export function Shell() {
       if (e.key === "Escape" && checked.size > 0) {
         e.preventDefault();
         setChecked(NONE);
+        return;
+      }
+      // With the conversation holding the keyboard (useReaderKeyboard),
+      // after the floating sidebar and picked conversations: back to the
+      // list, which takes the keyboard again (and shows, while the list
+      // and reader take turns). The next Esc hides the reader.
+      if (e.key === "Escape" && !e.defaultPrevented && inConversation(e.target)) {
+        e.preventDefault();
+        leaveReader();
+        if (single) setReaderOpen(false);
         return;
       }
       // ⌘[ (Mail's Back) goes back to the list while the reader fills the
@@ -1140,7 +1150,10 @@ export function Shell() {
         plain &&
         !e.shiftKey &&
         previewing &&
-        (e.key === "ArrowRight" || (e.key === "Enter" && enterOpens(e.target))) &&
+        (e.key === "ArrowRight" || e.key === "Enter") &&
+        // From the list only (a focused splitter takes → to resize).
+        enterOpens(e.target) &&
+        !e.defaultPrevented &&
         focusReader()
       ) {
         e.preventDefault();

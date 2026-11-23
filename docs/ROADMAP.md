@@ -5339,7 +5339,11 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       (`inReplyText`); `reply-esc.spec.ts`, whose two one-Esc tests fail
       without the change. The sidebar tests from #212 began with Esc to
       leave a reply's text; they now leave it without Esc, so the
-      pointer stays where Reply was clicked.
+      pointer stays where Reply was clicked. *(Superseded 2026-11-23,
+      owner: Esc in a reply's text now hands the keyboard to the
+      conversation with the reply outlined, and the next Esc goes back to
+      the list; see "Later / unscheduled" → Reading, "The open
+      conversation with the keyboard")*
 - [x] On the website, the hero screenshot left a tall window still tipped
       back *(owner report, 2026-11-19; fixed the same day, branch
       `hero-tilt-settle`)*. It settled flat over a fixed 70% of the window's

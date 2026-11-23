@@ -136,3 +136,132 @@ test("Esc in a reply's text outlines the reply; ↑ / ↓ move from it and Enter
   await page.keyboard.type(" then");
   await expect(reply).toContainText("then");
 });
+
+/**
+ * Esc from the conversation goes through the app's Esc rules: picked
+ * conversations are dropped first, then back to the list, which takes
+ * the keyboard (found in review: the conversation swallowed Esc).
+ */
+test("Esc in the conversation drops picked conversations first, then goes to the list", async ({
+  page,
+}) => {
+  await preview(page);
+  // Picks the previewed conversation (picked rows show as selected too, so
+  // the first Esc keeping the outline is what shows the picks went first).
+  await page.keyboard.press("x");
+  await page.keyboard.press("ArrowRight");
+  await expect(outlined(page)).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(200);
+  await expect(outlined(page)).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(outlined(page)).toHaveCount(0);
+  await expect(page.locator('[role="listbox"][aria-label="Conversations"]')).toBeFocused();
+  expect(await readerOpen(page)).toBe("true");
+});
+
+/** → on a focused splitter resizes; it doesn't move into the conversation (review). */
+test("→ on a focused splitter doesn't take the keyboard into the conversation", async ({
+  page,
+}) => {
+  await preview(page);
+  await page.getByRole("separator").last().focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(outlined(page)).toHaveCount(0);
+  await expect(page.getByRole("separator").last()).toBeFocused();
+});
+
+/**
+ * Keys in a menu over the conversation are the menu's, not the
+ * conversation's (review: the email's menu and the outline both moved).
+ */
+test("keys in a menu inside the conversation don't move the outline", async ({ page }) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  const before = await outlinedIndex(page);
+  await page.evaluate(() => {
+    const menu = document.createElement("div");
+    menu.setAttribute("role", "menu");
+    menu.tabIndex = -1;
+    document.querySelector(".reader-scroll > div")!.append(menu);
+    menu.focus();
+  });
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  expect(await outlinedIndex(page)).toBe(before);
+});
+
+/**
+ * The outline scrolled out of view: the next arrow outlines the first
+ * email showing and stops there, rather than moving past it at once (review).
+ */
+test("an arrow after the outline scrolled away outlines the first email showing", async ({
+  page,
+}) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
+  await expect.poll(() => outlinedIndex(page)).toBe(0);
+  // Scrolled down by hand (a wheel) until the first email is gone.
+  const showing = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const emails = [...reader.querySelectorAll("section[data-message-id]")];
+    reader.dispatchEvent(new WheelEvent("wheel", { deltaY: 100, bubbles: true }));
+    reader.scrollTop += emails[1]!.getBoundingClientRect().top - reader.getBoundingClientRect().top;
+    // Past where the last arrow's scroll was heading, and its window.
+    await new Promise((done) => setTimeout(done, 800));
+    const top = reader.getBoundingClientRect().top;
+    return emails.findIndex((c) => c.getBoundingClientRect().bottom > top);
+  });
+  await page.keyboard.press("ArrowDown");
+  await expect.poll(() => outlinedIndex(page)).toBe(showing);
+});
+
+/**
+ * A click inside an email's text outlines that email, not the one outlined
+ * before (review). The frame hands focus back to the email's holder
+ * (`MessageFrame`); headless WebKit doesn't move focus into the frame on a
+ * click, so the test does what the frame's hand-back does.
+ */
+test("a click inside an email's text outlines that email", async ({ page }) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  const open = await page.evaluate(() =>
+    [...document.querySelectorAll(".reader-scroll section[data-message-id]")].flatMap((c, i) =>
+      c.querySelector('iframe[title="Message content"]') ? [i] : [],
+    ),
+  );
+  expect(open.length).toBeGreaterThan(0);
+  const target = open[open.length - 1]!;
+  // Outline another email first.
+  await page.keyboard.press("ArrowUp");
+  await expect.poll(() => outlinedIndex(page)).not.toBe(target);
+  await cards(page)
+    .nth(target)
+    .evaluate((card) => {
+      const frame = card.querySelector('iframe[title="Message content"]')!;
+      frame.closest<HTMLElement>('[tabindex="-1"]')!.focus({ preventScroll: true });
+    });
+  await expect.poll(() => outlinedIndex(page)).toBe(target);
+});
+
+/**
+ * Back into the reply's text from its outline, the cursor is where it was:
+ * typing lands in the middle, not at the start or end (review).
+ */
+test("Enter back into the reply keeps the cursor where it was", async ({ page }) => {
+  await preview(page);
+  await page.getByRole("button", { name: "Reply", exact: true }).click();
+  const reply = page.getByRole("region", { name: "Reply" });
+  const text = reply.getByRole("textbox", { name: "Message" });
+  await expect(text).toBeFocused();
+  await page.keyboard.type("See you Friday");
+  // The cursor after "See you".
+  for (let i = 0; i < " Friday".length; i++) await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".reader-scroll[data-outline-reply]")).toHaveCount(1);
+  await page.keyboard.press("Enter");
+  await expect(text).toBeFocused();
+  await page.keyboard.type(" on");
+  await expect(text).toContainText("See you on Friday");
+});

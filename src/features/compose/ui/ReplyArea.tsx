@@ -99,7 +99,7 @@ export function ReplyArea({
     return (
       <section
         aria-label="Reply"
-        // Esc in its text goes on past leaving the text (`Shell.tsx`).
+        // Esc in its text outlines the reply for the keyboard (`Shell.tsx`).
         data-inline-reply
         className="message-card mt-2 rounded-[10px] ring-1 ring-stroke ring-inset"
         style={{ boxShadow: `inset 3px 0 0 ${account?.color ?? "transparent"}` }}

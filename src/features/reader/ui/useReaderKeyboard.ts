@@ -1,7 +1,15 @@
 import type React from "react";
 import { useRef, useState } from "react";
 import type { MessageId } from "../../../platform/tauri/bindings";
-import { type CardBox, firstOutlined, readerKeyFor, readerStep } from "../model/readerKeys";
+import { isEditable } from "../../../shared/lib/editable";
+import {
+  type CardBox,
+  firstOutlined,
+  readerKeyFor,
+  readerStep,
+  revealBy,
+} from "../model/readerKeys";
+import { leaveReader } from "./readerKeys";
 
 /**
  * The reply being written, as an outlined stop: after the emails, it isn't
@@ -9,15 +17,11 @@ import { type CardBox, firstOutlined, readerKeyFor, readerStep } from "../model/
  */
 export const REPLY_STOP = -1 as MessageId;
 
+/** Keys that scroll the reader other than ↑ / ↓ (Space, n / p: `Shell.tsx`). */
+const OTHER_SCROLL_KEYS = new Set([" ", "PageUp", "PageDown", "Home", "End", "n", "p"]);
+
 /** Longer than a smooth scroll takes. */
 const HEADING_MS = 600;
-
-function isEditable(el: EventTarget | null): boolean {
-  return (
-    el instanceof HTMLElement &&
-    (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName))
-  );
-}
 
 /** Inside the reply being written, which handles its own keys. */
 function inReply(el: EventTarget | null): boolean {
@@ -97,23 +101,41 @@ export function useReaderKeyboard({
     reader.scrollTo({ top: to, behavior: "smooth" });
   };
 
-  /** The outlined email's index, picked afresh if it's gone or scrolled out of view. */
+  /**
+   * The outlined stop's index, picked afresh (`picked`) if it's gone or
+   * scrolled out of view.
+   */
   const current = (reader: HTMLElement) => {
     const from = aimed(reader) ?? reader.scrollTop;
     const { ids, boxes } = measure(reader, from);
     const view = reader.clientHeight;
     let at = outlined === null ? -1 : ids.indexOf(outlined);
     const box = boxes[at];
+    let picked = false;
     // Scrolled out of view (Space, the scroll bar): the first one showing.
-    if (box && (box.bottom <= 0 || box.top >= view)) at = firstOutlined(boxes, view, -1);
-    if (!box) at = firstOutlined(boxes, view, landed === null ? -1 : ids.indexOf(landed));
-    return { ids, boxes, at, view, from };
+    if (box && (box.bottom <= 0 || box.top >= view)) {
+      at = firstOutlined(boxes, view, -1);
+      picked = true;
+    }
+    if (!box) {
+      at = firstOutlined(boxes, view, landed === null ? -1 : ids.indexOf(landed));
+      picked = true;
+    }
+    return { ids, boxes, at, view, from, picked };
   };
 
   const onFocus = (e: React.FocusEvent<HTMLElement>) => {
     const keys = !isEditable(e.target) && !inReply(e.target);
     setFocused(keys);
     const reader = e.currentTarget;
+    // Focus inside an email (its header, or back from a click in its body,
+    // which hands focus to the email's holder): that email.
+    const card = e.target instanceof Element ? e.target.closest("section[data-message-id]") : null;
+    if (keys && card instanceof HTMLElement) {
+      delete reader.dataset.focusAt;
+      setOutlined(Number(card.dataset.messageId) as MessageId);
+      return;
+    }
     if (keys && reader.dataset.focusAt === "reply") {
       delete reader.dataset.focusAt;
       setOutlined(REPLY_STOP);
@@ -140,7 +162,14 @@ export function useReaderKeyboard({
   // A click on an email outlines it; a click anywhere else in the
   // conversation (not the reply) gives it the keyboard too, as a click on
   // a header button doesn't focus anything in WebKit.
+  // Any other scrolling takes over from where the last key's scroll was
+  // heading.
+  const forgetHeading = () => {
+    heading.current = null;
+  };
+
   const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
+    forgetHeading();
     if (inReply(e.target) || isEditable(e.target)) return;
     const card = e.target instanceof Element ? e.target.closest("section[data-message-id]") : null;
     if (card instanceof HTMLElement) setOutlined(Number(card.dataset.messageId) as MessageId);
@@ -151,7 +180,21 @@ export function useReaderKeyboard({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
-    if (inReply(e.target)) return;
+    // Keys that scroll some other way take over (→ / ← / Enter don't
+    // scroll, and still go on from where the last arrow was heading).
+    if (OTHER_SCROLL_KEYS.has(e.key)) forgetHeading();
+    // A key something inside already handled (a menu over an email moving
+    // its own focus), or one in a menu or dialog: not the conversation's.
+    if (
+      e.defaultPrevented ||
+      inReply(e.target) ||
+      (e.target instanceof Element &&
+        e.target.closest('[role="menu"], [role="menuitem"], [role="dialog"], dialog'))
+    )
+      return;
+    // Esc goes to the app's own Esc rules (Shell.tsx): a floating sidebar
+    // or picked conversations go first, then back to the list.
+    if (e.key === "Escape") return;
     const reader = e.currentTarget;
     // The reader scrolls itself, rather than the list moving.
     if (["PageUp", "PageDown", "Home", "End"].includes(e.key)) {
@@ -168,11 +211,19 @@ export function useReaderKeyboard({
       e.target.closest("button, a")
     )
       return;
-    const { ids, boxes, at, view, from } = current(reader);
-    const step = readerStep(key, boxes, at, view);
+    const { ids, boxes, at, view, from, picked } = current(reader);
     e.preventDefault();
     e.stopPropagation();
     if (ids[at] !== outlined) setOutlined(ids[at] ?? null);
+    // Picked afresh (the outline had scrolled away): ↑ / ↓ stop on the one
+    // picked, rather than moving on past it at once.
+    const box = boxes[at];
+    if (picked && (key === "up" || key === "down")) {
+      const by = box ? revealBy(box, view, key === "down" ? "start" : "end") : 0;
+      if (by !== 0) scrollTo(reader, from, by);
+      return;
+    }
+    const step = readerStep(key, boxes, at, view);
     if (!step) return;
     const id = ids[at];
     switch (step.kind) {
@@ -194,9 +245,9 @@ export function useReaderKeyboard({
           ?.focus();
         return;
       case "leave":
-        // Back to the list: the app's keys move it again, and the next Esc
-        // hides the reader.
-        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        // Back to the list (← on a closed email or the reply): the app's
+        // keys move it again, and the next Esc hides the reader.
+        leaveReader();
         back?.();
         return;
     }
@@ -205,6 +256,13 @@ export function useReaderKeyboard({
   return {
     /** The email outlined for the keyboard, when the conversation has it. */
     outlined: focused ? outlined : null,
-    handlers: { onFocus, onBlur, onPointerDown, onKeyDown },
+    handlers: {
+      onFocus,
+      onBlur,
+      onPointerDown,
+      onKeyDown,
+      onWheel: forgetHeading,
+      onTouchStart: forgetHeading,
+    },
   };
 }

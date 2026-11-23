@@ -1,4 +1,5 @@
 import { emailStep } from "../model/emailSteps";
+import { isEditable } from "../../../shared/lib/editable";
 
 /** How long `n` / `p` keep the email at the top: past the 200ms fold animation. */
 const HOLD_MS = 350;
@@ -26,6 +27,33 @@ export function focusReader(at?: "reply"): boolean {
   if (at) reader.dataset.focusAt = at;
   reader.focus({ preventScroll: true });
   return true;
+}
+
+/**
+ * Whether a key's target is the conversation holding the keyboard: inside
+ * the reader, not a field and not the reply being written (useReaderKeyboard).
+ */
+export function inConversation(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest(".reader-scroll") !== null &&
+    target.closest("[data-inline-reply]") === null &&
+    !isEditable(target)
+  );
+}
+
+/**
+ * Back to the list from the conversation (Esc, or ← on a closed email or
+ * the reply): the list takes the keyboard, so screen readers and the next
+ * keys follow. Blurs instead when the list isn't showing.
+ */
+export function leaveReader(): void {
+  const list = document.querySelector<HTMLElement>('[role="listbox"][aria-label="Conversations"]');
+  if (list && list.getClientRects().length > 0 && !list.closest("[inert]")) {
+    list.focus({ preventScroll: true });
+    return;
+  }
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 }
 
 /** Space / ⇧Space: the open conversation a screenful down or up. */
