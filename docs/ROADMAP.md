@@ -5257,6 +5257,42 @@ the way, and one bug in the app caused flaky failures; all three are in
         speed. Passed 15 of 15 on the slowed page and the whole file 10
         times (220 of 220); with the toy's opacity forced to 1, the three
         tests still fail.
+      - 2026-11-22, CI on `main` after #212 merged, WebKit,
+        https://github.com/nwoolls/mailboat/actions/runs/45087749383: the
+        sky test read an opacity of 1 where less than 0.5 was expected
+        (line 253). #212 changes only the floating sidebar. The
+        `animationstart` came after the 450 ms fade had ended, and a fade
+        that has ended is no longer in `getAnimations`, so the handler found
+        none: it read the layer fully shown, and the empty first keyframe
+        passed as 0. Holding the page up for 700 ms as the fade is made
+        gives the same failure 3 times out of 9.
+      - Fixed again 2026-11-22 (branch `fix-main-ci-flaky`): the fade is
+        recorded when it is made, as the layer appears (a `MutationObserver`
+        asks for the page's animations, which brings its styles up to date),
+        not when its start event arrives. Passed 30 of 30, and 15 of 15
+        with the page held up as above; with the fade starting at full
+        opacity, or with no fade at all, the three tests fail.
+- [x] `windows-sidebar.spec.ts` (Chromium) and `narrow-window.spec.ts`
+      (WebKit): "moving back onto a floating sidebar as it slides out keeps
+      it".
+      - 2026-11-22, CI on `main` after #212 merged (the PR that added these
+        tests), Chromium,
+        https://github.com/nwoolls/mailboat/actions/runs/45087749383:
+        `.sidebar-peek` not found (`toBeVisible`, line 52). The trace shows
+        the pointer's two-step move took 189 ms after Esc, longer than the
+        sidebar's 120 ms slide out, so it had gone before the pointer got
+        there. Both tests have the same steps.
+      - Fixed 2026-11-22 (branch `fix-main-ci-flaky`): both run on the test's
+        clock (`tests/browser/time.ts`), with the slide out held where it
+        starts (`holdAtStart`), and move time on 200 ms: past the slide out,
+        short of the 280 ms a pointer that leaves has. Moving time on
+        600 ms instead failed now and then in WebKit. Moving back takes the
+        sidebar out of "leaving", which starts its slide in again from the
+        window's edge, so the pointer is out of it for a moment. In real
+        time WebKit's "entered" as it slides back keeps it, but the test's
+        clock could pass 280 ms before that event arrived. Passed 120 of 120,
+        and 10 of 10 with a 500 ms pause between Esc and the move; with a
+        move back ignored while the sidebar slides out, both fail.
 
 ## Bug backlog
 

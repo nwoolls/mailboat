@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { advance, driveTime, holdAtStart, holdTime } from "./time";
 
 /**
  * A narrower window (0.3.0, owner's choice from a mockup): the sidebar folds
@@ -269,15 +270,26 @@ test("the shortcut puts away a sidebar its button floated, for good", async ({ p
 });
 
 test("moving back onto a floating sidebar as it slides out keeps it", async ({ page }) => {
+  // On the test's clock (./time.ts), with the slide out held where it
+  // starts: on a busy runner the pointer's steps took longer than the
+  // 120 ms slide out, and the sidebar had gone before the pointer got there.
+  await driveTime(page);
+  await holdAtStart(page, "peek-out");
   await open(page, 480);
   await page.mouse.move(470, 60);
   const peek = page.locator(".sidebar-peek");
   await page.keyboard.press("Control+Meta+s");
   await expect(peek).toBeVisible();
+  await holdTime(page);
   await page.keyboard.press("Escape");
+  await expect(peek).toHaveAttribute("data-leaving");
   // During its slide out: onto its left edge, the part covered longest.
   await page.mouse.move(20, 300, { steps: 2 });
-  await page.waitForTimeout(600);
+  // Past the slide out (120 ms), short of the 280 ms a pointer that leaves
+  // has. Kept, the sidebar slides in again from the edge, so the pointer is
+  // out of it for a moment, and in real time the "entered" as it comes back
+  // keeps it; the test's clock can pass 280 ms before that event arrives.
+  await advance(page, 200);
   await expect(peek).toBeVisible();
   await expect(peek).not.toHaveAttribute("data-leaving");
 });

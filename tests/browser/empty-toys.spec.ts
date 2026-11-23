@@ -190,37 +190,37 @@ test("the sky in ASCII art draws on a canvas reaching under the title", async ({
  * The toy eases in when the list empties, instead of appearing at once
  * (owner, 2026-11-19: the sky "flash bangs into place"): a 450 ms fade from
  * nothing that starts as the layer appears, and none for people who ask for
- * reduced motion. Recorded as each fade starts (a timed check came too late:
- * the fade is over before the page can be held): the layer, the fade's
- * first keyframe's opacity, and the layer's opacity at the fade's start.
+ * reduced motion. Recorded as each fade is made, when the layer appears:
+ * the layer, the fade's first keyframe's opacity, and the layer's opacity
+ * at the fade's start. Waiting for its `animationstart` came too late on a
+ * busy runner: CI read 0.7 once, and once the event came after the fade
+ * had ended (`getAnimations` no longer lists a finished fade, so the layer
+ * read fully shown).
  */
 type Fade = { layer: string; from: string; opacity: number };
 const started = (page: Page) =>
   page.addInitScript(() => {
     const seen: Fade[] = [];
     (window as unknown as { __fades: Fade[] }).__fades = seen;
-    document.addEventListener(
-      "animationstart",
-      (e) => {
-        if (e.animationName !== "empty-toy-in") return;
-        const el = e.target as Element;
-        const fade = el
-          .getAnimations()
-          .find((a) => (a as CSSAnimation).animationName === "empty-toy-in");
-        const first = (fade?.effect as KeyframeEffect | undefined)?.getKeyframes()[0];
-        // The event comes some time after the fade began, later on a busy
-        // runner (CI read 0.7, a slowed page over 0.8). Wind the fade back
-        // to its start, so the opacity read is its first frame's, whatever
-        // the machine's speed; it plays on from there.
-        if (fade) fade.currentTime = 0;
+    const recorded = new WeakSet<Animation>();
+    // After each change to the page, before the next frame: asking for the
+    // animations brings the styles up to date, so a layer just added has
+    // its fade already, at its very start.
+    new MutationObserver(() => {
+      for (const fade of document.getAnimations()) {
+        if ((fade as CSSAnimation).animationName !== "empty-toy-in" || recorded.has(fade)) continue;
+        recorded.add(fade);
+        const el = (fade.effect as KeyframeEffect).target as Element;
+        const first = (fade.effect as KeyframeEffect).getKeyframes()[0];
+        // At its start whatever the machine's speed; it plays on from there.
+        fade.currentTime = 0;
         seen.push({
           layer: el.classList[0] ?? "",
-          from: String(first?.opacity ?? ""),
+          from: String(first?.opacity ?? "none"),
           opacity: Number(getComputedStyle(el).opacity),
         });
-      },
-      true,
-    );
+      }
+    }).observe(document, { childList: true, subtree: true });
   });
 const fades = (page: Page) =>
   page.evaluate(() => (window as unknown as { __fades: Fade[] }).__fades);
