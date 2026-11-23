@@ -40,14 +40,18 @@ test("in a narrow window, one Esc in a reply goes back to the list, and the repl
 test("in a wide window, one Esc in a reply hides the reader", async ({ page }) => {
   await openReply(page, 1200);
   expect(await readerOpen(page)).toBe("true");
+  // From the reply's text: Esc from anywhere else hides the reader anyway.
+  await expect(reply(page).getByRole("textbox", { name: "Message" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect.poll(() => readerOpen(page)).toBe("false");
 });
 
 test("Esc in a reply's To field only leaves the field", async ({ page }) => {
   await openReply(page, 1200);
-  await reply(page).getByRole("combobox", { name: "To" }).focus();
+  const to = reply(page).getByRole("combobox", { name: "To" });
+  await to.focus();
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
+  await expect(to).not.toBeFocused();
   expect(await readerOpen(page)).toBe("true");
 });

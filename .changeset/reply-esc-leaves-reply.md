@@ -2,4 +2,4 @@
 "desktop": patch
 ---
 
-One Esc in a reply's text now goes back to the list, or hides the reader, as two did before. The reply stays with its conversation.
+One Esc in a reply's text now does what two did: it leaves the text and takes Esc's next step, usually back to the list or hiding the reader. The reply stays with its conversation.

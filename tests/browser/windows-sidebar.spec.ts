@@ -14,6 +14,13 @@ const listHidden = (page: Page) =>
     .first()
     .evaluate((el) => el.hasAttribute("inert") && el.getBoundingClientRect().width < 1);
 
+/**
+ * Takes the focus out of the reply's text without Esc (which would also
+ * leave the conversation: reply-esc.spec.ts) and without moving the pointer.
+ */
+const leaveText = (page: Page) =>
+  page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+
 async function open(page: Page) {
   await page.setViewportSize({ width: 480, height: 700 });
   await page.goto("/tests/browser/harness.html?mode=shell&rows=1");
@@ -32,7 +39,7 @@ test("Esc puts a floating sidebar away under a pointer that hasn't moved", async
   await page.getByRole("option").first().click();
   await expect.poll(() => listHidden(page)).toBe(true);
   await page.getByRole("button", { name: "Reply", exact: true }).click();
-  await page.keyboard.press("Escape");
+  await leaveText(page);
   const peek = page.locator(".sidebar-peek");
   await page.keyboard.press(await sidebarShortcut(page));
   await expect(peek).toBeVisible();
