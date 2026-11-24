@@ -159,11 +159,25 @@ mod tests {
 
     #[test]
     fn differences_between_systems_are_named() {
-        let mut r = review();
-        let mac = r.platforms["macos"].clone();
-        let mut linux = mac.clone();
-        linux.tools.retain(|t| t != "functions.exec");
-        r.platforms.insert("linux".into(), linux);
+        let system = |tools: &[&str]| PlatformReview {
+            reviewed: "2026-11-24".into(),
+            codex: "0.0.0".into(),
+            stays_on: vec!["unified_exec".into()],
+            tools: tools.iter().map(|t| t.to_string()).collect(),
+        };
+        let r = Review {
+            platforms: [
+                (
+                    "macos".to_string(),
+                    system(&["functions.exec", "functions.wait"]),
+                ),
+                ("linux".to_string(), system(&["functions.wait"])),
+            ]
+            .into(),
+            stays_on: vec!["unified_exec".into()],
+            tools: vec!["functions.exec".into(), "functions.wait".into()],
+            refused_models: vec![],
+        };
         assert_eq!(
             differences(&r),
             ["tool functions.exec: on macos, not on linux"]

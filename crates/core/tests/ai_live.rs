@@ -379,13 +379,14 @@ async fn translates_with_apple_then_the_writing_provider() {
 #[ignore]
 async fn codex_switches_are_as_reviewed() {
     let codex = programs().codex.expect("codex installed");
-    let unreviewed = ai::codex::check(&codex).await.unwrap();
-    assert!(unreviewed.is_empty(), "not reviewed: {unreviewed:?}");
-    // What this system shows, for its own entry in the review.
+    // What this system shows, printed first, for its own entry in the
+    // review even when something below fails.
     let mut still = ai::codex::still_on(&codex).await.unwrap();
     still.sort();
     println!("{} stays_on: {still:?}", std::env::consts::OS);
+    let unreviewed = ai::codex::check(&codex).await.unwrap();
     let changed = ai::codex_review::against_this_system(&still, |p| &p.stays_on);
+    assert!(unreviewed.is_empty(), "not reviewed: {unreviewed:?}");
     assert!(
         changed.is_none(),
         "{changed:?} (accept only with the owner's OK)"
@@ -623,15 +624,16 @@ async fn codex_request_tools_are_as_reviewed() {
                 .map(|t| format!("{name}: {t}")),
         );
     }
-    assert!(
-        unreviewed.is_empty(),
-        "not reviewed (accept only with the owner's OK): {unreviewed:?}"
-    );
-    // What this system shows, for its own entry in the review.
+    // What this system shows, printed before anything can fail, for its
+    // own entry in the review.
     seen.sort();
     seen.dedup();
     println!("{} tools: {seen:?}", std::env::consts::OS);
     let changed = ai::codex_review::against_this_system(&seen, |p| &p.tools);
+    assert!(
+        unreviewed.is_empty(),
+        "not reviewed (accept only with the owner's OK): {unreviewed:?}"
+    );
     assert!(
         changed.is_none(),
         "{changed:?} (accept only with the owner's OK)"
