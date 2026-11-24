@@ -198,8 +198,13 @@ test("inline reply: opening and closing the panel many times never moves the rep
     // size before it's corrected for). Until the panel's animation has
     // finished, however long that takes, not for a fixed time: a slow
     // machine paints few frames and late (docs/ROADMAP.md → Flaky tests).
+    // Toggles 3 (open) and 4 (close): the page busy at once after the
+    // click, as on a slow runner. Then the reply's ideas rise in as the
+    // panel opens (`ai-rise`), as in the CI run that timed out, and on a
+    // slowed page the close can run its whole course before the first frame.
+    const stall = i === 2 || i === 3 ? 400 : 0;
     const { tops, animated } = await page.evaluate(
-      () =>
+      (stallMs) =>
         new Promise<{ tops: number[]; animated: boolean }>((resolve) => {
           const form = document.querySelector(
             'section[aria-label="Reply"] form[aria-label="Reply"]',
@@ -210,10 +215,22 @@ test("inline reply: opening and closing the panel many times never moves the rep
           // A real click's press first: it ends the reply being followed
           // into view, as it does for a person (a bare click() didn't, and
           // the follow, still running, moved the reply).
-          button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
-          button.click();
           const painted: number[] = [];
           let ran = false;
+          // The panel's own motion, also from its events: a close can start
+          // and end between two frames on a slow machine, never seen running
+          // in one, and the browser still sends its events.
+          const moved = (e: Event) => {
+            if (e.target instanceof Element && e.target.classList.contains("inline-reveal"))
+              ran = true;
+          };
+          const kinds = ["animationstart", "transitionrun"] as const;
+          for (const kind of kinds) document.addEventListener(kind, moved, true);
+          button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+          button.click();
+          const busy = performance.now() + stallMs;
+          while (performance.now() < busy);
+          let frames = 0;
           let watch: ResizeObserver | null = null;
           let quiet = 0;
           // React applies the click a moment later: watch from the first
@@ -225,20 +242,33 @@ test("inline reply: opening and closing the panel many times never moves the rep
               watch = new ResizeObserver(() => painted.push(form.getBoundingClientRect().top));
               watch.observe(panel);
             }
-            // Endless ones (a spinner) never finish, and are left out.
+            // Endless ones (a spinner) never finish, and are left out. So
+            // are finished ones: an animation that holds its end state
+            // (`ai-rise`, `both`) stays listed after it ends, and counted,
+            // it kept the wait going until the test timed out
+            // (docs/ROADMAP.md → Flaky tests).
             const running =
               panel
                 ?.getAnimations({ subtree: true })
-                .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).length ?? 0;
+                .filter(
+                  (a) =>
+                    a.playState === "running" &&
+                    a.effect?.getComputedTiming().iterations !== Infinity,
+                ).length ?? 0;
             if (running > 0) ran = true;
             quiet = watch && ran && running === 0 ? quiet + 1 : 0;
-            if (quiet >= 2) {
-              watch!.disconnect();
+            // A panel that never moves fails "animated" below rather than
+            // waiting out the test's time (counted in frames, which a slow
+            // machine doesn't use up while it's busy).
+            if (quiet >= 2 || (++frames > 120 && !ran)) {
+              watch?.disconnect();
+              for (const kind of kinds) document.removeEventListener(kind, moved, true);
               resolve({ tops: painted, animated: ran });
             } else requestAnimationFrame(frame);
           };
           requestAnimationFrame(frame);
         }),
+      stall,
     );
     expect(animated, `toggle ${i + 1} animated`).toBe(true);
     // At least the observer's first report, so the check below has something

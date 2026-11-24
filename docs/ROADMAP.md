@@ -5333,6 +5333,33 @@ the way, and one bug in the app caused flaky failures; all three are in
         tests then passed 40 of 40 on 8 workers, and the stall, reopen and
         wheel tests 15 of 15 on the slowed page and 30 of 30 with every core
         busy.
+- [x] `ai-panel.spec.ts`: "inline reply: opening and closing the panel many
+      times never moves the reply".
+      - 2026-11-24, CI on `main` after #222 merged, WebKit,
+        https://github.com/nwoolls/mailboat/actions/runs/45334688699:
+        `page.evaluate: Test timeout of 30000ms exceeded`, in toggle 3 (an
+        open). The trace showed the reply in place on every toggle before
+        it; the click before the loop took over a second, so the page was
+        busy.
+      - Fixed 2026-11-24 (branch `flaky-ai-panel-toggles`), in the test
+        only. Each toggle waits until the panel has had no animation for
+        two frames, and it had two ways never to get there. #222 gave the
+        reply's ideas a rise-in (`ai-rise`) that holds its end state, so a
+        finished one stays in `getAnimations()`, and the test counted it:
+        once ideas rose in, the wait never ended. A frame-by-frame log
+        showed it. And on the slowed page the close's transition can run
+        its whole course between two frames, so the wait never saw the
+        panel move and never ended either. The wait now counts only
+        running animations, also takes the panel's own `animationstart`
+        and `transitionrun` events as motion, and ends after 120 frames
+        with no motion so a panel that doesn't animate fails "animated"
+        instead of timing out. Toggles 3 and 4 now stall the page for
+        400 ms after the click, which made the old test time out 3 of 3;
+        without the running-only count it still times out 3 of 3, and on
+        the slowed page the version without the events timed out 1 of 6.
+        With the fix the file passed 60 of 60 on 8 workers and this test
+        8 of 8 on the slowed page; with reduced motion on, it fails at once
+        with "toggle 1 animated".
 
 ## Bug backlog
 

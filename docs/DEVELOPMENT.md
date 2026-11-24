@@ -209,7 +209,12 @@ tests:
 5. Fix the cause, whether it is in the app or in the test. Wait on frames
    or events, not on the clock. A test can drive the page's clock
    (`tests/browser/time.ts`) or have the harness hold an answer until it
-   releases it (`&ideas=held`, in the paragraph before this section).
+   releases it (`&ideas=held`, in the paragraph before this section). A
+   test that waits for animations to end counts only running ones (one that
+   holds its end state stays in `getAnimations()` after it ends), and also
+   takes the start events as motion (on a slow machine an animation can
+   start and end between two frames). Give such a wait a cap in frames, so
+   it fails with its own message instead of the test's timeout.
 6. Make the test fail without the fix (a longer stall, a held answer), so
    it no longer needs a slow runner to catch the problem. Then run it with
    the fix: repeated, slowed, on 8 workers and under load, and record the
