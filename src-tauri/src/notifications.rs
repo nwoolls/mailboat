@@ -218,82 +218,138 @@ mod mac {
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use std::collections::HashMap;
-    use std::sync::{Arc, Mutex, OnceLock};
+    use std::collections::BTreeMap;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+    use std::time::Duration;
 
     use mail_core::mail::notify::Notice;
     use mail_core::model::ThreadId;
     use tauri::{AppHandle, Manager};
     use tauri_specta::Event;
-    use zbus::blocking::{Connection, Proxy};
+    use zbus::blocking::{Connection, MessageIterator, Proxy};
+    use zbus::message::Type;
     use zbus::zvariant::Value;
+    use zbus::MatchRule;
 
     use super::NotificationOpenedEvent;
 
+    const NAME: &str = "org.freedesktop.Notifications";
+    const PATH: &str = "/org/freedesktop/Notifications";
+
+    /// How long a call to the service may take: one that stops answering
+    /// must not hold up the app.
+    pub const CALL_TIMEOUT: Duration = Duration::from_secs(5);
+
+    /// How many shown notifications are remembered. A service that never
+    /// says one was closed would otherwise grow the list for as long as
+    /// the app runs; the oldest (lowest ID) is forgotten first.
+    const REMEMBERED: usize = 256;
+
     /// One connection to the notification service, for everything: a
     /// service may take a close only from the connection that posted the
-    /// notification (GNOME checks), and the listeners are subscribed before
-    /// anything is posted, so no click or close is missed.
+    /// notification (GNOME checks). Clicks and closes are read in the
+    /// order the service sent them, by one listener subscribed before
+    /// anything is posted, and no lock is held during a call.
     pub struct Service {
         proxy: Proxy<'static>,
         /// The service's IDs of this app's notifications still shown, and
         /// their conversations.
-        shown: Mutex<HashMap<u32, Option<ThreadId>>>,
+        shown: Mutex<BTreeMap<u32, Option<ThreadId>>>,
+        /// False once the connection is gone: the next `show` connects
+        /// again.
+        alive: AtomicBool,
     }
 
     impl Service {
-        /// Connects over `connection` and starts listening: `on_click` gets
-        /// the conversation of a notification of this app's that was
-        /// clicked (the "default" action, which GNOME, KDE and most others
-        /// send for a click on it).
+        /// Starts listening on `connection` (built with `CALL_TIMEOUT`):
+        /// `on_click` gets the conversation of a notification of this
+        /// app's that was clicked (the "default" action, which GNOME, KDE
+        /// and most others send for a click on it).
         pub fn connect(
             connection: Connection,
             on_click: impl Fn(Option<ThreadId>) + Send + 'static,
         ) -> zbus::Result<Arc<Service>> {
-            let proxy = Proxy::new_owned(
-                connection,
-                "org.freedesktop.Notifications",
-                "/org/freedesktop/Notifications",
-                "org.freedesktop.Notifications",
+            let signals = MessageIterator::for_match_rule(
+                MatchRule::builder()
+                    .msg_type(Type::Signal)
+                    .interface(NAME)?
+                    .path(PATH)?
+                    .build(),
+                &connection,
+                None,
             )?;
-            let clicks = proxy.receive_signal("ActionInvoked")?;
-            let closes = proxy.receive_signal("NotificationClosed")?;
+            // A new owner of the service's name (it restarted) numbers its
+            // notifications afresh, so the IDs remembered mean nothing.
+            let owners = MessageIterator::for_match_rule(
+                MatchRule::builder()
+                    .msg_type(Type::Signal)
+                    .sender("org.freedesktop.DBus")?
+                    .interface("org.freedesktop.DBus")?
+                    .member("NameOwnerChanged")?
+                    .arg(0, NAME)?
+                    .build(),
+                &connection,
+                None,
+            )?;
+            let proxy = Proxy::new_owned(connection, NAME, PATH, NAME)?;
             let service = Arc::new(Service {
                 proxy,
-                shown: Mutex::new(HashMap::new()),
+                shown: Mutex::new(BTreeMap::new()),
+                alive: AtomicBool::new(true),
             });
             let listening = Arc::clone(&service);
             std::thread::spawn(move || {
-                for message in clicks {
-                    let Ok((id, action)) = message.body().deserialize::<(u32, String)>() else {
-                        continue;
-                    };
-                    let thread = match listening.shown.lock().unwrap().get(&id) {
-                        Some(thread) if action == "default" => *thread,
-                        // Another app's, or another of its actions.
-                        _ => continue,
-                    };
-                    on_click(thread);
-                }
-            });
-            let listening = Arc::clone(&service);
-            std::thread::spawn(move || {
-                for message in closes {
-                    if let Ok((id, _reason)) = message.body().deserialize::<(u32, u32)>() {
-                        listening.shown.lock().unwrap().remove(&id);
+                for message in signals {
+                    let Ok(message) = message else { break };
+                    let header = message.header();
+                    match header.member().map(|m| m.as_str()) {
+                        Some("ActionInvoked") => {
+                            let Ok((id, action)) = message.body().deserialize::<(u32, String)>()
+                            else {
+                                continue;
+                            };
+                            let thread = match listening.shown.lock().unwrap().get(&id) {
+                                Some(thread) if action == "default" => *thread,
+                                // Another app's, or another of its actions.
+                                _ => continue,
+                            };
+                            on_click(thread);
+                        }
+                        Some("NotificationClosed") => {
+                            if let Ok((id, _reason)) = message.body().deserialize::<(u32, u32)>() {
+                                listening.shown.lock().unwrap().remove(&id);
+                            }
+                        }
+                        _ => {}
                     }
                 }
+                listening.alive.store(false, Ordering::Release);
+            });
+            let listening = Arc::clone(&service);
+            std::thread::spawn(move || {
+                for message in owners {
+                    if message.is_err() {
+                        break;
+                    }
+                    listening.shown.lock().unwrap().clear();
+                }
+                listening.alive.store(false, Ordering::Release);
             });
             Ok(service)
         }
 
-        /// Posts one, with a "default" action so a click can open it. The
-        /// list is locked while it's posted, so a click can't come before
-        /// its conversation is written down.
+        pub fn alive(&self) -> bool {
+            self.alive.load(Ordering::Acquire)
+        }
+
+        /// Posts one, with a "default" action so a click can open it. A
+        /// failure other than the service's own answer (the connection is
+        /// gone) marks the service dead, to connect again next time.
         pub fn post(&self, notice: &Notice) {
-            let mut hints: HashMap<&str, Value> = HashMap::new();
+            let mut hints: std::collections::HashMap<&str, Value> =
+                std::collections::HashMap::new();
             hints.insert("desktop-entry", Value::from(mail_core::brand::NAME));
-            let mut shown = self.shown.lock().unwrap();
             let posted: zbus::Result<u32> = self.proxy.call(
                 "Notify",
                 &(
@@ -307,19 +363,33 @@ mod linux {
                     -1i32,
                 ),
             );
-            if let Ok(id) = posted {
-                shown.insert(id, notice.thread);
+            match posted {
+                Ok(id) => {
+                    let mut shown = self.shown.lock().unwrap();
+                    shown.insert(id, notice.thread);
+                    while shown.len() > REMEMBERED {
+                        shown.pop_first();
+                    }
+                }
+                Err(zbus::Error::MethodError(..)) => {}
+                Err(_) => self.alive.store(false, Ordering::Release),
             }
         }
 
-        /// Takes back every notification still shown. One the service
-        /// refused stays listed, for the next try.
+        /// Takes back every notification still shown, without holding the
+        /// list during the calls. One the service refused stays listed, for
+        /// the next try.
         pub fn clear_all(&self) {
-            self.shown.lock().unwrap().retain(|id, _| {
-                self.proxy
-                    .call::<_, _, ()>("CloseNotification", &(*id,))
-                    .is_err()
-            });
+            let ids: Vec<u32> = self.shown.lock().unwrap().keys().copied().collect();
+            for id in ids {
+                if self
+                    .proxy
+                    .call::<_, _, ()>("CloseNotification", &(id,))
+                    .is_ok()
+                {
+                    self.shown.lock().unwrap().remove(&id);
+                }
+            }
         }
 
         #[cfg(test)]
@@ -328,29 +398,38 @@ mod linux {
         }
     }
 
-    static SERVICE: OnceLock<Option<Arc<Service>>> = OnceLock::new();
+    /// The service in use; empty before the first notification, after a
+    /// session bus that couldn't be reached, or once the connection died.
+    static SERVICE: Mutex<Option<Arc<Service>>> = Mutex::new(None);
 
     /// Connects to the session bus and starts listening. Call at startup;
-    /// `show` connects itself if it wasn't. Nothing when there's no bus.
+    /// `show` connects (again) itself when needed.
     pub fn install(app: &AppHandle) {
         let _ = service(app);
     }
 
-    fn service(app: &AppHandle) -> Option<&'static Arc<Service>> {
-        SERVICE
-            .get_or_init(|| {
-                let app = app.clone();
-                Service::connect(Connection::session().ok()?, move |thread_id| {
-                    if let Some(window) = app.get_webview_window("main") {
-                        let _ = window.unminimize();
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
-                    let _ = NotificationOpenedEvent { thread_id }.emit(&app);
-                })
-                .ok()
-            })
-            .as_ref()
+    fn service(app: &AppHandle) -> Option<Arc<Service>> {
+        let mut current = SERVICE.lock().unwrap();
+        if let Some(service) = current.as_ref().filter(|s| s.alive()) {
+            return Some(Arc::clone(service));
+        }
+        let app = app.clone();
+        let connection = zbus::blocking::connection::Builder::session()
+            .ok()?
+            .method_timeout(CALL_TIMEOUT)
+            .build()
+            .ok()?;
+        let service = Service::connect(connection, move |thread_id| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+            let _ = NotificationOpenedEvent { thread_id }.emit(&app);
+        })
+        .ok()?;
+        *current = Some(Arc::clone(&service));
+        Some(service)
     }
 
     pub fn show(app: &AppHandle, notice: Notice) {
@@ -360,7 +439,8 @@ mod linux {
     }
 
     pub fn clear_all() {
-        if let Some(service) = SERVICE.get().and_then(Option::as_ref) {
+        let service = SERVICE.lock().unwrap().clone();
+        if let Some(service) = service {
             service.clear_all();
         }
     }
@@ -372,10 +452,11 @@ mod linux {
 /// without it, except in CI.
 #[cfg(all(test, target_os = "linux"))]
 mod linux_tests {
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
     use std::io::BufRead;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{mpsc, Arc, Mutex};
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     use mail_core::mail::notify::Notice;
     use mail_core::model::ThreadId;
@@ -385,10 +466,13 @@ mod linux_tests {
 
     use super::linux::Service;
 
-    /// Who posted each notification.
-    #[derive(Default)]
+    /// Who posted each notification; which closes to refuse; whether to
+    /// stop answering.
+    #[derive(Default, Clone)]
     struct Fake {
         owners: Arc<Mutex<HashMap<u32, String>>>,
+        refuse: Arc<Mutex<HashSet<u32>>>,
+        stall: Arc<AtomicBool>,
     }
 
     #[zbus::interface(name = "org.freedesktop.Notifications")]
@@ -406,8 +490,12 @@ mod linux_tests {
             _hints: HashMap<String, OwnedValue>,
             _timeout: i32,
         ) -> u32 {
+            if self.stall.load(Ordering::Acquire) {
+                std::thread::sleep(Duration::from_secs(3));
+            }
             let mut owners = self.owners.lock().unwrap();
-            let id = owners.len() as u32 + 1;
+            // Numbered from 1, as a freshly started service does.
+            let id = (1..).find(|i| !owners.contains_key(i)).unwrap();
             let sender = header.sender().map(|s| s.to_string()).unwrap_or_default();
             owners.insert(id, sender);
             id
@@ -420,7 +508,7 @@ mod linux_tests {
         ) -> zbus::fdo::Result<()> {
             let sender = header.sender().map(|s| s.to_string()).unwrap_or_default();
             let mut owners = self.owners.lock().unwrap();
-            if owners.get(&id) != Some(&sender) {
+            if owners.get(&id) != Some(&sender) || self.refuse.lock().unwrap().contains(&id) {
                 return Err(zbus::fdo::Error::AccessDenied("not yours".into()));
             }
             owners.remove(&id);
@@ -436,72 +524,118 @@ mod linux_tests {
         }
     }
 
-    #[test]
-    fn a_click_opens_its_conversation_and_the_app_takes_back_its_own() {
-        let daemon = std::process::Command::new("dbus-daemon")
+    struct Bus {
+        daemon: std::process::Child,
+        address: String,
+    }
+
+    impl Drop for Bus {
+        fn drop(&mut self) {
+            let _ = self.daemon.kill();
+            let _ = self.daemon.wait();
+        }
+    }
+
+    fn bus() -> Option<Bus> {
+        let Ok(mut daemon) = std::process::Command::new("dbus-daemon")
             .args(["--session", "--print-address", "--nofork"])
             .stdout(std::process::Stdio::piped())
-            .spawn();
-        let Ok(mut daemon) = daemon else {
+            .spawn()
+        else {
             assert!(std::env::var_os("CI").is_none(), "CI has dbus-daemon");
             eprintln!("skipped: no dbus-daemon here");
-            return;
+            return None;
         };
         let mut address = String::new();
         std::io::BufReader::new(daemon.stdout.take().unwrap())
             .read_line(&mut address)
             .unwrap();
-        let address = address.trim().to_string();
-        let fake = Fake::default();
-        let owners = Arc::clone(&fake.owners);
-        let server = connection::Builder::address(address.as_str())
+        Some(Bus {
+            daemon,
+            address: address.trim().to_string(),
+        })
+    }
+
+    fn serve(bus: &Bus, fake: &Fake) -> Connection {
+        connection::Builder::address(bus.address.as_str())
             .unwrap()
             .name("org.freedesktop.Notifications")
             .unwrap()
-            .serve_at("/org/freedesktop/Notifications", fake)
+            .serve_at("/org/freedesktop/Notifications", fake.clone())
             .unwrap()
             .build()
+            .unwrap()
+    }
+
+    fn client(bus: &Bus, timeout: Duration) -> Connection {
+        connection::Builder::address(bus.address.as_str())
+            .unwrap()
+            .method_timeout(timeout)
+            .build()
+            .unwrap()
+    }
+
+    fn emit(
+        server: &Connection,
+        member: &str,
+        body: &(impl serde::Serialize + zbus::zvariant::DynamicType),
+    ) {
+        server
+            .emit_signal(
+                None::<()>,
+                "/org/freedesktop/Notifications",
+                "org.freedesktop.Notifications",
+                member,
+                body,
+            )
             .unwrap();
-        let connect = || {
-            connection::Builder::address(address.as_str())
-                .unwrap()
-                .build()
-                .unwrap()
-        };
+    }
+
+    fn eventually(what: &str, check: impl Fn() -> bool) {
+        let start = Instant::now();
+        while !check() {
+            assert!(start.elapsed() < Duration::from_secs(5), "{what}");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    #[test]
+    fn a_click_opens_its_conversation_even_when_the_close_follows_at_once() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        let server = serve(&bus, &fake);
         let (clicked, clicks) = mpsc::channel();
-        let service = Service::connect(connect(), move |thread| {
+        let service = Service::connect(client(&bus, Duration::from_secs(5)), move |thread| {
             clicked.send(thread).unwrap();
         })
         .unwrap();
-
         service.post(&notice(42));
         service.post(&notice(7));
-        let mut ids = service.shown();
-        ids.sort();
-        assert_eq!(ids, [1, 2]);
+        assert_eq!(service.shown(), [1, 2]);
 
-        // A click on the first opens its conversation; another action, or
-        // a notification that isn't the app's, does nothing.
-        let emit = |id: u32, action: &str| {
-            server
-                .emit_signal(
-                    None::<()>,
-                    "/org/freedesktop/Notifications",
-                    "org.freedesktop.Notifications",
-                    "ActionInvoked",
-                    &(id, action),
-                )
-                .unwrap();
-        };
-        emit(2, "reply");
-        emit(99, "default");
-        emit(1, "default");
+        // Another action, or a notification that isn't the app's: nothing.
+        emit(&server, "ActionInvoked", &(2u32, "reply"));
+        emit(&server, "ActionInvoked", &(99u32, "default"));
+        // A click, and the close a desktop sends right after it.
+        emit(&server, "ActionInvoked", &(1u32, "default"));
+        emit(&server, "NotificationClosed", &(1u32, 2u32));
         let first = clicks.recv_timeout(Duration::from_secs(5)).unwrap();
         assert_eq!(first, Some(ThreadId(42)));
         assert!(clicks.recv_timeout(Duration::from_millis(300)).is_err());
+        eventually("the closed one is forgotten", || service.shown() == [2]);
+    }
 
-        // The fake refuses a close from another connection, as GNOME does...
-        let other: Connection = connect();
+    #[test]
+    fn the_app_takes_back_only_its_own_and_keeps_what_was_refused() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        let _server = serve(&bus, &fake);
+        let service = Service::connect(client(&bus, Duration::from_secs(5)), |_| {}).unwrap();
+        service.post(&notice(42));
+        service.post(&notice(7));
+
+        // The fake refuses a close from another connection, as GNOME does.
+        let other = client(&bus, Duration::from_secs(5));
         let refused = other.call_method(
             Some("org.freedesktop.Notifications"),
             "/org/freedesktop/Notifications",
@@ -510,13 +644,62 @@ mod linux_tests {
             &(1u32,),
         );
         assert!(refused.is_err());
-        // ...and takes the app's own, from the connection that posted them.
+        // From the connection that posted them: one taken back; the one the
+        // service refused stays listed for the next try.
+        fake.refuse.lock().unwrap().insert(2);
+        service.clear_all();
+        assert_eq!(service.shown(), [2]);
+        fake.refuse.lock().unwrap().clear();
         service.clear_all();
         assert!(service.shown().is_empty());
-        assert!(owners.lock().unwrap().is_empty());
+        assert!(fake.owners.lock().unwrap().is_empty());
+    }
 
-        let _ = daemon.kill();
-        let _ = daemon.wait();
+    #[test]
+    fn a_service_that_stops_answering_doesnt_hold_up_the_app() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        let server = serve(&bus, &fake);
+        let (clicked, clicks) = mpsc::channel();
+        let service = Service::connect(client(&bus, Duration::from_millis(300)), move |thread| {
+            clicked.send(thread).unwrap();
+        })
+        .unwrap();
+        service.post(&notice(42));
+        fake.stall.store(true, Ordering::Release);
+        let started = Instant::now();
+        service.post(&notice(7));
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "post waited on the service"
+        );
+        // A click on the first still opens it.
+        emit(&server, "ActionInvoked", &(1u32, "default"));
+        assert_eq!(
+            clicks.recv_timeout(Duration::from_secs(5)).unwrap(),
+            Some(ThreadId(42))
+        );
+    }
+
+    #[test]
+    fn a_restarted_service_doesnt_open_an_old_conversation() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        let server = serve(&bus, &fake);
+        let (clicked, clicks) = mpsc::channel();
+        let service = Service::connect(client(&bus, Duration::from_secs(5)), move |thread| {
+            clicked.send(thread).unwrap();
+        })
+        .unwrap();
+        service.post(&notice(42));
+        assert_eq!(service.shown(), [1]);
+        // The service restarts: a new owner of its name, numbering from 1.
+        drop(server);
+        let restarted = serve(&bus, &Fake::default());
+        eventually("the old IDs are forgotten", || service.shown().is_empty());
+        // ID 1 now belongs to another app's notification: no click.
+        emit(&restarted, "ActionInvoked", &(1u32, "default"));
+        assert!(clicks.recv_timeout(Duration::from_millis(500)).is_err());
     }
 }
 
