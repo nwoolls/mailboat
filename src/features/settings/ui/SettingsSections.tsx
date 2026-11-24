@@ -87,7 +87,7 @@ import { textSize } from "./textSize";
 import { setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
-import { IS_MAC } from "../../../shared/lib/platform";
+import { IS_MAC, PLATFORM, revealLabel, systemName } from "../../../shared/lib/platform";
 import { iconSetting, shownIcon } from "../model/appIcon";
 import { defaultMailAppRow } from "../model/mailApp";
 import { describeImageCache, IMAGE_CACHE_SIZES } from "../model/imageCache";
@@ -589,23 +589,26 @@ export function NotificationsSection() {
             />
           </div>
         </Row>
-        <Row
-          label="Style and sound"
-          description="macOS decides whether they show, as banners or alerts, and with what sound."
-        >
-          <Button
-            onClick={() =>
-              void unwrap(commands.notificationSettingsOpen()).catch((e: unknown) =>
-                showToast({
-                  tone: "error",
-                  message: `Couldn’t open System Settings: ${errorText(e)}`,
-                }),
-              )
-            }
+        {/* Linux has no one place for this: each desktop keeps its own. */}
+        {PLATFORM !== "linux" && (
+          <Row
+            label="Style and sound"
+            description="macOS decides whether they show, as banners or alerts, and with what sound."
           >
-            Open System Settings
-          </Button>
-        </Row>
+            <Button
+              onClick={() =>
+                void unwrap(commands.notificationSettingsOpen()).catch((e: unknown) =>
+                  showToast({
+                    tone: "error",
+                    message: `Couldn’t open System Settings: ${errorText(e)}`,
+                  }),
+                )
+              }
+            >
+              Open System Settings
+            </Button>
+          </Row>
+        )}
       </Group>
       <Group title="Dock">
         <Row
@@ -1123,7 +1126,7 @@ export function AppearanceSection({
         </Button>,
       )}
       <Group title="Theme">
-        <Row label="Theme" description="System follows macOS, light or dark.">
+        <Row label="Theme" description={`System follows ${systemName()}, light or dark.`}>
           <Segmented
             label="Theme"
             value={theme}
@@ -1282,7 +1285,7 @@ export function AdvancedSection() {
               )
             }
           >
-            Show in Finder
+            {revealLabel()}
           </Button>
         </Row>
       </Group>
@@ -1457,7 +1460,7 @@ export function ToyboxSection() {
           </>
         )}
       </Group>
-      <Group title="Reduce motion" description={reducedMotionIntro(reduced, IS_MAC)}>
+      <Group title="Reduce motion" description={reducedMotionIntro(reduced)}>
         {/* Without markers, WebKit stops exposing a list to VoiceOver unless it says role="list". */}
         <ul
           role="list"

@@ -127,6 +127,13 @@ body {
   cursor: default;
 }
 
+/* Linux (WebKitGTK) has no blur behind the window, and the window isn't
+   transparent there (tauri.linux.conf.json), so the theme's base color
+   stands in for the glass and the surfaces' tints sit on it as before. */
+html[data-platform="linux"] body {
+  background: var(--color-background-base);
+}
+
 /* The rounded body panel that sits on the glass. Only a hairline edge, as
    in Tern: a soft shadow darkened the splitter gaps beside it. */
 .panel {

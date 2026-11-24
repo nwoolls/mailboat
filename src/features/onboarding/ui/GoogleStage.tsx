@@ -396,9 +396,9 @@ function GcloudCard({ progress }: { progress: Progress }) {
   return (
     <div className="space-y-2 rounded-xl bg-selection-subtle p-4 ring-1 ring-stroke">
       <p className="text-[13px] text-content/70">
-        Open Terminal (Mac) or PowerShell (Windows) and sign in with <code>gcloud auth login</code>.
-        Then run these two commands, one at a time. They create the project <code>{projectId}</code>{" "}
-        and turn on the Gmail, People and Calendar APIs.
+        Open Terminal (Mac), PowerShell (Windows) or a terminal (Linux) and sign in with{" "}
+        <code>gcloud auth login</code>. Then run these two commands, one at a time. They create the
+        project <code>{projectId}</code> and turn on the Gmail, People and Calendar APIs.
       </p>
       {steps.map((command, i) => (
         <div
