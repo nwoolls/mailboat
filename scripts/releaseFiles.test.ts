@@ -26,10 +26,23 @@ describe("which build outputs are update payloads", () => {
     expect(platformOf("App.app.tar.gz")).toBe("darwin-aarch64");
     expect(platformOf("App_0.1.0_x64-setup.exe")).toBe("windows-x86_64");
     expect(platformOf("App_0.1.0_arm64-setup.exe")).toBe("windows-aarch64");
+    // Linux: each kind of package for each processor, as Tauri names them.
+    expect(platformOf("App_0.1.0_amd64.AppImage")).toBe("linux-x86_64-appimage");
+    expect(platformOf("App_0.1.0_amd64.deb")).toBe("linux-x86_64-deb");
+    expect(platformOf("App-0.1.0-1.x86_64.rpm")).toBe("linux-x86_64-rpm");
+    expect(platformOf("App_0.1.0_aarch64.AppImage")).toBe("linux-aarch64-appimage");
+    expect(platformOf("App_0.1.0_arm64.deb")).toBe("linux-aarch64-deb");
+    expect(platformOf("App-0.1.0-1.aarch64.rpm")).toBe("linux-aarch64-rpm");
   });
 
   it("is null for anything else, signatures and disk images included", () => {
-    for (const file of ["App.app.zip", "App_0.1.0_aarch64.dmg", "App.app.tar.gz.sig", "x.exe"]) {
+    for (const file of [
+      "App.app.zip",
+      "App_0.1.0_aarch64.dmg",
+      "App.app.tar.gz.sig",
+      "x.exe",
+      "App_0.1.0_amd64.deb.sig",
+    ]) {
       expect(platformOf(file)).toBeNull();
     }
   });
@@ -48,6 +61,10 @@ describe("what goes on the release", () => {
       "App_0.1.0_aarch64.cdx.json",
       "App_0.1.0_x64.cdx.json",
       "App_0.1.0_arm64.cdx.json",
+      "App_0.1.0_amd64.deb",
+      "App_0.1.0_amd64.deb.sig",
+      "App-0.1.0-1.aarch64.rpm.sig",
+      "App_0.1.0_linux_arm64.cdx.json",
     ]) {
       expect(publishable(file)).toBe(true);
     }
@@ -61,7 +78,7 @@ describe("what goes on the release", () => {
 });
 
 describe("a bill of materials per download", () => {
-  it("names each after the download it describes, beside it, for every platform", () => {
+  it("names each after the download it describes, and covers every platform once", () => {
     const downloads = [
       "App_0.1.0_aarch64.dmg",
       "App_0.1.0_x64-setup.exe",
@@ -69,14 +86,19 @@ describe("a bill of materials per download", () => {
     ];
     for (const d of SBOM_DOWNLOADS) {
       const name = sbomName("App", "0.1.0", d);
-      // It shares the download's name up to the platform's word.
-      expect(downloads.some((f) => f.startsWith(name.replace(".cdx.json", "")))).toBe(true);
+      // The Mac's and Windows' share the download's name up to the
+      // platform's word; Linux's three packages of a processor share one.
+      if (d.host === "darwin")
+        expect(downloads.some((f) => f.startsWith(name.replace(".cdx.json", "")))).toBe(true);
+      else expect(name).toMatch(/^App_0\.1\.0_linux_(amd64|arm64)\.cdx\.json$/);
       expect(isSbom(name) && publishable(name)).toBe(true);
       // Never mistaken for an update file or an installer.
       expect(platformOf(name)).toBeNull();
       expect(stableName(name, "0.1.0")).toBeNull();
     }
-    expect(SBOM_DOWNLOADS.map((d) => d.platform).toSorted()).toEqual([...PLATFORMS].toSorted());
+    expect(SBOM_DOWNLOADS.flatMap((d) => d.platforms).toSorted()).toEqual(
+      [...PLATFORMS].toSorted(),
+    );
   });
 });
 
@@ -86,6 +108,15 @@ describe("names a download link can rely on", () => {
     expect(stableName("App_0.1.0_x64-setup.exe", "0.1.0")).toBe("App_x64-setup.exe");
     expect(stableName("App_0.1.0_arm64-setup.exe", "0.1.0")).toBe("App_arm64-setup.exe");
     expect(stableName("App_0.2.0-beta.1_x64-setup.exe", "0.2.0-beta.1")).toBe("App_x64-setup.exe");
+  });
+
+  it("takes the version out of the Linux packages, the .rpm's way included", () => {
+    expect(stableName("App_0.1.0_amd64.AppImage", "0.1.0")).toBe("App_amd64.AppImage");
+    expect(stableName("App_0.1.0_arm64.deb", "0.1.0")).toBe("App_arm64.deb");
+    expect(stableName("App-0.1.0-1.x86_64.rpm", "0.1.0")).toBe("App-x86_64.rpm");
+    expect(stableName("App-0.2.0-beta.1-1.aarch64.rpm", "0.2.0-beta.1")).toBe("App-aarch64.rpm");
+    expect(stableName("App-0.1.0-1.x86_64.rpm", "0.2.0")).toBeNull();
+    expect(stableName("App_0.1.0_amd64.deb.sig", "0.1.0")).toBeNull();
   });
 
   it("knows which files are the installers a person downloads", () => {
@@ -131,6 +162,17 @@ const files = [
   { file: "App_0.1.0_x64-setup.exe", signature: "CCCC" },
   { file: "App_0.1.0_arm64-setup.exe", signature: "DDDD" },
   { file: "App_0.1.0_aarch64.dmg", signature: "ignored" },
+  ...[
+    "App_0.1.0_amd64.AppImage",
+    "App_0.1.0_amd64.deb",
+    "App-0.1.0-1.x86_64.rpm",
+    "App_0.1.0_aarch64.AppImage",
+    "App_0.1.0_arm64.deb",
+    "App-0.1.0-1.aarch64.rpm",
+  ].map((file) => ({
+    file,
+    signature: "EEEE",
+  })),
 ];
 const input = {
   version: "0.1.0",
@@ -144,11 +186,10 @@ describe("the update manifest", () => {
     const m = buildManifest(input);
     expect(m.version).toBe("0.1.0");
     expect(m.pub_date).toBe("2026-11-05T12:00:00.000Z");
-    expect(Object.keys(m.platforms)).toEqual([
-      "darwin-aarch64",
-      "windows-x86_64",
-      "windows-aarch64",
-    ]);
+    expect(Object.keys(m.platforms)).toEqual([...PLATFORMS]);
+    expect(m.platforms["linux-x86_64-rpm"].url).toBe(
+      "https://github.com/owner/name/releases/download/v0.1.0/App-0.1.0-1.x86_64.rpm",
+    );
     expect(m.platforms["darwin-aarch64"]).toEqual({
       signature: "AAAABBBB==",
       url: "https://github.com/owner/name/releases/download/v0.1.0/App.app.tar.gz",

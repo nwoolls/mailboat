@@ -106,3 +106,34 @@ export function peProblems(headers: string): string[] {
   }
   return problems;
 }
+
+/**
+ * What's wrong with the Linux program, from `readelf -h -l -d -W`. DASA has
+ * no Linux test cases, so these are the protections the Mac and Windows
+ * checks ask for, as Linux names them: a 64-bit, position-independent
+ * program (ASLR), a stack that can't run code (DEP), full RELRO (the
+ * dynamic linker's tables read-only once loaded, with every symbol bound
+ * at start), and no RPATH or RUNPATH (no library loaded from a folder the
+ * program names).
+ */
+export function elfProblems(readelf: string): string[] {
+  const problems: string[] = [];
+  const field = (name: string) => new RegExp(`^\\s*${name}:\\s*(.+)$`, "m").exec(readelf)?.[1];
+  if (field("Class") !== "ELF64") problems.push(`not a 64-bit build (class: ${field("Class")})`);
+  const flags1 = /\(FLAGS_1\)\s+Flags:([^\n]*)/.exec(readelf)?.[1].trim().split(/\s+/) ?? [];
+  if (!field("Type")?.startsWith("DYN") || !flags1.includes("PIE")) {
+    problems.push(`not position-independent (type: ${field("Type") ?? "unknown"})`);
+  }
+  // A segment row: its name, five numbers, then its flags (R, W, E).
+  const segment = (name: string) =>
+    new RegExp(`^\\s*${name}\\s+(?:0x[0-9a-f]+\\s+){5}([RWE ]+?)\\s+0x`, "m").exec(readelf);
+  const stack = segment("GNU_STACK");
+  if (!stack) problems.push("no GNU_STACK segment, so the stack may run code");
+  else if (stack[1].includes("E")) problems.push("the stack can run code");
+  const bindNow = /\(FLAGS\)\s+[^\n]*\bBIND_NOW\b/.test(readelf) || flags1.includes("NOW");
+  if (!segment("GNU_RELRO") || !bindNow) problems.push("no full RELRO (GNU_RELRO and BIND_NOW)");
+  for (const tag of ["RPATH", "RUNPATH"]) {
+    if (new RegExp(`\\(${tag}\\)`).test(readelf)) problems.push(`has a ${tag}`);
+  }
+  return problems;
+}

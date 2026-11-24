@@ -107,14 +107,14 @@ for (const file of chosen.filter(isInstaller)) {
   const stable = stableName(file, version);
   if (!stable) {
     fail(
-      `${file} doesn't contain "_${version}_", so it can't have a name without the version, ` +
+      `${file} doesn't contain the version (${version}) where it should, so it can't have a name without it, ` +
         `and the website's download link for it would break`,
     );
   }
   // A name that still holds the version, one that is already a file in the
   // release, or one two installers share would overwrite a different file.
   if (
-    stable.includes(`_${version}_`) ||
+    stable.includes(version) ||
     chosen.includes(stable) ||
     stableCopies.some((c) => c.stable === stable)
   ) {
@@ -123,7 +123,7 @@ for (const file of chosen.filter(isInstaller)) {
   stableCopies.push({ file, stable });
 }
 for (const ending of INSTALLER_ENDINGS) {
-  if (!stableCopies.some((c) => c.stable.endsWith(ending))) {
+  if (!stableCopies.some((c) => c.file.endsWith(ending))) {
     fail(`no installer ending in ${ending}: the website's download link for it would break`);
   }
 }

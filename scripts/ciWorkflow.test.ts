@@ -121,7 +121,7 @@ const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
     job: always,
     steps: {
       "actions/checkout": appOnly,
-      "sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev":
+      "sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev bubblewrap":
         appOnOs("Linux"),
       "oven-sh/setup-bun": appOnly,
       "bun install --frozen-lockfile": appOnly,
@@ -130,7 +130,7 @@ const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
       "cargo fmt --all --check": appOnly,
       "cargo clippy --workspace --all-targets -- -D warnings": appOnly,
       "cargo test --workspace": appUnlessOs("Windows"),
-      'bun scripts/make-sbom.ts --version 0.0.0 --out "$RUNNER_TEMP/sbom"': appOnOs("macOS"),
+      'bun scripts/make-sbom.ts --version 0.0.0 --out "$RUNNER_TEMP/sbom"': appUnlessOs("Windows"),
       "cargo test --workspace --exclude desktop --no-fail-fast": appOnOs("Windows"),
     },
   },

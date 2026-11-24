@@ -3,35 +3,65 @@
 // update payloads and for which platform, the `latest.json` the app's updater
 // reads, the checksums file, and the release notes from CHANGELOG.md.
 
-/** The platforms the updater has a payload for, as its manifest names them. */
-export type Platform = "darwin-aarch64" | "windows-x86_64" | "windows-aarch64";
+/**
+ * The platforms the updater has a payload for, as its manifest names them.
+ * Linux has one per kind of package (`{os}-{arch}-{installer}`): the
+ * updater asks for the kind it was installed as, and installs a `.deb` or
+ * an `.rpm` through the system's package tool, or replaces the AppImage.
+ */
+export type Platform =
+  | "darwin-aarch64"
+  | "windows-x86_64"
+  | "windows-aarch64"
+  | "linux-x86_64-appimage"
+  | "linux-x86_64-deb"
+  | "linux-x86_64-rpm"
+  | "linux-aarch64-appimage"
+  | "linux-aarch64-deb"
+  | "linux-aarch64-rpm";
 
 export const PLATFORMS: readonly Platform[] = [
   "darwin-aarch64",
   "windows-x86_64",
   "windows-aarch64",
+  "linux-x86_64-appimage",
+  "linux-x86_64-deb",
+  "linux-x86_64-rpm",
+  "linux-aarch64-appimage",
+  "linux-aarch64-deb",
+  "linux-aarch64-rpm",
+];
+
+/** How each payload's name ends, as Tauri names them, and its platform. */
+const PAYLOADS: readonly (readonly [ending: string, platform: Platform])[] = [
+  [".app.tar.gz", "darwin-aarch64"],
+  ["_x64-setup.exe", "windows-x86_64"],
+  ["_arm64-setup.exe", "windows-aarch64"],
+  ["_amd64.AppImage", "linux-x86_64-appimage"],
+  ["_amd64.deb", "linux-x86_64-deb"],
+  [".x86_64.rpm", "linux-x86_64-rpm"],
+  ["_aarch64.AppImage", "linux-aarch64-appimage"],
+  ["_arm64.deb", "linux-aarch64-deb"],
+  [".aarch64.rpm", "linux-aarch64-rpm"],
 ];
 
 /**
  * Which platform's update payload a build output is, or null if it isn't one:
- * the Mac app's tarball, and each Windows installer (the updater runs the
- * installer itself).
+ * the Mac app's tarball, each Windows installer (the updater runs the
+ * installer itself), and each Linux package.
  * It reads the build's own versioned names; the version-free copies of the
  * installers (see `stableName`) are made afterwards, in another folder, and
  * are never passed through here.
  */
 export function platformOf(file: string): Platform | null {
-  if (file.endsWith(".app.tar.gz")) return "darwin-aarch64";
-  if (file.endsWith("_x64-setup.exe")) return "windows-x86_64";
-  if (file.endsWith("_arm64-setup.exe")) return "windows-aarch64";
-  return null;
+  return PAYLOADS.find(([ending]) => file.endsWith(ending))?.[1] ?? null;
 }
 
 /**
  * Whether a build output goes on the release: the disk image, each update
- * payload with its signature, each Windows installer, and the software bill
- * of materials (`*.cdx.json`). Not the ditto zip the Mac job keeps for
- * checking.
+ * payload with its signature, each Windows installer and Linux package, and
+ * the software bills of materials (`*.cdx.json`). Not the ditto zip the Mac
+ * job keeps for checking.
  */
 export function publishable(file: string): boolean {
   if (file.endsWith(".dmg") || isSbom(file)) return true;
@@ -41,14 +71,19 @@ export function publishable(file: string): boolean {
 
 /**
  * The name a person's download link can rely on: the installer's file name
- * with the version taken out (`App_0.1.0_x64-setup.exe` is `App_x64-setup.exe`),
- * so `releases/latest/download/<this name>` is always the newest one. Only the
- * disk image and the two Windows installers have one. The update files keep
- * their versioned names, because the manifest points at them.
+ * with the version taken out (`App_0.1.0_x64-setup.exe` is `App_x64-setup.exe`,
+ * `App-0.1.0-1.x86_64.rpm` is `App-x86_64.rpm`), so
+ * `releases/latest/download/<this name>` is always the newest one. Only the
+ * installers have one. The Mac's update file keeps its name, because the
+ * manifest points at it (the others are both, and the manifest points at
+ * their versioned names).
  */
 export function stableName(file: string, version: string): string | null {
+  if (!isInstaller(file)) return null;
+  const rpm = `-${version}-1.`;
+  if (file.endsWith(".rpm")) return file.includes(rpm) ? file.replace(rpm, "-") : null;
   const marker = `_${version}_`;
-  if (!isInstaller(file) || !file.includes(marker)) return null;
+  if (!file.includes(marker)) return null;
   return file.replace(marker, "_");
 }
 
@@ -58,16 +93,53 @@ export function isSbom(file: string): boolean {
 }
 
 /**
- * The downloads that each get a software bill of materials: the platform the
- * release builds for, its Rust target, and the word its files end with
- * (`App_0.1.0_aarch64.dmg`, `App_0.1.0_x64-setup.exe`), so each bill of
- * materials sits beside the download it describes.
+ * The downloads that each get a software bill of materials: the update
+ * platforms it covers, its Rust target, the word its file ends with, and
+ * the system that makes it (`host`, as `process.platform` names it): the
+ * crates a build script uses follow the computer that builds, so each is
+ * made where its download is built (the Mac and Windows on a Mac, Linux on
+ * Linux). The Mac's and Windows' sit beside their download
+ * (`App_0.1.0_aarch64.dmg`, `App_0.1.0_x64-setup.exe`); Linux's three
+ * packages of a processor share one (`App_0.1.0_linux_amd64.cdx.json`),
+ * since they ship the same program.
  */
 export const SBOM_DOWNLOADS = [
-  { platform: "darwin-aarch64", target: "aarch64-apple-darwin", suffix: "aarch64" },
-  { platform: "windows-x86_64", target: "x86_64-pc-windows-msvc", suffix: "x64" },
-  { platform: "windows-aarch64", target: "aarch64-pc-windows-msvc", suffix: "arm64" },
-] as const satisfies readonly { platform: Platform; target: string; suffix: string }[];
+  {
+    platforms: ["darwin-aarch64"],
+    target: "aarch64-apple-darwin",
+    suffix: "aarch64",
+    host: "darwin",
+  },
+  {
+    platforms: ["windows-x86_64"],
+    target: "x86_64-pc-windows-msvc",
+    suffix: "x64",
+    host: "darwin",
+  },
+  {
+    platforms: ["windows-aarch64"],
+    target: "aarch64-pc-windows-msvc",
+    suffix: "arm64",
+    host: "darwin",
+  },
+  {
+    platforms: ["linux-x86_64-appimage", "linux-x86_64-deb", "linux-x86_64-rpm"],
+    target: "x86_64-unknown-linux-gnu",
+    suffix: "linux_amd64",
+    host: "linux",
+  },
+  {
+    platforms: ["linux-aarch64-appimage", "linux-aarch64-deb", "linux-aarch64-rpm"],
+    target: "aarch64-unknown-linux-gnu",
+    suffix: "linux_arm64",
+    host: "linux",
+  },
+] as const satisfies readonly {
+  platforms: readonly Platform[];
+  target: string;
+  suffix: string;
+  host: string;
+}[];
 
 /** A download's bill of materials: `App_0.1.0_aarch64.cdx.json`. */
 export function sbomName(app: string, version: string, download: { suffix: string }): string {
@@ -85,13 +157,23 @@ export function sbomProblem(files: string[], app: string, version: string): stri
   return `expected a software bill of materials for each download of ${version} (${want.join(", ")}), found: ${sboms.join(", ") || "none"}`;
 }
 
-/** The disk image and the two Windows installers: what a person downloads. */
+/** The disk image, the Windows installers and the Linux packages: what a person downloads. */
 export function isInstaller(file: string): boolean {
   return INSTALLER_ENDINGS.some((ending) => file.endsWith(ending));
 }
 
-/** How the three installers' names end; a release must have one of each. */
-export const INSTALLER_ENDINGS = [".dmg", "_x64-setup.exe", "_arm64-setup.exe"] as const;
+/** How the installers' names end; a release must have one of each. */
+export const INSTALLER_ENDINGS = [
+  ".dmg",
+  "_x64-setup.exe",
+  "_arm64-setup.exe",
+  "_amd64.AppImage",
+  "_amd64.deb",
+  ".x86_64.rpm",
+  "_aarch64.AppImage",
+  "_arm64.deb",
+  ".aarch64.rpm",
+] as const;
 
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/;
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;

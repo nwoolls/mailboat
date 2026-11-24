@@ -7,8 +7,9 @@ name: Release
 # pull request can never reach them.
 #
 # It builds, signs and notarizes the Mac app, builds and signs the Windows
-# installers (x64 and ARM64), and has Tauri sign each update payload with the
-# updater key. For a tag, a last job then checks every update signature against
+# installers (x64 and ARM64), builds the Linux packages (.deb, .rpm and
+# AppImage, for x86-64 and Arm), and has Tauri sign each update payload with
+# the updater key. For a tag, a last job then checks every update signature against
 # the public key in the app, writes the update manifest (`latest.json`) and the
 # checksums, attests where the files came from, and makes a DRAFT GitHub Release.
 # The owner reads it and publishes it by hand: only a published release is
@@ -315,21 +316,90 @@ jobs:
         if: always()
         run: az logout || true
 
+  linux:
+    name: Linux (${{ matrix.arch }})
+    needs: check
+    # The oldest Ubuntu Tauri supports, so the packages run on distributions
+    # as old as it (their glibc); Arm on GitHub's own Arm runner.
+    runs-on: ${{ matrix.runner }}
+    environment: release
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86-64
+            runner: ubuntu-22.04
+          - arch: Arm
+            runner: ubuntu-22.04-arm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # WebKitGTK and GTK (the web view and window), D-Bus (the keychain),
+      # and rpm to make the .rpm.
+      - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev rpm
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+          no-cache: true
+      - run: bun install --frozen-lockfile
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      # No build cache here: a release is built from scratch. Each package is
+      # its own update payload: Tauri signs all three with the updater key.
+      - name: Build the packages
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: bun tauri build --ci --bundles deb,rpm,appimage --config src-tauri/tauri.updater-artifacts.conf.json
+      - name: Check the packages and keep them
+        run: |
+          shopt -s nullglob
+          mkdir -p release-files
+          for kind in deb rpm appimage; do
+            case "$kind" in appimage) files=(target/release/bundle/appimage/*.AppImage) ;;
+                            *) files=(target/release/bundle/"$kind"/*."$kind") ;; esac
+            if [ "${#files[@]}" -ne 1 ] || [ ! -s "${files[0]}.sig" ]; then
+              echo "Expected one .$kind with a .sig, found ${#files[@]}" >&2
+              exit 1
+            fi
+            cp "${files[0]}" "${files[0]}.sig" release-files/
+          done
+          # The program as the .deb installs it (the others hold the same
+          # one): 64-bit, PIE, a stack that can't run code, full RELRO, no
+          # RPATH.
+          unpacked="$(mktemp -d)"
+          dpkg-deb -x release-files/*.deb "$unpacked"
+          name="$(jq -r .mainBinaryName src-tauri/tauri.conf.json)"
+          bun scripts/check-binaries.ts linux "$unpacked/usr/bin/$name"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-signed-${{ matrix.arch }}
+          path: release-files/*
+          if-no-files-found: error
+          retention-days: 7
+
   # The software bills of materials (CycloneDX, DASA 1.5.1), one per
   # download, made by our own script from the lockfiles (`scripts/sbom.ts`),
   # in a job of its own: reading packages' licenses needs `bun install`,
-  # which the publish job, with its write access, shouldn't run. On a Mac,
-  # as every build above is (Windows is cross-built there): the crates a
-  # build script uses follow the computer that builds, so only a Mac lists
-  # the ones the release used.
+  # which the publish job, with its write access, shouldn't run. The crates
+  # a build script uses follow the computer that builds, so each download's
+  # bill is made on the kind of computer that builds it: a Mac for the Mac
+  # and Windows (cross-built there), Linux for Linux.
   sbom:
-    name: Software bills of materials
+    name: Software bills of materials (${{ matrix.os }})
     if: github.ref_type == 'tag'
     needs: check
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     permissions:
       contents: read
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-22.04]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -347,7 +417,7 @@ jobs:
         run: bun scripts/make-sbom.ts --version "${TAG#v}" --out sbom
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: sbom
+          name: sbom-${{ matrix.os }}
           path: sbom/*
           if-no-files-found: error
           retention-days: 7
@@ -355,7 +425,7 @@ jobs:
   publish:
     name: Publish (a draft release)
     if: github.ref_type == 'tag'
-    needs: [macos, windows, sbom]
+    needs: [macos, windows, linux, sbom]
     runs-on: ubuntu-latest
     # Its own environment: an approval of its own, to publish what the builds
     # made, and none of the signing secrets, which this job never needs.
@@ -380,7 +450,8 @@ jobs:
           path: build-outputs
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: sbom
+          pattern: "sbom-*"
+          merge-multiple: true
           path: build-outputs
       - name: Make the release files
         env:
