@@ -1,7 +1,7 @@
 # Mailboat — agent instructions
 
-Mailboat is a cross-platform desktop Gmail client (macOS and Windows, Linux to
-follow). It uses the Gmail REST API directly, with a calm, minimal look
+Mailboat is a cross-platform desktop Gmail client (macOS, Windows and
+Linux). It uses the Gmail REST API directly, with a calm, minimal look
 (MonoCode × Notion Mail).
 
 Agents write all the code, so:
@@ -371,13 +371,15 @@ these rules. Keep it passing.
   (`accounts.oauth_client`) so a second, Internal client can be added later.
 - Credentials are never committed. The app reads Google's downloaded client
   JSON from `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`
-  (Windows: `%APPDATA%\com.nwoolls.mailboat\`), or from env vars
+  (Windows: `%APPDATA%\com.nwoolls.mailboat\`; Linux:
+  `~/.config/com.nwoolls.mailboat/`), or from env vars
   `MAILBOAT_GOOGLE_CLIENT_ID` / `MAILBOAT_GOOGLE_CLIENT_SECRET`.
 - Respect quotas: batch requests, exponential backoff on 429/5xx. The
   owner's Cloud project allows 6,000 Gmail units per minute per user (not
   the documented 15,000); Google enforces it as ~100 units/second with
   almost no burst, so `QuotaPacer` defaults to 60 units/s with 60-unit
-  bursts, batches hold 5 requests, and the rate halves on rate-limit errors. Diagnostics: `~/Library/Logs/com.nwoolls.mailboat/sync.log`.
+  bursts, batches hold 5 requests, and the rate halves on rate-limit errors. Diagnostics: `~/Library/Logs/com.nwoolls.mailboat/sync.log` (Linux:
+  `~/.local/share/com.nwoolls.mailboat/logs/sync.log`).
 
 ## Security
 
@@ -416,8 +418,9 @@ their VMs with only Codex installed and signed in, using a test program
 built on the Mac (`scripts/windows.sh codex-review`, `scripts/linux.sh
 codex-review`; copy the file into the VM and run it there with the same
 arguments as below, after `--`). If the first Windows and Linux reviews
-show exactly the Mac's lists, the owner may decide to run only the live
-`codex_cannot_*` tests there.
+record exactly the Mac's lists (`codex_review::differences` names any
+difference), the owner may decide to run only the live `codex_cannot_*`
+tests there.
 
 `bun run check` (and `check:quick`) stops when a system's review is over
 31 days old, on the owner's machine (an empty, uncommitted
@@ -461,8 +464,10 @@ stops:
    Never send real mail, and never read or copy Codex's sign-in.
 3. Anything new or any test that fails: tell the owner what changed and
    what it can do before accepting it. If nothing changed, or the owner
-   accepts the change, update `codex_review.json` (that system's date and
-   Codex version under `platforms`, and the lists) and commit it with the
+   accepts the change, update `codex_review.json`: that system's entry
+   under `platforms` (date, Codex version, and the `stays_on` and `tools`
+   the two offline tests print for it), and the shared lists, which a test
+   keeps equal to what all the systems showed together. Commit it with the
    results in the message, saying which system each came from.
 
 ## Testing

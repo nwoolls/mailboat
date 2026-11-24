@@ -8,7 +8,9 @@
 //! Each system is reviewed on its own (`platforms`, keyed by Rust's
 //! `std::env::consts::OS`): the fence that stops Codex differs (macOS's
 //! sandbox, bubblewrap on Linux, none on Windows), and so can Codex's own
-//! tools. The lists are what every reviewed system showed together.
+//! tools. Each records what it showed, and the lists the app checks
+//! against are what every reviewed system showed together (a test keeps
+//! them so), so the systems can be compared.
 
 use std::collections::BTreeMap;
 
@@ -25,6 +27,10 @@ pub struct PlatformReview {
     /// The Codex version reviewed. For people only: the app never
     /// compares versions.
     pub codex: String,
+    /// The switches still on there after being turned off.
+    pub stays_on: Vec<String>,
+    /// The tools in Codex's request there with every switch off.
+    pub tools: Vec<String>,
 }
 
 /// The reviewed list, as committed.
@@ -32,9 +38,11 @@ pub struct PlatformReview {
 pub struct Review {
     /// Each system reviewed so far; one not listed was never reviewed.
     pub platforms: BTreeMap<String, PlatformReview>,
-    /// Switches that stay on after `-c features.<name>=false`.
+    /// Switches that stay on after `-c features.<name>=false`, on any
+    /// reviewed system.
     pub stays_on: Vec<String>,
-    /// The tools in Codex's request with every switch off.
+    /// The tools in Codex's request with every switch off, on any
+    /// reviewed system.
     pub tools: Vec<String>,
     /// Models Codex lists but refuses with a ChatGPT sign-in (the only way
     /// the app uses it), so their tools can't reach a request: the monthly
@@ -58,6 +66,48 @@ pub fn unreviewed(still_on: &[String]) -> Vec<String> {
         .filter(|s| !review.stays_on.contains(s))
         .cloned()
         .collect()
+}
+
+/// Where two systems' lists differ, by system: what to look at before
+/// running only the live tests on one of them.
+pub fn differences(r: &Review) -> Vec<String> {
+    let mut out = Vec::new();
+    let first = r.platforms.iter().next();
+    for (name, p) in &r.platforms {
+        if let Some((base, b)) = first {
+            for (what, mine, theirs) in [
+                ("switch", &p.stays_on, &b.stays_on),
+                ("tool", &p.tools, &b.tools),
+            ] {
+                for item in mine.iter().filter(|i| !theirs.contains(i)) {
+                    out.push(format!("{what} {item}: on {name}, not on {base}"));
+                }
+                for item in theirs.iter().filter(|i| !mine.contains(i)) {
+                    out.push(format!("{what} {item}: on {base}, not on {name}"));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// How this system's observation compares with its own record: None when
+/// it matches, or it has no record yet (the review then records it); else
+/// what changed. `pick` chooses the list (`stays_on` or `tools`).
+pub fn against_this_system(
+    observed: &[String],
+    pick: fn(&PlatformReview) -> &Vec<String>,
+) -> Option<String> {
+    let review = review();
+    let recorded = pick(review.platforms.get(std::env::consts::OS)?);
+    let added: Vec<_> = observed.iter().filter(|i| !recorded.contains(i)).collect();
+    let gone: Vec<_> = recorded.iter().filter(|i| !observed.contains(i)).collect();
+    (!added.is_empty() || !gone.is_empty()).then(|| {
+        format!(
+            "{}'s record differs: new {added:?}, gone {gone:?}",
+            std::env::consts::OS
+        )
+    })
 }
 
 #[cfg(test)]
@@ -84,6 +134,40 @@ mod tests {
             assert!(!review.codex.is_empty(), "{platform}: which Codex");
         }
         assert!(r.stays_on.contains(&"unified_exec".to_string()));
+    }
+
+    /// The lists the app checks against are exactly what the reviewed
+    /// systems showed together: nothing one showed is missing, and nothing
+    /// is listed that none showed.
+    #[test]
+    fn the_shared_lists_are_what_the_systems_showed() {
+        let r = review();
+        let union = |pick: fn(&PlatformReview) -> &Vec<String>| {
+            let mut all: Vec<String> = r.platforms.values().flat_map(pick).cloned().collect();
+            all.sort();
+            all.dedup();
+            all
+        };
+        let sorted = |list: &[String]| {
+            let mut list = list.to_vec();
+            list.sort();
+            list
+        };
+        assert_eq!(sorted(&r.stays_on), union(|p| &p.stays_on));
+        assert_eq!(sorted(&r.tools), union(|p| &p.tools));
+    }
+
+    #[test]
+    fn differences_between_systems_are_named() {
+        let mut r = review();
+        let mac = r.platforms["macos"].clone();
+        let mut linux = mac.clone();
+        linux.tools.retain(|t| t != "functions.exec");
+        r.platforms.insert("linux".into(), linux);
+        assert_eq!(
+            differences(&r),
+            ["tool functions.exec: on macos, not on linux"]
+        );
     }
 
     /// The system the app is built for has a name the review can use.
