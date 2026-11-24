@@ -344,7 +344,8 @@ jobs:
           persist-credentials: false
       # WebKitGTK and GTK (the web view and window), D-Bus (the keychain),
       # and rpm to make the .rpm.
-      - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev rpm
+      # squashfs-tools to unpack the AppImage for its bill without running it.
+      - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev rpm squashfs-tools
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
@@ -352,8 +353,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - run: scripts/appimage-tools.sh
-      # No build cache here: a release is built from scratch.
-      - run: bun tauri build --ci --bundles deb,rpm,appimage
+      # No build cache here: a release is built from scratch. The AppImage's
+      # runtime is the pinned one (appimagetool would download its own).
+      - run: LDAI_RUNTIME_FILE="$HOME/.cache/tauri/appimage-runtime" bun tauri build --ci --bundles deb,rpm,appimage
       - name: Check the packages and keep them
         run: |
           shopt -s nullglob
@@ -376,11 +378,14 @@ jobs:
           name="$(jq -r .mainBinaryName src-tauri/tauri.conf.json)"
           bun scripts/check-binaries.ts linux "$unpacked/usr/bin/$name"
           grep -q __TAURI_BUNDLE_TYPE_VAR_DEB "$unpacked/usr/bin/$name"
-          # The AppImage's own bill of materials: the system libraries it
-          # carries, traced to the packages installed here.
+          # The AppImage's runtime is the pinned one, then its own bill of
+          # materials: the runtime, and the system libraries it carries,
+          # traced to the packages installed here.
+          runtime="$HOME/.cache/tauri/appimage-runtime"
+          bun scripts/check-appimage-runtime.ts release-files/*.AppImage "$runtime"
           version="$(jq -r .version package.json)"
           bun scripts/make-appimage-sbom.ts --appimage release-files/*.AppImage \
-            --version "$version" --out release-files
+            --runtime "$runtime" --version "$version" --out release-files
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-unsigned-${{ matrix.arch }}
@@ -420,19 +425,27 @@ jobs:
           path: release-files
       - name: Sign the packages
         env:
+          ARCH: ${{ matrix.arch }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          shopt -s nullglob
           version="$(jq -r .version package.json)"
-          files=(release-files/*.deb release-files/*.rpm release-files/*.AppImage)
-          if [ "${#files[@]}" -ne 3 ]; then
-            echo "Expected three packages, found ${#files[@]}" >&2
-            exit 1
-          fi
-          for f in "${files[@]}"; do
-            bun tauri signer sign --app-version "$version" "$f"
-            if [ ! -s "$f.sig" ]; then
+          name="$(jq -r .name brand.json)"
+          case "$ARCH" in
+            x86-64) deb=amd64; appimage=amd64; rpm=x86_64; sbom=linux_amd64 ;;
+            Arm) deb=arm64; appimage=aarch64; rpm=aarch64; sbom=linux_arm64 ;;
+            *) echo "Unknown arch $ARCH" >&2; exit 1 ;;
+          esac
+          packages=("${name}_${version}_${deb}.deb" "${name}-${version}-1.${rpm}.rpm" "${name}_${version}_${appimage}.AppImage")
+          expected=("${packages[@]}" "${name}_${version}_${sbom}.AppImage.cdx.json")
+          # Exactly the files this build makes, and nothing else, so nothing
+          # unexpected is signed or carried on to publish.
+          diff <(printf '%s\n' "${expected[@]}" | sort) <(ls -1 release-files | sort)
+          mkdir -p signed
+          for f in "${expected[@]}"; do cp "release-files/$f" signed/; done
+          for f in "${packages[@]}"; do
+            bun tauri signer sign --app-version "$version" "signed/$f"
+            if [ ! -s "signed/$f.sig" ]; then
               echo "$f has no .sig" >&2
               exit 1
             fi
@@ -440,7 +453,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-signed-${{ matrix.arch }}
-          path: release-files/*
+          path: signed/*
           if-no-files-found: error
           retention-days: 7
 
@@ -505,16 +518,26 @@ jobs:
         with:
           bun-version-file: package.json
           no-cache: true
+      # Each build's files in a folder of its own, then put together only if
+      # no two have the same name: a merge would let one quietly replace
+      # another (a file from one build standing in for another's).
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: "*-signed*"
-          merge-multiple: true
-          path: build-outputs
+          path: artifacts
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: "sbom-*"
-          merge-multiple: true
-          path: build-outputs
+          path: artifacts
+      - name: Put the builds' files together
+        run: |
+          duplicates="$(find artifacts -type f -printf '%f\n' | sort | uniq -d)"
+          if [ -n "$duplicates" ]; then
+            echo "More than one build made: $duplicates" >&2
+            exit 1
+          fi
+          mkdir -p build-outputs
+          find artifacts -type f -exec mv {} build-outputs/ \;
       - name: Make the release files
         env:
           TAG: ${{ github.ref_name }}
