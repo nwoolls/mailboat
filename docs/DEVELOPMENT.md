@@ -395,7 +395,10 @@ system for it); like every download they are covered by the checksums and
 the build provenance, and each carries an update signature. They are built
 without any secret, with the AppImage's tools checked against recorded
 digests first (`scripts/appimage-tools.sh`, which also runs in the test
-builds and `scripts/linux.sh build`), and a separate job signs them. When
+builds and `scripts/linux.sh build`), the AppImage's runtime pinned the
+same way (`LDAI_RUNTIME_FILE`) and checked in the finished AppImage
+(`scripts/check-appimage-runtime.ts`), and a separate job signs exactly
+the files it expects. When
 the Tauri CLI is updated, that script stops until its tools' names and
 digests are brought up to date. Each AppImage also gets a bill of materials
 of its own, for the system libraries it carries
@@ -503,11 +506,13 @@ private key that matches the public one in the config.
   The Tauri CLI records the version in each signature when it builds, and the
   release workflow's publish job checks every signature for it (see Releasing).
 - **The files.** A release build (the release workflow) turns on
-  `createUpdaterArtifacts` through `src-tauri/tauri.updater-artifacts.conf.json`,
-  and Tauri signs each update payload with the private key as its last step:
-  the Mac app as a `.app.tar.gz`, each Windows installer itself (after its
-  Authenticode signing, so the signature covers the final file), and each
-  Linux package itself. On Linux the updater installs the kind of package
+  `createUpdaterArtifacts` through `src-tauri/tauri.updater-artifacts.conf.json`
+  for the Mac and Windows, and Tauri signs each update payload with the
+  private key as its last step: the Mac app as a `.app.tar.gz`, and each
+  Windows installer itself (after its Authenticode signing, so the
+  signature covers the final file). Each Linux package is its own payload:
+  it's built without the key, and a separate job signs it with
+  `tauri signer sign --app-version`. On Linux the updater installs the kind of package
   the app came as (the Tauri CLI writes it into the program when it
   bundles): it replaces an AppImage file, and installs a `.deb` or `.rpm`
   with the system's package tool, with the administrator's rights. It asks

@@ -7655,20 +7655,23 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
 
 - [ ] Linux *(moved from Milestone 9 when it closed, 2026-10-25; it was
       a "nice-to-have" there, never started)*: Tauri builds for Linux,
-      but nothing has been tried; the Windows work (`shared/lib/platform`,
-      Ctrl shortcuts, the named-pipe MCP) would mostly carry over
+      and the Windows work (`shared/lib/platform`, Ctrl shortcuts, the
+      named-pipe MCP) would mostly carry over
       *(2026-11-11: a friend of the owner asked for an Arch Linux package, in
       the AUR, which needs a Linux build to point at first. The owner wants to take up Linux soon: after clearing some bugs, and together with a few
       features from this list, such as "add to Todoist and archive" and
       "Clone a sent email")*
-      *(2026-11-24: started on branch `linux-build`, a draft pull request,
-      after a user's port (issue #218) was read as context only. It merges
+      *(2026-11-24: built on branch `linux-build`, to be opened as a draft
+      pull request, after a user's port (issue #218) was read as context
+      only. The release jobs and the desktop behavior are wired and tested
+      in containers and CI, not yet run end to end on a desktop or in a
+      real release. It merges
       after the CASA letter, since it changes the dependencies, the
       advisories the assessment reads and the policy. The owner's first
       packages: `.deb`, `.rpm` and AppImage.)*
   - [x] Builds, checks and tests on Linux: Ubuntu 22.04 in CI's Rust
-        checks and the test builds (x86-64 and Arm), and `scripts/linux.sh`
-        (Docker) on the Mac
+        checks (x86-64), the test builds (x86-64 and Arm), and
+        `scripts/linux.sh` (Docker) on the Mac
   - [x] Linux window (opaque, the desktop's title bar), `data-platform`
         for each system, and Linux wording where the app named macOS or
         Windows (Show in Finder, the theme, reduce motion)
@@ -7699,7 +7702,8 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         action, over one D-Bus connection), and the app can take
         notifications back, as on the Mac
   - [x] ChatGPT (Codex) on Linux runs inside bubblewrap where it's
-        installed, and as on Windows where it isn't *(owner, 2026-11-24)*
+        installed and allowed, and as on Windows where it isn't
+        *(owner, 2026-11-24)*
   - [x] The Codex review is recorded per system, and the VMs get a test
         program built on the Mac *(owner, 2026-11-24: Windows had never
         been reviewed; all three on the same day each month)*
