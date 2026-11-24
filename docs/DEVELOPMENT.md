@@ -156,6 +156,42 @@ The installer registers Mailboat as an email app. To have email links open
 it, choose Mailboat for `MAILTO` in Settings → Apps → Default apps (Mailboat's
 Settings → General → Email links opens that page).
 
+## Linux (built in Docker on the Mac)
+
+Tauri's Linux build needs GTK and WebKitGTK, so it can't be cross-compiled
+from macOS as the Windows build is. `scripts/linux.sh` runs it in a Docker
+container instead: Ubuntu 22.04, the oldest Ubuntu Tauri supports, which CI
+and the test builds use too. Start Docker Desktop, then:
+
+```sh
+scripts/linux.sh check   # clippy and the Rust tests, on Linux
+scripts/linux.sh build   # the .deb, .rpm and AppImage, into target/linux/bundle/
+scripts/linux.sh shell   # a shell in the container
+```
+
+The first run builds the image, which takes a few minutes. The container
+works on a copy of the repository, so the Mac's `node_modules` and `target`
+are never touched; Rust's build and Bun's packages stay in Docker volumes
+(`mailboat-linux-*`) between runs. Those take about 20 GB once both `check`
+and `build` have run, so Docker Desktop's disk needs room for them (Settings
+→ Resources); `docker volume rm` them to get it back. The container has the Mac's processor, so
+on Apple silicon the packages are for Arm Linux; the test builds on a pull
+request make both Arm and Intel/AMD ones.
+
+To try a package, install it in a Linux VM (UTM or Parallels on the Mac) or
+on a Linux computer: `sudo apt install ./Mailboat_<version>_arm64.deb` on
+Debian or Ubuntu, `sudo dnf install ./Mailboat-<version>-1.aarch64.rpm` on
+Fedora, or make the AppImage executable and run it. Sign-in needs the
+desktop's keyring (GNOME Keyring or KWallet) running and unlocked, as it is
+on an ordinary GNOME or KDE desktop. The Google client file goes in
+`~/.config/com.nwoolls.mailboat/google-oauth-client.json`.
+
+On Linux the window keeps the desktop's own title bar, and is painted with
+the theme's base color, since WebKitGTK has no blur behind a window.
+Apple Intelligence is a Mac feature, so AI uses Claude or ChatGPT there.
+Not yet on Linux: email links (`mailto:`), the click on a notification, and
+updates (the release has no Linux builds yet); see the roadmap.
+
 ## Check
 
 ```sh
@@ -664,3 +700,16 @@ Curating the release notes); older sections stay as they were. Details:
 | AI usage | In the mail cache (`ai_usage`: sizes only, never prompts or answers) |
 | AI apps' socket | `~/Library/Application Support/com.nwoolls.mailboat/mcp.sock` (while Mailboat runs) |
 | AI apps' requests | In the mail cache (`mcp_log`: what was asked, never content; 30 days) |
+
+## Files on Linux
+
+| What | Where |
+|---|---|
+| Mail cache (SQLite) | `~/.local/share/com.nwoolls.mailboat/mail.sqlite3` |
+| OAuth client file | `~/.config/com.nwoolls.mailboat/google-oauth-client.json` |
+| Sign-in tokens | The desktop's keyring (Secret Service), service `com.nwoolls.mailboat` |
+| Sync log | `~/.local/share/com.nwoolls.mailboat/logs/sync.log` |
+| AI apps' socket | `~/.local/share/com.nwoolls.mailboat/mcp.sock` (while Mailboat runs) |
+
+`~/.local/share` and `~/.config` are `$XDG_DATA_HOME` and `$XDG_CONFIG_HOME`
+when those are set. Everything else is in the mail cache, as on the Mac.

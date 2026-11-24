@@ -5424,6 +5424,11 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [ ] Settings → Notifications → Style and sound opens macOS's System
+      Settings address on Windows too, where it does nothing *(found
+      2026-11-24 while porting to Linux, where the row is hidden)*. Windows
+      has `ms-settings:notifications`; the row's wording names macOS.
+
 - [x] A user took the toys for frozen *(user report, 2026-11-23; fixed the
       same day, branch `toybox-reduced-motion`)*: with the system's reduce
       motion setting on, the toys stay mostly still, and nothing in the app
@@ -7656,6 +7661,43 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       the AUR, which needs a Linux build to point at first. The owner wants to take up Linux soon: after clearing some bugs, and together with a few
       features from this list, such as "add to Todoist and archive" and
       "Clone a sent email")*
+      *(2026-11-24: started on branch `linux-build`, a draft pull request,
+      after a user's port (issue #218) was read as context only. It merges
+      after the CASA letter, since it changes the dependencies, the
+      advisories the assessment reads and the policy. The owner's first
+      packages: `.deb`, `.rpm` and AppImage.)*
+  - [x] Builds, checks and tests on Linux: Ubuntu 22.04 in CI's Rust
+        checks and the test builds (x86-64 and Arm), and `scripts/linux.sh`
+        (Docker) on the Mac
+  - [x] Linux window (opaque, the desktop's title bar), `data-platform`
+        for each system, and Linux wording where the app named macOS or
+        Windows (Show in Finder, the theme, reduce motion)
+  - [x] Folders (XDG), the AI apps' socket, Claude Desktop's config file,
+        sign-in tokens in the desktop's keyring only, and a clear error when
+        there is none
+  - [x] A second launch hands over to the running copy (single instance)
+  - [x] `cargo deny` checks Linux; the Linux-only advisories reviewed
+  - [x] Privacy policy: the Linux keyring and disk encryption
+  - [ ] Try the packages on GNOME and KDE (Wayland and X11), Fedora, and
+        a desktop with no keyring; print; notifications; a second monitor
+  - [ ] Release: a Linux job in the release workflow, the packages signed
+        for the updater, `latest.json` entries (`linux-x86_64`,
+        `linux-aarch64`; the updater can install a `.deb` or `.rpm`
+        through `pkexec`, so the owner decides between that and updates
+        for the AppImage only), an SBOM per package, checksums, and the
+        update check's wording in the policy if it changes
+  - [ ] Email links (`mailto:`): `MimeType=x-scheme-handler/mailto` in the
+        desktop file, Settings reading and setting the default through
+        `xdg-settings`; the launch argument and the hand-over to the
+        running copy are already in place
+  - [ ] The click on a notification (the plugin doesn't report it on
+        Linux; the freedesktop interface has `ActionInvoked`)
+  - [ ] ChatGPT (Codex) on Linux runs without a fence, as on Windows; a
+        `bwrap` fence and a Linux run of the Codex review, or keep it as
+        Windows does *(owner to decide)*
+  - [ ] The website: download buttons, its platform line, and the
+        feature cards; the README's "Windows? Linux?"
+  - [ ] Flatpak (Flathub) and the AUR package, after the first release
 
 - [ ] Keep translations after Mailboat quits *(known limitation, owner,
       2026-10-26: "for later")*: a translation in an email lives only in
