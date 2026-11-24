@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0-beta.0
+
+### New
+
+- **Read a conversation with the keyboard.** Press → or Enter on an open conversation (or click it), then ↑ and ↓ move between its emails and the reply you're writing, → and ← open and close an email, → or Enter on the reply goes back into its text, and Esc or ← goes back to the list. Esc in a reply now steps out to the conversation first.
+- A reply you're writing now stays at the bottom of the conversation as it grows, until you scroll up or click or press a key on an email above it. Scroll back down to the end and it stays there again.
+
+### AI
+
+- AI answers in the writing assistant and the summary card now appear a word at a time at an even pace, with an animated ✦ and sweeping placeholders while they're written. Insert and Replace rise in once a draft is finished.
+
+### Fixes
+
+- On a busy computer, a reply being written no longer ends up slightly out of place after the writing assistant above it opens or closes.
+
 ## 0.3.1
 
 ### Toybox and screensavers
