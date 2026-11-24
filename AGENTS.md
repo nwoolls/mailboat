@@ -471,7 +471,11 @@ When it does:
   and branch), the error from the log, and what happened when it was run
   again. Read the log first; a failure is never called flaky until the log
   shows it has nothing to do with the change. Flaky Test Spikes close the
-  entries, on the owner's word.
+  entries, on the owner's word. To fix one, follow `docs/DEVELOPMENT.md` →
+  "A browser test that fails now and then" (CI's trace, a separate
+  worktree, reproduce, force the timing, fail without the fix). Loading
+  every core with `gitleaks` is one of its steps: ask the owner each time
+  before running it.
 - Windows-only behavior: `tests/browser/windows-*.spec.ts` run in Chromium
   (WebView2's engine) with `data-platform="windows"` set; the rest stay in
   WebKit. One-time setup: `bunx playwright install chromium`.
