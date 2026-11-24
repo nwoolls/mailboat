@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { forgetAssistant } from "./assistantOpen";
 import { commands } from "../../../platform/tauri/bindings";
 import { IpcError, unwrap } from "../../../platform/tauri/ipc";
@@ -13,6 +13,7 @@ import { type Draft, textToHtml } from "../../compose/model/draft";
 import { type ChatMessage, chatMessage, suggestions, writeRequest } from "../model/chat";
 import { aiChoices, offered, PROVIDER_NAMES, statusLine, statusOf } from "../model/providers";
 import { dropText, newRequestId, useStreamedText } from "./stream";
+import { FadeWords, Shimmer, ThinkingSparkle, usePacedText } from "./paced";
 import { primaryKey } from "../../../shared/lib/platform";
 
 /** Insert: at the cursor, keeping what's written. Replace: instead of it. */
@@ -55,56 +56,89 @@ export function AssistantPanel({
   const statuses = useAiStatus().data;
   const status = statusOf(statuses, provider);
   const [messages, setMessagesState] = useState<ChatMessage[]>(() => chats.get(draft.id) ?? []);
-  const setMessages = (change: (m: ChatMessage[]) => ChatMessage[]) =>
-    setMessagesState((prev) => {
-      const next = change(prev);
-      chats.set(draft.id, next);
-      return next;
-    });
+  // Restored when the panel opened: these appear as they are, without the
+  // animations of a message just asked or answered.
+  const [restored] = useState(() => new Set(messages.map((m) => m.id)));
+  const setMessages = useCallback(
+    (change: (m: ChatMessage[]) => ChatMessage[]) =>
+      setMessagesState((prev) => {
+        const next = change(prev);
+        chats.set(draft.id, next);
+        return next;
+      }),
+    [draft.id],
+  );
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<number | null>(null);
   const pendingRef = useRef<number | null>(null);
+  // An answer that is in, still being let out onto the screen at an even
+  // pace (`usePacedText`). It's kept with the chat (`chats`) as soon as it
+  // arrives, and joins what this panel shows once all of it is on screen.
+  const [landing, setLanding] = useState<{ request: number; message: ChatMessage } | null>(null);
+  const landingRef = useRef<ChatMessage | null>(null);
+  const busy = pending !== null || landing !== null;
   const streamed = useStreamedText(pending);
   const scroller = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
 
-  // Closing the panel (or the message) stops a request being written.
-  useEffect(
-    () => () => {
+  const land = useCallback(() => {
+    const m = landingRef.current;
+    if (!m) return;
+    landingRef.current = null;
+    setLanding(null);
+    // Not if the message was sent or discarded meanwhile (its chat forgotten).
+    if (chats.has(draft.id)) setMessages((prev) => [...prev, m]);
+  }, [draft.id, setMessages]);
+
+  // Closing the panel (or the message) stops a request being written; an
+  // answer to it that still arrives is left out (`alive`).
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
       if (pendingRef.current !== null) void commands.aiCancel(pendingRef.current);
-    },
-    [],
-  );
+    };
+  }, []);
   // Keep the newest at the bottom in view as it's written (after every
   // render: a new bubble, or more of the answer).
-  useEffect(() => {
+  const follow = useCallback(() => {
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
-  });
+  }, []);
+  useEffect(follow);
 
   const send = (text: string) => {
     const request = text.trim();
-    if (!request || pending !== null) return;
+    if (!request || busy) return;
     const next = [...messages, chatMessage({ role: "user", text: request })];
+    chats.set(draft.id, next);
     setMessages(() => next);
     setInput("");
     const id = newRequestId();
     pendingRef.current = id;
     setPending(id);
     unwrap(commands.aiWrite(writeRequest(draft, next), id))
-      .then((answer) =>
-        setMessages((m) => [
-          ...m,
-          chatMessage({
-            role: "assistant",
-            text: answer.text,
-            html: answer.html,
-            subject: answer.subject,
-          }),
-        ]),
-      )
+      .then((answer) => {
+        const message = chatMessage({
+          role: "assistant",
+          text: answer.text,
+          html: answer.html,
+          subject: answer.subject,
+        });
+        // Only for this panel's own request (not one it canceled when it
+        // closed, which may still answer), and not once the message was
+        // sent or discarded (its chat forgotten).
+        const chat = chats.get(draft.id);
+        if (!alive.current || !chat) return;
+        // Kept with the chat at once, so it's there however the panel goes
+        // (closed, or a reply popped out into the card) while it's shown.
+        chats.set(draft.id, [...chat, message]);
+        landingRef.current = message;
+        setLanding({ request: id, message });
+      })
       .catch((e: unknown) => {
-        if (e instanceof IpcError && e.kind === "cancelled") return;
+        if (!alive.current || (e instanceof IpcError && e.kind === "cancelled")) return;
         setMessages((m) => [
           ...m,
           chatMessage({
@@ -132,6 +166,9 @@ export function AssistantPanel({
     ideasFor === null || ideas.isError || (ideas.isSuccess && ideas.data.length === 0)
       ? suggestions(draft.kind)
       : (ideas.data ?? null);
+  // Ideas that were waited for rise in; ones already at hand just show.
+  const [waitedForIdeas, setWaitedForIdeas] = useState(false);
+  if (chips === null && !waitedForIdeas) setWaitedForIdeas(true);
   // Opened (✦ or ⌘J): ready to type. After the click that opened it has
   // finished, and again once the provider's status is known (the box is
   // disabled until then, and a disabled box can't take focus). Without
@@ -168,7 +205,7 @@ export function AssistantPanel({
           aria-label="Write with"
           title="Also in Settings → AI"
           value={provider}
-          disabled={!settings || pending !== null}
+          disabled={!settings || busy}
           onChange={(e) =>
             settings &&
             save.mutate({
@@ -217,21 +254,23 @@ export function AssistantPanel({
             >
               {chips === null &&
                 // Being written from the email: faint stand-ins meanwhile,
-                // as shares of the width so they always fill two rows.
-                ["55%", "35%", "45%"].map((w) => (
+                // as shares of the width so they always fill two rows. A
+                // light passes across them from left to right.
+                ["55%", "35%", "45%"].map((w, i) => (
                   <span
                     key={w}
                     aria-hidden
-                    className="h-6 animate-pulse rounded-full bg-selection"
-                    style={{ width: `calc(${w} - 0.375rem)` }}
+                    className="ai-sweep h-6 rounded-full"
+                    style={{ width: `calc(${w} - 0.375rem)`, animationDelay: `${i * 110}ms` }}
                   />
                 ))}
-              {chips?.map((s) => (
+              {chips?.map((s, i) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => send(s)}
-                  className="rounded-full px-2.5 py-1 text-xs text-content/70 ring-1 ring-stroke ring-inset hover:bg-selection hover:text-content"
+                  className={`rounded-full px-2.5 py-1 text-xs text-content/70 ring-1 ring-stroke ring-inset hover:bg-selection hover:text-content ${waitedForIdeas ? "ai-rise" : ""}`}
+                  style={waitedForIdeas ? { animationDelay: `${i * 55}ms` } : undefined}
                 >
                   {s}
                 </button>
@@ -243,7 +282,8 @@ export function AssistantPanel({
           m.role === "user" ? (
             <p
               key={m.id}
-              className="selectable ml-8 rounded-lg bg-accent/15 px-2.5 py-1.5 whitespace-pre-wrap"
+              // Only as wide as the request, at the right (up to most of the panel).
+              className={`selectable ml-auto w-fit max-w-[85%] rounded-lg bg-accent/15 px-2.5 py-1.5 whitespace-pre-wrap ${restored.has(m.id) ? "" : "ai-rise"}`}
             >
               {m.text}
             </p>
@@ -255,18 +295,21 @@ export function AssistantPanel({
             <DraftBubble
               key={m.id}
               message={m}
+              settled={!restored.has(m.id)}
               onUse={(how) => onUse(m.html ?? textToHtml(m.text), m.subject ?? null, how)}
             />
           ),
         )}
-        {pending !== null && (
-          <div className="rounded-lg bg-selection px-2.5 py-2">
-            {streamed ? (
-              <p className="whitespace-pre-wrap text-content/80">{streamed}</p>
-            ) : (
-              <p className="animate-pulse text-xs text-content/55">Writing…</p>
-            )}
-          </div>
+        {busy && (
+          <WritingBubble
+            // The same bubble from the request until its answer has landed.
+            key={pending ?? landing?.request}
+            text={landing?.message.text ?? streamed}
+            subject={landing?.message.subject ?? null}
+            done={landing !== null}
+            onShown={land}
+            onGrow={follow}
+          />
         )}
       </div>
       <form
@@ -296,14 +339,27 @@ export function AssistantPanel({
           }}
           className="max-h-28 min-h-9 flex-1 resize-none rounded-lg bg-selection px-2.5 py-1.5 outline-none placeholder:text-content/40 focus:ring-1 focus:ring-accent/50"
         />
-        {pending !== null ? (
+        {busy ? (
           <button
             type="button"
             aria-label="Stop"
             title="Stop"
-            onClick={() => void commands.aiCancel(pending)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-selection-strong text-content/80 hover:text-content"
+            // Once the answer is in, Stop shows the rest at once.
+            onClick={() => (pending !== null ? void commands.aiCancel(pending) : land())}
+            className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-selection-strong text-content/80 hover:text-content"
           >
+            <svg aria-hidden viewBox="0 0 38 38" className="ai-ring absolute -inset-[3px]">
+              <circle
+                cx="19"
+                cy="19"
+                r="17.5"
+                fill="none"
+                stroke="var(--color-accent)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeDasharray="26 84"
+              />
+            </svg>
             <StopIcon size={14} />
           </button>
         ) : (
@@ -322,10 +378,66 @@ export function AssistantPanel({
   );
 }
 
-/** One draft from the model, with Insert and Replace. */
-function DraftBubble({ message, onUse }: { message: ChatMessage; onUse: (how: UseMode) => void }) {
+/**
+ * The answer being written: a single line with the ✦ and "Writing…" until
+ * the first words arrive, then a bubble with the words fading in at an
+ * even pace. The bubble is laid out like the draft it becomes, subject
+ * and room for Insert and Replace included, so the buttons appearing don't
+ * move it (formatting, such as bold or a list, can still reflow it).
+ */
+function WritingBubble({
+  text,
+  subject,
+  done,
+  onShown,
+  onGrow,
+}: {
+  text: string;
+  /** A new message's subject, once the answer is in (shown as the draft shows it). */
+  subject: string | null;
+  /** The whole answer is in. */
+  done: boolean;
+  /** All of it is on screen. */
+  onShown: () => void;
+  onGrow: () => void;
+}) {
+  const shown = usePacedText(text, done, onShown).text;
+  useEffect(onGrow);
+  if (!shown)
+    return (
+      <p aria-busy className="flex items-center gap-1.5 px-1 py-0.5 text-xs">
+        <ThinkingSparkle className="text-accent" />
+        <Shimmer>Writing…</Shimmer>
+      </p>
+    );
   return (
-    <div className="rounded-lg bg-selection px-2.5 pt-2 pb-1.5">
+    <div aria-busy className="ai-rise rounded-lg bg-selection px-2.5 pt-2 pb-1.5">
+      {subject && (
+        <p className="mb-1 text-xs text-content/55">
+          Subject: <span className="text-content/80">{subject}</span>
+        </p>
+      )}
+      <p className="whitespace-pre-wrap text-content/85">
+        <FadeWords text={shown} />
+      </p>
+      <div aria-hidden className="mt-1.5 h-6" />
+    </div>
+  );
+}
+
+/** One draft from the model, with Insert and Replace. */
+function DraftBubble({
+  message,
+  settled,
+  onUse,
+}: {
+  message: ChatMessage;
+  /** Just written: its edge flashes once and the buttons rise in. */
+  settled: boolean;
+  onUse: (how: UseMode) => void;
+}) {
+  return (
+    <div className={`rounded-lg bg-selection px-2.5 pt-2 pb-1.5 ${settled ? "ai-settled" : ""}`}>
       {message.subject && (
         <p className="mb-1 text-xs text-content/55">
           Subject: <span className="text-content/80">{message.subject}</span>
@@ -341,7 +453,7 @@ function DraftBubble({ message, onUse }: { message: ChatMessage; onUse: (how: Us
       ) : (
         <p className="selectable whitespace-pre-wrap text-content/85">{message.text}</p>
       )}
-      <div className="mt-1.5 flex justify-end gap-1.5">
+      <div className="ai-actions mt-1.5 flex justify-end gap-1.5">
         <button
           type="button"
           onClick={() => onUse("insert")}

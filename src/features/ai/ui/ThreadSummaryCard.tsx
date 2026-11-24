@@ -5,9 +5,10 @@ import { IS_TAURI, unwrap } from "../../../platform/tauri/ipc";
 import { useAiStatus, useAppSettings } from "../../../shared/lib/queries";
 import { AiIcon, ClearIcon, SyncIcon } from "../../../shared/ui/icons";
 import { aiChoices, canSummarize, PROVIDER_NAMES } from "../model/providers";
-import { summaryPoints } from "../model/summary";
+import { pointsSoFar } from "../model/summary";
 import { dropText, newRequestId, useStreamedText } from "./stream";
 import { useSummaryRequests } from "./summaryRequests";
+import { FadeWords, Shimmer, ThinkingSparkle, usePacedText } from "./paced";
 
 /** Conversations whose next summary request should skip the cache. */
 const askAgain = new Set<ThreadId>();
@@ -63,6 +64,17 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
     retry: false,
   });
   const streamed = useStreamedText(query.isFetching ? requestId : null);
+  // Asked again (mail changed), the summary shown stays until new text
+  // arrives: Rust usually answers from its cache with the same one, and
+  // dropping to the one-line placeholder meanwhile made the card shrink
+  // and grow back, moving a reply being written below it.
+  const text = (query.isFetching && streamed) || (query.data?.text ?? "");
+  // Let out at an even pace as it's written; one from the cache shows at once.
+  const paced = usePacedText(text, !query.isFetching);
+  const shown = paced.text;
+  // Until all of it is on screen: the header, busy state and "Summarize
+  // again" go by this, not by the request alone.
+  const writing = query.isFetching || shown.length < text.length;
   // A request from a menu brings the card into view (the email may be
   // scrolled well past it).
   const card = useRef<HTMLElement>(null);
@@ -91,29 +103,28 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
 
   // Short conversations (automatic) get none.
   if (query.data === null) return null;
-  // Asked again (mail changed), the summary shown stays until new text
-  // arrives: Rust usually answers from its cache with the same one, and
-  // dropping to the one-line placeholder meanwhile made the card shrink
-  // and grow back, moving a reply being written below it.
-  const text = (query.isFetching && streamed) || (query.data?.text ?? "");
-  const points = summaryPoints(text);
+  const points = pointsSoFar(shown);
 
   return (
     <section
       ref={card}
       aria-label="Summary"
-      aria-busy={query.isFetching}
+      aria-busy={writing}
       className="message-card mb-2 rounded-[10px] px-4 pt-2.5 pb-3 ring-1 ring-stroke ring-inset"
       style={{ zoom }}
     >
       <header className="flex h-6 items-center gap-1.5 text-xs text-content/50">
-        <AiIcon size={13} className={`text-accent ${query.isFetching ? "animate-pulse" : ""}`} />
+        {writing ? (
+          <ThinkingSparkle size={13} className="text-accent" />
+        ) : (
+          <AiIcon size={13} className="text-accent" />
+        )}
         <span className="font-medium text-content/70">
-          {query.isFetching ? "Summarizing…" : "Summary"}
+          {writing ? <Shimmer>Summarizing…</Shimmer> : "Summary"}
         </span>
         <span title="Change in Settings → AI">· {PROVIDER_NAMES[provider]}</span>
         <span className="ml-auto flex items-center">
-          {!query.isFetching && (
+          {!writing && (
             <button
               type="button"
               aria-label="Summarize again"
@@ -153,11 +164,14 @@ export function ThreadSummaryCard({ detail, zoom }: { detail: ThreadDetail; zoom
           </button>
         </p>
       ) : points.length === 0 ? (
-        <div className="mt-1.5 h-3 w-2/3 animate-pulse rounded bg-selection" />
+        <div className="ai-sweep mt-1.5 h-3 w-2/3 rounded" />
       ) : (
         <ul className="selectable mt-1 list-disc space-y-0.5 pl-4 text-[13px] leading-relaxed text-content/85 marker:text-content/35">
-          {points.map((p) => (
-            <li key={p}>{p}</li>
+          {points.map((p, i) => (
+            // oxlint-disable-next-line react/no-array-index-key -- by place, so a point being written keeps its words (and their fade) as it grows
+            <li key={i}>
+              <FadeWords text={p} fade={paced.fade} />
+            </li>
           ))}
         </ul>
       )}

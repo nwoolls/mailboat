@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ThreadDetail } from "../../../platform/tauri/bindings";
 
@@ -31,6 +31,10 @@ const { requestSummary } = await import("./summaryRequests");
 
 afterEach(cleanup);
 
+/** A point of the summary, whose words are each their own element (they fade in). */
+const point = (text: string) => (_: string, el: Element | null) =>
+  el?.tagName === "LI" && el.textContent === text;
+
 const detail = (id: number, newest = 5) =>
   ({
     thread: { id },
@@ -61,7 +65,7 @@ describe("ThreadSummaryCard", () => {
     expect(aiThreadSummary).not.toHaveBeenCalled();
 
     await act(async () => requestSummary(7));
-    expect(await screen.findByText("Lunch moved to Friday")).toBeTruthy();
+    expect(await screen.findByText(point("Lunch moved to Friday"))).toBeTruthy();
     // Asked for, so short conversations are summarized too (not automatic).
     expect(aiThreadSummary).toHaveBeenCalledWith(7, false, false, 1);
   });
@@ -73,13 +77,13 @@ describe("ThreadSummaryCard", () => {
     });
     await act(async () => requestSummary(8));
     show(8);
-    await screen.findByText("Invoice is due");
+    await screen.findByText(point("Invoice is due"));
 
     fireEvent.click(screen.getByLabelText("Hide summary"));
-    expect(screen.queryByText("Invoice is due")).toBeNull();
+    expect(screen.queryByText(point("Invoice is due"))).toBeNull();
 
     await act(async () => requestSummary(8));
-    expect(await screen.findByText("Invoice is due")).toBeTruthy();
+    expect(await screen.findByText(point("Invoice is due"))).toBeTruthy();
   });
 
   it("waits for another ask when new mail arrives after one", async () => {
@@ -90,7 +94,7 @@ describe("ThreadSummaryCard", () => {
     });
     const { newMail } = show(11);
     fireEvent.click(screen.getByText("Summarize"));
-    expect(await screen.findByText("Plans confirmed")).toBeTruthy();
+    expect(await screen.findByText(point("Plans confirmed"))).toBeTruthy();
     expect(aiThreadSummary).toHaveBeenCalledTimes(1);
 
     // A newer message: back to the button, and nothing is sent by itself.
@@ -100,7 +104,7 @@ describe("ThreadSummaryCard", () => {
 
     // Asked again, it is summarized.
     fireEvent.click(screen.getByText("Summarize"));
-    expect(await screen.findByText("Plans confirmed")).toBeTruthy();
+    expect(await screen.findByText(point("Plans confirmed"))).toBeTruthy();
     expect(aiThreadSummary).toHaveBeenCalledTimes(2);
   });
 
@@ -114,12 +118,52 @@ describe("ThreadSummaryCard", () => {
     });
     const { client } = show(12);
     fireEvent.click(screen.getByText("Summarize"));
-    expect(await screen.findByText("Tickets booked")).toBeTruthy();
+    expect(await screen.findByText(point("Tickets booked"))).toBeTruthy();
 
     aiThreadSummary.mockReturnValue(new Promise(() => {}));
     await act(async () => void client.invalidateQueries({ queryKey: ["aiSummary"] }));
     expect(screen.getByRole("region", { name: "Summary" }).getAttribute("aria-busy")).toBe("true");
-    expect(screen.getByText("Tickets booked")).toBeTruthy();
+    expect(screen.getByText(point("Tickets booked"))).toBeTruthy();
+  });
+
+  it("stays busy, without Summarize again, until all of the summary is shown", async () => {
+    aiThreadSummary.mockResolvedValue({
+      status: "ok",
+      data: {
+        threadId: 13,
+        text: "- Lunch moved to Friday at the usual place",
+        provider: "codex",
+        createdAt: 0,
+      },
+    });
+    show(13);
+    fireEvent.click(screen.getByText("Summarize"));
+    // The answer is in, all at once, but still being shown.
+    await act(async () => {});
+    const card = screen.getByRole("region", { name: "Summary" });
+    expect(card.getAttribute("aria-busy")).toBe("true");
+    expect(screen.queryByLabelText("Summarize again")).toBeNull();
+    expect(screen.getByText("Summarizing…")).toBeTruthy();
+
+    await screen.findByText(point("Lunch moved to Friday at the usual place"));
+    expect(card.getAttribute("aria-busy")).toBe("false");
+    expect(screen.getByLabelText("Summarize again")).toBeTruthy();
+  });
+
+  it("doesn't fade a summary in again when it's shown again after Hide", async () => {
+    aiThreadSummary.mockResolvedValue({
+      status: "ok",
+      data: { threadId: 14, text: "- Venue booked", provider: "apple", createdAt: 0 },
+    });
+    show(14);
+    fireEvent.click(screen.getByText("Summarize"));
+    await screen.findByText(point("Venue booked"));
+    // All shown and faded in.
+    await waitFor(() => expect(document.querySelector(".ai-word")).toBeNull());
+    fireEvent.click(screen.getByLabelText("Hide summary"));
+    await act(async () => requestSummary(14));
+    expect(screen.getByText(point("Venue booked"))).toBeTruthy();
+    expect(document.querySelector(".ai-word")).toBeNull();
   });
 
   it("leaves other conversations alone", () => {
