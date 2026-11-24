@@ -14,6 +14,6 @@ it("lists every go-to letter in the help", () => {
 
 it("lists the reading and range keys", () => {
   const listed = SHORTCUTS.flatMap((g) => g.keys.map(([k]) => k));
-  for (const k of ["↩ or o", "Space", "n / p", "PgDn / PgUp", "⇧↓ / ⇧↑"])
+  for (const k of ["↩ or o", "Space", "n / p", "PgDn / PgUp", "⇧↓ / ⇧↑", "→ or ↩", "→ / ←"])
     expect(listed).toContain(k);
 });

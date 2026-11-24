@@ -5379,7 +5379,11 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       (`inReplyText`); `reply-esc.spec.ts`, whose two one-Esc tests fail
       without the change. The sidebar tests from #212 began with Esc to
       leave a reply's text; they now leave it without Esc, so the
-      pointer stays where Reply was clicked.
+      pointer stays where Reply was clicked. *(Superseded 2026-11-23,
+      owner: Esc in a reply's text now hands the keyboard to the
+      conversation with the reply outlined, and the next Esc goes back to
+      the list; see "Later / unscheduled" → Reading, "The open
+      conversation with the keyboard")*
 - [x] On the website, the hero screenshot left a tall window still tipped
       back *(owner report, 2026-11-19; fixed the same day, branch
       `hero-tilt-settle`)*. It settled flat over a fixed 70% of the window's
@@ -7854,6 +7858,45 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         the reply 182–432 px below as in CI, and passed 5 of 5 with it.
 
 ### Reading
+
+- [x] The open conversation with the keyboard *(owner report,
+      2026-11-23: once a conversation was previewed, the keys could
+      neither scroll it nor move between its emails, and a click in it
+      didn't help; done the same day, branch `reader-keyboard`)*. The
+      keys all went to the list, which ↑ / ↓ and the Page keys kept
+      moving. Now → or Enter on the list, or a click in the
+      conversation, hands it the keyboard and outlines an email: the
+      first unread, as the reader lands on it, else the first one in
+      view. ↓ / ↑ go to the next or previous email, scrolling through a
+      long one first (owner's choice); → or Enter opens the outlined
+      email and ← closes it; ← on a closed one, or Esc, goes back to the
+      list, and the next Esc hides the reader as before. The Page keys,
+      Home and End scroll the conversation; j / k and the other letters
+      still work as they did, so j / k move to the next conversation from
+      anywhere. Esc in a reply's text now hands the keyboard to the
+      conversation instead of going straight on to the list (the
+      one-press Esc of 2026-11-22), so the keys stay the same everywhere;
+      the first press shows the outline, so it no longer seems to do
+      nothing. The outline is the accent-colored focus ring, to be tried
+      in the app. Tests: `reader-keyboard.spec.ts`, with
+      `reply-esc.spec.ts` updated; all of them fail without the change
+      (of those added later, all but one: the test that Enter back into the
+      reply keeps its cursor guards behavior that already worked).
+      *(2026-11-23, owner, trying it with a reply open: after Esc in the
+      reply, ↑ / ↓ went through the emails with no way back into the reply
+      by keys. A reply being written is now the last stop after the
+      emails, outlined like them; → or Enter on it puts the cursor back in
+      its text, where it was. Esc in its text outlines the reply itself,
+      so ↑ goes on to the email above. ↓ stops on the reply rather than
+      going into the text, so holding ↓ never leaves you typing)*
+- [ ] The conversation's outline for screen readers *(owner, 2026-11-23,
+      from review of the item above)*: the outlined email (or reply) is
+      drawn, not announced. Focus stays on the reader while ↑ / ↓ move
+      the outline, so a screen reader says nothing as it moves. The likely
+      way: move real focus onto each email as it's outlined (its header,
+      or the card itself), so the screen reader reads the sender and
+      date, and leave the outline to follow focus. To check with VoiceOver
+      on macOS and Narrator on Windows.
 
 - [ ] A card on hover for each person in an email's Details *(owner idea,
       2026-11-08, from the Details button; maybe for the Polish Spike, not
