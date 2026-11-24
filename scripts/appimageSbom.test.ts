@@ -1,23 +1,48 @@
 import { describe, expect, it } from "vitest";
-import { appimageBom, copyrightLicenses, owner } from "./appimageSbom";
+import { appimageBom, copyrightLicenses, owned, pickOwner } from "./appimageSbom";
 
 describe("tracing a bundled file to its package", () => {
-  // `dpkg -S libgtk-3.so.0` on Ubuntu 22.04, as it prints.
+  // `dpkg -S` on Ubuntu 22.04, as it prints.
   const search = [
     "libgtk-3-0:arm64: /usr/lib/aarch64-linux-gnu/libgtk-3.so.0",
     "libgtk-3-0:arm64: /usr/lib/aarch64-linux-gnu/libgtk-3.so.0.2404.29",
   ].join("\n");
 
-  it("names the package that owns the file, without its architecture", () => {
-    expect(owner(search, "usr/lib/libgtk-3.so.0")).toBe("libgtk-3-0");
-    expect(owner("libfoo1:amd64, libfoo1:i386: /usr/lib/libfoo.so.1", "usr/lib/libfoo.so.1")).toBe(
-      "libfoo1",
+  it("reads each owner, a shared path's packages one by one, with their architecture", () => {
+    expect(owned("libfoo1:amd64, libfoo1:i386: /usr/lib/libfoo.so.1")).toEqual([
+      { package: "libfoo1", arch: "amd64", path: "/usr/lib/libfoo.so.1" },
+      { package: "libfoo1", arch: "i386", path: "/usr/lib/libfoo.so.1" },
+    ]);
+  });
+
+  it("names the package of a library moved into usr/lib by its name", () => {
+    expect(pickOwner(owned(search), "/usr/lib/libgtk-3.so.0")).toEqual({
+      package: "libgtk-3-0",
+      arch: "arm64",
+      path: "/usr/lib/aarch64-linux-gnu/libgtk-3.so.0",
+    });
+  });
+
+  it("prefers the owner of the exact path, and leaves debug copies out", () => {
+    const competing = owned(
+      [
+        "libfoo-dbg:amd64: /usr/lib/debug/libfoo.so.1",
+        "libfoo1:amd64: /usr/lib/x86_64-linux-gnu/libfoo.so.1",
+        "libfoo-extra:amd64: /opt/foo/libfoo.so.1",
+      ].join("\n"),
     );
+    expect(pickOwner(competing, "/usr/lib/x86_64-linux-gnu/libfoo.so.1")?.package).toBe("libfoo1");
+    expect(() => pickOwner(competing, "/usr/lib/libfoo.so.1")).toThrow(
+      /more than one package has it \(libfoo1, libfoo-extra\)/,
+    );
+    expect(
+      pickOwner(owned("libfoo-dbg:amd64: /usr/lib/debug/libfoo.so.1"), "/usr/lib/libfoo.so.1"),
+    ).toBeNull();
   });
 
   it("is null when no package owns it", () => {
-    expect(owner("", "AppRun")).toBeNull();
-    expect(owner(search, "usr/lib/libgtk-3.so.1")).toBeNull();
+    expect(pickOwner(owned(""), "/AppRun")).toBeNull();
+    expect(pickOwner(owned(search), "/usr/lib/libgtk-3.so.1")).toBeNull();
   });
 });
 

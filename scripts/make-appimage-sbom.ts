@@ -4,11 +4,15 @@
 // after the build, since the bundled files are traced to the packages
 // installed there:
 //
-//   bun scripts/make-appimage-sbom.ts --appimage <file> --version 0.3.0 --out <folder>
+//   bun scripts/make-appimage-sbom.ts --appimage <file> --runtime <pinned runtime> \
+//     --version 0.3.0 --out <folder>
 //
 // Writes `<App>_<version>_linux_<amd64|arm64>.AppImage.cdx.json`. Fails if a
 // bundled library or program comes from neither an installed package nor
-// the AppImage's own tools (AppRun), so nothing ships unlisted.
+// the AppImage's own tools (AppRun), so nothing ships unlisted. The runtime
+// at the AppImage's front is listed by the pinned file's digest (the release
+// checks first that it is that one). The AppImage is unpacked with
+// unsquashfs (squashfs-tools) from where its runtime ends, without running it.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -24,7 +28,15 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import brand from "../brand.json";
-import { appimageBom, type Bundled, copyrightLicenses, owner } from "./appimageSbom";
+import { elfEnd } from "./appimageRuntime";
+import {
+  appimageBom,
+  type Bundled,
+  copyrightLicenses,
+  type Owned,
+  owned,
+  pickOwner,
+} from "./appimageSbom";
 import { isVersion } from "./releaseFiles";
 
 function option(name: string): string | undefined {
@@ -43,6 +55,7 @@ function run(command: string, args: string[], cwd?: string): { ok: boolean; out:
 }
 
 const appimage = resolve(option("appimage") ?? fail("missing --appimage"));
+const runtime = resolve(option("runtime") ?? fail("missing --runtime"));
 const version = option("version") ?? fail("missing --version");
 const out = option("out") ?? fail("missing --out");
 if (!isVersion(version)) fail(`"${version}" isn't a version like 1.2.3`);
@@ -52,8 +65,11 @@ if (!existsSync(appimage)) fail(`no AppImage at ${appimage}`);
 const TOOLS = new Set(["AppRun", "AppRun.wrapped"]);
 
 const work = mkdtempSync(join(tmpdir(), "appimage-sbom-"));
-if (!run(appimage, ["--appimage-extract"], work).ok) fail("couldn't unpack the AppImage");
 const root = join(work, "squashfs-root");
+const offset = elfEnd(readFileSync(appimage));
+if (!run("unsquashfs", ["-q", "-n", "-o", String(offset), "-d", root, appimage]).ok) {
+  fail("couldn't unpack the AppImage (is squashfs-tools installed?)");
+}
 const program = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8")).mainBinaryName;
 
 /** Every library (`*.so*`) and program in the AppImage, but the app's own. */
@@ -70,32 +86,54 @@ function bundledFiles(dir: string): string[] {
   return found;
 }
 
-const byPackage = new Map<string, string[]>();
+const byPackage = new Map<string, { owner: Owned; files: string[] }>();
 const tools: Bundled[] = [];
+const sha256 = (path: string) => createHash("sha256").update(readFileSync(path)).digest("hex");
 for (const file of bundledFiles(root).toSorted()) {
   if (file === `usr/bin/${program}`) continue;
   const name = file.split("/").pop()!;
-  const direct = run("dpkg", ["-S", `/${file}`]);
-  const pkg =
-    (direct.ok ? owner(direct.out, `/${file}`) : null) ??
-    owner(run("dpkg", ["-S", name]).out, file);
-  if (pkg) {
-    byPackage.set(pkg, [...(byPackage.get(pkg) ?? []), file]);
+  const candidates = [
+    ...owned(run("dpkg", ["-S", `/${file}`]).out),
+    ...owned(run("dpkg", ["-S", name]).out),
+  ];
+  let found: Owned | null;
+  try {
+    found = pickOwner(candidates, `/${file}`);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+  if (found) {
+    const entry = byPackage.get(found.package) ?? { owner: found, files: [] };
+    entry.files.push(file);
+    byPackage.set(found.package, entry);
   } else if (TOOLS.has(file)) {
-    const sha256 = createHash("sha256")
-      .update(readFileSync(join(root, file)))
-      .digest("hex");
-    tools.push({ package: null, version: null, licenses: [], files: [file], sha256 });
+    tools.push({
+      package: null,
+      version: null,
+      licenses: [],
+      files: [file],
+      sha256: sha256(join(root, file)),
+    });
   } else {
     fail(`${file} comes from no installed package and isn't one of the AppImage's tools`);
   }
 }
 
-const bundled: Bundled[] = [...byPackage].map(([pkg, files]) => {
-  const installed = run("dpkg-query", ["-W", "-f=${Version}", pkg]).out.trim() || null;
+const bundled: Bundled[] = [...byPackage].map(([pkg, { owner, files }]) => {
+  const query = owner.arch ? `${pkg}:${owner.arch}` : pkg;
+  const installed = run("dpkg-query", ["-W", "-f=${Version}", query]).out.trim();
+  if (!installed) fail(`no installed version of ${query}`);
   const copyright = `/usr/share/doc/${pkg}/copyright`;
   const licenses = existsSync(copyright) ? copyrightLicenses(readFileSync(copyright, "utf8")) : [];
-  return { package: pkg, version: installed, licenses, files };
+  return { package: pkg, arch: owner.arch, version: installed, licenses, files };
+});
+// The runtime at the front, by the pinned file's digest and release.
+tools.push({
+  package: null,
+  version: "20251108",
+  licenses: ["MIT"],
+  files: ["runtime"],
+  sha256: sha256(runtime),
 });
 
 const arch = run("dpkg", ["--print-architecture"]).out.trim();

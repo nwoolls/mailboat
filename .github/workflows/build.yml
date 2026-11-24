@@ -53,7 +53,14 @@ jobs:
       # release does.
       - if: runner.os == 'Linux'
         run: scripts/appimage-tools.sh
-      - run: bun tauri build --ci
+      - if: runner.os != 'Linux'
+        run: bun tauri build --ci
+      # With the pinned AppImage runtime, checked afterwards.
+      - if: runner.os == 'Linux'
+        run: |
+          runtime="$HOME/.cache/tauri/appimage-runtime"
+          LDAI_RUNTIME_FILE="$runtime" bun tauri build --ci
+          bun scripts/check-appimage-runtime.ts target/release/bundle/appimage/*.AppImage "$runtime"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: unsigned-build-${{ matrix.os }}
