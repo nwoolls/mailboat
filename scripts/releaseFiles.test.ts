@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  appimageSbomName,
   assetUrl,
   buildManifest,
   changelogSection,
@@ -96,6 +97,14 @@ describe("a bill of materials per download", () => {
       expect(platformOf(name)).toBeNull();
       expect(stableName(name, "0.1.0")).toBeNull();
     }
+    // Each Linux processor's AppImage has a bill of its own; nothing else does.
+    expect(SBOM_DOWNLOADS.map((d) => appimageSbomName("App", "0.1.0", d))).toEqual([
+      null,
+      null,
+      null,
+      "App_0.1.0_linux_amd64.AppImage.cdx.json",
+      "App_0.1.0_linux_arm64.AppImage.cdx.json",
+    ]);
     expect(SBOM_DOWNLOADS.flatMap((d) => d.platforms).toSorted()).toEqual(
       [...PLATFORMS].toSorted(),
     );

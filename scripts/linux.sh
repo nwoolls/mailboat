@@ -68,7 +68,7 @@ case "${1:-}" in
     run 'cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --no-fail-fast'
     ;;
   build)
-    run 'bun tauri build --ci && rm -rf /out/bundle && mkdir -p /out/bundle && cp /target/release/bundle/deb/*.deb /target/release/bundle/rpm/*.rpm /target/release/bundle/appimage/*.AppImage /out/bundle/'
+    run 'scripts/appimage-tools.sh && bun tauri build --ci && rm -rf /out/bundle && mkdir -p /out/bundle && cp /target/release/bundle/deb/*.deb /target/release/bundle/rpm/*.rpm /target/release/bundle/appimage/*.AppImage /out/bundle/'
     echo
     echo "Packages:"
     ls -1 target/linux/bundle/

@@ -316,13 +316,16 @@ jobs:
         if: always()
         run: az logout || true
 
+  # Linux is built without any secret: the AppImage's tools run here, so
+  # they never see the updater key. They are checked against recorded
+  # digests (scripts/appimage-tools.sh) so Tauri doesn't fetch its own. A
+  # job of its own then signs what was built (linux-sign).
   linux:
     name: Linux (${{ matrix.arch }})
     needs: check
     # The oldest Ubuntu Tauri supports, so the packages run on distributions
     # as old as it (their glibc); Arm on GitHub's own Arm runner.
     runs-on: ${{ matrix.runner }}
-    environment: release
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -348,13 +351,9 @@ jobs:
           no-cache: true
       - run: bun install --frozen-lockfile
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
-      # No build cache here: a release is built from scratch. Each package is
-      # its own update payload: Tauri signs all three with the updater key.
-      - name: Build the packages
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: bun tauri build --ci --bundles deb,rpm,appimage --config src-tauri/tauri.updater-artifacts.conf.json
+      - run: scripts/appimage-tools.sh
+      # No build cache here: a release is built from scratch.
+      - run: bun tauri build --ci --bundles deb,rpm,appimage
       - name: Check the packages and keep them
         run: |
           shopt -s nullglob
@@ -362,19 +361,82 @@ jobs:
           for kind in deb rpm appimage; do
             case "$kind" in appimage) files=(target/release/bundle/appimage/*.AppImage) ;;
                             *) files=(target/release/bundle/"$kind"/*."$kind") ;; esac
-            if [ "${#files[@]}" -ne 1 ] || [ ! -s "${files[0]}.sig" ]; then
-              echo "Expected one .$kind with a .sig, found ${#files[@]}" >&2
+            if [ "${#files[@]}" -ne 1 ]; then
+              echo "Expected one .$kind, found ${#files[@]}" >&2
               exit 1
             fi
-            cp "${files[0]}" "${files[0]}.sig" release-files/
+            cp "${files[0]}" release-files/
           done
           # The program as the .deb installs it (the others hold the same
           # one): 64-bit, PIE, a stack that can't run code, full RELRO, no
-          # RPATH.
+          # RPATH; and marked as a .deb, which is how the updater picks
+          # the package it installs.
           unpacked="$(mktemp -d)"
           dpkg-deb -x release-files/*.deb "$unpacked"
           name="$(jq -r .mainBinaryName src-tauri/tauri.conf.json)"
           bun scripts/check-binaries.ts linux "$unpacked/usr/bin/$name"
+          grep -q __TAURI_BUNDLE_TYPE_VAR_DEB "$unpacked/usr/bin/$name"
+          # The AppImage's own bill of materials: the system libraries it
+          # carries, traced to the packages installed here.
+          version="$(jq -r .version package.json)"
+          bun scripts/make-appimage-sbom.ts --appimage release-files/*.AppImage \
+            --version "$version" --out release-files
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-unsigned-${{ matrix.arch }}
+          path: release-files/*
+          if-no-files-found: error
+          retention-days: 7
+
+  # Signs the Linux packages for the updater, in a job that runs nothing but
+  # the signer (the Tauri CLI, from the lockfile, its install scripts off).
+  # Each signature is bound to the version (--app-version), as `tauri build`
+  # does on the Mac and Windows.
+  linux-sign:
+    name: Sign Linux (${{ matrix.arch }})
+    needs: linux
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86-64, Arm]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+          no-cache: true
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux-unsigned-${{ matrix.arch }}
+          path: release-files
+      - name: Sign the packages
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          shopt -s nullglob
+          version="$(jq -r .version package.json)"
+          files=(release-files/*.deb release-files/*.rpm release-files/*.AppImage)
+          if [ "${#files[@]}" -ne 3 ]; then
+            echo "Expected three packages, found ${#files[@]}" >&2
+            exit 1
+          fi
+          for f in "${files[@]}"; do
+            bun tauri signer sign --app-version "$version" "$f"
+            if [ ! -s "$f.sig" ]; then
+              echo "$f has no .sig" >&2
+              exit 1
+            fi
+          done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-signed-${{ matrix.arch }}
@@ -425,7 +487,7 @@ jobs:
   publish:
     name: Publish (a draft release)
     if: github.ref_type == 'tag'
-    needs: [macos, windows, linux, sbom]
+    needs: [macos, windows, linux-sign, sbom]
     runs-on: ubuntu-latest
     # Its own environment: an approval of its own, to publish what the builds
     # made, and none of the signing secrets, which this job never needs.

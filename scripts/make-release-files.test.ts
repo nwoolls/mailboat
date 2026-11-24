@@ -61,6 +61,8 @@ const SBOMS = [
   "App_0.1.0_arm64.cdx.json",
   "App_0.1.0_linux_amd64.cdx.json",
   "App_0.1.0_linux_arm64.cdx.json",
+  "App_0.1.0_linux_amd64.AppImage.cdx.json",
+  "App_0.1.0_linux_arm64.AppImage.cdx.json",
 ];
 const LINUX_STABLE = [
   "App_amd64.AppImage",
@@ -183,7 +185,7 @@ describe("making a release's files", () => {
       readFileSync(join(dir, "to", "SHA256SUMS"), "utf8")
         .trim()
         .split("\n"),
-    ).toHaveLength(14 + 2 + 3 * LINUX.length);
+    ).toHaveLength(14 + 4 + 3 * LINUX.length);
     expect(readFileSync(join(dir, "notes.md"), "utf8")).toBe("First release.\n");
   });
 

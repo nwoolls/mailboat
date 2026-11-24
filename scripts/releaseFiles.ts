@@ -151,12 +151,31 @@ export function sbomName(app: string, version: string, download: { suffix: strin
 }
 
 /**
+ * The AppImage's own bill (`make-appimage-sbom.ts`), beside the app's for
+ * that processor: `App_0.1.0_linux_arm64.AppImage.cdx.json`. Only Linux
+ * downloads have one: the AppImage carries copies of system libraries.
+ */
+export function appimageSbomName(
+  app: string,
+  version: string,
+  download: { suffix: string; host: string },
+): string | null {
+  return download.host === "linux"
+    ? `${app}_${version}_${download.suffix}.AppImage.cdx.json`
+    : null;
+}
+
+/**
  * What's wrong with a release's bills of materials, or null: there must be
- * one per download for this version (`SBOM_DOWNLOADS`), and no others.
+ * one per download for this version (`SBOM_DOWNLOADS`), one more for each
+ * AppImage, and no others.
  */
 export function sbomProblem(files: string[], app: string, version: string): string | null {
   const sboms = files.filter(isSbom).toSorted();
-  const want = SBOM_DOWNLOADS.map((d) => sbomName(app, version, d)).toSorted();
+  const want = SBOM_DOWNLOADS.flatMap((d) => {
+    const appimage = appimageSbomName(app, version, d);
+    return appimage ? [sbomName(app, version, d), appimage] : [sbomName(app, version, d)];
+  }).toSorted();
   if (sboms.length === want.length && sboms.every((f, i) => f === want[i])) return null;
   return `expected a software bill of materials for each download of ${version} (${want.join(", ")}), found: ${sboms.join(", ") || "none"}`;
 }
