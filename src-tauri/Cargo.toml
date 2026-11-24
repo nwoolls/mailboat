@@ -28,6 +28,9 @@ specta.workspace = true
 tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 specta-typescript = "0.0.12"
 open = "5"
+# The XDG data folders, where Linux keeps desktop entries (src/mail_handler.rs).
+# Tauri's own crate and version, already in the build on every platform.
+dirs = "7"
 time = { version = "0.3.55", features = ["formatting"] }
 tauri-plugin-window-state = "2"
 tauri-plugin-notification = "2"
@@ -48,6 +51,12 @@ tauri-plugin-updater = { version = "2", default-features = false, features = ["s
 # On Linux it talks over D-Bus with zbus, already in the build.
 [target.'cfg(any(windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2"
+
+# Linux: new-mail notifications that report a click (src/notifications.rs).
+# The notification plugin's own library, version and features, so nothing new
+# is built; the plugin itself doesn't pass clicks on.
+[target.'cfg(target_os = "linux")'.dependencies]
+notify-rust = "4.18"
 
 [target.'cfg(windows)'.dependencies]
 # Which app Windows sends mailto: links to (src/mail_handler.rs). Microsoft's

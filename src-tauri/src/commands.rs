@@ -1628,15 +1628,17 @@ pub fn mailto_take(queue: State<'_, crate::mail_handler::MailtoQueue>) -> Vec<Ma
     queue.take()
 }
 
-/// Which app opens `mailto:` links (Settings → General).
-#[tauri::command]
+/// Which app opens `mailto:` links (Settings → General). Off the UI
+/// thread: on Linux it runs `xdg-settings`.
+#[tauri::command(async)]
 #[specta::specta]
 pub fn mail_app_default() -> crate::mail_handler::DefaultMailApp {
     crate::mail_handler::default_app()
 }
 
-/// Asks macOS to make this copy of the app the default email reader; macOS
-/// asks the user to confirm.
+/// Makes this copy of the app the default email reader: macOS asks the
+/// user to confirm; Linux sets it with `xdg-settings`; Windows opens its
+/// Default apps page instead.
 #[tauri::command]
 #[specta::specta]
 pub async fn mail_app_make_default(app: tauri::AppHandle) -> CmdResult<()> {

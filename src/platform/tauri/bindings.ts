@@ -345,11 +345,15 @@ export const commands = {
 	vacationSet: (accountId: AccountId, settings: VacationSettings) => typedError<AccountVacation, AppError>(__TAURI_INVOKE("vacation_set", { accountId, settings })),
 	/**  `mailto:` links waiting to become new messages (see `mail_handler`). */
 	mailtoTake: () => __TAURI_INVOKE<Mailto[]>("mailto_take"),
-	/**  Which app opens `mailto:` links (Settings → General). */
+	/**
+	 *  Which app opens `mailto:` links (Settings → General). Off the UI
+	 *  thread: on Linux it runs `xdg-settings`.
+	 */
 	mailAppDefault: () => __TAURI_INVOKE<DefaultMailApp>("mail_app_default"),
 	/**
-	 *  Asks macOS to make this copy of the app the default email reader; macOS
-	 *  asks the user to confirm.
+	 *  Makes this copy of the app the default email reader: macOS asks the
+	 *  user to confirm; Linux sets it with `xdg-settings`; Windows opens its
+	 *  Default apps page instead.
 	 */
 	mailAppMakeDefault: () => typedError<null, AppError>(__TAURI_INVOKE("mail_app_make_default")),
 	/**  Puts the window's commands in the menu bar (see `menu.rs`). */

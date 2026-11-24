@@ -2,8 +2,11 @@
 //! notification center (`UNUserNotificationCenter`) rather than the
 //! notification plugin, because only that tells the app when one is clicked:
 //! the click then opens its conversation (`NotificationOpenedEvent`).
-//! Elsewhere, and when the app isn't running from an app bundle (macOS
-//! refuses the notification center then), the plugin shows them as before.
+//! On Linux they go through the freedesktop notification service directly
+//! (`notify-rust`, the plugin's own library), for the same reason: the
+//! plugin doesn't pass a click on there either. Elsewhere (Windows), and
+//! when the Mac app isn't running from an app bundle (macOS refuses the
+//! notification center then), the plugin shows them.
 
 use mail_core::mail::notify::Notice;
 use mail_core::model::ThreadId;
@@ -47,13 +50,15 @@ pub fn install(app: &AppHandle) {
 }
 
 /// Removes the notifications already delivered (and any waiting): they can
-/// hold senders, subjects and sign-in codes. macOS only; the Windows
+/// hold senders, subjects and sign-in codes. macOS and Linux; the Windows
 /// plugin has no way to take back a toast.
 pub fn clear_all() {
     #[cfg(target_os = "macos")]
     if mac::available() {
         mac::clear_all();
     }
+    #[cfg(target_os = "linux")]
+    linux::clear_all();
 }
 
 /// Shows these notifications.
@@ -65,14 +70,21 @@ pub fn show(app: &AppHandle, notices: Vec<Notice>) {
         }
         return;
     }
-    use tauri_plugin_notification::NotificationExt;
+    #[cfg(target_os = "linux")]
     for n in notices {
-        let _ = app
-            .notification()
-            .builder()
-            .title(n.title)
-            .body(n.body)
-            .show();
+        linux::show(app, n);
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        use tauri_plugin_notification::NotificationExt;
+        for n in notices {
+            let _ = app
+                .notification()
+                .builder()
+                .title(n.title)
+                .body(n.body)
+                .show();
+        }
     }
 }
 
@@ -199,6 +211,77 @@ mod mac {
         );
         UNUserNotificationCenter::currentNotificationCenter()
             .addNotificationRequest_withCompletionHandler(&request, None);
+    }
+}
+
+#[cfg(target_os = "linux")]
+mod linux {
+    use std::process::{Command, Stdio};
+    use std::sync::Mutex;
+
+    use mail_core::mail::notify::Notice;
+    use tauri::{AppHandle, Manager};
+    use tauri_specta::Event;
+
+    use super::NotificationOpenedEvent;
+
+    /// The service's IDs of the notifications shown and not yet clicked,
+    /// for `clear_all`.
+    static SHOWN: Mutex<Vec<u32>> = Mutex::new(Vec::new());
+
+    /// Shows one, with a "default" action (what a click on it does on GNOME,
+    /// KDE and most others), and waits on a thread of its own for the
+    /// click, or for it to be closed. A click opens its conversation, as on
+    /// the Mac.
+    pub fn show(app: &AppHandle, notice: Notice) {
+        let shown = notify_rust::Notification::new()
+            .appname(mail_core::brand::NAME)
+            .summary(&notice.title)
+            .body(&notice.body)
+            .action("default", "Open")
+            .show();
+        let Ok(handle) = shown else {
+            return;
+        };
+        let id = handle.id();
+        SHOWN.lock().unwrap().push(id);
+        let app = app.clone();
+        let thread_id = notice.thread;
+        std::thread::spawn(move || {
+            handle.wait_for_action(|action| {
+                SHOWN.lock().unwrap().retain(|shown| *shown != id);
+                if action != "default" {
+                    return;
+                }
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.unminimize();
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+                let _ = NotificationOpenedEvent { thread_id }.emit(&app);
+            });
+        });
+    }
+
+    /// Asks the service to close each one still shown. `dbus-send` comes
+    /// with D-Bus itself, and closing one ends its thread's wait.
+    pub fn clear_all() {
+        let ids = std::mem::take(&mut *SHOWN.lock().unwrap());
+        for id in ids {
+            let _ = Command::new("dbus-send")
+                .args([
+                    "--session",
+                    "--type=method_call",
+                    "--dest=org.freedesktop.Notifications",
+                    "/org/freedesktop/Notifications",
+                    "org.freedesktop.Notifications.CloseNotification",
+                ])
+                .arg(format!("uint32:{id}"))
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+        }
     }
 }
 

@@ -7,6 +7,12 @@
 //! listening (it launched the app), so links wait in a queue the window
 //! drains: at start and on each `MailtoEvent`.
 //!
+//! On Linux the `.deb` and `.rpm` install a desktop entry that claims the
+//! scheme (`src-tauri/linux/app.desktop`), the desktop starts the app with
+//! the link as an argument, a copy started while the app is open hands it
+//! over (single-instance plugin), and Settings reads and sets the default
+//! with `xdg-settings`.
+//!
 //! On Windows the installer registers the app as an email app
 //! (`windows/installer.nsh`: the `the app.mailto` ProgID and Default apps
 //! entry), Windows starts the app with the link as an argument, and a copy
@@ -216,9 +222,97 @@ pub fn default_app() -> DefaultMailApp {
     DefaultMailApp::Other { name }
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+/// Linux: what `xdg-settings` says opens `mailto:` links (a desktop entry's
+/// file name), against the app's own entry, which the `.deb` and `.rpm`
+/// install (`src-tauri/linux/app.desktop`, which claims the scheme). An
+/// AppImage, or a build run from the repository, has no entry of its own,
+/// so it can't be chosen.
+#[cfg(target_os = "linux")]
+pub fn default_app() -> DefaultMailApp {
+    let ours = linux::our_entry();
+    if std::env::var_os("APPIMAGE").is_some() || linux::entry_file(&ours).is_none() {
+        return DefaultMailApp::NotInstalled;
+    }
+    let Some(handler) = linux::xdg_settings(&["get", "default-url-scheme-handler", "mailto"])
+    else {
+        return DefaultMailApp::Unsupported;
+    };
+    let handler = handler.trim();
+    if handler.is_empty() {
+        return DefaultMailApp::None;
+    }
+    if handler == ours {
+        return DefaultMailApp::This;
+    }
+    let name = linux::entry_file(handler)
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .and_then(|entry| linux::entry_name(&entry))
+        .unwrap_or_else(|| handler.trim_end_matches(".desktop").to_string());
+    DefaultMailApp::Other { name }
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 pub fn default_app() -> DefaultMailApp {
     DefaultMailApp::Unsupported
+}
+
+/// Linux's default apps: `xdg-settings` (xdg-utils, on every desktop
+/// distribution) and the desktop entries in the XDG data folders.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+mod linux {
+    use std::path::PathBuf;
+    use std::process::{Command, Stdio};
+
+    /// The app's desktop entry, as the packages install it: Tauri names it
+    /// after the product.
+    pub fn our_entry() -> String {
+        format!("{}.desktop", mail_core::brand::NAME)
+    }
+
+    /// What `xdg-settings` printed, or None when it isn't there or failed.
+    pub fn xdg_settings(args: &[&str]) -> Option<String> {
+        let out = Command::new("xdg-settings")
+            .args(args)
+            .stdin(Stdio::null())
+            .stderr(Stdio::null())
+            .output()
+            .ok()?;
+        out.status
+            .success()
+            .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+    }
+
+    /// Where a desktop entry is installed: the first `applications` folder
+    /// that has it, in `$XDG_DATA_HOME` then `$XDG_DATA_DIRS`.
+    pub fn entry_file(id: &str) -> Option<PathBuf> {
+        if id.contains('/') {
+            return None;
+        }
+        let dirs = std::env::var("XDG_DATA_DIRS")
+            .ok()
+            .filter(|d| !d.is_empty())
+            .unwrap_or_else(|| "/usr/local/share:/usr/share".to_string());
+        dirs::data_dir()
+            .into_iter()
+            .chain(dirs.split(':').map(PathBuf::from))
+            .map(|d| d.join("applications").join(id))
+            .find(|p| p.is_file())
+    }
+
+    /// The app's name in a desktop entry: `Name=` in `[Desktop Entry]`.
+    pub fn entry_name(entry: &str) -> Option<String> {
+        let mut in_entry = false;
+        for line in entry.lines().map(str::trim) {
+            if line.starts_with('[') {
+                in_entry = line == "[Desktop Entry]";
+            } else if in_entry {
+                if let Some(name) = line.strip_prefix("Name=") {
+                    return Some(name.trim().to_string()).filter(|n| !n.is_empty());
+                }
+            }
+        }
+        None
+    }
 }
 
 /// Asks macOS to make this copy the default email reader. macOS asks the
@@ -266,14 +360,33 @@ pub async fn make_default(_app: &AppHandle) -> Result<(), String> {
     .map_err(|e| format!("couldn't open Windows Settings: {e}"))
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+/// Linux: `xdg-settings` sets it at once (no question asked, as the
+/// desktop's own settings would).
+#[cfg(target_os = "linux")]
+pub async fn make_default(_app: &AppHandle) -> Result<(), String> {
+    let ours = linux::our_entry();
+    linux::xdg_settings(&["set", "default-url-scheme-handler", "mailto", &ours])
+        .map(|_| ())
+        .ok_or_else(|| "couldn't change the default email app".to_string())
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 pub async fn make_default(_app: &AppHandle) -> Result<(), String> {
     Err("Not available on this platform yet".into())
 }
 
 #[cfg(test)]
 mod tests {
+    use super::linux::entry_name;
     use super::program_in_command;
+
+    #[test]
+    fn reads_an_apps_name_from_its_desktop_entry() {
+        let entry = "[Desktop Entry]\nType=Application\nName=Mail Reader\nName[de]=Leser\nExec=reader %u\n\n[Desktop Action compose]\nName=Write\n";
+        assert_eq!(entry_name(entry), Some("Mail Reader".into()));
+        assert_eq!(entry_name("[Desktop Action x]\nName=Write\n"), None);
+        assert_eq!(entry_name("[Desktop Entry]\nName=\n"), None);
+    }
 
     #[test]
     fn reads_the_program_out_of_a_registry_command() {

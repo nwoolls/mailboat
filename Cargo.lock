@@ -1046,7 +1046,9 @@ name = "desktop"
 version = "0.0.0"
 dependencies = [
  "block2",
+ "dirs",
  "mail-core",
+ "notify-rust",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
