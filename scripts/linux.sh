@@ -6,6 +6,9 @@
 #   scripts/linux.sh check   clippy and the Rust tests, on Linux
 #   scripts/linux.sh build   the .deb, .rpm and AppImage, into target/linux/
 #   scripts/linux.sh shell   a shell in the container, in a copy of the repository
+#   scripts/linux.sh codex-review
+#                            the Codex review's test program, into target/linux/,
+#                            to run in a Linux VM (AGENTS.md → Codex review)
 #
 # The container matches the Mac's processor (Arm on Apple silicon), so the
 # packages are for Arm Linux; CI's test builds make the Intel/AMD ones.
@@ -15,7 +18,9 @@
 # in Docker volumes between runs. `docker volume rm` the `<short name>-linux-*`
 # volumes (`docker volume ls`) to start over. Rust builds 4 crates at a time
 # (LINUX_JOBS to change it): with Docker's default memory, linking the test
-# programs all at once ran out of memory.
+# programs all at once ran out of memory. Incremental builds are off: their
+# cache took several GB of Docker's disk, which is often short; so did debug
+# info, which a check doesn't need (a failing test still says where).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -52,6 +57,8 @@ run() {
     -v "$name-cargo:/root/.cargo/registry" \
     -e CARGO_TARGET_DIR=/target \
     -e "CARGO_BUILD_JOBS=${LINUX_JOBS:-4}" \
+    -e CARGO_INCREMENTAL=0 \
+    -e CARGO_PROFILE_DEV_DEBUG=0 \
     "$image" bash -c "$sync && $1"
 }
 
@@ -68,8 +75,17 @@ case "${1:-}" in
   shell)
     run 'exec bash'
     ;;
+  codex-review)
+    # The test program alone: the live tests need nothing from the source
+    # tree when they run, only Codex installed and signed in.
+    run 'exe="$(cargo test -p mail-core --test ai_live --no-run --message-format=json \
+        | sed -n "s/.*\"executable\":\"\([^\"]*\)\".*/\1/p" | tail -1)" \
+      && cp "$exe" /out/ai_live'
+    echo
+    echo "Copy target/linux/ai_live into the Linux VM and run it there (AGENTS.md → Codex review)."
+    ;;
   *)
-    echo "usage: $0 check|build|shell" >&2
+    echo "usage: $0 check|build|shell|codex-review" >&2
     exit 2
     ;;
 esac

@@ -190,9 +190,11 @@ on an ordinary GNOME or KDE desktop. The Google client file goes in
 On Linux the window keeps the desktop's own title bar, and is painted with
 the theme's base color, since WebKitGTK has no blur behind a window.
 Apple Intelligence is a Mac feature, so AI uses Claude or ChatGPT there.
-Not yet on Linux: opening email links from other apps (nothing registers the
-app for `mailto:` yet), the click on a notification, and
-updates (the release has no Linux builds yet); see the roadmap.
+The `.deb` and `.rpm` register the app for `mailto:` links (an AppImage
+can't: it installs no desktop entry), and Settings → General makes it the
+default through `xdg-settings`. A click on a new-mail notification opens its
+conversation, as on the Mac. ChatGPT runs inside bubblewrap where it's
+installed (`docs/AI.md`).
 
 ## Check
 
@@ -383,9 +385,13 @@ different app to macOS. "Always Allow" ends the question for this signature.
 
 ## The release workflow
 
-`.github/workflows/release.yml` builds, signs and notarizes the Mac app, and
-builds and signs the Windows installers (x64 and ARM64), on GitHub's own
-macOS runners, so a release doesn't depend on one laptop. A tag run then
+`.github/workflows/release.yml` builds, signs and notarizes the Mac app,
+builds and signs the Windows installers (x64 and ARM64) on GitHub's own
+macOS runners, and builds the Linux packages (`.deb`, `.rpm` and AppImage,
+for x86-64 and Arm) on its Ubuntu 22.04 runners, so a release doesn't depend
+on one laptop. Linux packages aren't code-signed (Linux has no common
+system for it); like every download they are covered by the checksums and
+the build provenance, and each carries an update signature. A tag run then
 turns the results into a draft GitHub release (see "Releasing" below); a run
 started by hand only keeps the builds as artifacts for a week.
 
@@ -477,8 +483,10 @@ private key that matches the public one in the config.
   and a message typed without a pause would never have been saved); if one
   can't be saved, nothing is installed and the notice says so. On the Mac the
   app quits and a helper opens it again once it has ended
-  (`mail_core::relaunch`), so it comes back as the app in the Dock; Tauri's
-  restart is the fallback.
+  (`mail_core::relaunch`), so it comes back as the app in the Dock; on Linux
+  the same helper starts the program once the app has ended, since a copy
+  started beside it would hand over to it and quit with it. Tauri's restart
+  is the fallback.
 - **What a person sees from the manifest.** Only the version. The manifest
   (`latest.json`) is not signed, only the downloaded update is, so no release
   notes are shown, and `requireSignedVersion` has the plugin refuse an update
@@ -489,8 +497,14 @@ private key that matches the public one in the config.
 - **The files.** A release build (the release workflow) turns on
   `createUpdaterArtifacts` through `src-tauri/tauri.updater-artifacts.conf.json`,
   and Tauri signs each update payload with the private key as its last step:
-  the Mac app as a `.app.tar.gz`, and each Windows installer itself (after its
-  Authenticode signing, so the signature covers the final file). A normal build
+  the Mac app as a `.app.tar.gz`, each Windows installer itself (after its
+  Authenticode signing, so the signature covers the final file), and each
+  Linux package itself. On Linux the updater installs the kind of package
+  the app came as (the Tauri CLI writes it into the program when it
+  bundles): it replaces an AppImage file, and installs a `.deb` or `.rpm`
+  with the system's package tool, asking for the administrator password
+  through `pkexec`. The manifest has an entry for each
+  (`linux-x86_64-deb`, `linux-aarch64-appimage` and so on). A normal build
   doesn't, since that needs the key. The `latest.json` the app reads is made by
   the release workflow (`scripts/make-release-files.ts`). Until a release is
   *published* the address answers 404 and a check says it couldn't reach the

@@ -7682,24 +7682,35 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         a desktop with no keyring; print; notifications; a second monitor;
         whether a second launch brings the window forward on Wayland;
         connecting an AI app from the AppImage, then restarting
-  - [ ] Release: a Linux job in the release workflow, the packages signed
-        for the updater, `latest.json` entries (`linux-x86_64`,
-        `linux-aarch64`; the updater can install a `.deb` or `.rpm`
-        through `pkexec`, so the owner decides between that and updates
-        for the AppImage only), an SBOM per package, checksums, and the
-        update check's wording in the policy if it changes
-  - [ ] Email links (`mailto:`): `MimeType=x-scheme-handler/mailto` in the
-        desktop file, Settings reading and setting the default through
-        `xdg-settings`; the launch argument and the hand-over to the
-        running copy are already in place
-  - [ ] The click on a notification (the plugin doesn't report it on
-        Linux; the freedesktop interface has `ActionInvoked`)
-  - [ ] ChatGPT (Codex) on Linux runs without a fence, as on Windows; a
-        `bwrap` fence and a Linux run of the Codex review, or keep it as
-        Windows does *(owner to decide)*
+  - [x] Release and updates: a Linux job in the release workflow (x86-64
+        and Arm on Ubuntu 22.04) signs each package for the updater;
+        `latest.json` has an entry per package (`linux-x86_64-deb` and so
+        on); the updater replaces an AppImage and installs a `.deb` or
+        `.rpm` through `pkexec` *(owner, 2026-11-24: all three update
+        themselves)*; an SBOM per processor, made on Linux; the program's
+        hardening checked (`check-binaries.ts linux`); after an update the
+        app starts again only once the old copy has ended
+  - [x] Email links (`mailto:`): the desktop entry claims the scheme, and
+        Settings reads and sets the default through `xdg-settings`
+  - [x] The click on a notification opens its conversation
+        (`notify-rust`'s default action), and the app can take
+        notifications back, as on the Mac
+  - [x] ChatGPT (Codex) on Linux runs inside bubblewrap where it's
+        installed, and as on Windows where it isn't *(owner, 2026-11-24)*
+  - [x] The Codex review is recorded per system, and the VMs get a test
+        program built on the Mac *(owner, 2026-11-24: Windows had never
+        been reviewed; all three on the same day each month)*
+  - [ ] First Codex reviews on Windows and Linux, in the owner's VMs; then
+        decide whether they can be the live tests only *(owner)*
   - [ ] The website: download buttons, its platform line, and the
-        feature cards; the README's "Windows? Linux?"
-  - [ ] Flatpak (Flathub) and the AUR package, after the first release
+        feature cards; the README's "Windows? Linux?". With the first
+        stable release that has Linux packages, not before: the buttons
+        link to the latest stable release, and the site goes out when a
+        pull request merges
+  - [ ] Flatpak (Flathub) and the AUR package, after the first release.
+        An AUR package built from the `.deb` would carry its bundle type,
+        so the updater would try `dpkg` on Arch: it should build from the
+        AppImage, or turn the updater off
 
 - [ ] Keep translations after Mailboat quits *(known limitation, owner,
       2026-10-26: "for later")*: a translation in an email lives only in
