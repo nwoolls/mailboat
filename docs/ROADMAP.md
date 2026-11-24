@@ -5304,6 +5304,14 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [x] A user took the toys for frozen *(user report, 2026-11-23; fixed the
+      same day, branch `toybox-reduced-motion`)*: with the system's reduce
+      motion setting on, the toys stay mostly still, and nothing in the app
+      said so. Settings → Toybox now ends with a "Reduce motion" card: where
+      the setting is (Reduce motion on macOS, Animation effects on Windows),
+      saying so when it is on, and in general terms what it does to each toy
+      and the screensaver. The wording is in
+      `emptyToys/model/reducedMotion.ts`, kept general on purpose (owner).
 - [ ] In the demo, clicking the sign-in code email in the Inbox (or
       pressing Return on it) selects the row but doesn't open the
       conversation, while the sign-in code alert is up *(seen while

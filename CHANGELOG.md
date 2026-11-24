@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.3.1
+
+### Toybox and screensavers
+
+- Settings → Toybox now says that the system's reduce motion setting keeps the toys and the screensaver mostly still, and whether it is on.
+
+### Fixes
+
+- One Esc in a reply's text now does what two did: it leaves the text and takes Esc's next step, usually back to the list or hiding the reader. The reply stays with its conversation.
+- The one-line AI summaries in the conversation list are asked for with new instructions that give the model no example line to copy, and field labels like "Status:" and most codes, dates and numbers the conversation doesn't contain are taken out of them. They say something was confirmed, booked, paid or approved only when the conversation uses that word. Saved one-line summaries are deleted once by this update and written again as you scroll.
+- On a Mac, tooltips now show when the app is assigned to one desktop and its window is on another.
+- In a narrow window, Esc puts away the floating sidebar even when the pointer rests where it slid in.
+- A swiped conversation's button no longer flickers back onto the row as it comes apart: it springs away from the row and settles.
+
+### Security and privacy
+
+- The app's database library and its built-in copy of SQLite are updated, with fixes for memory-safety bugs, along with smaller updates to the window framework and the connection used by AI apps.
+- A library the app's window framework uses is updated with a security fix for the way it encrypts cookies.
+- The library that reads web addresses is updated with a security fix for a crash on deeply nested `blob:` addresses. It also writes a `^` in a link's path as `%5E`, as browsers do, so such a link shows and opens in that form.
+
+## 0.3.1-beta.2
+
+### Toybox and screensavers
+
+- Settings → Toybox now says that the system's reduce motion setting keeps the toys and the screensaver mostly still, and whether it is on.
+
+### Security and privacy
+
+- The app's database library and its built-in copy of SQLite are updated, with fixes for memory-safety bugs, along with smaller updates to the window framework and the connection used by AI apps.
+- A library the app's window framework uses is updated with a security fix for the way it encrypts cookies.
+
 ## 0.3.1-beta.1
 
 ### Fixes

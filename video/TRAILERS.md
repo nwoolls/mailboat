@@ -27,7 +27,10 @@ README link to them on the website), and the main trailer's end card as
 link shows. It first checks that the music and the takes are there, and
 makes the backdrops with `backdrops.sh` (the light one is a frame of
 macOS's Sonoma wallpaper, made on each computer and never committed; a
-direct Remotion render needs it too). Watch each one before committing.
+direct Remotion render needs it too). Watch each one before committing. The trailers'
+length is typed by hand on the website's button ("0:28") and in the README's
+and FEATURES.md's links ("28 seconds"); `bun run check:website` reads each
+video's length from the file and fails until those match it, to the second.
 
 Most shots are of one demo conversation, "Lisbon in May?" (called Lisbon
 here): Maya Chen planning a trip, five emails long, with a summary and an
