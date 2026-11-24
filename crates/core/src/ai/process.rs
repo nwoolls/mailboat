@@ -174,7 +174,12 @@ pub fn fence_profile(home: &Path, codex_home: &Path, readable: &[PathBuf]) -> St
 #[derive(Debug, PartialEq)]
 pub struct FenceDirs {
     pub home: PathBuf,
+    /// Codex's folder, resolved (a link followed to where it really is).
     pub codex_home: PathBuf,
+    /// Where Codex looks for it (`$CODEX_HOME` or `~/.codex`, with its
+    /// parent resolved): the Linux fence puts `codex_home` there, so a
+    /// linked folder still works and is checked by where it really is.
+    pub codex_mount: PathBuf,
     pub readable: Vec<PathBuf>,
     /// The app's own folders (mail cache, settings, image cache, logs),
     /// hidden whatever else is opened, wherever they are: on Linux the XDG
@@ -223,6 +228,7 @@ pub fn fence_dirs(
     }
     Ok(FenceDirs {
         home: home.to_path_buf(),
+        codex_mount: codex_home.clone(),
         codex_home,
         readable,
         hidden: Vec::new(),
@@ -304,7 +310,7 @@ pub fn bwrap_args(
         push(&[
             "--bind".as_ref(),
             d.codex_home.as_os_str(),
-            d.codex_home.as_os_str(),
+            d.codex_mount.as_os_str(),
         ]);
     }
     for dir in d.hidden.iter().filter(|h| h.is_dir()) {
@@ -315,6 +321,18 @@ pub fn bwrap_args(
         push(&["--chdir".as_ref(), work.as_os_str()]);
     }
     args
+}
+
+/// An error when Codex's folder (resolved) is inside one of the app's own
+/// folders: the fence would hide it, and Codex couldn't sign in.
+pub fn codex_home_problem(codex_home: &Path, hidden: &[PathBuf]) -> Result<()> {
+    if hidden.iter().any(|h| codex_home.starts_with(h)) {
+        return Err(CoreError::Ai(
+            "Codex's folder (CODEX_HOME) is inside the app's own folder, so it can't be fenced in."
+                .into(),
+        ));
+    }
+    Ok(())
 }
 
 /// The app's own folders in these base folders: each entry named `id`
@@ -695,7 +713,19 @@ fn fence(program: &Path, workdir: Option<&Path>) -> Result<Option<Fence>> {
     }
     let real = |p: PathBuf| std::fs::canonicalize(&p).unwrap_or(p);
     let home = std::env::var_os("HOME").map(|h| real(PathBuf::from(h)));
-    let codex_home = std::env::var_os("CODEX_HOME").map(|c| real(PathBuf::from(c)));
+    // Codex's folder by where it really is (`~/.codex` too, which may be a
+    // link), and where Codex will look for it: the given path, its parent
+    // resolved (third review of the Linux fence).
+    let codex_given = std::env::var_os("CODEX_HOME")
+        .map(PathBuf::from)
+        .or_else(|| home.as_ref().map(|h| h.join(".codex")));
+    let codex_mount = codex_given
+        .as_ref()
+        .map(|c| match (c.parent(), c.file_name()) {
+            (Some(parent), Some(name)) => real(parent.to_path_buf()).join(name),
+            _ => c.clone(),
+        });
+    let codex_home = codex_given.map(real);
     let path_dirs: Vec<PathBuf> = search_dirs().into_iter().map(real).collect();
     let installers: Vec<PathBuf> = home
         .iter()
@@ -730,12 +760,10 @@ fn fence(program: &Path, workdir: Option<&Path>) -> Result<Option<Fence>> {
             .into_iter()
             .map(real)
             .collect();
-        if dirs.hidden.iter().any(|h| dirs.codex_home.starts_with(h)) {
-            return Err(CoreError::Ai(
-                "Codex's folder (CODEX_HOME) is inside the app's own folder, so it can't be fenced in."
-                    .into(),
-            ));
+        if let Some(mount) = codex_mount {
+            dirs.codex_mount = mount;
         }
+        codex_home_problem(&dirs.codex_home, &dirs.hidden)?;
         // Without `$XDG_RUNTIME_DIR`, where systemd puts it: under this
         // user's ID, which owns this process's own `/proc` entry.
         let runtime = std::env::var_os("XDG_RUNTIME_DIR")
@@ -952,6 +980,7 @@ mod tests {
         let dirs = FenceDirs {
             home: home.clone(),
             codex_home: codex.clone(),
+            codex_mount: home.join(".codex"),
             readable: vec![local.clone(), "/usr/bin".into(), home.join("gone")],
             hidden: vec![data.clone(), elsewhere.clone(), root.join("missing")],
         };
@@ -972,7 +1001,8 @@ mod tests {
         at(&["--ro-bind".into(), "/dev/null".into(), s(&bus)]);
         let tmpfs_home = at(&["--tmpfs".into(), s(&home)]);
         let local_bind = at(&["--ro-bind".into(), s(&local), s(&local)]);
-        let codex_bind = at(&["--bind".into(), s(&codex), s(&codex)]);
+        // Codex's folder, from where it really is to where Codex looks.
+        let codex_bind = at(&["--bind".into(), s(&codex), s(&home.join(".codex"))]);
         let data_hidden = at(&["--tmpfs".into(), s(&data)]);
         let elsewhere_hidden = at(&["--tmpfs".into(), s(&elsewhere)]);
         let work_bind = at(&["--bind".into(), s(&work), s(&work)]);
@@ -1053,6 +1083,28 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
     }
 
+    /// Code review (Linux fence, round 3): Codex's folder inside the app's
+    /// own is refused, judged by where it really is, so a `~/.codex` that
+    /// links into the app's data is refused too.
+    #[cfg(unix)]
+    #[test]
+    fn codexs_folder_inside_the_apps_own_is_refused_even_through_a_link() {
+        let root = std::env::temp_dir().join(format!("codex-in-app-{}", fastrand::u64(..)));
+        let data = root.join("share/app.id");
+        let inside = data.join("codex");
+        std::fs::create_dir_all(&inside).unwrap();
+        let link = root.join("home/.codex");
+        std::fs::create_dir_all(link.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(&inside, &link).unwrap();
+        let hidden = vec![std::fs::canonicalize(&data).unwrap()];
+        let resolved = std::fs::canonicalize(&link).unwrap();
+        assert!(codex_home_problem(&resolved, &hidden).is_err());
+        assert!(
+            codex_home_problem(&std::fs::canonicalize(root.join("home")).unwrap(), &hidden).is_ok()
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
     #[test]
     fn reads_the_socket_files_a_bus_address_names() {
         assert_eq!(
@@ -1096,9 +1148,15 @@ mod tests {
         std::fs::write(local.join("tool.txt"), "TOOL").unwrap();
         std::fs::write(data.join("mail.sqlite3"), "MAIL").unwrap();
         std::fs::write(elsewhere.join("mail.sqlite3"), "MAIL").unwrap();
+        // `~/.codex` is a link to Codex's folder elsewhere: put back where
+        // Codex looks, by where it really is.
+        let codex_real = root.join("codex-elsewhere");
+        std::fs::rename(&codex, &codex_real).unwrap();
+        std::os::unix::fs::symlink(&codex_real, &codex).unwrap();
         let dirs = FenceDirs {
             home: home.clone(),
-            codex_home: codex.clone(),
+            codex_home: codex_real.clone(),
+            codex_mount: codex.clone(),
             readable: vec![local.clone()],
             hidden: vec![data.clone(), elsewhere.clone()],
         };
