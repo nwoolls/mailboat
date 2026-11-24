@@ -4,3 +4,14 @@
  * the two never pull the reader opposite ways.
  */
 export const REPLY_FOLLOW_EVENT = "reply-follow";
+
+/**
+ * Set on a reply that has taken over the reader (sticking to its end), for
+ * as long as it's open, whether or not it's stuck at the moment. A reader
+ * mounting with such a reply already in it (back to a conversation being
+ * answered) doesn't land on an email: the reply's effect ran first, so the
+ * event above came before the reader listened. A forward that opens in To
+ * doesn't take the reader, so it isn't marked, and the reader lands as
+ * before.
+ */
+export const REPLY_HOLDS_ATTR = "data-reply-holds";

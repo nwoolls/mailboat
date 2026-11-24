@@ -139,9 +139,12 @@ test("saving the reply as it's typed doesn't ask for the summary again", async (
  * The same, with nothing but typing (owner report, 2026-11-12): new lines
  * typed at the end of a reply, then a pause, and the draft saves. The
  * summary blinking moved the reader to its very end, where the pinned
- * formatting and Send bar dropped back into place under the reply.
+ * formatting and Send bar dropped back into place under the reply. Since
+ * 2026-11-23 a reply being typed at the end sticks to the bottom (owner),
+ * so the reader is at its end and the bar sits under the reply all along;
+ * the save must still not move either.
  */
-test("typing at the end of a reply, then pausing: the reader and the pinned bar stay put", async ({
+test("typing at the end of a reply, then pausing: the reader and the bar stay put", async ({
   page,
 }) => {
   await page.goto("/tests/browser/harness.html?mode=inline&summary=live");
@@ -164,7 +167,7 @@ test("typing at the end of a reply, then pausing: the reader and the pinned bar 
         .length,
     }));
   const before = await read();
-  expect(before.pinned).toBe(true);
+  expect(before.pinned).toBe(false);
   // The draft saves 2.5 s after the typing stops. A save during the typing
   // (a slow machine pausing) may already have happened: wait for the next.
   await expect
@@ -173,5 +176,5 @@ test("typing at the end of a reply, then pausing: the reader and the pinned bar 
   await page.waitForTimeout(1000);
   const after = await read();
   expect(after.top).toBe(before.top);
-  expect(after.pinned).toBe(true);
+  expect(after.pinned).toBe(false);
 });
