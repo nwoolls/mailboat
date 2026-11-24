@@ -184,6 +184,43 @@ adding a pause between the action and the check does. To run a second set
 of browser tests beside a long one, give it another port:
 `BROWSER_TESTS_PORT=1437 bun run test:browser …`.
 
+### A browser test that fails now and then
+
+These steps come from the fixes written up in `docs/ROADMAP.md` → Flaky
+tests:
+
+1. Read what CI kept. A failed run uploads `playwright-report` with a trace
+   of the failing test: `gh run download <run> -n playwright-report -D <dir>`.
+   Each `*.trace` file in `trace.zip` is one JSON event per line, and the
+   `after` events carry what each step returned (every value a poll read,
+   for example). Read with the step times, they usually show what was late.
+2. Work in a separate worktree (`git worktree add`), branched from `main`
+   when the test and the code it covers are on `main`.
+3. Try to make it fail: `--repeat-each=20`, then the slowed page
+   (`bun run test:browser:slow`), then `--workers=8`, then with every core
+   busy. For the last, run `gitleaks git` on the repository in a loop, one
+   per core, beside the tests; ask the owner before starting it, since it
+   takes the whole machine.
+4. If it still passes, force the timing instead of waiting for luck. A
+   throwaway spec that sweeps the suspect delay (when a stall starts and
+   how long it lasts, a pause before a check) and prints the result of
+   each run finds the timing that fails. Then confirm the cause by taking
+   it away (a timer moved far out, say) and seeing the failure go.
+5. Fix the cause, whether it is in the app or in the test. Wait on frames
+   or events, not on the clock. A test can drive the page's clock
+   (`tests/browser/time.ts`) or have the harness hold an answer until it
+   releases it (`&ideas=held`, in the paragraph before this section).
+6. Make the test fail without the fix (a longer stall, a held answer), so
+   it no longer needs a slow runner to catch the problem. Then run it with
+   the fix: repeated, slowed, on 8 workers and under load, and record the
+   counts in the roadmap entry.
+7. Pick the changeset by what the fix changed. A fix only to tests, the
+   test harness or docs takes an empty one (`bun run changeset --empty`).
+   A fix that changes the app's code takes a real one, usually a `patch`,
+   even when the problem only shows on a slow machine (`AGENTS.md` →
+   Versions). Its sentence says what a person using the app would notice,
+   and if they'd notice nothing, it says that plainly.
+
 ### Test coverage
 
 ```sh

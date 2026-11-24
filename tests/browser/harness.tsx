@@ -424,6 +424,13 @@ const answer = (cmd: string, args: unknown): unknown => {
       const text = (args as { text: string }).text.toUpperCase();
       return new Promise((done) => setTimeout(() => done({ text, html: `<p>${text}</p>` }), 300));
     }
+    case "ai_write": {
+      // A made-up answer, a moment later as from a model, so the panel
+      // grows as it would with a real one.
+      const text = "Hi Maya,\n\nSounds good, I'll confirm by Friday.\n\nThanks.";
+      const html = "<p>Hi Maya,</p><p>Sounds good, I'll confirm by Friday.</p><p>Thanks.</p>";
+      return new Promise((done) => setTimeout(() => done({ text, html, subject: null }), 600));
+    }
     case "ai_translate": {
       // Marks the text with the language asked for.
       const { text, target } = args as { text: string; target: string };

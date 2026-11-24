@@ -260,6 +260,10 @@ test("inline reply: stays put when the page stalls mid-animation", async ({ page
   // A slow machine (CI): the page can't paint for a while, so the end of the
   // panel's animation is painted late. The reply used to end up displaced
   // by the part of the animation the correction had already given up on.
+  // The stall outlasts every timer around the panel (the closed panel is
+  // removed after REVEAL_PRESENT_MS): a hold ended by the clock, not by
+  // frames, left the reply off by a pixel or more (docs/ROADMAP.md → Flaky
+  // tests). A 220ms stall only failed on a busy CI runner.
   await page.goto("/tests/browser/harness.html?mode=inline");
   await page.getByRole("button", { name: "Reply", exact: true }).click();
   const reply = page.locator('section[aria-label="Reply"] form[aria-label="Reply"]');
@@ -279,7 +283,7 @@ test("inline reply: stays put when the page stalls mid-animation", async ({ page
       button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
       button.click();
       setTimeout(() => {
-        const end = performance.now() + 220;
+        const end = performance.now() + 900;
         while (performance.now() < end);
       }, 90);
     });
@@ -294,5 +298,107 @@ test("inline reply: stays put when the page stalls mid-animation", async ({ page
         timeout: 10_000,
       })
       .toBeLessThan(1);
+    // And stays there: a frame that happened to line up while the panel
+    // was still moving (or before its last corrections) isn't enough.
+    await settled(top, page);
+    expect(Math.abs((await top()) - start), `toggle ${i + 1} settled`).toBeLessThan(1);
   }
+});
+
+test("inline reply: reopened as a stalled close's panel is removed, it stays put", async ({
+  page,
+}) => {
+  // The closed panel is removed (after REVEAL_PRESENT_MS) while a stall
+  // holds up the frames that bring the reply back, and the panel is opened
+  // again at once, before any of them. The close's hold and the new open's
+  // used to both run, the new one starting from where the stall had left
+  // the reply, and undo each other.
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await page.getByRole("button", { name: "Reply", exact: true }).click();
+  const reply = page.locator('section[aria-label="Reply"] form[aria-label="Reply"]');
+  await expect(reply).toBeVisible();
+  await page.locator(".reader-scroll").evaluate((el) => (el.scrollTop = el.scrollHeight));
+  const top = async () => (await reply.boundingBox())!.y;
+  await settled(top, page);
+  const start = await top();
+  await page.evaluate(() => {
+    const button = document.querySelector<HTMLButtonElement>('button[aria-label="Write with AI"]')!;
+    button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    button.click();
+  });
+  await expect(page.locator(".inline-reveal[data-open]")).toBeVisible();
+  await settled(top, page);
+
+  await page.evaluate(() => {
+    const button = document.querySelector<HTMLButtonElement>('button[aria-label="Write with AI"]')!;
+    // Opened again the moment the closed panel leaves the page (a mutation
+    // is seen before the next frame), not after a time.
+    const watch = new MutationObserver(() => {
+      if (document.querySelector(".inline-reveal")) return;
+      watch.disconnect();
+      button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      button.click();
+    });
+    watch.observe(document.body, { childList: true, subtree: true });
+    button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    button.click();
+    // Past the panel's removal, so it comes before the frames the close
+    // still needs.
+    setTimeout(() => {
+      const end = performance.now() + 1100;
+      while (performance.now() < end);
+    }, 90);
+  });
+  await expect(page.locator(".inline-reveal[data-open]")).toBeVisible();
+  await settled(top, page);
+  expect(Math.abs((await top()) - start)).toBeLessThan(1);
+});
+
+test("inline reply: scrolling by hand as a stalled close's panel is removed isn't undone", async ({
+  page,
+}) => {
+  // The hold on the reply goes on past the closed panel's removal (a stall
+  // held up its frames); a person scrolling meanwhile takes over from it.
+  await page.goto("/tests/browser/harness.html?mode=inline");
+  await page.getByRole("button", { name: "Reply", exact: true }).click();
+  const reply = page.locator('section[aria-label="Reply"] form[aria-label="Reply"]');
+  await expect(reply).toBeVisible();
+  const reader = page.locator(".reader-scroll");
+  await reader.evaluate((el) => (el.scrollTop = el.scrollHeight));
+  const top = async () => (await reply.boundingBox())!.y;
+  await settled(top, page);
+  await page.evaluate(() => {
+    const button = document.querySelector<HTMLButtonElement>('button[aria-label="Write with AI"]')!;
+    button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    button.click();
+  });
+  await expect(page.locator(".inline-reveal[data-open]")).toBeVisible();
+  await settled(top, page);
+
+  await page.evaluate(() => {
+    const button = document.querySelector<HTMLButtonElement>('button[aria-label="Write with AI"]')!;
+    const scroller = document.querySelector<HTMLElement>(".reader-scroll")!;
+    // A wheel up the moment the closed panel leaves the page, before the
+    // frames the close still needs.
+    const watch = new MutationObserver(() => {
+      if (document.querySelector(".inline-reveal")) return;
+      watch.disconnect();
+      scroller.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: -200 }));
+      scroller.scrollTop -= 200;
+      (window as { scrolledTo?: number }).scrolledTo = scroller.scrollTop;
+    });
+    watch.observe(document.body, { childList: true, subtree: true });
+    button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    button.click();
+    setTimeout(() => {
+      const end = performance.now() + 1100;
+      while (performance.now() < end);
+    }, 90);
+  });
+  await expect
+    .poll(() => page.evaluate(() => (window as { scrolledTo?: number }).scrolledTo))
+    .toBeDefined();
+  await settled(top, page);
+  const scrolledTo = await page.evaluate(() => (window as { scrolledTo?: number }).scrolledTo);
+  expect(await reader.evaluate((el) => el.scrollTop)).toBe(scrolledTo);
 });
