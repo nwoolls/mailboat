@@ -323,8 +323,12 @@ export function ComposeForm({
       if (e.target === scroller) barHeld = true;
       else if (notInReply(e.target)) letGo();
     };
+    // Not while the keyboard's outline is on the reply itself
+    // (`data-outline-reply`, useReaderKeyboard): Enter there goes back into
+    // its text, and the reply went on sticking only until the person typed.
+    // ↑ from it to an email lets go through the arrow's own scroll, by hand.
     const onKey = (e: KeyboardEvent) => {
-      if (notInReply(e.target)) letGo();
+      if (notInReply(e.target) && !scroller.hasAttribute("data-outline-reply")) letGo();
     };
     // Focus moving out of the reply to the conversation above (⇧Tab, a
     // click in an email): the browser scrolls it into view, so let go. Not

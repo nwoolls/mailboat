@@ -337,3 +337,34 @@ test("an arrow after the layout moved the reader goes on from where it is", asyn
   // On down from where the layout put it, not back up from the old aim.
   expect(result.after).toBeGreaterThan(result.moved);
 });
+
+/**
+ * Esc in the reply, then Enter back into it: the reply still sticks to the
+ * bottom as it's typed in (#226). The key on the outlined reply let it go,
+ * as a key on an email above does, and it stopped sticking.
+ */
+test("back into the reply by keys, it still sticks to the bottom as it grows", async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 600 });
+  await page.goto("/tests/browser/harness.html?mode=shell&rows=1&conversation=all");
+  await page.getByRole("option").first().click();
+  await expect(cards(page).first()).toBeVisible();
+  await page.getByRole("button", { name: "Reply", exact: true }).click();
+  const text = page
+    .getByRole("region", { name: "Reply" })
+    .getByRole("textbox", { name: "Message" });
+  await expect(text).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".reader-scroll[data-outline-reply]")).toHaveCount(1);
+  await page.keyboard.press("Enter");
+  await expect(text).toBeFocused();
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press("Enter");
+    await page.keyboard.type(`Line ${i + 1}`);
+  }
+  await page.waitForTimeout(500);
+  const fromEnd = await page.evaluate(() => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    return reader.scrollHeight - reader.clientHeight - reader.scrollTop;
+  });
+  expect(fromEnd).toBeLessThanOrEqual(2);
+});
