@@ -276,16 +276,8 @@ pub fn bwrap_args(
     workdir: Option<&Path>,
 ) -> Vec<std::ffi::OsString> {
     use std::ffi::OsString;
-    let mut args: Vec<OsString> = Vec::new();
+    let mut args: Vec<OsString> = BWRAP_BASE.iter().map(OsString::from).collect();
     let mut push = |items: &[&std::ffi::OsStr]| args.extend(items.iter().map(|a| a.to_os_string()));
-    push(&["--die-with-parent".as_ref(), "--unshare-pid".as_ref()]);
-    push(&["--bind".as_ref(), "/".as_ref(), "/".as_ref()]);
-    push(&[
-        "--dev".as_ref(),
-        "/dev".as_ref(),
-        "--proc".as_ref(),
-        "/proc".as_ref(),
-    ]);
     if let Some(run) = runtime_dir.filter(|r| r.is_dir()) {
         push(&["--tmpfs".as_ref(), run.as_os_str()]);
     }
@@ -325,6 +317,42 @@ pub fn bwrap_args(
     args
 }
 
+/// The app's own folders in these base folders: each entry named `id`
+/// (the normal mode's) or starting `id.` (another mode's, such as
+/// `id.clean-start`).
+pub fn app_folders(bases: &[PathBuf], id: &str) -> Vec<PathBuf> {
+    let mut found = Vec::new();
+    for base in bases {
+        let Ok(entries) = std::fs::read_dir(base) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            let ours = name == id || name.starts_with(&format!("{id}."));
+            if ours && entry.path().is_dir() && !found.contains(&entry.path()) {
+                found.push(entry.path());
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
+/// What every Linux fence starts with, the usability probe included: its
+/// own process list, and the system as it is with fresh `/dev` and `/proc`.
+pub const BWRAP_BASE: [&str; 9] = [
+    "--die-with-parent",
+    "--unshare-pid",
+    "--bind",
+    "/",
+    "/",
+    "--dev",
+    "/dev",
+    "--proc",
+    "/proc",
+];
+
 /// The socket files a D-Bus address names (`unix:path=…`, each of its
 /// `;`-separated choices).
 pub fn bus_sockets(address: &str) -> Vec<PathBuf> {
@@ -347,18 +375,12 @@ fn bubblewrap() -> Option<&'static Path> {
     static USABLE: std::sync::OnceLock<Option<&'static Path>> = std::sync::OnceLock::new();
     *USABLE.get_or_init(|| {
         let bwrap = Path::new("/usr/bin/bwrap");
+        // The fence's own namespace and mounts, so a system that allows
+        // bubblewrap but not, say, its own process list isn't taken as
+        // usable (third review of the Linux fence).
         let ok = std::process::Command::new(bwrap)
-            .args([
-                "--die-with-parent",
-                "--bind",
-                "/",
-                "/",
-                "--dev",
-                "/dev",
-                "--proc",
-                "/proc",
-                "true",
-            ])
+            .args(BWRAP_BASE)
+            .arg("true")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -692,9 +714,10 @@ fn fence(program: &Path, workdir: Option<&Path>) -> Result<Option<Fence>> {
     )?;
     #[cfg(target_os = "linux")]
     {
-        // The app's own folders, as Tauri finds them (`dirs`, as it does).
-        let id = crate::brand::ID;
-        dirs.hidden = [
+        // The app's own folders, in the folders Tauri puts them (`dirs`,
+        // as it does), whatever the launch mode (Clean Start's sit beside
+        // the normal ones).
+        let bases: Vec<PathBuf> = [
             dirs::data_dir(),
             dirs::data_local_dir(),
             dirs::config_dir(),
@@ -702,8 +725,17 @@ fn fence(program: &Path, workdir: Option<&Path>) -> Result<Option<Fence>> {
         ]
         .into_iter()
         .flatten()
-        .map(|d| real(d.join(id)))
         .collect();
+        dirs.hidden = app_folders(&bases, crate::brand::ID)
+            .into_iter()
+            .map(real)
+            .collect();
+        if dirs.hidden.iter().any(|h| dirs.codex_home.starts_with(h)) {
+            return Err(CoreError::Ai(
+                "Codex's folder (CODEX_HOME) is inside the app's own folder, so it can't be fenced in."
+                    .into(),
+            ));
+        }
         // Without `$XDG_RUNTIME_DIR`, where systemd puts it: under this
         // user's ID, which owns this process's own `/proc` entry.
         let runtime = std::env::var_os("XDG_RUNTIME_DIR")
@@ -934,7 +966,8 @@ mod tests {
                 .position(|w| w == needle)
                 .unwrap_or_else(|| panic!("{needle:?} not in {args:?}"))
         };
-        at(&["--unshare-pid".into()]);
+        let base: Vec<String> = BWRAP_BASE.iter().map(|a| a.to_string()).collect();
+        assert!(args.starts_with(&base), "the probe's own start: {args:?}");
         at(&["--tmpfs".into(), s(&run)]);
         at(&["--ro-bind".into(), "/dev/null".into(), s(&bus)]);
         let tmpfs_home = at(&["--tmpfs".into(), s(&home)]);
@@ -991,6 +1024,33 @@ mod tests {
                 "/home/someone/.npm-global/lib/node_modules/codex"
             ))
         );
+    }
+
+    /// Every mode's folders are the app's: the normal one and Clean
+    /// Start's beside it, but not another app's that only starts alike.
+    #[test]
+    fn finds_the_apps_folders_of_every_mode() {
+        let root = std::env::temp_dir().join(format!("app-folders-{}", fastrand::u64(..)));
+        let data = root.join("share");
+        let config = root.join("config");
+        for d in [
+            data.join("app.id"),
+            data.join("app.id.clean-start"),
+            data.join("app.idea"),
+            config.join("app.id"),
+        ] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        std::fs::write(data.join("app.id.txt"), "").unwrap();
+        assert_eq!(
+            app_folders(&[data.clone(), config.clone(), root.join("none")], "app.id"),
+            [
+                config.join("app.id"),
+                data.join("app.id"),
+                data.join("app.id.clean-start"),
+            ]
+        );
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
