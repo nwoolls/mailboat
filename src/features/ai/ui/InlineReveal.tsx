@@ -15,6 +15,15 @@ import { useLayoutEffect, useRef } from "react";
  */
 export function InlineReveal({ open, children }: { open: boolean; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Set as the panel is removed (declared first, so its cleanup runs
+  // before the hold's): a hold still going then finishes rather than stops.
+  const removed = useRef(false);
+  useLayoutEffect(
+    () => () => {
+      removed.current = true;
+    },
+    [],
+  );
   useLayoutEffect(() => {
     const el = ref.current;
     const scroller = el?.closest(".reader-scroll");
@@ -31,25 +40,29 @@ export function InlineReveal({ open, children }: { open: boolean; children: Reac
       scroller.scrollTop += reply.getBoundingClientRect().top - where;
     };
     // Every frame of the animation (a resize alone can miss the last one),
-    // until the panel's own animation has really finished. A timer alone
-    // ended the correction too soon on a slow machine, where the page can
-    // stall and paint the end of the animation late: the reply then stayed
-    // where the last painted frame had left it.
+    // until the panel's own animation has really finished. Counted in
+    // frames, never by the clock: on a slow machine the page can stall past
+    // any timer and paint the end of the animation late, and a hold ended
+    // by a timer (or by the panel's removal, below) left the reply where
+    // the last painted frame had put it (a 700ms stall: 1 to 194px off).
     let ticks = 0;
     let finished = 0;
     let frame = requestAnimationFrame(function tick() {
+      // The reply gone (sent, or the conversation changed): nothing to hold.
+      if (!reply.isConnected || !scroller.isConnected) return;
       hold();
       ticks += 1;
       // A few frames of grace for the animation to start; then two frames
-      // with nothing running.
+      // with nothing running (a removed panel has none). A backstop in
+      // frames, which a stall doesn't use up.
       finished = ticks > 3 && el.getAnimations().length === 0 ? finished + 1 : 0;
-      if (finished < 2) frame = requestAnimationFrame(tick);
+      if (finished < 2 && ticks < HOLD_MAX_FRAMES) frame = requestAnimationFrame(tick);
     });
-    // A backstop, before ReplyArea removes the panel.
-    const stop = window.setTimeout(() => cancelAnimationFrame(frame), REVEAL_PRESENT_MS - 100);
     return () => {
-      cancelAnimationFrame(frame);
-      window.clearTimeout(stop);
+      // Removed while closing (ReplyArea's timer can come before the
+      // frames a stall held up): its last frames still bring the reply
+      // back. Opening or closing again starts a hold of its own instead.
+      if (!removed.current) cancelAnimationFrame(frame);
     };
   }, [open]);
   return (
@@ -60,12 +73,15 @@ export function InlineReveal({ open, children }: { open: boolean; children: Reac
   );
 }
 
+/** The most frames a hold lasts, well past `.inline-reveal`'s 180ms at any refresh rate. */
+const HOLD_MAX_FRAMES = 120;
+
 /** `.inline-reveal`'s duration in index.css. */
 export const REVEAL_MS = 180;
 
 /**
  * How long a closing panel stays drawn: well past its animation, since a
- * slow machine can paint the animation late (and the reply is only held
- * in place while the panel is there).
+ * slow machine can paint the animation late. Removed sooner than that is
+ * painted, the hold still finishes (see `removed` above).
  */
 export const REVEAL_PRESENT_MS = 800;

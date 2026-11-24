@@ -260,6 +260,10 @@ test("inline reply: stays put when the page stalls mid-animation", async ({ page
   // A slow machine (CI): the page can't paint for a while, so the end of the
   // panel's animation is painted late. The reply used to end up displaced
   // by the part of the animation the correction had already given up on.
+  // The stall outlasts every timer around the panel (the closed panel is
+  // removed after REVEAL_PRESENT_MS): a hold ended by the clock, not by
+  // frames, left the reply off by a pixel or more (docs/ROADMAP.md → Flaky
+  // tests). A 220ms stall only failed on a busy CI runner.
   await page.goto("/tests/browser/harness.html?mode=inline");
   await page.getByRole("button", { name: "Reply", exact: true }).click();
   const reply = page.locator('section[aria-label="Reply"] form[aria-label="Reply"]');
@@ -279,7 +283,7 @@ test("inline reply: stays put when the page stalls mid-animation", async ({ page
       button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
       button.click();
       setTimeout(() => {
-        const end = performance.now() + 220;
+        const end = performance.now() + 900;
         while (performance.now() < end);
       }, 90);
     });

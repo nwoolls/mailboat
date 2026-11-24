@@ -5293,6 +5293,31 @@ the way, and one bug in the app caused flaky failures; all three are in
         clock could pass 280 ms before that event arrived. Passed 120 of 120,
         and 10 of 10 with a 500 ms pause between Esc and the move; with a
         move back ignored while the sidebar slides out, both fail.
+- [x] `ai-panel.spec.ts`: "inline reply: stays put when the page stalls
+      mid-animation".
+      - 2026-11-23, CI on #222 (branch `ai-micro-interactions`, after
+        merging `main`; it changes what's inside the panel, not
+        `InlineReveal` or this test),
+        https://github.com/nwoolls/mailboat/actions/runs/45308624271:
+        "after toggle 4", the reply 1 px from where it started for the
+        whole 10 s poll (`toBeLessThan(1)`, received 1). Locally it passed
+        20 of 20, 8 of 8 on the slowed page, 40 of 40 on 8 workers, and 30
+        of 30 with every core busy (`gitleaks` in a loop), on the branch
+        and on `main`.
+      - Fixed 2026-11-23 (branch `flaky-ai-panel-stall`). A throwaway spec
+        swept when the test's stall starts and how long it lasts: stalls up
+        to 400 ms came back, and 700 ms ones left the reply 1 to 194 px off.
+        `InlineReveal` held the reply until two clock deadlines: its own
+        700 ms backstop timer, and the closed panel's removal at 800 ms
+        (`REVEAL_PRESENT_MS`), which canceled the hold. After a long stall
+        either can come before the frame that paints the animation's end.
+        With both moved out to 5 s, every stall came back, which confirmed
+        it. The hold now ends by frames (two frames after the animation, at
+        most 120), and a panel removed while closing lets its hold finish.
+        The test's stall is now 900 ms, past both deadlines; without the fix
+        it fails 5 of 5. With it, the sweep (up to 1.5 s) came back every
+        time. The two inline-reply tests passed 40 of 40 on 8 workers, and
+        this one 10 of 10 slowed and 40 of 40 with every core busy.
 
 ## Bug backlog
 
