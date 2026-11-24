@@ -651,7 +651,7 @@ async fn a_conversations_emails_in_spam_or_trash_stay_hidden() {
                 mixed["date"],
                 json!(jiff::Timestamp::from_millisecond(3_000)
                     .unwrap()
-                    .to_zoned(jiff::tz::TimeZone::system())
+                    .to_zoned_datetime(jiff::tz::TimeZone::system())
                     .strftime("%Y-%m-%dT%H:%M:%S%:z")
                     .to_string()),
                 "{what}{shown}"

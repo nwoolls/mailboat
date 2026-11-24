@@ -66,6 +66,8 @@ import type { AfterRemoval } from "../../mailbox/model/threadActions";
 import { viewingPrefs } from "../../mailbox/ui/viewingPrefs";
 import { listPrefs } from "../../mailbox/ui/listPrefs";
 import { TOYS } from "../../emptyToys/model/toys";
+import { REDUCED_MOTION_EFFECTS, reducedMotionIntro } from "../../emptyToys/model/reducedMotion";
+import { useReducedMotion } from "../../../shared/lib/reducedMotion";
 import { TOYBOX_STYLES } from "../../emptyToys/model/style";
 import { emptyToy, setToyOn, toyboxStyle } from "../../emptyToys/ui/prefs";
 import { type Density, SWIPE_CHOICES, type SwipeChoice } from "../../mailbox/model/listPrefs";
@@ -1348,6 +1350,7 @@ export function ToyboxSection() {
   const style = toyboxStyle.use();
   const toyOn = toy !== "none";
   const toyInfo = TOYS.find((t) => t.id === toy);
+  const reduced = useReducedMotion();
   return (
     <>
       <Group title="Style" description="How the toys and the screensavers are drawn.">
@@ -1453,6 +1456,19 @@ export function ToyboxSection() {
             </div>
           </>
         )}
+      </Group>
+      <Group title="Reduce motion" description={reducedMotionIntro(reduced, IS_MAC)}>
+        {/* Without markers, WebKit stops exposing a list to VoiceOver unless it says role="list". */}
+        <ul
+          role="list"
+          className="space-y-1 px-4 py-3.5 text-[12px] leading-relaxed text-content/60"
+        >
+          {REDUCED_MOTION_EFFECTS.map((e) => (
+            <li key={e.label}>
+              <span className="font-medium text-content">{e.label}:</span> {e.effect}
+            </li>
+          ))}
+        </ul>
       </Group>
     </>
   );

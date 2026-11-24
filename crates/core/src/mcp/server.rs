@@ -309,7 +309,7 @@ fn date(ms: i64) -> String {
     let Ok(at) = jiff::Timestamp::from_millisecond(ms) else {
         return String::new();
     };
-    let local = at.to_zoned(jiff::tz::TimeZone::system());
+    let local = at.to_zoned_datetime(jiff::tz::TimeZone::system());
     let millis = ms.rem_euclid(1000);
     let fraction = if millis == 0 {
         String::new()
