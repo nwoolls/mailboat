@@ -207,8 +207,9 @@ tests:
    each run finds the timing that fails. Then confirm the cause by taking
    it away (a timer moved far out, say) and seeing the failure go.
 5. Fix the cause, whether it is in the app or in the test. Wait on frames
-   or events, not on the clock, and see step 3's paragraph above for the
-   clock and held-answer tools.
+   or events, not on the clock. A test can drive the page's clock
+   (`tests/browser/time.ts`) or have the harness hold an answer until it
+   releases it (`&ideas=held`, in the paragraph before this section).
 6. Make the test fail without the fix (a longer stall, a held answer), so
    it no longer needs a slow runner to catch the problem. Then run it with
    the fix: repeated, slowed, on 8 workers and under load, and record the
