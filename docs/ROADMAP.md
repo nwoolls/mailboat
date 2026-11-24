@@ -7687,7 +7687,10 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         `latest.json` has an entry per package (`linux-x86_64-deb` and so
         on); the updater replaces an AppImage and installs a `.deb` or
         `.rpm` through `pkexec` *(owner, 2026-11-24: all three update
-        themselves)*; an SBOM per processor, made on Linux; the program's
+        themselves)*; built without secrets and signed in a job of its own,
+        with the AppImage's tools checked against recorded digests; an SBOM
+        per processor, made on a runner of that processor, and one more per
+        AppImage for the system libraries it carries; the program's
         hardening checked (`check-binaries.ts linux`); after an update the
         app starts again only once the old copy has ended
   - [x] Email links (`mailto:`): the desktop entry claims the scheme, and

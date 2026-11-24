@@ -392,7 +392,14 @@ macOS runners, and builds the Linux packages (`.deb`, `.rpm` and AppImage,
 for x86-64 and Arm) on its Ubuntu 22.04 runners, so a release doesn't depend
 on one laptop. Linux packages aren't code-signed (Linux has no common
 system for it); like every download they are covered by the checksums and
-the build provenance, and each carries an update signature. A tag run then
+the build provenance, and each carries an update signature. They are built
+without any secret, with the AppImage's tools checked against recorded
+digests first (`scripts/appimage-tools.sh`, which also runs in the test
+builds and `scripts/linux.sh build`), and a separate job signs them. When
+the Tauri CLI is updated, that script stops until its tools' names and
+digests are brought up to date. Each AppImage also gets a bill of materials
+of its own, for the system libraries it carries
+(`scripts/make-appimage-sbom.ts`). A tag run then
 turns the results into a draft GitHub release (see "Releasing" below); a run
 started by hand only keeps the builds as artifacts for a week.
 

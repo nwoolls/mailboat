@@ -27,11 +27,11 @@
     "longDescription": "A fast, keyboard-first Gmail client that talks to Gmail's API directly. Free and open source.",
     "linux": {
       "deb": {
-        "depends": ["libdbus-1-3"],
+        "depends": ["libdbus-1-3", "xdg-utils"],
         "desktopTemplate": "linux/app.desktop"
       },
       "rpm": {
-        "depends": ["libdbus-1.so.3()(64bit)"],
+        "depends": ["libdbus-1.so.3()(64bit)", "xdg-utils"],
         "desktopTemplate": "linux/app.desktop"
       }
     }
