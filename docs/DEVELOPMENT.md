@@ -214,6 +214,12 @@ tests:
    it no longer needs a slow runner to catch the problem. Then run it with
    the fix: repeated, slowed, on 8 workers and under load, and record the
    counts in the roadmap entry.
+7. Pick the changeset by what the fix changed. A fix only to tests, the
+   test harness or docs takes an empty one (`bun run changeset --empty`).
+   A fix that changes the app's code takes a real one, usually a `patch`,
+   even when the problem only shows on a slow machine (`AGENTS.md` →
+   Versions). Its sentence says what a person using the app would notice,
+   and if they'd notice nothing, it says that plainly.
 
 ### Test coverage
 
