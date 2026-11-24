@@ -55,6 +55,13 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
   {
     group: "Reading",
     keys: [
+      // The open conversation takes the keyboard (owner, 2026-11-23).
+      ["→ or ↩", "Move into the open conversation"],
+      ["↓ / ↑", "Next / previous email there, reading down a long one first"],
+      ["→ / ←", "Open / close that email"],
+      ["→ or ↩", "On the reply you're writing (the last stop): back into its text"],
+      ["PgDn / PgUp", "A page down / up the conversation, there"],
+      ["Esc or ←", "Back to the list (← closes an open email first)"],
       ["Space", "Scroll down"],
       [accelLabel("Shift+Space"), "Scroll up"],
       ["n / p", "Next / previous email"],
@@ -83,7 +90,7 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
       ["a", "Reply all"],
       ["f", "Forward"],
       [accelLabel("Cmd+Enter"), "Send"],
-      ["Esc", "Minimize the message, or leave a reply and take Esc's next step"],
+      ["Esc", "Minimize the message, or leave a reply's text (the reply is outlined)"],
       [accelLabel("Cmd+K"), "Link (in the message)"],
     ],
   },

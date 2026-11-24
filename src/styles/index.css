@@ -191,6 +191,13 @@ html.resizing iframe {
 .message-card {
   background: color-mix(in srgb, var(--color-content) 7%, transparent);
 }
+/* The reply being written, outlined for the keyboard as an email card is
+   (ring-2 in the accent): an outline, since its own box-shadow carries the
+   account's color. */
+.reader-scroll[data-outline-reply] [data-inline-reply] {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+  outline-offset: -2px;
+}
 .message-card-collapsed {
   background: color-mix(in srgb, var(--color-content) 2.5%, transparent);
 }

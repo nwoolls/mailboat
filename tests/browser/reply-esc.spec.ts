@@ -1,11 +1,13 @@
 import { expect, type Page, test } from "@playwright/test";
 
 /**
- * Esc in a reply's text (owner, 2026-11-22): one press leaves the text and
- * takes the next step at once (back to the list, or the reader hidden), as
- * two presses did; the first used to seem to do nothing. The reply stays
- * with its conversation, text and all, as a new message's card stays a
- * draft. Esc in the reply's other fields still only leaves the field.
+ * Esc in a reply's text (owner, 2026-11-23): the first press hands the
+ * keyboard to the conversation, with the reply outlined, so the arrows read
+ * on; the next goes back to the list (or, in a wide window, the one after
+ * hides the reader). From 2026-11-22 to 11-23 one press went straight on,
+ * since the first seemed to do nothing; now it shows the outline. The
+ * reply stays with its conversation, text and all, as a new message's card
+ * stays a draft. Esc in the reply's other fields still only leaves the field.
  */
 const reply = (page: Page) => page.getByRole("region", { name: "Reply" });
 const readerOpen = (page: Page) =>
@@ -24,12 +26,19 @@ async function openReply(page: Page, width: number) {
   await expect(reply(page)).toBeVisible();
 }
 
-test("in a narrow window, one Esc in a reply goes back to the list, and the reply stays", async ({
+/** Whatever is outlined for the keyboard: an email, or the reply itself. */
+const outlined = (page: Page) =>
+  page.locator("section[data-outlined], .reader-scroll[data-outline-reply]");
+
+test("in a narrow window, Esc twice in a reply goes back to the list, and the reply stays", async ({
   page,
 }) => {
   await openReply(page, 480);
   await expect.poll(() => listHidden(page)).toBe(true);
   await page.keyboard.type("Sounds good");
+  await page.keyboard.press("Escape");
+  await expect(outlined(page)).toHaveCount(1);
+  expect(await listHidden(page)).toBe(true);
   await page.keyboard.press("Escape");
   await expect.poll(() => listHidden(page)).toBe(false);
   // Back to the conversation: the reply is there, with its text.
@@ -37,11 +46,17 @@ test("in a narrow window, one Esc in a reply goes back to the list, and the repl
   await expect(reply(page)).toContainText("Sounds good");
 });
 
-test("in a wide window, one Esc in a reply hides the reader", async ({ page }) => {
+test("in a wide window, Esc in a reply outlines an email, then goes to the list, then hides the reader", async ({
+  page,
+}) => {
   await openReply(page, 1200);
   expect(await readerOpen(page)).toBe("true");
-  // From the reply's text: Esc from anywhere else hides the reader anyway.
   await expect(reply(page).getByRole("textbox", { name: "Message" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(outlined(page)).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(outlined(page)).toHaveCount(0);
+  expect(await readerOpen(page)).toBe("true");
   await page.keyboard.press("Escape");
   await expect.poll(() => readerOpen(page)).toBe("false");
 });

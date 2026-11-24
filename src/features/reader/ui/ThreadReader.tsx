@@ -20,6 +20,7 @@ import { useTextZoom } from "../../settings/ui/textSize";
 import { EmailContextMenu } from "./EmailContextMenu";
 import { ThreadSummaryCard } from "../../ai/ui/ThreadSummaryCard";
 import { MessageFrame } from "./MessageFrame";
+import { REPLY_STOP, useReaderKeyboard } from "./useReaderKeyboard";
 import { REPLY_FOLLOW_EVENT, REPLY_HOLDS_ATTR } from "../../../shared/lib/replyFollow";
 import { detailLines } from "../model/recipients";
 
@@ -169,7 +170,19 @@ function ThreadBody({
   const selfEmails = account ? [account.email] : [];
   // Which account it's in matters only when there's more than one.
   const showAccount = accounts.size > 1;
-  const articleRef = useLandOn(useState(() => landingMessage(shown))[0]);
+  const [landed] = useState(() => landingMessage(shown));
+  const articleRef = useLandOn(landed);
+  const keyboard = useReaderKeyboard({
+    landed,
+    back: back?.onBack,
+    setOpen: (id, open) =>
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        if (open) next.add(id);
+        else next.delete(id);
+        return next;
+      }),
+  });
 
   return (
     <article
@@ -181,9 +194,16 @@ function ThreadBody({
       // Bottom corners round like the list panel's, so whatever reaches
       // the bottom edge is clipped to the same curve, scrolled or not.
       // `reader-scroll`: the frame the reply foot pins itself to (index.css).
-      className={`reader-enter reader-scroll flex-1 overflow-y-auto rounded-b-[10px] transition-opacity duration-150 ${
+      className={`reader-enter reader-scroll flex-1 overflow-y-auto rounded-b-[10px] transition-opacity duration-150 focus-visible:outline-none ${
         leaving ? "opacity-50" : ""
       }`}
+      // Takes the keyboard (→ or Enter from the list, or a click), and the
+      // outlined email shows where it is (useReaderKeyboard).
+      tabIndex={-1}
+      // The reply being written is drawn by its own component: outlined
+      // through this (index.css).
+      data-outline-reply={keyboard.outlined === REPLY_STOP || undefined}
+      {...keyboard.handlers}
     >
       <div ref={contentRef}>
         {back && <BackBar back={back} />}
@@ -230,9 +250,10 @@ function ThreadBody({
               <section
                 key={m.id}
                 data-message-id={m.id}
-                className={`rounded-[10px] ring-1 ring-stroke ring-inset transition-colors duration-[120ms] ${
-                  isOpen ? "message-card" : "message-card-collapsed"
-                }`}
+                data-outlined={keyboard.outlined === m.id || undefined}
+                className={`rounded-[10px] ring-inset transition-colors duration-[120ms] ${
+                  keyboard.outlined === m.id ? "ring-2 ring-accent/70" : "ring-1 ring-stroke"
+                } ${isOpen ? "message-card" : "message-card-collapsed"}`}
               >
                 {/* The first line (avatar, name, date) is identical open or
                   closed, so nothing jumps; the snippet fades, and the
