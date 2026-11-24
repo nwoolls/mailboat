@@ -1048,7 +1048,6 @@ dependencies = [
  "block2",
  "dirs",
  "mail-core",
- "notify-rust",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
@@ -1069,6 +1068,7 @@ dependencies = [
  "time",
  "tokio",
  "windows-registry 0.100.0",
+ "zbus 5.19.0",
 ]
 
 [[package]]

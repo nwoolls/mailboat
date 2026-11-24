@@ -52,11 +52,12 @@ tauri-plugin-updater = { version = "2", default-features = false, features = ["s
 [target.'cfg(any(windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2"
 
-# Linux: new-mail notifications that report a click (src/notifications.rs).
-# The notification plugin's own library, version and features, so nothing new
-# is built; the plugin itself doesn't pass clicks on.
+# Linux: new-mail notifications that report a click, and can be taken back,
+# over one D-Bus connection (src/notifications.rs). The notification plugin
+# doesn't pass clicks on. zbus is already in the Linux build, with these
+# features, through that plugin and the single-instance plugin.
 [target.'cfg(target_os = "linux")'.dependencies]
-notify-rust = "4.18"
+zbus = "5"
 
 [target.'cfg(windows)'.dependencies]
 # Which app Windows sends mailto: links to (src/mail_handler.rs). Microsoft's
