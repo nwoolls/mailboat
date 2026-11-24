@@ -401,14 +401,29 @@ these rules. Keep it passing.
 
 ChatGPT runs through OpenAI's `codex` command-line tool, which can't
 promise no tools, so it's fenced in (docs/ROADMAP.md → Milestone 13,
-Codex): every switch turned off per request, a macOS sandbox, and a
-runtime check that pauses ChatGPT when a switch it hasn't reviewed stays
-on. What was reviewed is `crates/core/src/ai/codex_review.json`.
+Codex): every switch turned off per request, a sandbox (macOS's on the
+Mac, bubblewrap on Linux where it's installed and allowed; none on
+Windows, nor on a Linux without it), and a runtime check that pauses
+ChatGPT when a switch it hasn't reviewed stays on. What was reviewed is
+`crates/core/src/ai/codex_review.json`: one entry per system in
+`platforms` (`macos`, `windows`, `linux`: date and Codex version), and
+the lists every reviewed system showed together.
 
-`bun run check` (and `check:quick`) stops when that review is over 31 days
-old, on the owner's machine (an empty, uncommitted `.codex-review-enforce`
-file in the repository folder turns the failure on; elsewhere it only warns).
-When it does:
+Each system is reviewed on its own, because what stops Codex differs
+(the sandbox) and so can Codex's own tools. The owner runs all three on
+the same day each month: the Mac in the repository, Windows and Linux in
+their VMs with only Codex installed and signed in, using a test program
+built on the Mac (`scripts/windows.sh codex-review`, `scripts/linux.sh
+codex-review`; copy the file into the VM and run it there with the same
+arguments as below, after `--`). If the first Windows and Linux reviews
+show exactly the Mac's lists, the owner may decide to run only the live
+`codex_cannot_*` tests there.
+
+`bun run check` (and `check:quick`) stops when a system's review is over
+31 days old, on the owner's machine (an empty, uncommitted
+`.codex-review-enforce` file in the repository folder turns the failure
+on; elsewhere it only warns). A system never reviewed only warns. When it
+stops:
 
 1. Stop and ask the owner before going on. The recheck makes a few small
    live requests on their ChatGPT subscription, with harmless input.
@@ -446,8 +461,9 @@ When it does:
    Never send real mail, and never read or copy Codex's sign-in.
 3. Anything new or any test that fails: tell the owner what changed and
    what it can do before accepting it. If nothing changed, or the owner
-   accepts the change, update `codex_review.json` (date, Codex version,
-   lists) and commit it with the results in the message.
+   accepts the change, update `codex_review.json` (that system's date and
+   Codex version under `platforms`, and the lists) and commit it with the
+   results in the message, saying which system each came from.
 
 ## Testing
 

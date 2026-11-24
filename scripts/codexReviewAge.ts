@@ -19,3 +19,38 @@ export function reviewAge(reviewed: string, today: Date): ReviewAge {
   if (days < 0) return { invalid: `"${reviewed}" is in the future` };
   return { days };
 }
+
+/** The systems the app ships for, as codex_review.json's `platforms` names them. */
+export const PLATFORMS = ["macos", "windows", "linux"] as const;
+const NAMES: Record<(typeof PLATFORMS)[number], string> = {
+  macos: "macOS",
+  windows: "Windows",
+  linux: "Linux",
+};
+
+export type ReviewStatus =
+  | { platform: string; state: "fine"; days: number }
+  | { platform: string; state: "due"; days: number; reviewed: string }
+  | { platform: string; state: "never" }
+  | { platform: string; state: "invalid"; why: string };
+
+/**
+ * Each system's review against the monthly limit. A system never reviewed
+ * only warns (`never`); once it has a review, it's due like the others.
+ */
+export function reviewStatuses(
+  platforms: Record<string, { reviewed: string } | undefined>,
+  today: Date,
+  maxDays: number,
+): ReviewStatus[] {
+  return PLATFORMS.map((key) => {
+    const platform = NAMES[key];
+    const review = platforms[key];
+    if (!review) return { platform, state: "never" };
+    const age = reviewAge(review.reviewed, today);
+    if ("invalid" in age) return { platform, state: "invalid", why: age.invalid };
+    return age.days > maxDays
+      ? { platform, state: "due", days: age.days, reviewed: review.reviewed }
+      : { platform, state: "fine", days: age.days };
+  });
+}

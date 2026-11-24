@@ -3,6 +3,9 @@
 #
 #   scripts/windows.sh check   clippy for Windows: does it compile, no warnings
 #   scripts/windows.sh build   the installer, <product name>_<version>_arm64-setup.exe
+#   scripts/windows.sh codex-review
+#                              the Codex review's test program, ai_live.exe, to run
+#                              in a Windows VM (AGENTS.md → Codex review)
 #
 # The target defaults to Windows on ARM (a VM on Apple silicon); set
 # WINDOWS_TARGET=x86_64-pc-windows-msvc for Intel/AMD PCs.
@@ -51,8 +54,18 @@ case "${1:-}" in
     echo "Installer:"
     ls -1 "target/$target/release/bundle/nsis/"*.exe
     ;;
+  codex-review)
+    # The test program alone: the live tests need nothing from the source
+    # tree when they run, only Codex installed and signed in.
+    exe="$(cargo xwin test -p mail-core --test ai_live --no-run --target "$target" --message-format=json \
+      | sed -n 's/.*"executable":"\([^"]*\)".*/\1/p' | tail -1)"
+    mkdir -p target/windows
+    cp "$exe" target/windows/ai_live.exe
+    echo
+    echo "Copy target/windows/ai_live.exe into the Windows VM and run it there (AGENTS.md → Codex review)."
+    ;;
   *)
-    echo "usage: $0 check|build" >&2
+    echo "usage: $0 check|build|codex-review" >&2
     exit 2
     ;;
 esac

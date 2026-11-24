@@ -1,6 +1,10 @@
 {
-  "reviewed": "2026-10-31",
-  "codex": "0.166.0",
+  "platforms": {
+    "macos": {
+      "reviewed": "2026-10-31",
+      "codex": "0.166.0"
+    }
+  },
   "stays_on": [
     "item_ids",
     "realtime_conversation",

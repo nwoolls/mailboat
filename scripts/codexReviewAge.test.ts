@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reviewAge } from "./codexReviewAge";
+import { reviewAge, reviewStatuses } from "./codexReviewAge";
 
 /** A local date (the check uses the Mac's own calendar day). */
 const day = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h);
@@ -23,5 +23,31 @@ describe("reviewAge", () => {
     expect(reviewAge("2027-01-01", day(2026, 12, 1))).toHaveProperty("invalid");
     expect(reviewAge("garbage", day(2026, 12, 1))).toHaveProperty("invalid");
     expect(reviewAge("2026-1-5", day(2026, 12, 1))).toHaveProperty("invalid");
+  });
+});
+
+describe("reviewStatuses", () => {
+  const today = day(2026, 12, 2);
+
+  it("warns for a system never reviewed, and holds every reviewed one to the limit", () => {
+    expect(
+      reviewStatuses(
+        { macos: { reviewed: "2026-11-30" }, linux: { reviewed: "2026-10-31" } },
+        today,
+        31,
+      ),
+    ).toEqual([
+      { platform: "macOS", state: "fine", days: 2 },
+      { platform: "Windows", state: "never" },
+      { platform: "Linux", state: "due", days: 32, reviewed: "2026-10-31" },
+    ]);
+  });
+
+  it("names a date that can't be used, with its system", () => {
+    expect(reviewStatuses({ windows: { reviewed: "2026-13-01" } }, today, 31)[1]).toEqual({
+      platform: "Windows",
+      state: "invalid",
+      why: '"2026-13-01" isn\'t a real date',
+    });
   });
 });

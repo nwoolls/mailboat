@@ -169,19 +169,28 @@ pub fn fence_profile(home: &Path, codex_home: &Path, readable: &[PathBuf]) -> St
     profile
 }
 
-/// The fence's profile for these folders, or why there can't be one.
+/// What the fence opens in the home folder: Codex's own folder (read and
+/// write), and the folders its program and PATH tools live in (read only).
+#[derive(Debug, PartialEq)]
+pub struct FenceDirs {
+    pub home: PathBuf,
+    pub codex_home: PathBuf,
+    pub readable: Vec<PathBuf>,
+}
+
+/// The fence's folders, or why there can't be a fence.
 /// Code review R6-03: without a home folder, or with Codex's folder at or
 /// above it, there's no safe fence and the program doesn't run; and only
 /// the installers' folders and the program's own package are readable in
 /// the home folder, not every PATH folder (a PATH entry like `~/Documents`
 /// would open it). Paths are as the caller found them (canonical).
-pub fn fence_for(
+pub fn fence_dirs(
     home: Option<&Path>,
     codex_home: Option<&Path>,
     package: Option<&Path>,
     path_dirs: &[PathBuf],
     installers: &[PathBuf],
-) -> Result<String> {
+) -> Result<FenceDirs> {
     let home = home.ok_or_else(|| {
         CoreError::Ai("Couldn't find the home folder, so the AI can't be fenced in.".into())
     })?;
@@ -208,7 +217,98 @@ pub fn fence_for(
             readable.push(dir);
         }
     }
-    Ok(fence_profile(home, &codex_home, &readable))
+    Ok(FenceDirs {
+        home: home.to_path_buf(),
+        codex_home,
+        readable,
+    })
+}
+
+/// The macOS fence's profile for these folders, or why there can't be one.
+pub fn fence_for(
+    home: Option<&Path>,
+    codex_home: Option<&Path>,
+    package: Option<&Path>,
+    path_dirs: &[PathBuf],
+    installers: &[PathBuf],
+) -> Result<String> {
+    let d = fence_dirs(home, codex_home, package, path_dirs, installers)?;
+    Ok(fence_profile(&d.home, &d.codex_home, &d.readable))
+}
+
+/// The Linux fence: bubblewrap's arguments, up to the program. The same
+/// rule as the macOS profile: the whole system as it is, except the home
+/// folder, which is an empty one, with Codex's folder (read and write) and
+/// the readable folders inside home (read only) put back. The user's
+/// runtime folder (`$XDG_RUNTIME_DIR`) is emptied too: the session bus is
+/// there, and an unlocked desktop keyring hands its secrets to anything on
+/// it without asking. The network stays (Codex needs OpenAI). Folders that
+/// don't exist are left out (bubblewrap can't bind them).
+pub fn bwrap_args(d: &FenceDirs, runtime_dir: Option<&Path>) -> Vec<std::ffi::OsString> {
+    let mut args: Vec<std::ffi::OsString> = Vec::new();
+    let mut push = |items: &[&std::ffi::OsStr]| args.extend(items.iter().map(|a| a.to_os_string()));
+    push(&[
+        "--die-with-parent".as_ref(),
+        "--bind".as_ref(),
+        "/".as_ref(),
+        "/".as_ref(),
+    ]);
+    push(&[
+        "--dev".as_ref(),
+        "/dev".as_ref(),
+        "--proc".as_ref(),
+        "/proc".as_ref(),
+    ]);
+    if let Some(run) = runtime_dir.filter(|r| r.is_dir()) {
+        push(&["--tmpfs".as_ref(), run.as_os_str()]);
+    }
+    push(&["--tmpfs".as_ref(), d.home.as_os_str()]);
+    if d.codex_home.is_dir() {
+        push(&[
+            "--bind".as_ref(),
+            d.codex_home.as_os_str(),
+            d.codex_home.as_os_str(),
+        ]);
+    }
+    for dir in d
+        .readable
+        .iter()
+        .filter(|r| r.starts_with(&d.home) && r.is_dir())
+    {
+        push(&["--ro-bind".as_ref(), dir.as_os_str(), dir.as_os_str()]);
+    }
+    args
+}
+
+/// Bubblewrap, where the distribution installs it (its own AppArmor
+/// profile, on Ubuntu, is for this path), if it can make a fence here:
+/// asked once, with `true`, since a system can have it installed and
+/// still not allow the namespaces it needs. None: Codex runs without a
+/// fence, as on Windows.
+#[cfg(target_os = "linux")]
+fn bubblewrap() -> Option<&'static Path> {
+    static USABLE: std::sync::OnceLock<Option<&'static Path>> = std::sync::OnceLock::new();
+    *USABLE.get_or_init(|| {
+        let bwrap = Path::new("/usr/bin/bwrap");
+        let ok = std::process::Command::new(bwrap)
+            .args([
+                "--die-with-parent",
+                "--bind",
+                "/",
+                "/",
+                "--dev",
+                "/dev",
+                "--proc",
+                "/proc",
+                "true",
+            ])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|s| s.success());
+        ok.then_some(bwrap)
+    })
 }
 
 /// Runs `program` in an empty folder, writes `stdin`, and calls `on_line`
@@ -459,9 +559,14 @@ fn command(program: &Path, env: Env) -> Result<Command> {
         Env::Inherit => None,
     };
     let mut cmd = match fenced {
-        Some(profile) => {
+        Some(Fence::Seatbelt(profile)) => {
             let mut c = Command::new("/usr/bin/sandbox-exec");
             c.arg("-p").arg(profile).arg(program);
+            c
+        }
+        Some(Fence::Bubblewrap(bwrap, args)) => {
+            let mut c = Command::new(bwrap);
+            c.args(args).arg(program);
             c
         }
         None => Command::new(program),
@@ -482,10 +587,27 @@ fn command(program: &Path, env: Env) -> Result<Command> {
     Ok(cmd)
 }
 
-/// The fence for `Env::Minimal` on macOS; none elsewhere (Windows has no
-/// equivalent: there, reading files depends on Codex offering no tool
-/// that does).
-fn fence(program: &Path) -> Result<Option<String>> {
+/// How `Env::Minimal` is fenced in.
+enum Fence {
+    /// macOS's sandbox, with this profile.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    Seatbelt(String),
+    /// Linux's bubblewrap (the program), with these arguments.
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    Bubblewrap(&'static Path, Vec<std::ffi::OsString>),
+}
+
+/// The fence for `Env::Minimal`: macOS's sandbox; on Linux, bubblewrap
+/// where it's installed and allowed. None elsewhere, or on a Linux without
+/// it (Windows has no equivalent: there, reading files depends on Codex
+/// offering no tool that does).
+fn fence(program: &Path) -> Result<Option<Fence>> {
+    #[cfg(target_os = "linux")]
+    let bwrap = match bubblewrap() {
+        Some(b) => b,
+        None => return Ok(None),
+    };
+    #[cfg(not(target_os = "linux"))]
     if !cfg!(target_os = "macos") {
         return Ok(None);
     }
@@ -500,14 +622,27 @@ fn fence(program: &Path) -> Result<Option<String>> {
         .iter()
         .flat_map(|h| INSTALLER_DIRS.iter().map(move |rel| real(h.join(rel))))
         .collect();
-    fence_for(
+    let dirs = fence_dirs(
         home.as_deref(),
         codex_home.as_deref(),
         package.as_deref(),
         &path_dirs,
         &installers,
-    )
-    .map(Some)
+    )?;
+    #[cfg(target_os = "linux")]
+    {
+        let runtime = std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from);
+        Ok(Some(Fence::Bubblewrap(
+            bwrap,
+            bwrap_args(&dirs, runtime.as_deref()),
+        )))
+    }
+    #[cfg(not(target_os = "linux"))]
+    Ok(Some(Fence::Seatbelt(fence_profile(
+        &dirs.home,
+        &dirs.codex_home,
+        &dirs.readable,
+    ))))
 }
 
 /// An empty folder to run in, so the tools find no project files
@@ -676,6 +811,101 @@ mod tests {
             !p.contains("(allow file-read* (subpath \"/Users/someone\"))"),
             "{p}"
         );
+    }
+
+    /// The Linux fence empties the home folder and the runtime folder, then
+    /// puts back Codex's folder (writable) and the readable folders inside
+    /// home (read only); folders outside home need nothing, and folders
+    /// that don't exist are left out. Real folders in a stand-in home.
+    #[test]
+    fn the_linux_fence_hides_home_and_puts_back_what_codex_needs() {
+        let root = std::env::temp_dir().join(format!("bwrap-args-{}", fastrand::u64(..)));
+        let home = root.join("home");
+        let codex = home.join(".codex");
+        let tools = home.join(".local/bin");
+        let run = root.join("run");
+        for d in [&codex, &tools, &run] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        let dirs = FenceDirs {
+            home: home.clone(),
+            codex_home: codex.clone(),
+            readable: vec![tools.clone(), "/usr/bin".into(), home.join("gone")],
+        };
+        let args: Vec<String> = bwrap_args(&dirs, Some(&run))
+            .iter()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect();
+        let s = |p: &Path| p.to_string_lossy().into_owned();
+        let at = |needle: &[String]| args.windows(needle.len()).position(|w| w == needle);
+        let tmpfs_home = at(&["--tmpfs".into(), s(&home)]).expect("home emptied");
+        assert!(
+            at(&["--tmpfs".into(), s(&run)]).is_some(),
+            "runtime emptied: {args:?}"
+        );
+        let codex_bind = at(&["--bind".into(), s(&codex), s(&codex)]).expect("codex writable");
+        let tools_bind = at(&["--ro-bind".into(), s(&tools), s(&tools)]).expect("tools read only");
+        assert!(
+            tmpfs_home < codex_bind && tmpfs_home < tools_bind,
+            "put back after: {args:?}"
+        );
+        assert!(
+            !args.iter().any(|a| a == "/usr/bin"),
+            "outside home needs nothing: {args:?}"
+        );
+        assert!(
+            !args.iter().any(|a| a.ends_with("gone")),
+            "missing folder left out: {args:?}"
+        );
+        assert!(
+            !args.iter().any(|a| a == "--unshare-net"),
+            "network stays: {args:?}"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// On Linux with bubblewrap: inside the fence a program can't read the
+    /// home folder, but can read Codex's own folder and what's outside
+    /// home. A stand-in home, so nothing touches the real one. Skipped
+    /// (with a note) where bubblewrap can't make a fence; CI installs it.
+    #[cfg(target_os = "linux")]
+    #[tokio::test]
+    async fn the_linux_fence_keeps_a_program_out_of_the_home_folder() {
+        let Some(bwrap) = bubblewrap() else {
+            assert!(std::env::var_os("CI").is_none(), "CI installs bubblewrap");
+            eprintln!("skipped: bubblewrap can't make a fence here");
+            return;
+        };
+        let home = std::env::temp_dir().join(format!("fence-home-{}", fastrand::u64(..)));
+        let codex = home.join(".codex");
+        std::fs::create_dir_all(&codex).unwrap();
+        std::fs::write(home.join("private.txt"), "PRIVATE").unwrap();
+        std::fs::write(codex.join("auth.json"), "SIGN-IN").unwrap();
+        let dirs = FenceDirs {
+            home: home.clone(),
+            codex_home: codex.clone(),
+            readable: vec![],
+        };
+        let args = bwrap_args(&dirs, None);
+        let cat = |file: PathBuf| {
+            let args = args.clone();
+            async move {
+                tokio::process::Command::new(bwrap)
+                    .args(args)
+                    .arg("/bin/cat")
+                    .arg(file)
+                    .output()
+                    .await
+                    .unwrap()
+            }
+        };
+        let private = cat(home.join("private.txt")).await;
+        assert!(!private.status.success());
+        assert!(!String::from_utf8_lossy(&private.stdout).contains("PRIVATE"));
+        let own = cat(codex.join("auth.json")).await;
+        assert_eq!(String::from_utf8_lossy(&own.stdout), "SIGN-IN");
+        assert!(cat("/etc/hosts".into()).await.status.success());
+        let _ = std::fs::remove_dir_all(&home);
     }
 
     #[test]

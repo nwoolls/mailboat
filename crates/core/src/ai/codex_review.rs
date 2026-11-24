@@ -4,17 +4,34 @@
 //! so the app turns every switch off and pauses ChatGPT when one it
 //! hasn't seen stays on; the tool list is rechecked monthly by an agent
 //! (`bun run check` says when; see AGENTS.md → Codex review).
+//!
+//! Each system is reviewed on its own (`platforms`, keyed by Rust's
+//! `std::env::consts::OS`): the fence that stops Codex differs (macOS's
+//! sandbox, bubblewrap on Linux, none on Windows), and so can Codex's own
+//! tools. The lists are what every reviewed system showed together.
+
+use std::collections::BTreeMap;
 
 use serde::Deserialize;
 
-/// The reviewed list, as committed.
+/// The systems the app ships for, as `platforms` names them.
+pub const PLATFORMS: [&str; 3] = ["macos", "windows", "linux"];
+
+/// One system's last review.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub struct Review {
+pub struct PlatformReview {
     /// When it was last reviewed (YYYY-MM-DD).
     pub reviewed: String,
     /// The Codex version reviewed. For people only: the app never
     /// compares versions.
     pub codex: String,
+}
+
+/// The reviewed list, as committed.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Review {
+    /// Each system reviewed so far; one not listed was never reviewed.
+    pub platforms: BTreeMap<String, PlatformReview>,
     /// Switches that stay on after `-c features.<name>=false`.
     pub stays_on: Vec<String>,
     /// The tools in Codex's request with every switch off.
@@ -48,14 +65,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_review_reads_and_has_a_date() {
+    fn the_review_reads_and_each_system_has_a_date() {
         let r = review();
         assert!(
-            jiff::civil::Date::strptime("%Y-%m-%d", &r.reviewed).is_ok(),
-            "reviewed: {}",
-            r.reviewed
+            r.platforms.contains_key("macos"),
+            "the Mac is always reviewed"
         );
+        for (platform, review) in &r.platforms {
+            assert!(
+                PLATFORMS.contains(&platform.as_str()),
+                "unknown system {platform}"
+            );
+            assert!(
+                jiff::civil::Date::strptime("%Y-%m-%d", &review.reviewed).is_ok(),
+                "{platform} reviewed: {}",
+                review.reviewed
+            );
+            assert!(!review.codex.is_empty(), "{platform}: which Codex");
+        }
         assert!(r.stays_on.contains(&"unified_exec".to_string()));
+    }
+
+    /// The system the app is built for has a name the review can use.
+    #[test]
+    fn this_system_is_one_the_review_names() {
+        assert!(PLATFORMS.contains(&std::env::consts::OS));
     }
 
     #[test]
