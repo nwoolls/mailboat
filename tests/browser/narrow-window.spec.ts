@@ -20,9 +20,14 @@ const listHidden = (page: Page) =>
 /**
  * Takes the focus out of the reply's text without Esc (which would also
  * leave the conversation: reply-esc.spec.ts) and without moving the pointer.
+ * Once the text has it: the editor takes the focus a frame after the reply
+ * opens, and on a busy runner that came after the blur, so Esc left the
+ * text instead of putting the sidebar away (docs/ROADMAP.md → Flaky tests).
  */
-const leaveText = (page: Page) =>
-  page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+async function leaveText(page: Page) {
+  await expect(page.locator('section[aria-label="Reply"] [contenteditable="true"]')).toBeFocused();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+}
 
 async function open(page: Page, width: number) {
   await page.setViewportSize({ width, height: 700 });
@@ -151,7 +156,11 @@ test("the way back stays at the top of a long conversation, and is easy to hit",
       el.scrollTo(0, el.scrollHeight);
       const bar = el.querySelector(".reader-back button")!.getBoundingClientRect();
       const frame = el.getBoundingClientRect();
-      return { scrolled: el.scrollTop, top: bar.top - frame.top, height: bar.height };
+      return {
+        scrolled: el.scrollTop,
+        top: bar.top - frame.top,
+        height: bar.height,
+      };
     });
   await expect.poll(async () => (await at()).scrolled).toBeGreaterThan(200);
   const placed = await at();

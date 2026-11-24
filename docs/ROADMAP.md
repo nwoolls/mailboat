@@ -5360,6 +5360,59 @@ the way, and one bug in the app caused flaky failures; all three are in
         With the fix the file passed 60 of 60 on 8 workers and this test
         8 of 8 on the slowed page; with reduced motion on, it fails at once
         with "toggle 1 animated".
+- [x] `windows-sidebar.spec.ts` (Chromium): "Esc puts a floating sidebar
+      away under a pointer that hasn't moved".
+      - 2026-11-24, CI on #233 (branch `changeset-release/0.4.0-beta`,
+        version and notes only),
+        https://github.com/nwoolls/mailboat/actions/runs/45336354914, first
+        attempt: after Esc, `.sidebar-peek` was still there after 15 s
+        (`toHaveCount(0)`, line 48), open rather than sliding out. The rerun
+        of the job passed it.
+      - Fixed 2026-11-24 (branch `panel-toggle-ci`), in the test. It opens a
+        reply and takes the focus out of its text (`leaveText`) before
+        floating the sidebar, but the editor takes the focus a frame after
+        the reply opens (TipTap's focus waits for a frame). On a busy runner
+        that frame came after the blur, so the text had the focus again and
+        Esc left the text, as it should, instead of putting the sidebar
+        away. `leaveText` now waits for the text to have the focus before
+        taking it away, here and in `narrow-window.spec.ts`, which has the
+        same steps. With the page's frames held back 20 to 60 ms after the
+        click on Reply, the old steps failed 3 of 10 with the same error and
+        the new ones passed 10 of 10. Both files passed 20 runs each, 8
+        each on 8 workers and 3 each on a slowed page.
+- [x] `reply-scroll.spec.ts`: "Reply with AI: a smooth scroll left undone
+      still ends at the reply" (line 327).
+      - 2026-11-24, CI on #235 (branch `panel-toggle-ci`, which changes
+        neither the reply nor this test),
+        https://github.com/nwoolls/mailboat/actions/runs/45405725401, first
+        attempt: the reply was already at the end 300 ms after it opened
+        (`toBeGreaterThan(2)`, received 0, line 351). The rerun of the job
+        passed it.
+      - Fixed 2026-11-24 (branch `panel-toggle-ci`), in the test. It checks
+        that the reply isn't at the end yet before the 0.7 s fallback that
+        puts it there (`REPLY_ARRIVE_MS`), but waited 300 ms of real time
+        to do so, and a busy runner got there after the fallback had run.
+        The test now holds that timer until it has checked, then lets it
+        go. With the page stalled for 1 s after the click, the old test
+        failed 3 of 3 and the new one passed 5 of 5. It passed 20 of 20, 5
+        of 5 on a slowed page and 16 of 16 on 8 workers.
+- [x] `reader-keyboard.spec.ts`: "↓ reads down a long email before
+      outlining the next" (line 79).
+      - 2026-11-24, CI on #235 (branch `panel-toggle-ci`, tests only),
+        https://github.com/nwoolls/mailboat/actions/runs/45418248361: after
+        ↓, the fourth email was outlined instead of the first
+        (`toBe(0)`, received 3, line 98). Locally the test failed 9 of 40
+        another way: the reader ended above where the test measured from
+        (`toBeGreaterThan`, line 97).
+      - Fixed 2026-11-24 (branch `panel-toggle-ci`), in the test. ↑ scrolls
+        smoothly, and a key pressed meanwhile goes on from where that
+        scroll is heading. The test read the reader's position, and pressed
+        ↓, before the scroll from its ↑ presses had moved, so ↓ started
+        from a place the test didn't expect. It now waits for the reader to
+        stop scrolling first. Passed 40 of 40 (the file 150 of 150, and 120
+        of 120 on 8 workers) and 5 of 5 on a slowed page. The CI symptom
+        wasn't reproduced locally; that it is the same race on a busier
+        machine is likely, not confirmed.
 
 ## Bug backlog
 

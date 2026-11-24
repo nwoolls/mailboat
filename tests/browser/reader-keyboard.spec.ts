@@ -18,6 +18,27 @@ const outlinedIndex = (page: Page) =>
     ),
   );
 
+/**
+ * Waits until the reader has stopped scrolling: ↑ / ↓ scroll smoothly, and
+ * a key pressed meanwhile goes on from where that scroll is heading, so a
+ * position read mid-scroll isn't where the next key starts from (on a busy
+ * runner the test read it before the scroll had moved: docs/ROADMAP.md →
+ * Flaky tests).
+ */
+async function scrollSettled(page: Page) {
+  await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    let top = reader.scrollTop;
+    let still = 0;
+    while (still < 10) {
+      await frame();
+      still = reader.scrollTop === top ? still + 1 : 0;
+      top = reader.scrollTop;
+    }
+  });
+}
+
 async function preview(page: Page) {
   await page.setViewportSize({ width: 1200, height: 800 });
   await page.goto("/tests/browser/harness.html?mode=shell&rows=1&conversation=all");
@@ -81,6 +102,7 @@ test("↓ reads down a long email before outlining the next", async ({ page }) =
   await page.keyboard.press("ArrowRight");
   for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
   await expect.poll(() => outlinedIndex(page)).toBe(0);
+  await scrollSettled(page);
   await page.keyboard.press("ArrowRight");
   // Made long, as a newsletter would be.
   await cards(page)
@@ -90,6 +112,7 @@ test("↓ reads down a long email before outlining the next", async ({ page }) =
       tall.style.height = "3000px";
       card.append(tall);
     });
+  await scrollSettled(page);
   const before = await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop);
   await page.keyboard.press("ArrowDown");
   await expect
