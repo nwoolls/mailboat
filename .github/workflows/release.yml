@@ -388,7 +388,7 @@ jobs:
   # which the publish job, with its write access, shouldn't run. The crates
   # a build script uses follow the computer that builds, so each download's
   # bill is made on the kind of computer that builds it: a Mac for the Mac
-  # and Windows (cross-built there), Linux for Linux.
+  # and Windows (cross-built there), and each Linux processor on its own.
   sbom:
     name: Software bills of materials (${{ matrix.os }})
     if: github.ref_type == 'tag'
@@ -399,7 +399,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-22.04]
+        os: [macos-latest, ubuntu-22.04, ubuntu-22.04-arm]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

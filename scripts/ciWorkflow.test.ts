@@ -121,7 +121,7 @@ const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
     job: always,
     steps: {
       "actions/checkout": appOnly,
-      "sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev bubblewrap":
+      "sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev bubblewrap dbus":
         appOnOs("Linux"),
       "oven-sh/setup-bun": appOnly,
       "bun install --frozen-lockfile": appOnly,

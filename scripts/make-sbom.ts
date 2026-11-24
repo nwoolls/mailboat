@@ -8,7 +8,7 @@
 // the release builds). A build script's own crates follow the computer that
 // builds, so each download's bill is made on the kind of computer that
 // builds it: on a Mac, the Mac's and Windows' (cross-built there); on Linux,
-// Linux's. Writes `<App>_<version>_<download>.cdx.json` in `--out` for each
+// the one for that computer's processor. Writes `<App>_<version>_<download>.cdx.json` in `--out` for each
 // of those `SBOM_DOWNLOADS` (`releaseFiles.ts`).
 
 import { spawnSync } from "node:child_process";
@@ -57,7 +57,9 @@ function tree(target: string, edges: string): string {
 }
 // Only the downloads built on this kind of computer: the build tools'
 // crates depend on it (`SBOM_DOWNLOADS`).
-const downloads = SBOM_DOWNLOADS.filter((d) => d.host === process.platform);
+const downloads = SBOM_DOWNLOADS.filter(
+  (d) => d.host === process.platform && (!("arch" in d) || d.arch === process.arch),
+);
 if (downloads.length === 0) {
   fail(
     `no download is built on ${process.platform}: run on a Mac or on Linux, as the release does`,

@@ -193,8 +193,9 @@ Apple Intelligence is a Mac feature, so AI uses Claude or ChatGPT there.
 The `.deb` and `.rpm` register the app for `mailto:` links (an AppImage
 can't: it installs no desktop entry), and Settings → General makes it the
 default through `xdg-settings`. A click on a new-mail notification opens its
-conversation, as on the Mac. ChatGPT runs inside bubblewrap where it's
-installed (`docs/AI.md`).
+conversation, as on the Mac, where the desktop's notification service
+supports actions (GNOME and KDE do). ChatGPT runs inside bubblewrap where
+it's installed and the system allows it (`docs/AI.md`).
 
 ## Check
 
@@ -502,8 +503,11 @@ private key that matches the public one in the config.
   Linux package itself. On Linux the updater installs the kind of package
   the app came as (the Tauri CLI writes it into the program when it
   bundles): it replaces an AppImage file, and installs a `.deb` or `.rpm`
-  with the system's package tool, asking for the administrator password
-  through `pkexec`. The manifest has an entry for each
+  with the system's package tool, with the administrator's rights. It asks
+  through `pkexec` first; if that fails or is dismissed, it asks for the
+  password in a Zenity or KDialog window (where one is installed) and
+  passes it to `sudo`; last it tries `sudo` alone, which fails without a
+  terminal. So dismissing the first prompt can bring a second. The manifest has an entry for each
   (`linux-x86_64-deb`, `linux-aarch64-appimage` and so on). A normal build
   doesn't, since that needs the key. The `latest.json` the app reads is made by
   the release workflow (`scripts/make-release-files.ts`). Until a release is

@@ -95,10 +95,11 @@ export function isSbom(file: string): boolean {
 /**
  * The downloads that each get a software bill of materials: the update
  * platforms it covers, its Rust target, the word its file ends with, and
- * the system that makes it (`host`, as `process.platform` names it): the
- * crates a build script uses follow the computer that builds, so each is
- * made where its download is built (the Mac and Windows on a Mac, Linux on
- * Linux). The Mac's and Windows' sit beside their download
+ * the system that makes it (`host`, as `process.platform` names it, and
+ * for Linux its processor, `arch`, as `process.arch` does): the crates a
+ * build script uses follow the computer that builds, so each is made where
+ * its download is built (the Mac and Windows on a Mac, each Linux processor
+ * on a runner of that processor). The Mac's and Windows' sit beside their download
  * (`App_0.1.0_aarch64.dmg`, `App_0.1.0_x64-setup.exe`); Linux's three
  * packages of a processor share one (`App_0.1.0_linux_amd64.cdx.json`),
  * since they ship the same program.
@@ -127,18 +128,21 @@ export const SBOM_DOWNLOADS = [
     target: "x86_64-unknown-linux-gnu",
     suffix: "linux_amd64",
     host: "linux",
+    arch: "x64",
   },
   {
     platforms: ["linux-aarch64-appimage", "linux-aarch64-deb", "linux-aarch64-rpm"],
     target: "aarch64-unknown-linux-gnu",
     suffix: "linux_arm64",
     host: "linux",
+    arch: "arm64",
   },
 ] as const satisfies readonly {
   platforms: readonly Platform[];
   target: string;
   suffix: string;
   host: string;
+  arch?: string;
 }[];
 
 /** A download's bill of materials: `App_0.1.0_aarch64.cdx.json`. */

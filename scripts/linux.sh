@@ -32,7 +32,8 @@ fi
 bun_version="$(sed -n 's/.*"packageManager": "bun@\([^"]*\)".*/\1/p' package.json)"
 # Named after the app's short name in brand.json.
 name="$(sed -n 's/.*"shortName": "\([^"]*\)".*/\1/p' brand.json)-linux"
-image="$name:bun-$bun_version"
+# Tagged with the Dockerfile's hash too, so a change to it builds a new image.
+image="$name:bun-$bun_version-$(shasum scripts/linux/Dockerfile | cut -c1-8)"
 # Each checkout (a worktree, say) gets its own copy of the source and its own
 # build folder, so two at once can't mix each other's files or packages;
 # only the crates downloaded are shared.

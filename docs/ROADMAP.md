@@ -7692,8 +7692,8 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         app starts again only once the old copy has ended
   - [x] Email links (`mailto:`): the desktop entry claims the scheme, and
         Settings reads and sets the default through `xdg-settings`
-  - [x] The click on a notification opens its conversation
-        (`notify-rust`'s default action), and the app can take
+  - [x] The click on a notification opens its conversation (the default
+        action, over one D-Bus connection), and the app can take
         notifications back, as on the Mac
   - [x] ChatGPT (Codex) on Linux runs inside bubblewrap where it's
         installed, and as on Windows where it isn't *(owner, 2026-11-24)*

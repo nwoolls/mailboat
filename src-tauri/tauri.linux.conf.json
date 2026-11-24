@@ -31,7 +31,7 @@
         "desktopTemplate": "linux/app.desktop"
       },
       "rpm": {
-        "depends": ["dbus-libs"],
+        "depends": ["libdbus-1.so.3()(64bit)"],
         "desktopTemplate": "linux/app.desktop"
       }
     }
