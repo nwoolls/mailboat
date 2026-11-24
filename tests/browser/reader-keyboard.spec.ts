@@ -297,3 +297,43 @@ test("Enter after ↓ from a focused header opens the outlined email", async ({ 
   await expect(header(1)).toHaveAttribute("aria-expanded", "true");
   await expect(header(0)).toHaveAttribute("aria-expanded", "false");
 });
+
+/**
+ * An arrow's smooth scroll still on its way when the layout moves the
+ * reader (an email above growing, which the browser makes up for by
+ * moving the reader down): the next arrow goes on from where the reader
+ * is, not from where the last one was heading (found in CI, where the
+ * scroll was slower to arrive: ↓ jumped back up).
+ */
+test("an arrow after the layout moved the reader goes on from where it is", async ({ page }) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
+  await expect.poll(() => outlinedIndex(page)).toBe(0);
+  await page.keyboard.press("ArrowRight");
+  await expect(cards(page).first().locator(":scope > button")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  const result = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    // The first email made long, and the reader part way down it.
+    const tall = document.createElement("div");
+    tall.style.height = "3000px";
+    reader.querySelector("section[data-message-id]")!.append(tall);
+    reader.scrollTo({ top: 1500, behavior: "instant" });
+    await frame();
+    // ↑ starts a smooth scroll up through it; before it arrives, the
+    // reader is moved well down, as the layout would.
+    reader.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    await frame();
+    reader.scrollTo({ top: 3000, behavior: "instant" });
+    const moved = reader.scrollTop;
+    reader.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    await new Promise((done) => setTimeout(done, 600));
+    return { moved, after: reader.scrollTop };
+  });
+  // On down from where the layout put it, not back up from the old aim.
+  expect(result.after).toBeGreaterThan(result.moved);
+});

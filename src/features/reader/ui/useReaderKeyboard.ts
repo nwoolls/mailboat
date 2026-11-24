@@ -80,19 +80,46 @@ export function useReaderKeyboard({
   // key pressed before it arrives (or held down) goes on from where the
   // last one went, not from part way: mid-scroll, the email just outlined
   // still looked cut off at the top, and ↑ scrolled instead of moving on.
-  // Forgotten once there, or after HEADING_MS (a wheel took over, say).
-  const heading = useRef<{ top: number; until: number } | null>(null);
+  // Forgotten once there, or after HEADING_MS (a wheel took over, say),
+  // or when the reader is further from it than when the key was pressed:
+  // a smooth scroll only ever gets closer, so something else moved it (the
+  // layout: an email above growing, which the browser makes up for by
+  // moving the reader down). Measured from the old aim then, ↓ jumped back
+  // to where the last ↑ was heading (found in CI).
+  //
+  // While it's on its way, the browser's scroll anchoring is off for the
+  // reader: opening the outlined email above the view (→ straight after ↑)
+  // made the browser move the reader to keep the view in place, which
+  // stopped the scroll there, and the outlined email never came into view.
+  const heading = useRef<{
+    top: number;
+    until: number;
+    away: number;
+    reader: HTMLElement;
+  } | null>(null);
+  const forget = () => {
+    const to = heading.current;
+    if (to) to.reader.style.overflowAnchor = "";
+    heading.current = null;
+    return null;
+  };
   const aimed = (reader: HTMLElement) => {
     const to = heading.current;
-    if (!to || performance.now() > to.until || Math.abs(reader.scrollTop - to.top) <= 1)
-      return (heading.current = null);
+    const away = to ? Math.abs(reader.scrollTop - to.top) : 0;
+    if (!to || performance.now() > to.until || away <= 1 || away > to.away + 2) return forget();
     return to.top;
   };
   const scrollTo = (reader: HTMLElement, from: number, by: number) => {
     const max = reader.scrollHeight - reader.clientHeight;
     const to = Math.max(0, Math.min(max, from + by));
-    heading.current = { top: to, until: performance.now() + HEADING_MS };
+    const until = performance.now() + HEADING_MS;
+    heading.current = { top: to, until, away: Math.abs(reader.scrollTop - to), reader };
+    reader.style.overflowAnchor = "none";
     reader.scrollTo({ top: to, behavior: "smooth" });
+    // Anchoring back on once the scroll has had its time.
+    window.setTimeout(() => {
+      if (heading.current?.until === until) forget();
+    }, HEADING_MS);
   };
 
   /**
@@ -159,7 +186,7 @@ export function useReaderKeyboard({
   // Any other scrolling takes over from where the last key's scroll was
   // heading.
   const forgetHeading = () => {
-    heading.current = null;
+    forget();
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
