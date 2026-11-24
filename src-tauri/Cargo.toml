@@ -43,10 +43,13 @@ tauri-plugin-updater = { version = "2", default-features = false, features = ["s
 # Already part of the build through Tauri; declared to set the Dock picture
 # (src/dock.rs) and to read trackpad phases (src/trackpad.rs).
 # Same versions as Tauri and MonoCode.
-# Windows: a mailto: link clicked while the app is open starts a second copy,
-# which hands the link to the running one and quits (src/lib.rs).
-[target.'cfg(windows)'.dependencies]
+# Windows and Linux: opening the app (or a mailto: link) while it's open starts
+# a second copy, which hands over to the running one and quits (src/lib.rs).
+# On Linux it talks over D-Bus with zbus, already in the build.
+[target.'cfg(any(windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2"
+
+[target.'cfg(windows)'.dependencies]
 # Which app Windows sends mailto: links to (src/mail_handler.rs). Microsoft's
 # crate, already in the build through Tauri.
 windows-registry = "0.100"

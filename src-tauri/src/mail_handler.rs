@@ -41,21 +41,29 @@ pub fn open(app: &AppHandle, link: &str) -> bool {
         return false;
     };
     app.state::<MailtoQueue>().0.lock().unwrap().push(parsed);
+    bring_forward(app);
+    let _ = MailtoEvent.emit(app);
+    true
+}
+
+/// Shows the main window and gives it the focus.
+pub fn bring_forward(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
     }
-    let _ = MailtoEvent.emit(app);
-    true
 }
 
-/// Opens any `mailto:` link among a launch's arguments (Windows).
-#[cfg_attr(not(windows), allow(dead_code))]
-pub fn open_args(app: &AppHandle, args: impl IntoIterator<Item = String>) {
+/// Opens any `mailto:` link among a launch's arguments (Windows, Linux).
+/// Returns whether one was opened.
+#[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
+pub fn open_args(app: &AppHandle, args: impl IntoIterator<Item = String>) -> bool {
+    let mut opened = false;
     for arg in args {
-        open(app, &arg);
+        opened |= open(app, &arg);
     }
+    opened
 }
 
 /// The program in a registry command line: `"C:\…\app.exe" "%1"` gives

@@ -7,6 +7,8 @@ targets = [
   "x86_64-apple-darwin",
   "x86_64-pc-windows-msvc",
   "aarch64-pc-windows-msvc",
+  "x86_64-unknown-linux-gnu",
+  "aarch64-unknown-linux-gnu",
 ]
 
 [advisories]
@@ -23,6 +25,18 @@ ignore = [
   # icalendar (invitations), rmcp (AI apps) and schemars; the app's own dates
   # and time zones use `jiff` (and `chrono-tz` is gone with that move).
   { id = "RUSTSEC-2026-0543", reason = "chrono: unmaintained only; through oauth2, icalendar, rmcp, schemars" },
+  # Linux only. Tauri's GTK web view pins glib 0.18 (the fix is in 0.20).
+  # The unsound code is `VariantStrIter` (`Variant::array_iter_str`), which
+  # nothing in the build calls: not the app, Tauri, wry, tao, muda, gtk,
+  # webkit2gtk, gio or soup3 (searched 2026-11-24).
+  { id = "RUSTSEC-2024-0429", reason = "glib: Linux only, pinned by Tauri; the unsound VariantStrIter is never called" },
+  # Linux only, unmaintained, not vulnerable: a compile-time macro of gtk's.
+  { id = "RUSTSEC-2024-0370", reason = "proc-macro-error: unmaintained only; a compile-time macro (gtk, Linux)" },
+  # Linux only, unmaintained, not vulnerable: D-Bus types under zbus, which
+  # desktop notifications and the single-instance plugin use there.
+  { id = "RUSTSEC-2026-0370", reason = "zvariant: unmaintained only; Linux D-Bus (notifications, single instance)" },
+  { id = "RUSTSEC-2026-0371", reason = "zbus_names: unmaintained only; Linux D-Bus (notifications, single instance)" },
+  { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: unmaintained only; Linux D-Bus (notifications, single instance)" },
 ]
 
 [licenses]
@@ -44,6 +58,10 @@ allow = [
   "GPL-3.0-only", # the app's own crates
 ]
 confidence-threshold = 0.9
+# Linux only, at build time: target-lexicon is how system-deps (which finds
+# GTK and WebKitGTK when gtk's build scripts run) reads the target. LLVM's
+# exception only adds permissions to Apache-2.0, and none of it ships.
+exceptions = [{ allow = ["Apache-2.0 WITH LLVM-exception"], crate = "target-lexicon" }]
 
 [bans]
 multiple-versions = "allow"

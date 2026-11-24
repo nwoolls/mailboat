@@ -85,4 +85,10 @@ windows-sys = { version = "0.61", features = [
 libc = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-keyring = { version = "3.6", default-features = false, features = ["linux-native-sync-persistent", "crypto-rust"] }
+# Sign-in tokens in the desktop's keyring (GNOME Keyring, KWallet) through the
+# Secret Service, and only there: not also in the kernel's keyring, as the
+# `linux-native-sync-persistent` store would (see ARCHITECTURE, decisions).
+keyring = { version = "3.6", default-features = false, features = ["sync-secret-service", "crypto-rust"] }
+# The data folder (`brand::data_dir`), found as Tauri finds it: Tauri's own
+# crate and version, already in the Linux build.
+dirs = "7"

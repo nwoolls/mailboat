@@ -10,6 +10,7 @@ const ALLOWED = [
   // Tauri reads these itself; a test keeps them in step with brand.json.
   "src-tauri/tauri.conf.json",
   "src-tauri/tauri.windows.conf.json",
+  "src-tauri/tauri.linux.conf.json",
   // Prose and artwork, updated with the name by hand.
   "README.md",
   "AGENTS.md",
