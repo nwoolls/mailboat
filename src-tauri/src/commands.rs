@@ -965,7 +965,9 @@ pub async fn attachment_save(
 }
 
 /// Shows a saved attachment in Finder.
-#[tauri::command]
+// Off the UI thread: on Linux, revealing waits for the file manager's
+// answer over D-Bus (`files::reveal`).
+#[tauri::command(async)]
 #[specta::specta]
 pub fn attachment_reveal(state: State<'_, AppState>, attachment_id: AttachmentId) -> CmdResult<()> {
     let saved = state.saved.lock().unwrap().get(&attachment_id).cloned();
@@ -1041,7 +1043,9 @@ pub async fn message_original_save(
 }
 
 /// Shows a file saved to Downloads (by `email_image_save`) in Finder.
-#[tauri::command]
+// Off the UI thread: on Linux, revealing waits for the file manager's
+// answer over D-Bus (`files::reveal`).
+#[tauri::command(async)]
 #[specta::specta]
 pub fn download_reveal(state: State<'_, AppState>, file_name: String) -> CmdResult<()> {
     let downloads = state
@@ -1766,7 +1770,9 @@ pub async fn spam_empty(
 }
 
 /// Shows the sync log in Finder.
-#[tauri::command]
+// Off the UI thread: on Linux, revealing waits for the file manager's
+// answer over D-Bus (`files::reveal`).
+#[tauri::command(async)]
 #[specta::specta]
 pub fn sync_log_reveal(state: State<'_, AppState>) -> CmdResult<()> {
     Ok(files::reveal(state.sync_log.path())?)

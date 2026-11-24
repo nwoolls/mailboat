@@ -173,8 +173,9 @@ The first run builds the image, which takes a few minutes. The container
 works on a copy of the repository, so the Mac's `node_modules` and `target`
 are never touched; Rust's build and Bun's packages stay in Docker volumes
 (`mailboat-linux-*`) between runs. Those take about 20 GB once both `check`
-and `build` have run, so Docker Desktop's disk needs room for them (Settings
-→ Resources); `docker volume rm` them to get it back. The container has the Mac's processor, so
+and `build` have run, and each checkout (a worktree too) has its own, so
+Docker Desktop's disk needs room for them (Settings → Resources);
+`docker volume rm` them to get it back. The container has the Mac's processor, so
 on Apple silicon the packages are for Arm Linux; the test builds on a pull
 request make both Arm and Intel/AMD ones.
 
@@ -189,7 +190,8 @@ on an ordinary GNOME or KDE desktop. The Google client file goes in
 On Linux the window keeps the desktop's own title bar, and is painted with
 the theme's base color, since WebKitGTK has no blur behind a window.
 Apple Intelligence is a Mac feature, so AI uses Claude or ChatGPT there.
-Not yet on Linux: email links (`mailto:`), the click on a notification, and
+Not yet on Linux: opening email links from other apps (nothing registers the
+app for `mailto:` yet), the click on a notification, and
 updates (the release has no Linux builds yet); see the roadmap.
 
 ## Check

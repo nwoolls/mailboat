@@ -247,6 +247,7 @@ pub fn run() {
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
+            mail_handler::events_ready();
             // Windows (and Linux) pass a mailto: link that launched the app as an argument.
             #[cfg(any(windows, target_os = "linux"))]
             mail_handler::open_args(app.handle(), std::env::args().skip(1));

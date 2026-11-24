@@ -14,6 +14,7 @@
 //! (single-instance plugin, `lib.rs`). Windows doesn't let an app make
 //! itself the default: Settings opens Windows' Default apps page instead.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
 use mail_core::mail::mailto::{self, Mailto};
@@ -42,8 +43,22 @@ pub fn open(app: &AppHandle, link: &str) -> bool {
     };
     app.state::<MailtoQueue>().0.lock().unwrap().push(parsed);
     bring_forward(app);
-    let _ = MailtoEvent.emit(app);
+    // A second copy can hand a link over before setup has mounted the
+    // events (the single-instance plugin listens from the first plugin
+    // on), and emitting then panics. The link waits in the queue, which
+    // the window drains when it starts.
+    if EVENTS_READY.load(Ordering::Acquire) {
+        let _ = MailtoEvent.emit(app);
+    }
     true
+}
+
+/// Set once setup has mounted the typed events (`events_ready`).
+static EVENTS_READY: AtomicBool = AtomicBool::new(false);
+
+/// Lets `open` emit `MailtoEvent`: call right after the events are mounted.
+pub fn events_ready() {
+    EVENTS_READY.store(true, Ordering::Release);
 }
 
 /// Shows the main window and gives it the focus.

@@ -7679,7 +7679,9 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
   - [x] `cargo deny` checks Linux; the Linux-only advisories reviewed
   - [x] Privacy policy: the Linux keyring and disk encryption
   - [ ] Try the packages on GNOME and KDE (Wayland and X11), Fedora, and
-        a desktop with no keyring; print; notifications; a second monitor
+        a desktop with no keyring; print; notifications; a second monitor;
+        whether a second launch brings the window forward on Wayland;
+        connecting an AI app from the AppImage, then restarting
   - [ ] Release: a Linux job in the release workflow, the packages signed
         for the updater, `latest.json` entries (`linux-x86_64`,
         `linux-aarch64`; the updater can install a `.deb` or `.rpm`

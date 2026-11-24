@@ -28,6 +28,10 @@ bun_version="$(sed -n 's/.*"packageManager": "bun@\([^"]*\)".*/\1/p' package.jso
 # Named after the app's short name in brand.json.
 name="$(sed -n 's/.*"shortName": "\([^"]*\)".*/\1/p' brand.json)-linux"
 image="$name:bun-$bun_version"
+# Each checkout (a worktree, say) gets its own copy of the source and its own
+# build folder, so two at once can't mix each other's files or packages;
+# only the crates downloaded are shared.
+checkout="$(printf '%s' "$PWD" | shasum | cut -c1-8)"
 if ! docker image inspect "$image" >/dev/null 2>&1; then
   docker build --build-arg "BUN_VERSION=$bun_version" -t "$image" scripts/linux
 fi
@@ -43,8 +47,8 @@ run() {
   docker run --rm ${tty[@]+"${tty[@]}"} \
     -v "$PWD:/src:ro" \
     -v "$PWD/target/linux:/out" \
-    -v "$name-work:/work" \
-    -v "$name-target:/target" \
+    -v "$name-work-$checkout:/work" \
+    -v "$name-target-$checkout:/target" \
     -v "$name-cargo:/root/.cargo/registry" \
     -e CARGO_TARGET_DIR=/target \
     -e "CARGO_BUILD_JOBS=${LINUX_JOBS:-4}" \
