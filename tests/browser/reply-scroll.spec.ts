@@ -65,7 +65,10 @@ for (const height of [640, 360])
         return bottom >= -1 && (!fits || top >= -1);
       };
       await expect
-        .poll(inView, { message: "the reply scrolls into view", timeout: 15_000 })
+        .poll(inView, {
+          message: "the reply scrolls into view",
+          timeout: 15_000,
+        })
         .toBe(true);
       // And it stays there: a scroll that overshot or came back would show now.
       await page.waitForTimeout(600);
@@ -323,6 +326,11 @@ test("Reply with AI: opening slides to the reply rather than jumping", async ({ 
  * opening one never happens, and nothing growing gets to put the reader at
  * its end (the page's ResizeObservers are turned off): only the 0.7 s
  * fallback is left, and the reply still ends up at the bottom.
+ *
+ * The fallback is held until the test lets it go, so that the check that
+ * the reply isn't at the end yet comes before it. In real time a busy CI
+ * runner reached that check after the 0.7 s, when the fallback had already
+ * moved the reader (docs/ROADMAP.md → Flaky tests).
  */
 test("Reply with AI: a smooth scroll left undone still ends at the reply", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=inline");
@@ -344,11 +352,40 @@ test("Reply with AI: a smooth scroll left undone still ends at the reply", async
       disconnect() {}
     };
     (window as unknown as { ResizeObserver: unknown }).ResizeObserver = quiet;
+    // The 0.7 s fallback (REPLY_ARRIVE_MS) waits for `__releaseArrive()`.
+    // A held one that is cleared (React runs the effect twice in
+    // development) is dropped, as a cleared timer is.
+    const held = new Map<number, () => void>();
+    let next = -1;
+    const { setTimeout, clearTimeout } = window;
+    window.setTimeout = ((run: () => void, ms?: number, ...rest: unknown[]) => {
+      if (ms !== 700) return setTimeout(run, ms, ...rest);
+      held.set(next, run);
+      return next--;
+    }) as typeof window.setTimeout;
+    window.clearTimeout = ((id?: number) => {
+      if (id !== undefined && held.delete(id)) return;
+      clearTimeout(id);
+    }) as typeof window.clearTimeout;
+    (window as unknown as { __releaseArrive: () => number }).__releaseArrive = () => {
+      window.setTimeout = setTimeout;
+      window.clearTimeout = clearTimeout;
+      const due = [...held.values()];
+      held.clear();
+      for (const run of due) run();
+      return due.length;
+    };
   });
   await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
   await expect(page.locator('section[aria-label="Reply"]')).toBeVisible();
   await page.waitForTimeout(300);
   expect(await fromEnd(page)).toBeGreaterThan(2);
+  // Exactly one: the fallback was held, not some other timer.
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { __releaseArrive: () => number }).__releaseArrive(),
+    ),
+  ).toBe(1);
   await expect.poll(() => fromEnd(page), { timeout: 15_000 }).toBeLessThanOrEqual(2);
 });
 
@@ -527,7 +564,10 @@ test("Reply with AI: a pointer resting on an email counts only for a real scroll
     const frame = document
       .querySelector('iframe[title="Message content"]')!
       .getBoundingClientRect();
-    return { x: frame.left + frame.width / 2, y: Math.max(frame.top, reader.top) + 20 };
+    return {
+      x: frame.left + frame.width / 2,
+      y: Math.max(frame.top, reader.top) + 20,
+    };
   });
   await page.mouse.move(spot.x, spot.y);
   expect(await page.evaluate(() => document.querySelector("iframe:hover") !== null)).toBe(true);

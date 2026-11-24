@@ -18,9 +18,14 @@ const listHidden = (page: Page) =>
 /**
  * Takes the focus out of the reply's text without Esc (which would also
  * leave the conversation: reply-esc.spec.ts) and without moving the pointer.
+ * Once the text has it: the editor takes the focus a frame after the reply
+ * opens, and on a busy runner that came after the blur, so Esc left the
+ * text instead of putting the sidebar away (docs/ROADMAP.md → Flaky tests).
  */
-const leaveText = (page: Page) =>
-  page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+async function leaveText(page: Page) {
+  await expect(page.locator('section[aria-label="Reply"] [contenteditable="true"]')).toBeFocused();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+}
 
 async function open(page: Page) {
   await page.setViewportSize({ width: 480, height: 700 });
