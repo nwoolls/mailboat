@@ -7387,8 +7387,9 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       verification has been in production since 2026-11-07, so it needs no
       test-user entry; the reviewer signs in past the "unverified app"
       screen with a Google account allowed to grant access to it (a
-      Workspace administrator can block third-party apps, and an unverified
-      app is capped at 100 users in total), and the client's file is shared
+      Workspace administrator can block third-party apps, and until Google
+      approves the app at most 100 accounts can ever grant it these
+      permissions over the project's lifetime), and the client's file is shared
       with them in a way agreed with the lab (corrected 2026-11-25: this
       note first said Testing); and ask the lab whether a
       Windows machine without disk encryption fails its check, or whether

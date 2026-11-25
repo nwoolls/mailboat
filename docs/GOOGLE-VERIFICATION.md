@@ -325,8 +325,10 @@ The first two takes were redone, so this is what to do next time:
 Written for Google's "active test credentials" and "clear integration access"
 rows. The app is In production, so a reviewer needs no test-user entry: they
 sign in with a Google account allowed to grant access to the app (a Workspace
-administrator can block third-party apps, and an unverified app is capped at
-100 users in total) and see the "hasn't verified this app" screen; Continue goes on.
+administrator can block third-party apps, and until Google approves the app,
+at most 100 accounts can ever grant it these permissions over the project's
+lifetime, revoked ones included) and see the "hasn't verified this app" screen
+(step 3 has the buttons).
 No test login is shared, and the demo account's password stays private.
 
 1. Download 0.2.0 from the website (`getmailboat.app`), install it and open

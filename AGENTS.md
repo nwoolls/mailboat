@@ -375,8 +375,8 @@ these rules. Keep it passing.
     under Google's verification for the paid version
     (`docs/GOOGLE-VERIFICATION.md`). It has been In production since
     2026-11-07: no test users and no seven-day limit, but unverified until
-    Google approves (the warning still shows, and it is capped at 100 users
-    in total). While Google reviews it, never switch it back to Testing or
+    Google approves (the warning still shows, and at most 100 accounts can
+    ever grant it the permissions over the project's lifetime). While Google reviews it, never switch it back to Testing or
     change its user type, scopes or logo.
   Each account records which OAuth client it used (`accounts.oauth_client`)
   so a second, Internal client can be added later.
