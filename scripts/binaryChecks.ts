@@ -126,9 +126,14 @@ export function elfProblems(readelf: string, runpath?: string): string[] {
   if (!field("Type")?.startsWith("DYN") || !flags1.includes("PIE")) {
     problems.push(`not position-independent (type: ${field("Type") ?? "unknown"})`);
   }
-  // A segment row: its name, five numbers, then its flags (R, W, E).
+  // A segment row: its name, five numbers, then its flags (R, W, E) and its
+  // alignment, which readelf prints as a bare 0 when it's zero (as lld, the
+  // default linker for x86-64 Linux, writes the stack's).
   const segment = (name: string) =>
-    new RegExp(`^\\s*${name}\\s+(?:0x[0-9a-f]+\\s+){5}([RWE ]+?)\\s+0x`, "m").exec(readelf);
+    new RegExp(
+      `^\\s*${name}\\s+(?:0x[0-9a-f]+\\s+){5}([RWE ]+?)\\s+(?:0x[0-9a-f]+|0)\\s*$`,
+      "m",
+    ).exec(readelf);
   const stack = segment("GNU_STACK");
   if (!stack) problems.push("no GNU_STACK segment, so the stack may run code");
   else if (stack[1].includes("E")) problems.push("the stack can run code");

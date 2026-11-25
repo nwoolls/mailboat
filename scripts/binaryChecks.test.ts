@@ -160,6 +160,11 @@ describe("a Linux binary", () => {
       "not position-independent (type: EXEC (Executable file))",
     ]);
     expect(elfProblems(readelf({ stack: "RWE" }))).toEqual(["the stack can run code"]);
+    // lld writes the stack's alignment as 0, which readelf prints bare.
+    const lld = readelf().replace(/^(\s*GNU_STACK\s.*\s)0x\w+$/m, "$10");
+    expect(lld).toMatch(/GNU_STACK.* RW  0$/m);
+    expect(elfProblems(lld)).toEqual([]);
+    expect(elfProblems(lld.replace(/RW  0$/m, "RWE 0"))).toEqual(["the stack can run code"]);
     expect(
       elfProblems(
         readelf({ extra: " 0x000000000000001d (RUNPATH)            Library runpath: [$ORIGIN]" }),
