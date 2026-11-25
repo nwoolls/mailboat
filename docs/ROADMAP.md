@@ -7744,6 +7744,11 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
   - [x] ChatGPT (Codex) on Linux runs inside bubblewrap where it's
         installed and allowed, and as on Windows where it isn't
         *(owner, 2026-11-24)*
+        *(2026-11-25: the ChatGPT app for Linux carries its own Codex, in
+        `/usr/lib/chatgpt/resources` from both its `.deb` and `.rpm`; the
+        app now looks there too, as it does in the app on the Mac and
+        Windows, after the owner's VMs showed "Get ChatGPT app" with it
+        installed)*
   - [x] The Codex review is recorded per system, and the VMs get a test
         program built on the Mac *(owner, 2026-11-24: Windows had never
         been reviewed; all three on the same day each month)*

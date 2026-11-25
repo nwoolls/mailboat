@@ -41,6 +41,13 @@ pub fn claude() -> Option<PathBuf> {
 
 /// The ChatGPT (or Codex) app's Codex, if one is installed.
 pub fn codex() -> Option<PathBuf> {
+    codex_candidates().into_iter().find(|p| p.is_file())
+}
+
+/// Where the ChatGPT (or Codex) app keeps its copy of Codex, on this
+/// system. On Linux the ChatGPT app's `.deb` and `.rpm` put it in
+/// `/usr/lib/chatgpt/resources` (seen in both, 2026-11-25).
+fn codex_candidates() -> Vec<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if cfg!(windows) {
         if let Some(local) = env_dir("LOCALAPPDATA") {
@@ -60,8 +67,11 @@ pub fn codex() -> Option<PathBuf> {
             ));
             candidates.push(dir.join("Codex.app/Contents/Resources/codex"));
         }
+        if cfg!(target_os = "linux") {
+            candidates.push(PathBuf::from("/usr/lib/chatgpt/resources/codex"));
+        }
     }
-    candidates.into_iter().find(|p| p.is_file())
+    candidates
 }
 
 /// Where the Claude app keeps its data, on this system.
@@ -124,6 +134,17 @@ fn env_dir(name: &str) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// On Linux the ChatGPT app's own Codex is looked for where its
+    /// packages install it; elsewhere that folder isn't asked about.
+    #[test]
+    fn the_chatgpt_apps_codex_is_looked_for_where_linux_installs_it() {
+        let linux = PathBuf::from("/usr/lib/chatgpt/resources/codex");
+        assert_eq!(
+            codex_candidates().contains(&linux),
+            cfg!(target_os = "linux")
+        );
+    }
 
     #[test]
     fn versions_compare_as_numbers() {
