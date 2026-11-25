@@ -7742,6 +7742,10 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         VMs at once, and Google rate-limited it, so new mail sometimes
         reached Ubuntu only after Mailboat restarted. Try both again once
         the VMs have finished their first sync.)*
+        *(2026-11-25, later: with both VMs' first sync done, new mail
+        arrives live on Ubuntu too, and GNOME shows the notification. So
+        neither was a Linux problem. On Ubuntu GNOME, the ChatGPT app's
+        own Codex connected and wrote a summary.)*
   - [x] Release and updates: a Linux job in the release workflow (x86-64
         and Arm on Ubuntu 22.04) signs each package for the updater;
         `latest.json` has an entry per package (`linux-x86_64-deb` and so
