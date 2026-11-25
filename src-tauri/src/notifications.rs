@@ -242,17 +242,23 @@ mod linux_state {
     }
 
     impl Shown {
-        /// The service `owner` numbered a notification `id`.
-        pub fn posted(&mut self, owner: &str, id: u32, thread: Option<ThreadId>) {
+        /// The service `owner` numbered a notification `id`. Returns the
+        /// ones pushed out of the list to make room, which the caller closes
+        /// (a notification forgotten while still shown couldn't be taken
+        /// back).
+        pub fn posted(&mut self, owner: &str, id: u32, thread: Option<ThreadId>) -> Vec<Key> {
             let key = (owner.to_string(), id);
             if self.conversations.insert(key.clone(), thread).is_none() {
                 self.order.push_back(key);
             }
+            let mut evicted = Vec::new();
             while self.order.len() > REMEMBERED {
                 if let Some(oldest) = self.order.pop_front() {
                     self.conversations.remove(&oldest);
+                    evicted.push(oldest);
                 }
             }
+            evicted
         }
 
         /// The conversation of a notification, if it's the app's.
@@ -303,9 +309,17 @@ mod linux_state {
         #[test]
         fn closed_ones_are_forgotten_and_the_list_has_a_limit() {
             let mut s = Shown::default();
+            let mut evicted = Vec::new();
             for id in 1..=(REMEMBERED as u32 + 10) {
-                s.posted(":1.10", id, None);
+                evicted.extend(s.posted(":1.10", id, None));
             }
+            // Those pushed out are handed back, to be closed.
+            assert_eq!(
+                evicted,
+                (1..=10)
+                    .map(|id| (":1.10".to_string(), id))
+                    .collect::<Vec<_>>()
+            );
             assert_eq!(s.keys().len(), REMEMBERED);
             assert_eq!(s.keys()[0], (":1.10".to_string(), 11));
             s.closed(":1.10", 11);
@@ -508,8 +522,19 @@ mod linux {
         /// rest when the service answers. Asked for apart from the post
         /// queue, so it is never lost to a full one.
         pub fn clear_all(&self, deadline: Duration) {
+            let round = self.ask_take_back();
+            self.wait_taken_back(round, deadline);
+        }
+
+        /// Asks for a take-back without waiting: its round.
+        pub fn ask_take_back(&self) -> u64 {
+            self.rounds.asked.fetch_add(1, Ordering::AcqRel) + 1
+        }
+
+        /// Waits at most `deadline` for take-back `round` (at once when the
+        /// worker has ended).
+        pub fn wait_taken_back(&self, round: u64, deadline: Duration) {
             let started = Instant::now();
-            let round = self.rounds.asked.fetch_add(1, Ordering::AcqRel) + 1;
             let mut done = self.rounds.done.lock().unwrap();
             while *done < round {
                 let left = deadline.saturating_sub(started.elapsed());
@@ -547,7 +572,10 @@ mod linux {
                 self.take_back_if_asked();
                 match queue.recv_timeout(TICK) {
                     Ok(post) => {
-                        // Queued before a take-back: never shown.
+                        // A take-back asked for while waiting is done first,
+                        // so it can't close a post queued after it (seventh
+                        // review); then a post queued before it is dropped.
+                        self.take_back_if_asked();
                         if post.round < self.rounds.asked.load(Ordering::Acquire) {
                             continue;
                         }
@@ -557,6 +585,10 @@ mod linux {
                     Err(RecvTimeoutError::Disconnected) => break,
                 }
             }
+            // Ended (the connection is gone): no take-back will be done, so
+            // anyone waiting for one, or asking later, returns at once.
+            *self.rounds.done.lock().unwrap() = u64::MAX;
+            self.rounds.changed.notify_all();
         }
 
         /// A call error other than the service's own answer means the
@@ -597,10 +629,14 @@ mod linux {
                     if let (Some(owner), Ok(id)) =
                         (header.sender(), reply.body().deserialize::<u32>())
                     {
-                        self.shown
-                            .lock()
-                            .unwrap()
-                            .posted(owner.as_str(), id, notice.thread);
+                        let evicted =
+                            self.shown
+                                .lock()
+                                .unwrap()
+                                .posted(owner.as_str(), id, notice.thread);
+                        for (owner, id) in evicted {
+                            self.close(&owner, id);
+                        }
                     }
                 }
                 Err(e) => {
@@ -624,31 +660,35 @@ mod linux {
             self.rounds.changed.notify_all();
         }
 
-        /// Each notification is taken back from the service that numbered
-        /// it. One the service refused stays listed for the next try; one
-        /// whose service is gone is forgotten.
+        /// Takes one notification back from the service that numbered it.
+        /// False when the connection is gone. One the service refused stays
+        /// listed for the next try; one whose service is gone is forgotten.
+        fn close(&self, owner: &str, id: u32) -> bool {
+            let closed = self.connection.call_method(
+                Some(owner),
+                PATH,
+                Some(NAME),
+                "CloseNotification",
+                &(id,),
+            );
+            match closed {
+                Ok(_) => self.shown.lock().unwrap().closed(owner, id),
+                Err(zbus::Error::MethodError(name, ..))
+                    if name.as_str() == "org.freedesktop.DBus.Error.ServiceUnknown" =>
+                {
+                    self.shown.lock().unwrap().gone(owner);
+                }
+                Err(e) => return !self.lost(&e),
+            }
+            true
+        }
+
+        /// Takes back every notification shown.
         fn clear_all(&self) {
             let keys = self.shown.lock().unwrap().keys();
             for (owner, id) in keys {
-                let closed = self.connection.call_method(
-                    Some(owner.as_str()),
-                    PATH,
-                    Some(NAME),
-                    "CloseNotification",
-                    &(id,),
-                );
-                match closed {
-                    Ok(_) => self.shown.lock().unwrap().closed(&owner, id),
-                    Err(zbus::Error::MethodError(name, ..))
-                        if name.as_str() == "org.freedesktop.DBus.Error.ServiceUnknown" =>
-                    {
-                        self.shown.lock().unwrap().gone(&owner);
-                    }
-                    Err(e) => {
-                        if self.lost(&e) {
-                            return;
-                        }
-                    }
+                if !self.close(&owner, id) {
+                    return;
                 }
             }
         }
@@ -665,13 +705,17 @@ mod linux {
     }
 
     fn service(app: &AppHandle) -> Option<Arc<Service>> {
-        let mut current = SERVICE.lock().unwrap();
-        if let Some(service) = current.as_ref().filter(|s| s.alive()) {
-            return Some(Arc::clone(service));
+        {
+            let mut current = SERVICE.lock().unwrap();
+            if let Some(service) = current.as_ref().filter(|s| s.alive()) {
+                return Some(Arc::clone(service));
+            }
+            if let Some(dead) = current.take() {
+                dead.retire();
+            }
         }
-        if let Some(dead) = current.take() {
-            dead.retire();
-        }
+        // Connected without holding the lock, so a slow bus can't hold up
+        // taking notifications back (seventh review).
         let app = app.clone();
         let connection = zbus::blocking::Connection::session().ok()?;
         let service = Arc::new(
@@ -685,6 +729,12 @@ mod linux {
             })
             .ok()?,
         );
+        let mut current = SERVICE.lock().unwrap();
+        if let Some(other) = current.as_ref().filter(|s| s.alive()) {
+            // Another notification connected meanwhile: keep that one.
+            service.retire();
+            return Some(Arc::clone(other));
+        }
         *current = Some(Arc::clone(&service));
         Some(service)
     }
@@ -982,6 +1032,61 @@ mod linux_tests {
         assert_eq!(fake.asked.load(Ordering::Acquire), 1);
         assert!(service.shown().is_empty());
         assert!(service.alive());
+    }
+
+    #[test]
+    fn a_post_queued_after_a_take_back_is_asked_for_stays_shown() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        let _server = serve(&bus, &fake);
+        let (service, _clicks) = connect(&bus);
+        // The worker is idle, waiting for a post, when a take-back is
+        // asked for and a post queued right after it.
+        std::thread::sleep(Duration::from_millis(200));
+        let round = service.ask_take_back();
+        service.post(notice(7));
+        service.wait_taken_back(round, Duration::from_secs(5));
+        eventually("the new one is shown", || service.shown() == [1]);
+        std::thread::sleep(Duration::from_millis(300));
+        assert!(fake.closed.lock().unwrap().is_empty(), "it was taken back");
+        assert_eq!(service.shown(), [1]);
+    }
+
+    #[test]
+    fn one_pushed_out_of_the_list_is_closed_not_just_forgotten() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        let _server = serve(&bus, &fake);
+        let (service, _clicks) = connect(&bus);
+        let limit = super::linux_state::REMEMBERED;
+        for n in 0..=limit {
+            service.post(notice(n as i64));
+            // One at a time, so none is dropped from a full queue.
+            eventually("posted", || fake.issued.lock().unwrap().len() == n + 1);
+        }
+        eventually("the oldest is closed at the service", || {
+            *fake.closed.lock().unwrap() == [1]
+        });
+        assert_eq!(service.shown().len(), limit);
+    }
+
+    #[test]
+    fn a_take_back_returns_at_once_when_the_connection_is_gone() {
+        let Some(bus) = bus() else { return };
+        let _server = serve(&bus, &Fake::default());
+        let (service, _clicks) = connect(&bus);
+        service.post(notice(42));
+        eventually("posted", || service.shown() == [1]);
+        // The bus goes away: the listeners and the worker end.
+        drop(bus);
+        eventually("the service is gone", || !service.alive());
+        std::thread::sleep(Duration::from_millis(200));
+        let started = Instant::now();
+        service.clear_all(Duration::from_secs(10));
+        assert!(
+            started.elapsed() < Duration::from_secs(1),
+            "waited out the deadline"
+        );
     }
 
     #[test]
