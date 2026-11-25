@@ -362,13 +362,24 @@ these rules. Keep it passing.
 - OAuth: desktop loopback redirect + PKCE. Scopes: `SCOPES` in
   `crates/core/src/auth/oauth.rs` (`gmail.modify` already covers drafts and
   sending, so `gmail.compose` is not asked for).
-- The OAuth client is an External app left in **Testing**, with each
-  account's address added as a test user (decided with the owner,
-  2026-10-29; see the Architecture decisions: publishing needs a homepage
-  and privacy URL and shows scarier screens). Each account clicks Continue
-  past Google's "hasn't verified this app" warning once, and Google ends
-  each account's sign-in after seven days while in Testing. Each account records which OAuth client it used
-  (`accounts.oauth_client`) so a second, Internal client can be added later.
+- Two kinds of OAuth client, both External:
+  - The owner's own client (the one their copy of the app uses) and the
+    clients people bring themselves (onboarding's own-credentials setup)
+    stay in **Testing**, with each account's address added as a test user
+    (decided with the owner, 2026-10-29; see the Architecture decisions:
+    publishing needs a homepage and privacy URL and shows scarier screens).
+    Each account clicks Continue past Google's "hasn't verified this app"
+    warning once, and Google ends each account's sign-in after seven days,
+    which is expected, not a bug.
+  - Mailboat's own client, in a separate Google Cloud project, is the one
+    under Google's verification for the paid version
+    (`docs/GOOGLE-VERIFICATION.md`). It has been In production since
+    2026-11-07: no test users and no seven-day limit, but unverified until
+    Google approves (the warning still shows, and at most 100 accounts can
+    ever grant it the permissions over the project's lifetime). While Google reviews it, never switch it back to Testing or
+    change its user type, scopes or logo.
+  Each account records which OAuth client it used (`accounts.oauth_client`)
+  so a second, Internal client can be added later.
 - Credentials are never committed. The app reads Google's downloaded client
   JSON from `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`
   (Windows: `%APPDATA%\com.nwoolls.mailboat\`; Linux:
@@ -417,10 +428,10 @@ the same day each month: the Mac in the repository, Windows and Linux in
 their VMs with only Codex installed and signed in, using a test program
 built on the Mac (`scripts/windows.sh codex-review`, `scripts/linux.sh
 codex-review`; copy the file into the VM and run it there with the same
-arguments as below, after `--`). If the first Windows and Linux reviews
-record exactly the Mac's lists (`codex_review::differences` names any
-difference), the owner may decide to run only the live `codex_cannot_*`
-tests there.
+arguments as below, after `--`). If Windows or Linux records exactly the
+Mac's lists (`codex_review::differences` names any difference, and any
+system with no review yet), the owner may decide to run only the live
+`codex_cannot_*` tests there.
 
 `bun run check` (and `check:quick`) stops when a system's review is over
 31 days old, on the owner's machine (an empty, uncommitted

@@ -229,6 +229,11 @@ pub async fn download(
     std::fs::create_dir_all(&dir).map_err(|e| io_error("create the attachment folder", e))?;
     let path = dir.join(safe_filename(&a.filename));
     std::fs::write(&path, &bytes).map_err(|e| io_error("save the attachment", e))?;
+    // Marked here too, not only when it is opened or saved: a file that is
+    // only forwarded or shown inline still sits in the cache folder, where
+    // it could be opened from Explorer. Best effort.
+    #[cfg(windows)]
+    let _ = mark_of_the_web(&path);
     // The account may have been removed (or everything deleted) while the
     // bytes were coming: nothing may keep what it no longer has a row for.
     let still_there = store::attachment_ref(&db.conn(), a.id).is_ok();
@@ -311,6 +316,31 @@ pub async fn inline_images(
 
 fn io_error(what: &str, e: std::io::Error) -> CoreError {
     CoreError::Other(format!("could not {what}: {e}"))
+}
+
+/// What a browser writes to a download's `Zone.Identifier` stream: zone 3,
+/// the internet.
+#[cfg(windows)]
+const MARK_OF_THE_WEB: &str = "[ZoneTransfer]\r\nZoneId=3\r\n";
+
+/// The file's `Zone.Identifier` alternate data stream.
+#[cfg(windows)]
+fn zone_identifier(path: &Path) -> PathBuf {
+    let mut stream = path.as_os_str().to_owned();
+    stream.push(":Zone.Identifier");
+    stream.into()
+}
+
+/// Gives a saved attachment Windows' "Mark of the Web", as browsers do for
+/// their downloads, so Windows and the apps that read it (SmartScreen,
+/// Office's Protected View) can apply their protections for files from the
+/// internet, as configured. It is an NTFS alternate data stream on the file;
+/// a volume without streams (FAT32) refuses it, so callers treat it as best
+/// effort. macOS's quarantine flag does the same job there
+/// (`src-tauri/src/files.rs`).
+#[cfg(windows)]
+pub fn mark_of_the_web(path: &Path) -> std::io::Result<()> {
+    std::fs::write(zone_identifier(path), MARK_OF_THE_WEB)
 }
 
 #[cfg(test)]
@@ -539,5 +569,22 @@ mod tests {
         std::fs::write(dir.join("notes"), b"3").unwrap();
         assert_eq!(unique_path(&dir, "notes"), dir.join("notes (1)"));
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// A saved attachment carries the Mark of the Web, zone 3 (the
+    /// internet), and the file itself is untouched.
+    #[cfg(windows)]
+    #[test]
+    fn a_saved_attachment_is_marked_as_from_the_internet() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("invoice.pdf");
+        std::fs::write(&file, b"made-up").unwrap();
+        mark_of_the_web(&file).unwrap();
+        // The stream named as Windows documents it, not through the helper
+        // the writer uses, so a misspelled name would fail here.
+        let stream = format!("{}:Zone.Identifier", file.display());
+        let mark = std::fs::read_to_string(stream).unwrap();
+        assert_eq!(mark, "[ZoneTransfer]\r\nZoneId=3\r\n");
+        assert_eq!(std::fs::read(&file).unwrap(), b"made-up");
     }
 }

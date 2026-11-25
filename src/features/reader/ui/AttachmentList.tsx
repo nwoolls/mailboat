@@ -26,7 +26,8 @@ type Verb = "open" | "preview" | "save";
  * A message's attachments as chips under its body. Click to open with the
  * default app; the eye shows Quick Look, the arrow saves to Downloads.
  * Rust downloads each file once (with the message's own account) and
- * marks it as downloaded from the internet, so macOS checks it first.
+ * marks it as downloaded from the internet (macOS's quarantine flag,
+ * Windows' Mark of the Web), as browsers do.
  */
 export function AttachmentList({ attachments }: { attachments: Attachment[] }) {
   const run = useMutation({
