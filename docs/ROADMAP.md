@@ -7370,7 +7370,7 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       cover it; still optional)*
       *(moved here from 0.3.0 → Security assessment (CASA), owner, 2026-11-21: CASA work for after the stable 0.3.0)*
 
-- [ ] The evidence for the lab, gathered once the fixes are in, and kept
+- [x] The evidence for the lab, gathered once the fixes are in, and kept
       outside the repository: an SSL Labs report for getmailboat.app, the
       DNS records (subdomain takeover, CASA 6.4.1), the dependency scans
       and SBOM, the signing and binary-flag output, a sync-log sample from
@@ -7383,14 +7383,38 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       the static scan.
       *(Added 2026-11-18, from the lab's answers: the Windows test
       machine's disk-encryption status; and how the reviewer signs in for
-      the manual review, since the OAuth client is in Testing (their
-      Google account added as a test user, and the client's file shared
-      with them in a way agreed with the lab); and ask the lab whether a
+      the manual review: the OAuth client of the project under Google's
+      verification has been in production since 2026-11-07, so it needs no
+      test-user entry; the reviewer signs in past the "unverified app"
+      screen with a Google account allowed to grant access to it (a
+      Workspace administrator can block third-party apps, and until Google
+      approves the app at most 100 accounts can ever grant it these
+      permissions over the project's lifetime), and the client's file is shared
+      with them in a way agreed with the lab (corrected 2026-11-25: this
+      note first said Testing); and ask the lab whether a
       Windows machine without disk encryption fails its check, or whether
       documenting it is enough (see "Encrypt the local cache at rest"
       under "Later / unscheduled"). The certificate's details are sent by
       the owner and not kept here.)*
       *(moved here from 0.3.0 → Security assessment (CASA), owner, 2026-11-21: CASA work for after the stable 0.3.0)*
+      *(2026-11-25: done. The owner bought the lab's plan and submitted
+      the self-assessment, every test case that asks for the developer's
+      evidence, with answers checked against the code of the 0.3.1 release
+      and linked to it, plus fresh dependency scans of 0.3.1. The lab's
+      portal counts this as the first of two verification attempts; its
+      own scans don't use one. The remaining test cases are the lab's web
+      scan and TLS test. The portal didn't ask for the signing and
+      binary-flag output; it stays ready with the rest, outside the
+      repository)*
+
+- [ ] The lab's review, after the submission *(2026-11-25)*: answer the
+      analyst's questions; agree how the reviewer gets and signs in to the
+      app (the download, and the OAuth client's file through a private,
+      expiring link, never in an email); ask what the lab hasn't answered
+      yet (a Windows machine without disk encryption, the Windows
+      installer's 32-bit NSIS programs, wiping tokens from memory); then,
+      with the letter of validation, reply to Google's verification email
+      (`docs/GOOGLE-VERIFICATION.md`).
 
 ## Later / unscheduled
 

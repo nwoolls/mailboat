@@ -134,9 +134,11 @@ verified; it's paperwork and waiting (weeks to months).
       first due 2027-02-12). The submission asked to be exempt, since
       mail stays on the device and AI and MCP only send it where the user
       chooses; Google didn't grant it
-- Until approved, an unverified client (in Testing or in production)
-      allows 100 users in total (every account that ever signs in counts;
-      the count can't be reset): enough for the beta
+- Until approved, an unverified app (in Testing or in production)
+      allows 100 users over the Google Cloud project's lifetime, across
+      all its OAuth clients (every account that ever grants the
+      permissions counts, even after it revokes them; the count can't be
+      reset): enough for the beta
 
 ### Private beta (up to 100 users, free)
 
