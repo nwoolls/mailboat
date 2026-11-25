@@ -323,12 +323,20 @@ pub fn bwrap_args(
     args
 }
 
-/// An error when Codex's folder (resolved) is inside one of the app's own
-/// folders: the fence would hide it, and Codex couldn't sign in.
-pub fn codex_home_problem(codex_home: &Path, hidden: &[PathBuf]) -> Result<()> {
-    if hidden.iter().any(|h| codex_home.starts_with(h)) {
+/// An error when Codex's folder and one of the app's own folders overlap,
+/// either way round, by where Codex's folder really is or where Codex looks
+/// for it. Inside an app folder, the fence would hide Codex's sign-in; around
+/// one, binding Codex's folder would show the app's data under a second
+/// path. Rather than handle each layout, the fence refuses them all (fourth
+/// and fifth reviews of the Linux fence).
+pub fn codex_home_problem(codex_home: &Path, codex_mount: &Path, hidden: &[PathBuf]) -> Result<()> {
+    let overlaps = |a: &Path, b: &Path| a.starts_with(b) || b.starts_with(a);
+    if hidden
+        .iter()
+        .any(|h| overlaps(codex_home, h) || overlaps(codex_mount, h))
+    {
         return Err(CoreError::Ai(
-            "Codex's folder (CODEX_HOME) is inside the app's own folder, so it can't be fenced in."
+            "Codex's folder (CODEX_HOME) and the app's own folders overlap, so it can't be fenced in."
                 .into(),
         ));
     }
@@ -713,19 +721,23 @@ fn fence(program: &Path, workdir: Option<&Path>) -> Result<Option<Fence>> {
     }
     let real = |p: PathBuf| std::fs::canonicalize(&p).unwrap_or(p);
     let home = std::env::var_os("HOME").map(|h| real(PathBuf::from(h)));
-    // Codex's folder by where it really is (`~/.codex` too, which may be a
-    // link), and where Codex will look for it: the given path, its parent
-    // resolved (third review of the Linux fence).
-    let codex_given = std::env::var_os("CODEX_HOME")
-        .map(PathBuf::from)
-        .or_else(|| home.as_ref().map(|h| h.join(".codex")));
-    let codex_mount = codex_given
-        .as_ref()
-        .map(|c| match (c.parent(), c.file_name()) {
+    // On Linux, Codex's folder by where it really is (`~/.codex` too, which
+    // may be a link), and where Codex will look for it (the given path, its
+    // parent resolved), which the fence binds it onto. The Mac's profile
+    // keeps the folder as given, as it always has.
+    #[cfg(target_os = "linux")]
+    let (codex_home, codex_mount) = {
+        let given = std::env::var_os("CODEX_HOME")
+            .map(PathBuf::from)
+            .or_else(|| home.as_ref().map(|h| h.join(".codex")));
+        let mount = given.as_ref().map(|c| match (c.parent(), c.file_name()) {
             (Some(parent), Some(name)) => real(parent.to_path_buf()).join(name),
             _ => c.clone(),
         });
-    let codex_home = codex_given.map(real);
+        (given.map(real), mount)
+    };
+    #[cfg(not(target_os = "linux"))]
+    let codex_home = std::env::var_os("CODEX_HOME").map(|c| real(PathBuf::from(c)));
     let path_dirs: Vec<PathBuf> = search_dirs().into_iter().map(real).collect();
     let installers: Vec<PathBuf> = home
         .iter()
@@ -763,7 +775,7 @@ fn fence(program: &Path, workdir: Option<&Path>) -> Result<Option<Fence>> {
         if let Some(mount) = codex_mount {
             dirs.codex_mount = mount;
         }
-        codex_home_problem(&dirs.codex_home, &dirs.hidden)?;
+        codex_home_problem(&dirs.codex_home, &dirs.codex_mount, &dirs.hidden)?;
         // Without `$XDG_RUNTIME_DIR`, where systemd puts it: under this
         // user's ID, which owns this process's own `/proc` entry.
         let runtime = std::env::var_os("XDG_RUNTIME_DIR")
@@ -1083,25 +1095,34 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
     }
 
-    /// Code review (Linux fence, round 3): Codex's folder inside the app's
-    /// own is refused, judged by where it really is, so a `~/.codex` that
-    /// links into the app's data is refused too.
+    /// Code review (Linux fence, rounds 4 and 5): Codex's folder and the
+    /// app's own may not overlap either way round, judged by where Codex's
+    /// folder really is (a link into the app's data) and where Codex looks
+    /// for it; apart is fine.
     #[cfg(unix)]
     #[test]
-    fn codexs_folder_inside_the_apps_own_is_refused_even_through_a_link() {
-        let root = std::env::temp_dir().join(format!("codex-in-app-{}", fastrand::u64(..)));
+    fn codexs_folder_and_the_apps_own_may_not_overlap_either_way() {
+        let root = std::env::temp_dir().join(format!("codex-overlap-{}", fastrand::u64(..)));
         let data = root.join("share/app.id");
         let inside = data.join("codex");
         std::fs::create_dir_all(&inside).unwrap();
-        let link = root.join("home/.codex");
-        std::fs::create_dir_all(link.parent().unwrap()).unwrap();
+        let home = root.join("home");
+        std::fs::create_dir_all(&home).unwrap();
+        let link = home.join(".codex");
         std::os::unix::fs::symlink(&inside, &link).unwrap();
-        let hidden = vec![std::fs::canonicalize(&data).unwrap()];
-        let resolved = std::fs::canonicalize(&link).unwrap();
-        assert!(codex_home_problem(&resolved, &hidden).is_err());
-        assert!(
-            codex_home_problem(&std::fs::canonicalize(root.join("home")).unwrap(), &hidden).is_ok()
-        );
+        let real = |p: &Path| std::fs::canonicalize(p).unwrap();
+        let hidden = vec![real(&data)];
+        let mount = real(&home).join(".codex");
+        // Inside the app's folder, through a link.
+        assert!(codex_home_problem(&real(&link), &mount, &hidden).is_err());
+        // Around it: a folder that holds the app's data.
+        assert!(codex_home_problem(&real(&root.join("share")), &mount, &hidden).is_err());
+        // Where Codex looks is inside the app's folder.
+        assert!(codex_home_problem(&real(&home), &real(&data).join("x"), &hidden).is_err());
+        // Apart.
+        let apart = root.join("codex");
+        std::fs::create_dir_all(&apart).unwrap();
+        assert!(codex_home_problem(&real(&apart), &mount, &hidden).is_ok());
         let _ = std::fs::remove_dir_all(&root);
     }
 
