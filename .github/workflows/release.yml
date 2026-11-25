@@ -440,7 +440,10 @@ jobs:
           expected=("${packages[@]}" "${name}_${version}_${sbom}.AppImage.cdx.json")
           # Exactly the files this build makes, and nothing else, so nothing
           # unexpected is signed or carried on to publish.
-          diff <(printf '%s\n' "${expected[@]}" | sort) <(ls -1 release-files | sort)
+          # Every top-level entry, hidden ones included, with its type: each
+          # expected one a regular file (f), and nothing more.
+          diff <(printf '%s f\n' "${expected[@]}" | sort) \
+            <(find release-files -mindepth 1 -maxdepth 1 -printf '%f %y\n' | sort)
           mkdir -p signed
           for f in "${expected[@]}"; do cp "release-files/$f" signed/; done
           for f in "${packages[@]}"; do

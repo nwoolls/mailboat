@@ -50,7 +50,9 @@ function fail(message: string): never {
 }
 
 function run(command: string, args: string[], cwd?: string): { ok: boolean; out: string } {
-  const r = spawnSync(command, args, { encoding: "utf8", cwd, maxBuffer: 64 * 1024 * 1024 });
+  // The C locale, so dpkg's wording is the one `owned` reads.
+  const env = { ...process.env, LC_ALL: "C" };
+  const r = spawnSync(command, args, { encoding: "utf8", cwd, env, maxBuffer: 64 * 1024 * 1024 });
   return { ok: r.status === 0, out: r.stdout ?? "" };
 }
 
@@ -86,6 +88,7 @@ function bundledFiles(dir: string): string[] {
   return found;
 }
 
+const hostArch = run("dpkg", ["--print-architecture"]).out.trim();
 const byPackage = new Map<string, { owner: Owned; files: string[] }>();
 const tools: Bundled[] = [];
 const sha256 = (path: string) => createHash("sha256").update(readFileSync(path)).digest("hex");
@@ -98,14 +101,15 @@ for (const file of bundledFiles(root).toSorted()) {
   ];
   let found: Owned | null;
   try {
-    found = pickOwner(candidates, `/${file}`);
+    found = pickOwner(candidates, `/${file}`, hostArch);
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
   }
   if (found) {
-    const entry = byPackage.get(found.package) ?? { owner: found, files: [] };
+    const key = `${found.package}:${found.arch ?? ""}`;
+    const entry = byPackage.get(key) ?? { owner: found, files: [] };
     entry.files.push(file);
-    byPackage.set(found.package, entry);
+    byPackage.set(key, entry);
   } else if (TOOLS.has(file)) {
     tools.push({
       package: null,
@@ -119,10 +123,14 @@ for (const file of bundledFiles(root).toSorted()) {
   }
 }
 
-const bundled: Bundled[] = [...byPackage].map(([pkg, { owner, files }]) => {
+const bundled: Bundled[] = [...byPackage.values()].map(({ owner, files }) => {
+  const pkg = owner.package;
   const query = owner.arch ? `${pkg}:${owner.arch}` : pkg;
-  const installed = run("dpkg-query", ["-W", "-f=${Version}", query]).out.trim();
-  if (!installed) fail(`no installed version of ${query}`);
+  const [status, installed] = run("dpkg-query", ["-W", "-f=${db:Status-Status}\t${Version}", query])
+    .out.trim()
+    .split("\t");
+  if (status !== "installed" || !installed)
+    fail(`${query} isn't installed (${status || "unknown"})`);
   const copyright = `/usr/share/doc/${pkg}/copyright`;
   const licenses = existsSync(copyright) ? copyrightLicenses(readFileSync(copyright, "utf8")) : [];
   return { package: pkg, arch: owner.arch, version: installed, licenses, files };
@@ -136,7 +144,7 @@ tools.push({
   sha256: sha256(runtime),
 });
 
-const arch = run("dpkg", ["--print-architecture"]).out.trim();
+const arch = hostArch;
 mkdirSync(out, { recursive: true });
 const file = join(out, `${brand.name}_${version}_linux_${arch}.AppImage.cdx.json`);
 const document = appimageBom({

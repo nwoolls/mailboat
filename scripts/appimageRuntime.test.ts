@@ -25,6 +25,7 @@ function elf(code: number[], digest: number[]): Uint8Array {
   );
   const section = (i: number, name: number, offset: number, size: number) => {
     view.setUint32(shoff + i * 64, name, true);
+    view.setUint32(shoff + i * 64 + 4, 1, true);
     view.setBigUint64(shoff + i * 64 + 0x18, BigInt(offset), true);
     view.setBigUint64(shoff + i * 64 + 0x20, BigInt(size), true);
   };
@@ -34,7 +35,9 @@ function elf(code: number[], digest: number[]): Uint8Array {
   return b;
 }
 
-const withFiles = (runtime: Uint8Array, files: number[]) => new Uint8Array([...runtime, ...files]);
+/** An AppImage: a runtime, then a file system (SquashFS's magic, `hsqs`). */
+const withFiles = (runtime: Uint8Array, files: number[] = [0x68, 0x73, 0x71, 0x73, 0]) =>
+  new Uint8Array([...runtime, ...files]);
 
 describe("the AppImage's runtime", () => {
   const pinned = elf([1, 2, 3, 4], [0, 0, 0, 0]);
@@ -45,20 +48,33 @@ describe("the AppImage's runtime", () => {
   });
 
   it("is the pinned one, whatever appimagetool wrote into its digest section", () => {
-    const built = withFiles(elf([1, 2, 3, 4], [9, 9, 9, 9]), [0x68, 0x73, 0x71, 0x73]);
+    const built = withFiles(elf([1, 2, 3, 4], [9, 9, 9, 9]));
     expect(runtimeProblem(built, pinned)).toBeNull();
   });
 
   it("isn't when its code differs, or its length", () => {
-    expect(runtimeProblem(withFiles(elf([1, 2, 3, 5], [0, 0, 0, 0]), [0]), pinned)).toMatch(
+    expect(runtimeProblem(withFiles(elf([1, 2, 3, 5], [0, 0, 0, 0])), pinned)).toMatch(
       /differs .* at byte 67/,
     );
-    expect(runtimeProblem(withFiles(elf([1, 2, 3, 4, 5], [0, 0, 0, 0]), [0]), pinned)).toMatch(
-      /bytes/,
-    );
+    expect(runtimeProblem(withFiles(elf([1, 2, 3, 4, 5], [0, 0, 0, 0])), pinned)).toMatch(/bytes/);
   });
 
-  it("refuses what isn't a 64-bit ELF", () => {
-    expect(() => elfEnd(new Uint8Array([0x23, 0x21]))).toThrow(/ELF/);
+  it("isn't when nothing follows it: an AppImage cut off after its runtime", () => {
+    expect(runtimeProblem(new Uint8Array(pinned), pinned)).toMatch(/no file system/);
+    expect(runtimeProblem(withFiles(pinned, [0, 0, 0, 0]), pinned)).toMatch(/no file system/);
+  });
+
+  it("refuses a file that can't be read as an ELF, saying why", () => {
+    expect(runtimeProblem(new Uint8Array([0x23, 0x21]), pinned)).toMatch(/too short/);
+    // Section headers said to be past the end of the file.
+    const lying = withFiles(pinned);
+    new DataView(lying.buffer).setBigUint64(0x28, BigInt(lying.length), true);
+    expect(runtimeProblem(lying, pinned)).toMatch(/past the end/);
+    // A section that runs past the end.
+    const long = new Uint8Array(pinned);
+    const shoff = Number(new DataView(long.buffer).getBigUint64(0x28, true));
+    new DataView(long.buffer).setBigUint64(shoff + 64 + 0x20, 10n ** 9n, true);
+    expect(() => sections(long)).toThrow(/past the end/);
+    expect(runtimeProblem(withFiles(pinned), long)).toMatch(/pinned runtime can't be read/);
   });
 });

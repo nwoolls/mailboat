@@ -18,14 +18,21 @@ function u64(b: Uint8Array, at: number): number {
 }
 
 function header(b: Uint8Array) {
+  if (b.length < 64) throw new Error("too short for an ELF header");
   const elf = b[0] === 0x7f && b[1] === 0x45 && b[2] === 0x4c && b[3] === 0x46;
   if (!elf || b[4] !== 2 || b[5] !== 1) throw new Error("not a 64-bit little-endian ELF");
-  return {
+  const h = {
     shoff: u64(b, 0x28),
     shentsize: u16(b, 0x3a),
     shnum: u16(b, 0x3c),
     shstrndx: u16(b, 0x3e),
   };
+  if (h.shentsize !== 64) throw new Error(`section headers of ${h.shentsize} bytes, not 64`);
+  if (h.shnum === 0 || h.shstrndx >= h.shnum) throw new Error("no usable section names");
+  if (h.shoff < 64 || h.shoff + h.shentsize * h.shnum > b.length) {
+    throw new Error("the section headers run past the end of the file");
+  }
+  return h;
 }
 
 /**
@@ -43,13 +50,23 @@ export function sections(b: Uint8Array): Section[] {
   const at = (i: number) => h.shoff + i * h.shentsize;
   const names = at(h.shstrndx);
   const namesOffset = u64(b, names + 0x18);
+  const namesEnd = namesOffset + u64(b, names + 0x20);
+  if (namesEnd > b.length) throw new Error("the section names run past the end of the file");
   const list: Section[] = [];
   for (let i = 0; i < h.shnum; i++) {
     const s = at(i);
     let end = namesOffset + u32(b, s);
+    if (end >= namesEnd) throw new Error(`section ${i}'s name is outside the names`);
     let name = "";
-    while (b[end] !== 0 && end < b.length) name += String.fromCharCode(b[end++]);
-    list.push({ name, offset: u64(b, s + 0x18), size: u64(b, s + 0x20) });
+    while (end < namesEnd && b[end] !== 0) name += String.fromCharCode(b[end++]);
+    const offset = u64(b, s + 0x18);
+    const size = u64(b, s + 0x20);
+    // A section with no bytes in the file (.bss) may point anywhere.
+    const type = u32(b, s + 0x04);
+    if (type !== 8 && offset + size > b.length) {
+      throw new Error(`section ${name || i} runs past the end of the file`);
+    }
+    list.push({ name, offset, size });
   }
   return list;
 }
@@ -57,19 +74,37 @@ export function sections(b: Uint8Array): Section[] {
 /** What appimagetool writes into the runtime after copying it. */
 export const WRITTEN_SECTIONS = [".digest_md5", ".upd_info", ".sha256_sig", ".sig_key"];
 
+/** SquashFS's magic, which the AppImage's file system starts with. */
+const SQUASHFS = [0x68, 0x73, 0x71, 0x73];
+
 /**
  * Why the AppImage's runtime isn't `runtime`, or null when it is: the same
- * length, and the same bytes outside the sections appimagetool fills in.
+ * length, the same bytes outside the sections appimagetool fills in (taken
+ * from the pinned runtime, not from the AppImage), and the file system
+ * right after it. A file that can't be read as an ELF is a problem too.
  */
 export function runtimeProblem(appimage: Uint8Array, runtime: Uint8Array): string | null {
-  const length = elfEnd(runtime);
-  if (elfEnd(appimage) !== length) {
-    return `its runtime is ${elfEnd(appimage)} bytes, the pinned one ${length}`;
+  let length: number;
+  let ours: number;
+  let skip: Section[];
+  try {
+    length = elfEnd(runtime);
+    skip = sections(runtime).filter((s) => WRITTEN_SECTIONS.includes(s.name));
+  } catch (error) {
+    return `the pinned runtime can't be read: ${error instanceof Error ? error.message : error}`;
   }
-  const skip = sections(runtime).filter((s) => WRITTEN_SECTIONS.includes(s.name));
+  try {
+    ours = elfEnd(appimage);
+  } catch (error) {
+    return `its runtime can't be read: ${error instanceof Error ? error.message : error}`;
+  }
+  if (ours !== length) return `its runtime is ${ours} bytes, the pinned one ${length}`;
   for (let i = 0; i < length; i++) {
     if (skip.some((s) => i >= s.offset && i < s.offset + s.size)) continue;
     if (appimage[i] !== runtime[i]) return `its runtime differs from the pinned one at byte ${i}`;
+  }
+  if (!SQUASHFS.every((byte, i) => appimage[length + i] === byte)) {
+    return "no file system follows its runtime";
   }
   return null;
 }
