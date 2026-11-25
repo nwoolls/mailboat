@@ -5424,6 +5424,21 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [ ] Removing an account, or Delete all data, signs the app out of that
+      Google account on every computer, and neither confirmation says so
+      *(found 2026-11-25 testing Linux in the owner's VMs: Delete all data
+      on one signed out the Mac and the other VMs too)*. Removing asks
+      Google to revoke the sign-in (`tokens::remove_account`), and Google
+      revokes the whole grant for that OAuth client, which every copy of
+      the app using the same client shares. That's the intended outcome;
+      the dialogs say only "asks Google to end its sign-in". Add that it
+      signs the app out on other computers too (`RemoveAccountDialog`,
+      `DeleteAllDataDialog`).
+- [ ] Remove account's confirmation says it deletes the images "it
+      downloaded on this Mac" on Windows too (`RemoveAccountDialog`);
+      say "this computer", as Delete all data does *(found 2026-11-25,
+      while checking the wording above)*.
+
 - [x] A user took the toys for frozen *(user report, 2026-11-23; fixed the
       same day, branch `toybox-reduced-motion`)*: with the system's reduce
       motion setting on, the toys stay mostly still, and nothing in the app
