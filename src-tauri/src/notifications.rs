@@ -217,86 +217,100 @@ mod mac {
 }
 
 /// Linux's record of the notifications shown, apart from D-Bus so it is
-/// tested on every system.
+/// tested on every system. Each is kept under the unique bus name of the
+/// service that numbered it and that number: unique names are never used
+/// twice, so a restarted service (which numbers afresh) can't be mistaken
+/// for the old one, whatever order the bus's messages arrive in.
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod linux_state {
-    use std::collections::BTreeMap;
+    use std::collections::{HashMap, VecDeque};
 
     use mail_core::model::ThreadId;
 
     /// How many shown notifications are remembered. A service that never
     /// says one was closed would otherwise grow the list for as long as
-    /// the app runs; the oldest (lowest ID) is forgotten first.
-    const REMEMBERED: usize = 256;
+    /// the app runs; the oldest posted is forgotten first.
+    pub const REMEMBERED: usize = 256;
 
-    /// The notifications shown, and the service that numbered them: its
-    /// unique bus name. IDs mean something only to that service, so a
-    /// signal from any other sender is ignored, and a new owner of the
-    /// service's name (a restart, which numbers afresh) empties the list.
+    /// A notification: the service that numbered it, and its number.
+    pub type Key = (String, u32);
+
     #[derive(Default)]
-    pub struct State {
-        pub owner: Option<String>,
-        pub shown: BTreeMap<u32, Option<ThreadId>>,
+    pub struct Shown {
+        conversations: HashMap<Key, Option<ThreadId>>,
+        order: VecDeque<Key>,
     }
 
-    impl State {
-        /// The service's name now belongs to `owner` (None: to no one).
-        /// Only a change from the owner known, or to a new one, empties the
-        /// list: a late notice about an earlier owner changes nothing.
-        pub fn owner_changed(&mut self, old: Option<&str>, new: Option<&str>) {
-            let about_ours = old.is_some() && old == self.owner.as_deref();
-            let to_another = new.is_some() && new != self.owner.as_deref();
-            if about_ours || to_another {
-                self.owner = new.map(str::to_string);
-                self.shown.clear();
+    impl Shown {
+        /// The service `owner` numbered a notification `id`.
+        pub fn posted(&mut self, owner: &str, id: u32, thread: Option<ThreadId>) {
+            let key = (owner.to_string(), id);
+            if self.conversations.insert(key.clone(), thread).is_none() {
+                self.order.push_back(key);
+            }
+            while self.order.len() > REMEMBERED {
+                if let Some(oldest) = self.order.pop_front() {
+                    self.conversations.remove(&oldest);
+                }
             }
         }
 
-        /// A notification the service `owner` numbered `id`.
-        pub fn posted(&mut self, owner: &str, id: u32, thread: Option<ThreadId>) {
-            if self.owner.as_deref() != Some(owner) {
-                self.owner = Some(owner.to_string());
-                self.shown.clear();
+        /// The conversation of a notification, if it's the app's.
+        pub fn conversation(&self, owner: &str, id: u32) -> Option<Option<ThreadId>> {
+            self.conversations.get(&(owner.to_string(), id)).copied()
+        }
+
+        pub fn closed(&mut self, owner: &str, id: u32) {
+            let key = (owner.to_string(), id);
+            if self.conversations.remove(&key).is_some() {
+                self.order.retain(|k| k != &key);
             }
-            self.shown.insert(id, thread);
-            while self.shown.len() > REMEMBERED {
-                self.shown.pop_first();
-            }
+        }
+
+        /// A service left the bus: its notifications went with it.
+        pub fn gone(&mut self, owner: &str) {
+            self.conversations.retain(|(o, _), _| o != owner);
+            self.order.retain(|(o, _)| o != owner);
+        }
+
+        pub fn keys(&self) -> Vec<Key> {
+            self.order.iter().cloned().collect()
         }
     }
 
     #[cfg(test)]
-    mod state_tests {
-        use super::State;
+    mod tests {
+        use super::{Shown, REMEMBERED};
         use mail_core::model::ThreadId;
 
         #[test]
-        fn a_late_notice_about_an_earlier_owner_keeps_the_new_ones() {
-            let mut s = State::default();
+        fn a_restarted_service_numbering_afresh_is_never_taken_for_the_old_one() {
+            let mut s = Shown::default();
             s.posted(":1.10", 1, Some(ThreadId(42)));
-            // The service restarts as :1.20, and the app posts to it first.
+            // The service restarts as :1.20 and numbers from 1 again, and the
+            // bus's notice that :1.10 left comes after, or never.
             s.posted(":1.20", 1, Some(ThreadId(7)));
-            assert_eq!(s.shown.get(&1), Some(&Some(ThreadId(7))));
-            // Then the bus's notices arrive: the old owner left, the new came.
-            s.owner_changed(Some(":1.10"), None);
-            s.owner_changed(None, Some(":1.20"));
-            assert_eq!(s.shown.get(&1), Some(&Some(ThreadId(7))));
-            // The current owner leaving empties the list.
-            s.owner_changed(Some(":1.20"), None);
-            assert!(s.shown.is_empty() && s.owner.is_none());
+            assert_eq!(s.conversation(":1.10", 1), Some(Some(ThreadId(42))));
+            assert_eq!(s.conversation(":1.20", 1), Some(Some(ThreadId(7))));
+            s.gone(":1.10");
+            assert_eq!(s.conversation(":1.10", 1), None);
+            assert_eq!(s.conversation(":1.20", 1), Some(Some(ThreadId(7))));
+            // A notice about a service the app never posted to changes nothing.
+            s.gone(":1.99");
+            assert_eq!(s.keys(), [(":1.20".to_string(), 1)]);
         }
 
         #[test]
-        fn a_new_owner_empties_the_list_and_the_list_has_a_limit() {
-            let mut s = State::default();
-            for id in 1..=300 {
+        fn closed_ones_are_forgotten_and_the_list_has_a_limit() {
+            let mut s = Shown::default();
+            for id in 1..=(REMEMBERED as u32 + 10) {
                 s.posted(":1.10", id, None);
             }
-            assert_eq!(s.shown.len(), 256);
-            assert_eq!(s.shown.keys().next(), Some(&45));
-            s.owner_changed(Some(":1.10"), Some(":1.30"));
-            assert!(s.shown.is_empty());
-            assert_eq!(s.owner.as_deref(), Some(":1.30"));
+            assert_eq!(s.keys().len(), REMEMBERED);
+            assert_eq!(s.keys()[0], (":1.10".to_string(), 11));
+            s.closed(":1.10", 11);
+            assert_eq!(s.conversation(":1.10", 11), None);
+            assert_eq!(s.keys().len(), REMEMBERED - 1);
         }
     }
 }
@@ -304,6 +318,7 @@ mod linux_state {
 #[cfg(target_os = "linux")]
 mod linux {
     use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::mpsc::{self, Receiver, SyncSender};
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
 
@@ -316,47 +331,51 @@ mod linux {
     use zbus::zvariant::Value;
     use zbus::MatchRule;
 
-    use super::linux_state::State;
+    use super::linux_state::Shown;
     use super::NotificationOpenedEvent;
 
     const NAME: &str = "org.freedesktop.Notifications";
     const PATH: &str = "/org/freedesktop/Notifications";
 
-    /// How long a call to the service may take: one that stops answering
-    /// must not hold up the app.
-    pub const CALL_TIMEOUT: Duration = Duration::from_secs(5);
-
-    /// How long taking them all back may take, together.
+    /// How long taking them all back may hold up its caller (Delete all
+    /// data). What isn't done by then is still done, by the worker, once
+    /// the service answers.
     pub const CLEAR_DEADLINE: Duration = Duration::from_secs(10);
 
-    /// One connection to the notification service, for everything: a
-    /// service may take a close only from the connection that posted the
-    /// notification (GNOME checks). Clicks and closes are read in the
-    /// order the service sent them, by one listener subscribed before
-    /// anything is posted, and no lock is held during a call.
-    pub struct Service {
-        connection: Connection,
-        state: Mutex<State>,
-        /// False once the connection is gone: the next `show` connects
-        /// again.
-        alive: AtomicBool,
+    /// How many posts may wait while the service is slow to answer; more
+    /// are dropped rather than piling up.
+    const QUEUED: usize = 32;
+
+    enum Job {
+        Post(Notice),
+        /// Take back every notification shown, then say so.
+        ClearAll(SyncSender<()>),
     }
 
-    /// A call that took longer than `CALL_TIMEOUT`, as opposed to a lost
-    /// connection.
-    fn timed_out(e: &zbus::Error) -> bool {
-        matches!(e, zbus::Error::InputOutput(io) if io.kind() == std::io::ErrorKind::TimedOut)
+    /// The app's one connection to the notification service. Every call
+    /// goes through one worker, in order, so a service that is slow to
+    /// answer never holds up the app, and a reply that comes late is still
+    /// recorded (its notification can still be clicked and taken back).
+    /// One connection for everything, as a service may take a close only
+    /// from the connection that posted the notification (GNOME checks).
+    pub struct Service {
+        connection: Connection,
+        /// The worker's and listeners' list, kept here for the tests.
+        #[cfg_attr(not(test), allow(dead_code))]
+        shown: Arc<Mutex<Shown>>,
+        jobs: SyncSender<Job>,
+        alive: Arc<AtomicBool>,
     }
 
     impl Service {
-        /// Starts listening on `connection` (built with `CALL_TIMEOUT`):
-        /// `on_click` gets the conversation of a notification of this
-        /// app's that was clicked (the "default" action, which GNOME, KDE
-        /// and most others send for a click on it).
+        /// Starts listening on `connection`: `on_click` gets the
+        /// conversation of a notification of this app's that was clicked
+        /// (the "default" action, which GNOME, KDE and most others send for
+        /// a click on it).
         pub fn connect(
             connection: Connection,
             on_click: impl Fn(Option<ThreadId>) + Send + 'static,
-        ) -> zbus::Result<Arc<Service>> {
+        ) -> zbus::Result<Service> {
             let signals = MessageIterator::for_match_rule(
                 MatchRule::builder()
                     .msg_type(Type::Signal)
@@ -377,83 +396,177 @@ mod linux {
                 &connection,
                 None,
             )?;
-            let service = Arc::new(Service {
-                connection,
-                state: Mutex::new(State::default()),
-                alive: AtomicBool::new(true),
-            });
-            let listening = Arc::clone(&service);
+            let shown = Arc::new(Mutex::new(Shown::default()));
+            let alive = Arc::new(AtomicBool::new(true));
+
+            // Clicks and closes, in the order the service sent them, matched
+            // by the sender's unique name and the notification's number.
+            let listening = Arc::clone(&shown);
+            let living = Arc::clone(&alive);
             std::thread::spawn(move || {
                 for message in signals {
                     let Ok(message) = message else { break };
                     let header = message.header();
-                    let sender = header.sender().map(|s| s.to_string());
-                    let member = header.member().map(|m| m.to_string());
-                    let mut state = listening.state.lock().unwrap();
-                    if sender.is_none() || sender != state.owner {
+                    let Some(sender) = header.sender().map(|s| s.to_string()) else {
                         continue;
-                    }
-                    match member.as_deref() {
+                    };
+                    match header.member().map(|m| m.as_str()) {
                         Some("ActionInvoked") => {
                             let Ok((id, action)) = message.body().deserialize::<(u32, String)>()
                             else {
                                 continue;
                             };
-                            let thread = match state.shown.get(&id) {
-                                Some(thread) if action == "default" => *thread,
-                                // Another app's, or another of its actions.
-                                _ => continue,
-                            };
-                            drop(state);
-                            on_click(thread);
+                            let thread = listening.lock().unwrap().conversation(&sender, id);
+                            if let (Some(thread), "default") = (thread, action.as_str()) {
+                                on_click(thread);
+                            }
                         }
                         Some("NotificationClosed") => {
                             if let Ok((id, _reason)) = message.body().deserialize::<(u32, u32)>() {
-                                state.shown.remove(&id);
+                                listening.lock().unwrap().closed(&sender, id);
                             }
                         }
                         _ => {}
                     }
                 }
-                listening.alive.store(false, Ordering::Release);
+                living.store(false, Ordering::Release);
             });
-            let listening = Arc::clone(&service);
+
+            // A service that leaves the bus takes its notifications with it.
+            let listening = Arc::clone(&shown);
+            let living = Arc::clone(&alive);
             std::thread::spawn(move || {
                 for message in owners {
                     let Ok(message) = message else { break };
-                    let Ok((_, old, new)) =
+                    if let Ok((_, old, _)) =
                         message.body().deserialize::<(String, String, String)>()
-                    else {
-                        continue;
-                    };
-                    let some = |s: &str| (!s.is_empty()).then(|| s.to_string());
-                    let (old, new) = (some(&old), some(&new));
-                    listening
-                        .state
-                        .lock()
-                        .unwrap()
-                        .owner_changed(old.as_deref(), new.as_deref());
+                    {
+                        if !old.is_empty() {
+                            listening.lock().unwrap().gone(&old);
+                        }
+                    }
                 }
-                listening.alive.store(false, Ordering::Release);
+                living.store(false, Ordering::Release);
             });
-            Ok(service)
+
+            let (jobs, queue) = mpsc::sync_channel(QUEUED);
+            let worker = Worker {
+                connection: connection.clone(),
+                shown: Arc::clone(&shown),
+                alive: Arc::clone(&alive),
+            };
+            std::thread::spawn(move || worker.run(queue));
+
+            Ok(Service {
+                connection,
+                shown,
+                jobs,
+                alive,
+            })
         }
 
         pub fn alive(&self) -> bool {
             self.alive.load(Ordering::Acquire)
         }
 
-        /// Closes the connection, which ends both listeners (so the threads
-        /// and the service go), and marks it dead.
-        fn retire(&self) {
+        /// Closes the connection: the listeners and the worker end, and the
+        /// next notification connects again.
+        pub fn retire(&self) {
             self.alive.store(false, Ordering::Release);
             let _ = self.connection.clone().close();
         }
 
-        /// Posts one, with a "default" action so a click can open it. A
-        /// call that timed out leaves the connection as it is; a lost one is
-        /// closed, so the next notification connects again.
-        pub fn post(&self, notice: &Notice) {
+        /// Queues one to be shown. Never waits on the service.
+        pub fn post(&self, notice: Notice) {
+            let _ = self.jobs.try_send(Job::Post(notice));
+        }
+
+        /// Takes back every notification shown, including any still being
+        /// posted, waiting at most `deadline`; the rest is done when the
+        /// service answers.
+        pub fn clear_all(&self, deadline: Duration) {
+            let (done, finished) = mpsc::sync_channel(1);
+            let started = Instant::now();
+            if self.jobs.send_within(Job::ClearAll(done), deadline).is_ok() {
+                let left = deadline.saturating_sub(started.elapsed());
+                let _ = finished.recv_timeout(left);
+            }
+        }
+
+        #[cfg(test)]
+        pub fn shown(&self) -> Vec<u32> {
+            let mut ids: Vec<u32> = self
+                .shown
+                .lock()
+                .unwrap()
+                .keys()
+                .iter()
+                .map(|k| k.1)
+                .collect();
+            ids.sort();
+            ids
+        }
+    }
+
+    /// The thread that makes every call, one at a time.
+    struct Worker {
+        connection: Connection,
+        shown: Arc<Mutex<Shown>>,
+        alive: Arc<AtomicBool>,
+    }
+
+    trait SendWithin<T> {
+        fn send_within(&self, value: T, timeout: Duration) -> Result<(), ()>;
+    }
+
+    impl<T> SendWithin<T> for SyncSender<T> {
+        /// `send`, giving up after `timeout` when the queue stays full.
+        fn send_within(&self, mut value: T, timeout: Duration) -> Result<(), ()> {
+            let started = Instant::now();
+            loop {
+                match self.try_send(value) {
+                    Ok(()) => return Ok(()),
+                    Err(mpsc::TrySendError::Disconnected(_)) => return Err(()),
+                    Err(mpsc::TrySendError::Full(back)) => {
+                        if started.elapsed() >= timeout {
+                            return Err(());
+                        }
+                        value = back;
+                        std::thread::sleep(Duration::from_millis(20));
+                    }
+                }
+            }
+        }
+    }
+
+    impl Worker {
+        fn run(self, queue: Receiver<Job>) {
+            for job in queue {
+                if !self.alive.load(Ordering::Acquire) {
+                    break;
+                }
+                match job {
+                    Job::Post(notice) => self.post(&notice),
+                    Job::ClearAll(done) => {
+                        self.clear_all();
+                        let _ = done.try_send(());
+                    }
+                }
+            }
+        }
+
+        /// A call error other than the service's own answer means the
+        /// connection is gone: close it, so everything on it ends.
+        fn lost(&self, e: &zbus::Error) -> bool {
+            if matches!(e, zbus::Error::MethodError(..)) {
+                return false;
+            }
+            self.alive.store(false, Ordering::Release);
+            let _ = self.connection.clone().close();
+            true
+        }
+
+        fn post(&self, notice: &Notice) {
             let mut hints: std::collections::HashMap<&str, Value> =
                 std::collections::HashMap::new();
             hints.insert("desktop-entry", Value::from(mail_core::brand::NAME));
@@ -476,38 +589,27 @@ mod linux {
             match reply {
                 Ok(reply) => {
                     let header = reply.header();
-                    let (Some(owner), Ok(id)) =
+                    if let (Some(owner), Ok(id)) =
                         (header.sender(), reply.body().deserialize::<u32>())
-                    else {
-                        return;
-                    };
-                    let owner = owner.to_string();
-                    self.state.lock().unwrap().posted(&owner, id, notice.thread);
+                    {
+                        self.shown
+                            .lock()
+                            .unwrap()
+                            .posted(owner.as_str(), id, notice.thread);
+                    }
                 }
-                Err(zbus::Error::MethodError(..)) => {}
-                Err(e) if timed_out(&e) => {}
-                Err(_) => self.retire(),
+                Err(e) => {
+                    self.lost(&e);
+                }
             }
         }
 
-        /// Takes back every notification still shown, from the service that
-        /// numbered them, without holding the list during the calls, within
-        /// `CLEAR_DEADLINE` in all. One the service refused stays listed for
-        /// the next try; a call that timed out ends the round.
-        pub fn clear_all(&self) {
-            let (owner, ids) = {
-                let state = self.state.lock().unwrap();
-                (
-                    state.owner.clone(),
-                    state.shown.keys().copied().collect::<Vec<_>>(),
-                )
-            };
-            let Some(owner) = owner else { return };
-            let started = Instant::now();
-            for id in ids {
-                if started.elapsed() > CLEAR_DEADLINE {
-                    break;
-                }
+        /// Each notification is taken back from the service that numbered
+        /// it. One the service refused stays listed for the next try; one
+        /// whose service is gone is forgotten.
+        fn clear_all(&self) {
+            let keys = self.shown.lock().unwrap().keys();
+            for (owner, id) in keys {
                 let closed = self.connection.call_method(
                     Some(owner.as_str()),
                     PATH,
@@ -516,25 +618,19 @@ mod linux {
                     &(id,),
                 );
                 match closed {
-                    Ok(_) => {
-                        let mut state = self.state.lock().unwrap();
-                        if state.owner.as_deref() == Some(owner.as_str()) {
-                            state.shown.remove(&id);
-                        }
+                    Ok(_) => self.shown.lock().unwrap().closed(&owner, id),
+                    Err(zbus::Error::MethodError(name, ..))
+                        if name.as_str() == "org.freedesktop.DBus.Error.ServiceUnknown" =>
+                    {
+                        self.shown.lock().unwrap().gone(&owner);
                     }
-                    Err(e) if timed_out(&e) => break,
-                    Err(zbus::Error::MethodError(..)) => {}
-                    Err(_) => {
-                        self.retire();
-                        break;
+                    Err(e) => {
+                        if self.lost(&e) {
+                            return;
+                        }
                     }
                 }
             }
-        }
-
-        #[cfg(test)]
-        pub fn shown(&self) -> Vec<u32> {
-            self.state.lock().unwrap().shown.keys().copied().collect()
         }
     }
 
@@ -557,34 +653,32 @@ mod linux {
             dead.retire();
         }
         let app = app.clone();
-        let connection = zbus::blocking::connection::Builder::session()
-            .ok()?
-            .method_timeout(CALL_TIMEOUT)
-            .build()
-            .ok()?;
-        let service = Service::connect(connection, move |thread_id| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
-            let _ = NotificationOpenedEvent { thread_id }.emit(&app);
-        })
-        .ok()?;
+        let connection = zbus::blocking::Connection::session().ok()?;
+        let service = Arc::new(
+            Service::connect(connection, move |thread_id| {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.unminimize();
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+                let _ = NotificationOpenedEvent { thread_id }.emit(&app);
+            })
+            .ok()?,
+        );
         *current = Some(Arc::clone(&service));
         Some(service)
     }
 
     pub fn show(app: &AppHandle, notice: Notice) {
         if let Some(service) = service(app) {
-            service.post(&notice);
+            service.post(notice);
         }
     }
 
     pub fn clear_all() {
         let service = SERVICE.lock().unwrap().clone();
         if let Some(service) = service {
-            service.clear_all();
+            service.clear_all(CLEAR_DEADLINE);
         }
     }
 }
@@ -610,12 +704,22 @@ mod linux_tests {
     use super::linux::Service;
 
     /// Who posted each notification; which closes to refuse; whether to
-    /// stop answering.
+    /// stop answering (each call then takes `STALL`).
     #[derive(Default, Clone)]
     struct Fake {
         owners: Arc<Mutex<HashMap<u32, String>>>,
         refuse: Arc<Mutex<HashSet<u32>>>,
         stall: Arc<AtomicBool>,
+    }
+
+    const STALL: Duration = Duration::from_secs(2);
+
+    impl Fake {
+        fn wait(&self) {
+            if self.stall.load(Ordering::Acquire) {
+                std::thread::sleep(STALL);
+            }
+        }
     }
 
     #[zbus::interface(name = "org.freedesktop.Notifications")]
@@ -633,9 +737,7 @@ mod linux_tests {
             _hints: HashMap<String, OwnedValue>,
             _timeout: i32,
         ) -> u32 {
-            if self.stall.load(Ordering::Acquire) {
-                std::thread::sleep(Duration::from_secs(3));
-            }
+            self.wait();
             let mut owners = self.owners.lock().unwrap();
             // Numbered from 1, as a freshly started service does.
             let id = (1..).find(|i| !owners.contains_key(i)).unwrap();
@@ -649,6 +751,7 @@ mod linux_tests {
             #[zbus(header)] header: Header<'_>,
             id: u32,
         ) -> zbus::fdo::Result<()> {
+            self.wait();
             let sender = header.sender().map(|s| s.to_string()).unwrap_or_default();
             let mut owners = self.owners.lock().unwrap();
             if owners.get(&id) != Some(&sender) || self.refuse.lock().unwrap().contains(&id) {
@@ -710,28 +813,26 @@ mod linux_tests {
             .unwrap()
     }
 
-    fn client(bus: &Bus, timeout: Duration) -> Connection {
+    fn client(bus: &Bus) -> Connection {
         connection::Builder::address(bus.address.as_str())
             .unwrap()
-            .method_timeout(timeout)
             .build()
             .unwrap()
     }
 
     fn emit(
-        server: &Connection,
+        from: &Connection,
         member: &str,
         body: &(impl serde::Serialize + zbus::zvariant::DynamicType),
     ) {
-        server
-            .emit_signal(
-                None::<()>,
-                "/org/freedesktop/Notifications",
-                "org.freedesktop.Notifications",
-                member,
-                body,
-            )
-            .unwrap();
+        from.emit_signal(
+            None::<()>,
+            "/org/freedesktop/Notifications",
+            "org.freedesktop.Notifications",
+            member,
+            body,
+        )
+        .unwrap();
     }
 
     fn eventually(what: &str, check: impl Fn() -> bool) {
@@ -742,19 +843,23 @@ mod linux_tests {
         }
     }
 
+    fn connect(bus: &Bus) -> (Service, mpsc::Receiver<Option<ThreadId>>) {
+        let (clicked, clicks) = mpsc::channel();
+        let service = Service::connect(client(bus), move |thread| {
+            let _ = clicked.send(thread);
+        })
+        .unwrap();
+        (service, clicks)
+    }
+
     #[test]
     fn a_click_opens_its_conversation_even_when_the_close_follows_at_once() {
         let Some(bus) = bus() else { return };
-        let fake = Fake::default();
-        let server = serve(&bus, &fake);
-        let (clicked, clicks) = mpsc::channel();
-        let service = Service::connect(client(&bus, Duration::from_secs(5)), move |thread| {
-            clicked.send(thread).unwrap();
-        })
-        .unwrap();
-        service.post(&notice(42));
-        service.post(&notice(7));
-        assert_eq!(service.shown(), [1, 2]);
+        let server = serve(&bus, &Fake::default());
+        let (service, clicks) = connect(&bus);
+        service.post(notice(42));
+        service.post(notice(7));
+        eventually("both posted", || service.shown() == [1, 2]);
 
         // Another action, or a notification that isn't the app's: nothing.
         emit(&server, "ActionInvoked", &(2u32, "reply"));
@@ -769,17 +874,29 @@ mod linux_tests {
     }
 
     #[test]
+    fn a_click_from_anyone_but_the_service_is_ignored() {
+        let Some(bus) = bus() else { return };
+        let _server = serve(&bus, &Fake::default());
+        let (service, clicks) = connect(&bus);
+        service.post(notice(42));
+        eventually("posted", || service.shown() == [1]);
+        let stranger = client(&bus);
+        emit(&stranger, "ActionInvoked", &(1u32, "default"));
+        assert!(clicks.recv_timeout(Duration::from_millis(500)).is_err());
+    }
+
+    #[test]
     fn the_app_takes_back_only_its_own_and_keeps_what_was_refused() {
         let Some(bus) = bus() else { return };
         let fake = Fake::default();
         let _server = serve(&bus, &fake);
-        let service = Service::connect(client(&bus, Duration::from_secs(5)), |_| {}).unwrap();
-        service.post(&notice(42));
-        service.post(&notice(7));
+        let (service, _clicks) = connect(&bus);
+        service.post(notice(42));
+        service.post(notice(7));
+        eventually("both posted", || service.shown() == [1, 2]);
 
         // The fake refuses a close from another connection, as GNOME does.
-        let other = client(&bus, Duration::from_secs(5));
-        let refused = other.call_method(
+        let refused = client(&bus).call_method(
             Some("org.freedesktop.Notifications"),
             "/org/freedesktop/Notifications",
             Some("org.freedesktop.Notifications"),
@@ -787,104 +904,74 @@ mod linux_tests {
             &(1u32,),
         );
         assert!(refused.is_err());
-        // From the connection that posted them: one taken back; the one the
-        // service refused stays listed for the next try.
+        // From the app's connection: one taken back; the one the service
+        // refused stays listed for the next try.
         fake.refuse.lock().unwrap().insert(2);
-        service.clear_all();
+        service.clear_all(Duration::from_secs(5));
         assert_eq!(service.shown(), [2]);
         fake.refuse.lock().unwrap().clear();
-        service.clear_all();
+        service.clear_all(Duration::from_secs(5));
         assert!(service.shown().is_empty());
         assert!(fake.owners.lock().unwrap().is_empty());
     }
 
     #[test]
-    fn a_service_that_stops_answering_doesnt_hold_up_the_app() {
+    fn a_slow_service_holds_up_nothing_and_its_late_answers_still_count() {
         let Some(bus) = bus() else { return };
         let fake = Fake::default();
         let server = serve(&bus, &fake);
-        let (clicked, clicks) = mpsc::channel();
-        let service = Service::connect(client(&bus, Duration::from_millis(300)), move |thread| {
-            clicked.send(thread).unwrap();
-        })
-        .unwrap();
-        service.post(&notice(42));
+        let (service, clicks) = connect(&bus);
         fake.stall.store(true, Ordering::Release);
+        // Posting never waits on the service.
         let started = Instant::now();
-        service.post(&notice(7));
-        assert!(
-            started.elapsed() < Duration::from_secs(2),
-            "post waited on the service"
-        );
-        // A slow answer isn't a lost connection: the same one carries on.
-        assert!(service.alive());
-        // Taking them back stops at the first call that times out.
+        service.post(notice(42));
+        service.post(notice(7));
+        assert!(started.elapsed() < Duration::from_millis(500));
+        // Taking them back waits no longer than its deadline, though the
+        // service is still answering the posts...
         let started = Instant::now();
-        service.clear_all();
-        assert!(
-            started.elapsed() < Duration::from_secs(2),
-            "clear_all waited on each"
-        );
-        // A click on the first still opens it, and once the service answers
-        // again, posting works on the same connection.
-        emit(&server, "ActionInvoked", &(1u32, "default"));
-        assert_eq!(
-            clicks.recv_timeout(Duration::from_secs(5)).unwrap(),
-            Some(ThreadId(42))
-        );
-        // The fake blocks its own executor while it stalls, so it takes a
-        // moment to answer again; the app keeps the same connection.
+        service.clear_all(Duration::from_secs(1));
+        assert!(started.elapsed() < Duration::from_secs(2));
+        // ...and is done all the same once it answers: what the service
+        // showed late is recorded and then taken back, none left behind.
         fake.stall.store(false, Ordering::Release);
-        eventually("posting works again on the same connection", || {
-            service.post(&notice(9));
-            service.shown().len() >= 2
+        eventually("the late posts are taken back", || {
+            fake.owners.lock().unwrap().is_empty() && service.shown().is_empty()
         });
         assert!(service.alive());
-    }
-
-    #[test]
-    fn a_click_from_anyone_but_the_service_is_ignored() {
-        let Some(bus) = bus() else { return };
-        let fake = Fake::default();
-        let _server = serve(&bus, &fake);
-        let (clicked, clicks) = mpsc::channel();
-        let service = Service::connect(client(&bus, Duration::from_secs(5)), move |thread| {
-            clicked.send(thread).unwrap();
-        })
-        .unwrap();
-        service.post(&notice(42));
-        let stranger = client(&bus, Duration::from_secs(5));
-        emit(&stranger, "ActionInvoked", &(1u32, "default"));
-        assert!(clicks.recv_timeout(Duration::from_millis(500)).is_err());
+        // A post now is clickable as usual.
+        service.post(notice(9));
+        eventually("posted", || service.shown().len() == 1);
+        let id = service.shown()[0];
+        emit(&server, "ActionInvoked", &(id, "default"));
+        assert_eq!(
+            clicks.recv_timeout(Duration::from_secs(5)).unwrap(),
+            Some(ThreadId(9))
+        );
     }
 
     #[test]
     fn a_restarted_service_doesnt_open_an_old_conversation() {
         let Some(bus) = bus() else { return };
-        let fake = Fake::default();
-        let server = serve(&bus, &fake);
-        let (clicked, clicks) = mpsc::channel();
-        let service = Service::connect(client(&bus, Duration::from_secs(5)), move |thread| {
-            clicked.send(thread).unwrap();
-        })
-        .unwrap();
-        service.post(&notice(42));
-        assert_eq!(service.shown(), [1]);
+        let server = serve(&bus, &Fake::default());
+        let (service, clicks) = connect(&bus);
+        service.post(notice(42));
+        eventually("posted", || service.shown() == [1]);
         // The service restarts: a new owner of its name, numbering from 1.
+        // The app posts to it at once, before or after the bus's notice.
         drop(server);
         let restarted = serve(&bus, &Fake::default());
-        eventually("the old IDs are forgotten", || service.shown().is_empty());
-        // ID 1 at the new service isn't the app's yet: no click.
-        emit(&restarted, "ActionInvoked", &(1u32, "default"));
-        assert!(clicks.recv_timeout(Duration::from_millis(500)).is_err());
-        // The app's next notification is ID 1 there, and a click opens it.
-        service.post(&notice(7));
-        assert_eq!(service.shown(), [1]);
+        service.post(notice(7));
+        eventually("only the new service's notification is left", || {
+            service.shown() == [1]
+        });
+        // The new service's 1 is the new conversation, never the old one.
         emit(&restarted, "ActionInvoked", &(1u32, "default"));
         assert_eq!(
             clicks.recv_timeout(Duration::from_secs(5)).unwrap(),
             Some(ThreadId(7))
         );
+        assert!(clicks.recv_timeout(Duration::from_millis(300)).is_err());
     }
 }
 
