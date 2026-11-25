@@ -538,7 +538,6 @@ mod linux {
             let (posts, queue) = mpsc::sync_channel(QUEUED);
             let worker = Worker {
                 connection: connection.clone(),
-                markup: std::cell::OnceCell::new(),
                 shown: Arc::clone(&shown),
                 rounds: Arc::clone(&rounds),
                 alive: Arc::clone(&alive),
@@ -615,8 +614,6 @@ mod linux {
     /// The thread that makes every call, one at a time.
     struct Worker {
         connection: Connection,
-        /// Whether the service reads markup in a body, asked once.
-        markup: std::cell::OnceCell<bool>,
         shown: Arc<Mutex<Shown>>,
         rounds: Arc<Rounds>,
         alive: Arc<AtomicBool>,
@@ -658,21 +655,40 @@ mod linux {
             true
         }
 
-        /// Whether the service reads markup in a notification's body
-        /// (`body-markup` among its capabilities), asked once.
-        fn body_markup(&self) -> bool {
-            *self.markup.get_or_init(|| {
-                self.connection
-                    .call_method(Some(NAME), PATH, Some(NAME), "GetCapabilities", &())
-                    .ok()
-                    .and_then(|reply| reply.body().deserialize::<Vec<String>>().ok())
-                    .is_some_and(|caps| caps.iter().any(|c| c == "body-markup"))
-            })
+        /// Which connection holds the service's name now, and whether it
+        /// reads markup in a body (`body-markup`), asked before each post:
+        /// the name can pass to another service while the app's connection
+        /// lives on, and the post then goes to the connection that answered,
+        /// so its body is written for the service that shows it. Without an
+        /// answer the body is escaped (a plain service then shows `&amp;`,
+        /// which is better than markup read from an email) and goes to the
+        /// name. None when the connection is gone.
+        fn service(&self) -> Option<(String, bool)> {
+            match self
+                .connection
+                .call_method(Some(NAME), PATH, Some(NAME), "GetCapabilities", &())
+            {
+                Ok(reply) => {
+                    let owner = reply.header().sender().map(|s| s.to_string());
+                    let caps = reply.body().deserialize::<Vec<String>>().ok();
+                    Some(match (owner, caps) {
+                        (Some(owner), Some(caps)) => {
+                            (owner, caps.iter().any(|c| c == "body-markup"))
+                        }
+                        _ => (NAME.to_string(), true),
+                    })
+                }
+                Err(e) if self.lost(&e) => None,
+                Err(_) => Some((NAME.to_string(), true)),
+            }
         }
 
         fn post(&self, post: &Post) {
             let notice = &post.notice;
-            let body = if self.body_markup() {
+            let Some((to, markup)) = self.service() else {
+                return;
+            };
+            let body = if markup {
                 super::linux_state::escape_markup(&notice.body)
             } else {
                 notice.body.clone()
@@ -681,7 +697,7 @@ mod linux {
                 std::collections::HashMap::new();
             hints.insert("desktop-entry", Value::from(mail_core::brand::NAME));
             let reply = self.connection.call_method(
-                Some(NAME),
+                Some(to.as_str()),
                 PATH,
                 Some(NAME),
                 "Notify",
@@ -859,8 +875,12 @@ mod linux_tests {
         /// The bodies posted, as received.
         bodies: Arc<Mutex<Vec<String>>>,
         closed: Arc<Mutex<Vec<u32>>>,
+        /// Every close asked for, accepted or refused.
+        attempts: Arc<Mutex<Vec<u32>>>,
         refuse: Arc<Mutex<HashSet<u32>>>,
         stall: Arc<AtomicBool>,
+        /// Shows bodies as plain text (no `body-markup`).
+        plain: Arc<AtomicBool>,
     }
 
     const STALL: Duration = Duration::from_secs(2);
@@ -900,11 +920,14 @@ mod linux_tests {
             id
         }
 
-        /// Reads markup in a body, as GNOME's does.
+        /// Reads markup in a body, as GNOME's does, unless `plain`.
         fn get_capabilities(&self) -> Vec<String> {
-            ["body", "body-markup", "actions"]
-                .map(String::from)
-                .to_vec()
+            let caps: &[&str] = if self.plain.load(Ordering::Acquire) {
+                &["body", "actions"]
+            } else {
+                &["body", "body-markup", "actions"]
+            };
+            caps.iter().map(|c| c.to_string()).collect()
         }
 
         fn close_notification(
@@ -913,6 +936,7 @@ mod linux_tests {
             id: u32,
         ) -> zbus::fdo::Result<()> {
             self.wait();
+            self.attempts.lock().unwrap().push(id);
             let sender = header.sender().map(|s| s.to_string()).unwrap_or_default();
             let mut owners = self.owners.lock().unwrap();
             if owners.get(&id) != Some(&sender) || self.refuse.lock().unwrap().contains(&id) {
@@ -1154,6 +1178,46 @@ mod linux_tests {
         );
     }
 
+    /// Review (round 9): the name passing from a plain service to one that
+    /// reads markup, and back, while the app's connection lives on. Each
+    /// body is written for the service that shows it.
+    #[test]
+    fn a_body_is_written_for_whichever_service_holds_the_name() {
+        let Some(bus) = bus() else { return };
+        let plain = Fake::default();
+        plain.plain.store(true, Ordering::Release);
+        let first = serve(&bus, &plain);
+        let (service, _clicks) = connect(&bus);
+        let marked = |n: i64| Notice {
+            title: "Maya Chen".into(),
+            body: "<b>Win</b>".into(),
+            thread: Some(ThreadId(n)),
+        };
+        service.post(marked(1));
+        eventually("posted to the plain one", || {
+            plain.bodies.lock().unwrap().len() == 1
+        });
+        assert_eq!(plain.bodies.lock().unwrap()[0], "<b>Win</b>");
+        first.release_name("org.freedesktop.Notifications").unwrap();
+        let reads = Fake::default();
+        let second = serve(&bus, &reads);
+        service.post(marked(2));
+        eventually("posted to the one that reads markup", || {
+            reads.bodies.lock().unwrap().len() == 1
+        });
+        assert_eq!(reads.bodies.lock().unwrap()[0], "&lt;b&gt;Win&lt;/b&gt;");
+        assert_eq!(plain.bodies.lock().unwrap().len(), 1);
+        second
+            .release_name("org.freedesktop.Notifications")
+            .unwrap();
+        first.request_name("org.freedesktop.Notifications").unwrap();
+        service.post(marked(3));
+        eventually("posted to the plain one again", || {
+            plain.bodies.lock().unwrap().len() == 2
+        });
+        assert_eq!(plain.bodies.lock().unwrap()[1], "<b>Win</b>");
+    }
+
     #[test]
     fn one_pushed_out_of_the_list_is_closed_not_just_forgotten() {
         let Some(bus) = bus() else { return };
@@ -1169,7 +1233,10 @@ mod linux_tests {
             eventually("posted", || fake.issued.lock().unwrap().len() == n + 1);
         }
         assert_eq!(service.shown().len(), limit);
-        std::thread::sleep(Duration::from_millis(300));
+        // Closed when it was pushed out (and refused), not left for later.
+        eventually("the close was asked for", || {
+            *fake.attempts.lock().unwrap() == [1]
+        });
         assert!(fake.closed.lock().unwrap().is_empty(), "the refusal");
         // It isn't forgotten: the next take-back closes it, with the rest.
         fake.refuse.lock().unwrap().clear();
