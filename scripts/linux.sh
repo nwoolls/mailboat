@@ -68,7 +68,7 @@ case "${1:-}" in
     run 'cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --no-fail-fast'
     ;;
   build)
-    run 'scripts/appimage-tools.sh && LDAI_RUNTIME_FILE=/root/.cache/tauri/appimage-runtime bun tauri build --ci && bun scripts/check-appimage-runtime.ts /target/release/bundle/appimage/*.AppImage /root/.cache/tauri/appimage-runtime && rm -rf /out/bundle && mkdir -p /out/bundle && cp /target/release/bundle/deb/*.deb /target/release/bundle/rpm/*.rpm /target/release/bundle/appimage/*.AppImage /out/bundle/'
+    run 'runtime="${XDG_CACHE_HOME:-$HOME/.cache}/tauri/appimage-runtime" && scripts/appimage-tools.sh && LDAI_RUNTIME_FILE="$runtime" bun tauri build --ci && bun scripts/check-appimage-runtime.ts /target/release/bundle/appimage/*.AppImage "$runtime" && rm -rf /out/bundle && mkdir -p /out/bundle && cp /target/release/bundle/deb/*.deb /target/release/bundle/rpm/*.rpm /target/release/bundle/appimage/*.AppImage /out/bundle/'
     echo
     echo "Packages:"
     ls -1 target/linux/bundle/
