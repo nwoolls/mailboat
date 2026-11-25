@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { elfEnd, runtimeProblem, sections } from "./appimageRuntime";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  elfEnd,
+  RUNTIME_RELEASE,
+  RUNTIME_SHA256,
+  runtimeProblem,
+  sections,
+} from "./appimageRuntime";
 
 /**
  * A tiny 64-bit little-endian ELF: a header, some code bytes, a section
@@ -76,5 +84,16 @@ describe("the AppImage's runtime", () => {
     new DataView(long.buffer).setBigUint64(shoff + 64 + 0x20, 10n ** 9n, true);
     expect(() => sections(long)).toThrow(/past the end/);
     expect(runtimeProblem(withFiles(pinned), long)).toMatch(/pinned runtime can't be read/);
+  });
+});
+
+describe("the pinned runtime's digests", () => {
+  it("are the ones the tools script downloads and checks, for the same release", () => {
+    const script = readFileSync(resolve(__dirname, "appimage-tools.sh"), "utf8");
+    for (const [arch, sha] of Object.entries(RUNTIME_SHA256)) {
+      const block = script.slice(script.indexOf(`${arch})`));
+      expect(/runtime=([0-9a-f]{64})/.exec(block)?.[1], arch).toBe(sha);
+    }
+    expect(script).toContain(`type2-runtime/releases/download/${RUNTIME_RELEASE}/`);
   });
 });

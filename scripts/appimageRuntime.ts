@@ -7,6 +7,21 @@
 
 type Section = { name: string; offset: number; size: number };
 
+/**
+ * The pinned runtime's SHA-256 by processor (type2-runtime 20251108), as
+ * `scripts/appimage-tools.sh` checks it when downloading; a test keeps the
+ * two the same. The release checks the reference file against it again
+ * just before comparing, since the file sits in a cache that could have
+ * changed after it was downloaded.
+ */
+export const RUNTIME_SHA256: Record<string, string> = {
+  x86_64: "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d",
+  aarch64: "00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444",
+};
+
+/** The pinned runtime's release, as the bill records it. */
+export const RUNTIME_RELEASE = "20251108";
+
 function u16(b: Uint8Array, at: number): number {
   return b[at] | (b[at + 1] << 8);
 }

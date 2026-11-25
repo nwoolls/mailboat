@@ -58,7 +58,7 @@ jobs:
       # With the pinned AppImage runtime, checked afterwards.
       - if: runner.os == 'Linux'
         run: |
-          runtime="$HOME/.cache/tauri/appimage-runtime"
+          runtime="${XDG_CACHE_HOME:-$HOME/.cache}/tauri/appimage-runtime"
           LDAI_RUNTIME_FILE="$runtime" bun tauri build --ci
           bun scripts/check-appimage-runtime.ts target/release/bundle/appimage/*.AppImage "$runtime"
           # The release's own bill of the AppImage, so a pull request runs

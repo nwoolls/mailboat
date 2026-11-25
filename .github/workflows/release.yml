@@ -355,7 +355,7 @@ jobs:
       - run: scripts/appimage-tools.sh
       # No build cache here: a release is built from scratch. The AppImage's
       # runtime is the pinned one (appimagetool would download its own).
-      - run: LDAI_RUNTIME_FILE="$HOME/.cache/tauri/appimage-runtime" bun tauri build --ci --bundles deb,rpm,appimage
+      - run: LDAI_RUNTIME_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/tauri/appimage-runtime" bun tauri build --ci --bundles deb,rpm,appimage
       - name: Check the packages and keep them
         run: |
           shopt -s nullglob
@@ -381,7 +381,7 @@ jobs:
           # The AppImage's runtime is the pinned one, then its own bill of
           # materials: the runtime, and the system libraries it carries,
           # traced to the packages installed here.
-          runtime="$HOME/.cache/tauri/appimage-runtime"
+          runtime="${XDG_CACHE_HOME:-$HOME/.cache}/tauri/appimage-runtime"
           bun scripts/check-appimage-runtime.ts release-files/*.AppImage "$runtime"
           version="$(jq -r .version package.json)"
           bun scripts/make-appimage-sbom.ts --appimage release-files/*.AppImage \

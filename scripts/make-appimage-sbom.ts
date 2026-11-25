@@ -28,7 +28,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import brand from "../brand.json";
-import { elfEnd } from "./appimageRuntime";
+import { elfEnd, RUNTIME_RELEASE, RUNTIME_SHA256 } from "./appimageRuntime";
 import {
   appimageBom,
   type Bundled,
@@ -135,13 +135,19 @@ const bundled: Bundled[] = [...byPackage.values()].map(({ owner, files }) => {
   const licenses = existsSync(copyright) ? copyrightLicenses(readFileSync(copyright, "utf8")) : [];
   return { package: pkg, arch: found.arch, version: found.version, licenses, files };
 });
-// The runtime at the front, by the pinned file's digest and release.
+// The runtime at the front, by its pinned release and digest; the file given
+// must be that one (the release checks it before this runs, and so does
+// this).
+const runtimeNames: Record<string, string> = { amd64: "x86_64", arm64: "aarch64" };
+const runtimeArch = runtimeNames[hostArch] ?? hostArch;
+const pinnedSha = RUNTIME_SHA256[runtimeArch];
+if (!pinnedSha || sha256(runtime) !== pinnedSha) fail(`${runtime} isn't the pinned runtime`);
 tools.push({
   package: null,
-  version: "20251108",
+  version: RUNTIME_RELEASE,
   licenses: ["MIT"],
   files: ["runtime"],
-  sha256: sha256(runtime),
+  sha256: pinnedSha,
 });
 
 const arch = hostArch;
