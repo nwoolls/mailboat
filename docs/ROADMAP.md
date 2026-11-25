@@ -7699,6 +7699,13 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         a desktop with no keyring; print; notifications; a second monitor;
         whether a second launch brings the window forward on Wayland;
         connecting an AI app from the AppImage, then restarting
+        *(2026-11-25, owner's VMs: on Fedora KDE a notification shows its
+        subject as typed, markup and all. On Ubuntu GNOME none has been
+        seen yet, but the test emails only arrived after a restart, which
+        never notifies: the same account was syncing on the Mac and both
+        VMs at once, and Google rate-limited it, so new mail sometimes
+        reached Ubuntu only after Mailboat restarted. Try both again once
+        the VMs have finished their first sync.)*
   - [x] Release and updates: a Linux job in the release workflow (x86-64
         and Arm on Ubuntu 22.04) signs each package for the updater;
         `latest.json` has an entry per package (`linux-x86_64-deb` and so
