@@ -149,6 +149,14 @@ async fn downloads_land_in_the_accounts_folder_once_with_a_safe_name() {
     assert!(path.starts_with(attachments::account_dir(&cache, account)));
     assert_eq!(path.file_name().unwrap(), "Quarterly report.pdf");
     assert_eq!(std::fs::read(&path).unwrap(), b"%PDF-1.7\n");
+    // On Windows the cached file carries the Mark of the Web as soon as it
+    // is downloaded, before anything opens or saves it (forwarding and
+    // inline images use the cache as is).
+    #[cfg(windows)]
+    assert_eq!(
+        std::fs::read_to_string(format!("{}:Zone.Identifier", path.display())).unwrap(),
+        "[ZoneTransfer]\r\nZoneId=3\r\n"
+    );
     // Second time: straight from the cache (wiremock checks one request).
     assert_eq!(
         attachments::download(&db, &gmail, pdf, &cache)

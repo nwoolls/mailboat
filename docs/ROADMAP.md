@@ -7416,6 +7416,18 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       with the letter of validation, reply to Google's verification email
       (`docs/GOOGLE-VERIFICATION.md`).
 
+- [x] Attachments saved on Windows get the Mark of the Web *(found
+      2026-11-25 while answering CASA 5.2.1, uploads and untrusted files)*.
+      On macOS an attachment gets the quarantine flag when it is opened,
+      previewed or saved, so Gatekeeper and other apps can apply their
+      protections for files from the internet; on Windows nothing marked it,
+      so SmartScreen and Office's Protected View couldn't tell it came from
+      the internet. Now it gets a `Zone.Identifier` stream with zone 3, as
+      browsers write for downloads, when it reaches the cache and again on
+      each saved copy (`attachments::mark_of_the_web`, tested on Windows in
+      CI). Best effort, like the macOS flag: a volume without streams
+      (FAT32) leaves the file unmarked.
+
 ## Later / unscheduled
 
 - [ ] What's new in an available update *(owner idea, 2026-11-08; maybe for
