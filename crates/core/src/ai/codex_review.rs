@@ -69,9 +69,14 @@ pub fn unreviewed(still_on: &[String]) -> Vec<String> {
 }
 
 /// Where two systems' lists differ, by system: what to look at before
-/// running only the live tests on one of them.
+/// running only the live tests on one of them. A system with no record
+/// is named too, so a missing review never reads as matching ones.
 pub fn differences(r: &Review) -> Vec<String> {
-    let mut out = Vec::new();
+    let mut out: Vec<String> = PLATFORMS
+        .iter()
+        .filter(|p| !r.platforms.contains_key(**p))
+        .map(|p| format!("{p}: not reviewed"))
+        .collect();
     let first = r.platforms.iter().next();
     for (name, p) in &r.platforms {
         if let Some((base, b)) = first {
@@ -98,16 +103,21 @@ pub fn against_this_system(
     observed: &[String],
     pick: fn(&PlatformReview) -> &Vec<String>,
 ) -> Option<String> {
-    let review = review();
-    let recorded = pick(review.platforms.get(std::env::consts::OS)?);
+    against(&review(), std::env::consts::OS, observed, pick)
+}
+
+/// `against_this_system` for any review and system, so it can be tested.
+fn against(
+    review: &Review,
+    system: &str,
+    observed: &[String],
+    pick: fn(&PlatformReview) -> &Vec<String>,
+) -> Option<String> {
+    let recorded = pick(review.platforms.get(system)?);
     let added: Vec<_> = observed.iter().filter(|i| !recorded.contains(i)).collect();
     let gone: Vec<_> = recorded.iter().filter(|i| !observed.contains(i)).collect();
-    (!added.is_empty() || !gone.is_empty()).then(|| {
-        format!(
-            "{}'s record differs: new {added:?}, gone {gone:?}",
-            std::env::consts::OS
-        )
-    })
+    (!added.is_empty() || !gone.is_empty())
+        .then(|| format!("{system}'s record differs: new {added:?}, gone {gone:?}"))
 }
 
 #[cfg(test)]
@@ -182,6 +192,72 @@ mod tests {
             differences(&r),
             ["tool functions.exec: on macos, not on windows"]
         );
+    }
+
+    /// Review (round 1 of this branch): the comparison the review tests
+    /// assert on, run in the regular suite.
+    #[test]
+    fn an_observation_is_compared_with_its_own_systems_record() {
+        let entry = |tools: &[&str]| PlatformReview {
+            reviewed: "2026-11-25".into(),
+            codex: "0.0.0".into(),
+            stays_on: vec![],
+            tools: tools.iter().map(|t| t.to_string()).collect(),
+        };
+        let r = Review {
+            platforms: [
+                ("macos".to_string(), entry(&["a", "b"])),
+                ("windows".to_string(), entry(&[])),
+            ]
+            .into(),
+            stays_on: vec![],
+            tools: vec!["a".into(), "b".into()],
+            refused_models: vec![],
+        };
+        let seen = |items: &[&str]| items.iter().map(|i| i.to_string()).collect::<Vec<_>>();
+        let tools: fn(&PlatformReview) -> &Vec<String> = |p| &p.tools;
+        assert_eq!(
+            against(&r, "macos", &seen(&["b", "a"]), tools),
+            None,
+            "order"
+        );
+        assert_eq!(
+            against(&r, "macos", &seen(&["a", "b", "c"]), tools).as_deref(),
+            Some(r#"macos's record differs: new ["c"], gone []"#)
+        );
+        assert_eq!(
+            against(&r, "macos", &seen(&["a"]), tools).as_deref(),
+            Some(r#"macos's record differs: new [], gone ["b"]"#)
+        );
+        assert_eq!(against(&r, "windows", &seen(&[]), tools), None, "empty");
+        assert_eq!(
+            against(&r, "windows", &seen(&["a"]), tools).as_deref(),
+            Some(r#"windows's record differs: new ["a"], gone []"#)
+        );
+        // No record yet: the review records it, so nothing to compare.
+        assert_eq!(against(&r, "plan9", &seen(&["a"]), tools), None);
+    }
+
+    /// Review (round 1 of this branch): a system with no review is named,
+    /// so it never reads as one that matches.
+    #[test]
+    fn a_system_with_no_review_is_named_among_the_differences() {
+        let r = Review {
+            platforms: [(
+                "macos".to_string(),
+                PlatformReview {
+                    reviewed: "2026-11-25".into(),
+                    codex: "0.0.0".into(),
+                    stays_on: vec![],
+                    tools: vec![],
+                },
+            )]
+            .into(),
+            stays_on: vec![],
+            tools: vec![],
+            refused_models: vec![],
+        };
+        assert_eq!(differences(&r), ["windows: not reviewed"]);
     }
 
     /// The system the app is built for has a name the review can use.

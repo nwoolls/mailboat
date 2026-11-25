@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { reviewAge, reviewStatuses } from "./codexReviewAge";
+import { PLATFORMS, reviewAge, reviewStatuses } from "./codexReviewAge";
 
 /** A local date (the check uses the Mac's own calendar day). */
 const day = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h);
@@ -48,5 +50,15 @@ describe("reviewStatuses", () => {
       state: "invalid",
       why: '"2026-13-01" isn\'t a real date',
     });
+  });
+});
+
+describe("PLATFORMS", () => {
+  // Review (round 1 of this branch): the list is written in Rust too, and
+  // the two must name the same systems.
+  it("names the same systems as the Rust review", () => {
+    const rust = readFileSync(resolve(__dirname, "../crates/core/src/ai/codex_review.rs"), "utf8");
+    const list = /pub const PLATFORMS: \[&str; \d+\] = \[([^\]]*)\]/.exec(rust)?.[1] ?? "";
+    expect([...list.matchAll(/"([^"]+)"/g)].map((m) => m[1])).toEqual([...PLATFORMS]);
   });
 });

@@ -426,8 +426,8 @@ only Codex installed and signed in, using a test program built on the
 Mac (`scripts/windows.sh codex-review`; copy the file into the VM and run
 it there with the same arguments as below, after `--`). If Windows records
 exactly the Mac's lists (`codex_review::differences` names any
-difference), the owner may decide to run only the live `codex_cannot_*`
-tests there.
+difference, and any system with no review yet), the owner may decide to
+run only the live `codex_cannot_*` tests there.
 
 `bun run check` (and `check:quick`) stops when a system's review is over
 31 days old, on the owner's machine (an empty, uncommitted
