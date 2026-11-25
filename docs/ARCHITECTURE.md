@@ -204,9 +204,12 @@ fresh one; small parts come with the message and have no ID at all.
   drops leading dots, guards Windows device names and keeps a name within
   150 characters and 200 bytes, so `../../.zshrc` becomes `zshrc` (the
   decisions table, 2026-11-08, has the rest).
-- **Quarantine:** every file Mailboat writes gets macOS's
-  `com.apple.quarantine` tag (as browsers do), so Gatekeeper checks it
-  before anything in it runs.
+- **Quarantine:** every file Mailboat writes is marked as downloaded from
+  the internet, as browsers do, so the system checks it before anything in
+  it runs: macOS's `com.apple.quarantine` tag (Gatekeeper), and on Windows
+  the Mark of the Web, a `Zone.Identifier` stream with zone 3, the internet
+  (SmartScreen, and Office's Protected View). On a volume without streams
+  (FAT32) the file opens unmarked.
 - **Save** copies to Downloads with a free name ("a (1).pdf"); "Show in
   Finder" reveals the copy. **Quick Look** uses `qlmanage -p`.
 - **Inline images** (png, jpeg, gif, webp, bmp; up to 5 MB each) are

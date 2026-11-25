@@ -313,6 +313,30 @@ fn io_error(what: &str, e: std::io::Error) -> CoreError {
     CoreError::Other(format!("could not {what}: {e}"))
 }
 
+/// What a browser writes to a download's `Zone.Identifier` stream: zone 3,
+/// the internet.
+#[cfg(windows)]
+const MARK_OF_THE_WEB: &str = "[ZoneTransfer]\r\nZoneId=3\r\n";
+
+/// The file's `Zone.Identifier` alternate data stream.
+#[cfg(windows)]
+fn zone_identifier(path: &Path) -> PathBuf {
+    let mut stream = path.as_os_str().to_owned();
+    stream.push(":Zone.Identifier");
+    stream.into()
+}
+
+/// Gives a saved attachment Windows' "Mark of the Web", as browsers do for
+/// their downloads, so SmartScreen (and Office's Protected View) check it
+/// before anything in it runs. It is an NTFS alternate data stream on the
+/// file; a volume without streams (FAT32) refuses it, so the caller treats
+/// it as best effort. macOS's quarantine flag does the same job there
+/// (`src-tauri/src/files.rs`).
+#[cfg(windows)]
+pub fn mark_of_the_web(path: &Path) -> std::io::Result<()> {
+    std::fs::write(zone_identifier(path), MARK_OF_THE_WEB)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -538,6 +562,23 @@ mod tests {
         assert_eq!(unique_path(&dir, "a.pdf"), dir.join("a (2).pdf"));
         std::fs::write(dir.join("notes"), b"3").unwrap();
         assert_eq!(unique_path(&dir, "notes"), dir.join("notes (1)"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// A saved attachment carries the Mark of the Web, zone 3 (the
+    /// internet), and the file itself is untouched.
+    #[cfg(windows)]
+    #[test]
+    fn a_saved_attachment_is_marked_as_from_the_internet() {
+        let dir = std::env::temp_dir().join(format!("motw-test-{}", fastrand::u64(..)));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("invoice.pdf");
+        std::fs::write(&file, b"made-up").unwrap();
+        mark_of_the_web(&file).unwrap();
+        let mark = std::fs::read_to_string(zone_identifier(&file)).unwrap();
+        assert_eq!(mark, MARK_OF_THE_WEB);
+        assert!(mark.contains("ZoneId=3"));
+        assert_eq!(std::fs::read(&file).unwrap(), b"made-up");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

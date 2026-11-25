@@ -1,6 +1,7 @@
 //! Handing downloaded attachments to the operating system: open with the
 //! default app, Quick Look, reveal in Finder, and marking them as
-//! downloaded from the internet (quarantine) as browsers do.
+//! downloaded from the internet (macOS's quarantine flag, Windows' Mark of
+//! the Web) as browsers do.
 
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -16,9 +17,11 @@ fn spawn(cmd: &mut Command) -> Result<(), CoreError> {
         .map_err(|e| CoreError::Other(format!("could not start {:?}: {e}", cmd.get_program())))
 }
 
-/// Tags a file as downloaded from the internet, so macOS Gatekeeper checks
-/// it before anything in it runs (as it does for browser downloads).
-/// Best effort: a failure here doesn't stop the file opening.
+/// Tags a file as downloaded from the internet, as browsers do for their
+/// downloads, so the system checks it before anything in it runs: macOS's
+/// quarantine flag (Gatekeeper), and Windows' Mark of the Web (SmartScreen,
+/// `mail_core::attachments::mark_of_the_web`). Best effort: a failure here
+/// doesn't stop the file opening.
 pub fn quarantine(path: &Path) {
     #[cfg(target_os = "macos")]
     {
@@ -37,7 +40,9 @@ pub fn quarantine(path: &Path) {
             .stderr(Stdio::null())
             .status();
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(windows)]
+    let _ = mail_core::attachments::mark_of_the_web(path);
+    #[cfg(not(any(target_os = "macos", windows)))]
     let _ = path;
 }
 
