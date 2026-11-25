@@ -287,17 +287,6 @@ pub fn bwrap_args(
     if let Some(run) = runtime_dir.filter(|r| r.is_dir()) {
         push(&["--tmpfs".as_ref(), run.as_os_str()]);
     }
-    for socket in bus_sockets(bus_address.unwrap_or_default()) {
-        let covered =
-            runtime_dir.is_some_and(|r| socket.starts_with(r)) || socket.starts_with(&d.home);
-        if !covered && socket.exists() {
-            push(&[
-                "--ro-bind".as_ref(),
-                "/dev/null".as_ref(),
-                socket.as_os_str(),
-            ]);
-        }
-    }
     push(&["--tmpfs".as_ref(), d.home.as_os_str()]);
     for dir in d
         .readable
@@ -318,9 +307,55 @@ pub fn bwrap_args(
     }
     if let Some(work) = workdir.filter(|w| w.is_dir()) {
         push(&["--bind".as_ref(), work.as_os_str(), work.as_os_str()]);
+    }
+    // Last, so nothing put back above can uncover it: every socket file the
+    // session bus's address names (and where it really is, if a link), each
+    // covered wherever it is (fifth review of the Linux fence).
+    let mut covered: Vec<PathBuf> = Vec::new();
+    for socket in bus_sockets(bus_address.unwrap_or_default(), runtime_dir) {
+        let real = std::fs::canonicalize(&socket).ok();
+        for path in std::iter::once(socket).chain(real) {
+            if path.exists() && !covered.contains(&path) {
+                push(&["--ro-bind".as_ref(), "/dev/null".as_ref(), path.as_os_str()]);
+                covered.push(path);
+            }
+        }
+    }
+    if let Some(work) = workdir.filter(|w| w.is_dir()) {
         push(&["--chdir".as_ref(), work.as_os_str()]);
     }
     args
+}
+
+/// Linux: Codex's folder, by where it really is, and the absolute path the
+/// fence puts it at and tells Codex (its parent resolved, so a link in
+/// home, which the fence empties, isn't needed to reach it). From
+/// `$CODEX_HOME` (which must be absolute: Codex would read a relative one
+/// from its own working folder, not the app's) or `~/.codex`. Refused when
+/// it overlaps one of the app's folders (`codex_home_problem`).
+pub fn linux_codex_paths(
+    codex_home: Option<&std::ffi::OsStr>,
+    home: &Path,
+    hidden: &[PathBuf],
+    real: impl Fn(PathBuf) -> PathBuf,
+) -> Result<(PathBuf, PathBuf)> {
+    let given = match codex_home {
+        Some(c) if !Path::new(c).is_absolute() => {
+            return Err(CoreError::Ai(
+                "Codex's folder (CODEX_HOME) must be a full path for ChatGPT to be fenced in."
+                    .into(),
+            ));
+        }
+        Some(c) => PathBuf::from(c),
+        None => home.join(".codex"),
+    };
+    let mount = match (given.parent(), given.file_name()) {
+        (Some(parent), Some(name)) => real(parent.to_path_buf()).join(name),
+        _ => given.clone(),
+    };
+    let resolved = real(given);
+    codex_home_problem(&resolved, &mount, hidden)?;
+    Ok((resolved, mount))
 }
 
 /// An error when Codex's folder and one of the app's own folders overlap,
@@ -379,16 +414,38 @@ pub const BWRAP_BASE: [&str; 9] = [
     "/proc",
 ];
 
-/// The socket files a D-Bus address names (`unix:path=…`, each of its
-/// `;`-separated choices).
-pub fn bus_sockets(address: &str) -> Vec<PathBuf> {
-    address
-        .split(';')
-        .filter_map(|choice| choice.strip_prefix("unix:"))
-        .flat_map(|keys| keys.split(','))
-        .filter_map(|kv| kv.strip_prefix("path="))
-        .map(PathBuf::from)
-        .collect()
+/// The socket files a D-Bus address names: in each `;`-separated choice of
+/// the `unix:` transport, `path=` (its value unescaped, as the D-Bus
+/// specification escapes any byte as `%xx`) and `runtime=yes`, which means
+/// `$XDG_RUNTIME_DIR/bus`.
+pub fn bus_sockets(address: &str, runtime_dir: Option<&Path>) -> Vec<PathBuf> {
+    let unescape = |value: &str| -> Option<PathBuf> {
+        let bytes = value.as_bytes();
+        let mut out = Vec::with_capacity(bytes.len());
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] == b'%' {
+                let hex = std::str::from_utf8(bytes.get(i + 1..i + 3)?).ok()?;
+                out.push(u8::from_str_radix(hex, 16).ok()?);
+                i += 3;
+            } else {
+                out.push(bytes[i]);
+                i += 1;
+            }
+        }
+        String::from_utf8(out).ok().map(PathBuf::from)
+    };
+    let mut found = Vec::new();
+    for keys in address.split(';').filter_map(|c| c.strip_prefix("unix:")) {
+        for kv in keys.split(',') {
+            if let Some(path) = kv.strip_prefix("path=").and_then(unescape) {
+                found.push(path);
+            } else if kv == "runtime=yes" {
+                found.extend(runtime_dir.map(|r| r.join("bus")));
+            }
+        }
+    }
+    found
 }
 
 /// Bubblewrap, where the distribution installs it (its own AppArmor
@@ -665,15 +722,17 @@ fn command(program: &Path, env: Env, workdir: Option<&Path>) -> Result<Command> 
         Env::Minimal => fence(program, workdir)?,
         Env::Inherit => None,
     };
+    let mut codex_home = None;
     let mut cmd = match fenced {
         Some(Fence::Seatbelt(profile)) => {
             let mut c = Command::new("/usr/bin/sandbox-exec");
             c.arg("-p").arg(profile).arg(program);
             c
         }
-        Some(Fence::Bubblewrap(bwrap, args)) => {
+        Some(Fence::Bubblewrap(bwrap, args, codex)) => {
             let mut c = Command::new(bwrap);
             c.args(args).arg(program);
+            codex_home = Some(codex);
             c
         }
         None => Command::new(program),
@@ -685,6 +744,12 @@ fn command(program: &Path, env: Env, workdir: Option<&Path>) -> Result<Command> 
                 cmd.env(var, value);
             }
         }
+    }
+    // Inside the Linux fence, Codex is told where its folder is put: a
+    // `CODEX_HOME` given through a link in home wouldn't resolve there
+    // (fifth review of the Linux fence).
+    if let Some(codex) = codex_home {
+        cmd.env("CODEX_HOME", codex);
     }
     #[cfg(windows)]
     {
@@ -699,9 +764,10 @@ enum Fence {
     /// macOS's sandbox, with this profile.
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Seatbelt(String),
-    /// Linux's bubblewrap (the program), with these arguments.
+    /// Linux's bubblewrap (the program), with these arguments, and the path
+    /// Codex's folder is put at, which Codex is told (`CODEX_HOME`).
     #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
-    Bubblewrap(&'static Path, Vec<std::ffi::OsString>),
+    Bubblewrap(&'static Path, Vec<std::ffi::OsString>, PathBuf),
 }
 
 /// The fence for `Env::Minimal`: macOS's sandbox; on Linux, bubblewrap
@@ -721,20 +787,34 @@ fn fence(program: &Path, workdir: Option<&Path>) -> Result<Option<Fence>> {
     }
     let real = |p: PathBuf| std::fs::canonicalize(&p).unwrap_or(p);
     let home = std::env::var_os("HOME").map(|h| real(PathBuf::from(h)));
-    // On Linux, Codex's folder by where it really is (`~/.codex` too, which
-    // may be a link), and where Codex will look for it (the given path, its
-    // parent resolved), which the fence binds it onto. The Mac's profile
-    // keeps the folder as given, as it always has.
+    // On Linux the app's own folders first, in the folders Tauri puts them
+    // (`dirs`, as it does), whatever the launch mode (Clean Start's sit
+    // beside the normal ones), then Codex's folder checked against them.
+    // The Mac's profile keeps Codex's folder as given, as it always has.
+    #[cfg(target_os = "linux")]
+    let hidden: Vec<PathBuf> = {
+        let bases: Vec<PathBuf> = [
+            dirs::data_dir(),
+            dirs::data_local_dir(),
+            dirs::config_dir(),
+            dirs::cache_dir(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        app_folders(&bases, crate::brand::ID)
+            .into_iter()
+            .map(real)
+            .collect()
+    };
     #[cfg(target_os = "linux")]
     let (codex_home, codex_mount) = {
-        let given = std::env::var_os("CODEX_HOME")
-            .map(PathBuf::from)
-            .or_else(|| home.as_ref().map(|h| h.join(".codex")));
-        let mount = given.as_ref().map(|c| match (c.parent(), c.file_name()) {
-            (Some(parent), Some(name)) => real(parent.to_path_buf()).join(name),
-            _ => c.clone(),
-        });
-        (given.map(real), mount)
+        let home = home.as_deref().ok_or_else(|| {
+            CoreError::Ai("Couldn't find the home folder, so the AI can't be fenced in.".into())
+        })?;
+        let env = std::env::var_os("CODEX_HOME");
+        let (resolved, mount) = linux_codex_paths(env.as_deref(), home, &hidden, real)?;
+        (Some(resolved), mount)
     };
     #[cfg(not(target_os = "linux"))]
     let codex_home = std::env::var_os("CODEX_HOME").map(|c| real(PathBuf::from(c)));
@@ -756,26 +836,8 @@ fn fence(program: &Path, workdir: Option<&Path>) -> Result<Option<Fence>> {
     )?;
     #[cfg(target_os = "linux")]
     {
-        // The app's own folders, in the folders Tauri puts them (`dirs`,
-        // as it does), whatever the launch mode (Clean Start's sit beside
-        // the normal ones).
-        let bases: Vec<PathBuf> = [
-            dirs::data_dir(),
-            dirs::data_local_dir(),
-            dirs::config_dir(),
-            dirs::cache_dir(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-        dirs.hidden = app_folders(&bases, crate::brand::ID)
-            .into_iter()
-            .map(real)
-            .collect();
-        if let Some(mount) = codex_mount {
-            dirs.codex_mount = mount;
-        }
-        codex_home_problem(&dirs.codex_home, &dirs.codex_mount, &dirs.hidden)?;
+        dirs.hidden = hidden;
+        dirs.codex_mount = codex_mount;
         // Without `$XDG_RUNTIME_DIR`, where systemd puts it: under this
         // user's ID, which owns this process's own `/proc` entry.
         let runtime = std::env::var_os("XDG_RUNTIME_DIR")
@@ -789,6 +851,7 @@ fn fence(program: &Path, workdir: Option<&Path>) -> Result<Option<Fence>> {
         Ok(Some(Fence::Bubblewrap(
             bwrap,
             bwrap_args(&dirs, runtime.as_deref(), bus.as_deref(), workdir),
+            dirs.codex_mount.clone(),
         )))
     }
     #[cfg(not(target_os = "linux"))]
@@ -1010,7 +1073,7 @@ mod tests {
         let base: Vec<String> = BWRAP_BASE.iter().map(|a| a.to_string()).collect();
         assert!(args.starts_with(&base), "the probe's own start: {args:?}");
         at(&["--tmpfs".into(), s(&run)]);
-        at(&["--ro-bind".into(), "/dev/null".into(), s(&bus)]);
+        let bus_covered = at(&["--ro-bind".into(), "/dev/null".into(), s(&bus)]);
         let tmpfs_home = at(&["--tmpfs".into(), s(&home)]);
         let local_bind = at(&["--ro-bind".into(), s(&local), s(&local)]);
         // Codex's folder, from where it really is to where Codex looks.
@@ -1028,6 +1091,8 @@ mod tests {
             "{args:?}"
         );
         assert!(data_hidden < work_bind, "{args:?}");
+        // The bus is covered after everything that puts folders back.
+        assert!(work_bind < bus_covered, "{args:?}");
         assert!(
             !args.iter().any(|a| a == "/usr/bin"),
             "outside home needs nothing: {args:?}"
@@ -1129,14 +1194,62 @@ mod tests {
     #[test]
     fn reads_the_socket_files_a_bus_address_names() {
         assert_eq!(
-            bus_sockets("unix:path=/run/user/1000/bus"),
+            bus_sockets("unix:path=/run/user/1000/bus", None),
             [PathBuf::from("/run/user/1000/bus")]
         );
         assert_eq!(
-            bus_sockets("unix:abstract=/tmp/dbus-x,guid=1;unix:path=/tmp/b,guid=2"),
+            bus_sockets(
+                "unix:abstract=/tmp/dbus-x,guid=1;unix:path=/tmp/b,guid=2",
+                None
+            ),
             [PathBuf::from("/tmp/b")]
         );
-        assert!(bus_sockets("").is_empty());
+        // Escaped as the D-Bus specification says (a space is `%20`).
+        assert_eq!(
+            bus_sockets("unix:path=/tmp/my%20bus%2csocket", None),
+            [PathBuf::from("/tmp/my bus,socket")]
+        );
+        // `runtime=yes`: the runtime folder's `bus`.
+        assert_eq!(
+            bus_sockets("unix:runtime=yes", Some(Path::new("/run/user/1000"))),
+            [PathBuf::from("/run/user/1000/bus")]
+        );
+        assert!(bus_sockets("unix:path=/tmp/bad%2", None).is_empty());
+        assert!(bus_sockets("", None).is_empty());
+    }
+
+    /// Fifth review of the Linux fence: Codex's folder is told to Codex by
+    /// the path the fence puts it at, its parent resolved, so a folder given
+    /// through a link in home still resolves inside; a relative
+    /// `CODEX_HOME` is refused, and so is an overlap with the app's folders.
+    #[cfg(unix)]
+    #[test]
+    fn codexs_folder_is_given_to_codex_by_a_path_that_resolves_inside_the_fence() {
+        let root = std::env::temp_dir().join(format!("codex-paths-{}", fastrand::u64(..)));
+        let elsewhere = root.join("elsewhere");
+        let codex = elsewhere.join("codex");
+        std::fs::create_dir_all(&codex).unwrap();
+        let home = root.join("home");
+        std::fs::create_dir_all(&home).unwrap();
+        // `~/linked` is a link to `elsewhere`; CODEX_HOME goes through it.
+        std::os::unix::fs::symlink(&elsewhere, home.join("linked")).unwrap();
+        let real = |p: PathBuf| std::fs::canonicalize(&p).unwrap_or(p);
+        let given = home.join("linked/codex");
+        let (resolved, mount) =
+            linux_codex_paths(Some(given.as_os_str()), &home, &[], real).unwrap();
+        assert_eq!(resolved, real(codex.clone()));
+        // The mount needs no link in home: it's where the folder really is.
+        assert_eq!(mount, real(elsewhere.clone()).join("codex"));
+        // A relative CODEX_HOME is refused.
+        let relative = std::ffi::OsStr::new("codex");
+        assert!(linux_codex_paths(Some(relative), &home, &[], real).is_err());
+        // Without CODEX_HOME, ~/.codex.
+        let (_, default) = linux_codex_paths(None, &home, &[], real).unwrap();
+        assert_eq!(default, real(home.clone()).join(".codex"));
+        // Overlapping the app's folders: refused here too.
+        let hidden = vec![real(elsewhere.clone())];
+        assert!(linux_codex_paths(Some(given.as_os_str()), &home, &hidden, real).is_err());
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     /// On Linux with bubblewrap: inside the fence a program can't read the
@@ -1181,7 +1294,16 @@ mod tests {
             readable: vec![local.clone()],
             hidden: vec![data.clone(), elsewhere.clone()],
         };
-        let args = bwrap_args(&dirs, None, None, Some(&work));
+        // A session bus socket (a plain file stands in) inside a folder the
+        // fence puts back, named with a space, as the bus's address escapes
+        // it: covered all the same.
+        let bus = local.join("my bus");
+        std::fs::write(&bus, "SECRETS").unwrap();
+        let address = format!(
+            "unix:path={}",
+            bus.display().to_string().replace(' ', "%20")
+        );
+        let args = bwrap_args(&dirs, None, Some(&address), Some(&work));
         let run = |program: &'static str, arg: Option<PathBuf>| {
             let args = args.clone();
             async move {
@@ -1199,6 +1321,7 @@ mod tests {
         assert!(!cat(data.join("mail.sqlite3")).await.contains("MAIL"));
         assert!(!cat(elsewhere.join("mail.sqlite3")).await.contains("MAIL"));
         assert_eq!(cat(local.join("tool.txt")).await, "TOOL");
+        assert_eq!(cat(bus.clone()).await, "", "the bus is covered");
         assert_eq!(cat(codex.join("auth.json")).await, "SIGN-IN");
         assert!(!cat("/etc/hosts".into()).await.is_empty());
         assert_eq!(run("/bin/pwd", None).await.trim(), work.to_string_lossy());
