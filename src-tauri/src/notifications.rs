@@ -239,6 +239,27 @@ mod linux_state {
     pub struct Shown {
         conversations: HashMap<Key, Option<ThreadId>>,
         order: VecDeque<Key>,
+        /// Pushed out of the list while possibly still shown, and not yet
+        /// taken back: no longer clickable, but taken back with the rest.
+        stale: VecDeque<Key>,
+    }
+
+    /// A notification's body escaped for a service that reads markup in it
+    /// (`body-markup`): an email's subject or text could otherwise change how
+    /// the notification looks.
+    pub fn escape_markup(text: &str) -> String {
+        let mut out = String::with_capacity(text.len());
+        for c in text.chars() {
+            match c {
+                '&' => out.push_str("&amp;"),
+                '<' => out.push_str("&lt;"),
+                '>' => out.push_str("&gt;"),
+                '"' => out.push_str("&quot;"),
+                '\'' => out.push_str("&#39;"),
+                c => out.push(c),
+            }
+        }
+        out
     }
 
     impl Shown {
@@ -255,8 +276,12 @@ mod linux_state {
             while self.order.len() > REMEMBERED {
                 if let Some(oldest) = self.order.pop_front() {
                     self.conversations.remove(&oldest);
+                    self.stale.push_back(oldest.clone());
                     evicted.push(oldest);
                 }
+            }
+            while self.stale.len() > REMEMBERED {
+                self.stale.pop_front();
             }
             evicted
         }
@@ -271,16 +296,30 @@ mod linux_state {
             if self.conversations.remove(&key).is_some() {
                 self.order.retain(|k| k != &key);
             }
+            self.stale.retain(|k| k != &key);
         }
 
         /// A service left the bus: its notifications went with it.
         pub fn gone(&mut self, owner: &str) {
             self.conversations.retain(|(o, _), _| o != owner);
             self.order.retain(|(o, _)| o != owner);
+            self.stale.retain(|(o, _)| o != owner);
         }
 
+        /// The clickable ones, oldest first.
+        #[cfg(test)]
         pub fn keys(&self) -> Vec<Key> {
             self.order.iter().cloned().collect()
+        }
+
+        /// Everything to take back: the clickable ones and those pushed out
+        /// of the list but not yet closed.
+        pub fn to_take_back(&self) -> Vec<Key> {
+            self.stale
+                .iter()
+                .chain(self.order.iter())
+                .cloned()
+                .collect()
         }
     }
 
@@ -288,6 +327,15 @@ mod linux_state {
     mod tests {
         use super::{Shown, REMEMBERED};
         use mail_core::model::ThreadId;
+
+        #[test]
+        fn a_body_is_escaped_for_a_service_that_reads_markup() {
+            assert_eq!(
+                super::escape_markup(r#"<b>Win</b> & "more" isn't"#),
+                "&lt;b&gt;Win&lt;/b&gt; &amp; &quot;more&quot; isn&#39;t"
+            );
+            assert_eq!(super::escape_markup("Lunch?"), "Lunch?");
+        }
 
         #[test]
         fn a_restarted_service_numbering_afresh_is_never_taken_for_the_old_one() {
@@ -313,13 +361,18 @@ mod linux_state {
             for id in 1..=(REMEMBERED as u32 + 10) {
                 evicted.extend(s.posted(":1.10", id, None));
             }
-            // Those pushed out are handed back, to be closed.
+            // Those pushed out are handed back, to be closed, and stay to be
+            // taken back until they are (a close the service refused).
             assert_eq!(
                 evicted,
                 (1..=10)
                     .map(|id| (":1.10".to_string(), id))
                     .collect::<Vec<_>>()
             );
+            assert_eq!(s.conversation(":1.10", 1), None);
+            assert_eq!(s.to_take_back().len(), REMEMBERED + 10);
+            s.closed(":1.10", 1);
+            assert_eq!(s.to_take_back().len(), REMEMBERED + 9);
             assert_eq!(s.keys().len(), REMEMBERED);
             assert_eq!(s.keys()[0], (":1.10".to_string(), 11));
             s.closed(":1.10", 11);
@@ -485,6 +538,7 @@ mod linux {
             let (posts, queue) = mpsc::sync_channel(QUEUED);
             let worker = Worker {
                 connection: connection.clone(),
+                markup: std::cell::OnceCell::new(),
                 shown: Arc::clone(&shown),
                 rounds: Arc::clone(&rounds),
                 alive: Arc::clone(&alive),
@@ -561,6 +615,8 @@ mod linux {
     /// The thread that makes every call, one at a time.
     struct Worker {
         connection: Connection,
+        /// Whether the service reads markup in a body, asked once.
+        markup: std::cell::OnceCell<bool>,
         shown: Arc<Mutex<Shown>>,
         rounds: Arc<Rounds>,
         alive: Arc<AtomicBool>,
@@ -602,8 +658,25 @@ mod linux {
             true
         }
 
+        /// Whether the service reads markup in a notification's body
+        /// (`body-markup` among its capabilities), asked once.
+        fn body_markup(&self) -> bool {
+            *self.markup.get_or_init(|| {
+                self.connection
+                    .call_method(Some(NAME), PATH, Some(NAME), "GetCapabilities", &())
+                    .ok()
+                    .and_then(|reply| reply.body().deserialize::<Vec<String>>().ok())
+                    .is_some_and(|caps| caps.iter().any(|c| c == "body-markup"))
+            })
+        }
+
         fn post(&self, post: &Post) {
             let notice = &post.notice;
+            let body = if self.body_markup() {
+                super::linux_state::escape_markup(&notice.body)
+            } else {
+                notice.body.clone()
+            };
             let mut hints: std::collections::HashMap<&str, Value> =
                 std::collections::HashMap::new();
             hints.insert("desktop-entry", Value::from(mail_core::brand::NAME));
@@ -617,7 +690,7 @@ mod linux {
                     0u32,
                     mail_core::brand::SHORT_NAME,
                     notice.title.as_str(),
-                    notice.body.as_str(),
+                    body.as_str(),
                     vec!["default", "Open"],
                     hints,
                     -1i32,
@@ -683,9 +756,10 @@ mod linux {
             true
         }
 
-        /// Takes back every notification shown.
+        /// Takes back every notification shown, and any pushed out of the
+        /// list that a service refused to close before.
         fn clear_all(&self) {
-            let keys = self.shown.lock().unwrap().keys();
+            let keys = self.shown.lock().unwrap().to_take_back();
             for (owner, id) in keys {
                 if !self.close(&owner, id) {
                     return;
@@ -782,6 +856,8 @@ mod linux_tests {
         /// Notify calls received, answered or not.
         asked: Arc<std::sync::atomic::AtomicUsize>,
         issued: Arc<Mutex<Vec<u32>>>,
+        /// The bodies posted, as received.
+        bodies: Arc<Mutex<Vec<String>>>,
         closed: Arc<Mutex<Vec<u32>>>,
         refuse: Arc<Mutex<HashSet<u32>>>,
         stall: Arc<AtomicBool>,
@@ -807,7 +883,7 @@ mod linux_tests {
             _replaces: u32,
             _icon: &str,
             _summary: &str,
-            _body: &str,
+            body: &str,
             _actions: Vec<String>,
             _hints: HashMap<String, OwnedValue>,
             _timeout: i32,
@@ -820,7 +896,15 @@ mod linux_tests {
             let sender = header.sender().map(|s| s.to_string()).unwrap_or_default();
             owners.insert(id, sender);
             self.issued.lock().unwrap().push(id);
+            self.bodies.lock().unwrap().push(body.to_string());
             id
+        }
+
+        /// Reads markup in a body, as GNOME's does.
+        fn get_capabilities(&self) -> Vec<String> {
+            ["body", "body-markup", "actions"]
+                .map(String::from)
+                .to_vec()
         }
 
         fn close_notification(
@@ -1053,21 +1137,45 @@ mod linux_tests {
     }
 
     #[test]
+    fn a_body_is_escaped_for_a_service_that_reads_markup() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        let _server = serve(&bus, &fake);
+        let (service, _clicks) = connect(&bus);
+        service.post(Notice {
+            title: "Maya Chen".into(),
+            body: "<b>Win</b> & more".into(),
+            thread: None,
+        });
+        eventually("posted", || fake.bodies.lock().unwrap().len() == 1);
+        assert_eq!(
+            fake.bodies.lock().unwrap()[0],
+            "&lt;b&gt;Win&lt;/b&gt; &amp; more"
+        );
+    }
+
+    #[test]
     fn one_pushed_out_of_the_list_is_closed_not_just_forgotten() {
         let Some(bus) = bus() else { return };
         let fake = Fake::default();
         let _server = serve(&bus, &fake);
         let (service, _clicks) = connect(&bus);
         let limit = super::linux_state::REMEMBERED;
+        // The service refuses to close the first one when it's pushed out.
+        fake.refuse.lock().unwrap().insert(1);
         for n in 0..=limit {
             service.post(notice(n as i64));
             // One at a time, so none is dropped from a full queue.
             eventually("posted", || fake.issued.lock().unwrap().len() == n + 1);
         }
-        eventually("the oldest is closed at the service", || {
-            *fake.closed.lock().unwrap() == [1]
-        });
         assert_eq!(service.shown().len(), limit);
+        std::thread::sleep(Duration::from_millis(300));
+        assert!(fake.closed.lock().unwrap().is_empty(), "the refusal");
+        // It isn't forgotten: the next take-back closes it, with the rest.
+        fake.refuse.lock().unwrap().clear();
+        service.clear_all(Duration::from_secs(10));
+        assert!(fake.closed.lock().unwrap().contains(&1));
+        assert_eq!(fake.closed.lock().unwrap().len(), limit + 1);
     }
 
     #[test]
