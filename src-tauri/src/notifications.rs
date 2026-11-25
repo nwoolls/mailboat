@@ -611,14 +611,18 @@ mod linux {
         }
     }
 
-    /// Whether a call's error says its destination isn't on the bus (any
-    /// more): nothing was delivered, so it can be sent again elsewhere.
-    fn gone(error: &str) -> bool {
-        matches!(
-            error,
-            "org.freedesktop.DBus.Error.ServiceUnknown"
-                | "org.freedesktop.DBus.Error.NameHasNoOwner"
-        )
+    /// Whether a call's error is the bus itself saying the destination
+    /// isn't on it (any more): then nothing was delivered, so it can be sent
+    /// again elsewhere. The same error from the service is its own answer,
+    /// after it may have shown the notification, so it's never resent
+    /// (eleventh review).
+    pub fn bus_says_gone(sender: Option<&str>, error: &str) -> bool {
+        sender == Some("org.freedesktop.DBus")
+            && matches!(
+                error,
+                "org.freedesktop.DBus.Error.ServiceUnknown"
+                    | "org.freedesktop.DBus.Error.NameHasNoOwner"
+            )
     }
 
     /// The thread that makes every call, one at a time.
@@ -699,12 +703,18 @@ mod linux {
             // before the post reaches it (a restart), and the bus then says
             // so; the name is asked again for its new owner (tenth review).
             for attempt in 0..2 {
+                // A take-back asked for before or while the service is asked
+                // drops this post: it was queued before it (tenth and
+                // eleventh reviews). Checked before asking too, so a resend
+                // never holds up a take-back behind a slow answer.
+                let stale = || post.round < self.rounds.asked.load(Ordering::Acquire);
+                if stale() {
+                    break;
+                }
                 let Some((to, markup)) = self.service() else {
                     return;
                 };
-                // A take-back asked for while the service was being asked
-                // drops this post: it was queued before it (tenth review).
-                if post.round < self.rounds.asked.load(Ordering::Acquire) {
+                if stale() {
                     break;
                 }
                 let body = if markup {
@@ -748,8 +758,13 @@ mod linux {
                         }
                         break;
                     }
-                    Err(zbus::Error::MethodError(name, ..))
-                        if attempt == 0 && to != NAME && gone(name.as_str()) => {}
+                    Err(zbus::Error::MethodError(name, _, reply))
+                        if attempt == 0
+                            && to != NAME
+                            && bus_says_gone(
+                                reply.header().sender().map(|s| s.as_str()),
+                                name.as_str(),
+                            ) => {}
                     Err(e) => {
                         self.lost(&e);
                         break;
@@ -911,8 +926,8 @@ mod linux_tests {
         stall_caps: Arc<AtomicBool>,
         /// Fails GetCapabilities.
         no_caps: Arc<AtomicBool>,
-        /// Answers the next Notify as the bus does for a connection that has
-        /// left (`ServiceUnknown`), once.
+        /// Answers the next Notify with `ServiceUnknown` itself, once (the
+        /// bus's error name, from the service).
         gone_once: Arc<AtomicBool>,
     }
 
@@ -1282,19 +1297,50 @@ mod linux_tests {
         assert!(service.shown().is_empty());
     }
 
-    /// Review (round 10): the connection that answered has left when the
-    /// post reaches it; the name is asked again and the post goes through.
+    /// Review (round 11): only the bus saying the destination is gone
+    /// means nothing was delivered. The same error name from anyone else
+    /// (the service itself, after it may have shown the notification) never
+    /// leads to a second post.
     #[test]
-    fn a_post_to_a_service_that_just_left_is_sent_again() {
+    fn only_the_bus_saying_the_service_is_gone_resends() {
+        let bus = Some("org.freedesktop.DBus");
+        assert!(super::linux::bus_says_gone(
+            bus,
+            "org.freedesktop.DBus.Error.ServiceUnknown"
+        ));
+        assert!(super::linux::bus_says_gone(
+            bus,
+            "org.freedesktop.DBus.Error.NameHasNoOwner"
+        ));
+        assert!(!super::linux::bus_says_gone(
+            bus,
+            "org.freedesktop.DBus.Error.AccessDenied"
+        ));
+        assert!(!super::linux::bus_says_gone(
+            Some(":1.42"),
+            "org.freedesktop.DBus.Error.ServiceUnknown"
+        ));
+        assert!(!super::linux::bus_says_gone(
+            None,
+            "org.freedesktop.DBus.Error.ServiceUnknown"
+        ));
+    }
+
+    #[test]
+    fn a_service_answering_that_its_gone_is_not_posted_to_twice() {
         let Some(bus) = bus() else { return };
         let fake = Fake::default();
         fake.gone_once.store(true, Ordering::Release);
         let _server = serve(&bus, &fake);
         let (service, _clicks) = connect(&bus);
         service.post(notice(42));
-        eventually("posted", || fake.bodies.lock().unwrap().len() == 1);
-        assert_eq!(fake.caps_asked.load(Ordering::Acquire), 2);
-        assert_eq!(service.shown(), [1]);
+        eventually("asked to post", || fake.asked.load(Ordering::Acquire) == 1);
+        std::thread::sleep(Duration::from_millis(300));
+        assert_eq!(fake.asked.load(Ordering::Acquire), 1, "posted twice");
+        assert_eq!(fake.caps_asked.load(Ordering::Acquire), 1);
+        // The next post goes through as usual.
+        service.post(notice(7));
+        eventually("posted", || service.shown() == [1]);
     }
 
     /// Review (round 10): a service that doesn't say what it reads gets an
