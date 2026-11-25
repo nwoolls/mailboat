@@ -36,6 +36,15 @@ const one = (ending: string) => {
   return join(folder, found[0]);
 };
 
+/**
+ * Every mark Tauri can leave. A release build keeps only the one it was
+ * built with (`UNK`, before bundling); the others it compares against are
+ * folded away, so a patched program holds exactly its own, and one left
+ * unpatched or patched as another kind fails. (A debug build keeps all
+ * four, so this check is for release builds only.)
+ */
+const MARKS = ["DEB", "RPM", "APP", "UNK"].map((kind) => `__TAURI_BUNDLE_TYPE_VAR_${kind}`);
+
 /** Each package, how to unpack its program, and the mark it must carry. */
 const packages = [
   {
@@ -75,9 +84,12 @@ for (const p of packages) {
     ? join(into, "root", "usr", "bin", program)
     : join(into, "usr", "bin", program);
   const problems = elfProblems(run("readelf", ["-h", "-l", "-d", "-W", inside]), p.runpath);
-  if (!readFileSync(inside).includes(Buffer.from(p.mark))) {
+  const bytes = readFileSync(inside);
+  if (!bytes.includes(Buffer.from(p.mark))) {
     problems.push(`not marked as its kind of package (${p.mark})`);
   }
+  const others = MARKS.filter((m) => m !== p.mark && bytes.includes(Buffer.from(m)));
+  if (others.length) problems.push(`also marked ${others.join(", ")}`);
   if (problems.length) fail(`${p.file}: ${problems.join("; ")}`);
   console.log(`${p.file}: hardened, marked ${p.mark.split("_").pop()}`);
 }
