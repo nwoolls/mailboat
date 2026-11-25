@@ -29,6 +29,8 @@ use std::path::{Path, PathBuf};
 pub fn claude() -> Option<PathBuf> {
     let binary: &[&str] = if cfg!(windows) {
         &["claude.exe"]
+    } else if cfg!(target_os = "linux") {
+        &["claude"]
     } else {
         &["claude.app", "Contents", "MacOS", "claude"]
     };
@@ -90,6 +92,12 @@ fn claude_data_dirs() -> Vec<PathBuf> {
                 }
             }
         }
+    } else if cfg!(target_os = "linux") {
+        // The Claude app for Linux keeps its data, Claude Code included,
+        // in `~/.config/Claude` (`claude-code/<version>/<build>/claude`,
+        // seen from its `.deb`, 2026-11-25), as Electron apps do.
+        #[cfg(target_os = "linux")]
+        dirs.extend(::dirs::config_dir());
     } else if let Some(home) = env_dir("HOME") {
         dirs.push(home.join("Library/Application Support"));
     }
@@ -170,6 +178,21 @@ mod tests {
         assert_eq!(version, "2.1.308");
         assert_eq!(path, root.join("2.1.308/a93d/claude.exe"));
         assert!(newest(&root.join("missing"), &["claude.exe"]).is_none());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// The Claude app for Linux: `claude-code/<version>/<build>/claude`
+    /// under `~/.config/Claude`, the folder the app looks in on Linux.
+    #[test]
+    fn finds_the_claude_apps_claude_code_as_linux_lays_it_out() {
+        let root = std::env::temp_dir().join(format!("ai-apps-linux-{}", fastrand::u64(..)));
+        let program = root.join("claude-code/2.1.330/fd32a5b15526/claude");
+        std::fs::create_dir_all(program.parent().unwrap()).unwrap();
+        std::fs::write(&program, b"").unwrap();
+        let (version, path) = newest(&root.join("claude-code"), &["claude"]).unwrap();
+        assert_eq!((version.as_str(), path), ("2.1.330", program));
+        #[cfg(target_os = "linux")]
+        assert!(claude_data_dirs().contains(&::dirs::config_dir().unwrap()));
         let _ = std::fs::remove_dir_all(&root);
     }
 }
