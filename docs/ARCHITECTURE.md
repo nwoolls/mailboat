@@ -204,11 +204,12 @@ fresh one; small parts come with the message and have no ID at all.
   drops leading dots, guards Windows device names and keeps a name within
   150 characters and 200 bytes, so `../../.zshrc` becomes `zshrc` (the
   decisions table, 2026-11-08, has the rest).
-- **Quarantine:** every file Mailboat writes is marked as downloaded from
-  the internet, as browsers do, so the system and the apps that open it
-  can apply their protections for such files, as configured: macOS's
-  `com.apple.quarantine` tag (Gatekeeper), when the file is opened or
-  saved; on Windows the Mark of the Web, a `Zone.Identifier` stream with
+- **Quarantine:** attachment files are marked as downloaded from the
+  internet, as browsers do, so the system and the apps that open them can
+  apply their protections for such files, as configured: macOS's
+  `com.apple.quarantine` tag (Gatekeeper), when the file is opened,
+  previewed or saved (a cached attachment that is only forwarded or shown
+  inline stays unmarked there); on Windows the Mark of the Web, a `Zone.Identifier` stream with
   zone 3, the internet (SmartScreen, Office's Protected View), as soon as
   the attachment reaches the cache and again on each copy saved. Both are
   best effort: on a volume without streams (FAT32) the file stays
