@@ -7719,6 +7719,15 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
   - [ ] Remove that workaround once Tauri's runtime takes tao 0.38, which
         reads the desktop's preference itself (check that a chosen theme
         still holds when the desktop's changes)
+  - [ ] Tests the reviews asked for but the branch doesn't have *(code
+        review, round 11, 2026-11-25)*: the theme's timing on Linux (the
+        test checks the rule for dropping a late answer from the desktop,
+        not that the app applies it, nor the order of the desktop's answer
+        and GTK's writes; tried by hand on Fedora KDE instead), and a
+        notification resent after the bus itself says its service has left
+        (the test checks the rule, and that a service's own "gone" answer
+        isn't resent; making the bus say it in a test needs the service to
+        leave between its two answers)
   - [x] Email links (`mailto:`): the desktop entry claims the scheme, and
         Settings reads and sets the default through `xdg-settings`
   - [x] The click on a notification opens its conversation (the default
