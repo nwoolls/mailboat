@@ -107,6 +107,9 @@ export function peProblems(headers: string): string[] {
   return problems;
 }
 
+/** A hexadecimal number as readelf prints one. */
+const hex = (cell: string) => /^0x[0-9a-f]+$/.test(cell);
+
 /**
  * What's wrong with the Linux program, from `readelf -h -l -d -W`. DASA has
  * no Linux test cases, so these are the protections the Mac and Windows
@@ -120,25 +123,41 @@ export function peProblems(headers: string): string[] {
  */
 export function elfProblems(readelf: string, runpath?: string): string[] {
   const problems: string[] = [];
-  const field = (name: string) => new RegExp(`^\\s*${name}:\\s*(.+)$`, "m").exec(readelf)?.[1];
+  const lines = readelf.split("\n").map((line) => line.trim());
+  // A header line, `Name: value`.
+  const field = (name: string) =>
+    lines
+      .find((line) => line.startsWith(`${name}:`))
+      ?.slice(name.length + 1)
+      .trim() || undefined;
   if (field("Class") !== "ELF64") problems.push(`not a 64-bit build (class: ${field("Class")})`);
   const flags1 = /\(FLAGS_1\)\s+Flags:([^\n]*)/.exec(readelf)?.[1].trim().split(/\s+/) ?? [];
   if (!field("Type")?.startsWith("DYN") || !flags1.includes("PIE")) {
     problems.push(`not position-independent (type: ${field("Type") ?? "unknown"})`);
   }
-  // A segment row: its name, five numbers, then its flags (R, W, E) and its
-  // alignment, which readelf prints as a bare 0 when it's zero (as lld, the
-  // default linker for x86-64 Linux, writes the stack's).
-  const segment = (name: string) =>
-    new RegExp(
-      `^\\s*${name}\\s+(?:0x[0-9a-f]+\\s+){5}([RWE ]+?)\\s+(?:0x[0-9a-f]+|0)\\s*$`,
-      "m",
-    ).exec(readelf);
+  // A segment row's flags (R, W, E): its name, five numbers, the flags
+  // (`R E` has a space in it), then its alignment, which readelf prints as a
+  // bare 0 when it's zero (as lld, the default linker for x86-64 Linux,
+  // writes the stack's). Null when there's no such row. Read as fields, not
+  // with a pattern built from the name.
+  const segment = (name: string): string | null => {
+    for (const line of lines) {
+      const cells = line.split(/\s+/);
+      if (cells[0] !== name || cells.length < 8) continue;
+      const flags = cells.slice(6, -1).join("");
+      const align = cells[cells.length - 1];
+      if (cells.slice(1, 6).every(hex) && /^[RWE]+$/.test(flags) && (hex(align) || align === "0")) {
+        return flags;
+      }
+    }
+    return null;
+  };
   const stack = segment("GNU_STACK");
-  if (!stack) problems.push("no GNU_STACK segment, so the stack may run code");
-  else if (stack[1].includes("E")) problems.push("the stack can run code");
+  if (stack === null) problems.push("no GNU_STACK segment, so the stack may run code");
+  else if (stack.includes("E")) problems.push("the stack can run code");
   const bindNow = /\(FLAGS\)\s+[^\n]*\bBIND_NOW\b/.test(readelf) || flags1.includes("NOW");
-  if (!segment("GNU_RELRO") || !bindNow) problems.push("no full RELRO (GNU_RELRO and BIND_NOW)");
+  if (segment("GNU_RELRO") === null || !bindNow)
+    problems.push("no full RELRO (GNU_RELRO and BIND_NOW)");
   if (/\(RPATH\)/.test(readelf)) problems.push("has a RPATH");
   const runpaths = [...readelf.matchAll(/\(RUNPATH\)[^\n]*\[([^\]]*)\]/g)].map((m) => m[1]);
   if (/\(RUNPATH\)/.test(readelf) && !(runpaths.length === 1 && runpaths[0] === runpath)) {
