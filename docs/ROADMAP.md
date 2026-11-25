@@ -7750,6 +7750,9 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         both. Ubuntu GNOME brings the window forward; Fedora KDE on Wayland
         only flashes it in the taskbar, its focus-stealing prevention: see
         the item below.)*
+        *(2026-11-25, Ubuntu GNOME: Delete all data took back the app's
+        notifications still in the list; a second launch opened no second
+        copy; a `mailto:` link opened the app.)*
   - [x] Release and updates: a Linux job in the release workflow (x86-64
         and Arm on Ubuntu 22.04) signs each package for the updater;
         `latest.json` has an entry per package (`linux-x86_64-deb` and so
