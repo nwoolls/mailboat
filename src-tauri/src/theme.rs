@@ -34,7 +34,7 @@ pub fn apply(app: &AppHandle, theme: Theme) {
 
 #[cfg(target_os = "linux")]
 pub mod linux {
-    use std::sync::atomic::{AtomicU8, Ordering};
+    use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
     use std::time::Duration;
 
     use mail_core::settings::Theme;
@@ -61,22 +61,47 @@ pub mod linux {
         next == Theme::System && previous != code(Theme::System)
     }
 
+    /// How many times the desktop has been asked (each switch to "follow
+    /// the system"), and how many times GTK's "prefer dark" has changed
+    /// since `watch` began counting.
+    static ASKED: AtomicU64 = AtomicU64::new(0);
+    static CHANGED: AtomicU64 = AtomicU64::new(0);
+
+    /// Whether an answer from the desktop still says something new: no
+    /// later question was asked (a quick System, Light, System), and GTK's
+    /// setting hasn't changed since (tao applied a newer theme from the
+    /// desktop, or a theme was chosen). Either makes the answer stale.
+    pub fn answer_holds(asked: (u64, u64), changed: (u64, u64)) -> bool {
+        asked.0 == asked.1 && changed.0 == changed.1
+    }
+
     /// "Follow the system": asks the desktop on a thread of its own, and
-    /// sets its answer if the choice is still that by then. Leaves the
-    /// window as it is until the answer (tao set it from the desktop when
-    /// it made the window), never `None`, which tao 0.37 takes as light.
-    /// A theme chosen meanwhile wins: it's applied after this check, or
-    /// `watch` puts it back over this answer.
+    /// sets its answer on the main thread (where settings are applied too,
+    /// so nothing comes between the check and the set) if it still holds
+    /// and the choice is still that. Leaves the window as it is until then
+    /// (tao set it from the desktop when it made the window), never `None`,
+    /// which tao 0.37 takes as light.
     pub(super) fn follow_desktop(app: &tauri::AppHandle, previous: u8) {
         if !asks_desktop(previous, Theme::System) {
             return;
         }
+        let asked = ASKED.fetch_add(1, Ordering::AcqRel) + 1;
+        let changed = CHANGED.load(Ordering::Acquire);
         let app = app.clone();
         std::thread::spawn(move || {
             let theme = desktop();
-            if CHOICE.load(Ordering::Acquire) == code(Theme::System) {
-                app.set_theme(Some(theme));
-            }
+            let setter = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                let now = (
+                    ASKED.load(Ordering::Acquire),
+                    CHANGED.load(Ordering::Acquire),
+                );
+                if answer_holds((asked, now.0), (changed, now.1))
+                    && CHOICE.load(Ordering::Acquire) == code(Theme::System)
+                {
+                    setter.set_theme(Some(theme));
+                }
+            });
         });
     }
 
@@ -153,6 +178,7 @@ pub mod linux {
             return;
         };
         settings.connect_gtk_application_prefer_dark_theme_notify(|settings| {
+            CHANGED.fetch_add(1, Ordering::AcqRel);
             if let Some(dark) = held(CHOICE.load(Ordering::Relaxed)) {
                 if settings.is_gtk_application_prefer_dark_theme() != dark {
                     settings.set_gtk_application_prefer_dark_theme(dark);
@@ -184,6 +210,15 @@ pub mod linux {
             assert!(asks_desktop(code(Theme::Light), Theme::System));
             assert!(!asks_desktop(code(Theme::System), Theme::System));
             assert!(!asks_desktop(UNSET, Theme::Dark));
+        }
+
+        /// Review (round 10): an answer from an earlier switch to System,
+        /// or one overtaken by a change of the desktop's theme, isn't set.
+        #[test]
+        fn a_stale_answer_from_the_desktop_is_dropped() {
+            assert!(answer_holds((3, 3), (7, 7)));
+            assert!(!answer_holds((3, 4), (7, 7)), "asked again since");
+            assert!(!answer_holds((3, 3), (7, 8)), "changed since");
         }
 
         #[test]
