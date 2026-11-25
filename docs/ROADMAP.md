@@ -8022,6 +8022,15 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         so it shows the fix only on a slowed page (`bun run
         test:browser:slow`): there it failed 5 runs of 5 without the fix,
         the reply 182–432 px below as in CI, and passed 5 of 5 with it.
+- [ ] `reply-scroll.spec.ts`: "Reply with AI: opening slides to the reply
+      rather than jumping" (line 291).
+      - 2026-11-25, local full check on branch `linux-build` (the change
+        under test was Linux-only Rust and docs, nothing the browser tests
+        run): no painted scroll position fell between the start and the
+        halfway point (`seen.tops.some(...)`, expected true, received
+        false), so the slide wasn't seen. The same test passed in three
+        full checks on the branch earlier that day, and the whole file then
+        passed 5 runs of 5 with no change (120 tests).
 
 ### Reading
 
