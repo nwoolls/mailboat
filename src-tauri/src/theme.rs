@@ -10,21 +10,26 @@
 //! on Linux the app asks the desktop itself (the freedesktop settings
 //! portal, as tao 0.38 does) and sets that, and puts a chosen theme back
 //! whenever something changes GTK's setting under it (`linux::watch`).
+//! The question goes to the desktop on a thread of its own, and only when
+//! the choice becomes "follow the system" (and at startup): commands that
+//! save settings run on the main thread, which a slow bus must not hold.
 
 use mail_core::settings::Theme;
 use tauri::AppHandle;
 
 pub fn apply(app: &AppHandle, theme: Theme) {
+    // Recorded first, so the desktop's answer (on another thread) and
+    // `linux::watch` see this choice, never the one before it.
     #[cfg(target_os = "linux")]
-    linux::chose(theme);
-    app.set_theme(match theme {
+    let previous = linux::chose(theme);
+    match theme {
         #[cfg(target_os = "linux")]
-        Theme::System => Some(linux::desktop()),
+        Theme::System => linux::follow_desktop(app, previous),
         #[cfg(not(target_os = "linux"))]
-        Theme::System => None,
-        Theme::Light => Some(tauri::Theme::Light),
-        Theme::Dark => Some(tauri::Theme::Dark),
-    });
+        Theme::System => app.set_theme(None),
+        Theme::Light => app.set_theme(Some(tauri::Theme::Light)),
+        Theme::Dark => app.set_theme(Some(tauri::Theme::Dark)),
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -39,11 +44,40 @@ pub mod linux {
     const PORTAL: &str = "org.freedesktop.portal.Desktop";
     const PATH: &str = "/org/freedesktop/portal/desktop";
 
-    /// The theme chosen in Settings: 0 system, 1 light, 2 dark.
-    static CHOICE: AtomicU8 = AtomicU8::new(0);
+    /// The theme chosen in Settings: 0 system, 1 light, 2 dark; `UNSET`
+    /// before the first is applied.
+    static CHOICE: AtomicU8 = AtomicU8::new(UNSET);
+    const UNSET: u8 = u8::MAX;
 
-    pub(super) fn chose(theme: Theme) {
-        CHOICE.store(code(theme), Ordering::Relaxed);
+    /// Records the choice, and returns the one before it.
+    pub(super) fn chose(theme: Theme) -> u8 {
+        CHOICE.swap(code(theme), Ordering::AcqRel)
+    }
+
+    /// Whether choosing `next` needs the desktop asked: only when the
+    /// choice becomes "follow the system" (at startup, `previous` is
+    /// `UNSET`). While it stays that, tao follows the desktop's changes.
+    pub fn asks_desktop(previous: u8, next: Theme) -> bool {
+        next == Theme::System && previous != code(Theme::System)
+    }
+
+    /// "Follow the system": asks the desktop on a thread of its own, and
+    /// sets its answer if the choice is still that by then. Leaves the
+    /// window as it is until the answer (tao set it from the desktop when
+    /// it made the window), never `None`, which tao 0.37 takes as light.
+    /// A theme chosen meanwhile wins: it's applied after this check, or
+    /// `watch` puts it back over this answer.
+    pub(super) fn follow_desktop(app: &tauri::AppHandle, previous: u8) {
+        if !asks_desktop(previous, Theme::System) {
+            return;
+        }
+        let app = app.clone();
+        std::thread::spawn(move || {
+            let theme = desktop();
+            if CHOICE.load(Ordering::Acquire) == code(Theme::System) {
+                app.set_theme(Some(theme));
+            }
+        });
     }
 
     fn code(theme: Theme) -> u8 {
@@ -76,7 +110,7 @@ pub mod linux {
 
     /// The desktop's light or dark preference; light when it states none or
     /// can't be asked (no session bus, no portal, no answer within a second).
-    pub(super) fn desktop() -> tauri::Theme {
+    fn desktop() -> tauri::Theme {
         zbus::blocking::connection::Builder::session()
             .ok()
             .and_then(|b| b.method_timeout(Duration::from_secs(1)).build().ok())
@@ -138,6 +172,18 @@ pub mod linux {
             assert_eq!(held(code(Theme::System)), None);
             assert_eq!(held(code(Theme::Light)), Some(false));
             assert_eq!(held(code(Theme::Dark)), Some(true));
+        }
+
+        /// Review (round 9): saving settings with the theme left on System
+        /// doesn't ask the desktop again; switching to it, or starting with
+        /// it, does.
+        #[test]
+        fn the_desktop_is_asked_only_when_the_choice_becomes_system() {
+            assert!(asks_desktop(UNSET, Theme::System));
+            assert!(asks_desktop(code(Theme::Dark), Theme::System));
+            assert!(asks_desktop(code(Theme::Light), Theme::System));
+            assert!(!asks_desktop(code(Theme::System), Theme::System));
+            assert!(!asks_desktop(UNSET, Theme::Dark));
         }
 
         #[test]
