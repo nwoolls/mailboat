@@ -362,13 +362,24 @@ these rules. Keep it passing.
 - OAuth: desktop loopback redirect + PKCE. Scopes: `SCOPES` in
   `crates/core/src/auth/oauth.rs` (`gmail.modify` already covers drafts and
   sending, so `gmail.compose` is not asked for).
-- The OAuth client is an External app left in **Testing**, with each
-  account's address added as a test user (decided with the owner,
-  2026-10-29; see the Architecture decisions: publishing needs a homepage
-  and privacy URL and shows scarier screens). Each account clicks Continue
-  past Google's "hasn't verified this app" warning once, and Google ends
-  each account's sign-in after seven days while in Testing. Each account records which OAuth client it used
-  (`accounts.oauth_client`) so a second, Internal client can be added later.
+- Two kinds of OAuth client, both External:
+  - The owner's own client (the one their copy of the app uses) and the
+    clients people bring themselves (onboarding's own-credentials setup)
+    stay in **Testing**, with each account's address added as a test user
+    (decided with the owner, 2026-10-29; see the Architecture decisions:
+    publishing needs a homepage and privacy URL and shows scarier screens).
+    Each account clicks Continue past Google's "hasn't verified this app"
+    warning once, and Google ends each account's sign-in after seven days,
+    which is expected, not a bug.
+  - Mailboat's own client, in a separate Google Cloud project, is the one
+    under Google's verification for the paid version
+    (`docs/GOOGLE-VERIFICATION.md`). It has been In production since
+    2026-11-07: no test users and no seven-day limit, but unverified until
+    Google approves (the warning still shows, and it is capped at 100 users
+    in total). While Google reviews it, never switch it back to Testing or
+    change its user type, scopes or logo.
+  Each account records which OAuth client it used (`accounts.oauth_client`)
+  so a second, Internal client can be added later.
 - Credentials are never committed. The app reads Google's downloaded client
   JSON from `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`
   (Windows: `%APPDATA%\com.nwoolls.mailboat\`), or from env vars
