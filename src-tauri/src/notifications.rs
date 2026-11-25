@@ -317,9 +317,9 @@ mod linux_state {
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::mpsc::{self, Receiver, SyncSender};
-    use std::sync::{Arc, Mutex};
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use std::sync::mpsc::{self, Receiver, RecvTimeoutError, SyncSender};
+    use std::sync::{Arc, Condvar, Mutex};
     use std::time::{Duration, Instant};
 
     use mail_core::mail::notify::Notice;
@@ -346,24 +346,39 @@ mod linux {
     /// are dropped rather than piling up.
     const QUEUED: usize = 32;
 
-    enum Job {
-        Post(Notice),
-        /// Take back every notification shown, then say so.
-        ClearAll(SyncSender<()>),
+    /// How often the worker looks for a take-back while no post is waiting.
+    const TICK: Duration = Duration::from_millis(50);
+
+    /// A notification to post, with the take-back round it was queued in:
+    /// one queued before a take-back is never shown.
+    struct Post {
+        notice: Notice,
+        round: u64,
+    }
+
+    /// Take-backs asked for (`asked`) and done (`done`, with a condition
+    /// to wait on). Kept apart from the post queue, so a full queue can't
+    /// keep a take-back from being asked for.
+    #[derive(Default)]
+    struct Rounds {
+        asked: AtomicU64,
+        done: Mutex<u64>,
+        changed: Condvar,
     }
 
     /// The app's one connection to the notification service. Every call
     /// goes through one worker, in order, so a service that is slow to
     /// answer never holds up the app, and a reply that comes late is still
-    /// recorded (its notification can still be clicked and taken back).
-    /// One connection for everything, as a service may take a close only
-    /// from the connection that posted the notification (GNOME checks).
+    /// recorded. One connection for everything, as a service may take a
+    /// close only from the connection that posted the notification (GNOME
+    /// checks).
     pub struct Service {
         connection: Connection,
         /// The worker's and listeners' list, kept here for the tests.
         #[cfg_attr(not(test), allow(dead_code))]
         shown: Arc<Mutex<Shown>>,
-        jobs: SyncSender<Job>,
+        posts: SyncSender<Post>,
+        rounds: Arc<Rounds>,
         alive: Arc<AtomicBool>,
     }
 
@@ -385,19 +400,24 @@ mod linux {
                 &connection,
                 None,
             )?;
-            let owners = MessageIterator::for_match_rule(
+            // A connection leaving the bus: its unique name loses its owner.
+            // A service that only hands the well-known name on keeps its
+            // connection, and its notifications can still be clicked and
+            // taken back, so that alone changes nothing.
+            let departures = MessageIterator::for_match_rule(
                 MatchRule::builder()
                     .msg_type(Type::Signal)
                     .sender("org.freedesktop.DBus")?
                     .interface("org.freedesktop.DBus")?
                     .member("NameOwnerChanged")?
-                    .arg(0, NAME)?
+                    .arg(2, "")?
                     .build(),
                 &connection,
                 None,
             )?;
             let shown = Arc::new(Mutex::new(Shown::default()));
             let alive = Arc::new(AtomicBool::new(true));
+            let rounds = Arc::new(Rounds::default());
 
             // Clicks and closes, in the order the service sent them, matched
             // by the sender's unique name and the notification's number.
@@ -432,27 +452,27 @@ mod linux {
                 living.store(false, Ordering::Release);
             });
 
-            // A service that leaves the bus takes its notifications with it.
             let listening = Arc::clone(&shown);
             let living = Arc::clone(&alive);
             std::thread::spawn(move || {
-                for message in owners {
+                for message in departures {
                     let Ok(message) = message else { break };
-                    if let Ok((_, old, _)) =
+                    if let Ok((name, _old, _new)) =
                         message.body().deserialize::<(String, String, String)>()
                     {
-                        if !old.is_empty() {
-                            listening.lock().unwrap().gone(&old);
+                        if name.starts_with(':') {
+                            listening.lock().unwrap().gone(&name);
                         }
                     }
                 }
                 living.store(false, Ordering::Release);
             });
 
-            let (jobs, queue) = mpsc::sync_channel(QUEUED);
+            let (posts, queue) = mpsc::sync_channel(QUEUED);
             let worker = Worker {
                 connection: connection.clone(),
                 shown: Arc::clone(&shown),
+                rounds: Arc::clone(&rounds),
                 alive: Arc::clone(&alive),
             };
             std::thread::spawn(move || worker.run(queue));
@@ -460,7 +480,8 @@ mod linux {
             Ok(Service {
                 connection,
                 shown,
-                jobs,
+                posts,
+                rounds,
                 alive,
             })
         }
@@ -478,33 +499,37 @@ mod linux {
 
         /// Queues one to be shown. Never waits on the service.
         pub fn post(&self, notice: Notice) {
-            let _ = self.jobs.try_send(Job::Post(notice));
+            let round = self.rounds.asked.load(Ordering::Acquire);
+            let _ = self.posts.try_send(Post { notice, round });
         }
 
-        /// Takes back every notification shown, including any still being
-        /// posted, waiting at most `deadline`; the rest is done when the
-        /// service answers.
+        /// Takes back every notification shown, and any queued or still
+        /// being posted, waiting at most `deadline`; the worker does the
+        /// rest when the service answers. Asked for apart from the post
+        /// queue, so it is never lost to a full one.
         pub fn clear_all(&self, deadline: Duration) {
-            let (done, finished) = mpsc::sync_channel(1);
             let started = Instant::now();
-            if self.jobs.send_within(Job::ClearAll(done), deadline).is_ok() {
+            let round = self.rounds.asked.fetch_add(1, Ordering::AcqRel) + 1;
+            let mut done = self.rounds.done.lock().unwrap();
+            while *done < round {
                 let left = deadline.saturating_sub(started.elapsed());
-                let _ = finished.recv_timeout(left);
+                if left.is_zero() {
+                    return;
+                }
+                done = self.rounds.changed.wait_timeout(done, left).unwrap().0;
             }
         }
 
         #[cfg(test)]
+        pub fn shown_keys(&self) -> Vec<(String, u32)> {
+            let mut keys = self.shown.lock().unwrap().keys();
+            keys.sort();
+            keys
+        }
+
+        #[cfg(test)]
         pub fn shown(&self) -> Vec<u32> {
-            let mut ids: Vec<u32> = self
-                .shown
-                .lock()
-                .unwrap()
-                .keys()
-                .iter()
-                .map(|k| k.1)
-                .collect();
-            ids.sort();
-            ids
+            self.shown_keys().into_iter().map(|k| k.1).collect()
         }
     }
 
@@ -512,45 +537,24 @@ mod linux {
     struct Worker {
         connection: Connection,
         shown: Arc<Mutex<Shown>>,
+        rounds: Arc<Rounds>,
         alive: Arc<AtomicBool>,
     }
 
-    trait SendWithin<T> {
-        fn send_within(&self, value: T, timeout: Duration) -> Result<(), ()>;
-    }
-
-    impl<T> SendWithin<T> for SyncSender<T> {
-        /// `send`, giving up after `timeout` when the queue stays full.
-        fn send_within(&self, mut value: T, timeout: Duration) -> Result<(), ()> {
-            let started = Instant::now();
-            loop {
-                match self.try_send(value) {
-                    Ok(()) => return Ok(()),
-                    Err(mpsc::TrySendError::Disconnected(_)) => return Err(()),
-                    Err(mpsc::TrySendError::Full(back)) => {
-                        if started.elapsed() >= timeout {
-                            return Err(());
-                        }
-                        value = back;
-                        std::thread::sleep(Duration::from_millis(20));
-                    }
-                }
-            }
-        }
-    }
-
     impl Worker {
-        fn run(self, queue: Receiver<Job>) {
-            for job in queue {
-                if !self.alive.load(Ordering::Acquire) {
-                    break;
-                }
-                match job {
-                    Job::Post(notice) => self.post(&notice),
-                    Job::ClearAll(done) => {
-                        self.clear_all();
-                        let _ = done.try_send(());
+        fn run(self, queue: Receiver<Post>) {
+            while self.alive.load(Ordering::Acquire) {
+                self.take_back_if_asked();
+                match queue.recv_timeout(TICK) {
+                    Ok(post) => {
+                        // Queued before a take-back: never shown.
+                        if post.round < self.rounds.asked.load(Ordering::Acquire) {
+                            continue;
+                        }
+                        self.post(&post);
                     }
+                    Err(RecvTimeoutError::Timeout) => {}
+                    Err(RecvTimeoutError::Disconnected) => break,
                 }
             }
         }
@@ -566,7 +570,8 @@ mod linux {
             true
         }
 
-        fn post(&self, notice: &Notice) {
+        fn post(&self, post: &Post) {
+            let notice = &post.notice;
             let mut hints: std::collections::HashMap<&str, Value> =
                 std::collections::HashMap::new();
             hints.insert("desktop-entry", Value::from(mail_core::brand::NAME));
@@ -602,6 +607,21 @@ mod linux {
                     self.lost(&e);
                 }
             }
+            // A take-back asked for while this one was being posted closes
+            // it too (and the rest) right away.
+            self.take_back_if_asked();
+        }
+
+        /// Takes back every notification shown when a take-back was asked
+        /// for since the last, then says it's done.
+        fn take_back_if_asked(&self) {
+            let asked = self.rounds.asked.load(Ordering::Acquire);
+            if *self.rounds.done.lock().unwrap() >= asked {
+                return;
+            }
+            self.clear_all();
+            *self.rounds.done.lock().unwrap() = asked;
+            self.rounds.changed.notify_all();
         }
 
         /// Each notification is taken back from the service that numbered
@@ -703,11 +723,16 @@ mod linux_tests {
 
     use super::linux::Service;
 
-    /// Who posted each notification; which closes to refuse; whether to
-    /// stop answering (each call then takes `STALL`).
+    /// Who posted each notification still shown; which it issued and which
+    /// closes it accepted; which closes to refuse; whether to stop
+    /// answering (each call then takes `STALL`).
     #[derive(Default, Clone)]
     struct Fake {
         owners: Arc<Mutex<HashMap<u32, String>>>,
+        /// Notify calls received, answered or not.
+        asked: Arc<std::sync::atomic::AtomicUsize>,
+        issued: Arc<Mutex<Vec<u32>>>,
+        closed: Arc<Mutex<Vec<u32>>>,
         refuse: Arc<Mutex<HashSet<u32>>>,
         stall: Arc<AtomicBool>,
     }
@@ -737,12 +762,14 @@ mod linux_tests {
             _hints: HashMap<String, OwnedValue>,
             _timeout: i32,
         ) -> u32 {
+            self.asked.fetch_add(1, Ordering::AcqRel);
             self.wait();
             let mut owners = self.owners.lock().unwrap();
             // Numbered from 1, as a freshly started service does.
             let id = (1..).find(|i| !owners.contains_key(i)).unwrap();
             let sender = header.sender().map(|s| s.to_string()).unwrap_or_default();
             owners.insert(id, sender);
+            self.issued.lock().unwrap().push(id);
             id
         }
 
@@ -758,6 +785,7 @@ mod linux_tests {
                 return Err(zbus::fdo::Error::AccessDenied("not yours".into()));
             }
             owners.remove(&id);
+            self.closed.lock().unwrap().push(id);
             Ok(())
         }
     }
@@ -820,6 +848,10 @@ mod linux_tests {
             .unwrap()
     }
 
+    fn unique(c: &Connection) -> String {
+        c.unique_name().unwrap().to_string()
+    }
+
     fn emit(
         from: &Connection,
         member: &str,
@@ -838,7 +870,7 @@ mod linux_tests {
     fn eventually(what: &str, check: impl Fn() -> bool) {
         let start = Instant::now();
         while !check() {
-            assert!(start.elapsed() < Duration::from_secs(10), "{what}");
+            assert!(start.elapsed() < Duration::from_secs(15), "{what}");
             std::thread::sleep(Duration::from_millis(20));
         }
     }
@@ -912,42 +944,44 @@ mod linux_tests {
         fake.refuse.lock().unwrap().clear();
         service.clear_all(Duration::from_secs(5));
         assert!(service.shown().is_empty());
-        assert!(fake.owners.lock().unwrap().is_empty());
+        assert_eq!(*fake.closed.lock().unwrap(), [1, 2]);
     }
 
     #[test]
-    fn a_slow_service_holds_up_nothing_and_its_late_answers_still_count() {
+    fn a_slow_service_holds_up_nothing_and_its_late_answers_are_taken_back() {
         let Some(bus) = bus() else { return };
         let fake = Fake::default();
-        let server = serve(&bus, &fake);
-        let (service, clicks) = connect(&bus);
+        let _server = serve(&bus, &fake);
+        let (service, _clicks) = connect(&bus);
         fake.stall.store(true, Ordering::Release);
-        // Posting never waits on the service.
+        // One post is with the service, which is slow to answer.
+        service.post(notice(100));
+        eventually("the service has the first post", || {
+            fake.asked.load(Ordering::Acquire) == 1
+        });
+        // Posting never waits on the service, even with the queue full.
         let started = Instant::now();
-        service.post(notice(42));
-        service.post(notice(7));
+        for thread in 0..40 {
+            service.post(notice(thread));
+        }
         assert!(started.elapsed() < Duration::from_millis(500));
-        // Taking them back waits no longer than its deadline, though the
-        // service is still answering the posts...
+        // Taking them back waits no longer than its deadline though the
+        // service is still answering the first post, and isn't lost to the
+        // full queue.
         let started = Instant::now();
         service.clear_all(Duration::from_secs(1));
         assert!(started.elapsed() < Duration::from_secs(2));
-        // ...and is done all the same once it answers: what the service
-        // showed late is recorded and then taken back, none left behind.
+        // Once it answers: the post it was busy with is shown late and then
+        // taken back, and the queued ones are never shown.
         fake.stall.store(false, Ordering::Release);
-        eventually("the late posts are taken back", || {
-            fake.owners.lock().unwrap().is_empty() && service.shown().is_empty()
+        eventually("the late one is shown and taken back", || {
+            *fake.issued.lock().unwrap() == [1] && *fake.closed.lock().unwrap() == [1]
         });
+        std::thread::sleep(Duration::from_millis(500));
+        assert_eq!(*fake.issued.lock().unwrap(), [1], "queued ones shown");
+        assert_eq!(fake.asked.load(Ordering::Acquire), 1);
+        assert!(service.shown().is_empty());
         assert!(service.alive());
-        // A post now is clickable as usual.
-        service.post(notice(9));
-        eventually("posted", || service.shown().len() == 1);
-        let id = service.shown()[0];
-        emit(&server, "ActionInvoked", &(id, "default"));
-        assert_eq!(
-            clicks.recv_timeout(Duration::from_secs(5)).unwrap(),
-            Some(ThreadId(9))
-        );
     }
 
     #[test]
@@ -956,14 +990,16 @@ mod linux_tests {
         let server = serve(&bus, &Fake::default());
         let (service, clicks) = connect(&bus);
         service.post(notice(42));
-        eventually("posted", || service.shown() == [1]);
+        let old = unique(&server);
+        eventually("posted", || service.shown_keys() == [(old.clone(), 1)]);
         // The service restarts: a new owner of its name, numbering from 1.
         // The app posts to it at once, before or after the bus's notice.
         drop(server);
         let restarted = serve(&bus, &Fake::default());
+        let new = unique(&restarted);
         service.post(notice(7));
         eventually("only the new service's notification is left", || {
-            service.shown() == [1]
+            service.shown_keys() == [(new.clone(), 1)]
         });
         // The new service's 1 is the new conversation, never the old one.
         emit(&restarted, "ActionInvoked", &(1u32, "default"));
@@ -972,6 +1008,42 @@ mod linux_tests {
             Some(ThreadId(7))
         );
         assert!(clicks.recv_timeout(Duration::from_millis(300)).is_err());
+    }
+
+    #[test]
+    fn a_service_that_hands_its_name_on_keeps_its_notifications() {
+        let Some(bus) = bus() else { return };
+        let old_fake = Fake::default();
+        let server = serve(&bus, &old_fake);
+        let (service, clicks) = connect(&bus);
+        service.post(notice(42));
+        let old = unique(&server);
+        eventually("posted", || service.shown_keys() == [(old.clone(), 1)]);
+        // It gives up the name but stays connected; another takes it.
+        server
+            .release_name("org.freedesktop.Notifications")
+            .unwrap();
+        let _successor = serve(&bus, &Fake::default());
+        std::thread::sleep(Duration::from_millis(300));
+        // Its notification is still the app's: a click from it opens it, and
+        // taking them back closes it there.
+        assert_eq!(service.shown_keys(), [(old.clone(), 1)]);
+        emit(&server, "ActionInvoked", &(1u32, "default"));
+        assert_eq!(
+            clicks.recv_timeout(Duration::from_secs(5)).unwrap(),
+            Some(ThreadId(42))
+        );
+        service.clear_all(Duration::from_secs(5));
+        assert_eq!(*old_fake.closed.lock().unwrap(), [1]);
+        // Its connection leaving the bus later leaves the successor's alone
+        // (a departure forgetting its own is the restart test's).
+        service.post(notice(9));
+        eventually("posted to the successor", || service.shown().len() == 1);
+        let successor = service.shown_keys()[0].0.clone();
+        assert_ne!(successor, old);
+        drop(server);
+        std::thread::sleep(Duration::from_millis(300));
+        assert_eq!(service.shown_keys(), [(successor, 1)]);
     }
 }
 
