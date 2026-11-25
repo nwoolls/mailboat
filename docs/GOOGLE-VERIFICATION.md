@@ -392,6 +392,10 @@ Updated as each piece is done.
   by 2027-02-12, from an ADA-authorized lab, then every year. The work is in
   `docs/ROADMAP.md` → 0.3.0 → Security assessment (CASA). Reply to Google's
   email once it is done.
+- [ ] The security assessment's letter of validation. The self-assessment
+  went to the lab on 2026-11-25; the lab's review is under way
+  (`docs/ROADMAP.md` → CASA assessment, after 0.3.0). The lab also sends the
+  letter to Google; reply to Google's email when it is issued.
 - [ ] Google's final decision on the permissions
 
 Choices made on the submission form: the Gmail permissions were described
