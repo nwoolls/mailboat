@@ -154,12 +154,24 @@ pub fn switches_off(reported: &[(String, bool)]) -> Vec<String> {
 /// switches to turn off. An error when Codex can't say.
 async fn checked(program: &Path) -> Result<(Vec<String>, Vec<String>)> {
     let off = switches_off(&switches(program, &[]).await?);
-    let still_on: Vec<String> = switches(program, &overrides(&off))
+    let still_on = still_on_after(program, &off).await?;
+    Ok((super::codex_review::unreviewed(&still_on), off))
+}
+
+/// The switches still on after `off` are turned off.
+async fn still_on_after(program: &Path, off: &[String]) -> Result<Vec<String>> {
+    Ok(switches(program, &overrides(off))
         .await?
         .into_iter()
         .filter_map(|(name, on)| on.then_some(name))
-        .collect();
-    Ok((super::codex_review::unreviewed(&still_on), off))
+        .collect())
+}
+
+/// Every switch still on after turning them all off, reviewed or not:
+/// what the monthly review records for this system.
+pub async fn still_on(program: &Path) -> Result<Vec<String>> {
+    let off = switches_off(&switches(program, &[]).await?);
+    still_on_after(program, &off).await
 }
 
 /// Codex's switches as reviewed: those still on after being turned off
