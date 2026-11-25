@@ -13,23 +13,23 @@
 //! The question goes to the desktop on a thread of its own, and only when
 //! the choice becomes "follow the system" (and at startup): commands that
 //! save settings run on the main thread, which a slow bus must not hold.
+//! Every theme the app sets on Linux is written to GTK directly, in a call
+//! queued for the main thread (Delete all data applies the theme from
+//! another thread), rather than through tao, which would queue the write
+//! again and could put an older theme after a newer one.
 
 use mail_core::settings::Theme;
 use tauri::AppHandle;
 
 pub fn apply(app: &AppHandle, theme: Theme) {
-    // Recorded first, so the desktop's answer (on another thread) and
-    // `linux::watch` see this choice, never the one before it.
     #[cfg(target_os = "linux")]
-    let previous = linux::chose(theme);
-    match theme {
-        #[cfg(target_os = "linux")]
-        Theme::System => linux::follow_desktop(app, previous),
-        #[cfg(not(target_os = "linux"))]
-        Theme::System => app.set_theme(None),
-        Theme::Light => app.set_theme(Some(tauri::Theme::Light)),
-        Theme::Dark => app.set_theme(Some(tauri::Theme::Dark)),
-    }
+    linux::apply(app, theme);
+    #[cfg(not(target_os = "linux"))]
+    app.set_theme(match theme {
+        Theme::System => None,
+        Theme::Light => Some(tauri::Theme::Light),
+        Theme::Dark => Some(tauri::Theme::Dark),
+    });
 }
 
 #[cfg(target_os = "linux")]
@@ -49,9 +49,35 @@ pub mod linux {
     static CHOICE: AtomicU8 = AtomicU8::new(UNSET);
     const UNSET: u8 = u8::MAX;
 
-    /// Records the choice, and returns the one before it.
-    pub(super) fn chose(theme: Theme) -> u8 {
-        CHOICE.swap(code(theme), Ordering::AcqRel)
+    /// Applies a choice. It's recorded first, so the desktop's answer and
+    /// `watch` see it, never the one before. A chosen light or dark is
+    /// written on the main thread only if it's still the choice then, so a
+    /// write left behind by a quick change can't count as a change of the
+    /// desktop's theme and spoil a later "follow the system".
+    pub(super) fn apply(app: &tauri::AppHandle, theme: Theme) {
+        let chosen = code(theme);
+        let previous = CHOICE.swap(chosen, Ordering::AcqRel);
+        match held(chosen) {
+            Some(dark) => {
+                let _ = app.run_on_main_thread(move || {
+                    if CHOICE.load(Ordering::Acquire) == chosen {
+                        set_dark(dark);
+                    }
+                });
+            }
+            None => follow_desktop(app, previous),
+        }
+    }
+
+    /// Writes GTK's "prefer dark", which the web view follows; nothing
+    /// when it already has that value. Main thread only.
+    fn set_dark(dark: bool) {
+        use gtk::prelude::GtkSettingsExt;
+        if let Some(settings) = gtk::Settings::default() {
+            if settings.is_gtk_application_prefer_dark_theme() != dark {
+                settings.set_gtk_application_prefer_dark_theme(dark);
+            }
+        }
     }
 
     /// Whether choosing `next` needs the desktop asked: only when the
@@ -76,12 +102,12 @@ pub mod linux {
     }
 
     /// "Follow the system": asks the desktop on a thread of its own, and
-    /// sets its answer on the main thread (where settings are applied too,
-    /// so nothing comes between the check and the set) if it still holds
-    /// and the choice is still that. Leaves the window as it is until then
-    /// (tao set it from the desktop when it made the window), never `None`,
-    /// which tao 0.37 takes as light.
-    pub(super) fn follow_desktop(app: &tauri::AppHandle, previous: u8) {
+    /// writes its answer to GTK on the main thread, at once (a write queued
+    /// through tao could land after a newer one tao had queued), if it
+    /// still holds and the choice is still that. Leaves the window as it
+    /// is until then (tao set it from the desktop when it made the window),
+    /// never `None`, which tao 0.37 takes as light.
+    fn follow_desktop(app: &tauri::AppHandle, previous: u8) {
         if !asks_desktop(previous, Theme::System) {
             return;
         }
@@ -90,7 +116,6 @@ pub mod linux {
         let app = app.clone();
         std::thread::spawn(move || {
             let theme = desktop();
-            let setter = app.clone();
             let _ = app.run_on_main_thread(move || {
                 let now = (
                     ASKED.load(Ordering::Acquire),
@@ -99,7 +124,7 @@ pub mod linux {
                 if answer_holds((asked, now.0), (changed, now.1))
                     && CHOICE.load(Ordering::Acquire) == code(Theme::System)
                 {
-                    setter.set_theme(Some(theme));
+                    set_dark(theme == tauri::Theme::Dark);
                 }
             });
         });
