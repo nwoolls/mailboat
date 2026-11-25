@@ -7746,6 +7746,10 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         arrives live on Ubuntu too, and GNOME shows the notification. So
         neither was a Linux problem. On Ubuntu GNOME, the ChatGPT app's
         own Codex connected and wrote a summary.)*
+        *(2026-11-25: clicking a notification opens its conversation on
+        both. Ubuntu GNOME brings the window forward; Fedora KDE on Wayland
+        only flashes it in the taskbar, its focus-stealing prevention: see
+        the item below.)*
   - [x] Release and updates: a Linux job in the release workflow (x86-64
         and Arm on Ubuntu 22.04) signs each package for the updater;
         `latest.json` has an entry per package (`linux-x86_64-deb` and so
@@ -7805,6 +7809,14 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         October review exactly. On Windows, where nothing fences Codex in,
         one try started a helper agent, whose tools were off, so it did
         nothing)*
+  - [ ] On Wayland, bring the window forward when a notification is
+        clicked, as KDE expects: the notification service sends an
+        activation token (`ActivationToken`, notification spec 1.2) just
+        before the click; hand it to GTK (the window's startup ID) before
+        presenting the window. Without it KDE only flashes the taskbar entry
+        (seen on Fedora KDE, 2026-11-25); GNOME raises the window anyway.
+        Small, and not needed for the first release *(owner: don't chase
+        it now)*
   - [ ] Decide whether Windows and Linux can run only the live tests from
         now on *(owner)*: their lists differ from the Mac's this time only
         because Windows has an older Codex
