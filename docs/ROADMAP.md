@@ -7753,6 +7753,14 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         *(2026-11-25, Ubuntu GNOME: Delete all data took back the app's
         notifications still in the list; a second launch opened no second
         copy; a `mailto:` link opened the app.)*
+        *(2026-11-25: on Fedora KDE a second launch opened no second copy;
+        printing to PDF works on both. The AppImage runs on Ubuntu and gives
+        AI apps the AppImage file itself as the command, not its temporary
+        mount; ChatGPT connected from it. With the ChatGPT and Claude apps
+        installed, the app found their own Codex and Claude Code and wrote
+        summaries with each. Still to try: a second monitor, connecting
+        Claude Code as an AI app and restarting, and a desktop with no
+        keyring (the owner deferred that one).)*
   - [x] Release and updates: a Linux job in the release workflow (x86-64
         and Arm on Ubuntu 22.04) signs each package for the updater;
         `latest.json` has an entry per package (`linux-x86_64-deb` and so
