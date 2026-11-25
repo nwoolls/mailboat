@@ -33,6 +33,8 @@ import {
   appimageBom,
   type Bundled,
   copyrightLicenses,
+  INSTALLED_FORMAT,
+  installed,
   type Owned,
   owned,
   pickOwner,
@@ -126,14 +128,12 @@ for (const file of bundledFiles(root).toSorted()) {
 const bundled: Bundled[] = [...byPackage.values()].map(({ owner, files }) => {
   const pkg = owner.package;
   const query = owner.arch ? `${pkg}:${owner.arch}` : pkg;
-  const [status, installed] = run("dpkg-query", ["-W", "-f=${db:Status-Status}\t${Version}", query])
-    .out.trim()
-    .split("\t");
-  if (status !== "installed" || !installed)
-    fail(`${query} isn't installed (${status || "unknown"})`);
+  const line = run("dpkg-query", ["-W", `-f=${INSTALLED_FORMAT}\\n`, query]).out.split("\n")[0];
+  const found = installed(line ?? "");
+  if (!found) fail(`${query} isn't installed (${line || "nothing"})`);
   const copyright = `/usr/share/doc/${pkg}/copyright`;
   const licenses = existsSync(copyright) ? copyrightLicenses(readFileSync(copyright, "utf8")) : [];
-  return { package: pkg, arch: owner.arch, version: installed, licenses, files };
+  return { package: pkg, arch: found.arch, version: found.version, licenses, files };
 });
 // The runtime at the front, by the pinned file's digest and release.
 tools.push({

@@ -5424,6 +5424,14 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [ ] The type check (`bun run typecheck`) doesn't cover `scripts/`:
+      `tsconfig.json` includes `src`, `tests` and the configs, not the
+      release and check scripts, so a missing import there passes every
+      check until the script runs *(found 2026-11-24 on branch
+      `linux-build`: an import left out of `make-appimage-sbom.ts`, caught
+      by running it)*. Add `scripts/` (with Bun's types), and fix what it
+      finds, in a change of its own.
+
 - [x] Settings → Notifications → Style and sound opens macOS's System
       Settings address on Windows too, where it does nothing *(found
       2026-11-24 while porting to Linux, where the row is hidden)*. Windows

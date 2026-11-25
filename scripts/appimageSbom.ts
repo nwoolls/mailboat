@@ -69,6 +69,23 @@ export function pickOwner(candidates: Owned[], systemPath: string, hostArch: str
   return chosen;
 }
 
+/** What `dpkg-query` says of an installed package. */
+export type Installed = { status: string; version: string; arch: string };
+
+/** The format `installed` reads: status, version and architecture. */
+export const INSTALLED_FORMAT = "${db:Status-Status}\t${Version}\t${Architecture}";
+
+/**
+ * A package's `dpkg-query -W -f=INSTALLED_FORMAT` line, or null when it
+ * isn't installed with a version and an architecture (`all` for one that
+ * fits every machine, which the bill keeps rather than the build's own).
+ */
+export function installed(line: string): Installed | null {
+  const [status, version, arch] = line.trim().split("\t");
+  if (status !== "installed" || !version || !arch) return null;
+  return { status, version, arch };
+}
+
 /**
  * The licenses a Debian copyright file names (`License:` fields, the
  * machine-readable format), each once, in order. An older free-form file

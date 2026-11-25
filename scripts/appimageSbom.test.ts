@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   appimageBom,
   copyrightLicenses,
+  installed,
   owned,
   pickOwner,
   RUNTIME_PARTS,
@@ -156,5 +157,22 @@ describe("the AppImage's bill of materials", () => {
     expect(doc.components.find((c) => c.name === "AppRun")?.hashes).toEqual([
       { alg: "SHA-256", content: "ab12" },
     ]);
+  });
+});
+
+describe("an installed package, as dpkg-query says", () => {
+  it("keeps its own architecture, all included", () => {
+    expect(installed("installed\t2.1-1\tall\n")).toEqual({
+      status: "installed",
+      version: "2.1-1",
+      arch: "all",
+    });
+    expect(installed("installed\t1.0\tarm64")?.arch).toBe("arm64");
+  });
+
+  it("is null when it isn't installed or says too little", () => {
+    expect(installed("config-files\t1.0\tamd64")).toBeNull();
+    expect(installed("installed\t\tamd64")).toBeNull();
+    expect(installed("")).toBeNull();
   });
 });
