@@ -7737,12 +7737,19 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         stable release that has Linux packages, not before: the buttons
         link to the latest stable release, and the site goes out when a
         pull request merges
-  - [ ] What redistributing the AppImage asks of the project: its
+  - [x] What redistributing the AppImage asks of the project: its
         runtime links LGPL-2.1 libfuse in statically (upstream's build, as
         in every AppImage with that runtime), and it carries copies of
         LGPL libraries such as WebKitGTK and GTK, which the `.deb` and
         `.rpm` take from the system instead *(owner to decide before the
         first release with an AppImage)*
+        *(Decided 2026-11-25, owner: do what AppImages generally do. The
+        app's source is public, each bundled package's copyright file
+        stays inside the AppImage (linuxdeploy copies them), the AppImage's
+        SBOM names each bundled package and version, and their source is
+        in Ubuntu's archive and the runtime's own repository. No source
+        bundle of our own; one can be made from the SBOM's list if anyone
+        asks.)*
   - [ ] Flatpak (Flathub) and the AUR package, after the first release.
         An AUR package built from the `.deb` would carry its bundle type,
         so the updater would try `dpkg` on Arch: it should build from the
