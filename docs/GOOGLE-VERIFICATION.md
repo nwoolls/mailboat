@@ -323,8 +323,10 @@ The first two takes were redone, so this is what to do next time:
 ## How a reviewer tests Mailboat
 
 Written for Google's "active test credentials" and "clear integration access"
-rows. The app is In production, so a reviewer signs in with any Google
-account and sees the "hasn't verified this app" screen; Continue goes on.
+rows. The app is In production, so a reviewer needs no test-user entry: they
+sign in with a Google account allowed to grant access to the app (a Workspace
+administrator can block third-party apps, and an unverified app is capped at
+100 users in total) and see the "hasn't verified this app" screen; Continue goes on.
 No test login is shared, and the demo account's password stays private.
 
 1. Download 0.2.0 from the website (`getmailboat.app`), install it and open
@@ -390,8 +392,8 @@ Updated as each piece is done.
 - [x] Google's answer on a security assessment (exempt, or required and by when):
   required (2026-11-15). An ADA CASA assessment at level AL1 (formerly Tier 2)
   by 2027-02-12, from an ADA-authorized lab, then every year. The work is in
-  `docs/ROADMAP.md` → 0.3.0 → Security assessment (CASA). Reply to Google's
-  email once it is done.
+  `docs/ROADMAP.md` → 0.3.0 → Security assessment (CASA), and the work after
+  it → CASA assessment, after 0.3.0.
 - [ ] The security assessment's letter of validation. The self-assessment
   went to the lab on 2026-11-25; the lab's review is under way
   (`docs/ROADMAP.md` → CASA assessment, after 0.3.0). The lab also sends the

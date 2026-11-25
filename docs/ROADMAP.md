@@ -7383,9 +7383,12 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       the static scan.
       *(Added 2026-11-18, from the lab's answers: the Windows test
       machine's disk-encryption status; and how the reviewer signs in for
-      the manual review: the OAuth client has been in production since
-      2026-11-07, so any Google account can sign in past the "unverified
-      app" screen, with no test-user entry, and the client's file is shared
+      the manual review: the OAuth client of the project under Google's
+      verification has been in production since 2026-11-07, so it needs no
+      test-user entry; the reviewer signs in past the "unverified app"
+      screen with a Google account allowed to grant access to it (a
+      Workspace administrator can block third-party apps, and an unverified
+      app is capped at 100 users in total), and the client's file is shared
       with them in a way agreed with the lab (corrected 2026-11-25: this
       note first said Testing); and ask the lab whether a
       Windows machine without disk encryption fails its check, or whether
