@@ -611,6 +611,16 @@ mod linux {
         }
     }
 
+    /// Whether a call's error says its destination isn't on the bus (any
+    /// more): nothing was delivered, so it can be sent again elsewhere.
+    fn gone(error: &str) -> bool {
+        matches!(
+            error,
+            "org.freedesktop.DBus.Error.ServiceUnknown"
+                | "org.freedesktop.DBus.Error.NameHasNoOwner"
+        )
+    }
+
     /// The thread that makes every call, one at a time.
     struct Worker {
         connection: Connection,
@@ -685,51 +695,65 @@ mod linux {
 
         fn post(&self, post: &Post) {
             let notice = &post.notice;
-            let Some((to, markup)) = self.service() else {
-                return;
-            };
-            let body = if markup {
-                super::linux_state::escape_markup(&notice.body)
-            } else {
-                notice.body.clone()
-            };
-            let mut hints: std::collections::HashMap<&str, Value> =
-                std::collections::HashMap::new();
-            hints.insert("desktop-entry", Value::from(mail_core::brand::NAME));
-            let reply = self.connection.call_method(
-                Some(to.as_str()),
-                PATH,
-                Some(NAME),
-                "Notify",
-                &(
-                    mail_core::brand::NAME,
-                    0u32,
-                    mail_core::brand::SHORT_NAME,
-                    notice.title.as_str(),
-                    body.as_str(),
-                    vec!["default", "Open"],
-                    hints,
-                    -1i32,
-                ),
-            );
-            match reply {
-                Ok(reply) => {
-                    let header = reply.header();
-                    if let (Some(owner), Ok(id)) =
-                        (header.sender(), reply.body().deserialize::<u32>())
-                    {
-                        let evicted =
-                            self.shown
-                                .lock()
-                                .unwrap()
-                                .posted(owner.as_str(), id, notice.thread);
-                        for (owner, id) in evicted {
-                            self.close(&owner, id);
-                        }
-                    }
+            // Twice at most: the connection that answered can leave the bus
+            // before the post reaches it (a restart), and the bus then says
+            // so; the name is asked again for its new owner (tenth review).
+            for attempt in 0..2 {
+                let Some((to, markup)) = self.service() else {
+                    return;
+                };
+                // A take-back asked for while the service was being asked
+                // drops this post: it was queued before it (tenth review).
+                if post.round < self.rounds.asked.load(Ordering::Acquire) {
+                    break;
                 }
-                Err(e) => {
-                    self.lost(&e);
+                let body = if markup {
+                    super::linux_state::escape_markup(&notice.body)
+                } else {
+                    notice.body.clone()
+                };
+                let mut hints: std::collections::HashMap<&str, Value> =
+                    std::collections::HashMap::new();
+                hints.insert("desktop-entry", Value::from(mail_core::brand::NAME));
+                let reply = self.connection.call_method(
+                    Some(to.as_str()),
+                    PATH,
+                    Some(NAME),
+                    "Notify",
+                    &(
+                        mail_core::brand::NAME,
+                        0u32,
+                        mail_core::brand::SHORT_NAME,
+                        notice.title.as_str(),
+                        body.as_str(),
+                        vec!["default", "Open"],
+                        hints,
+                        -1i32,
+                    ),
+                );
+                match reply {
+                    Ok(reply) => {
+                        let header = reply.header();
+                        if let (Some(owner), Ok(id)) =
+                            (header.sender(), reply.body().deserialize::<u32>())
+                        {
+                            let evicted = self.shown.lock().unwrap().posted(
+                                owner.as_str(),
+                                id,
+                                notice.thread,
+                            );
+                            for (owner, id) in evicted {
+                                self.close(&owner, id);
+                            }
+                        }
+                        break;
+                    }
+                    Err(zbus::Error::MethodError(name, ..))
+                        if attempt == 0 && to != NAME && gone(name.as_str()) => {}
+                    Err(e) => {
+                        self.lost(&e);
+                        break;
+                    }
                 }
             }
             // A take-back asked for while this one was being posted closes
@@ -875,12 +899,21 @@ mod linux_tests {
         /// The bodies posted, as received.
         bodies: Arc<Mutex<Vec<String>>>,
         closed: Arc<Mutex<Vec<u32>>>,
-        /// Every close asked for, accepted or refused.
-        attempts: Arc<Mutex<Vec<u32>>>,
+        /// Every close asked for, and whether it was refused.
+        attempts: Arc<Mutex<Vec<(u32, bool)>>>,
         refuse: Arc<Mutex<HashSet<u32>>>,
         stall: Arc<AtomicBool>,
         /// Shows bodies as plain text (no `body-markup`).
         plain: Arc<AtomicBool>,
+        /// GetCapabilities calls received.
+        caps_asked: Arc<std::sync::atomic::AtomicUsize>,
+        /// Answers GetCapabilities only after `STALL`.
+        stall_caps: Arc<AtomicBool>,
+        /// Fails GetCapabilities.
+        no_caps: Arc<AtomicBool>,
+        /// Answers the next Notify as the bus does for a connection that has
+        /// left (`ServiceUnknown`), once.
+        gone_once: Arc<AtomicBool>,
     }
 
     const STALL: Duration = Duration::from_secs(2);
@@ -907,9 +940,12 @@ mod linux_tests {
             _actions: Vec<String>,
             _hints: HashMap<String, OwnedValue>,
             _timeout: i32,
-        ) -> u32 {
+        ) -> zbus::fdo::Result<u32> {
             self.asked.fetch_add(1, Ordering::AcqRel);
             self.wait();
+            if self.gone_once.swap(false, Ordering::AcqRel) {
+                return Err(zbus::fdo::Error::ServiceUnknown("gone".into()));
+            }
             let mut owners = self.owners.lock().unwrap();
             // Numbered from 1, as a freshly started service does.
             let id = (1..).find(|i| !owners.contains_key(i)).unwrap();
@@ -917,17 +953,24 @@ mod linux_tests {
             owners.insert(id, sender);
             self.issued.lock().unwrap().push(id);
             self.bodies.lock().unwrap().push(body.to_string());
-            id
+            Ok(id)
         }
 
         /// Reads markup in a body, as GNOME's does, unless `plain`.
-        fn get_capabilities(&self) -> Vec<String> {
+        fn get_capabilities(&self) -> zbus::fdo::Result<Vec<String>> {
+            self.caps_asked.fetch_add(1, Ordering::AcqRel);
+            if self.stall_caps.load(Ordering::Acquire) {
+                std::thread::sleep(STALL);
+            }
+            if self.no_caps.load(Ordering::Acquire) {
+                return Err(zbus::fdo::Error::Failed("no".into()));
+            }
             let caps: &[&str] = if self.plain.load(Ordering::Acquire) {
                 &["body", "actions"]
             } else {
                 &["body", "body-markup", "actions"]
             };
-            caps.iter().map(|c| c.to_string()).collect()
+            Ok(caps.iter().map(|c| c.to_string()).collect())
         }
 
         fn close_notification(
@@ -936,10 +979,12 @@ mod linux_tests {
             id: u32,
         ) -> zbus::fdo::Result<()> {
             self.wait();
-            self.attempts.lock().unwrap().push(id);
             let sender = header.sender().map(|s| s.to_string()).unwrap_or_default();
             let mut owners = self.owners.lock().unwrap();
-            if owners.get(&id) != Some(&sender) || self.refuse.lock().unwrap().contains(&id) {
+            let refused =
+                owners.get(&id) != Some(&sender) || self.refuse.lock().unwrap().contains(&id);
+            self.attempts.lock().unwrap().push((id, refused));
+            if refused {
                 return Err(zbus::fdo::Error::AccessDenied("not yours".into()));
             }
             owners.remove(&id);
@@ -1218,6 +1263,58 @@ mod linux_tests {
         assert_eq!(plain.bodies.lock().unwrap()[1], "<b>Win</b>");
     }
 
+    /// Review (round 10): a take-back asked for while the service is still
+    /// answering what it reads drops the post; it never reaches the service.
+    #[test]
+    fn a_take_back_during_the_question_drops_the_post() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        fake.stall_caps.store(true, Ordering::Release);
+        let _server = serve(&bus, &fake);
+        let (service, _clicks) = connect(&bus);
+        service.post(notice(42));
+        eventually("asked what it reads", || {
+            fake.caps_asked.load(Ordering::Acquire) == 1
+        });
+        service.clear_all(Duration::from_millis(100));
+        std::thread::sleep(STALL + Duration::from_millis(500));
+        assert_eq!(fake.asked.load(Ordering::Acquire), 0, "posted after all");
+        assert!(service.shown().is_empty());
+    }
+
+    /// Review (round 10): the connection that answered has left when the
+    /// post reaches it; the name is asked again and the post goes through.
+    #[test]
+    fn a_post_to_a_service_that_just_left_is_sent_again() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        fake.gone_once.store(true, Ordering::Release);
+        let _server = serve(&bus, &fake);
+        let (service, _clicks) = connect(&bus);
+        service.post(notice(42));
+        eventually("posted", || fake.bodies.lock().unwrap().len() == 1);
+        assert_eq!(fake.caps_asked.load(Ordering::Acquire), 2);
+        assert_eq!(service.shown(), [1]);
+    }
+
+    /// Review (round 10): a service that doesn't say what it reads gets an
+    /// escaped body.
+    #[test]
+    fn a_body_is_escaped_when_the_service_doesnt_say_what_it_reads() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        fake.no_caps.store(true, Ordering::Release);
+        let _server = serve(&bus, &fake);
+        let (service, _clicks) = connect(&bus);
+        service.post(Notice {
+            title: "Maya Chen".into(),
+            body: "<b>Win</b>".into(),
+            thread: None,
+        });
+        eventually("posted", || fake.bodies.lock().unwrap().len() == 1);
+        assert_eq!(fake.bodies.lock().unwrap()[0], "&lt;b&gt;Win&lt;/b&gt;");
+    }
+
     #[test]
     fn one_pushed_out_of_the_list_is_closed_not_just_forgotten() {
         let Some(bus) = bus() else { return };
@@ -1233,14 +1330,22 @@ mod linux_tests {
             eventually("posted", || fake.issued.lock().unwrap().len() == n + 1);
         }
         assert_eq!(service.shown().len(), limit);
-        // Closed when it was pushed out (and refused), not left for later.
-        eventually("the close was asked for", || {
-            *fake.attempts.lock().unwrap() == [1]
+        // Closed when it was pushed out, and refused, not left for later.
+        eventually("the close was refused", || {
+            *fake.attempts.lock().unwrap() == [(1, true)]
         });
         assert!(fake.closed.lock().unwrap().is_empty(), "the refusal");
-        // It isn't forgotten: the next take-back closes it, with the rest.
+        // It isn't forgotten: the next take-back asks again, and closes it
+        // with the rest.
         fake.refuse.lock().unwrap().clear();
         service.clear_all(Duration::from_secs(10));
+        let attempts = fake.attempts.lock().unwrap().clone();
+        assert_eq!(
+            attempts.iter().filter(|a| a.0 == 1).count(),
+            2,
+            "{attempts:?}"
+        );
+        assert!(attempts.contains(&(1, false)));
         assert!(fake.closed.lock().unwrap().contains(&1));
         assert_eq!(fake.closed.lock().unwrap().len(), limit + 1);
     }
