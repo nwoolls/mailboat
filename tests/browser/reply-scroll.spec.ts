@@ -287,6 +287,13 @@ test("Reply with AI: a shorter reader keeps the reply at the bottom", async ({ p
  * box once when it starts watching, and acting on that report, or on the
  * growth, jumped straight to the end.) Reply with AI: plain Reply puts the
  * cursor in the text, which scrolls most of the way at once by itself.
+ *
+ * Told apart by how each move is made, not by sampling where the reader is
+ * each frame: on a busy machine frames come late, and WebKit's smooth
+ * scroll can cross most of the way between two of them, which looked like
+ * a jump (docs/ROADMAP.md → Flaky tests). A move made at once (an instant
+ * scroll, `scrollTop`, `scrollIntoView` or `focus` without smooth) has
+ * happened by the time the call returns, so it is measured around the call.
  */
 test("Reply with AI: opening slides to the reply rather than jumping", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=inline");
@@ -297,25 +304,52 @@ test("Reply with AI: opening slides to the reply rather than jumping", async ({ 
   await contentSettled(page);
   const seen = await page.evaluate(async () => {
     const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
-    const frame = () => new Promise((done) => requestAnimationFrame(done));
-    const start = reader.scrollTop;
     const clicked = performance.now();
+    // Moves made at once, with when (ms after the click) and how far, and
+    // how many smooth scrolls of the reader were asked for.
+    const atOnce: { at: number; by: number }[] = [];
+    let smooth = 0;
+    const measured = <A extends unknown[], R>(call: (...args: A) => R) =>
+      function (this: unknown, ...args: A): R {
+        const before = reader.scrollTop;
+        const result = call.apply(this, args);
+        const by = Math.abs(reader.scrollTop - before);
+        if (by > 0) atOnce.push({ at: Math.round(performance.now() - clicked), by });
+        return result;
+      };
+    for (const name of ["scrollTo", "scroll", "scrollBy"] as const) {
+      const call = reader[name].bind(reader) as (...args: unknown[]) => void;
+      reader[name] = measured((...args: unknown[]) => {
+        const options = args[0];
+        if (typeof options === "object" && options && "behavior" in options)
+          if (options.behavior === "smooth") smooth++;
+        call(...args);
+      }) as never;
+    }
+    const scrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop")!;
+    Object.defineProperty(reader, "scrollTop", {
+      configurable: true,
+      get: () => scrollTop.get!.call(reader),
+      set: measured((top: number) => scrollTop.set!.call(reader, top)),
+    });
+    Element.prototype.scrollIntoView = measured(Element.prototype.scrollIntoView);
+    HTMLElement.prototype.focus = measured(HTMLElement.prototype.focus);
+    const start = reader.scrollTop;
     [...document.querySelectorAll("button")]
       .find((b) => b.textContent?.trim() === "Reply with AI")!
       .click();
-    // Every frame until the 0.7 s fallback, which would go the rest at once.
-    const tops: number[] = [];
-    while (performance.now() - clicked < 600) {
-      await frame();
-      tops.push(reader.scrollTop);
-    }
-    return { start, tops, end: reader.scrollHeight - reader.clientHeight };
+    // Until the 0.7 s fallback, which goes the rest at once (and may come
+    // inside this wait on a slow machine, so it's left out below by time).
+    await new Promise((done) => setTimeout(done, 600));
+    return { start, end: reader.scrollHeight - reader.clientHeight, atOnce, smooth };
   });
-  // Before the fallback could have moved it, the reader passed through the
-  // first half of the way: a slide. A jump lands near the end at once (and
-  // chases the assistant's growth from there); standing still never moves.
-  const halfway = seen.start + (seen.end - seen.start) / 2;
-  expect(seen.tops.some((top) => top > seen.start + 2 && top < halfway)).toBe(true);
+  // Far enough below that a jump would show.
+  expect(seen.end - seen.start).toBeGreaterThan(200);
+  // A slide: smooth scrolls, and nothing at once beyond the last 40 px
+  // (REPLY_AT_ONCE_PX) before the fallback. A jump goes most of the way at
+  // once (and chases the assistant's growth from there).
+  expect(seen.smooth).toBeGreaterThan(0);
+  expect(seen.atOnce.filter(({ at, by }) => at < 600 && by > 40)).toEqual([]);
   await expect.poll(() => fromEnd(page), { timeout: 15_000 }).toBeLessThanOrEqual(2);
 });
 
