@@ -2,4 +2,4 @@
 "desktop": patch
 ---
 
-On Windows, attachments you open or save are marked as downloaded from the internet, so Windows checks them before anything in them runs, as it does for browser downloads.
+On Windows, attachments the app saves are marked as downloaded from the internet, as browsers mark their downloads, so Windows and apps such as Office can apply their protections for files from the internet.

@@ -7398,9 +7398,10 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       Gatekeeper checks it before it runs; on Windows nothing marked it, so
       SmartScreen and Office's Protected View didn't know it came from the
       internet. Now it gets a `Zone.Identifier` stream with zone 3, as
-      browsers write for downloads (`attachments::mark_of_the_web`, tested on
-      Windows in CI). Best effort, like the macOS flag: a volume without
-      streams (FAT32) leaves the file unmarked.
+      browsers write for downloads, when it reaches the cache and again on
+      each saved copy (`attachments::mark_of_the_web`, tested on Windows in
+      CI). Best effort, like the macOS flag: a volume without streams
+      (FAT32) leaves the file unmarked.
 
 ## Later / unscheduled
 

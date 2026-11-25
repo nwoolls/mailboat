@@ -18,10 +18,10 @@ fn spawn(cmd: &mut Command) -> Result<(), CoreError> {
 }
 
 /// Tags a file as downloaded from the internet, as browsers do for their
-/// downloads, so the system checks it before anything in it runs: macOS's
-/// quarantine flag (Gatekeeper), and Windows' Mark of the Web (SmartScreen,
-/// `mail_core::attachments::mark_of_the_web`). Best effort: a failure here
-/// doesn't stop the file opening.
+/// downloads, so the system and the apps that open it can apply their
+/// protections for such files: macOS's quarantine flag (Gatekeeper), and
+/// Windows' Mark of the Web (`mail_core::attachments::mark_of_the_web`).
+/// Best effort: a failure here doesn't stop the file opening.
 pub fn quarantine(path: &Path) {
     #[cfg(target_os = "macos")]
     {
