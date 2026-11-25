@@ -170,8 +170,9 @@ scripts/linux.sh shell   # a shell in the container
 ```
 
 The first run builds the image, which takes a few minutes. The container
-works on a copy of the repository, so the Mac's `node_modules` and `target`
-are never touched; Rust's build and Bun's packages stay in Docker volumes
+works on a copy of the repository, so the Mac's `node_modules` and its own
+build in `target` are left alone; it writes only `target/linux` (the packages
+land in `target/linux/bundle`, replaced on each build); Rust's build and Bun's packages stay in Docker volumes
 (`mailboat-linux-*`) between runs. Those take about 20 GB once both `check`
 and `build` have run, and each checkout (a worktree too) has its own, so
 Docker Desktop's disk needs room for them (Settings → Resources);
