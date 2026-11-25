@@ -8045,7 +8045,7 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         so it shows the fix only on a slowed page (`bun run
         test:browser:slow`): there it failed 5 runs of 5 without the fix,
         the reply 182–432 px below as in CI, and passed 5 of 5 with it.
-- [ ] `reply-scroll.spec.ts`: "Reply with AI: opening slides to the reply
+- [x] `reply-scroll.spec.ts`: "Reply with AI: opening slides to the reply
       rather than jumping" (line 291).
       - 2026-11-25, local full check on branch `linux-build` (the change
         under test was Linux-only Rust and docs, nothing the browser tests
@@ -8054,6 +8054,16 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         false), so the slide wasn't seen. The same test passed in three
         full checks on the branch earlier that day, and the whole file then
         passed 5 runs of 5 with no change (120 tests).
+      - Fixed 2026-11-25 (#239, branch `fix-reply-ai-slide-flake`): the app
+        was sliding; the test sampled the reader once a frame, and with
+        frames coming late WebKit's smooth scroll crossed past halfway
+        between two samples, so the slide looked like a jump. On the slowed
+        page the old test failed 16 runs of 20. The test now checks how the
+        reader is moved instead: no move made at once may go further than
+        40 px before the fallback, and a smooth scroll must have been asked
+        for. With growth scrolling at once to the end put back, it fails 10
+        of 10 (5 of 5 slowed); with the fix it passed 40 of 40 at normal
+        speed and 20 of 20 slowed.
 
 ### Reading
 
