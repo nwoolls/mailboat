@@ -83,11 +83,17 @@ if (!run("unsquashfs", ["-q", "-n", "-o", String(offset), "-d", root, appimage])
 }
 const program = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8")).mainBinaryName;
 
-/** Every library (`*.so*`) and program in the AppImage, but the app's own. */
+/**
+ * Every library (`*.so*`) and program in the AppImage, but the app's own.
+ * `usr/share/doc` is left out: linuxdeploy copies each bundled package's
+ * copyright file there, the license text of a package already traced (and
+ * a copy can keep the executable bit it had on the build machine).
+ */
 function bundledFiles(dir: string): string[] {
   const found: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
+    if (relative(root, path) === join("usr", "share", "doc")) continue;
     if (entry.isDirectory()) found.push(...bundledFiles(path));
     else if (entry.isFile()) {
       const executable = (statSync(path).mode & 0o111) !== 0;
