@@ -362,6 +362,8 @@ pub fn run() {
             // Before the window first paints, so it opens in the chosen theme.
             let saved = mail_core::settings::load(&db.conn()).unwrap_or_default();
             theme::apply(app.handle(), saved.theme);
+            #[cfg(target_os = "linux")]
+            theme::linux::watch();
             // Summaries the person chose not to keep: forget what an exit that
             // never ran (a crash, a power cut) left behind, before sync, the
             // window or the AI queue can read or write one.

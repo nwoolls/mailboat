@@ -7706,6 +7706,14 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         AppImage for the system libraries it carries; the program's
         hardening checked (`check-binaries.ts linux`); after an update the
         app starts again only once the old copy has ended
+  - [x] The theme follows the desktop's light or dark preference, and a
+        theme chosen in Settings stays when the desktop's changes
+        *(2026-11-25: the app opened light on a dark desktop in the
+        owner's Fedora VM; tao 0.37's doing, worked around in
+        `theme::linux`)*
+  - [ ] Remove that workaround once Tauri's runtime takes tao 0.38, which
+        reads the desktop's preference itself (check that a chosen theme
+        still holds when the desktop's changes)
   - [x] Email links (`mailto:`): the desktop entry claims the scheme, and
         Settings reads and sets the default through `xdg-settings`
   - [x] The click on a notification opens its conversation (the default

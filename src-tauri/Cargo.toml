@@ -58,6 +58,10 @@ tauri-plugin-single-instance = "2"
 # features, through that plugin and the single-instance plugin.
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus = "5"
+# Linux: holds a theme chosen in Settings against tao 0.37 changing GTK's
+# "prefer dark" under it (src/theme.rs). Already in the build through Tauri,
+# at the same version.
+gtk = "0.18"
 
 [target.'cfg(windows)'.dependencies]
 # Which app Windows sends mailto: links to (src/mail_handler.rs). Microsoft's
