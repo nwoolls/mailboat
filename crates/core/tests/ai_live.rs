@@ -739,8 +739,13 @@ async fn codex_cannot_act_through_a_helper_agent() {
     assert!(!marker.0.exists(), "a helper agent acted");
 }
 
+/// The home folder: `HOME`, or on Windows (which doesn't set it)
+/// `USERPROFILE`.
 fn home() -> std::path::PathBuf {
-    std::path::PathBuf::from(std::env::var_os("HOME").expect("HOME"))
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(std::path::PathBuf::from)
+        .expect("HOME or USERPROFILE")
 }
 
 /// Live: Codex can't write a file, in the home folder or the temp folder.
