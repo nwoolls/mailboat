@@ -313,9 +313,8 @@ pub fn bwrap_args(
     // covered wherever it is (fifth review of the Linux fence).
     let mut covered: Vec<PathBuf> = Vec::new();
     for socket in bus_sockets(bus_address.unwrap_or_default(), runtime_dir) {
-        let real = std::fs::canonicalize(&socket).ok();
-        for path in std::iter::once(socket).chain(real) {
-            if path.exists() && !covered.contains(&path) {
+        if let Some(path) = bus_cover(&socket) {
+            if !covered.contains(&path) {
                 push(&["--ro-bind".as_ref(), "/dev/null".as_ref(), path.as_os_str()]);
                 covered.push(path);
             }
@@ -354,6 +353,10 @@ pub fn linux_codex_paths(
         _ => given.clone(),
     };
     let resolved = real(given);
+    // Bubblewrap won't mount onto a link: when the folder's own name is
+    // one, it is put where it really is, and Codex is told that path.
+    let linked = std::fs::symlink_metadata(&mount).is_ok_and(|m| m.file_type().is_symlink());
+    let mount = if linked { resolved.clone() } else { mount };
     codex_home_problem(&resolved, &mount, hidden)?;
     Ok((resolved, mount))
 }
@@ -414,25 +417,53 @@ pub const BWRAP_BASE: [&str; 9] = [
     "/proc",
 ];
 
+/// Where to cover a bus socket so bubblewrap accepts it: bubblewrap won't
+/// mount onto a link, or a file onto a folder. A link is covered where it
+/// points (which, covered, closes the link too); a folder is no socket
+/// and is left alone; a path that doesn't exist yet is covered all the
+/// same, as bubblewrap makes the file (seventh review of the Linux fence).
+pub fn bus_cover(socket: &Path) -> Option<PathBuf> {
+    match std::fs::symlink_metadata(socket) {
+        Ok(meta) if meta.file_type().is_symlink() => {
+            let target = std::fs::canonicalize(socket).ok()?;
+            (!target.is_dir()).then_some(target)
+        }
+        Ok(meta) if meta.is_dir() => None,
+        _ => Some(socket.to_path_buf()),
+    }
+}
+
 /// The socket files a D-Bus address names: in each `;`-separated choice of
 /// the `unix:` transport, `path=` (its value unescaped, as the D-Bus
 /// specification escapes any byte as `%xx`) and `runtime=yes`, which means
 /// `$XDG_RUNTIME_DIR/bus`.
 pub fn bus_sockets(address: &str, runtime_dir: Option<&Path>) -> Vec<PathBuf> {
+    let hex = |b: u8| (b as char).to_digit(16);
     let unescape = |value: &str| -> Option<PathBuf> {
         let bytes = value.as_bytes();
         let mut out = Vec::with_capacity(bytes.len());
         let mut i = 0;
         while i < bytes.len() {
             if bytes[i] == b'%' {
-                let hex = std::str::from_utf8(bytes.get(i + 1..i + 3)?).ok()?;
-                out.push(u8::from_str_radix(hex, 16).ok()?);
+                // Exactly two hexadecimal digits (`from_str_radix` would
+                // also take a sign).
+                let hi = hex(*bytes.get(i + 1)?)?;
+                let lo = hex(*bytes.get(i + 2)?)?;
+                out.push((hi * 16 + lo) as u8);
                 i += 3;
             } else {
                 out.push(bytes[i]);
                 i += 1;
             }
         }
+        // A Unix path is bytes, not text: one that isn't UTF-8 is still a
+        // path (sixth review of the Linux fence).
+        #[cfg(unix)]
+        {
+            use std::os::unix::ffi::OsStringExt;
+            Some(PathBuf::from(std::ffi::OsString::from_vec(out)))
+        }
+        #[cfg(not(unix))]
         String::from_utf8(out).ok().map(PathBuf::from)
     };
     let mut found = Vec::new();
@@ -1215,7 +1246,40 @@ mod tests {
             [PathBuf::from("/run/user/1000/bus")]
         );
         assert!(bus_sockets("unix:path=/tmp/bad%2", None).is_empty());
+        // Two hexadecimal digits, no sign.
+        assert!(bus_sockets("unix:path=/tmp/bad%+1", None).is_empty());
         assert!(bus_sockets("", None).is_empty());
+    }
+
+    /// Seventh review of the Linux fence: a path that isn't UTF-8 is
+    /// still a path (Linux paths are bytes).
+    #[cfg(unix)]
+    #[test]
+    fn a_bus_path_that_isnt_utf8_is_still_read() {
+        use std::os::unix::ffi::OsStrExt;
+        let found = bus_sockets("unix:path=/tmp/b%ffus", None);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].as_os_str().as_bytes(), b"/tmp/b\xffus");
+    }
+
+    /// Where a bus socket is covered: a link where it points, a folder
+    /// not at all, and a path that doesn't exist yet as it is.
+    #[cfg(unix)]
+    #[test]
+    fn a_bus_socket_is_covered_where_bubblewrap_can_mount() {
+        let root = std::env::temp_dir().join(format!("bus-cover-{}", fastrand::u64(..)));
+        std::fs::create_dir_all(root.join("dir")).unwrap();
+        std::fs::write(root.join("socket"), "").unwrap();
+        std::os::unix::fs::symlink(root.join("socket"), root.join("link")).unwrap();
+        let real = |p: &Path| std::fs::canonicalize(p).unwrap();
+        assert_eq!(bus_cover(&root.join("socket")), Some(root.join("socket")));
+        assert_eq!(
+            bus_cover(&root.join("link")),
+            Some(real(&root.join("socket")))
+        );
+        assert_eq!(bus_cover(&root.join("dir")), None);
+        assert_eq!(bus_cover(&root.join("missing")), Some(root.join("missing")));
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     /// Fifth review of the Linux fence: Codex's folder is told to Codex by
@@ -1246,6 +1310,14 @@ mod tests {
         // Without CODEX_HOME, ~/.codex.
         let (_, default) = linux_codex_paths(None, &home, &[], real).unwrap();
         assert_eq!(default, real(home.clone()).join(".codex"));
+        // CODEX_HOME whose own name is a link (outside home): put, and
+        // told, where it really is, as bubblewrap won't mount onto a link.
+        let link = root.join("codex-link");
+        std::os::unix::fs::symlink(&codex, &link).unwrap();
+        let (resolved, mount) =
+            linux_codex_paths(Some(link.as_os_str()), &home, &[], real).unwrap();
+        assert_eq!(mount, resolved);
+        assert_eq!(mount, real(codex.clone()));
         // Overlapping the app's folders: refused here too.
         let hidden = vec![real(elsewhere.clone())];
         assert!(linux_codex_paths(Some(given.as_os_str()), &home, &hidden, real).is_err());
@@ -1299,9 +1371,16 @@ mod tests {
         // it: covered all the same.
         let bus = local.join("my bus");
         std::fs::write(&bus, "SECRETS").unwrap();
+        // And one reached through a link outside home: covered where it
+        // points, which bubblewrap accepts.
+        let linked_bus = root.join("bus-target");
+        std::fs::write(&linked_bus, "MORE SECRETS").unwrap();
+        let bus_link = root.join("bus-link");
+        std::os::unix::fs::symlink(&linked_bus, &bus_link).unwrap();
         let address = format!(
-            "unix:path={}",
-            bus.display().to_string().replace(' ', "%20")
+            "unix:path={};unix:path={}",
+            bus.display().to_string().replace(' ', "%20"),
+            bus_link.display()
         );
         let args = bwrap_args(&dirs, None, Some(&address), Some(&work));
         let run = |program: &'static str, arg: Option<PathBuf>| {
@@ -1322,6 +1401,7 @@ mod tests {
         assert!(!cat(elsewhere.join("mail.sqlite3")).await.contains("MAIL"));
         assert_eq!(cat(local.join("tool.txt")).await, "TOOL");
         assert_eq!(cat(bus.clone()).await, "", "the bus is covered");
+        assert_eq!(cat(bus_link.clone()).await, "", "the linked bus is covered");
         assert_eq!(cat(codex.join("auth.json")).await, "SIGN-IN");
         assert!(!cat("/etc/hosts".into()).await.is_empty());
         assert_eq!(run("/bin/pwd", None).await.trim(), work.to_string_lossy());
