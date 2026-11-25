@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -89,11 +90,25 @@ describe("the AppImage's runtime", () => {
 
 describe("the pinned runtime's digests", () => {
   it("are the ones the tools script downloads and checks, for the same release", () => {
+    // Both processors the release builds for, not just whatever is listed.
+    expect(Object.keys(RUNTIME_SHA256).toSorted()).toEqual(["aarch64", "x86_64"]);
     const script = readFileSync(resolve(__dirname, "appimage-tools.sh"), "utf8");
     for (const [arch, sha] of Object.entries(RUNTIME_SHA256)) {
       const block = script.slice(script.indexOf(`${arch})`));
       expect(/runtime=([0-9a-f]{64})/.exec(block)?.[1], arch).toBe(sha);
     }
     expect(script).toContain(`type2-runtime/releases/download/${RUNTIME_RELEASE}/`);
+  });
+});
+
+describe("the runtime check, as the release runs it", () => {
+  it("refuses a reference file that isn't the pinned runtime, before reading the AppImage", () => {
+    const r = spawnSync(
+      "bun",
+      ["scripts/check-appimage-runtime.ts", "missing.AppImage", "package.json"],
+      { encoding: "utf8", cwd: resolve(__dirname, "..") },
+    );
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/isn't the pinned runtime/);
   });
 });

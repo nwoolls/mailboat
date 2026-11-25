@@ -345,7 +345,7 @@ jobs:
       # WebKitGTK and GTK (the web view and window), D-Bus (the keychain),
       # and rpm to make the .rpm.
       # squashfs-tools to unpack the AppImage for its bill without running it.
-      - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev rpm squashfs-tools
+      - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev rpm cpio squashfs-tools
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
@@ -369,15 +369,10 @@ jobs:
             fi
             cp "${files[0]}" release-files/
           done
-          # The program as the .deb installs it (the others hold the same
-          # one): 64-bit, PIE, a stack that can't run code, full RELRO, no
-          # RPATH; and marked as a .deb, which is how the updater picks
-          # the package it installs.
-          unpacked="$(mktemp -d)"
-          dpkg-deb -x release-files/*.deb "$unpacked"
-          name="$(jq -r .mainBinaryName src-tauri/tauri.conf.json)"
-          bun scripts/check-binaries.ts linux "$unpacked/usr/bin/$name"
-          grep -q __TAURI_BUNDLE_TYPE_VAR_DEB "$unpacked/usr/bin/$name"
+          # The program in each package: 64-bit, PIE, a stack that can't run
+          # code, full RELRO, no RPATH; and marked as that kind of package,
+          # which is how the updater picks the package it installs.
+          bun scripts/check-linux-packages.ts release-files
           # The AppImage's runtime is the pinned one, then its own bill of
           # materials: the runtime, and the system libraries it carries,
           # traced to the packages installed here.

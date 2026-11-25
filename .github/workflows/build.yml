@@ -42,7 +42,7 @@ jobs:
       # WebKitGTK and GTK (the web view and window), D-Bus (the keychain),
       # rpm to make the .rpm, and squashfs-tools for the AppImage's bill.
       - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev rpm squashfs-tools
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev rpm cpio squashfs-tools
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
@@ -61,6 +61,10 @@ jobs:
           runtime="${XDG_CACHE_HOME:-$HOME/.cache}/tauri/appimage-runtime"
           LDAI_RUNTIME_FILE="$runtime" bun tauri build --ci
           bun scripts/check-appimage-runtime.ts target/release/bundle/appimage/*.AppImage "$runtime"
+          # Each package's program hardened and marked, as the release checks.
+          packages="$(mktemp -d)"
+          cp target/release/bundle/deb/*.deb target/release/bundle/rpm/*.rpm target/release/bundle/appimage/*.AppImage "$packages"/
+          bun scripts/check-linux-packages.ts "$packages"
           # The release's own bill of the AppImage, so a pull request runs
           # its unpacking and package tracing on both processors too.
           bun scripts/make-appimage-sbom.ts --appimage target/release/bundle/appimage/*.AppImage \

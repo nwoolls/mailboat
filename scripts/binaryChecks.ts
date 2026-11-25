@@ -114,9 +114,11 @@ export function peProblems(headers: string): string[] {
  * program (ASLR), a stack that can't run code (DEP), full RELRO (the
  * dynamic linker's tables read-only once loaded, with every symbol bound
  * at start), and no RPATH or RUNPATH (no library loaded from a folder the
- * program names).
+ * program names). `runpath` is the one RUNPATH allowed, for the AppImage:
+ * linuxdeploy sets `$ORIGIN/../lib` so the program loads the libraries
+ * bundled next to it, inside the read-only image.
  */
-export function elfProblems(readelf: string): string[] {
+export function elfProblems(readelf: string, runpath?: string): string[] {
   const problems: string[] = [];
   const field = (name: string) => new RegExp(`^\\s*${name}:\\s*(.+)$`, "m").exec(readelf)?.[1];
   if (field("Class") !== "ELF64") problems.push(`not a 64-bit build (class: ${field("Class")})`);
@@ -132,8 +134,10 @@ export function elfProblems(readelf: string): string[] {
   else if (stack[1].includes("E")) problems.push("the stack can run code");
   const bindNow = /\(FLAGS\)\s+[^\n]*\bBIND_NOW\b/.test(readelf) || flags1.includes("NOW");
   if (!segment("GNU_RELRO") || !bindNow) problems.push("no full RELRO (GNU_RELRO and BIND_NOW)");
-  for (const tag of ["RPATH", "RUNPATH"]) {
-    if (new RegExp(`\\(${tag}\\)`).test(readelf)) problems.push(`has a ${tag}`);
+  if (/\(RPATH\)/.test(readelf)) problems.push("has a RPATH");
+  const runpaths = [...readelf.matchAll(/\(RUNPATH\)[^\n]*\[([^\]]*)\]/g)].map((m) => m[1]);
+  if (/\(RUNPATH\)/.test(readelf) && !(runpaths.length === 1 && runpaths[0] === runpath)) {
+    problems.push("has a RUNPATH");
   }
   return problems;
 }

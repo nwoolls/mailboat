@@ -28,7 +28,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import brand from "../brand.json";
-import { elfEnd, RUNTIME_RELEASE, RUNTIME_SHA256 } from "./appimageRuntime";
+import { elfEnd, RUNTIME_RELEASE, RUNTIME_SHA256, runtimeProblem } from "./appimageRuntime";
 import {
   appimageBom,
   type Bundled,
@@ -67,6 +67,13 @@ if (!existsSync(appimage)) fail(`no AppImage at ${appimage}`);
 
 /** The AppImage's own tools, not from a package: the runtime that starts it. */
 const TOOLS = new Set(["AppRun", "AppRun.wrapped"]);
+
+// The runtime recorded below is the one in this AppImage: the same check as
+// check-appimage-runtime.ts, before anything is unpacked.
+{
+  const problem = runtimeProblem(readFileSync(appimage), readFileSync(runtime));
+  if (problem) fail(`${appimage}: ${problem}`);
+}
 
 const work = mkdtempSync(join(tmpdir(), "appimage-sbom-"));
 const root = join(work, "squashfs-root");

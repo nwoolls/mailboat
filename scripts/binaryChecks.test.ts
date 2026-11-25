@@ -165,6 +165,14 @@ describe("a Linux binary", () => {
         readelf({ extra: " 0x000000000000001d (RUNPATH)            Library runpath: [$ORIGIN]" }),
       ),
     ).toEqual(["has a RUNPATH"]);
+    const appimage = readelf({
+      extra: " 0x000000000000001d (RUNPATH)            Library runpath: [$ORIGIN/../lib]",
+    });
+    expect(elfProblems(appimage, "$ORIGIN/../lib")).toEqual([]);
+    expect(elfProblems(appimage)).toEqual(["has a RUNPATH"]);
+    expect(
+      elfProblems(appimage.replace("$ORIGIN/../lib", "$ORIGIN/../lib:/tmp"), "$ORIGIN/../lib"),
+    ).toEqual(["has a RUNPATH"]);
     expect(
       elfProblems(
         readelf()
