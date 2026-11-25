@@ -7679,6 +7679,10 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       after the CASA letter, since it changes the dependencies, the
       advisories the assessment reads and the policy. The owner's first
       packages: `.deb`, `.rpm` and AppImage.)*
+      *(2026-11-25: CI's builds pass on both processors, and the owner
+      tried the Arm packages in VMs: the `.deb` on Ubuntu and the `.rpm`
+      on Fedora KDE install and run. The Linux packages and updates
+      haven't run in a real release yet.)*
   - [x] Builds, checks and tests on Linux: Ubuntu 22.04 in CI's Rust
         checks (x86-64), the test builds (x86-64 and Arm), and
         `scripts/linux.sh` (Docker) on the Mac
@@ -7704,7 +7708,8 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         with the AppImage's tools checked against recorded digests; an SBOM
         per processor, made on a runner of that processor, and one more per
         AppImage for the system libraries it carries; the program's
-        hardening checked (`check-binaries.ts linux`); after an update the
+        hardening and updater mark checked in every package
+        (`check-linux-packages.ts`); after an update the
         app starts again only once the old copy has ended
   - [x] The theme follows the desktop's light or dark preference, and a
         theme chosen in Settings stays when the desktop's changes
