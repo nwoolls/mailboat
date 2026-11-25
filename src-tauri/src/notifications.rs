@@ -801,8 +801,14 @@ mod linux {
             );
             match closed {
                 Ok(_) => self.shown.lock().unwrap().closed(owner, id),
-                Err(zbus::Error::MethodError(name, ..))
-                    if name.as_str() == "org.freedesktop.DBus.Error.ServiceUnknown" =>
+                // Only the bus saying the service has left means its
+                // notifications went with it; the same error from the
+                // service is a refusal, kept for the next try.
+                Err(zbus::Error::MethodError(name, _, reply))
+                    if bus_says_gone(
+                        reply.header().sender().map(|s| s.as_str()),
+                        name.as_str(),
+                    ) =>
                 {
                     self.shown.lock().unwrap().gone(owner);
                 }
@@ -929,6 +935,8 @@ mod linux_tests {
         /// Answers the next Notify with `ServiceUnknown` itself, once (the
         /// bus's error name, from the service).
         gone_once: Arc<AtomicBool>,
+        /// Answers the next CloseNotification the same way, once.
+        close_gone_once: Arc<AtomicBool>,
     }
 
     const STALL: Duration = Duration::from_secs(2);
@@ -998,7 +1006,14 @@ mod linux_tests {
             let mut owners = self.owners.lock().unwrap();
             let refused =
                 owners.get(&id) != Some(&sender) || self.refuse.lock().unwrap().contains(&id);
-            self.attempts.lock().unwrap().push((id, refused));
+            let says_gone = !refused && self.close_gone_once.swap(false, Ordering::AcqRel);
+            self.attempts
+                .lock()
+                .unwrap()
+                .push((id, refused || says_gone));
+            if says_gone {
+                return Err(zbus::fdo::Error::ServiceUnknown("gone".into()));
+            }
             if refused {
                 return Err(zbus::fdo::Error::AccessDenied("not yours".into()));
             }
@@ -1341,6 +1356,26 @@ mod linux_tests {
         // The next post goes through as usual.
         service.post(notice(7));
         eventually("posted", || service.shown() == [1]);
+    }
+
+    /// A service answering a close with `ServiceUnknown` itself hasn't
+    /// left: its notification stays listed, and the next take-back closes
+    /// it. Only the bus saying so forgets a service's notifications.
+    #[test]
+    fn a_service_answering_a_close_that_its_gone_keeps_its_notification() {
+        let Some(bus) = bus() else { return };
+        let fake = Fake::default();
+        let _server = serve(&bus, &fake);
+        let (service, _clicks) = connect(&bus);
+        service.post(notice(42));
+        eventually("posted", || service.shown() == [1]);
+        fake.close_gone_once.store(true, Ordering::Release);
+        service.clear_all(Duration::from_secs(5));
+        assert_eq!(*fake.attempts.lock().unwrap(), [(1, true)]);
+        assert_eq!(service.shown(), [1], "forgotten");
+        service.clear_all(Duration::from_secs(5));
+        assert_eq!(*fake.closed.lock().unwrap(), [1]);
+        assert!(service.shown().is_empty());
     }
 
     /// Review (round 10): a service that doesn't say what it reads gets an
