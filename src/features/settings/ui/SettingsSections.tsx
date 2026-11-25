@@ -589,8 +589,10 @@ export function NotificationsSection() {
             />
           </div>
         </Row>
-        {/* Linux has no one place for this: each desktop keeps its own. */}
-        {PLATFORM !== "linux" && (
+        {/* The Mac only: the button opens macOS's System Settings. Linux has
+            no one place for this (each desktop keeps its own), and Windows'
+            would need its own page. */}
+        {PLATFORM === "mac" && (
           <Row
             label="Style and sound"
             description="macOS decides whether they show, as banners or alerts, and with what sound."
@@ -610,10 +612,14 @@ export function NotificationsSection() {
           </Row>
         )}
       </Group>
-      <Group title="Dock">
+      <Group title={PLATFORM === "linux" ? "Dock or launcher" : "Dock"}>
         <Row
           label="Unread count"
-          description={`On ${APP_NAME}’s Dock icon: unread conversations in Inbox or in Unread (every account’s), as the sidebar counts them.`}
+          description={
+            PLATFORM === "linux"
+              ? `On ${APP_NAME}’s icon, on desktops that show a count there: unread conversations in Inbox or in Unread (every account’s), as the sidebar counts them.`
+              : `On ${APP_NAME}’s Dock icon: unread conversations in Inbox or in Unread (every account’s), as the sidebar counts them.`
+          }
         >
           <Segmented
             label="Unread count on the Dock"

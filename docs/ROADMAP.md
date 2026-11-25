@@ -5424,10 +5424,12 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
-- [ ] Settings → Notifications → Style and sound opens macOS's System
+- [x] Settings → Notifications → Style and sound opens macOS's System
       Settings address on Windows too, where it does nothing *(found
       2026-11-24 while porting to Linux, where the row is hidden)*. Windows
       has `ms-settings:notifications`; the row's wording names macOS.
+      *(Fixed on branch `linux-build`: the row shows on the Mac only. A
+      Windows version, opening `ms-settings:notifications`, can come later.)*
 
 - [x] A user took the toys for frozen *(user report, 2026-11-23; fixed the
       same day, branch `toybox-reduced-motion`)*: with the system's reduce
@@ -7663,9 +7665,9 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       "Clone a sent email")*
       *(2026-11-24: built on branch `linux-build`, to be opened as a draft
       pull request, after a user's port (issue #218) was read as context
-      only. The release jobs and the desktop behavior are wired and tested
-      in containers and CI, not yet run end to end on a desktop or in a
-      real release. It merges
+      only. The release jobs are wired, and the Linux code is checked and
+      tested in Docker on the Mac (Ubuntu 22.04, Arm); none of it has run
+      in CI, in a real release, or on a desktop yet. It merges
       after the CASA letter, since it changes the dependencies, the
       advisories the assessment reads and the policy. The owner's first
       packages: `.deb`, `.rpm` and AppImage.)*
@@ -7714,6 +7716,12 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         stable release that has Linux packages, not before: the buttons
         link to the latest stable release, and the site goes out when a
         pull request merges
+  - [ ] What redistributing the AppImage asks of the project: its
+        runtime links LGPL-2.1 libfuse in statically (upstream's build, as
+        in every AppImage with that runtime), and it carries copies of
+        LGPL libraries such as WebKitGTK and GTK, which the `.deb` and
+        `.rpm` take from the system instead *(owner to decide before the
+        first release with an AppImage)*
   - [ ] Flatpak (Flathub) and the AUR package, after the first release.
         An AUR package built from the `.deb` would carry its bundle type,
         so the updater would try `dpkg` on Arch: it should build from the
