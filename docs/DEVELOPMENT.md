@@ -254,6 +254,51 @@ needs the nightly toolchain: see `fuzz/README.md`. You don't need it for the
 checks above. The same safety checks run as property tests in `cargo test`,
 and a weekly job (`.github/workflows/fuzz.yml`) fuzzes for longer.
 
+## The encrypting SQLite
+
+The mail cache's SQLite is SQLite3 Multiple Ciphers, an encrypting build of
+SQLite. rusqlite doesn't offer it, so `vendor/libsqlite3-sys/` holds a copy
+of rusqlite's `libsqlite3-sys` that compiles it instead of plain SQLite, and
+the workspace's `Cargo.toml` swaps the copy in with `[patch.crates-io]`. The
+copy changes three things, each marked `app:` in its `build.rs` and
+`Cargo.toml`: the source it compiles (from the `sqlite3mc-src` crate);
+SQLite's own default for temporary storage (`SQLITE_TEMP_STORE=1`, which
+SQLite3 Multiple Ciphers would otherwise change); and, for Windows builds
+with clang-cl, a flag that works around
+[utelle/SQLite3MultipleCiphers#319](https://github.com/utelle/SQLite3MultipleCiphers/issues/319).
+The copy leaves out SQLite's own source files. The code for SQLCipher and
+the other build modes stays in its `build.rs` and `Cargo.toml`, unused: the
+app uses only the bundled build.
+
+When plain SQLite is linked, the app stops at startup before it reads or
+changes its mail data (the database and its folders), and the database
+doesn't open
+(`db::require_cipher`, `db::cipher_version`). The test
+`the_cipher_is_linked` fails then too, and also when the SQLite inside
+SQLite3 Multiple Ciphers isn't the version the bindings were made for, so
+a build that skipped the patch can't pass the checks.
+
+When a rusqlite upgrade asks for a new `libsqlite3-sys`, Cargo stops using
+the copy and that test fails (on a Dependabot pull request too). Then:
+
+1. Copy the new version's `build.rs`, `wrapper.h`, `src/`, `LICENSE`,
+   `Cargo.toml` and the two `sqlite3/bindgen_bundled_version*.rs` files from
+   `~/.cargo/registry/src/*/libsqlite3-sys-<version>/` into
+   `vendor/libsqlite3-sys/`, in place of the old ones.
+2. After step 1, `git diff` shows the `app:` lines as removed. Put them
+   back.
+3. Check that the SQLite version in the bindings (`SQLITE_VERSION` in
+   `sqlite3/bindgen_bundled_version.rs`) is the one `sqlite3mc-src` wraps:
+   the crate version's suffix names it
+   (`207.1.0+sqlite3mc-2.7.1-sqlite-3.54.1` in `Cargo.lock`). If not, move
+   `sqlite3mc-src` to a release that matches.
+4. Run `bun run check` and `scripts/windows.sh check`.
+
+To move to a newer SQLite3 Multiple Ciphers alone, change the
+`sqlite3mc-src` version in `vendor/libsqlite3-sys/Cargo.toml`, with the
+same rule as step 3, and check the roadmap's "Issues filed upstream" for a
+workaround the new release makes unnecessary.
+
 ## A signed Windows installer
 
 The Windows build above is unsigned unless you ask. Signing uses Azure

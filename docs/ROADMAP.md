@@ -4943,11 +4943,12 @@ An entry is ticked when the fix is released and the workaround is removed.*
       macros, so it fails to compile. Workaround: undefine
       `__SIZEOF_INT128__` when SQLite3 Multiple Ciphers' source is built for
       Windows with clang-cl. The spike set it with
-      `LIBSQLITE3_FLAGS="-U__SIZEOF_INT128__"`; the 0.4.0 build will carry
-      it in the patched `libsqlite3-sys` build script (see "Encrypt the
-      local cache at rest", under 0.4.0). Once a release with the fix is
-      out: move `sqlite3mc-src` to it, remove the workaround, and rebuild
-      for both Windows targets.
+      `LIBSQLITE3_FLAGS="-U__SIZEOF_INT128__"`; the build now carries it in
+      `vendor/libsqlite3-sys/build.rs`, applied only for Windows targets
+      built with clang-cl (marked `app:`; `docs/DEVELOPMENT.md` → "The
+      encrypting SQLite"). Once a release with the fix is out: move
+      `sqlite3mc-src` to it, remove the workaround, and rebuild for both
+      Windows targets.
 
 ## Flaky tests
 
@@ -7817,22 +7818,40 @@ item below is built, the owner has tried it, and the owner has published
 
       Build steps, for 0.4.0 (owner, 2026-11-26; about a week of work,
       plus reviews):
-      - [ ] SQLite3 Multiple Ciphers in the build: the patched copy of
-            `libsqlite3-sys` in the repository, the clang-cl fix, a test
-            that fails when the cipher isn't linked (`sqlite3mc_version()`),
-            and a check that fails when Cargo reports the patch unused. A
-            rusqlite upgrade would otherwise build plain SQLite without any
-            warning. The clang-cl bug is reported upstream (2026-11-26,
-            after the spike's runs on Windows ARM and Intel/AMD confirmed
-            the fix); the workaround goes when the fix ships (see "Issues
-            filed upstream").
+      - [x] SQLite3 Multiple Ciphers in the build: the patched copy of
+            `libsqlite3-sys` in the repository, the clang-cl fix, and a test
+            that fails when the cipher isn't linked (`sqlite3mc_version()`).
+            A rusqlite upgrade would otherwise build plain SQLite with only
+            a warning from Cargo. The clang-cl bug is reported upstream
+            (2026-11-26, after the spike's runs on Windows ARM and Intel/AMD
+            confirmed the fix); the workaround goes when the fix ships (see
+            "Issues filed upstream"). *(Done 2026-11-26: the copy is
+            `vendor/libsqlite3-sys/`, swapped in by the workspace's
+            `[patch.crates-io]` and left out of the workspace. When plain
+            SQLite is linked, `db::require_cipher` stops app startup before
+            the mail data (the database and its folders) is read or changed,
+            and also stops every database open. The test
+            `the_cipher_is_linked` fails when plain SQLite is linked (which
+            is what a skipped patch leads to) and when the SQLite inside
+            isn't the version the bindings were made for; it doesn't rely on
+            Cargo's warning. The copy also keeps SQLite's own
+            temporary-storage default (`SQLITE_TEMP_STORE=1`), which SQLite3
+            Multiple Ciphers would change. The release SBOM lists the copy
+            as a changed crates.io crate, and `sqlite3mc-src` as shipped
+            because its source is compiled in (`scripts/sbom.ts`,
+            `COMPILED_IN`; review, 2026-11-26). The upgrade steps are in
+            `docs/DEVELOPMENT.md` → "The encrypting SQLite". The app still
+            opens a plain database: encrypting it is the next step.)*
       - [ ] The key: made and kept in the keychain, set on the connection
             before anything else, never in an error or the log. A lost key
             moves the unreadable database aside (deleted at the next start),
             starts a new cache and shows a notice once: accounts sign in
             again and Settings are back to their defaults (owner,
             2026-11-26). A keychain that doesn't answer leaves the files
-            alone and says so.
+            alone and says so. Temporary storage moves to memory
+            (`SQLITE_TEMP_STORE=2` in `vendor/libsqlite3-sys/build.rs`),
+            because SQLite3 Multiple Ciphers doesn't encrypt temporary
+            files.
       - [ ] The one-time migration of a plain database, with the spike's
             tests, and three things the spike left open. Other copies stay
             out until the copy has replaced the plain file: on macOS and

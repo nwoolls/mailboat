@@ -20,6 +20,8 @@ export type Component = {
   scope: "required" | "optional" | "excluded";
   licenses?: { expression: string }[] | { license: { name: string } }[];
   hashes?: { alg: "SHA-256" | "SHA-512"; content: string }[];
+  /** How a component differs from the published one it comes from. */
+  pedigree?: { notes: string };
 };
 
 /** A license as a CycloneDX licenses list: an SPDX expression when it is one. */
@@ -96,6 +98,8 @@ export type TreeCrate = {
   name: string;
   version: string;
   local: boolean;
+  /** A local copy of a crates.io crate, in the repository's `vendor/`. */
+  vendored?: boolean;
   source?: string;
   license?: string;
 };
@@ -115,12 +119,14 @@ export function parseTree(output: string): TreeCrate[] {
     // "(proc-macro)", and not a git or registry source.
     const local = paren !== undefined && (paren.startsWith("/") || /^[A-Za-z]:\\/.test(paren));
     const source = paren !== undefined && !local && paren !== "proc-macro" ? paren : undefined;
+    const vendored = local && /[\\/]vendor[\\/]/.test(paren!);
     const key = `${name} ${version}`;
     if (!crates.has(key)) {
       crates.set(key, {
         name: name!,
         version: version!,
         local,
+        vendored: vendored || undefined,
         source,
         license: license?.replace(/\s*\(\*\)\s*$/, "").trim() || undefined,
       });
@@ -144,12 +150,22 @@ export function cargoChecksums(lock: string): Map<string, string> {
 }
 
 /**
+ * Crates whose source a build script compiles into the app (C code), so
+ * they ship though Cargo lists them only as build dependencies:
+ * SQLite3 Multiple Ciphers, which `vendor/libsqlite3-sys` compiles.
+ */
+export const COMPILED_IN = new Set(["sqlite3mc-src"]);
+
+/**
  * The app's crates on every platform the release builds, from `cargo tree`
  * as the build resolves them (features and platforms included): `linked`
  * holds each platform's `-e normal,no-proc-macro` output (linked into the
  * app: "required"), `used` its `-e normal,build` output (also proc macros
- * and build scripts' crates: "excluded" when not linked). The app's own
- * local crates are the application itself, not components. Only
+ * and build scripts' crates: "excluded" when not linked, unless their
+ * source is compiled into the app, `COMPILED_IN`). The app's own local
+ * crates are the application itself, not components; a crates.io crate
+ * copied into `vendor/` and changed there is one, with a note saying so
+ * and no checksum (it no longer matches the published one). Only
  * crates.io crates are described: one from another source (git, another
  * registry) would need its own package URL and has no `Cargo.lock`
  * checksum to go by, so it stops the run until that is written.
@@ -165,21 +181,27 @@ export function cargoComponents(
   for (const c of [...linked, ...used].flatMap(parseTree)) if (!all.has(key(c))) all.set(key(c), c);
   const out: Component[] = [];
   for (const c of all.values()) {
-    if (c.local) continue;
+    if (c.local && !c.vendored) continue;
     if (c.source) {
       throw new Error(`${c.name} ${c.version} comes from ${c.source}, which isn't crates.io`);
     }
     const purl = `pkg:cargo/${c.name}@${purlVersion(c.version)}`;
-    const checksum = checksums.get(key(c));
+    const checksum = c.vendored ? undefined : checksums.get(key(c));
     out.push({
       type: "library",
       "bom-ref": purl,
       name: c.name,
       version: c.version,
       purl,
-      scope: shipped.has(key(c)) ? "required" : "excluded",
+      scope: shipped.has(key(c)) || COMPILED_IN.has(c.name) ? "required" : "excluded",
       licenses: licenses(c.license),
       hashes: checksum ? [{ alg: "SHA-256", content: checksum }] : undefined,
+      pedigree: c.vendored
+        ? {
+            notes:
+              'A copy of this crates.io crate in the repository\'s vendor/ folder, changed where marked "app:" (docs/DEVELOPMENT.md, "The encrypting SQLite").',
+          }
+        : undefined,
     });
   }
   return out;
