@@ -4937,7 +4937,7 @@ An entry is ticked when the fix is released and the workaround is removed.*
 
 None filed yet. The first, a clang-cl compile error in SQLite3 Multiple
 Ciphers, waits for review before it is filed (see "Encrypt the local cache
-at rest", under "Later / unscheduled").
+at rest", under 0.4.0).
 
 ## Flaky tests
 
@@ -7508,101 +7508,14 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       CI). Best effort, like the macOS flag: a volume without streams
       (FAT32) leaves the file unmarked.
 
-## Later / unscheduled
+## 0.4.0
 
-- [ ] What's new in an available update *(owner idea, 2026-11-08; maybe for
-      the Polish Spike, not likely)*: when the update notice says a version
-      is available, let the person read what changed in it before installing.
-      The Tauri updater supports release notes: its manifest (`latest.json`)
-      can carry them, and the plugin hands them back with the update
-      (`Update::body`). The app leaves them out on purpose: only the
-      download is signed, not the manifest, so a tampered manifest could put
-      any text in the window (`updates.rs` and `releaseFiles.ts` say so), and
-      the release notes themselves come from `CHANGELOG.md` and go on the
-      GitHub release. To decide: a "What's new" link in the notice that opens
-      that version's release page in the browser (simplest: nothing is shown
-      in the window, and the address follows from the version), notes signed
-      the way the download is and checked against the public key before the
-      app shows them as plain text (never HTML), or both.
-      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
-      *(parked, moved from 0.3.0 to "Later / unscheduled", owner,
-      2026-11-17: the owner wants the notes shown in the app, signed like
-      the download and checked against the app's key before they show as
-      plain text, with no link to GitHub, since casual users shouldn't need
-      to know about it; and not half-done. That is three pull requests (the
-      release workflow signs the notes and puts them in `latest.json`, the
-      app checks them, a "What's new" view with a mockup first) and two
-      betas to prove it end to end)*
-      *(2026-11-17, later the same day: the owner chose the link for 0.3.0
-      after all, and the notes in the app stay here for later. The link is
-      "What's new link in the update notice" in 0.3.0)*
-
-- [ ] The read envelope's flap opening and closing *(owner, 2026-11-14,
-      while reviewing icons: "can read / unread open / close the
-      envelope? if not we can put a pin in that for later")*. Hugeicons
-      draws the open and closed envelopes as separate shapes, so in 0.3.0
-      the button cross-fades them (see the icon review). A
-      flap that swings needs an envelope drawn for the app, matched to
-      Hugeicons' weight and size, and a moment for it that isn't opening
-      a conversation
-      *(pinned for later, 2026-11-14)*
-
-- [ ] Ask for Google permissions when they are first needed: sign-in asks
-      for what mail needs, and Calendar, Contacts and Gmail settings are
-      requested when the person first uses invitations, address suggestions,
-      rules, signatures or the vacation reply. The consent screen shrinks
-      from eight permissions to a few, and each remaining permission maps
-      to a feature Google's reviewers can see. Needs care for accounts
-      already signed in (one more consent, as when a permission was added
-      before) and for the seven-day sign-in in Testing
-      *(moved from Milestone 16 when it closed, 2026-11-11; to plan;
-      still waits for Google's answer on the verification)*
-
-- [ ] Teaser trailer *(owner, 2026-10-22; moved from the Release
-      Spike)*: a short video made in code with Remotion (videos written
-      in React), drawing Mailboat's real components with the demo data, as
-      the browser tests do. Scripted camera moves, a gliding cursor,
-      typing, the AI panel opening, mail arriving; rendered to MP4 at
-      16:9, square and vertical. Not AI-generated video: it garbles text
-      and invents UI that isn't Mailboat's. Limits: it renders in
-      Chromium, so the window's glass is imitated over a chosen
-      wallpaper rather than macOS's own; music or a voiceover come from
-      the owner (cuts can be timed to a chosen track). Check Remotion's
-      license (free for individuals and small companies) when starting,
-      and record it in ARCHITECTURE
-      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
-      *(2026-11-21: a first clip is made, owner's request: swipe to archive
-      up close (`video/`, composition `SwipeArchive`, dark and light),
-      drawing the app's real components, shown on the website's Swipes card
-      and in FEATURES.md. Remotion's license was checked and recorded in
-      ARCHITECTURE (source-available; free for individuals and companies of
-      up to 3 people). `video/render.sh` renders and places it. The trailer
-      itself is still to plan)*
-      *(2026-11-22/23: made with the owner, branch `video-trailer`: the
-      app's window in 3D, cut to a music track's beats (93 BPM, the
-      opening over the track's soft start, a feature held through its
-      hold, the flip to light on its groove), captions, and an end card
-      where the icon draws itself. Four trailers share a kit
-      (`video/src/kit/`): the main one (inbox, summaries, the keyboard,
-      Write with AI, sign-in codes, the palette) and three themed ones
-      (Toybox, Gmail features, Fast). The music (Pixabay) and 2x takes
-      of the demo (`video/capture.sh`) stay out of git;
-      `video/TRAILERS.md` says how to make everything again when a
-      screen changes. Still to do: square and vertical cuts, where and
-      how they are posted (the owner's call), 2x takes for the themed
-      trailers' shots, and two more themed trailers: "Fits your window"
-      (the compose card moving between corners, the layout as the window
-      narrows: better drawn from the real components than recorded) and
-      "Private by default" (the Privacy page, AI providers, AI apps))*
-
-- [ ] Fewer hosts contacted before a message is opened: options are
-      remote images for people you've written to by default, prefetching
-      images only for those people or not at all, or both. Prefetch is
-      on today, so the image host is contacted when mail arrives
-      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
-
-- Encrypting the local cache at rest moved to 0.3.0 → Security
-  assessment (CASA), 2026-11-15.
+*The owner opened 0.4.0 on 2026-11-26 for the encryption of the local
+cache. CASA's paid security scan, due 2027-02-12, is likely to flag a cache
+that relies on the computer's disk encryption (DASA requirement 1.2.2).
+More items may be pulled in from "Later / unscheduled". Done when: each
+item below is built, the owner has tried it, and the owner has published
+0.4.0 (`docs/DEVELOPMENT.md` → Releasing).*
 
 - [ ] Encrypt the local cache at rest: a key in the keychain and an
       encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
@@ -7790,7 +7703,7 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       *(2026-11-26, owner: SQLite3 Multiple Ciphers through the patched
       `libsqlite3-sys` copy, as the spike recommends.)*
 
-      Build steps, for the release the owner picks (about a week of work,
+      Build steps, for 0.4.0 (owner, 2026-11-26; about a week of work,
       plus reviews):
       - [ ] SQLite3 Multiple Ciphers in the build: the patched copy of
             `libsqlite3-sys` in the repository, the clang-cl fix, a test
@@ -7819,6 +7732,105 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       - [ ] The privacy policy, the feature cards and Settings → Privacy
             say that the cache is encrypted and how; the written answer to
             DASA 1.2.2 for the lab.
+      *(moved from "Later / unscheduled" into 0.4.0, owner, 2026-11-26)*
+
+## Later / unscheduled
+
+- [ ] What's new in an available update *(owner idea, 2026-11-08; maybe for
+      the Polish Spike, not likely)*: when the update notice says a version
+      is available, let the person read what changed in it before installing.
+      The Tauri updater supports release notes: its manifest (`latest.json`)
+      can carry them, and the plugin hands them back with the update
+      (`Update::body`). The app leaves them out on purpose: only the
+      download is signed, not the manifest, so a tampered manifest could put
+      any text in the window (`updates.rs` and `releaseFiles.ts` say so), and
+      the release notes themselves come from `CHANGELOG.md` and go on the
+      GitHub release. To decide: a "What's new" link in the notice that opens
+      that version's release page in the browser (simplest: nothing is shown
+      in the window, and the address follows from the version), notes signed
+      the way the download is and checked against the public key before the
+      app shows them as plain text (never HTML), or both.
+      *(moved from "Later / unscheduled" into 0.3.0, owner, 2026-11-14)*
+      *(parked, moved from 0.3.0 to "Later / unscheduled", owner,
+      2026-11-17: the owner wants the notes shown in the app, signed like
+      the download and checked against the app's key before they show as
+      plain text, with no link to GitHub, since casual users shouldn't need
+      to know about it; and not half-done. That is three pull requests (the
+      release workflow signs the notes and puts them in `latest.json`, the
+      app checks them, a "What's new" view with a mockup first) and two
+      betas to prove it end to end)*
+      *(2026-11-17, later the same day: the owner chose the link for 0.3.0
+      after all, and the notes in the app stay here for later. The link is
+      "What's new link in the update notice" in 0.3.0)*
+
+- [ ] The read envelope's flap opening and closing *(owner, 2026-11-14,
+      while reviewing icons: "can read / unread open / close the
+      envelope? if not we can put a pin in that for later")*. Hugeicons
+      draws the open and closed envelopes as separate shapes, so in 0.3.0
+      the button cross-fades them (see the icon review). A
+      flap that swings needs an envelope drawn for the app, matched to
+      Hugeicons' weight and size, and a moment for it that isn't opening
+      a conversation
+      *(pinned for later, 2026-11-14)*
+
+- [ ] Ask for Google permissions when they are first needed: sign-in asks
+      for what mail needs, and Calendar, Contacts and Gmail settings are
+      requested when the person first uses invitations, address suggestions,
+      rules, signatures or the vacation reply. The consent screen shrinks
+      from eight permissions to a few, and each remaining permission maps
+      to a feature Google's reviewers can see. Needs care for accounts
+      already signed in (one more consent, as when a permission was added
+      before) and for the seven-day sign-in in Testing
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan;
+      still waits for Google's answer on the verification)*
+
+- [ ] Teaser trailer *(owner, 2026-10-22; moved from the Release
+      Spike)*: a short video made in code with Remotion (videos written
+      in React), drawing Mailboat's real components with the demo data, as
+      the browser tests do. Scripted camera moves, a gliding cursor,
+      typing, the AI panel opening, mail arriving; rendered to MP4 at
+      16:9, square and vertical. Not AI-generated video: it garbles text
+      and invents UI that isn't Mailboat's. Limits: it renders in
+      Chromium, so the window's glass is imitated over a chosen
+      wallpaper rather than macOS's own; music or a voiceover come from
+      the owner (cuts can be timed to a chosen track). Check Remotion's
+      license (free for individuals and small companies) when starting,
+      and record it in ARCHITECTURE
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+      *(2026-11-21: a first clip is made, owner's request: swipe to archive
+      up close (`video/`, composition `SwipeArchive`, dark and light),
+      drawing the app's real components, shown on the website's Swipes card
+      and in FEATURES.md. Remotion's license was checked and recorded in
+      ARCHITECTURE (source-available; free for individuals and companies of
+      up to 3 people). `video/render.sh` renders and places it. The trailer
+      itself is still to plan)*
+      *(2026-11-22/23: made with the owner, branch `video-trailer`: the
+      app's window in 3D, cut to a music track's beats (93 BPM, the
+      opening over the track's soft start, a feature held through its
+      hold, the flip to light on its groove), captions, and an end card
+      where the icon draws itself. Four trailers share a kit
+      (`video/src/kit/`): the main one (inbox, summaries, the keyboard,
+      Write with AI, sign-in codes, the palette) and three themed ones
+      (Toybox, Gmail features, Fast). The music (Pixabay) and 2x takes
+      of the demo (`video/capture.sh`) stay out of git;
+      `video/TRAILERS.md` says how to make everything again when a
+      screen changes. Still to do: square and vertical cuts, where and
+      how they are posted (the owner's call), 2x takes for the themed
+      trailers' shots, and two more themed trailers: "Fits your window"
+      (the compose card moving between corners, the layout as the window
+      narrows: better drawn from the real components than recorded) and
+      "Private by default" (the Privacy page, AI providers, AI apps))*
+
+- [ ] Fewer hosts contacted before a message is opened: options are
+      remote images for people you've written to by default, prefetching
+      images only for those people or not at all, or both. Prefetch is
+      on today, so the image host is contacted when mail arrives
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+
+- Encrypting the local cache at rest moved to 0.3.0 → Security
+  assessment (CASA), 2026-11-15.
+
+- Encrypting the local cache at rest moved to 0.4.0, 2026-11-26.
 
 - [ ] Sign-in codes by more than word lists *(owner, 2026-11-18, after the
       recovery-email miss)*: detection (`mail::codes`) is lists of words
