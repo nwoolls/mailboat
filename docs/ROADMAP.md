@@ -5434,6 +5434,60 @@ the way, and one bug in the app caused flaky failures; all three are in
         of 120 on 8 workers) and 5 of 5 on a slowed page. The CI symptom
         wasn't reproduced locally; that it is the same race on a busier
         machine is likely, not confirmed.
+- [x] `reader-keyboard.spec.ts`: "an arrow after the outline scrolled away
+      outlines the first email showing" (line 221).
+      - 2026-11-26, CI on `main` after #247 (docs only),
+        https://github.com/nwoolls/mailboat/actions/runs/45874226966,
+        WebKit: after five ↑, the second email was outlined instead of the
+        first (`toBe(0)`, received 1, line 227), before the test's own
+        checks; 283 others passed. The job wasn't run again; the cause was
+        fixed in the app instead, with new tests beside this one.
+      - Fixed 2026-11-26 (branch `reader-keyboard-flaky`), in the app (0.4.0
+        → Bugs). The CI trace shows the third ↑ taking about 1 s, a stall.
+        A key goes on from where the last key's smooth scroll is heading,
+        and the app forgot that place after 600 ms of clock time, though
+        no frame had run and the scroll hadn't moved. The next ↑ then
+        measured from the reader as it was, took the first email (above
+        the view) for scrolled away, and outlined the email showing below.
+        A throwaway spec that stalled the page after each of the five
+        presses reproduced it locally, in three of the four runs with a
+        700 or 1000 ms stall after the third or fourth press. On its own,
+        the place now runs out only once the 600 ms are up and the reader
+        has stood still for 30 frames (WebKit's smooth scroll stands still
+        for a few frames before it starts, and again after a stall; 2
+        frames still failed one case). A wheel, a touch, a click or another
+        scrolling key still forgets it at once. A new test, "a stall while
+        ↑ is held doesn't send the outline back down", stalls the page for
+        1 s between two ↑ with no frame in between: it failed 10 of 10
+        without the fix and passed 10 of 10 with it. With the fix, the
+        stall sweep ended on the first email in all 75 runs.
+      - Review, the same day: with the clock no longer forgetting the
+        place by itself, a scroll from elsewhere that moved the reader
+        toward it kept it alive, and the next arrow went on from a place
+        the reader wasn't. The place is now also forgotten when the reply
+        being written starts sticking to the bottom, when the keyboard
+        comes back from the list (Space and n / p scroll the reader from
+        there), and when the conversation changes (its watcher stops with
+        the reader). One new test for each failed 10 of 10 without its
+        change (the reply's 5 of 5) and passed with it. The stall test now
+        also checks that the first ↑ outlined the first email while it
+        was still above the view; with the old code it failed 10 of 10
+        after that check.
+      - Second review, the same day: two of the new tests waited on the
+        clock (800 ms for a scroll, and a switch of conversation within
+        600 ms), which a busy runner might not keep to. The reply test now
+        waits for the reader to get past where the old aim would have
+        taken it, and the conversation test moves the reader a pixel each
+        frame so the aim can't run out on its own, then waits for the old
+        reader to go, however long that takes. A new test checks that a
+        stopped scroll keeps its aim until the reader has stood still for
+        some frames, not just until its 600 ms are up; with the frame
+        count set to 1 it failed 5 of 5. The other two failed 5 of 5 on
+        the first commit's code. An older clash between n / p and an arrow
+        pressed straight after went to the Bug backlog. After both
+        reviews, the file and `reply-esc.spec.ts` passed 460 of 460 (20
+        runs each), the file 100 of 100 on a slowed page (5 runs) and 160
+        of 160 on 8 workers.
 
 ## Bug backlog
 
@@ -6349,6 +6403,19 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       nothing was approved. A unit test fails without the change, and so
       does `a_list_line_keeps_only_what_the_conversation_says` with
       "approved" taken off the list.
+- [ ] n / p and an arrow pressed straight after it pull the reader two
+      ways *(found 2026-11-26 in review of branch `reader-keyboard-flaky`;
+      not seen in the app)*. After n or p, the email it moved to is held
+      at the top of the reader for 350 ms (`stepEmail`, `HOLD_MS` in
+      `reader/ui/readerKeys.ts`): the hold sets the scroll position every
+      frame.
+      An ↑ or ↓ pressed in that time (n on the list, → into the
+      conversation, then ↓) starts its own smooth scroll, which the hold
+      keeps pulling back, while the arrow's aim (where its scroll is
+      heading) stays set, so the next arrow may go on from a place the
+      reader never reached. Likely fix: an arrow's scroll ends the hold.
+      Older than that branch; a browser test with the real n key should
+      show whether it's visible before anything changes.
 
 ## 0.3.0
 
@@ -7789,6 +7856,24 @@ item below is built, the owner has tried it, and the owner has published
             say that the cache is encrypted and how; the written answer to
             DASA 1.2.2 for the lab.
       *(moved from "Later / unscheduled" into 0.4.0, owner, 2026-11-26)*
+
+### Bugs
+
+- [x] Holding ↑ with the computer busy for a moment sent the outline back
+      to the email on screen *(found 2026-11-26 through a flaky test in
+      CI; done the same day, branch `reader-keyboard-flaky`)*. A key
+      goes on from where the last key's smooth scroll is heading, and the
+      app forgot that place after 600 ms even when the scroll hadn't
+      moved: during a stall no frame runs. The next ↑ then took the email
+      just outlined, still above the view, for scrolled away, and outlined
+      the first email showing instead. On its own, the place now runs out
+      only once the 600 ms are up and the reader has also stood still for
+      30 frames; a wheel, a touch, a click or another scrolling key still
+      forgets it at once. From review, it's also forgotten when the reply
+      being written takes the reader over, when the keyboard comes back
+      from the list, and when the conversation changes. See Flaky tests,
+      `reader-keyboard.spec.ts`, "an arrow after the outline scrolled
+      away".
 
 ## Later / unscheduled
 
