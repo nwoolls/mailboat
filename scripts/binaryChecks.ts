@@ -131,7 +131,7 @@ export function elfProblems(readelf: string, runpath?: string): string[] {
       ?.slice(name.length + 1)
       .trim() || undefined;
   if (field("Class") !== "ELF64") problems.push(`not a 64-bit build (class: ${field("Class")})`);
-  const flags1 = /\(FLAGS_1\)\s+Flags:([^\n]*)/.exec(readelf)?.[1].trim().split(/\s+/) ?? [];
+  const flags1 = /\(FLAGS_1\)\s+Flags:([^\n]*)/.exec(readelf)?.[1]?.trim().split(/\s+/) ?? [];
   if (!field("Type")?.startsWith("DYN") || !flags1.includes("PIE")) {
     problems.push(`not position-independent (type: ${field("Type") ?? "unknown"})`);
   }
@@ -145,7 +145,7 @@ export function elfProblems(readelf: string, runpath?: string): string[] {
       const cells = line.split(/\s+/);
       if (cells[0] !== name || cells.length < 8) continue;
       const flags = cells.slice(6, -1).join("");
-      const align = cells[cells.length - 1];
+      const align = cells.at(-1) ?? "";
       if (cells.slice(1, 6).every(hex) && /^[RWE]+$/.test(flags) && (hex(align) || align === "0")) {
         return flags;
       }
@@ -159,7 +159,11 @@ export function elfProblems(readelf: string, runpath?: string): string[] {
   if (segment("GNU_RELRO") === null || !bindNow)
     problems.push("no full RELRO (GNU_RELRO and BIND_NOW)");
   if (/\(RPATH\)/.test(readelf)) problems.push("has a RPATH");
-  const runpaths = [...readelf.matchAll(/\(RUNPATH\)[^\n]*\[([^\]]*)\]/g)].map((m) => m[1]);
+  // The whole value, to the row's last `]`: readelf doesn't escape a `]`
+  // inside the path, so stopping at the first would check only part of it.
+  const runpaths = [...readelf.matchAll(/\(RUNPATH\)[^\n[]*\[([^\n]*)\][ \t]*$/gm)].map(
+    (m) => m[1],
+  );
   if (/\(RUNPATH\)/.test(readelf) && !(runpaths.length === 1 && runpaths[0] === runpath)) {
     problems.push("has a RUNPATH");
   }

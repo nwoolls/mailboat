@@ -5424,20 +5424,64 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
-- [ ] The type check (`bun run typecheck`) doesn't cover `scripts/`:
+- [x] Windows showed the Mac's words and one Mac-only button *(found
+      2026-11-24 on branch `linux-build`, while giving Linux its own)*:
+      Settings → Appearance said the theme follows macOS, Settings →
+      Notifications offered "Open System Settings", which opens a macOS
+      link, and the button that shows a saved file (in the saved-file
+      message and Settings → Advanced) said Finder. *(Fixed 2026-11-25,
+      branch `platform-type`, taken from `linux-build`: the front end
+      knows the system as `mac`, `windows` or `linux` (`PLATFORM` in
+      `src/shared/lib/platform.ts`), names it in those places, and shows
+      the notification button on the Mac only. A Windows version of that
+      button, opening `ms-settings:notifications`, can come later. The
+      Linux cases come along unused, so `linux-build` merges without
+      conflicts there.)*
+- [x] The type check (`bun run typecheck`) didn't cover `scripts/`:
       `tsconfig.json` includes `src`, `tests` and the configs, not the
-      release and check scripts, so a missing import there passes every
-      check until the script runs *(found 2026-11-24 on branch
-      `linux-build`: an import left out of `make-appimage-sbom.ts`, caught
-      by running it)*. Add `scripts/` (with Bun's types), and fix what it
-      finds, in a change of its own.
-
-- [x] Settings → Notifications → Style and sound opens macOS's System
-      Settings address on Windows too, where it does nothing *(found
-      2026-11-24 while porting to Linux, where the row is hidden)*. Windows
-      has `ms-settings:notifications`; the row's wording names macOS.
-      *(Fixed on branch `linux-build`: the row shows on the Mac only. A
-      Windows version, opening `ms-settings:notifications`, can come later.)*
+      release and check scripts, so a missing import there passed every
+      check until the script ran *(found 2026-11-24 on branch
+      `linux-build`, where one was caught only by running the script)*.
+      *(Fixed 2026-11-25, branch `scripts-typecheck`: `typecheck` also
+      checks `scripts/` with `tsconfig.scripts.json` and Bun's own types,
+      under the app's strict settings. That found 61 errors in 13 files:
+      Bun's API without its types, regular-expression groups and array
+      items the compiler couldn't know were there, and one real gap: a
+      release script given an empty first argument answered "replace"
+      rather than printing its usage. CI also type-checks `scripts/` on a
+      pull request that changes only the website, and the quick check on
+      a change to `scripts/`.)*
+- [ ] Removing an account, or Delete all data, can sign the app out of
+      that Google account on other computers too, and neither
+      confirmation says so *(found 2026-11-25 testing Linux in the owner's
+      VMs: Delete all data on one signed out the Mac and the other VMs
+      too)*. Removing asks Google to revoke the sign-in
+      (`tokens::remove_account_revoking` for one account,
+      `tokens::revoke_refresh_token` for Delete all data); when Google
+      does, it revokes the whole grant for that OAuth client, so every
+      copy of the app signed in through the same client loses it (a copy
+      using other credentials doesn't, nor does any copy when the
+      revoke couldn't reach Google). That's the intended outcome; the
+      dialogs say only "asks Google to end its sign-in". Add that it can
+      sign the app out on other computers too (`RemoveAccountDialog`,
+      `DeleteAllDataDialog`).
+- [x] In a narrow window, or with a larger desktop font, some settings'
+      controls covered their title and description *(found 2026-11-25 on
+      Fedora KDE, where the larger default font showed it: "Above a
+      conversation" in Settings → AI)*. A row kept its control on the
+      right in at most 60% of its width, and a wider control spilled left
+      over the text. *(Fixed the same day, branch
+      `settings-narrow-widths`: a row's control moves below its text when
+      the two don't fit side by side, and a three-way choice can narrow. A
+      browser test opens every Settings section at three widths, with data
+      for its controls, and checks that no control covers its text, runs
+      past its row, or has text spilling out of it; it found ten such rows
+      before the fix, and a Toybox tile whose name spilled out of it,
+      which now wraps inside the tile.)*
+- [ ] Remove account's confirmation says it deletes the images "it
+      downloaded on this Mac" on Windows too (`RemoveAccountDialog`);
+      say "this computer", as Delete all data does *(found 2026-11-25,
+      while checking the wording above)*.
 
 - [x] A user took the toys for frozen *(user report, 2026-11-23; fixed the
       same day, branch `toybox-reduced-motion`)*: with the system's reduce
@@ -7719,6 +7763,12 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       tried the Arm packages in VMs: the `.deb` on Ubuntu and the `.rpm`
       on Fedora KDE install and run. The Linux packages and updates
       haven't run in a real release yet.)*
+      *(2026-11-25: part of the release scripts' groundwork moved to main
+      ahead of it, branch `release-scripts-groundwork`: the checks of a
+      Linux program (`elfProblems`, `check-binaries.ts linux`, which
+      nothing runs yet), and the bills of materials each made on the
+      computer that builds their download (`host` in `SBOM_DOWNLOADS`).
+      No Linux download is added to the release.)*
   - [x] Builds, checks and tests on Linux: Ubuntu 22.04 in CI's Rust
         checks (x86-64), the test builds (x86-64 and Arm), and
         `scripts/linux.sh` (Docker) on the Mac

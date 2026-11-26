@@ -7,15 +7,16 @@
 // licenses) with Rust installed (it asks `cargo tree`, twice per platform
 // the release builds). A build script's own crates follow the computer that
 // builds, so each download's bill is made on the kind of computer that
-// builds it: on a Mac, the Mac's and Windows' (cross-built there); on Linux,
-// the one for that computer's processor. Writes `<App>_<version>_<download>.cdx.json` in `--out` for each
-// of those `SBOM_DOWNLOADS` (`releaseFiles.ts`).
+// builds it (`host` in `SBOM_DOWNLOADS`, `releaseFiles.ts`): on a Mac, the
+// Mac's and Windows' (cross-built there); on Linux, the one for that
+// computer's processor. Writes `<App>_<version>_<download>.cdx.json` in
+// `--out` for each of those.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import brand from "../brand.json";
-import { isVersion, SBOM_DOWNLOADS, sbomName } from "./releaseFiles";
+import { isVersion, sbomDownloadsBuiltOn, sbomName } from "./releaseFiles";
 import { type BunLock, cargoChecksums, downloadBom, installPath, npmComponents } from "./sbom";
 
 function option(name: string): string | undefined {
@@ -55,11 +56,7 @@ function tree(target: string, edges: string): string {
   if (run.status !== 0) fail(`cargo tree for ${target} failed:\n${run.stderr}`);
   return run.stdout;
 }
-// Only the downloads built on this kind of computer: the build tools'
-// crates depend on it (`SBOM_DOWNLOADS`).
-const downloads = SBOM_DOWNLOADS.filter(
-  (d) => d.host === process.platform && (!("arch" in d) || d.arch === process.arch),
-);
+const downloads = sbomDownloadsBuiltOn(process.platform, process.arch);
 if (downloads.length === 0) {
   fail(
     `no download is built on ${process.platform}: run on a Mac or on Linux, as the release does`,

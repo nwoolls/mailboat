@@ -154,9 +154,9 @@ describe("the AppImage's bill of materials", () => {
     expect(doc.components.find((c) => c.name === "libgtk-3-0")?.licenses).toEqual([
       { license: { name: "LGPL-2.1+" } },
     ]);
-    expect(doc.components.find((c) => c.name === "AppRun")?.hashes).toEqual([
-      { alg: "SHA-256", content: "ab12" },
-    ]);
+    expect(doc.components.find((c) => c.name === "AppRun")).toMatchObject({
+      hashes: [{ alg: "SHA-256", content: "ab12" }],
+    });
   });
 });
 

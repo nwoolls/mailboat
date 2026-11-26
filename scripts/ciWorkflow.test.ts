@@ -27,7 +27,7 @@ function parse(text: string): Job[] {
       const f = step.fields;
       const raw = f.run ?? f.uses ?? "";
       job.steps.push({
-        key: f.uses ? raw.split("@")[0] : raw.replace(/\s*#.*$/, ""),
+        key: f.uses ? raw.split("@")[0]! : raw.replace(/\s*#.*$/, ""),
         cond: f.if,
       });
     }
@@ -37,8 +37,9 @@ function parse(text: string): Job[] {
     const jobStart = /^ {2}([a-z]+):\s*$/.exec(line);
     if (jobStart) {
       closeStep();
-      job = { name: jobStart[1], cond: undefined, steps: [] };
-      jobs.push(job);
+      const started: Job = { name: jobStart[1]!, cond: undefined, steps: [] };
+      job = started;
+      jobs.push(started);
       continue;
     }
     if (!job) continue;
@@ -52,8 +53,8 @@ function parse(text: string): Job[] {
     if (!step) continue;
     const field = /^ {6}(?:- | {2})([a-z]+):\s*(.*)$/.exec(line);
     if (field) {
-      folded = field[2] === ">-" || field[2] === ">" ? field[1] : null;
-      step.fields[field[1]] = folded ? "" : field[2];
+      folded = field[2] === ">-" || field[2] === ">" ? field[1]! : null;
+      step.fields[field[1]!] = folded ? "" : field[2]!;
       continue;
     }
     if (folded && /^ {10}\S/.test(line)) {
@@ -107,13 +108,14 @@ const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
       "bun run fmt:check": always,
       "bun run lint": unlessDocs,
       "bun run typecheck": appOnly,
+      "bun run typecheck:scripts": (kind) => kind === "site",
       "bun run check:brand": always,
       "bun run check:readme": always,
       "bun run check:website": unlessDocs,
       "bun run check:privacy": always,
       "bun run check:security": always,
       "bun run test": appOnly,
-      "bunx vitest run scripts/website.test.ts scripts/policy.test.ts": unlessDocs,
+      "bunx vitest run scripts/website.test.ts scripts/policy.test.ts": (kind) => kind === "site",
       'bun run changeset status --since="origin/$BASE_REF"': always,
     },
   },
@@ -150,18 +152,27 @@ const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
 describe("the CI's skips, evaluated", () => {
   const jobs = parse(ci);
   const byName = Object.fromEntries(jobs.map((j) => [j.name, j]));
+  // A job by name, or a failure that names the one missing (renamed or gone).
+  const job = (name: string) => {
+    const found = byName[name];
+    if (!found) throw new Error(`ci.yml has no job named "${name}"`);
+    return found;
+  };
 
   it("finds the jobs and steps it expects", () => {
     expect(Object.keys(byName)).toEqual(["changes", "web", "rust", "browser"]);
     for (const name of Object.keys(EXPECTED))
-      expect(byName[name].steps.length, name).toBeGreaterThan(5);
+      expect(job(name).steps.length, name).toBeGreaterThan(5);
   });
 
   it("has no step nobody classified, and no classified step that is gone", () => {
     for (const [name, rules] of Object.entries(EXPECTED)) {
-      expect(byName[name].steps.map((s) => s.key).toSorted(), name).toEqual(
-        Object.keys(rules.steps).toSorted(),
-      );
+      expect(
+        job(name)
+          .steps.map((s) => s.key)
+          .toSorted(),
+        name,
+      ).toEqual(Object.keys(rules.steps).toSorted());
     }
   });
 
@@ -170,10 +181,10 @@ describe("the CI's skips, evaluated", () => {
       for (const os of name === "rust" ? ["macOS", "Windows", "Linux"] : ["macOS"]) {
         const label = `${name} (${os}) when "What changed" says ${kind === "" ? "nothing" : kind}`;
         it(`${label}: the job and each step run exactly when they should`, () => {
-          const job = byName[name];
+          const found = job(name);
           // the job itself, and its steps if the job runs
-          expect(runs(job.cond, kind, os), `${name} job`).toBe(rules.job(kind, os));
-          for (const step of job.steps) {
+          expect(runs(found.cond, kind, os), `${name} job`).toBe(rules.job(kind, os));
+          for (const step of found.steps) {
             const should = rules.steps[step.key]?.(kind, os);
             expect(runs(step.cond, kind, os), `${name}: ${step.key}`).toBe(should);
           }
@@ -184,15 +195,15 @@ describe("the CI's skips, evaluated", () => {
 
   it("lets the Web and Rust jobs run even if the classifier job failed (so every required check still reports)", () => {
     for (const name of ["web", "rust"]) {
-      expect(byName[name].cond, name).toContain("!cancelled()");
+      expect(job(name).cond, name).toContain("!cancelled()");
     }
-    expect(byName.browser.cond).toContain("!cancelled()");
+    expect(job("browser").cond).toContain("!cancelled()");
   });
 
   it("keeps the path filters on the test builds and CodeQL where they belong", () => {
     const ignored = (file: string) => {
       const text = readFileSync(resolve(__dirname, `../.github/workflows/${file}`), "utf8");
-      return [...text.matchAll(/^\s+- "([^"]+)"$/gm)].map((m) => m[1]);
+      return [...text.matchAll(/^\s+- "([^"]+)"$/gm)].map((m) => m[1]!);
     };
     const codeql = ignored("codeql.yml");
     const build = ignored("build.yml");
@@ -222,7 +233,7 @@ describe("the CI's skips, evaluated", () => {
       readFileSync(resolve(__dirname, `../.github/workflows/${file}`), "utf8");
     const matrix = (text: string) => {
       const m = text.match(/^\s+os: \[([^\]]+)\]$/m);
-      return m ? m[1].split(",").map((os) => os.trim()) : [];
+      return m?.[1] ? m[1].split(",").map((os) => os.trim()) : [];
     };
     // The Rust checks: the Mac, Windows, and Linux on the oldest Ubuntu Tauri
     // supports (where the packages are built).

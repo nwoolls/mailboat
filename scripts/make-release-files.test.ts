@@ -196,8 +196,8 @@ describe("making a release's files", () => {
       ["App_aarch64.dmg", "App_0.1.0_aarch64.dmg"],
       ["App_x64-setup.exe", "App_0.1.0_x64-setup.exe"],
       ["App_arm64-setup.exe", "App_0.1.0_arm64-setup.exe"],
-      ...LINUX_STABLE.map((name, i) => [name, LINUX[i]]),
-    ]) {
+      ...LINUX_STABLE.map((name, i) => [name, LINUX[i]!] as const),
+    ] as const) {
       expect(to(stable).equals(to(versioned)), stable).toBe(true);
     }
     // the updater still points at the versioned files, and the sums list the copies

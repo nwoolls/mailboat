@@ -22,11 +22,19 @@ export const RUNTIME_SHA256: Record<string, string> = {
 /** The pinned runtime's release, as the bill records it. */
 export const RUNTIME_RELEASE = "20251108";
 
+/** The byte at `at`; a read past the end means the file is cut short. */
+function byte(b: Uint8Array, at: number): number {
+  const value = b[at];
+  if (value === undefined) throw new Error(`the file ends before byte ${at}`);
+  return value;
+}
 function u16(b: Uint8Array, at: number): number {
-  return b[at] | (b[at + 1] << 8);
+  return byte(b, at) | (byte(b, at + 1) << 8);
 }
 function u32(b: Uint8Array, at: number): number {
-  return (b[at] | (b[at + 1] << 8) | (b[at + 2] << 16)) + b[at + 3] * 2 ** 24;
+  return (
+    (byte(b, at) | (byte(b, at + 1) << 8) | (byte(b, at + 2) << 16)) + byte(b, at + 3) * 2 ** 24
+  );
 }
 function u64(b: Uint8Array, at: number): number {
   return u32(b, at) + u32(b, at + 4) * 2 ** 32;
@@ -73,7 +81,7 @@ export function sections(b: Uint8Array): Section[] {
     let end = namesOffset + u32(b, s);
     if (end >= namesEnd) throw new Error(`section ${i}'s name is outside the names`);
     let name = "";
-    while (end < namesEnd && b[end] !== 0) name += String.fromCharCode(b[end++]);
+    while (end < namesEnd && b[end] !== 0) name += String.fromCharCode(byte(b, end++));
     const offset = u64(b, s + 0x18);
     const size = u64(b, s + 0x20);
     // A section with no bytes in the file (.bss) may point anywhere.
@@ -118,7 +126,7 @@ export function runtimeProblem(appimage: Uint8Array, runtime: Uint8Array): strin
     if (skip.some((s) => i >= s.offset && i < s.offset + s.size)) continue;
     if (appimage[i] !== runtime[i]) return `its runtime differs from the pinned one at byte ${i}`;
   }
-  if (!SQUASHFS.every((byte, i) => appimage[length + i] === byte)) {
+  if (!SQUASHFS.every((magic, i) => appimage[length + i] === magic)) {
     return "no file system follows its runtime";
   }
   return null;

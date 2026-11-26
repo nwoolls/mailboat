@@ -15,6 +15,7 @@ import {
   platformOf,
   publishable,
   SBOM_DOWNLOADS,
+  sbomDownloadsBuiltOn,
   sbomName,
   stableName,
   tagFor,
@@ -108,6 +109,16 @@ describe("a bill of materials per download", () => {
     expect(SBOM_DOWNLOADS.flatMap((d) => d.platforms).toSorted()).toEqual(
       [...PLATFORMS].toSorted(),
     );
+    // The release's Mac (Apple silicon) makes the Mac's and Windows'; each
+    // Linux runner makes its own processor's.
+    expect(sbomDownloadsBuiltOn("darwin", "arm64").map((d) => d.suffix)).toEqual([
+      "aarch64",
+      "x64",
+      "arm64",
+    ]);
+    expect(sbomDownloadsBuiltOn("linux", "x64").map((d) => d.suffix)).toEqual(["linux_amd64"]);
+    expect(sbomDownloadsBuiltOn("linux", "arm64").map((d) => d.suffix)).toEqual(["linux_arm64"]);
+    expect(sbomDownloadsBuiltOn("win32", "x64")).toEqual([]);
   });
 });
 
@@ -306,7 +317,7 @@ describe("version order", () => {
     ];
     for (let i = 0; i < order.length; i++) {
       for (let j = 0; j < order.length; j++) {
-        expect(Math.sign(compareVersions(order[i], order[j]))).toBe(Math.sign(i - j));
+        expect(Math.sign(compareVersions(order[i]!, order[j]!))).toBe(Math.sign(i - j));
       }
     }
   });

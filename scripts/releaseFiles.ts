@@ -145,6 +145,14 @@ export const SBOM_DOWNLOADS = [
   arch?: string;
 }[];
 
+/**
+ * The bills of materials made on this kind of computer (`process.platform`
+ * and `process.arch`): the build tools' crates depend on it.
+ */
+export function sbomDownloadsBuiltOn(platform: string, arch: string) {
+  return SBOM_DOWNLOADS.filter((d) => d.host === platform && (!("arch" in d) || d.arch === arch));
+}
+
 /** A download's bill of materials: `App_0.1.0_aarch64.cdx.json`. */
 export function sbomName(app: string, version: string, download: { suffix: string }): string {
   return `${app}_${version}_${download.suffix}.cdx.json`;
@@ -209,7 +217,8 @@ export function isVersion(text: string): boolean {
 
 /** A version's numeric core and pre-release parts (build metadata dropped). */
 function split(v: string) {
-  const [core, pre] = v.split("+")[0].split("-", 2);
+  // `split` always gives at least one part.
+  const [core = "", pre] = v.split("+")[0]!.split("-", 2);
   return { core: core.split(".").map(Number), pre: pre === undefined ? null : pre.split(".") };
 }
 
@@ -222,7 +231,7 @@ export function compareVersions(a: string, b: string): number {
   const x = split(a);
   const y = split(b);
   for (let i = 0; i < 3; i++) {
-    if (x.core[i] !== y.core[i]) return x.core[i] < y.core[i] ? -1 : 1;
+    if (x.core[i] !== y.core[i]) return x.core[i]! < y.core[i]! ? -1 : 1;
   }
   if (x.pre === null || y.pre === null) return x.pre === y.pre ? 0 : x.pre === null ? 1 : -1;
   for (let i = 0; i < Math.max(x.pre.length, y.pre.length); i++) {

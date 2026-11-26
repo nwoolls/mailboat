@@ -34,7 +34,7 @@ function run(command: string, args: string[]): string {
 }
 
 const [platform, target] = process.argv.slice(2);
-if (!target || !["macos", "windows", "linux"].includes(platform)) {
+if (!platform || !target || !["macos", "windows", "linux"].includes(platform)) {
   console.error(
     "Usage: bun scripts/check-binaries.ts macos <App>.app | windows <target triple> | linux <program>",
   );

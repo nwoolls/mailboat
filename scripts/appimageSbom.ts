@@ -58,7 +58,7 @@ export function pickOwner(candidates: Owned[], systemPath: string, hostArch: str
   }
   if (pool.length === 0) return null;
   const archs = [...new Set(pool.map((c) => c.arch))];
-  if (archs.length === 1) return pool[0];
+  if (archs.length === 1) return pool[0] ?? null;
   const chosen =
     pool.find((c) => c.arch === hostArch) ?? pool.find((c) => c.arch === "all") ?? null;
   if (!chosen) {
@@ -94,8 +94,8 @@ export function installed(line: string): Installed | null {
 export function copyrightLicenses(copyright: string): string[] {
   const found: string[] = [];
   for (const line of copyright.split("\n")) {
-    const m = /^License:\s*(\S.*)$/.exec(line);
-    if (m && !found.includes(m[1].trim())) found.push(m[1].trim());
+    const license = /^License:\s*(\S.*)$/.exec(line)?.[1]?.trim();
+    if (license && !found.includes(license)) found.push(license);
   }
   return found;
 }
@@ -124,7 +124,9 @@ export function appimageBom(o: {
 }) {
   const app = `pkg:generic/${o.name.toLowerCase()}@${o.version}?type=appimage&arch=${o.arch}`;
   const components = o.bundled.map((b) => {
-    const tool = b.files[0].split("/").pop()!;
+    const first = b.files[0];
+    if (first === undefined) throw new Error(`${b.package ?? "a bundled part"} has no files`);
+    const tool = first.split("/").pop()!;
     const purl = b.package
       ? `pkg:deb/ubuntu/${b.package}@${encodeURIComponent(b.version ?? "")}?arch=${b.arch ?? o.arch}&distro=ubuntu-22.04`
       : `pkg:generic/appimage-tools/${tool}${b.version ? `@${b.version}` : ""}`;

@@ -33,7 +33,7 @@ const files = readdirSync(folder);
 const one = (ending: string) => {
   const found = files.filter((f) => f.endsWith(ending));
   if (found.length !== 1) fail(`expected one ${ending}, found ${found.length}`);
-  return join(folder, found[0]);
+  return join(folder, found[0]!);
 };
 
 /**
