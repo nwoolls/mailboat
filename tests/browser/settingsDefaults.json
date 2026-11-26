@@ -1,0 +1,32 @@
+{
+  "newMailNotifications": true,
+  "notifyFor": "inbox",
+  "notificationContent": "everything",
+  "quietHours": {
+    "on": false,
+    "start": 1320,
+    "end": 420
+  },
+  "theme": "system",
+  "appIcon": null,
+  "dockBadge": "inbox",
+  "remoteImages": "load",
+  "imagePrefetch": true,
+  "imageCacheMb": 500,
+  "ai": {
+    "connected": [],
+    "listSummaries": "apple",
+    "readerSummary": "auto",
+    "readerProvider": "apple",
+    "writingProvider": "apple",
+    "writingQuality": "best",
+    "chatgptModel": null,
+    "keepSummaries": true
+  },
+  "mcp": {
+    "read": [],
+    "drafts": []
+  },
+  "autoCheckUpdates": true,
+  "updateChannel": "stable"
+}

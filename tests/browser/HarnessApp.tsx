@@ -24,6 +24,8 @@ import { dismissToast, useToast } from "../../src/shared/lib/toast";
 import { Toast } from "../../src/shared/ui/Toast";
 
 import { UpdateNotice } from "../../src/features/updates/ui/UpdateNotice";
+import { SettingsPage } from "../../src/features/settings/ui/SettingsPage";
+import type { SettingsSectionId } from "../../src/features/settings/model/sections";
 import { Sidebar } from "../../src/features/accounts/ui/Sidebar";
 import { useSignIn } from "../../src/features/accounts/ui/useSignIn";
 import {
@@ -121,6 +123,22 @@ export function Harness({
           <UpdateNotice />
         </div>
         <HarnessToast />
+      </div>
+    );
+  // A Settings section, in the page as the app shows it, at a width:
+  // `&section=<id>&width=<px>` (the panel's width; narrow windows and
+  // larger fonts make it narrow).
+  if (mode === "settings")
+    return (
+      <div style={{ display: "flex", height: 900, width: Number(params.get("width") ?? 720) }}>
+        <SettingsPage
+          section={(params.get("section") ?? "general") as SettingsSectionId}
+          accounts={[account]}
+          syncStates={states}
+          onAccountRemoved={() => {}}
+          onSelect={() => {}}
+          onClose={() => {}}
+        />
       </div>
     );
   // Settings → Toybox.
