@@ -1,19 +1,22 @@
 import type { DefaultMailApp } from "../../../platform/tauri/bindings";
-import { IS_MAC } from "../../../shared/lib/platform";
+import { PLATFORM, type Platform } from "../../../shared/lib/platform";
 import { APP_NAME } from "../../../shared/lib/brand";
 
 /**
  * What Settings → General says about email links, and the button that
  * makes the app the default (none when it already is, or can't be). On
  * Windows an app can't make itself the default: the button opens Windows'
- * Default apps page, where the owner picks the app.
+ * Default apps page, where the owner picks the app. On Linux the button
+ * sets it, as on the Mac; an AppImage has no desktop entry of its own, so
+ * it reads as not installed.
  */
 export function defaultMailAppRow(
   app: DefaultMailApp,
-  mac = IS_MAC,
+  platform: Platform = PLATFORM,
 ): { description: string; action?: string } {
-  const action = mac ? `Make ${APP_NAME} the default` : "Choose in Windows Settings";
-  const system = mac ? "macOS" : "Windows";
+  const action =
+    platform === "windows" ? "Choose in Windows Settings" : `Make ${APP_NAME} the default`;
+  const system = platform === "windows" ? "Windows" : "macOS";
   switch (app.kind) {
     case "this":
       return { description: `${APP_NAME} is your default email reader: email links open here.` };

@@ -87,7 +87,7 @@ import { textSize } from "./textSize";
 import { setFeatureFlag, useFeatureFlags } from "../../../shared/lib/featureFlags";
 import { useAppearance } from "./useAppearance";
 import { AppIconPicker } from "./AppIconPicker";
-import { IS_MAC } from "../../../shared/lib/platform";
+import { IS_MAC, PLATFORM, revealLabel, systemName } from "../../../shared/lib/platform";
 import { iconSetting, shownIcon } from "../model/appIcon";
 import { defaultMailAppRow } from "../model/mailApp";
 import { describeImageCache, IMAGE_CACHE_SIZES } from "../model/imageCache";
@@ -589,31 +589,40 @@ export function NotificationsSection() {
             />
           </div>
         </Row>
-        <Row
-          label="Style and sound"
-          description="macOS decides whether they show, as banners or alerts, and with what sound."
-        >
-          <Button
-            onClick={() =>
-              void unwrap(commands.notificationSettingsOpen()).catch((e: unknown) =>
-                showToast({
-                  tone: "error",
-                  message: `Couldn’t open System Settings: ${errorText(e)}`,
-                }),
-              )
-            }
+        {/* The Mac only: the button opens macOS's System Settings. Linux has
+            no one place for this (each desktop keeps its own), and Windows'
+            would need its own page. */}
+        {PLATFORM === "mac" && (
+          <Row
+            label="Style and sound"
+            description="macOS decides whether they show, as banners or alerts, and with what sound."
           >
-            Open System Settings
-          </Button>
-        </Row>
+            <Button
+              onClick={() =>
+                void unwrap(commands.notificationSettingsOpen()).catch((e: unknown) =>
+                  showToast({
+                    tone: "error",
+                    message: `Couldn’t open System Settings: ${errorText(e)}`,
+                  }),
+                )
+              }
+            >
+              Open System Settings
+            </Button>
+          </Row>
+        )}
       </Group>
-      <Group title="Dock">
+      <Group title={PLATFORM === "linux" ? "Dock or launcher" : "Dock"}>
         <Row
           label="Unread count"
-          description={`On ${APP_NAME}’s Dock icon: unread conversations in Inbox or in Unread (every account’s), as the sidebar counts them.`}
+          description={
+            PLATFORM === "linux"
+              ? `On ${APP_NAME}’s icon, on desktops that show a count there: unread conversations in Inbox or in Unread (every account’s), as the sidebar counts them.`
+              : `On ${APP_NAME}’s Dock icon: unread conversations in Inbox or in Unread (every account’s), as the sidebar counts them.`
+          }
         >
           <Segmented
-            label="Unread count on the Dock"
+            label={PLATFORM === "linux" ? "Unread count" : "Unread count on the Dock"}
             value={settings?.dockBadge ?? "inbox"}
             options={DOCK_BADGES}
             disabled={!settings}
@@ -1123,7 +1132,7 @@ export function AppearanceSection({
         </Button>,
       )}
       <Group title="Theme">
-        <Row label="Theme" description="System follows macOS, light or dark.">
+        <Row label="Theme" description={`System follows ${systemName()}, light or dark.`}>
           <Segmented
             label="Theme"
             value={theme}
@@ -1169,41 +1178,46 @@ export function AppearanceSection({
           </div>
         </Group>
       )}
-      <Group
-        title="Transparency"
-        description="How much of what’s behind the window shows through. More see-through looks lighter; less is easier to read."
-      >
-        {(
-          [
+      {/* Linux's window isn't see-through (tauri.linux.conf.json): the
+          tints mix the base color over a page of that same color, so the
+          sliders would change nothing. */}
+      {PLATFORM !== "linux" && (
+        <Group
+          title="Transparency"
+          description="How much of what’s behind the window shows through. More see-through looks lighter; less is easier to read."
+        >
+          {(
             [
-              "sidebarTint",
-              "Window",
-              "--glass-sidebar-base",
-              "The glass behind everything: sidebar, reader and list.",
-            ],
-            [
-              "listTint",
-              "Conversation list",
-              "--glass-panel-base",
-              "The list’s own panel, on top of the window’s glass.",
-            ],
-          ] as const
-        ).map(([key, label, baseVar, about]) => (
-          <Row key={key} label={label} description={about}>
-            <Slider
-              label={`${label} see-through`}
-              value={seeThrough(cssPercent(baseVar), appearance[key])}
-              display={`${seeThrough(cssPercent(baseVar), appearance[key])}%`}
-              min={0}
-              max={100}
-              onChange={(v) =>
-                setAppearance(withTint(appearance, key, tintFor(cssPercent(baseVar), v)))
-              }
-              onReset={() => setAppearance(withTint(appearance, key, 0))}
-            />
-          </Row>
-        ))}
-      </Group>
+              [
+                "sidebarTint",
+                "Window",
+                "--glass-sidebar-base",
+                "The glass behind everything: sidebar, reader and list.",
+              ],
+              [
+                "listTint",
+                "Conversation list",
+                "--glass-panel-base",
+                "The list’s own panel, on top of the window’s glass.",
+              ],
+            ] as const
+          ).map(([key, label, baseVar, about]) => (
+            <Row key={key} label={label} description={about}>
+              <Slider
+                label={`${label} see-through`}
+                value={seeThrough(cssPercent(baseVar), appearance[key])}
+                display={`${seeThrough(cssPercent(baseVar), appearance[key])}%`}
+                min={0}
+                max={100}
+                onChange={(v) =>
+                  setAppearance(withTint(appearance, key, tintFor(cssPercent(baseVar), v)))
+                }
+                onReset={() => setAppearance(withTint(appearance, key, 0))}
+              />
+            </Row>
+          ))}
+        </Group>
+      )}
     </>
   );
 }
@@ -1282,7 +1296,7 @@ export function AdvancedSection() {
               )
             }
           >
-            Show in Finder
+            {revealLabel()}
           </Button>
         </Row>
       </Group>
@@ -1457,7 +1471,7 @@ export function ToyboxSection() {
           </>
         )}
       </Group>
-      <Group title="Reduce motion" description={reducedMotionIntro(reduced, IS_MAC)}>
+      <Group title="Reduce motion" description={reducedMotionIntro(reduced)}>
         {/* Without markers, WebKit stops exposing a list to VoiceOver unless it says role="list". */}
         <ul
           role="list"

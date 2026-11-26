@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { MessageId, ThreadId } from "../../../platform/tauri/bindings";
 import { commands } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
+import { revealLabel } from "../../../shared/lib/platform";
 import { useOriginal, useThread } from "../../../shared/lib/queries";
 import { showToast } from "../../../shared/lib/toast";
 import { formatFullDate } from "../../mailbox/model/format";
@@ -59,7 +60,7 @@ export function ShowOriginalDialog({
         showToast({
           message: `Saved “${name}” to Downloads`,
           action: {
-            label: "Show in Finder",
+            label: revealLabel(),
             run: () => void unwrap(commands.downloadReveal(name)).catch(() => {}),
           },
         }),

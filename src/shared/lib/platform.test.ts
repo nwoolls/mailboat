@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { accelLabel, accelMatches, detectMac, primaryKey } from "./platform";
+import {
+  accelLabel,
+  accelMatches,
+  detectMac,
+  detectPlatform,
+  primaryKey,
+  revealLabel,
+  systemName,
+} from "./platform";
 
 const press = (code: string, mods: Partial<KeyboardEvent> = {}) => ({
   key: "",
@@ -21,6 +29,39 @@ describe("detectMac", () => {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/141.0 Edg/141.0",
       ),
     ).toBe(false);
+  });
+});
+
+describe("detectPlatform", () => {
+  it("tells the three web views apart", () => {
+    expect(
+      detectPlatform("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15"),
+    ).toBe("mac");
+    expect(
+      detectPlatform(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/141.0 Edg/141.0",
+      ),
+    ).toBe("windows");
+    expect(
+      detectPlatform(
+        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+      ),
+    ).toBe("linux");
+  });
+
+  it("is not a Mac on Linux", () => {
+    expect(detectMac("Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/605.1.15")).toBe(false);
+  });
+});
+
+describe("the system's words", () => {
+  it("names each system and its file manager", () => {
+    expect(systemName("mac")).toBe("macOS");
+    expect(systemName("windows")).toBe("Windows");
+    expect(systemName("linux")).toBe("your desktop");
+    expect(revealLabel("mac")).toBe("Show in Finder");
+    expect(revealLabel("windows")).toBe("Show in File Explorer");
+    expect(revealLabel("linux")).toBe("Show in Folder");
   });
 });
 

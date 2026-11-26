@@ -5424,6 +5424,17 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [x] Windows showed the Mac's words and one Mac-only button *(found
+      2026-11-24 on branch `linux-build`, while giving Linux its own)*:
+      Settings → Appearance said the theme follows macOS, Settings →
+      Notifications offered "Open System Settings", which opens a macOS
+      link, and the button that shows a saved file (in the saved-file
+      message and Settings → Advanced) said Finder. *(Fixed 2026-11-25,
+      branch `platform-type`, taken from `linux-build`: the front end
+      knows the system as `mac`, `windows` or `linux` (`PLATFORM` in
+      `src/shared/lib/platform.ts`), names it in those places, and shows
+      the notification button on the Mac only. The Linux cases come along
+      unused, so `linux-build` merges without conflicts there.)*
 - [x] The type check (`bun run typecheck`) didn't cover `scripts/`:
       `tsconfig.json` includes `src`, `tests` and the configs, not the
       release and check scripts, so a missing import there passed every
@@ -5458,7 +5469,7 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       conversation" in Settings → AI)*. A row kept its control on the
       right in at most 60% of its width, and a wider control spilled left
       over the text. *(Fixed the same day, branch
-      `backlog-signout-wording`: a row's control moves below its text when
+      `settings-narrow-widths`: a row's control moves below its text when
       the two don't fit side by side, and a three-way choice can narrow. A
       browser test opens every Settings section at three widths, with data
       for its controls, and checks that no control covers its text, runs
