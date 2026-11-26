@@ -7807,7 +7807,7 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         installed)*
         *(2026-11-25: likewise the Claude app for Linux, whose `.deb` keeps
         Claude Code in `~/.config/Claude/claude-code/<version>/<build>/`;
-        the app looked only where the Mac's Claude app keeps it)*
+        on Linux the app looked only where the Mac's Claude app keeps it)*
   - [x] The Codex review is recorded per system, and the VMs get a test
         program built on the Mac *(owner, 2026-11-24: Windows had never
         been reviewed; all three on the same day each month)*

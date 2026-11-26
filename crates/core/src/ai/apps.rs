@@ -58,6 +58,10 @@ fn codex_candidates() -> Vec<PathBuf> {
             candidates
                 .extend(subdirs(&local.join(r"OpenAI\Codex\bin")).map(|d| d.join("codex.exe")));
         }
+    } else if cfg!(target_os = "linux") {
+        // Linux has its own list, so a Mac app bundle in a home folder
+        // (a restored Mac backup, say) is never tried there.
+        candidates.push(PathBuf::from("/usr/lib/chatgpt/resources/codex"));
     } else {
         let mut apps = vec![PathBuf::from("/Applications")];
         if let Some(home) = env_dir("HOME") {
@@ -68,9 +72,6 @@ fn codex_candidates() -> Vec<PathBuf> {
                 "ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex",
             ));
             candidates.push(dir.join("Codex.app/Contents/Resources/codex"));
-        }
-        if cfg!(target_os = "linux") {
-            candidates.push(PathBuf::from("/usr/lib/chatgpt/resources/codex"));
         }
     }
     candidates
@@ -148,10 +149,12 @@ mod tests {
     #[test]
     fn the_chatgpt_apps_codex_is_looked_for_where_linux_installs_it() {
         let linux = PathBuf::from("/usr/lib/chatgpt/resources/codex");
-        assert_eq!(
-            codex_candidates().contains(&linux),
-            cfg!(target_os = "linux")
-        );
+        let candidates = codex_candidates();
+        assert_eq!(candidates.contains(&linux), cfg!(target_os = "linux"));
+        // Review (round 13): no Mac app bundle is tried on Linux.
+        if cfg!(target_os = "linux") {
+            assert_eq!(candidates, [linux]);
+        }
     }
 
     #[test]
