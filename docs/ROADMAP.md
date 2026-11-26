@@ -5434,6 +5434,34 @@ the way, and one bug in the app caused flaky failures; all three are in
         of 120 on 8 workers) and 5 of 5 on a slowed page. The CI symptom
         wasn't reproduced locally; that it is the same race on a busier
         machine is likely, not confirmed.
+- [x] `reader-keyboard.spec.ts`: "an arrow after the outline scrolled away
+      outlines the first email showing" (line 221).
+      - 2026-11-26, CI on `main` after #247 (docs only),
+        https://github.com/nwoolls/mailboat/actions/runs/45874226966,
+        WebKit: after five ↑, the second email was outlined instead of the
+        first (`toBe(0)`, received 1, line 227), before the test's own
+        checks; 283 others passed. The job wasn't run again; the test was
+        fixed instead.
+      - Fixed 2026-11-26 (branch `reader-keyboard-flaky`), in the app (0.4.0
+        → Bugs). The CI trace shows the third ↑ taking about 1 s, a stall.
+        A key goes on from where the last key's smooth scroll is heading,
+        and the app forgot that place after 600 ms of clock time, though
+        no frame had run and the scroll hadn't moved. The next ↑ then
+        measured from the reader as it was, took the first email (above
+        the view) for scrolled away, and outlined the email showing below.
+        A throwaway spec that stalled the page after each of the five
+        presses reproduced it locally, in three of the four runs with a
+        700 or 1000 ms stall after the third or fourth press. The place is now forgotten only once the
+        600 ms are up and the reader has stood still for 30 frames (WebKit's
+        smooth scroll stands still for a few frames before it starts, and
+        again after a stall; 2 frames still failed one case). A new test,
+        "a stall while ↑ is held doesn't send the outline back down",
+        stalls the page for 1 s between two ↑ with no frame in between: it
+        failed 10 of 10 without the fix and passed 10 of 10 with it. With
+        the fix, the stall sweep ended on the first email in all 75 runs;
+        the file and `reply-esc.spec.ts` passed 380 of 380 (20 runs each),
+        the file 80 of 80 on a slowed page (5 runs) and 128 of 128 on 8
+        workers.
 
 ## Bug backlog
 
@@ -7789,6 +7817,20 @@ item below is built, the owner has tried it, and the owner has published
             say that the cache is encrypted and how; the written answer to
             DASA 1.2.2 for the lab.
       *(moved from "Later / unscheduled" into 0.4.0, owner, 2026-11-26)*
+
+### Bugs
+
+- [x] Holding ↑ with the computer busy for a moment sent the outline back
+      to the email on screen *(found 2026-11-26 through a flaky test in
+      CI; done the same day, branch `reader-keyboard-flaky`)*. A key
+      goes on from where the last key's smooth scroll is heading, and the
+      app forgot that place after 600 ms even when the scroll hadn't
+      moved: during a stall no frame runs. The next ↑ then took the email
+      just outlined, still above the view, for scrolled away, and outlined
+      the first email showing instead. The place is now forgotten only
+      once the 600 ms are up and the reader has also stood still for 30
+      frames. See Flaky tests, `reader-keyboard.spec.ts`, "an arrow after
+      the outline scrolled away".
 
 ## Later / unscheduled
 

@@ -17,6 +17,16 @@ const OTHER_SCROLL_KEYS = new Set([" ", "PageUp", "PageDown", "Home", "End", "n"
 /** Longer than a smooth scroll takes. */
 const HEADING_MS = 600;
 
+/**
+ * Frames the reader must also stand still, after HEADING_MS, before the
+ * last key's scroll counts as over. The clock alone isn't enough: while
+ * the page is busy (a stall on a slow machine) no frame runs and the scroll
+ * doesn't move, but the time still passes. Generous, because WebKit's
+ * smooth scroll stands still for a few frames before it starts, and again
+ * after a stall.
+ */
+const STILL_FRAMES = 30;
+
 /** Inside the reply being written, which handles its own keys. */
 function inReply(el: EventTarget | null): boolean {
   return el instanceof Element && el.closest("[data-inline-reply]") !== null;
@@ -80,7 +90,12 @@ export function useReaderKeyboard({
   // key pressed before it arrives (or held down) goes on from where the
   // last one went, not from part way: mid-scroll, the email just outlined
   // still looked cut off at the top, and ↑ scrolled instead of moving on.
-  // Forgotten once there, or after HEADING_MS (a wheel took over, say),
+  // Forgotten once there; or once HEADING_MS has gone by and the reader
+  // has stood still for STILL_FRAMES frames (the scroll stopped short);
+  // the clock alone forgot it during a stall, before the scroll had moved,
+  // and the next ↑ took the email just outlined for scrolled away and
+  // outlined the one showing below it instead (found in CI). Also
+  // forgotten when a wheel, a touch or another scrolling key takes over,
   // or when the reader is further from it than when the key was pressed:
   // a smooth scroll only ever gets closer, so something else moved it (the
   // layout: an email above growing, which the browser makes up for by
@@ -106,20 +121,32 @@ export function useReaderKeyboard({
   const aimed = (reader: HTMLElement) => {
     const to = heading.current;
     const away = to ? Math.abs(reader.scrollTop - to.top) : 0;
-    if (!to || performance.now() > to.until || away <= 1 || away > to.away + 2) return forget();
+    if (!to || away <= 1 || away > to.away + 2) return forget();
     return to.top;
   };
   const scrollTo = (reader: HTMLElement, from: number, by: number) => {
     const max = reader.scrollHeight - reader.clientHeight;
     const to = Math.max(0, Math.min(max, from + by));
-    const until = performance.now() + HEADING_MS;
-    heading.current = { top: to, until, away: Math.abs(reader.scrollTop - to), reader };
+    const aim = {
+      top: to,
+      until: performance.now() + HEADING_MS,
+      away: Math.abs(reader.scrollTop - to),
+      reader,
+    };
+    heading.current = aim;
     reader.style.overflowAnchor = "none";
     reader.scrollTo({ top: to, behavior: "smooth" });
-    // Anchoring back on once the scroll has had its time.
-    window.setTimeout(() => {
-      if (heading.current?.until === until) forget();
-    }, HEADING_MS);
+    // Anchoring back on once the scroll has had its time and stopped.
+    let last = reader.scrollTop;
+    let still = 0;
+    const watch = () => {
+      if (heading.current !== aim) return;
+      still = reader.scrollTop === last ? still + 1 : 0;
+      last = reader.scrollTop;
+      if (performance.now() > aim.until && still >= STILL_FRAMES) forget();
+      else requestAnimationFrame(watch);
+    };
+    requestAnimationFrame(watch);
   };
 
   /**

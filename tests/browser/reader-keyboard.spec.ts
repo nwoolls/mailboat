@@ -215,6 +215,38 @@ test("keys in a menu inside the conversation don't move the outline", async ({ p
 });
 
 /**
+ * A stall while ↑ is held (a busy machine, as on a CI runner): the scroll
+ * toward the outlined email hasn't moved when the next ↑ comes, though
+ * its time has passed. The outline stays on the first email, rather than
+ * the email above the view being taken for scrolled away and the outline
+ * jumping down to the one showing (docs/ROADMAP.md → Flaky tests).
+ */
+test("a stall while ↑ is held doesn't send the outline back down", async ({ page }) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  // The three short emails sit above the long fourth one, outlined first.
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  await expect.poll(() => outlinedIndex(page)).toBe(1);
+  await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const up = () =>
+      reader.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    // ↑ outlines the first email and starts scrolling to it.
+    up();
+    // React applies it (a microtask); no frame runs before the next ↑.
+    await Promise.resolve();
+    // The page busy for longer than a smooth scroll's time (HEADING_MS),
+    // so the scroll hasn't moved when the next ↑ comes.
+    const start = performance.now();
+    while (performance.now() - start < 1000);
+    up();
+  });
+  await scrollSettled(page);
+  expect(await outlinedIndex(page)).toBe(0);
+});
+
+/**
  * The outline scrolled out of view: the next arrow outlines the first
  * email showing and stops there, rather than moving past it at once (review).
  */
