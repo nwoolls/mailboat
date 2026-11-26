@@ -250,13 +250,41 @@ Nothing goes to `main` directly. For each piece of work:
    local `main`.
 
 Before the first push of a branch, before opening its pull request, and
-before each push that updates an open pull request, hand the owner an independent review prompt, made from
+before each push that updates an open pull request, hand the owner an
+independent review prompt (unless you recommended no review and the owner
+agreed; see "How many reviews" below), made from
 `docs/REVIEW-PROMPT.md` and filled in for the branch (what it does, the
 decisions already made, what to look for), as one code block. Then wait: the
 owner has it reviewed and brings the reviews back. Check each finding against
 the code before acting on it: fix it, reject it with evidence, or ask the
 owner; a finding is not true because a reviewer said so. For a second round,
 add what changed since the last, so the fixes are verified first.
+
+How many reviews (owner, 2026-11-26):
+
+- Two independent reviewers is the baseline for the first round. When you
+  hand over the prompt, recommend a number with a one-line reason: two by
+  default; one, or none, when the risk is low. A branch that only changes
+  docs may need one. A fix for a flaky test may need none: when its diff
+  touches only tests (and the test's entry under Flaky tests), and the full
+  `bun run check` and the repeated runs from `docs/DEVELOPMENT.md` → "A
+  browser test that fails now and then" pass, tell the owner a push and
+  pull request are safe without review, and why; pushing still waits for
+  their OK. Any app code in the fix gets the normal review.
+- After each round, once its findings are dealt with, tell the owner
+  whether another round is worth it and with how many reviewers (one or
+  two), and why. Perfect is the enemy of good: reviewers nearly always find
+  something to say, so a round that turned up only nits, or nothing that
+  changes what ships, is a reason to stop. Small fixes that tests cover
+  rarely need a new round; a fix that changes behavior or design does.
+- Watch whether the rounds are making progress. Tell the owner as soon as
+  they look like whack-a-mole (a fix undoes or reworks an earlier fix, each
+  round finds new problems in the same area, or the findings come from the
+  design rather than the code), and suggest a change of direction or a
+  redesign instead of another round of patches.
+
+The owner decides each of these: the number of reviewers, another round, a
+change of direction.
 
 Pushing, opening or commenting on a pull request, and merging are all writes
 to the shared repository: confirm with the owner first, as always. Dependabot's
