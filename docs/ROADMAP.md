@@ -5424,15 +5424,19 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
-- [ ] Removing an account, or Delete all data, signs the app out of that
-      Google account on every computer, and neither confirmation says so
-      *(found 2026-11-25 testing Linux in the owner's VMs: Delete all data
-      on one signed out the Mac and the other VMs too)*. Removing asks
-      Google to revoke the sign-in (`tokens::remove_account`), and Google
-      revokes the whole grant for that OAuth client, which every copy of
-      the app using the same client shares. That's the intended outcome;
-      the dialogs say only "asks Google to end its sign-in". Add that it
-      signs the app out on other computers too (`RemoveAccountDialog`,
+- [ ] Removing an account, or Delete all data, can sign the app out of
+      that Google account on other computers too, and neither
+      confirmation says so *(found 2026-11-25 testing Linux in the owner's
+      VMs: Delete all data on one signed out the Mac and the other VMs
+      too)*. Removing asks Google to revoke the sign-in
+      (`tokens::remove_account_revoking` for one account,
+      `tokens::revoke_refresh_token` for Delete all data); when Google
+      does, it revokes the whole grant for that OAuth client, so every
+      copy of the app signed in through the same client loses it (a copy
+      using other credentials doesn't, nor does any copy when the
+      revoke couldn't reach Google). That's the intended outcome; the
+      dialogs say only "asks Google to end its sign-in". Add that it can
+      sign the app out on other computers too (`RemoveAccountDialog`,
       `DeleteAllDataDialog`).
 - [x] In a narrow window, or with a larger desktop font, some settings'
       controls covered their title and description *(found 2026-11-25 on
