@@ -5424,6 +5424,18 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [x] Windows showed the Mac's words and one Mac-only button *(found
+      2026-11-24 on branch `linux-build`, while giving Linux its own)*:
+      Settings → Appearance said the theme follows macOS, Settings →
+      Notifications offered "Open System Settings", which opens a macOS
+      link, and the button that shows a saved file (in the saved-file
+      message and Settings → Advanced) said Finder. *(Fixed 2026-11-25,
+      branch `platform-type`, taken from `linux-build`: the front end
+      knows the system as `mac`, `windows` or `linux` (`PLATFORM` in
+      `src/shared/lib/platform.ts`), names it in those places, and shows
+      the notification button on the Mac only. The Linux cases come along
+      unused, so `linux-build` merges without conflicts there.)*
+
 - [x] A user took the toys for frozen *(user report, 2026-11-23; fixed the
       same day, branch `toybox-reduced-motion`)*: with the system's reduce
       motion setting on, the toys stay mostly still, and nothing in the app

@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { commands } from "../../../platform/tauri/bindings";
 import type { Attachment, AttachmentId } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
+import { revealLabel } from "../../../shared/lib/platform";
 import { showToast } from "../../../shared/lib/toast";
 import {
   FileIcon,
@@ -45,7 +46,7 @@ export function AttachmentList({ attachments }: { attachments: Attachment[] }) {
       showToast({
         message: `Saved “${result}” to Downloads`,
         action: {
-          label: "Show in Finder",
+          label: revealLabel(),
           run: () => void unwrap(commands.attachmentReveal(id)).catch(() => {}),
         },
       });

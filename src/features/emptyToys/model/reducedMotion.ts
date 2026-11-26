@@ -1,3 +1,5 @@
+import { PLATFORM, type Platform } from "../../../shared/lib/platform";
+
 /**
  * What the system's reduce-motion setting does to the toys and the
  * screensaver, as Settings → Toybox says it. Asked for after someone took
@@ -8,14 +10,20 @@
 
 /**
  * Where the setting lives: macOS's Reduce motion, Windows' Animation
- * effects (off). Only the top level of each path, since the pane under
- * Accessibility differs between system versions.
+ * effects (off), and on Linux the desktop's animations (GNOME's Reduce
+ * animation, KDE's animation speed), which WebKitGTK reports as
+ * `prefers-reduced-motion`. Only the top level of each path, since the
+ * pane under Accessibility differs between system versions.
  */
-export function reducedMotionIntro(on: boolean, mac: boolean): string {
-  if (mac)
+export function reducedMotionIntro(on: boolean, platform: Platform = PLATFORM): string {
+  if (platform === "mac")
     return on
       ? "Reduce motion is on in System Settings → Accessibility, so the toys stay mostly still."
       : "When Reduce motion is on in System Settings → Accessibility, the toys stay mostly still.";
+  if (platform === "linux")
+    return on
+      ? "Animations are turned off in your desktop’s settings, so the toys stay mostly still."
+      : "When animations are turned off in your desktop’s settings, the toys stay mostly still.";
   return on
     ? "Animation effects are off in Windows Settings → Accessibility, so the toys stay mostly still."
     : "When Animation effects are off in Windows Settings → Accessibility, the toys stay mostly still.";

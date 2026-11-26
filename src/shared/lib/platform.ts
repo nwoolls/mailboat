@@ -1,16 +1,48 @@
 /**
  * Which system the window runs on, and the keyboard differences that
- * follow. The app was built on the Mac; on Windows (and Linux) Ctrl takes
+ * follow. The app was built on the Mac; on Windows and Linux Ctrl takes
  * the place of ⌘, and the Mac's ⌃ in a two-modifier shortcut (⌃⌘S)
  * becomes Alt (Ctrl+Alt+S), as Windows apps pair them.
  */
 
-/** Read from the web view's user agent ("Macintosh" in WebKit, "Windows" in WebView2). */
-export function detectMac(userAgent: string): boolean {
-  return /Mac|darwin/.test(userAgent);
+/** The systems the app runs on, as `data-platform` names them on the page. */
+export type Platform = "mac" | "windows" | "linux";
+
+/**
+ * Read from the web view's user agent: "Macintosh" in the Mac's WebKit,
+ * "Windows" in WebView2, "X11" or "Linux" in WebKitGTK.
+ */
+export function detectPlatform(userAgent: string): Platform {
+  if (/Mac|darwin/.test(userAgent)) return "mac";
+  if (/Windows|win32/.test(userAgent)) return "windows";
+  return "linux";
 }
 
-export const IS_MAC = typeof navigator !== "undefined" && detectMac(navigator.userAgent);
+export function detectMac(userAgent: string): boolean {
+  return detectPlatform(userAgent) === "mac";
+}
+
+export const PLATFORM: Platform =
+  typeof navigator === "undefined" ? "windows" : detectPlatform(navigator.userAgent);
+
+export const IS_MAC = PLATFORM === "mac";
+
+/**
+ * The system, as a sentence names it: "System follows macOS". Linux has
+ * many desktops, each with its own settings, so it is "your desktop".
+ */
+export function systemName(platform: Platform = PLATFORM): string {
+  return { mac: "macOS", windows: "Windows", linux: "your desktop" }[platform];
+}
+
+/** The menu item that shows a file in the system's file manager. */
+export function revealLabel(platform: Platform = PLATFORM): string {
+  return {
+    mac: "Show in Finder",
+    windows: "Show in File Explorer",
+    linux: "Show in Folder",
+  }[platform];
+}
 
 /** The key shortcuts are built on: ⌘ on the Mac, Ctrl elsewhere. */
 export function primaryKey(e: Pick<KeyboardEvent, "metaKey" | "ctrlKey">, mac = IS_MAC): boolean {

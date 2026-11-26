@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { commands, events } from "../../../platform/tauri/bindings";
 import { IS_TAURI, unwrap } from "../../../platform/tauri/ipc";
+import { revealLabel } from "../../../shared/lib/platform";
 import { showToast } from "../../../shared/lib/toast";
 import { ImageIcon, LinkIcon, PopOutIcon, SaveIcon } from "../../../shared/ui/icons";
 import { Menu, type MenuAnchor, MenuItem, MenuSeparator } from "../../../shared/ui/Menu";
@@ -65,7 +66,7 @@ export function EmailContextMenu() {
               showToast({
                 message: `Saved “${name}” to Downloads`,
                 action: {
-                  label: "Show in Finder",
+                  label: revealLabel(),
                   run: () => void unwrap(commands.downloadReveal(name)).catch(() => {}),
                 },
               });
