@@ -23,6 +23,8 @@
  *                                 called in is in `window.__order`;
  *                                 `&link=fail` makes opening a link fail
  *   ?mode=toybox                  Settings → Toybox
+ *   ?mode=settings&section=…&width=…  a Settings section in its page, the
+ *                                 panel that wide (px)
  *   ?mode=shortcuts               the `?` keyboard shortcuts sheet
  *   ?mode=menu                    a pop-up menu with a very long item
  *   ?mode=inline                  a conversation's inline reply, in a
@@ -79,6 +81,7 @@
 import "./slowMachine";
 import { emit } from "@tauri-apps/api/event";
 import { mockIPC } from "@tauri-apps/api/mocks";
+import settingsDefaults from "./settingsDefaults.json";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -408,6 +411,9 @@ const answer = (cmd: string, args: unknown): unknown => {
         },
       ];
     case "settings_get":
+      // The Settings pages need every setting: Rust's defaults, kept
+      // current by a core test. Elsewhere only what the modes rely on.
+      if (new URLSearchParams(location.search).get("mode") === "settings") return settingsDefaults;
       return { ai: { writingProvider: "apple" } };
     case "ai_status":
       // `&ai=none`: Windows with no AI set up (Apple Intelligence can't be there).

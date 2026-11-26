@@ -294,6 +294,26 @@ pub fn save(conn: &Connection, settings: &AppSettings) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The browser tests' copy of the default settings
+    /// (`tests/browser/settingsDefaults.json`, what the Settings pages are
+    /// shown with there), kept equal to these. Running this test writes the
+    /// file; it fails when the file had to change, so the change is
+    /// committed.
+    #[test]
+    fn the_browser_tests_have_the_default_settings() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/browser/settingsDefaults.json");
+        let before = std::fs::read_to_string(&path).unwrap_or_default();
+        let after = serde_json::to_string_pretty(&AppSettings::default()).unwrap() + "\n";
+        if before != after {
+            std::fs::write(&path, &after).unwrap();
+        }
+        assert!(
+            before == after,
+            "tests/browser/settingsDefaults.json was out of date and has been rewritten; commit it"
+        );
+    }
     use crate::db::Db;
 
     /// Every setting is decided to be, or not to be, about privacy

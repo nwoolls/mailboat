@@ -3,7 +3,8 @@ import { CheckIcon } from "../../../shared/ui/icons";
 /**
  * The Settings page's building blocks, after MonoCode's `SettingsView`:
  * a group is a titled, rounded card of rows; each row is a title, a line
- * saying what it does, and its control on the right.
+ * saying what it does, and its control on the right, or below them when
+ * the two don't fit side by side (a narrow window, a larger font).
  */
 
 export function PageHeader({
@@ -71,15 +72,22 @@ export function Row({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-6 border-b border-content/5 px-4 py-3.5 last:border-b-0">
-      <div className="min-w-0 flex-1">
+    <div
+      data-settings-row
+      className="flex flex-wrap items-start gap-x-6 gap-y-3 border-b border-content/5 px-4 py-3.5 last:border-b-0"
+    >
+      {/* At least 14rem for the words; past that the control wraps below. */}
+      <div data-settings-row-text className="min-w-0 flex-[1_1_14rem]">
         <div className="text-[13px] font-medium text-content">{label}</div>
         {description && (
           <div className="mt-1 text-[12px] leading-relaxed text-content/45">{description}</div>
         )}
       </div>
       {children !== undefined && (
-        <div className="flex max-w-[60%] min-w-0 shrink-0 flex-wrap items-center justify-end gap-2">
+        <div
+          data-settings-row-control
+          className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2"
+        >
           {children}
         </div>
       )}
@@ -206,7 +214,7 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className="inline-grid shrink-0 gap-0.5 rounded-md border border-content/10 p-0.5 text-[12px]"
+      className="inline-grid max-w-full gap-0.5 rounded-md border border-content/10 p-0.5 text-[12px]"
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       {options.map((option) => (

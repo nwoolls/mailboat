@@ -5434,6 +5434,17 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       the dialogs say only "asks Google to end its sign-in". Add that it
       signs the app out on other computers too (`RemoveAccountDialog`,
       `DeleteAllDataDialog`).
+- [x] In a narrow window, or with a larger desktop font, some settings'
+      controls covered their title and description *(found 2026-11-25 on
+      Fedora KDE, where the larger default font showed it: "Above a
+      conversation" in Settings → AI)*. A row kept its control on the
+      right in at most 60% of its width, and a wider control spilled left
+      over the text. *(Fixed the same day, branch
+      `backlog-signout-wording`: a row's control moves below its text when
+      the two don't fit side by side, and a three-way choice can narrow. A
+      browser test opens every Settings section at three widths and checks
+      that no control covers its text or runs past its row; it found
+      ten such rows before the fix.)*
 - [ ] Remove account's confirmation says it deletes the images "it
       downloaded on this Mac" on Windows too (`RemoveAccountDialog`);
       say "this computer", as Delete all data does *(found 2026-11-25,
