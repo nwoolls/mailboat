@@ -256,7 +256,7 @@ describe("version order", () => {
     ];
     for (let i = 0; i < order.length; i++) {
       for (let j = 0; j < order.length; j++) {
-        expect(Math.sign(compareVersions(order[i], order[j]))).toBe(Math.sign(i - j));
+        expect(Math.sign(compareVersions(order[i]!, order[j]!))).toBe(Math.sign(i - j));
       }
     }
   });

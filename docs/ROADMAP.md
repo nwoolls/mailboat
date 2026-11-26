@@ -5435,6 +5435,20 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       `src/shared/lib/platform.ts`), names it in those places, and shows
       the notification button on the Mac only. The Linux cases come along
       unused, so `linux-build` merges without conflicts there.)*
+- [x] The type check (`bun run typecheck`) didn't cover `scripts/`:
+      `tsconfig.json` includes `src`, `tests` and the configs, not the
+      release and check scripts, so a missing import there passed every
+      check until the script ran *(found 2026-11-24 on branch
+      `linux-build`, where one was caught only by running the script)*.
+      *(Fixed 2026-11-25, branch `scripts-typecheck`: `typecheck` also
+      checks `scripts/` with `tsconfig.scripts.json` and Bun's own types,
+      under the app's strict settings. That found 61 errors in 13 files:
+      Bun's API without its types, regular-expression groups and array
+      items the compiler couldn't know were there, and one real gap: a
+      release script given an empty first argument answered "replace"
+      rather than printing its usage. CI also type-checks `scripts/` on a
+      pull request that changes only the website, and the quick check on
+      a change to `scripts/`.)*
 - [ ] Removing an account, or Delete all data, can sign the app out of
       that Google account on other computers too, and neither
       confirmation says so *(found 2026-11-25 testing Linux in the owner's
