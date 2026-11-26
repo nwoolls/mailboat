@@ -70,6 +70,7 @@ impl Db {
     }
 
     fn init(mut conn: Connection) -> Result<Self> {
+        cipher_version(&conn)?;
         migrate(&mut conn)?;
         let version = data_version(&conn)?;
         Ok(Self {
@@ -95,6 +96,28 @@ impl Db {
     pub fn changed_elsewhere(&self) -> Result<bool> {
         let now = data_version(&self.conn())?;
         Ok(self.seen_version.swap(now, Ordering::Relaxed) != now)
+    }
+}
+
+/// The version of the encrypting SQLite (SQLite3 Multiple Ciphers) this
+/// build links. An error when it links plain SQLite instead, which happens
+/// if Cargo skipped the workspace's `[patch.crates-io]` (a rusqlite upgrade
+/// that asks for another `libsqlite3-sys`): the database must not open then.
+pub fn cipher_version(conn: &Connection) -> Result<String> {
+    match conn.query_row("SELECT sqlite3mc_version()", [], |r| r.get(0)) {
+        Ok(version) => Ok(version),
+        Err(e)
+            if e.to_string()
+                .contains("no such function: sqlite3mc_version") =>
+        {
+            Err(CoreError::Other(
+                "This copy of the app was built without its encrypting SQLite \
+                 (SQLite3 Multiple Ciphers), so it can't open the mail cache. \
+                 Install an official build."
+                    .into(),
+            ))
+        }
+        Err(e) => Err(e.into()),
     }
 }
 
@@ -197,6 +220,21 @@ mod tests {
         assert_eq!(mode(path.parent().unwrap()), 0o700);
         assert_eq!(mode(&path), 0o600);
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// The encrypting SQLite is linked, with its default cipher. Fails when
+    /// Cargo skipped the workspace's patch and built plain SQLite.
+    #[test]
+    fn the_cipher_is_linked() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        let version = cipher_version(&conn).unwrap();
+        assert!(
+            version.starts_with("SQLite3 Multiple Ciphers 2."),
+            "{version}"
+        );
+        let cipher: String = conn.query_row("PRAGMA cipher", [], |r| r.get(0)).unwrap();
+        assert_eq!(cipher, "chacha20");
     }
 
     #[test]

@@ -6,6 +6,7 @@
     "target",
     "src-tauri",
     "crates",
+    "vendor",
     "bun.lock",
     "src/platform/tauri/bindings.ts",
     "tests/browser/fixtures",

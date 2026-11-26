@@ -4943,11 +4943,12 @@ An entry is ticked when the fix is released and the workaround is removed.*
       macros, so it fails to compile. Workaround: undefine
       `__SIZEOF_INT128__` when SQLite3 Multiple Ciphers' source is built for
       Windows with clang-cl. The spike set it with
-      `LIBSQLITE3_FLAGS="-U__SIZEOF_INT128__"`; the 0.4.0 build will carry
-      it in the patched `libsqlite3-sys` build script (see "Encrypt the
-      local cache at rest", under 0.4.0). Once a release with the fix is
-      out: move `sqlite3mc-src` to it, remove the workaround, and rebuild
-      for both Windows targets.
+      `LIBSQLITE3_FLAGS="-U__SIZEOF_INT128__"`; the build now carries it in
+      `vendor/libsqlite3-sys/build.rs`, applied only for Windows targets
+      built with clang-cl (marked `app:`; `docs/DEVELOPMENT.md` → "The
+      encrypting SQLite"). Once a release with the fix is out: move
+      `sqlite3mc-src` to it, remove the workaround, and rebuild for both
+      Windows targets.
 
 ## Flaky tests
 
@@ -7734,7 +7735,7 @@ item below is built, the owner has tried it, and the owner has published
 
       Build steps, for 0.4.0 (owner, 2026-11-26; about a week of work,
       plus reviews):
-      - [ ] SQLite3 Multiple Ciphers in the build: the patched copy of
+      - [x] SQLite3 Multiple Ciphers in the build: the patched copy of
             `libsqlite3-sys` in the repository, the clang-cl fix, a test
             that fails when the cipher isn't linked (`sqlite3mc_version()`),
             and a check that fails when Cargo reports the patch unused. A
@@ -7742,7 +7743,15 @@ item below is built, the owner has tried it, and the owner has published
             warning. The clang-cl bug is reported upstream (2026-11-26,
             after the spike's runs on Windows ARM and Intel/AMD confirmed
             the fix); the workaround goes when the fix ships (see "Issues
-            filed upstream").
+            filed upstream"). *(Done 2026-11-26: the copy is
+            `vendor/libsqlite3-sys/`, swapped in by the workspace's
+            `[patch.crates-io]` and left out of the workspace;
+            `db::cipher_version` stops every database open when plain SQLite
+            is linked. The check this step asks for is the test
+            `the_cipher_is_linked`: it fails when the patch is skipped. The
+            upgrade steps are in `docs/DEVELOPMENT.md` → "The encrypting
+            SQLite". The app still opens a plain database: encrypting it is
+            the next step.)*
       - [ ] The key: made and kept in the keychain, set on the connection
             before anything else, never in an error or the log. A lost key
             moves the unreadable database aside (deleted at the next start),
