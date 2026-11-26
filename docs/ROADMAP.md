@@ -5424,6 +5424,21 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [x] The type check (`bun run typecheck`) didn't cover `scripts/`:
+      `tsconfig.json` includes `src`, `tests` and the configs, not the
+      release and check scripts, so a missing import there passed every
+      check until the script ran *(found 2026-11-24 on branch
+      `linux-build`, where one was caught only by running the script)*.
+      *(Fixed 2026-11-25, branch `scripts-typecheck`: `typecheck` also
+      checks `scripts/` with `tsconfig.scripts.json` and Bun's own types,
+      under the app's strict settings. That found 61 errors in 13 files:
+      Bun's API without its types, regular-expression groups and array
+      items the compiler couldn't know were there, and one real gap: a
+      release script given an empty first argument answered "replace"
+      rather than printing its usage. CI also type-checks `scripts/` on a
+      pull request that changes only the website, and the quick check on
+      a change to `scripts/`.)*
+
 - [x] A user took the toys for frozen *(user report, 2026-11-23; fixed the
       same day, branch `toybox-reduced-motion`)*: with the system's reduce
       motion setting on, the toys stay mostly still, and nothing in the app
