@@ -5472,9 +5472,22 @@ the way, and one bug in the app caused flaky failures; all three are in
         change (the reply's 5 of 5) and passed with it. The stall test now
         also checks that the first ↑ outlined the first email while it
         was still above the view; with the old code it failed 10 of 10
-        after that check. After the review fixes, the file and
-        `reply-esc.spec.ts` passed 440 of 440 (20 runs each), the file 95
-        of 95 on a slowed page (5 runs) and 152 of 152 on 8 workers.
+        after that check.
+      - Second review, the same day: two of the new tests waited on the
+        clock (800 ms for a scroll, and a switch of conversation within
+        600 ms), which a busy runner might not keep to. The reply test now
+        waits for the reader to get past where the old aim would have
+        taken it, and the conversation test moves the reader a pixel each
+        frame so the aim can't run out on its own, then waits for the old
+        reader to go, however long that takes. A new test checks that a
+        stopped scroll keeps its aim until the reader has stood still for
+        some frames, not just until its 600 ms are up; with the frame
+        count set to 1 it failed 5 of 5. The other two failed 5 of 5 on
+        the first commit's code. An older clash between n / p and an arrow
+        pressed straight after went to the Bug backlog. After both
+        reviews, the file and `reply-esc.spec.ts` passed 460 of 460 (20
+        runs each), the file 100 of 100 on a slowed page (5 runs) and 160
+        of 160 on 8 workers.
 
 ## Bug backlog
 
@@ -6390,6 +6403,19 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       nothing was approved. A unit test fails without the change, and so
       does `a_list_line_keeps_only_what_the_conversation_says` with
       "approved" taken off the list.
+- [ ] n / p and an arrow pressed straight after it pull the reader two
+      ways *(found 2026-11-26 in review of branch `reader-keyboard-flaky`;
+      not seen in the app)*. After n or p, the email it moved to is held
+      at the top of the reader for 350 ms (`stepEmail`, `HOLD_MS` in
+      `reader/ui/readerKeys.ts`): the hold sets the scroll position every
+      frame.
+      An ↑ or ↓ pressed in that time (n on the list, → into the
+      conversation, then ↓) starts its own smooth scroll, which the hold
+      keeps pulling back, while the arrow's aim (where its scroll is
+      heading) stays set, so the next arrow may go on from a place the
+      reader never reached. Likely fix: an arrow's scroll ends the hold.
+      Older than that branch; a browser test with the real n key should
+      show whether it's visible before anything changes.
 
 ## 0.3.0
 
