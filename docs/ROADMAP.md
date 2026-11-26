@@ -4935,9 +4935,19 @@ opened on another project, with the workaround this repository carries
 until it is fixed, so the workaround goes when the fix ships (`AGENTS.md`).
 An entry is ticked when the fix is released and the workaround is removed.*
 
-None filed yet. The first, a clang-cl compile error in SQLite3 Multiple
-Ciphers, waits for review before it is filed (see "Encrypt the local cache
-at rest", under 0.4.0).
+- [ ] SQLite3 Multiple Ciphers: Poly1305 doesn't compile with clang-cl
+      ([utelle/SQLite3MultipleCiphers#319](https://github.com/utelle/SQLite3MultipleCiphers/issues/319),
+      filed 2026-11-26). clang-cl, the compiler cargo-xwin uses for the
+      Windows builds, defines both `_MSC_VER` and `__SIZEOF_INT128__`. With
+      both defined, the Poly1305 code defines neither set of its helper
+      macros, so it fails to compile. Workaround: undefine
+      `__SIZEOF_INT128__` when SQLite3 Multiple Ciphers' source is built for
+      Windows with clang-cl. The spike set it with
+      `LIBSQLITE3_FLAGS="-U__SIZEOF_INT128__"`; the 0.4.0 build will carry
+      it in the patched `libsqlite3-sys` build script (see "Encrypt the
+      local cache at rest", under 0.4.0). Once a release with the fix is
+      out: move `sqlite3mc-src` to it, remove the workaround, and rebuild
+      for both Windows targets.
 
 ## Flaky tests
 
@@ -7599,8 +7609,8 @@ item below is built, the owner has tried it, and the owner has published
         integers, and the Poly1305 code then defines neither set of its
         helpers. Undefining `__SIZEOF_INT128__` for that file fixes the
         build. With it, the spike's tests pass on Windows 11 on ARM (the
-        test machine) and on an Intel/AMD laptop. The bug isn't reported
-        upstream yet.*
+        test machine) and on an Intel/AMD laptop. The bug is reported
+        upstream (see "Issues filed upstream").*
       - *License: SQLite3 Multiple Ciphers passes `cargo deny check
         licenses` with `deny.toml` as it is (MIT, CC0-1.0, Unlicense,
         Apache-2.0). SQLCipher's source crate fails it, because it also
@@ -7710,8 +7720,10 @@ item below is built, the owner has tried it, and the owner has published
             that fails when the cipher isn't linked (`sqlite3mc_version()`),
             and a check that fails when Cargo reports the patch unused. A
             rusqlite upgrade would otherwise build plain SQLite without any
-            warning. Report the clang-cl bug upstream (the spike's runs on
-            Windows ARM and Intel/AMD confirmed the fix; owner, 2026-11-26).
+            warning. The clang-cl bug is reported upstream (2026-11-26,
+            after the spike's runs on Windows ARM and Intel/AMD confirmed
+            the fix); the workaround goes when the fix ships (see "Issues
+            filed upstream").
       - [ ] The key: made and kept in the keychain, set on the connection
             before anything else, never in an error or the log. A lost key
             moves the unreadable database aside (deleted at the next start),
