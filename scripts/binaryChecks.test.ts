@@ -175,6 +175,10 @@ describe("a Linux binary", () => {
     });
     expect(elfProblems(appimage, "$ORIGIN/../lib")).toEqual([]);
     expect(elfProblems(appimage)).toEqual(["has a RUNPATH"]);
+    // A `]` inside the path isn't the end of it.
+    expect(
+      elfProblems(appimage.replace("$ORIGIN/../lib]", "$ORIGIN/../lib]/extra]"), "$ORIGIN/../lib"),
+    ).toEqual(["has a RUNPATH"]);
     expect(
       elfProblems(appimage.replace("$ORIGIN/../lib", "$ORIGIN/../lib:/tmp"), "$ORIGIN/../lib"),
     ).toEqual(["has a RUNPATH"]);

@@ -159,7 +159,11 @@ export function elfProblems(readelf: string, runpath?: string): string[] {
   if (segment("GNU_RELRO") === null || !bindNow)
     problems.push("no full RELRO (GNU_RELRO and BIND_NOW)");
   if (/\(RPATH\)/.test(readelf)) problems.push("has a RPATH");
-  const runpaths = [...readelf.matchAll(/\(RUNPATH\)[^\n]*\[([^\]]*)\]/g)].map((m) => m[1]);
+  // The whole value, to the row's last `]`: readelf doesn't escape a `]`
+  // inside the path, so stopping at the first would check only part of it.
+  const runpaths = [...readelf.matchAll(/\(RUNPATH\)[^\n[]*\[([^\n]*)\][ \t]*$/gm)].map(
+    (m) => m[1],
+  );
   if (/\(RUNPATH\)/.test(readelf) && !(runpaths.length === 1 && runpaths[0] === runpath)) {
     problems.push("has a RUNPATH");
   }

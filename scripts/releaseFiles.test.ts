@@ -14,6 +14,7 @@ import {
   platformOf,
   publishable,
   SBOM_DOWNLOADS,
+  sbomDownloadsBuiltOn,
   sbomName,
   stableName,
   tagFor,
@@ -79,6 +80,9 @@ describe("a bill of materials per download", () => {
     expect(SBOM_DOWNLOADS.flatMap((d) => d.platforms).toSorted()).toEqual(
       [...PLATFORMS].toSorted(),
     );
+    // The release makes them all on its Mac (Apple silicon), Windows' too.
+    expect(sbomDownloadsBuiltOn("darwin", "arm64")).toEqual(SBOM_DOWNLOADS);
+    expect(sbomDownloadsBuiltOn("linux", "x64")).toEqual([]);
   });
 });
 
