@@ -622,7 +622,7 @@ export function NotificationsSection() {
           }
         >
           <Segmented
-            label="Unread count"
+            label={PLATFORM === "linux" ? "Unread count" : "Unread count on the Dock"}
             value={settings?.dockBadge ?? "inbox"}
             options={DOCK_BADGES}
             disabled={!settings}
