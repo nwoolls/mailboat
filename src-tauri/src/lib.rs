@@ -251,8 +251,9 @@ pub fn run() {
             tooltips::follow_desktop();
             email_menu::install(app.handle());
             notifications::install(app.handle());
-            // Before anything reads or changes the app's files: a build
-            // without its encrypting SQLite stops here.
+            // Before the mail database and its folders are read or changed
+            // (plugins registered above may already have read their own
+            // files): a build without its encrypting SQLite stops here.
             mail_core::db::require_cipher()?;
             let dirs = mode::prepare(
                 mode,

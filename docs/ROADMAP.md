@@ -7736,14 +7736,13 @@ item below is built, the owner has tried it, and the owner has published
       Build steps, for 0.4.0 (owner, 2026-11-26; about a week of work,
       plus reviews):
       - [x] SQLite3 Multiple Ciphers in the build: the patched copy of
-            `libsqlite3-sys` in the repository, the clang-cl fix, a test
-            that fails when the cipher isn't linked (`sqlite3mc_version()`),
-            and a check that fails when Cargo reports the patch unused. A
-            rusqlite upgrade would otherwise build plain SQLite without any
-            warning. The clang-cl bug is reported upstream (2026-11-26,
-            after the spike's runs on Windows ARM and Intel/AMD confirmed
-            the fix); the workaround goes when the fix ships (see "Issues
-            filed upstream"). *(Done 2026-11-26: the copy is
+            `libsqlite3-sys` in the repository, the clang-cl fix, and a test
+            that fails when the cipher isn't linked (`sqlite3mc_version()`).
+            A rusqlite upgrade would otherwise build plain SQLite with only
+            a warning from Cargo. The clang-cl bug is reported upstream
+            (2026-11-26, after the spike's runs on Windows ARM and Intel/AMD
+            confirmed the fix); the workaround goes when the fix ships (see
+            "Issues filed upstream"). *(Done 2026-11-26: the copy is
             `vendor/libsqlite3-sys/`, swapped in by the workspace's
             `[patch.crates-io]` and left out of the workspace. When plain
             SQLite is linked, `db::require_cipher` stops app startup before
@@ -7754,10 +7753,12 @@ item below is built, the owner has tried it, and the owner has published
             isn't the version the bindings were made for; it doesn't rely on
             Cargo's warning. The copy also keeps SQLite's own
             temporary-storage default (`SQLITE_TEMP_STORE=1`), which SQLite3
-            Multiple Ciphers would change (review, 2026-11-26). The upgrade
-            steps are in `docs/DEVELOPMENT.md` → "The encrypting SQLite".
-            The app still opens a plain database: encrypting it is the next
-            step.)*
+            Multiple Ciphers would change. The release SBOM lists the copy
+            as a changed crates.io crate, and `sqlite3mc-src` as shipped
+            because its source is compiled in (`scripts/sbom.ts`,
+            `COMPILED_IN`; review, 2026-11-26). The upgrade steps are in
+            `docs/DEVELOPMENT.md` → "The encrypting SQLite". The app still
+            opens a plain database: encrypting it is the next step.)*
       - [ ] The key: made and kept in the keychain, set on the connection
             before anything else, never in an error or the log. A lost key
             moves the unreadable database aside (deleted at the next start),

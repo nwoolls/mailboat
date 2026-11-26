@@ -161,6 +161,55 @@ version = "0.0.0"
   });
 });
 
+describe("Rust crates the app compiles from copies or sources", () => {
+  // Review: the patched libsqlite3-sys in vendor/ was dropped as the app's
+  // own, and sqlite3mc-src, whose C source is compiled in, was build-only.
+  const linked = [
+    "desktop v0.0.0 (/repo/src-tauri)\tGPL-3.0-only",
+    "libsqlite3-sys v0.40.0 (/repo/vendor/libsqlite3-sys)\tMIT",
+  ].join("\n");
+  const used = [
+    linked,
+    "sqlite3mc-src v207.1.0+sqlite3mc-2.7.1-sqlite-3.54.1\tMIT AND CC0-1.0 AND Unlicense AND (CC0-1.0 OR Apache-2.0)",
+    "cc v1.2.0\tMIT OR Apache-2.0",
+  ].join("\n");
+  const sums = new Map([
+    ["libsqlite3-sys 0.40.0", "published"],
+    ["sqlite3mc-src 207.1.0+sqlite3mc-2.7.1-sqlite-3.54.1", "bbbb"],
+  ]);
+
+  it("lists a vendored copy as a changed crates.io crate, shipped, without the published checksum", () => {
+    for (const tree of [
+      linked,
+      linked.replace("/repo/vendor/libsqlite3-sys", "C:\\repo\\vendor\\libsqlite3-sys"),
+    ]) {
+      const found = cargoComponents([tree], [tree], sums);
+      const copy = found.find((c) => c.name === "libsqlite3-sys");
+      expect(copy).toMatchObject({
+        purl: "pkg:cargo/libsqlite3-sys@0.40.0",
+        scope: "required",
+        licenses: [{ expression: "MIT" }],
+        pedigree: { notes: expect.stringContaining("vendor/") },
+      });
+      expect(copy!.hashes).toBeUndefined();
+      // The app's own crates are still not components.
+      expect(found.some((c) => c.name === "desktop")).toBe(false);
+    }
+  });
+
+  it("counts a crate compiled into the app as shipped, other build-only crates as excluded", () => {
+    const found = cargoComponents([linked], [used], sums);
+    const byName = Object.fromEntries(found.map((c) => [c.name, c]));
+    expect(byName["sqlite3mc-src"]).toMatchObject({
+      scope: "required",
+      purl: "pkg:cargo/sqlite3mc-src@207.1.0%2Bsqlite3mc-2.7.1-sqlite-3.54.1",
+      hashes: [{ alg: "SHA-256", content: "bbbb" }],
+    });
+    expect(byName.cc!.scope).toBe("excluded");
+    expect(byName["sqlite3mc-src"]!.pedigree).toBeUndefined();
+  });
+});
+
 describe("JavaScript packages", () => {
   const sha = Buffer.from("hash").toString("base64");
   const lock: BunLock = {
