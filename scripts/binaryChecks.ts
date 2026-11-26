@@ -106,3 +106,66 @@ export function peProblems(headers: string): string[] {
   }
   return problems;
 }
+
+/** A hexadecimal number as readelf prints one. */
+const hex = (cell: string) => /^0x[0-9a-f]+$/.test(cell);
+
+/**
+ * What's wrong with the Linux program, from `readelf -h -l -d -W`. DASA has
+ * no Linux test cases, so these are the protections the Mac and Windows
+ * checks ask for, as Linux names them: a 64-bit, position-independent
+ * program (ASLR), a stack that can't run code (DEP), full RELRO (the
+ * dynamic linker's tables read-only once loaded, with every symbol bound
+ * at start), and no RPATH or RUNPATH (no library loaded from a folder the
+ * program names). `runpath` is the one RUNPATH allowed, for the AppImage:
+ * linuxdeploy sets `$ORIGIN/../lib` so the program loads the libraries
+ * bundled next to it, inside the read-only image.
+ */
+export function elfProblems(readelf: string, runpath?: string): string[] {
+  const problems: string[] = [];
+  const lines = readelf.split("\n").map((line) => line.trim());
+  // A header line, `Name: value`.
+  const field = (name: string) =>
+    lines
+      .find((line) => line.startsWith(`${name}:`))
+      ?.slice(name.length + 1)
+      .trim() || undefined;
+  if (field("Class") !== "ELF64") problems.push(`not a 64-bit build (class: ${field("Class")})`);
+  const flags1 = /\(FLAGS_1\)\s+Flags:([^\n]*)/.exec(readelf)?.[1]?.trim().split(/\s+/) ?? [];
+  if (!field("Type")?.startsWith("DYN") || !flags1.includes("PIE")) {
+    problems.push(`not position-independent (type: ${field("Type") ?? "unknown"})`);
+  }
+  // A segment row's flags (R, W, E): its name, five numbers, the flags
+  // (`R E` has a space in it), then its alignment, which readelf prints as a
+  // bare 0 when it's zero (as lld, the default linker for x86-64 Linux,
+  // writes the stack's). Null when there's no such row. Read as fields, not
+  // with a pattern built from the name.
+  const segment = (name: string): string | null => {
+    for (const line of lines) {
+      const cells = line.split(/\s+/);
+      if (cells[0] !== name || cells.length < 8) continue;
+      const flags = cells.slice(6, -1).join("");
+      const align = cells.at(-1) ?? "";
+      if (cells.slice(1, 6).every(hex) && /^[RWE]+$/.test(flags) && (hex(align) || align === "0")) {
+        return flags;
+      }
+    }
+    return null;
+  };
+  const stack = segment("GNU_STACK");
+  if (stack === null) problems.push("no GNU_STACK segment, so the stack may run code");
+  else if (stack.includes("E")) problems.push("the stack can run code");
+  const bindNow = /\(FLAGS\)\s+[^\n]*\bBIND_NOW\b/.test(readelf) || flags1.includes("NOW");
+  if (segment("GNU_RELRO") === null || !bindNow)
+    problems.push("no full RELRO (GNU_RELRO and BIND_NOW)");
+  if (/\(RPATH\)/.test(readelf)) problems.push("has a RPATH");
+  // The whole value, to the row's last `]`: readelf doesn't escape a `]`
+  // inside the path, so stopping at the first would check only part of it.
+  const runpaths = [...readelf.matchAll(/\(RUNPATH\)[^\n[]*\[([^\n]*)\][ \t]*$/gm)].map(
+    (m) => m[1],
+  );
+  if (/\(RUNPATH\)/.test(readelf) && !(runpaths.length === 1 && runpaths[0] === runpath)) {
+    problems.push("has a RUNPATH");
+  }
+  return problems;
+}

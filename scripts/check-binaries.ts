@@ -5,12 +5,14 @@
 //   bun scripts/check-binaries.ts macos <App>.app       every binary in Contents/MacOS
 //   bun scripts/check-binaries.ts windows <target>       the app's program for that target
 //                                                        (needs llvm-readobj: Homebrew's llvm)
+//   bun scripts/check-binaries.ts linux <program>        the app's program, as a package installs it
+//                                                        (needs readelf: binutils)
 //
 // Prints what it found, so the output is also the evidence for the lab.
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { macProblems, peProblems } from "./binaryChecks";
+import { elfProblems, macProblems, peProblems } from "./binaryChecks";
 
 /** A tool's output; stdout and stderr together (`codesign -d` writes to stderr). */
 function run(command: string, args: string[]): string {
@@ -32,8 +34,10 @@ function run(command: string, args: string[]): string {
 }
 
 const [platform, target] = process.argv.slice(2);
-if (!target || (platform !== "macos" && platform !== "windows")) {
-  console.error("Usage: bun scripts/check-binaries.ts macos <App>.app | windows <target triple>");
+if (!platform || !target || !["macos", "windows", "linux"].includes(platform)) {
+  console.error(
+    "Usage: bun scripts/check-binaries.ts macos <App>.app | windows <target triple> | linux <program>",
+  );
   process.exit(2);
 }
 
@@ -54,6 +58,12 @@ if (platform === "macos") {
     );
     problems.push(...found.map((p) => `${name}: ${p}`));
   }
+} else if (platform === "linux") {
+  const found = elfProblems(run("readelf", ["-h", "-l", "-d", "-W", target]));
+  console.log(
+    `${target}: ${found.length ? "problems" : "64-bit, PIE, non-executable stack, full RELRO, no RPATH"}`,
+  );
+  problems.push(...found.map((p) => `${target}: ${p}`));
 } else {
   // The program Tauri builds for the target, named in its config.
   const name = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8")).mainBinaryName;

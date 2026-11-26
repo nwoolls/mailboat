@@ -7749,6 +7749,12 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       the AUR, which needs a Linux build to point at first. The owner wants to take up Linux soon: after clearing some bugs, and together with a few
       features from this list, such as "add to Todoist and archive" and
       "Clone a sent email")*
+      *(2026-11-25: part of the release scripts' groundwork moved to main
+      ahead of it, branch `release-scripts-groundwork`: the checks of a
+      Linux program (`elfProblems`, `check-binaries.ts linux`, which
+      nothing runs yet), and the bills of materials each made on the
+      computer that builds their download (`host` in `SBOM_DOWNLOADS`).
+      No Linux download is added to the release.)*
 
 - [ ] Keep translations after Mailboat quits *(known limitation, owner,
       2026-10-26: "for later")*: a translation in an email lives only in
