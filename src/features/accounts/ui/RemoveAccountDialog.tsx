@@ -26,7 +26,10 @@ export function RemoveAccountDialog({
     >
       <p>
         {APP_NAME} stops syncing it, asks Google to end its sign-in, deletes its mail and the images
-        it downloaded on this Mac, and forgets its sign-in.
+        it downloaded on this computer, and forgets its sign-in.
+      </p>
+      <p>
+        Ending the sign-in can also sign this account out of {APP_NAME} on your other computers.
       </p>
       <p>Nothing changes in Gmail. You can add the account again at any time.</p>
     </ConfirmDialog>

@@ -282,8 +282,8 @@ pub fn display_name(provider: AiProvider) -> &'static str {
 fn not_installed(provider: AiProvider) -> CoreError {
     CoreError::Ai(match provider {
         AiProvider::Apple => "Apple Intelligence needs macOS 26 or later.".into(),
-        AiProvider::Claude => "Claude Code isn't installed on this Mac.".into(),
-        AiProvider::ChatGpt => "Codex isn't installed on this Mac.".into(),
+        AiProvider::Claude => "Claude Code isn't installed on this computer.".into(),
+        AiProvider::ChatGpt => "Codex isn't installed on this computer.".into(),
     })
 }
 
