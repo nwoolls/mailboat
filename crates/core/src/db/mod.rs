@@ -48,6 +48,7 @@ impl Db {
     /// part is best effort: a folder or file whose mode can't be changed
     /// (owned by another account) still opens, as before.
     pub fn open(path: &Path) -> Result<Self> {
+        require_cipher()?;
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| CoreError::Other(format!("create data dir: {e}")))?;
@@ -119,6 +120,13 @@ pub fn cipher_version(conn: &Connection) -> Result<String> {
         }
         Err(e) => Err(e.into()),
     }
+}
+
+/// `cipher_version` on a connection of its own, in memory, so a build
+/// without the encrypting SQLite stops before anything on disk is read,
+/// created or changed. App startup calls it first, and so does `Db::open`.
+pub fn require_cipher() -> Result<String> {
+    cipher_version(&Connection::open_in_memory()?)
 }
 
 fn data_version(conn: &Connection) -> Result<i64> {
@@ -235,6 +243,23 @@ mod tests {
         );
         let cipher: String = conn.query_row("PRAGMA cipher", [], |r| r.get(0)).unwrap();
         assert_eq!(cipher, "chacha20");
+        assert_eq!(require_cipher().unwrap(), version);
+        // The SQLite inside it is the one the bindings were made for
+        // (docs/DEVELOPMENT.md -> "The encrypting SQLite", step 3).
+        assert_eq!(
+            Ok(rusqlite::version()),
+            rusqlite::ffi::SQLITE_VERSION.to_str()
+        );
+        // SQLite's own default for temporary storage, as plain SQLite had
+        // (vendor/libsqlite3-sys/build.rs, "app:").
+        let options: Vec<String> = conn
+            .prepare("PRAGMA compile_options")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .collect::<std::result::Result<_, _>>()
+            .unwrap();
+        assert!(options.iter().any(|o| o == "TEMP_STORE=1"), "{options:?}");
     }
 
     #[test]

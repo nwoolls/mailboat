@@ -260,16 +260,22 @@ The mail cache's SQLite is SQLite3 Multiple Ciphers, an encrypting build of
 SQLite. rusqlite doesn't offer it, so `vendor/libsqlite3-sys/` holds a copy
 of rusqlite's `libsqlite3-sys` that compiles it instead of plain SQLite, and
 the workspace's `Cargo.toml` swaps the copy in with `[patch.crates-io]`. The
-copy changes two things, each marked `app:` in its `build.rs` and
-`Cargo.toml`: the source it compiles (from the `sqlite3mc-src` crate), and,
-for Windows builds with clang-cl, a flag that works around
+copy changes three things, each marked `app:` in its `build.rs` and
+`Cargo.toml`: the source it compiles (from the `sqlite3mc-src` crate);
+SQLite's own default for temporary storage (`SQLITE_TEMP_STORE=1`, which
+SQLite3 Multiple Ciphers would otherwise change); and, for Windows builds
+with clang-cl, a flag that works around
 [utelle/SQLite3MultipleCiphers#319](https://github.com/utelle/SQLite3MultipleCiphers/issues/319).
 The copy leaves out SQLite's own source files. The code for SQLCipher and
 the other build modes stays in its `build.rs` and `Cargo.toml`, unused: the
 app uses only the bundled build.
 
-The database doesn't open when plain SQLite is linked
-(`db::cipher_version`), and the test `the_cipher_is_linked` fails then, so
+When plain SQLite is linked, the app stops at startup before it reads or
+changes its mail data (the database and its folders), and the database
+doesn't open
+(`db::require_cipher`, `db::cipher_version`). The test
+`the_cipher_is_linked` fails then too, and also when the SQLite inside
+SQLite3 Multiple Ciphers isn't the version the bindings were made for, so
 a build that skipped the patch can't pass the checks.
 
 When a rusqlite upgrade asks for a new `libsqlite3-sys`, Cargo stops using

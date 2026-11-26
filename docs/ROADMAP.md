@@ -7745,20 +7745,29 @@ item below is built, the owner has tried it, and the owner has published
             the fix); the workaround goes when the fix ships (see "Issues
             filed upstream"). *(Done 2026-11-26: the copy is
             `vendor/libsqlite3-sys/`, swapped in by the workspace's
-            `[patch.crates-io]` and left out of the workspace;
-            `db::cipher_version` stops every database open when plain SQLite
-            is linked. The check this step asks for is the test
-            `the_cipher_is_linked`: it fails when the patch is skipped. The
-            upgrade steps are in `docs/DEVELOPMENT.md` → "The encrypting
-            SQLite". The app still opens a plain database: encrypting it is
-            the next step.)*
+            `[patch.crates-io]` and left out of the workspace. When plain
+            SQLite is linked, `db::require_cipher` stops app startup before
+            the mail data (the database and its folders) is read or changed,
+            and also stops every database open. The test
+            `the_cipher_is_linked` fails when plain SQLite is linked (which
+            is what a skipped patch leads to) and when the SQLite inside
+            isn't the version the bindings were made for; it doesn't rely on
+            Cargo's warning. The copy also keeps SQLite's own
+            temporary-storage default (`SQLITE_TEMP_STORE=1`), which SQLite3
+            Multiple Ciphers would change (review, 2026-11-26). The upgrade
+            steps are in `docs/DEVELOPMENT.md` → "The encrypting SQLite".
+            The app still opens a plain database: encrypting it is the next
+            step.)*
       - [ ] The key: made and kept in the keychain, set on the connection
             before anything else, never in an error or the log. A lost key
             moves the unreadable database aside (deleted at the next start),
             starts a new cache and shows a notice once: accounts sign in
             again and Settings are back to their defaults (owner,
             2026-11-26). A keychain that doesn't answer leaves the files
-            alone and says so.
+            alone and says so. Temporary storage moves to memory
+            (`SQLITE_TEMP_STORE=2` in `vendor/libsqlite3-sys/build.rs`),
+            because SQLite3 Multiple Ciphers doesn't encrypt temporary
+            files.
       - [ ] The one-time migration of a plain database, with the spike's
             tests, and three things the spike left open. Other copies stay
             out until the copy has replaced the plain file: on macOS and
