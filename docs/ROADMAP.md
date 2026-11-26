@@ -7758,9 +7758,10 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         AI apps the AppImage file itself as the command, not its temporary
         mount; ChatGPT connected from it. With the ChatGPT and Claude apps
         installed, the app found their own Codex and Claude Code and wrote
-        summaries with each. Still to try: a second monitor, connecting
-        Claude Code as an AI app and restarting, and a desktop with no
-        keyring (the owner deferred that one).)*
+        summaries with each. Claude Code, connected as an AI app from the
+        AppImage, searched the mail through it after a restart. Still to
+        try: a second monitor, and a desktop with no keyring (the owner
+        deferred that one).)*
   - [x] Release and updates: a Linux job in the release workflow (x86-64
         and Arm on Ubuntu 22.04) signs each package for the updater;
         `latest.json` has an entry per package (`linux-x86_64-deb` and so
