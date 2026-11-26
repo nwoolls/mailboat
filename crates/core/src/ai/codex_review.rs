@@ -68,9 +68,10 @@ pub fn unreviewed(still_on: &[String]) -> Vec<String> {
         .collect()
 }
 
-/// Where two systems' lists differ, by system: what to look at before
-/// running only the live tests on one of them. A system with no record
-/// is named too, so a missing review never reads as matching ones.
+/// Where two systems' lists differ, by system, to compare what each
+/// review recorded (every system still runs the full recheck). A system
+/// with no record is named too, so a missing review never reads as
+/// matching ones.
 pub fn differences(r: &Review) -> Vec<String> {
     let mut out: Vec<String> = PLATFORMS
         .iter()

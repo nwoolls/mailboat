@@ -332,11 +332,16 @@ pub async fn translate(
         }
     }
     let Some(provider) = provider else {
-        return Err(CoreError::Ai(
+        // Apple's translation is the Mac's own; elsewhere only a cloud
+        // provider chosen for writing can translate.
+        return Err(CoreError::Ai(if cfg!(target_os = "macos") {
             "Apple's translation can't do that language on this Mac. Download it in System \
 Settings → General → Language & Region → Translation Languages."
-                .into(),
-        ));
+                .into()
+        } else {
+            "To translate, choose ChatGPT or Claude under Help writing with in Settings → AI."
+                .into()
+        }));
     };
     if text.chars().count() > prompts::rewrite_limit(provider) {
         return Err(CoreError::Ai(format!(
@@ -414,4 +419,34 @@ pub async fn reply_ideas(
         summaries::store_ideas(&db.conn(), thread, forward, &ideas)?;
     }
     Ok((ideas, answer))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// With no one to ask (no Apple helper, no writing provider set up),
+    /// the error points where this system can fix it: the Mac's own
+    /// translation languages, or elsewhere Settings → AI.
+    #[tokio::test]
+    async fn translating_with_no_one_to_ask_says_where_to_fix_it() {
+        let db = Db::open_in_memory().unwrap();
+        let err = translate(
+            &db,
+            &Programs::default(),
+            None,
+            "Hola",
+            "en-US",
+            "English (en-US)",
+        )
+        .await
+        .unwrap_err()
+        .to_string();
+        if cfg!(target_os = "macos") {
+            assert!(err.contains("System Settings"), "{err}");
+        } else {
+            assert!(err.contains("Settings → AI"), "{err}");
+            assert!(!err.contains("Mac"), "{err}");
+        }
+    }
 }

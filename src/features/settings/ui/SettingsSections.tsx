@@ -473,7 +473,7 @@ function AccountGroup({
       )}
       <Row
         label="Remove account"
-        description="Stops syncing it, asks Google to end its sign-in, and deletes its mail saved on this Mac. Nothing changes in Gmail."
+        description={`Stops syncing it, asks Google to end its sign-in, and deletes its mail saved on this computer. Ending the sign-in can also sign it out of ${APP_NAME} on your other computers. Nothing changes in Gmail.`}
       >
         <Button danger onClick={onRemove}>
           Remove…
@@ -845,7 +845,7 @@ export function ViewingSection() {
         </Row>
         <Row
           label="Download images when mail arrives"
-          description="Like Apple Mail’s Protect Mail Activity: images of new mail are saved as it arrives, so opening an email later doesn’t tell the sender when. Unlike Apple’s, they come straight from this Mac, so senders still see your IP address. Only images that would load anyway."
+          description="Like Apple Mail’s Protect Mail Activity: images of new mail are saved as it arrives, so opening an email later doesn’t tell the sender when. Unlike Apple’s, they come straight from this computer, so senders still see your IP address. Only images that would load anyway."
         >
           <Toggle
             label="Download images when mail arrives"
@@ -1264,7 +1264,7 @@ export function AdvancedSection() {
     <>
       <Group title="Cache">
         <Row
-          label="Mail on this Mac"
+          label="Mail on this computer"
           description={
             size
               ? `${formatSize(size.mailKilobytes * 1024)} of mail and its search index, and ${formatSize(size.filesKilobytes * 1024)} of opened attachments and downloaded images.`
