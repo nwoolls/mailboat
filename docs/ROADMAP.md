@@ -6837,7 +6837,7 @@ Privacy and the policy.*
       the dependency scans. The mail cache relying on the computer's disk
       encryption is accepted, but the lab will check Windows' disk
       encryption itself (see "Encrypt the local cache at rest", under
-      "Later / unscheduled"). A solo
+      0.4.0). A solo
       developer can put their own name where the company's goes; the
       certificate also needs the website, the app's name and address,
       the Google Cloud project number and Google's due date, which the
@@ -7484,7 +7484,7 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       note first said Testing); and ask the lab whether a
       Windows machine without disk encryption fails its check, or whether
       documenting it is enough (see "Encrypt the local cache at rest"
-      under "Later / unscheduled"). The certificate's details are sent by
+      under 0.4.0). The certificate's details are sent by
       the owner and not kept here.)*
       *(moved here from 0.3.0 → Security assessment (CASA), owner, 2026-11-21: CASA work for after the stable 0.3.0)*
       *(2026-11-25: done. The owner bought the lab's plan and submitted
@@ -7527,13 +7527,16 @@ More items may be pulled in from "Later / unscheduled". Done when: each
 item below is built, the owner has tried it, and the owner has published
 0.4.0 (`docs/DEVELOPMENT.md` → Releasing).*
 
-- [ ] Encrypt the local cache at rest: a key in the keychain and an
-      encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
-      and costs little speed. Until then the app doesn't encrypt its files:
-      the cache is protected only when the computer's disk encryption is
-      on (FileVault on macOS; BitLocker or Device encryption on Windows),
-      and the policy says only that. Decide whether it is worth the
-      dependency
+- [ ] Encrypt the local cache at rest *(current plan, 2026-11-26: SQLite3
+      Multiple Ciphers for the database and AES-256-GCM for the cached
+      files, to be built in 0.4.0; the spike's result and the build steps
+      are at the end of this item, and the dated notes before them are
+      history)*. Originally: a key in the keychain and an encrypted SQLite
+      (SQLCipher or similar), if it works with FTS5 search and costs little
+      speed. Until then the app doesn't encrypt its files: the cache is
+      protected only when the computer's disk encryption is on (FileVault on
+      macOS; BitLocker or Device encryption on Windows), and the policy says
+      only that. Decide whether it is worth the dependency
       *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
       *(moved from "Later / unscheduled" into 0.3.0, 2026-11-15: it
       answers the second verification point of DASA 1.2.2, sensitive data
@@ -7586,18 +7589,24 @@ item below is built, the owner has tried it, and the owner has published
       comes from a test or a build that was run; the made-up mail and the
       scratch crates stayed outside the repository:)*
       - *Library: SQLite3 Multiple Ciphers (2.7.1, through the
-        `sqlite3mc-src` crate), not SQLCipher. Both keep FTS5 search
-        working with the app's own schema, store and search: a made-up
-        email is found in an encrypted database and again after reopening
-        it with the key, and neither the file nor its write-ahead log holds
-        its words as plain bytes. Without the key, or with a wrong one,
-        opening fails ("file is not a database"). SQLCipher needs OpenSSL on
-        Windows and Linux; it uses Apple's CommonCrypto only when a Mac
-        builds for a Mac. OpenSSL can't be built for Windows on a Mac (its
-        Windows configuration refuses a non-Windows Perl), and the Windows
-        release is built on a Mac. SQLite3 Multiple Ciphers has its own
-        crypto, and it built for both Windows targets with cargo-xwin and
-        for Linux in the Docker image.*
+        `sqlite3mc-src` crate), not SQLCipher. Both keep FTS5 search working
+        with the app's own schema, store and search: a made-up email is
+        found in an encrypted database and again after reopening it with the
+        key, and neither the file nor its write-ahead log holds its words as
+        plain bytes. Without the key, or with a wrong one, opening fails
+        ("file is not a database"). Through rusqlite's bundled SQLCipher
+        features, SQLCipher uses Apple's CommonCrypto only when a Mac builds
+        for a Mac, and OpenSSL everywhere else. Cross-built for Windows with
+        cargo-xwin, as the Windows release is built on a Mac, neither
+        OpenSSL route worked: the plain feature found no OpenSSL headers,
+        and the vendored one stopped at OpenSSL's Windows configuration,
+        which refuses a non-Windows Perl. A Windows OpenSSL supplied to the
+        build (`OPENSSL_DIR`), or SQLCipher's own LibTomCrypt provider,
+        might get around that, but neither was tried: each is setup of its
+        own, and the second needs a patched `libsqlite3-sys`, as SQLite3
+        Multiple Ciphers does. SQLite3 Multiple Ciphers has its own crypto,
+        and it built for both Windows targets with cargo-xwin and for Linux
+        in the Docker image.*
       - *What that choice costs: rusqlite doesn't offer it (its maintainers
         declined a pull request that added it and pointed to linking one's
         own build instead), so the repository would keep a copy of
@@ -7642,23 +7651,28 @@ item below is built, the owner has tried it, and the owner has published
         the build has to add that path.*
       - *Migration, once, before the app opens the database: take an
         exclusive lock without waiting, and stop (to try at the next start)
-        if another copy of the app has the database open; then checkpoint the
-        plain write-ahead log into the file and empty it, copy the database
-        into a new file with the key (`VACUUM INTO` a URI that names the
-        cipher and a `raw:` key; SQLite3 Multiple Ciphers can't back up a
-        plain database into an encrypted one, nor encrypt one in place in
-        WAL mode), check the copy (integrity and each table's row count),
-        flush it to disk (on Windows that needs the file opened for
+        if another copy of the app has the database open; then checkpoint
+        the plain write-ahead log into the file and empty it, copy the
+        database into a new file with the key (`VACUUM INTO` a URI that
+        names the cipher and a `raw:` key; SQLite3 Multiple Ciphers can't
+        back up a plain database into an encrypted one, nor encrypt one in
+        place in WAL mode), check the copy (integrity and each table's row
+        count), flush it to disk (on Windows that needs the file opened for
         writing), release the lock, remove the plain write-ahead files, and
-        rename the copy over the plain file. The plain database is untouched
-        until the rename. Without the lock, macOS would let the rename
-        happen under another copy, which would go on writing to the old
-        file and lose what it writes; Windows refuses the rename instead. A
-        test that stops the migration after the copy, and another after the
-        check, finds the plain database opening as before, and the next try
-        removes the half-made copy and finishes. Afterwards only the
-        encrypted file is left. The plain file's old contents can stay in
-        the disk's free space, and in backups, until they are overwritten.*
+        rename the copy over the plain file. The checkpoint rewrites the
+        plain file, but it stays a valid plain database, with all its data,
+        until the rename; the plain write-ahead files are removed only after
+        the copy has been checked. Without the lock, macOS would let the
+        rename happen under another copy, which would go on writing to the
+        old file and lose what it writes; Windows refuses the rename
+        instead. The spike releases the lock before removing the write-ahead
+        files and renaming, so a copy that starts in that moment isn't kept
+        out; the build closes that gap (its migration step). A test that
+        stops the migration after the copy, and another after the check,
+        finds the plain database opening as before, and the next try removes
+        the half-made copy and finishes. Afterwards only the encrypted file
+        is left. The plain file's old contents can stay in the disk's free
+        space, and in backups, until they are overwritten.*
       - *Attachments and images: encrypt each file with AES-256-GCM from
         `aws-lc-rs`, which the app already has for TLS, using a key derived
         from the same keychain key, with the file's place in the cache
@@ -7693,22 +7707,27 @@ item below is built, the owner has tried it, and the owner has published
         - *SQLite3 Multiple Ciphers built and passed the spike's tests in
           the draft's own Docker image (`scripts/linux/Dockerfile`, Ubuntu
           22.04, the version its CI uses). It needs no OpenSSL, so the .deb,
-          .rpm and AppImage gain no library to depend on or bundle, as they
-          would with SQLCipher.*
+          .rpm and AppImage carry no OpenSSL. With SQLCipher they would:
+          linked into the app with the vendored feature, or as a package
+          dependency on the system's.*
         - *The clang-cl fix applies only to Windows targets built with
           clang-cl; Linux's GCC build keeps SQLite3 Multiple Ciphers' own
           128-bit path.*
         - *`deny.toml` gains the Linux targets in the draft; the license
           check runs again with them once both are in.*
-        - *This work and the draft both change the privacy policy's sentence
-          on disk encryption and Settings → Privacy; whichever merges second
-          rewrites the sentence for all three systems.*
+        - *The draft adds Linux to the privacy policy's sentence on disk
+          encryption (`website/privacy.html`), which this work rewrites too;
+          whichever merges second rewrites that sentence for all three
+          systems. The draft doesn't touch Settings → Privacy; this work
+          updates it (its last build step).*
         - *The migration and the file encryption use the database path and
           cache folder the app is given, so the draft's `brand::data_dir`
-          needs nothing more. On macOS and Linux the copy made during the
-          migration sits in the data folder, which only this user can
-          access, and `Db::open` limits the file itself to this user when it
-          next opens it.*
+          needs nothing more. On macOS and Linux the app makes the data
+          folder this user's only at startup, and `Db::open` does the same
+          for the database's files, both as best effort: a folder that is a
+          symbolic link, or owned by another account, is left as it is. So
+          the migration makes its copy private itself, before writing to it
+          (its build step).*
 
       *(2026-11-26, owner: SQLite3 Multiple Ciphers through the patched
       `libsqlite3-sys` copy, as the spike recommends.)*
@@ -7732,7 +7751,19 @@ item below is built, the owner has tried it, and the owner has published
             2026-11-26). A keychain that doesn't answer leaves the files
             alone and says so.
       - [ ] The one-time migration of a plain database, with the spike's
-            tests.
+            tests, and three things the spike left open. Other copies stay
+            out until the copy has replaced the plain file: on macOS and
+            Linux the lock is held through the rename; on Windows, which
+            can't rename a file that's open, the single-instance check is
+            meant to keep a second normal copy from starting, and the build
+            is to confirm that it quits before opening the database, and to
+            add a test that opens a second connection between the lock's
+            release and the rename. The copy is made private (this user's
+            only) before anything is written to it: an empty file created
+            that way first, which `VACUUM INTO` accepts. An older version
+            opened after the migration can't read the cache and doesn't
+            start, as today's code fails on a database that doesn't open;
+            the release notes are to say so.
       - [ ] Attachments and images encrypted in the cache folder; decrypted
             copies only for other apps, in a private temporary folder that
             is emptied at start and at quit; the plain files already cached
