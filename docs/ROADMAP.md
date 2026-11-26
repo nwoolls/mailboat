@@ -5445,6 +5445,22 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [x] The sanitizer's property test failed on Windows CI with a false alarm
+      *(found 2026-11-26 on pull request #249, which doesn't touch the
+      sanitizer)*: random input put an unclosed `url(` in one `<style>`
+      element and `javascript:` in the next. The test's checker
+      (`mail::sanitize_check::problems`) joined every sheet into one before
+      reading it, so the unclosed `url(` took in the next sheet's text and
+      the checker reported a `javascript:` address. A browser reads each
+      `<style>` element as a sheet of its own, so it finds no address, and
+      the sanitizer's output is safe. The failure reproduced locally every
+      time; the fault was in the checker. *(Fixed 2026-11-26, branch
+      `sanitize-style-javascript`: the checker reads each sheet on its own.
+      The test `each_style_element_is_its_own_sheet` holds the
+      counterexample, and a bad address in the second of two sheets is still
+      caught; it fails without the fix. Both property tests that use the
+      checker (`any_email_comes_out_safe`, `any_plain_text_comes_out_safe`)
+      then passed 200,000 cases each in a local run.)*
 - [x] Windows showed the Mac's words and one Mac-only button *(found
       2026-11-24 on branch `linux-build`, while giving Linux its own)*:
       Settings → Appearance said the theme follows macOS, Settings →
