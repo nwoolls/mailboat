@@ -19,7 +19,7 @@ function versionOf(path: string): string {
   return version;
 }
 
-if (!next) {
+if (!current || !next) {
   console.error("Usage: keep-newer-manifest.ts <current|none> <new>");
   process.exit(2);
 }

@@ -43,7 +43,7 @@ rust=false
 for f in $changed; do
   case "$f" in
     *.rs | Cargo.toml | Cargo.lock | */Cargo.toml | crates/core/tests/fixtures/*) rust=true ;;
-    src/* | tests/browser/* | package.json | bun.lock | tsconfig*.json | vite.config.* | .oxlintrc* | .oxfmtrc*) web=true ;;
+    src/* | scripts/* | tests/browser/* | package.json | bun.lock | tsconfig*.json | vite.config.* | .oxlintrc* | .oxfmtrc*) web=true ;;
   esac
 done
 
