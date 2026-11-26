@@ -5442,9 +5442,11 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       over the text. *(Fixed the same day, branch
       `backlog-signout-wording`: a row's control moves below its text when
       the two don't fit side by side, and a three-way choice can narrow. A
-      browser test opens every Settings section at three widths and checks
-      that no control covers its text or runs past its row; it found
-      ten such rows before the fix.)*
+      browser test opens every Settings section at three widths, with data
+      for its controls, and checks that no control covers its text, runs
+      past its row, or has text spilling out of it; it found ten such rows
+      before the fix, and a Toybox tile whose name spilled out of it,
+      which now wraps inside the tile.)*
 - [ ] Remove account's confirmation says it deletes the images "it
       downloaded on this Mac" on Windows too (`RemoveAccountDialog`);
       say "this computer", as Delete all data does *(found 2026-11-25,

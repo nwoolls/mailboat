@@ -34,9 +34,18 @@ for (const id of SECTIONS) {
     test(`Settings → ${id} at ${width}px: controls never cover their text`, async ({ page }) => {
       await page.goto(`/tests/browser/harness.html?mode=settings&section=${id}&width=${width}`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      // Sections that load data show their rows once it's in (Toybox has
-      // cards, not rows).
-      if (id !== "toybox") await expect(page.locator("[data-settings-row]").first()).toBeVisible();
+      // Each section with its controls in place before measuring: the
+      // harness answers with data for them (review, round 1).
+      const ready = {
+        ai: page.getByRole("button", { name: "Get Claude app" }),
+        accounts: page
+          .getByRole("radiogroup", { name: "Account color" })
+          .getByRole("radio")
+          .first(),
+        rules: page.getByText("news@x.example").first(),
+        toybox: page.getByRole("radio").first(),
+      }[id];
+      await expect(ready ?? page.locator("[data-settings-row]").first()).toBeVisible();
       const problems = await page.evaluate(() => {
         const out: string[] = [];
         const panel = document.querySelector("section[aria-label^='Settings']");
@@ -70,9 +79,45 @@ for (const id of SECTIONS) {
             out.push(`"${name}": its control runs past the row`);
           }
         }
+        // (A <select> is left out: its options' text isn't laid out in it,
+        // and its own box is measured with its row above.)
+        // Text inside every control stays inside it: a label too long for
+        // its button, or a segment's text running into the next (text is
+        // measured as rendered, since a label is often a bare text node).
+        const panelBox = scroller?.getBoundingClientRect();
+        for (const el of document.querySelectorAll<HTMLElement>(
+          "section[aria-label^='Settings'] :is(button, [role=radio], [role=switch], a)",
+        )) {
+          const own = el.getBoundingClientRect();
+          if (own.width === 0) continue;
+          const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            if (!n.textContent?.trim()) continue;
+            const range = document.createRange();
+            range.selectNodeContents(n);
+            const t = range.getBoundingClientRect();
+            if (t.left < own.left - 1 || t.right > own.right + 1) {
+              out.push(`"${el.textContent?.trim().slice(0, 30)}": its text spills out of it`);
+              break;
+            }
+            if (panelBox && t.right > panelBox.right + 1) {
+              out.push(`"${el.textContent?.trim().slice(0, 30)}": its text runs past the panel`);
+              break;
+            }
+          }
+        }
         return out;
       });
       expect(problems).toEqual([]);
+      // With room for both, a row keeps its control beside its text: the
+      // wrap is for narrow widths only (review, round 1).
+      if (id === "ai" && width === 720) {
+        const row = page.locator("[data-settings-row]", { hasText: "In the list" });
+        const text = await row.locator("[data-settings-row-text]").boundingBox();
+        const control = await row.locator("[data-settings-row-control]").boundingBox();
+        expect(control!.x).toBeGreaterThanOrEqual(text!.x + text!.width - 1);
+        expect(control!.y).toBeLessThan(text!.y + text!.height);
+      }
     });
   }
 }

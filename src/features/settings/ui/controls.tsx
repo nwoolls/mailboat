@@ -278,7 +278,8 @@ export function ChoiceGrid<T extends string>({
             }`}
           >
             {option.picture}
-            <span className="truncate">{option.label}</span>
+            {/* Wraps in a narrow tile rather than spilling past it. */}
+            <span className="max-w-full text-center leading-snug break-words">{option.label}</span>
           </button>
         );
       })}

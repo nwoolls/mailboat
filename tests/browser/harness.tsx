@@ -82,6 +82,9 @@ import "./slowMachine";
 import { emit } from "@tauri-apps/api/event";
 import { mockIPC } from "@tauri-apps/api/mocks";
 import settingsDefaults from "./settingsDefaults.json";
+
+/** Whether this page is a Settings section (`?mode=settings`). */
+const settingsMode = () => new URLSearchParams(location.search).get("mode") === "settings";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -251,7 +254,14 @@ const answer = (cmd: string, args: unknown): unknown => {
       ];
     }
     case "app_info":
-      return { iconChoices: [], version: "0.1.0" };
+      return {
+        iconChoices: [],
+        version: "0.1.0",
+        // Settings → Accounts' color choices (made-up colors).
+        accountColors: settingsMode()
+          ? ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
+          : [],
+      };
     case "update_check": {
       const found = new URLSearchParams(location.search).get("update");
       if (found === "error")
@@ -410,12 +420,62 @@ const answer = (cmd: string, args: unknown): unknown => {
           },
         },
       ];
+    case "rules_list":
+      return [
+        {
+          accountId: account.id,
+          state: {
+            kind: "ready",
+            rules: [
+              {
+                accountId: account.id,
+                filterId: "f1",
+                criteria: {
+                  from: "news@x.example",
+                  to: "",
+                  subject: "",
+                  hasWords: "",
+                  doesntHave: "",
+                  hasAttachment: false,
+                  size: null,
+                },
+                actions: {
+                  skipInbox: true,
+                  markRead: true,
+                  star: false,
+                  labels: [],
+                  neverSpam: false,
+                  trash: false,
+                  importance: "leave",
+                },
+              },
+            ],
+          },
+        },
+      ];
+    case "mcp_setup":
+      return {
+        program: "/Applications/Example.app/Contents/MacOS/example",
+        claudeCodeCommand:
+          "claude mcp add example -- /Applications/Example.app/Contents/MacOS/example --mcp",
+        claudeCodeInstalled: true,
+        claudeCodeConnected: false,
+        claudeDesktopConnected: false,
+      };
     case "settings_get":
       // The Settings pages need every setting: Rust's defaults, kept
       // current by a core test. Elsewhere only what the modes rely on.
-      if (new URLSearchParams(location.search).get("mode") === "settings") return settingsDefaults;
+      if (settingsMode()) return settingsDefaults;
       return { ai: { writingProvider: "apple" } };
     case "ai_status":
+      // Settings pages: every kind of row (connected, not installed), so
+      // their buttons are there to measure.
+      if (settingsMode())
+        return [
+          { provider: "apple", state: "ready", account: null },
+          { provider: "chatgpt", state: "ready", account: "maya@x.example" },
+          { provider: "claude", state: "notInstalled" },
+        ];
       // `&ai=none`: Windows with no AI set up (Apple Intelligence can't be there).
       return [
         {
