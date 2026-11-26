@@ -104,7 +104,8 @@ export function isVersion(text: string): boolean {
 
 /** A version's numeric core and pre-release parts (build metadata dropped). */
 function split(v: string) {
-  const [core, pre] = v.split("+")[0].split("-", 2);
+  // `split` always gives at least one part.
+  const [core = "", pre] = v.split("+")[0]!.split("-", 2);
   return { core: core.split(".").map(Number), pre: pre === undefined ? null : pre.split(".") };
 }
 
@@ -117,7 +118,7 @@ export function compareVersions(a: string, b: string): number {
   const x = split(a);
   const y = split(b);
   for (let i = 0; i < 3; i++) {
-    if (x.core[i] !== y.core[i]) return x.core[i] < y.core[i] ? -1 : 1;
+    if (x.core[i] !== y.core[i]) return x.core[i]! < y.core[i]! ? -1 : 1;
   }
   if (x.pre === null || y.pre === null) return x.pre === y.pre ? 0 : x.pre === null ? 1 : -1;
   for (let i = 0; i < Math.max(x.pre.length, y.pre.length); i++) {

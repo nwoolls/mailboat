@@ -77,6 +77,11 @@ jobs:
         run: bun run lint
       - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site'
         run: bun run typecheck
+      # A site run changes the website's own checks (scripts/website.ts and
+      # the rest), so it type-checks scripts/ (an app run's typecheck
+      # includes it already).
+      - if: needs.changes.outputs.kind == 'site'
+        run: bun run typecheck:scripts
       - run: bun run check:brand
       # The version the README names against package.json (scripts/readme.ts).
       # Always: a README change is a docs change.
@@ -97,8 +102,9 @@ jobs:
       - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site'
         run: bun run test
       # The website's own checks count as a site change, so a site run tests
-      # them (an app run's `bun run test` includes them already).
-      - if: needs.changes.outputs.kind != 'docs'
+      # them (an app run's `bun run test` includes them already, so it
+      # doesn't run them twice).
+      - if: needs.changes.outputs.kind == 'site'
         run: bunx vitest run scripts/website.test.ts scripts/policy.test.ts
       # Each pull request carries a changeset (an empty one when people
       # won't notice the change). Dependabot's don't, and neither does a
