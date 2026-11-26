@@ -424,10 +424,11 @@ Each system is reviewed on its own, because what stops Codex differs
 same day each month: the Mac in the repository, Windows in its VM with
 only Codex installed and signed in, using a test program built on the
 Mac (`scripts/windows.sh codex-review`; copy the file into the VM and run
-it there with the same arguments as below, after `--`). If Windows records
-exactly the Mac's lists (`codex_review::differences` names any
-difference, and any system with no review yet), the owner may decide to
-run only the live `codex_cannot_*` tests there.
+it there with the same arguments as below, after `--`). Every system runs
+the full recheck, the offline tests included, even when its lists match
+the Mac's (owner, 2026-11-26): they cost nothing on the subscription, and
+they're the only check that catches a new tool, which comes with a
+Codex version (the version in each VM can differ from the Mac's).
 
 `bun run check` (and `check:quick`) stops when a system's review is over
 31 days old, on the owner's machine (an empty, uncommitted
