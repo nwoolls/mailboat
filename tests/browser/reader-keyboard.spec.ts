@@ -1,4 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
+import { readerLineStep } from "../../src/features/reader/model/readerKeys";
+import { REPLY_FOLLOW_EVENT } from "../../src/shared/lib/replyFollow";
 
 /**
  * An open conversation with the keyboard (owner, 2026-11-23): → or Enter
@@ -39,9 +41,10 @@ async function scrollSettled(page: Page) {
   });
 }
 
-async function preview(page: Page) {
+/** `extra`: more of the harness's options (`&threads=distinct`: j / k open another conversation). */
+async function preview(page: Page, extra = "") {
   await page.setViewportSize({ width: 1200, height: 800 });
-  await page.goto("/tests/browser/harness.html?mode=shell&rows=1&conversation=all");
+  await page.goto(`/tests/browser/harness.html?mode=shell&rows=1&conversation=all${extra}`);
   await page.getByRole("option").first().click();
   await expect(cards(page).first()).toBeVisible();
   // Back on the list, as after a click on a row.
@@ -215,6 +218,53 @@ test("keys in a menu inside the conversation don't move the outline", async ({ p
 });
 
 /**
+ * A stall while ↑ is held (a busy machine, as on a CI runner): the scroll
+ * toward the outlined email hasn't moved when the next ↑ comes, though
+ * its time has passed. The outline stays on the first email, rather than
+ * the email above the view being taken for scrolled away and the outline
+ * jumping down to the one showing (docs/ROADMAP.md → Flaky tests).
+ */
+test("a stall while ↑ is held doesn't send the outline back down", async ({ page }) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  // The three short emails sit above the long fourth one, outlined first.
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  await expect.poll(() => outlinedIndex(page)).toBe(1);
+  const before = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const first = reader.querySelector("section[data-message-id]")!;
+    const up = () =>
+      reader.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    // ↑ outlines the first email and starts scrolling to it.
+    up();
+    // React applies it (a microtask); no frame runs before the next ↑.
+    await Promise.resolve();
+    const outlinedFirst = first.hasAttribute("data-outlined");
+    // Still above the view, so measured from where the reader is, it would
+    // count as scrolled away.
+    const above = first.getBoundingClientRect().bottom <= reader.getBoundingClientRect().top;
+    // The page busy for longer than a smooth scroll's time (HEADING_MS),
+    // so the scroll hasn't moved when the next ↑ comes.
+    const start = performance.now();
+    while (performance.now() - start < 1000);
+    up();
+    return { outlinedFirst, above };
+  });
+  expect(before).toEqual({ outlinedFirst: true, above: true });
+  await scrollSettled(page);
+  expect(await outlinedIndex(page)).toBe(0);
+  // Once the scroll has stopped, the aim is let go: anchoring is back on.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.querySelector<HTMLElement>(".reader-scroll")!.style.overflowAnchor,
+      ),
+    )
+    .toBe("");
+});
+
+/**
  * The outline scrolled out of view: the next arrow outlines the first
  * email showing and stops there, rather than moving past it at once (review).
  */
@@ -359,6 +409,135 @@ test("an arrow after the layout moved the reader goes on from where it is", asyn
   });
   // On down from where the layout put it, not back up from the old aim.
   expect(result.after).toBeGreaterThan(result.moved);
+});
+
+/**
+ * An arrow's smooth scroll still on its way when the reply being written
+ * takes the reader over (it starts sticking to the bottom) and leaves it
+ * part way toward where the arrow was heading: the next arrow goes on from
+ * where the reader is. Moving toward the aim, that scroll looked like the
+ * arrow's own (review).
+ */
+test("an arrow after the reply took the reader over goes on from where it is", async ({ page }) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
+  await expect.poll(() => outlinedIndex(page)).toBe(0);
+  await page.keyboard.press("ArrowRight");
+  await expect(cards(page).first().locator(":scope > button")).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  // The first email made long, and the reader part way down it.
+  const view = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const tall = document.createElement("div");
+    tall.style.height = "3000px";
+    reader.querySelector("section[data-message-id]")!.append(tall);
+    reader.scrollTo({ top: 1500, behavior: "instant" });
+    await new Promise((done) => requestAnimationFrame(done));
+    return reader.clientHeight;
+  });
+  const step = readerLineStep(view);
+  const moved = await page.evaluate(
+    ({ followEvent, by }) => {
+      const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+      const key = (k: string) =>
+        reader.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
+      // ↑ heads a step up; before it gets far, the reply takes the reader
+      // over and leaves it half way there.
+      key("ArrowUp");
+      reader.dispatchEvent(new Event(followEvent));
+      reader.scrollTo({ top: 1500 - by / 2, behavior: "instant" });
+      const left = reader.scrollTop;
+      key("ArrowDown");
+      return left;
+    },
+    { followEvent: REPLY_FOLLOW_EVENT, by: step },
+  );
+  // A step down from where the reply left it. From the old aim, ↓ would
+  // have gone back to 1500 and never got this far.
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop))
+    .toBeGreaterThan(moved + step * 0.75);
+});
+
+/**
+ * The keyboard back in the conversation from the list, where Space and
+ * n / p scroll the reader from outside: the last arrow's aim is let go,
+ * so the next arrow goes on from where the reader is (review).
+ */
+test("the keyboard back from the list lets go of the arrow's aim", async ({ page }) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  const result = await page.evaluate(() => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const list = document.querySelector<HTMLElement>(
+      '[role="listbox"][aria-label="Conversations"]',
+    )!;
+    reader.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    const aiming = reader.style.overflowAnchor;
+    // To the list and back, within the aim's own time (HEADING_MS).
+    list.focus({ preventScroll: true });
+    reader.focus({ preventScroll: true });
+    return { aiming, after: reader.style.overflowAnchor };
+  });
+  expect(result).toEqual({ aiming: "none", after: "" });
+});
+
+/**
+ * Another conversation opened while an arrow's scroll is on its way: the
+ * reader it was in goes, and lets go of the aim at once (review).
+ */
+test("another conversation opened mid-scroll lets go of the arrow's aim", async ({ page }) => {
+  await preview(page, "&threads=distinct");
+  await page.keyboard.press("ArrowRight");
+  const result = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    reader.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    const aiming = reader.style.overflowAnchor;
+    // j: the next conversation; this reader goes once it has loaded.
+    reader.dispatchEvent(new KeyboardEvent("keydown", { key: "j", bubbles: true }));
+    // Meanwhile the reader moves a pixel every frame, so the aim can't run
+    // out on its own (that needs the reader standing still): only the
+    // unmount can let it go, however long the switch takes.
+    for (let i = 0; i < 600 && reader.isConnected; i++) {
+      reader.scrollTop += i % 2 ? -1 : 1;
+      await frame();
+    }
+    return { aiming, gone: !reader.isConnected, after: reader.style.overflowAnchor };
+  });
+  expect(result).toEqual({ aiming: "none", gone: true, after: "" });
+});
+
+/**
+ * An arrow's scroll that stopped short (cut off, or a stall): its aim
+ * doesn't run out at the first frame after its time (HEADING_MS), only once
+ * the reader has stood still for some frames, as a smooth scroll can stand
+ * still before it starts (review).
+ */
+test("a stopped arrow scroll keeps its aim until the reader has stood still", async ({ page }) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  const frames = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    reader.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    // Cut short where it is, then past its time with no frame run.
+    reader.scrollTo({ top: reader.scrollTop, behavior: "instant" });
+    const start = performance.now();
+    while (performance.now() - start < 700);
+    let n = 0;
+    while (reader.style.overflowAnchor === "none" && n < 300) {
+      await frame();
+      n++;
+    }
+    return { n, released: reader.style.overflowAnchor === "" };
+  });
+  expect(frames.released).toBe(true);
+  // Not at the first frame past the deadline: about STILL_FRAMES (30) of them.
+  expect(frames.n).toBeGreaterThanOrEqual(20);
 });
 
 /**
