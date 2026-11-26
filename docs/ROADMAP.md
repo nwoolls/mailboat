@@ -5449,20 +5449,25 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       rather than printing its usage. CI also type-checks `scripts/` on a
       pull request that changes only the website, and the quick check on
       a change to `scripts/`.)*
-- [ ] Removing an account, or Delete all data, can sign the app out of
+- [x] Removing an account, or Delete all data, can sign the app out of
       that Google account on other computers too, and neither
       confirmation says so *(found 2026-11-25 testing Linux in the owner's
       VMs: Delete all data on one signed out the Mac and the other VMs
       too)*. Removing asks Google to revoke the sign-in
       (`tokens::remove_account_revoking` for one account,
       `tokens::revoke_refresh_token` for Delete all data); when Google
-      does, it revokes the whole grant for that OAuth client, so every
-      copy of the app signed in through the same client loses it (a copy
-      using other credentials doesn't, nor does any copy when the
-      revoke couldn't reach Google). That's the intended outcome; the
+      does, it revokes the whole grant for that Google Cloud project
+      (every OAuth client registered in it, as Google's documentation on
+      token revocation says), so every copy of the app signed in through
+      a client of that project loses it (a copy using credentials from
+      another project doesn't, nor does any copy when the revoke couldn't
+      reach Google). That's the intended outcome; the
       dialogs say only "asks Google to end its sign-in". Add that it can
       sign the app out on other computers too (`RemoveAccountDialog`,
-      `DeleteAllDataDialog`).
+      `DeleteAllDataDialog`). *(Fixed 2026-11-26, branch
+      `account-removal-wording`: both confirmations, and the Remove
+      account row in Settings → Accounts, say that ending the sign-in can
+      also sign the account out of the app on other computers.)*
 - [x] In a narrow window, or with a larger desktop font, some settings'
       controls covered their title and description *(found 2026-11-25 on
       Fedora KDE, where the larger default font showed it: "Above a
@@ -5476,10 +5481,17 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       past its row, or has text spilling out of it; it found ten such rows
       before the fix, and a Toybox tile whose name spilled out of it,
       which now wraps inside the tile.)*
-- [ ] Remove account's confirmation says it deletes the images "it
+- [x] Remove account's confirmation says it deletes the images "it
       downloaded on this Mac" on Windows too (`RemoveAccountDialog`);
       say "this computer", as Delete all data does *(found 2026-11-25,
-      while checking the wording above)*.
+      while checking the wording above)*. *(Fixed 2026-11-26, branch
+      `account-removal-wording`, with the other places Windows was told
+      "this Mac": the Remove account row in Settings → Accounts, the
+      image download row in Settings → Viewing, "Mail on this Mac" in
+      Settings → Advanced, and the errors for a provider that isn't
+      installed now say "this computer". Translating with no one to ask
+      (no Apple Translation, no writing provider set up) no longer sends
+      Windows to macOS's System Settings; it points to Settings → AI.)*
 
 - [x] A user took the toys for frozen *(user report, 2026-11-23; fixed the
       same day, branch `toybox-reduced-motion`)*: with the system's reduce
