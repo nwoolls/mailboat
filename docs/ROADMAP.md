@@ -5440,8 +5440,8 @@ the way, and one bug in the app caused flaky failures; all three are in
         https://github.com/nwoolls/mailboat/actions/runs/45874226966,
         WebKit: after five ↑, the second email was outlined instead of the
         first (`toBe(0)`, received 1, line 227), before the test's own
-        checks; 283 others passed. The job wasn't run again; the test was
-        fixed instead.
+        checks; 283 others passed. The job wasn't run again; the cause was
+        fixed in the app instead, with new tests beside this one.
       - Fixed 2026-11-26 (branch `reader-keyboard-flaky`), in the app (0.4.0
         → Bugs). The CI trace shows the third ↑ taking about 1 s, a stall.
         A key goes on from where the last key's smooth scroll is heading,
@@ -5451,17 +5451,30 @@ the way, and one bug in the app caused flaky failures; all three are in
         the view) for scrolled away, and outlined the email showing below.
         A throwaway spec that stalled the page after each of the five
         presses reproduced it locally, in three of the four runs with a
-        700 or 1000 ms stall after the third or fourth press. The place is now forgotten only once the
-        600 ms are up and the reader has stood still for 30 frames (WebKit's
-        smooth scroll stands still for a few frames before it starts, and
-        again after a stall; 2 frames still failed one case). A new test,
-        "a stall while ↑ is held doesn't send the outline back down",
-        stalls the page for 1 s between two ↑ with no frame in between: it
-        failed 10 of 10 without the fix and passed 10 of 10 with it. With
-        the fix, the stall sweep ended on the first email in all 75 runs;
-        the file and `reply-esc.spec.ts` passed 380 of 380 (20 runs each),
-        the file 80 of 80 on a slowed page (5 runs) and 128 of 128 on 8
-        workers.
+        700 or 1000 ms stall after the third or fourth press. On its own,
+        the place now runs out only once the 600 ms are up and the reader
+        has stood still for 30 frames (WebKit's smooth scroll stands still
+        for a few frames before it starts, and again after a stall; 2
+        frames still failed one case). A wheel, a touch, a click or another
+        scrolling key still forgets it at once. A new test, "a stall while
+        ↑ is held doesn't send the outline back down", stalls the page for
+        1 s between two ↑ with no frame in between: it failed 10 of 10
+        without the fix and passed 10 of 10 with it. With the fix, the
+        stall sweep ended on the first email in all 75 runs.
+      - Review, the same day: with the clock no longer forgetting the
+        place by itself, a scroll from elsewhere that moved the reader
+        toward it kept it alive, and the next arrow went on from a place
+        the reader wasn't. The place is now also forgotten when the reply
+        being written starts sticking to the bottom, when the keyboard
+        comes back from the list (Space and n / p scroll the reader from
+        there), and when the conversation changes (its watcher stops with
+        the reader). One new test for each failed 10 of 10 without its
+        change (the reply's 5 of 5) and passed with it. The stall test now
+        also checks that the first ↑ outlined the first email while it
+        was still above the view; with the old code it failed 10 of 10
+        after that check. After the review fixes, the file and
+        `reply-esc.spec.ts` passed 440 of 440 (20 runs each), the file 95
+        of 95 on a slowed page (5 runs) and 152 of 152 on 8 workers.
 
 ## Bug backlog
 
@@ -7827,10 +7840,14 @@ item below is built, the owner has tried it, and the owner has published
       app forgot that place after 600 ms even when the scroll hadn't
       moved: during a stall no frame runs. The next ↑ then took the email
       just outlined, still above the view, for scrolled away, and outlined
-      the first email showing instead. The place is now forgotten only
-      once the 600 ms are up and the reader has also stood still for 30
-      frames. See Flaky tests, `reader-keyboard.spec.ts`, "an arrow after
-      the outline scrolled away".
+      the first email showing instead. On its own, the place now runs out
+      only once the 600 ms are up and the reader has also stood still for
+      30 frames; a wheel, a touch, a click or another scrolling key still
+      forgets it at once. From review, it's also forgotten when the reply
+      being written takes the reader over, when the keyboard comes back
+      from the list, and when the conversation changes. See Flaky tests,
+      `reader-keyboard.spec.ts`, "an arrow after the outline scrolled
+      away".
 
 ## Later / unscheduled
 
