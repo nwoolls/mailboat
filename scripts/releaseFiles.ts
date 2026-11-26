@@ -12,6 +12,13 @@ export const PLATFORMS: readonly Platform[] = [
   "windows-aarch64",
 ];
 
+/** How each payload's name ends, as Tauri names them, and its platform. */
+const PAYLOADS: readonly (readonly [ending: string, platform: Platform])[] = [
+  [".app.tar.gz", "darwin-aarch64"],
+  ["_x64-setup.exe", "windows-x86_64"],
+  ["_arm64-setup.exe", "windows-aarch64"],
+];
+
 /**
  * Which platform's update payload a build output is, or null if it isn't one:
  * the Mac app's tarball, and each Windows installer (the updater runs the
@@ -21,10 +28,7 @@ export const PLATFORMS: readonly Platform[] = [
  * are never passed through here.
  */
 export function platformOf(file: string): Platform | null {
-  if (file.endsWith(".app.tar.gz")) return "darwin-aarch64";
-  if (file.endsWith("_x64-setup.exe")) return "windows-x86_64";
-  if (file.endsWith("_arm64-setup.exe")) return "windows-aarch64";
-  return null;
+  return PAYLOADS.find(([ending]) => file.endsWith(ending))?.[1] ?? null;
 }
 
 /**
@@ -58,16 +62,41 @@ export function isSbom(file: string): boolean {
 }
 
 /**
- * The downloads that each get a software bill of materials: the platform the
- * release builds for, its Rust target, and the word its files end with
+ * The downloads that each get a software bill of materials: the update
+ * platforms it covers, its Rust target, the word its files end with
  * (`App_0.1.0_aarch64.dmg`, `App_0.1.0_x64-setup.exe`), so each bill of
- * materials sits beside the download it describes.
+ * materials sits beside the download it describes, and the system that
+ * makes it (`host`, as `process.platform` names it): the crates a build
+ * script uses follow the computer that builds, so each is made where its
+ * download is built (the Mac's and Windows' on a Mac, Windows cross-built
+ * there).
  */
 export const SBOM_DOWNLOADS = [
-  { platform: "darwin-aarch64", target: "aarch64-apple-darwin", suffix: "aarch64" },
-  { platform: "windows-x86_64", target: "x86_64-pc-windows-msvc", suffix: "x64" },
-  { platform: "windows-aarch64", target: "aarch64-pc-windows-msvc", suffix: "arm64" },
-] as const satisfies readonly { platform: Platform; target: string; suffix: string }[];
+  {
+    platforms: ["darwin-aarch64"],
+    target: "aarch64-apple-darwin",
+    suffix: "aarch64",
+    host: "darwin",
+  },
+  {
+    platforms: ["windows-x86_64"],
+    target: "x86_64-pc-windows-msvc",
+    suffix: "x64",
+    host: "darwin",
+  },
+  {
+    platforms: ["windows-aarch64"],
+    target: "aarch64-pc-windows-msvc",
+    suffix: "arm64",
+    host: "darwin",
+  },
+] as const satisfies readonly {
+  platforms: readonly Platform[];
+  target: string;
+  suffix: string;
+  host: string;
+  arch?: string;
+}[];
 
 /** A download's bill of materials: `App_0.1.0_aarch64.cdx.json`. */
 export function sbomName(app: string, version: string, download: { suffix: string }): string {

@@ -5,11 +5,11 @@
 //
 // Run after `bun install --frozen-lockfile` (it reads installed packages'
 // licenses) with Rust installed (it asks `cargo tree`, twice per platform
-// the release builds), on a Mac: every release build runs on one (Windows
-// is cross-built there), and a build script's own crates follow the
-// computer that builds, so only a Mac lists the ones the release used.
-// Writes `<App>_<version>_<download>.cdx.json` in `--out` for each of
-// `SBOM_DOWNLOADS` (`releaseFiles.ts`).
+// the release builds). A build script's own crates follow the computer that
+// builds, so each download's bill is made on the kind of computer that
+// builds it (`host` in `SBOM_DOWNLOADS`, `releaseFiles.ts`): today all of
+// them on a Mac, Windows' cross-built there. Writes
+// `<App>_<version>_<download>.cdx.json` in `--out` for each of those.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -55,8 +55,13 @@ function tree(target: string, edges: string): string {
   if (run.status !== 0) fail(`cargo tree for ${target} failed:\n${run.stderr}`);
   return run.stdout;
 }
-if (process.platform !== "darwin") {
-  fail("run on a Mac, as the release builds are: the build tools' crates depend on it");
+// Only the downloads built on this kind of computer: the build tools'
+// crates depend on it.
+const downloads = SBOM_DOWNLOADS.filter(
+  (d) => d.host === process.platform && (!("arch" in d) || d.arch === process.arch),
+);
+if (downloads.length === 0) {
+  fail(`no download is built on ${process.platform}: run on a Mac, as the release does`);
 }
 const checksums = cargoChecksums(readFileSync("Cargo.lock", "utf8"));
 
@@ -76,7 +81,7 @@ const js = npmComponents(lock, license);
 mkdirSync(out, { recursive: true });
 const count = (list: { scope?: string }[], scope: string) =>
   list.filter((c) => c.scope === scope).length;
-for (const download of SBOM_DOWNLOADS) {
+for (const download of downloads) {
   const { rust, document } = downloadBom({
     name: brand.name,
     version,

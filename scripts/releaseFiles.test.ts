@@ -76,7 +76,9 @@ describe("a bill of materials per download", () => {
       expect(platformOf(name)).toBeNull();
       expect(stableName(name, "0.1.0")).toBeNull();
     }
-    expect(SBOM_DOWNLOADS.map((d) => d.platform).toSorted()).toEqual([...PLATFORMS].toSorted());
+    expect(SBOM_DOWNLOADS.flatMap((d) => d.platforms).toSorted()).toEqual(
+      [...PLATFORMS].toSorted(),
+    );
   });
 });
 
