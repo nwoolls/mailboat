@@ -5424,6 +5424,38 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [ ] Removing an account, or Delete all data, can sign the app out of
+      that Google account on other computers too, and neither
+      confirmation says so *(found 2026-11-25 testing Linux in the owner's
+      VMs: Delete all data on one signed out the Mac and the other VMs
+      too)*. Removing asks Google to revoke the sign-in
+      (`tokens::remove_account_revoking` for one account,
+      `tokens::revoke_refresh_token` for Delete all data); when Google
+      does, it revokes the whole grant for that OAuth client, so every
+      copy of the app signed in through the same client loses it (a copy
+      using other credentials doesn't, nor does any copy when the
+      revoke couldn't reach Google). That's the intended outcome; the
+      dialogs say only "asks Google to end its sign-in". Add that it can
+      sign the app out on other computers too (`RemoveAccountDialog`,
+      `DeleteAllDataDialog`).
+- [x] In a narrow window, or with a larger desktop font, some settings'
+      controls covered their title and description *(found 2026-11-25 on
+      Fedora KDE, where the larger default font showed it: "Above a
+      conversation" in Settings → AI)*. A row kept its control on the
+      right in at most 60% of its width, and a wider control spilled left
+      over the text. *(Fixed the same day, branch
+      `backlog-signout-wording`: a row's control moves below its text when
+      the two don't fit side by side, and a three-way choice can narrow. A
+      browser test opens every Settings section at three widths, with data
+      for its controls, and checks that no control covers its text, runs
+      past its row, or has text spilling out of it; it found ten such rows
+      before the fix, and a Toybox tile whose name spilled out of it,
+      which now wraps inside the tile.)*
+- [ ] Remove account's confirmation says it deletes the images "it
+      downloaded on this Mac" on Windows too (`RemoveAccountDialog`);
+      say "this computer", as Delete all data does *(found 2026-11-25,
+      while checking the wording above)*.
+
 - [x] A user took the toys for frozen *(user report, 2026-11-23; fixed the
       same day, branch `toybox-reduced-motion`)*: with the system's reduce
       motion setting on, the toys stay mostly still, and nothing in the app
