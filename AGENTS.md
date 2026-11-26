@@ -257,8 +257,11 @@ agreed; see "How many reviews" below), made from
 decisions already made, what to look for), as one code block. Then wait: the
 owner has it reviewed and brings the reviews back. Check each finding against
 the code before acting on it: fix it, reject it with evidence, or ask the
-owner; a finding is not true because a reviewer said so. For a second round,
-add what changed since the last, so the fixes are verified first.
+owner; a finding is not true because a reviewer said so. Always hand over
+the whole prompt, filled in, as one block the owner can copy as it is, in
+every round (owner, 2026-11-26). For a later round, add a "What changed
+since the last round" section inside it, so the fixes are verified first;
+never hand over that section, or any other part, on its own.
 
 How many reviews (owner, 2026-11-26):
 

@@ -25,11 +25,13 @@ How the owner and the writing agent use it:
   it: it fixes it, rejects it with evidence, or asks the owner. A finding is
   not true because a reviewer said so. Rejected findings and the reasons go
   in the pull request, as with Copilot's comments.
-- After each round, the writing agent advises whether another is worth it,
-  and with one reviewer or two, or whether the work needs a change of
-  direction instead (`AGENTS.md`). For a second round on the same branch,
-  add "What changed since the last round" to the prompt, with the fixes to
-  verify first.
+- After each round, the writing agent advises what comes next: stop, another
+  round with one reviewer or with two, or a change of direction
+  (`AGENTS.md`). For a later round on the same branch, hand over the whole
+  filled-in prompt again, with a "What changed since the last round" section
+  inside it that lists the fixes to verify first. The prompt is always
+  handed over whole, never as a part to add to an earlier one, so the owner
+  can copy one block as it is.
 - The writing agent commits the branch before handing the prompt over, and
   reviewers work in their own `git worktree` under `/tmp`, never in the main
   folder. Reviewers who switched branches or ran the tests in the main folder
