@@ -7763,7 +7763,20 @@ item below is built, the owner has tried it, and the owner has published
             that way first, which `VACUUM INTO` accepts. An older version
             opened after the migration can't read the cache and doesn't
             start, as today's code fails on a database that doesn't open;
-            the release notes are to say so.
+            the release notes are to say so. Two questions are left open for
+            the build to design and review (found in the plan's second
+            review, 2026-11-26). First, how copies of the app keep out of
+            each other's way before any of them opens the database, covering
+            a copy already holding the plain file open and, on Windows, a
+            copy in another login session (the single-instance lock is per
+            session); with that in place, the migration must either finish
+            safely or stop with the plain database intact, and a test pauses
+            a second copy of the app just before the encrypted file is
+            renamed over the plain one. Second, the deletion of the plain
+            cached files must be retried until it is done, even when the
+            database was already replaced, as happens when the app quits or
+            crashes right after the rename; a test interrupts there and
+            checks that the next start removes them.
       - [ ] Attachments and images encrypted in the cache folder; decrypted
             copies only for other apps, in a private temporary folder that
             is emptied at start and at quit; the plain files already cached
