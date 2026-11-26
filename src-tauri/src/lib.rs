@@ -16,6 +16,7 @@ mod mode;
 mod navigation;
 mod notifications;
 mod print;
+mod startup;
 mod state;
 mod sync_log;
 mod theme;
@@ -158,6 +159,11 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             ai::ai_apple_settings_open,
             updates::update_check,
             updates::update_install,
+            startup::startup_problem,
+            startup::cache_reset_notice,
+            startup::cache_reset_notice_dismiss,
+            startup::startup_try_again,
+            startup::startup_quit,
         ])
         .events(collect_events![
             SyncStatusEvent,
@@ -272,7 +278,32 @@ pub fn run() {
                 let _ = mail_core::owner_only::dir(folder);
             }
             let _ = mail_core::auth::config::make_private(&dirs.config);
-            let db = Arc::new(Db::open(&mail_core::db::path_in(&dirs.data))?);
+            // The mail cache, encrypted with its key from the keychain
+            // (mail_core::db::cache). When the keychain doesn't answer, or
+            // the cache can't be set aside while another copy has it open,
+            // nothing on disk is touched: the window opens to say so, with
+            // Try again and Quit, and nothing else starts.
+            let opened = match mail_core::db::cache::open_cache(
+                &mail_core::db::path_in(&dirs.data),
+                mode.secrets().as_ref(),
+            ) {
+                Ok(opened) => opened,
+                Err(mail_core::db::cache::CacheError::Keychain(_)) => {
+                    app.manage(startup::Startup::stopped(startup::StartupProblem::Keychain));
+                    open_window(app, mode)?;
+                    return Ok(());
+                }
+                Err(mail_core::db::cache::CacheError::InUse) => {
+                    app.manage(startup::Startup::stopped(startup::StartupProblem::InUse));
+                    open_window(app, mode)?;
+                    return Ok(());
+                }
+                Err(mail_core::db::cache::CacheError::Other(e)) => return Err(e.into()),
+            };
+            app.manage(startup::Startup::opened(opened.reset));
+            app.manage(startup::HeldCacheLock(opened.lock));
+            let still_plain = opened.still_plain;
+            let db = Arc::new(opened.db);
             let http = mail_core::reqwest::Client::builder()
                 .user_agent(format!(
                     "{}/{}",
@@ -305,6 +336,12 @@ pub fn run() {
                 );
             }
             let sync_log = Arc::new(sync_log::SyncLog::open(&dirs.logs));
+            if still_plain {
+                sync_log.write(
+                    mail_core::model::AccountId(0),
+                    "Mail cache: another copy of the app is open, so encrypting the cache waits for a start without it",
+                );
+            }
             let supervisor = Supervisor::new(
                 tauri::async_runtime::handle().inner().clone(),
                 db.clone(),

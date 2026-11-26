@@ -351,14 +351,12 @@ mod build_bundled {
         }
         println!("cargo:rerun-if-env-changed=LIBSQLITE3_FLAGS");
 
-        // app: SQLite's own default for temporary tables and sorts (files
-        // when they grow, `SQLITE_TEMP_STORE=1`), which plain SQLite was
-        // built with. SQLite3 Multiple Ciphers defaults to 2 (memory) when
-        // this isn't set, which would change behavior in a build that
-        // doesn't encrypt yet. Encrypting the cache sets 2 (its temporary
-        // files aren't encrypted).
+        // app: temporary tables and sorts in memory (`SQLITE_TEMP_STORE=2`)
+        // rather than in files, as the mail cache is encrypted and SQLite3
+        // Multiple Ciphers doesn't encrypt temporary files. Set here, not
+        // left to its default, so a change of default can't turn it back.
         if !cfg!(feature = "bundled-sqlcipher") {
-            cfg.flag("-DSQLITE_TEMP_STORE=1");
+            cfg.flag("-DSQLITE_TEMP_STORE=2");
         }
 
         // app: clang-cl (cargo-xwin's compiler for the Windows builds)

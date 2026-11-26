@@ -31,6 +31,7 @@ import { keepReadRows, type ListData } from "../../features/mailbox/model/unread
 export const keys = {
   accounts: ["accounts"] as const,
   oauthSetup: ["oauthSetup"] as const,
+  cacheResetNotice: ["cacheResetNotice"] as const,
   syncStates: ["syncStates"] as const,
   labels: (filter: AccountFilter) => ["labels", filter] as const,
   unreadCounts: ["unreadCounts"] as const,
@@ -64,6 +65,27 @@ export function useAccounts() {
     queryKey: keys.accounts,
     queryFn: () => unwrap(commands.accountsList()),
     enabled: IS_TAURI,
+  });
+}
+
+/**
+ * Whether this start began a new mail cache because its key was gone
+ * (see `CacheResetNotice`); false until dismissed for this run.
+ */
+export function useCacheResetNotice() {
+  return useQuery({
+    queryKey: keys.cacheResetNotice,
+    queryFn: () => commands.cacheResetNotice(),
+    enabled: IS_TAURI,
+    staleTime: Infinity,
+  });
+}
+
+export function useDismissCacheResetNotice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => commands.cacheResetNoticeDismiss(),
+    onSuccess: () => qc.setQueryData(keys.cacheResetNotice, false),
   });
 }
 

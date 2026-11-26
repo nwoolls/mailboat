@@ -51,6 +51,13 @@ schemars = "1.1"
 # atomically, and removed with what's in it on every way out. Already in
 # the build through other crates.
 tempfile = "3.27"
+# The mail cache's key: random bytes from the system (`db::cache`), and,
+# for the cached files, their encryption. Already in the app through
+# rustls, its TLS provider; default features add only `untrusted`.
+aws-lc-rs = "1.18"
+# Wipes the cache's key from memory when it's dropped (`db::cache`); in
+# the build already through aws-lc-rs.
+zeroize = "1.9"
 
 [features]
 # Exposes the checks the fuzz target in `fuzz/` runs (`mail::sanitize_check`).

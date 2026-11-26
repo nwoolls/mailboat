@@ -262,8 +262,8 @@ of rusqlite's `libsqlite3-sys` that compiles it instead of plain SQLite, and
 the workspace's `Cargo.toml` swaps the copy in with `[patch.crates-io]`. The
 copy changes three things, each marked `app:` in its `build.rs` and
 `Cargo.toml`: the source it compiles (from the `sqlite3mc-src` crate);
-SQLite's own default for temporary storage (`SQLITE_TEMP_STORE=1`, which
-SQLite3 Multiple Ciphers would otherwise change); and, for Windows builds
+temporary tables and sorts kept in memory (`SQLITE_TEMP_STORE=2`), as
+SQLite3 Multiple Ciphers doesn't encrypt temporary files; and, for Windows builds
 with clang-cl, a flag that works around
 [utelle/SQLite3MultipleCiphers#319](https://github.com/utelle/SQLite3MultipleCiphers/issues/319).
 The copy leaves out SQLite's own source files. The code for SQLCipher and
@@ -298,6 +298,40 @@ To move to a newer SQLite3 Multiple Ciphers alone, change the
 `sqlite3mc-src` version in `vendor/libsqlite3-sys/Cargo.toml`, with the
 same rule as step 3, and check the roadmap's "Issues filed upstream" for a
 workaround the new release makes unnecessary.
+
+### The encrypted mail cache
+
+The mail cache (`mail.sqlite3` in the app's data folder) is encrypted with
+a random 256-bit key, kept in the system keychain beside the Google tokens,
+under the entry `cache-key` (Credential Manager on Windows, the desktop's
+keyring on Linux). `mail_core::db::cache::open_cache` opens it at startup:
+
+- No cache and no key: it makes both.
+- A plain cache, from a version before encryption: it moves it into an
+  encrypted one, once. It copies it with the key, checks the copy, and
+  only then puts the copy in place of the plain file. A move that stops
+  halfway leaves the plain cache as it was, and the next start tries again.
+- An encrypted cache whose key is gone, or doesn't fit: it sets the cache
+  aside (deleted at the next start) and starts a new one, and the window
+  says so once. Mail comes back from Gmail; the account list, Settings and
+  everything else only the cache held don't.
+- A keychain that doesn't answer: it changes nothing, and the window shows
+  only a message with Try again and Quit.
+
+Every running copy of the app holds a shared lock on `mail.lock` in the
+data folder, so a second copy (a development build beside the installed
+app) still works. Moving or setting the cache aside takes the exclusive
+lock: while another copy is open, the move waits for a start with no other
+copy, and a cache that needs setting aside shows a screen asking to quit
+the other copy. A version from before encryption
+doesn't take the lock. Once a copy has encrypted the cache, a version from
+before encryption can't read it and doesn't start.
+
+So a development build run in the normal mode encrypts your real cache,
+and the installed app then needs this version too. To try changes to the
+cache, use demo mode (`bun run demo`: its own folder, made-up mail, and a
+keychain kept in memory) or a clean start (`bun run clean-start`: its own
+folder and its own keychain entries, its key included).
 
 ## A signed Windows installer
 

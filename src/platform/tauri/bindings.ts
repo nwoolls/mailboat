@@ -448,6 +448,28 @@ export const commands = {
 	 *  starts it. Progress goes to the window as events.
 	 */
 	updateInstall: () => typedError<null, AppError>(__TAURI_INVOKE("update_install")),
+	/**
+	 *  What kept the mail cache from opening, if anything. The window asks
+	 *  first and shows only that problem when there is one.
+	 */
+	startupProblem: () => __TAURI_INVOKE<
+/**  The keychain didn't answer (locked, access denied, no keyring). */
+"keychain" | 
+/**
+ *  Another copy of the app has the cache open, and it needs setting
+ *  aside, which waits for that copy to close.
+ */
+"inUse" | null>("startup_problem"),
+	/**
+	 *  Whether this start set an unreadable cache aside and began a new one
+	 *  (its key was gone from the keychain): the window says so until dismissed.
+	 */
+	cacheResetNotice: () => __TAURI_INVOKE<boolean>("cache_reset_notice"),
+	cacheResetNoticeDismiss: () => __TAURI_INVOKE<void>("cache_reset_notice_dismiss"),
+	/**  Starts the app again, to try opening the cache once more. */
+	startupTryAgain: () => typedError<null, AppError>(__TAURI_INVOKE("startup_try_again")),
+	/**  Quits the app (from the window shown when the cache couldn't open). */
+	startupQuit: () => __TAURI_INVOKE<void>("startup_quit"),
 };
 
 /** Events */
@@ -1643,6 +1665,16 @@ export type SizeLimit = {
 	comparison: SizeComparison,
 	bytes: number,
 };
+
+/**  Why the mail cache couldn't be opened. */
+export type StartupProblem = 
+/**  The keychain didn't answer (locked, access denied, no keyring). */
+"keychain" | 
+/**
+ *  Another copy of the app has the cache open, and it needs setting
+ *  aside, which waits for that copy to close.
+ */
+"inUse";
 
 export type Summary = {
 	threadId: ThreadId,

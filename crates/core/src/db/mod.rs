@@ -2,6 +2,7 @@
 //! foreign keys on, and a `schema_migrations` table with numbered steps.
 
 pub mod accounts;
+pub mod cache;
 pub mod erase;
 pub mod query;
 mod schema;
@@ -31,7 +32,7 @@ pub fn path_in(dir: &Path) -> std::path::PathBuf {
 }
 
 /// The database file and the write-ahead files SQLite keeps beside it.
-fn database_files(path: &Path) -> [std::path::PathBuf; 3] {
+pub(crate) fn database_files(path: &Path) -> [std::path::PathBuf; 3] {
     let with = |suffix: &str| {
         let mut name = path.as_os_str().to_owned();
         name.push(suffix);
@@ -48,6 +49,13 @@ impl Db {
     /// part is best effort: a folder or file whose mode can't be changed
     /// (owned by another account) still opens, as before.
     pub fn open(path: &Path) -> Result<Self> {
+        Self::open_at(path, None)
+    }
+
+    /// `open`, unlocking an encrypted database with `key` before anything
+    /// else reads it (`cache::open_cache` decides which). A wrong key fails
+    /// with SQLite's "not a database" (`cache::is_wrong_key`).
+    pub(crate) fn open_at(path: &Path, key: Option<&cache::CacheKey>) -> Result<Self> {
         require_cipher()?;
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
@@ -55,6 +63,9 @@ impl Db {
             let _ = crate::owner_only::dir(parent);
         }
         let conn = Connection::open(path)?;
+        if let Some(key) = key {
+            cache::apply_key(&conn, key)?;
+        }
         conn.execute_batch(
             "PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;",
         )?;
@@ -250,8 +261,9 @@ mod tests {
             Ok(rusqlite::version()),
             rusqlite::ffi::SQLITE_VERSION.to_str()
         );
-        // SQLite's own default for temporary storage, as plain SQLite had
-        // (vendor/libsqlite3-sys/build.rs, "app:").
+        // Temporary tables and sorts in memory: SQLite3 Multiple Ciphers
+        // doesn't encrypt temporary files (vendor/libsqlite3-sys/build.rs,
+        // "app:").
         let options: Vec<String> = conn
             .prepare("PRAGMA compile_options")
             .unwrap()
@@ -259,7 +271,7 @@ mod tests {
             .unwrap()
             .collect::<std::result::Result<_, _>>()
             .unwrap();
-        assert!(options.iter().any(|o| o == "TEMP_STORE=1"), "{options:?}");
+        assert!(options.iter().any(|o| o == "TEMP_STORE=2"), "{options:?}");
     }
 
     #[test]

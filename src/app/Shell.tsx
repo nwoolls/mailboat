@@ -133,6 +133,7 @@ import { useSignIn } from "../features/accounts/ui/useSignIn";
 import { SignedOutNotices, useSignedOutNotices } from "../features/accounts/ui/SignedOutNotices";
 import { CodeNotices } from "../features/codes/ui/CodeNotices";
 import { UpdateNotice } from "../features/updates/ui/UpdateNotice";
+import { CacheResetNotice } from "../features/cache/ui/CacheResetNotice";
 import { useUpdateEvents } from "../features/updates/ui/updateStore";
 import { MinimizedTabs } from "../features/compose/ui/MinimizedTabs";
 import { ReplyArea } from "../features/compose/ui/ReplyArea";
@@ -1233,7 +1234,15 @@ export function Shell() {
 
   if (accountsQuery.isPending) return null;
   if (showOnboarding(accountList.length, onboardingProgress))
-    return <Onboarding setup={setup.data} accounts={accountList} />;
+    return (
+      <>
+        <Onboarding setup={setup.data} accounts={accountList} />
+        {/* A reset lands here (the new cache has no accounts). */}
+        <div className="fixed top-12 right-3 z-50 flex flex-col gap-2">
+          <CacheResetNotice />
+        </div>
+      </>
+    );
 
   // Settings shows its sections in the sidebar, so the sidebar shows too.
   const sidebarShown = sidebarDocked || settings !== null;
@@ -1632,6 +1641,7 @@ export function Shell() {
           onDismiss={signedOutNotices.dismiss}
           signIn={signIn}
         />
+        <CacheResetNotice />
         <UpdateNotice />
         <CodeNotices
           onOpen={(id) => {
