@@ -4928,6 +4928,17 @@ between pixel art and ASCII art for the screensavers.*
   as the others. Since done: the rain is Code rain, and the envelope flock
   became Flock. Still open: 3D pipes, and bubble wrap's future
 
+## Issues filed upstream
+
+*Started 2026-11-26 at the owner's request: every issue or pull request
+opened on another project, with the workaround this repository carries
+until it is fixed, so the workaround goes when the fix ships (`AGENTS.md`).
+An entry is ticked when the fix is released and the workaround is removed.*
+
+None filed yet. The first, a clang-cl compile error in SQLite3 Multiple
+Ciphers, waits for review before it is filed (see "Encrypt the local cache
+at rest", under "Later / unscheduled").
+
 ## Flaky tests
 
 *Started 2026-11-12 at the owner's request, to track tests that fail and
@@ -7648,6 +7659,166 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
         disk isn't encrypted. On Windows, reading that without
         administrator rights isn't simple; the spike settles whether it
         can be done.*
+      *(2026-11-26, the spike, on branch `encryption-spike`. Each answer
+      comes from a test or a build that was run; the made-up mail and the
+      scratch crates stayed outside the repository:)*
+      - *Library: SQLite3 Multiple Ciphers (2.7.1, through the
+        `sqlite3mc-src` crate), not SQLCipher. Both keep FTS5 search
+        working with the app's own schema, store and search: a made-up
+        email is found in an encrypted database and again after reopening
+        it with the key, and neither the file nor its write-ahead log holds
+        its words as plain bytes. Without the key, or with a wrong one,
+        opening fails ("file is not a database"). SQLCipher needs OpenSSL on
+        Windows and Linux; it uses Apple's CommonCrypto only when a Mac
+        builds for a Mac. OpenSSL can't be built for Windows on a Mac (its
+        Windows configuration refuses a non-Windows Perl), and the Windows
+        release is built on a Mac. SQLite3 Multiple Ciphers has its own
+        crypto, and it built for both Windows targets with cargo-xwin and
+        for Linux in the Docker image.*
+      - *What that choice costs: rusqlite doesn't offer it (its maintainers
+        declined a pull request that added it and pointed to linking one's
+        own build instead), so the repository would keep a copy of
+        `libsqlite3-sys`, swapped in with `[patch.crates-io]`, that compiles
+        the SQLite3 Multiple Ciphers source instead of SQLite's. The change
+        is about ten lines, and it has to be redone at each rusqlite
+        upgrade. With clang-cl, the compiler cargo-xwin uses, the source
+        doesn't compile as released: clang-cl reports both MSVC and 128-bit
+        integers, and the Poly1305 code then defines neither set of its
+        helpers. Undefining `__SIZEOF_INT128__` for that file fixes the
+        build. With it, the spike's tests pass on Windows 11 on ARM (the
+        test machine) and on an Intel/AMD laptop. The bug isn't reported
+        upstream yet.*
+      - *License: SQLite3 Multiple Ciphers passes `cargo deny check
+        licenses` with `deny.toml` as it is (MIT, CC0-1.0, Unlicense,
+        Apache-2.0). SQLCipher's source crate fails it, because it also
+        declares `blessing` (SQLite's dedication) and `WTFPL`
+        (libtomcrypt's). An exception would fix that; both licenses are
+        compatible with GPL-3.0.*
+      - *Speed, on made-up mail (5,000 conversations of 4 emails, each with <!-- privacy-ok: made-up benchmark data -->
+        a 220-word body, a design parameter), median of three runs on the
+        owner's Mac, encrypted against plain: opening and a page of the
+        inbox within 4%; saving mail about 1.4 times as long; a search <!-- privacy-ok: made-up benchmark data -->
+        1.4 to 1.5 times as long with SQLite's default page cache and the <!-- privacy-ok: made-up benchmark data -->
+        same as plain with a 64 MB one; the file 2% bigger. The two
+        libraries were within a few percent of each other. Not measured on
+        Windows.*
+      - *The key: 32 random bytes, made when the app first opens a database
+        without one, and kept in the keychain (Credential Manager on
+        Windows) beside the Google tokens, under the app's service name. It
+        reaches SQLite in the first statement on the connection, as a raw
+        key (`x'…'`, no password stretching). An error from that statement
+        must be replaced with a fixed message, because rusqlite's error
+        text quotes the SQL. The keychain tells "no such entry" apart from
+        other failures (`KeyringStore::get`), so a lost key (an encrypted
+        database and no entry) can start a new cache, while a keychain that
+        doesn't answer leaves the files alone. A new cache gets the mail
+        back from Gmail, but not what only the database holds: the account
+        list (each account signs in again), Settings, choices made for
+        senders, hidden contacts, AI summaries and usage, and the AI apps'
+        log. Today the app doesn't start when its database doesn't open, so
+        the build has to add that path.*
+      - *Migration, once, before the app opens the database: take an
+        exclusive lock without waiting, and stop (to try at the next start)
+        if another copy of the app has the database open; then checkpoint the
+        plain write-ahead log into the file and empty it, copy the database
+        into a new file with the key (`VACUUM INTO` a URI that names the
+        cipher and a `raw:` key; SQLite3 Multiple Ciphers can't back up a
+        plain database into an encrypted one, nor encrypt one in place in
+        WAL mode), check the copy (integrity and each table's row count),
+        flush it to disk (on Windows that needs the file opened for
+        writing), release the lock, remove the plain write-ahead files, and
+        rename the copy over the plain file. The plain database is untouched
+        until the rename. Without the lock, macOS would let the rename
+        happen under another copy, which would go on writing to the old
+        file and lose what it writes; Windows refuses the rename instead. A
+        test that stops the migration after the copy, and another after the
+        check, finds the plain database opening as before, and the next try
+        removes the half-made copy and finishes. Afterwards only the
+        encrypted file is left. The plain file's old contents can stay in
+        the disk's free space, and in backups, until they are overwritten.*
+      - *Attachments and images: encrypt each file with AES-256-GCM from
+        `aws-lc-rs`, which the app already has for TLS, using a key derived
+        from the same keychain key, with the file's place in the cache
+        bound to it. A 25 MB file took a few milliseconds each way. Opening
+        one in another app or Quick Look, or saving it, writes a decrypted
+        copy (to a private temporary folder, or to Downloads), which is
+        plain while it's there. The plain files already cached are deleted
+        at migration and fetched again when needed. Moving the files into
+        the database was considered: it needs no second key, but the
+        database grows by the size of the image cache, and every file goes
+        through the one connection the UI also uses.*
+      - *Disk encryption in Settings → Privacy: on macOS, `fdesetup status`
+        answers without administrator rights. On Windows, the documented
+        ways (BitLocker's WMI class, `manage-bde`) need administrator
+        rights; Explorer's undocumented `System.Volume.BitLockerProtection`
+        property may not, but that is untested. Once the cache is encrypted
+        by the app, this matters less, and the spike suggests leaving it
+        out.*
+
+      - ***Linux (owner, 2026-11-26): the build must work with the Linux
+        work in progress (branch `linux-build`, draft pull request #236),
+        whichever of the two merges first.*** *What that means, from the
+        draft's changes:*
+        - *The key goes in the desktop's keyring through the Secret Service,
+          as the draft keeps the Google tokens. On a desktop without a
+          keyring, or with one left locked, the keyring returns an error
+          (`NoStorageAccess`, `PlatformFailure`), never "no such entry", so
+          the app must never start a new cache there. The build tests this
+          on Linux, including an unlock prompt that is canceled. The app
+          then says what's missing, as the draft does for signing in,
+          instead of failing to start.*
+        - *SQLite3 Multiple Ciphers built and passed the spike's tests in
+          the draft's own Docker image (`scripts/linux/Dockerfile`, Ubuntu
+          22.04, the version its CI uses). It needs no OpenSSL, so the .deb,
+          .rpm and AppImage gain no library to depend on or bundle, as they
+          would with SQLCipher.*
+        - *The clang-cl fix applies only to Windows targets built with
+          clang-cl; Linux's GCC build keeps SQLite3 Multiple Ciphers' own
+          128-bit path.*
+        - *`deny.toml` gains the Linux targets in the draft; the license
+          check runs again with them once both are in.*
+        - *This work and the draft both change the privacy policy's sentence
+          on disk encryption and Settings → Privacy; whichever merges second
+          rewrites the sentence for all three systems.*
+        - *The migration and the file encryption use the database path and
+          cache folder the app is given, so the draft's `brand::data_dir`
+          needs nothing more. On macOS and Linux the copy made during the
+          migration sits in the data folder, which only this user can
+          access, and `Db::open` limits the file itself to this user when it
+          next opens it.*
+
+      *(2026-11-26, owner: SQLite3 Multiple Ciphers through the patched
+      `libsqlite3-sys` copy, as the spike recommends.)*
+
+      Build steps, for the release the owner picks (about a week of work,
+      plus reviews):
+      - [ ] SQLite3 Multiple Ciphers in the build: the patched copy of
+            `libsqlite3-sys` in the repository, the clang-cl fix, a test
+            that fails when the cipher isn't linked (`sqlite3mc_version()`),
+            and a check that fails when Cargo reports the patch unused. A
+            rusqlite upgrade would otherwise build plain SQLite without any
+            warning. Report the clang-cl bug upstream (the spike's runs on
+            Windows ARM and Intel/AMD confirmed the fix; owner, 2026-11-26).
+      - [ ] The key: made and kept in the keychain, set on the connection
+            before anything else, never in an error or the log. A lost key
+            moves the unreadable database aside (deleted at the next start),
+            starts a new cache and shows a notice once: accounts sign in
+            again and Settings are back to their defaults (owner,
+            2026-11-26). A keychain that doesn't answer leaves the files
+            alone and says so.
+      - [ ] The one-time migration of a plain database, with the spike's
+            tests.
+      - [ ] Attachments and images encrypted in the cache folder; decrypted
+            copies only for other apps, in a private temporary folder that
+            is emptied at start and at quit; the plain files already cached
+            deleted at migration.
+      - [ ] Linux, with or after #236: the keyring cases above tested in
+            the Linux build (no keyring, locked, unlock canceled), the
+            spike's tests in Linux CI, and `cargo deny` with the Linux
+            targets.
+      - [ ] The privacy policy, the feature cards and Settings → Privacy
+            say that the cache is encrypted and how; the written answer to
+            DASA 1.2.2 for the lab.
 
 - [ ] Sign-in codes by more than word lists *(owner, 2026-11-18, after the
       recovery-email miss)*: detection (`mail::codes`) is lists of words

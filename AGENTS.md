@@ -263,6 +263,21 @@ to the shared repository: confirm with the owner first, as always. Dependabot's
 pull requests follow the same path, one at a time, with the full `bun run
 check` run on the branch first when it touches Rust or the build.
 
+### Issues filed on other projects
+
+When a problem in a dependency or tool is reported to its project (an issue
+or pull request we open on someone else's GitHub), it is tracked in
+`docs/ROADMAP.md` → "Issues filed upstream" in the same session it is
+filed (owner, 2026-11-26): the link, what it is about, the workaround this
+repository carries for it and where that lives (file, flag or patch), and
+what to do once it is fixed (remove the workaround, upgrade the
+dependency). Filing is a write to another project: hand the owner a review
+prompt for the text first (as for a pull request), and post only with their
+OK. The text follows the privacy rules above (no real mail, no owner
+details), and goes through the `declauding` and `unslop` passes. When a
+tracked dependency is upgraded, check its entries; tick one when the fix has
+shipped and the workaround is gone.
+
 ## Commands
 
 | What | Command |
