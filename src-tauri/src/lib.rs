@@ -283,6 +283,10 @@ pub fn run() {
             // the cache can't be set aside while another copy has it open,
             // nothing on disk is touched: the window opens to say so, with
             // Try again and Quit, and nothing else starts.
+            // Decrypted copies another app was given last run, before
+            // anything else can stop the start (a keychain that doesn't
+            // answer).
+            mail_core::sealed::empty_dir(&dirs.cache.join(state::OPENED_FOLDER));
             let cache_path = mail_core::db::path_in(&dirs.data);
             let opened = match mail_core::db::cache::open_cache(
                 &cache_path,
@@ -306,7 +310,13 @@ pub fn run() {
             let still_plain = opened.still_plain;
             let files = opened.files.map(Arc::new);
             let db = Arc::new(opened.db);
-            state::tidy_cache_folder(&dirs.cache, still_plain);
+            if state::remove_plain_folders(&dirs.cache, still_plain) {
+                // The image index listed the plain copies just deleted.
+                mail_core::mail::prefetch::clear(
+                    &db.conn(),
+                    &dirs.cache.join(state::IMAGES_FOLDER),
+                )?;
+            }
             let http = mail_core::reqwest::Client::builder()
                 .user_agent(format!(
                     "{}/{}",

@@ -351,8 +351,9 @@ pub fn cached_for(
                 )?;
             }
             // The file went missing (the cache folder was cleaned), or
-            // doesn't open: forget it.
+            // doesn't open: forget it, and delete what's left of it.
             None => {
+                let _ = std::fs::remove_file(file_for(&cache.dir, account, id));
                 conn.execute("DELETE FROM image_cache WHERE id = ?1", [id])?;
             }
         }
@@ -393,9 +394,18 @@ pub fn evict(conn: &Connection, dir: &Path, limit: u64) -> Result<()> {
     Ok(())
 }
 
-/// Empties the cache (Settings' "Clear").
+/// Empties the cache (Settings' "Clear"): every row and its file, then the
+/// folder itself, with anything no row lists (a write that stopped
+/// halfway).
 pub fn clear(conn: &Connection, dir: &Path) -> Result<()> {
-    evict(conn, dir, 0)
+    evict(conn, dir, 0)?;
+    match std::fs::remove_dir_all(dir) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(crate::CoreError::Other(format!(
+            "delete the downloaded images: {e}"
+        ))),
+    }
 }
 
 #[cfg(test)]
@@ -925,6 +935,38 @@ mod tests {
         )
         .unwrap();
         assert_eq!(shown.len(), 1);
+    }
+
+    /// Review: a copy that doesn't open goes with its row, and clearing
+    /// the cache deletes files no row lists too.
+    #[test]
+    fn copies_that_dont_open_and_unlisted_files_dont_stay_behind() {
+        let db = Db::open_in_memory().unwrap();
+        let account = account_with_mail(&db, "sub-a", "<p>x</p>");
+        let dir = tempdir();
+        store(
+            &db,
+            &sealed(&dir),
+            account,
+            "https://x/1",
+            "image/png",
+            &[1, 2],
+        )
+        .unwrap();
+        let other_key = Sealed::new(
+            dir.clone(),
+            Some(Arc::new(crate::sealed::FileKey::generate().unwrap())),
+        );
+        let urls = vec!["https://x/1".to_string()];
+        assert!(cached_for(&db.conn(), &other_key, account, &urls)
+            .unwrap()
+            .is_empty());
+        assert!(!is_cached(&db.conn(), account, "https://x/1").unwrap());
+        assert_eq!(files_in(&dir), 0, "its file went with its row");
+        std::fs::write(account_dir(&dir, account).join("incoming-9.tmp"), b"x").unwrap();
+        clear(&db.conn(), &dir).unwrap();
+        assert!(!dir.exists(), "nothing left");
+        clear(&db.conn(), &dir).unwrap();
     }
 
     #[test]

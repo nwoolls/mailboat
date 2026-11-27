@@ -906,7 +906,8 @@ async fn a_forward_carries_the_originals_attachments() {
         .conn()
         .query_row("SELECT id FROM attachments", [], |r| r.get(0))
         .unwrap();
-    mail_core::attachments::keep(&db, &cache, attachment, b"%PDF-plan").unwrap();
+    let a_ref = mail_core::db::store::attachment_ref(&db.conn(), attachment).unwrap();
+    mail_core::attachments::keep(&db, &cache, &a_ref, b"%PDF-plan").unwrap();
 
     let (gmail, _) = client(&server.uri());
     let mut msg = outgoing(a, "a@x.example", Some(m2));
@@ -1000,7 +1001,8 @@ async fn a_quote_carries_the_originals_embedded_images() {
         .conn()
         .query_row("SELECT id FROM attachments", [], |r| r.get(0))
         .unwrap();
-    mail_core::attachments::keep(&db, &cache, logo, &[137u8, 80, 78, 71]).unwrap();
+    let logo_ref = mail_core::db::store::attachment_ref(&db.conn(), logo).unwrap();
+    mail_core::attachments::keep(&db, &cache, &logo_ref, &[137u8, 80, 78, 71]).unwrap();
 
     let mut msg = outgoing(a, "a@x.example", Some(m2));
     msg.html = Some(r#"<p>Hi</p><blockquote><img src="cid:logo@x"></blockquote>"#.into());

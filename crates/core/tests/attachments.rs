@@ -322,3 +322,82 @@ async fn a_download_finishing_after_its_account_is_gone_keeps_nothing() {
     );
     let _ = std::fs::remove_dir_all(&cache.dir);
 }
+
+/// Review: attachment IDs are given out again after a row is deleted. An
+/// account removed while one of its attachments is coming in, and the ID
+/// given to another account's attachment meanwhile: the bytes aren't kept
+/// for the other account's row.
+#[tokio::test]
+async fn a_download_never_lands_on_another_accounts_attachment_with_its_id() {
+    let server = MockServer::start().await;
+    serve_message(&server, "message_m2_attachments.json", 1).await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m2/attachments/ATT_PDF"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_delay(std::time::Duration::from_millis(400))
+                .set_body_json(serde_json::json!({ "size": 9, "data": "JVBERi0xLjcK" })),
+        )
+        .mount(&server)
+        .await;
+    let (db, account, m2) = setup();
+    let other = accounts::upsert(
+        &db.conn(),
+        &accounts::NewAccount {
+            google_sub: "b",
+            email: "b@x.example",
+            display_name: None,
+            avatar_url: None,
+            oauth_client: "default",
+        },
+    )
+    .unwrap()
+    .id;
+    let t: Thread = serde_json::from_str(&fixture("thread_t1.json")).unwrap();
+    store::upsert_thread(&mut db.conn(), other, &parse::thread_to_incoming(&t)).unwrap();
+    let others_m2: MessageId = db
+        .conn()
+        .query_row(
+            "SELECT id FROM messages WHERE gmail_message_id = 'm2' AND account_id = ?1",
+            [other],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let gmail = client(&server.uri()).0;
+    let cache = temp_cache();
+    fetch_body(&db, &gmail, m2).await.unwrap();
+    let pdf = store::attachments_for(&db.conn(), m2).unwrap()[0].id;
+
+    let download = attachments::download(&db, &gmail, pdf, &cache);
+    let replace = async {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        accounts::remove(&db.conn(), account).unwrap();
+        db.conn()
+            .execute(
+                "INSERT INTO attachments (id, account_id, message_id, part_id, filename, mime_type, size)
+                 VALUES (?1, ?2, ?3, '2', 'notes.txt', 'text/plain', 5)",
+                rusqlite::params![pdf, other, others_m2],
+            )
+            .unwrap();
+    };
+    let (result, ()) = tokio::join!(download, replace);
+    assert!(
+        matches!(result, Err(mail_core::CoreError::NotFound(_))),
+        "{result:?}"
+    );
+    let cached: Option<String> = db
+        .conn()
+        .query_row(
+            "SELECT cached_path FROM attachments WHERE id = ?1",
+            [pdf],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(cached, None, "the other account's row isn't given the file");
+    assert!(
+        files_under(&cache.dir).is_empty(),
+        "{:?}",
+        files_under(&cache.dir)
+    );
+    let _ = std::fs::remove_dir_all(&cache.dir);
+}

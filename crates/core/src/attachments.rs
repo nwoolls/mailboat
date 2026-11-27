@@ -239,28 +239,29 @@ pub async fn download(
         }
     }
     let bytes = fetch_bytes(gmail, &a).await?;
-    keep(db, cache, a.id, &bytes)?;
+    keep(db, cache, &a, &bytes)?;
     Ok(bytes)
 }
 
-/// Keeps an attachment's bytes in the cache, encrypted, and records where.
-/// Nothing is kept when files aren't kept this run (`crate::sealed`).
-pub fn keep(db: &Db, cache: &Sealed, id: AttachmentId, bytes: &[u8]) -> Result<()> {
-    let account = store::attachment_ref(&db.conn(), id)?.account;
-    let path = cached_file(cache, account, id);
-    if !cache.write(&path, &place(account, id), bytes)? {
+/// Keeps the bytes of attachment `a` (as read before they were fetched) in
+/// the cache, encrypted, and records where. Nothing is kept when files
+/// aren't kept this run (`crate::sealed`).
+pub fn keep(db: &Db, cache: &Sealed, a: &AttachmentRef, bytes: &[u8]) -> Result<()> {
+    let path = cached_file(cache, a.account, a.id);
+    if !cache.write(&path, &place(a.account, a.id), bytes)? {
         return Ok(());
     }
-    // The account may have been removed (or everything deleted) while the
-    // bytes were coming: nothing may keep what it no longer has a row for.
-    let still_there = store::attachment_ref(&db.conn(), id).is_ok();
-    if !still_there {
+    // While the bytes were coming, the account may have been removed (or
+    // everything deleted), and the ID given to another attachment, perhaps
+    // another account's: the path is recorded only on the row they came
+    // for, and otherwise nothing is kept.
+    let recorded = store::set_attachment_cached_path(&db.conn(), a, &path.to_string_lossy())?;
+    if !recorded {
         let _ = std::fs::remove_file(&path);
         // The account's own folder too, if that left it empty.
-        let _ = std::fs::remove_dir(account_dir(&cache.dir, account));
-        return Err(CoreError::NotFound(format!("attachment {}", id.0)));
+        let _ = std::fs::remove_dir(account_dir(&cache.dir, a.account));
+        return Err(CoreError::NotFound(format!("attachment {}", a.id.0)));
     }
-    store::set_attachment_cached_path(&db.conn(), id, &path.to_string_lossy())?;
     Ok(())
 }
 

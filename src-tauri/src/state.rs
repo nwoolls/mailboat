@@ -29,15 +29,19 @@ pub const OPENED_FOLDER: &str = "opened";
 /// At startup: deletes the cached attachments and images from before they
 /// were encrypted, at every start while they're there (they're fetched
 /// again, encrypted, when needed), except while a copy from before
-/// encryption is open (`still_plain`), which still uses them; and empties
-/// the folder of decrypted copies another app was given last run.
-pub fn tidy_cache_folder(cache: &std::path::Path, still_plain: bool) {
-    if !still_plain {
-        for folder in PLAIN_FOLDERS {
-            let _ = std::fs::remove_dir_all(cache.join(folder));
-        }
+/// encryption is open (`still_plain`), which still uses them. Returns
+/// whether the plain images were there: the image index then lists files
+/// that are gone, and is emptied (`mail::prefetch::clear`). The folder of
+/// decrypted copies is emptied earlier, before the cache opens.
+pub fn remove_plain_folders(cache: &std::path::Path, still_plain: bool) -> bool {
+    if still_plain {
+        return false;
     }
-    mail_core::sealed::empty_dir(&cache.join(OPENED_FOLDER));
+    let images = cache.join(PLAIN_FOLDERS[1]).exists();
+    for folder in PLAIN_FOLDERS {
+        let _ = std::fs::remove_dir_all(cache.join(folder));
+    }
+    images
 }
 
 /// Folders the app uses, from Tauri's path resolver.
@@ -255,38 +259,30 @@ mod tests {
     use mail_core::sync::{SyncConfig, SyncEvents, SyncProgress, WorkerTiming};
     use std::time::Duration;
 
-    /// The plain folders go, and the decrypted copies, but the encrypted
-    /// folders stay; with an older copy open, its plain folders stay too.
+    /// The plain folders go, but the encrypted folders stay; with an older
+    /// copy open, its plain folders stay too.
     #[test]
-    fn startup_deletes_the_plain_folders_and_the_decrypted_copies() {
+    fn startup_deletes_the_plain_folders_and_keeps_the_encrypted_ones() {
         let cache = std::env::temp_dir().join(format!("tidy-test-{}", std::process::id()));
         let fill = || {
             for folder in [ATTACHMENTS_FOLDER, IMAGES_FOLDER, "attachments", "images"] {
                 std::fs::create_dir_all(cache.join(folder).join("1")).unwrap();
                 std::fs::write(cache.join(folder).join("1").join("2"), b"x").unwrap();
             }
-            std::fs::create_dir_all(cache.join(OPENED_FOLDER).join("a")).unwrap();
-            std::fs::write(cache.join(OPENED_FOLDER).join("a").join("report.pdf"), b"x").unwrap();
         };
         fill();
-        tidy_cache_folder(&cache, true);
+        assert!(!remove_plain_folders(&cache, true));
         assert!(cache.join("attachments").exists() && cache.join("images").exists());
-        assert_eq!(
-            std::fs::read_dir(cache.join(OPENED_FOLDER))
-                .unwrap()
-                .count(),
-            0
+        assert!(
+            remove_plain_folders(&cache, false),
+            "the plain images were there"
         );
-        fill();
-        tidy_cache_folder(&cache, false);
         assert!(!cache.join("attachments").exists() && !cache.join("images").exists());
         assert!(cache.join(ATTACHMENTS_FOLDER).join("1").join("2").exists());
         assert!(cache.join(IMAGES_FOLDER).join("1").join("2").exists());
-        assert_eq!(
-            std::fs::read_dir(cache.join(OPENED_FOLDER))
-                .unwrap()
-                .count(),
-            0
+        assert!(
+            !remove_plain_folders(&cache, false),
+            "gone: nothing to forget"
         );
         let _ = std::fs::remove_dir_all(&cache);
     }

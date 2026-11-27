@@ -7599,7 +7599,8 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       the internet. Now it gets a `Zone.Identifier` stream with zone 3, as
       browsers write for downloads, when it reaches the cache and again on
       each saved copy (`attachments::mark_of_the_web`, tested on Windows in
-      CI). Best effort, like the macOS flag: a volume without streams
+      CI). *(Since 0.4.0 the cached file is encrypted, so the mark goes on
+      the decrypted copy another app opens instead, 2026-11-26.)* Best effort, like the macOS flag: a volume without streams
       (FAT32) leaves the file unmarked.
 
 ## 0.4.0
@@ -7953,7 +7954,16 @@ item below is built, the owner has tried it, and the owner has published
             a cached attachment that doesn't open is fetched again; without
             a key nothing is written; the files' key is the same at every
             start and new after a reset; startup deletes the plain folders
-            and the decrypted copies and keeps the encrypted ones.)*
+            and keeps the encrypted ones. From review, 2026-11-27: a
+            download keeps its bytes only on the row it was fetched for, as
+            an attachment's ID can be given to another account's attachment
+            while it downloads; the copies' folder is emptied before the
+            cache opens, so also when the keychain doesn't answer, and a
+            link in its place is left alone; the image index is emptied
+            with the plain images, a copy that doesn't open goes with its
+            row, and clearing the image cache deletes the whole folder; the
+            cache size in Settings counts the copies, and clearing the cache
+            empties them.)*
       - [ ] Linux, with or after #236: the keyring cases above tested in
             the Linux build (no keyring, locked, unlock canceled), the
             spike's tests in Linux CI, and `cargo deny` with the Linux

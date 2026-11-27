@@ -1717,7 +1717,9 @@ pub fn cache_size(state: State<'_, AppState>) -> CmdResult<CacheSize> {
             |r| r.get(0),
         )
         .map_err(CoreError::from)?;
-    let files = files::dir_size(&state.attachments.dir) + files::dir_size(&state.images.dir);
+    let files = files::dir_size(&state.attachments.dir)
+        + files::dir_size(&state.images.dir)
+        + files::dir_size(&state.opened_dir);
     let kb = |bytes: u64| u32::try_from(bytes / 1024).unwrap_or(u32::MAX);
     Ok(CacheSize {
         mail_kilobytes: kb(db_bytes.max(0) as u64),
@@ -1739,6 +1741,8 @@ pub async fn cache_clear(app: AppHandle, state: State<'_, AppState>) -> CmdResul
         store::clear_mail(&mut state.db.conn(), account.id)?;
     }
     prefetch::clear(&state.db.conn(), &state.images.dir)?;
+    // Decrypted copies given to other apps: they count in the size shown.
+    mail_core::sealed::empty_dir(&state.opened_dir);
     // Hand the freed space back to the disk.
     state
         .db

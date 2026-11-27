@@ -766,12 +766,30 @@ pub fn inline_parts(conn: &Connection, message: MessageId) -> Result<Vec<Attachm
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
-pub fn set_attachment_cached_path(conn: &Connection, id: AttachmentId, path: &str) -> Result<()> {
-    conn.execute(
-        "UPDATE attachments SET cached_path = ?2 WHERE id = ?1",
-        params![id, path],
+/// Records where an attachment is cached, only if its row is still the
+/// one `a` was read from: the same ID, account, message (by its Gmail ID)
+/// and part. IDs are given out again after a row is deleted, so a row with
+/// the same ID may be another account's attachment. Returns whether it was.
+pub fn set_attachment_cached_path(
+    conn: &Connection,
+    a: &AttachmentRef,
+    path: &str,
+) -> Result<bool> {
+    let changed = conn.execute(
+        "UPDATE attachments SET cached_path = ?2
+         WHERE id = ?1 AND account_id = ?3 AND message_id = ?4 AND part_id = ?5
+           AND EXISTS (SELECT 1 FROM messages m
+                       WHERE m.id = ?4 AND m.account_id = ?3 AND m.gmail_message_id = ?6)",
+        params![
+            a.id,
+            path,
+            a.account,
+            a.message,
+            a.part_id,
+            a.gmail_message_id
+        ],
     )?;
-    Ok(())
+    Ok(changed == 1)
 }
 
 /// Messages without a cached body, newest first (for prefetching).

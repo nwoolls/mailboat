@@ -166,7 +166,12 @@ impl Sealed {
 /// Empties `dir` of everything in it, and makes it this user's only. For
 /// the folder of decrypted copies other apps open, at every start and quit;
 /// a file another app still holds open (Windows) goes at the next one.
+/// A link there (or, on Windows, a junction) is left alone, and so is what
+/// it points at: the app makes none, so one there wasn't the app's.
 pub fn empty_dir(dir: &Path) {
+    if std::fs::symlink_metadata(dir).is_ok_and(|m| !m.file_type().is_dir()) {
+        return;
+    }
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -186,6 +191,16 @@ pub fn empty_dir(dir: &Path) {
 pub fn decrypted_copy(dir: &Path, name: &str, plain: &[u8]) -> Result<PathBuf> {
     let error = |e: std::io::Error| CoreError::Other(format!("couldn't open the file: {e}"));
     crate::owner_only::dir(dir).map_err(error)?;
+    // Never into a folder a link leads to (see `empty_dir`).
+    if !std::fs::symlink_metadata(dir)
+        .map_err(error)?
+        .file_type()
+        .is_dir()
+    {
+        return Err(CoreError::Other(
+            "couldn't open the file: its folder is a link".into(),
+        ));
+    }
     let folder = dir.join(format!("{:016x}", fastrand::u64(..)));
     crate::owner_only::dir(&folder).map_err(error)?;
     let path = folder.join(crate::attachments::safe_filename(name));
@@ -295,5 +310,23 @@ mod tests {
         assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
         empty_dir(&dir.join("missing"));
         let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+    }
+
+    /// Review: a link in place of the folder is neither emptied (what it
+    /// points at stays) nor written into.
+    #[cfg(unix)]
+    #[test]
+    fn a_link_in_place_of_the_folder_is_left_alone() {
+        let root = temp_dir();
+        let elsewhere = root.join("elsewhere");
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        std::fs::write(elsewhere.join("keep.txt"), b"x").unwrap();
+        let dir = root.join("opened");
+        std::os::unix::fs::symlink(&elsewhere, &dir).unwrap();
+        empty_dir(&dir);
+        assert!(elsewhere.join("keep.txt").exists());
+        assert!(decrypted_copy(&dir, "report.pdf", MARKER).is_err());
+        assert_eq!(std::fs::read_dir(&elsewhere).unwrap().count(), 1);
+        let _ = std::fs::remove_dir_all(root);
     }
 }
