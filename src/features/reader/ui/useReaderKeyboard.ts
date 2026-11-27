@@ -4,7 +4,7 @@ import type { MessageId } from "../../../platform/tauri/bindings";
 import { isEditable } from "../../../shared/lib/editable";
 import { REPLY_FOLLOW_EVENT } from "../../../shared/lib/replyFollow";
 import { type CardBox, firstOutlined, readerKeyFor, readerStep } from "../model/readerKeys";
-import { leaveReader } from "./readerKeys";
+import { endHold, leaveReader } from "./readerKeys";
 
 /**
  * The reply being written, as an outlined stop: after the emails, it isn't
@@ -156,6 +156,8 @@ export function useReaderKeyboard({
     const max = reader.scrollHeight - reader.clientHeight;
     const to = Math.max(0, Math.min(max, from + by));
     forget();
+    // The arrow takes the reader over from a hold `n` / `p` left on it.
+    endHold();
     let last = reader.scrollTop;
     let still = 0;
     // Anchoring back on once the scroll has had its time and stopped.

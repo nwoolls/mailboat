@@ -6433,7 +6433,7 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       nothing was approved. A unit test fails without the change, and so
       does `a_list_line_keeps_only_what_the_conversation_says` with
       "approved" taken off the list.
-- [ ] n / p and an arrow pressed straight after it pull the reader two
+- [x] n / p and an arrow pressed straight after it pull the reader two
       ways *(found 2026-11-26 in review of branch `reader-keyboard-flaky`;
       not seen in the app)*. After n or p, the email it moved to is held
       at the top of the reader for 350 ms (`stepEmail`, `HOLD_MS` in
@@ -6446,6 +6446,12 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       reader never reached. Likely fix: an arrow's scroll ends the hold.
       Older than that branch; a browser test with the real n key should
       show whether it's visible before anything changes.
+      *(Fixed 2026-11-27, branch `arrow-ends-hold`: it was visible. In a
+      browser test, ↓ pressed in the frame after n left the reader where
+      n put it, every time. An arrow's scroll, and Space's, now end the
+      hold (`endHold` in `readerKeys.ts`). The test `an arrow straight
+      after n scrolls from where n put the reader` fails without the
+      change.)*
 
 ## 0.3.0
 

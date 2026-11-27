@@ -570,3 +570,39 @@ test("back into the reply by keys, it still sticks to the bottom as it grows", a
   });
   expect(fromEnd).toBeLessThanOrEqual(2);
 });
+
+/**
+ * ↓ pressed while `n` still holds the email it moved to at the top
+ * (`stepEmail`, 350 ms): the hold set the reader's position every frame,
+ * which pulled the arrow's smooth scroll back, while the arrow's aim
+ * stayed set (backlog, found in review). The arrow's scroll ends the hold.
+ */
+test("an arrow straight after n scrolls from where n put the reader", async ({ page }) => {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
+  await expect.poll(() => outlinedIndex(page)).toBe(0);
+  await scrollSettled(page);
+  // Every email long, so the reader has room to scroll down from any.
+  await page.evaluate(() => {
+    for (const card of document.querySelectorAll(".reader-scroll section[data-message-id]")) {
+      const tall = document.createElement("div");
+      tall.style.height = "2000px";
+      card.append(tall);
+    }
+  });
+  const result = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    const key = (k: string) =>
+      reader.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
+    key("n");
+    await frame();
+    const held = reader.scrollTop;
+    key("ArrowDown");
+    // Past the hold (350 ms) and the arrow's smooth scroll.
+    await new Promise((done) => setTimeout(done, 900));
+    return { held, after: reader.scrollTop };
+  });
+  expect(result.after).toBeGreaterThan(result.held + 20);
+});
