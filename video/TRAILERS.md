@@ -132,6 +132,16 @@ script stops if the demo isn't the frontmost app or its window has moved,
 before any click, key or capture and all through a recording's waits; when
 it stops (or on Ctrl-C), it ends the recording and deletes the part made. Look at every take before using it.
 
+On a Mac, a click on a window behind another app (the terminal running the
+script, say) only brings that window forward, and the page never sees the
+click: a row under the pointer looks selected but doesn't open, and a
+button isn't pressed. Keys go to the app in front too. That is macOS's
+default, and the app keeps it on purpose (`docs/ARCHITECTURE.md`,
+decisions, 2026-11-27), so it isn't a bug to report. In a script, bring the
+demo to the front before the first click (`capture.sh` does, with `focus`),
+or click once more. By hand, click the window once to bring it forward
+before clicking what you want.
+
 | Take | What it is |
 |---|---|
 | `inbox-dark.png` | The unified Inbox, Lisbon selected (the third row) |

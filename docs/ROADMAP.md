@@ -5606,13 +5606,22 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       saying so when it is on, and in general terms what it does to each toy
       and the screensaver. The wording is in
       `emptyToys/model/reducedMotion.ts`, kept general on purpose (owner).
-- [ ] In the demo, clicking the sign-in code email in the Inbox (or
+- [x] In the demo, clicking the sign-in code email in the Inbox (or
       pressing Return on it) selects the row but doesn't open the
       conversation, while the sign-in code alert is up *(seen while
       taking the trailer's pictures, 2026-11-22; not yet investigated)*.
       Other conversations opened with a click in the same session. The
       gallery's `codes` picture, taken for 0.3.0, shows it open, so this
       may be new since then or tied to the alert.
+      *(Closed 2026-11-27 as not a bug, owner's decision. The code and its
+      alert had nothing to do with it: the clicks were scripted while
+      another app was in front, and on a Mac the first click on a window
+      behind another app only brings it forward, so the page never sees
+      it. That is macOS's default, and the app keeps it: apps differ (some
+      act on that click, others only bring the window forward), and the default can't press a
+      button by accident. Turning it off (`acceptFirstMouse`) was tried in
+      #256 and not merged. `video/TRAILERS.md` says how scripted pictures
+      deal with it.)*
 - [x] The first Esc in a reply seemed to do nothing *(owner report,
       2026-11-22; fixed the same day, branch `reply-esc-leaves-reply`)*:
       after clicking Reply, the first Esc only took the cursor out of
