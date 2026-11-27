@@ -1,11 +1,11 @@
 //! Received attachments: downloading them into a local cache folder, safe
 //! file names, and the inline (`cid:`) images an email shows itself.
 //!
-//! Files live under `<cache>/<account id>/<attachment id>`, encrypted
-//! (`crate::sealed`), so one account's files never mix with another's,
-//! removing an account removes its folder, and neither a file's contents nor
-//! its name can be read from the folder. Only the path recorded in the
-//! database is trusted; a file left over from a deleted row is never served.
+//! Files live under `<cache>/<account id>/<hash>`, encrypted
+//! (`crate::sealed`) and bound to what Gmail says the attachment is (its
+//! account, message and part), so one account's files never mix with
+//! another's, removing an account removes its folder, and neither a file's
+//! contents nor its name can be read from the folder.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -16,7 +16,7 @@ use crate::db::store::{self, AttachmentRef};
 use crate::db::Db;
 use crate::error::{CoreError, Result};
 use crate::gmail::{parse, GmailClient};
-use crate::model::{AccountId, AttachmentId, MessageId};
+use crate::model::{AccountId, MessageId};
 use crate::sealed::Sealed;
 
 /// Image types shown inline. Others (and SVG, which can carry scripts if
@@ -212,49 +212,56 @@ pub fn remove_unlisted_account_folders(dir: &Path, keep: &[AccountId]) {
     }
 }
 
-/// An attachment's place in the cache, bound to its encrypted file.
-fn place(account: AccountId, id: AttachmentId) -> String {
-    format!("attachment/{}/{}", account.0, id.0)
+/// An attachment's place in the cache, bound to its encrypted file: what
+/// Gmail says it is (the account, Gmail's message ID and the MIME part),
+/// which never changes. The row's own ID isn't used: SQLite gives an ID out
+/// again after its row is deleted, perhaps to another account's attachment.
+fn place(a: &AttachmentRef) -> String {
+    format!(
+        "attachment/{}/{}/{}",
+        a.account.0, a.gmail_message_id, a.part_id
+    )
 }
 
-/// An attachment's encrypted file in the cache.
-fn cached_file(cache: &Sealed, account: AccountId, id: AttachmentId) -> PathBuf {
-    account_dir(&cache.dir, account).join(id.0.to_string())
+/// An attachment's encrypted file in the cache: in its account's folder,
+/// named by a hash of its place, so the folder shows neither its name nor
+/// its message.
+fn cached_file(cache: &Sealed, a: &AttachmentRef) -> PathBuf {
+    let digest = aws_lc_rs::digest::digest(&aws_lc_rs::digest::SHA256, place(a).as_bytes());
+    let name: String = digest.as_ref().iter().map(|b| format!("{b:02x}")).collect();
+    account_dir(&cache.dir, a.account).join(name)
 }
 
-/// An attachment's bytes: from the cache, or downloaded from Gmail (once)
-/// and kept there encrypted. Whoever hands them to another app writes a
-/// decrypted copy of its own (`sealed::decrypted_copy`, or Downloads).
+/// The bytes of attachment `a` (looked up once by the caller, who also
+/// chose its account's client with it): from the cache, or downloaded from
+/// Gmail (once) and kept there encrypted. Whoever hands them to another app
+/// writes a decrypted copy of its own (`sealed::decrypted_copy`, or
+/// Downloads).
 pub async fn download(
     db: &Db,
     gmail: &GmailClient,
-    id: AttachmentId,
+    a: &AttachmentRef,
     cache: &Sealed,
 ) -> Result<Vec<u8>> {
-    let a = store::attachment_ref(&db.conn(), id)?;
-    let path = cached_file(cache, a.account, a.id);
-    if a.cached_path.as_deref() == Some(path.to_string_lossy().as_ref()) {
-        if let Some(bytes) = cache.read(&path, &place(a.account, a.id)) {
-            return Ok(bytes);
-        }
+    if let Some(bytes) = cache.read(&cached_file(cache, a), &place(a)) {
+        return Ok(bytes);
     }
-    let bytes = fetch_bytes(gmail, &a).await?;
-    keep(db, cache, &a, &bytes)?;
+    let bytes = fetch_bytes(gmail, a).await?;
+    keep(db, cache, a, &bytes)?;
     Ok(bytes)
 }
 
-/// Keeps the bytes of attachment `a` (as read before they were fetched) in
-/// the cache, encrypted, and records where. Nothing is kept when files
-/// aren't kept this run (`crate::sealed`).
+/// Keeps the bytes of attachment `a` in the cache, encrypted, and records
+/// where. Nothing is kept when files aren't kept this run
+/// (`crate::sealed`).
 pub fn keep(db: &Db, cache: &Sealed, a: &AttachmentRef, bytes: &[u8]) -> Result<()> {
-    let path = cached_file(cache, a.account, a.id);
-    if !cache.write(&path, &place(a.account, a.id), bytes)? {
+    let path = cached_file(cache, a);
+    if !cache.write(&path, &place(a), bytes)? {
         return Ok(());
     }
-    // While the bytes were coming, the account may have been removed (or
-    // everything deleted), and the ID given to another attachment, perhaps
-    // another account's: the path is recorded only on the row they came
-    // for, and otherwise nothing is kept.
+    // While the bytes were coming, the account or the message may have
+    // been removed (or everything deleted): nothing may keep an attachment
+    // no row lists any more.
     let recorded = store::set_attachment_cached_path(&db.conn(), a, &path.to_string_lossy())?;
     if !recorded {
         let _ = std::fs::remove_file(&path);
@@ -314,7 +321,7 @@ pub async fn inline_images(
         if !INLINE_IMAGE_TYPES.contains(&mime.as_str()) || part.size > MAX_INLINE_IMAGE_BYTES {
             continue;
         }
-        let Ok(bytes) = download(db, gmail, part.id, cache).await else {
+        let Ok(bytes) = download(db, gmail, &part, cache).await else {
             continue;
         };
         if bytes.len() as u64 > MAX_INLINE_IMAGE_BYTES {

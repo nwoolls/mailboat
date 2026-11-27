@@ -343,7 +343,11 @@ async fn delete_everything(
     erase::erase_all(&mut state.db.conn())?;
     // A cache set aside after its key was lost goes too.
     tauri::Manager::state::<crate::startup::Startup>(app).forget_reset()?;
-    for dir in [&state.attachments.dir, &state.images.dir, &state.opened_dir] {
+    let plain = crate::state::PLAIN_FOLDERS.map(|folder| state.cache_dir.join(folder));
+    for dir in [&state.attachments.dir, &state.images.dir, &state.opened_dir]
+        .into_iter()
+        .chain(&plain)
+    {
         match std::fs::remove_dir_all(dir) {
             Ok(()) => {}
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
@@ -906,11 +910,13 @@ pub async fn threads_change_labels(
 }
 
 /// An attachment's bytes, downloaded (once, kept encrypted) with its
-/// account's credentials.
-async fn downloaded(state: &AppState, attachment_id: AttachmentId) -> CmdResult<Vec<u8>> {
-    let account = store::attachment_ref(&state.db.conn(), attachment_id)?.account;
-    let gmail = state.gmail_for(account)?.interactive();
-    Ok(attachments::download(&state.db, &gmail, attachment_id, &state.attachments).await?)
+/// account's credentials, and its file name. The attachment is looked up
+/// once, so the account whose client fetches it is the one it's kept for.
+async fn downloaded(state: &AppState, attachment_id: AttachmentId) -> CmdResult<(String, Vec<u8>)> {
+    let a = store::attachment_ref(&state.db.conn(), attachment_id)?;
+    let gmail = state.gmail_for(a.account)?.interactive();
+    let bytes = attachments::download(&state.db, &gmail, &a, &state.attachments).await?;
+    Ok((a.filename, bytes))
 }
 
 /// A decrypted copy of an attachment for another app to open, marked as
@@ -920,8 +926,7 @@ async fn opened_copy(
     state: &AppState,
     attachment_id: AttachmentId,
 ) -> CmdResult<std::path::PathBuf> {
-    let bytes = downloaded(state, attachment_id).await?;
-    let filename = store::attachment_ref(&state.db.conn(), attachment_id)?.filename;
+    let (filename, bytes) = downloaded(state, attachment_id).await?;
     let path = mail_core::sealed::decrypted_copy(&state.opened_dir, &filename, &bytes)?;
     files::quarantine(&path);
     Ok(path)
@@ -961,8 +966,7 @@ pub async fn attachment_save(
         .downloads_dir
         .clone()
         .ok_or_else(|| CoreError::Config("couldn't find the Downloads folder".into()))?;
-    let bytes = downloaded(&state, attachment_id).await?;
-    let filename = store::attachment_ref(&state.db.conn(), attachment_id)?.filename;
+    let (filename, bytes) = downloaded(&state, attachment_id).await?;
     let target = attachments::unique_path(&downloads, &filename);
     std::fs::write(&target, &bytes)
         .map_err(|e| CoreError::Other(format!("could not save to Downloads: {e}")))?;

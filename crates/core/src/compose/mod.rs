@@ -86,7 +86,7 @@ pub async fn carried_parts(
         for &id in ids {
             let a = store::attachment_ref(&db.conn(), id)?;
             let gmail = gmail_for(a.account)?;
-            let bytes = crate::attachments::download(db, &gmail, id, cache).await?;
+            let bytes = crate::attachments::download(db, &gmail, &a, cache).await?;
             if inline {
                 if let Some(cid) = a.content_id {
                     out.inline.push((cid, a.mime_type, bytes));

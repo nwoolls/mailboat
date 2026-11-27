@@ -7936,12 +7936,15 @@ item below is built, the owner has tried it, and the owner has published
             deleted at migration. *(Done 2026-11-26, branch
             `cache-encryption-files`: `mail_core::sealed` encrypts each file
             with AES-256-GCM, with a key derived from the cache's key, and
-            binds it to its account and attachment or image, so a file moved
-            or changed doesn't open and is fetched again. The files go in
-            new folders, `attachments-v2` and `images-v2`, and an attachment
-            is named by its ID, so its name isn't on disk. Opening one, or
-            Quick Look, writes a decrypted copy to `opened` in the cache
-            folder (this user's only), emptied at every start and quit;
+            binds it to its account and to what Gmail says it is (an
+            attachment's message and part, an image's address), so a file
+            moved or changed doesn't open and is fetched again. The files go
+            in new folders, `attachments-v2` and `images-v2`, and an
+            attachment is named by a hash, so its name isn't on disk.
+            Opening one, or Quick Look, writes a decrypted copy to `opened`
+            in the cache folder (this user's only), emptied at every start
+            and quit (on Windows, a copy another app has open goes at a
+            later start);
             saving writes straight to Downloads; forwarding and inline
             images use the bytes in memory. The old plain folders are
             deleted at every start while they're there, except while a
@@ -7954,16 +7957,21 @@ item below is built, the owner has tried it, and the owner has published
             a cached attachment that doesn't open is fetched again; without
             a key nothing is written; the files' key is the same at every
             start and new after a reset; startup deletes the plain folders
-            and keeps the encrypted ones. From review, 2026-11-27: a
-            download keeps its bytes only on the row it was fetched for, as
-            an attachment's ID can be given to another account's attachment
-            while it downloads; the copies' folder is emptied before the
+            and keeps the encrypted ones. From review, 2026-11-27: SQLite
+            gives an attachment's row ID out again after the row is deleted,
+            perhaps to another account's attachment, so the cache doesn't
+            use row IDs: a file is bound to the attachment's account,
+            message and part, and the attachment is looked up once, so the
+            account whose client fetches it is the one it's kept for (owner,
+            2026-11-27, after two rounds found cases of it); the copies'
+            folder is emptied before the
             cache opens, so also when the keychain doesn't answer, and a
             link in its place is left alone; the image index is emptied
             with the plain images, a copy that doesn't open goes with its
-            row, and clearing the image cache deletes the whole folder; the
-            cache size in Settings counts the copies, and clearing the cache
-            empties them.)*
+            row, and clearing the image cache deletes every row and the whole
+            folder; the cache size in Settings counts the copies, and
+            clearing the cache empties them; Delete all data deletes the
+            plain folders too, which an older copy kept.)*
       - [ ] Linux, with or after #236: the keyring cases above tested in
             the Linux build (no keyring, locked, unlock canceled), the
             spike's tests in Linux CI, and `cargo deny` with the Linux

@@ -69,6 +69,9 @@ pub struct AppState {
     pub images: Sealed,
     /// Decrypted copies of attachments for other apps to open.
     pub opened_dir: PathBuf,
+    /// The cache folder, for the plain folders from before encryption
+    /// (`PLAIN_FOLDERS`), which Delete all data deletes too.
+    pub cache_dir: PathBuf,
     /// Where "Save" puts attachments (the user's Downloads folder).
     pub downloads_dir: Option<PathBuf>,
     /// Where each attachment was last saved, for "Show in Finder".
@@ -112,6 +115,7 @@ impl AppState {
             attachments: Sealed::new(dirs.cache.join(ATTACHMENTS_FOLDER), dirs.files.clone()),
             images: Sealed::new(dirs.cache.join(IMAGES_FOLDER), dirs.files),
             opened_dir: dirs.cache.join(OPENED_FOLDER),
+            cache_dir: dirs.cache.clone(),
             downloads_dir: dirs.downloads,
             saved: Mutex::new(HashMap::new()),
             sync_log,

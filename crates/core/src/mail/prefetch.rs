@@ -399,6 +399,8 @@ pub fn evict(conn: &Connection, dir: &Path, limit: u64) -> Result<()> {
 /// halfway).
 pub fn clear(conn: &Connection, dir: &Path) -> Result<()> {
     evict(conn, dir, 0)?;
+    // Rows of empty images too, which trimming to 0 bytes doesn't reach.
+    conn.execute("DELETE FROM image_cache", [])?;
     match std::fs::remove_dir_all(dir) {
         Ok(()) => Ok(()),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -964,7 +966,10 @@ mod tests {
         assert!(!is_cached(&db.conn(), account, "https://x/1").unwrap());
         assert_eq!(files_in(&dir), 0, "its file went with its row");
         std::fs::write(account_dir(&dir, account).join("incoming-9.tmp"), b"x").unwrap();
+        // An empty image: its row isn't reached by trimming to 0 bytes.
+        store(&db, &sealed(&dir), account, "https://x/2", "image/png", &[]).unwrap();
         clear(&db.conn(), &dir).unwrap();
+        assert_eq!(size(&db.conn()).unwrap(), (0, 0), "no rows left");
         assert!(!dir.exists(), "nothing left");
         clear(&db.conn(), &dir).unwrap();
     }
