@@ -7842,17 +7842,42 @@ item below is built, the owner has tried it, and the owner has published
             `COMPILED_IN`; review, 2026-11-26). The upgrade steps are in
             `docs/DEVELOPMENT.md` → "The encrypting SQLite". The app still
             opens a plain database: encrypting it is the next step.)*
-      - [ ] The key: made and kept in the keychain, set on the connection
+      - [x] The key: made and kept in the keychain, set on the connection
             before anything else, never in an error or the log. A lost key
-            moves the unreadable database aside (deleted at the next start),
-            starts a new cache and shows a notice once: accounts sign in
-            again and Settings are back to their defaults (owner,
+            moves the unreadable database aside (kept until the notice is
+            dismissed), starts a new cache and shows a notice once: accounts
+            sign in again and Settings are back to their defaults (owner,
             2026-11-26). A keychain that doesn't answer leaves the files
             alone and says so. Temporary storage moves to memory
             (`SQLITE_TEMP_STORE=2` in `vendor/libsqlite3-sys/build.rs`),
             because SQLite3 Multiple Ciphers doesn't encrypt temporary
-            files.
-      - [ ] The one-time migration of a plain database, with the spike's
+            files. *(Done 2026-11-26, branch `cache-encryption-key`:
+            `mail_core::db::cache` makes the key (32 bytes from the system's
+            random source, through `aws-lc-rs`), keeps it in the keychain
+            entry `cache-key` and reads it back before using it, sets it as
+            a raw key, and wipes the app's own copies of it from memory when
+            they're dropped (`zeroize`; SQLite keeps copies of its own); a
+            failure to set it gives a fixed message, without the key. A key
+            that doesn't fit the cache (a keychain restored from elsewhere)
+            counts as lost. When the keychain doesn't answer, or another
+            copy holds a cache that needs setting aside, the window shows
+            only that, with Try again and Quit (owner, 2026-11-26). After a
+            reset, the notice appears over onboarding without a Sign in
+            button (onboarding is the sign-in). For someone who finished
+            onboarding earlier, a reset lands in the main window, and the
+            notice there has the button. A reset saves and reads back the
+            new key before it moves anything, puts the old cache back if the
+            new one can't be made, a reset that stopped after the move is
+            finished at the next start, and reported then, and the notice
+            comes back at each start until it is dismissed, which deletes
+            the set-aside cache (review, 2026-11-26). Races between two
+            copies starting at once only stop ("another copy is open", then
+            Try again): only a developer runs two copies on one cache
+            (owner, 2026-11-26). Tested with made-up mail: a new cache, a
+            lost key, a key that doesn't fit, a keychain that doesn't
+            answer, a keychain that refuses to save the new key, and an
+            interrupted reset, each with the files checked.)*
+      - [x] The one-time migration of a plain database, with the spike's
             tests, and three things the spike left open. Other copies stay
             out until the copy has replaced the plain file: on macOS and
             Linux the lock is held through the rename; on Windows, which
@@ -7878,7 +7903,32 @@ item below is built, the owner has tried it, and the owner has published
             cached files must be retried until it is done, even when the
             database was already replaced, as happens when the app quits or
             crashes right after the rename; a test interrupts there and
-            checks that the next start removes them.
+            checks that the next start removes them. *(Done 2026-11-26,
+            branch `cache-encryption-key`, with the lock planned
+            differently: every running copy holds a shared lock on
+            `mail.lock` in the data folder, and the move takes the exclusive
+            lock and keeps it through the rename, so no copy of this version
+            opens the cache in between, on any system or login session. A
+            second copy, such as a development build beside the installed
+            app, keeps working, and with it open the move waits for a start
+            without it (owner, 2026-11-26). Every change to the keychain or
+            the files is made under the exclusive lock, after reading both
+            again under it, so a copy that waited sees what another copy did
+            meanwhile (review, 2026-11-26: deciding before the lock could
+            lose a key or a cache when two copies started together). A
+            version from before encryption with the cache open makes
+            SQLite's own exclusive lock fail; the cache then opens plain,
+            and the move waits for a later start (owner, 2026-11-26). One
+            started in the moment before the rename isn't stopped
+            (accepted). Tests: the move, a move stopped after the copy and
+            after the check, a second copy holding the lock, an older copy
+            with the cache open, and a start that waits while another copy
+            makes or moves the cache. A clean start reads the previous run's
+            accounts read-only and keeps its folder when the keychain
+            doesn't answer, so their tokens aren't left behind. Deleting the
+            plain cached attachments and images belongs to the next step:
+            the encrypted ones go in new folders, and every start deletes
+            the old folders while they're there.)*
       - [ ] Attachments and images encrypted in the cache folder; decrypted
             copies only for other apps, in a private temporary folder that
             is emptied at start and at quit; the plain files already cached
