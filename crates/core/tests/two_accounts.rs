@@ -713,3 +713,56 @@ fn unread_leaves_out_spam_and_trash() {
         .iter()
         .any(|c| c.gmail_label_id == "SPAM" && c.unread == 1));
 }
+
+/// The ID of a deleted email or conversation is never given to a new one,
+/// another account's least of all: code that read an ID and waited on
+/// Gmail would otherwise write onto that new one (backlog, 2026-11-27).
+/// SQLite on its own gives the highest ID out again once its row is
+/// deleted, so the newest email is deleted here.
+#[test]
+fn a_deleted_ids_never_come_back_for_another_account() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "sub-a", "a@x.example");
+    let b = add_account(&db, "sub-b", "b@x.example");
+    let ids = |db: &Db, account: AccountId, gmail_thread: &str| -> (i64, i64) {
+        db.conn()
+            .query_row(
+                "SELECT t.id, m.id FROM threads t JOIN messages m ON m.thread_id = t.id
+                 WHERE t.account_id = ?1 AND t.gmail_thread_id = ?2",
+                rusqlite::params![account, gmail_thread],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap()
+    };
+    store::upsert_thread(
+        &mut db.conn(),
+        a.id,
+        &thread("t1", "m1", "p@x.example", "One", 1_000, &["INBOX"]),
+    )
+    .unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        a.id,
+        &thread("t2", "m2", "p@x.example", "Two", 2_000, &["INBOX"]),
+    )
+    .unwrap();
+    let (gone_thread, gone_message) = ids(&db, a.id, "t2");
+
+    // The newest email goes (sync saw it deleted in Gmail), and with it
+    // its conversation; then account b's sync adds one.
+    store::delete_messages(&mut db.conn(), a.id, &["m2".to_string()]).unwrap();
+    store::delete_thread(&db.conn(), a.id, "t2").unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        b.id,
+        &thread("t9", "m9", "q@x.example", "New", 3_000, &["INBOX"]),
+    )
+    .unwrap();
+
+    let (new_thread, new_message) = ids(&db, b.id, "t9");
+    assert!(
+        new_message > gone_message,
+        "{new_message} after {gone_message}"
+    );
+    assert!(new_thread > gone_thread, "{new_thread} after {gone_thread}");
+}

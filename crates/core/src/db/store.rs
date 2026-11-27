@@ -136,6 +136,16 @@ fn label_id(conn: &Connection, account: AccountId, gmail_label_id: &str) -> Resu
     Ok(LabelId(conn.last_insert_rowid()))
 }
 
+/// The ID a new email gets: past every ID there is and every one there was
+/// (`schema::MIGRATION_V26`), so an ID read before a wait on Gmail can't
+/// come to mean another email. Used as a value in the `INSERT`.
+pub const NEXT_MESSAGE_ID: &str = "MAX(COALESCE((SELECT MAX(id) FROM messages), 0),
+     COALESCE((SELECT last FROM row_ids WHERE name = 'messages'), 0)) + 1";
+
+/// The ID a new conversation gets, as `NEXT_MESSAGE_ID`.
+pub const NEXT_THREAD_ID: &str = "MAX(COALESCE((SELECT MAX(id) FROM threads), 0),
+     COALESCE((SELECT last FROM row_ids WHERE name = 'threads'), 0)) + 1";
+
 /// Inserts or replaces a whole thread. Messages that disappeared from the
 /// thread are deleted, labels are replaced, and the thread's summary columns,
 /// derived labels and search index are rebuilt.
@@ -146,8 +156,11 @@ pub fn upsert_thread(
 ) -> Result<ThreadId> {
     let tx = conn.transaction()?;
     tx.execute(
-        "INSERT INTO threads (account_id, gmail_thread_id, synced_at) VALUES (?1, ?2, ?3)
-         ON CONFLICT (account_id, gmail_thread_id) DO UPDATE SET synced_at = excluded.synced_at",
+        &format!(
+            "INSERT INTO threads (id, account_id, gmail_thread_id, synced_at)
+             VALUES ({NEXT_THREAD_ID}, ?1, ?2, ?3)
+             ON CONFLICT (account_id, gmail_thread_id) DO UPDATE SET synced_at = excluded.synced_at"
+        ),
         params![account, thread.gmail_thread_id, now_millis()],
     )?;
     let thread_id: ThreadId = tx.query_row(
@@ -177,10 +190,10 @@ pub fn upsert_thread(
             email: String::new(),
         });
         tx.execute(
-            "INSERT INTO messages (account_id, thread_id, gmail_message_id, internal_date, subject, snippet,
+            &format!("INSERT INTO messages (id, account_id, thread_id, gmail_message_id, internal_date, subject, snippet,
                from_name, from_email, to_json, cc_json, rfc822_message_id, in_reply_to, references_header, has_attachments,
                reply_to_json)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+             VALUES ({NEXT_MESSAGE_ID}, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
              ON CONFLICT (account_id, gmail_message_id) DO UPDATE SET
                thread_id = excluded.thread_id, internal_date = excluded.internal_date,
                subject = excluded.subject, snippet = excluded.snippet,
@@ -194,7 +207,7 @@ pub fn upsert_thread(
                has_attachments = CASE WHEN EXISTS (
                    SELECT 1 FROM message_bodies b
                    WHERE b.message_id = messages.id AND b.parts_version >= 1)
-                 THEN messages.has_attachments ELSE excluded.has_attachments END",
+                 THEN messages.has_attachments ELSE excluded.has_attachments END"),
             params![
                 account,
                 thread_id,

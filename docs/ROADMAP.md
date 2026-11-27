@@ -5512,15 +5512,27 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       the cache encryption, which stores whatever this writes. Fix: carry
       the account and Gmail's message ID through the open, and write only
       if the row still is that message, as the attachment cache now does.
-      *(Fixed 2026-11-27, branch `body-write-owner`: `fetch_body` notes the
-      account and Gmail's message ID before the fetch, and
-      `store::set_fetched_body` writes the body and its parts only if the
-      row is still that message; otherwise opening it says the message is
-      gone. The invitation's calendar part (`store::set_calendar`, also
-      written after a fetch, by `calendar::invite_for`) has the same check.
-      The test `fetch_body_skips_a_row_that_became_another_message` gives
-      the row's ID to another account's message during the fetch; it fails
-      without the change.)*
+      *(Fixed 2026-11-27, branch `body-write-owner`. First as the item
+      says: `fetch_body` notes the account and Gmail's message ID before
+      the fetch, and `store::set_fetched_body` writes the body and its
+      parts only if the row is still that message (otherwise opening it
+      says the message is gone); the invitation's calendar part
+      (`store::set_calendar`, written after a fetch by
+      `calendar::invite_for` too) has the same check. Review then found
+      the same race in five more places that read a row ID, wait on Gmail
+      and write by it: Reply-To saved for a reply, a draft linked to its
+      email, the flag that an email's images are handled, an invitation
+      returned for an email that changed, and the open reading the
+      account twice. So the cause is fixed instead (owner's choice): an
+      email's or a conversation's ID is never given out again
+      (`schema::MIGRATION_V26`, `store::NEXT_MESSAGE_ID`), and a stale ID
+      now points at nothing. The check stays as a second guard. Tests:
+      `a_deleted_ids_never_come_back_for_another_account` fails without
+      the new IDs (the new email got the deleted one's ID);
+      `fetch_body_skips_a_row_that_became_another_message` covers each
+      part of the check, and fails without the change;
+      `a_calendar_part_is_kept_only_for_its_own_message` covers the
+      calendar's.)*
 
 - [x] The sanitizer's property test failed on Windows CI with a false alarm
       *(found 2026-11-26 on pull request #249, which doesn't touch the
