@@ -816,3 +816,45 @@ fn an_insert_that_would_reuse_an_id_is_refused() {
         .unwrap();
     assert_eq!(rows, 1, "only m1 is left");
 }
+
+/// A copy of the app from before IDs were kept empties every table it
+/// doesn't know on Delete all data, `row_ids` included: the marks stay, and
+/// IDs still count on past the erased ones.
+#[test]
+fn an_older_copys_erase_keeps_the_id_marks() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "sub-a", "a@x.example");
+    store::upsert_thread(
+        &mut db.conn(),
+        a.id,
+        &thread("t1", "m1", "p@x.example", "One", 1_000, &["INBOX"]),
+    )
+    .unwrap();
+    let highest = |table: &str| -> i64 {
+        db.conn()
+            .query_row(&format!("SELECT MAX(id) FROM {table}"), [], |r| r.get(0))
+            .unwrap()
+    };
+    let (message, conversation) = (highest("messages"), highest("threads"));
+
+    // That copy's erase: accounts first, then every table but its own two.
+    db.conn()
+        .execute_batch(
+            "PRAGMA defer_foreign_keys = ON;
+             DELETE FROM accounts;
+             DELETE FROM threads;
+             DELETE FROM messages;
+             DELETE FROM row_ids;",
+        )
+        .unwrap();
+
+    let b = add_account(&db, "sub-b", "b@x.example");
+    store::upsert_thread(
+        &mut db.conn(),
+        b.id,
+        &thread("t9", "m9", "q@x.example", "New", 2_000, &["INBOX"]),
+    )
+    .unwrap();
+    assert!(highest("messages") > message, "a new email's ID");
+    assert!(highest("threads") > conversation, "a new conversation's ID");
+}

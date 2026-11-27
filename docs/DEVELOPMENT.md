@@ -344,7 +344,9 @@ The cache never gives a deleted email's or conversation's ID to a new one
 (`schema::MIGRATION_V26`): a trigger aborts an insert that would. A copy from
 before that rule, open on the same cache, inserts the old way: when it
 would give a new email or conversation a deleted one's ID, its sync fails
-instead. Quit the older copy; the newer one syncs that mail.
+instead, and its Delete all data leaves the cache's record of used IDs
+(`row_ids`, which ignores deletes). Quit the older copy; the newer one
+syncs that mail.
 
 Downloaded attachments and images are encrypted too (`mail_core::sealed`),
 in the cache folder's `attachments-v2` and `images-v2`, with AES-256-GCM

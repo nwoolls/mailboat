@@ -492,8 +492,11 @@ DELETE FROM ai_summaries WHERE kind = 'line';
 /// ID anyway is refused (`*_refuse_used_id`): a copy of the app from before
 /// this, open on the same cache (a development build beside the installed
 /// app), still inserts the SQLite way, and its sync then fails rather than
-/// write onto another email. `IF NOT EXISTS`, as the upgrade tests run
-/// migrations again on a database that has them.
+/// write onto another email. And the marks can't be deleted
+/// (`row_ids_stay` skips the delete without an error), so that copy's
+/// Delete all data, which empties every table it doesn't know, leaves them.
+/// `IF NOT EXISTS`, as the upgrade tests run migrations again on a database
+/// that has them.
 pub const MIGRATION_V26: &str = r#"
 CREATE TABLE IF NOT EXISTS row_ids (
   name TEXT PRIMARY KEY,
@@ -510,6 +513,10 @@ WHEN OLD.id > COALESCE((SELECT last FROM row_ids WHERE name = 'threads'), 0)
 BEGIN
   INSERT INTO row_ids (name, last) VALUES ('threads', OLD.id)
   ON CONFLICT (name) DO UPDATE SET last = excluded.last;
+END;
+CREATE TRIGGER IF NOT EXISTS row_ids_stay BEFORE DELETE ON row_ids
+BEGIN
+  SELECT RAISE(IGNORE);
 END;
 CREATE TRIGGER IF NOT EXISTS messages_refuse_used_id AFTER INSERT ON messages
 WHEN NEW.id <= COALESCE((SELECT last FROM row_ids WHERE name = 'messages'), 0)
