@@ -228,7 +228,7 @@ pub async fn update_install(app: AppHandle) -> CmdResult<()> {
 /// process has ended (a copy beside it would hand over and quit). Where the helper can't be started (or outside a bundle, as
 /// in development), Tauri's restart. Either way the command never answers:
 /// the app is quitting, and the window keeps showing the install until then.
-async fn relaunch(app: &AppHandle) -> CmdResult<()> {
+pub(crate) async fn relaunch(app: &AppHandle) -> CmdResult<()> {
     #[cfg(target_os = "macos")]
     if let Some((exe, bundle)) = tauri::process::current_binary(&app.env())
         .ok()

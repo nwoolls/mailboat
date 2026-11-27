@@ -2,6 +2,7 @@
 //! foreign keys on, and a `schema_migrations` table with numbered steps.
 
 pub mod accounts;
+pub mod cache;
 pub mod erase;
 pub mod query;
 mod schema;
@@ -31,7 +32,7 @@ pub fn path_in(dir: &Path) -> std::path::PathBuf {
 }
 
 /// The database file and the write-ahead files SQLite keeps beside it.
-fn database_files(path: &Path) -> [std::path::PathBuf; 3] {
+pub(crate) fn database_files(path: &Path) -> [std::path::PathBuf; 3] {
     let with = |suffix: &str| {
         let mut name = path.as_os_str().to_owned();
         name.push(suffix);
@@ -48,12 +49,23 @@ impl Db {
     /// part is best effort: a folder or file whose mode can't be changed
     /// (owned by another account) still opens, as before.
     pub fn open(path: &Path) -> Result<Self> {
+        Self::open_at(path, None)
+    }
+
+    /// `open`, unlocking an encrypted database with `key` before anything
+    /// else reads it (`cache::open_cache` decides which). A wrong key fails
+    /// with SQLite's "not a database" (`cache::is_wrong_key`).
+    pub(crate) fn open_at(path: &Path, key: Option<&cache::CacheKey>) -> Result<Self> {
+        require_cipher()?;
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| CoreError::Other(format!("create data dir: {e}")))?;
             let _ = crate::owner_only::dir(parent);
         }
         let conn = Connection::open(path)?;
+        if let Some(key) = key {
+            cache::apply_key(&conn, key)?;
+        }
         conn.execute_batch(
             "PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;",
         )?;
@@ -70,6 +82,7 @@ impl Db {
     }
 
     fn init(mut conn: Connection) -> Result<Self> {
+        cipher_version(&conn)?;
         migrate(&mut conn)?;
         let version = data_version(&conn)?;
         Ok(Self {
@@ -96,6 +109,35 @@ impl Db {
         let now = data_version(&self.conn())?;
         Ok(self.seen_version.swap(now, Ordering::Relaxed) != now)
     }
+}
+
+/// The version of the encrypting SQLite (SQLite3 Multiple Ciphers) this
+/// build links. An error when it links plain SQLite instead, which happens
+/// if Cargo skipped the workspace's `[patch.crates-io]` (a rusqlite upgrade
+/// that asks for another `libsqlite3-sys`): the database must not open then.
+pub fn cipher_version(conn: &Connection) -> Result<String> {
+    match conn.query_row("SELECT sqlite3mc_version()", [], |r| r.get(0)) {
+        Ok(version) => Ok(version),
+        Err(e)
+            if e.to_string()
+                .contains("no such function: sqlite3mc_version") =>
+        {
+            Err(CoreError::Other(
+                "This copy of the app was built without its encrypting SQLite \
+                 (SQLite3 Multiple Ciphers), so it can't open the mail cache. \
+                 Install an official build."
+                    .into(),
+            ))
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+/// `cipher_version` on a connection of its own, in memory, so a build
+/// without the encrypting SQLite stops before anything on disk is read,
+/// created or changed. App startup calls it first, and so does `Db::open`.
+pub fn require_cipher() -> Result<String> {
+    cipher_version(&Connection::open_in_memory()?)
 }
 
 fn data_version(conn: &Connection) -> Result<i64> {
@@ -197,6 +239,39 @@ mod tests {
         assert_eq!(mode(path.parent().unwrap()), 0o700);
         assert_eq!(mode(&path), 0o600);
         std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// The encrypting SQLite is linked, with its default cipher. Fails when
+    /// Cargo skipped the workspace's patch and built plain SQLite.
+    #[test]
+    fn the_cipher_is_linked() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.conn();
+        let version = cipher_version(&conn).unwrap();
+        assert!(
+            version.starts_with("SQLite3 Multiple Ciphers 2."),
+            "{version}"
+        );
+        let cipher: String = conn.query_row("PRAGMA cipher", [], |r| r.get(0)).unwrap();
+        assert_eq!(cipher, "chacha20");
+        assert_eq!(require_cipher().unwrap(), version);
+        // The SQLite inside it is the one the bindings were made for
+        // (docs/DEVELOPMENT.md -> "The encrypting SQLite", step 3).
+        assert_eq!(
+            Ok(rusqlite::version()),
+            rusqlite::ffi::SQLITE_VERSION.to_str()
+        );
+        // Temporary tables and sorts in memory: SQLite3 Multiple Ciphers
+        // doesn't encrypt temporary files (vendor/libsqlite3-sys/build.rs,
+        // "app:").
+        let options: Vec<String> = conn
+            .prepare("PRAGMA compile_options")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .collect::<std::result::Result<_, _>>()
+            .unwrap();
+        assert!(options.iter().any(|o| o == "TEMP_STORE=2"), "{options:?}");
     }
 
     #[test]

@@ -1,5 +1,5 @@
 //! Received attachments: recorded when a body is fetched, downloaded into
-//! the account's cache folder with safe names, and inline images embedded.
+//! the account's cache folder encrypted, and inline images embedded.
 
 mod common;
 
@@ -10,7 +10,9 @@ use mail_core::gmail::parse;
 use mail_core::gmail::types::Thread;
 use mail_core::mail;
 use mail_core::model::*;
+use mail_core::sealed::{FileKey, Sealed};
 use mail_core::sync::fetch_body;
+use std::sync::Arc;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -51,10 +53,23 @@ fn thread_of(db: &Db, message: MessageId) -> ThreadId {
         .unwrap()
 }
 
-fn temp_cache() -> std::path::PathBuf {
+fn temp_cache() -> Sealed {
     let dir = std::env::temp_dir().join(format!("attachments-test-{}", fastrand::u64(..)));
     std::fs::create_dir_all(&dir).unwrap();
-    dir
+    Sealed::new(dir, Some(Arc::new(FileKey::generate().unwrap())))
+}
+
+/// Every file under `dir`.
+fn files_under(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut out = Vec::new();
+    for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+        if entry.file_type().unwrap().is_dir() {
+            out.extend(files_under(&entry.path()));
+        } else {
+            out.push(entry.path());
+        }
+    }
+    out
 }
 
 async fn serve_message(server: &MockServer, file: &str, times: u64) {
@@ -133,7 +148,7 @@ async fn a_body_cached_before_attachments_were_recorded_is_fetched_again_once() 
 }
 
 #[tokio::test]
-async fn downloads_land_in_the_accounts_folder_once_with_a_safe_name() {
+async fn downloads_land_in_the_accounts_folder_once_encrypted() {
     let server = MockServer::start().await;
     serve_message(&server, "message_m2_attachments.json", 1).await;
     serve_attachment(&server, "ATT_PDF", "JVBERi0xLjcK", 1).await;
@@ -143,28 +158,88 @@ async fn downloads_land_in_the_accounts_folder_once_with_a_safe_name() {
     fetch_body(&db, &gmail, m2).await.unwrap();
     let pdf = store::attachments_for(&db.conn(), m2).unwrap()[0].id;
 
-    let path = attachments::download(&db, &gmail, pdf, &cache)
+    let pdf_ref = store::attachment_ref(&db.conn(), pdf).unwrap();
+
+    let bytes = attachments::download(&db, &gmail, &pdf_ref, &cache)
         .await
         .unwrap();
-    assert!(path.starts_with(attachments::account_dir(&cache, account)));
-    assert_eq!(path.file_name().unwrap(), "Quarterly report.pdf");
-    assert_eq!(std::fs::read(&path).unwrap(), b"%PDF-1.7\n");
-    // On Windows the cached file carries the Mark of the Web as soon as it
-    // is downloaded, before anything opens or saves it (forwarding and
-    // inline images use the cache as is).
-    #[cfg(windows)]
+    assert_eq!(bytes, b"%PDF-1.7\n");
+    // One file, in the account's folder, named by a hash of the attachment's place: its
+    // name and its contents can't be read from the folder.
+    let files = files_under(&cache.dir);
+    assert_eq!(files.len(), 1, "{files:?}");
     assert_eq!(
-        std::fs::read_to_string(format!("{}:Zone.Identifier", path.display())).unwrap(),
-        "[ZoneTransfer]\r\nZoneId=3\r\n"
+        files[0].parent().unwrap(),
+        attachments::account_dir(&cache.dir, account)
     );
+    let name = files[0].file_name().unwrap().to_str().unwrap();
+    assert!(
+        name.len() == 64 && name.bytes().all(|b| b.is_ascii_hexdigit()),
+        "a hash, not the file's name: {name}"
+    );
+    let on_disk = std::fs::read(&files[0]).unwrap();
+    assert!(!on_disk.windows(4).any(|w| w == b"%PDF"), "encrypted");
     // Second time: straight from the cache (wiremock checks one request).
     assert_eq!(
-        attachments::download(&db, &gmail, pdf, &cache)
+        attachments::download(&db, &gmail, &pdf_ref, &cache)
             .await
             .unwrap(),
-        path
+        bytes
     );
-    std::fs::remove_dir_all(&cache).unwrap();
+    std::fs::remove_dir_all(&cache.dir).unwrap();
+}
+
+/// A cached file that doesn't open (changed on disk, or from another key)
+/// is downloaded again, and replaced.
+#[tokio::test]
+async fn a_cached_file_that_doesnt_open_is_downloaded_again() {
+    let server = MockServer::start().await;
+    serve_message(&server, "message_m2_attachments.json", 1).await;
+    serve_attachment(&server, "ATT_PDF", "JVBERi0xLjcK", 2).await;
+    let (db, _, m2) = setup();
+    let gmail = client(&server.uri()).0;
+    let cache = temp_cache();
+    fetch_body(&db, &gmail, m2).await.unwrap();
+    let pdf = store::attachments_for(&db.conn(), m2).unwrap()[0].id;
+    let pdf_ref = store::attachment_ref(&db.conn(), pdf).unwrap();
+    attachments::download(&db, &gmail, &pdf_ref, &cache)
+        .await
+        .unwrap();
+    let other = Sealed::new(
+        cache.dir.clone(),
+        Some(Arc::new(FileKey::generate().unwrap())),
+    );
+    assert_eq!(
+        attachments::download(&db, &gmail, &pdf_ref, &other)
+            .await
+            .unwrap(),
+        b"%PDF-1.7\n"
+    );
+    std::fs::remove_dir_all(&cache.dir).unwrap();
+}
+
+/// Without a key this run (the database stayed plain for an older copy),
+/// attachments still open, and nothing is written to the cache folder.
+#[tokio::test]
+async fn without_a_key_attachments_are_fetched_and_not_kept() {
+    let server = MockServer::start().await;
+    serve_message(&server, "message_m2_attachments.json", 1).await;
+    serve_attachment(&server, "ATT_PDF", "JVBERi0xLjcK", 2).await;
+    let (db, _, m2) = setup();
+    let gmail = client(&server.uri()).0;
+    let dir = temp_cache().dir;
+    let cache = Sealed::new(dir.clone(), None);
+    fetch_body(&db, &gmail, m2).await.unwrap();
+    let pdf = store::attachments_for(&db.conn(), m2).unwrap()[0].id;
+    for _ in 0..2 {
+        let pdf_ref = store::attachment_ref(&db.conn(), pdf).unwrap();
+        let bytes = attachments::download(&db, &gmail, &pdf_ref, &cache)
+            .await
+            .unwrap();
+        assert_eq!(bytes, b"%PDF-1.7\n");
+    }
+    assert!(files_under(&dir).is_empty());
+    std::fs::remove_dir_all(&dir).unwrap();
 }
 
 #[tokio::test]
@@ -191,11 +266,12 @@ async fn a_stale_attachment_id_is_refreshed_from_the_message() {
     serve_attachment(&server, "ATT_LOGO_NEW", "iVBORw", 1).await;
 
     let logo = store::inline_parts(&db.conn(), m2).unwrap()[0].id;
-    let path = attachments::download(&db, &gmail, logo, &cache)
+    let logo_ref = store::attachment_ref(&db.conn(), logo).unwrap();
+    let bytes = attachments::download(&db, &gmail, &logo_ref, &cache)
         .await
         .unwrap();
-    assert_eq!(std::fs::read(&path).unwrap(), b"\x89PNG");
-    std::fs::remove_dir_all(&cache).unwrap();
+    assert_eq!(bytes, b"\x89PNG");
+    std::fs::remove_dir_all(&cache.dir).unwrap();
 }
 
 #[tokio::test]
@@ -216,7 +292,7 @@ async fn inline_images_are_embedded_in_the_email() {
     let shown = mail::safe_message(&body, false, &images, &Default::default(), false);
     assert!(shown.document.contains("data:image/png;base64,iVBORw=="));
     assert!(!shown.document.contains("cid:"));
-    std::fs::remove_dir_all(&cache).unwrap();
+    std::fs::remove_dir_all(&cache.dir).unwrap();
 }
 
 /// An account removed (or everything deleted) while an attachment is still
@@ -240,7 +316,8 @@ async fn a_download_finishing_after_its_account_is_gone_keeps_nothing() {
     fetch_body(&db, &gmail, m2).await.unwrap();
     let pdf = store::attachments_for(&db.conn(), m2).unwrap()[0].id;
 
-    let download = attachments::download(&db, &gmail, pdf, &cache);
+    let pdf_ref = store::attachment_ref(&db.conn(), pdf).unwrap();
+    let download = attachments::download(&db, &gmail, &pdf_ref, &cache);
     let remove = async {
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         accounts::remove(&db.conn(), account).unwrap();
@@ -251,8 +328,144 @@ async fn a_download_finishing_after_its_account_is_gone_keeps_nothing() {
         "{result:?}"
     );
     assert!(
-        !attachments::account_dir(&cache, account).exists(),
+        !attachments::account_dir(&cache.dir, account).exists(),
         "no file stays behind"
     );
-    let _ = std::fs::remove_dir_all(&cache);
+    let _ = std::fs::remove_dir_all(&cache.dir);
+}
+
+/// Review: attachment IDs are given out again after a row is deleted. An
+/// account removed while one of its attachments is coming in, and the ID
+/// given to another account's attachment meanwhile: the bytes aren't kept
+/// for the other account's row.
+#[tokio::test]
+async fn a_download_never_lands_on_another_accounts_attachment_with_its_id() {
+    let server = MockServer::start().await;
+    serve_message(&server, "message_m2_attachments.json", 1).await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m2/attachments/ATT_PDF"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_delay(std::time::Duration::from_millis(400))
+                .set_body_json(serde_json::json!({ "size": 9, "data": "JVBERi0xLjcK" })),
+        )
+        .mount(&server)
+        .await;
+    let (db, account, m2) = setup();
+    let other = accounts::upsert(
+        &db.conn(),
+        &accounts::NewAccount {
+            google_sub: "b",
+            email: "b@x.example",
+            display_name: None,
+            avatar_url: None,
+            oauth_client: "default",
+        },
+    )
+    .unwrap()
+    .id;
+    let t: Thread = serde_json::from_str(&fixture("thread_t1.json")).unwrap();
+    store::upsert_thread(&mut db.conn(), other, &parse::thread_to_incoming(&t)).unwrap();
+    let others_m2: MessageId = db
+        .conn()
+        .query_row(
+            "SELECT id FROM messages WHERE gmail_message_id = 'm2' AND account_id = ?1",
+            [other],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let gmail = client(&server.uri()).0;
+    let cache = temp_cache();
+    fetch_body(&db, &gmail, m2).await.unwrap();
+    let pdf = store::attachments_for(&db.conn(), m2).unwrap()[0].id;
+
+    let pdf_ref = store::attachment_ref(&db.conn(), pdf).unwrap();
+    let download = attachments::download(&db, &gmail, &pdf_ref, &cache);
+    let replace = async {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        accounts::remove(&db.conn(), account).unwrap();
+        db.conn()
+            .execute(
+                "INSERT INTO attachments (id, account_id, message_id, part_id, filename, mime_type, size)
+                 VALUES (?1, ?2, ?3, '2', 'notes.txt', 'text/plain', 5)",
+                rusqlite::params![pdf, other, others_m2],
+            )
+            .unwrap();
+    };
+    let (result, ()) = tokio::join!(download, replace);
+    assert!(
+        matches!(result, Err(mail_core::CoreError::NotFound(_))),
+        "{result:?}"
+    );
+    let cached: Option<String> = db
+        .conn()
+        .query_row(
+            "SELECT cached_path FROM attachments WHERE id = ?1",
+            [pdf],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(cached, None, "the other account's row isn't given the file");
+    assert!(
+        files_under(&cache.dir).is_empty(),
+        "{:?}",
+        files_under(&cache.dir)
+    );
+    let _ = std::fs::remove_dir_all(&cache.dir);
+}
+
+/// Review: a cached file belongs to what Gmail says the attachment is, not
+/// to its row's ID, which SQLite gives out again. A row with the same ID
+/// that is another attachment (another message here) doesn't get the file,
+/// and fetches its own.
+#[tokio::test]
+async fn a_cached_file_belongs_to_the_attachment_not_its_row_id() {
+    let server = MockServer::start().await;
+    serve_message(&server, "message_m2_attachments.json", 1).await;
+    serve_attachment(&server, "ATT_PDF", "JVBERi0xLjcK", 1).await;
+    Mock::given(method("GET"))
+        .and(path("/gmail/v1/users/me/messages/m1/attachments/ATT_OTHER"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(serde_json::json!({ "size": 5, "data": "b3RoZXI" })),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+    let (db, _, m2) = setup();
+    let gmail = client(&server.uri()).0;
+    let cache = temp_cache();
+    fetch_body(&db, &gmail, m2).await.unwrap();
+    let pdf = store::attachments_for(&db.conn(), m2).unwrap()[0].id;
+    let first = store::attachment_ref(&db.conn(), pdf).unwrap();
+    attachments::download(&db, &gmail, &first, &cache)
+        .await
+        .unwrap();
+    // The row goes, and its ID is given to an attachment of another message.
+    let m1: MessageId = db
+        .conn()
+        .query_row(
+            "SELECT id FROM messages WHERE gmail_message_id = 'm1'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    db.conn()
+        .execute("DELETE FROM attachments WHERE id = ?1", [pdf])
+        .unwrap();
+    db.conn()
+        .execute(
+            "INSERT INTO attachments (id, account_id, message_id, part_id, gmail_attachment_id,
+               filename, mime_type, size)
+             VALUES (?1, ?2, ?3, '2', 'ATT_OTHER', 'other.txt', 'text/plain', 5)",
+            rusqlite::params![pdf, first.account, m1],
+        )
+        .unwrap();
+    let second = store::attachment_ref(&db.conn(), pdf).unwrap();
+    assert_eq!(second.id, first.id);
+    let bytes = attachments::download(&db, &gmail, &second, &cache)
+        .await
+        .unwrap();
+    assert_eq!(bytes, b"other", "its own bytes, not the cached PDF");
+    let _ = std::fs::remove_dir_all(&cache.dir);
 }

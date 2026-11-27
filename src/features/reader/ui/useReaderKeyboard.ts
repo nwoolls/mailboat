@@ -1,7 +1,8 @@
 import type React from "react";
-import { useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import type { MessageId } from "../../../platform/tauri/bindings";
 import { isEditable } from "../../../shared/lib/editable";
+import { REPLY_FOLLOW_EVENT } from "../../../shared/lib/replyFollow";
 import { type CardBox, firstOutlined, readerKeyFor, readerStep } from "../model/readerKeys";
 import { leaveReader } from "./readerKeys";
 
@@ -17,6 +18,16 @@ const OTHER_SCROLL_KEYS = new Set([" ", "PageUp", "PageDown", "Home", "End", "n"
 /** Longer than a smooth scroll takes. */
 const HEADING_MS = 600;
 
+/**
+ * Frames the reader must also stand still, after HEADING_MS, before the
+ * last key's scroll counts as over. The clock alone isn't enough: while
+ * the page is busy (a stall on a slow machine) no frame runs and the scroll
+ * doesn't move, but the time still passes. Generous, because WebKit's
+ * smooth scroll stands still for a few frames before it starts, and again
+ * after a stall.
+ */
+const STILL_FRAMES = 30;
+
 /** Inside the reply being written, which handles its own keys. */
 function inReply(el: EventTarget | null): boolean {
   return el instanceof Element && el.closest("[data-inline-reply]") !== null;
@@ -24,6 +35,30 @@ function inReply(el: EventTarget | null): boolean {
 
 function isReply(card: HTMLElement): boolean {
   return card.hasAttribute("data-inline-reply");
+}
+
+/** Where the last key's smooth scroll is heading (see `useReaderKeyboard`). */
+type Aim = {
+  top: number;
+  until: number;
+  away: number;
+  reader: HTMLElement;
+  /** The frame that watches for the scroll to stop. */
+  frame: number;
+  /** Stops listening for something else taking the reader over. */
+  off: () => void;
+};
+
+/** Forgets the aim: its watcher stops, and scroll anchoring is back on. */
+function release(heading: RefObject<Aim | null>): null {
+  const to = heading.current;
+  if (to) {
+    cancelAnimationFrame(to.frame);
+    to.off();
+    to.reader.style.overflowAnchor = "";
+  }
+  heading.current = null;
+  return null;
 }
 
 /**
@@ -80,8 +115,18 @@ export function useReaderKeyboard({
   // key pressed before it arrives (or held down) goes on from where the
   // last one went, not from part way: mid-scroll, the email just outlined
   // still looked cut off at the top, and ↑ scrolled instead of moving on.
-  // Forgotten once there, or after HEADING_MS (a wheel took over, say),
-  // or when the reader is further from it than when the key was pressed:
+  // Forgotten once there; or once HEADING_MS has gone by and the reader
+  // has stood still for STILL_FRAMES frames (the scroll stopped short);
+  // the clock alone forgot it during a stall, before the scroll had moved,
+  // and the next ↑ took the email just outlined for scrolled away and
+  // outlined the one showing below it instead (found in CI). Also
+  // forgotten at once when something else takes the reader over: a wheel,
+  // a touch, a click, another scrolling key, the reply being written
+  // starting to stick to the bottom (REPLY_FOLLOW_EVENT), or the keyboard
+  // coming back from outside (Space or n / p on the list scroll the reader
+  // from there). Moving toward the aim, such a scroll looked like the
+  // key's own, and kept the aim alive. And forgotten when the reader is
+  // further from it than when the key was pressed:
   // a smooth scroll only ever gets closer, so something else moved it (the
   // layout: an email above growing, which the browser makes up for by
   // moving the reader down). Measured from the old aim then, ↓ jumped back
@@ -91,35 +136,51 @@ export function useReaderKeyboard({
   // reader: opening the outlined email above the view (→ straight after ↑)
   // made the browser move the reader to keep the view in place, which
   // stopped the scroll there, and the outlined email never came into view.
-  const heading = useRef<{
-    top: number;
-    until: number;
-    away: number;
-    reader: HTMLElement;
-  } | null>(null);
-  const forget = () => {
-    const to = heading.current;
-    if (to) to.reader.style.overflowAnchor = "";
-    heading.current = null;
-    return null;
-  };
+  const heading = useRef<Aim | null>(null);
+  const forget = () => release(heading);
+  // A conversation switched mid-scroll unmounts the reader (it's keyed by
+  // conversation): its watcher stops with it.
+  useEffect(
+    () => () => {
+      release(heading);
+    },
+    [],
+  );
   const aimed = (reader: HTMLElement) => {
     const to = heading.current;
     const away = to ? Math.abs(reader.scrollTop - to.top) : 0;
-    if (!to || performance.now() > to.until || away <= 1 || away > to.away + 2) return forget();
+    if (!to || away <= 1 || away > to.away + 2) return forget();
     return to.top;
   };
   const scrollTo = (reader: HTMLElement, from: number, by: number) => {
     const max = reader.scrollHeight - reader.clientHeight;
     const to = Math.max(0, Math.min(max, from + by));
-    const until = performance.now() + HEADING_MS;
-    heading.current = { top: to, until, away: Math.abs(reader.scrollTop - to), reader };
+    forget();
+    let last = reader.scrollTop;
+    let still = 0;
+    // Anchoring back on once the scroll has had its time and stopped.
+    const watch = () => {
+      if (heading.current !== aim) return;
+      still = reader.scrollTop === last ? still + 1 : 0;
+      last = reader.scrollTop;
+      if (performance.now() > aim.until && still >= STILL_FRAMES) forget();
+      else aim.frame = requestAnimationFrame(watch);
+    };
+    const takenOver = () => {
+      if (heading.current === aim) forget();
+    };
+    const aim: Aim = {
+      top: to,
+      until: performance.now() + HEADING_MS,
+      away: Math.abs(reader.scrollTop - to),
+      reader,
+      frame: requestAnimationFrame(watch),
+      off: () => reader.removeEventListener(REPLY_FOLLOW_EVENT, takenOver),
+    };
+    reader.addEventListener(REPLY_FOLLOW_EVENT, takenOver);
+    heading.current = aim;
     reader.style.overflowAnchor = "none";
     reader.scrollTo({ top: to, behavior: "smooth" });
-    // Anchoring back on once the scroll has had its time.
-    window.setTimeout(() => {
-      if (heading.current?.until === until) forget();
-    }, HEADING_MS);
   };
 
   /**
@@ -149,6 +210,9 @@ export function useReaderKeyboard({
     const keys = !isEditable(e.target) && !inReply(e.target);
     setFocused(keys);
     const reader = e.currentTarget;
+    // Back from outside (the list): the reader may have been scrolled from
+    // there, so the last key's aim no longer says where it is.
+    if (!(e.relatedTarget instanceof Node && reader.contains(e.relatedTarget))) forget();
     // Focus inside an email (its header, or back from a click in its body,
     // which hands focus to the email's holder): that email.
     const card = e.target instanceof Element ? e.target.closest("section[data-message-id]") : null;

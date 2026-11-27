@@ -386,7 +386,10 @@ pub fn problems(message: &SafeMessage, allow_images: bool) -> Vec<String> {
     let readable = document.replace("=\"\u{feff}", "=\"\u{feff}\u{feff}");
     let found = RefCell::new(Vec::<String>::new());
     let metas = RefCell::new(0u32);
-    let sheets = RefCell::new(String::new());
+    // One entry per <style> element: a browser reads each as a sheet of its
+    // own, so a `url(` left open at the end of one doesn't reach into the
+    // next (property-test failure on Windows CI, 2026-11-26).
+    let sheets = RefCell::new(vec![String::new()]);
     let result = rewrite_str(
         &readable,
         RewriteStrSettings::new()
@@ -429,9 +432,11 @@ pub fn problems(message: &SafeMessage, allow_images: bool) -> Vec<String> {
             }))
             .append_element_content_handler(text!("style", |t| {
                 let mut sheets = sheets.borrow_mut();
-                sheets.push_str(t.as_str());
+                if let Some(sheet) = sheets.last_mut() {
+                    sheet.push_str(t.as_str());
+                }
                 if t.last_in_text_node() {
-                    sheets.push('\n');
+                    sheets.push(String::new());
                 }
                 Ok(())
             })),
@@ -444,11 +449,9 @@ pub fn problems(message: &SafeMessage, allow_images: bool) -> Vec<String> {
     if metas != 3 {
         problems.push(format!("{metas} <meta> elements, not the head's three"));
     }
-    problems.extend(css_problems(
-        "a <style> sheet",
-        &sheets.into_inner(),
-        allow_images,
-    ));
+    for sheet in sheets.into_inner() {
+        problems.extend(css_problems("a <style> sheet", &sheet, allow_images));
+    }
     problems
 }
 
@@ -590,6 +593,29 @@ mod tests {
         ] {
             assert!(is_remote(url), "{url}");
         }
+    }
+
+    /// Each <style> element is read as a sheet of its own, as a browser
+    /// does: a `url(` left open in one doesn't make the next one's text an
+    /// address (the property test's counterexample, Windows CI 2026-11-26),
+    /// while an address in any one sheet is still caught.
+    #[test]
+    fn each_style_element_is_its_own_sheet() {
+        for html in [
+            "<style>url(</style><style>javascript:",
+            "<style>a{b:url(</style><style>javascript:x}</style>",
+        ] {
+            assert_eq!(
+                problems(&document(html, false), false),
+                Vec::<String>::new(),
+                "{html}"
+            );
+        }
+        let second = "<style>p{color:red}</style><style>p{background:url(javascript:x)}</style>";
+        assert_ne!(
+            problems(&document(second, false), false),
+            Vec::<String>::new()
+        );
     }
 
     #[test]

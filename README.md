@@ -130,6 +130,11 @@ More pictures of more features, in [docs/FEATURES.md](docs/FEATURES.md).
   signature, made for the version it announces, or it is refused.
 - **Tokens in the keychain.** Sign-ins live in the macOS Keychain or Windows
   Credential Manager. Never in a file, never in the database.
+- **An encrypted cache.** The mail database and the attachments and images
+  Mailboat keeps are encrypted, with a key kept in the keychain. An
+  attachment you open in another app gets an unencrypted copy, deleted when
+  Mailboat quits or starts again once no other app has it open. What you save
+  to Downloads isn't encrypted.
 - **Mail goes to an AI only when you chose that provider.** Apple Intelligence
   runs on your Mac. Claude and ChatGPT are used through their own command-line
   tools, signed in as you. Claude runs with no tools at all; ChatGPT's tool

@@ -10,7 +10,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use mail_core::auth::{tokens, KeyringStore, MemoryStore, SecretStore};
-use mail_core::db::{accounts, Db};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -100,7 +99,7 @@ pub fn prepare(mode: Mode, normal: Dirs) -> std::io::Result<Dirs> {
     };
     let name = format!("{}.{suffix}", mail_core::brand::ID);
     let root = normal.data.with_file_name(name);
-    forget_keychain(&root, mode.secrets().as_ref());
+    forget_keychain(&root, mode.secrets().as_ref())?;
     match std::fs::remove_dir_all(&root) {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
         _ => {}
@@ -110,25 +109,30 @@ pub fn prepare(mode: Mode, normal: Dirs) -> std::io::Result<Dirs> {
 
 /// Deletes the refresh tokens of the accounts a previous run signed in
 /// (the keychain can't list them, so they're read from its database).
-fn forget_keychain(root: &Path, secrets: &dyn SecretStore) {
+/// When the keychain doesn't answer, the previous run's accounts can't be
+/// read, so the folder is kept (an error) until it does: deleting it would
+/// leave their tokens behind for good.
+fn forget_keychain(root: &Path, secrets: &dyn SecretStore) -> std::io::Result<()> {
+    // No previous run to clean up: the keychain isn't touched.
+    if !root.exists() {
+        return Ok(());
+    }
     let path = mail_core::db::path_in(root);
-    if !path.exists() {
-        return;
+    let subs = mail_core::db::cache::previous_accounts(&path, secrets)
+        .map_err(|e| std::io::Error::other(e.to_string()))?;
+    for sub in subs {
+        let _ = secrets.delete(&tokens::refresh_token_key(&sub));
     }
-    let Ok(db) = Db::open(&path) else { return };
-    let all = accounts::list(&db.conn()).unwrap_or_default();
-    for account in all {
-        let sub = accounts::google_sub(&db.conn(), account.id);
-        if let Ok(sub) = sub {
-            let _ = secrets.delete(&tokens::refresh_token_key(&sub));
-        }
-    }
+    // The emptied folder starts a new cache, with a new key.
+    let _ = secrets.delete(mail_core::db::cache::KEY_ENTRY);
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use mail_core::auth::MemoryStore;
+    use mail_core::db::accounts;
 
     #[test]
     fn modes_come_from_the_arguments() {
@@ -162,11 +166,27 @@ mod tests {
         );
     }
 
+    /// A cache from before encryption (plain) and an encrypted one: the
+    /// tokens of their accounts, and the cache's key, are forgotten.
     #[test]
     fn the_previous_runs_accounts_are_signed_out_of_the_keychain() {
+        for encrypted in [false, true] {
+            forgets_a_previous_run(encrypted);
+        }
+    }
+
+    fn forgets_a_previous_run(encrypted: bool) {
         let root = std::env::temp_dir().join(format!("clean-start-test-{}", fastrand_id()));
+        let secrets = MemoryStore::default();
         {
-            let db = Db::open(&mail_core::db::path_in(&root)).unwrap();
+            let path = mail_core::db::path_in(&root);
+            let db = if encrypted {
+                mail_core::db::cache::open_cache(&path, &secrets)
+                    .unwrap()
+                    .db
+            } else {
+                mail_core::db::Db::open(&path).unwrap()
+            };
             accounts::upsert(
                 &db.conn(),
                 &accounts::NewAccount {
@@ -179,15 +199,16 @@ mod tests {
             )
             .unwrap();
         }
-        let secrets = MemoryStore::default();
         secrets
             .set(&tokens::refresh_token_key("sub-1"), "token")
             .unwrap();
-        forget_keychain(&root, &secrets);
+        forget_keychain(&root, &secrets).unwrap();
         assert_eq!(
             secrets.get(&tokens::refresh_token_key("sub-1")).unwrap(),
-            None
+            None,
+            "encrypted: {encrypted}"
         );
+        assert_eq!(secrets.get(mail_core::db::cache::KEY_ENTRY).unwrap(), None);
         std::fs::remove_dir_all(&root).unwrap();
     }
 

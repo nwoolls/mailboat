@@ -296,6 +296,117 @@ needs the nightly toolchain: see `fuzz/README.md`. You don't need it for the
 checks above. The same safety checks run as property tests in `cargo test`,
 and a weekly job (`.github/workflows/fuzz.yml`) fuzzes for longer.
 
+## The encrypting SQLite
+
+The mail cache's SQLite is SQLite3 Multiple Ciphers, an encrypting build of
+SQLite. rusqlite doesn't offer it, so `vendor/libsqlite3-sys/` holds a copy
+of rusqlite's `libsqlite3-sys` that compiles it instead of plain SQLite, and
+the workspace's `Cargo.toml` swaps the copy in with `[patch.crates-io]`. The
+copy changes four things, each marked `app:` in its `build.rs` and
+`Cargo.toml`: the source it compiles (from the `sqlite3mc-src` crate);
+temporary tables and sorts kept in memory (`SQLITE_TEMP_STORE=2`), as
+SQLite3 Multiple Ciphers doesn't encrypt temporary files; for Windows builds
+with clang-cl, a flag that works around
+[utelle/SQLite3MultipleCiphers#319](https://github.com/utelle/SQLite3MultipleCiphers/issues/319);
+and, on Linux, hidden symbols (`-fvisibility=hidden`), so WebKitGTK and
+libsoup keep using the system's SQLite rather than the app's.
+The copy leaves out SQLite's own source files. The code for SQLCipher and
+the other build modes stays in its `build.rs` and `Cargo.toml`, unused: the
+app uses only the bundled build.
+
+When plain SQLite is linked, the app stops at startup before it reads or
+changes its mail data (the database and its folders), and the database
+doesn't open
+(`db::require_cipher`, `db::cipher_version`). The test
+`the_cipher_is_linked` fails then too, and also when the SQLite inside
+SQLite3 Multiple Ciphers isn't the version the bindings were made for, so
+a build that skipped the patch can't pass the checks.
+
+When a rusqlite upgrade asks for a new `libsqlite3-sys`, Cargo stops using
+the copy and that test fails (on a Dependabot pull request too). Then:
+
+1. Copy the new version's `build.rs`, `wrapper.h`, `src/`, `LICENSE`,
+   `Cargo.toml` and the two `sqlite3/bindgen_bundled_version*.rs` files from
+   `~/.cargo/registry/src/*/libsqlite3-sys-<version>/` into
+   `vendor/libsqlite3-sys/`, in place of the old ones.
+2. After step 1, `git diff` shows the `app:` lines as removed. Put them
+   back.
+3. Check that the SQLite version in the bindings (`SQLITE_VERSION` in
+   `sqlite3/bindgen_bundled_version.rs`) is the one `sqlite3mc-src` wraps:
+   the crate version's suffix names it
+   (`207.1.0+sqlite3mc-2.7.1-sqlite-3.54.1` in `Cargo.lock`). If not, move
+   `sqlite3mc-src` to a release that matches.
+4. Run `bun run check` and `scripts/windows.sh check`.
+
+To move to a newer SQLite3 Multiple Ciphers alone, change the
+`sqlite3mc-src` version in `vendor/libsqlite3-sys/Cargo.toml`, with the
+same rule as step 3, and check the roadmap's "Issues filed upstream" for a
+workaround the new release makes unnecessary.
+
+### The encrypted mail cache
+
+The mail cache (`mail.sqlite3` in the app's data folder) is encrypted with
+a random 256-bit key, kept in the system keychain beside the Google tokens,
+under the entry `cache-key` (Credential Manager on Windows, the desktop's
+keyring on Linux). `mail_core::db::cache::open_cache` opens it at startup:
+
+- No cache and no key: it makes both.
+- A plain cache, from a version before encryption: it moves it into an
+  encrypted one, once. It copies it with the key, checks the copy, and
+  only then puts the copy in place of the plain file. A move that stops
+  halfway leaves the plain cache as it was, and the next start tries again.
+- An encrypted cache whose key is gone, or doesn't fit: it sets the cache
+  aside and starts a new one, and the window says so at each start until
+  the notice is dismissed, which deletes the set-aside cache. Mail comes
+  back from Gmail; the account list, Settings and everything else only the
+  cache held don't.
+- A keychain that doesn't answer: the mail database is left alone, and the
+  window shows only a message with Try again and Quit.
+
+Every running copy of the app holds a shared lock on `mail.lock` in the
+data folder, so a second copy (a development build beside the installed
+app) still works. Moving or setting the cache aside takes the exclusive
+lock: while another copy is open, the move waits for a start with no other
+copy, and a cache that needs setting aside shows a screen asking to quit
+the other copy. Every change is made under the exclusive lock, after
+reading the keychain and the files again under it. A version from before
+encryption doesn't take the lock; while one has the cache open, the cache
+opens plain and the move waits for a later start. Once a copy has
+encrypted the cache, a version from before encryption can't read it and
+doesn't start.
+
+Two copies starting at the same moment, or one starting while another
+moves or resets the cache, aren't handled beyond stopping: a copy may say
+another one is open when it is only starting, and Try again then opens the
+cache. Only a developer runs two copies on one cache (macOS opens one copy
+of an app, and Windows' single-instance check quits a second one), so it
+stays simple (owner, 2026-11-26). Before the first launch of a development
+build that encrypts the cache, quit the installed app, so the move happens
+with nothing else holding it.
+
+Downloaded attachments and images are encrypted too (`mail_core::sealed`),
+in the cache folder's `attachments-v2` and `images-v2`, with AES-256-GCM
+and a key derived from the cache's key. Each file is bound to its account
+and to what it is: for an attachment, Gmail's message ID and the part;
+for an image, its address. So one moved or changed doesn't open, and is
+fetched again. Attachments don't use the database's row IDs, as SQLite
+gives an ID out again after its row is deleted; an attachment is named by
+a hash, not its own name. An image file is named by its row's ID, but a
+file under a reused ID doesn't open, as it's bound to the address. Opening an attachment in another app, or in Quick Look,
+writes a decrypted copy to `opened` in the cache folder, which is emptied
+at every start and quit (on Windows, a copy another app still has open
+goes at a later start); saving one writes it to Downloads. The folders from before encryption
+(`attachments`, `images`) are deleted at every start while they're there,
+except while a version from before encryption is open. When the cache
+stayed plain this run and the keychain has no key yet, no files are kept:
+attachments are fetched each time and images load live.
+
+So a development build run in the normal mode encrypts your real cache,
+and the installed app then needs this version too. To try changes to the
+cache, use demo mode (`bun run demo`: its own folder, made-up mail, and a
+keychain kept in memory) or a clean start (`bun run clean-start`: its own
+folder and its own keychain entries, its key included).
+
 ## A signed Windows installer
 
 The Windows build above is unsigned unless you ask. Signing uses Azure

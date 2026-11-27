@@ -16,6 +16,7 @@ mod mode;
 mod navigation;
 mod notifications;
 mod print;
+mod startup;
 mod state;
 mod sync_log;
 mod theme;
@@ -158,6 +159,11 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             ai::ai_apple_settings_open,
             updates::update_check,
             updates::update_install,
+            startup::startup_problem,
+            startup::cache_reset_notice,
+            startup::cache_reset_notice_dismiss,
+            startup::startup_try_again,
+            startup::startup_quit,
         ])
         .events(collect_events![
             SyncStatusEvent,
@@ -256,6 +262,10 @@ pub fn run() {
             tooltips::follow_desktop();
             email_menu::install(app.handle());
             notifications::install(app.handle());
+            // Before the mail database and its folders are read or changed
+            // (plugins registered above may already have read their own
+            // files): a build without its encrypting SQLite stops here.
+            mail_core::db::require_cipher()?;
             let dirs = mode::prepare(
                 mode,
                 mode::Dirs {
@@ -273,7 +283,48 @@ pub fn run() {
                 let _ = mail_core::owner_only::dir(folder);
             }
             let _ = mail_core::auth::config::make_private(&dirs.config);
-            let db = Arc::new(Db::open(&mail_core::db::path_in(&dirs.data))?);
+            // The mail cache, encrypted with its key from the keychain
+            // (mail_core::db::cache). When the keychain doesn't answer, or
+            // the cache can't be set aside while another copy has it open,
+            // nothing on disk is touched: the window opens to say so, with
+            // Try again and Quit, and nothing else starts.
+            // Decrypted copies another app was given last run, before
+            // anything else can stop the start (a keychain that doesn't
+            // answer).
+            mail_core::sealed::empty_dir(&dirs.cache.join(state::OPENED_FOLDER));
+            let cache_path = mail_core::db::path_in(&dirs.data);
+            let opened = match mail_core::db::cache::open_cache(
+                &cache_path,
+                mode.secrets().as_ref(),
+            ) {
+                Ok(opened) => opened,
+                Err(mail_core::db::cache::CacheError::Keychain(_)) => {
+                    app.manage(startup::Startup::stopped(startup::StartupProblem::Keychain));
+                    open_window(app, mode)?;
+                    return Ok(());
+                }
+                Err(mail_core::db::cache::CacheError::InUse) => {
+                    app.manage(startup::Startup::stopped(startup::StartupProblem::InUse));
+                    open_window(app, mode)?;
+                    return Ok(());
+                }
+                Err(mail_core::db::cache::CacheError::Other(e)) => return Err(e.into()),
+            };
+            app.manage(startup::Startup::opened(opened.reset, cache_path));
+            app.manage(startup::HeldCacheLock(opened.lock));
+            let still_plain = opened.still_plain;
+            let files = opened.files.map(Arc::new);
+            let db = Arc::new(opened.db);
+            if state::remove_plain_folders(&dirs.cache, still_plain) {
+                // The image index listed the plain copies just deleted.
+                // This happens once: at later starts they're gone.
+                // Best effort: if it fails, a row whose file is gone is
+                // forgotten when its email opens, and the image loads live.
+                let _ = mail_core::mail::prefetch::clear(
+                    &db.conn(),
+                    &dirs.cache.join(state::IMAGES_FOLDER),
+                );
+            }
             let http = mail_core::reqwest::Client::builder()
                 .user_agent(format!(
                     "{}/{}",
@@ -299,13 +350,19 @@ pub fn run() {
                     .iter()
                     .map(|a| a.id)
                     .collect();
-            for folder in ["attachments", "images"] {
+            for folder in [state::ATTACHMENTS_FOLDER, state::IMAGES_FOLDER] {
                 mail_core::attachments::remove_unlisted_account_folders(
                     &dirs.cache.join(folder),
                     &existing,
                 );
             }
             let sync_log = Arc::new(sync_log::SyncLog::open(&dirs.logs));
+            if still_plain {
+                sync_log.write(
+                    mail_core::model::AccountId(0),
+                    "Mail cache: another copy of the app is open, so encrypting the cache waits for a start without it",
+                );
+            }
             let supervisor = Supervisor::new(
                 tauri::async_runtime::handle().inner().clone(),
                 db.clone(),
@@ -316,11 +373,12 @@ pub fn run() {
                     sign_outs: Default::default(),
                 }),
                 SyncConfig {
-                    images: Some({
-                        // Copies kept before the cache was per account.
-                        mail_core::mail::prefetch::sweep_shared_copies(&dirs.cache.join("images"));
-                        mail_core::mail::prefetch::Prefetch::new(dirs.cache.join("images"))?
-                    }),
+                    images: Some(mail_core::mail::prefetch::Prefetch::new(
+                        mail_core::sealed::Sealed::new(
+                            dirs.cache.join(state::IMAGES_FOLDER),
+                            files.clone(),
+                        ),
+                    )?),
                     ..SyncConfig::default()
                 },
                 WorkerTiming::default(),
@@ -334,6 +392,7 @@ pub fn run() {
                     config: dirs.config,
                     cache: dirs.cache,
                     downloads: app.path().download_dir().ok(),
+                    files,
                 },
                 sync_log,
                 Arc::new({
@@ -402,6 +461,10 @@ pub fn run() {
             }
             if let tauri::RunEvent::Exit = event {
                 ai::forget_unkept_summaries(app);
+                // Decrypted copies given to other apps (`mail_core::sealed`).
+                if let Some(state) = app.try_state::<AppState>() {
+                    mail_core::sealed::empty_dir(&state.opened_dir);
+                }
             }
             if let tauri::RunEvent::Ready = event {
                 let choice = app
@@ -468,7 +531,12 @@ fn open_window(app: &tauri::App, mode: mode::Mode) -> tauri::Result<()> {
         // The demo's scheduled mail counts from when the window is up.
         .on_page_load(|webview, payload| {
             if payload.event() == tauri::webview::PageLoadEvent::Finished {
-                if let Some(google) = webview.state::<AppState>().demo.as_ref() {
+                // No `AppState` when the cache couldn't open: the window
+                // shows only that, and there's no demo clock to start.
+                if let Some(google) = webview
+                    .try_state::<AppState>()
+                    .and_then(|state| state.demo.clone())
+                {
                     google.start_clock();
                 }
             }

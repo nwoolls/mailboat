@@ -11,8 +11,10 @@ How the owner and the writing agent use it:
   what is already decided, what to look for) and hands the prompt over as one
   code block. Everything else stays as it is, so reviews stay comparable
   from one branch to the next.
-- The owner may run it with more than one reviewer. Each returns one Markdown
-  block.
+- The writing agent says how many reviewers the branch needs: two by
+  default, one or none when the risk is low ("Pull requests" in `AGENTS.md`
+  says when). The owner decides, and runs that many reviewers, if any. Each
+  returns one Markdown block.
 - Always hand over the "How to report" section word for word, even in a lean
   prompt for a small change. A shortened version ("return one Markdown
   block") let a reviewer answer with loose headings and several fences, which
@@ -23,8 +25,13 @@ How the owner and the writing agent use it:
   it: it fixes it, rejects it with evidence, or asks the owner. A finding is
   not true because a reviewer said so. Rejected findings and the reasons go
   in the pull request, as with Copilot's comments.
-- For a second round on the same branch, add "What changed since the last
-  round" to the prompt, with the fixes to verify first.
+- After each round, the writing agent advises what comes next: stop, another
+  round with one reviewer or with two, or a change of direction
+  (`AGENTS.md`). For a later round on the same branch, hand over the whole
+  filled-in prompt again, with a "What changed since the last round" section
+  inside it that lists the fixes to verify first. The prompt is always
+  handed over whole, never as a part to add to an earlier one, so the owner
+  can copy one block as it is.
 - The writing agent commits the branch before handing the prompt over, and
   reviewers work in their own `git worktree` under `/tmp`, never in the main
   folder. Reviewers who switched branches or ran the tests in the main folder

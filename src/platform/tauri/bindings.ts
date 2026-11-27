@@ -44,7 +44,8 @@ export const commands = {
 	 *  Deletes everything the app keeps: asks Google to end every account's
 	 *  sign-in, then removes every account (its token, mail and images), then the
 	 *  rest of the database (settings, per-sender choices, summaries, usage and
-	 *  the log of what AI apps read), downloaded attachments, the sync log and
+	 *  the log of what AI apps read), a cache set aside after its key was lost
+	 *  (and its notice), downloaded attachments, the sync log and
 	 *  delivered notifications (macOS). Kept: the Google credentials file, so
 	 *  signing in again needs no new setup; files saved to Downloads; and Gmail
 	 *  itself, with the signatures and filters in it. The window clears what it
@@ -452,6 +453,34 @@ export const commands = {
 	 *  starts it. Progress goes to the window as events.
 	 */
 	updateInstall: () => typedError<null, AppError>(__TAURI_INVOKE("update_install")),
+	/**
+	 *  What kept the mail cache from opening, if anything. The window asks
+	 *  first and shows only that problem when there is one.
+	 */
+	startupProblem: () => __TAURI_INVOKE<
+/**  The keychain didn't answer (locked, access denied, no keyring). */
+"keychain" | 
+/**
+ *  Another copy of the app has the cache open, and it needs setting
+ *  aside, which waits for that copy to close.
+ */
+"inUse" | null>("startup_problem"),
+	/**
+	 *  Whether a start set an unreadable cache aside and began a new one (its
+	 *  key was gone from the keychain or didn't fit): the window says so at
+	 *  every start until the notice is dismissed.
+	 */
+	cacheResetNotice: () => __TAURI_INVOKE<boolean>("cache_reset_notice"),
+	cacheResetNoticeDismiss: () => __TAURI_INVOKE<void>("cache_reset_notice_dismiss"),
+	/**
+	 *  Starts the app again, to try opening the cache once more. Outside the
+	 *  normal mode (a clean start, the demo) Tauri's own restart, which keeps
+	 *  the arguments that chose the mode: the Mac's relaunch helper opens the
+	 *  app without them, in the normal mode, with the owner's real cache.
+	 */
+	startupTryAgain: () => typedError<null, AppError>(__TAURI_INVOKE("startup_try_again")),
+	/**  Quits the app (from the window shown when the cache couldn't open). */
+	startupQuit: () => __TAURI_INVOKE<void>("startup_quit"),
 };
 
 /** Events */
@@ -1647,6 +1676,16 @@ export type SizeLimit = {
 	comparison: SizeComparison,
 	bytes: number,
 };
+
+/**  Why the mail cache couldn't be opened. */
+export type StartupProblem = 
+/**  The keychain didn't answer (locked, access denied, no keyring). */
+"keychain" | 
+/**
+ *  Another copy of the app has the cache open, and it needs setting
+ *  aside, which waits for that copy to close.
+ */
+"inUse";
 
 export type Summary = {
 	threadId: ThreadId,

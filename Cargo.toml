@@ -1,6 +1,9 @@
 [workspace]
 resolver = "2"
 members = ["crates/core", "src-tauri"]
+# A copy of another project's crate (see the patch below): not ours to lint
+# or test.
+exclude = ["vendor/libsqlite3-sys"]
 
 [workspace.package]
 # Not the app's version: that is written once, in package.json (read by
@@ -40,3 +43,12 @@ specta = { version = "=2.0.0-rc.25", features = ["derive"] }
 # collects none.
 [profile.release]
 strip = true
+
+# The local cache's SQLite is SQLite3 Multiple Ciphers, an encrypting build
+# of SQLite, compiled by this copy of rusqlite's `libsqlite3-sys` in place of
+# plain SQLite (rusqlite doesn't offer it). The version must match the one
+# rusqlite asks for, or Cargo ignores the patch with only a warning, and
+# `db::tests::the_cipher_is_linked` fails. Upgrading: docs/DEVELOPMENT.md ->
+# "The encrypting SQLite".
+[patch.crates-io]
+libsqlite3-sys = { path = "vendor/libsqlite3-sys" }

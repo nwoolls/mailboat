@@ -4928,6 +4928,28 @@ between pixel art and ASCII art for the screensavers.*
   as the others. Since done: the rain is Code rain, and the envelope flock
   became Flock. Still open: 3D pipes, and bubble wrap's future
 
+## Issues filed upstream
+
+*Started 2026-11-26 at the owner's request: every issue or pull request
+opened on another project, with the workaround this repository carries
+until it is fixed, so the workaround goes when the fix ships (`AGENTS.md`).
+An entry is ticked when the fix is released and the workaround is removed.*
+
+- [ ] SQLite3 Multiple Ciphers: Poly1305 doesn't compile with clang-cl
+      ([utelle/SQLite3MultipleCiphers#319](https://github.com/utelle/SQLite3MultipleCiphers/issues/319),
+      filed 2026-11-26). clang-cl, the compiler cargo-xwin uses for the
+      Windows builds, defines both `_MSC_VER` and `__SIZEOF_INT128__`. With
+      both defined, the Poly1305 code defines neither set of its helper
+      macros, so it fails to compile. Workaround: undefine
+      `__SIZEOF_INT128__` when SQLite3 Multiple Ciphers' source is built for
+      Windows with clang-cl. The spike set it with
+      `LIBSQLITE3_FLAGS="-U__SIZEOF_INT128__"`; the build now carries it in
+      `vendor/libsqlite3-sys/build.rs`, applied only for Windows targets
+      built with clang-cl (marked `app:`; `docs/DEVELOPMENT.md` → "The
+      encrypting SQLite"). Once a release with the fix is out: move
+      `sqlite3mc-src` to it, remove the workaround, and rebuild for both
+      Windows targets.
+
 ## Flaky tests
 
 *Started 2026-11-12 at the owner's request, to track tests that fail and
@@ -5413,6 +5435,60 @@ the way, and one bug in the app caused flaky failures; all three are in
         of 120 on 8 workers) and 5 of 5 on a slowed page. The CI symptom
         wasn't reproduced locally; that it is the same race on a busier
         machine is likely, not confirmed.
+- [x] `reader-keyboard.spec.ts`: "an arrow after the outline scrolled away
+      outlines the first email showing" (line 221).
+      - 2026-11-26, CI on `main` after #247 (docs only),
+        https://github.com/nwoolls/mailboat/actions/runs/45874226966,
+        WebKit: after five ↑, the second email was outlined instead of the
+        first (`toBe(0)`, received 1, line 227), before the test's own
+        checks; 283 others passed. The job wasn't run again; the cause was
+        fixed in the app instead, with new tests beside this one.
+      - Fixed 2026-11-26 (branch `reader-keyboard-flaky`), in the app (0.4.0
+        → Bugs). The CI trace shows the third ↑ taking about 1 s, a stall.
+        A key goes on from where the last key's smooth scroll is heading,
+        and the app forgot that place after 600 ms of clock time, though
+        no frame had run and the scroll hadn't moved. The next ↑ then
+        measured from the reader as it was, took the first email (above
+        the view) for scrolled away, and outlined the email showing below.
+        A throwaway spec that stalled the page after each of the five
+        presses reproduced it locally, in three of the four runs with a
+        700 or 1000 ms stall after the third or fourth press. On its own,
+        the place now runs out only once the 600 ms are up and the reader
+        has stood still for 30 frames (WebKit's smooth scroll stands still
+        for a few frames before it starts, and again after a stall; 2
+        frames still failed one case). A wheel, a touch, a click or another
+        scrolling key still forgets it at once. A new test, "a stall while
+        ↑ is held doesn't send the outline back down", stalls the page for
+        1 s between two ↑ with no frame in between: it failed 10 of 10
+        without the fix and passed 10 of 10 with it. With the fix, the
+        stall sweep ended on the first email in all 75 runs.
+      - Review, the same day: with the clock no longer forgetting the
+        place by itself, a scroll from elsewhere that moved the reader
+        toward it kept it alive, and the next arrow went on from a place
+        the reader wasn't. The place is now also forgotten when the reply
+        being written starts sticking to the bottom, when the keyboard
+        comes back from the list (Space and n / p scroll the reader from
+        there), and when the conversation changes (its watcher stops with
+        the reader). One new test for each failed 10 of 10 without its
+        change (the reply's 5 of 5) and passed with it. The stall test now
+        also checks that the first ↑ outlined the first email while it
+        was still above the view; with the old code it failed 10 of 10
+        after that check.
+      - Second review, the same day: two of the new tests waited on the
+        clock (800 ms for a scroll, and a switch of conversation within
+        600 ms), which a busy runner might not keep to. The reply test now
+        waits for the reader to get past where the old aim would have
+        taken it, and the conversation test moves the reader a pixel each
+        frame so the aim can't run out on its own, then waits for the old
+        reader to go, however long that takes. A new test checks that a
+        stopped scroll keeps its aim until the reader has stood still for
+        some frames, not just until its 600 ms are up; with the frame
+        count set to 1 it failed 5 of 5. The other two failed 5 of 5 on
+        the first commit's code. An older clash between n / p and an arrow
+        pressed straight after went to the Bug backlog. After both
+        reviews, the file and `reply-esc.spec.ts` passed 460 of 460 (20
+        runs each), the file 100 of 100 on a slowed page (5 runs) and 160
+        of 160 on 8 workers.
 
 ## Bug backlog
 
@@ -5424,6 +5500,35 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [ ] A message body fetched while its row is deleted could be written to
+      another account's message *(reported 2026-11-27 in the review of
+      branch `cache-encryption-files`; found by reading the code, not
+      reproduced)*. Opening an email notes the message's row ID, fetches
+      its body from Gmail with that account's client, and writes it by the
+      row ID. SQLite gives an ID out again after its row is deleted, so if
+      sync deletes the message during the fetch and another account's sync
+      adds one that gets the same ID, the body and its parts (and then its
+      inline images) would land on the other account's message. Older than
+      the cache encryption, which stores whatever this writes. Fix: carry
+      the account and Gmail's message ID through the open, and write only
+      if the row still is that message, as the attachment cache now does.
+
+- [x] The sanitizer's property test failed on Windows CI with a false alarm
+      *(found 2026-11-26 on pull request #249, which doesn't touch the
+      sanitizer)*: random input put an unclosed `url(` in one `<style>`
+      element and `javascript:` in the next. The test's checker
+      (`mail::sanitize_check::problems`) joined every sheet into one before
+      reading it, so the unclosed `url(` took in the next sheet's text and
+      the checker reported a `javascript:` address. A browser reads each
+      `<style>` element as a sheet of its own, so it finds no address, and
+      the sanitizer's output is safe. The failure reproduced locally every
+      time; the fault was in the checker. *(Fixed 2026-11-26, branch
+      `sanitize-style-javascript`: the checker reads each sheet on its own.
+      The test `each_style_element_is_its_own_sheet` holds the
+      counterexample, and a bad address in the second of two sheets is still
+      caught; it fails without the fix. Both property tests that use the
+      checker (`any_email_comes_out_safe`, `any_plain_text_comes_out_safe`)
+      then passed 200,000 cases each in a local run.)*
 - [x] Windows showed the Mac's words and one Mac-only button *(found
       2026-11-24 on branch `linux-build`, while giving Linux its own)*:
       Settings → Appearance said the theme follows macOS, Settings →
@@ -6330,6 +6435,19 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       nothing was approved. A unit test fails without the change, and so
       does `a_list_line_keeps_only_what_the_conversation_says` with
       "approved" taken off the list.
+- [ ] n / p and an arrow pressed straight after it pull the reader two
+      ways *(found 2026-11-26 in review of branch `reader-keyboard-flaky`;
+      not seen in the app)*. After n or p, the email it moved to is held
+      at the top of the reader for 350 ms (`stepEmail`, `HOLD_MS` in
+      `reader/ui/readerKeys.ts`): the hold sets the scroll position every
+      frame.
+      An ↑ or ↓ pressed in that time (n on the list, → into the
+      conversation, then ↓) starts its own smooth scroll, which the hold
+      keeps pulling back, while the arrow's aim (where its scroll is
+      heading) stays set, so the next arrow may go on from a place the
+      reader never reached. Likely fix: an arrow's scroll ends the hold.
+      Older than that branch; a browser test with the real n key should
+      show whether it's visible before anything changes.
 
 ## 0.3.0
 
@@ -6818,7 +6936,7 @@ Privacy and the policy.*
       the dependency scans. The mail cache relying on the computer's disk
       encryption is accepted, but the lab will check Windows' disk
       encryption itself (see "Encrypt the local cache at rest", under
-      "Later / unscheduled"). A solo
+      0.4.0). A solo
       developer can put their own name where the company's goes; the
       certificate also needs the website, the app's name and address,
       the Google Cloud project number and Google's due date, which the
@@ -7465,7 +7583,7 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       note first said Testing); and ask the lab whether a
       Windows machine without disk encryption fails its check, or whether
       documenting it is enough (see "Encrypt the local cache at rest"
-      under "Later / unscheduled"). The certificate's details are sent by
+      under 0.4.0). The certificate's details are sent by
       the owner and not kept here.)*
       *(moved here from 0.3.0 → Security assessment (CASA), owner, 2026-11-21: CASA work for after the stable 0.3.0)*
       *(2026-11-25: done. The owner bought the lab's plan and submitted
@@ -7496,8 +7614,422 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       the internet. Now it gets a `Zone.Identifier` stream with zone 3, as
       browsers write for downloads, when it reaches the cache and again on
       each saved copy (`attachments::mark_of_the_web`, tested on Windows in
-      CI). Best effort, like the macOS flag: a volume without streams
+      CI). *(Since 0.4.0 the cached file is encrypted, so the mark goes on
+      the decrypted copy another app opens instead, 2026-11-26.)* Best effort, like the macOS flag: a volume without streams
       (FAT32) leaves the file unmarked.
+
+## 0.4.0
+
+*The owner opened 0.4.0 on 2026-11-26 for the encryption of the local
+cache. CASA's paid security scan, due 2027-02-12, is likely to flag a cache
+that relies on the computer's disk encryption (DASA requirement 1.2.2).
+More items may be pulled in from "Later / unscheduled". Done when: each
+item below is built, the owner has tried it, and the owner has published
+0.4.0 (`docs/DEVELOPMENT.md` → Releasing).*
+
+- [ ] Encrypt the local cache at rest *(current plan, 2026-11-26: SQLite3
+      Multiple Ciphers for the database and AES-256-GCM for the cached
+      files, to be built in 0.4.0; the spike's result and the build steps
+      are at the end of this item, and the dated notes before them are
+      history)*. Originally: a key in the keychain and an encrypted SQLite
+      (SQLCipher or similar), if it works with FTS5 search and costs little
+      speed. Until then the app doesn't encrypt its files: the cache is
+      protected only when the computer's disk encryption is on (FileVault on
+      macOS; BitLocker or Device encryption on Windows), and the policy says
+      only that. Decide whether it is worth the dependency
+      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
+      *(moved from "Later / unscheduled" into 0.3.0, 2026-11-15: it
+      answers the second verification point of DASA 1.2.2, sensitive data
+      not kept in a SQLite file without more encryption. The first point,
+      credentials, tokens and keys in the platform's secure storage, is
+      the keychain, which the app already uses. Build it only if the lab
+      says the mail cache counts. Its 0.2.0 note said the same: only if Google
+      insists on the assessment, which it now does)*
+      *(2026-11-18, the lab's answer: the cache relying on the OS's disk
+      encryption is accepted, but the lab will check Windows' disk
+      encryption itself. Windows Home doesn't include BitLocker's own
+      management; Device encryption, which uses BitLocker, is on Home only
+      for devices that meet Microsoft's requirements (a TPM, Secure Boot
+      and a recovery environment among them), so a reviewer's machine may
+      not encrypt the cache)*
+      *(2026-11-18, checked: on the owner's Windows 11 Home test machine
+      (a virtual machine), BitLocker reports the system drive inside the
+      machine fully decrypted, protection off, no key protectors. That
+      shows only the guest's own drive; whether the host encrypts the
+      virtual disk isn't known from it. On a machine like it the mail
+      database (in the app's data folder) and the downloaded attachments
+      and images (in its cache folder) are plain files anyone who can read
+      the disk can read, and a lab checking such a machine would likely
+      flag DASA 1.2.2's second point. Now likely needed, not only if
+      asked)*
+      *(moved from 0.3.0 back to "Later / unscheduled", 2026-11-18, review:
+      it's planned after 0.3.0, so it can't be one of 0.3.0's items. The
+      question to the lab stays in 0.3.0's evidence item. Plan:)*
+      - *Ask the lab whether a Windows machine without disk encryption
+        fails its check, or whether documenting it is enough. Its answer
+        sets the urgency.*
+      - *A spike first, then build it in 0.4.0 or a 0.3.x before the
+        paid scan (the deadline is 2027-02-12). The spike answers, none
+        verified yet: SQLCipher or SQLite3 Multiple Ciphers (or similar)
+        through `rusqlite`, with FTS5 search still working; whether it
+        builds on all three targets, in particular the Windows build
+        cross-compiled with cargo-xwin, where SQLCipher's usual OpenSSL
+        may not build (some alternatives bring their own crypto); its
+        license against GPL-3.0-only; the speed cost; the key in the OS
+        keychain (Credential Manager on Windows) beside the Google
+        tokens; a one-time migration of an existing database; and the
+        downloaded attachments and images in the app's cache folder
+        (`attachments/`, `images/`), a different folder from the
+        database's, which need encrypting too or the job is half done.*
+      - *Optional, sooner: Settings → Privacy saying when the computer's
+        disk isn't encrypted. On Windows, reading that without
+        administrator rights isn't simple; the spike settles whether it
+        can be done.*
+      *(2026-11-26, the spike, on branch `encryption-spike`. Each answer
+      comes from a test or a build that was run; the made-up mail and the
+      scratch crates stayed outside the repository:)*
+      - *Library: SQLite3 Multiple Ciphers (2.7.1, through the
+        `sqlite3mc-src` crate), not SQLCipher. Both keep FTS5 search working
+        with the app's own schema, store and search: a made-up email is
+        found in an encrypted database and again after reopening it with the
+        key, and neither the file nor its write-ahead log holds its words as
+        plain bytes. Without the key, or with a wrong one, opening fails
+        ("file is not a database"). Through rusqlite's bundled SQLCipher
+        features, SQLCipher uses Apple's CommonCrypto only when a Mac builds
+        for a Mac, and OpenSSL everywhere else. Cross-built for Windows with
+        cargo-xwin, as the Windows release is built on a Mac, neither
+        OpenSSL route worked: the plain feature found no OpenSSL headers,
+        and the vendored one stopped at OpenSSL's Windows configuration,
+        which refuses a non-Windows Perl. A Windows OpenSSL supplied to the
+        build (`OPENSSL_DIR`), or SQLCipher's own LibTomCrypt provider,
+        might get around that, but neither was tried: each is setup of its
+        own, and the second needs a patched `libsqlite3-sys`, as SQLite3
+        Multiple Ciphers does. SQLite3 Multiple Ciphers has its own crypto,
+        and it built for both Windows targets with cargo-xwin and for Linux
+        in the Docker image.*
+      - *What that choice costs: rusqlite doesn't offer it (its maintainers
+        declined a pull request that added it and pointed to linking one's
+        own build instead), so the repository would keep a copy of
+        `libsqlite3-sys`, swapped in with `[patch.crates-io]`, that compiles
+        the SQLite3 Multiple Ciphers source instead of SQLite's. The change
+        is about ten lines, and it has to be redone at each rusqlite
+        upgrade. With clang-cl, the compiler cargo-xwin uses, the source
+        doesn't compile as released: clang-cl reports both MSVC and 128-bit
+        integers, and the Poly1305 code then defines neither set of its
+        helpers. Undefining `__SIZEOF_INT128__` for that file fixes the
+        build. With it, the spike's tests pass on Windows 11 on ARM (the
+        test machine) and on an Intel/AMD laptop. The bug is reported
+        upstream (see "Issues filed upstream").*
+      - *License: SQLite3 Multiple Ciphers passes `cargo deny check
+        licenses` with `deny.toml` as it is (MIT, CC0-1.0, Unlicense,
+        Apache-2.0). SQLCipher's source crate fails it, because it also
+        declares `blessing` (SQLite's dedication) and `WTFPL`
+        (libtomcrypt's). An exception would fix that; both licenses are
+        compatible with GPL-3.0.*
+      - *Speed, on made-up mail (5,000 conversations of 4 emails, each with <!-- privacy-ok: made-up benchmark data -->
+        a 220-word body, a design parameter), median of three runs on the
+        owner's Mac, encrypted against plain: opening and a page of the
+        inbox within 4%; saving mail about 1.4 times as long; a search <!-- privacy-ok: made-up benchmark data -->
+        1.4 to 1.5 times as long with SQLite's default page cache and the <!-- privacy-ok: made-up benchmark data -->
+        same as plain with a 64 MB one; the file 2% bigger. The two
+        libraries were within a few percent of each other. Not measured on
+        Windows.*
+      - *The key: 32 random bytes, made when the app first opens a database
+        without one, and kept in the keychain (Credential Manager on
+        Windows) beside the Google tokens, under the app's service name. It
+        reaches SQLite in the first statement on the connection, as a raw
+        key (`x'…'`, no password stretching). An error from that statement
+        must be replaced with a fixed message, because rusqlite's error
+        text quotes the SQL. The keychain tells "no such entry" apart from
+        other failures (`KeyringStore::get`), so a lost key (an encrypted
+        database and no entry) can start a new cache, while a keychain that
+        doesn't answer leaves the files alone. A new cache gets the mail
+        back from Gmail, but not what only the database holds: the account
+        list (each account signs in again), Settings, choices made for
+        senders, hidden contacts, AI summaries and usage, and the AI apps'
+        log. Today the app doesn't start when its database doesn't open, so
+        the build has to add that path.*
+      - *Migration, once, before the app opens the database: take an
+        exclusive lock without waiting, and stop (to try at the next start)
+        if another copy of the app has the database open; then checkpoint
+        the plain write-ahead log into the file and empty it, copy the
+        database into a new file with the key (`VACUUM INTO` a URI that
+        names the cipher and a `raw:` key; SQLite3 Multiple Ciphers can't
+        back up a plain database into an encrypted one, nor encrypt one in
+        place in WAL mode), check the copy (integrity and each table's row
+        count), flush it to disk (on Windows that needs the file opened for
+        writing), release the lock, remove the plain write-ahead files, and
+        rename the copy over the plain file. The checkpoint rewrites the
+        plain file, but it stays a valid plain database, with all its data,
+        until the rename; the plain write-ahead files are removed only after
+        the copy has been checked. Without the lock, macOS would let the
+        rename happen under another copy, which would go on writing to the
+        old file and lose what it writes; Windows refuses the rename
+        instead. The spike releases the lock before removing the write-ahead
+        files and renaming, so a copy that starts in that moment isn't kept
+        out; the build closes that gap (its migration step). A test that
+        stops the migration after the copy, and another after the check,
+        finds the plain database opening as before, and the next try removes
+        the half-made copy and finishes. Afterwards only the encrypted file
+        is left. The plain file's old contents can stay in the disk's free
+        space, and in backups, until they are overwritten.*
+      - *Attachments and images: encrypt each file with AES-256-GCM from
+        `aws-lc-rs`, which the app already has for TLS, using a key derived
+        from the same keychain key, with the file's place in the cache
+        bound to it. A 25 MB file took a few milliseconds each way. Opening
+        one in another app or Quick Look, or saving it, writes a decrypted
+        copy (to a private temporary folder, or to Downloads), which is
+        plain while it's there. The plain files already cached are deleted
+        at migration and fetched again when needed. Moving the files into
+        the database was considered: it needs no second key, but the
+        database grows by the size of the image cache, and every file goes
+        through the one connection the UI also uses.*
+      - *Disk encryption in Settings → Privacy: on macOS, `fdesetup status`
+        answers without administrator rights. On Windows, the documented
+        ways (BitLocker's WMI class, `manage-bde`) need administrator
+        rights; Explorer's undocumented `System.Volume.BitLockerProtection`
+        property may not, but that is untested. Once the cache is encrypted
+        by the app, this matters less, and the spike suggests leaving it
+        out.*
+
+      - ***Linux (owner, 2026-11-26): the build must work with the Linux
+        work in progress (branch `linux-build`, draft pull request #236),
+        whichever of the two merges first.*** *What that means, from the
+        draft's changes:*
+        - *The key goes in the desktop's keyring through the Secret Service,
+          as the draft keeps the Google tokens. On a desktop without a
+          keyring, or with one left locked, the keyring returns an error
+          (`NoStorageAccess`, `PlatformFailure`), never "no such entry", so
+          the app must never start a new cache there. The build tests this
+          on Linux, including an unlock prompt that is canceled. The app
+          then says what's missing, as the draft does for signing in,
+          instead of failing to start.*
+        - *SQLite3 Multiple Ciphers built and passed the spike's tests in
+          the draft's own Docker image (`scripts/linux/Dockerfile`, Ubuntu
+          22.04, the version its CI uses). It needs no OpenSSL, so the .deb,
+          .rpm and AppImage carry no OpenSSL. With SQLCipher they would:
+          linked into the app with the vendored feature, or as a package
+          dependency on the system's.*
+        - *The clang-cl fix applies only to Windows targets built with
+          clang-cl; Linux's GCC build keeps SQLite3 Multiple Ciphers' own
+          128-bit path.*
+        - *`deny.toml` gains the Linux targets in the draft; the license
+          check runs again with them once both are in.*
+        - *The draft adds Linux to the privacy policy's sentence on disk
+          encryption (`website/privacy.html`), which this work rewrites too;
+          whichever merges second rewrites that sentence for all three
+          systems. The draft doesn't touch Settings → Privacy; this work
+          updates it (its last build step).*
+        - *The migration and the file encryption use the database path and
+          cache folder the app is given, so the draft's `brand::data_dir`
+          needs nothing more. On macOS and Linux the app makes the data
+          folder this user's only at startup, and `Db::open` does the same
+          for the database's files, both as best effort: a folder that is a
+          symbolic link, or owned by another account, is left as it is. So
+          the migration makes its copy private itself, before writing to it
+          (its build step).*
+
+      *(2026-11-26, owner: SQLite3 Multiple Ciphers through the patched
+      `libsqlite3-sys` copy, as the spike recommends.)*
+
+      Build steps, for 0.4.0 (owner, 2026-11-26; about a week of work,
+      plus reviews):
+      - [x] SQLite3 Multiple Ciphers in the build: the patched copy of
+            `libsqlite3-sys` in the repository, the clang-cl fix, and a test
+            that fails when the cipher isn't linked (`sqlite3mc_version()`).
+            A rusqlite upgrade would otherwise build plain SQLite with only
+            a warning from Cargo. The clang-cl bug is reported upstream
+            (2026-11-26, after the spike's runs on Windows ARM and Intel/AMD
+            confirmed the fix); the workaround goes when the fix ships (see
+            "Issues filed upstream"). *(Done 2026-11-26: the copy is
+            `vendor/libsqlite3-sys/`, swapped in by the workspace's
+            `[patch.crates-io]` and left out of the workspace. When plain
+            SQLite is linked, `db::require_cipher` stops app startup before
+            the mail data (the database and its folders) is read or changed,
+            and also stops every database open. The test
+            `the_cipher_is_linked` fails when plain SQLite is linked (which
+            is what a skipped patch leads to) and when the SQLite inside
+            isn't the version the bindings were made for; it doesn't rely on
+            Cargo's warning. The copy also keeps SQLite's own
+            temporary-storage default (`SQLITE_TEMP_STORE=1`), which SQLite3
+            Multiple Ciphers would change. The release SBOM lists the copy
+            as a changed crates.io crate, and `sqlite3mc-src` as shipped
+            because its source is compiled in (`scripts/sbom.ts`,
+            `COMPILED_IN`; review, 2026-11-26). The upgrade steps are in
+            `docs/DEVELOPMENT.md` → "The encrypting SQLite". The app still
+            opens a plain database: encrypting it is the next step.)*
+      - [x] The key: made and kept in the keychain, set on the connection
+            before anything else, never in an error or the log. A lost key
+            moves the unreadable database aside (kept until the notice is
+            dismissed), starts a new cache and shows a notice once: accounts
+            sign in again and Settings are back to their defaults (owner,
+            2026-11-26). A keychain that doesn't answer leaves the files
+            alone and says so. Temporary storage moves to memory
+            (`SQLITE_TEMP_STORE=2` in `vendor/libsqlite3-sys/build.rs`),
+            because SQLite3 Multiple Ciphers doesn't encrypt temporary
+            files. *(Done 2026-11-26, branch `cache-encryption-key`:
+            `mail_core::db::cache` makes the key (32 bytes from the system's
+            random source, through `aws-lc-rs`), keeps it in the keychain
+            entry `cache-key` and reads it back before using it, sets it as
+            a raw key, and wipes the app's own copies of it from memory when
+            they're dropped (`zeroize`; SQLite keeps copies of its own); a
+            failure to set it gives a fixed message, without the key. A key
+            that doesn't fit the cache (a keychain restored from elsewhere)
+            counts as lost. When the keychain doesn't answer, or another
+            copy holds a cache that needs setting aside, the window shows
+            only that, with Try again and Quit (owner, 2026-11-26). After a
+            reset, the notice appears over onboarding without a Sign in
+            button (onboarding is the sign-in). For someone who finished
+            onboarding earlier, a reset lands in the main window, and the
+            notice there has the button. A reset saves and reads back the
+            new key before it moves anything, puts the old cache back if the
+            new one can't be made, a reset that stopped after the move is
+            finished at the next start, and reported then, and the notice
+            comes back at each start until it is dismissed, which deletes
+            the set-aside cache (review, 2026-11-26). Races between two
+            copies starting at once only stop ("another copy is open", then
+            Try again): only a developer runs two copies on one cache
+            (owner, 2026-11-26). Tested with made-up mail: a new cache, a
+            lost key, a key that doesn't fit, a keychain that doesn't
+            answer, a keychain that refuses to save the new key, and an
+            interrupted reset, each with the files checked.)*
+      - [x] The one-time migration of a plain database, with the spike's
+            tests, and three things the spike left open. Other copies stay
+            out until the copy has replaced the plain file: on macOS and
+            Linux the lock is held through the rename; on Windows, which
+            can't rename a file that's open, the single-instance check is
+            meant to keep a second normal copy from starting, and the build
+            is to confirm that it quits before opening the database, and to
+            add a test that opens a second connection between the lock's
+            release and the rename. The copy is made private (this user's
+            only) before anything is written to it: an empty file created
+            that way first, which `VACUUM INTO` accepts. An older version
+            opened after the migration can't read the cache and doesn't
+            start, as today's code fails on a database that doesn't open;
+            the release notes are to say so. Two questions are left open for
+            the build to design and review (found in the plan's second
+            review, 2026-11-26). First, how copies of the app keep out of
+            each other's way before any of them opens the database, covering
+            a copy already holding the plain file open and, on Windows, a
+            copy in another login session (the single-instance lock is per
+            session); with that in place, the migration must either finish
+            safely or stop with the plain database intact, and a test pauses
+            a second copy of the app just before the encrypted file is
+            renamed over the plain one. Second, the deletion of the plain
+            cached files must be retried until it is done, even when the
+            database was already replaced, as happens when the app quits or
+            crashes right after the rename; a test interrupts there and
+            checks that the next start removes them. *(Done 2026-11-26,
+            branch `cache-encryption-key`, with the lock planned
+            differently: every running copy holds a shared lock on
+            `mail.lock` in the data folder, and the move takes the exclusive
+            lock and keeps it through the rename, so no copy of this version
+            opens the cache in between, on any system or login session. A
+            second copy, such as a development build beside the installed
+            app, keeps working, and with it open the move waits for a start
+            without it (owner, 2026-11-26). Every change to the keychain or
+            the files is made under the exclusive lock, after reading both
+            again under it, so a copy that waited sees what another copy did
+            meanwhile (review, 2026-11-26: deciding before the lock could
+            lose a key or a cache when two copies started together). A
+            version from before encryption with the cache open makes
+            SQLite's own exclusive lock fail; the cache then opens plain,
+            and the move waits for a later start (owner, 2026-11-26). One
+            started in the moment before the rename isn't stopped
+            (accepted). Tests: the move, a move stopped after the copy and
+            after the check, a second copy holding the lock, an older copy
+            with the cache open, and a start that waits while another copy
+            makes or moves the cache. A clean start reads the previous run's
+            accounts read-only and keeps its folder when the keychain
+            doesn't answer, so their tokens aren't left behind. Deleting the
+            plain cached attachments and images belongs to the next step:
+            the encrypted ones go in new folders, and every start deletes
+            the old folders while they're there.)*
+      - [x] Attachments and images encrypted in the cache folder; decrypted
+            copies only for other apps, in a private temporary folder that
+            is emptied at start and at quit; the plain files already cached
+            deleted at migration. *(Done 2026-11-26, branch
+            `cache-encryption-files`: `mail_core::sealed` encrypts each file
+            with AES-256-GCM, with a key derived from the cache's key, and
+            binds it to its account and to what it is (for an attachment,
+            Gmail's message ID and the part; for an image, its address), so
+            a file
+            moved or changed doesn't open and is fetched again. The files go
+            in new folders, `attachments-v2` and `images-v2`, and an
+            attachment is named by a hash, so its name isn't on disk.
+            Opening one, or Quick Look, writes a decrypted copy to `opened`
+            in the cache folder (this user's only), emptied at every start
+            and quit (on Windows, a copy another app has open goes at a
+            later start);
+            saving writes straight to Downloads; forwarding and inline
+            images use the bytes in memory. The old plain folders are
+            deleted at every start while they're there, except while a
+            version from before encryption is open, which still uses them.
+            When the cache stayed plain this run and the keychain has no key
+            yet, nothing is kept: attachments are fetched each time and
+            images load live. Tests: a file is kept encrypted and reads
+            back; one in another place, changed, plain or from another key
+            doesn't open; an attachment and an image are encrypted on disk;
+            a cached attachment that doesn't open is fetched again; without
+            a key nothing is written; the files' key is the same at every
+            start and new after a reset; startup deletes the plain folders
+            and keeps the encrypted ones. From review, 2026-11-27: SQLite
+            gives an attachment's row ID out again after the row is deleted,
+            perhaps to another account's attachment, so the cache doesn't
+            use row IDs: a file is bound to the attachment's account,
+            message and part, and the attachment is looked up once, so the
+            account whose client fetches it is the one it's kept for (owner,
+            2026-11-27, after two rounds found cases of it); the copies'
+            folder is emptied before the
+            cache opens, so also when the keychain doesn't answer, and a
+            link in its place is left alone; the image index is emptied
+            with the plain images, a copy that doesn't open goes with its
+            row, and clearing the image cache deletes every row and the whole
+            folder; the cache size in Settings counts the copies, and
+            clearing the cache empties them; Delete all data deletes the
+            plain folders too, which an older copy kept. From the third
+            round: the image index is emptied only at the start that
+            actually deleted the plain images, so a folder that can't be
+            deleted doesn't empty the encrypted images at every start; a
+            copy another app holds open no longer stops Delete all data;
+            clearing the cache starts sync again even when a file couldn't
+            be deleted.)*
+      - [ ] Linux, with or after #236: the keyring cases above tested in
+            the Linux build (no keyring, locked, unlock canceled), the
+            spike's tests in Linux CI, and `cargo deny` with the Linux
+            targets.
+      - [ ] The privacy policy, the feature cards and Settings → Privacy
+            say that the cache is encrypted and how; the written answer to
+            DASA 1.2.2 for the lab. *(2026-11-27: Settings → Privacy's first
+            "stays on this computer" line and the README say it, branch
+            `cache-encryption-policy`. The website (the policy's bullet on
+            stored files, with its exceptions, and a line in the privacy
+            panel) is in a pull request of its own, branch
+            `website-encryption-policy`, merged only once 0.4.0 is released,
+            because the site deploys on merge and its download buttons give
+            the latest release (owner, 2026-11-27). The answer for the lab
+            was given to the owner to send after the release, and stays
+            outside the repository like the other lab notes. Ticked when the
+            website's pull request merges.)*
+      *(moved from "Later / unscheduled" into 0.4.0, owner, 2026-11-26)*
+
+### Bugs
+
+- [x] Holding ↑ with the computer busy for a moment sent the outline back
+      to the email on screen *(found 2026-11-26 through a flaky test in
+      CI; done the same day, branch `reader-keyboard-flaky`)*. A key
+      goes on from where the last key's smooth scroll is heading, and the
+      app forgot that place after 600 ms even when the scroll hadn't
+      moved: during a stall no frame runs. The next ↑ then took the email
+      just outlined, still above the view, for scrolled away, and outlined
+      the first email showing instead. On its own, the place now runs out
+      only once the 600 ms are up and the reader has also stood still for
+      30 frames; a wheel, a touch, a click or another scrolling key still
+      forgets it at once. From review, it's also forgotten when the reply
+      being written takes the reader over, when the keyboard comes back
+      from the list, and when the conversation changes. See Flaky tests,
+      `reader-keyboard.spec.ts`, "an arrow after the outline scrolled
+      away".
 
 ## Later / unscheduled
 
@@ -7595,61 +8127,7 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
 - Encrypting the local cache at rest moved to 0.3.0 → Security
   assessment (CASA), 2026-11-15.
 
-- [ ] Encrypt the local cache at rest: a key in the keychain and an
-      encrypted SQLite (SQLCipher or similar), if it works with FTS5 search
-      and costs little speed. Until then the app doesn't encrypt its files:
-      the cache is protected only when the computer's disk encryption is
-      on (FileVault on macOS; BitLocker or Device encryption on Windows),
-      and the policy says only that. Decide whether it is worth the
-      dependency
-      *(moved from Milestone 16 when it closed, 2026-11-11; to plan)*
-      *(moved from "Later / unscheduled" into 0.3.0, 2026-11-15: it
-      answers the second verification point of DASA 1.2.2, sensitive data
-      not kept in a SQLite file without more encryption. The first point,
-      credentials, tokens and keys in the platform's secure storage, is
-      the keychain, which the app already uses. Build it only if the lab
-      says the mail cache counts. Its 0.2.0 note said the same: only if Google
-      insists on the assessment, which it now does)*
-      *(2026-11-18, the lab's answer: the cache relying on the OS's disk
-      encryption is accepted, but the lab will check Windows' disk
-      encryption itself. Windows Home doesn't include BitLocker's own
-      management; Device encryption, which uses BitLocker, is on Home only
-      for devices that meet Microsoft's requirements (a TPM, Secure Boot
-      and a recovery environment among them), so a reviewer's machine may
-      not encrypt the cache)*
-      *(2026-11-18, checked: on the owner's Windows 11 Home test machine
-      (a virtual machine), BitLocker reports the system drive inside the
-      machine fully decrypted, protection off, no key protectors. That
-      shows only the guest's own drive; whether the host encrypts the
-      virtual disk isn't known from it. On a machine like it the mail
-      database (in the app's data folder) and the downloaded attachments
-      and images (in its cache folder) are plain files anyone who can read
-      the disk can read, and a lab checking such a machine would likely
-      flag DASA 1.2.2's second point. Now likely needed, not only if
-      asked)*
-      *(moved from 0.3.0 back to "Later / unscheduled", 2026-11-18, review:
-      it's planned after 0.3.0, so it can't be one of 0.3.0's items. The
-      question to the lab stays in 0.3.0's evidence item. Plan:)*
-      - *Ask the lab whether a Windows machine without disk encryption
-        fails its check, or whether documenting it is enough. Its answer
-        sets the urgency.*
-      - *A spike first, then build it in 0.4.0 or a 0.3.x before the
-        paid scan (the deadline is 2027-02-12). The spike answers, none
-        verified yet: SQLCipher or SQLite3 Multiple Ciphers (or similar)
-        through `rusqlite`, with FTS5 search still working; whether it
-        builds on all three targets, in particular the Windows build
-        cross-compiled with cargo-xwin, where SQLCipher's usual OpenSSL
-        may not build (some alternatives bring their own crypto); its
-        license against GPL-3.0-only; the speed cost; the key in the OS
-        keychain (Credential Manager on Windows) beside the Google
-        tokens; a one-time migration of an existing database; and the
-        downloaded attachments and images in the app's cache folder
-        (`attachments/`, `images/`), a different folder from the
-        database's, which need encrypting too or the job is half done.*
-      - *Optional, sooner: Settings → Privacy saying when the computer's
-        disk isn't encrypted. On Windows, reading that without
-        administrator rights isn't simple; the spike settles whether it
-        can be done.*
+- Encrypting the local cache at rest moved to 0.4.0, 2026-11-26.
 
 - [ ] Sign-in codes by more than word lists *(owner, 2026-11-18, after the
       recovery-email miss)*: detection (`mail::codes`) is lists of words
@@ -7793,6 +8271,16 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
   - [x] A second launch hands over to the running copy (single instance)
   - [x] `cargo deny` checks Linux; the Linux-only advisories reviewed
   - [x] Privacy policy: the Linux keyring and disk encryption
+  - [ ] The encrypted cache (0.4.0, merged from main 2026-11-27) on
+        Linux: the key goes to the desktop's keyring like the sign-ins, and
+        a keyring that can't answer stops the start without touching any
+        file. Checked in Docker: clippy and every Rust test, the encryption
+        tests included, and the packages build. The app's SQLite is now
+        compiled with hidden symbols on Linux, so WebKitGTK and libsoup keep
+        the system's (see the decision in ARCHITECTURE.md). Still to try in
+        the VMs: a first start that encrypts an existing cache, a start with
+        the keyring locked (the screen asks to unlock it, and Try again
+        works once it is), and that the web view's own storage still works
   - [ ] Try the packages on GNOME and KDE (Wayland and X11), Fedora, and
         a desktop with no keyring; print; notifications; a second monitor;
         whether a second launch brings the window forward on Wayland;
