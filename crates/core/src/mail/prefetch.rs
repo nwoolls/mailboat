@@ -16,8 +16,11 @@
 //! an email swaps them in as `data:` URLs (`cached_for`). Each account has
 //! its own copies, in its own folder, so removing an account deletes its
 //! images with it and nothing is keyed by an address alone (two accounts
-//! that got the same image each download it). The whole cache is trimmed to
-//! the size chosen in Settings, least recently shown first.
+//! that got the same image each download it). Each copy is encrypted
+//! (`crate::sealed`), bound to its account and address; when the cache has
+//! no key this run, nothing is downloaded and images load live. The whole
+//! cache is trimmed to the size chosen in Settings, least recently shown
+//! first.
 //!
 //! Only the public web is asked: the cleaner leaves out images on the
 //! reader's own computer or network (`mail::local_hosts`), and the client
@@ -43,6 +46,7 @@ use super::saved_image::fetch_web_image;
 use crate::db::{now_millis, Db};
 use crate::error::Result;
 use crate::model::{AccountId, MessageId};
+use crate::sealed::Sealed;
 
 /// Images larger than this aren't kept (they load live if opened), as for
 /// inline images.
@@ -60,7 +64,7 @@ const PARALLEL: usize = 4;
 /// Where copies go and the HTTP client that fetches them.
 #[derive(Debug, Clone)]
 pub struct Prefetch {
-    pub dir: PathBuf,
+    pub cache: Sealed,
     pub http: reqwest::Client,
     /// Where an image is fetched from, given its (HTTPS) address: itself,
     /// except in tests, whose stand-in server only speaks plain HTTP.
@@ -75,16 +79,16 @@ impl Prefetch {
     /// (`remote_image_url`), and the reader's CSP allows nothing else, so a
     /// redirect to plain HTTP is refused here too. (Tests use
     /// `with_client`, since their stand-in server speaks plain HTTP.)
-    pub fn new(dir: PathBuf) -> Result<Self> {
-        Self::with_client(dir, client_builder().https_only(true))
+    pub fn new(cache: Sealed) -> Result<Self> {
+        Self::with_client(cache, client_builder().https_only(true))
     }
 
-    fn with_client(dir: PathBuf, builder: reqwest::ClientBuilder) -> Result<Self> {
+    fn with_client(cache: Sealed, builder: reqwest::ClientBuilder) -> Result<Self> {
         let http = builder
             .build()
             .map_err(|e| crate::CoreError::Other(format!("image client: {e}")))?;
         Ok(Self {
-            dir,
+            cache,
             http,
             fetch_from: str::to_string,
         })
@@ -149,7 +153,7 @@ pub struct PrefetchReport {
 pub async fn run(db: &Db, prefetch: &Prefetch, account: AccountId) -> Result<PrefetchReport> {
     let settings = crate::settings::load(&db.conn())?;
     let mut report = PrefetchReport::default();
-    if !settings.image_prefetch {
+    if !settings.image_prefetch || !prefetch.cache.keeps_files() {
         return Ok(report);
     }
     let candidates = pending(&db.conn(), account)?;
@@ -185,7 +189,7 @@ pub async fn run(db: &Db, prefetch: &Prefetch, account: AccountId) -> Result<Pre
                 while let Some(joined) = set.join_next().await {
                     match joined {
                         Ok((url, Ok((bytes, mime, _)))) => {
-                            store(db, &prefetch.dir, account, &url, &mime, &bytes)?;
+                            store(db, &prefetch.cache, account, &url, &mime, &bytes)?;
                             report.images += 1;
                         }
                         _ => report.failed += 1,
@@ -197,7 +201,7 @@ pub async fn run(db: &Db, prefetch: &Prefetch, account: AccountId) -> Result<Pre
         report.messages += 1;
     }
     let limit = u64::from(settings.image_cache_mb) * 1024 * 1024;
-    evict(&db.conn(), &prefetch.dir, limit)?;
+    evict(&db.conn(), &prefetch.cache.dir, limit)?;
     Ok(report)
 }
 
@@ -242,6 +246,12 @@ fn account_dir(dir: &Path, account: AccountId) -> PathBuf {
     dir.join(account.0.to_string())
 }
 
+/// An image's place in the cache, bound to its encrypted file: the row's
+/// account and address (its id isn't known until the file is written).
+fn place(account: AccountId, url: &str) -> String {
+    format!("image/{}/{url}", account.0)
+}
+
 fn file_for(dir: &Path, account: AccountId, id: i64) -> PathBuf {
     account_dir(dir, account).join(id.to_string())
 }
@@ -259,47 +269,31 @@ pub fn remove_account_images(dir: &Path, account: AccountId) -> Result<()> {
     }
 }
 
-/// Deletes the files the image cache kept before it was per account
-/// (directly in the cache folder, named by a number), which nothing lists
-/// now. Anything else there, and the folders (each an account's own), stay.
-pub fn sweep_shared_copies(dir: &Path) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let numbered = entry
-            .file_name()
-            .to_str()
-            .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
-        if numbered && entry.file_type().is_ok_and(|t| t.is_file()) {
-            let _ = std::fs::remove_file(entry.path());
-        }
-    }
-}
-
-/// Keeps one downloaded image for an account: its bytes in a file named by
-/// the row's id, in the account's folder, and a row for it. The bytes are
-/// written first, to a temporary name; the row is added and the file given
-/// its name under one hold of the database, so a reader never finds a row
-/// without its file, and a failure can only undo its own row.
+/// Keeps one downloaded image for an account: its bytes, encrypted, in a
+/// file named by the row's id, in the account's folder, and a row for it.
+/// The bytes are written first, to a temporary name; the row is added and
+/// the file given its name under one hold of the database, so a reader
+/// never finds a row without its file, and a failure can only undo its own
+/// row.
 fn store(
     db: &Db,
-    dir: &Path,
+    cache: &Sealed,
     account: AccountId,
     url: &str,
     mime: &str,
     bytes: &[u8],
 ) -> Result<()> {
     static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let dir = &cache.dir;
     let folder = account_dir(dir, account);
     let temp = folder.join(format!(
         "incoming-{}.tmp",
         COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
     let save_error = |e: std::io::Error| crate::CoreError::Other(format!("save image copy: {e}"));
-    std::fs::create_dir_all(&folder)
-        .and_then(|()| std::fs::write(&temp, bytes))
-        .map_err(save_error)?;
+    if !cache.write(&temp, &place(account, url), bytes)? {
+        return Ok(());
+    }
     let conn = db.conn();
     let added = conn.execute(
         "INSERT OR IGNORE INTO image_cache (account_id, url, mime, size, fetched_at, used_at)
@@ -332,7 +326,7 @@ fn store(
 /// longest.
 pub fn cached_for(
     conn: &Connection,
-    dir: &Path,
+    cache: &Sealed,
     account: AccountId,
     urls: &[String],
 ) -> Result<HashMap<String, String>> {
@@ -347,8 +341,8 @@ pub fn cached_for(
             )
             .optional()?;
         let Some((id, mime)) = row else { continue };
-        match std::fs::read(file_for(dir, account, id)) {
-            Ok(bytes) => {
+        match cache.read(&file_for(&cache.dir, account, id), &place(account, url)) {
+            Some(bytes) => {
                 let data = base64::engine::general_purpose::STANDARD.encode(bytes);
                 out.insert(url.clone(), format!("data:{mime};base64,{data}"));
                 conn.execute(
@@ -356,8 +350,9 @@ pub fn cached_for(
                     params![id, now],
                 )?;
             }
-            // The file went missing (the cache folder was cleaned): forget it.
-            Err(_) => {
+            // The file went missing (the cache folder was cleaned), or
+            // doesn't open: forget it.
+            None => {
                 conn.execute("DELETE FROM image_cache WHERE id = ?1", [id])?;
             }
         }
@@ -491,13 +486,20 @@ mod tests {
         format!("http://{IMAGE_HOST}:{}", server.address().port())
     }
 
+    /// The image folder, encrypted with one key for the whole test run.
+    fn sealed(dir: &Path) -> Sealed {
+        static KEY: std::sync::OnceLock<Arc<crate::sealed::FileKey>> = std::sync::OnceLock::new();
+        let key = KEY.get_or_init(|| Arc::new(crate::sealed::FileKey::generate().unwrap()));
+        Sealed::new(dir.to_path_buf(), Some(key.clone()))
+    }
+
     /// The stand-in server is plain HTTP; addresses are upgraded to HTTPS
     /// (as the reader loads them), so fetch them back over HTTP.
     fn prefetch(dir: &Path, server: &MockServer) -> Prefetch {
         let builder = client_builder().resolve(IMAGE_HOST, *server.address());
         Prefetch {
             fetch_from: |url| url.replacen("https://", "http://", 1),
-            ..Prefetch::with_client(dir.to_path_buf(), builder).unwrap()
+            ..Prefetch::with_client(sealed(dir), builder).unwrap()
         }
     }
 
@@ -517,7 +519,7 @@ mod tests {
         let url = format!("{}/a.png", server.uri());
         let dir = tempfile::tempdir().unwrap();
 
-        let err = Prefetch::new(dir.path().to_path_buf())
+        let err = Prefetch::new(sealed(dir.path()))
             .unwrap()
             .http
             .get(&url)
@@ -639,8 +641,17 @@ mod tests {
         assert_eq!(report.images, 1, "the page and the 404 aren't images");
         assert_eq!(report.failed, 2);
         let url = format!("{}/a.png", base(&server)).replacen("http://", "https://", 1);
-        let shown = cached_for(&db.conn(), &dir, account, std::slice::from_ref(&url)).unwrap();
+        let shown = cached_for(
+            &db.conn(),
+            &sealed(&dir),
+            account,
+            std::slice::from_ref(&url),
+        )
+        .unwrap();
         assert_eq!(shown[&url], "data:image/png;base64,AQID");
+        // Kept encrypted: the file isn't the image's bytes.
+        let kept = std::fs::read(file_for(&dir, account, 1)).unwrap();
+        assert!(!kept.windows(3).any(|w| w == [1u8, 2, 3]), "encrypted");
         // Handled once: the next pass finds nothing to do.
         assert_eq!(
             run_plain(&db, &prefetch(&dir, &server), account)
@@ -648,6 +659,25 @@ mod tests {
                 .messages,
             0
         );
+    }
+
+    /// Without a key this run (the database stayed plain for an older copy),
+    /// nothing is downloaded: images load live when an email is opened.
+    #[tokio::test]
+    async fn without_a_key_nothing_is_downloaded() {
+        let server = server().await;
+        let db = Db::open_in_memory().unwrap();
+        let (account, _) = setup(&db, &["INBOX"], &html(&server), now_millis());
+        let dir = tempdir();
+        let prefetch = Prefetch {
+            cache: Sealed::new(dir.clone(), None),
+            ..prefetch(&dir, &server)
+        };
+        assert_eq!(
+            run_plain(&db, &prefetch, account).await,
+            PrefetchReport::default()
+        );
+        assert_eq!(files_in(&dir), 0);
     }
 
     #[tokio::test]
@@ -787,8 +817,8 @@ mod tests {
             .map(|n| format!("{}/{n}.png", base(&server)).replacen("http://", "https://", 1))
             .collect();
         // Each account sees its own copies, never the other's.
-        let of_a = cached_for(&db.conn(), &dir, a, &urls).unwrap();
-        let of_b = cached_for(&db.conn(), &dir, b, &urls).unwrap();
+        let of_a = cached_for(&db.conn(), &sealed(&dir), a, &urls).unwrap();
+        let of_b = cached_for(&db.conn(), &sealed(&dir), b, &urls).unwrap();
         assert!(of_a.contains_key(&urls[1]) && !of_a.contains_key(&urls[2]));
         assert!(of_b.contains_key(&urls[2]) && !of_b.contains_key(&urls[1]));
 
@@ -797,10 +827,12 @@ mod tests {
         assert!(!account_dir(&dir, a).exists());
         assert_eq!(files_in(&dir), 2, "the other account's copies stay");
         assert_eq!(size(&db.conn()).unwrap(), (4, 2));
-        let shown = cached_for(&db.conn(), &dir, b, &urls).unwrap();
+        let shown = cached_for(&db.conn(), &sealed(&dir), b, &urls).unwrap();
         assert!(shown.contains_key(&urls[0]) && shown.contains_key(&urls[2]));
         assert!(
-            cached_for(&db.conn(), &dir, a, &urls).unwrap().is_empty(),
+            cached_for(&db.conn(), &sealed(&dir), a, &urls)
+                .unwrap()
+                .is_empty(),
             "the removed account has none"
         );
 
@@ -848,7 +880,15 @@ mod tests {
         let dir = tempdir();
         // The first row will be 1: a folder in the way of its file.
         std::fs::create_dir_all(file_for(&dir, account, 1)).unwrap();
-        assert!(store(&db, &dir, account, "https://x/1", "image/png", &[1, 2]).is_err());
+        assert!(store(
+            &db,
+            &sealed(&dir),
+            account,
+            "https://x/1",
+            "image/png",
+            &[1, 2]
+        )
+        .is_err());
         assert!(!is_cached(&db.conn(), account, "https://x/1").unwrap());
         let strays = std::fs::read_dir(account_dir(&dir, account))
             .unwrap()
@@ -858,27 +898,33 @@ mod tests {
         assert_eq!(strays, 0);
         // Another row, and a repeat of it, keep exactly one copy.
         std::fs::remove_dir(file_for(&dir, account, 1)).unwrap();
-        store(&db, &dir, account, "https://x/2", "image/png", &[1, 2]).unwrap();
-        store(&db, &dir, account, "https://x/2", "image/png", &[1, 2]).unwrap();
+        store(
+            &db,
+            &sealed(&dir),
+            account,
+            "https://x/2",
+            "image/png",
+            &[1, 2],
+        )
+        .unwrap();
+        store(
+            &db,
+            &sealed(&dir),
+            account,
+            "https://x/2",
+            "image/png",
+            &[1, 2],
+        )
+        .unwrap();
         assert_eq!(files_in(&dir), 1);
-        let shown = cached_for(&db.conn(), &dir, account, &["https://x/2".to_string()]).unwrap();
+        let shown = cached_for(
+            &db.conn(),
+            &sealed(&dir),
+            account,
+            &["https://x/2".to_string()],
+        )
+        .unwrap();
         assert_eq!(shown.len(), 1);
-    }
-
-    #[test]
-    fn copies_kept_before_the_cache_was_per_account_are_swept() {
-        let dir = tempdir();
-        std::fs::write(dir.join("12"), b"x").unwrap();
-        std::fs::write(dir.join(".DS_Store"), b"x").unwrap();
-        std::fs::create_dir_all(dir.join("3")).unwrap();
-        std::fs::write(dir.join("3").join("5"), b"y").unwrap();
-        sweep_shared_copies(&dir);
-        assert!(!dir.join("12").exists(), "a numbered flat file goes");
-        assert!(dir.join(".DS_Store").exists(), "anything else stays");
-        assert!(
-            dir.join("3").join("5").exists(),
-            "an account's folder stays"
-        );
     }
 
     #[test]
@@ -891,7 +937,15 @@ mod tests {
             ("https://x/2", 10),
             ("https://x/3", 10),
         ] {
-            store(&db, &dir, account, url, "image/png", &vec![0u8; bytes]).unwrap();
+            store(
+                &db,
+                &sealed(&dir),
+                account,
+                url,
+                "image/png",
+                &vec![0u8; bytes],
+            )
+            .unwrap();
         }
         let conn = db.conn();
         conn.execute(

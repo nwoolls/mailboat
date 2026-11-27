@@ -26,6 +26,7 @@ pub mod owner_only;
 pub mod parse_check;
 pub mod relaunch;
 pub mod rules;
+pub mod sealed;
 pub mod settings;
 pub mod sync;
 pub mod vacation;

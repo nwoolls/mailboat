@@ -874,6 +874,17 @@ async fn an_account_without_the_contacts_permission_is_refused_not_broken() {
     assert!(matches!(err, CoreError::Api { status: 403, .. }), "{err:?}");
 }
 
+/// An empty attachment cache, encrypted with a new key.
+fn sealed_cache(tag: &str) -> mail_core::sealed::Sealed {
+    let dir = std::env::temp_dir().join(format!("{tag}-{}", fastrand::u64(..)));
+    mail_core::sealed::Sealed::new(
+        dir,
+        Some(std::sync::Arc::new(
+            mail_core::sealed::FileKey::generate().unwrap(),
+        )),
+    )
+}
+
 #[tokio::test]
 async fn a_forward_carries_the_originals_attachments() {
     let server = MockServer::start().await;
@@ -883,21 +894,19 @@ async fn a_forward_carries_the_originals_attachments() {
     load_t1(&db, a);
     let m2 = message_id(&db, a, "m2");
     // The original's attachment, already downloaded to the cache.
-    let cache = std::env::temp_dir().join(format!("compose-fwd-test-{}", std::process::id()));
-    let file = cache.join("plan.pdf");
-    std::fs::create_dir_all(&cache).unwrap();
-    std::fs::write(&file, b"%PDF-plan").unwrap();
+    let cache = sealed_cache("compose-fwd-test");
     db.conn()
         .execute(
-            "INSERT INTO attachments (account_id, message_id, part_id, filename, mime_type, size, cached_path)
-             VALUES (?1, ?2, '2', 'plan.pdf', 'application/pdf', 9, ?3)",
-            rusqlite::params![a, m2, file.to_string_lossy()],
+            "INSERT INTO attachments (account_id, message_id, part_id, filename, mime_type, size)
+             VALUES (?1, ?2, '2', 'plan.pdf', 'application/pdf', 9)",
+            rusqlite::params![a, m2],
         )
         .unwrap();
     let attachment: AttachmentId = db
         .conn()
         .query_row("SELECT id FROM attachments", [], |r| r.get(0))
         .unwrap();
+    mail_core::attachments::keep(&db, &cache, attachment, b"%PDF-plan").unwrap();
 
     let (gmail, _) = client(&server.uri());
     let mut msg = outgoing(a, "a@x.example", Some(m2));
@@ -919,7 +928,7 @@ async fn a_forward_carries_the_originals_attachments() {
         raw.contains("plan.pdf") && raw.contains("application/pdf"),
         "{raw}"
     );
-    let _ = std::fs::remove_dir_all(&cache);
+    let _ = std::fs::remove_dir_all(&cache.dir);
 }
 
 #[tokio::test]
@@ -978,22 +987,20 @@ async fn a_quote_carries_the_originals_embedded_images() {
     let a = add_account(&db, "a");
     load_t1(&db, a);
     let m2 = message_id(&db, a, "m2");
-    let cache = std::env::temp_dir().join(format!("compose-cid-test-{}", std::process::id()));
-    let file = cache.join("logo.png");
-    std::fs::create_dir_all(&cache).unwrap();
-    std::fs::write(&file, [137u8, 80, 78, 71]).unwrap();
+    let cache = sealed_cache("compose-cid-test");
     db.conn()
         .execute(
             "INSERT INTO attachments (account_id, message_id, part_id, filename, mime_type, size,
-               content_id, inline, cached_path)
-             VALUES (?1, ?2, '3', 'logo.png', 'image/png', 4, 'logo@x', 1, ?3)",
-            rusqlite::params![a, m2, file.to_string_lossy()],
+               content_id, inline)
+             VALUES (?1, ?2, '3', 'logo.png', 'image/png', 4, 'logo@x', 1)",
+            rusqlite::params![a, m2],
         )
         .unwrap();
     let logo: AttachmentId = db
         .conn()
         .query_row("SELECT id FROM attachments", [], |r| r.get(0))
         .unwrap();
+    mail_core::attachments::keep(&db, &cache, logo, &[137u8, 80, 78, 71]).unwrap();
 
     let mut msg = outgoing(a, "a@x.example", Some(m2));
     msg.html = Some(r#"<p>Hi</p><blockquote><img src="cid:logo@x"></blockquote>"#.into());
@@ -1014,7 +1021,7 @@ async fn a_quote_carries_the_originals_embedded_images() {
     let (raw, _) = sent_raw(send);
     assert!(raw.contains("Content-ID: <logo@x>"), "{raw}");
     assert!(raw.contains("cid:logo@x"), "{raw}");
-    let _ = std::fs::remove_dir_all(&cache);
+    let _ = std::fs::remove_dir_all(&cache.dir);
 }
 
 /// Saving a draft brings its whole conversation into the cache, so it can

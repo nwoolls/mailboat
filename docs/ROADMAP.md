@@ -7929,10 +7929,31 @@ item below is built, the owner has tried it, and the owner has published
             plain cached attachments and images belongs to the next step:
             the encrypted ones go in new folders, and every start deletes
             the old folders while they're there.)*
-      - [ ] Attachments and images encrypted in the cache folder; decrypted
+      - [x] Attachments and images encrypted in the cache folder; decrypted
             copies only for other apps, in a private temporary folder that
             is emptied at start and at quit; the plain files already cached
-            deleted at migration.
+            deleted at migration. *(Done 2026-11-26, branch
+            `cache-encryption-files`: `mail_core::sealed` encrypts each file
+            with AES-256-GCM, with a key derived from the cache's key, and
+            binds it to its account and attachment or image, so a file moved
+            or changed doesn't open and is fetched again. The files go in
+            new folders, `attachments-v2` and `images-v2`, and an attachment
+            is named by its ID, so its name isn't on disk. Opening one, or
+            Quick Look, writes a decrypted copy to `opened` in the cache
+            folder (this user's only), emptied at every start and quit;
+            saving writes straight to Downloads; forwarding and inline
+            images use the bytes in memory. The old plain folders are
+            deleted at every start while they're there, except while a
+            version from before encryption is open, which still uses them.
+            When the cache stayed plain this run and the keychain has no key
+            yet, nothing is kept: attachments are fetched each time and
+            images load live. Tests: a file is kept encrypted and reads
+            back; one in another place, changed, plain or from another key
+            doesn't open; an attachment and an image are encrypted on disk;
+            a cached attachment that doesn't open is fetched again; without
+            a key nothing is written; the files' key is the same at every
+            start and new after a reset; startup deletes the plain folders
+            and the decrypted copies and keeps the encrypted ones.)*
       - [ ] Linux, with or after #236: the keyring cases above tested in
             the Linux build (no keyring, locked, unlock canceled), the
             spike's tests in Linux CI, and `cargo deny` with the Linux

@@ -79,16 +79,14 @@ pub async fn carried_parts(
     db: &Db,
     gmail_for: impl Fn(AccountId) -> Result<GmailClient>,
     msg: &OutgoingMessage,
-    cache_dir: &std::path::Path,
+    cache: &crate::sealed::Sealed,
 ) -> Result<Carried> {
     let mut out = Carried::default();
     for (ids, inline) in [(&msg.forwarded, false), (&msg.inline_images, true)] {
         for &id in ids {
             let a = store::attachment_ref(&db.conn(), id)?;
             let gmail = gmail_for(a.account)?;
-            let path = crate::attachments::download(db, &gmail, id, cache_dir).await?;
-            let bytes = std::fs::read(&path)
-                .map_err(|e| CoreError::Other(format!("couldn't read {}: {e}", a.filename)))?;
+            let bytes = crate::attachments::download(db, &gmail, id, cache).await?;
             if inline {
                 if let Some(cid) = a.content_id {
                     out.inline.push((cid, a.mime_type, bytes));

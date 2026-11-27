@@ -304,7 +304,9 @@ pub fn run() {
             app.manage(startup::Startup::opened(opened.reset, cache_path));
             app.manage(startup::HeldCacheLock(opened.lock));
             let still_plain = opened.still_plain;
+            let files = opened.files.map(Arc::new);
             let db = Arc::new(opened.db);
+            state::tidy_cache_folder(&dirs.cache, still_plain);
             let http = mail_core::reqwest::Client::builder()
                 .user_agent(format!(
                     "{}/{}",
@@ -330,7 +332,7 @@ pub fn run() {
                     .iter()
                     .map(|a| a.id)
                     .collect();
-            for folder in ["attachments", "images"] {
+            for folder in [state::ATTACHMENTS_FOLDER, state::IMAGES_FOLDER] {
                 mail_core::attachments::remove_unlisted_account_folders(
                     &dirs.cache.join(folder),
                     &existing,
@@ -353,11 +355,12 @@ pub fn run() {
                     sign_outs: Default::default(),
                 }),
                 SyncConfig {
-                    images: Some({
-                        // Copies kept before the cache was per account.
-                        mail_core::mail::prefetch::sweep_shared_copies(&dirs.cache.join("images"));
-                        mail_core::mail::prefetch::Prefetch::new(dirs.cache.join("images"))?
-                    }),
+                    images: Some(mail_core::mail::prefetch::Prefetch::new(
+                        mail_core::sealed::Sealed::new(
+                            dirs.cache.join(state::IMAGES_FOLDER),
+                            files.clone(),
+                        ),
+                    )?),
                     ..SyncConfig::default()
                 },
                 WorkerTiming::default(),
@@ -371,6 +374,7 @@ pub fn run() {
                     config: dirs.config,
                     cache: dirs.cache,
                     downloads: app.path().download_dir().ok(),
+                    files,
                 },
                 sync_log,
                 Arc::new({
@@ -437,6 +441,10 @@ pub fn run() {
             }
             if let tauri::RunEvent::Exit = event {
                 ai::forget_unkept_summaries(app);
+                // Decrypted copies given to other apps (`mail_core::sealed`).
+                if let Some(state) = app.try_state::<AppState>() {
+                    mail_core::sealed::empty_dir(&state.opened_dir);
+                }
             }
             if let tauri::RunEvent::Ready = event {
                 let choice = app
