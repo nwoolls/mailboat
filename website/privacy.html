@@ -106,7 +106,7 @@
 
     <main id="main" class="doc">
       <h1>Privacy policy</h1>
-      <p class="updated">Last updated 18 November 2026</p>
+      <p class="updated">Last updated 27 November 2026</p>
 
       <div class="summary">
         <p>
@@ -174,9 +174,18 @@
           keeps them. Your Google contacts aren't changed.
         </li>
         <li>
-          Mailboat doesn't encrypt the files it keeps on your computer. They're protected only if
-          your computer's disk encryption is turned on for the drive that holds them (FileVault on
-          macOS; BitLocker or Device encryption on Windows).
+          Mailboat encrypts its cache: the mail database and the attachments and images it keeps,
+          with a key it makes and keeps in your system's keychain. When you open an attachment in
+          another app, or in Quick Look, that app gets an unencrypted copy, which Mailboat tries to
+          delete when it quits and each time it starts; on Windows, a copy another app still has
+          open stays until that app lets go of it and Mailboat next quits or starts. Attachments,
+          images and original messages you save to Downloads aren't encrypted. After an update from
+          a version that didn't encrypt, the old database stays unencrypted until Mailboat can
+          encrypt it, and the old attachments and images stay until it can delete them: for example
+          not while that earlier version is still open, or while the keychain is locked. What the
+          old files held can also stay in the disk's free space and in backups until it's
+          overwritten, so your computer's disk encryption (FileVault on macOS; BitLocker or Device
+          encryption on Windows) still helps.
         </li>
         <li>
           No Mailboat server receives your mail or your Google data. The one request that reaches
