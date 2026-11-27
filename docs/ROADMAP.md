@@ -5538,8 +5538,10 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       branch `platform-type`, taken from `linux-build`: the front end
       knows the system as `mac`, `windows` or `linux` (`PLATFORM` in
       `src/shared/lib/platform.ts`), names it in those places, and shows
-      the notification button on the Mac only. The Linux cases come along
-      unused, so `linux-build` merges without conflicts there.)*
+      the notification button on the Mac only. A Windows version of that
+      button, opening `ms-settings:notifications`, can come later. The
+      Linux cases come along unused, so `linux-build` merges without
+      conflicts there.)*
 - [x] The type check (`bun run typecheck`) didn't cover `scripts/`:
       `tsconfig.json` includes `src`, `tests` and the configs, not the
       release and check scripts, so a missing import there passed every
@@ -8233,18 +8235,186 @@ item below is built, the owner has tried it, and the owner has published
 
 - [ ] Linux *(moved from Milestone 9 when it closed, 2026-10-25; it was
       a "nice-to-have" there, never started)*: Tauri builds for Linux,
-      but nothing has been tried; the Windows work (`shared/lib/platform`,
-      Ctrl shortcuts, the named-pipe MCP) would mostly carry over
+      and the Windows work (`shared/lib/platform`, Ctrl shortcuts, the
+      named-pipe MCP) would mostly carry over
       *(2026-11-11: a friend of the owner asked for an Arch Linux package, in
       the AUR, which needs a Linux build to point at first. The owner wants to take up Linux soon: after clearing some bugs, and together with a few
       features from this list, such as "add to Todoist and archive" and
       "Clone a sent email")*
+      *(2026-11-24: built on branch `linux-build`, to be opened as a draft
+      pull request, after a user's port (issue #218) was read as context
+      only. The release jobs are wired, and the Linux code is checked and
+      tested in Docker on the Mac (Ubuntu 22.04, Arm); none of it has run
+      in CI, in a real release, or on a desktop yet. It merges
+      after the CASA letter, since it changes the dependencies, the
+      advisories the assessment reads and the policy. The owner's first
+      packages: `.deb`, `.rpm` and AppImage.)*
+      *(2026-11-25: CI's builds pass on both processors, and the owner
+      tried the Arm packages in VMs: the `.deb` on Ubuntu and the `.rpm`
+      on Fedora KDE install and run. The Linux packages and updates
+      haven't run in a real release yet.)*
       *(2026-11-25: part of the release scripts' groundwork moved to main
       ahead of it, branch `release-scripts-groundwork`: the checks of a
       Linux program (`elfProblems`, `check-binaries.ts linux`, which
       nothing runs yet), and the bills of materials each made on the
       computer that builds their download (`host` in `SBOM_DOWNLOADS`).
       No Linux download is added to the release.)*
+  - [x] Builds, checks and tests on Linux: Ubuntu 22.04 in CI's Rust
+        checks (x86-64), the test builds (x86-64 and Arm), and
+        `scripts/linux.sh` (Docker) on the Mac
+  - [x] Linux window (opaque, the desktop's title bar), `data-platform`
+        for each system, and Linux wording where the app named macOS or
+        Windows (Show in Finder, the theme, reduce motion)
+  - [x] Folders (XDG), the AI apps' socket, Claude Desktop's config file,
+        sign-in tokens in the desktop's keyring only, and a clear error when
+        there is none
+  - [x] A second launch hands over to the running copy (single instance)
+  - [x] `cargo deny` checks Linux; the Linux-only advisories reviewed
+  - [x] Privacy policy: the Linux keyring and disk encryption
+  - [ ] The encrypted cache (0.4.0, merged from main 2026-11-27) on
+        Linux: the key goes to the desktop's keyring like the sign-ins, and
+        a keyring that can't answer (locked, or no default keyring) stops
+        the start and leaves the mail database as it is. Checked in Docker: clippy and every Rust test, the encryption
+        tests included, and the packages build. The app's SQLite is now
+        compiled with hidden symbols on Linux, so WebKitGTK and libsoup keep
+        the system's (see the decision in ARCHITECTURE.md). Still to try in
+        the VMs: a first start that encrypts an existing cache, a start with
+        the keyring locked (the screen asks to unlock it, and Try again
+        works once it is), a profile whose keyring service runs with no
+        default keyring (the same screen; the start can't go on until one
+        is set up), and that the web view's own storage still works
+  - [ ] Try the packages on GNOME and KDE (Wayland and X11), Fedora, and
+        a desktop with no keyring; print; notifications; a second monitor;
+        whether a second launch brings the window forward on Wayland;
+        connecting an AI app from the AppImage, then restarting
+        *(2026-11-25, owner's VMs: on Fedora KDE a notification shows its
+        subject as typed, markup and all. On Ubuntu GNOME none has been
+        seen yet, but the test emails only arrived after a restart, which
+        never notifies: the same account was syncing on the Mac and both
+        VMs at once, and Google rate-limited it, so new mail sometimes
+        reached Ubuntu only after Mailboat restarted. Try both again once
+        the VMs have finished their first sync.)*
+        *(2026-11-25, later: with both VMs' first sync done, new mail
+        arrives live on Ubuntu too, and GNOME shows the notification. So
+        neither was a Linux problem. On Ubuntu GNOME, the ChatGPT app's
+        own Codex connected and wrote a summary.)*
+        *(2026-11-25: clicking a notification opens its conversation on
+        both. Ubuntu GNOME brings the window forward; Fedora KDE on Wayland
+        only flashes it in the taskbar, its focus-stealing prevention: see
+        the item below.)*
+        *(2026-11-25, Ubuntu GNOME: Delete all data took back the app's
+        notifications still in the list; a second launch opened no second
+        copy; a `mailto:` link opened the app.)*
+        *(2026-11-25: on Fedora KDE a second launch opened no second copy;
+        printing to PDF works on both. The AppImage runs on Ubuntu and gives
+        AI apps the AppImage file itself as the command, not its temporary
+        mount; ChatGPT connected from it. With the ChatGPT and Claude apps
+        installed, the app found their own Codex and Claude Code and wrote
+        summaries with each. Claude Code, connected as an AI app from the
+        AppImage, searched the mail through it after a restart. Still to
+        try: a second monitor, and a desktop with no keyring (the owner
+        deferred that one).)*
+  - [x] Release and updates: a Linux job in the release workflow (x86-64
+        and Arm on Ubuntu 22.04) signs each package for the updater;
+        `latest.json` has an entry per package (`linux-x86_64-deb` and so
+        on); the updater replaces an AppImage and installs a `.deb` or
+        `.rpm` through `pkexec` *(owner, 2026-11-24: all three update
+        themselves)*; built without secrets and signed in a job of its own,
+        with the AppImage's tools checked against recorded digests; an SBOM
+        per processor, made on a runner of that processor, and one more per
+        AppImage for the system libraries it carries; the program's
+        hardening and updater mark checked in every package
+        (`check-linux-packages.ts`); after an update the
+        app starts again only once the old copy has ended
+  - [x] The theme follows the desktop's light or dark preference, and a
+        theme chosen in Settings stays when the desktop's changes
+        *(2026-11-25: the app opened light on a dark desktop in the
+        owner's Fedora VM; tao 0.37's doing, worked around in
+        `theme::linux`)*
+  - [ ] Remove that workaround once Tauri's runtime takes tao 0.38, which
+        reads the desktop's preference itself (check that a chosen theme
+        still holds when the desktop's changes)
+  - [ ] Tests the reviews asked for but the branch doesn't have *(code
+        review, round 11, 2026-11-25)*: the theme's timing on Linux (the
+        test checks the rule for dropping a late answer from the desktop,
+        not that the app applies it, nor the order of the desktop's answer
+        and GTK's writes; tried by hand on Fedora KDE instead), and a
+        notification resent after the bus itself says its service has left
+        (the test checks the rule, and that a service's own "gone" answer
+        isn't resent; making the bus say it in a test needs the service to
+        leave after it answers `GetCapabilities` and before `Notify` reaches
+        it)
+  - [x] Email links (`mailto:`): the desktop entry claims the scheme, and
+        Settings reads and sets the default through `xdg-settings`
+  - [x] The click on a notification opens its conversation (the default
+        action, over one D-Bus connection), and the app can take
+        notifications back, as on the Mac
+  - [x] ChatGPT (Codex) on Linux runs inside bubblewrap where it's
+        installed and allowed, and as on Windows where it isn't
+        *(owner, 2026-11-24)*
+        *(2026-11-25: the ChatGPT app for Linux carries its own Codex, in
+        `/usr/lib/chatgpt/resources` from both its `.deb` and `.rpm`; the
+        app now looks there too, as it does in the app on the Mac and
+        Windows, after the owner's VMs showed "Get ChatGPT app" with it
+        installed)*
+        *(2026-11-25: likewise the Claude app for Linux, whose `.deb` keeps
+        Claude Code in `~/.config/Claude/claude-code/<version>/<build>/`;
+        on Linux the app looked only where the Mac's Claude app keeps it)*
+  - [x] The Codex review is recorded per system, and the VMs get a test
+        program built on the Mac *(owner, 2026-11-24: Windows had never
+        been reviewed; all three on the same day each month)*
+  - [x] First Codex reviews on Windows and Linux, in the owner's VMs
+        *(2026-11-25, with the Mac's on the same day: each system's eight
+        tests passed. Windows and the Mac went to `main` first, in #240,
+        with the per-system review itself, which made the tests work on
+        Windows (its home folder, and a command that creates a file
+        there). Linux ran the ChatGPT app's own Codex on Fedora KDE and
+        Ubuntu GNOME, with the same results on both. Codex 0.171 on Linux
+        and 0.172 on the Mac offer one tool the review hadn't listed,
+        `send_message_to_user_async`, which only sends a message back to
+        the app; the owner accepted it. Windows, still on 0.166, matched the
+        October review exactly. On Windows, where nothing fences Codex in,
+        one try started a helper agent, whose tools were off, so it did
+        nothing)*
+  - [x] On Wayland, bring the window forward when a notification is
+        clicked, as KDE expects: the notification service sends an
+        activation token (`ActivationToken`, notification spec 1.2) just
+        before the click; hand it to GTK (the window's startup ID) before
+        presenting the window. Without it KDE only flashes the taskbar entry
+        (seen on Fedora KDE, 2026-11-25); GNOME raises the window anyway.
+        Small, and not needed for the first release *(owner: don't chase
+        it now)*. *(Decided 2026-11-26, owner: kept as it is. Flashing
+        the taskbar entry is what KDE does for any app that doesn't pass
+        the token, so it isn't treated as a bug.)*
+  - [x] Decide whether Windows and Linux can run only the live tests from
+        now on *(owner)*: their lists differ from the Mac's this time only
+        because Windows has an older Codex. *(Decided 2026-11-26, owner:
+        no, every system runs the full recheck; see AGENTS.md → Codex
+        review and the decision in ARCHITECTURE.md. Merged to main in
+        #246.)*
+  - [ ] The website: download buttons, its platform line, and the
+        feature cards; the README's "Windows? Linux?". With the first
+        stable release that has Linux packages, not before: the buttons
+        link to the latest stable release, and the site goes out when a
+        pull request merges
+  - [x] What redistributing the AppImage asks of the project: its
+        runtime links LGPL-2.1 libfuse in statically (upstream's build, as
+        in every AppImage with that runtime), and it carries copies of
+        LGPL libraries such as WebKitGTK and GTK, which the `.deb` and
+        `.rpm` take from the system instead
+        *(Decided 2026-11-25, owner: do what AppImages generally do. The
+        app's source is public, each bundled package's copyright file
+        stays inside the AppImage (linuxdeploy copies them), the AppImage's
+        SBOM names each bundled package and version, and their source is
+        in Ubuntu's archive, libfuse's in its own 3.15.0 release, with the
+        patch and build recipe the runtime applies to it in the runtime's
+        repository. No source
+        bundle of our own; one can be made from the SBOM's list if anyone
+        asks.)*
+  - [ ] Flatpak (Flathub) and the AUR package, after the first release.
+        An AUR package built from the `.deb` would carry its bundle type,
+        so the updater would try `dpkg` on Arch: it should build from the
+        AppImage, or turn the updater off
 
 - [ ] Keep translations after Mailboat quits *(known limitation, owner,
       2026-10-26: "for later")*: a translation in an email lives only in
@@ -8525,6 +8695,25 @@ item below is built, the owner has tried it, and the owner has published
         so it shows the fix only on a slowed page (`bun run
         test:browser:slow`): there it failed 5 runs of 5 without the fix,
         the reply 182–432 px below as in CI, and passed 5 of 5 with it.
+- [x] `reply-scroll.spec.ts`: "Reply with AI: opening slides to the reply
+      rather than jumping" (line 291).
+      - 2026-11-25, local full check on branch `linux-build` (the change
+        under test was Linux-only Rust and docs, nothing the browser tests
+        run): no painted scroll position fell between the start and the
+        halfway point (`seen.tops.some(...)`, expected true, received
+        false), so the slide wasn't seen. The same test passed in three
+        full checks on the branch earlier that day, and the whole file then
+        passed 5 runs of 5 with no change (120 tests).
+      - Fixed 2026-11-25 (#239, branch `fix-reply-ai-slide-flake`): the app
+        was sliding; the test sampled the reader once a frame, and with
+        frames coming late WebKit's smooth scroll crossed past halfway
+        between two samples, so the slide looked like a jump. On the slowed
+        page the old test failed 16 runs of 20. The test now checks how the
+        reader is moved instead: no move made at once may go further than
+        40 px before the fallback, and a smooth scroll must have been asked
+        for. With growth scrolling at once to the end put back, it fails 10
+        of 10 (5 of 5 slowed); with the fix it passed 40 of 40 at normal
+        speed and 20 of 20 slowed.
 
 ### Reading
 

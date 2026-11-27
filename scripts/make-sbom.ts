@@ -7,9 +7,10 @@
 // licenses) with Rust installed (it asks `cargo tree`, twice per platform
 // the release builds). A build script's own crates follow the computer that
 // builds, so each download's bill is made on the kind of computer that
-// builds it (`host` in `SBOM_DOWNLOADS`, `releaseFiles.ts`): today all of
-// them on a Mac, Windows' cross-built there. Writes
-// `<App>_<version>_<download>.cdx.json` in `--out` for each of those.
+// builds it (`host` in `SBOM_DOWNLOADS`, `releaseFiles.ts`): on a Mac, the
+// Mac's and Windows' (cross-built there); on Linux, the one for that
+// computer's processor. Writes `<App>_<version>_<download>.cdx.json` in
+// `--out` for each of those.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -57,7 +58,9 @@ function tree(target: string, edges: string): string {
 }
 const downloads = sbomDownloadsBuiltOn(process.platform, process.arch);
 if (downloads.length === 0) {
-  fail(`no download is built on ${process.platform}: run on a Mac, as the release does`);
+  fail(
+    `no download is built on ${process.platform}: run on a Mac or on Linux, as the release does`,
+  );
 }
 const checksums = cargoChecksums(readFileSync("Cargo.lock", "utf8"));
 

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "create": false,
+        "dragDropEnabled": false,
+        "title": "Mailboat",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 420,
+        "minHeight": 360,
+        "transparent": false
+      }
+    ]
+  },
+  "bundle": {
+    "targets": ["deb", "rpm", "appimage"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/64x64.png",
+      "icons/128x128.png",
+      "icons/icon.png"
+    ],
+    "shortDescription": "All your Gmail accounts, in one calm inbox",
+    "longDescription": "A fast, keyboard-first Gmail client that talks to Gmail's API directly. Free and open source.",
+    "linux": {
+      "deb": {
+        "depends": ["libdbus-1-3", "xdg-utils"],
+        "desktopTemplate": "linux/app.desktop"
+      },
+      "rpm": {
+        "depends": ["libdbus-1.so.3()(64bit)", "xdg-utils"],
+        "desktopTemplate": "linux/app.desktop"
+      }
+    }
+  }
+}

@@ -28,7 +28,12 @@ export function problemWords(problem: StartupProblem, platform: Platform, appNam
     case "keychain":
       return {
         title: "Can't unlock your mail",
-        body: `${appName} couldn't read its key from ${keychainName(platform)}. Unlock ${keychainName(platform)} or let ${appName} use it, then try again. Your mail stays as it is.`,
+        // Linux reports a locked keyring and a missing default one alike
+        // (keyring's `NoStorageAccess`), so the words cover both.
+        body:
+          platform === "linux"
+            ? `${appName} couldn't read its key from ${keychainName(platform)}. Make sure your desktop has a default keyring and that it's unlocked, then try again. Your mail stays as it is.`
+            : `${appName} couldn't read its key from ${keychainName(platform)}. Unlock ${keychainName(platform)} or let ${appName} use it, then try again. Your mail stays as it is.`,
       };
     case "inUse":
       return {

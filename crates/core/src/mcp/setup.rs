@@ -32,7 +32,9 @@ pub fn claude_code_args(program: &str) -> Vec<String> {
 /// install (the owner's, 2026-10-25) reads its own private copy of
 /// `%APPDATA%`, inside `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming`,
 /// so the app writing to the usual place went unseen; that copy is used
-/// when the app is installed that way.
+/// when the app is installed that way. Linux has no Claude Desktop from
+/// Anthropic; the community builds keep the file where an Electron app
+/// keeps its settings, under `$XDG_CONFIG_HOME` (or `~/.config`).
 pub fn claude_desktop_config() -> Option<PathBuf> {
     #[cfg(windows)]
     {
@@ -53,7 +55,11 @@ pub fn claude_desktop_config() -> Option<PathBuf> {
         let appdata = std::env::var_os("APPDATA")?;
         Some(PathBuf::from(appdata).join(r"Claude\claude_desktop_config.json"))
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "linux")]
+    {
+        Some(dirs::config_dir()?.join("Claude/claude_desktop_config.json"))
+    }
+    #[cfg(not(any(windows, target_os = "linux")))]
     {
         let home = std::env::var_os("HOME")?;
         Some(

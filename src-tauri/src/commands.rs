@@ -983,7 +983,9 @@ pub async fn attachment_save(
 }
 
 /// Shows a saved attachment in Finder.
-#[tauri::command]
+// Off the UI thread: on Linux, revealing waits for the file manager's
+// answer over D-Bus (`files::reveal`).
+#[tauri::command(async)]
 #[specta::specta]
 pub fn attachment_reveal(state: State<'_, AppState>, attachment_id: AttachmentId) -> CmdResult<()> {
     let saved = state.saved.lock().unwrap().get(&attachment_id).cloned();
@@ -1059,7 +1061,9 @@ pub async fn message_original_save(
 }
 
 /// Shows a file saved to Downloads (by `email_image_save`) in Finder.
-#[tauri::command]
+// Off the UI thread: on Linux, revealing waits for the file manager's
+// answer over D-Bus (`files::reveal`).
+#[tauri::command(async)]
 #[specta::specta]
 pub fn download_reveal(state: State<'_, AppState>, file_name: String) -> CmdResult<()> {
     let downloads = state
@@ -1642,15 +1646,17 @@ pub fn mailto_take(queue: State<'_, crate::mail_handler::MailtoQueue>) -> Vec<Ma
     queue.take()
 }
 
-/// Which app opens `mailto:` links (Settings → General).
-#[tauri::command]
+/// Which app opens `mailto:` links (Settings → General). Off the UI
+/// thread: on Linux it runs `xdg-settings`.
+#[tauri::command(async)]
 #[specta::specta]
 pub fn mail_app_default() -> crate::mail_handler::DefaultMailApp {
     crate::mail_handler::default_app()
 }
 
-/// Asks macOS to make this copy of the app the default email reader; macOS
-/// asks the user to confirm.
+/// Makes this copy of the app the default email reader: macOS asks the
+/// user to confirm; Linux sets it with `xdg-settings`; Windows opens its
+/// Default apps page instead.
 #[tauri::command]
 #[specta::specta]
 pub async fn mail_app_make_default(app: tauri::AppHandle) -> CmdResult<()> {
@@ -1789,7 +1795,9 @@ pub async fn spam_empty(
 }
 
 /// Shows the sync log in Finder.
-#[tauri::command]
+// Off the UI thread: on Linux, revealing waits for the file manager's
+// answer over D-Bus (`files::reveal`).
+#[tauri::command(async)]
 #[specta::specta]
 pub fn sync_log_reveal(state: State<'_, AppState>) -> CmdResult<()> {
     Ok(files::reveal(state.sync_log.path())?)

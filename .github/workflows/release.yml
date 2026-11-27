@@ -7,8 +7,9 @@ name: Release
 # pull request can never reach them.
 #
 # It builds, signs and notarizes the Mac app, builds and signs the Windows
-# installers (x64 and ARM64), and has Tauri sign each update payload with the
-# updater key. For a tag, a last job then checks every update signature against
+# installers (x64 and ARM64), builds the Linux packages (.deb, .rpm and
+# AppImage, for x86-64 and Arm), and has Tauri sign each update payload with
+# the updater key. For a tag, a last job then checks every update signature against
 # the public key in the app, writes the update manifest (`latest.json`) and the
 # checksums, attests where the files came from, and makes a DRAFT GitHub Release.
 # The owner reads it and publishes it by hand: only a published release is
@@ -315,21 +316,163 @@ jobs:
         if: always()
         run: az logout || true
 
+  # Linux is built without any secret: the AppImage's tools run here, so
+  # they never see the updater key. They are checked against recorded
+  # digests (scripts/appimage-tools.sh) so Tauri doesn't fetch its own. A
+  # job of its own then signs what was built (linux-sign).
+  linux:
+    name: Linux (${{ matrix.arch }})
+    needs: check
+    # The oldest Ubuntu Tauri supports, so the packages run on distributions
+    # as old as it (their glibc); Arm on GitHub's own Arm runner.
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86-64
+            runner: ubuntu-22.04
+          - arch: Arm
+            runner: ubuntu-22.04-arm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # WebKitGTK and GTK (the web view and window), D-Bus (the keychain),
+      # and rpm to make the .rpm.
+      # squashfs-tools to unpack the AppImage for its bill without running it.
+      - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev rpm cpio squashfs-tools
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+          no-cache: true
+      - run: bun install --frozen-lockfile
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - run: scripts/appimage-tools.sh
+      # No build cache here: a release is built from scratch. The AppImage's
+      # runtime is the pinned one (appimagetool would download its own).
+      - run: LDAI_RUNTIME_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/tauri/appimage-runtime" bun tauri build --ci --bundles deb,rpm,appimage
+      - name: Check the packages and keep them
+        run: |
+          shopt -s nullglob
+          mkdir -p release-files
+          for kind in deb rpm appimage; do
+            case "$kind" in appimage) files=(target/release/bundle/appimage/*.AppImage) ;;
+                            *) files=(target/release/bundle/"$kind"/*."$kind") ;; esac
+            if [ "${#files[@]}" -ne 1 ]; then
+              echo "Expected one .$kind, found ${#files[@]}" >&2
+              exit 1
+            fi
+            cp "${files[0]}" release-files/
+          done
+          # The program in each package: 64-bit, PIE, a stack that can't run
+          # code, full RELRO, no RPATH; and marked as that kind of package,
+          # which is how the updater picks the package it installs.
+          bun scripts/check-linux-packages.ts release-files
+          # The AppImage's runtime is the pinned one, then its own bill of
+          # materials: the runtime, and the system libraries it carries,
+          # traced to the packages installed here.
+          runtime="${XDG_CACHE_HOME:-$HOME/.cache}/tauri/appimage-runtime"
+          bun scripts/check-appimage-runtime.ts release-files/*.AppImage "$runtime"
+          version="$(jq -r .version package.json)"
+          bun scripts/make-appimage-sbom.ts --appimage release-files/*.AppImage \
+            --runtime "$runtime" --version "$version" --out release-files
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-unsigned-${{ matrix.arch }}
+          path: release-files/*
+          if-no-files-found: error
+          retention-days: 7
+
+  # Signs the Linux packages for the updater, in a job that runs nothing but
+  # the signer (the Tauri CLI, from the lockfile, its install scripts off).
+  # Each signature is bound to the version (--app-version), as `tauri build`
+  # does on the Mac and Windows.
+  linux-sign:
+    name: Sign Linux (${{ matrix.arch }})
+    needs: linux
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86-64, Arm]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+          no-cache: true
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux-unsigned-${{ matrix.arch }}
+          path: release-files
+      - name: Sign the packages
+        env:
+          ARCH: ${{ matrix.arch }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          version="$(jq -r .version package.json)"
+          name="$(jq -r .name brand.json)"
+          case "$ARCH" in
+            x86-64) deb=amd64; appimage=amd64; rpm=x86_64; sbom=linux_amd64 ;;
+            Arm) deb=arm64; appimage=aarch64; rpm=aarch64; sbom=linux_arm64 ;;
+            *) echo "Unknown arch $ARCH" >&2; exit 1 ;;
+          esac
+          packages=("${name}_${version}_${deb}.deb" "${name}-${version}-1.${rpm}.rpm" "${name}_${version}_${appimage}.AppImage")
+          expected=("${packages[@]}" "${name}_${version}_${sbom}.AppImage.cdx.json")
+          # Exactly the files this build makes, and nothing else, so nothing
+          # unexpected is signed or carried on to publish.
+          # Every top-level entry, hidden ones included, with its type: each
+          # expected one a regular file (f), and nothing more.
+          diff <(printf '%s f\n' "${expected[@]}" | sort) \
+            <(find release-files -mindepth 1 -maxdepth 1 -printf '%f %y\n' | sort)
+          mkdir -p signed
+          for f in "${expected[@]}"; do cp "release-files/$f" signed/; done
+          for f in "${packages[@]}"; do
+            bun tauri signer sign --app-version "$version" "signed/$f"
+            if [ ! -s "signed/$f.sig" ]; then
+              echo "$f has no .sig" >&2
+              exit 1
+            fi
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-signed-${{ matrix.arch }}
+          path: signed/*
+          if-no-files-found: error
+          retention-days: 7
+
   # The software bills of materials (CycloneDX, DASA 1.5.1), one per
   # download, made by our own script from the lockfiles (`scripts/sbom.ts`),
   # in a job of its own: reading packages' licenses needs `bun install`,
-  # which the publish job, with its write access, shouldn't run. On a Mac,
-  # as every build above is (Windows is cross-built there): the crates a
-  # build script uses follow the computer that builds, so only a Mac lists
-  # the ones the release used.
+  # which the publish job, with its write access, shouldn't run. The crates
+  # a build script uses follow the computer that builds, so each download's
+  # bill is made on the kind of computer that builds it: a Mac for the Mac
+  # and Windows (cross-built there), and each Linux processor on its own.
   sbom:
-    name: Software bills of materials
+    name: Software bills of materials (${{ matrix.os }})
     if: github.ref_type == 'tag'
     needs: check
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     permissions:
       contents: read
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-22.04, ubuntu-22.04-arm]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -347,7 +490,7 @@ jobs:
         run: bun scripts/make-sbom.ts --version "${TAG#v}" --out sbom
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: sbom
+          name: sbom-${{ matrix.os }}
           path: sbom/*
           if-no-files-found: error
           retention-days: 7
@@ -355,7 +498,7 @@ jobs:
   publish:
     name: Publish (a draft release)
     if: github.ref_type == 'tag'
-    needs: [macos, windows, sbom]
+    needs: [macos, windows, linux-sign, sbom]
     runs-on: ubuntu-latest
     # Its own environment: an approval of its own, to publish what the builds
     # made, and none of the signing secrets, which this job never needs.
@@ -373,15 +516,26 @@ jobs:
         with:
           bun-version-file: package.json
           no-cache: true
+      # Each build's files in a folder of its own, then put together only if
+      # no two have the same name: a merge would let one quietly replace
+      # another (a file from one build standing in for another's).
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: "*-signed*"
-          merge-multiple: true
-          path: build-outputs
+          path: artifacts
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: sbom
-          path: build-outputs
+          pattern: "sbom-*"
+          path: artifacts
+      - name: Put the builds' files together
+        run: |
+          duplicates="$(find artifacts -type f -printf '%f\n' | sort | uniq -d)"
+          if [ -n "$duplicates" ]; then
+            echo "More than one build made: $duplicates" >&2
+            exit 1
+          fi
+          mkdir -p build-outputs
+          find artifacts -type f -exec mv {} build-outputs/ \;
       - name: Make the release files
         env:
           TAG: ${{ github.ref_name }}

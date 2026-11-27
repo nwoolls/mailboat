@@ -40,9 +40,38 @@ function sigFile(file: Buffer, key: Key, version: string | null): string {
   return Buffer.from(text).toString("base64");
 }
 
-const PAYLOADS = ["App.app.tar.gz", "App_0.1.0_x64-setup.exe", "App_0.1.0_arm64-setup.exe"];
-/** One bill of materials per download. */
-const SBOMS = ["App_0.1.0_aarch64.cdx.json", "App_0.1.0_x64.cdx.json", "App_0.1.0_arm64.cdx.json"];
+const LINUX = [
+  "App_0.1.0_amd64.AppImage",
+  "App_0.1.0_amd64.deb",
+  "App-0.1.0-1.x86_64.rpm",
+  "App_0.1.0_aarch64.AppImage",
+  "App_0.1.0_arm64.deb",
+  "App-0.1.0-1.aarch64.rpm",
+];
+const PAYLOADS = [
+  "App.app.tar.gz",
+  "App_0.1.0_x64-setup.exe",
+  "App_0.1.0_arm64-setup.exe",
+  ...LINUX,
+];
+/** One bill of materials per download (Linux: one per processor). */
+const SBOMS = [
+  "App_0.1.0_aarch64.cdx.json",
+  "App_0.1.0_x64.cdx.json",
+  "App_0.1.0_arm64.cdx.json",
+  "App_0.1.0_linux_amd64.cdx.json",
+  "App_0.1.0_linux_arm64.cdx.json",
+  "App_0.1.0_linux_amd64.AppImage.cdx.json",
+  "App_0.1.0_linux_arm64.AppImage.cdx.json",
+];
+const LINUX_STABLE = [
+  "App_amd64.AppImage",
+  "App_amd64.deb",
+  "App-x86_64.rpm",
+  "App_aarch64.AppImage",
+  "App_arm64.deb",
+  "App-aarch64.rpm",
+];
 
 let dir: string;
 let key: Key;
@@ -113,30 +142,42 @@ describe("making a release's files", () => {
   it("publishes the right files, a manifest that points at them, checksums and notes", () => {
     const { code, out } = run();
     expect(code, out).toBe(0);
-    expect(readdirSync(join(dir, "to")).toSorted()).toEqual([
-      "App.app.tar.gz",
-      "App.app.tar.gz.sig",
-      "App_0.1.0_aarch64.cdx.json",
-      "App_0.1.0_aarch64.dmg",
-      "App_0.1.0_arm64-setup.exe",
-      "App_0.1.0_arm64-setup.exe.sig",
-      "App_0.1.0_arm64.cdx.json",
-      "App_0.1.0_x64-setup.exe",
-      "App_0.1.0_x64-setup.exe.sig",
-      "App_0.1.0_x64.cdx.json",
-      "App_aarch64.dmg",
-      "App_arm64-setup.exe",
-      "App_x64-setup.exe",
-      "SHA256SUMS",
-      "latest.json",
-    ]);
+    expect(readdirSync(join(dir, "to")).toSorted()).toEqual(
+      [
+        "App.app.tar.gz",
+        "App.app.tar.gz.sig",
+        "App_0.1.0_aarch64.dmg",
+        "App_0.1.0_arm64-setup.exe",
+        "App_0.1.0_arm64-setup.exe.sig",
+        "App_0.1.0_x64-setup.exe",
+        "App_0.1.0_x64-setup.exe.sig",
+        ...SBOMS,
+        ...LINUX,
+        ...LINUX.map((f) => `${f}.sig`),
+        "App_aarch64.dmg",
+        "App_arm64-setup.exe",
+        "App_x64-setup.exe",
+        ...LINUX_STABLE,
+        "SHA256SUMS",
+        "latest.json",
+      ].toSorted(),
+    );
     const manifest = JSON.parse(readFileSync(join(dir, "to", "latest.json"), "utf8"));
     expect(manifest.version).toBe("0.1.0");
     expect(Object.keys(manifest.platforms)).toEqual([
       "darwin-aarch64",
       "windows-x86_64",
       "windows-aarch64",
+      "linux-x86_64-appimage",
+      "linux-x86_64-deb",
+      "linux-x86_64-rpm",
+      "linux-aarch64-appimage",
+      "linux-aarch64-deb",
+      "linux-aarch64-rpm",
     ]);
+    expect(manifest.platforms["linux-aarch64-deb"].url).toBe(
+      "https://github.com/owner/name/releases/download/v0.1.0/App_0.1.0_arm64.deb",
+    );
     expect(manifest.platforms["windows-x86_64"].url).toBe(
       "https://github.com/owner/name/releases/download/v0.1.0/App_0.1.0_x64-setup.exe",
     );
@@ -144,17 +185,18 @@ describe("making a release's files", () => {
       readFileSync(join(dir, "to", "SHA256SUMS"), "utf8")
         .trim()
         .split("\n"),
-    ).toHaveLength(14);
+    ).toHaveLength(14 + 4 + 3 * LINUX.length);
     expect(readFileSync(join(dir, "notes.md"), "utf8")).toBe("First release.\n");
   });
 
-  it("copies the three installers under version-free names, with the same bytes, and keeps them out of the manifest", () => {
+  it("copies the installers under version-free names, with the same bytes, and keeps them out of the manifest", () => {
     expect(run().code).toBe(0);
     const to = (f: string) => readFileSync(join(dir, "to", f));
     for (const [stable, versioned] of [
       ["App_aarch64.dmg", "App_0.1.0_aarch64.dmg"],
       ["App_x64-setup.exe", "App_0.1.0_x64-setup.exe"],
       ["App_arm64-setup.exe", "App_0.1.0_arm64-setup.exe"],
+      ...LINUX_STABLE.map((name, i) => [name, LINUX[i]!] as const),
     ] as const) {
       expect(to(stable).equals(to(versioned)), stable).toBe(true);
     }
@@ -163,13 +205,19 @@ describe("making a release's files", () => {
     expect(manifest).not.toContain("App_x64-setup.exe");
     expect(manifest).not.toContain("App_arm64-setup.exe");
     const sums = readFileSync(join(dir, "to", "SHA256SUMS"), "utf8");
-    for (const stable of ["App_aarch64.dmg", "App_x64-setup.exe", "App_arm64-setup.exe"]) {
+    for (const stable of [
+      "App_aarch64.dmg",
+      "App_x64-setup.exe",
+      "App_arm64-setup.exe",
+      ...LINUX_STABLE,
+    ]) {
+      expect(manifest).not.toContain(`/${stable}"`);
       expect(sums).toContain(`  ${stable}\n`);
     }
     // the update tarball and the signatures get no copy
     expect(
       readdirSync(join(dir, "to")).filter((f) => f.includes("tar.gz") || f.endsWith(".sig")),
-    ).toHaveLength(4);
+    ).toHaveLength(4 + LINUX.length);
   });
 });
 
@@ -200,10 +248,10 @@ describe("a release that must not be made", () => {
       renameSync(join(dir, "from", f), join(dir, "from", f.replace("_0.1.0_", "_0.1.0+build.5_")));
     const { code, out } = run();
     expect(code, out).toBe(1);
-    expect(out).toContain(`doesn't contain "_0.1.0_"`);
+    expect(out).toContain("doesn't contain the version (0.1.0)");
   });
 
-  it("is refused, making nothing, when one of the three installers is missing", () => {
+  it("is refused, making nothing, when one of the installers is missing", () => {
     setup();
     rmSync(join(dir, "from", "App_0.1.0_aarch64.dmg"));
     const { code, out } = run();

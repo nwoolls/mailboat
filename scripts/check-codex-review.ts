@@ -1,5 +1,5 @@
 // Fails when a system's Codex review (crates/core/src/ai/codex_review.json,
-// one per system: macOS and Windows) is more than 31 days old; a system
+// one per system: macOS, Windows and Linux) is more than 31 days old; a system
 // never reviewed only warns: Codex can't promise no tools, so an agent rechecks it
 // monthly (AGENTS.md → Codex review). It only fails where the owner has
 // asked for it, with an empty, uncommitted `.codex-review-enforce` file in

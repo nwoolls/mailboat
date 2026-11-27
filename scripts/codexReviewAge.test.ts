@@ -35,7 +35,14 @@ describe("reviewStatuses", () => {
     expect(reviewStatuses({ macos: { reviewed: "2026-11-30" } }, today, 31)).toEqual([
       { platform: "macOS", state: "fine", days: 2 },
       { platform: "Windows", state: "never" },
+      { platform: "Linux", state: "never" },
     ]);
+    expect(reviewStatuses({ linux: { reviewed: "2026-10-31" } }, today, 31)[2]).toEqual({
+      platform: "Linux",
+      state: "due",
+      days: 32,
+      reviewed: "2026-10-31",
+    });
     expect(reviewStatuses({ windows: { reviewed: "2026-10-31" } }, today, 31)[1]).toEqual({
       platform: "Windows",
       state: "due",

@@ -93,6 +93,10 @@ const appOnOs =
   (only: string): Rule =>
   (kind, os) =>
     appOnly(kind, os) && os === only;
+const appUnlessOs =
+  (not: string): Rule =>
+  (kind, os) =>
+    appOnly(kind, os) && os !== not;
 
 const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
   web: {
@@ -119,14 +123,16 @@ const EXPECTED: Record<string, { job: Rule; steps: Record<string, Rule> }> = {
     job: always,
     steps: {
       "actions/checkout": appOnly,
+      "sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev bubblewrap dbus":
+        appOnOs("Linux"),
       "oven-sh/setup-bun": appOnly,
       "bun install --frozen-lockfile": appOnly,
       "dtolnay/rust-toolchain": appOnly,
       "Swatinem/rust-cache": appOnly,
       "cargo fmt --all --check": appOnly,
       "cargo clippy --workspace --all-targets -- -D warnings": appOnly,
-      "cargo test --workspace": appOnOs("macOS"),
-      'bun scripts/make-sbom.ts --version 0.0.0 --out "$RUNNER_TEMP/sbom"': appOnOs("macOS"),
+      "cargo test --workspace": appUnlessOs("Windows"),
+      'bun scripts/make-sbom.ts --version 0.0.0 --out "$RUNNER_TEMP/sbom"': appUnlessOs("Windows"),
       "cargo test --workspace --exclude desktop --no-fail-fast": appOnOs("Windows"),
     },
   },
@@ -172,7 +178,7 @@ describe("the CI's skips, evaluated", () => {
 
   for (const [name, rules] of Object.entries(EXPECTED)) {
     for (const kind of KINDS) {
-      for (const os of name === "rust" ? ["macOS", "Windows"] : ["macOS"]) {
+      for (const os of name === "rust" ? ["macOS", "Windows", "Linux"] : ["macOS"]) {
         const label = `${name} (${os}) when "What changed" says ${kind === "" ? "nothing" : kind}`;
         it(`${label}: the job and each step run exactly when they should`, () => {
           const found = job(name);
@@ -220,5 +226,31 @@ describe("the CI's skips, evaluated", () => {
     for (const pattern of [...codeql, ...build].filter((p) => !siteScripts.has(p))) {
       expect(pattern).not.toMatch(/^(scripts|\.github|src|src-tauri|crates)\b/);
     }
+  });
+
+  it("checks and builds on every system the app ships for", () => {
+    const workflow = (file: string) =>
+      readFileSync(resolve(__dirname, `../.github/workflows/${file}`), "utf8");
+    const matrix = (text: string) => {
+      const m = text.match(/^\s+os: \[([^\]]+)\]$/m);
+      return m?.[1] ? m[1].split(",").map((os) => os.trim()) : [];
+    };
+    // The Rust checks: the Mac, Windows, and Linux on the oldest Ubuntu Tauri
+    // supports (where the packages are built).
+    expect(matrix(ci)).toEqual(["macos-latest", "windows-latest", "ubuntu-22.04"]);
+    // The test builds: both Linux processors, and the packages are uploaded.
+    const build = workflow("build.yml");
+    expect(matrix(build)).toEqual([
+      "macos-latest",
+      "windows-latest",
+      "ubuntu-22.04",
+      "ubuntu-22.04-arm",
+    ]);
+    for (const bundle of [
+      "target/release/bundle/deb/*.deb",
+      "target/release/bundle/rpm/*.rpm",
+      "target/release/bundle/appimage/*.AppImage",
+    ])
+      expect(build).toContain(bundle);
   });
 });

@@ -17,7 +17,8 @@ downloaded file on the window. In short:
    Google ends each sign-in after seven days; signing in again takes a click.
 3. Create an OAuth client ID of type **Desktop app** and download its JSON.
 4. Give the file to the app (drop it on the window), or save it yourself as
-   `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`.
+   `~/Library/Application Support/com.nwoolls.mailboat/google-oauth-client.json`
+   (on Linux, `~/.config/com.nwoolls.mailboat/google-oauth-client.json`).
    It is never committed. Alternatively set `MAILBOAT_GOOGLE_CLIENT_ID` and
    `MAILBOAT_GOOGLE_CLIENT_SECRET`.
 

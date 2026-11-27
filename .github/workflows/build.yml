@@ -32,18 +32,43 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        # Linux on the oldest Ubuntu Tauri supports, so the packages run on
+        # distributions as old as it; Intel/AMD and Arm.
+        os: [macos-latest, windows-latest, ubuntu-22.04, ubuntu-22.04-arm]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # WebKitGTK and GTK (the web view and window), D-Bus (the keychain),
+      # rpm to make the .rpm, and squashfs-tools for the AppImage's bill.
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev rpm cpio squashfs-tools
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-      - run: bun tauri build --ci
+      # The AppImage's tools, checked against recorded digests, as the
+      # release does.
+      - if: runner.os == 'Linux'
+        run: scripts/appimage-tools.sh
+      - if: runner.os != 'Linux'
+        run: bun tauri build --ci
+      # With the pinned AppImage runtime, checked afterwards.
+      - if: runner.os == 'Linux'
+        run: |
+          runtime="${XDG_CACHE_HOME:-$HOME/.cache}/tauri/appimage-runtime"
+          LDAI_RUNTIME_FILE="$runtime" bun tauri build --ci
+          bun scripts/check-appimage-runtime.ts target/release/bundle/appimage/*.AppImage "$runtime"
+          # Each package's program hardened and marked, as the release checks.
+          packages="$(mktemp -d)"
+          cp target/release/bundle/deb/*.deb target/release/bundle/rpm/*.rpm target/release/bundle/appimage/*.AppImage "$packages"/
+          bun scripts/check-linux-packages.ts "$packages"
+          # The release's own bill of the AppImage, so a pull request runs
+          # its unpacking and package tracing on both processors too.
+          bun scripts/make-appimage-sbom.ts --appimage target/release/bundle/appimage/*.AppImage \
+            --runtime "$runtime" --version "$(jq -r .version package.json)" --out "$RUNNER_TEMP/sbom"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: unsigned-build-${{ matrix.os }}
@@ -52,5 +77,8 @@ jobs:
             target/release/bundle/macos/*.app
             target/release/bundle/msi/*.msi
             target/release/bundle/nsis/*.exe
+            target/release/bundle/deb/*.deb
+            target/release/bundle/rpm/*.rpm
+            target/release/bundle/appimage/*.AppImage
           if-no-files-found: warn
           retention-days: 7

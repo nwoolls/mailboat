@@ -307,6 +307,14 @@ mod tests {
         std::fs::create_dir_all(&inner).unwrap();
         std::fs::write(inner.join("2"), b"x").unwrap();
         std::fs::set_permissions(&inner, std::fs::Permissions::from_mode(0o500)).unwrap();
+        // Root ignores the folder's permissions (`scripts/linux.sh` runs
+        // the tests as root in Docker): nothing here can be made
+        // undeletable, so there's nothing to check.
+        if std::fs::write(inner.join("probe"), b"").is_ok() {
+            std::fs::set_permissions(&inner, std::fs::Permissions::from_mode(0o700)).unwrap();
+            let _ = std::fs::remove_dir_all(&cache);
+            return;
+        }
         assert!(!remove_plain_folders(&cache, false));
         std::fs::set_permissions(&inner, std::fs::Permissions::from_mode(0o700)).unwrap();
         assert!(

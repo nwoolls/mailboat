@@ -130,9 +130,9 @@ dependencies = [
 
 [[package]]
 name = "async-executor"
-version = "1.14.0"
+version = "1.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c96bf972d85afc50bf5ab8fe2d54d1586b4e0b46c97c50a0c9e71e2f7bcd812a"
+checksum = "f426a31126c735126297bc5ea7a521263c9faff4f63ca415267ee625651c4f37"
 dependencies = [
  "async-task",
  "concurrent-queue",
@@ -1047,6 +1047,8 @@ name = "desktop"
 version = "0.0.0"
 dependencies = [
  "block2",
+ "dirs",
+ "gtk",
  "mail-core",
  "objc2",
  "objc2-app-kit",
@@ -1068,6 +1070,7 @@ dependencies = [
  "time",
  "tokio",
  "windows-registry 0.100.0",
+ "zbus 5.19.0",
 ]
 
 [[package]]
@@ -2580,7 +2583,6 @@ checksum = "eebcc3aff044e5944a8fbaf69eb277d11986064cba30c468730e8b9909fb551c"
 dependencies = [
  "byteorder",
  "dbus-secret-service",
- "linux-keyutils",
  "log",
  "secret-service",
  "security-framework 2.11.1",
@@ -2661,16 +2663,6 @@ dependencies = [
  "pkg-config",
  "sqlite3mc-src",
  "vcpkg",
-]
-
-[[package]]
-name = "linux-keyutils"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83270a18e9f90d0707c41e9f35efada77b64c0e6f3f1810e71c8368a864d5590"
-dependencies = [
- "bitflags 2.13.2",
- "libc",
 ]
 
 [[package]]
@@ -2758,6 +2750,7 @@ dependencies = [
  "aws-lc-rs",
  "base64 0.23.1",
  "cssparser 0.38.0",
+ "dirs",
  "encoding_rs",
  "fastrand",
  "icalendar",

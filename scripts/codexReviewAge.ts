@@ -21,10 +21,11 @@ export function reviewAge(reviewed: string, today: Date): ReviewAge {
 }
 
 /** The systems the app ships for, as codex_review.json's `platforms` names them. */
-export const PLATFORMS = ["macos", "windows"] as const;
+export const PLATFORMS = ["macos", "windows", "linux"] as const;
 const NAMES: Record<(typeof PLATFORMS)[number], string> = {
   macos: "macOS",
   windows: "Windows",
+  linux: "Linux",
 };
 
 export type ReviewStatus =

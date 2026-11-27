@@ -883,7 +883,11 @@ mod tests {
     #[test]
     fn only_connected_providers_are_used() {
         let mut s = AppSettings::default();
-        assert!(check_usable(&s, AiProvider::Apple).is_ok());
+        // Apple Intelligence needs no connecting, but is only on the Mac.
+        assert_eq!(
+            check_usable(&s, AiProvider::Apple).is_ok(),
+            ai::APPLE_ON_THIS_SYSTEM
+        );
         assert!(check_usable(&s, AiProvider::Claude).is_err());
         s.ai.connected.push(AiProvider::Claude);
         assert!(check_usable(&s, AiProvider::Claude).is_ok());

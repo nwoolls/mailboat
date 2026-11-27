@@ -1,5 +1,33 @@
 {
   "platforms": {
+    "linux": {
+      "reviewed": "2026-11-25",
+      "codex": "0.171.0-alpha.13.2",
+      "stays_on": [
+        "item_ids",
+        "realtime_conversation",
+        "resize_all_images",
+        "terminal_resize_reflow",
+        "tool_search_always_defer_mcp_tools",
+        "tui_app_server",
+        "unified_exec",
+        "worktrees"
+      ],
+      "tools": [
+        "collaboration.followup_task",
+        "collaboration.interrupt_agent",
+        "collaboration.list_agents",
+        "collaboration.send_message",
+        "collaboration.spawn_agent",
+        "collaboration.wait_agent",
+        "functions.exec",
+        "functions.request_user_input",
+        "functions.request_user_input_async",
+        "functions.send_message_to_user_async",
+        "functions.wait",
+        "request_user_input"
+      ]
+    },
     "macos": {
       "reviewed": "2026-11-25",
       "codex": "0.172.0",

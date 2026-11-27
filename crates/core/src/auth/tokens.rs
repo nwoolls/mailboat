@@ -138,6 +138,18 @@ impl SecretStore for KeyringStore {
 }
 
 fn keychain_err(e: keyring::Error) -> CoreError {
+    // Linux keeps sign-ins in the desktop's keyring, which a desktop
+    // without one (or a keyring that is locked and won't open) can't
+    // provide: say what's missing rather than D-Bus's own words alone.
+    #[cfg(target_os = "linux")]
+    if matches!(
+        e,
+        keyring::Error::NoStorageAccess(_) | keyring::Error::PlatformFailure(_)
+    ) {
+        return CoreError::Keychain(format!(
+            "Couldn't reach the desktop's keyring. Signing in needs one, such as GNOME Keyring or KWallet, running and unlocked ({e})"
+        ));
+    }
     CoreError::Keychain(e.to_string())
 }
 

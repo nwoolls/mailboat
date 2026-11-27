@@ -26,7 +26,8 @@ use crate::error::{CoreError, Result};
 /// Where the app listens: in its data folder, which only the user can
 /// open. The proxy and the app agree on it without asking anyone.
 pub fn socket_path() -> Option<PathBuf> {
-    #[cfg(target_os = "macos")]
+    // A socket file, on macOS and Linux alike.
+    #[cfg(unix)]
     {
         Some(crate::brand::data_dir()?.join("mcp.sock"))
     }
@@ -44,7 +45,7 @@ pub fn socket_path() -> Option<PathBuf> {
             crate::brand::ID
         )))
     }
-    #[cfg(not(any(target_os = "macos", windows)))]
+    #[cfg(not(any(unix, windows)))]
     {
         None
     }

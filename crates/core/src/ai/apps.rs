@@ -29,6 +29,8 @@ use std::path::{Path, PathBuf};
 pub fn claude() -> Option<PathBuf> {
     let binary: &[&str] = if cfg!(windows) {
         &["claude.exe"]
+    } else if cfg!(target_os = "linux") {
+        &["claude"]
     } else {
         &["claude.app", "Contents", "MacOS", "claude"]
     };
@@ -41,6 +43,13 @@ pub fn claude() -> Option<PathBuf> {
 
 /// The ChatGPT (or Codex) app's Codex, if one is installed.
 pub fn codex() -> Option<PathBuf> {
+    codex_candidates().into_iter().find(|p| p.is_file())
+}
+
+/// Where the ChatGPT (or Codex) app keeps its copy of Codex, on this
+/// system. On Linux the ChatGPT app's `.deb` and `.rpm` put it in
+/// `/usr/lib/chatgpt/resources` (seen in both, 2026-11-25).
+fn codex_candidates() -> Vec<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if cfg!(windows) {
         if let Some(local) = env_dir("LOCALAPPDATA") {
@@ -49,6 +58,10 @@ pub fn codex() -> Option<PathBuf> {
             candidates
                 .extend(subdirs(&local.join(r"OpenAI\Codex\bin")).map(|d| d.join("codex.exe")));
         }
+    } else if cfg!(target_os = "linux") {
+        // Linux has its own list, so a Mac app bundle in a home folder
+        // (a restored Mac backup, say) is never tried there.
+        candidates.push(PathBuf::from("/usr/lib/chatgpt/resources/codex"));
     } else {
         let mut apps = vec![PathBuf::from("/Applications")];
         if let Some(home) = env_dir("HOME") {
@@ -61,7 +74,7 @@ pub fn codex() -> Option<PathBuf> {
             candidates.push(dir.join("Codex.app/Contents/Resources/codex"));
         }
     }
-    candidates.into_iter().find(|p| p.is_file())
+    candidates
 }
 
 /// Where the Claude app keeps its data, on this system.
@@ -80,6 +93,12 @@ fn claude_data_dirs() -> Vec<PathBuf> {
                 }
             }
         }
+    } else if cfg!(target_os = "linux") {
+        // The Claude app for Linux keeps its data, Claude Code included,
+        // in `~/.config/Claude` (`claude-code/<version>/<build>/claude`,
+        // seen from its `.deb`, 2026-11-25), as Electron apps do.
+        #[cfg(target_os = "linux")]
+        dirs.extend(::dirs::config_dir());
     } else if let Some(home) = env_dir("HOME") {
         dirs.push(home.join("Library/Application Support"));
     }
@@ -125,6 +144,19 @@ fn env_dir(name: &str) -> Option<PathBuf> {
 mod tests {
     use super::*;
 
+    /// On Linux the ChatGPT app's own Codex is looked for where its
+    /// packages install it; elsewhere that folder isn't asked about.
+    #[test]
+    fn the_chatgpt_apps_codex_is_looked_for_where_linux_installs_it() {
+        let linux = PathBuf::from("/usr/lib/chatgpt/resources/codex");
+        let candidates = codex_candidates();
+        assert_eq!(candidates.contains(&linux), cfg!(target_os = "linux"));
+        // Review (round 13): no Mac app bundle is tried on Linux.
+        if cfg!(target_os = "linux") {
+            assert_eq!(candidates, [linux]);
+        }
+    }
+
     #[test]
     fn versions_compare_as_numbers() {
         use std::cmp::Ordering::*;
@@ -149,6 +181,21 @@ mod tests {
         assert_eq!(version, "2.1.308");
         assert_eq!(path, root.join("2.1.308/a93d/claude.exe"));
         assert!(newest(&root.join("missing"), &["claude.exe"]).is_none());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// The Claude app for Linux: `claude-code/<version>/<build>/claude`
+    /// under `~/.config/Claude`, the folder the app looks in on Linux.
+    #[test]
+    fn finds_the_claude_apps_claude_code_as_linux_lays_it_out() {
+        let root = std::env::temp_dir().join(format!("ai-apps-linux-{}", fastrand::u64(..)));
+        let program = root.join("claude-code/2.1.330/fd32a5b15526/claude");
+        std::fs::create_dir_all(program.parent().unwrap()).unwrap();
+        std::fs::write(&program, b"").unwrap();
+        let (version, path) = newest(&root.join("claude-code"), &["claude"]).unwrap();
+        assert_eq!((version.as_str(), path), ("2.1.330", program));
+        #[cfg(target_os = "linux")]
+        assert!(claude_data_dirs().contains(&::dirs::config_dir().unwrap()));
         let _ = std::fs::remove_dir_all(&root);
     }
 }

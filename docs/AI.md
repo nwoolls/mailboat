@@ -13,6 +13,15 @@ browser and uses your subscription (no API key):
 | Claude | [Claude Code](https://claude.com/product/claude-code) (`claude`) | `claude auth login` |
 | ChatGPT | [Codex CLI](https://developers.openai.com/codex/cli) (`codex`) | `codex login` |
 
+On Windows and Linux there's no Apple Intelligence, so summaries and
+writing help use Claude or ChatGPT once one is connected. On Linux, install
+bubblewrap (`bwrap`; most distributions have a package by that name) so
+ChatGPT runs fenced in as on the Mac (some systems don't allow it, such as
+inside a container). Without it, ChatGPT runs as it does on Windows: every
+Codex setting that adds a tool is turned off, and ChatGPT pauses if Codex
+keeps one on that hasn't been reviewed, but nothing on your computer stops
+a tool that reads files.
+
 If Connect's browser sign-in doesn't finish, run the sign-in command in
 Terminal once, then press Connect again. Disconnecting only stops Mailboat
 using it; the tool stays signed in.

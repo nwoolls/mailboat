@@ -6,14 +6,17 @@
 # dependencies' unsound ones included.
 #
 # osv-scanner reads the whole Cargo.lock: every platform, and optional
-# dependencies nothing turns on. The app ships for macOS and Windows.
+# dependencies nothing turns on. The app ships for macOS, Windows and Linux.
 
 # glib: unsound iterator impls (fixed in 0.20). Only Tauri's GTK web view on
-# Linux uses it (webkit2gtk, gtk 0.18), and the app isn't built for Linux.
+# Linux uses it (webkit2gtk, gtk 0.18, pinned by Tauri). The unsound code is
+# `VariantStrIter` (`Variant::array_iter_str`), which nothing in the build
+# calls: not the app, Tauri, wry, tao, muda, gtk, webkit2gtk, gio or soup3
+# (searched 2026-11-24). Also ignored in deny.toml.
 [[IgnoredVulns]]
 id = "RUSTSEC-2024-0429"
 ignoreUntil = 2027-05-16
-reason = "glib is built only for Linux (Tauri's GTK web view); the app ships for macOS and Windows"
+reason = "glib: Linux only, pinned by Tauri's GTK web view; the unsound VariantStrIter is never called"
 
 # paste: unmaintained, not vulnerable. A compile-time macro specta (the
 # bindings generator) uses; none of its code is in the app. Also ignored in
@@ -24,33 +27,34 @@ ignoreUntil = 2027-05-16
 reason = "Unmaintained only; a compile-time macro (through specta), not in the shipped app"
 
 # proc-macro-error: unmaintained, not vulnerable. A compile-time macro of
-# gtk's, built only for Linux.
+# gtk's, built only for Linux. Also ignored in deny.toml.
 [[IgnoredVulns]]
 id = "RUSTSEC-2024-0370"
 ignoreUntil = 2027-05-16
 reason = "Unmaintained only; a compile-time macro built only for Linux (gtk)"
 
 # zvariant, zvariant_derive and zbus_names: unmaintained, not vulnerable.
-# zvariant and zvariant_derive 5.15.1 and zbus_names 4.3.5 come with Linux
-# desktop notifications (notify-rust, through Tauri's notification plugin),
-# built only for Linux. zvariant and zvariant_derive 4.2.0 and zbus_names
+# zvariant and zvariant_derive 5.15.1 and zbus_names 4.3.5 come with zbus,
+# which Linux desktop notifications (notify-rust, through Tauri's
+# notification plugin) and the single-instance plugin use, built only for
+# Linux. Also ignored in deny.toml. zvariant and zvariant_derive 4.2.0 and zbus_names
 # 3.0.0 are listed because keyring's optional async `secret-service` crate
 # is, which the app never turns on (Linux uses keyring's sync backend,
 # `dbus-secret-service`): they aren't built for any platform.
 [[IgnoredVulns]]
 id = "RUSTSEC-2026-0370"
 ignoreUntil = 2027-05-16
-reason = "zvariant: unmaintained only; built only for Linux (notifications), or not at all (keyring's unused secret-service)"
+reason = "zvariant: unmaintained only; Linux only (notifications, single instance), or not at all (keyring's unused secret-service)"
 
 [[IgnoredVulns]]
 id = "RUSTSEC-2026-0371"
 ignoreUntil = 2027-05-16
-reason = "zbus_names: unmaintained only; built only for Linux (notifications), or not at all (keyring's unused secret-service)"
+reason = "zbus_names: unmaintained only; Linux only (notifications, single instance), or not at all (keyring's unused secret-service)"
 
 [[IgnoredVulns]]
 id = "RUSTSEC-2026-0372"
 ignoreUntil = 2027-05-16
-reason = "zvariant_derive: unmaintained only; built only for Linux (notifications), or not at all (keyring's unused secret-service)"
+reason = "zvariant_derive: unmaintained only; Linux only (notifications, single instance), or not at all (keyring's unused secret-service)"
 
 # chrono: unmaintained (2026-11), not vulnerable, and no maintained release
 # to move to. It comes in through oauth2 (Google sign-in), icalendar

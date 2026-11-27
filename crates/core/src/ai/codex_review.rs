@@ -7,7 +7,7 @@
 //!
 //! Each system is reviewed on its own (`platforms`, keyed by Rust's
 //! `std::env::consts::OS`): the fence that stops Codex differs (macOS's
-//! sandbox, none on Windows), and so can Codex's own
+//! sandbox, bubblewrap on Linux, none on Windows), and so can Codex's own
 //! tools. Each records what it showed, and the lists the app checks
 //! against are what every reviewed system showed together (a test keeps
 //! them so), so the systems can be compared.
@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 use serde::Deserialize;
 
 /// The systems the app ships for, as `platforms` names them.
-pub const PLATFORMS: [&str; 2] = ["macos", "windows"];
+pub const PLATFORMS: [&str; 3] = ["macos", "windows", "linux"];
 
 /// One system's last review.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -191,7 +191,10 @@ mod tests {
         };
         assert_eq!(
             differences(&r),
-            ["tool functions.exec: on macos, not on windows"]
+            [
+                "linux: not reviewed",
+                "tool functions.exec: on macos, not on windows"
+            ]
         );
     }
 
@@ -258,7 +261,10 @@ mod tests {
             tools: vec![],
             refused_models: vec![],
         };
-        assert_eq!(differences(&r), ["windows: not reviewed"]);
+        assert_eq!(
+            differences(&r),
+            ["windows: not reviewed", "linux: not reviewed"]
+        );
     }
 
     /// The system the app is built for has a name the review can use.

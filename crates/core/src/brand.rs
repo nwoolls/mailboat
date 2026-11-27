@@ -24,7 +24,11 @@ pub fn data_dir() -> Option<std::path::PathBuf> {
         .map(|home| std::path::PathBuf::from(home).join("Library/Application Support"));
     #[cfg(windows)]
     let base = std::env::var_os("APPDATA").map(std::path::PathBuf::from);
-    #[cfg(not(any(target_os = "macos", windows)))]
+    // Linux: `$XDG_DATA_HOME`, else `~/.local/share`. The same crate and
+    // call Tauri uses, so the proxy and the app can't disagree.
+    #[cfg(target_os = "linux")]
+    let base = dirs::data_dir();
+    #[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
     let base: Option<std::path::PathBuf> = None;
     base.map(|b| b.join(ID))
 }

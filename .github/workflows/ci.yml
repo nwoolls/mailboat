@@ -128,7 +128,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-22.04]
     # Each step is gated, not the job: a matrix job skipped whole never
     # reports the check names the ruleset requires.
     steps:
@@ -136,6 +136,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Linux builds against WebKitGTK and GTK (Tauri's web view and
+      # window), and the keychain against D-Bus; the runner has none of them.
+      # Bubblewrap and dbus-daemon are for the tests of Codex's fence and of
+      # notifications on Linux.
+      # Ubuntu 22.04, the oldest Ubuntu Tauri supports: the packages are
+      # built there, so they run on distributions as old as it.
+      - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site' && runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev bubblewrap dbus
       - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -153,13 +161,14 @@ jobs:
       - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site'
         run: cargo clippy --workspace --all-targets -- -D warnings
       # Includes the test that fails when src/platform/tauri/bindings.ts is
-      # out of date (it doesn't depend on the platform, so macOS covers it).
+      # out of date (it doesn't depend on the platform).
       - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site' && runner.os != 'Windows'
         run: cargo test --workspace
       # The release's software bill of materials, made as the release makes
       # it: a dependency that ships without a license fails here, on the pull
       # request that adds it, not on release day. Not kept (the version is a
-      # placeholder).
+      # placeholder). On the Mac (the Mac's and Windows') and on Linux
+      # (Linux's), as the release makes them.
       - if: needs.changes.outputs.kind != 'docs' && needs.changes.outputs.kind != 'site' && runner.os != 'Windows'
         run: bun scripts/make-sbom.ts --version 0.0.0 --out "$RUNNER_TEMP/sbom"
       # On Windows the app crate's test program can't start

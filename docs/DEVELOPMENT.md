@@ -156,6 +156,48 @@ The installer registers Mailboat as an email app. To have email links open
 it, choose Mailboat for `MAILTO` in Settings → Apps → Default apps (Mailboat's
 Settings → General → Email links opens that page).
 
+## Linux (built in Docker on the Mac)
+
+Tauri's Linux build needs GTK and WebKitGTK, so it can't be cross-compiled
+from macOS as the Windows build is. `scripts/linux.sh` runs it in a Docker
+container instead: Ubuntu 22.04, the oldest Ubuntu Tauri supports, which CI
+and the test builds use too. Start Docker Desktop, then:
+
+```sh
+scripts/linux.sh check   # clippy and the Rust tests, on Linux
+scripts/linux.sh build   # the .deb, .rpm and AppImage, into target/linux/bundle/
+scripts/linux.sh shell   # a shell in the container
+```
+
+The first run builds the image, which takes a few minutes. The container
+works on a copy of the repository, so the Mac's `node_modules` and its own
+build in `target` are left alone; it writes only `target/linux` (the packages
+land in `target/linux/bundle`, replaced on each build); Rust's build and Bun's packages stay in Docker volumes
+(`mailboat-linux-*`) between runs. Those take about 20 GB once both `check`
+and `build` have run, and each checkout (a worktree too) has its own, so
+Docker Desktop's disk needs room for them (Settings → Resources);
+`docker volume rm` them to get it back. The container has the Mac's processor, so
+on Apple silicon the packages are for Arm Linux; the test builds on a pull
+request make both Arm and Intel/AMD ones.
+
+To try a package, install it in a Linux VM (UTM or Parallels on the Mac) or
+on a Linux computer: `sudo apt install ./Mailboat_<version>_arm64.deb` on
+Debian or Ubuntu, `sudo dnf install ./Mailboat-<version>-1.aarch64.rpm` on
+Fedora, or make the AppImage executable and run it. Sign-in needs the
+desktop's keyring (GNOME Keyring or KWallet) running and unlocked, as it is
+on an ordinary GNOME or KDE desktop. The Google client file goes in
+`~/.config/com.nwoolls.mailboat/google-oauth-client.json`.
+
+On Linux the window keeps the desktop's own title bar, and is painted with
+the theme's base color, since WebKitGTK has no blur behind a window.
+Apple Intelligence is a Mac feature, so AI uses Claude or ChatGPT there.
+The `.deb` and `.rpm` register the app for `mailto:` links (an AppImage
+can't: it installs no desktop entry), and Settings → General makes it the
+default through `xdg-settings`. A click on a new-mail notification opens its
+conversation, as on the Mac, where the desktop's notification service
+supports actions (GNOME and KDE do). ChatGPT runs inside bubblewrap where
+it's installed and the system allows it (`docs/AI.md`).
+
 ## Check
 
 ```sh
@@ -260,12 +302,14 @@ The mail cache's SQLite is SQLite3 Multiple Ciphers, an encrypting build of
 SQLite. rusqlite doesn't offer it, so `vendor/libsqlite3-sys/` holds a copy
 of rusqlite's `libsqlite3-sys` that compiles it instead of plain SQLite, and
 the workspace's `Cargo.toml` swaps the copy in with `[patch.crates-io]`. The
-copy changes three things, each marked `app:` in its `build.rs` and
+copy changes four things, each marked `app:` in its `build.rs` and
 `Cargo.toml`: the source it compiles (from the `sqlite3mc-src` crate);
 temporary tables and sorts kept in memory (`SQLITE_TEMP_STORE=2`), as
-SQLite3 Multiple Ciphers doesn't encrypt temporary files; and, for Windows builds
+SQLite3 Multiple Ciphers doesn't encrypt temporary files; for Windows builds
 with clang-cl, a flag that works around
-[utelle/SQLite3MultipleCiphers#319](https://github.com/utelle/SQLite3MultipleCiphers/issues/319).
+[utelle/SQLite3MultipleCiphers#319](https://github.com/utelle/SQLite3MultipleCiphers/issues/319);
+and, on Linux, hidden symbols (`-fvisibility=hidden`), so WebKitGTK and
+libsoup keep using the system's SQLite rather than the app's.
 The copy leaves out SQLite's own source files. The code for SQLCipher and
 the other build modes stays in its `build.rs` and `Cargo.toml`, unused: the
 app uses only the bundled build.
@@ -454,9 +498,23 @@ different app to macOS. "Always Allow" ends the question for this signature.
 
 ## The release workflow
 
-`.github/workflows/release.yml` builds, signs and notarizes the Mac app, and
-builds and signs the Windows installers (x64 and ARM64), on GitHub's own
-macOS runners, so a release doesn't depend on one laptop. A tag run then
+`.github/workflows/release.yml` builds, signs and notarizes the Mac app,
+builds and signs the Windows installers (x64 and ARM64) on GitHub's own
+macOS runners, and builds the Linux packages (`.deb`, `.rpm` and AppImage,
+for x86-64 and Arm) on its Ubuntu 22.04 runners, so a release doesn't depend
+on one laptop. Linux packages aren't code-signed (Linux has no common
+system for it); like every download they are covered by the checksums and
+the build provenance, and each carries an update signature. They are built
+without any secret, with the AppImage's tools checked against recorded
+digests first (`scripts/appimage-tools.sh`, which also runs in the test
+builds and `scripts/linux.sh build`), the AppImage's runtime pinned the
+same way (`LDAI_RUNTIME_FILE`) and checked in the finished AppImage
+(`scripts/check-appimage-runtime.ts`), and a separate job signs exactly
+the files it expects. When
+the Tauri CLI is updated, that script stops until its tools' names and
+digests are brought up to date. Each AppImage also gets a bill of materials
+of its own, for the system libraries it carries
+(`scripts/make-appimage-sbom.ts`). A tag run then
 turns the results into a draft GitHub release (see "Releasing" below); a run
 started by hand only keeps the builds as artifacts for a week.
 
@@ -548,8 +606,10 @@ private key that matches the public one in the config.
   and a message typed without a pause would never have been saved); if one
   can't be saved, nothing is installed and the notice says so. On the Mac the
   app quits and a helper opens it again once it has ended
-  (`mail_core::relaunch`), so it comes back as the app in the Dock; Tauri's
-  restart is the fallback.
+  (`mail_core::relaunch`), so it comes back as the app in the Dock; on Linux
+  the same helper starts the program once the app has ended, since a copy
+  started beside it would hand over to it and quit with it. Tauri's restart
+  is the fallback.
 - **What a person sees from the manifest.** Only the version. The manifest
   (`latest.json`) is not signed, only the downloaded update is, so no release
   notes are shown, and `requireSignedVersion` has the plugin refuse an update
@@ -558,10 +618,21 @@ private key that matches the public one in the config.
   The Tauri CLI records the version in each signature when it builds, and the
   release workflow's publish job checks every signature for it (see Releasing).
 - **The files.** A release build (the release workflow) turns on
-  `createUpdaterArtifacts` through `src-tauri/tauri.updater-artifacts.conf.json`,
-  and Tauri signs each update payload with the private key as its last step:
-  the Mac app as a `.app.tar.gz`, and each Windows installer itself (after its
-  Authenticode signing, so the signature covers the final file). A normal build
+  `createUpdaterArtifacts` through `src-tauri/tauri.updater-artifacts.conf.json`
+  for the Mac and Windows, and Tauri signs each update payload with the
+  private key as its last step: the Mac app as a `.app.tar.gz`, and each
+  Windows installer itself (after its Authenticode signing, so the
+  signature covers the final file). Each Linux package is its own payload:
+  it's built without the key, and a separate job signs it with
+  `tauri signer sign --app-version`. On Linux the updater installs the kind of package
+  the app came as (the Tauri CLI writes it into the program when it
+  bundles): it replaces an AppImage file, and installs a `.deb` or `.rpm`
+  with the system's package tool, with the administrator's rights. It asks
+  through `pkexec` first; if that fails or is dismissed, it asks for the
+  password in a Zenity or KDialog window (where one is installed) and
+  passes it to `sudo`; last it tries `sudo` alone, which fails without a
+  terminal. So dismissing the first prompt can bring a second. The manifest has an entry for each
+  (`linux-x86_64-deb`, `linux-aarch64-appimage` and so on). A normal build
   doesn't, since that needs the key. The `latest.json` the app reads is made by
   the release workflow (`scripts/make-release-files.ts`). Until a release is
   *published* the address answers 404 and a check says it couldn't reach the
@@ -773,3 +844,16 @@ Curating the release notes); older sections stay as they were. Details:
 | AI usage | In the mail cache (`ai_usage`: sizes only, never prompts or answers) |
 | AI apps' socket | `~/Library/Application Support/com.nwoolls.mailboat/mcp.sock` (while Mailboat runs) |
 | AI apps' requests | In the mail cache (`mcp_log`: what was asked, never content; 30 days) |
+
+## Files on Linux
+
+| What | Where |
+|---|---|
+| Mail cache (SQLite) | `~/.local/share/com.nwoolls.mailboat/mail.sqlite3` |
+| OAuth client file | `~/.config/com.nwoolls.mailboat/google-oauth-client.json` |
+| Sign-in tokens | The desktop's keyring (Secret Service), service `com.nwoolls.mailboat` |
+| Sync log | `~/.local/share/com.nwoolls.mailboat/logs/sync.log` |
+| AI apps' socket | `~/.local/share/com.nwoolls.mailboat/mcp.sock` (while Mailboat runs) |
+
+`~/.local/share` and `~/.config` are `$XDG_DATA_HOME` and `$XDG_CONFIG_HOME`
+when those are set. Everything else is in the mail cache, as on the Mac.

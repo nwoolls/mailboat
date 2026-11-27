@@ -369,6 +369,16 @@ mod build_bundled {
             cfg.flag("-U__SIZEOF_INT128__");
         }
 
+        // app: on Linux, keep this SQLite's functions out of the program's
+        // exported symbols. WebKitGTK and libsoup load the system's
+        // libsqlite3, and an exported `sqlite3_*` here would take their
+        // calls instead, running their databases with this build's options
+        // (foreign keys on by default, among others). Hidden, the app still
+        // links its own copy, and they keep theirs.
+        if env::var("CARGO_CFG_TARGET_OS").is_ok_and(|v| v == "linux") {
+            cfg.flag("-fvisibility=hidden");
+        }
+
         cfg.compile(lib_name);
 
         println!("cargo:lib_dir={out_dir}");

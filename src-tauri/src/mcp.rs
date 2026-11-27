@@ -87,8 +87,12 @@ fn fail(message: impl Into<String>) -> AppError {
     mail_core::CoreError::Other(message.into()).into()
 }
 
-fn program() -> CmdResult<String> {
-    let exe = std::env::current_exe().map_err(|e| fail(e.to_string()))?;
+/// The program AI apps start. Tauri's `current_binary`, not
+/// `current_exe`: from an AppImage, the running program is inside a
+/// mount that goes away when the app quits, so the saved command must
+/// name the AppImage itself.
+fn program(app: &AppHandle) -> CmdResult<String> {
+    let exe = tauri::process::current_binary(&app.env()).map_err(|e| fail(e.to_string()))?;
     Ok(exe.to_string_lossy().into_owned())
 }
 
@@ -116,8 +120,8 @@ fn claude() -> Option<PathBuf> {
 
 #[tauri::command]
 #[specta::specta]
-pub async fn mcp_setup() -> CmdResult<McpSetup> {
-    let program = program()?;
+pub async fn mcp_setup(app: AppHandle) -> CmdResult<McpSetup> {
+    let program = program(&app)?;
     let claude = claude();
     let claude_code_connected = match &claude {
         Some(c) => process::run_quick(c, &["mcp", "get", setup::SERVER_NAME])
@@ -139,8 +143,8 @@ pub async fn mcp_setup() -> CmdResult<McpSetup> {
 /// Adds the app to Claude Code for every project (`claude mcp add`).
 #[tauri::command]
 #[specta::specta]
-pub async fn mcp_connect_claude_code() -> CmdResult<()> {
-    let program = program()?;
+pub async fn mcp_connect_claude_code(app: AppHandle) -> CmdResult<()> {
+    let program = program(&app)?;
     let claude = claude().ok_or_else(|| fail("Claude Code isn't installed."))?;
     // An older entry (another build of the app) is replaced.
     let _ = process::run_quick(
@@ -167,10 +171,10 @@ pub async fn mcp_connect_claude_code() -> CmdResult<()> {
 /// Adds the app to Claude Desktop's config (it needs restarting to see it).
 #[tauri::command]
 #[specta::specta]
-pub fn mcp_connect_claude_desktop() -> CmdResult<()> {
+pub fn mcp_connect_claude_desktop(app: AppHandle) -> CmdResult<()> {
     let config = setup::claude_desktop_config()
         .ok_or_else(|| fail("Claude Desktop's settings weren't found."))?;
-    setup::add_to_claude_desktop(&config, &program()?)?;
+    setup::add_to_claude_desktop(&config, &program(&app)?)?;
     Ok(())
 }
 

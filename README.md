@@ -138,8 +138,9 @@ More pictures of more features, in [docs/FEATURES.md](docs/FEATURES.md).
 - **Mail goes to an AI only when you chose that provider.** Apple Intelligence
   runs on your Mac. Claude and ChatGPT are used through their own command-line
   tools, signed in as you. Claude runs with no tools at all; ChatGPT's tool
-  can't promise that, so it is fenced in (every setting turned off, a sandbox,
-  and a check that stops it if anything unreviewed stays on; see
+  can't promise that, so it is fenced in (every setting turned off, a sandbox
+  on the Mac and on Linux with bubblewrap, and a check that stops it if
+  anything unreviewed stays on; see
   [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)). Prompts and answers are never
   logged. Summaries you ask for are kept in your local cache so they aren't
   generated twice.

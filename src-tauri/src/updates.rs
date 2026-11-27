@@ -224,7 +224,8 @@ pub async fn update_install(app: AppHandle) -> CmdResult<()> {
 /// Quits and starts the new version. On the Mac a helper opens the app once
 /// this process has ended (`mail_core::relaunch`), so it opens as the app
 /// kept in the Dock rather than as a second copy beside it, which Tauri's
-/// restart made. Where the helper can't be started (or outside a bundle, as
+/// restart made. On Linux a helper likewise starts the program once this
+/// process has ended (a copy beside it would hand over and quit). Where the helper can't be started (or outside a bundle, as
 /// in development), Tauri's restart. Either way the command never answers:
 /// the app is quitting, and the window keeps showing the install until then.
 pub(crate) async fn relaunch(app: &AppHandle) -> CmdResult<()> {
@@ -234,6 +235,28 @@ pub(crate) async fn relaunch(app: &AppHandle) -> CmdResult<()> {
         .and_then(|exe| mail_core::relaunch::bundle_of(&exe).map(|bundle| (exe, bundle)))
     {
         match mail_core::relaunch::after_exit(&bundle, &exe) {
+            Ok(()) => {
+                app.exit(0);
+                return std::future::pending().await;
+            }
+            Err(e) => {
+                if let Some(state) = app.try_state::<AppState>() {
+                    state.sync_log.write(
+                        mail_core::model::AccountId(0),
+                        &format!(
+                            "Update: couldn't start the relaunch helper ({:?}), restarting instead",
+                            e.kind()
+                        ),
+                    );
+                }
+            }
+        }
+    }
+    // Linux: the new copy starts only once this one has ended, or it would
+    // hand over to this one (single instance) and quit with it.
+    #[cfg(target_os = "linux")]
+    if let Ok(exe) = tauri::process::current_binary(&app.env()) {
+        match mail_core::relaunch::program_after_exit(&exe) {
             Ok(()) => {
                 app.exit(0);
                 return std::future::pending().await;

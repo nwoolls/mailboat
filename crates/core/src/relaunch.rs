@@ -1,4 +1,4 @@
-//! Starting the app again after it installed an update (macOS).
+//! Starting the app again after it installed an update (macOS and Linux).
 //!
 //! Tauri's own restart runs `open -n <bundle>` while the old process is
 //! still running, so macOS starts a second copy beside it. With the app
@@ -36,20 +36,29 @@ pub fn bundle_of(exe: &Path) -> Option<PathBuf> {
 #[cfg(unix)]
 pub fn after_exit(bundle: &Path, exe: &Path) -> std::io::Result<()> {
     spawn_waiter(
-        Path::new("/usr/bin/open"),
-        bundle,
+        &[Path::new("/usr/bin/open"), bundle],
         &[exe],
         std::process::id(),
         WAIT_TICKS,
     )
 }
 
+/// Starts the helper that runs `exe` (the app's program as installed, or
+/// on Linux the AppImage file) once this process has ended. Linux: there a
+/// copy started while this one runs would find this one still holding the
+/// single-instance plugin's name, hand over to it, and quit with it, so
+/// the app would stay closed. The caller then quits the app.
+#[cfg(unix)]
+pub fn program_after_exit(exe: &Path) -> std::io::Result<()> {
+    spawn_waiter(&[], &[exe], std::process::id(), WAIT_TICKS)
+}
+
 /// The helper is a copy of this process (`fork`) that waits while process
 /// `pid` runs (at most `ticks` tenths of a second, then half a second more,
 /// so macOS has let go of the old copy and starts a new one rather than
-/// looking for the one that just quit), then runs `opener` with `bundle`
-/// and waits for it. If the opener can't run or fails, the helper becomes
-/// `fallback` (a program and its arguments). No shell runs it (DASA 1.4.2),
+/// looking for the one that just quit), then runs `open` (a program and its
+/// arguments) and waits for it. If it can't run or fails, or there is none
+/// (empty), the helper becomes `fallback` (a program and its arguments). No shell runs it (DASA 1.4.2),
 /// and nothing is shipped for it. Everything it needs is prepared before
 /// the copy is made; the copy, made from a process with many threads, only
 /// makes system calls that are safe there (no allocation, no locks) until
@@ -57,20 +66,17 @@ pub fn after_exit(bundle: &Path, exe: &Path) -> std::io::Result<()> {
 /// outlives the app, and closes the files the app had open (its database,
 /// for one), so it holds none of them while the new version starts.
 #[cfg(unix)]
-fn spawn_waiter(
-    opener: &Path,
-    bundle: &Path,
-    fallback: &[&Path],
-    pid: u32,
-    ticks: u32,
-) -> std::io::Result<()> {
+fn spawn_waiter(open: &[&Path], fallback: &[&Path], pid: u32, ticks: u32) -> std::io::Result<()> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
     let invalid = || std::io::Error::from(std::io::ErrorKind::InvalidInput);
     let c_path = |p: &Path| CString::new(p.as_os_str().as_bytes()).map_err(|_| invalid());
-    let program = c_path(opener)?;
-    let target = c_path(bundle)?;
-    let argv = [program.as_ptr(), target.as_ptr(), std::ptr::null()];
+    let open = open
+        .iter()
+        .map(|p| c_path(p))
+        .collect::<std::io::Result<Vec<_>>>()?;
+    let mut argv: Vec<*const libc::c_char> = open.iter().map(|c| c.as_ptr()).collect();
+    argv.push(std::ptr::null());
     let fallback = fallback
         .iter()
         .map(|p| c_path(p))
@@ -128,9 +134,9 @@ fn spawn_waiter(
                 waited += 1;
             }
             libc::nanosleep(&settle, std::ptr::null_mut());
-            let opening = libc::fork();
+            let opening = if open.is_empty() { -1 } else { libc::fork() };
             if opening == 0 {
-                libc::execv(program.as_ptr(), argv.as_ptr());
+                libc::execv(argv[0], argv.as_ptr());
                 libc::_exit(127);
             }
             if opening > 0 {
@@ -205,8 +211,7 @@ mod tests {
             .spawn()
             .unwrap();
         spawn_waiter(
-            Path::new(TOUCH),
-            &bundle,
+            &[Path::new(TOUCH), &bundle],
             &[Path::new(TOUCH), &fallback],
             app.id(),
             WAIT_TICKS,
@@ -232,8 +237,7 @@ mod tests {
             .spawn()
             .unwrap();
         spawn_waiter(
-            Path::new(TOUCH),
-            &bundle,
+            &[Path::new(TOUCH), &bundle],
             &[Path::new("/usr/bin/true")],
             app.id(),
             3,
@@ -255,8 +259,7 @@ mod tests {
         let mut app = std::process::Command::new("/usr/bin/true").spawn().unwrap();
         app.wait().unwrap();
         spawn_waiter(
-            Path::new("/usr/bin/false"),
-            Path::new("/A.app"),
+            &[Path::new("/usr/bin/false"), Path::new("/A.app")],
             &[Path::new(TOUCH), &fallback],
             app.id(),
             WAIT_TICKS,
@@ -274,13 +277,30 @@ mod tests {
         let mut app = std::process::Command::new("/usr/bin/true").spawn().unwrap();
         app.wait().unwrap();
         spawn_waiter(
-            &dir.path().join("no-such-opener"),
-            Path::new("/A.app"),
+            &[&dir.path().join("no-such-opener"), Path::new("/A.app")],
             &[Path::new(TOUCH), &fallback],
             app.id(),
             WAIT_TICKS,
         )
         .unwrap();
         assert!(appears(&fallback, Duration::from_secs(5)));
+    }
+
+    /// Linux: with nothing to open, the program itself is started, and only
+    /// once the app has ended (a copy beside it would hand over and quit).
+    #[cfg(unix)]
+    #[test]
+    fn with_nothing_to_open_runs_the_program_once_the_app_has_ended() {
+        let dir = tempfile::tempdir().unwrap();
+        let started = dir.path().join("started");
+        let mut app = std::process::Command::new("/bin/sleep")
+            .arg("30")
+            .spawn()
+            .unwrap();
+        spawn_waiter(&[], &[Path::new(TOUCH), &started], app.id(), WAIT_TICKS).unwrap();
+        assert!(!appears(&started, Duration::from_millis(1200)));
+        app.kill().unwrap();
+        app.wait().unwrap();
+        assert!(appears(&started, Duration::from_secs(5)));
     }
 }
