@@ -4,7 +4,7 @@ import type { MessageId } from "../../../platform/tauri/bindings";
 import { isEditable } from "../../../shared/lib/editable";
 import { REPLY_FOLLOW_EVENT } from "../../../shared/lib/replyFollow";
 import { type CardBox, firstOutlined, readerKeyFor, readerStep } from "../model/readerKeys";
-import { endHold, leaveReader } from "./readerKeys";
+import { endHold, leaveReader, steppedTo } from "./readerKeys";
 
 /**
  * The reply being written, as an outlined stop: after the emails, it isn't
@@ -254,6 +254,11 @@ export function useReaderKeyboard({
   const forgetHeading = () => {
     forget();
   };
+  // The wheel takes the reader over from `n` / `p`'s hold too.
+  const onWheel = () => {
+    forget();
+    endHold();
+  };
 
   const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
     forgetHeading();
@@ -283,10 +288,21 @@ export function useReaderKeyboard({
     // or picked conversations go first, then back to the list.
     if (e.key === "Escape") return;
     const reader = e.currentTarget;
-    // The reader scrolls itself, rather than the list moving.
+    // The reader scrolls itself, rather than the list moving, and takes
+    // over from `n` / `p`'s hold.
     if (["PageUp", "PageDown", "Home", "End"].includes(e.key)) {
       e.stopPropagation();
+      endHold();
       return;
+    }
+    // `n` / `p` (Shell.tsx, after this): the email it goes to is outlined,
+    // so the next ↑ / ↓ goes on from it rather than looking for the one
+    // left behind, now out of view.
+    if ((e.key === "n" || e.key === "p") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      requestAnimationFrame(() => {
+        const card = steppedTo(reader);
+        if (card?.dataset.messageId) setOutlined(Number(card.dataset.messageId) as MessageId);
+      });
     }
     const key = readerKeyFor(e, isEditable(e.target));
     if (!key) return;
@@ -350,7 +366,7 @@ export function useReaderKeyboard({
       onBlur,
       onPointerDown,
       onKeyDown,
-      onWheel: forgetHeading,
+      onWheel,
       onTouchStart: forgetHeading,
     },
   };

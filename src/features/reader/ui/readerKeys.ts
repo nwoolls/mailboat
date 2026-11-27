@@ -7,10 +7,24 @@ const HOLD_MS = 350;
 /** The email the last `n` / `p` is holding at the top, and until when. */
 let holding: { card: HTMLElement; until: number } | null = null;
 
+/** The email the last `n` / `p` went to, in which reader. */
+let stepped: { reader: HTMLElement; card: HTMLElement } | null = null;
+
 /**
- * Lets go of the email the last `n` / `p` holds at the top: another key's
- * scroll (↑ / ↓, Space) takes the reader over, or the hold would pull that
- * scroll back every frame until it ran out.
+ * The email the last `n` / `p` went to in `reader`, if it's still there:
+ * the conversation outlines it (useReaderKeyboard), so the next ↑ / ↓ goes
+ * on from it.
+ */
+export function steppedTo(reader: HTMLElement): HTMLElement | null {
+  if (!stepped || stepped.reader !== reader || !reader.contains(stepped.card)) return null;
+  return stepped.card;
+}
+
+/**
+ * Lets go of the email the last `n` / `p` holds at the top: another
+ * scroll (↑ / ↓, Space, Page Up / Down, Home / End, the wheel) takes the
+ * reader over, or the hold would pull that scroll back every frame until it
+ * ran out.
  */
 export function endHold(): void {
   holding = null;
@@ -79,6 +93,7 @@ export function pageReader(dir: 1 | -1): boolean {
  * top of the reader, opened if it was folded.
  */
 export function stepEmail(dir: "next" | "prev"): boolean {
+  stepped = null;
   const reader = shownReader();
   if (!reader) return false;
   const top = reader.getBoundingClientRect().top;
@@ -101,6 +116,7 @@ export function stepEmail(dir: "next" | "prev"): boolean {
   };
   align();
   card.querySelector<HTMLButtonElement>(':scope > button[aria-expanded="false"]')?.click();
+  stepped = { reader, card };
   const hold = { card, until: performance.now() + HOLD_MS };
   holding = hold;
   const step = () => {
