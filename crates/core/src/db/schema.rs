@@ -488,8 +488,12 @@ DELETE FROM ai_summaries WHERE kind = 'line';
 /// at every insert (`MIGRATION_V19`); emails arrive by the thousand, so
 /// here only a delete that beats the mark writes. A cache from before
 /// starts with no mark, which is right: what it reused before can't be
-/// undone, and from now on nothing is. `IF NOT EXISTS`, as the upgrade
-/// tests run migrations again on a database that has them.
+/// undone, and from now on nothing is. An insert that would take a used
+/// ID anyway is refused (`*_refuse_used_id`): a copy of the app from before
+/// this, open on the same cache (a development build beside the installed
+/// app), still inserts the SQLite way, and its sync then fails rather than
+/// write onto another email. `IF NOT EXISTS`, as the upgrade tests run
+/// migrations again on a database that has them.
 pub const MIGRATION_V26: &str = r#"
 CREATE TABLE IF NOT EXISTS row_ids (
   name TEXT PRIMARY KEY,
@@ -506,5 +510,15 @@ WHEN OLD.id > COALESCE((SELECT last FROM row_ids WHERE name = 'threads'), 0)
 BEGIN
   INSERT INTO row_ids (name, last) VALUES ('threads', OLD.id)
   ON CONFLICT (name) DO UPDATE SET last = excluded.last;
+END;
+CREATE TRIGGER IF NOT EXISTS messages_refuse_used_id AFTER INSERT ON messages
+WHEN NEW.id <= COALESCE((SELECT last FROM row_ids WHERE name = 'messages'), 0)
+BEGIN
+  SELECT RAISE(ABORT, 'a deleted email''s ID');
+END;
+CREATE TRIGGER IF NOT EXISTS threads_refuse_used_id AFTER INSERT ON threads
+WHEN NEW.id <= COALESCE((SELECT last FROM row_ids WHERE name = 'threads'), 0)
+BEGIN
+  SELECT RAISE(ABORT, 'a deleted conversation''s ID');
 END;
 "#;

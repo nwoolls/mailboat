@@ -7,10 +7,11 @@ use rusqlite::Connection;
 use crate::error::Result;
 
 /// Kept: what makes the database work, not data. The migrations record which
-/// steps ran, and the ID counter keeps an erased account's ID from being given
-/// out again (a leftover of it somewhere can then never be taken for a new
-/// account's).
-const KEPT: [&str; 2] = ["schema_migrations", "account_id_seq"];
+/// steps ran, and the ID counters keep an erased account's, email's or
+/// conversation's ID from being given out again (a leftover of it somewhere,
+/// such as a request still under way, can then never be taken for a new
+/// one's).
+const KEPT: [&str; 3] = ["schema_migrations", "account_id_seq", "row_ids"];
 
 /// Empties every table except `KEPT`: accounts and, with them, their mail,
 /// then settings, per-sender choices, summaries, usage history and the rest.

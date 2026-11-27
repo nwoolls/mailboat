@@ -766,3 +766,53 @@ fn a_deleted_ids_never_come_back_for_another_account() {
     );
     assert!(new_thread > gone_thread, "{new_thread} after {gone_thread}");
 }
+
+/// A copy of the app from before IDs were kept (open on the same cache, as
+/// a development build beside the installed app can be) inserts without an
+/// ID, and SQLite would give it the deleted one: the database refuses that
+/// insert instead.
+#[test]
+fn an_insert_that_would_reuse_an_id_is_refused() {
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "sub-a", "a@x.example");
+    let b = add_account(&db, "sub-b", "b@x.example");
+    store::upsert_thread(
+        &mut db.conn(),
+        a.id,
+        &thread("t1", "m1", "p@x.example", "One", 1_000, &["INBOX"]),
+    )
+    .unwrap();
+    store::upsert_thread(
+        &mut db.conn(),
+        a.id,
+        &thread("t2", "m2", "p@x.example", "Two", 2_000, &["INBOX"]),
+    )
+    .unwrap();
+    store::delete_messages(&mut db.conn(), a.id, &["m2".to_string()]).unwrap();
+    store::delete_thread(&db.conn(), a.id, "t2").unwrap();
+
+    // The SQL from before: no ID given, so SQLite would reuse the deleted ones.
+    let conn = db.conn();
+    let thread_refused = conn.execute(
+        "INSERT INTO threads (account_id, gmail_thread_id, synced_at) VALUES (?1, 't9', 0)",
+        [b.id],
+    );
+    assert!(thread_refused.is_err(), "a deleted conversation's ID");
+    let t1: i64 = conn
+        .query_row(
+            "SELECT id FROM threads WHERE gmail_thread_id = 't1'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let message_refused = conn.execute(
+        "INSERT INTO messages (account_id, thread_id, gmail_message_id, internal_date)
+         VALUES (?1, ?2, 'm9', 0)",
+        rusqlite::params![a.id, t1],
+    );
+    assert!(message_refused.is_err(), "a deleted email's ID");
+    let rows: i64 = conn
+        .query_row("SELECT COUNT(*) FROM messages", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(rows, 1, "only m1 is left");
+}

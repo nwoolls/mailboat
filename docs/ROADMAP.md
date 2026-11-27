@@ -5526,13 +5526,16 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       account twice. So the cause is fixed instead (owner's choice): an
       email's or a conversation's ID is never given out again
       (`schema::MIGRATION_V26`, `store::NEXT_MESSAGE_ID`), and a stale ID
-      now points at nothing. The check stays as a second guard. Tests:
+      now points at nothing. A trigger aborts an insert that would reuse
+      one (an older copy open on the same cache), and Delete all
+      data keeps the marks. The check stays as a second guard. Tests:
       `a_deleted_ids_never_come_back_for_another_account` fails without
       the new IDs (the new email got the deleted one's ID);
       `fetch_body_skips_a_row_that_became_another_message` covers each
       part of the check, and fails without the change;
       `a_calendar_part_is_kept_only_for_its_own_message` covers the
-      calendar's.)*
+      calendar's; `an_insert_that_would_reuse_an_id_is_refused` and the
+      erase test's new IDs fail without their part.)*
 
 - [x] The sanitizer's property test failed on Windows CI with a false alarm
       *(found 2026-11-26 on pull request #249, which doesn't touch the

@@ -226,9 +226,9 @@ async fn expired_history_falls_back_to_full_resync() {
 
 /// A body fetched for a message whose row stopped being that message
 /// during the fetch is not written to the row. IDs are no longer given out
-/// again (`two_accounts::a_deleted_ids_never_come_back_for_another_account`),
-/// so this is the second guard: the row is made into another message by
-/// hand. Each part of the check on its own: another account with the same
+/// again (`two_accounts::a_deleted_ids_never_come_back_for_another_account`)
+/// and the database refuses an insert that would reuse one, so this is the
+/// second guard: the row is made into another message by hand. Each part of the check on its own: another account with the same
 /// Gmail ID, the same account with another, and both.
 #[tokio::test]
 async fn fetch_body_skips_a_row_that_became_another_message() {
@@ -263,8 +263,12 @@ async fn fetch_body_skips_a_row_that_became_another_message() {
 
         let swap = async {
             tokio::time::sleep(Duration::from_millis(100)).await;
-            // The message goes, and another takes its row ID.
+            // The message goes, and another takes its row ID: what the
+            // database now refuses (`an_insert_that_would_reuse_an_id_is_refused`),
+            // so its refusal is lifted to reach the second guard.
             let conn = db.conn();
+            conn.execute("DROP TRIGGER messages_refuse_used_id", [])
+                .unwrap();
             conn.execute("DELETE FROM messages WHERE id = ?1", [m3])
                 .unwrap();
             conn.execute(

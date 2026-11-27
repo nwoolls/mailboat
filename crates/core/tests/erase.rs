@@ -45,7 +45,7 @@ fn data_tables(db: &Db) -> Vec<String> {
         .unwrap();
     names
         .into_iter()
-        .filter(|n| !["schema_migrations", "account_id_seq"].contains(&n.as_str()))
+        .filter(|n| !["schema_migrations", "account_id_seq", "row_ids"].contains(&n.as_str()))
         // The search index's own tables are emptied through it.
         .filter(|n| {
             !["data", "idx", "content", "docsize", "config"]
@@ -184,6 +184,13 @@ fn erasing_empties_every_table_but_the_databases_own_bookkeeping() {
         .query_row("SELECT last FROM account_id_seq", [], |r| r.get(0))
         .unwrap();
 
+    let highest = |table: &str| -> i64 {
+        db.conn()
+            .query_row(&format!("SELECT MAX(id) FROM {table}"), [], |r| r.get(0))
+            .unwrap()
+    };
+    let (last_message, last_thread) = (highest("messages"), highest("threads"));
+
     erase::erase_all(&mut db.conn()).unwrap();
 
     for table in &tables {
@@ -223,6 +230,10 @@ fn erasing_empties_every_table_but_the_databases_own_bookkeeping() {
         },
     )
     .unwrap();
+    // The erased emails' and conversations' IDs aren't given out again
+    // either: a request under way during the erase may still hold one.
+    assert!(highest("messages") > last_message, "a new email's ID");
+    assert!(highest("threads") > last_thread, "a new conversation's ID");
     let found: i64 = db
         .conn()
         .query_row(
