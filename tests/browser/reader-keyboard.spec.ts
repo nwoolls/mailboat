@@ -593,9 +593,10 @@ async function longEmailsFromTheTop(page: Page) {
  * (`stepEmail`, 350 ms): the hold set the reader's position every frame,
  * which pulled the arrow's smooth scroll back, while the arrow's aim
  * stayed set (backlog, found in review). The arrow's scroll ends the hold.
- * And `n` outlines the email it went to, so ↓ reads on down it rather
- * than stopping to outline one showing (the one left behind is out of
- * view).
+ * From the top, `n` goes to the outlined first email, so ↓ reads on down
+ * it. (Had the outline scrolled out of view, the first ↓ would only
+ * outline the email showing, as after Space: `an arrow after the outline
+ * scrolled away outlines the first email showing`.)
  */
 test("an arrow straight after n scrolls from where n put the reader", async ({ page }) => {
   await longEmailsFromTheTop(page);
@@ -604,27 +605,15 @@ test("an arrow straight after n scrolls from where n put the reader", async ({ p
     const frame = () => new Promise((done) => requestAnimationFrame(done));
     const key = (k: string) =>
       reader.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
-    // Part way down the outlined first email, so n goes to the next and
-    // leaves the outlined one out of view.
-    reader.scrollTo({ top: 1500, behavior: "instant" });
-    await frame();
     key("n");
     await frame();
-    await frame();
     const held = reader.scrollTop;
-    const emails = [...reader.querySelectorAll("section[data-message-id]")];
-    const outlinedAt = emails.findIndex((c) => c.hasAttribute("data-outlined"));
-    // The email n put at the top of the reader.
-    const top = reader.getBoundingClientRect().top;
-    const landed = emails.findIndex((c) => Math.abs(c.getBoundingClientRect().top - top) < 2);
     key("ArrowDown");
     // Past the hold (350 ms) and the arrow's smooth scroll.
     await new Promise((done) => setTimeout(done, 900));
-    return { held, outlinedAt, landed, after: reader.scrollTop, view: reader.clientHeight };
+    return { held, after: reader.scrollTop, view: reader.clientHeight };
   });
-  expect(result.landed).toBeGreaterThan(0);
-  expect(result.outlinedAt).toBe(result.landed);
-  // One step down the email n went to, from where n put the reader.
+  // One step down from where n put the reader.
   expect(result.after - result.held).toBeCloseTo(readerLineStep(result.view), -1);
 });
 

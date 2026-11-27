@@ -6448,18 +6448,19 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       show whether it's visible before anything changes.
       *(Fixed 2026-11-27, branch `arrow-ends-hold`: it was visible. In a
       browser test, ↓ pressed in the frame after n left the reader where
-      n put it, every time. Every other scroll now ends the hold
-      (`endHold` in `readerKeys.ts`): the arrows, Space, Page Up and Page
-      Down, Home and End, and the wheel. And n or p outlines the email it
-      went to, so the next arrow goes on from it rather than stopping to
-      outline one showing (review). The browser tests `an arrow straight
-      after n scrolls from where n put the reader`, `End`, `PageDown` and
-      `Space straight after n scrolls the reader`, and `the wheel straight
-      after n scrolls the reader` each fail without their part of the
-      change. A wheel over an email's text still can't end the hold: it
-      goes to the email's frame, which runs no scripts, so the app never
-      sees it, and the reader can be pulled back for what is left of the
-      350 ms.)*
+      n put it, every time. These now end the hold (`endHold` in
+      `readerKeys.ts`): the arrows, Space, Page Up and Page Down, Home and
+      End, and the wheel over the reader. The browser tests `an arrow
+      straight after n scrolls from where n put the reader`, `End`,
+      `PageDown` and `Space straight after n scrolls the reader`, and `the
+      wheel straight after n scrolls the reader` each fail without their
+      part of the change. A wheel over an email's text still can't end the
+      hold: it goes to the email's frame, which runs no scripts, so the app
+      never sees it, and the reader can be pulled back for what is left of
+      the 350 ms. Moving the outline to the email n or p goes to was tried
+      in review and dropped (owner, 2026-11-27): each round found a new gap
+      in it. As after Space, the first arrow after n outlines the email
+      showing and the next one scrolls.)*
 
 ## 0.3.0
 

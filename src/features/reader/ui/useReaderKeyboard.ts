@@ -4,7 +4,7 @@ import type { MessageId } from "../../../platform/tauri/bindings";
 import { isEditable } from "../../../shared/lib/editable";
 import { REPLY_FOLLOW_EVENT } from "../../../shared/lib/replyFollow";
 import { type CardBox, firstOutlined, readerKeyFor, readerStep } from "../model/readerKeys";
-import { endHold, leaveReader, steppedTo } from "./readerKeys";
+import { endHold, leaveReader } from "./readerKeys";
 
 /**
  * The reply being written, as an outlined stop: after the emails, it isn't
@@ -294,15 +294,6 @@ export function useReaderKeyboard({
       e.stopPropagation();
       endHold();
       return;
-    }
-    // `n` / `p` (Shell.tsx, after this): the email it goes to is outlined,
-    // so the next ↑ / ↓ goes on from it rather than looking for the one
-    // left behind, now out of view.
-    if ((e.key === "n" || e.key === "p") && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      requestAnimationFrame(() => {
-        const card = steppedTo(reader);
-        if (card?.dataset.messageId) setOutlined(Number(card.dataset.messageId) as MessageId);
-      });
     }
     const key = readerKeyFor(e, isEditable(e.target));
     if (!key) return;
