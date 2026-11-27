@@ -8273,14 +8273,16 @@ item below is built, the owner has tried it, and the owner has published
   - [x] Privacy policy: the Linux keyring and disk encryption
   - [ ] The encrypted cache (0.4.0, merged from main 2026-11-27) on
         Linux: the key goes to the desktop's keyring like the sign-ins, and
-        a keyring that can't answer stops the start without touching any
-        file. Checked in Docker: clippy and every Rust test, the encryption
+        a keyring that can't answer (locked, or no default keyring) stops
+        the start and leaves the mail database as it is. Checked in Docker: clippy and every Rust test, the encryption
         tests included, and the packages build. The app's SQLite is now
         compiled with hidden symbols on Linux, so WebKitGTK and libsoup keep
         the system's (see the decision in ARCHITECTURE.md). Still to try in
         the VMs: a first start that encrypts an existing cache, a start with
         the keyring locked (the screen asks to unlock it, and Try again
-        works once it is), and that the web view's own storage still works
+        works once it is), a profile whose keyring service runs with no
+        default keyring (the same screen; the start can't go on until one
+        is set up), and that the web view's own storage still works
   - [ ] Try the packages on GNOME and KDE (Wayland and X11), Fedora, and
         a desktop with no keyring; print; notifications; a second monitor;
         whether a second launch brings the window forward on Wayland;
