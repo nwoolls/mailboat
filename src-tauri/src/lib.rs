@@ -502,7 +502,12 @@ fn open_window(app: &tauri::App, mode: mode::Mode) -> tauri::Result<()> {
         // The demo's scheduled mail counts from when the window is up.
         .on_page_load(|webview, payload| {
             if payload.event() == tauri::webview::PageLoadEvent::Finished {
-                if let Some(google) = webview.state::<AppState>().demo.as_ref() {
+                // No `AppState` when the cache couldn't open: the window
+                // shows only that, and there's no demo clock to start.
+                if let Some(google) = webview
+                    .try_state::<AppState>()
+                    .and_then(|state| state.demo.clone())
+                {
                     google.start_clock();
                 }
             }

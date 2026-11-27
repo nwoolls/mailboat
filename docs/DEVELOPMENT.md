@@ -323,8 +323,10 @@ data folder, so a second copy (a development build beside the installed
 app) still works. Moving or setting the cache aside takes the exclusive
 lock: while another copy is open, the move waits for a start with no other
 copy, and a cache that needs setting aside shows a screen asking to quit
-the other copy. A version from before encryption
-doesn't take the lock. Once a copy has encrypted the cache, a version from
+the other copy. Every change is made under the exclusive lock, after
+reading the keychain and the files again under it. A version from before
+encryption doesn't take the lock; while one has the cache open, the cache
+opens plain and the move waits for a later start. Once a copy has encrypted the cache, a version from
 before encryption can't read it and doesn't start.
 
 So a development build run in the normal mode encrypts your real cache,

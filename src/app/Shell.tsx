@@ -1641,7 +1641,7 @@ export function Shell() {
           onDismiss={signedOutNotices.dismiss}
           signIn={signIn}
         />
-        <CacheResetNotice />
+        <CacheResetNotice signIn={signIn} />
         <UpdateNotice />
         <CodeNotices
           onOpen={(id) => {

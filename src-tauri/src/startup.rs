@@ -69,10 +69,16 @@ pub fn cache_reset_notice_dismiss(state: State<'_, Startup>) {
     state.cache_reset.store(false, Ordering::Relaxed);
 }
 
-/// Starts the app again, to try opening the cache once more.
+/// Starts the app again, to try opening the cache once more. Outside the
+/// normal mode (a clean start, the demo) Tauri's own restart, which keeps
+/// the arguments that chose the mode: the Mac's relaunch helper opens the
+/// app without them, in the normal mode, with the owner's real cache.
 #[tauri::command]
 #[specta::specta]
 pub async fn startup_try_again(app: AppHandle) -> CmdResult<()> {
+    if !crate::mode::Mode::from_args(std::env::args().skip(1)).is_normal() {
+        app.restart();
+    }
     crate::updates::relaunch(&app).await
 }
 

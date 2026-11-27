@@ -7855,16 +7855,24 @@ item below is built, the owner has tried it, and the owner has published
             `mail_core::db::cache` makes the key (32 bytes from the system's
             random source, through `aws-lc-rs`), keeps it in the keychain
             entry `cache-key` and reads it back before using it, sets it as
-            a raw key, and wipes it from memory when dropped (`zeroize`); a
+            a raw key, and wipes the app's own copies of it from memory when
+            they're dropped (`zeroize`; SQLite keeps copies of its own); a
             failure to set it gives a fixed message, without the key. A key
             that doesn't fit the cache (a keychain restored from elsewhere)
             counts as lost. When the keychain doesn't answer, or another
             copy holds a cache that needs setting aside, the window shows
-            only that, with Try again and Quit (owner, 2026-11-26). The
-            notice after a reset appears over onboarding too, where a reset
-            lands, so it has no sign-in button of its own. Tested with
-            made-up mail: a new cache, a lost key, a key that doesn't fit, a
-            keychain that doesn't answer, each with the files checked.)*
+            only that, with Try again and Quit (owner, 2026-11-26). After a
+            reset, the notice appears over onboarding without a Sign in
+            button (onboarding is the sign-in). For someone who finished
+            onboarding earlier, a reset lands in the main window, and the
+            notice there has the button. A reset saves and reads back the
+            new key before it moves anything, puts the old cache back if the
+            new one can't be made, and a reset stopped after the move is
+            finished and reported at the next start (review, 2026-11-26).
+            Tested with made-up mail: a new cache, a lost key, a key that
+            doesn't fit, a keychain that doesn't answer, a keychain that
+            refuses to save the new key, and an interrupted reset, each with
+            the files checked.)*
       - [x] The one-time migration of a plain database, with the spike's
             tests, and three things the spike left open. Other copies stay
             out until the copy has replaced the plain file: on macOS and
@@ -7899,15 +7907,24 @@ item below is built, the owner has tried it, and the owner has published
             opens the cache in between, on any system or login session. A
             second copy, such as a development build beside the installed
             app, keeps working, and with it open the move waits for a start
-            without it (owner, 2026-11-26). SQLite's own exclusive lock also
-            stops the move when a version from before encryption has the
-            cache open; one started in the moment before the rename isn't
-            stopped (accepted). Tests: the move, a move stopped after the
-            copy and after the check, a second copy holding the lock, and an
-            older copy with the cache open. The deletion of the plain cached
-            files belongs to the next step, as the encrypted files go in new
-            folders and every start deletes the old ones while they're
-            there.)*
+            without it (owner, 2026-11-26). Every change to the keychain or
+            the files is made under the exclusive lock, after reading both
+            again under it, so a copy that waited sees what another copy did
+            meanwhile (review, 2026-11-26: deciding before the lock could
+            lose a key or a cache when two copies started together). A
+            version from before encryption with the cache open makes
+            SQLite's own exclusive lock fail; the cache then opens plain,
+            and the move waits for a later start (owner, 2026-11-26). One
+            started in the moment before the rename isn't stopped
+            (accepted). Tests: the move, a move stopped after the copy and
+            after the check, a second copy holding the lock, an older copy
+            with the cache open, and a start that waits while another copy
+            makes or moves the cache. A clean start reads the previous run's
+            accounts read-only and keeps its folder when the keychain
+            doesn't answer, so their tokens aren't left behind. Deleting the
+            plain cached attachments and images belongs to the next step:
+            the encrypted ones go in new folders, and every start deletes
+            the old folders while they're there.)*
       - [ ] Attachments and images encrypted in the cache folder; decrypted
             copies only for other apps, in a private temporary folder that
             is emptied at start and at quit; the plain files already cached

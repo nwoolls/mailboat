@@ -6,7 +6,9 @@
 //! folder while it runs, so several copies (a development build beside the
 //! installed app) still work on one cache. Moving the plain database, or
 //! setting an unreadable one aside, takes the exclusive lock first: with
-//! another copy open, that waits for a later start. A file lock covers
+//! another copy open, that waits for a later start. Every change to the
+//! keychain or the files is made with the exclusive lock held, after
+//! reading both again under it. A file lock covers
 //! every copy on the computer, other Windows login sessions included,
 //! which the app's single-instance check doesn't. An older version of the
 //! app doesn't take the lock; started in the moment between the check and
@@ -127,8 +129,8 @@ pub fn file_state(path: &Path) -> Result<FileState> {
     })
 }
 
-/// The lock that every running copy holds, shared (see the module's
-/// comment). Dropping it releases it.
+/// The lock every running copy holds, shared (see the module's comment).
+/// Dropping it releases it.
 pub struct CacheLock {
     file: File,
 }
@@ -147,13 +149,20 @@ impl CacheLock {
         Ok(Self { file })
     }
 
-    /// The exclusive lock, if no other copy holds the lock in any way.
-    fn try_exclusive(&self) -> bool {
-        self.file.try_lock().is_ok()
+    /// The exclusive lock, if no other copy holds the lock in any way:
+    /// `false` when one does. Any other failure is an error, not a busy lock.
+    fn try_exclusive(&self) -> Result<bool> {
+        match self.file.try_lock() {
+            Ok(()) => Ok(true),
+            Err(std::fs::TryLockError::WouldBlock) => Ok(false),
+            Err(std::fs::TryLockError::Error(e)) => {
+                Err(CoreError::Other(format!("lock the mail cache: {e}")))
+            }
+        }
     }
 
     /// The shared lock, waiting while another copy holds it exclusively
-    /// (moving its database, a few seconds).
+    /// (changing the cache, a few seconds).
     fn shared(&self) -> Result<()> {
         self.file
             .lock_shared()
@@ -169,10 +178,10 @@ impl CacheLock {
 pub struct OpenedCache {
     pub db: Db,
     pub lock: CacheLock,
-    /// A new cache was started because the key was gone: the app says so
-    /// once.
+    /// A new cache was started because the key was gone or didn't fit: the
+    /// app says so once.
     pub reset: bool,
-    /// The plain database couldn't be moved yet (another copy was open):
+    /// The plain database couldn't be moved yet (another copy had it open):
     /// it's open as it was, and the move is tried at the next start.
     pub still_plain: bool,
 }
@@ -184,8 +193,8 @@ pub enum CacheError {
     /// Linux desktop). Nothing on disk was changed; the app asks to unlock
     /// the keychain and try again.
     Keychain(String),
-    /// Another copy of the app is open and the cache needs the exclusive
-    /// lock to be set aside; nothing on disk was changed.
+    /// Another copy of the app is open, and the cache needs the exclusive
+    /// lock to be set aside or made; nothing on disk was changed.
     InUse,
     Other(CoreError),
 }
@@ -221,7 +230,8 @@ fn read_key(secrets: &dyn SecretStore) -> std::result::Result<Option<CacheKey>, 
 }
 
 /// A new key, kept in the keychain and read back before anything is
-/// encrypted with it: a key the keychain didn't keep would lose the cache.
+/// encrypted with it or moved for it: a key the keychain didn't keep would
+/// lose the cache.
 fn new_key(secrets: &dyn SecretStore) -> std::result::Result<CacheKey, CacheError> {
     let key = CacheKey::generate()?;
     secrets
@@ -256,7 +266,11 @@ fn remove_all(files: &[PathBuf]) -> Result<()> {
 /// makes the key and a new cache when there's neither; moves a plain
 /// database into an encrypted one, once; and sets an encrypted database
 /// aside and starts a new cache when its key is gone or doesn't fit.
-/// When the keychain doesn't answer, nothing on disk is touched.
+///
+/// Every change to the keychain or the files happens with the exclusive
+/// lock held, after reading both again under it, so what another copy did
+/// while this one waited is seen before anything is decided. When the
+/// keychain doesn't answer, nothing on disk is touched.
 pub fn open_cache(
     path: &Path,
     secrets: &dyn SecretStore,
@@ -268,127 +282,143 @@ pub fn open_cache(
     std::fs::create_dir_all(dir).map_err(|e| CoreError::Other(format!("create data dir: {e}")))?;
     let _ = crate::owner_only::dir(dir);
     let lock = CacheLock::open(dir)?;
-    // The keychain first: if it doesn't answer, nothing below runs.
-    let key = read_key(secrets)?;
-    let state = file_state(path)?;
 
-    let needs_exclusive =
-        state == FileState::Plain || (state == FileState::Encrypted && key.is_none());
-    if needs_exclusive && lock.try_exclusive() {
-        let opened = (|| -> std::result::Result<OpenedCache, CacheError> {
-            remove_all(&database_files(&with_suffix(path, UNREADABLE)))?;
-            let (key, reset) = match (state, key) {
-                (FileState::Plain, Some(key)) => {
-                    encrypt_plain(path, &key)?;
-                    (key, false)
+    // The usual start, under the shared lock: an encrypted cache that its
+    // key opens. A set-aside cache from an earlier reset goes now.
+    lock.shared()?;
+    let usual = (|| -> std::result::Result<Option<Db>, CacheError> {
+        let key = read_key(secrets)?;
+        if let (FileState::Encrypted, Some(key)) = (file_state(path)?, key) {
+            match Db::open_at(path, Some(&key)) {
+                Ok(db) => {
+                    remove_all(&database_files(&with_suffix(path, UNREADABLE)))?;
+                    return Ok(Some(db));
                 }
-                (FileState::Plain, None) => {
-                    let key = new_key(secrets)?;
-                    encrypt_plain(path, &key)?;
-                    (key, false)
-                }
-                _ => {
-                    set_aside(path)?;
-                    (new_key(secrets)?, true)
-                }
-            };
-            lock.unlock();
-            lock.shared()?;
-            let db = Db::open_at(path, Some(&key))?;
-            Ok(OpenedCache {
-                db,
-                lock: CacheLock {
-                    file: lock
-                        .file
-                        .try_clone()
-                        .map_err(|e| CoreError::Other(format!("lock the mail cache: {e}")))?,
-                },
-                reset,
-                still_plain: false,
-            })
-        })();
-        if opened.is_err() {
-            lock.unlock();
+                Err(e) if is_wrong_key(&e) => {}
+                Err(e) => return Err(e.into()),
+            }
         }
-        return opened;
+        Ok(None)
+    })();
+    match usual {
+        Ok(Some(db)) => {
+            return Ok(OpenedCache {
+                db,
+                lock,
+                reset: false,
+                still_plain: false,
+            });
+        }
+        Ok(None) => {}
+        Err(e) => {
+            lock.unlock();
+            return Err(e);
+        }
     }
 
-    // Shared: wait out a copy that is moving or setting aside the cache,
-    // then look again, as it may have changed both the file and the key.
-    lock.shared()?;
-    // A cache an earlier start set aside: nothing uses it.
-    remove_all(&database_files(&with_suffix(path, UNREADABLE)))?;
-    let key = read_key(secrets)?;
-    match (file_state(path)?, key) {
-        (FileState::Missing, key) => {
-            let key = match key {
-                Some(key) => key,
-                None => new_key(secrets)?,
-            };
-            let db = Db::open_at(path, Some(&key))?;
-            Ok(OpenedCache {
+    // Anything else changes the keychain or the files.
+    lock.unlock();
+    if !lock.try_exclusive()? {
+        // Another copy holds the lock. If it is changing the cache, the
+        // shared lock waits until it is done; then look again.
+        lock.shared()?;
+        let opened = (|| -> std::result::Result<(Db, bool), CacheError> {
+            let key = read_key(secrets)?;
+            match (file_state(path)?, key) {
+                (FileState::Encrypted, Some(key)) => match Db::open_at(path, Some(&key)) {
+                    Ok(db) => Ok((db, false)),
+                    Err(e) if is_wrong_key(&e) => Err(CacheError::InUse),
+                    Err(e) => Err(e.into()),
+                },
+                // The move waits for a start with no other copy.
+                (FileState::Plain, _) => Ok((Db::open_at(path, None)?, true)),
+                _ => Err(CacheError::InUse),
+            }
+        })();
+        return match opened {
+            Ok((db, still_plain)) => Ok(OpenedCache {
                 db,
                 lock,
                 reset: false,
-                still_plain: false,
-            })
-        }
-        // Another copy is open, so the plain database stays as it is until a
-        // start with no other copy.
-        (FileState::Plain, _) => {
-            let db = Db::open_at(path, None)?;
-            Ok(OpenedCache {
-                db,
-                lock,
-                reset: false,
-                still_plain: true,
-            })
-        }
-        (FileState::Encrypted, Some(key)) => match Db::open_at(path, Some(&key)) {
-            Ok(db) => Ok(OpenedCache {
-                db,
-                lock,
-                reset: false,
-                still_plain: false,
+                still_plain,
             }),
-            Err(e) if is_wrong_key(&e) => reset_wrong_key(path, secrets, lock),
-            Err(e) => Err(e.into()),
-        },
-        (FileState::Encrypted, None) => Err(CacheError::InUse),
+            Err(e) => {
+                lock.unlock();
+                Err(e)
+            }
+        };
+    }
+
+    // The exclusive lock: read both again, decide, then share it.
+    let decided = (|| -> std::result::Result<(Db, bool, bool), CacheError> {
+        let key = read_key(secrets)?;
+        let aside = with_suffix(path, UNREADABLE);
+        match (file_state(path)?, key) {
+            (FileState::Encrypted, Some(key)) => match Db::open_at(path, Some(&key)) {
+                Ok(db) => {
+                    remove_all(&database_files(&aside))?;
+                    Ok((db, false, false))
+                }
+                Err(e) if is_wrong_key(&e) => Ok((reset(path, secrets)?, true, false)),
+                Err(e) => Err(e.into()),
+            },
+            (FileState::Encrypted, None) => Ok((reset(path, secrets)?, true, false)),
+            (FileState::Missing, key) => {
+                // A reset that stopped after setting the cache aside: the
+                // new cache is made now, and the window says so.
+                let interrupted = aside.exists();
+                let key = match key {
+                    Some(key) => key,
+                    None => new_key(secrets)?,
+                };
+                Ok((Db::open_at(path, Some(&key))?, interrupted, false))
+            }
+            (FileState::Plain, key) => {
+                let key = match key {
+                    Some(key) => key,
+                    None => new_key(secrets)?,
+                };
+                match encrypt_plain(path, &key)? {
+                    Moved::Done => Ok((Db::open_at(path, Some(&key))?, false, false)),
+                    // A version from before encryption has it open: open it
+                    // as it is, and move it at a later start.
+                    Moved::Busy => Ok((Db::open_at(path, None)?, false, true)),
+                }
+            }
+        }
+    })();
+    lock.unlock();
+    match decided {
+        Ok((db, reset, still_plain)) => {
+            lock.shared()?;
+            Ok(OpenedCache {
+                db,
+                lock,
+                reset,
+                still_plain,
+            })
+        }
+        Err(e) => Err(e),
     }
 }
 
-/// The key in the keychain doesn't open the cache (a keychain restored from
-/// elsewhere): set the cache aside and start a new one, as for a lost key,
-/// when no other copy is open.
-fn reset_wrong_key(
-    path: &Path,
-    secrets: &dyn SecretStore,
-    lock: CacheLock,
-) -> std::result::Result<OpenedCache, CacheError> {
-    lock.unlock();
-    if !lock.try_exclusive() {
-        lock.shared()?;
-        return Err(CacheError::InUse);
-    }
-    let opened = (|| -> std::result::Result<Db, CacheError> {
-        remove_all(&database_files(&with_suffix(path, UNREADABLE)))?;
-        set_aside(path)?;
-        let key = new_key(secrets)?;
-        lock.unlock();
-        lock.shared()?;
-        Ok(Db::open_at(path, Some(&key))?)
-    })();
-    match opened {
-        Ok(db) => Ok(OpenedCache {
-            db,
-            lock,
-            reset: true,
-            still_plain: false,
-        }),
+/// Starts a new cache in place of one its key can't open, with the
+/// exclusive lock held. The new key is saved and read back before anything
+/// moves; then the cache is set aside (deleted at the next start) and a new
+/// one made. If making it fails, the old one is put back.
+fn reset(path: &Path, secrets: &dyn SecretStore) -> std::result::Result<Db, CacheError> {
+    let key = new_key(secrets)?;
+    let aside = with_suffix(path, UNREADABLE);
+    remove_all(&database_files(&aside))?;
+    set_aside(path)?;
+    match Db::open_at(path, Some(&key)) {
+        Ok(db) => Ok(db),
         Err(e) => {
-            lock.unlock();
-            Err(e)
+            let _ = remove_all(&database_files(path));
+            for (from, to) in database_files(&aside).iter().zip(database_files(path)) {
+                let _ = std::fs::rename(from, to);
+            }
+            Err(e.into())
         }
     }
 }
@@ -448,7 +478,7 @@ fn row_counts(conn: &Connection) -> Result<Vec<(String, i64)>> {
 /// encrypted one, nor encrypt one in place in WAL mode, so the copy is made
 /// with `VACUUM INTO` a file named by a URI that carries the cipher and the
 /// key.
-pub(crate) fn encrypt_plain(path: &Path, key: &CacheKey) -> Result<()> {
+pub(crate) fn encrypt_plain(path: &Path, key: &CacheKey) -> Result<Moved> {
     encrypt_plain_until(path, key, Stop::Never)
 }
 
@@ -460,18 +490,35 @@ pub(crate) enum Stop {
     AfterCheck,
 }
 
-pub(crate) fn encrypt_plain_until(path: &Path, key: &CacheKey, stop: Stop) -> Result<()> {
+/// What a move did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Moved {
+    Done,
+    /// Something else had the plain database open (a version from before
+    /// encryption, which doesn't take the cache's lock): nothing changed.
+    Busy,
+}
+
+pub(crate) fn encrypt_plain_until(path: &Path, key: &CacheKey, stop: Stop) -> Result<Moved> {
     let copy = with_suffix(path, ENCRYPTING);
     let copy_files = database_files(&copy);
     remove_all(&copy_files)?;
     let plain = Connection::open(path)?;
     // No other connection, from any copy or version: an exclusive lock,
     // without waiting, kept until the copy is checked.
-    plain
-        .execute_batch(
-            "PRAGMA busy_timeout = 0; PRAGMA locking_mode = EXCLUSIVE; BEGIN EXCLUSIVE; COMMIT;",
-        )
-        .map_err(|_| CoreError::Other("the mail cache is open elsewhere".into()))?;
+    // Only SQLite's busy and locked mean another connection; any other
+    // failure (a file that isn't a database) is an error.
+    match plain.execute_batch(
+        "PRAGMA busy_timeout = 0; PRAGMA locking_mode = EXCLUSIVE; BEGIN EXCLUSIVE; COMMIT;",
+    ) {
+        Ok(()) => {}
+        Err(rusqlite::Error::SqliteFailure(f, _))
+            if matches!(f.code, ErrorCode::DatabaseBusy | ErrorCode::DatabaseLocked) =>
+        {
+            return Ok(Moved::Busy);
+        }
+        Err(e) => return Err(e.into()),
+    }
     plain.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))?;
     let before = row_counts(&plain)?;
 
@@ -520,20 +567,57 @@ pub(crate) fn encrypt_plain_until(path: &Path, key: &CacheKey, stop: Stop) -> Re
     std::fs::rename(&copy, path)
         .map_err(|e| CoreError::Other(format!("put the encrypted copy in place: {e}")))?;
     remove_all(&copy_files[1..])?;
-    Ok(())
+    Ok(Moved::Done)
 }
 
-/// The database a previous run left at `path`, opened only to read it (a
-/// clean start reads its accounts to forget their keychain entries): plain,
-/// or encrypted with the key in `secrets`. Nothing is made or changed.
-pub fn open_existing(path: &Path, secrets: &dyn SecretStore) -> Option<Db> {
-    match file_state(path).ok()? {
-        FileState::Missing => None,
-        FileState::Plain => Db::open_at(path, None).ok(),
-        FileState::Encrypted => {
-            let key = read_key(secrets).ok()??;
-            Db::open_at(path, Some(&key)).ok()
+/// The Google IDs (`sub`) of the accounts a previous run's cache at `path`
+/// holds, read without changing anything (a clean start uses them to forget
+/// their keychain entries before it deletes the folder). Plain or
+/// encrypted; read-only. A cache whose key is gone or doesn't fit gives
+/// none, as nothing can read it; a keychain that doesn't answer is an
+/// error, so the caller can keep the folder until it does.
+pub fn previous_accounts(
+    path: &Path,
+    secrets: &dyn SecretStore,
+) -> std::result::Result<Vec<String>, CacheError> {
+    let state = file_state(path)?;
+    let key = match state {
+        FileState::Missing => return Ok(Vec::new()),
+        FileState::Plain => None,
+        FileState::Encrypted => match read_key(secrets)? {
+            Some(key) => Some(key),
+            None => return Ok(Vec::new()),
+        },
+    };
+    require_cipher()?;
+    let read = || -> Result<Vec<String>> {
+        use rusqlite::OpenFlags;
+        let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+        // With no write-ahead log left (a run that quit normally),
+        // `immutable` reads the file with no locks and no side files. A log
+        // left by a crash still holds data, so then it's read as usual,
+        // which makes SQLite's shared-memory file.
+        let conn = if database_files(path)[1].exists() {
+            Connection::open_with_flags(path, flags)?
+        } else {
+            Connection::open_with_flags(
+                format!("file:{}?immutable=1", uri_path(path)),
+                flags | OpenFlags::SQLITE_OPEN_URI,
+            )?
+        };
+        if let Some(key) = &key {
+            apply_key(&conn, key)?;
         }
+        let subs = conn
+            .prepare("SELECT google_sub FROM accounts")?
+            .query_map([], |r| r.get(0))?
+            .collect::<std::result::Result<_, _>>()?;
+        Ok(subs)
+    };
+    match read() {
+        Ok(subs) => Ok(subs),
+        Err(e) if is_wrong_key(&e) => Ok(Vec::new()),
+        Err(e) => Err(e.into()),
     }
 }
 
@@ -542,6 +626,7 @@ mod tests {
     use super::*;
     use crate::auth::MemoryStore;
     use crate::db::accounts;
+    use std::sync::Arc;
 
     const MARKER: &str = "zorbleflux";
 
@@ -591,7 +676,24 @@ mod tests {
         })
     }
 
-    /// A store whose keychain doesn't answer.
+    /// Every file in `dir`, with its bytes.
+    fn snapshot(dir: &Path) -> Vec<(String, Vec<u8>)> {
+        let mut files: Vec<_> = std::fs::read_dir(dir)
+            .unwrap()
+            .map(|e| e.unwrap())
+            .filter(|e| e.file_name() != LOCK_FILE)
+            .map(|e| {
+                (
+                    e.file_name().to_string_lossy().into_owned(),
+                    std::fs::read(e.path()).unwrap(),
+                )
+            })
+            .collect();
+        files.sort();
+        files
+    }
+
+    /// A keychain that doesn't answer.
     struct Unreachable;
     impl SecretStore for Unreachable {
         fn get(&self, _: &str) -> Result<Option<String>> {
@@ -603,6 +705,26 @@ mod tests {
         fn delete(&self, _: &str) -> Result<()> {
             Err(CoreError::Keychain("locked".into()))
         }
+    }
+
+    /// A keychain that answers reads but refuses writes (locked after a
+    /// read that needed no unlocking).
+    struct ReadOnlyKeychain(MemoryStore);
+    impl SecretStore for ReadOnlyKeychain {
+        fn get(&self, key: &str) -> Result<Option<String>> {
+            self.0.get(key)
+        }
+        fn set(&self, _: &str, _: &str) -> Result<()> {
+            Err(CoreError::Keychain("locked".into()))
+        }
+        fn delete(&self, _: &str) -> Result<()> {
+            Err(CoreError::Keychain("locked".into()))
+        }
+    }
+
+    /// Another copy's lock, held by the test.
+    fn other_copy(dir: &Path) -> CacheLock {
+        CacheLock::open(dir).unwrap()
     }
 
     #[test]
@@ -619,13 +741,11 @@ mod tests {
         );
         drop(opened);
         assert_eq!(file_state(&path).unwrap(), FileState::Encrypted);
-        let stored = secrets.get(KEY_ENTRY).unwrap().unwrap();
-        assert_eq!(stored.len(), 64);
-        // Reopened with the same key; refused without one.
+        assert_eq!(secrets.get(KEY_ENTRY).unwrap().unwrap().len(), 64);
         let opened = open_cache(&path, &secrets).unwrap();
         assert_eq!(marker(&opened.db), MARKER);
         drop(opened);
-        assert!(Db::open(&path).is_err());
+        assert!(Db::open(&path).is_err(), "refused without the key");
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -633,10 +753,7 @@ mod tests {
     fn a_plain_cache_is_moved_into_an_encrypted_one_and_nothing_plain_is_left() {
         let dir = temp_dir("plain");
         let path = super::super::path_in(&dir);
-        {
-            let db = Db::open(&path).unwrap();
-            fill(&db);
-        }
+        fill(&Db::open(&path).unwrap());
         assert_eq!(file_state(&path).unwrap(), FileState::Plain);
         let secrets = MemoryStore::default();
         let opened = open_cache(&path, &secrets).unwrap();
@@ -645,10 +762,7 @@ mod tests {
         drop(opened);
         assert_eq!(file_state(&path).unwrap(), FileState::Encrypted);
         assert!(!plain_anywhere(&path, MARKER));
-        let names: Vec<String> = std::fs::read_dir(&dir)
-            .unwrap()
-            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
-            .collect();
+        let names: Vec<String> = snapshot(&dir).into_iter().map(|(n, _)| n).collect();
         assert!(!names.iter().any(|n| n.contains(ENCRYPTING)), "{names:?}");
         let _ = std::fs::remove_dir_all(dir);
     }
@@ -658,16 +772,12 @@ mod tests {
         for stop in [Stop::AfterCopy, Stop::AfterCheck] {
             let dir = temp_dir("halfway");
             let path = super::super::path_in(&dir);
-            {
-                let db = Db::open(&path).unwrap();
-                fill(&db);
-            }
+            fill(&Db::open(&path).unwrap());
             let key = CacheKey::generate().unwrap();
             assert!(encrypt_plain_until(&path, &key, stop).is_err());
             assert_eq!(file_state(&path).unwrap(), FileState::Plain, "{stop:?}");
             assert_eq!(marker(&Db::open(&path).unwrap()), MARKER);
-            let secrets = MemoryStore::default();
-            let opened = open_cache(&path, &secrets).unwrap();
+            let opened = open_cache(&path, &MemoryStore::default()).unwrap();
             assert_eq!(marker(&opened.db), MARKER);
             drop(opened);
             assert_eq!(file_state(&path).unwrap(), FileState::Encrypted);
@@ -692,11 +802,13 @@ mod tests {
         assert_eq!(accounts, 0, "a new, empty cache");
         drop(opened);
         assert!(with_suffix(&path, UNREADABLE).exists(), "set aside");
-        // Deleted at the next start.
         let opened = open_cache(&path, &secrets).unwrap();
         assert!(!opened.reset);
         drop(opened);
-        assert!(!with_suffix(&path, UNREADABLE).exists());
+        assert!(
+            !with_suffix(&path, UNREADABLE).exists(),
+            "deleted at the next start"
+        );
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -706,10 +818,44 @@ mod tests {
         let path = super::super::path_in(&dir);
         let secrets = MemoryStore::default();
         fill(&open_cache(&path, &secrets).unwrap().db);
-        let other = CacheKey::generate().unwrap();
-        secrets.set(KEY_ENTRY, &other.hex()).unwrap();
+        secrets
+            .set(KEY_ENTRY, &CacheKey::generate().unwrap().hex())
+            .unwrap();
+        assert!(open_cache(&path, &secrets).unwrap().reset);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Review: a reset whose new key the keychain won't save must not have
+    /// moved the cache.
+    #[test]
+    fn a_reset_saves_the_new_key_before_moving_anything() {
+        let dir = temp_dir("reset order");
+        let path = super::super::path_in(&dir);
+        let store = MemoryStore::default();
+        fill(&open_cache(&path, &store).unwrap().db);
+        store.delete(KEY_ENTRY).unwrap();
+        let before = snapshot(&dir);
+        let err = open_cache(&path, &ReadOnlyKeychain(store)).err().unwrap();
+        assert!(matches!(err, CacheError::Keychain(_)), "{err}");
+        assert_eq!(snapshot(&dir), before, "nothing moved");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Review: a reset that stopped after setting the cache aside makes the
+    /// new cache at the next start, and still says so.
+    #[test]
+    fn a_reset_interrupted_after_the_move_is_finished_and_still_reported() {
+        let dir = temp_dir("interrupted");
+        let path = super::super::path_in(&dir);
+        let secrets = MemoryStore::default();
+        fill(&open_cache(&path, &secrets).unwrap().db);
+        // As `reset` leaves it when it stops after the move.
+        let _ = new_key(&secrets).unwrap();
+        set_aside(&path).unwrap();
         let opened = open_cache(&path, &secrets).unwrap();
         assert!(opened.reset);
+        drop(opened);
+        assert!(!open_cache(&path, &secrets).unwrap().reset);
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -723,18 +869,10 @@ mod tests {
             } else {
                 fill(&open_cache(&path, &MemoryStore::default()).unwrap().db);
             }
-            let before: Vec<Vec<u8>> = database_files(&path)
-                .iter()
-                .map(|f| std::fs::read(f).unwrap_or_default())
-                .collect();
+            let before = snapshot(&dir);
             let err = open_cache(&path, &Unreachable).err().unwrap();
             assert!(matches!(err, CacheError::Keychain(_)), "{err}");
-            let after: Vec<Vec<u8>> = database_files(&path)
-                .iter()
-                .map(|f| std::fs::read(f).unwrap_or_default())
-                .collect();
-            assert_eq!(before, after, "plain: {plain}");
-            assert!(!with_suffix(&path, UNREADABLE).exists());
+            assert_eq!(snapshot(&dir), before, "plain: {plain}");
             let _ = std::fs::remove_dir_all(dir);
         }
     }
@@ -744,8 +882,7 @@ mod tests {
         let dir = temp_dir("two copies");
         let path = super::super::path_in(&dir);
         fill(&Db::open(&path).unwrap());
-        // Another copy of the new version holds the shared lock.
-        let other = CacheLock::open(&dir).unwrap();
+        let other = other_copy(&dir);
         other.shared().unwrap();
         let secrets = MemoryStore::default();
         let opened = open_cache(&path, &secrets).unwrap();
@@ -754,7 +891,6 @@ mod tests {
         drop(opened);
         drop(other);
         assert_eq!(file_state(&path).unwrap(), FileState::Plain);
-        // No other copy now: it moves.
         let opened = open_cache(&path, &secrets).unwrap();
         assert!(!opened.still_plain);
         drop(opened);
@@ -762,18 +898,99 @@ mod tests {
         let _ = std::fs::remove_dir_all(dir);
     }
 
+    /// The owner's choice: a version from before encryption with the cache
+    /// open, which doesn't take the lock, leaves it plain until a later start.
     #[test]
-    fn an_old_copy_with_the_database_open_stops_the_move_and_leaves_it_plain() {
+    fn an_old_copy_with_the_cache_open_leaves_it_plain_until_a_later_start() {
         let dir = temp_dir("old copy");
         let path = super::super::path_in(&dir);
         let old = Db::open(&path).unwrap();
         fill(&old);
-        let key = CacheKey::generate().unwrap();
-        let err = encrypt_plain(&path, &key).unwrap_err();
-        assert!(err.to_string().contains("open elsewhere"), "{err}");
+        let secrets = MemoryStore::default();
+        let opened = open_cache(&path, &secrets).unwrap();
+        assert!(opened.still_plain);
+        drop(opened);
         assert_eq!(marker(&old), MARKER);
         drop(old);
         assert_eq!(file_state(&path).unwrap(), FileState::Plain);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_cache_to_set_aside_while_another_copy_is_open_is_left_alone() {
+        let dir = temp_dir("in use");
+        let path = super::super::path_in(&dir);
+        let secrets = MemoryStore::default();
+        fill(&open_cache(&path, &secrets).unwrap().db);
+        secrets.delete(KEY_ENTRY).unwrap();
+        let other = other_copy(&dir);
+        other.shared().unwrap();
+        let before = snapshot(&dir);
+        assert!(matches!(
+            open_cache(&path, &secrets).err(),
+            Some(CacheError::InUse)
+        ));
+        assert_eq!(snapshot(&dir), before);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Review: two first starts. The second waits while the first, holding
+    /// the exclusive lock, makes the key and the cache; then it reads them
+    /// again and opens the cache with that key, keeping it.
+    #[test]
+    fn a_start_that_waits_uses_what_the_other_copy_made() {
+        let dir = temp_dir("first starts");
+        let path = super::super::path_in(&dir);
+        let secrets = Arc::new(MemoryStore::default());
+        let first = other_copy(&dir);
+        assert!(first.try_exclusive().unwrap());
+        let second = {
+            let (path, secrets) = (path.clone(), secrets.clone());
+            std::thread::spawn(move || open_cache(&path, secrets.as_ref()).map(|o| o.reset))
+        };
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        // The first copy makes the key and the cache, then lets go.
+        let key = new_key(secrets.as_ref()).unwrap();
+        fill(&Db::open_at(&path, Some(&key)).unwrap());
+        let kept = secrets.get(KEY_ENTRY).unwrap();
+        first.unlock();
+        assert!(!second.join().unwrap().unwrap(), "opened, not reset");
+        assert_eq!(
+            secrets.get(KEY_ENTRY).unwrap(),
+            kept,
+            "the key wasn't replaced"
+        );
+        assert_eq!(
+            marker(&open_cache(&path, secrets.as_ref()).unwrap().db),
+            MARKER
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Review: a start that found a plain cache waits while another copy
+    /// moves it; it then opens the encrypted cache with that copy's key
+    /// rather than making a key of its own.
+    #[test]
+    fn a_start_that_waits_out_a_move_uses_the_moved_cache() {
+        let dir = temp_dir("moved meanwhile");
+        let path = super::super::path_in(&dir);
+        fill(&Db::open(&path).unwrap());
+        let secrets = Arc::new(MemoryStore::default());
+        let first = other_copy(&dir);
+        assert!(first.try_exclusive().unwrap());
+        let second = {
+            let (path, secrets) = (path.clone(), secrets.clone());
+            std::thread::spawn(move || {
+                open_cache(&path, secrets.as_ref()).map(|o| (o.reset, o.still_plain))
+            })
+        };
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        let key = new_key(secrets.as_ref()).unwrap();
+        assert_eq!(encrypt_plain(&path, &key).unwrap(), Moved::Done);
+        let kept = secrets.get(KEY_ENTRY).unwrap();
+        first.unlock();
+        assert_eq!(second.join().unwrap().unwrap(), (false, false));
+        assert_eq!(secrets.get(KEY_ENTRY).unwrap(), kept);
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -783,12 +1000,9 @@ mod tests {
         let hex = key.hex().to_string();
         assert_eq!(CacheKey::from_hex(&hex).map(|k| *k.0 == *key.0), Some(true));
         assert!(CacheKey::from_hex("not a key").is_none());
-        // A file that isn't a database: every error is free of the key.
         let dir = temp_dir("errors");
         let path = dir.join("x.sqlite3");
         std::fs::write(&path, b"made-up bytes that are not a database").unwrap();
-        let conn = Connection::open(&path).unwrap();
-        let _ = apply_key(&conn, &key);
         let e = Db::open_at(&path, Some(&key)).err().unwrap();
         assert!(is_wrong_key(&e), "{e}");
         assert!(!e.to_string().contains(&hex));
@@ -797,17 +1011,36 @@ mod tests {
         let _ = std::fs::remove_dir_all(dir);
     }
 
+    /// Review: reading a previous run's accounts changes nothing on disk.
     #[test]
-    fn open_existing_reads_a_previous_run_without_changing_it() {
-        let dir = temp_dir("existing");
-        let path = super::super::path_in(&dir);
-        let secrets = MemoryStore::default();
-        assert!(open_existing(&path, &secrets).is_none());
-        assert!(!path.exists(), "nothing made");
-        fill(&open_cache(&path, &secrets).unwrap().db);
-        assert_eq!(marker(&open_existing(&path, &secrets).unwrap()), MARKER);
-        assert!(open_existing(&path, &MemoryStore::default()).is_none());
-        let _ = std::fs::remove_dir_all(dir);
+    fn previous_accounts_reads_without_changing_anything() {
+        for encrypted in [false, true] {
+            let dir = temp_dir("previous");
+            let path = super::super::path_in(&dir);
+            let secrets = MemoryStore::default();
+            assert!(previous_accounts(&path, &secrets).unwrap().is_empty());
+            assert!(!path.exists(), "nothing made");
+            if encrypted {
+                fill(&open_cache(&path, &secrets).unwrap().db);
+            } else {
+                fill(&Db::open(&path).unwrap());
+            }
+            let before = snapshot(&dir);
+            assert_eq!(previous_accounts(&path, &secrets).unwrap(), ["sub-maya"]);
+            assert_eq!(snapshot(&dir), before, "encrypted: {encrypted}");
+            if encrypted {
+                // No key: nothing can read it. A keychain that doesn't
+                // answer: an error, so the folder is kept.
+                assert!(previous_accounts(&path, &MemoryStore::default())
+                    .unwrap()
+                    .is_empty());
+                assert!(matches!(
+                    previous_accounts(&path, &Unreachable),
+                    Err(CacheError::Keychain(_))
+                ));
+            }
+            let _ = std::fs::remove_dir_all(dir);
+        }
     }
 
     #[test]

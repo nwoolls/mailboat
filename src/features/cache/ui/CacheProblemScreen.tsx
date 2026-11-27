@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { commands, type StartupProblem } from "../../../platform/tauri/bindings";
 import { APP_NAME } from "../../../shared/lib/brand";
 import { PLATFORM } from "../../../shared/lib/platform";
@@ -11,6 +11,9 @@ import { problemWords } from "../model/cache";
 export function CacheProblemScreen({ problem }: { problem: StartupProblem }) {
   const words = problemWords(problem, PLATFORM, APP_NAME);
   const [trying, setTrying] = useState(false);
+  const tryAgain = useRef<HTMLButtonElement>(null);
+  // The only thing to do here: the keyboard starts on Try again.
+  useEffect(() => tryAgain.current?.focus(), []);
   return (
     <div className="flex h-full flex-col bg-glass-panel">
       <div data-tauri-drag-region className="h-11 shrink-0" />
@@ -26,11 +29,16 @@ export function CacheProblemScreen({ problem }: { problem: StartupProblem }) {
           <p className="mt-2 text-[13px] text-content/75">{words.body}</p>
           <div className="mt-5 flex justify-center gap-2 text-[13px]">
             <button
+              ref={tryAgain}
               type="button"
               disabled={trying}
               onClick={() => {
                 setTrying(true);
-                void commands.startupTryAgain();
+                // The app restarts; if it couldn't, Try again comes back.
+                void commands
+                  .startupTryAgain()
+                  .then((r) => r.status === "error" && setTrying(false))
+                  .catch(() => setTrying(false));
               }}
               className="rounded-md bg-accent px-4 py-2 font-medium text-white hover:brightness-110 disabled:opacity-60"
             >

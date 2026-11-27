@@ -466,7 +466,12 @@ export const commands = {
 	 */
 	cacheResetNotice: () => __TAURI_INVOKE<boolean>("cache_reset_notice"),
 	cacheResetNoticeDismiss: () => __TAURI_INVOKE<void>("cache_reset_notice_dismiss"),
-	/**  Starts the app again, to try opening the cache once more. */
+	/**
+	 *  Starts the app again, to try opening the cache once more. Outside the
+	 *  normal mode (a clean start, the demo) Tauri's own restart, which keeps
+	 *  the arguments that chose the mode: the Mac's relaunch helper opens the
+	 *  app without them, in the normal mode, with the owner's real cache.
+	 */
 	startupTryAgain: () => typedError<null, AppError>(__TAURI_INVOKE("startup_try_again")),
 	/**  Quits the app (from the window shown when the cache couldn't open). */
 	startupQuit: () => __TAURI_INVOKE<void>("startup_quit"),
