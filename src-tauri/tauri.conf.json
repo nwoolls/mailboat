@@ -24,6 +24,7 @@
         "minHeight": 360,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
+        "acceptFirstMouse": true,
         "trafficLightPosition": {
           "x": 16,
           "y": 22
