@@ -408,9 +408,13 @@ fn reset_pending(path: &Path) -> bool {
     with_suffix(path, UNREADABLE).exists()
 }
 
-/// Deletes the cache a reset set aside, once its notice was dismissed.
+/// Deletes the cache a reset set aside, once its notice was dismissed: the
+/// write-ahead files first and the database last, so a stop halfway leaves
+/// the database, and the notice, to try again next time.
 pub fn forget_reset(path: &Path) -> Result<()> {
-    remove_all(&database_files(&with_suffix(path, UNREADABLE)))
+    let mut files = database_files(&with_suffix(path, UNREADABLE));
+    files.reverse();
+    remove_all(&files)
 }
 
 /// Starts a new cache in place of one its key can't open, with the
@@ -420,7 +424,12 @@ pub fn forget_reset(path: &Path) -> Result<()> {
 fn reset(path: &Path, secrets: &dyn SecretStore) -> std::result::Result<Db, CacheError> {
     let key = new_key(secrets)?;
     let aside = with_suffix(path, UNREADABLE);
-    remove_all(&database_files(&aside))?;
+    // A cache an earlier reset set aside gives way to this one. Write-ahead
+    // files with no database there are this cache's own, from a move that
+    // stopped halfway: kept, and the move finished.
+    if aside.exists() {
+        remove_all(&database_files(&aside))?;
+    }
     set_aside(path)?;
     match Db::open_at(path, Some(&key)) {
         Ok(db) => Ok(db),
@@ -910,6 +919,49 @@ mod tests {
         drop(opened);
         forget_reset(&path).unwrap();
         assert!(!open_cache(&path, &secrets).unwrap().reset);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Review: a reset that stopped after moving the write-ahead log but
+    /// not the database keeps that log when the next start finishes the
+    /// move, so what it holds can still be read with the old key.
+    #[test]
+    fn a_reset_interrupted_halfway_keeps_the_moved_log() {
+        let dir = temp_dir("halfway");
+        let path = super::super::path_in(&dir);
+        let secrets = MemoryStore::default();
+        let old_key = {
+            let opened = open_cache(&path, &secrets).unwrap();
+            opened
+                .db
+                .conn()
+                .execute_batch("PRAGMA wal_autocheckpoint = 0;")
+                .unwrap();
+            fill(&opened.db);
+            // The files as a crash leaves them: the write only in the log.
+            let crashed = dir.join("crashed");
+            std::fs::create_dir_all(&crashed).unwrap();
+            for f in &database_files(&path)[..2] {
+                std::fs::copy(f, crashed.join(f.file_name().unwrap())).unwrap();
+            }
+            drop(opened);
+            remove_all(&database_files(&path)).unwrap();
+            for f in &database_files(&path)[..2] {
+                std::fs::copy(crashed.join(f.file_name().unwrap()), f).unwrap();
+            }
+            read_key(&secrets).unwrap().unwrap()
+        };
+        // As `reset` leaves it when it stops after moving the log.
+        let _ = new_key(&secrets).unwrap();
+        let aside = with_suffix(&path, UNREADABLE);
+        std::fs::rename(&database_files(&path)[1], &database_files(&aside)[1]).unwrap();
+        let opened = open_cache(&path, &secrets).unwrap();
+        assert!(opened.reset);
+        drop(opened);
+        assert!(database_files(&aside)[1].exists(), "the log was kept");
+        let kept = Db::open_at(&aside, Some(&old_key)).unwrap();
+        assert_eq!(marker(&kept), MARKER);
+        drop(kept);
         let _ = std::fs::remove_dir_all(dir);
     }
 

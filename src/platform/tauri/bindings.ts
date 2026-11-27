@@ -44,7 +44,8 @@ export const commands = {
 	 *  Deletes everything the app keeps: asks Google to end every account's
 	 *  sign-in, then removes every account (its token, mail and images), then the
 	 *  rest of the database (settings, per-sender choices, summaries, usage and
-	 *  the log of what AI apps read), downloaded attachments, the sync log and
+	 *  the log of what AI apps read), a cache set aside after its key was lost
+	 *  (and its notice), downloaded attachments, the sync log and
 	 *  delivered notifications (macOS). Kept: the Google credentials file, so
 	 *  signing in again needs no new setup; files saved to Downloads; and Gmail
 	 *  itself, with the signatures and filters in it. The window clears what it

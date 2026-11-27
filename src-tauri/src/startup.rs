@@ -47,6 +47,16 @@ impl Startup {
             cache: None,
         }
     }
+
+    /// Deletes the cache a reset set aside, and the notice with it (when the
+    /// notice is dismissed, and when all data is deleted).
+    pub fn forget_reset(&self) -> mail_core::Result<()> {
+        if let Some(cache) = &self.cache {
+            mail_core::db::cache::forget_reset(cache)?;
+        }
+        self.cache_reset.store(false, Ordering::Relaxed);
+        Ok(())
+    }
 }
 
 /// The lock every running copy keeps on the cache (`mail_core::db::cache`),
@@ -75,9 +85,7 @@ pub fn cache_reset_notice(state: State<'_, Startup>) -> bool {
 pub fn cache_reset_notice_dismiss(state: State<'_, Startup>) {
     state.cache_reset.store(false, Ordering::Relaxed);
     // Best effort: kept, it only means the notice comes back next time.
-    if let Some(cache) = &state.cache {
-        let _ = mail_core::db::cache::forget_reset(cache);
-    }
+    let _ = state.forget_reset();
 }
 
 /// Starts the app again, to try opening the cache once more. Outside the

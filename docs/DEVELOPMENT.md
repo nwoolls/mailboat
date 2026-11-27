@@ -316,8 +316,8 @@ keyring on Linux). `mail_core::db::cache::open_cache` opens it at startup:
   the notice is dismissed, which deletes the set-aside cache. Mail comes
   back from Gmail; the account list, Settings and everything else only the
   cache held don't.
-- A keychain that doesn't answer: it changes nothing, and the window shows
-  only a message with Try again and Quit.
+- A keychain that doesn't answer: the mail database is left alone, and the
+  window shows only a message with Try again and Quit.
 
 Every running copy of the app holds a shared lock on `mail.lock` in the
 data folder, so a second copy (a development build beside the installed
