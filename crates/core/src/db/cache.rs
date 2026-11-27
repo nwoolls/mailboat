@@ -37,7 +37,8 @@ pub const LOCK_FILE: &str = "mail.lock";
 /// The copy being made during the move to an encrypted database.
 const ENCRYPTING: &str = ".encrypting";
 
-/// A database set aside because its key was lost; deleted at the next start.
+/// A database set aside because its key was lost; deleted once the window's
+/// notice about it is dismissed.
 const UNREADABLE: &str = ".unreadable";
 
 /// The cache's key: 32 random bytes, used as a raw key (no password
@@ -284,16 +285,13 @@ pub fn open_cache(
     let lock = CacheLock::open(dir)?;
 
     // The usual start, under the shared lock: an encrypted cache that its
-    // key opens. A set-aside cache from an earlier reset goes now.
+    // key opens.
     lock.shared()?;
     let usual = (|| -> std::result::Result<Option<Db>, CacheError> {
         let key = read_key(secrets)?;
         if let (FileState::Encrypted, Some(key)) = (file_state(path)?, key) {
             match Db::open_at(path, Some(&key)) {
-                Ok(db) => {
-                    remove_all(&database_files(&with_suffix(path, UNREADABLE)))?;
-                    return Ok(Some(db));
-                }
+                Ok(db) => return Ok(Some(db)),
                 Err(e) if is_wrong_key(&e) => {}
                 Err(e) => return Err(e.into()),
             }
@@ -305,7 +303,7 @@ pub fn open_cache(
             return Ok(OpenedCache {
                 db,
                 lock,
-                reset: false,
+                reset: reset_pending(path),
                 still_plain: false,
             });
         }
@@ -339,7 +337,7 @@ pub fn open_cache(
             Ok((db, still_plain)) => Ok(OpenedCache {
                 db,
                 lock,
-                reset: false,
+                reset: reset_pending(path),
                 still_plain,
             }),
             Err(e) => {
@@ -355,10 +353,7 @@ pub fn open_cache(
         let aside = with_suffix(path, UNREADABLE);
         match (file_state(path)?, key) {
             (FileState::Encrypted, Some(key)) => match Db::open_at(path, Some(&key)) {
-                Ok(db) => {
-                    remove_all(&database_files(&aside))?;
-                    Ok((db, false, false))
-                }
+                Ok(db) => Ok((db, false, false)),
                 Err(e) if is_wrong_key(&e) => Ok((reset(path, secrets)?, true, false)),
                 Err(e) => Err(e.into()),
             },
@@ -371,6 +366,10 @@ pub fn open_cache(
                     Some(key) => key,
                     None => new_key(secrets)?,
                 };
+                // A write-ahead log with no database beside it belongs to a
+                // database that's gone: removed, so the new one can't read
+                // it (it ignores one written without its key anyway).
+                remove_all(&database_files(path)[1..])?;
                 Ok((Db::open_at(path, Some(&key))?, interrupted, false))
             }
             (FileState::Plain, key) => {
@@ -394,7 +393,7 @@ pub fn open_cache(
             Ok(OpenedCache {
                 db,
                 lock,
-                reset,
+                reset: reset || reset_pending(path),
                 still_plain,
             })
         }
@@ -402,10 +401,22 @@ pub fn open_cache(
     }
 }
 
+/// Whether a cache set aside by a reset is still there: the window says so
+/// until the notice is dismissed (`forget_reset`), so a quit or a crash
+/// before the window showed it can't lose it.
+fn reset_pending(path: &Path) -> bool {
+    with_suffix(path, UNREADABLE).exists()
+}
+
+/// Deletes the cache a reset set aside, once its notice was dismissed.
+pub fn forget_reset(path: &Path) -> Result<()> {
+    remove_all(&database_files(&with_suffix(path, UNREADABLE)))
+}
+
 /// Starts a new cache in place of one its key can't open, with the
 /// exclusive lock held. The new key is saved and read back before anything
-/// moves; then the cache is set aside (deleted at the next start) and a new
-/// one made. If making it fails, the old one is put back.
+/// moves; then the cache is set aside (kept until the notice is dismissed)
+/// and a new one made. If making it fails, the old one is put back.
 fn reset(path: &Path, secrets: &dyn SecretStore) -> std::result::Result<Db, CacheError> {
     let key = new_key(secrets)?;
     let aside = with_suffix(path, UNREADABLE);
@@ -423,11 +434,17 @@ fn reset(path: &Path, secrets: &dyn SecretStore) -> std::result::Result<Db, Cach
     }
 }
 
-/// Moves the database and its write-ahead files aside, to be deleted at
-/// the next start.
+/// Moves the database and its write-ahead files aside, kept until the
+/// reset's notice is dismissed. The write-ahead files go first and the
+/// database last, so a stop halfway never leaves a database beside a log
+/// that isn't its own.
 fn set_aside(path: &Path) -> Result<()> {
     let aside = with_suffix(path, UNREADABLE);
-    for (from, to) in database_files(path).iter().zip(database_files(&aside)) {
+    for (from, to) in database_files(path)
+        .iter()
+        .zip(database_files(&aside))
+        .rev()
+    {
         match std::fs::rename(from, &to) {
             Ok(()) => {}
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
@@ -802,13 +819,49 @@ mod tests {
         assert_eq!(accounts, 0, "a new, empty cache");
         drop(opened);
         assert!(with_suffix(&path, UNREADABLE).exists(), "set aside");
+        // Review: still said at the next start, as the window may not have
+        // shown it (a quit or a crash first), until it is dismissed.
         let opened = open_cache(&path, &secrets).unwrap();
-        assert!(!opened.reset);
+        assert!(opened.reset);
         drop(opened);
+        forget_reset(&path).unwrap();
         assert!(
             !with_suffix(&path, UNREADABLE).exists(),
-            "deleted at the next start"
+            "deleted once dismissed"
         );
+        assert!(!open_cache(&path, &secrets).unwrap().reset);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Review: a write-ahead log with no database beside it (from a cache
+    /// that's gone) never reaches a new cache. The new, encrypted database
+    /// ignores such a log anyway; it's also removed first, so nothing
+    /// depends on that.
+    #[test]
+    fn a_log_without_its_database_is_removed_before_a_new_one() {
+        let dir = temp_dir("stray log");
+        let path = super::super::path_in(&dir);
+        // A real log, from another (plain) database with made-up mail,
+        // copied while that database was open so the log still holds it.
+        let other = dir.join("other.sqlite3");
+        let db = Db::open(&other).unwrap();
+        db.conn()
+            .execute_batch("PRAGMA wal_autocheckpoint = 0;")
+            .unwrap();
+        fill(&db);
+        std::fs::copy(&database_files(&other)[1], &database_files(&path)[1]).unwrap();
+        drop(db);
+        let secrets = MemoryStore::default();
+        let opened = open_cache(&path, &secrets).unwrap();
+        let accounts: i64 = opened
+            .db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM accounts", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(accounts, 0, "nothing from the other database's log");
+        fill(&opened.db);
+        drop(opened);
+        assert_eq!(marker(&open_cache(&path, &secrets).unwrap().db), MARKER);
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -855,6 +908,7 @@ mod tests {
         let opened = open_cache(&path, &secrets).unwrap();
         assert!(opened.reset);
         drop(opened);
+        forget_reset(&path).unwrap();
         assert!(!open_cache(&path, &secrets).unwrap().reset);
         let _ = std::fs::remove_dir_all(dir);
     }

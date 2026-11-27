@@ -3,6 +3,7 @@
 //! Try again and Quit), and whether a new cache was started because its key
 //! was gone (the window says so once). See `mail_core::db::cache`.
 
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::Serialize;
@@ -25,13 +26,17 @@ pub enum StartupProblem {
 pub struct Startup {
     pub problem: Option<StartupProblem>,
     cache_reset: AtomicBool,
+    /// The mail cache's path, to delete the cache a reset set aside once its
+    /// notice is dismissed.
+    cache: Option<PathBuf>,
 }
 
 impl Startup {
-    pub fn opened(cache_reset: bool) -> Self {
+    pub fn opened(cache_reset: bool, cache: PathBuf) -> Self {
         Self {
             problem: None,
             cache_reset: AtomicBool::new(cache_reset),
+            cache: Some(cache),
         }
     }
 
@@ -39,6 +44,7 @@ impl Startup {
         Self {
             problem: Some(problem),
             cache_reset: AtomicBool::new(false),
+            cache: None,
         }
     }
 }
@@ -55,8 +61,9 @@ pub fn startup_problem(state: State<'_, Startup>) -> Option<StartupProblem> {
     state.problem
 }
 
-/// Whether this start set an unreadable cache aside and began a new one
-/// (its key was gone from the keychain): the window says so until dismissed.
+/// Whether a start set an unreadable cache aside and began a new one (its
+/// key was gone from the keychain or didn't fit): the window says so at
+/// every start until the notice is dismissed.
 #[tauri::command]
 #[specta::specta]
 pub fn cache_reset_notice(state: State<'_, Startup>) -> bool {
@@ -67,6 +74,10 @@ pub fn cache_reset_notice(state: State<'_, Startup>) -> bool {
 #[specta::specta]
 pub fn cache_reset_notice_dismiss(state: State<'_, Startup>) {
     state.cache_reset.store(false, Ordering::Relaxed);
+    // Best effort: kept, it only means the notice comes back next time.
+    if let Some(cache) = &state.cache {
+        let _ = mail_core::db::cache::forget_reset(cache);
+    }
 }
 
 /// Starts the app again, to try opening the cache once more. Outside the

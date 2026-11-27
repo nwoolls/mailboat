@@ -7844,9 +7844,9 @@ item below is built, the owner has tried it, and the owner has published
             opens a plain database: encrypting it is the next step.)*
       - [x] The key: made and kept in the keychain, set on the connection
             before anything else, never in an error or the log. A lost key
-            moves the unreadable database aside (deleted at the next start),
-            starts a new cache and shows a notice once: accounts sign in
-            again and Settings are back to their defaults (owner,
+            moves the unreadable database aside (kept until the notice is
+            dismissed), starts a new cache and shows a notice once: accounts
+            sign in again and Settings are back to their defaults (owner,
             2026-11-26). A keychain that doesn't answer leaves the files
             alone and says so. Temporary storage moves to memory
             (`SQLITE_TEMP_STORE=2` in `vendor/libsqlite3-sys/build.rs`),
@@ -7867,12 +7867,16 @@ item below is built, the owner has tried it, and the owner has published
             onboarding earlier, a reset lands in the main window, and the
             notice there has the button. A reset saves and reads back the
             new key before it moves anything, puts the old cache back if the
-            new one can't be made, and a reset stopped after the move is
-            finished and reported at the next start (review, 2026-11-26).
-            Tested with made-up mail: a new cache, a lost key, a key that
-            doesn't fit, a keychain that doesn't answer, a keychain that
-            refuses to save the new key, and an interrupted reset, each with
-            the files checked.)*
+            new one can't be made, a reset that stopped after the move is
+            finished at the next start, and reported then, and the notice
+            comes back at each start until it is dismissed, which deletes
+            the set-aside cache (review, 2026-11-26). Races between two
+            copies starting at once only stop ("another copy is open", then
+            Try again): only a developer runs two copies on one cache
+            (owner, 2026-11-26). Tested with made-up mail: a new cache, a
+            lost key, a key that doesn't fit, a keychain that doesn't
+            answer, a keychain that refuses to save the new key, and an
+            interrupted reset, each with the files checked.)*
       - [x] The one-time migration of a plain database, with the spike's
             tests, and three things the spike left open. Other copies stay
             out until the copy has replaced the plain file: on macOS and

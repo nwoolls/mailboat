@@ -461,8 +461,9 @@ export const commands = {
  */
 "inUse" | null>("startup_problem"),
 	/**
-	 *  Whether this start set an unreadable cache aside and began a new one
-	 *  (its key was gone from the keychain): the window says so until dismissed.
+	 *  Whether a start set an unreadable cache aside and began a new one (its
+	 *  key was gone from the keychain or didn't fit): the window says so at
+	 *  every start until the notice is dismissed.
 	 */
 	cacheResetNotice: () => __TAURI_INVOKE<boolean>("cache_reset_notice"),
 	cacheResetNoticeDismiss: () => __TAURI_INVOKE<void>("cache_reset_notice_dismiss"),

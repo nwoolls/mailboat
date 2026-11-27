@@ -312,9 +312,10 @@ keyring on Linux). `mail_core::db::cache::open_cache` opens it at startup:
   only then puts the copy in place of the plain file. A move that stops
   halfway leaves the plain cache as it was, and the next start tries again.
 - An encrypted cache whose key is gone, or doesn't fit: it sets the cache
-  aside (deleted at the next start) and starts a new one, and the window
-  says so once. Mail comes back from Gmail; the account list, Settings and
-  everything else only the cache held don't.
+  aside and starts a new one, and the window says so at each start until
+  the notice is dismissed, which deletes the set-aside cache. Mail comes
+  back from Gmail; the account list, Settings and everything else only the
+  cache held don't.
 - A keychain that doesn't answer: it changes nothing, and the window shows
   only a message with Try again and Quit.
 
@@ -326,8 +327,18 @@ copy, and a cache that needs setting aside shows a screen asking to quit
 the other copy. Every change is made under the exclusive lock, after
 reading the keychain and the files again under it. A version from before
 encryption doesn't take the lock; while one has the cache open, the cache
-opens plain and the move waits for a later start. Once a copy has encrypted the cache, a version from
-before encryption can't read it and doesn't start.
+opens plain and the move waits for a later start. Once a copy has
+encrypted the cache, a version from before encryption can't read it and
+doesn't start.
+
+Two copies starting at the same moment, or one starting while another
+moves or resets the cache, aren't handled beyond stopping: a copy may say
+another one is open when it is only starting, and Try again then opens the
+cache. Only a developer runs two copies on one cache (macOS opens one copy
+of an app, and Windows' single-instance check quits a second one), so it
+stays simple (owner, 2026-11-26). Before the first launch of a development
+build that encrypts the cache, quit the installed app, so the move happens
+with nothing else holding it.
 
 So a development build run in the normal mode encrypts your real cache,
 and the installed app then needs this version too. To try changes to the

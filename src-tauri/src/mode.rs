@@ -113,6 +113,10 @@ pub fn prepare(mode: Mode, normal: Dirs) -> std::io::Result<Dirs> {
 /// read, so the folder is kept (an error) until it does: deleting it would
 /// leave their tokens behind for good.
 fn forget_keychain(root: &Path, secrets: &dyn SecretStore) -> std::io::Result<()> {
+    // No previous run to clean up: the keychain isn't touched.
+    if !root.exists() {
+        return Ok(());
+    }
     let path = mail_core::db::path_in(root);
     let subs = mail_core::db::cache::previous_accounts(&path, secrets)
         .map_err(|e| std::io::Error::other(e.to_string()))?;

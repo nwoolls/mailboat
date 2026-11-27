@@ -283,8 +283,9 @@ pub fn run() {
             // the cache can't be set aside while another copy has it open,
             // nothing on disk is touched: the window opens to say so, with
             // Try again and Quit, and nothing else starts.
+            let cache_path = mail_core::db::path_in(&dirs.data);
             let opened = match mail_core::db::cache::open_cache(
-                &mail_core::db::path_in(&dirs.data),
+                &cache_path,
                 mode.secrets().as_ref(),
             ) {
                 Ok(opened) => opened,
@@ -300,7 +301,7 @@ pub fn run() {
                 }
                 Err(mail_core::db::cache::CacheError::Other(e)) => return Err(e.into()),
             };
-            app.manage(startup::Startup::opened(opened.reset));
+            app.manage(startup::Startup::opened(opened.reset, cache_path));
             app.manage(startup::HeldCacheLock(opened.lock));
             let still_plain = opened.still_plain;
             let db = Arc::new(opened.db);
