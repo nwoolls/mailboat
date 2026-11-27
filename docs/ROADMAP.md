@@ -5500,6 +5500,19 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [ ] A message body fetched while its row is deleted could be written to
+      another account's message *(reported 2026-11-27 in the review of
+      branch `cache-encryption-files`; found by reading the code, not
+      reproduced)*. Opening an email notes the message's row ID, fetches
+      its body from Gmail with that account's client, and writes it by the
+      row ID. SQLite gives an ID out again after its row is deleted, so if
+      sync deletes the message during the fetch and another account's sync
+      adds one that gets the same ID, the body and its parts (and then its
+      inline images) would land on the other account's message. Older than
+      the cache encryption, which stores whatever this writes. Fix: carry
+      the account and Gmail's message ID through the open, and write only
+      if the row still is that message, as the attachment cache now does.
+
 - [x] The sanitizer's property test failed on Windows CI with a false alarm
       *(found 2026-11-26 on pull request #249, which doesn't touch the
       sanitizer)*: random input put an unclosed `url(` in one `<style>`
@@ -7599,7 +7612,8 @@ rest. The work done for 0.3.0 is in 0.3.0 → Security assessment (CASA).*
       the internet. Now it gets a `Zone.Identifier` stream with zone 3, as
       browsers write for downloads, when it reaches the cache and again on
       each saved copy (`attachments::mark_of_the_web`, tested on Windows in
-      CI). Best effort, like the macOS flag: a volume without streams
+      CI). *(Since 0.4.0 the cached file is encrypted, so the mark goes on
+      the decrypted copy another app opens instead, 2026-11-26.)* Best effort, like the macOS flag: a volume without streams
       (FAT32) leaves the file unmarked.
 
 ## 0.4.0
@@ -7929,10 +7943,55 @@ item below is built, the owner has tried it, and the owner has published
             plain cached attachments and images belongs to the next step:
             the encrypted ones go in new folders, and every start deletes
             the old folders while they're there.)*
-      - [ ] Attachments and images encrypted in the cache folder; decrypted
+      - [x] Attachments and images encrypted in the cache folder; decrypted
             copies only for other apps, in a private temporary folder that
             is emptied at start and at quit; the plain files already cached
-            deleted at migration.
+            deleted at migration. *(Done 2026-11-26, branch
+            `cache-encryption-files`: `mail_core::sealed` encrypts each file
+            with AES-256-GCM, with a key derived from the cache's key, and
+            binds it to its account and to what it is (for an attachment,
+            Gmail's message ID and the part; for an image, its address), so
+            a file
+            moved or changed doesn't open and is fetched again. The files go
+            in new folders, `attachments-v2` and `images-v2`, and an
+            attachment is named by a hash, so its name isn't on disk.
+            Opening one, or Quick Look, writes a decrypted copy to `opened`
+            in the cache folder (this user's only), emptied at every start
+            and quit (on Windows, a copy another app has open goes at a
+            later start);
+            saving writes straight to Downloads; forwarding and inline
+            images use the bytes in memory. The old plain folders are
+            deleted at every start while they're there, except while a
+            version from before encryption is open, which still uses them.
+            When the cache stayed plain this run and the keychain has no key
+            yet, nothing is kept: attachments are fetched each time and
+            images load live. Tests: a file is kept encrypted and reads
+            back; one in another place, changed, plain or from another key
+            doesn't open; an attachment and an image are encrypted on disk;
+            a cached attachment that doesn't open is fetched again; without
+            a key nothing is written; the files' key is the same at every
+            start and new after a reset; startup deletes the plain folders
+            and keeps the encrypted ones. From review, 2026-11-27: SQLite
+            gives an attachment's row ID out again after the row is deleted,
+            perhaps to another account's attachment, so the cache doesn't
+            use row IDs: a file is bound to the attachment's account,
+            message and part, and the attachment is looked up once, so the
+            account whose client fetches it is the one it's kept for (owner,
+            2026-11-27, after two rounds found cases of it); the copies'
+            folder is emptied before the
+            cache opens, so also when the keychain doesn't answer, and a
+            link in its place is left alone; the image index is emptied
+            with the plain images, a copy that doesn't open goes with its
+            row, and clearing the image cache deletes every row and the whole
+            folder; the cache size in Settings counts the copies, and
+            clearing the cache empties them; Delete all data deletes the
+            plain folders too, which an older copy kept. From the third
+            round: the image index is emptied only at the start that
+            actually deleted the plain images, so a folder that can't be
+            deleted doesn't empty the encrypted images at every start; a
+            copy another app holds open no longer stops Delete all data;
+            clearing the cache starts sync again even when a file couldn't
+            be deleted.)*
       - [ ] Linux, with or after #236: the keyring cases above tested in
             the Linux build (no keyring, locked, unlock canceled), the
             spike's tests in Linux CI, and `cargo deny` with the Linux

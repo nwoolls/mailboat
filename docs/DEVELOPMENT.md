@@ -340,6 +340,23 @@ stays simple (owner, 2026-11-26). Before the first launch of a development
 build that encrypts the cache, quit the installed app, so the move happens
 with nothing else holding it.
 
+Downloaded attachments and images are encrypted too (`mail_core::sealed`),
+in the cache folder's `attachments-v2` and `images-v2`, with AES-256-GCM
+and a key derived from the cache's key. Each file is bound to its account
+and to what it is: for an attachment, Gmail's message ID and the part;
+for an image, its address. So one moved or changed doesn't open, and is
+fetched again. Attachments don't use the database's row IDs, as SQLite
+gives an ID out again after its row is deleted; an attachment is named by
+a hash, not its own name. An image file is named by its row's ID, but a
+file under a reused ID doesn't open, as it's bound to the address. Opening an attachment in another app, or in Quick Look,
+writes a decrypted copy to `opened` in the cache folder, which is emptied
+at every start and quit (on Windows, a copy another app still has open
+goes at a later start); saving one writes it to Downloads. The folders from before encryption
+(`attachments`, `images`) are deleted at every start while they're there,
+except while a version from before encryption is open. When the cache
+stayed plain this run and the keychain has no key yet, no files are kept:
+attachments are fetched each time and images load live.
+
 So a development build run in the normal mode encrypts your real cache,
 and the installed app then needs this version too. To try changes to the
 cache, use demo mode (`bun run demo`: its own folder, made-up mail, and a

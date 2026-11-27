@@ -1,10 +1,11 @@
 //! Received attachments: downloading them into a local cache folder, safe
 //! file names, and the inline (`cid:`) images an email shows itself.
 //!
-//! Files live under `<cache>/<account id>/<attachment id>/<file name>`, so
-//! one account's files never mix with another's, and removing an account
-//! removes its folder. Only the path recorded in the database is trusted;
-//! a file left over from a deleted row is never served.
+//! Files live under `<cache>/<account id>/<hash>`, encrypted
+//! (`crate::sealed`) and bound to what Gmail says the attachment is (its
+//! account, message and part), so one account's files never mix with
+//! another's, removing an account removes its folder, and neither a file's
+//! contents nor its name can be read from the folder.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -15,7 +16,8 @@ use crate::db::store::{self, AttachmentRef};
 use crate::db::Db;
 use crate::error::{CoreError, Result};
 use crate::gmail::{parse, GmailClient};
-use crate::model::{AccountId, AttachmentId, MessageId};
+use crate::model::{AccountId, MessageId};
+use crate::sealed::Sealed;
 
 /// Image types shown inline. Others (and SVG, which can carry scripts if
 /// ever opened as a page) stay placeholders.
@@ -210,41 +212,64 @@ pub fn remove_unlisted_account_folders(dir: &Path, keep: &[AccountId]) {
     }
 }
 
-/// Downloads an attachment into the cache (once) and returns its path.
+/// An attachment's place in the cache, bound to its encrypted file: what
+/// Gmail says it is (the account, Gmail's message ID and the MIME part),
+/// which never changes. The row's own ID isn't used: SQLite gives an ID out
+/// again after its row is deleted, perhaps to another account's attachment.
+fn place(a: &AttachmentRef) -> String {
+    format!(
+        "attachment/{}/{}/{}",
+        a.account.0, a.gmail_message_id, a.part_id
+    )
+}
+
+/// An attachment's encrypted file in the cache: in its account's folder,
+/// named by a hash of its place, so the folder shows neither its name nor
+/// its message.
+fn cached_file(cache: &Sealed, a: &AttachmentRef) -> PathBuf {
+    let digest = aws_lc_rs::digest::digest(&aws_lc_rs::digest::SHA256, place(a).as_bytes());
+    let name: String = digest.as_ref().iter().map(|b| format!("{b:02x}")).collect();
+    account_dir(&cache.dir, a.account).join(name)
+}
+
+/// The bytes of attachment `a` (looked up once by the caller, who also
+/// chose its account's client with it): from the cache, or downloaded from
+/// Gmail (once) and kept there encrypted. Whoever hands them to another app
+/// writes a decrypted copy of its own (`sealed::decrypted_copy`, or
+/// Downloads).
 pub async fn download(
     db: &Db,
     gmail: &GmailClient,
-    id: AttachmentId,
-    cache_dir: &Path,
-) -> Result<PathBuf> {
-    let a = store::attachment_ref(&db.conn(), id)?;
-    if let Some(cached) = &a.cached_path {
-        let path = PathBuf::from(cached);
-        if path.is_file() && path.starts_with(cache_dir) {
-            return Ok(path);
-        }
+    a: &AttachmentRef,
+    cache: &Sealed,
+) -> Result<Vec<u8>> {
+    if let Some(bytes) = cache.read(&cached_file(cache, a), &place(a)) {
+        return Ok(bytes);
     }
-    let bytes = fetch_bytes(gmail, &a).await?;
-    let dir = account_dir(cache_dir, a.account).join(a.id.0.to_string());
-    std::fs::create_dir_all(&dir).map_err(|e| io_error("create the attachment folder", e))?;
-    let path = dir.join(safe_filename(&a.filename));
-    std::fs::write(&path, &bytes).map_err(|e| io_error("save the attachment", e))?;
-    // Marked here too, not only when it is opened or saved: a file that is
-    // only forwarded or shown inline still sits in the cache folder, where
-    // it could be opened from Explorer. Best effort.
-    #[cfg(windows)]
-    let _ = mark_of_the_web(&path);
-    // The account may have been removed (or everything deleted) while the
-    // bytes were coming: nothing may keep what it no longer has a row for.
-    let still_there = store::attachment_ref(&db.conn(), a.id).is_ok();
-    if !still_there {
-        let _ = std::fs::remove_dir_all(&dir);
+    let bytes = fetch_bytes(gmail, a).await?;
+    keep(db, cache, a, &bytes)?;
+    Ok(bytes)
+}
+
+/// Keeps the bytes of attachment `a` in the cache, encrypted, and records
+/// where. Nothing is kept when files aren't kept this run
+/// (`crate::sealed`).
+pub fn keep(db: &Db, cache: &Sealed, a: &AttachmentRef, bytes: &[u8]) -> Result<()> {
+    let path = cached_file(cache, a);
+    if !cache.write(&path, &place(a), bytes)? {
+        return Ok(());
+    }
+    // While the bytes were coming, the account or the message may have
+    // been removed (or everything deleted): nothing may keep an attachment
+    // no row lists any more.
+    let recorded = store::set_attachment_cached_path(&db.conn(), a, &path.to_string_lossy())?;
+    if !recorded {
+        let _ = std::fs::remove_file(&path);
         // The account's own folder too, if that left it empty.
-        let _ = std::fs::remove_dir(account_dir(cache_dir, a.account));
+        let _ = std::fs::remove_dir(account_dir(&cache.dir, a.account));
         return Err(CoreError::NotFound(format!("attachment {}", a.id.0)));
     }
-    store::set_attachment_cached_path(&db.conn(), a.id, &path.to_string_lossy())?;
-    Ok(path)
+    Ok(())
 }
 
 /// An attachment's bytes from Gmail. Gmail's attachment IDs change between
@@ -281,7 +306,7 @@ pub async fn inline_images(
     db: &Db,
     gmail: &GmailClient,
     message: MessageId,
-    cache_dir: &Path,
+    cache: &Sealed,
 ) -> HashMap<String, String> {
     let parts = match store::inline_parts(&db.conn(), message) {
         Ok(parts) => parts,
@@ -296,10 +321,7 @@ pub async fn inline_images(
         if !INLINE_IMAGE_TYPES.contains(&mime.as_str()) || part.size > MAX_INLINE_IMAGE_BYTES {
             continue;
         }
-        let Ok(path) = download(db, gmail, part.id, cache_dir).await else {
-            continue;
-        };
-        let Ok(bytes) = std::fs::read(&path) else {
+        let Ok(bytes) = download(db, gmail, &part, cache).await else {
             continue;
         };
         if bytes.len() as u64 > MAX_INLINE_IMAGE_BYTES {
@@ -312,10 +334,6 @@ pub async fn inline_images(
         );
     }
     images
-}
-
-fn io_error(what: &str, e: std::io::Error) -> CoreError {
-    CoreError::Other(format!("could not {what}: {e}"))
 }
 
 /// What a browser writes to a download's `Zone.Identifier` stream: zone 3,

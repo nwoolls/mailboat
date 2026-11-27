@@ -249,7 +249,7 @@ pub async fn account_remove(
         &state.http,
         endpoint,
         account_id,
-        &state.images_dir,
+        &state.images.dir,
     )
     .await?;
     Ok(AccountRemoved { revoked })
@@ -337,19 +337,26 @@ async fn delete_everything(
             &state.db,
             state.secrets.as_ref(),
             account.id,
-            &state.images_dir,
+            &state.images.dir,
         )?;
     }
     erase::erase_all(&mut state.db.conn())?;
     // A cache set aside after its key was lost goes too.
     tauri::Manager::state::<crate::startup::Startup>(app).forget_reset()?;
-    for dir in [&state.attachments_dir, &state.images_dir] {
+    let plain = crate::state::PLAIN_FOLDERS.map(|folder| state.cache_dir.join(folder));
+    for dir in [&state.attachments.dir, &state.images.dir]
+        .into_iter()
+        .chain(&plain)
+    {
         match std::fs::remove_dir_all(dir) {
             Ok(()) => {}
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
             Err(e) => return Err(CoreError::Other(format!("delete downloaded files: {e}"))),
         }
     }
+    // Decrypted copies given to other apps: best effort, as one another app
+    // still has open can't be deleted on Windows; it goes at a later start.
+    mail_core::sealed::empty_dir(&state.opened_dir);
     state.saved.lock().unwrap().clear();
     state
         .sync_log
@@ -594,7 +601,7 @@ async fn open_message(
                 &state.db,
                 &gmail.interactive(),
                 message_id,
-                &state.attachments_dir,
+                &state.attachments,
             )
             .await
         }
@@ -605,7 +612,7 @@ async fn open_message(
     let cached = match (&body.html, images_allowed) {
         (Some(html), true) => {
             let urls = mail::sanitize::remote_image_urls(html);
-            mail::prefetch::cached_for(&state.db.conn(), &state.images_dir, account, &urls)?
+            mail::prefetch::cached_for(&state.db.conn(), &state.images, account, &urls)?
         }
         _ => Default::default(),
     };
@@ -905,16 +912,25 @@ pub async fn threads_change_labels(
     Ok(())
 }
 
-/// Downloads an attachment (once) with its account's credentials, marked
-/// as downloaded from the internet, and returns where it is.
-async fn downloaded(
+/// An attachment's bytes, downloaded (once, kept encrypted) with its
+/// account's credentials, and its file name. The attachment is looked up
+/// once, so the account whose client fetches it is the one it's kept for.
+async fn downloaded(state: &AppState, attachment_id: AttachmentId) -> CmdResult<(String, Vec<u8>)> {
+    let a = store::attachment_ref(&state.db.conn(), attachment_id)?;
+    let gmail = state.gmail_for(a.account)?.interactive();
+    let bytes = attachments::download(&state.db, &gmail, &a, &state.attachments).await?;
+    Ok((a.filename, bytes))
+}
+
+/// A decrypted copy of an attachment for another app to open, marked as
+/// downloaded from the internet, in the folder emptied at every start and
+/// quit.
+async fn opened_copy(
     state: &AppState,
     attachment_id: AttachmentId,
 ) -> CmdResult<std::path::PathBuf> {
-    let account = store::attachment_ref(&state.db.conn(), attachment_id)?.account;
-    let gmail = state.gmail_for(account)?.interactive();
-    let path =
-        attachments::download(&state.db, &gmail, attachment_id, &state.attachments_dir).await?;
+    let (filename, bytes) = downloaded(state, attachment_id).await?;
+    let path = mail_core::sealed::decrypted_copy(&state.opened_dir, &filename, &bytes)?;
     files::quarantine(&path);
     Ok(path)
 }
@@ -926,7 +942,7 @@ pub async fn attachment_open(
     state: State<'_, AppState>,
     attachment_id: AttachmentId,
 ) -> CmdResult<()> {
-    let path = downloaded(&state, attachment_id).await?;
+    let path = opened_copy(&state, attachment_id).await?;
     Ok(files::open(&path)?)
 }
 
@@ -937,7 +953,7 @@ pub async fn attachment_preview(
     state: State<'_, AppState>,
     attachment_id: AttachmentId,
 ) -> CmdResult<()> {
-    let path = downloaded(&state, attachment_id).await?;
+    let path = opened_copy(&state, attachment_id).await?;
     Ok(files::quick_look(&path)?)
 }
 
@@ -953,10 +969,9 @@ pub async fn attachment_save(
         .downloads_dir
         .clone()
         .ok_or_else(|| CoreError::Config("couldn't find the Downloads folder".into()))?;
-    let cached = downloaded(&state, attachment_id).await?;
-    let filename = store::attachment_ref(&state.db.conn(), attachment_id)?.filename;
+    let (filename, bytes) = downloaded(&state, attachment_id).await?;
     let target = attachments::unique_path(&downloads, &filename);
-    std::fs::copy(&cached, &target)
+    std::fs::write(&target, &bytes)
         .map_err(|e| CoreError::Other(format!("could not save to Downloads: {e}")))?;
     files::quarantine(&target);
     let name = target
@@ -1198,7 +1213,7 @@ pub async fn message_send(
         &state.db,
         |account| Ok(state.gmail_for(account)?.interactive()),
         &message,
-        &state.attachments_dir,
+        &state.attachments,
     )
     .await?;
     let thread = compose::send_with_files(&state.db, &gmail, &message, &files).await?;
@@ -1236,7 +1251,7 @@ pub async fn draft_save(
         &state.db,
         |account| state.gmail_for(account),
         &message,
-        &state.attachments_dir,
+        &state.attachments,
     )
     .await?;
     let saved = compose::save_draft_with_files(
@@ -1385,7 +1400,7 @@ pub fn settings_set(
     // A smaller image cache takes effect now, not at the next download.
     prefetch::evict(
         &state.db.conn(),
-        &state.images_dir,
+        &state.images.dir,
         u64::from(settings.image_cache_mb) * 1024 * 1024,
     )?;
     crate::theme::apply(&app, settings.theme);
@@ -1709,7 +1724,9 @@ pub fn cache_size(state: State<'_, AppState>) -> CmdResult<CacheSize> {
             |r| r.get(0),
         )
         .map_err(CoreError::from)?;
-    let files = files::dir_size(&state.attachments_dir) + files::dir_size(&state.images_dir);
+    let files = files::dir_size(&state.attachments.dir)
+        + files::dir_size(&state.images.dir)
+        + files::dir_size(&state.opened_dir);
     let kb = |bytes: u64| u32::try_from(bytes / 1024).unwrap_or(u32::MAX);
     Ok(CacheSize {
         mail_kilobytes: kb(db_bytes.max(0) as u64),
@@ -1730,18 +1747,21 @@ pub async fn cache_clear(app: AppHandle, state: State<'_, AppState>) -> CmdResul
         state.forget_account(account.id);
         store::clear_mail(&mut state.db.conn(), account.id)?;
     }
-    prefetch::clear(&state.db.conn(), &state.images_dir)?;
-    // Hand the freed space back to the disk.
-    state
-        .db
-        .conn()
-        .execute_batch("VACUUM")
-        .map_err(CoreError::from)?;
+    let cleared = (|| -> Result<(), CoreError> {
+        prefetch::clear(&state.db.conn(), &state.images.dir)?;
+        // Decrypted copies given to other apps: they count in the size shown.
+        mail_core::sealed::empty_dir(&state.opened_dir);
+        // Hand the freed space back to the disk.
+        state.db.conn().execute_batch("VACUUM")?;
+        Ok(())
+    })();
+    // Sync starts again even when a file couldn't be deleted (one locked by
+    // another app): the error is still reported.
     state.resume_all_accounts()?;
     for account in &all {
         let _ = MailChangedEvent::mail(account.id).emit(&app);
     }
-    Ok(())
+    Ok(cleared?)
 }
 
 /// Empties Spam into Trash for the accounts in the view (all, or some),
@@ -1780,5 +1800,5 @@ pub fn sync_log_reveal(state: State<'_, AppState>) -> CmdResult<()> {
 #[tauri::command]
 #[specta::specta]
 pub fn image_cache_clear(state: State<'_, AppState>) -> CmdResult<()> {
-    Ok(prefetch::clear(&state.db.conn(), &state.images_dir)?)
+    Ok(prefetch::clear(&state.db.conn(), &state.images.dir)?)
 }

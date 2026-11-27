@@ -283,6 +283,10 @@ pub fn run() {
             // the cache can't be set aside while another copy has it open,
             // nothing on disk is touched: the window opens to say so, with
             // Try again and Quit, and nothing else starts.
+            // Decrypted copies another app was given last run, before
+            // anything else can stop the start (a keychain that doesn't
+            // answer).
+            mail_core::sealed::empty_dir(&dirs.cache.join(state::OPENED_FOLDER));
             let cache_path = mail_core::db::path_in(&dirs.data);
             let opened = match mail_core::db::cache::open_cache(
                 &cache_path,
@@ -304,7 +308,18 @@ pub fn run() {
             app.manage(startup::Startup::opened(opened.reset, cache_path));
             app.manage(startup::HeldCacheLock(opened.lock));
             let still_plain = opened.still_plain;
+            let files = opened.files.map(Arc::new);
             let db = Arc::new(opened.db);
+            if state::remove_plain_folders(&dirs.cache, still_plain) {
+                // The image index listed the plain copies just deleted.
+                // This happens once: at later starts they're gone.
+                // Best effort: if it fails, a row whose file is gone is
+                // forgotten when its email opens, and the image loads live.
+                let _ = mail_core::mail::prefetch::clear(
+                    &db.conn(),
+                    &dirs.cache.join(state::IMAGES_FOLDER),
+                );
+            }
             let http = mail_core::reqwest::Client::builder()
                 .user_agent(format!(
                     "{}/{}",
@@ -330,7 +345,7 @@ pub fn run() {
                     .iter()
                     .map(|a| a.id)
                     .collect();
-            for folder in ["attachments", "images"] {
+            for folder in [state::ATTACHMENTS_FOLDER, state::IMAGES_FOLDER] {
                 mail_core::attachments::remove_unlisted_account_folders(
                     &dirs.cache.join(folder),
                     &existing,
@@ -353,11 +368,12 @@ pub fn run() {
                     sign_outs: Default::default(),
                 }),
                 SyncConfig {
-                    images: Some({
-                        // Copies kept before the cache was per account.
-                        mail_core::mail::prefetch::sweep_shared_copies(&dirs.cache.join("images"));
-                        mail_core::mail::prefetch::Prefetch::new(dirs.cache.join("images"))?
-                    }),
+                    images: Some(mail_core::mail::prefetch::Prefetch::new(
+                        mail_core::sealed::Sealed::new(
+                            dirs.cache.join(state::IMAGES_FOLDER),
+                            files.clone(),
+                        ),
+                    )?),
                     ..SyncConfig::default()
                 },
                 WorkerTiming::default(),
@@ -371,6 +387,7 @@ pub fn run() {
                     config: dirs.config,
                     cache: dirs.cache,
                     downloads: app.path().download_dir().ok(),
+                    files,
                 },
                 sync_log,
                 Arc::new({
@@ -437,6 +454,10 @@ pub fn run() {
             }
             if let tauri::RunEvent::Exit = event {
                 ai::forget_unkept_summaries(app);
+                // Decrypted copies given to other apps (`mail_core::sealed`).
+                if let Some(state) = app.try_state::<AppState>() {
+                    mail_core::sealed::empty_dir(&state.opened_dir);
+                }
             }
             if let tauri::RunEvent::Ready = event {
                 let choice = app

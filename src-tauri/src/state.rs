@@ -13,16 +13,50 @@ use mail_core::gmail::GmailClient;
 use mail_core::model::MailView;
 use mail_core::model::{AccountId, AttachmentId};
 use mail_core::reqwest;
+use mail_core::sealed::{FileKey, Sealed};
 use mail_core::sync::{OlderCursor, Supervisor};
 use mail_core::Result;
+
+/// The cache folder's encrypted attachments and images (`mail_core::sealed`).
+/// The folders before they were encrypted, `attachments` and `images`, are
+/// deleted at startup (`PLAIN_FOLDERS`).
+pub const ATTACHMENTS_FOLDER: &str = "attachments-v2";
+pub const IMAGES_FOLDER: &str = "images-v2";
+pub const PLAIN_FOLDERS: [&str; 2] = ["attachments", "images"];
+/// Decrypted copies for other apps to open, emptied at every start and quit.
+pub const OPENED_FOLDER: &str = "opened";
+
+/// At startup: deletes the cached attachments and images from before they
+/// were encrypted, at every start while they're there (they're fetched
+/// again, encrypted, when needed), except while a copy from before
+/// encryption is open (`still_plain`), which still uses them. Returns
+/// whether the plain images were deleted this time: the image index then
+/// lists files that are gone, and is emptied (`mail::prefetch::clear`),
+/// once. While they can't be deleted (a file locked on Windows), the index
+/// and the encrypted images are left alone. The folder of
+/// decrypted copies is emptied earlier, before the cache opens.
+pub fn remove_plain_folders(cache: &std::path::Path, still_plain: bool) -> bool {
+    if still_plain {
+        return false;
+    }
+    let mut images_removed = false;
+    for folder in PLAIN_FOLDERS {
+        let removed = std::fs::remove_dir_all(cache.join(folder)).is_ok();
+        images_removed |= removed && folder == PLAIN_FOLDERS[1];
+    }
+    images_removed
+}
 
 /// Folders the app uses, from Tauri's path resolver.
 pub struct AppDirs {
     /// Holds the Google OAuth client file.
     pub config: PathBuf,
-    /// Downloaded attachments live under `attachments/` here.
+    /// The cached attachments and images live here (`ATTACHMENTS_FOLDER`,
+    /// `IMAGES_FOLDER`), and the decrypted copies (`OPENED_FOLDER`).
     pub cache: PathBuf,
     pub downloads: Option<PathBuf>,
+    /// The cached files' key, if the cache has one this run.
+    pub files: Option<Arc<FileKey>>,
 }
 
 pub struct AppState {
@@ -31,10 +65,16 @@ pub struct AppState {
     pub secrets: Arc<dyn SecretStore>,
     pub supervisor: Supervisor,
     pub config_dir: PathBuf,
-    /// Downloaded attachments, one folder per account.
-    pub attachments_dir: PathBuf,
-    /// Remote images downloaded when mail arrived (`mail::prefetch`).
-    pub images_dir: PathBuf,
+    /// Downloaded attachments, one folder per account, encrypted.
+    pub attachments: Sealed,
+    /// Remote images downloaded when mail arrived (`mail::prefetch`),
+    /// encrypted.
+    pub images: Sealed,
+    /// Decrypted copies of attachments for other apps to open.
+    pub opened_dir: PathBuf,
+    /// The cache folder, for the plain folders from before encryption
+    /// (`PLAIN_FOLDERS`), which Delete all data deletes too.
+    pub cache_dir: PathBuf,
     /// Where "Save" puts attachments (the user's Downloads folder).
     pub downloads_dir: Option<PathBuf>,
     /// Where each attachment was last saved, for "Show in Finder".
@@ -75,8 +115,10 @@ impl AppState {
             secrets,
             supervisor,
             config_dir: dirs.config,
-            attachments_dir: dirs.cache.join("attachments"),
-            images_dir: dirs.cache.join("images"),
+            attachments: Sealed::new(dirs.cache.join(ATTACHMENTS_FOLDER), dirs.files.clone()),
+            images: Sealed::new(dirs.cache.join(IMAGES_FOLDER), dirs.files),
+            opened_dir: dirs.cache.join(OPENED_FOLDER),
+            cache_dir: dirs.cache.clone(),
             downloads_dir: dirs.downloads,
             saved: Mutex::new(HashMap::new()),
             sync_log,
@@ -170,7 +212,7 @@ impl AppState {
         self.clients.lock().unwrap().remove(&account);
         self.older.lock().unwrap().retain(|(a, _), _| *a != account);
         // Its downloaded attachments go too (saved copies in Downloads stay).
-        let dir = mail_core::attachments::account_dir(&self.attachments_dir, account);
+        let dir = mail_core::attachments::account_dir(&self.attachments.dir, account);
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -224,6 +266,56 @@ mod tests {
     use mail_core::sync::{SyncConfig, SyncEvents, SyncProgress, WorkerTiming};
     use std::time::Duration;
 
+    /// The plain folders go, but the encrypted folders stay; with an older
+    /// copy open, its plain folders stay too.
+    #[test]
+    fn startup_deletes_the_plain_folders_and_keeps_the_encrypted_ones() {
+        let cache = std::env::temp_dir().join(format!("tidy-test-{}", std::process::id()));
+        let fill = || {
+            for folder in [ATTACHMENTS_FOLDER, IMAGES_FOLDER, "attachments", "images"] {
+                std::fs::create_dir_all(cache.join(folder).join("1")).unwrap();
+                std::fs::write(cache.join(folder).join("1").join("2"), b"x").unwrap();
+            }
+        };
+        fill();
+        assert!(!remove_plain_folders(&cache, true));
+        assert!(cache.join("attachments").exists() && cache.join("images").exists());
+        assert!(
+            remove_plain_folders(&cache, false),
+            "the plain images were there"
+        );
+        assert!(!cache.join("attachments").exists() && !cache.join("images").exists());
+        assert!(cache.join(ATTACHMENTS_FOLDER).join("1").join("2").exists());
+        assert!(cache.join(IMAGES_FOLDER).join("1").join("2").exists());
+        assert!(
+            !remove_plain_folders(&cache, false),
+            "gone: nothing to forget"
+        );
+        let _ = std::fs::remove_dir_all(&cache);
+    }
+
+    /// Review: plain images that can't be deleted (a file locked on
+    /// Windows; a folder without write access here) don't count as gone, so
+    /// the image index and the encrypted images aren't emptied at every
+    /// start while they're there.
+    #[cfg(unix)]
+    #[test]
+    fn plain_images_that_cant_be_deleted_dont_count_as_gone() {
+        use std::os::unix::fs::PermissionsExt;
+        let cache = std::env::temp_dir().join(format!("tidy-locked-{}", std::process::id()));
+        let inner = cache.join("images").join("1");
+        std::fs::create_dir_all(&inner).unwrap();
+        std::fs::write(inner.join("2"), b"x").unwrap();
+        std::fs::set_permissions(&inner, std::fs::Permissions::from_mode(0o500)).unwrap();
+        assert!(!remove_plain_folders(&cache, false));
+        std::fs::set_permissions(&inner, std::fs::Permissions::from_mode(0o700)).unwrap();
+        assert!(
+            remove_plain_folders(&cache, false),
+            "deleted once it can be"
+        );
+        let _ = std::fs::remove_dir_all(&cache);
+    }
+
     struct NoEvents;
     impl SyncEvents for NoEvents {
         fn status(&self, _: AccountSyncState) {}
@@ -270,6 +362,7 @@ mod tests {
                 config: config_dir,
                 cache: std::env::temp_dir().join("desktop-test-cache"),
                 downloads: None,
+                files: None,
             },
             log,
             Arc::new(|| {}),
