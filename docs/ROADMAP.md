@@ -5500,6 +5500,19 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [ ] A message body fetched while its row is deleted could be written to
+      another account's message *(reported 2026-11-27 in the review of
+      branch `cache-encryption-files`; found by reading the code, not
+      reproduced)*. Opening an email notes the message's row ID, fetches
+      its body from Gmail with that account's client, and writes it by the
+      row ID. SQLite gives an ID out again after its row is deleted, so if
+      sync deletes the message during the fetch and another account's sync
+      adds one that gets the same ID, the body and its parts (and then its
+      inline images) would land on the other account's message. Older than
+      the cache encryption, which stores whatever this writes. Fix: carry
+      the account and Gmail's message ID through the open, and write only
+      if the row still is that message, as the attachment cache now does.
+
 - [x] The sanitizer's property test failed on Windows CI with a false alarm
       *(found 2026-11-26 on pull request #249, which doesn't touch the
       sanitizer)*: random input put an unclosed `url(` in one `<style>`
@@ -7936,8 +7949,9 @@ item below is built, the owner has tried it, and the owner has published
             deleted at migration. *(Done 2026-11-26, branch
             `cache-encryption-files`: `mail_core::sealed` encrypts each file
             with AES-256-GCM, with a key derived from the cache's key, and
-            binds it to its account and to what Gmail says it is (an
-            attachment's message and part, an image's address), so a file
+            binds it to its account and to what it is (for an attachment,
+            Gmail's message ID and the part; for an image, its address), so
+            a file
             moved or changed doesn't open and is fetched again. The files go
             in new folders, `attachments-v2` and `images-v2`, and an
             attachment is named by a hash, so its name isn't on disk.
@@ -7971,7 +7985,13 @@ item below is built, the owner has tried it, and the owner has published
             row, and clearing the image cache deletes every row and the whole
             folder; the cache size in Settings counts the copies, and
             clearing the cache empties them; Delete all data deletes the
-            plain folders too, which an older copy kept.)*
+            plain folders too, which an older copy kept. From the third
+            round: the image index is emptied only at the start that
+            actually deleted the plain images, so a folder that can't be
+            deleted doesn't empty the encrypted images at every start; a
+            copy another app holds open no longer stops Delete all data;
+            clearing the cache starts sync again even when a file couldn't
+            be deleted.)*
       - [ ] Linux, with or after #236: the keyring cases above tested in
             the Linux build (no keyring, locked, unlock canceled), the
             spike's tests in Linux CI, and `cargo deny` with the Linux

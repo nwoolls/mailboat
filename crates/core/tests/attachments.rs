@@ -164,7 +164,7 @@ async fn downloads_land_in_the_accounts_folder_once_encrypted() {
         .await
         .unwrap();
     assert_eq!(bytes, b"%PDF-1.7\n");
-    // One file, in the account's folder, named by the attachment's ID: its
+    // One file, in the account's folder, named by a hash of the attachment's place: its
     // name and its contents can't be read from the folder.
     let files = files_under(&cache.dir);
     assert_eq!(files.len(), 1, "{files:?}");

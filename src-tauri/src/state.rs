@@ -30,18 +30,21 @@ pub const OPENED_FOLDER: &str = "opened";
 /// were encrypted, at every start while they're there (they're fetched
 /// again, encrypted, when needed), except while a copy from before
 /// encryption is open (`still_plain`), which still uses them. Returns
-/// whether the plain images were there: the image index then lists files
-/// that are gone, and is emptied (`mail::prefetch::clear`). The folder of
+/// whether the plain images were deleted this time: the image index then
+/// lists files that are gone, and is emptied (`mail::prefetch::clear`),
+/// once. While they can't be deleted (a file locked on Windows), the index
+/// and the encrypted images are left alone. The folder of
 /// decrypted copies is emptied earlier, before the cache opens.
 pub fn remove_plain_folders(cache: &std::path::Path, still_plain: bool) -> bool {
     if still_plain {
         return false;
     }
-    let images = cache.join(PLAIN_FOLDERS[1]).exists();
+    let mut images_removed = false;
     for folder in PLAIN_FOLDERS {
-        let _ = std::fs::remove_dir_all(cache.join(folder));
+        let removed = std::fs::remove_dir_all(cache.join(folder)).is_ok();
+        images_removed |= removed && folder == PLAIN_FOLDERS[1];
     }
-    images
+    images_removed
 }
 
 /// Folders the app uses, from Tauri's path resolver.
@@ -287,6 +290,28 @@ mod tests {
         assert!(
             !remove_plain_folders(&cache, false),
             "gone: nothing to forget"
+        );
+        let _ = std::fs::remove_dir_all(&cache);
+    }
+
+    /// Review: plain images that can't be deleted (a file locked on
+    /// Windows; a folder without write access here) don't count as gone, so
+    /// the image index and the encrypted images aren't emptied at every
+    /// start while they're there.
+    #[cfg(unix)]
+    #[test]
+    fn plain_images_that_cant_be_deleted_dont_count_as_gone() {
+        use std::os::unix::fs::PermissionsExt;
+        let cache = std::env::temp_dir().join(format!("tidy-locked-{}", std::process::id()));
+        let inner = cache.join("images").join("1");
+        std::fs::create_dir_all(&inner).unwrap();
+        std::fs::write(inner.join("2"), b"x").unwrap();
+        std::fs::set_permissions(&inner, std::fs::Permissions::from_mode(0o500)).unwrap();
+        assert!(!remove_plain_folders(&cache, false));
+        std::fs::set_permissions(&inner, std::fs::Permissions::from_mode(0o700)).unwrap();
+        assert!(
+            remove_plain_folders(&cache, false),
+            "deleted once it can be"
         );
         let _ = std::fs::remove_dir_all(&cache);
     }

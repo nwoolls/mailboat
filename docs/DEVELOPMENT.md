@@ -343,11 +343,12 @@ with nothing else holding it.
 Downloaded attachments and images are encrypted too (`mail_core::sealed`),
 in the cache folder's `attachments-v2` and `images-v2`, with AES-256-GCM
 and a key derived from the cache's key. Each file is bound to its account
-and to what Gmail says it is (an attachment's message and part, an
-image's address), so one moved or changed doesn't open, and is fetched
-again. The database's row IDs aren't used for this, as SQLite gives an ID
-out again after its row is deleted. An attachment is named by a hash, not
-its own name. Opening an attachment in another app, or in Quick Look,
+and to what it is: for an attachment, Gmail's message ID and the part;
+for an image, its address. So one moved or changed doesn't open, and is
+fetched again. Attachments don't use the database's row IDs, as SQLite
+gives an ID out again after its row is deleted; an attachment is named by
+a hash, not its own name. An image file is named by its row's ID, but a
+file under a reused ID doesn't open, as it's bound to the address. Opening an attachment in another app, or in Quick Look,
 writes a decrypted copy to `opened` in the cache folder, which is emptied
 at every start and quit (on Windows, a copy another app still has open
 goes at a later start); saving one writes it to Downloads. The folders from before encryption

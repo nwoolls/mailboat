@@ -344,7 +344,7 @@ async fn delete_everything(
     // A cache set aside after its key was lost goes too.
     tauri::Manager::state::<crate::startup::Startup>(app).forget_reset()?;
     let plain = crate::state::PLAIN_FOLDERS.map(|folder| state.cache_dir.join(folder));
-    for dir in [&state.attachments.dir, &state.images.dir, &state.opened_dir]
+    for dir in [&state.attachments.dir, &state.images.dir]
         .into_iter()
         .chain(&plain)
     {
@@ -354,6 +354,9 @@ async fn delete_everything(
             Err(e) => return Err(CoreError::Other(format!("delete downloaded files: {e}"))),
         }
     }
+    // Decrypted copies given to other apps: best effort, as one another app
+    // still has open can't be deleted on Windows; it goes at a later start.
+    mail_core::sealed::empty_dir(&state.opened_dir);
     state.saved.lock().unwrap().clear();
     state
         .sync_log
@@ -1744,20 +1747,21 @@ pub async fn cache_clear(app: AppHandle, state: State<'_, AppState>) -> CmdResul
         state.forget_account(account.id);
         store::clear_mail(&mut state.db.conn(), account.id)?;
     }
-    prefetch::clear(&state.db.conn(), &state.images.dir)?;
-    // Decrypted copies given to other apps: they count in the size shown.
-    mail_core::sealed::empty_dir(&state.opened_dir);
-    // Hand the freed space back to the disk.
-    state
-        .db
-        .conn()
-        .execute_batch("VACUUM")
-        .map_err(CoreError::from)?;
+    let cleared = (|| -> Result<(), CoreError> {
+        prefetch::clear(&state.db.conn(), &state.images.dir)?;
+        // Decrypted copies given to other apps: they count in the size shown.
+        mail_core::sealed::empty_dir(&state.opened_dir);
+        // Hand the freed space back to the disk.
+        state.db.conn().execute_batch("VACUUM")?;
+        Ok(())
+    })();
+    // Sync starts again even when a file couldn't be deleted (one locked by
+    // another app): the error is still reported.
     state.resume_all_accounts()?;
     for account in &all {
         let _ = MailChangedEvent::mail(account.id).emit(&app);
     }
-    Ok(())
+    Ok(cleared?)
 }
 
 /// Empties Spam into Trash for the accounts in the view (all, or some),

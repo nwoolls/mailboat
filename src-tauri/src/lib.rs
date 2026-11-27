@@ -312,6 +312,7 @@ pub fn run() {
             let db = Arc::new(opened.db);
             if state::remove_plain_folders(&dirs.cache, still_plain) {
                 // The image index listed the plain copies just deleted.
+                // This happens once: at later starts they're gone.
                 // Best effort: if it fails, a row whose file is gone is
                 // forgotten when its email opens, and the image loads live.
                 let _ = mail_core::mail::prefetch::clear(
