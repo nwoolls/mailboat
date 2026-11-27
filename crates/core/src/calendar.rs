@@ -335,7 +335,7 @@ pub async fn invite_for(
                 None => None,
             };
             // Only recorded once the body is stored (opening it does that).
-            store::set_calendar(&db.conn(), message, ics.as_deref())?;
+            store::set_calendar(&db.conn(), message, account, &gmail_id, ics.as_deref())?;
             ics
         }
     };

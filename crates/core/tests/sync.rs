@@ -224,6 +224,60 @@ async fn expired_history_falls_back_to_full_resync() {
     assert_eq!(inbox(&db, AccountFilter::All).len(), 2);
 }
 
+/// A body fetched for a message whose row changed hands during the fetch
+/// (sync deleted it, and SQLite gave its ID to another account's message)
+/// is not written to that other message.
+#[tokio::test]
+async fn fetch_body_skips_a_row_that_became_another_message() {
+    let server = MockServer::start().await;
+    mount_mailbox(&server).await;
+    Mock::given(method("POST"))
+        .and(path("/batch/gmail/v1"))
+        .respond_with(initial_batch())
+        .mount(&server)
+        .await;
+    Mock::given(path("/gmail/v1/users/me/messages/m3"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(fixture("message_m3_full.json"), "application/json")
+                .set_delay(Duration::from_millis(300)),
+        )
+        .mount(&server)
+        .await;
+    let db = Db::open_in_memory().unwrap();
+    let a = add_account(&db, "a");
+    let b = add_account(&db, "b");
+    run(&db, &server, a).await.unwrap();
+    let t2 = inbox(&db, AccountFilter::All)[0].id;
+    let m3 = query::thread_detail(&db.conn(), t2).unwrap().messages[0].id;
+    let (gmail, _) = client(&server.uri());
+
+    let swap = async {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        // Sync deletes the message, and account b's sync adds one that
+        // SQLite gives the same row ID.
+        let conn = db.conn();
+        conn.execute("DELETE FROM messages WHERE id = ?1", [m3])
+            .unwrap();
+        conn.execute(
+            "INSERT INTO threads (account_id, gmail_thread_id) VALUES (?1, 'tb')",
+            [b],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO messages (id, account_id, thread_id, gmail_message_id, internal_date)
+             VALUES (?1, ?2, last_insert_rowid(), 'mb', 0)",
+            rusqlite::params![m3, b],
+        )
+        .unwrap();
+    };
+    let (fetched, ()) = tokio::join!(fetch_body(&db, &gmail, m3), swap);
+
+    assert!(matches!(fetched, Err(mail_core::CoreError::NotFound(_))));
+    assert_eq!(store::get_body(&db.conn(), m3).unwrap(), None);
+    assert!(store::attachments_for(&db.conn(), m3).unwrap().is_empty());
+}
+
 #[tokio::test]
 async fn fetch_body_downloads_once_then_uses_cache() {
     let server = MockServer::start().await;

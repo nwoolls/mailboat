@@ -507,7 +507,7 @@ pub async fn fetch_body(db: &Db, gmail: &GmailClient, message: MessageId) -> Res
     if let Some(body) = cached {
         return Ok(body);
     }
-    let (_, gmail_id) = store::message_gmail_ref(&db.conn(), message)?;
+    let (account, gmail_id) = store::message_gmail_ref(&db.conn(), message)?;
     let full = gmail.message_full(&gmail_id).await?;
     let body = full
         .payload
@@ -522,16 +522,22 @@ pub async fn fetch_body(db: &Db, gmail: &GmailClient, message: MessageId) -> Res
         .as_ref()
         .map(|p| parse::extract_attachments(p, body.html.as_deref()))
         .unwrap_or_default();
-    store::set_body(&mut db.conn(), message, &body, &attachments)?;
+    // One lock for both writes, so the row can't change between them.
+    let mut conn = db.conn();
+    // The row may no longer be this message (deleted during the fetch, its
+    // ID given to another account's message): then nothing is written.
+    if !store::set_fetched_body(&mut conn, message, account, &gmail_id, &body, &attachments)? {
+        return Err(CoreError::NotFound(format!("message {}", message.0)));
+    }
     // Meeting invitations: keep an inline calendar part with the body. An
     // attached-only one is downloaded when the invitation is shown
     // (`calendar::invite_for`), not for every body sync fetches.
     match full.payload.as_ref().and_then(parse::calendar_part) {
         Some(parse::CalendarPart::Inline(ics)) => {
-            store::set_calendar(&db.conn(), message, Some(&ics))?
+            store::set_calendar(&conn, message, account, &gmail_id, Some(&ics))?
         }
         Some(parse::CalendarPart::Attachment { .. }) => {}
-        None => store::set_calendar(&db.conn(), message, None)?,
+        None => store::set_calendar(&conn, message, account, &gmail_id, None)?,
     }
     Ok(body)
 }

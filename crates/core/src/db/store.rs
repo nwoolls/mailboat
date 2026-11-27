@@ -568,11 +568,22 @@ pub fn calendar(conn: &Connection, message: MessageId) -> Result<Option<Option<S
 }
 
 /// Records what a fetched body's calendar part is (or that it has none).
-/// The body must already be stored.
-pub fn set_calendar(conn: &Connection, message: MessageId, ics: Option<&str>) -> Result<()> {
+/// The body must already be stored. Written only if row `message` is still
+/// the message it was fetched for (`account`, `gmail_message_id`), as
+/// `set_fetched_body` explains.
+pub fn set_calendar(
+    conn: &Connection,
+    message: MessageId,
+    account: AccountId,
+    gmail_message_id: &str,
+    ics: Option<&str>,
+) -> Result<()> {
     conn.execute(
-        "UPDATE message_bodies SET calendar = ?2, calendar_read = 1 WHERE message_id = ?1",
-        params![message, ics],
+        "UPDATE message_bodies SET calendar = ?2, calendar_read = 1
+         WHERE message_id = ?1
+           AND EXISTS (SELECT 1 FROM messages
+                       WHERE id = ?1 AND account_id = ?3 AND gmail_message_id = ?4)",
+        params![message, ics, account, gmail_message_id],
     )?;
     Ok(())
 }
@@ -596,8 +607,35 @@ pub fn set_body(
     body: &StoredBody,
     attachments: &[IncomingAttachment],
 ) -> Result<()> {
-    let (account, _) = message_gmail_ref(conn, message)?;
+    let (account, gmail_id) = message_gmail_ref(conn, message)?;
+    set_fetched_body(conn, message, account, &gmail_id, body, attachments)?;
+    Ok(())
+}
+
+/// Stores a body fetched from Gmail for message `message`, but only if that
+/// row is still the message it was fetched for: the same account and
+/// Gmail message ID. SQLite gives a row ID out again after its row is
+/// deleted, so during the fetch sync may have deleted the message and
+/// another account's sync added one under the same ID. Returns whether the
+/// body was stored.
+pub fn set_fetched_body(
+    conn: &mut Connection,
+    message: MessageId,
+    account: AccountId,
+    gmail_message_id: &str,
+    body: &StoredBody,
+    attachments: &[IncomingAttachment],
+) -> Result<bool> {
     let tx = conn.transaction()?;
+    let same: bool = tx.query_row(
+        "SELECT EXISTS (SELECT 1 FROM messages
+                        WHERE id = ?1 AND account_id = ?2 AND gmail_message_id = ?3)",
+        params![message, account, gmail_message_id],
+        |r| r.get(0),
+    )?;
+    if !same {
+        return Ok(false);
+    }
     tx.execute(
         "INSERT INTO message_bodies (message_id, account_id, html, text, fetched_at, parts_version) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
          ON CONFLICT (message_id) DO UPDATE SET html = excluded.html, text = excluded.text,
@@ -657,7 +695,7 @@ pub fn set_body(
     )?;
     refresh_thread(&tx, account, thread)?;
     tx.commit()?;
-    Ok(())
+    Ok(true)
 }
 
 /// Marks cached messages (by Gmail ID) as having attachments, unless their

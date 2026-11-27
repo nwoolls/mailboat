@@ -5500,7 +5500,7 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
-- [ ] A message body fetched while its row is deleted could be written to
+- [x] A message body fetched while its row is deleted could be written to
       another account's message *(reported 2026-11-27 in the review of
       branch `cache-encryption-files`; found by reading the code, not
       reproduced)*. Opening an email notes the message's row ID, fetches
@@ -5512,6 +5512,15 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       the cache encryption, which stores whatever this writes. Fix: carry
       the account and Gmail's message ID through the open, and write only
       if the row still is that message, as the attachment cache now does.
+      *(Fixed 2026-11-27, branch `body-write-owner`: `fetch_body` notes the
+      account and Gmail's message ID before the fetch, and
+      `store::set_fetched_body` writes the body and its parts only if the
+      row is still that message; otherwise opening it says the message is
+      gone. The invitation's calendar part (`store::set_calendar`, also
+      written after a fetch, by `calendar::invite_for`) has the same check.
+      The test `fetch_body_skips_a_row_that_became_another_message` gives
+      the row's ID to another account's message during the fetch; it fails
+      without the change.)*
 
 - [x] The sanitizer's property test failed on Windows CI with a false alarm
       *(found 2026-11-26 on pull request #249, which doesn't touch the
