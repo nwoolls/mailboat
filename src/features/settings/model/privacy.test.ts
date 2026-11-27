@@ -205,4 +205,14 @@ describe("what stays on the computer", () => {
     );
     expect(lines.at(-1)).toBe(STAYS_ON_THIS_COMPUTER.at(-1));
   });
+
+  // The cache is encrypted since 0.4.0 (mail_core::db::cache, mail_core::sealed),
+  // and the page says so, with the one exception: the copy another app opens.
+  it("says the cache is encrypted, and that an opened attachment's copy isn't", () => {
+    const cache = STAYS_ON_THIS_COMPUTER[0];
+    expect(cache).toContain("encrypted with a key kept in the system keychain");
+    expect(cache).toContain(
+      "unencrypted copy, deleted when the app quits or starts again once no other app has it open",
+    );
+  });
 });

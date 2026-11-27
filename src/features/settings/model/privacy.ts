@@ -174,7 +174,7 @@ export function staysOnThisComputer(
 
 /** What never leaves the computer, whatever the settings. */
 export const STAYS_ON_THIS_COMPUTER: readonly string[] = [
-  "Your mail cache, attachments and downloaded images.",
+  "Your mail cache, with the attachments and images it keeps, encrypted with a key kept in the system keychain. An attachment you open in another app gets an unencrypted copy, deleted when the app quits or starts again once no other app has it open.",
   "Sign-in tokens, kept in the system keychain and never in a file.",
   "Searching the mail stored here, and finding the sign-in codes in it.",
   "Summaries and writing help from Apple Intelligence.",

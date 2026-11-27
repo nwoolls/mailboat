@@ -7998,7 +7998,17 @@ item below is built, the owner has tried it, and the owner has published
             targets.
       - [ ] The privacy policy, the feature cards and Settings → Privacy
             say that the cache is encrypted and how; the written answer to
-            DASA 1.2.2 for the lab.
+            DASA 1.2.2 for the lab. *(2026-11-27: Settings → Privacy's first
+            "stays on this computer" line and the README say it, branch
+            `cache-encryption-policy`. The website (the policy's bullet on
+            stored files, with its exceptions, and a line in the privacy
+            panel) is in a pull request of its own, branch
+            `website-encryption-policy`, merged only once 0.4.0 is released,
+            because the site deploys on merge and its download buttons give
+            the latest release (owner, 2026-11-27). The answer for the lab
+            was given to the owner to send after the release, and stays
+            outside the repository like the other lab notes. Ticked when the
+            website's pull request merges.)*
       *(moved from "Later / unscheduled" into 0.4.0, owner, 2026-11-26)*
 
 ### Bugs
