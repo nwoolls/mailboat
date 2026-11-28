@@ -5536,6 +5536,28 @@ the way, and one bug in the app caused flaky failures; all three are in
         Without the fix the test fails every time (5 of 5); with it it
         passed 10 of 10, 5 of 5 slowed, 40 of 40 on 8 workers, and the
         whole file 30 of 30 on 8 workers.
+- [x] `reader-keyboard.spec.ts`: "End straight after n scrolls the reader"
+      (line 678; the same loop runs PageDown and Space).
+      - 2026-11-28, CI on #265 (branch `website-templates`, which changes
+        only the website),
+        https://github.com/nwoolls/mailboat/actions/runs/46114619563,
+        WebKit: the reader stayed where n put it (`toBeGreaterThan`,
+        expected more than 157, received 57); 295 others passed. The job
+        wasn't run again. The trace has no frames from just after n to
+        about 900 ms after End was pressed: the page was stalled, End was
+        taken only as the stall ended, and the test's position, read after
+        a set 900 ms, was read a moment later, before End's scroll had
+        started. Read right after End locally, the reader is at 57 every
+        time, as on CI. Not reproduced as the test was (40 of 40, 8 of 8
+        slowed); locally Playwright waits for a stalled page to take a key,
+        so the set wait starts after it.
+      - Fixed 2026-11-28 (branch `reader-end-flaky`), in the test: it waits
+        for the reader to move (with the usual 15 s cap) instead of a set
+        time. It still catches the bug it was written for: with the
+        reader's `endHold()` for End and Page Down taken out, n's hold
+        pulls the scroll back and both fail. With the fix it passed 60 of
+        60 (the three keys, 15 each), 12 of 12 slowed, 120 of 120 on 8
+        workers, and the whole file 75 of 75 on 8 workers.
 
 ## Bug backlog
 

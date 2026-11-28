@@ -680,10 +680,15 @@ for (const key of ["End", "PageDown", "Space"] as const) {
     await page.keyboard.press("n");
     const held = await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop);
     await page.keyboard.press(key);
-    // Past the hold (350 ms) and any smooth scroll.
-    await page.waitForTimeout(900);
-    const after = await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop);
-    expect(after).toBeGreaterThan(held + 100);
+    // Waits for the reader to move, rather than a set time: on a busy
+    // runner the page stalled for about a second, the key was taken only
+    // as the stall ended, and the position read a moment later was still
+    // where n put it (CI, 2026-11-28: docs/ROADMAP.md → Flaky tests). The
+    // hold, had it pulled the key's scroll back, would leave the reader
+    // there for good, so this still fails then.
+    await expect
+      .poll(() => page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop))
+      .toBeGreaterThan(held + 100);
   });
 }
 
