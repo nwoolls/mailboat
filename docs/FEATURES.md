@@ -241,6 +241,17 @@ Instant local search across all accounts, with Gmail's own operators (from:, has
 
 ## Writing and sending
 
+### Templates
+
+**Emails you write often, with fields you fill in each time.**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/features/templates-dark.png">
+  <img src="images/features/templates-light.png" alt="Fill in for a change-control template, with a date and time, a choice and a list of changes, over a new message" width="800">
+</picture>
+
+A template holds an email's text, and can also set its From address, the people it goes to and its subject. Its fields are filled in each time it's used: text, a list (each line becomes a paragraph, or a bullet when the field sits in a list), a date or a date and time in the format chosen where it appears, a choice, or a first name or today's date filled in for you. Start a new message from one in the command palette (⌘K), or put one into what you're writing from the Templates button (⇧⌘T), where it goes in at the cursor. A field left empty stays highlighted, and Send asks about it first. Make and edit templates in Settings → Templates, or save what you're writing as one. They're kept on your computer, for all your accounts.
+
 ### Send again
 
 **Send an email again, attachments included.**

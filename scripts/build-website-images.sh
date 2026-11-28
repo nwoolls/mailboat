@@ -29,7 +29,7 @@ done
 # shows a clip, website/video/, made by video/render.sh): half size for the card,
 # and full size (cards/ -> full/) for the zoomed view a click opens.
 for name in rules vacation signatures labels invitation conversation ai-apps ai \
-  toybox screensaver-settings send-again outside privacy notifications \
+  toybox screensaver-settings templates send-again outside privacy notifications \
   inbox codes search palette shortcuts keyboard appearance; do
   for theme in dark light; do
     webp "docs/images/features/$name-$theme.png" "$out/cards/$name-$theme.webp" -resize 800 0

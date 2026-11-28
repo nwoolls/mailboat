@@ -146,6 +146,16 @@ feature_outside() {
 feature_labels() {
   main_view; scrollup 900; pclick 209 526 1.2; pclick 63 586 1.2; shoot labels; esc; esc
 }
+# A new message from the change-control template, from the palette: Fill in,
+# with two changes typed in, over the message. Canceled and discarded after.
+feature_templates() {
+  main_view; key k command 1.4; ev 'keystroke "change control"'; sleep 1; ev "key code 36"; sleep 2.5
+  pclick 790 432 1   # the Changes box (Tab doesn't reach it: WebKit's Tab skips the date's parts and the choice)
+  ev 'keystroke "Upgrade the build servers"'; ev "key code 36"
+  ev 'keystroke "Move the staging database"'; sleep 1
+  shoot templates
+  esc; pclick 1378 778 1.2; pclick 831 453 1.2   # Fill in canceled, then the message's trash and Discard
+}
 # Send again on an email you sent (the invoice in Sent, with its file).
 feature_send_again() {
   main_view; pclick 54 178 1.5; pclick 400 404 2
@@ -253,7 +263,7 @@ features=("$@")
 # `hero` and `codes` are not in it: they need the sign-in popup (KEEP_TOAST=1),
 # which every other feature dismisses. Take them on their own (README).
 [ ${#features[@]} -gt 0 ] || features=( inbox conversation invitation palette shortcuts search
-  rules vacation signatures ai ai_apps appearance keyboard list privacy notifications outside labels send_again
+  rules vacation signatures ai ai_apps appearance keyboard list privacy notifications outside labels templates send_again
   toybox screensaver_settings bubbles sky screensaver screensaver_ascii
   write_with_ai )   # last: its discard click does not always work, and a draft would stay open
 focus
