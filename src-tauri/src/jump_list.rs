@@ -264,6 +264,7 @@ mod windows_list {
     use std::path::Path;
 
     use windows::core::{Interface, Result, HSTRING};
+    use windows::Win32::Foundation::E_ACCESSDENIED;
     use windows::Win32::Storage::EnhancedStorage::PKEY_Title;
     use windows::Win32::System::Com::StructuredStorage::PROPVARIANT;
     use windows::Win32::System::Com::{
@@ -316,15 +317,20 @@ mod windows_list {
                 let section: IObjectCollection =
                     CoCreateInstance(&EnumerableObjectCollection, None, CLSCTX_INPROC_SERVER)?;
                 section.AddObject(&link(exe, icons, &compose)?)?;
-                // Windows refuses custom sections when recently opened
-                // items are turned off for Jump Lists (by the user or a
-                // policy); New message then goes first under Tasks.
-                let shown = list.AppendCategory(
+                // Windows refuses custom sections with E_ACCESSDENIED when
+                // recently opened items are turned off for Jump Lists (by
+                // the user or a policy); New message then goes first under
+                // Tasks. Any other error stops the write, so the menu keeps
+                // what it had.
+                match list.AppendCategory(
                     &HSTRING::from(WRITE_HEADING),
                     &section.cast::<IObjectArray>()?,
-                );
-                if shown.is_err() {
-                    tasks.AddObject(&link(exe, icons, &compose)?)?;
+                ) {
+                    Ok(()) => {}
+                    Err(e) if e.code() == E_ACCESSDENIED => {
+                        tasks.AddObject(&link(exe, icons, &compose)?)?;
+                    }
+                    Err(e) => return Err(e),
                 }
             }
             for entry in folders() {
@@ -492,13 +498,29 @@ mod tests {
     }
 
     #[test]
-    fn every_entry_has_its_own_icon_file() {
+    fn every_entry_has_its_own_icon_file_and_the_installer_ships_them() {
         let mut icons: Vec<_> = folders().iter().map(|e| e.icon).collect();
         icons.push(new_message().icon);
         let count = icons.len();
         icons.sort();
         icons.dedup();
         assert_eq!(icons.len(), count);
-        assert!(icons.iter().all(|i| i.ends_with(".ico")));
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        for icon in &icons {
+            assert!(icon.ends_with(".ico"), "{icon}");
+            assert!(
+                root.join("icons/jump-list").join(icon).is_file(),
+                "{icon} is missing: run scripts/build-jump-list-icons.ts"
+            );
+        }
+        // The installer copies them into `jump-list\`, where `write` looks.
+        let conf: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(root.join("tauri.windows.conf.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            conf["bundle"]["resources"]["icons/jump-list/*.ico"],
+            "jump-list/"
+        );
     }
 }

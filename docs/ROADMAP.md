@@ -5506,7 +5506,8 @@ unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
       seen in use)*: `Shell.tsx` empties the link queue before its
       `MailtoEvent` listener is registered, so a link queued in between
       fires an event nobody hears. The taskbar menu's folder requests
-      listen first and then empty their queue; do the same here
+      listen first and then empty their queue (`listenThenDrain` in
+      `src/shared/lib`); use it here too
 
 - [x] A message body fetched while its row is deleted could be written to
       another account's message *(reported 2026-11-27 in the review of

@@ -53,6 +53,7 @@ import {
   stepEmail,
 } from "../features/reader/ui/readerKeys";
 import { isEditable } from "../shared/lib/editable";
+import { listenThenDrain } from "../shared/lib/listenThenDrain";
 import {
   actionTargets,
   type Checked,
@@ -760,23 +761,13 @@ export function Shell() {
   const accountsLoaded = accountsQuery.isSuccess;
   useEffect(() => {
     if (!IS_TAURI || !accountsLoaded) return;
-    const take = () =>
-      void commands.viewRequestTake().then((view) => {
-        if (view) openRequested.current(view);
-      });
-    // Listening first, then emptying the queue, so a request that arrives
-    // in between isn't left waiting for the next one.
-    let stopped = false;
-    let unlisten: (() => void) | undefined;
-    void events.viewRequestEvent.listen(take).then((fn) => {
-      if (stopped) return fn();
-      unlisten = fn;
-      take();
-    });
-    return () => {
-      stopped = true;
-      unlisten?.();
-    };
+    return listenThenDrain(
+      (handler) => events.viewRequestEvent.listen(handler),
+      () =>
+        void commands.viewRequestTake().then((view) => {
+          if (view) openRequested.current(view);
+        }),
+    );
   }, [accountsLoaded]);
   const [panesRef, panesWidth] = useElementWidth<HTMLDivElement>();
   const resizeSidebar = (w: number) =>
