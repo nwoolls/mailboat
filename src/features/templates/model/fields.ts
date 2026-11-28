@@ -268,42 +268,41 @@ export function fillSubject(
 }
 
 /**
- * The names of the fields the filled-in subject still shows as `[Name]`,
- * for Send to ask about along with those in the text.
+ * A template's subject, filled in, as one line of HTML for the composer's
+ * subject line: values as plain text, and a field with no value kept as a
+ * field (highlighted there, and asked about at Send, as in the text).
  */
-export function emptySubjectFields(
+export function fillSubjectHtml(
   html: string,
   fields: TemplateField[],
   values: FieldValues,
   locale?: string,
-): string[] {
+): string {
+  const doc = parse(html);
   const byId = new Map(fields.map((f) => [f.id, f]));
-  const names: string[] = [];
-  for (const span of fieldSpans(parse(html))) {
+  for (const span of fieldSpans(doc)) {
     const field = byId.get(span.dataset.field ?? "");
-    const filled =
-      field?.kind === "longText"
-        ? lines(values[field.id]?.text ?? "").length > 0
-        : field
-          ? valueText(field, span.dataset.format ?? null, values[field.id], locale) !== ""
-          : false;
-    const name = span.textContent ?? "";
-    if (!filled && !names.includes(name)) names.push(name);
+    let text = "";
+    if (field?.kind === "longText") text = lines(values[field.id]?.text ?? "").join(", ");
+    else if (field) text = valueText(field, span.dataset.format ?? null, values[field.id], locale);
+    if (text || !field) span.replaceWith(doc.createTextNode(text || (span.textContent ?? "")));
+    // The app's own mark, which the editor takes as a field.
+    else span.className = "template-field";
   }
-  return names;
+  return oneLine(doc.body.innerHTML);
+}
+
+/** HTML's text in one line (a field as its name), as a subject is sent. */
+export function lineText(html: string): string {
+  return (parse(html).body.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 /**
  * The fields a message still waits on, in order, each once: those in its
- * text, then those its subject still shows as `[Name]`.
+ * text, then those in its subject line.
  */
-export function waitingFields(draft: {
-  html: string;
-  subject: string;
-  waitingInSubject?: string[];
-}): string[] {
-  const inSubject = (draft.waitingInSubject ?? []).filter((n) => draft.subject.includes(`[${n}]`));
-  return [...new Set([...unfilledFields(draft.html), ...inSubject])];
+export function waitingFields(draft: { html: string; subjectHtml?: string }): string[] {
+  return [...new Set([...unfilledFields(draft.html), ...unfilledFields(draft.subjectHtml ?? "")])];
 }
 
 /** The fields in the order they first appear (subject, then body), each once. */

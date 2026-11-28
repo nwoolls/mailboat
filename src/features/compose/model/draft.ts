@@ -73,10 +73,11 @@ export type Draft = {
    */
   pendingTemplate?: TemplateId;
   /**
-   * Fields a template left empty in the subject (shown there as `[Name]`),
-   * for Send to ask about while the subject still shows them.
+   * The subject line as HTML, while it holds a template's field left empty
+   * (a highlighted field there, as in the text); `subject` is its plain
+   * text, which is what's sent. Absent for an ordinary subject.
    */
-  waitingInSubject?: string[];
+  subjectHtml?: string;
   /** Files to send with it. */
   attachments: OutgoingAttachment[];
   /** The original's files a forward carries along (removable). */

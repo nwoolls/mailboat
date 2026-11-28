@@ -3,11 +3,12 @@ import type { TemplateField } from "../../../platform/tauri/bindings";
 import {
   defaultDay,
   EMPTY_VALUE,
-  emptySubjectFields,
   oneLine,
   fieldsInOrder,
   fillBody,
   fillSubject,
+  fillSubjectHtml,
+  lineText,
   firstName,
   type FieldValue,
   previewLine,
@@ -209,22 +210,21 @@ describe("fillSubject", () => {
     expect(fillSubject("<p>First</p><p>Second</p>", [], {})).toBe("First Second");
   });
 
-  it("names the fields it left waiting, and Send asks while they show", () => {
+  it("keeps a field left empty as a field in the subject line, and Send asks about it", () => {
     const rollback = field("rollback", "text");
-    const html = `<p>${span("window", "monthYear")} ${span("rollback")}</p>`;
+    const html = `<p>Change: ${span("window", "monthYear")} ${span("rollback")}</p>`;
     const values = { window: jan11, rollback: value({ text: "" }) };
-    const waiting = emptySubjectFields(html, [window, rollback], values, locale);
-    expect(waiting).toEqual(["Rollback"]);
-    const subject = fillSubject(html, [window, rollback], values, locale);
-    expect(waitingFields({ html: "", subject, waitingInSubject: waiting })).toEqual(["Rollback"]);
-    // Typed over in the subject: no longer waiting.
-    expect(
-      waitingFields({ html: "", subject: "January 2027 done", waitingInSubject: waiting }),
-    ).toEqual([]);
-    // With one in the text too, each once.
-    expect(
-      waitingFields({ html: `<p>${span("rollback")}</p>`, subject, waitingInSubject: waiting }),
-    ).toEqual(["Rollback"]);
+    const line = fillSubjectHtml(html, [window, rollback], values, locale);
+    expect(line).toBe(
+      '<p>Change: January 2027 <span data-field="rollback" class="template-field">Rollback</span></p>',
+    );
+    expect(lineText(line)).toBe("Change: January 2027 Rollback");
+    expect(waitingFields({ html: "", subjectHtml: line })).toEqual(["Rollback"]);
+    // With one in the text too, each once; and none without a subject line.
+    expect(waitingFields({ html: `<p>${span("rollback")}</p>`, subjectHtml: line })).toEqual([
+      "Rollback",
+    ]);
+    expect(waitingFields({ html: "<p>Done</p>" })).toEqual([]);
   });
 });
 

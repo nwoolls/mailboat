@@ -5536,6 +5536,13 @@ the way, and one bug in the app caused flaky failures; all three are in
         Without the fix the test fails every time (5 of 5); with it it
         passed 10 of 10, 5 of 5 slowed, 40 of 40 on 8 workers, and the
         whole file 30 of 30 on 8 workers.
+- [ ] `website-zoom.spec.ts`: "website zoom (WebKit): stepping doesn't pop
+      the next picture in" (line 177).
+      - 2026-11-27, local `bun run check` on branch `templates-subject`,
+        which changes nothing on the website or in this test: "frames with
+        no picture at least half visible", expected 0, received 1 (line
+        174); the 308 other browser tests passed. Run again on its own three
+        times, it passed each time.
 
 ## Bug backlog
 
@@ -8233,6 +8240,18 @@ item below is built, the owner has tried it, and the owner has published
               file dropped on Fill in no longer attaches to the message
               behind it. Fill in shows To, Cc and Bcc apart, by the same
               rules as inserting.)*
+        - [x] A field left empty in the subject is a field there too, as in
+              the text *(owner, 2026-11-27, after the second review round:
+              the subject was a plain text box, so such a field was written
+              as `[Name]` and tracked by matching that text, which two
+              rounds found holes in. Built on branch `templates-subject`,
+              after `templates`)*: a new message's subject line is a
+              one-line editor that holds plain text and fields. A field
+              left empty there is highlighted, Send asks about it, "Go to
+              it" reaches it after the text's, and typing over it replaces
+              it. `subject` stays the plain text that's sent and that
+              everything else reads. Return still sends, Tab goes on to the
+              text, and pasted lines stay on one line.
 
 ### Bugs
 

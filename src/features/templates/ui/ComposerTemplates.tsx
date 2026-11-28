@@ -9,10 +9,10 @@ import { TemplateIcon } from "../../../shared/ui/icons";
 import { type Draft, textToHtml } from "../../compose/model/draft";
 import { templateIdentity, withTemplateFields } from "../model/apply";
 import {
-  emptySubjectFields,
   type FieldValues,
   fillBody,
-  fillSubject,
+  fillSubjectHtml,
+  lineText,
   startingValues,
   withoutFieldMarks,
 } from "../model/fields";
@@ -58,17 +58,18 @@ export function ComposerTemplates({
     closeFillIn();
     if (!editor || editor.isDestroyed) return;
     const body = fillBody(t.body, t.fields, values);
-    const subject = t.subject ? fillSubject(t.subject, t.fields, values) : "";
-    const waiting = t.subject ? emptySubjectFields(t.subject, t.fields, values) : [];
+    // The subject as the subject line shows it (a field left empty kept as
+    // a field), and as plain text, which is what's sent.
+    const subjectHtml = t.subject ? fillSubjectHtml(t.subject, t.fields, values) : "";
+    const subject = lineText(subjectHtml);
     // From, people and subject first: putting the text in counts as writing,
     // after which From no longer changes.
     onChange((d) => {
       const next = withTemplateFields(d, t, identities, subject);
       // Only when this template supplies the subject: a new message whose
-      // subject was empty. A subject already there is kept, and so is what
-      // it waits on.
+      // subject was empty. A subject already there is kept as it is.
       const supplies = d.kind === "new" && d.subject.trim() === "" && subject !== "";
-      return supplies ? { ...next, waitingInSubject: waiting } : next;
+      return supplies ? { ...next, subjectHtml } : next;
     });
     if (body.trim()) insertHtmlAtCursor(editor, body);
     else focusWhereItWas(editor);
