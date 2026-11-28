@@ -4,7 +4,7 @@ import type { MessageId } from "../../../platform/tauri/bindings";
 import { isEditable } from "../../../shared/lib/editable";
 import { REPLY_FOLLOW_EVENT } from "../../../shared/lib/replyFollow";
 import { type CardBox, firstOutlined, readerKeyFor, readerStep } from "../model/readerKeys";
-import { leaveReader } from "./readerKeys";
+import { endHold, leaveReader } from "./readerKeys";
 
 /**
  * The reply being written, as an outlined stop: after the emails, it isn't
@@ -156,6 +156,8 @@ export function useReaderKeyboard({
     const max = reader.scrollHeight - reader.clientHeight;
     const to = Math.max(0, Math.min(max, from + by));
     forget();
+    // The arrow takes the reader over from a hold `n` / `p` left on it.
+    endHold();
     let last = reader.scrollTop;
     let still = 0;
     // Anchoring back on once the scroll has had its time and stopped.
@@ -252,6 +254,11 @@ export function useReaderKeyboard({
   const forgetHeading = () => {
     forget();
   };
+  // The wheel takes the reader over from `n` / `p`'s hold too.
+  const onWheel = () => {
+    forget();
+    endHold();
+  };
 
   const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
     forgetHeading();
@@ -281,9 +288,11 @@ export function useReaderKeyboard({
     // or picked conversations go first, then back to the list.
     if (e.key === "Escape") return;
     const reader = e.currentTarget;
-    // The reader scrolls itself, rather than the list moving.
+    // The reader scrolls itself, rather than the list moving, and takes
+    // over from `n` / `p`'s hold.
     if (["PageUp", "PageDown", "Home", "End"].includes(e.key)) {
       e.stopPropagation();
+      endHold();
       return;
     }
     const key = readerKeyFor(e, isEditable(e.target));
@@ -348,7 +357,7 @@ export function useReaderKeyboard({
       onBlur,
       onPointerDown,
       onKeyDown,
-      onWheel: forgetHeading,
+      onWheel,
       onTouchStart: forgetHeading,
     },
   };
