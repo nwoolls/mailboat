@@ -5500,6 +5500,14 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [ ] A `mailto:` link handed over in the moment the window starts
+      listening can wait until the next one *(found 2026-11-27 in the
+      review of branch `windows-jump-list`, by reading the code; not
+      seen in use)*: `Shell.tsx` empties the link queue before its
+      `MailtoEvent` listener is registered, so a link queued in between
+      fires an event nobody hears. The taskbar menu's folder requests
+      listen first and then empty their queue; do the same here
+
 - [x] A message body fetched while its row is deleted could be written to
       another account's message *(reported 2026-11-27 in the review of
       branch `cache-encryption-files`; found by reading the code, not
@@ -8076,6 +8084,9 @@ item below is built, the owner has tried it, and the owner has published
       the app with an argument, which a running copy takes through the
       single-instance plugin as it does `mailto:` links (New message is
       an empty `mailto:` link); gray icons drawn from the sidebar's)*
+      *(review, 2026-11-27: a line on the website's shortcuts card is
+      left for the 0.4.0 website update, since the site deploys on merge
+      and would show the menu before the release has it)*
 
 ### Bugs
 

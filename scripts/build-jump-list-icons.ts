@@ -8,7 +8,8 @@
 // src-tauri/icons/jump-list/<name>.ico (16 to 256 px, through `tauri icon`),
 // which the Windows installer ships (tauri.windows.conf.json → resources).
 // The menu follows Windows' light or dark theme but its icons can't, so
-// they're a gray that reads on both.
+// they're a gray that reads on both. The drawings are Hugeicons' (MIT), so
+// their license goes beside both copies, and the installer ships it too.
 import { mkdirSync, mkdtempSync, copyFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -61,6 +62,9 @@ if (import.meta.main) {
   const icoDir = join(root, "src-tauri/icons/jump-list");
   mkdirSync(svgDir, { recursive: true });
   mkdirSync(icoDir, { recursive: true });
+  const license = join(root, "node_modules/@hugeicons/core-free-icons/LICENSE.md");
+  copyFileSync(license, join(svgDir, "HUGEICONS-LICENSE.md"));
+  copyFileSync(license, join(icoDir, "HUGEICONS-LICENSE.md"));
   const tmp = mkdtempSync(join(tmpdir(), "jump-list-"));
   try {
     for (const [name, shapes] of Object.entries(ICONS)) {

@@ -764,9 +764,19 @@ export function Shell() {
       void commands.viewRequestTake().then((view) => {
         if (view) openRequested.current(view);
       });
-    take();
-    const unlisten = events.viewRequestEvent.listen(take);
-    return () => void unlisten.then((fn) => fn());
+    // Listening first, then emptying the queue, so a request that arrives
+    // in between isn't left waiting for the next one.
+    let stopped = false;
+    let unlisten: (() => void) | undefined;
+    void events.viewRequestEvent.listen(take).then((fn) => {
+      if (stopped) return fn();
+      unlisten = fn;
+      take();
+    });
+    return () => {
+      stopped = true;
+      unlisten?.();
+    };
   }, [accountsLoaded]);
   const [panesRef, panesWidth] = useElementWidth<HTMLDivElement>();
   const resizeSidebar = (w: number) =>

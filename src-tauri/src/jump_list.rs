@@ -232,6 +232,33 @@ pub fn write(app: &AppHandle, mode: Mode) {
     });
 }
 
+/// Whether New message was removed from the menu, kept for this Windows
+/// user under the app's own registry key, which the uninstaller deletes
+/// (`windows/installer.nsh`), so a reinstall shows it again.
+#[cfg(windows)]
+mod removal {
+    use windows_registry::CURRENT_USER;
+
+    const VALUE: &str = "JumpListNewMessageRemoved";
+
+    fn key() -> String {
+        format!(r"Software\{}", mail_core::brand::NAME)
+    }
+
+    pub fn remembered() -> bool {
+        CURRENT_USER
+            .open(key())
+            .and_then(|k| k.get_u32(VALUE))
+            .is_ok_and(|v| v != 0)
+    }
+
+    /// Best effort: if it can't be kept, New message comes back at a later
+    /// start.
+    pub fn remember() {
+        let _ = CURRENT_USER.create(key()).and_then(|k| k.set_u32(VALUE, 1));
+    }
+}
+
 #[cfg(windows)]
 mod windows_list {
     use std::path::Path;
@@ -274,22 +301,32 @@ mod windows_list {
             let mut slots = 0u32;
             let removed: IObjectArray = list.BeginList(&mut slots)?;
 
-            // New message, unless someone removed it from the menu
-            // (Windows rejects a whole section that holds a removed item,
-            // and the whole list would go unwritten with it).
+            // New message, unless someone removed it from the menu. Windows
+            // hands back what was removed only until the next list is
+            // written, so a removal is remembered (Windows rejects a whole
+            // section that holds a removed item).
             let compose = new_message();
-            if !was_removed(&removed, &compose)? {
+            let removed = super::removal::remembered() || was_removed(&removed, &compose)?;
+            if removed {
+                super::removal::remember();
+            }
+            let tasks: IObjectCollection =
+                CoCreateInstance(&EnumerableObjectCollection, None, CLSCTX_INPROC_SERVER)?;
+            if !removed {
                 let section: IObjectCollection =
                     CoCreateInstance(&EnumerableObjectCollection, None, CLSCTX_INPROC_SERVER)?;
                 section.AddObject(&link(exe, icons, &compose)?)?;
-                list.AppendCategory(
+                // Windows refuses custom sections when recently opened
+                // items are turned off for Jump Lists (by the user or a
+                // policy); New message then goes first under Tasks.
+                let shown = list.AppendCategory(
                     &HSTRING::from(WRITE_HEADING),
                     &section.cast::<IObjectArray>()?,
-                )?;
+                );
+                if shown.is_err() {
+                    tasks.AddObject(&link(exe, icons, &compose)?)?;
+                }
             }
-
-            let tasks: IObjectCollection =
-                CoCreateInstance(&EnumerableObjectCollection, None, CLSCTX_INPROC_SERVER)?;
             for entry in folders() {
                 tasks.AddObject(&link(exe, icons, &entry)?)?;
             }
@@ -308,12 +345,13 @@ mod windows_list {
             link.SetPath(&HSTRING::from(exe))?;
             link.SetArguments(&HSTRING::from(command_line(&entry.args)))?;
             link.SetDescription(&HSTRING::from(entry.title))?;
-            // Without its own icon an entry shows the app's.
-            if let Some(icon) = icons
+            // Without its own icon file an entry shows the app's.
+            match icons
                 .map(|dir| dir.join(entry.icon))
                 .filter(|p| p.is_file())
             {
-                link.SetIconLocation(&HSTRING::from(icon.as_os_str()), 0)?;
+                Some(icon) => link.SetIconLocation(&HSTRING::from(icon.as_os_str()), 0)?,
+                None => link.SetIconLocation(&HSTRING::from(exe), 0)?,
             }
             // The menu shows a link's title, which is a string property.
             let store: IPropertyStore = link.cast()?;
