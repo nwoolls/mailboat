@@ -5543,6 +5543,16 @@ the way, and one bug in the app caused flaky failures; all three are in
         no picture at least half visible", expected 0, received 1 (line
         174); the 308 other browser tests passed. Run again on its own three
         times, it passed each time.
+      - 2026-11-28, local `bun run check` on branch `templates-subject`
+        (rebased onto `main`; again nothing on the website): the same
+        error, one frame. Its trace's samples show why it's one frame and
+        not a slow load: the next picture fades in normally (the most
+        visible picture at 0.52 rising to 0.99), then for a single frame
+        at the very end of the 240 ms cross-fade the most visible one is at
+        0.48, and the next frame it's done at 1. Where that frame comes
+        from in `website/site.js` isn't known yet: at that point the
+        incoming picture should be fully shown. To investigate with forced
+        timings, on a branch of its own.
 
 ## Bug backlog
 
