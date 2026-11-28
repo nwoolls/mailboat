@@ -8395,7 +8395,7 @@ item below is built, the owner has tried it, and the owner has published
       follow"). The tests for clicking Reply with AI while the
       conversation is still laying out, promised above, are the item
       below)*
-- [ ] A test for clicking Reply with AI while the conversation is still
+- [x] A test for clicking Reply with AI while the conversation is still
       laying out *(split from the closed item above, 2026-11-22, from
       review)*: the slow-machine test in `reply-scroll.spec.ts` waits
       until the conversation has kept the same height for half a second
@@ -8404,6 +8404,18 @@ item below is built, the owner has tried it, and the owner has published
       was left "for tests of its own later". A failure there would show
       as the reply's end left below the reader, as in the 2026-11-11 run
       of "scrolling up slowly" (401 px).
+      *(Done 2026-11-27, branch `reply-ai-during-layout-test`: two tests in
+      `reply-scroll.spec.ts`, "Reply with AI while the conversation is
+      still laying out", at normal speed and with slowed animations. Reply
+      with AI is clicked as soon as the email shows, and the email above
+      then grows four times (during the opening slide, around its end,
+      and after); the reply's end must stay in view. WebKit's scroll
+      anchoring would keep it in view on its own, so the tests turn it off
+      on the reader, as the reader itself does during an arrow's scroll:
+      with it on, they passed even with the reply's own handling of growth
+      removed. With it off, they fail without that handling, or without
+      the reply watching the conversation above. They passed 30 of 30
+      runs, and 10 of 10 with `test:browser:slow`'s loaded page.)*
 - [x] Tooltips don't show when the app's window is on another desktop than
       the one the app is assigned to *(owner report, 2026-11-12, macOS;
       fixed 2026-11-22, branch `native-tooltips-spaces`, tooltips kept
