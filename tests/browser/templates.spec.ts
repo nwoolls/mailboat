@@ -474,12 +474,22 @@ test("a long subject scrolls inside its line, and Send stays in the card", async
   await page.setViewportSize({ width: 1000, height: 560 });
   await page.goto("/tests/browser/harness.html?mode=card");
   await subjectLine(page).click();
-  await page.keyboard.type("A very long subject ".repeat(40));
-  const box = await subjectLine(page)
-    .locator("xpath=ancestor::div[contains(@class,'max-h-24')][1]")
-    .boundingBox();
-  expect(box!.height).toBeLessThanOrEqual(96);
+  await page.keyboard.type(`Start ${"a very long subject ".repeat(40)}end`);
+  const line = subjectLine(page).locator("xpath=ancestor::div[contains(@class,'max-h-24')][1]");
+  expect((await line.boundingBox())!.height).toBeLessThanOrEqual(96);
   await expect(card(page).getByRole("button", { name: "Send" })).toBeInViewport();
+  // It scrolls, rather than cutting off: scrolled to either end, that end
+  // of the subject is inside the line.
+  const endInView = (end: "top" | "bottom") =>
+    line.evaluate((box, which) => {
+      box.scrollTop = which === "top" ? 0 : box.scrollHeight;
+      const text = box.querySelector("[role=textbox]")!.getBoundingClientRect();
+      const view = box.getBoundingClientRect();
+      return which === "top" ? text.top >= view.top - 1 : text.bottom <= view.bottom + 1;
+    }, end);
+  expect(await line.evaluate((box) => box.scrollHeight > box.clientHeight)).toBe(true);
+  expect(await endInView("top")).toBe(true);
+  expect(await endInView("bottom")).toBe(true);
 });
 
 test("Send anyway asks again when the subject's field comes back", async ({ page }) => {

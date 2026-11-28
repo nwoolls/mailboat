@@ -1,6 +1,5 @@
 import { type Editor, EditorContent } from "@tiptap/react";
 import { useEffect } from "react";
-import { oneLine } from "../../templates/model/fields";
 import type { FieldAttrs } from "../../templates/ui/fieldNode";
 import { hasFields, useOneLineEditor } from "../../templates/ui/oneLineEditor";
 import type { Draft } from "../model/draft";
@@ -17,9 +16,14 @@ function lineTextOf(editor: Editor): string {
   });
 }
 
-/** What the editor loads: a template's line as it is, or plain text kept exactly. */
-function contentOf(subject: string, subjectHtml: string | undefined): string {
-  return subjectHtml ? oneLine(subjectHtml) : lineHtml(subject);
+/**
+ * What the subject line loads: its HTML while it holds a field (already one
+ * paragraph, as a template's subject is flattened when it's filled in and
+ * the editor holds no more, so it loads as it is, spaces and all), or the
+ * plain text kept exactly, but for a line break, which can't be in a subject.
+ */
+export function subjectContent(subject: string, subjectHtml: string | undefined): string {
+  return subjectHtml ?? lineHtml(subject.replace(/[\r\n]+/g, " "));
 }
 
 /** Plain text as one line of HTML, for the editor to load. */
@@ -43,7 +47,7 @@ export function useSubjectLine(
   onReturn: () => void,
   sending: boolean,
 ) {
-  const editor = useOneLineEditor(contentOf(draft.subject, draft.subjectHtml), {
+  const editor = useOneLineEditor(subjectContent(draft.subject, draft.subjectHtml), {
     className: "outline-none py-2",
     onKey: (_view, event) => {
       if (event.key !== "Enter" || event.shiftKey || event.altKey) return false;
@@ -68,7 +72,7 @@ export function useSubjectLine(
     editor
       .chain()
       .setMeta("addToHistory", false)
-      .setContent(contentOf(draft.subject, draft.subjectHtml), {
+      .setContent(subjectContent(draft.subject, draft.subjectHtml), {
         emitUpdate: false,
         parseOptions: { preserveWhitespace: "full" },
       })
@@ -84,7 +88,9 @@ export function SubjectLine({ editor, empty }: { editor: Editor | null; empty: b
   return (
     // At most a few lines tall: a long subject scrolls inside, so the
     // message and Send stay in the card.
-    <div className="relative flex max-h-24 min-h-9 items-center overflow-y-auto border-b border-stroke">
+    // Aligned to the top: content centered in a box that scrolls can be cut
+    // off out of reach above it.
+    <div className="relative flex max-h-24 min-h-9 items-start overflow-y-auto border-b border-stroke">
       <EditorContent editor={editor} className="min-w-0 flex-1" />
       {empty && (
         <span

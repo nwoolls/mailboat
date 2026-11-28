@@ -69,7 +69,9 @@ export function ComposerTemplates({
       // Only when this template supplies the subject: a new message whose
       // subject was empty. A subject already there is kept as it is.
       const supplies = d.kind === "new" && d.subject.trim() === "" && subject !== "";
-      return supplies ? { ...next, subjectHtml } : next;
+      // Its HTML only while a field is left in it; otherwise it's plain text.
+      const waiting = subjectHtml.includes("data-field") ? subjectHtml : undefined;
+      return supplies ? { ...next, subjectHtml: waiting } : next;
     });
     if (body.trim()) insertHtmlAtCursor(editor, body);
     else focusWhereItWas(editor);

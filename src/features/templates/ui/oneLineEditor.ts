@@ -8,6 +8,36 @@ import { fieldPositions, TemplateFieldNode } from "./fieldNode";
 /** A subject's document: one paragraph, never more. */
 const OneLine = Node.create({ name: "doc", topNode: true, content: "paragraph" });
 
+/** A subject line's editor: one paragraph, plain text and fields. */
+export const ONE_LINE_EXTENSIONS = [
+  OneLine,
+  StarterKit.configure({
+    document: false,
+    blockquote: false,
+    bold: false,
+    bulletList: false,
+    code: false,
+    codeBlock: false,
+    dropcursor: false,
+    gapcursor: false,
+    hardBreak: false,
+    heading: false,
+    horizontalRule: false,
+    italic: false,
+    link: false,
+    listItem: false,
+    listKeymap: false,
+    orderedList: false,
+    strike: false,
+    trailingNode: false,
+    underline: false,
+  }),
+  TemplateFieldNode,
+];
+
+/** Spaces kept as typed, as a text box keeps them. */
+export const ONE_LINE_PARSE = { preserveWhitespace: "full" } as const;
+
 /**
  * A subject line: one line of plain text and template fields, no
  * formatting. Used by the composer and the template editor. A pasted line
@@ -30,35 +60,11 @@ export function useOneLineEditor(
     latest.current = options;
   });
   return useEditor({
-    extensions: [
-      OneLine,
-      StarterKit.configure({
-        document: false,
-        blockquote: false,
-        bold: false,
-        bulletList: false,
-        code: false,
-        codeBlock: false,
-        dropcursor: false,
-        gapcursor: false,
-        hardBreak: false,
-        heading: false,
-        horizontalRule: false,
-        italic: false,
-        link: false,
-        listItem: false,
-        listKeymap: false,
-        orderedList: false,
-        strike: false,
-        trailingNode: false,
-        underline: false,
-      }),
-      TemplateFieldNode,
-    ],
+    extensions: ONE_LINE_EXTENSIONS,
     // As given: callers flatten what may have several lines (`oneLine`).
     // Spaces are kept as typed, as a text box keeps them.
     content: html,
-    parseOptions: { preserveWhitespace: "full" },
+    parseOptions: ONE_LINE_PARSE,
     editorProps: {
       attributes: {
         class: options.className,

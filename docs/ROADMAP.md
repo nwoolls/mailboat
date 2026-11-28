@@ -8261,6 +8261,13 @@ item below is built, the owner has tried it, and the owner has published
               no longer an undo step, as one ⌘Z after typing over a field
               emptied the line; a long subject scrolls inside a line at
               most a few lines tall, so Send stays in the card.)*
+              *(Second round, one reviewer: a minimized card restored with
+              a field in its subject reloads the line exactly, spaces
+              beside the field kept; a line break in a `mailto:` link's
+              subject becomes a space, as it's sent; the line is aligned
+              to the top, as centered, the start of a long subject was cut
+              off out of reach; the line's HTML is kept only while it
+              holds a field.)*
 
 ### Bugs
 
