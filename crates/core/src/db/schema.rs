@@ -474,3 +474,58 @@ DELETE FROM ai_summaries WHERE kind = 'line';
 pub const MIGRATION_V25: &str = r#"
 DELETE FROM ai_summaries WHERE kind = 'line';
 "#;
+
+/// Emails and conversations never get an ID that was used before. SQLite
+/// gives a new row the highest ID plus one, so the ID of a deleted row
+/// that was the highest came back for the next one, perhaps another
+/// account's: code that read an ID, waited on Gmail and then wrote by it
+/// could write onto the wrong email (backlog, 2026-11-27). `row_ids` keeps
+/// the highest ID ever deleted from each table (only when a delete beats
+/// it, so a large delete costs little), and inserts take one past both
+/// that and the highest there is (`store::NEXT_MESSAGE_ID`,
+/// `store::NEXT_THREAD_ID`). As SQLite's AUTOINCREMENT does, without
+/// rebuilding the tables. Account IDs do the same with a counter written
+/// at every insert (`MIGRATION_V19`); emails arrive by the thousand, so
+/// here only a delete that beats the mark writes. A cache from before
+/// starts with no mark, which is right: what it reused before can't be
+/// undone, and from now on nothing is. An insert that would take a used
+/// ID anyway is refused (`*_refuse_used_id`): a copy of the app from before
+/// this, open on the same cache (a development build beside the installed
+/// app), still inserts the SQLite way, and its sync then fails rather than
+/// write onto another email. And the marks can't be deleted
+/// (`row_ids_stay` skips the delete without an error), so that copy's
+/// Delete all data, which empties every table it doesn't know, leaves them.
+/// `IF NOT EXISTS`, as the upgrade tests run migrations again on a database
+/// that has them.
+pub const MIGRATION_V26: &str = r#"
+CREATE TABLE IF NOT EXISTS row_ids (
+  name TEXT PRIMARY KEY,
+  last INTEGER NOT NULL
+);
+CREATE TRIGGER IF NOT EXISTS messages_keep_last_id AFTER DELETE ON messages
+WHEN OLD.id > COALESCE((SELECT last FROM row_ids WHERE name = 'messages'), 0)
+BEGIN
+  INSERT INTO row_ids (name, last) VALUES ('messages', OLD.id)
+  ON CONFLICT (name) DO UPDATE SET last = excluded.last;
+END;
+CREATE TRIGGER IF NOT EXISTS threads_keep_last_id AFTER DELETE ON threads
+WHEN OLD.id > COALESCE((SELECT last FROM row_ids WHERE name = 'threads'), 0)
+BEGIN
+  INSERT INTO row_ids (name, last) VALUES ('threads', OLD.id)
+  ON CONFLICT (name) DO UPDATE SET last = excluded.last;
+END;
+CREATE TRIGGER IF NOT EXISTS row_ids_stay BEFORE DELETE ON row_ids
+BEGIN
+  SELECT RAISE(IGNORE);
+END;
+CREATE TRIGGER IF NOT EXISTS messages_refuse_used_id AFTER INSERT ON messages
+WHEN NEW.id <= COALESCE((SELECT last FROM row_ids WHERE name = 'messages'), 0)
+BEGIN
+  SELECT RAISE(ABORT, 'a deleted email''s ID');
+END;
+CREATE TRIGGER IF NOT EXISTS threads_refuse_used_id AFTER INSERT ON threads
+WHEN NEW.id <= COALESCE((SELECT last FROM row_ids WHERE name = 'threads'), 0)
+BEGIN
+  SELECT RAISE(ABORT, 'a deleted conversation''s ID');
+END;
+"#;
