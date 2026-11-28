@@ -83,6 +83,17 @@ export function viewSelection(view: MailView, account?: AccountId): Selection {
   };
 }
 
+/**
+ * Where a folder asked for from outside the window (Windows: the taskbar
+ * icon's menu) opens: over all accounts, or the only account's own folder,
+ * as the sidebar shows no "All accounts" section for one. Nothing without
+ * accounts (onboarding is showing).
+ */
+export function requestedSelection(view: MailView, accounts: AccountId[]): Selection | null {
+  if (accounts.length === 0) return null;
+  return viewSelection(view, accounts.length === 1 ? accounts[0] : undefined);
+}
+
 export const PAGE_SIZE = 100;
 
 export function systemSelection(label: SystemLabel, account?: AccountId): Selection {

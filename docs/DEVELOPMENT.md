@@ -156,6 +156,11 @@ The installer registers Mailboat as an email app. To have email links open
 it, choose Mailboat for `MAILTO` in Settings → Apps → Default apps (Mailboat's
 Settings → General → Email links opens that page).
 
+The installed app also fills its taskbar icon's right-click menu (New
+message and the unified folders). Only the installed copy does it, so try it
+from the installer, not a build run from `target\`. To redraw the menu's
+icons from the sidebar's, run `bun scripts/build-jump-list-icons.ts`.
+
 ## Check
 
 ```sh

@@ -207,6 +207,11 @@ impl SyncEvents for TauriSyncEvents {
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct MailtoEvent;
 
+/// A folder was asked for (Windows: the taskbar icon's menu); take it with
+/// `view_request_take`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+pub struct ViewRequestEvent;
+
 /// A command chosen in the menu bar, by its ID (`features/commands`).
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 pub struct MenuCommandEvent(pub String);

@@ -22,6 +22,9 @@
   },
   "bundle": {
     "targets": ["nsis"],
+    "resources": {
+      "icons/jump-list/*.ico": "jump-list/"
+    },
     "windows": {
       "nsis": {
         "installerHooks": "windows/installer.nsh"

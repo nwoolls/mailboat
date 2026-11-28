@@ -5,6 +5,7 @@ import {
   ALL_INBOXES,
   UNIFIED_VIEWS,
   viewSelection,
+  requestedSelection,
   viewTitle,
   labelSelection,
   sameSelection,
@@ -171,5 +172,24 @@ describe("staysOnFolderClick", () => {
     expect(staysOnFolderClick(selectionKey(archive), viewSelection({ kind: "archive" }, 3))).toBe(
       false,
     );
+  });
+});
+
+describe("requestedSelection", () => {
+  const starred = { kind: "system", label: "starred" } as const;
+  it("opens the unified folder with several accounts", () => {
+    expect(requestedSelection(starred, [1, 2])).toEqual({
+      accounts: { kind: "all" },
+      view: starred,
+    });
+  });
+  it("opens the only account's own folder", () => {
+    expect(requestedSelection({ kind: "archive" }, [7])).toEqual({
+      accounts: { kind: "only", ids: [7] },
+      view: { kind: "archive" },
+    });
+  });
+  it("opens nothing before there are accounts", () => {
+    expect(requestedSelection(starred, [])).toBeNull();
   });
 });

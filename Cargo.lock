@@ -1067,6 +1067,7 @@ dependencies = [
  "tauri-specta",
  "time",
  "tokio",
+ "windows",
  "windows-registry 0.100.0",
 ]
 

@@ -8059,6 +8059,24 @@ item below is built, the owner has tried it, and the owner has published
             website's pull request merges.)*
       *(moved from "Later / unscheduled" into 0.4.0, owner, 2026-11-26)*
 
+- [ ] Windows: the unified folders in the taskbar icon's right-click menu
+      *(owner enhancement, 2026-10-29, with a screenshot)*: the menu shows
+      only "Mailboat / Pin to taskbar / Close window". Add Inbox, Unread,
+      Starred, Drafts, Archive and All Mail (all accounts) in the actions
+      area, which Windows calls the jump list's Tasks. Each entry should
+      show that folder, starting the app or telling the copy that is
+      already running (the app already passes `mailto:` links to a running
+      copy, which may be the way to do it). Tauri has no jump list of its
+      own, so this needs Windows' own API
+      *(moved from "Later / unscheduled" into 0.4.0, owner, 2026-11-27,
+      branch `windows-jump-list`. Owner's plan, 2026-11-27: "New message"
+      at the top in a section of its own, "Write"; under Tasks, Inbox,
+      Unread, Starred, Drafts, Archive and All Mail, fixed (the sidebar
+      can't hide these folders, and Sent stays out); each entry starts
+      the app with an argument, which a running copy takes through the
+      single-instance plugin as it does `mailto:` links (New message is
+      an empty `mailto:` link); gray icons drawn from the sidebar's)*
+
 ### Bugs
 
 - [x] Holding ↑ with the computer busy for a moment sent the outline back
@@ -8221,16 +8239,6 @@ item below is built, the owner has tried it, and the owner has published
       Google's tokens (`AGENTS.md` already allows API keys as a later
       provider). Once it works, Codex can go. The same could take a
       Claude API key
-
-- [ ] Windows: the unified folders in the taskbar icon's right-click menu
-      *(owner enhancement, 2026-10-29, with a screenshot)*: the menu shows
-      only "Mailboat / Pin to taskbar / Close window". Add Inbox, Unread,
-      Starred, Drafts, Archive and All Mail (all accounts) in the actions
-      area, which Windows calls the jump list's Tasks. Each entry should
-      show that folder, starting the app or telling the copy that is
-      already running (the app already passes `mailto:` links to a running
-      copy, which may be the way to do it). Tauri has no jump list of its
-      own, so this needs Windows' own API
 
 - [ ] Task-app integrations: "add to Todoist and archive" *(owner idea,
       2026-10-29; wanted soon after the first release, the owner would use
