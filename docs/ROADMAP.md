@@ -8170,7 +8170,10 @@ item below is built, the owner has tried it, and the owner has published
               The privacy policy and the feature cards are on the held
               website branch, only with the owner's OK. *(2026-11-27:
               Settings → Privacy and the README say it, branch
-              `templates`; the website waits for the owner.)*
+              `templates`. 2026-11-28: the policy's line, a Templates card
+              and a section of `docs/FEATURES.md` are in draft pull
+              request #265, held until 0.4.0 is released, as the site
+              deploys on merge (owner). Ticked when it merges.)*
         - [x] Browser tests: inserting at the cursor, and the picker's
               keyboard use. *(Done 2026-11-27, branch `templates`, with the
               rest of the steps above: `tests/browser/templates.spec.ts`.
