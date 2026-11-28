@@ -7,6 +7,17 @@ const HOLD_MS = 350;
 /** The email the last `n` / `p` is holding at the top, and until when. */
 let holding: { card: HTMLElement; until: number } | null = null;
 
+/**
+ * Lets go of the email the last `n` / `p` holds at the top: another
+ * scroll (↑ / ↓, Space, Page Up / Down, Home / End, or the wheel over the
+ * reader, not over an email's text, whose frame the app can't hear) takes
+ * the reader over, or the hold would pull that scroll back every frame until it
+ * ran out.
+ */
+export function endHold(): void {
+  holding = null;
+}
+
 /** The reader that's showing (a closing one is inert), if any. */
 function shownReader(): HTMLElement | null {
   for (const el of document.querySelectorAll<HTMLElement>(".reader-scroll"))
@@ -60,6 +71,7 @@ export function leaveReader(): void {
 export function pageReader(dir: 1 | -1): boolean {
   const reader = shownReader();
   if (!reader) return false;
+  endHold();
   reader.scrollBy({ top: dir * reader.clientHeight * 0.85, behavior: "smooth" });
   return true;
 }

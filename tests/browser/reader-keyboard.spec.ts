@@ -570,3 +570,92 @@ test("back into the reply by keys, it still sticks to the bottom as it grows", a
   });
   expect(fromEnd).toBeLessThanOrEqual(2);
 });
+
+/** The conversation with the keyboard at its first email, every email made long. */
+async function longEmailsFromTheTop(page: Page) {
+  await preview(page);
+  await page.keyboard.press("ArrowRight");
+  for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
+  await expect.poll(() => outlinedIndex(page)).toBe(0);
+  await scrollSettled(page);
+  // Every email long, so the reader has room to scroll down from any.
+  await page.evaluate(() => {
+    for (const card of document.querySelectorAll(".reader-scroll section[data-message-id]")) {
+      const tall = document.createElement("div");
+      tall.style.height = "2000px";
+      card.append(tall);
+    }
+  });
+}
+
+/**
+ * ↓ pressed while `n` still holds the email it moved to at the top
+ * (`stepEmail`, 350 ms): the hold set the reader's position every frame,
+ * which pulled the arrow's smooth scroll back, while the arrow's aim
+ * stayed set (backlog, found in review). The arrow's scroll ends the hold.
+ * From the top, `n` goes to the outlined first email, so ↓ reads on down
+ * it. (Had the outline scrolled out of view, the first ↓ would only
+ * outline the email showing, as after Space: `an arrow after the outline
+ * scrolled away outlines the first email showing`.)
+ */
+test("an arrow straight after n scrolls from where n put the reader", async ({ page }) => {
+  await longEmailsFromTheTop(page);
+  const result = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    const key = (k: string) =>
+      reader.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
+    key("n");
+    await frame();
+    const held = reader.scrollTop;
+    key("ArrowDown");
+    // Past the hold (350 ms) and the arrow's smooth scroll.
+    await new Promise((done) => setTimeout(done, 900));
+    return { held, after: reader.scrollTop, view: reader.clientHeight };
+  });
+  // One step down from where n put the reader.
+  expect(result.after - result.held).toBeCloseTo(readerLineStep(result.view), -1);
+});
+
+/**
+ * Other ways of scrolling during `n`'s hold take the reader over too
+ * (review). Real keys, since a dispatched key doesn't scroll anything.
+ */
+for (const key of ["End", "PageDown", "Space"] as const) {
+  test(`${key} straight after n scrolls the reader`, async ({ page }) => {
+    await longEmailsFromTheTop(page);
+    await page.keyboard.press("n");
+    const held = await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop);
+    await page.keyboard.press(key);
+    // Past the hold (350 ms) and any smooth scroll.
+    await page.waitForTimeout(900);
+    const after = await page.evaluate(() => document.querySelector(".reader-scroll")!.scrollTop);
+    expect(after).toBeGreaterThan(held + 100);
+  });
+}
+
+/**
+ * The wheel during `n`'s hold: the reader's wheel handler lets go of it,
+ * so the wheel's scroll isn't pulled back. A dispatched wheel event runs
+ * the handler but scrolls nothing, so the test scrolls the reader itself
+ * after it, as the wheel would. (A real wheel over an email's header
+ * sometimes scrolled nothing in WebKit here, hold or not. Over an email's
+ * text, a frame without scripts, the wheel never reaches the app, so it
+ * can't end the hold: a known limit.)
+ */
+test("the wheel straight after n scrolls the reader", async ({ page }) => {
+  await longEmailsFromTheTop(page);
+  const result = await page.evaluate(async () => {
+    const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    reader.dispatchEvent(new KeyboardEvent("keydown", { key: "n", bubbles: true }));
+    await frame();
+    const held = reader.scrollTop;
+    reader.dispatchEvent(new WheelEvent("wheel", { deltaY: 400, bubbles: true }));
+    reader.scrollTo({ top: held + 400, behavior: "instant" });
+    // Past the hold (350 ms).
+    await new Promise((done) => setTimeout(done, 500));
+    return { held, after: reader.scrollTop };
+  });
+  expect(result.after).toBeGreaterThan(result.held + 300);
+});
