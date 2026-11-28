@@ -266,7 +266,61 @@ test("from the composer's button, a template's From replaces a blank message's",
   await expect(from).toHaveValue("1:alex@northwind.example");
 });
 
+/**
+ * Makes the page hear about caret moves (`selectionchange`) late while
+ * `window.__caretLate` is set, as a busy machine does: the editor learns
+ * where a key moved the caret only after the next key has arrived (CI,
+ * 2026-11-28). Call before `goto`.
+ */
+async function lateCaretMoves(page: Page) {
+  await page.addInitScript(() => {
+    const add = Document.prototype.addEventListener;
+    Document.prototype.addEventListener = function (
+      this: Document,
+      type: string,
+      listener: EventListenerOrEventListenerObject | null,
+      options?: boolean | AddEventListenerOptions,
+    ) {
+      if (type !== "selectionchange" || typeof listener !== "function")
+        return add.call(this, type, listener as EventListenerOrEventListenerObject, options);
+      const late = (e: Event) => {
+        const ms = (window as unknown as { __caretLate?: number }).__caretLate ?? 0;
+        if (ms > 0) setTimeout(() => listener.call(this, e), ms);
+        else listener.call(this, e);
+      };
+      return add.call(this, type, late, options);
+    } as typeof Document.prototype.addEventListener;
+  });
+}
+
+/**
+ * Presses a key that moves the caret, then waits until the page has heard
+ * about the move: the editor acts on the next arrow from where it last
+ * heard the caret was, so keys pressed faster than it hears them act from
+ * the wrong place (an arrow meant to select a field moved past it). Caps
+ * the wait, for a key that doesn't move the caret.
+ */
+async function pressHeard(page: Page, key: string) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __caretHeard?: Promise<void> };
+    w.__caretHeard = new Promise<void>((done) => {
+      const cap = setTimeout(done, 2000);
+      document.addEventListener(
+        "selectionchange",
+        () => {
+          clearTimeout(cap);
+          setTimeout(done, 0);
+        },
+        { once: true },
+      );
+    });
+  });
+  await page.keyboard.press(key);
+  await page.evaluate(() => (window as unknown as { __caretHeard?: Promise<void> }).__caretHeard);
+}
+
 test("Settings: a new template with a field, changed again from the keyboard", async ({ page }) => {
+  await lateCaretMoves(page);
   await page.goto("/tests/browser/harness.html?mode=settings&section=templates");
   await page.getByRole("button", { name: "New template" }).click();
   const editor = page.getByRole("dialog", { name: "New template" });
@@ -290,12 +344,16 @@ test("Settings: a new template with a field, changed again from the keyboard", a
   );
 
   // Back in: the arrow keys select the field, and Return opens its settings.
+  // Caret moves are heard late here, as on a busy runner, so each key
+  // waits for its move to be heard.
   await page.getByRole("button", { name: "Edit Weekly report" }).click();
   const again = page.getByRole("dialog", { name: "Edit template" });
+  await page.evaluate(() => ((window as unknown as { __caretLate: number }).__caretLate = 80));
   await again.getByRole("textbox", { name: "Message" }).click();
-  await page.keyboard.press("End");
-  await page.keyboard.press("ArrowLeft");
-  await page.keyboard.press("ArrowLeft");
+  await pressHeard(page, "End");
+  await pressHeard(page, "ArrowLeft");
+  await pressHeard(page, "ArrowLeft");
+  await expect(again.locator(".template-field.ProseMirror-selectednode")).toHaveText("Week");
   await page.keyboard.press("Enter");
   const settings = page.getByRole("dialog", { name: "Field" });
   await expect(settings.getByRole("textbox", { name: "Name" })).toHaveValue("Week");

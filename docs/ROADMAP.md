@@ -5515,6 +5515,28 @@ the way, and one bug in the app caused flaky failures; all three are in
         runs each), the file 100 of 100 on a slowed page (5 runs) and 160
         of 160 on 8 workers.
 
+- [x] `templates.spec.ts`: "Settings: a new template with a field, changed
+      again from the keyboard" (line 269, new on branch `templates`).
+      - 2026-11-28, CI on #262 (branch `templates`),
+        https://github.com/nwoolls/mailboat/actions/runs/46114647766,
+        WebKit: the field's settings never opened (`toHaveValue("Week")`,
+        element not found); 305 others passed. The job wasn't run again.
+        The trace: the page stalled about 900 ms as the edit dialog opened,
+        then End, ← and ← came within 30 ms of the click. The frame after
+        shows the second ← didn't select the field: Return split the line
+        between the field and the ".". ProseMirror acts on an arrow from
+        where it last heard the caret was (`selectionchange`), and on a
+        busy runner it hadn't heard the first ←'s move yet.
+      - Fixed 2026-11-28 (branch `templates`), in the test: each key waits
+        until the page has heard its caret move (`pressHeard`), and the
+        test makes the page hear caret moves 80 ms late for that part
+        (`lateCaretMoves`), so the case no longer needs a busy runner. A
+        throwaway spec failed with moves heard 50 or 150 ms late and the
+        keys pressed straight away, and passed when each key waited.
+        Without the fix the test fails every time (5 of 5); with it it
+        passed 10 of 10, 5 of 5 slowed, 40 of 40 on 8 workers, and the
+        whole file 30 of 30 on 8 workers.
+
 ## Bug backlog
 
 *Bugs found in passing (started 2026-10-19 at the owner's request).
