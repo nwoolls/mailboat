@@ -8251,6 +8251,18 @@ item below is built, the owner has tried it, and the owner has published
       provider). Once it works, Codex can go. The same could take a
       Claude API key
 
+- [ ] Third-party notices in the app *(owner, 2026-11-27, from the
+      review of branch `windows-jump-list`)*: the installers ship no
+      license notices for the open-source packages bundled into the app
+      (Hugeicons, React and others), though MIT-style licenses ask for
+      their notice to travel with copies; only the release's software
+      bill of materials lists them, beside the release. Generate one
+      notices file from the licenses `scripts/make-sbom.ts` already
+      reads, ship it in the macOS, Windows and Linux packages, keep it
+      current with a check, and perhaps link it from Settings. The
+      taskbar menu's icons already carry Hugeicons' notice
+      (`jump-list\HUGEICONS-LICENSE.md`)
+
 - [ ] Task-app integrations: "add to Todoist and archive" *(owner idea,
       2026-10-29; wanted soon after the first release, the owner would use
       it often)*: one way the owner keeps an empty inbox is turning an email that
