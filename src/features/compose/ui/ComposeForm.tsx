@@ -41,7 +41,7 @@ import { stuckAfterScroll } from "../model/stickToEnd";
 import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 import { ComposerTemplates } from "../../templates/ui/ComposerTemplates";
 import { selectFirstField } from "../../templates/ui/fieldNode";
-import { unfilledFields } from "../../templates/model/fields";
+import { waitingFields } from "../../templates/model/fields";
 
 export type ReplyKind = Exclude<ComposeKind, "new">;
 
@@ -369,12 +369,14 @@ export function ComposeForm({
     editor?.setEditable(!sending, false);
   }, [editor, sending]);
 
-  const trySend = (anyway = false) => {
+  // `confirmed`: the fields Send anyway was pressed for. It sends only if
+  // those are still all that's waiting; a field added since asks again.
+  const trySend = (confirmed: string[] = []) => {
     const why = sendProblem(draft);
     setProblem(why);
     if (why || sending) return;
-    const left = anyway ? [] : unfilledFields(draft.html);
-    setWaiting(left.length ? left : null);
+    const left = waitingFields(draft).filter((n) => !confirmed.includes(n));
+    setWaiting(left.length ? waitingFields(draft) : null);
     if (left.length === 0) onSend();
   };
   const discard = () => (hasChanges(draft) ? setConfirming(true) : onDiscard());
@@ -439,6 +441,9 @@ export function ComposeForm({
       className={`relative flex min-h-0 flex-col text-[13px] ${inline ? "" : "flex-1"}`}
       onSubmit={(e) => {
         e.preventDefault();
+        // Only this form's own submit sends: a dialog's form inside it (in
+        // the React tree, through a portal) never does.
+        if (e.target !== e.currentTarget) return;
         trySend();
       }}
       onKeyDown={(e) => {
@@ -601,7 +606,16 @@ export function ComposeForm({
               type="button"
               onClick={() => {
                 setWaiting(null);
-                if (editor) selectFirstField(editor);
+                if (editor && selectFirstField(editor)) return;
+                // Only in the subject: select its `[Name]` there.
+                const subject = formRef.current?.querySelector<HTMLInputElement>(
+                  "input[aria-label=Subject]",
+                );
+                const name = waiting[0];
+                const at = subject && name ? subject.value.indexOf(`[${name}]`) : -1;
+                if (!subject || at < 0) return;
+                subject.focus();
+                subject.setSelectionRange(at, at + name!.length + 2);
               }}
               className="h-6 shrink-0 rounded-md bg-background-base px-2.5 text-content ring-1 ring-stroke hover:bg-selection"
             >
@@ -609,7 +623,7 @@ export function ComposeForm({
             </button>
             <button
               type="button"
-              onClick={() => trySend(true)}
+              onClick={() => trySend(waiting ?? [])}
               className="h-6 shrink-0 rounded-md bg-background-base px-2.5 text-content ring-1 ring-stroke hover:bg-selection"
             >
               Send anyway

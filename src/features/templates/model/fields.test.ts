@@ -3,6 +3,7 @@ import type { TemplateField } from "../../../platform/tauri/bindings";
 import {
   defaultDay,
   EMPTY_VALUE,
+  emptySubjectFields,
   fieldsInOrder,
   fillBody,
   fillSubject,
@@ -12,6 +13,7 @@ import {
   startingValues,
   unfilledFields,
   valueText,
+  waitingFields,
   withoutFieldMarks,
 } from "./fields";
 
@@ -147,6 +149,23 @@ describe("fillBody", () => {
     );
   });
 
+  it("never copies an image or a nested list beside the field", () => {
+    const lines = { changes: value({ text: "One\nTwo" }) };
+    const image = `<p>${span("changes")} <img src="https://x.example/a.png"></p>`;
+    expect(fillBody(image, [changes], lines)).toBe(
+      '<p>One<br>Two <img src="https://x.example/a.png"></p>',
+    );
+    const nested = `<ul><li><p>${span("changes")}</p><ul><li><p>Detail</p></li></ul></li></ul>`;
+    expect(fillBody(nested, [changes], lines)).toBe(
+      "<ul><li><p>One<br>Two</p><ul><li><p>Detail</p></li></ul></li></ul>",
+    );
+    // A link around it isn't formatting either.
+    const linked = `<p><a href="https://x.example">${span("changes")}</a></p>`;
+    expect(fillBody(linked, [changes], lines)).toBe(
+      '<p><a href="https://x.example">One<br>Two</a></p>',
+    );
+  });
+
   it("breaks lines inside a sentence", () => {
     const html = `<p>Changes: ${span("changes")}.</p>`;
     expect(fillBody(html, [changes], { changes: value({ text: "One\nTwo" }) })).toBe(
@@ -183,6 +202,28 @@ describe("fillSubject", () => {
       "Change control: January 2027 [Rollback]",
     );
     expect(fillSubject("", [], {})).toBe("");
+  });
+
+  it("keeps the words of a subject in several paragraphs apart", () => {
+    expect(fillSubject("<p>First</p><p>Second</p>", [], {})).toBe("First Second");
+  });
+
+  it("names the fields it left waiting, and Send asks while they show", () => {
+    const rollback = field("rollback", "text");
+    const html = `<p>${span("window", "monthYear")} ${span("rollback")}</p>`;
+    const values = { window: jan11, rollback: value({ text: "" }) };
+    const waiting = emptySubjectFields(html, [window, rollback], values, locale);
+    expect(waiting).toEqual(["Rollback"]);
+    const subject = fillSubject(html, [window, rollback], values, locale);
+    expect(waitingFields({ html: "", subject, waitingInSubject: waiting })).toEqual(["Rollback"]);
+    // Typed over in the subject: no longer waiting.
+    expect(
+      waitingFields({ html: "", subject: "January 2027 done", waitingInSubject: waiting }),
+    ).toEqual([]);
+    // With one in the text too, each once.
+    expect(
+      waitingFields({ html: `<p>${span("rollback")}</p>`, subject, waitingInSubject: waiting }),
+    ).toEqual(["Rollback"]);
   });
 });
 

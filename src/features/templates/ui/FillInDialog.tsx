@@ -70,6 +70,9 @@ export function FillInDialog({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          // React passes a submit up its own tree, through the portal, to
+          // the message's form, whose submit sends.
+          e.stopPropagation();
           onInsert(values);
         }}
       >

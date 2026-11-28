@@ -1,5 +1,6 @@
 import { type Editor, mergeAttributes, Node } from "@tiptap/react";
 import { DOMParser as PMDOMParser } from "@tiptap/pm/model";
+import { closeHistory } from "@tiptap/pm/history";
 import { NodeSelection } from "@tiptap/pm/state";
 
 /**
@@ -37,9 +38,12 @@ export const TemplateFieldNode = Node.create({
     };
   },
 
-  // Before text style's own `span` rule, which would take it for styling.
+  // Only the app's own (its class, which `renderHTML` writes): a span
+  // with a data-field attribute pasted from a web page stays ordinary
+  // text. Before text style's own `span` rule, which would take it for
+  // styling.
   parseHTML() {
-    return [{ tag: "span[data-field]", priority: 1000 }];
+    return [{ tag: "span.template-field[data-field]", priority: 1000 }];
   },
 
   renderHTML({ node, HTMLAttributes }) {
@@ -104,8 +108,19 @@ export function selectFirstField(editor: Editor): boolean {
 export function insertHtmlAtCursor(editor: Editor, html: string) {
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
   const slice = PMDOMParser.fromSchema(editor.schema).parseSlice(doc.body);
-  editor.view.dispatch(editor.state.tr.replaceSelection(slice).scrollIntoView());
+  // An undo step of its own: typing just before or after it (within the
+  // history's half second) would otherwise go with it.
+  editor.view.dispatch(closeHistory(editor.state.tr.replaceSelection(slice).scrollIntoView()));
+  editor.view.dispatch(closeHistory(editor.state.tr));
   focusWhereItWas(editor);
+}
+
+/** The field selected as a whole (a click, or the arrow keys onto it), if any. */
+export function selectedField(editor: Editor): { pos: number; attrs: FieldAttrs } | null {
+  const { selection } = editor.state;
+  if (!(selection instanceof NodeSelection) || selection.node.type.name !== "templateField")
+    return null;
+  return { pos: selection.from, attrs: selection.node.attrs as FieldAttrs };
 }
 
 /**

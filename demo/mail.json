@@ -612,8 +612,8 @@
           "email": "priya@northwind.example"
         }
       ],
-      "subject": "<p>Change control: <span data-field=\"window\" data-format=\"monthYear\">Window</span></p>",
-      "body": "<p>Hi all,</p><p>A <strong><span data-field=\"type\">Type</span></strong> change is planned for <strong><span data-field=\"window\" data-format=\"longTime\">Window</span></strong>. In this window we will:</p><ul><li><p><span data-field=\"changes\">Changes</span></p></li></ul><p>Rollback: <span data-field=\"rollback\">Rollback</span></p><p>Reply here with any concerns by Friday.</p>",
+      "subject": "<p>Change control: <span class=\"template-field\" data-field=\"window\" data-format=\"monthYear\">Window</span></p>",
+      "body": "<p>Hi all,</p><p>A <strong><span class=\"template-field\" data-field=\"type\">Type</span></strong> change is planned for <strong><span class=\"template-field\" data-field=\"window\" data-format=\"longTime\">Window</span></strong>. In this window we will:</p><ul><li><p><span class=\"template-field\" data-field=\"changes\">Changes</span></p></li></ul><p>Rollback: <span class=\"template-field\" data-field=\"rollback\">Rollback</span></p><p>Reply here with any concerns by Friday.</p>",
       "fields": [
         {
           "id": "window",
@@ -649,8 +649,8 @@
           "email": "change-board@northwind.example"
         }
       ],
-      "subject": "<p>Postponed: change on <span data-field=\"window\" data-format=\"short\">Window</span></p>",
-      "body": "<p>Hi all,</p><p>The change planned for <span data-field=\"window\" data-format=\"long\">Window</span> is moved to <strong><span data-field=\"new\" data-format=\"longTime\">New window</span></strong>. Nothing else about it has changed.</p>",
+      "subject": "<p>Postponed: change on <span class=\"template-field\" data-field=\"window\" data-format=\"short\">Window</span></p>",
+      "body": "<p>Hi all,</p><p>The change planned for <span class=\"template-field\" data-field=\"window\" data-format=\"long\">Window</span> is moved to <strong><span class=\"template-field\" data-field=\"new\" data-format=\"longTime\">New window</span></strong>. Nothing else about it has changed.</p>",
       "fields": [
         {
           "id": "window",
@@ -667,7 +667,7 @@
     },
     {
       "name": "Thanks, will review",
-      "body": "<p>Hi <span data-field=\"first\">Recipient's first name</span>,</p><p>Thanks for sending this over. I'll take a look and get back to you by <span data-field=\"by\" data-format=\"long\">By</span>.</p>",
+      "body": "<p>Hi <span class=\"template-field\" data-field=\"first\">Recipient's first name</span>,</p><p>Thanks for sending this over. I'll take a look and get back to you by <span class=\"template-field\" data-field=\"by\" data-format=\"long\">By</span>.</p>",
       "fields": [
         {
           "id": "first",
@@ -685,8 +685,8 @@
     },
     {
       "name": "Out next week",
-      "subject": "<p>Out <span data-field=\"first\" data-format=\"short\">First day</span> to <span data-field=\"last\" data-format=\"short\">Last day</span></p>",
-      "body": "<p>Hi,</p><p>I'm out from <span data-field=\"first\" data-format=\"long\">First day</span> to <span data-field=\"last\" data-format=\"long\">Last day</span>. For anything urgent, Omar can help.</p>",
+      "subject": "<p>Out <span class=\"template-field\" data-field=\"first\" data-format=\"short\">First day</span> to <span class=\"template-field\" data-field=\"last\" data-format=\"short\">Last day</span></p>",
+      "body": "<p>Hi,</p><p>I'm out from <span class=\"template-field\" data-field=\"first\" data-format=\"long\">First day</span> to <span class=\"template-field\" data-field=\"last\" data-format=\"long\">Last day</span>. For anything urgent, Omar can help.</p>",
       "fields": [
         {
           "id": "first",

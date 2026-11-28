@@ -7,8 +7,9 @@ import { useSaveTemplate, useTemplateAction, useTemplates } from "../../../share
 import { showToast } from "../../../shared/lib/toast";
 import { TemplateIcon } from "../../../shared/ui/icons";
 import { type Draft, textToHtml } from "../../compose/model/draft";
-import { withTemplateFields } from "../model/apply";
+import { templateIdentity, withTemplateFields } from "../model/apply";
 import {
+  emptySubjectFields,
   type FieldValues,
   fillBody,
   fillSubject,
@@ -58,19 +59,30 @@ export function ComposerTemplates({
     if (!editor || editor.isDestroyed) return;
     const body = fillBody(t.body, t.fields, values);
     const subject = t.subject ? fillSubject(t.subject, t.fields, values) : "";
+    const waiting = t.subject ? emptySubjectFields(t.subject, t.fields, values) : [];
+    // From, people and subject first: putting the text in counts as writing,
+    // after which From no longer changes.
+    onChange((d) => {
+      const next = withTemplateFields(d, t, identities, subject);
+      // Only when the subject is the template's (one already there is kept).
+      return next.subject === subject && subject ? { ...next, waitingInSubject: waiting } : next;
+    });
     if (body.trim()) insertHtmlAtCursor(editor, body);
     else focusWhereItWas(editor);
-    onChange((d) => withTemplateFields(d, t, identities, subject));
     used.mutate({ id: t.id, action: "used" });
   };
   const pick = (t: Template) => {
     onOpenChange(false);
     if (t.fields.length === 0) return insert(t, {});
-    // A blank new message is about to get the template's people.
+    // What the message will have once the template is in: its people if
+    // it has none, and its From if nothing is written yet, which "your
+    // first name" is taken from.
     const to = draft.kind === "new" && draft.to.length === 0 ? t.to : draft.to;
+    const identity = templateIdentity(draft, t, identities);
+    const from = identity ? { name: identity.name, email: identity.email } : draft.from;
     setFilling({
       template: t,
-      initial: startingValues(t.fields, { to, from: draft.from, now: new Date() }),
+      initial: startingValues(t.fields, { to, from, now: new Date() }),
     });
   };
 
@@ -225,6 +237,9 @@ function SaveAsTemplateDialog({ draft, onClose }: { draft: Draft; onClose: () =>
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          // React passes a submit up its own tree, through the portal, to
+          // the message's form, whose submit sends.
+          e.stopPropagation();
           submit(false);
         }}
       >

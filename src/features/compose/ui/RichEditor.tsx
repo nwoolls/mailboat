@@ -117,7 +117,14 @@ export function useRichEditor(
   initialHtml: string,
   onChange: (c: EditorChange) => void,
   /** Pixels at the bottom of the scroll area the caret should stay out of. */
-  options?: { keepClearBelow?: number },
+  options?: {
+    keepClearBelow?: number;
+    /**
+     * A key the editor's user handles (true: handled). Read once, when the
+     * editor is made, so it should reach what it needs through refs.
+     */
+    onKey?: (view: EditorView, event: KeyboardEvent) => boolean;
+  },
 ) {
   const clear = options?.keepClearBelow ?? 0;
   const report = (editor: Editor, edited: boolean) =>
@@ -153,7 +160,8 @@ export function useRichEditor(
       },
       // ⌘↩ sends (the form handles it); the editor mustn't also insert a
       // line break, which is what it would otherwise do.
-      handleKeyDown: (_view, event) => event.key === "Enter" && primaryKey(event),
+      handleKeyDown: (view, event) =>
+        (event.key === "Enter" && primaryKey(event)) || (options?.onKey?.(view, event) ?? false),
       handleDOMEvents: clickCaretGuard(),
       ...(clear > 0 && {
         scrollThreshold: { top: 0, left: 0, right: 0, bottom: clear },

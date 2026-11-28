@@ -153,20 +153,44 @@ function fieldSpans(doc: Document): HTMLElement[] {
   return [...doc.body.querySelectorAll<HTMLElement>("span[data-field]")];
 }
 
+/** Inline formatting a field may sit inside and still be "alone" in its block. */
+const FORMATTING = new Set(["B", "STRONG", "I", "EM", "U", "S", "SPAN", "FONT", "MARK", "SMALL"]);
+
+/**
+ * Whether `block` holds nothing but `span`: no other text, and no element
+ * except formatting around the field (and the paragraph inside a list
+ * item). An image, a link or a nested list beside it means no.
+ */
+function holdsOnly(block: HTMLElement, span: HTMLElement): boolean {
+  let el: HTMLElement | null = span.parentElement;
+  const around = new Set<Element>();
+  while (el && el !== block) {
+    around.add(el);
+    el = el.parentElement;
+  }
+  const walker = block.ownerDocument.createTreeWalker(block, NodeFilter.SHOW_ALL);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node === span || span.contains(node)) continue;
+    if (node.nodeType === Node.TEXT_NODE) {
+      if ((node.textContent ?? "").trim() !== "") return false;
+    } else if (node instanceof Element) {
+      const allowed = around.has(node) && (FORMATTING.has(node.tagName) || node.tagName === "P");
+      if (!allowed) return false;
+    }
+  }
+  return true;
+}
+
 /**
  * The block a long text can be repeated in, one copy per line: a list item
  * or paragraph holding nothing but the field (bold or italic around it is
  * fine). Otherwise the lines are joined by line breaks where the field is.
  */
 function repeatableBlock(span: HTMLElement): HTMLElement | null {
-  const block = span.closest("li") ?? span.closest("p");
-  if (!block) return null;
-  // In a list item, the paragraph inside it holds the field: copy the item.
-  if (block.tagName === "P" && block.parentElement?.tagName === "LI") {
-    const item = block.parentElement;
-    return item.textContent?.trim() === span.textContent?.trim() ? item : null;
-  }
-  return block.textContent?.trim() === span.textContent?.trim() ? block : null;
+  const item = span.closest("li");
+  if (item) return holdsOnly(item, span) ? item : null;
+  const paragraph = span.closest("p");
+  return paragraph && holdsOnly(paragraph, span) ? paragraph : null;
 }
 
 /**
@@ -229,7 +253,8 @@ export function fillSubject(
   values: FieldValues,
   locale?: string,
 ): string {
-  const doc = parse(html);
+  // Paragraphs (a pasted subject of several) are words apart, not run together.
+  const doc = parse(html.replace(/<\/(p|div|li|h\d)>/gi, "</$1> "));
   const byId = new Map(fields.map((f) => [f.id, f]));
   for (const span of fieldSpans(doc)) {
     const field = byId.get(span.dataset.field ?? "");
@@ -240,6 +265,45 @@ export function fillSubject(
     span.replaceWith(doc.createTextNode(text || `[${name}]`));
   }
   return (doc.body.textContent ?? "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The names of the fields the filled-in subject still shows as `[Name]`,
+ * for Send to ask about along with those in the text.
+ */
+export function emptySubjectFields(
+  html: string,
+  fields: TemplateField[],
+  values: FieldValues,
+  locale?: string,
+): string[] {
+  const byId = new Map(fields.map((f) => [f.id, f]));
+  const names: string[] = [];
+  for (const span of fieldSpans(parse(html))) {
+    const field = byId.get(span.dataset.field ?? "");
+    const filled =
+      field?.kind === "longText"
+        ? lines(values[field.id]?.text ?? "").length > 0
+        : field
+          ? valueText(field, span.dataset.format ?? null, values[field.id], locale) !== ""
+          : false;
+    const name = span.textContent ?? "";
+    if (!filled && !names.includes(name)) names.push(name);
+  }
+  return names;
+}
+
+/**
+ * The fields a message still waits on, in order, each once: those in its
+ * text, then those its subject still shows as `[Name]`.
+ */
+export function waitingFields(draft: {
+  html: string;
+  subject: string;
+  waitingInSubject?: string[];
+}): string[] {
+  const inSubject = (draft.waitingInSubject ?? []).filter((n) => draft.subject.includes(`[${n}]`));
+  return [...new Set([...unfilledFields(draft.html), ...inSubject])];
 }
 
 /** The fields in the order they first appear (subject, then body), each once. */

@@ -72,6 +72,11 @@ export type Draft = {
    * from one in ⌘K), dropped once it's in.
    */
   pendingTemplate?: TemplateId;
+  /**
+   * Fields a template left empty in the subject (shown there as `[Name]`),
+   * for Send to ask about while the subject still shows them.
+   */
+  waitingInSubject?: string[];
   /** Files to send with it. */
   attachments: OutgoingAttachment[];
   /** The original's files a forward carries along (removable). */

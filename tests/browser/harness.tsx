@@ -289,6 +289,19 @@ const answer = (cmd: string, args: unknown): unknown => {
       // The real app restarts here, so this never answers.
       return new Promise(() => {});
     case "identities_list":
+      // `&alias=1`: a second address on the account, as demo mode's
+      // templates send from (`alex@northwind.example`).
+      if (new URLSearchParams(location.search).has("alias"))
+        return [
+          identity,
+          {
+            ...identity,
+            email: "alex@northwind.example",
+            isPrimary: false,
+            isDefault: false,
+            signature: "<p>Alex Rivera, Northwind</p>",
+          },
+        ];
       return [identity];
     case "contacts_list":
       // `&contacts=demo`: the demo's people, less those taken out.
@@ -609,6 +622,9 @@ const answer = (cmd: string, args: unknown): unknown => {
         adaptive: true,
         recolorable: false,
       };
+    case "message_send":
+      record("message_send");
+      return null;
     case "draft_save":
       record("draft_save");
       if (new URLSearchParams(location.search).get("draftsave") === "fail")

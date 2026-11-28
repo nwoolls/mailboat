@@ -33,7 +33,6 @@ import {
 import { selectedInMessage } from "../../reader/ui/MessageFrame";
 import { draftFromMailto } from "../model/mailto";
 import { composingPrefs } from "./composingPrefs";
-import { withTemplateFields } from "../../templates/model/apply";
 
 /**
  * Drafts on screen, shared app-wide (the toolbar, keys and the reader all
@@ -347,16 +346,16 @@ export function useComposeActions(accounts: Account[]) {
   );
 
   /**
-   * A new message from a template (⌘K): its From and people now, and its
-   * text, fields and subject once the message has opened.
+   * A new message from a template (⌘K). The message opens blank and the
+   * template goes in once it's open: after Fill in, if it has fields, so
+   * canceling that leaves a blank message (with nothing saved to Gmail).
    */
   const startFromTemplate = useCallback(
     async (accountId: AccountId, template: Template) => {
-      const [draft, list] = await Promise.all([blankDraft(accountId), identities()]);
-      const filled = withTemplateFields(draft, template, list, "");
-      set(S.openCard(state, { ...filled, pendingTemplate: template.id }));
+      const draft = await blankDraft(accountId);
+      set(S.openCard(state, { ...draft, pendingTemplate: template.id }));
     },
-    [blankDraft, identities],
+    [blankDraft],
   );
 
   /** A new message filled in from a `mailto:` link. */

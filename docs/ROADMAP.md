@@ -8157,8 +8157,10 @@ item below is built, the owner has tried it, and the owner has published
         - [x] A field left empty stays highlighted in the message, and
               Send asks about it first.
         - [x] ⌘K: each template is a command under "New message from
-              template", which starts a new email from it; "Save as
-              template…" and the templates' Settings page there too.
+              template", which starts a new email from it, and "Manage
+              templates" opens their Settings page. ("Save as template…" is
+              in the composer's Templates list, not ⌘K: ⌘K is Link while
+              writing.)
         - [x] Settings → Templates (after Signatures): the list, New,
               Edit, Duplicate, Delete; the editor with Add field and each
               field's settings.
@@ -8176,6 +8178,25 @@ item below is built, the owner has tried it, and the owner has published
               does, its first and last lines joining the text on either
               side of the cursor, and closing the picker or Fill in puts
               the cursor back where it was. Not yet tried by the owner.)*
+              *(From review, 2026-11-27, two reviewers: Insert in Fill in and
+              Save in Save as template sent the message, as React passes a
+              submit up through the portal to the message's form; now only
+              the message's own form sends. From, the people and the subject
+              go in before the text, which counts as writing (From changed
+              only from ⌘K before); From also stays once a subject is
+              written. ⌘K opens a blank message and puts the template in on
+              Insert, so canceling Fill in leaves nothing behind. A template
+              is its own undo step even right after typing. A field left
+              empty in the subject is asked about too, and Send anyway
+              covers only the fields it was shown. A long text repeats its
+              block only when the field is alone in it, so an image or a
+              nested list beside it is never copied. A pasted subject of
+              several lines stays words apart. Only the app's own field
+              marks become fields, so a pasted span is ordinary text.
+              Return on a selected field in the editor opens its settings.
+              Template IDs are never reused, and names clash ignoring case
+              beyond ASCII too. Delete all data's confirmation names
+              templates.)*
 
 ### Bugs
 

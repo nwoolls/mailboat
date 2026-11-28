@@ -1,4 +1,5 @@
-import { type Editor, EditorContent, useEditor } from "@tiptap/react";
+import { type Editor, EditorContent, Node, useEditor } from "@tiptap/react";
+import type { EditorView } from "@tiptap/pm/view";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useRef, useState } from "react";
 import type {
@@ -20,6 +21,7 @@ import {
   type FieldAttrs,
   fieldPositions,
   insertField,
+  selectedField,
   TemplateFieldNode,
   updateFieldEverywhere,
 } from "./fieldNode";
@@ -66,11 +68,19 @@ const INPUT =
 /** A field dialog's controls fill its width (a long option can't widen it). */
 const FIELD_INPUT = `${INPUT} w-full min-w-0`;
 
+/** The subject's document: one paragraph, never more. */
+const OneLine = Node.create({ name: "doc", topNode: true, content: "paragraph" });
+
 /** The subject's editor: one line of text and fields. */
-function useSubjectEditor(html: string) {
+function useSubjectEditor(
+  html: string,
+  onKey: (view: EditorView, event: KeyboardEvent) => boolean,
+) {
   return useEditor({
     extensions: [
+      OneLine,
       StarterKit.configure({
+        document: false,
         blockquote: false,
         bold: false,
         bulletList: false,
@@ -100,8 +110,14 @@ function useSubjectEditor(html: string) {
         role: "textbox",
         "aria-multiline": "false",
       },
-      // One line: Return does nothing (⌘↩ saves, through the dialog).
-      handleKeyDown: (_view, event) => event.key === "Enter",
+      // One line: Return does nothing (⌘↩ saves, through the dialog), but
+      // on a selected field it opens its settings.
+      handleKeyDown: (view, event) => onKey(view, event) || event.key === "Enter",
+      // A pasted line break or paragraph becomes a space, so words don't run
+      // together on the one line.
+      transformPastedText: (text) => text.replace(/\s*[\r\n]+\s*/g, " "),
+      transformPastedHTML: (pasted) =>
+        pasted.replace(/<br\s*\/?>/gi, " ").replace(/<\/(p|div|li|h[1-6]|tr)>/gi, " </$1>"),
     },
   });
 }
@@ -143,8 +159,24 @@ export function TemplateEditor({
   const [fields, setFields] = useState<TemplateField[]>(template?.fields ?? []);
   const [fieldEdit, setFieldEdit] = useState<FieldEdit | null>(null);
   const [dragOver, setDragOver] = useState<AddressLine | null>(null);
-  const subject = useSubjectEditor(template?.subject ?? "");
-  const body = useRichEditor(template?.body ?? "", () => {});
+  // Return on a field selected from the keyboard opens its settings, as a
+  // click does. The editors are made once, so they reach the handler
+  // through a ref that follows each render.
+  const fieldKey = useRef<(view: EditorView, event: KeyboardEvent) => boolean>(() => false);
+  const subject = useSubjectEditor(template?.subject ?? "", (v, e) => fieldKey.current(v, e));
+  const body = useRichEditor(template?.body ?? "", () => {}, {
+    onKey: (v, e) => fieldKey.current(v, e),
+  });
+  useEffect(() => {
+    fieldKey.current = (view, event) => {
+      if (event.key !== "Enter" || primaryKey(event)) return false;
+      const editor = [subject, body].find((e) => e?.view === view);
+      const at = editor ? selectedField(editor) : null;
+      if (!editor || !at) return false;
+      setFieldEdit({ mode: "edit", editor, pos: at.pos, attrs: at.attrs });
+      return true;
+    };
+  });
   // Where Add field puts a field: the last of the two that had the cursor.
   const lastFocused = useRef<"subject" | "body">("body");
   const ref = useRef<HTMLDialogElement>(null);

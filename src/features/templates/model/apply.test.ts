@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Identity } from "../../../platform/tauri/bindings";
 import { newDraft } from "../../compose/model/draft";
-import { recentFirst, withTemplateFields } from "./apply";
+import { recentFirst, templateIdentity, withTemplateFields } from "./apply";
 
 const identities: Identity[] = [
   {
@@ -56,6 +56,21 @@ describe("withTemplateFields", () => {
     expect(d.to).toEqual([maya]);
     expect(d.cc).toEqual([priya]);
     expect(d.subject).toBe("Mine");
+  });
+
+  it("keeps From once anything is written, subject or text", () => {
+    const blank = newDraft(identities, 1, "alex@rivera.example");
+    for (const written of [
+      { ...blank, subject: "Mine" },
+      { ...blank, text: "Opened from a saved draft" },
+      { ...blank, edited: true },
+    ]) {
+      expect(withTemplateFields(written, template, identities, "").from.email).toBe(
+        "alex@rivera.example",
+      );
+      expect(templateIdentity(written, template, identities)).toBeUndefined();
+    }
+    expect(templateIdentity(blank, template, identities)?.email).toBe("alex@northwind.example");
   });
 
   it("keeps From when the template's address is no longer yours", () => {
