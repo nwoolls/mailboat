@@ -244,30 +244,6 @@ export function fillBody(
 }
 
 /**
- * A template's subject, filled in, as plain text. A field with no value
- * leaves its name in brackets, which is easy to spot in the subject line.
- */
-export function fillSubject(
-  html: string,
-  fields: TemplateField[],
-  values: FieldValues,
-  locale?: string,
-): string {
-  // Paragraphs (a pasted subject of several) are words apart, not run together.
-  const doc = parse(html.replace(/<\/(p|div|li|h\d)>/gi, "</$1> "));
-  const byId = new Map(fields.map((f) => [f.id, f]));
-  for (const span of fieldSpans(doc)) {
-    const field = byId.get(span.dataset.field ?? "");
-    const name = span.textContent ?? "";
-    let text = "";
-    if (field?.kind === "longText") text = lines(values[field.id]?.text ?? "").join(", ");
-    else if (field) text = valueText(field, span.dataset.format ?? null, values[field.id], locale);
-    span.replaceWith(doc.createTextNode(text || `[${name}]`));
-  }
-  return (doc.body.textContent ?? "").replace(/\s+/g, " ").trim();
-}
-
-/**
  * A template's subject, filled in, as one line of HTML for the composer's
  * subject line: values as plain text, and a field with no value kept as a
  * field (highlighted there, and asked about at Send, as in the text).

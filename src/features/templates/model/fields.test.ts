@@ -6,7 +6,6 @@ import {
   oneLine,
   fieldsInOrder,
   fillBody,
-  fillSubject,
   fillSubjectHtml,
   subjectText,
   firstName,
@@ -196,18 +195,10 @@ describe("fillBody", () => {
   });
 });
 
-describe("fillSubject", () => {
-  it("is plain text, with a waiting field's name in brackets", () => {
-    const rollback = field("rollback", "text");
-    const html = `<p>Change control: ${span("window", "monthYear")} ${span("rollback")}</p>`;
-    expect(fillSubject(html, [window, rollback], { window: jan11 }, locale)).toBe(
-      "Change control: January 2027 [Rollback]",
-    );
-    expect(fillSubject("", [], {})).toBe("");
-  });
-
-  it("keeps the words of a subject in several paragraphs apart", () => {
-    expect(fillSubject("<p>First</p><p>Second</p>", [], {})).toBe("First Second");
+describe("fillSubjectHtml", () => {
+  it("is one line, a subject of several paragraphs words apart", () => {
+    expect(subjectText(fillSubjectHtml("<p>First</p><p>Second</p>", [], {}))).toBe("First Second");
+    expect(fillSubjectHtml("", [], {})).toBe("");
   });
 
   it("keeps a field left empty as a field in the subject line, and Send asks about it", () => {
