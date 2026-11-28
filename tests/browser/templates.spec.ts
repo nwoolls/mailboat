@@ -97,7 +97,6 @@ test("a long text becomes bullets, and the template fills the new message's peop
   await fill.getByLabel("Window: time").fill("21:00");
   await fill.getByLabel("Window: end time").fill("23:00");
   await fill.getByLabel("Changes").fill("Upgrade the build servers\nMove the staging database");
-  await expect(fill).toContainText("Change control: January 2027");
   await fill.getByRole("button", { name: "Insert" }).click();
 
   const editor = message(page);

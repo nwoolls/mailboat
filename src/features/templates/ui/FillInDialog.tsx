@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Address, Template, TemplateField } from "../../../platform/tauri/bindings";
 import { accelLabel, primaryKey } from "../../../shared/lib/platform";
-import { type FieldValue, type FieldValues, fieldsInOrder, fillSubject } from "../model/fields";
+import { type FieldValue, type FieldValues, fieldsInOrder } from "../model/fields";
 
 const KIND_LABELS: Record<TemplateField["kind"], string> = {
   text: "Text",
@@ -49,7 +49,6 @@ export function FillInDialog({
   const fields = fieldsInOrder(template);
   const set = (id: string, change: Partial<FieldValue>) =>
     setValues((v) => ({ ...v, [id]: { ...v[id]!, ...change } }));
-  const subject = template.subject ? fillSubject(template.subject, template.fields, values) : "";
   const who =
     people &&
     (
@@ -108,12 +107,6 @@ export function FillInDialog({
             </div>
           ))}
         </div>
-        {subject && (
-          <div className="mx-5 mb-4 rounded-lg bg-selection px-3 py-2">
-            <div className="text-[11px] text-content/45">Subject</div>
-            <div className="selectable">{subject}</div>
-          </div>
-        )}
         <div className="flex items-center gap-2 border-t border-stroke px-5 py-3">
           {who && (
             <span className="min-w-0 flex-1 truncate text-xs text-content/45" title={who}>

@@ -328,20 +328,8 @@ export function TemplateEditor({
         </div>
       </div>
       <div className="mt-3 rounded-lg ring-1 ring-stroke">
-        <div className="flex items-center border-b border-stroke py-1 pr-2">
-          <div className="min-w-0 flex-1">
-            <FormatBar editor={body} />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              const editor = lastFocused.current === "subject" ? subject : body;
-              if (editor) setFieldEdit({ mode: "add", editor });
-            }}
-            className="h-7 shrink-0 rounded-md px-2.5 text-accent hover:bg-selection"
-          >
-            Add field
-          </button>
+        <div className="border-b border-stroke py-1">
+          <FormatBar editor={body} />
         </div>
         <div
           className="flex max-h-[45vh] min-h-40 flex-col overflow-y-auto"
@@ -360,6 +348,19 @@ export function TemplateEditor({
       </p>
       {save.error && <p className="selectable mt-3 text-xs text-danger">{save.error.message}</p>}
       <div className="mt-4 flex items-center gap-2">
+        {/* Under both the subject and the text, as it puts a field in either:
+            wherever the cursor was last. */}
+        <button
+          type="button"
+          title="Adds a field where the cursor is, in the subject or the text"
+          onClick={() => {
+            const editor = lastFocused.current === "subject" ? subject : body;
+            if (editor) setFieldEdit({ mode: "add", editor });
+          }}
+          className="h-7 rounded-md px-2.5 text-accent hover:bg-selection"
+        >
+          Add field
+        </button>
         <span className="flex-1" />
         <button
           type="button"
@@ -555,8 +556,7 @@ function FieldDialog({
               <input
                 value={field.name}
                 onChange={(e) => set({ name: e.target.value })}
-                placeholder="Window"
-                className={`${FIELD_INPUT} placeholder:text-content/35`}
+                className={FIELD_INPUT}
               />
             </label>
             <label className={label}>
