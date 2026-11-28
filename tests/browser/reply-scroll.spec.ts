@@ -24,8 +24,8 @@ async function replyInView(page: Page) {
  * for half a second), as it has long before a person clicks Reply. On a slow
  * machine (CI) the email above was still being measured after the click,
  * and the reply was sometimes left out of view. Clicking while it is still
- * loading is a separate case, for tests of its own later (docs/ROADMAP.md,
- * Bug backlog).
+ * loading is a separate case, with tests of its own below ("while the
+ * conversation is still laying out").
  */
 async function contentSettled(page: Page, selector = ".reader-scroll > *") {
   await page.evaluate(async (which) => {
@@ -111,6 +111,59 @@ test("Reply with AI, 360px reader, slow machine: the reply still scrolls into vi
     })
     .toBeGreaterThanOrEqual(-1);
 });
+
+/**
+ * Reply with AI clicked while the conversation is still laying out
+ * (docs/ROADMAP.md → Later / unscheduled → Open bugs): clicked as soon as
+ * the email shows, without waiting for it to settle, and then the email
+ * above grows in steps, as images arriving or a late measurement make it
+ * taller: during the opening slide, as it arrives, and after. The reply
+ * sticks to the bottom, so the email growing above it keeps the reader at
+ * its end, and the reply's end (its Send button) stays in view. A failure
+ * would show as the reply's end left below the reader. With slowed
+ * animations too, standing in for a slow machine.
+ */
+for (const slow of [false, true])
+  test(`Reply with AI while the conversation is still laying out${slow ? ", slow machine" : ""}: the reply stays in view`, async ({
+    page,
+  }) => {
+    await page.goto("/tests/browser/harness.html?mode=inline");
+    await expect(page.getByTitle("Message content")).toBeVisible();
+    // The browser's scroll anchoring would keep the reply in place on its
+    // own as the email above grows; off, so it's the reply's own sticking
+    // that's tested (the reader turns anchoring off itself during an
+    // arrow's scroll, `useReaderKeyboard`).
+    await page.addStyleTag({ content: ".reader-scroll{overflow-anchor:none!important}" });
+    if (slow)
+      await page.addStyleTag({
+        content: "*{animation-duration:2500ms!important;transition-duration:2500ms!important}",
+      });
+    await page.evaluate(() => {
+      document.querySelector<HTMLElement>("#root > div")!.style.height = "360px";
+    });
+    await page.getByRole("button", { name: "Reply with AI", exact: true }).click();
+    await expect(page.locator('section[aria-label="Reply"]')).toBeVisible();
+    // The email above grows four times, 160 px each: during the opening
+    // slide, around its end (700 ms), and well after.
+    await page.evaluate(async () => {
+      const email = document.querySelector(".reader-scroll section[data-message-id]")!;
+      for (const wait of [50, 350, 650, 1500]) {
+        await new Promise((done) => setTimeout(done, wait));
+        const late = document.createElement("div");
+        late.style.height = "160px";
+        email.append(late);
+      }
+    });
+    await expect
+      .poll(async () => (await replyInView(page)).bottom, {
+        message: "the reply's end (its Send button) is in view",
+        timeout: 15_000,
+      })
+      .toBeGreaterThanOrEqual(-1);
+    // And it stays there once everything has settled.
+    await page.waitForTimeout(slow ? 3000 : 800);
+    expect((await replyInView(page)).bottom).toBeGreaterThanOrEqual(-1);
+  });
 
 /** Grows the reply as a signature arriving would, then waits a moment. */
 async function growReply(page: Page) {
