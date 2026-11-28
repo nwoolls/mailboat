@@ -34,6 +34,7 @@ id_type!(MessageId);
 id_type!(LabelId);
 id_type!(AttachmentId);
 id_type!(DraftId);
+id_type!(TemplateId);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

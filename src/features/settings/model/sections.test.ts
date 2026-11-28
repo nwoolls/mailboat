@@ -13,6 +13,7 @@ describe("settings sections", () => {
       "composing",
       "ai",
       "signatures",
+      "templates",
       "rules",
       "vacation",
       "keyboard",

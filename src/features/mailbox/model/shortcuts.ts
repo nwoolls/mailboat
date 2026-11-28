@@ -92,6 +92,7 @@ export const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
       [accelLabel("Cmd+Enter"), "Send"],
       ["Esc", "Minimize the message, or leave a reply's text (the reply is outlined)"],
       [accelLabel("Cmd+K"), "Link (in the message)"],
+      [accelLabel("Shift+Cmd+T"), "Templates (in the message)"],
     ],
   },
   {

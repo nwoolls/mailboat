@@ -8,6 +8,7 @@ import type {
   DraftId,
   Mailto,
   MessageId,
+  Template,
   ThreadId,
 } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
@@ -344,6 +345,19 @@ export function useComposeActions(accounts: Account[]) {
     [blankDraft],
   );
 
+  /**
+   * A new message from a template (⌘K). The message opens blank and the
+   * template goes in once it's open: after Fill in, if it has fields, so
+   * canceling that leaves a blank message (with nothing saved to Gmail).
+   */
+  const startFromTemplate = useCallback(
+    async (accountId: AccountId, template: Template) => {
+      const draft = await blankDraft(accountId);
+      set(S.openCard(state, { ...draft, pendingTemplate: template.id }));
+    },
+    [blankDraft],
+  );
+
   /** A new message filled in from a `mailto:` link. */
   const startFromMailto = useCallback(
     async (accountId: AccountId, link: Mailto) => {
@@ -500,7 +514,15 @@ export function useComposeActions(accounts: Account[]) {
   }, []);
 
   return useMemo(
-    () => ({ startNew, startFromMailto, startReply, startSendAgain, switchKind, send }),
-    [startNew, startFromMailto, startReply, startSendAgain, switchKind, send],
+    () => ({
+      startNew,
+      startFromTemplate,
+      startFromMailto,
+      startReply,
+      startSendAgain,
+      switchKind,
+      send,
+    }),
+    [startNew, startFromTemplate, startFromMailto, startReply, startSendAgain, switchKind, send],
   );
 }

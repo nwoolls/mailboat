@@ -5515,6 +5515,28 @@ the way, and one bug in the app caused flaky failures; all three are in
         runs each), the file 100 of 100 on a slowed page (5 runs) and 160
         of 160 on 8 workers.
 
+- [x] `templates.spec.ts`: "Settings: a new template with a field, changed
+      again from the keyboard" (line 269, new on branch `templates`).
+      - 2026-11-28, CI on #262 (branch `templates`),
+        https://github.com/nwoolls/mailboat/actions/runs/46114647766,
+        WebKit: the field's settings never opened (`toHaveValue("Week")`,
+        element not found); 305 others passed. The job wasn't run again.
+        The trace: the page stalled about 900 ms as the edit dialog opened,
+        then End, ← and ← came within 30 ms of the click. The frame after
+        shows the second ← didn't select the field: Return split the line
+        between the field and the ".". ProseMirror acts on an arrow from
+        where it last heard the caret was (`selectionchange`), and on a
+        busy runner it hadn't heard the first ←'s move yet.
+      - Fixed 2026-11-28 (branch `templates`), in the test: each key waits
+        until the page has heard its caret move (`pressHeard`), and the
+        test makes the page hear caret moves 80 ms late for that part
+        (`lateCaretMoves`), so the case no longer needs a busy runner. A
+        throwaway spec failed with moves heard 50 or 150 ms late and the
+        keys pressed straight away, and passed when each key waited.
+        Without the fix the test fails every time (5 of 5); with it it
+        passed 10 of 10, 5 of 5 slowed, 40 of 40 on 8 workers, and the
+        whole file 30 of 30 on 8 workers.
+
 ## Bug backlog
 
 *Bugs found in passing (started 2026-10-19 at the owner's request).
@@ -8118,6 +8140,100 @@ item below is built, the owner has tried it, and the owner has published
       removing New message across restarts, the Jump Lists setting off,
       update and uninstall)*
 
+### Templates
+
+- [ ] Templates: saved emails to start from or insert while writing
+      (Gmail's own templates aren't in its API, so these are Mailboat's)
+      *(moved from "Later / unscheduled" → Writing into 0.4.0, owner,
+      2026-11-27)*. Designed with the owner, 2026-11-27, from mockups (an
+      artifact outside the repository, made-up content), after looking at
+      Gmail's templates, Superhuman's snippets, Spark's templates, Front's
+      variables and TextExpander's fill-ins:
+      - Kept on this computer only, in a table of their own in the
+        encrypted cache: not in Gmail as drafts (they'd show in Drafts on
+        every device, could be sent by mistake, and would outlive Delete
+        all data) and not in the settings (saved whole, and Restore
+        defaults). Shared by all accounts, like the addresses removed from
+        suggestions; removing an account keeps them, Delete all data
+        removes them.
+      - A template has a name, a rich-text body, and optionally a subject,
+        a From address, and To, Cc and Bcc. No attachments.
+      - Fields, typed and named, filled in each time: text, long text
+        (each line a paragraph, or a bullet when the field sits in a list,
+        in the formatting around it), date, date and time (with an
+        optional end time), a choice, and automatic ones (the recipient's
+        first name, your first name, today). A field can appear more than
+        once and is asked for once; a date's format is chosen where it
+        appears (long, short, month and year, with the time, time only).
+      - Steps:
+        - [x] Storage and its tests in `crates/core` (`templates`), the
+              commands, and demo mode's templates.
+        - [x] Filling in (the fields, the formats, long text taking the
+              place's formatting) as tested logic in
+              `src/features/templates/model`.
+        - [x] Picking one while writing: a Templates button in the
+              composer's bar and ⇧⌘T, a list to filter with ↑ ↓ and
+              Return; the Fill in form; inserted at the cursor as one undo
+              step; the subject and people filled only when empty, never in
+              a reply; the signature and quote untouched.
+        - [x] A field left empty stays highlighted in the message, and
+              Send asks about it first.
+        - [x] ⌘K: each template is a command under "New message from
+              template", which starts a new email from it, and "Manage
+              templates" opens their Settings page. ("Save as template…" is
+              in the composer's Templates list, not ⌘K: ⌘K is Link while
+              writing.)
+        - [x] Settings → Templates (after Signatures): the list, New,
+              Edit, Duplicate, Delete; the editor with Add field and each
+              field's settings.
+        - [x] "Save as template…" from the composer: the text, and the
+              subject and people if ticked.
+        - [ ] Settings → Privacy says templates stay on this computer.
+              The privacy policy and the feature cards are on the held
+              website branch, only with the owner's OK. *(2026-11-27:
+              Settings → Privacy and the README say it, branch
+              `templates`. 2026-11-28: the policy's line, a Templates card
+              and a section of `docs/FEATURES.md` are in draft pull
+              request #265, held until 0.4.0 is released, as the site
+              deploys on merge (owner). Ticked when it merges.)*
+        - [x] Browser tests: inserting at the cursor, and the picker's
+              keyboard use. *(Done 2026-11-27, branch `templates`, with the
+              rest of the steps above: `tests/browser/templates.spec.ts`.
+              Found while writing them: a template now goes in as a paste
+              does, its first and last lines joining the text on either
+              side of the cursor, and closing the picker or Fill in puts
+              the cursor back where it was. Not yet tried by the owner.)*
+              *(From review, 2026-11-27, two reviewers: Insert in Fill in and
+              Save in Save as template sent the message, as React passes a
+              submit up through the portal to the message's form; now only
+              the message's own form sends. From, the people and the subject
+              go in before the text, which counts as writing (From changed
+              only from ⌘K before); From also stays once a subject is
+              written. ⌘K opens a blank message and puts the template in on
+              Insert, so canceling Fill in leaves nothing behind. A template
+              is its own undo step even right after typing. A field left
+              empty in the subject is asked about too, and Send anyway
+              covers only the fields it was shown. A long text repeats its
+              block only when the field is alone in it, so an image or a
+              nested list beside it is never copied. A pasted subject of
+              several lines stays words apart. Only the app's own field
+              marks become fields, so a pasted span is ordinary text.
+              Return on a selected field in the editor opens its settings.
+              Template IDs are never reused, and names clash ignoring case
+              beyond ASCII too. Delete all data's confirmation names
+              templates.)*
+              *(Second round, one reviewer: Send anyway now holds only for
+              the message as it was shown, so any change to the text or
+              subject asks again (it was by field name, and a second field
+              of the same name slipped through). The subject is flattened
+              to one line when pasted and when loaded, as a rich paste of
+              two paragraphs was dropped. Field names keep single spaces,
+              so a subject's `[Name]` always matches. A subject's fields
+              are tracked only when the template supplied the subject. A
+              file dropped on Fill in no longer attaches to the message
+              behind it. Fill in shows To, Cc and Bcc apart, by the same
+              rules as inserting.)*
+
 ### Bugs
 
 - [x] Holding ↑ with the computer busy for a moment sent the outline back
@@ -8700,8 +8816,6 @@ item below is built, the owner has tried it, and the owner has published
 ### Writing (was Milestone 9; moved here, owner, 2026-10-24: "fairly
 niche or extra", so Windows and the Release Spike come first)
 
-- [ ] Templates: saved replies to insert while writing (Gmail's own
-      templates aren't in its API, so these would be Mailboat's)
 - [ ] Images inline in the email being written, as Gmail does *(owner
       request, 2026-10-22)*: dropping (or pasting) an image into the
       composer puts it in the body where it lands, while other files
@@ -9085,7 +9199,7 @@ runs, as with Snooze and Schedule send above.
   warnings" idea in the bytemail notes is the nearest.
 - Confidential mode: can't be built outside Gmail, and such emails arrive
   as a link to read in Gmail.
-- Templates: listed under "Writing" above.
+- Templates: Mailboat's own, in 0.4.0 ("Templates").
 - Nudges (Gmail brings back mail you haven't answered): see "Remind me if
   no reply" in the bytemail notes.
 - Smart Compose: the AI writing features cover a similar need.

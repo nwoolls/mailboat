@@ -234,9 +234,28 @@ export function Harness({
       <>
         <ComposeCard
           entry={card}
-          identities={[identity]}
+          identities={
+            // `&alias=1`: a second address on the account, as demo mode's
+            // templates send from.
+            params.has("alias")
+              ? [
+                  identity,
+                  {
+                    ...identity,
+                    email: "alex@northwind.example",
+                    isPrimary: false,
+                    isDefault: false,
+                    signature: "<p>Alex Rivera, Northwind</p>",
+                  },
+                ]
+              : [identity]
+          }
           accounts={[account]}
-          onSend={() => {}}
+          // Recorded, so a test can tell that nothing was sent.
+          onSend={() => {
+            const w = window as unknown as { __order?: string[] };
+            (w.__order ??= []).push("message_send");
+          }}
           onSwitch={() => {}}
         />
         {/* `&settings=composing`: Settings → Composing beside it, and toasts. */}

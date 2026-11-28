@@ -529,3 +529,29 @@ BEGIN
   SELECT RAISE(ABORT, 'a deleted conversation''s ID');
 END;
 "#;
+
+/// Templates (`crate::templates`): the owner's own writing, kept on this
+/// computer and shared by every account, so no `account_id` (removing an
+/// account keeps them; Delete all data empties the table). People and
+/// fields are JSON, read and written whole with the template. `name_key`
+/// is the name in lower case (Rust's, so beyond ASCII too), unique, since
+/// ⌘K lists templates by name. AUTOINCREMENT, so a deleted template's ID
+/// never comes back for another: an editor left open on it, or another
+/// copy of the app, can't save over a different template.
+pub const MIGRATION_V27: &str = r#"
+CREATE TABLE templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  name_key TEXT NOT NULL UNIQUE,
+  from_address TEXT,
+  to_json TEXT NOT NULL DEFAULT '[]',
+  cc_json TEXT NOT NULL DEFAULT '[]',
+  bcc_json TEXT NOT NULL DEFAULT '[]',
+  subject TEXT NOT NULL DEFAULT '',
+  body TEXT NOT NULL DEFAULT '',
+  fields_json TEXT NOT NULL DEFAULT '[]',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  used_at INTEGER
+);
+"#;

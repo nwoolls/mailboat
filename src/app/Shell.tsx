@@ -9,7 +9,13 @@ import {
   useState,
 } from "react";
 import { commands, events } from "../platform/tauri/bindings";
-import type { AccountId, MailView, ThreadId, ThreadSummary } from "../platform/tauri/bindings";
+import type {
+  AccountId,
+  MailView,
+  Template,
+  ThreadId,
+  ThreadSummary,
+} from "../platform/tauri/bindings";
 import { useQueryClient } from "@tanstack/react-query";
 import { IS_TAURI, unwrap } from "../platform/tauri/ipc";
 import { indexAccounts, syncAttention } from "../features/accounts/model/accounts";
@@ -162,8 +168,13 @@ import {
   useOAuthSetup,
   usePrefetchAiReplyIdeas,
   useSyncStates,
+  useTemplates,
   useThreads,
 } from "../shared/lib/queries";
+import {
+  TEMPLATE_SETTINGS_EVENT,
+  type TemplateSettingsTarget,
+} from "../features/templates/ui/TemplatePicker";
 import { aiChoices, canSummarize, canWrite } from "../features/ai/model/providers";
 import { openAssistantForNextReply } from "../features/ai/ui/assistantOpen";
 import { requestSummary } from "../features/ai/ui/summaryRequests";
@@ -433,6 +444,19 @@ export function Shell() {
   // underneath (hidden), so closing returns to it exactly as it was.
   const [settings, setSettings] = useState<SettingsSectionId | null>(null);
   const openSettings = useCallback(() => setSettings((open) => open ?? "general"), []);
+  // Settings → Templates, asked for by the composer or ⌘K: the template to
+  // open in its editor ("new" for a new one), once.
+  const [templateTarget, setTemplateTarget] = useState<TemplateSettingsTarget>({ edit: null });
+  const openTemplates = useCallback((target: TemplateSettingsTarget) => {
+    setTemplateTarget(target);
+    setSettings("templates");
+  }, []);
+  useEffect(() => {
+    const open = (e: Event) => openTemplates((e as CustomEvent<TemplateSettingsTarget>).detail);
+    window.addEventListener(TEMPLATE_SETTINGS_EVENT, open);
+    return () => window.removeEventListener(TEMPLATE_SETTINGS_EVENT, open);
+  }, [openTemplates]);
+  const templates = useTemplates().data;
   // The app → Settings… (⌘,) in the menu bar.
   useEffect(() => {
     if (!IS_TAURI) return;
@@ -691,7 +715,7 @@ export function Shell() {
     [mutateThreads, selection.view, threads, selectedId, cursorId, readerOpen],
   );
   const lastUndo = toast?.action;
-  const { startNew: openNew } = compose;
+  const { startNew: openNew, startFromTemplate: openFromTemplate } = compose;
   const startNew = useCallback(() => {
     const account = accountForNew(
       baseSelection.accounts,
@@ -699,6 +723,16 @@ export function Shell() {
     );
     if (account !== undefined) void openNew(account);
   }, [openNew, baseSelection.accounts, accountList]);
+  const startFromTemplate = useCallback(
+    (t: Template) => {
+      const account = accountForNew(
+        baseSelection.accounts,
+        accountList.map((a) => a.id),
+      );
+      if (account !== undefined) void openFromTemplate(account, t);
+    },
+    [openFromTemplate, baseSelection.accounts, accountList],
+  );
   // `mailto:` links (another app's, with the app the default email reader,
   // or one clicked in an email) open a new message, from the open
   // conversation's account if there is one. Links wait in Rust until the
@@ -1618,6 +1652,8 @@ export function Shell() {
                 onAccountRemoved={onAccountRemoved}
                 onSelect={setSettings}
                 onClose={() => setSettings(null)}
+                templateTarget={templateTarget}
+                onTemplateTargetSeen={() => setTemplateTarget({ edit: null })}
               />
             </div>
           )}
@@ -1783,6 +1819,9 @@ export function Shell() {
               window.dispatchEvent(new CustomEvent(SCREENSAVER_EVENT, { detail: id })),
             destinations: destinations(accountList, labels),
             goTo,
+            templates: accountList.length ? (templates ?? []) : [],
+            startFromTemplate,
+            manageTemplates: () => openTemplates({ edit: null }),
           })}
         />
       )}

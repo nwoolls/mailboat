@@ -176,6 +176,11 @@ describe("what stays on the computer", () => {
     expect(STAYS_ON_THIS_COMPUTER).toContain(
       "Addresses you removed from compose suggestions, for all your accounts, until you restore them or delete all data. Removing an account keeps them.",
     );
+    // Templates are kept in the cache too, for every account
+    // (`mail_core::templates`): erased with all data, kept with an account.
+    expect(STAYS_ON_THIS_COMPUTER).toContain(
+      "Your templates, for all your accounts, until you delete them or delete all data. Removing an account keeps them.",
+    );
   });
 
   it("says what notifications show, as Settings → Notifications has it", () => {

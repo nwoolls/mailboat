@@ -234,6 +234,18 @@ export const commands = {
 	 *  (Settings → Composing).
 	 */
 	contactsHidden: () => typedError<string[], AppError>(__TAURI_INVOKE("contacts_hidden")),
+	/**  Every template, by name (kept on this computer, for all accounts). */
+	templatesList: () => typedError<Template[], AppError>(__TAURI_INVOKE("templates_list")),
+	/**  Saves a new template. */
+	templateCreate: (input: TemplateInput) => typedError<Template, AppError>(__TAURI_INVOKE("template_create", { input })),
+	/**  Replaces a template's content. */
+	templateUpdate: (id: TemplateId, input: TemplateInput) => typedError<Template, AppError>(__TAURI_INVOKE("template_update", { id, input })),
+	/**  Saves a copy of a template under a free name. */
+	templateDuplicate: (id: TemplateId) => typedError<Template, AppError>(__TAURI_INVOKE("template_duplicate", { id })),
+	/**  Deletes a template. */
+	templateDelete: (id: TemplateId) => typedError<null, AppError>(__TAURI_INVOKE("template_delete", { id })),
+	/**  Notes that a template was used, for ⌘K's order. */
+	templateUsed: (id: TemplateId) => typedError<null, AppError>(__TAURI_INVOKE("template_used", { id })),
 	/**
 	 *  What a reply or forward needs from a message (people, subject, text),
 	 *  fetched with its own account's credentials if not cached.
@@ -801,6 +813,15 @@ export type AuthCheck = {
 	detail: string | null,
 };
 
+/**  What an automatic field is filled with. */
+export type AutoValue = 
+/**  The first name of the one person in To (left empty for several). */
+"recipientFirstName" | 
+/**  The first name on the From address. */
+"myFirstName" | 
+/**  Today's date. */
+"today";
+
 /**  What the app keeps on this Mac, for Settings → Advanced. */
 export type CacheSize = {
 	/**
@@ -909,6 +930,12 @@ export type DataDeleted = {
 	revoked: boolean,
 };
 
+/**
+ *  The day a date starts on in Fill in: today, tomorrow, or the next one
+ *  of a weekday (never today itself).
+ */
+export type DayDefault = "today" | "tomorrow" | "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
 /**  Which app opens `mailto:` links. */
 export type DefaultMailApp = 
 /**  This copy of the app. */
@@ -979,6 +1006,21 @@ export type EmptiedSpam = {
 	/**  Accounts that couldn't be emptied (signed out, offline…). */
 	failed: number,
 };
+
+/**  What a field holds, which decides how it's asked for. */
+export type FieldKind = 
+/**  One line of text. */
+"text" | 
+/**  Several lines: each becomes a paragraph, or a bullet in a list. */
+"longText" | 
+/**  A day. */
+"date" | 
+/**  A day and a time, with an optional end time. */
+"dateTime" | 
+/**  One of a fixed list. */
+"choice" | 
+/**  Filled in by the app, and changeable before inserting. */
+"auto";
 
 /**  An account's From addresses (Gmail "Send mail as") changed. */
 export type IdentitiesChangedEvent = {
@@ -1729,6 +1771,50 @@ export type SyncStatusEvent = AccountSyncState;
 
 /**  Gmail system labels that unify across accounts. */
 export type SystemLabel = "inbox" | "unread" | "starred" | "important" | "sent" | "draft" | "spam" | "trash";
+
+/**  A saved template. */
+export type Template = {
+	id: TemplateId,
+	/**  When it was last used to write an email (ms), for ⌘K's order. */
+	usedAt: number | null,
+} & TemplateInput;
+
+/**  One field of a template. */
+export type TemplateField = {
+	/**  Stable within the template; the HTML refers to it. */
+	id: string,
+	/**  What Fill in asks for, and what the field shows in the editor. */
+	name: string,
+	kind: FieldKind,
+	/**  A choice's options, in order. */
+	choices: string[],
+	/**  An automatic field's value. */
+	auto: AutoValue | null,
+	/**  A date's starting day. */
+	defaultDay: DayDefault | null,
+	/**  A date and time with an end time ("from 9:00 PM to 11:00 PM"). */
+	endTime: boolean,
+};
+
+export type TemplateId = number;
+
+/**  A template as written in the editor (to create one or change it). */
+export type TemplateInput = {
+	name: string,
+	/**
+	 *  The address to send from; one that's no longer an account is left
+	 *  to the default.
+	 */
+	from: string | null,
+	to: Address[],
+	cc: Address[],
+	bcc: Address[],
+	/**  HTML of one line ("" for none). */
+	subject: string,
+	/**  HTML. */
+	body: string,
+	fields: TemplateField[],
+};
 
 /**  Light or dark, or following macOS (the default). */
 export type Theme = "system" | "light" | "dark";

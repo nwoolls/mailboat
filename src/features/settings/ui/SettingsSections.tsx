@@ -1279,7 +1279,7 @@ export function AdvancedSection() {
       <Group title="Settings">
         <Row
           label="Restore default settings"
-          description={`Every setting in ${APP_NAME} back to how it started. Your accounts, mail, signatures, rules and connected AI stay.`}
+          description={`Every setting in ${APP_NAME} back to how it started. Your accounts, mail, signatures, templates, rules and connected AI stay.`}
         >
           <Button onClick={() => setRestoring(true)}>Restore defaults…</Button>
         </Row>
@@ -1314,7 +1314,7 @@ export function AdvancedSection() {
           </p>
           <p>
             Kept: your accounts and mail, signatures, rules and the vacation responder (they’re in
-            Gmail), connected AI, choices made for senders, and recent searches.
+            Gmail), templates, connected AI, choices made for senders, and recent searches.
           </p>
         </ConfirmDialog>
       )}

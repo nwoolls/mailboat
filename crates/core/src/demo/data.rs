@@ -24,6 +24,73 @@ pub struct DemoData {
     /// What someone answers to mail that has no reply of its own.
     #[serde(default)]
     pub default_reply: Option<String>,
+    /// Templates, saved as if the owner had written them.
+    #[serde(default)]
+    pub templates: Vec<DemoTemplate>,
+}
+
+/// A template in the demo's file, where what's empty can be left out.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoTemplate {
+    pub name: String,
+    #[serde(default)]
+    pub from: Option<String>,
+    #[serde(default)]
+    pub to: Vec<crate::model::Address>,
+    #[serde(default)]
+    pub cc: Vec<crate::model::Address>,
+    #[serde(default)]
+    pub bcc: Vec<crate::model::Address>,
+    #[serde(default)]
+    pub subject: String,
+    #[serde(default)]
+    pub body: String,
+    #[serde(default)]
+    pub fields: Vec<DemoField>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoField {
+    pub id: String,
+    pub name: String,
+    pub kind: crate::templates::FieldKind,
+    #[serde(default)]
+    pub choices: Vec<String>,
+    #[serde(default)]
+    pub auto: Option<crate::templates::AutoValue>,
+    #[serde(default)]
+    pub default_day: Option<crate::templates::DayDefault>,
+    #[serde(default)]
+    pub end_time: bool,
+}
+
+impl From<&DemoTemplate> for crate::templates::TemplateInput {
+    fn from(t: &DemoTemplate) -> Self {
+        Self {
+            name: t.name.clone(),
+            from: t.from.clone(),
+            to: t.to.clone(),
+            cc: t.cc.clone(),
+            bcc: t.bcc.clone(),
+            subject: t.subject.clone(),
+            body: t.body.clone(),
+            fields: t
+                .fields
+                .iter()
+                .map(|f| crate::templates::TemplateField {
+                    id: f.id.clone(),
+                    name: f.name.clone(),
+                    kind: f.kind,
+                    choices: f.choices.clone(),
+                    auto: f.auto,
+                    default_day: f.default_day,
+                    end_time: f.end_time,
+                })
+                .collect(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

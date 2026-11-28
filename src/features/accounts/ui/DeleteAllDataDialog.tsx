@@ -84,9 +84,9 @@ export function DeleteAllDataDialog({ onCancel }: { onCancel: () => void }) {
     >
       <p>
         This removes every account and deletes everything {APP_NAME} keeps on this computer: saved
-        mail, downloaded attachments and images, summaries, per-sender choices and all settings. It
-        asks Google to end each sign-in, which can also sign those accounts out of {APP_NAME} on
-        your other computers.
+        mail, downloaded attachments and images, summaries, templates, per-sender choices and all
+        settings. It asks Google to end each sign-in, which can also sign those accounts out of{" "}
+        {APP_NAME} on your other computers.
       </p>
       <p>
         It can&apos;t be undone. Nothing changes in Gmail, files you saved to Downloads stay, and so

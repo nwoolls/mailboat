@@ -39,8 +39,19 @@ import { composingPrefs } from "./composingPrefs";
 import { useStuck } from "../../../shared/ui/useStuck";
 import { stuckAfterScroll } from "../model/stickToEnd";
 import { accelLabel, primaryKey } from "../../../shared/lib/platform";
+import { ComposerTemplates } from "../../templates/ui/ComposerTemplates";
+import { selectFirstField } from "../../templates/ui/fieldNode";
+import { waitingFields } from "../../templates/model/fields";
 
 export type ReplyKind = Exclude<ComposeKind, "new">;
+
+/**
+ * An event over the form itself, not over a dialog of its own shown
+ * elsewhere in the page: React passes events up its own tree, portals
+ * included, so a file dropped on Fill in would reach the message.
+ */
+const inThisForm = (e: React.SyntheticEvent) =>
+  e.target instanceof Node && e.currentTarget.contains(e.target);
 
 export const KIND_LABELS: Record<ReplyKind, string> = {
   reply: "Reply",
@@ -117,6 +128,10 @@ export function ComposeForm({
   const rule = outsideWarningOff.includes(draft.accountId) ? null : outsideRule;
   const outside = outsideRecipients(rule, [...draft.to, ...draft.cc, ...draft.bcc]);
   const [problem, setProblem] = useState<string | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  // A template's fields still waiting when Send was pressed: Send asks
+  // first. `key` is the message as it was then (text and subject).
+  const [waiting, setWaiting] = useState<{ names: string[]; key: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [dropping, setDropping] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -363,10 +378,21 @@ export function ComposeForm({
     editor?.setEditable(!sending, false);
   }, [editor, sending]);
 
-  const trySend = () => {
+  // `anyway`: Send anyway, which goes ahead only for the message it was
+  // shown for. Any change to the text or subject since (another template
+  // in, a field filled or added) asks again.
+  const trySend = (anyway = false) => {
     const why = sendProblem(draft);
     setProblem(why);
-    if (!why && !sending) onSend();
+    if (why || sending) return;
+    const names = waitingFields(draft);
+    const key = `${draft.html}\u0000${draft.subject}`;
+    if (names.length > 0 && !(anyway && waiting?.key === key)) {
+      setWaiting({ names, key });
+      return;
+    }
+    setWaiting(null);
+    onSend();
   };
   const discard = () => (hasChanges(draft) ? setConfirming(true) : onDiscard());
   const account = accounts.find((a) => a.id === draft.accountId);
@@ -407,7 +433,7 @@ export function ComposeForm({
       // Files dropped anywhere on the message attach to it (checked before
       // the editor sees the drop, which would otherwise ignore them).
       onDragOverCapture={(e) => {
-        if (!hasFiles(e)) return;
+        if (!hasFiles(e) || !inThisForm(e)) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = "copy";
         if (!dropping) setDropping(true);
@@ -416,7 +442,7 @@ export function ComposeForm({
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
       }}
       onDropCapture={(e) => {
-        if (!hasFiles(e)) return;
+        if (!hasFiles(e) || !inThisForm(e)) return;
         e.preventDefault();
         e.stopPropagation();
         setDropping(false);
@@ -430,6 +456,9 @@ export function ComposeForm({
       className={`relative flex min-h-0 flex-col text-[13px] ${inline ? "" : "flex-1"}`}
       onSubmit={(e) => {
         e.preventDefault();
+        // Only this form's own submit sends: a dialog's form inside it (in
+        // the React tree, through a portal) never does.
+        if (e.target !== e.currentTarget) return;
         trySend();
       }}
       onKeyDown={(e) => {
@@ -440,6 +469,10 @@ export function ComposeForm({
         if (e.key === "j" && primaryKey(e) && assistant) {
           e.preventDefault();
           assistant.onToggle(!assistant.open);
+        }
+        if (e.key.toLowerCase() === "t" && e.shiftKey && primaryKey(e) && !sending) {
+          e.preventDefault();
+          setTemplatesOpen((open) => !open);
         }
       }}
     >
@@ -574,6 +607,44 @@ export function ComposeForm({
         className={inline ? "reader-foot reader-foot-in-card pt-2" : ""}
         data-stuck={(inline && footStuck) || undefined}
       >
+        {waiting && (
+          <div
+            role="alert"
+            className="mx-4 mb-1 flex items-center gap-2 rounded-lg bg-warn/15 px-3 py-1.5 text-xs text-warn-ink"
+          >
+            <span className="min-w-0 flex-1">
+              {waiting.names.length === 1
+                ? `“${waiting.names[0]}” hasn’t been filled in.`
+                : `${waiting.names.length} fields haven’t been filled in: ${waiting.names.map((n) => `“${n}”`).join(", ")}.`}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setWaiting(null);
+                if (editor && selectFirstField(editor)) return;
+                // Only in the subject: select its `[Name]` there.
+                const subject = formRef.current?.querySelector<HTMLInputElement>(
+                  "input[aria-label=Subject]",
+                );
+                const name = waiting.names[0];
+                const at = subject && name ? subject.value.indexOf(`[${name}]`) : -1;
+                if (!subject || at < 0) return;
+                subject.focus();
+                subject.setSelectionRange(at, at + name!.length + 2);
+              }}
+              className="h-6 shrink-0 rounded-md bg-background-base px-2.5 text-content ring-1 ring-stroke hover:bg-selection"
+            >
+              Go to it
+            </button>
+            <button
+              type="button"
+              onClick={() => trySend(true)}
+              className="h-6 shrink-0 rounded-md bg-background-base px-2.5 text-content ring-1 ring-stroke hover:bg-selection"
+            >
+              Send anyway
+            </button>
+          </div>
+        )}
         <FormatBar editor={editor}>
           {editor && <RewriteButton editor={editor} threadId={draft.threadId} />}
         </FormatBar>
@@ -619,8 +690,18 @@ export function ComposeForm({
               <AiIcon />
             </button>
           )}
-          <AttachButton
+          <ComposerTemplates
             className={assistant ? "" : "ml-auto"}
+            editor={editor}
+            draft={draft}
+            identities={identities}
+            open={templatesOpen}
+            onOpenChange={setTemplatesOpen}
+            onChange={onChange}
+            disabled={sending}
+          />
+          <AttachButton
+            className=""
             disabled={sending}
             onFiles={(files) =>
               onChange((d) => ({ ...d, attachments: [...d.attachments, ...files] }))

@@ -363,6 +363,22 @@ async fn prepare_adds_the_accounts_synced_with_their_summaries() {
     .unwrap()
     .unwrap();
     assert!(reader.text.starts_with("- Maya wants to book"));
+
+    // The demo's templates, saved as if the owner had written them, once:
+    // preparing again (a later start of the demo) doesn't add them twice.
+    let names = |db: &Db| -> Vec<String> {
+        mail_core::templates::list(&db.conn())
+            .unwrap()
+            .into_iter()
+            .map(|t| t.input.name)
+            .collect()
+    };
+    assert_eq!(names(&db).len(), data.templates.len());
+    assert!(names(&db).contains(&"Change control".to_string()));
+    demo::prepare(&db, &reqwest::Client::new(), &google, &data)
+        .await
+        .unwrap();
+    assert_eq!(names(&db).len(), data.templates.len());
 }
 
 /// The accounts start with rules, and a vacation reply that is on but not
