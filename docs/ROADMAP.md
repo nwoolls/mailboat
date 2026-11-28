@@ -8068,7 +8068,7 @@ item below is built, the owner has tried it, and the owner has published
             website's pull request merges.)*
       *(moved from "Later / unscheduled" into 0.4.0, owner, 2026-11-26)*
 
-- [ ] Windows: the unified folders in the taskbar icon's right-click menu
+- [x] Windows: the unified folders in the taskbar icon's right-click menu
       *(owner enhancement, 2026-10-29, with a screenshot)*: the menu shows
       only "Mailboat / Pin to taskbar / Close window". Add Inbox, Unread,
       Starred, Drafts, Archive and All Mail (all accounts) in the actions
@@ -8088,6 +8088,10 @@ item below is built, the owner has tried it, and the owner has published
       *(review, 2026-11-27: a line on the website's shortcuts card is
       left for the 0.4.0 website update, since the site deploys on merge
       and would show the menu before the release has it)*
+      *(owner, 2026-11-27, in the Windows 11 VM: "seems to work well, in
+      all cases", the menu, starting and switching folders, one account,
+      removing New message across restarts, the Jump Lists setting off,
+      update and uninstall)*
 
 ### Bugs
 
