@@ -5500,6 +5500,15 @@ items it covers without moving them: they stay here with their full text,
 and new bugs still come here. The open bugs left after it moved to "Later /
 unscheduled" → Open bugs *(owner, 2026-11-14)*, with their full text.*
 
+- [ ] A `mailto:` link handed over in the moment the window starts
+      listening can wait until the next one *(found 2026-11-27 in the
+      review of branch `windows-jump-list`, by reading the code; not
+      seen in use)*: `Shell.tsx` empties the link queue before its
+      `MailtoEvent` listener is registered, so a link queued in between
+      fires an event nobody hears. The taskbar menu's folder requests
+      listen first and then empty their queue (`listenThenDrain` in
+      `src/shared/lib`); use it here too
+
 - [x] A message body fetched while its row is deleted could be written to
       another account's message *(reported 2026-11-27 in the review of
       branch `cache-encryption-files`; found by reading the code, not
@@ -8059,6 +8068,31 @@ item below is built, the owner has tried it, and the owner has published
             website's pull request merges.)*
       *(moved from "Later / unscheduled" into 0.4.0, owner, 2026-11-26)*
 
+- [x] Windows: the unified folders in the taskbar icon's right-click menu
+      *(owner enhancement, 2026-10-29, with a screenshot)*: the menu shows
+      only "Mailboat / Pin to taskbar / Close window". Add Inbox, Unread,
+      Starred, Drafts, Archive and All Mail (all accounts) in the actions
+      area, which Windows calls the jump list's Tasks. Each entry should
+      show that folder, starting the app or telling the copy that is
+      already running (the app already passes `mailto:` links to a running
+      copy, which may be the way to do it). Tauri has no jump list of its
+      own, so this needs Windows' own API
+      *(moved from "Later / unscheduled" into 0.4.0, owner, 2026-11-27,
+      branch `windows-jump-list`. Owner's plan, 2026-11-27: "New message"
+      at the top in a section of its own, "Write"; under Tasks, Inbox,
+      Unread, Starred, Drafts, Archive and All Mail, fixed (the sidebar
+      can't hide these folders, and Sent stays out); each entry starts
+      the app with an argument, which a running copy takes through the
+      single-instance plugin as it does `mailto:` links (New message is
+      an empty `mailto:` link); gray icons drawn from the sidebar's)*
+      *(review, 2026-11-27: a line on the website's shortcuts card is
+      left for the 0.4.0 website update, since the site deploys on merge
+      and would show the menu before the release has it)*
+      *(owner, 2026-11-27, in the Windows 11 VM: "seems to work well, in
+      all cases", the menu, starting and switching folders, one account,
+      removing New message across restarts, the Jump Lists setting off,
+      update and uninstall)*
+
 ### Bugs
 
 - [x] Holding ↑ with the computer busy for a moment sent the outline back
@@ -8222,15 +8256,17 @@ item below is built, the owner has tried it, and the owner has published
       provider). Once it works, Codex can go. The same could take a
       Claude API key
 
-- [ ] Windows: the unified folders in the taskbar icon's right-click menu
-      *(owner enhancement, 2026-10-29, with a screenshot)*: the menu shows
-      only "Mailboat / Pin to taskbar / Close window". Add Inbox, Unread,
-      Starred, Drafts, Archive and All Mail (all accounts) in the actions
-      area, which Windows calls the jump list's Tasks. Each entry should
-      show that folder, starting the app or telling the copy that is
-      already running (the app already passes `mailto:` links to a running
-      copy, which may be the way to do it). Tauri has no jump list of its
-      own, so this needs Windows' own API
+- [ ] Third-party notices in the app *(owner, 2026-11-27, from the
+      review of branch `windows-jump-list`)*: the installers ship no
+      license notices for the open-source packages bundled into the app
+      (Hugeicons, React and others), though MIT-style licenses ask for
+      their notice to travel with copies; only the release's software
+      bill of materials lists them, beside the release. Generate one
+      notices file from the licenses `scripts/make-sbom.ts` already
+      reads, ship it in the macOS, Windows and Linux packages, keep it
+      current with a check, and perhaps link it from Settings. The
+      taskbar menu's icons already carry Hugeicons' notice
+      (`jump-list\HUGEICONS-LICENSE.md`)
 
 - [ ] Task-app integrations: "add to Todoist and archive" *(owner idea,
       2026-10-29; wanted soon after the first release, the owner would use

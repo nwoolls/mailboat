@@ -43,13 +43,27 @@ tauri-plugin-updater = { version = "2", default-features = false, features = ["s
 # Already part of the build through Tauri; declared to set the Dock picture
 # (src/dock.rs) and to read trackpad phases (src/trackpad.rs).
 # Same versions as Tauri and MonoCode.
-# Windows: a mailto: link clicked while the app is open starts a second copy,
-# which hands the link to the running one and quits (src/lib.rs).
+# Windows: a mailto: link clicked, or an entry chosen in the taskbar icon's
+# menu, while the app is open starts a second copy, which hands its arguments
+# to the running one and quits (src/lib.rs).
 [target.'cfg(windows)'.dependencies]
 tauri-plugin-single-instance = "2"
 # Which app Windows sends mailto: links to (src/mail_handler.rs). Microsoft's
 # crate, already in the build through Tauri.
 windows-registry = "0.100"
+# The taskbar icon's menu, its jump list (src/jump_list.rs): Windows' own
+# ICustomDestinationList, as Tauri has none. Microsoft's crate, at the version
+# Tauri already builds.
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Storage_EnhancedStorage",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
+  "Win32_UI_Shell",
+  "Win32_UI_Shell_Common",
+  "Win32_UI_Shell_PropertiesSystem",
+] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"

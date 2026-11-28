@@ -53,6 +53,7 @@ import {
   stepEmail,
 } from "../features/reader/ui/readerKeys";
 import { isEditable } from "../shared/lib/editable";
+import { listenThenDrain } from "../shared/lib/listenThenDrain";
 import {
   actionTargets,
   type Checked,
@@ -95,6 +96,7 @@ import {
   spansAccounts,
   staysOnFolderClick,
   systemSelection,
+  requestedSelection,
 } from "../features/mailbox/model/views";
 import { emptyStateFor, emptyStateKey, isFirstSync } from "../features/mailbox/model/emptyState";
 import { EmptyState } from "../features/mailbox/ui/EmptyState";
@@ -740,6 +742,33 @@ export function Shell() {
     });
     return () => void unlisten.then((fn) => fn());
   }, []);
+  // A folder chosen in the taskbar icon's menu (Windows) opens over all
+  // accounts, or the only one's (Settings, if open, makes way). Requests
+  // wait in Rust until the accounts have loaded; without accounts
+  // (onboarding) one is dropped. Read through a ref so the listener stays put.
+  const openRequested = useRef<(view: MailView) => void>(() => {});
+  useEffect(() => {
+    openRequested.current = (view) => {
+      const s = requestedSelection(
+        view,
+        accountList.map((a) => a.id),
+      );
+      if (!s) return;
+      setSettings(null);
+      goTo(s);
+    };
+  });
+  const accountsLoaded = accountsQuery.isSuccess;
+  useEffect(() => {
+    if (!IS_TAURI || !accountsLoaded) return;
+    return listenThenDrain(
+      (handler) => events.viewRequestEvent.listen(handler),
+      () =>
+        void commands.viewRequestTake().then((view) => {
+          if (view) openRequested.current(view);
+        }),
+    );
+  }, [accountsLoaded]);
   const [panesRef, panesWidth] = useElementWidth<HTMLDivElement>();
   const resizeSidebar = (w: number) =>
     saveLayout({ ...layout, sidebarWidth: clampWidth(w, SIDEBAR_WIDTH.min, SIDEBAR_WIDTH.max) });

@@ -346,6 +346,24 @@ export const commands = {
 	vacationSet: (accountId: AccountId, settings: VacationSettings) => typedError<AccountVacation, AppError>(__TAURI_INVOKE("vacation_set", { accountId, settings })),
 	/**  `mailto:` links waiting to become new messages (see `mail_handler`). */
 	mailtoTake: () => __TAURI_INVOKE<Mailto[]>("mailto_take"),
+	/**  The folder the taskbar icon's menu asked for, if any (see `jump_list`). */
+	viewRequestTake: () => __TAURI_INVOKE<
+/**  Unifies across accounts (Inbox, Starred, ...). */
+{ kind: "system"; label: SystemLabel } | 
+/**  A user label belongs to exactly one account. */
+{ kind: "userLabel"; labelId: LabelId } | 
+/**  Every thread except Spam and Trash (unifies across accounts). */
+{ kind: "allMail" } | 
+/**
+ *  All Mail minus the Inbox. Gmail has no "archived" label: archived
+ *  just means not in INBOX.
+ */
+{ kind: "archive" } | 
+/**
+ *  Full-text search, of the cache and Gmail. Spam and Trash are left
+ *  out, as in Gmail, unless `with_spam_trash` (Settings → Viewing).
+ */
+{ kind: "search"; text: string; withSpamTrash?: boolean } | null>("view_request_take"),
 	/**  Which app opens `mailto:` links (Settings → General). */
 	mailAppDefault: () => __TAURI_INVOKE<DefaultMailApp>("mail_app_default"),
 	/**
@@ -497,6 +515,7 @@ export const events = {
 	trackpadEvent: makeEvent<TrackpadEvent>("trackpad-event"),
 	updateAvailableEvent: makeEvent<UpdateAvailableEvent>("update-available-event"),
 	updateProgressEvent: makeEvent<UpdateProgressEvent>("update-progress-event"),
+	viewRequestEvent: makeEvent<ViewRequestEvent>("view-request-event"),
 };
 
 /* Types */
@@ -1842,6 +1861,12 @@ export type VacationState = { kind: "ready"; settings: VacationSettings;
 canLimitToDomain: boolean; 
 /**  Replying right now (on, and within its dates). */
 active: boolean } | { kind: "needsSignIn" } | { kind: "unavailable"; message: string };
+
+/**
+ *  A folder was asked for (Windows: the taskbar icon's menu); take it with
+ *  `view_request_take`.
+ */
+export type ViewRequestEvent = null;
 
 export type WriteAnswer = {
 	/**

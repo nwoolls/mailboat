@@ -8,6 +8,7 @@ mod email_menu;
 mod error;
 mod events;
 mod files;
+mod jump_list;
 mod links;
 mod mail_handler;
 mod mcp;
@@ -35,7 +36,7 @@ use tauri_specta::{collect_commands, collect_events, Builder, Event};
 
 use crate::events::{
     AccountsChangedEvent, IdentitiesChangedEvent, MailChangedEvent, MailtoEvent, MenuCommandEvent,
-    OpenSettingsEvent, SyncProgressEvent, SyncStatusEvent, TauriSyncEvents,
+    OpenSettingsEvent, SyncProgressEvent, SyncStatusEvent, TauriSyncEvents, ViewRequestEvent,
 };
 use crate::state::{AppDirs, AppState};
 
@@ -130,6 +131,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::vacation_list,
             commands::vacation_set,
             commands::mailto_take,
+            commands::view_request_take,
             commands::mail_app_default,
             commands::mail_app_make_default,
             commands::menu_bar_set,
@@ -173,6 +175,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             OpenSettingsEvent,
             AccountsChangedEvent,
             MailtoEvent,
+            ViewRequestEvent,
             MenuCommandEvent,
             notifications::NotificationOpenedEvent,
             trackpad::TrackpadEvent,
@@ -208,6 +211,10 @@ pub fn run() {
     export_bindings(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(BINDINGS_PATH));
 
     let mode = mode::Mode::from_args(std::env::args().skip(1));
+    // Before any window: the app's ID, which the taskbar icon's menu is
+    // kept under (Windows).
+    #[cfg(windows)]
+    jump_list::take_app_id(mode);
     let app = tauri::Builder::default();
     // Windows starts a second copy for a mailto: link clicked while the app
     // is open: it hands the link over and quits (must be the first
@@ -217,7 +224,9 @@ pub fn run() {
     #[cfg(windows)]
     let app = if mode.is_normal() {
         app.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            mail_handler::open_args(app, argv.into_iter().skip(1));
+            let args: Vec<String> = argv.into_iter().skip(1).collect();
+            jump_list::open_args(app, &args);
+            mail_handler::open_args(app, args);
         }))
     } else {
         app
@@ -241,6 +250,7 @@ pub fn run() {
         // The app updating itself (src/updates.rs): Rust only, no web permission.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(mail_handler::MailtoQueue::default())
+        .manage(jump_list::ViewRequest::default())
         .manage(menu::MenuItems::default())
         .manage(ai::AiState::new())
         .register_uri_scheme_protocol(mail_core::mail::links::SCHEME, |ctx, request| {
@@ -249,9 +259,15 @@ pub fn run() {
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
-            // Windows passes a mailto: link that launched the app as an argument.
+            // Windows passes a mailto: link or a folder from the taskbar
+            // icon's menu that launched the app as arguments, and the menu
+            // is written again (it follows the app after an update).
             #[cfg(windows)]
-            mail_handler::open_args(app.handle(), std::env::args().skip(1));
+            {
+                jump_list::open_args(app.handle(), std::env::args().skip(1));
+                mail_handler::open_args(app.handle(), std::env::args().skip(1));
+                jump_list::write(app.handle(), mode);
+            }
             menu::install(app.handle())?;
             trackpad::watch(app.handle());
             tooltips::follow_desktop();

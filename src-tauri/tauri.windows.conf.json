@@ -22,6 +22,10 @@
   },
   "bundle": {
     "targets": ["nsis"],
+    "resources": {
+      "icons/jump-list/*.ico": "jump-list/",
+      "icons/jump-list/HUGEICONS-LICENSE.md": "jump-list/HUGEICONS-LICENSE.md"
+    },
     "windows": {
       "nsis": {
         "installerHooks": "windows/installer.nsh"

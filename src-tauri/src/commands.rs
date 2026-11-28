@@ -1642,6 +1642,13 @@ pub fn mailto_take(queue: State<'_, crate::mail_handler::MailtoQueue>) -> Vec<Ma
     queue.take()
 }
 
+/// The folder the taskbar icon's menu asked for, if any (see `jump_list`).
+#[tauri::command]
+#[specta::specta]
+pub fn view_request_take(request: State<'_, crate::jump_list::ViewRequest>) -> Option<MailView> {
+    request.take()
+}
+
 /// Which app opens `mailto:` links (Settings → General).
 #[tauri::command]
 #[specta::specta]
