@@ -5435,6 +5435,31 @@ the way, and one bug in the app caused flaky failures; all three are in
         of 120 on 8 workers) and 5 of 5 on a slowed page. The CI symptom
         wasn't reproduced locally; that it is the same race on a busier
         machine is likely, not confirmed.
+      - 2026-11-28, CI on #262 (branch `templates`, which changes nothing in
+        the reader), https://github.com/nwoolls/mailboat/actions/runs/46099984365,
+        WebKit: after ↓ the reader ended above where the test measured from
+        (`toBeGreaterThan`, expected more than 213, received 188, line 123;
+        the poll timed out after 15 s); 305 others passed. The job wasn't run
+        again. The trace's snapshots show the cause: the reader sat at 213
+        through the five ↑ presses and both of the test's waits, because the
+        smooth scroll the last ↑ asked for (up to the first email) hadn't
+        started; WebKit can hold one back on a busy machine. A smooth scroll
+        that hasn't started stands still, so the wait for the reader to
+        stop returned, and the test read 213 as where ↓ would start. ↓ then
+        went on from where ↑ was heading, as the app means it to, and ended
+        at 188. Not reproduced locally as the test was (20 of 20, 15 of 15
+        slowed, 40 of 40 on 8 workers); a throwaway spec that started the
+        reader's smooth scrolls late failed from 700 ms on and passed at 0
+        and 300 ms.
+      - Fixed 2026-11-28 (branch `reader-down-flaky`), in the test: it waits
+        for the reader to show the first email's top, where ↑ takes it, and
+        to stand still there (`atFirstEmail`), and it starts the reader's
+        smooth scrolls a second late during the ↑ presses
+        (`lateSmoothScrolls`), so the case no longer needs a busy runner.
+        With the old wait and the late start it fails every time (expected
+        more than 213, received 0). With the fix it passed 40 of 40, 10 of
+        10 on the slowed page, 80 of 80 on 8 workers, and the whole file 125
+        of 125 on 8 workers.
 - [x] `reader-keyboard.spec.ts`: "an arrow after the outline scrolled away
       outlines the first email showing" (line 221).
       - 2026-11-26, CI on `main` after #247 (docs only),

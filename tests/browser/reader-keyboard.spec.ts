@@ -41,6 +41,53 @@ async function scrollSettled(page: Page) {
   });
 }
 
+/**
+ * Makes the reader's smooth scrolls start `ms` late while it's set, as
+ * WebKit's can on a busy machine: the scroll asked for doesn't move for a
+ * while, so a wait for the reader to stand still returns before it has
+ * started (docs/ROADMAP.md → Flaky tests, 2026-11-28). Call before `goto`;
+ * `setScrollDelay` turns it on and off.
+ */
+async function lateSmoothScrolls(page: Page) {
+  await page.addInitScript(() => {
+    const original = Element.prototype.scrollTo;
+    Element.prototype.scrollTo = function (this: Element, ...args: unknown[]) {
+      const delay = (window as unknown as { __scrollDelay?: number }).__scrollDelay ?? 0;
+      const options = args[0];
+      const smooth =
+        typeof options === "object" && (options as ScrollToOptions | null)?.behavior === "smooth";
+      if (delay > 0 && smooth && this.classList.contains("reader-scroll")) {
+        setTimeout(() => original.apply(this, args as never), delay);
+        return;
+      }
+      return original.apply(this, args as never);
+    } as typeof Element.prototype.scrollTo;
+  });
+}
+
+const setScrollDelay = (page: Page, ms: number) =>
+  page.evaluate((delay) => {
+    (window as unknown as { __scrollDelay: number }).__scrollDelay = delay;
+  }, ms);
+
+/**
+ * Waits until the reader shows the first email's top, where ↑ through the
+ * conversation takes it, and has stopped there. Standing still alone isn't
+ * enough: a smooth scroll that hasn't started yet stands still too.
+ */
+async function atFirstEmail(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const reader = document.querySelector<HTMLElement>(".reader-scroll")!;
+        const first = reader.querySelector<HTMLElement>("section[data-message-id]")!;
+        return first.getBoundingClientRect().top - reader.getBoundingClientRect().top;
+      }),
+    )
+    .toBeGreaterThanOrEqual(-1);
+  await scrollSettled(page);
+}
+
 /** `extra`: more of the harness's options (`&threads=distinct`: j / k open another conversation). */
 async function preview(page: Page, extra = "") {
   await page.setViewportSize({ width: 1200, height: 800 });
@@ -101,11 +148,17 @@ test("Esc goes back to the list, and the next Esc hides the reader", async ({ pa
 });
 
 test("↓ reads down a long email before outlining the next", async ({ page }) => {
+  await lateSmoothScrolls(page);
   await preview(page);
   await page.keyboard.press("ArrowRight");
+  // The scroll up to the first email starts a second late, as it did on a
+  // busy CI runner: the test has to wait for the reader to get there, not
+  // only to stand still.
+  await setScrollDelay(page, 1000);
   for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
+  await setScrollDelay(page, 0);
   await expect.poll(() => outlinedIndex(page)).toBe(0);
-  await scrollSettled(page);
+  await atFirstEmail(page);
   await page.keyboard.press("ArrowRight");
   // Made long, as a newsletter would be.
   await cards(page)
