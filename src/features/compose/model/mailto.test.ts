@@ -26,6 +26,17 @@ describe("draftFromMailto", () => {
     expect(d.from.email).toBe("me@x.example");
   });
 
+  it("puts a subject with a line break on one line", () => {
+    const d = draftFromMailto(blank(), {
+      to: [],
+      cc: [],
+      bcc: [],
+      subject: "First\r\nSecond  line",
+      body: "",
+    });
+    expect(d.subject).toBe("First Second  line");
+  });
+
   it("an empty link is a blank message", () => {
     const d = draftFromMailto(blank(), { to: [], cc: [], bcc: [], subject: "", body: "" });
     expect(d.to).toEqual([]);

@@ -14,7 +14,9 @@ export function draftFromMailto(draft: Draft, link: Mailto): Draft {
     to: list(link.to),
     cc,
     bcc,
-    subject: link.subject,
+    // A subject is one line: a line break in the link (`%0D%0A`) is sent as
+    // a space, so it's a space here too.
+    subject: link.subject.replace(/\s*[\r\n]+\s*/g, " "),
     html,
     text: htmlToText(html),
     showCc: cc.length > 0,

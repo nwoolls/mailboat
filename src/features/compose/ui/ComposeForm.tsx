@@ -40,6 +40,7 @@ import { useStuck } from "../../../shared/ui/useStuck";
 import { stuckAfterScroll } from "../model/stickToEnd";
 import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 import { ComposerTemplates } from "../../templates/ui/ComposerTemplates";
+import { SubjectLine, useSubjectLine } from "./SubjectLine";
 import { selectFirstField } from "../../templates/ui/fieldNode";
 import { waitingFields } from "../../templates/model/fields";
 
@@ -130,11 +131,20 @@ export function ComposeForm({
   const [problem, setProblem] = useState<string | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   // A template's fields still waiting when Send was pressed: Send asks
-  // first. `key` is the message as it was then (text and subject).
+  // first. `key` is the message as it was then (text, subject and the
+  // subject line's fields).
   const [waiting, setWaiting] = useState<{ names: string[]; key: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [dropping, setDropping] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  // New messages' subject line, which can hold a template's field left
+  // empty. Return in it sends, as it did when it was a plain text box.
+  const subjectLine = useSubjectLine(
+    draft,
+    onChange,
+    () => formRef.current?.requestSubmit(),
+    sending,
+  );
   const [footMarker, footStuck] = useStuck();
   // The pinned bar's height as it is: in a narrow reader the formatting
   // wraps onto more rows, and a fixed guess left the line being typed
@@ -386,7 +396,7 @@ export function ComposeForm({
     setProblem(why);
     if (why || sending) return;
     const names = waitingFields(draft);
-    const key = `${draft.html}\u0000${draft.subject}`;
+    const key = `${draft.html}\u0000${draft.subject}\u0000${draft.subjectHtml ?? ""}`;
     if (names.length > 0 && !(anyway && waiting?.key === key)) {
       setWaiting({ names, key });
       return;
@@ -521,13 +531,7 @@ export function ComposeForm({
         />
         {/* Replies keep the conversation's subject, popped out too. */}
         {!inline && draft.kind === "new" && (
-          <input
-            aria-label="Subject"
-            placeholder="Subject"
-            value={draft.subject}
-            onChange={(e) => onChange((d) => ({ ...d, subject: e.target.value }))}
-            className="h-9 border-b border-stroke bg-transparent outline-none placeholder:text-content/45 focus-visible:outline-none"
-          />
+          <SubjectLine editor={subjectLine} empty={draft.subject === ""} />
         )}
         <OutsideBanner banner={rule && outside.length > 0 ? outsideBanner(rule, outside) : null} />
         {/* Never squeezed below a few lines by what's under it (a long
@@ -621,16 +625,9 @@ export function ComposeForm({
               type="button"
               onClick={() => {
                 setWaiting(null);
+                // The first in the text, else the first in the subject line.
                 if (editor && selectFirstField(editor)) return;
-                // Only in the subject: select its `[Name]` there.
-                const subject = formRef.current?.querySelector<HTMLInputElement>(
-                  "input[aria-label=Subject]",
-                );
-                const name = waiting.names[0];
-                const at = subject && name ? subject.value.indexOf(`[${name}]`) : -1;
-                if (!subject || at < 0) return;
-                subject.focus();
-                subject.setSelectionRange(at, at + name!.length + 2);
+                if (subjectLine) selectFirstField(subjectLine);
               }}
               className="h-6 shrink-0 rounded-md bg-background-base px-2.5 text-content ring-1 ring-stroke hover:bg-selection"
             >

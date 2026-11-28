@@ -20,7 +20,7 @@ test("many attachments leave room to write", async ({ page }) => {
   expect((await chips.boundingBox())!.height).toBeLessThanOrEqual(80);
   // The writing area: the editor's scrolling box, not its (empty) text.
   const room = await form
-    .locator(".ProseMirror")
+    .getByRole("textbox", { name: "Message" })
     .evaluate((el) => el.closest(".overflow-y-auto")!.getBoundingClientRect().height);
   expect(room).toBeGreaterThanOrEqual(100);
 });

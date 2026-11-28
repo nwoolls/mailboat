@@ -24,7 +24,7 @@ test("an email you sent opens again as a new message, with its file", async ({ p
   // The same people (the email you sent went to Maya), Bcc from Gmail.
   await expect(page.locator("[data-address-line=to]")).toContainText("Maya Chen");
   await expect(page.locator("[data-address-line=bcc]")).toContainText("books@rivera.example");
-  await expect(page.getByRole("textbox", { name: "Subject" })).toHaveValue(/Lisbon in May\?/);
+  await expect(page.getByRole("textbox", { name: "Subject" })).toHaveText(/Lisbon in May\?/);
   await expect(card).toContainText("Sent once already.");
 
   // The file came along, and a note says so; Remove it takes it off.
@@ -45,7 +45,7 @@ test("the note says when Bcc couldn't be read, and can be dismissed", async ({ p
   await note.getByRole("button", { name: "Dismiss" }).click();
   await expect(note).toHaveCount(0);
   // Its button gone, the message has focus (review).
-  await expect(page.locator(".ProseMirror")).toBeFocused();
+  await expect(page.getByRole("textbox", { name: "Message" })).toBeFocused();
   // The file stays: dismissing only hides the note.
   await expect(page.getByText("Lisbon itinerary.pdf")).toBeVisible();
 });

@@ -244,66 +244,47 @@ export function fillBody(
 }
 
 /**
- * A template's subject, filled in, as plain text. A field with no value
- * leaves its name in brackets, which is easy to spot in the subject line.
+ * A template's subject, filled in, as one line of HTML for the composer's
+ * subject line: values as plain text, and a field with no value kept as a
+ * field (highlighted there, and asked about at Send, as in the text).
  */
-export function fillSubject(
+export function fillSubjectHtml(
   html: string,
   fields: TemplateField[],
   values: FieldValues,
   locale?: string,
 ): string {
-  // Paragraphs (a pasted subject of several) are words apart, not run together.
-  const doc = parse(html.replace(/<\/(p|div|li|h\d)>/gi, "</$1> "));
+  const doc = parse(html);
   const byId = new Map(fields.map((f) => [f.id, f]));
   for (const span of fieldSpans(doc)) {
     const field = byId.get(span.dataset.field ?? "");
-    const name = span.textContent ?? "";
     let text = "";
     if (field?.kind === "longText") text = lines(values[field.id]?.text ?? "").join(", ");
     else if (field) text = valueText(field, span.dataset.format ?? null, values[field.id], locale);
-    span.replaceWith(doc.createTextNode(text || `[${name}]`));
+    if (text || !field) span.replaceWith(doc.createTextNode(text || (span.textContent ?? "")));
+    // The app's own mark, which the editor takes as a field.
+    else span.className = "template-field";
   }
+  return oneLine(doc.body.innerHTML);
+}
+
+/**
+ * A subject line's plain text, as it's saved and sent: a field left empty
+ * written as `[Name]`, so a draft reopened from Gmail (which keeps only
+ * the text) still shows what's missing.
+ */
+export function subjectText(html: string): string {
+  const doc = parse(html);
+  for (const span of fieldSpans(doc)) span.replaceWith(doc.createTextNode(`[${span.textContent}]`));
   return (doc.body.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 /**
- * The names of the fields the filled-in subject still shows as `[Name]`,
- * for Send to ask about along with those in the text.
- */
-export function emptySubjectFields(
-  html: string,
-  fields: TemplateField[],
-  values: FieldValues,
-  locale?: string,
-): string[] {
-  const byId = new Map(fields.map((f) => [f.id, f]));
-  const names: string[] = [];
-  for (const span of fieldSpans(parse(html))) {
-    const field = byId.get(span.dataset.field ?? "");
-    const filled =
-      field?.kind === "longText"
-        ? lines(values[field.id]?.text ?? "").length > 0
-        : field
-          ? valueText(field, span.dataset.format ?? null, values[field.id], locale) !== ""
-          : false;
-    const name = span.textContent ?? "";
-    if (!filled && !names.includes(name)) names.push(name);
-  }
-  return names;
-}
-
-/**
  * The fields a message still waits on, in order, each once: those in its
- * text, then those its subject still shows as `[Name]`.
+ * text, then those in its subject line.
  */
-export function waitingFields(draft: {
-  html: string;
-  subject: string;
-  waitingInSubject?: string[];
-}): string[] {
-  const inSubject = (draft.waitingInSubject ?? []).filter((n) => draft.subject.includes(`[${n}]`));
-  return [...new Set([...unfilledFields(draft.html), ...inSubject])];
+export function waitingFields(draft: { html: string; subjectHtml?: string }): string[] {
+  return [...new Set([...unfilledFields(draft.html), ...unfilledFields(draft.subjectHtml ?? "")])];
 }
 
 /** The fields in the order they first appear (subject, then body), each once. */

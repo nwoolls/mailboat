@@ -1,6 +1,5 @@
-import { type Editor, EditorContent, Node, useEditor } from "@tiptap/react";
+import { type Editor, EditorContent } from "@tiptap/react";
 import type { EditorView } from "@tiptap/pm/view";
-import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useRef, useState } from "react";
 import type {
   Address,
@@ -17,12 +16,12 @@ import type { AddressLine } from "../../compose/model/addresses";
 import { AddressField } from "../../compose/ui/AddressField";
 import { EditorBody, FormatBar, useRichEditor } from "../../compose/ui/RichEditor";
 import { type DateFormat, formatsFor, oneLine, tidyName } from "../model/fields";
+import { useOneLineEditor } from "./oneLineEditor";
 import {
   type FieldAttrs,
   fieldPositions,
   insertField,
   selectedField,
-  TemplateFieldNode,
   updateFieldEverywhere,
 } from "./fieldNode";
 
@@ -68,61 +67,6 @@ const INPUT =
 /** A field dialog's controls fill its width (a long option can't widen it). */
 const FIELD_INPUT = `${INPUT} w-full min-w-0`;
 
-/** The subject's document: one paragraph, never more. */
-const OneLine = Node.create({ name: "doc", topNode: true, content: "paragraph" });
-
-/** The subject's editor: one line of text and fields. */
-function useSubjectEditor(
-  html: string,
-  onKey: (view: EditorView, event: KeyboardEvent) => boolean,
-) {
-  return useEditor({
-    extensions: [
-      OneLine,
-      StarterKit.configure({
-        document: false,
-        blockquote: false,
-        bold: false,
-        bulletList: false,
-        code: false,
-        codeBlock: false,
-        dropcursor: false,
-        gapcursor: false,
-        hardBreak: false,
-        heading: false,
-        horizontalRule: false,
-        italic: false,
-        link: false,
-        listItem: false,
-        listKeymap: false,
-        orderedList: false,
-        strike: false,
-        trailingNode: false,
-        underline: false,
-      }),
-      TemplateFieldNode,
-    ],
-    // One line, as the editor holds no more (a subject saved otherwise
-    // would lose its other paragraphs).
-    content: oneLine(html),
-    editorProps: {
-      attributes: {
-        class: "outline-none py-1.5",
-        "aria-label": "Subject",
-        role: "textbox",
-        "aria-multiline": "false",
-      },
-      // One line: Return does nothing (⌘↩ saves, through the dialog), but
-      // on a selected field it opens its settings.
-      handleKeyDown: (view, event) => onKey(view, event) || event.key === "Enter",
-      // A pasted line break or paragraph becomes a space, so words don't run
-      // together on the one line.
-      transformPastedText: (text) => text.replace(/\s*[\r\n]+\s*/g, " "),
-      transformPastedHTML: (pasted) => oneLine(pasted),
-    },
-  });
-}
-
 let nextField = 0;
 function newFieldId(): string {
   nextField += 1;
@@ -164,7 +108,14 @@ export function TemplateEditor({
   // click does. The editors are made once, so they reach the handler
   // through a ref that follows each render.
   const fieldKey = useRef<(view: EditorView, event: KeyboardEvent) => boolean>(() => false);
-  const subject = useSubjectEditor(template?.subject ?? "", (v, e) => fieldKey.current(v, e));
+  // One line, as the editor holds no more (a subject saved otherwise
+  // would lose its other paragraphs).
+  const subject = useOneLineEditor(oneLine(template?.subject ?? ""), {
+    className: "outline-none py-1.5",
+    // One line: Return does nothing (⌘↩ saves, through the dialog), but on
+    // a selected field it opens its settings.
+    onKey: (v, e) => fieldKey.current(v, e) || e.key === "Enter",
+  });
   const body = useRichEditor(template?.body ?? "", () => {}, {
     onKey: (v, e) => fieldKey.current(v, e),
   });

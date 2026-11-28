@@ -3,11 +3,11 @@ import type { TemplateField } from "../../../platform/tauri/bindings";
 import {
   defaultDay,
   EMPTY_VALUE,
-  emptySubjectFields,
   oneLine,
   fieldsInOrder,
   fillBody,
-  fillSubject,
+  fillSubjectHtml,
+  subjectText,
   firstName,
   type FieldValue,
   previewLine,
@@ -195,36 +195,28 @@ describe("fillBody", () => {
   });
 });
 
-describe("fillSubject", () => {
-  it("is plain text, with a waiting field's name in brackets", () => {
-    const rollback = field("rollback", "text");
-    const html = `<p>Change control: ${span("window", "monthYear")} ${span("rollback")}</p>`;
-    expect(fillSubject(html, [window, rollback], { window: jan11 }, locale)).toBe(
-      "Change control: January 2027 [Rollback]",
-    );
-    expect(fillSubject("", [], {})).toBe("");
+describe("fillSubjectHtml", () => {
+  it("is one line, a subject of several paragraphs words apart", () => {
+    expect(subjectText(fillSubjectHtml("<p>First</p><p>Second</p>", [], {}))).toBe("First Second");
+    expect(fillSubjectHtml("", [], {})).toBe("");
   });
 
-  it("keeps the words of a subject in several paragraphs apart", () => {
-    expect(fillSubject("<p>First</p><p>Second</p>", [], {})).toBe("First Second");
-  });
-
-  it("names the fields it left waiting, and Send asks while they show", () => {
+  it("keeps a field left empty as a field in the subject line, and Send asks about it", () => {
     const rollback = field("rollback", "text");
-    const html = `<p>${span("window", "monthYear")} ${span("rollback")}</p>`;
+    const html = `<p>Change: ${span("window", "monthYear")} ${span("rollback")}</p>`;
     const values = { window: jan11, rollback: value({ text: "" }) };
-    const waiting = emptySubjectFields(html, [window, rollback], values, locale);
-    expect(waiting).toEqual(["Rollback"]);
-    const subject = fillSubject(html, [window, rollback], values, locale);
-    expect(waitingFields({ html: "", subject, waitingInSubject: waiting })).toEqual(["Rollback"]);
-    // Typed over in the subject: no longer waiting.
-    expect(
-      waitingFields({ html: "", subject: "January 2027 done", waitingInSubject: waiting }),
-    ).toEqual([]);
-    // With one in the text too, each once.
-    expect(
-      waitingFields({ html: `<p>${span("rollback")}</p>`, subject, waitingInSubject: waiting }),
-    ).toEqual(["Rollback"]);
+    const line = fillSubjectHtml(html, [window, rollback], values, locale);
+    expect(line).toBe(
+      '<p>Change: January 2027 <span data-field="rollback" class="template-field">Rollback</span></p>',
+    );
+    // Saved and sent as `[Name]`, so a reopened draft still shows it.
+    expect(subjectText(line)).toBe("Change: January 2027 [Rollback]");
+    expect(waitingFields({ html: "", subjectHtml: line })).toEqual(["Rollback"]);
+    // With one in the text too, each once; and none without a subject line.
+    expect(waitingFields({ html: `<p>${span("rollback")}</p>`, subjectHtml: line })).toEqual([
+      "Rollback",
+    ]);
+    expect(waitingFields({ html: "<p>Done</p>" })).toEqual([]);
   });
 });
 

@@ -88,6 +88,15 @@ export function Harness({
     void actions.startNew(account.id);
   }, [mode, actions, account.id]);
   const card = compose.cards.find((c) => !c.minimized);
+  // `&subject=…`: the card's subject set from outside once it's open, as a
+  // reopened draft's or a `mailto:` link's is.
+  const subjectSet = useRef(false);
+  const startSubject = params.get("subject");
+  useEffect(() => {
+    if (!card || startSubject === null || subjectSet.current) return;
+    subjectSet.current = true;
+    updateDraft(card.draft.id, (d) => ({ ...d, subject: startSubject }));
+  }, [card, startSubject]);
   // The reader's own keys, as Shell passes them on (it isn't mounted here).
   useEffect(() => {
     if (mode !== "unread") return;
@@ -253,8 +262,9 @@ export function Harness({
           accounts={[account]}
           // Recorded, so a test can tell that nothing was sent.
           onSend={() => {
-            const w = window as unknown as { __order?: string[] };
+            const w = window as unknown as { __order?: string[]; __sentSubject?: string };
             (w.__order ??= []).push("message_send");
+            w.__sentSubject = card.draft.subject;
           }}
           onSwitch={() => {}}
         />
