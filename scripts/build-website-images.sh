@@ -7,7 +7,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 out=website/images
-rm -rf "$out/cards" "$out/full" "$out"/*.webp
+# Only what this script makes is cleared: the cards and their full-size
+# copies, both folders its own (so a card taken off the list goes). Its
+# pictures at the top of $out (the hero, the spotlights) are written over,
+# not cleared first: the others there come from the video scripts
+# (video/render.sh's swipe stills, video/render-trailers.sh's poster),
+# and clearing every *.webp deleted them.
+rm -rf "$out/cards" "$out/full"
 mkdir -p "$out/cards" "$out/full"
 
 webp() { # <source png> <destination webp> [extra cwebp arguments]
