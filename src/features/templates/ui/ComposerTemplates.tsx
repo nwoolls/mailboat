@@ -12,7 +12,7 @@ import {
   type FieldValues,
   fillBody,
   fillSubjectHtml,
-  lineText,
+  subjectText,
   startingValues,
   withoutFieldMarks,
 } from "../model/fields";
@@ -61,7 +61,7 @@ export function ComposerTemplates({
     // The subject as the subject line shows it (a field left empty kept as
     // a field), and as plain text, which is what's sent.
     const subjectHtml = t.subject ? fillSubjectHtml(t.subject, t.fields, values) : "";
-    const subject = lineText(subjectHtml);
+    const subject = subjectText(subjectHtml);
     // From, people and subject first: putting the text in counts as writing,
     // after which From no longer changes.
     onChange((d) => {

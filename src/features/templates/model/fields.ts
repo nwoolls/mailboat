@@ -292,9 +292,15 @@ export function fillSubjectHtml(
   return oneLine(doc.body.innerHTML);
 }
 
-/** HTML's text in one line (a field as its name), as a subject is sent. */
-export function lineText(html: string): string {
-  return (parse(html).body.textContent ?? "").replace(/\s+/g, " ").trim();
+/**
+ * A subject line's plain text, as it's saved and sent: a field left empty
+ * written as `[Name]`, so a draft reopened from Gmail (which keeps only
+ * the text) still shows what's missing.
+ */
+export function subjectText(html: string): string {
+  const doc = parse(html);
+  for (const span of fieldSpans(doc)) span.replaceWith(doc.createTextNode(`[${span.textContent}]`));
+  return (doc.body.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 /**

@@ -55,9 +55,10 @@ export function useOneLineEditor(
       }),
       TemplateFieldNode,
     ],
-    // One line, as the editor holds no more (a subject saved otherwise
-    // would lose its other paragraphs).
-    content: oneLine(html),
+    // As given: callers flatten what may have several lines (`oneLine`).
+    // Spaces are kept as typed, as a text box keeps them.
+    content: html,
+    parseOptions: { preserveWhitespace: "full" },
     editorProps: {
       attributes: {
         class: options.className,

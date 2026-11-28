@@ -15,7 +15,7 @@ import { showToast } from "../../../shared/lib/toast";
 import type { AddressLine } from "../../compose/model/addresses";
 import { AddressField } from "../../compose/ui/AddressField";
 import { EditorBody, FormatBar, useRichEditor } from "../../compose/ui/RichEditor";
-import { type DateFormat, formatsFor, tidyName } from "../model/fields";
+import { type DateFormat, formatsFor, oneLine, tidyName } from "../model/fields";
 import { useOneLineEditor } from "./oneLineEditor";
 import {
   type FieldAttrs,
@@ -108,7 +108,9 @@ export function TemplateEditor({
   // click does. The editors are made once, so they reach the handler
   // through a ref that follows each render.
   const fieldKey = useRef<(view: EditorView, event: KeyboardEvent) => boolean>(() => false);
-  const subject = useOneLineEditor(template?.subject ?? "", {
+  // One line, as the editor holds no more (a subject saved otherwise
+  // would lose its other paragraphs).
+  const subject = useOneLineEditor(oneLine(template?.subject ?? ""), {
     className: "outline-none py-1.5",
     // One line: Return does nothing (⌘↩ saves, through the dialog), but on
     // a selected field it opens its settings.

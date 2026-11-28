@@ -131,7 +131,8 @@ export function ComposeForm({
   const [problem, setProblem] = useState<string | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   // A template's fields still waiting when Send was pressed: Send asks
-  // first. `key` is the message as it was then (text and subject).
+  // first. `key` is the message as it was then (text, subject and the
+  // subject line's fields).
   const [waiting, setWaiting] = useState<{ names: string[]; key: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [dropping, setDropping] = useState(false);
@@ -395,7 +396,7 @@ export function ComposeForm({
     setProblem(why);
     if (why || sending) return;
     const names = waitingFields(draft);
-    const key = `${draft.html}\u0000${draft.subject}`;
+    const key = `${draft.html}\u0000${draft.subject}\u0000${draft.subjectHtml ?? ""}`;
     if (names.length > 0 && !(anyway && waiting?.key === key)) {
       setWaiting({ names, key });
       return;

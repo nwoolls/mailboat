@@ -8250,8 +8250,17 @@ item below is built, the owner has tried it, and the owner has published
               left empty there is highlighted, Send asks about it, "Go to
               it" reaches it after the text's, and typing over it replaces
               it. `subject` stays the plain text that's sent and that
-              everything else reads. Return still sends, Tab goes on to the
-              text, and pasted lines stay on one line.
+              everything else reads, with a field left empty written there
+              as `[Name]`. Return still sends, Tab goes on to the text, and
+              pasted lines stay on one line. A draft saved to Gmail keeps
+              only the text, so reopened, its subject shows `[Name]` as
+              plain text, which Send no longer asks about.
+              *(Review, 2026-11-28, one reviewer: Send anyway now also holds
+              only for the subject line's fields as they were shown; a
+              subject set from outside keeps its spaces; such a subject is
+              no longer an undo step, as one ⌘Z after typing over a field
+              emptied the line; a long subject scrolls inside a line at
+              most a few lines tall, so Send stays in the card.)*
 
 ### Bugs
 

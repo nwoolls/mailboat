@@ -361,6 +361,10 @@ test("Settings: a new template with a field, changed again from the keyboard", a
 });
 
 const subjectLine = (page: Page) => card(page).getByRole("textbox", { name: "Subject" });
+const sentSubject = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __sentSubject?: string }).__sentSubject);
+/** The subject line's text exactly, spaces and all (`toHaveText` folds them). */
+const subjectExactly = (page: Page) => subjectLine(page).evaluate((el) => el.textContent);
 
 test("the subject line types, pastes and sends as a text box did", async ({ page }) => {
   await page.goto("/tests/browser/harness.html?mode=card");
@@ -432,7 +436,74 @@ test("a field left empty in the subject is a field there too", async ({ page }) 
   await page.keyboard.type("Jan 15");
   await expect(field).toHaveCount(0);
   await expect(subjectLine(page)).toHaveText(/ to Jan 15$/);
-  // Nothing waits now: Send sends.
+  // Nothing waits now: Send sends, with the subject as it shows.
   await card(page).getByRole("button", { name: "Send" }).click();
   await expect.poll(() => sent(page)).toBe(true);
+  expect(await sentSubject(page)).toMatch(/^Out .+ to Jan 15$/);
+});
+
+test("a subject set from outside keeps its spaces, and is sent as it shows", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=card&subject=Project%20%20%20update");
+  await expect.poll(() => subjectExactly(page)).toBe("Project   update");
+  await card(page).getByRole("combobox", { name: "To" }).click();
+  await page.keyboard.type("maya@x.example,");
+  await subjectLine(page).click();
+  await page.keyboard.press("End");
+  await page.keyboard.type("!");
+  await card(page).getByRole("button", { name: "Send" }).click();
+  await expect.poll(() => sent(page)).toBe(true);
+  expect(await sentSubject(page)).toBe("Project   update!");
+});
+
+test("a rich paste of two paragraphs stays on one line, words apart", async ({ page }) => {
+  await page.goto("/tests/browser/harness.html?mode=card");
+  await subjectLine(page).click();
+  await page.evaluate(() => {
+    const data = new DataTransfer();
+    data.setData("text/html", "<p>First</p><p><b>Second</b></p>");
+    data.setData("text/plain", "First\n\nSecond");
+    document.activeElement?.dispatchEvent(
+      new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
+    );
+  });
+  await expect(subjectLine(page)).toHaveText("First Second");
+  await expect(subjectLine(page).locator("p")).toHaveCount(1);
+});
+
+test("a long subject scrolls inside its line, and Send stays in the card", async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.goto("/tests/browser/harness.html?mode=card");
+  await subjectLine(page).click();
+  await page.keyboard.type("A very long subject ".repeat(40));
+  const box = await subjectLine(page)
+    .locator("xpath=ancestor::div[contains(@class,'max-h-24')][1]")
+    .boundingBox();
+  expect(box!.height).toBeLessThanOrEqual(96);
+  await expect(card(page).getByRole("button", { name: "Send" })).toBeInViewport();
+});
+
+test("Send anyway asks again when the subject's field comes back", async ({ page }) => {
+  await sendable(page);
+  await card(page).getByRole("button", { name: "Templates" }).click();
+  await page.keyboard.type("out next week");
+  await page.keyboard.press("Enter");
+  const out = page.getByRole("dialog", { name: "Out next week" });
+  await out.getByLabel("Last day").fill("");
+  await out.getByRole("button", { name: "Insert" }).click();
+  // "Last day" is left in both the text and the subject. The subject's is
+  // typed over with text that reads the same as the field.
+  await subjectLine(page).locator(".template-field").click();
+  await page.keyboard.type("[Last day]");
+  await expect(subjectLine(page).locator(".template-field")).toHaveCount(0);
+  await card(page).getByRole("button", { name: "Send" }).click();
+  const alert = card(page).getByRole("alert").filter({ hasText: "filled in" });
+  await expect(alert).toBeVisible();
+  // Undo brings the subject's field back: Send anyway was shown for a
+  // message without it, so it asks again.
+  await subjectLine(page).click();
+  await page.keyboard.press("ControlOrMeta+Z");
+  await expect(subjectLine(page).locator(".template-field")).toHaveCount(1);
+  await alert.getByRole("button", { name: "Send anyway" }).click();
+  await expect(alert).toBeVisible();
+  expect(await sent(page)).toBe(false);
 });

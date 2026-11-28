@@ -8,7 +8,7 @@ import {
   fillBody,
   fillSubject,
   fillSubjectHtml,
-  lineText,
+  subjectText,
   firstName,
   type FieldValue,
   previewLine,
@@ -218,7 +218,8 @@ describe("fillSubject", () => {
     expect(line).toBe(
       '<p>Change: January 2027 <span data-field="rollback" class="template-field">Rollback</span></p>',
     );
-    expect(lineText(line)).toBe("Change: January 2027 Rollback");
+    // Saved and sent as `[Name]`, so a reopened draft still shows it.
+    expect(subjectText(line)).toBe("Change: January 2027 [Rollback]");
     expect(waitingFields({ html: "", subjectHtml: line })).toEqual(["Rollback"]);
     // With one in the text too, each once; and none without a subject line.
     expect(waitingFields({ html: `<p>${span("rollback")}</p>`, subjectHtml: line })).toEqual([
