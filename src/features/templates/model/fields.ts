@@ -340,6 +340,51 @@ export function withoutFieldMarks(html: string): string {
   return doc.body.innerHTML;
 }
 
+const BLOCKS = new Set([
+  "P",
+  "DIV",
+  "LI",
+  "UL",
+  "OL",
+  "BLOCKQUOTE",
+  "PRE",
+  "TABLE",
+  "TBODY",
+  "THEAD",
+  "TR",
+  "TD",
+  "TH",
+  "H1",
+  "H2",
+  "H3",
+  "H4",
+  "H5",
+  "H6",
+]);
+
+/**
+ * HTML as one paragraph, for the subject: each block (a paragraph, a list
+ * item, a table cell) gives up its contents followed by a space, and a
+ * line break becomes a space, so pasted lines keep their words apart.
+ * Fields and inline formatting stay.
+ */
+export function oneLine(html: string): string {
+  const doc = parse(html);
+  for (const br of doc.body.querySelectorAll("br")) br.replaceWith(doc.createTextNode(" "));
+  // Innermost first, so each block is flattened before its parent.
+  for (const el of [...doc.body.querySelectorAll("*")].toReversed()) {
+    if (!BLOCKS.has(el.tagName)) continue;
+    el.replaceWith(...el.childNodes, doc.createTextNode(" "));
+  }
+  const inner = doc.body.innerHTML.replace(/\s+/g, " ").trim();
+  return inner ? `<p>${inner}</p>` : "";
+}
+
+/** A name with its spaces as one, as fields are named and shown. */
+export function tidyName(name: string): string {
+  return name.trim().replace(/\s+/g, " ");
+}
+
 /** The template's text in one line, fields as `{Name}`, for lists and ⌘K. */
 export function previewLine(html: string): string {
   const doc = parse(html.replace(/<\/(p|li|div|h\d)>/gi, "</$1> "));

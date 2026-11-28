@@ -45,6 +45,14 @@ import { waitingFields } from "../../templates/model/fields";
 
 export type ReplyKind = Exclude<ComposeKind, "new">;
 
+/**
+ * An event over the form itself, not over a dialog of its own shown
+ * elsewhere in the page: React passes events up its own tree, portals
+ * included, so a file dropped on Fill in would reach the message.
+ */
+const inThisForm = (e: React.SyntheticEvent) =>
+  e.target instanceof Node && e.currentTarget.contains(e.target);
+
 export const KIND_LABELS: Record<ReplyKind, string> = {
   reply: "Reply",
   replyAll: "Reply all",
@@ -121,8 +129,9 @@ export function ComposeForm({
   const outside = outsideRecipients(rule, [...draft.to, ...draft.cc, ...draft.bcc]);
   const [problem, setProblem] = useState<string | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
-  // A template's fields still waiting when Send was pressed: Send asks first.
-  const [waiting, setWaiting] = useState<string[] | null>(null);
+  // A template's fields still waiting when Send was pressed: Send asks
+  // first. `key` is the message as it was then (text and subject).
+  const [waiting, setWaiting] = useState<{ names: string[]; key: string } | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [dropping, setDropping] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -369,15 +378,21 @@ export function ComposeForm({
     editor?.setEditable(!sending, false);
   }, [editor, sending]);
 
-  // `confirmed`: the fields Send anyway was pressed for. It sends only if
-  // those are still all that's waiting; a field added since asks again.
-  const trySend = (confirmed: string[] = []) => {
+  // `anyway`: Send anyway, which goes ahead only for the message it was
+  // shown for. Any change to the text or subject since (another template
+  // in, a field filled or added) asks again.
+  const trySend = (anyway = false) => {
     const why = sendProblem(draft);
     setProblem(why);
     if (why || sending) return;
-    const left = waitingFields(draft).filter((n) => !confirmed.includes(n));
-    setWaiting(left.length ? waitingFields(draft) : null);
-    if (left.length === 0) onSend();
+    const names = waitingFields(draft);
+    const key = `${draft.html}\u0000${draft.subject}`;
+    if (names.length > 0 && !(anyway && waiting?.key === key)) {
+      setWaiting({ names, key });
+      return;
+    }
+    setWaiting(null);
+    onSend();
   };
   const discard = () => (hasChanges(draft) ? setConfirming(true) : onDiscard());
   const account = accounts.find((a) => a.id === draft.accountId);
@@ -418,7 +433,7 @@ export function ComposeForm({
       // Files dropped anywhere on the message attach to it (checked before
       // the editor sees the drop, which would otherwise ignore them).
       onDragOverCapture={(e) => {
-        if (!hasFiles(e)) return;
+        if (!hasFiles(e) || !inThisForm(e)) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = "copy";
         if (!dropping) setDropping(true);
@@ -427,7 +442,7 @@ export function ComposeForm({
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
       }}
       onDropCapture={(e) => {
-        if (!hasFiles(e)) return;
+        if (!hasFiles(e) || !inThisForm(e)) return;
         e.preventDefault();
         e.stopPropagation();
         setDropping(false);
@@ -598,9 +613,9 @@ export function ComposeForm({
             className="mx-4 mb-1 flex items-center gap-2 rounded-lg bg-warn/15 px-3 py-1.5 text-xs text-warn-ink"
           >
             <span className="min-w-0 flex-1">
-              {waiting.length === 1
-                ? `“${waiting[0]}” hasn’t been filled in.`
-                : `${waiting.length} fields haven’t been filled in: ${waiting.map((n) => `“${n}”`).join(", ")}.`}
+              {waiting.names.length === 1
+                ? `“${waiting.names[0]}” hasn’t been filled in.`
+                : `${waiting.names.length} fields haven’t been filled in: ${waiting.names.map((n) => `“${n}”`).join(", ")}.`}
             </span>
             <button
               type="button"
@@ -611,7 +626,7 @@ export function ComposeForm({
                 const subject = formRef.current?.querySelector<HTMLInputElement>(
                   "input[aria-label=Subject]",
                 );
-                const name = waiting[0];
+                const name = waiting.names[0];
                 const at = subject && name ? subject.value.indexOf(`[${name}]`) : -1;
                 if (!subject || at < 0) return;
                 subject.focus();
@@ -623,7 +638,7 @@ export function ComposeForm({
             </button>
             <button
               type="button"
-              onClick={() => trySend(waiting ?? [])}
+              onClick={() => trySend(true)}
               className="h-6 shrink-0 rounded-md bg-background-base px-2.5 text-content ring-1 ring-stroke hover:bg-selection"
             >
               Send anyway

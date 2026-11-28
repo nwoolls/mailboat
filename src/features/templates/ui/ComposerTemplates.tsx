@@ -64,8 +64,11 @@ export function ComposerTemplates({
     // after which From no longer changes.
     onChange((d) => {
       const next = withTemplateFields(d, t, identities, subject);
-      // Only when the subject is the template's (one already there is kept).
-      return next.subject === subject && subject ? { ...next, waitingInSubject: waiting } : next;
+      // Only when this template supplies the subject: a new message whose
+      // subject was empty. A subject already there is kept, and so is what
+      // it waits on.
+      const supplies = d.kind === "new" && d.subject.trim() === "" && subject !== "";
+      return supplies ? { ...next, waitingInSubject: waiting } : next;
     });
     if (body.trim()) insertHtmlAtCursor(editor, body);
     else focusWhereItWas(editor);
@@ -140,14 +143,7 @@ export function ComposerTemplates({
           <FillInDialog
             template={filling.template}
             initial={filling.initial}
-            people={
-              draft.kind === "new" && filling.template.to.length + filling.template.cc.length > 0
-                ? {
-                    to: draft.to.length ? draft.to : filling.template.to,
-                    cc: draft.cc.length ? draft.cc : filling.template.cc,
-                  }
-                : null
-            }
+            people={peoplePreview(draft, filling.template, identities)}
             onInsert={(values) => insert(filling.template, values)}
             onCancel={() => {
               closeFillIn();
@@ -169,6 +165,17 @@ export function ComposerTemplates({
         )}
     </span>
   );
+}
+
+/**
+ * Who a new message will be to once the template is in, by the same rules
+ * as inserting it (`withTemplateFields`), for Fill in to show; none when the
+ * template adds no one or the message is a reply.
+ */
+function peoplePreview(draft: Draft, t: Template, identities: Identity[]) {
+  if (draft.kind !== "new" || t.to.length + t.cc.length + t.bcc.length === 0) return null;
+  const { to, cc, bcc } = withTemplateFields(draft, t, identities, "");
+  return { to, cc, bcc };
 }
 
 /**

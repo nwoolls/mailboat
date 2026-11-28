@@ -323,7 +323,8 @@ fn checked(input: &TemplateInput) -> Result<TemplateInput> {
     let mut ids = std::collections::HashSet::new();
     let mut names = std::collections::HashSet::new();
     for field in &mut out.fields {
-        field.name = field.name.trim().to_string();
+        // Spaces as one, as the subject shows the name (`[Name]`).
+        field.name = field.name.split_whitespace().collect::<Vec<_>>().join(" ");
         if field.id.is_empty() || !ids.insert(field.id.clone()) {
             return invalid("Each field needs an ID of its own.");
         }
@@ -596,7 +597,10 @@ mod tests {
         t.fields[0].kind = FieldKind::Choice;
         t.fields[0].choices = vec![" Standard ".into(), "".into(), "Emergency".into()];
         t.fields[1].auto = Some(AutoValue::Today);
+        // Spaces as one, as the subject shows a field left empty (`[Next step]`).
+        t.fields[1].name = "  Next   step ".into();
         let saved = create(&conn, &t).unwrap();
+        assert_eq!(saved.input.fields[1].name, "Next step");
         let w = &saved.input.fields[0];
         assert_eq!(w.choices, ["Standard", "Emergency"]);
         assert!(!w.end_time);

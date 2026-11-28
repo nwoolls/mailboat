@@ -139,7 +139,7 @@ test("⌘K starts a new message from a template", async ({ page }) => {
   // A new message with the template's people, and Fill in for its fields.
   const fill = page.getByRole("dialog", { name: "Change control" });
   await expect(fill).toBeVisible();
-  await expect(fill).toContainText("To Change board, Priya Raman");
+  await expect(fill).toContainText("To Change board · Cc Priya Raman");
   await fill.getByLabel("Rollback").fill("Restore the previous image");
   await page.keyboard.press("ControlOrMeta+Enter");
   await expect(fill).toHaveCount(0);
@@ -156,38 +156,97 @@ const sent = (page: Page) =>
     ((window as unknown as { __order?: string[] }).__order ?? []).includes("message_send"),
   );
 
-test("Insert and Save in the dialogs never send the message", async ({ page }) => {
-  await page.goto("/tests/browser/harness.html?mode=card");
-  // A message that could be sent: someone in To, and some text.
+/** A new message that could be sent: someone in To, and some text. */
+async function sendable(page: Page, extra = "") {
+  await page.goto(`/tests/browser/harness.html?mode=card${extra}`);
   await card(page).getByRole("combobox", { name: "To" }).click();
   await page.keyboard.type("maya@x.example,");
   await expect(card(page).locator("[data-address-line=to]")).toContainText("maya@x.example");
   await message(page).click();
   await page.keyboard.type("Hello");
+}
 
+/** No send, and no warning about fields that could have stopped one. */
+async function nothingSent(page: Page) {
+  await page.waitForTimeout(300);
+  expect(await sent(page)).toBe(false);
+  await expect(card(page).getByRole("alert")).toHaveCount(0);
+  await expect(message(page)).toBeVisible();
+}
+
+test("Insert in Fill in never sends the message", async ({ page }) => {
+  await sendable(page);
   await card(page).getByRole("button", { name: "Templates" }).click();
   await page.keyboard.type("thanks");
   await page.keyboard.press("Enter");
-  await page
-    .getByRole("dialog", { name: "Thanks, will review" })
-    .getByRole("button", { name: "Insert" })
-    .click();
-  await expect(message(page)).toContainText("Thanks for sending this over.");
+  const fill = page.getByRole("dialog", { name: "Thanks, will review" });
+  // Every field filled, so a field left waiting can't be what stops a send.
+  await fill.getByLabel("Recipient's first name").fill("Maya");
+  await fill.getByRole("button", { name: "Insert" }).click();
+  await expect(message(page)).toContainText("Hi Maya,");
+  await expect(message(page).locator("span[data-field]")).toHaveCount(0);
+  await nothingSent(page);
+});
 
+test("Save in Save as template never sends the message", async ({ page }) => {
+  await sendable(page);
   await card(page).getByRole("button", { name: "Templates" }).click();
   await page.getByRole("option", { name: "Save as template…" }).click();
   const save = page.getByRole("dialog", { name: "Save as template" });
-  await save.getByLabel("Name").fill("Hello and thanks");
+  await save.getByLabel("Name").fill("Hello");
   await save.getByRole("button", { name: "Save", exact: true }).click();
   await expect(save).toHaveCount(0);
-
-  // Still open, still being written, and nothing went to Gmail.
-  await expect(message(page)).toBeVisible();
-  await page.waitForTimeout(300);
-  expect(await sent(page)).toBe(false);
+  await nothingSent(page);
   // The saved template is in the list now.
   await card(page).getByRole("button", { name: "Templates" }).click();
-  await expect(page.getByRole("option", { name: /Hello and thanks/ })).toBeVisible();
+  await expect(page.getByRole("option", { name: /^Hello/ })).toBeVisible();
+});
+
+test("Send anyway is for the message it was shown for", async ({ page }) => {
+  await sendable(page);
+  const insertThanks = async () => {
+    await card(page).getByRole("button", { name: "Templates" }).click();
+    await page.keyboard.type("thanks");
+    await page.keyboard.press("Enter");
+    await page
+      .getByRole("dialog", { name: "Thanks, will review" })
+      .getByRole("button", { name: "Insert" })
+      .click();
+  };
+  // The address has no name, so "Recipient's first name" is left waiting.
+  await insertThanks();
+  await card(page).getByRole("button", { name: "Send" }).click();
+  const alert = card(page).getByRole("alert").filter({ hasText: "hasn’t been filled in" });
+  await expect(alert).toBeVisible();
+  // Another template with a field of the same name, then Send anyway: it
+  // asks again, for the message as it is now.
+  await insertThanks();
+  await expect(message(page).locator("span[data-field]")).toHaveCount(2);
+  await alert.getByRole("button", { name: "Send anyway" }).click();
+  await expect(alert).toBeVisible();
+  expect(await sent(page)).toBe(false);
+  // Pressed again with nothing changed, it sends.
+  await alert.getByRole("button", { name: "Send anyway" }).click();
+  await expect.poll(() => sent(page)).toBe(true);
+});
+
+test("a file dropped on Fill in doesn't attach to the message", async ({ page }) => {
+  await sendable(page);
+  await card(page).getByRole("button", { name: "Templates" }).click();
+  await page.keyboard.type("thanks");
+  await page.keyboard.press("Enter");
+  const fill = page.getByRole("dialog", { name: "Thanks, will review" });
+  await fill.evaluate((el) => {
+    const data = new DataTransfer();
+    data.items.add(new File(["made up"], "notes.txt", { type: "text/plain" }));
+    for (const type of ["dragenter", "dragover", "drop"])
+      el.dispatchEvent(
+        new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data }),
+      );
+  });
+  await fill.getByRole("button", { name: "Cancel" }).click();
+  await page.waitForTimeout(300);
+  await expect(card(page).getByText("notes.txt")).toHaveCount(0);
 });
 
 test("from the composer's button, a template's From replaces a blank message's", async ({

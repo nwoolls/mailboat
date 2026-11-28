@@ -16,7 +16,7 @@ import { showToast } from "../../../shared/lib/toast";
 import type { AddressLine } from "../../compose/model/addresses";
 import { AddressField } from "../../compose/ui/AddressField";
 import { EditorBody, FormatBar, useRichEditor } from "../../compose/ui/RichEditor";
-import { type DateFormat, formatsFor } from "../model/fields";
+import { type DateFormat, formatsFor, oneLine, tidyName } from "../model/fields";
 import {
   type FieldAttrs,
   fieldPositions,
@@ -102,7 +102,9 @@ function useSubjectEditor(
       }),
       TemplateFieldNode,
     ],
-    content: html,
+    // One line, as the editor holds no more (a subject saved otherwise
+    // would lose its other paragraphs).
+    content: oneLine(html),
     editorProps: {
       attributes: {
         class: "outline-none py-1.5",
@@ -116,8 +118,7 @@ function useSubjectEditor(
       // A pasted line break or paragraph becomes a space, so words don't run
       // together on the one line.
       transformPastedText: (text) => text.replace(/\s*[\r\n]+\s*/g, " "),
-      transformPastedHTML: (pasted) =>
-        pasted.replace(/<br\s*\/?>/gi, " ").replace(/<\/(p|div|li|h[1-6]|tr)>/gi, " </$1>"),
+      transformPastedHTML: (pasted) => oneLine(pasted),
     },
   });
 }
@@ -471,7 +472,7 @@ function FieldDialog({
   const set = (change: Partial<TemplateField>) => setField((f) => ({ ...f, ...change }));
 
   const done = () => {
-    const name = field.name.trim();
+    const name = tidyName(field.name);
     const list = choices
       .split("\n")
       .map((c) => c.trim())

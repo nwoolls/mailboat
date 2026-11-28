@@ -4,6 +4,7 @@ import {
   defaultDay,
   EMPTY_VALUE,
   emptySubjectFields,
+  oneLine,
   fieldsInOrder,
   fillBody,
   fillSubject,
@@ -250,5 +251,17 @@ describe("helpers", () => {
     expect(previewLine(`<p>Hi all,</p><ul><li><p>${span("changes")}</p></li></ul>`)).toBe(
       "Hi all, {Changes}",
     );
+  });
+});
+
+describe("oneLine", () => {
+  it("puts pasted paragraphs, lines and lists on one line, fields kept", () => {
+    expect(oneLine("<p>First</p><p>Second</p>")).toBe("<p>First Second</p>");
+    expect(oneLine("<div>One<br>Two</div><ul><li>Three</li></ul>")).toBe("<p>One Two Three</p>");
+    const mark = '<span class="template-field" data-field="w">Window</span>';
+    expect(oneLine(`<p><strong>Change:</strong></p><p>${mark}</p>`)).toBe(
+      `<p><strong>Change:</strong> ${mark}</p>`,
+    );
+    expect(oneLine("")).toBe("");
   });
 });

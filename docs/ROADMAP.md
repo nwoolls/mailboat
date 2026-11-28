@@ -8197,6 +8197,17 @@ item below is built, the owner has tried it, and the owner has published
               Template IDs are never reused, and names clash ignoring case
               beyond ASCII too. Delete all data's confirmation names
               templates.)*
+              *(Second round, one reviewer: Send anyway now holds only for
+              the message as it was shown, so any change to the text or
+              subject asks again (it was by field name, and a second field
+              of the same name slipped through). The subject is flattened
+              to one line when pasted and when loaded, as a rich paste of
+              two paragraphs was dropped. Field names keep single spaces,
+              so a subject's `[Name]` always matches. A subject's fields
+              are tracked only when the template supplied the subject. A
+              file dropped on Fill in no longer attaches to the message
+              behind it. Fill in shows To, Cc and Bcc apart, by the same
+              rules as inserting.)*
 
 ### Bugs
 

@@ -12,6 +12,9 @@ const KIND_LABELS: Record<TemplateField["kind"], string> = {
   auto: "Filled in for you",
 };
 
+/** People by name (or address), for the line saying who it goes to. */
+const namesOf = (list: Address[]) => list.map((a) => a.name || a.email).join(", ");
+
 const INPUT =
   "h-7 rounded-md bg-transparent px-2 ring-1 ring-stroke outline-none focus-visible:ring-2 focus-visible:ring-accent/70";
 
@@ -31,7 +34,7 @@ export function FillInDialog({
   template: Template;
   initial: FieldValues;
   /** Who the template adds to a new message ("" when it adds no one). */
-  people: { to: Address[]; cc: Address[] } | null;
+  people: { to: Address[]; cc: Address[]; bcc: Address[] } | null;
   onInsert: (values: FieldValues) => void;
   onCancel: () => void;
 }) {
@@ -47,7 +50,18 @@ export function FillInDialog({
   const set = (id: string, change: Partial<FieldValue>) =>
     setValues((v) => ({ ...v, [id]: { ...v[id]!, ...change } }));
   const subject = template.subject ? fillSubject(template.subject, template.fields, values) : "";
-  const who = people && [...people.to, ...people.cc].map((a) => a.name || a.email).join(", ");
+  const who =
+    people &&
+    (
+      [
+        ["To", people.to],
+        ["Cc", people.cc],
+        ["Bcc", people.bcc],
+      ] as const
+    )
+      .filter(([, list]) => list.length > 0)
+      .map(([line, list]) => `${line} ${namesOf(list)}`)
+      .join(" · ");
 
   return (
     <dialog
@@ -103,7 +117,7 @@ export function FillInDialog({
         <div className="flex items-center gap-2 border-t border-stroke px-5 py-3">
           {who && (
             <span className="min-w-0 flex-1 truncate text-xs text-content/45" title={who}>
-              To {who}
+              {who}
             </span>
           )}
           <span className={who ? "" : "flex-1"} />
