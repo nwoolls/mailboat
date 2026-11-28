@@ -133,3 +133,34 @@ export function inbox() {
     .map((c, i) => threadOf(c, i + 1))
     .toSorted((a, b) => b.lastMessageAt - a.lastMessageAt);
 }
+
+type DemoTemplate = {
+  name: string;
+  from?: string;
+  to?: Person[];
+  cc?: Person[];
+  bcc?: Person[];
+  subject?: string;
+  body?: string;
+  fields?: Record<string, unknown>[];
+};
+
+/** Demo mode's templates as Rust returns them (empty parts filled in, IDs from 1). */
+export const templates = ((mail as { templates?: DemoTemplate[] }).templates ?? []).map((t, i) => ({
+  id: i + 1,
+  name: t.name,
+  from: t.from ?? null,
+  to: t.to ?? [],
+  cc: t.cc ?? [],
+  bcc: t.bcc ?? [],
+  subject: t.subject ?? "",
+  body: t.body ?? "",
+  fields: (t.fields ?? []).map((f) => ({
+    choices: [],
+    auto: null,
+    defaultDay: null,
+    endTime: false,
+    ...f,
+  })),
+  usedAt: null as number | null,
+}));

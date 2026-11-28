@@ -8,6 +8,7 @@ import type {
   DraftId,
   Mailto,
   MessageId,
+  Template,
   ThreadId,
 } from "../../../platform/tauri/bindings";
 import { unwrap } from "../../../platform/tauri/ipc";
@@ -32,6 +33,7 @@ import {
 import { selectedInMessage } from "../../reader/ui/MessageFrame";
 import { draftFromMailto } from "../model/mailto";
 import { composingPrefs } from "./composingPrefs";
+import { withTemplateFields } from "../../templates/model/apply";
 
 /**
  * Drafts on screen, shared app-wide (the toolbar, keys and the reader all
@@ -344,6 +346,19 @@ export function useComposeActions(accounts: Account[]) {
     [blankDraft],
   );
 
+  /**
+   * A new message from a template (⌘K): its From and people now, and its
+   * text, fields and subject once the message has opened.
+   */
+  const startFromTemplate = useCallback(
+    async (accountId: AccountId, template: Template) => {
+      const [draft, list] = await Promise.all([blankDraft(accountId), identities()]);
+      const filled = withTemplateFields(draft, template, list, "");
+      set(S.openCard(state, { ...filled, pendingTemplate: template.id }));
+    },
+    [blankDraft, identities],
+  );
+
   /** A new message filled in from a `mailto:` link. */
   const startFromMailto = useCallback(
     async (accountId: AccountId, link: Mailto) => {
@@ -500,7 +515,15 @@ export function useComposeActions(accounts: Account[]) {
   }, []);
 
   return useMemo(
-    () => ({ startNew, startFromMailto, startReply, startSendAgain, switchKind, send }),
-    [startNew, startFromMailto, startReply, startSendAgain, switchKind, send],
+    () => ({
+      startNew,
+      startFromTemplate,
+      startFromMailto,
+      startReply,
+      startSendAgain,
+      switchKind,
+      send,
+    }),
+    [startNew, startFromTemplate, startFromMailto, startReply, startSendAgain, switchKind, send],
   );
 }

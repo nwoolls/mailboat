@@ -39,6 +39,9 @@ import { composingPrefs } from "./composingPrefs";
 import { useStuck } from "../../../shared/ui/useStuck";
 import { stuckAfterScroll } from "../model/stickToEnd";
 import { accelLabel, primaryKey } from "../../../shared/lib/platform";
+import { ComposerTemplates } from "../../templates/ui/ComposerTemplates";
+import { selectFirstField } from "../../templates/ui/fieldNode";
+import { unfilledFields } from "../../templates/model/fields";
 
 export type ReplyKind = Exclude<ComposeKind, "new">;
 
@@ -117,6 +120,9 @@ export function ComposeForm({
   const rule = outsideWarningOff.includes(draft.accountId) ? null : outsideRule;
   const outside = outsideRecipients(rule, [...draft.to, ...draft.cc, ...draft.bcc]);
   const [problem, setProblem] = useState<string | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  // A template's fields still waiting when Send was pressed: Send asks first.
+  const [waiting, setWaiting] = useState<string[] | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [dropping, setDropping] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -363,10 +369,13 @@ export function ComposeForm({
     editor?.setEditable(!sending, false);
   }, [editor, sending]);
 
-  const trySend = () => {
+  const trySend = (anyway = false) => {
     const why = sendProblem(draft);
     setProblem(why);
-    if (!why && !sending) onSend();
+    if (why || sending) return;
+    const left = anyway ? [] : unfilledFields(draft.html);
+    setWaiting(left.length ? left : null);
+    if (left.length === 0) onSend();
   };
   const discard = () => (hasChanges(draft) ? setConfirming(true) : onDiscard());
   const account = accounts.find((a) => a.id === draft.accountId);
@@ -440,6 +449,10 @@ export function ComposeForm({
         if (e.key === "j" && primaryKey(e) && assistant) {
           e.preventDefault();
           assistant.onToggle(!assistant.open);
+        }
+        if (e.key.toLowerCase() === "t" && e.shiftKey && primaryKey(e) && !sending) {
+          e.preventDefault();
+          setTemplatesOpen((open) => !open);
         }
       }}
     >
@@ -574,6 +587,35 @@ export function ComposeForm({
         className={inline ? "reader-foot reader-foot-in-card pt-2" : ""}
         data-stuck={(inline && footStuck) || undefined}
       >
+        {waiting && (
+          <div
+            role="alert"
+            className="mx-4 mb-1 flex items-center gap-2 rounded-lg bg-warn/15 px-3 py-1.5 text-xs text-warn-ink"
+          >
+            <span className="min-w-0 flex-1">
+              {waiting.length === 1
+                ? `“${waiting[0]}” hasn’t been filled in.`
+                : `${waiting.length} fields haven’t been filled in: ${waiting.map((n) => `“${n}”`).join(", ")}.`}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setWaiting(null);
+                if (editor) selectFirstField(editor);
+              }}
+              className="h-6 shrink-0 rounded-md bg-background-base px-2.5 text-content ring-1 ring-stroke hover:bg-selection"
+            >
+              Go to it
+            </button>
+            <button
+              type="button"
+              onClick={() => trySend(true)}
+              className="h-6 shrink-0 rounded-md bg-background-base px-2.5 text-content ring-1 ring-stroke hover:bg-selection"
+            >
+              Send anyway
+            </button>
+          </div>
+        )}
         <FormatBar editor={editor}>
           {editor && <RewriteButton editor={editor} threadId={draft.threadId} />}
         </FormatBar>
@@ -619,8 +661,18 @@ export function ComposeForm({
               <AiIcon />
             </button>
           )}
-          <AttachButton
+          <ComposerTemplates
             className={assistant ? "" : "ml-auto"}
+            editor={editor}
+            draft={draft}
+            identities={identities}
+            open={templatesOpen}
+            onOpenChange={setTemplatesOpen}
+            onChange={onChange}
+            disabled={sending}
+          />
+          <AttachButton
+            className=""
             disabled={sending}
             onFiles={(files) =>
               onChange((d) => ({ ...d, attachments: [...d.attachments, ...files] }))

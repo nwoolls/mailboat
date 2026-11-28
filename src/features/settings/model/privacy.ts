@@ -180,5 +180,6 @@ export const STAYS_ON_THIS_COMPUTER: readonly string[] = [
   "Summaries and writing help from Apple Intelligence.",
   "Saved summaries stay until they are written again, cleared, or removed with their conversation or by an update, or until you quit if you turn off Keep saved summaries.",
   "Addresses you removed from compose suggestions, for all your accounts, until you restore them or delete all data. Removing an account keeps them.",
+  "Your templates, for all your accounts, until you delete them or delete all data. Removing an account keeps them.",
   "No account with us, no analytics and no crash reports.",
 ];

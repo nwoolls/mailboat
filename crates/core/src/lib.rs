@@ -29,6 +29,7 @@ pub mod rules;
 pub mod sealed;
 pub mod settings;
 pub mod sync;
+pub mod templates;
 pub mod vacation;
 
 pub use error::{CoreError, Result};

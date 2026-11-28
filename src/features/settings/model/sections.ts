@@ -14,6 +14,7 @@ export type SettingsSectionId =
   | "composing"
   | "ai"
   | "signatures"
+  | "templates"
   | "rules"
   | "vacation"
   | "keyboard"
@@ -61,6 +62,12 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     id: "signatures",
     label: "Signatures",
     description: "Added to new mail and replies from each address, here and in Gmail.",
+  },
+  {
+    id: "templates",
+    label: "Templates",
+    description:
+      "Emails you write often, to start from or put in a message, with fields you fill in each time. Kept on this computer, for all your accounts.",
   },
   {
     id: "rules",

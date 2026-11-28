@@ -4,6 +4,8 @@ import { sectionFor, type SettingsSectionId } from "../model/sections";
 import { RulesSection } from "../../rules/ui/RulesSection";
 import { AiSection } from "../../ai/ui/AiSection";
 import { SignaturesSection } from "../../signatures/ui/SignaturesSection";
+import { TemplatesSection } from "../../templates/ui/TemplatesSection";
+import type { TemplateSettingsTarget } from "../../templates/ui/TemplatePicker";
 import { VacationSection } from "../../vacation/ui/VacationSection";
 import { PageHeader } from "./controls";
 import {
@@ -20,6 +22,9 @@ import {
   ViewingSection,
 } from "./SettingsSections";
 
+const NO_TEMPLATE_TARGET: TemplateSettingsTarget = { edit: null };
+const ignore = () => {};
+
 /**
  * The open section, in a rounded panel where the list and reader were (as
  * MonoCode's `SettingsView`). Esc closes Settings, after menus, dialogs
@@ -32,6 +37,8 @@ export function SettingsPage({
   onAccountRemoved,
   onSelect,
   onClose,
+  templateTarget = NO_TEMPLATE_TARGET,
+  onTemplateTargetSeen = ignore,
 }: {
   section: SettingsSectionId;
   accounts: Account[];
@@ -39,6 +46,9 @@ export function SettingsPage({
   onAccountRemoved: (id: AccountId) => void;
   onSelect: (section: SettingsSectionId) => void;
   onClose: () => void;
+  /** A template to open in Settings → Templates (from the composer or ⌘K). */
+  templateTarget?: TemplateSettingsTarget;
+  onTemplateTargetSeen?: () => void;
 }) {
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -112,6 +122,9 @@ export function SettingsPage({
           {section === "composing" && <ComposingSection />}
           {section === "ai" && <AiSection />}
           {section === "signatures" && <SignaturesSection accounts={accounts} />}
+          {section === "templates" && (
+            <TemplatesSection target={templateTarget} onTargetSeen={onTemplateTargetSeen} />
+          )}
           {section === "vacation" && <VacationSection accounts={accounts} />}
           {section === "keyboard" && <KeyboardSection />}
           {section === "toybox" && <ToyboxSection />}

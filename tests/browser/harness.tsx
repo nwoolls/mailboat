@@ -98,6 +98,7 @@ import {
   messagesOf,
   threadOf,
   inbox,
+  templates as demoTemplates,
 } from "./demoMail";
 import trackers from "./fixtures/trackers.json";
 import imageSizes from "./fixtures/image-sizes.json";
@@ -161,6 +162,8 @@ const demoContacts = [
   { name: "Jordan Park", email: "jordan@x.example", wrote: true },
 ];
 let hiddenContacts: string[] = [];
+// Demo mode's templates; `window.__templatesUsed` lists the ones used.
+let templates = structuredClone(demoTemplates);
 /** `?mode=shell`: stars and read states changed by the app, by conversation. */
 const shellChanges = new Map<number, { starred?: boolean; unread?: boolean; inInbox?: boolean }>();
 // `&conversation=all` (with `?mode=shell`): the conversation has all five emails.
@@ -305,6 +308,28 @@ const answer = (cmd: string, args: unknown): unknown => {
     }
     case "contacts_hidden":
       return hiddenContacts;
+    case "templates_list":
+      return templates.toSorted((a, b) => a.name.localeCompare(b.name));
+    case "template_used": {
+      const id = (args as { id: number }).id;
+      record(`template_used ${id}`);
+      templates = templates.map((t) => (t.id === id ? { ...t, usedAt: Date.now() } : t));
+      return null;
+    }
+    case "template_create":
+    case "template_update": {
+      const { id, input } = args as { id?: number; input: (typeof templates)[number] };
+      const saved = {
+        ...input,
+        id: id ?? Math.max(0, ...templates.map((t) => t.id)) + 1,
+        usedAt: null,
+      };
+      templates = [...templates.filter((t) => t.id !== saved.id), saved];
+      return saved;
+    }
+    case "template_delete":
+      templates = templates.filter((t) => t.id !== (args as { id: number }).id);
+      return null;
     case "compose_outside_rule": {
       // So a test can tell the rule was asked for (and has an answer).
       (window as unknown as { __outsideRuleAsked?: boolean }).__outsideRuleAsked = true;

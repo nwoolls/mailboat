@@ -184,6 +184,7 @@ fn migrate(conn: &mut Connection) -> Result<()> {
         (24, schema::MIGRATION_V24),
         (25, schema::MIGRATION_V25),
         (26, schema::MIGRATION_V26),
+        (27, schema::MIGRATION_V27),
     ];
     for (version, sql) in steps {
         if current < *version {
@@ -283,7 +284,7 @@ mod tests {
         let versions: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(versions, 26);
+        assert_eq!(versions, 27);
         // Migration 22's columns, with Gmail's defaults.
         conn.execute("INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at) VALUES (1, 's', 'a@example.com', '#5b8def', 'default', 0)", []).unwrap();
         conn.execute("INSERT INTO labels (account_id, gmail_label_id, name, kind) VALUES (1, 'L', 'L', 'user')", []).unwrap();
@@ -323,6 +324,7 @@ mod tests {
              ALTER TABLE labels DROP COLUMN message_visibility;
              ALTER TABLE sync_state DROP COLUMN labels_synced_at;
              DROP TABLE hidden_contacts;
+             DROP TABLE templates;
              INSERT INTO accounts (id, google_sub, email, color, oauth_client, created_at)
                VALUES (1, 's1', 'a@example.com', '#5b8def', 'default', 0);
              INSERT INTO app_settings (key, value)
@@ -355,8 +357,10 @@ mod tests {
         }
         let db = Db::open_in_memory().unwrap();
         let mut conn = db.conn();
-        conn.execute("DELETE FROM schema_migrations WHERE version >= 24", [])
-            .unwrap();
+        conn.execute_batch(
+            "DROP TABLE templates; DELETE FROM schema_migrations WHERE version >= 24",
+        )
+        .unwrap();
         saved_summaries(&conn);
         migrate(&mut conn).unwrap();
         assert_eq!(summaries_left(&conn), [(1, "full".to_string())]);
@@ -394,7 +398,7 @@ mod tests {
         let db = Db::open_in_memory().unwrap();
         let mut conn = db.conn();
         conn.execute_batch(
-            "DROP TABLE image_cache; DELETE FROM schema_migrations WHERE version >= 21;
+            "DROP TABLE image_cache; DROP TABLE templates; DELETE FROM schema_migrations WHERE version >= 21;
              ALTER TABLE labels DROP COLUMN list_visibility;
              ALTER TABLE labels DROP COLUMN message_visibility;
              ALTER TABLE sync_state DROP COLUMN labels_synced_at;

@@ -899,6 +899,29 @@ html[data-platform="windows"] [class*="overflow-x-auto"] {
   max-width: 100%;
 }
 
+/* A template's field (templates/ui/fieldNode.ts). In a message it's one
+   still to fill in, so it's in the warning color; in a template's editor
+   (`.template-fields`) it marks where a value goes, in the accent. */
+.template-field {
+  border-radius: 4px;
+  padding: 0 4px;
+  background: color-mix(in srgb, var(--color-warn) 20%, transparent);
+  color: var(--color-warn-ink);
+  cursor: default;
+  white-space: nowrap;
+}
+
+.template-fields .template-field {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.template-field.ProseMirror-selectednode {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+  outline-offset: 1px;
+}
+
 /* A swiped row's button springing a little as it separates from the row
    (mailbox/ui/SwipeLayers.tsx). It recoils away from the row and settles,
    with a small second dip, and never grows past its own width: the origin

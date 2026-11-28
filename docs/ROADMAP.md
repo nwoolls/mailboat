@@ -8118,6 +8118,65 @@ item below is built, the owner has tried it, and the owner has published
       removing New message across restarts, the Jump Lists setting off,
       update and uninstall)*
 
+### Templates
+
+- [ ] Templates: saved emails to start from or insert while writing
+      (Gmail's own templates aren't in its API, so these are Mailboat's)
+      *(moved from "Later / unscheduled" → Writing into 0.4.0, owner,
+      2026-11-27)*. Designed with the owner, 2026-11-27, from mockups (an
+      artifact outside the repository, made-up content), after looking at
+      Gmail's templates, Superhuman's snippets, Spark's templates, Front's
+      variables and TextExpander's fill-ins:
+      - Kept on this computer only, in a table of their own in the
+        encrypted cache: not in Gmail as drafts (they'd show in Drafts on
+        every device, could be sent by mistake, and would outlive Delete
+        all data) and not in the settings (saved whole, and Restore
+        defaults). Shared by all accounts, like the addresses removed from
+        suggestions; removing an account keeps them, Delete all data
+        removes them.
+      - A template has a name, a rich-text body, and optionally a subject,
+        a From address, and To, Cc and Bcc. No attachments.
+      - Fields, typed and named, filled in each time: text, long text
+        (each line a paragraph, or a bullet when the field sits in a list,
+        in the formatting around it), date, date and time (with an
+        optional end time), a choice, and automatic ones (the recipient's
+        first name, your first name, today). A field can appear more than
+        once and is asked for once; a date's format is chosen where it
+        appears (long, short, month and year, with the time, time only).
+      - Steps:
+        - [x] Storage and its tests in `crates/core` (`templates`), the
+              commands, and demo mode's templates.
+        - [x] Filling in (the fields, the formats, long text taking the
+              place's formatting) as tested logic in
+              `src/features/templates/model`.
+        - [x] Picking one while writing: a Templates button in the
+              composer's bar and ⇧⌘T, a list to filter with ↑ ↓ and
+              Return; the Fill in form; inserted at the cursor as one undo
+              step; the subject and people filled only when empty, never in
+              a reply; the signature and quote untouched.
+        - [x] A field left empty stays highlighted in the message, and
+              Send asks about it first.
+        - [x] ⌘K: each template is a command under "New message from
+              template", which starts a new email from it; "Save as
+              template…" and the templates' Settings page there too.
+        - [x] Settings → Templates (after Signatures): the list, New,
+              Edit, Duplicate, Delete; the editor with Add field and each
+              field's settings.
+        - [x] "Save as template…" from the composer: the text, and the
+              subject and people if ticked.
+        - [ ] Settings → Privacy says templates stay on this computer.
+              The privacy policy and the feature cards are on the held
+              website branch, only with the owner's OK. *(2026-11-27:
+              Settings → Privacy and the README say it, branch
+              `templates`; the website waits for the owner.)*
+        - [x] Browser tests: inserting at the cursor, and the picker's
+              keyboard use. *(Done 2026-11-27, branch `templates`, with the
+              rest of the steps above: `tests/browser/templates.spec.ts`.
+              Found while writing them: a template now goes in as a paste
+              does, its first and last lines joining the text on either
+              side of the cursor, and closing the picker or Fill in puts
+              the cursor back where it was. Not yet tried by the owner.)*
+
 ### Bugs
 
 - [x] Holding ↑ with the computer busy for a moment sent the outline back
@@ -8700,8 +8759,6 @@ item below is built, the owner has tried it, and the owner has published
 ### Writing (was Milestone 9; moved here, owner, 2026-10-24: "fairly
 niche or extra", so Windows and the Release Spike come first)
 
-- [ ] Templates: saved replies to insert while writing (Gmail's own
-      templates aren't in its API, so these would be Mailboat's)
 - [ ] Images inline in the email being written, as Gmail does *(owner
       request, 2026-10-22)*: dropping (or pasting) an image into the
       composer puts it in the body where it lands, while other files
@@ -9085,7 +9142,7 @@ runs, as with Snooze and Schedule send above.
   warnings" idea in the bytemail notes is the nearest.
 - Confidential mode: can't be built outside Gmail, and such emails arrive
   as a link to read in Gmail.
-- Templates: listed under "Writing" above.
+- Templates: Mailboat's own, in 0.4.0 ("Templates").
 - Nudges (Gmail brings back mail you haven't answered): see "Remind me if
   no reply" in the bytemail notes.
 - Smart Compose: the AI writing features cover a similar need.

@@ -20,13 +20,15 @@ use mail_core::mail::mailto::Mailto;
 use mail_core::mail::{self, prefetch, SafeMessage};
 use mail_core::model::{
     Account, AccountFilter, AccountId, AccountSyncState, Attachment, AttachmentId, DraftId, Label,
-    LabelId, LabelUnread, ListQuery, MailView, MessageId, ThreadDetail, ThreadId, ThreadPage,
+    LabelId, LabelUnread, ListQuery, MailView, MessageId, TemplateId, ThreadDetail, ThreadId,
+    ThreadPage,
 };
 use mail_core::rules::{
     self, AccountRules, MatchCount, RuleActions, RuleCriteria, RulesState, SavedRule,
 };
 use mail_core::settings::{self, AppSettings};
 use mail_core::sync::{fetch_body, load_older, OLDER_BATCH};
+use mail_core::templates::{self, Template, TemplateInput};
 use mail_core::vacation::{self, AccountVacation, VacationSettings, VacationState};
 use mail_core::CoreError;
 use serde::Serialize;
@@ -1170,6 +1172,52 @@ pub fn contacts_unhide(state: State<'_, AppState>, email: String) -> CmdResult<(
 #[specta::specta]
 pub fn contacts_hidden(state: State<'_, AppState>) -> CmdResult<Vec<String>> {
     Ok(compose::contacts::hidden(&state.db.conn())?)
+}
+
+/// Every template, by name (kept on this computer, for all accounts).
+#[tauri::command]
+#[specta::specta]
+pub fn templates_list(state: State<'_, AppState>) -> CmdResult<Vec<Template>> {
+    Ok(templates::list(&state.db.conn())?)
+}
+
+/// Saves a new template.
+#[tauri::command]
+#[specta::specta]
+pub fn template_create(state: State<'_, AppState>, input: TemplateInput) -> CmdResult<Template> {
+    Ok(templates::create(&state.db.conn(), &input)?)
+}
+
+/// Replaces a template's content.
+#[tauri::command]
+#[specta::specta]
+pub fn template_update(
+    state: State<'_, AppState>,
+    id: TemplateId,
+    input: TemplateInput,
+) -> CmdResult<Template> {
+    Ok(templates::update(&state.db.conn(), id, &input)?)
+}
+
+/// Saves a copy of a template under a free name.
+#[tauri::command]
+#[specta::specta]
+pub fn template_duplicate(state: State<'_, AppState>, id: TemplateId) -> CmdResult<Template> {
+    Ok(templates::duplicate(&state.db.conn(), id)?)
+}
+
+/// Deletes a template.
+#[tauri::command]
+#[specta::specta]
+pub fn template_delete(state: State<'_, AppState>, id: TemplateId) -> CmdResult<()> {
+    Ok(templates::delete(&state.db.conn(), id)?)
+}
+
+/// Notes that a template was used, for ⌘K's order.
+#[tauri::command]
+#[specta::specta]
+pub fn template_used(state: State<'_, AppState>, id: TemplateId) -> CmdResult<()> {
+    Ok(templates::mark_used(&state.db.conn(), id)?)
 }
 
 /// What a reply or forward needs from a message (people, subject, text),

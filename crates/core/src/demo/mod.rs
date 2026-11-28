@@ -161,6 +161,14 @@ pub async fn prepare(
             summaries::store(&conn, thread, s.kind, provider, newest, &s.text)?;
         }
     }
+
+    // Kept from an earlier run of the demo, with any changes made in it.
+    let conn = db.conn();
+    if crate::templates::list(&conn)?.is_empty() {
+        for template in &data.templates {
+            crate::templates::create(&conn, &template.into())?;
+        }
+    }
     Ok(added)
 }
 

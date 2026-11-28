@@ -53,6 +53,9 @@ which has since shut down.
 - **Rules, signatures, vacation reply.** Your Gmail filters and signatures,
   edited in the app.
 - **Undo send.** Five seconds to take it back by default, up to thirty.
+- **Templates.** Start an email from one you saved, or put one into what
+  you're writing, with fields you fill in each time: a date in the format you
+  choose, a list of changes, a first name. Kept on your computer.
 - **AI that stays optional.** Summaries, a writing assistant, reply ideas and
   translation, through Apple Intelligence on your Mac or your own Claude or
   ChatGPT subscription. No API keys, and nothing is sent without you seeing it.

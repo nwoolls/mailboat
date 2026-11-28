@@ -2,7 +2,10 @@ import type { Command, CommandId } from "../features/commands/model/commands";
 import type { Selection } from "../features/mailbox/model/views";
 import type { Destination } from "../features/palette/model/destinations";
 import type { PaletteItem } from "../features/palette/ui/CommandPalette";
-import { InboxIcon, LabelIcon, SettingsIcon } from "../shared/ui/icons";
+import type { Template } from "../platform/tauri/bindings";
+import { recentFirst } from "../features/templates/model/apply";
+import { fieldCount } from "../features/templates/ui/TemplatePicker";
+import { InboxIcon, LabelIcon, SettingsIcon, TemplateIcon } from "../shared/ui/icons";
 import { commandIcon } from "./commandIcons";
 import { accelLabel } from "../shared/lib/platform";
 
@@ -35,6 +38,10 @@ export function paletteItems(p: {
   startScreensaver: (id: string | null) => void;
   destinations: Destination[];
   goTo: (s: Selection) => void;
+  /** Each starts a new message from itself (none without an account). */
+  templates: Template[];
+  startFromTemplate: (t: Template) => void;
+  manageTemplates: () => void;
 }): PaletteItem[] {
   const items: PaletteItem[] = p.commands
     // The palette is open already, and views are listed below by name.
@@ -62,6 +69,28 @@ export function paletteItems(p: {
         run: () => p.startScreensaver(s.id),
       });
   }
+  // Typing the name, or "template", finds one; the most recently used first.
+  for (const t of recentFirst(p.templates)) {
+    const to = t.to[0];
+    const people = to
+      ? `To ${to.name || to.email}${t.to.length > 1 ? ` and ${t.to.length - 1} more` : ""}`
+      : "";
+    items.push({
+      id: `template:${t.id}`,
+      group: "New message from template",
+      title: t.name,
+      detail: [people, fieldCount(t)].filter(Boolean).join(" · ") || null,
+      icon: TemplateIcon,
+      run: () => p.startFromTemplate(t),
+    });
+  }
+  items.push({
+    id: "templates",
+    group: "Mail",
+    title: "Manage templates",
+    icon: TemplateIcon,
+    run: p.manageTemplates,
+  });
   items.push({
     id: "settings",
     group: "View",

@@ -22,6 +22,7 @@ import Delete02 from "@hugeicons/core-free-icons/Delete02Icon";
 import Download04 from "@hugeicons/core-free-icons/Download04Icon";
 import File01 from "@hugeicons/core-free-icons/File01Icon";
 import FileAttachment from "@hugeicons/core-free-icons/FileAttachmentIcon";
+import Note01 from "@hugeicons/core-free-icons/Note01Icon";
 import Image01 from "@hugeicons/core-free-icons/Image01Icon";
 import Pdf01 from "@hugeicons/core-free-icons/Pdf01Icon";
 import Printer from "@hugeicons/core-free-icons/PrinterIcon";
@@ -111,6 +112,8 @@ export const AddIcon = wrap(Add01);
 // A stack, so All Mail doesn't look like Unread or "Mark as unread".
 export const AllMailIcon = wrap(Mails);
 export const AttachmentIcon = wrap(Attachment01);
+/** Templates (the composer's button, ⌘K). */
+export const TemplateIcon = wrap(Note01);
 export const ChevronIcon = wrap(ArrowRight01);
 export const InboxIcon = wrap(Inbox);
 // Gmail's: an arrow going into the tray (the old one pointed out of it).

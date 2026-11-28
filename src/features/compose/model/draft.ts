@@ -12,10 +12,12 @@ import type {
   OutgoingMessage,
   ReplySource,
   SendAgainSource,
+  TemplateId,
   ThreadId,
 } from "../../../platform/tauri/bindings";
 import { PLAIN_STYLE, styleCss, type TextStyle } from "./fonts";
 import { formatAddress, isValidEmail, sameEmail, uniqueAddresses } from "./addresses";
+import { withoutFieldMarks } from "../../templates/model/fields";
 
 export type ComposeKind = "new" | "reply" | "replyAll" | "forward";
 
@@ -65,6 +67,11 @@ export type Draft = {
    * quotes just that).
    */
   quotedSelection?: string;
+  /**
+   * A template to put in once the message opens (a new message started
+   * from one in ⌘K), dropped once it's in.
+   */
+  pendingTemplate?: TemplateId;
   /** Files to send with it. */
   attachments: OutgoingAttachment[];
   /** The original's files a forward carries along (removable). */
@@ -654,14 +661,16 @@ export function emailHtml(html: string, style: TextStyle = PLAIN_STYLE): string 
 
 /**
  * The message as sent: what was written, a blank line, the signature (in
- * Gmail's wrapper), then the quote, in both copies.
+ * Gmail's wrapper), then the quote, in both copies. A template's field
+ * still waiting goes as its name, as plain text.
  */
 export function toOutgoing(draft: Draft, style: TextStyle = PLAIN_STYLE): OutgoingMessage {
   const signature = draft.signature ? `<div class="gmail_signature">${draft.signature}</div>` : "";
   const after = [signature, draft.quote].filter(Boolean);
   const html =
     draft.html.trim() || after.length > 0
-      ? emailHtml(draft.html, style) + after.map((part) => `<div><br></div>${part}`).join("")
+      ? emailHtml(withoutFieldMarks(draft.html), style) +
+        after.map((part) => `<div><br></div>${part}`).join("")
       : null;
   const text = [draft.text.trimEnd(), htmlToText(draft.signature), draft.quoteText]
     .filter(Boolean)

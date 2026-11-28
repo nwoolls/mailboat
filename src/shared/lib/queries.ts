@@ -18,6 +18,8 @@ import type {
   RuleActions,
   AccountVacation,
   RuleCriteria,
+  TemplateId,
+  TemplateInput,
   ThreadId,
   VacationSettings,
 } from "../../platform/tauri/bindings";
@@ -45,6 +47,7 @@ export const keys = {
   contacts: ["contacts"] as const,
   outsideRule: (account: AccountId) => ["contacts", "outside", account] as const,
   hiddenContacts: ["contacts", "hidden"] as const,
+  templates: ["templates"] as const,
   appInfo: ["appInfo"] as const,
   defaultMailApp: ["defaultMailApp"] as const,
   appSettings: ["appSettings"] as const,
@@ -651,6 +654,44 @@ export function useSetSignature() {
     mutationFn: ({ account, email, html }: { account: AccountId; email: string; html: string }) =>
       unwrap(commands.signatureSet(account, email, html)),
     onSettled: () => void qc.invalidateQueries({ queryKey: keys.identities }),
+  });
+}
+
+/** Every template, by name (kept on this computer, for all accounts). */
+export function useTemplates() {
+  return useQuery({
+    queryKey: keys.templates,
+    queryFn: () => unwrap(commands.templatesList()),
+    enabled: IS_TAURI,
+  });
+}
+
+/** Saves a template: a new one without `id`. The list is read again after. */
+export function useSaveTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: TemplateId | null; input: TemplateInput }) =>
+      unwrap(id === null ? commands.templateCreate(input) : commands.templateUpdate(id, input)),
+    onSettled: () => void qc.invalidateQueries({ queryKey: keys.templates }),
+  });
+}
+
+/** Deletes, duplicates or marks a template used, then reads the list again. */
+export function useTemplateAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      action,
+    }: {
+      id: TemplateId;
+      action: "delete" | "duplicate" | "used";
+    }) => {
+      if (action === "delete") await unwrap(commands.templateDelete(id));
+      else if (action === "duplicate") await unwrap(commands.templateDuplicate(id));
+      else await unwrap(commands.templateUsed(id));
+    },
+    onSettled: () => void qc.invalidateQueries({ queryKey: keys.templates }),
   });
 }
 

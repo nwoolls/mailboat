@@ -27,6 +27,7 @@ import {
   UnderlineIcon,
 } from "../../../shared/ui/icons";
 import { FONTS, SIZES } from "../model/fonts";
+import { TemplateFieldNode } from "../../templates/ui/fieldNode";
 import { accelLabel, primaryKey } from "../../../shared/lib/platform";
 
 export type EditorChange = { html: string; text: string; edited: boolean };
@@ -138,6 +139,9 @@ export function useRichEditor(
       // Tables the writing assistant writes (or pasted ones). Plain: no
       // column resizing, styled for sending by `emailHtml`.
       TableKit.configure({ table: { resizable: false } }),
+      // A template's fields: where a template's values go, or a field
+      // left to fill in in a message.
+      TemplateFieldNode,
     ],
     content: initialHtml,
     editorProps: {
